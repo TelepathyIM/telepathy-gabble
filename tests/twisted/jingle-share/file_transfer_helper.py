@@ -368,6 +368,14 @@ class SendFileTest(FileTransferTest):
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
 
+        # Make sure the file transfer is of type jingle-share
+        event = self.q.expect('stream-iq', stream=self.stream,
+                              query_name = 'session',
+                              query_ns = ns.GOOGLE_SESSION)
+        description_node = xpath.queryForNodes('/iq/session/description',
+                                               event.stanza)[0]
+        assert description_node.uri == ns.GOOGLE_SESSION_SHARE, \
+            description_node.uri
 
     def provide_file(self):
         self.open = False
@@ -385,15 +393,6 @@ class SendFileTest(FileTransferTest):
         self.address = self.ft_channel.ProvideFile(self.address_type,
                 self.access_control, self.access_control_param,
                 byte_arrays=True)
-
-        # Make sure the file transfer is of type jingle-share
-        event = self.q.expect('stream-iq', stream=self.stream,
-                              query_name = 'session',
-                              query_ns = ns.GOOGLE_SESSION)
-        description_node = xpath.queryForNodes('/iq/session/description',
-                                               event.stanza)[0]
-        assert description_node.uri == ns.GOOGLE_SESSION_SHARE, \
-            description_node.uri
 
 
     def send_file(self):

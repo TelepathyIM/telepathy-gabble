@@ -1071,9 +1071,10 @@ channel_open (GabbleFileTransferChannel *self)
 }
 
 static void
-channel_closed (GabbleFileTransferChannel *self)
+bytestream_closed (GabbleFileTransferChannel *self)
 {
-  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
+      self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
     {
       TpBaseConnection *base_conn = (TpBaseConnection *)
           self->priv->connection;
@@ -1091,6 +1092,7 @@ channel_closed (GabbleFileTransferChannel *self)
     }
 }
 
+
 static void
 bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
                              GabbleBytestreamState state,
@@ -1104,7 +1106,7 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
     }
   else if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
-      channel_closed (self);
+      bytestream_closed (self);
     }
 }
 
@@ -1191,8 +1193,9 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
         channel_open (self);
         break;
       case JS_STATE_ENDED:
+        /* Do nothing, let the terminated signal set the correct state
+           depending on the termination reason */
       default:
-        channel_closed (self);
         break;
     }
 }
@@ -1217,12 +1220,9 @@ jingle_session_terminated_cb (GabbleJingleSession *session,
           local_terminator ?
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED:
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_REMOTE_STOPPED);
-
-      close_session_and_transport (self);
     }
 
-  gabble_file_transfer_channel_do_close (self);
-
+  close_session_and_transport (self);
 }
 
 static void

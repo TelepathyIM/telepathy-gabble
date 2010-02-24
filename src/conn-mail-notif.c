@@ -27,22 +27,22 @@
  */
 
 #include "config.h"
+
 #include "conn-mail-notif.h"
-#include "namespaces.h"
 
 #include <string.h>
 
-#include "extensions/extensions.h"
+#include <dbus/dbus-glib-lowlevel.h>
+#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/dbus.h>
-#include <dbus/dbus-glib-lowlevel.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MAIL_NOTIF
-
 #include "connection.h"
 #include "debug.h"
+#include "extensions/extensions.h"
+#include "namespaces.h"
 #include "util.h"
 
 

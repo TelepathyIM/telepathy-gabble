@@ -10,14 +10,14 @@ import constants as cs
 import ns
 import dbus
 
-def check_properties_empty(conn, capabilities=0):
+def check_properties_empty(conn, expected_flags=0):
     """Check that all mail notification properties are empty and that
-       capabilities match the provided bit flags"""
+       mail notification flags match the expected flags"""
 
-    caps = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'Capabilities',
+    flags = conn.Get(
+            cs.CONN_IFACE_MAIL_NOTIFICATION, 'MailNotificationFlags',
             dbus_interface=cs.PROPERTIES_IFACE)
-    assert caps == capabilities
+    assert flags == expected_flags
 
     mail_count = conn.Get(
             cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMailCount',
@@ -61,19 +61,21 @@ def test_google_featured(q, bus, conn, stream):
     thread3_subject = "subject3"
     thread3_snippet = "body3"
 
-    # Supported mail capability flags
+    # Supported mail notification flags
     Supports_Unread_Mail_Count = 1
     Supports_Unread_Mails = 2
     Supports_Request_Inbox_URL = 8
     Supports_Request_Mail_URL = 16
-    expected_caps = Supports_Unread_Mail_Count\
-                    | Supports_Unread_Mails\
-                    | Supports_Request_Inbox_URL\
-                    | Supports_Request_Mail_URL
+    Thread_Based = 32
+    expected_flags = Supports_Unread_Mail_Count\
+                     | Supports_Unread_Mails\
+                     | Supports_Request_Inbox_URL\
+                     | Supports_Request_Mail_URL\
+                     | Thread_Based
 
     # Nobody is subscribed yet, attributes should all be empty, and
-    # capabilities are set properly.
-    check_properties_empty(conn, expected_caps)
+    # mail notification flags are set properly.
+    check_properties_empty(conn, expected_flags)
 
     # Check that Gabble queries mail data on initial call to Subscribe().
     conn.MailNotification.Subscribe()
@@ -266,7 +268,7 @@ def test_google_featured(q, bus, conn, stream):
 
     # Unsubscribe and check that all data has been dropped
     conn.MailNotification.Unsubscribe()
-    check_properties_empty(conn, expected_caps)
+    check_properties_empty(conn, expected_flags)
 
 
 def test_no_google_featured(q, bus, conn, stream):
@@ -311,10 +313,9 @@ def test_no_google_featured(q, bus, conn, stream):
         assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
 
     # Make sure all properties return with empty or 0 data including
-    # capabilities
+    # MailNotificationFlags
     check_properties_empty(conn)
 
-    # Unforbids events
     q.unforbid_events(forbidden)
 
 

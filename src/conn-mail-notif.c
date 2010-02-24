@@ -64,9 +64,6 @@ struct MailsHelperData
 };
 
 
-static GPtrArray empty_array = { 0 };
-
-
 static void unsubscribe (GabbleConnection *conn, const gchar *name,
     gboolean remove_all);
 static void update_unread_mails (GabbleConnection *conn);
@@ -224,22 +221,26 @@ gabble_mail_notification_request_inbox_url (
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   GValueArray *result;
+  GPtrArray *empty_array;
 
   if (check_supported_or_dbus_return (conn, context))
     return;
 
   /* TODO Make sure we don't have to authenticate again */
 
+  empty_array = g_ptr_array_new ();
+
   result = tp_value_array_build (3,
       G_TYPE_STRING, conn->inbox_url ?: "",
       G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
-      GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, &empty_array,
+      GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
       G_TYPE_INVALID);
 
   gabble_svc_connection_interface_mail_notification_return_from_request_inbox_url (
       context, result);
 
   g_value_array_free (result);
+  g_ptr_array_free (empty_array, TRUE);
 }
 
 
@@ -253,6 +254,7 @@ gabble_mail_notification_request_mail_url (
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   GValueArray *result;
   gchar *url = NULL;
+  GPtrArray *empty_array;
 
   if (check_supported_or_dbus_return (conn, context))
     return;
@@ -266,17 +268,19 @@ gabble_mail_notification_request_mail_url (
           conn->inbox_url, tid);
     }
 
+  empty_array = g_ptr_array_new ();
+
   result = tp_value_array_build (3,
       G_TYPE_STRING, url ?: "",
       G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
-      GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, &empty_array,
+      GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
       G_TYPE_INVALID);
 
   gabble_svc_connection_interface_mail_notification_return_from_request_mail_url (
       context, result);
 
   g_value_array_free (result);
-
+  g_ptr_array_free (empty_array, TRUE);
 }
 
 

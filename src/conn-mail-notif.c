@@ -263,6 +263,7 @@ gabble_mail_notification_request_mail_url (
 
   if (conn->inbox_url != NULL)
     {
+      /* IDs are decimal on the XMPP side and hexadecimal on the wemail side. */
       guint64 tid = g_ascii_strtoull (in_id, NULL, 0);
       url = g_strdup_printf ("%s/#inbox/%" G_GINT64_MODIFIER "x",
           conn->inbox_url, tid);

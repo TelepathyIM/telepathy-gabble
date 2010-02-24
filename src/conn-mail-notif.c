@@ -18,7 +18,7 @@
  */
 
 /* This is implementation of Gmail Notification protocol as documented at
- * http://code.google.com/intl/fr/apis/talk/jep_extensions/gmail.html
+ * http://code.google.com/apis/talk/jep_extensions/gmail.html
  * This is the only protocol supported at the moment. To add new protocol,
  * one would have to split the google specific parts wich are the
  * update_unread_mails() function and the new-mail signal on google xml

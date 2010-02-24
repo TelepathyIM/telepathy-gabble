@@ -111,7 +111,7 @@ unsubscribe (GabbleConnection *conn,
           DEBUG ("Last sender unsubscribed, cleaning up!");
           g_free (conn->inbox_url);
           conn->inbox_url = NULL;
-          if (conn->unread_mails)
+          if (conn->unread_mails != NULL)
             {
               g_hash_table_unref (conn->unread_mails);
               conn->unread_mails = NULL;
@@ -256,7 +256,7 @@ gabble_mail_notification_request_mail_url (
 
   /* TODO Make sure we don't have to authenticate again */
 
-  if (conn->inbox_url)
+  if (conn->inbox_url != NULL)
     {
       guint64 tid = g_ascii_strtoull (in_id, NULL, 0);
       url = g_strdup_printf ("%s/#inbox/%" G_GINT64_MODIFIER "x",
@@ -312,7 +312,7 @@ handle_senders (WockyXmppNode *parent_node,
   WockyXmppNode *node;
 
   node = wocky_xmpp_node_get_child (parent_node, "senders");
-  if (node)
+  if (node != NULL)
     {
       GType addr_list_type = GABBLE_ARRAY_TYPE_MAIL_ADDRESS_LIST;
       GPtrArray *senders, *old_senders;
@@ -321,7 +321,7 @@ handle_senders (WockyXmppNode *parent_node,
       wocky_xmpp_node_each_child (node, sender_each, senders);
 
       old_senders = tp_asv_get_boxed (mail, "senders", addr_list_type);
-      if (!old_senders || senders->len != old_senders->len)
+      if (old_senders == NULL || senders->len != old_senders->len)
             *dirty = TRUE;
 
       tp_asv_take_boxed (mail, "senders", addr_list_type, senders);
@@ -337,7 +337,7 @@ handle_subject (WockyXmppNode *parent_node,
   WockyXmppNode *node;
 
   node = wocky_xmpp_node_get_child (parent_node, "subject");
-  if (node)
+  if (node != NULL)
     {
       if (tp_strdiff (node->content, tp_asv_get_string (mail, "subject")))
         {
@@ -356,7 +356,7 @@ handle_snippet (WockyXmppNode *parent_node,
   WockyXmppNode *node;
 
   node = wocky_xmpp_node_get_child (parent_node, "snippet");
-  if (node)
+  if (node != NULL)
     {
       if (tp_strdiff (node->content, tp_asv_get_string (mail, "content")))
         {
@@ -384,15 +384,15 @@ mail_thread_info_each (WockyXmppNode *node,
       val_str = wocky_xmpp_node_get_attribute (node, "tid");
 
       /* We absolutly need an ID */
-      if (!val_str)
+      if (val_str == NULL)
         return TRUE;
 
       tid = g_strdup (val_str);
 
-      if (data->old_mails)
+      if (data->old_mails != NULL)
         mail = g_hash_table_lookup (data->old_mails, tid);
 
-      if (mail)
+      if (mail != NULL)
         {
           g_hash_table_ref (mail);
           g_hash_table_remove (data->old_mails, tid);
@@ -406,7 +406,7 @@ mail_thread_info_each (WockyXmppNode *node,
         }
 
       val_str = wocky_xmpp_node_get_attribute (node, "date");
-      if (val_str)
+      if (val_str != NULL)
         {
           gint64 date;
 
@@ -456,7 +456,7 @@ store_unread_mails (GabbleConnection *conn,
 
   /* Generate the list of removed thread IDs */
   mails_removed = g_ptr_array_new_with_free_func (g_free);
-  if (data.old_mails)
+  if (data.old_mails != NULL)
     {
       gpointer key;
 
@@ -471,7 +471,7 @@ store_unread_mails (GabbleConnection *conn,
     }
   g_ptr_array_add (mails_removed, NULL);
 
-  if (data.mails_added->len || mails_removed->len)
+  if (data.mails_added->len > 0 || mails_removed->len > 0)
     gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
         conn, g_hash_table_size (conn->unread_mails), data.mails_added,
         (const char **)mails_removed->pdata);
@@ -494,7 +494,7 @@ query_unread_mails_cb (GObject *source_object,
   WockyPorter *porter = WOCKY_PORTER (source_object);
   WockyXmppStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
 
-  if (error)
+  if (error != NULL)
     {
       DEBUG ("Failed retreive unread emails information: %s", error->message);
       g_error_free (error);
@@ -508,14 +508,14 @@ query_unread_mails_cb (GObject *source_object,
   g_free (result_str);
 
   node = wocky_xmpp_node_get_child (reply->node, "mailbox");
-  if (node)
+  if (node != NULL)
     {
       GabbleConnection *conn = GABBLE_CONNECTION (user_data);
       store_unread_mails (conn, node);
     }
 
 end:
-  if (reply)
+  if (reply != NULL)
     g_object_unref (reply);
 }
 
@@ -585,7 +585,7 @@ conn_mail_notif_init (GabbleConnection *conn)
   GError *error = NULL;
 
   conn->daemon = tp_dbus_daemon_dup (&error);
-  if (!conn->daemon)
+  if (conn->daemon == NULL)
     {
       DEBUG ("Failed to connect to dbus daemon: %s", error->message);
       g_error_free (error);
@@ -619,7 +619,7 @@ foreach_cancel_watch (gpointer key,
 void
 conn_mail_notif_dispose (GabbleConnection *conn)
 {
-  if (conn->daemon)
+  if (conn->daemon != NULL)
     {
       g_hash_table_foreach_remove (conn->mail_subscribers,
           foreach_cancel_watch, conn);
@@ -631,11 +631,11 @@ conn_mail_notif_dispose (GabbleConnection *conn)
 
   g_free (conn->inbox_url);
   conn->inbox_url = NULL;
-  if (conn->unread_mails)
+  if (conn->unread_mails != NULL)
     g_hash_table_unref (conn->unread_mails);
   conn->unread_mails = NULL;
 
-  if (conn->new_mail_handler_id)
+  if (conn->new_mail_handler_id != 0)
     {
       WockyPorter *porter = wocky_session_get_porter (conn->session);
       wocky_porter_unregister_handler (porter, conn->new_mail_handler_id);
@@ -667,7 +667,7 @@ get_unread_mails (GabbleConnection *conn)
   GHashTableIter iter;
   gpointer value;
 
-  if (conn->unread_mails)
+  if (conn->unread_mails != NULL)
     {
       g_hash_table_iter_init (&iter, conn->unread_mails);
       while (g_hash_table_iter_next (&iter, NULL, &value))

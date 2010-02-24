@@ -20,7 +20,7 @@
 #ifndef __CONN_EMAIL_NOTIF_H__
 #define __CONN_EMAIL_NOTIF_H__
 
-#include <glib.h>
+#include <glib-object.h>
 
 #include "connection.h"
 

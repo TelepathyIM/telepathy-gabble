@@ -273,8 +273,6 @@ def test_no_google_featured(q, bus, conn, stream):
     """Check that Gabble reacts correctly when called on MailNotification
     while the feature is not supported."""
 
-    not_implemented = 'org.freedesktop.Telepathy.Error.NotImplemented'
-
     # Google mail notification is not supported, gabble should not emit any
     # signals.
     forbidden = [EventPattern('dbus-signal', signal='MailsReceived'),
@@ -295,22 +293,22 @@ def test_no_google_featured(q, bus, conn, stream):
     try:
         conn.MailNotification.Subscribe()
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == not_implemented
+        assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
 
     try:
         conn.MailNotification.Unsubscribe()
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == not_implemented
+        assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
 
     try:
         conn.MailNotification.RequestInboxURL()
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == not_implemented
+        assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
 
     try:
         conn.MailNotification.RequestMailURL("1", "http://test.com/mail")
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == not_implemented
+        assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
 
     # Make sure all properties return with empty or 0 data including
     # capabilities

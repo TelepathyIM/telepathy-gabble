@@ -10,7 +10,7 @@ import constants as cs
 import ns
 import dbus
 
-def check_properties_empty (conn, capabilities = 0):
+def check_properties_empty(conn, capabilities=0):
     """Check that all mail notification properties are empty and that
        capabilities match the provided bit flags"""
 
@@ -79,7 +79,7 @@ def test_google_featured(q, bus, conn, stream):
     conn.MailNotification.Subscribe()
     event = q.expect('stream-iq', query_ns=ns.GOOGLE_MAIL_NOTIFY)
 
-    result = make_result_iq (stream, event.stanza, False)
+    result = make_result_iq(stream, event.stanza, False)
     mailbox = result.addElement('mailbox')
     mailbox['xmlns'] = ns.GOOGLE_MAIL_NOTIFY
     mailbox['url'] = inbox_url
@@ -124,7 +124,7 @@ def test_google_featured(q, bus, conn, stream):
     assert stored_url[1] == 0 # HTTP GET
     assert len(stored_url[2]) == 0
 
-    # UnreadMailsChanged (u: count, aa{sv}: mails_added, ax: mails_removed)
+    # UnreadMailsChanged(u: count, aa{sv}: mails_added, ax: mails_removed)
     unread_count = event.args[0]
     mails_added = event.args[1]
     mails_removed = event.args[2]
@@ -210,7 +210,7 @@ def test_google_featured(q, bus, conn, stream):
     # Wait for mail information request
     event = q.expect('stream-iq', query_ns=ns.GOOGLE_MAIL_NOTIFY)
 
-    result = make_result_iq (stream, event.stanza, False)
+    result = make_result_iq(stream, event.stanza, False)
     mailbox = result.addElement('mailbox')
     mailbox['xmlns'] = ns.GOOGLE_MAIL_NOTIFY
     # We alter the URL to see if it gets detected

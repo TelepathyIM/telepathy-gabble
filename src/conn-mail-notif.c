@@ -605,8 +605,7 @@ conn_mail_notif_init (GabbleConnection *conn)
 
   if (conn->daemon == NULL)
     {
-      DEBUG ("Failed to connect to dbus daemon: %s", error->message);
-      g_error_free (error);
+      g_error ("Failed to connect to dbus daemon: %s", error->message);
     }
 
   conn->mail_subscribers = g_hash_table_new_full (g_str_hash, g_str_equal,

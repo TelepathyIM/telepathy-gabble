@@ -764,6 +764,6 @@ conn_mail_notif_properties_getter (GObject *object,
     }
   else
     {
-      g_assert (!"Unknown mail notification property, please file a bug.");
+      g_assert_not_reached ();
     }
 }

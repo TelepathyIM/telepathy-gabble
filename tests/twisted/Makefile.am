@@ -160,7 +160,7 @@ TWISTED_TESTS = \
 	test-location.py \
 	pubsub.py \
 	sidecars.py \
-	test-mail-notification.py
+	mail-notification.py
 
 TESTS =
 

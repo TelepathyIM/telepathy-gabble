@@ -42,6 +42,8 @@
 typedef enum {
     /* in Telepathy: one value per field; in XMPP: one value per field */
     FIELD_SIMPLE,
+    /* same as FIELD_SIMPLE but may not be repeated */
+    FIELD_SIMPLE_ONCE,
     /* in Telepathy: exactly n_elements values; in XMPP: a child element for
      * each entry in elements, in that order */
     FIELD_STRUCTURED,
@@ -62,7 +64,7 @@ typedef struct {
 
 static VCardField known_fields[] = {
     /* Simple fields */
-      { "FN", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
+      { "FN", NULL, FIELD_SIMPLE_ONCE, 0, { NULL }, { NULL } },
       { "BDAY", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
       { "MAILER", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
       { "TZ", NULL, FIELD_SIMPLE, 0, { NULL }, { NULL } },
@@ -248,6 +250,7 @@ _parse_vcard (LmMessageNode *vcard_node,
       switch (field->behaviour)
         {
         case FIELD_SIMPLE:
+        case FIELD_SIMPLE_ONCE:
             {
               const gchar * const field_values[2] = {
                   lm_message_node_get_value (node),
@@ -613,9 +616,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       switch (field->behaviour)
         {
         case FIELD_SIMPLE:
+        case FIELD_SIMPLE_ONCE:
             {
               GabbleVCardManagerEditInfo *edit_info;
               gchar *tmp;
+              GabbleVCardEditType edit_type = GABBLE_VCARD_EDIT_APPEND;
 
               if (n_field_values != 1)
                 {
@@ -624,9 +629,12 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   continue;
                 }
 
+              if (field->behaviour == FIELD_SIMPLE_ONCE)
+                edit_type = GABBLE_VCARD_EDIT_REPLACE;
+
               tmp = g_ascii_strup (field_name, -1);
               edit_info = gabble_vcard_manager_edit_info_new (tmp,
-                  field_values[0], GABBLE_VCARD_EDIT_APPEND, NULL);
+                  field_values[0], edit_type, NULL);
               g_free (tmp);
               edits = g_slist_append (edits, edit_info);
             }

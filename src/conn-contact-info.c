@@ -49,8 +49,13 @@ typedef enum {
     FIELD_STRUCTURED,
     /* same as FIELD_STRUCTURED but may not be repeated */
     FIELD_STRUCTURED_ONCE,
+
+    /* Special cases: */
+
+    /* in Telepathy, one multi-line value; in XMPP, a sequence of <LINE>s */
+    FIELD_LABEL,
     /* same as FIELD_STRUCTURED except the last element may repeat n times */
-    FIELD_REPEATING,
+    FIELD_ORG
 } FieldBehaviour;
 
 typedef struct {
@@ -109,11 +114,11 @@ static VCardField known_fields[] = {
           { "HOME", "WORK", "INTERNET", "PREF", "X400", NULL },
           { "USERID", NULL } },
 
-    /* Structured fields where the last element can repeat */
-      { "LABEL", NULL, FIELD_REPEATING, 0,
+    /* Special cases with their own semantics */
+      { "LABEL", NULL, FIELD_LABEL, 0,
           { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
           { "LINE", NULL } },
-      { "ORG", NULL, FIELD_REPEATING, 0,
+      { "ORG", NULL, FIELD_ORG, 0,
           { NULL },
           { "ORGNAME", "ORGUNIT", NULL } },
 
@@ -272,7 +277,8 @@ _parse_vcard (LmMessageNode *vcard_node,
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-        case FIELD_REPEATING:
+        case FIELD_LABEL:
+        case FIELD_ORG:
           _create_contact_field_extended (contact_info, node,
               field->types, field->elements);
           break;
@@ -649,7 +655,8 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-        case FIELD_REPEATING:
+        case FIELD_LABEL:
+        case FIELD_ORG:
           edits = _insert_edit_info (edits, field,
               (const gchar * const *) field_params,
               (const gchar * const *) field_values);

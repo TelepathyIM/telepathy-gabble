@@ -398,14 +398,12 @@ mail_thread_info_each (WockyXmppNode *node,
       tid = g_strdup (val_str);
 
       if (data->old_mails != NULL)
-        mail = g_hash_table_lookup (data->old_mails, tid);
-
-      if (mail != NULL)
         {
-          g_hash_table_ref (mail);
-          g_hash_table_remove (data->old_mails, tid);
+          mail = g_hash_table_lookup (data->old_mails, tid);
+          g_hash_table_steal (data->old_mails, tid);
         }
-      else
+
+      if (mail == NULL)
         {
           mail = tp_asv_new ("id", G_TYPE_STRING, tid,
                              "url-data", G_TYPE_STRING, "",

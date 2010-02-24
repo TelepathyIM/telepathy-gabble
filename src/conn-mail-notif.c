@@ -311,11 +311,11 @@ sender_each (WockyXmppNode *node,
 }
 
 
-static void
+static gboolean
 handle_senders (WockyXmppNode *parent_node,
-    GHashTable *mail,
-    gboolean *dirty)
+    GHashTable *mail)
 {
+  gboolean dirty = FALSE;
   WockyXmppNode *node;
 
   node = wocky_xmpp_node_get_child (parent_node, "senders");
@@ -330,18 +330,20 @@ handle_senders (WockyXmppNode *parent_node,
       old_senders = tp_asv_get_boxed (mail, "senders", addr_list_type);
 
       if (old_senders == NULL || senders->len != old_senders->len)
-            *dirty = TRUE;
+            dirty = TRUE;
 
       tp_asv_take_boxed (mail, "senders", addr_list_type, senders);
     }
+
+  return dirty;
 }
 
 
-static void
+static gboolean
 handle_subject (WockyXmppNode *parent_node,
-    GHashTable *mail,
-    gboolean *dirty)
+    GHashTable *mail)
 {
+  gboolean dirty = FALSE;
   WockyXmppNode *node;
 
   node = wocky_xmpp_node_get_child (parent_node, "subject");
@@ -349,18 +351,20 @@ handle_subject (WockyXmppNode *parent_node,
     {
       if (tp_strdiff (node->content, tp_asv_get_string (mail, "subject")))
         {
-          *dirty = TRUE;
+          dirty = TRUE;
           tp_asv_set_string (mail, "subject", node->content);
         }
     }
+
+  return dirty;
 }
 
 
-static void
+static gboolean
 handle_snippet (WockyXmppNode *parent_node,
-    GHashTable *mail,
-    gboolean *dirty)
+    GHashTable *mail)
 {
+  gboolean dirty = FALSE;
   WockyXmppNode *node;
 
   node = wocky_xmpp_node_get_child (parent_node, "snippet");
@@ -368,11 +372,13 @@ handle_snippet (WockyXmppNode *parent_node,
     {
       if (tp_strdiff (node->content, tp_asv_get_string (mail, "content")))
         {
-          *dirty = TRUE;
+          dirty = TRUE;
           tp_asv_set_boolean (mail, "truncated", TRUE);
           tp_asv_set_string (mail, "content", node->content);
         }
     }
+
+  return dirty;
 }
 
 
@@ -424,9 +430,14 @@ mail_thread_info_each (WockyXmppNode *node,
           tp_asv_set_int64 (mail, "received-timestamp", date);
         }
 
-      handle_senders (node, mail, &dirty);
-      handle_subject (node, mail, &dirty);
-      handle_snippet (node, mail, &dirty);
+      if (handle_senders (node, mail))
+        dirty = TRUE;
+
+      if (handle_subject (node, mail))
+        dirty = TRUE;
+
+      if (handle_snippet (node, mail))
+        dirty = TRUE;
 
       /* gives tid ownership to unread_mails hash table */
       g_hash_table_insert (data->unread_mails, tid, mail);

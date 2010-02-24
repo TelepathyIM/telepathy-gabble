@@ -551,25 +551,14 @@ conn_contact_info_new_edit (const VCardField *field,
       edit_type, NULL);
 }
 
-static GSList *
-_insert_edit_info (GSList *edits,
-                   const VCardField *field,
-                   const gchar * const * field_params,
-                   const gchar * const * field_values)
+static void
+conn_contact_info_edit_add_type_params (GabbleVCardManagerEditInfo *edit_info,
+    const gchar * const * field_params)
 {
-  GabbleVCardManagerEditInfo *edit_info;
   const gchar * const * p;
-  guint i;
-  guint n_field_values = g_strv_length ((gchar **) field_values);
-  guint n_elements = g_strv_length ((gchar **) field->elements);
 
-  if (n_field_values != n_elements)
-    {
-      DEBUG ("Trying to edit %s field with wrong arguments", field->xmpp_name);
-      return edits;
-    }
-
-  edit_info = conn_contact_info_new_edit (field, NULL);
+  if (field_params == NULL)
+    return;
 
   for (p = field_params; *p != NULL; ++p)
     {
@@ -586,6 +575,28 @@ _insert_edit_info (GSList *edits,
           tmp, NULL);
       g_free (tmp);
     }
+}
+
+static GSList *
+_insert_edit_info (GSList *edits,
+                   const VCardField *field,
+                   const gchar * const * field_params,
+                   const gchar * const * field_values)
+{
+  GabbleVCardManagerEditInfo *edit_info;
+  guint i;
+  guint n_field_values = g_strv_length ((gchar **) field_values);
+  guint n_elements = g_strv_length ((gchar **) field->elements);
+
+  if (n_field_values != n_elements)
+    {
+      DEBUG ("Trying to edit %s field with wrong arguments", field->xmpp_name);
+      return edits;
+    }
+
+  edit_info = conn_contact_info_new_edit (field, NULL);
+
+  conn_contact_info_edit_add_type_params (edit_info, field_params);
 
   for (i = 0; i < n_elements; ++i)
     gabble_vcard_manager_edit_info_add_child (edit_info,

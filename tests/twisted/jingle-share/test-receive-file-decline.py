@@ -19,16 +19,17 @@ class ReceiveFileDecline(ReceiveFileTest):
     def close_and_check(self):
         self.channel.Close()
 
-        _, event, _ = self.q.expect_many(
+        state_event, event, _ = self.q.expect_many(
             EventPattern('dbus-signal', signal='FileTransferStateChanged',
-                         args=[cs.FT_STATE_CANCELLED, \
-                                   cs.FT_STATE_CHANGE_REASON_LOCAL_STOPPED],
                          path=self.channel.__dbus_object_path__),
             EventPattern('stream-iq', stream=self.stream,
                          iq_type='set', query_name='session'),
             EventPattern('dbus-signal', signal='Closed',
                          path=self.channel.__dbus_object_path__))
 
+        state, reason = state_event.args
+        assert state == cs.FT_STATE_CANCELLED
+        assert reason == cs.FT_STATE_CHANGE_REASON_LOCAL_STOPPED
 
         while event.query.getAttribute('type') != 'terminate':
             event = self.q.expect('stream-iq', stream=self.stream,

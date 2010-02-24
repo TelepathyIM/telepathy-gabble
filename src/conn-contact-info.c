@@ -277,10 +277,45 @@ _parse_vcard (LmMessageNode *vcard_node,
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-        case FIELD_LABEL:
         case FIELD_ORG:
           _create_contact_field_extended (contact_info, node,
               field->types, field->elements);
+          break;
+
+        case FIELD_LABEL:
+            {
+              NodeIter line_iter;
+              gchar *field_values[2] = { NULL, NULL };
+              GString *text = g_string_new ("");
+
+              for (line_iter = node_iter (node);
+                   line_iter != NULL;
+                   line_iter = node_iter_next (line_iter))
+                {
+                  const gchar *line;
+                  LmMessageNode *line_node = node_iter_data (line_iter);
+
+                  if (tp_strdiff (line_node->name, "LINE"))
+                    continue;
+
+                  line = lm_message_node_get_value (line_node);
+
+                  if (line != NULL)
+                    {
+                      g_string_append (text, line);
+                    }
+
+                  if (line == NULL || ! g_str_has_suffix (line, "\n"))
+                    {
+                      g_string_append_c (text, '\n');
+                    }
+                }
+
+              field_values[0] = g_string_free (text, FALSE);
+              _insert_contact_field (contact_info, "label", NULL,
+                  (const gchar * const *) field_values);
+              g_free (field_values[0]);
+            }
           break;
 
         default:

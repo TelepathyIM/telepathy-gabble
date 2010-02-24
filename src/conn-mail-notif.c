@@ -134,7 +134,7 @@ check_supported_or_dbus_return (GabbleConnection *conn,
       dbus_g_method_return_error (context, &e);
       return TRUE;
     }
-  
+
   if (!(conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY))
     {
       tp_dbus_g_method_return_not_implemented (context);
@@ -164,14 +164,14 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
       g_hash_table_lookup (conn->mail_subscribers, sender));
 
   /* Gives sender ownership to mail_subscribers hash table */
-  g_hash_table_insert (conn->mail_subscribers, sender, 
+  g_hash_table_insert (conn->mail_subscribers, sender,
       GUINT_TO_POINTER (++count));
 
   if (count == 1)
     {
       if (g_hash_table_size (conn->mail_subscribers) == 1)
         update_unread_mails(conn);
-     
+
       tp_dbus_daemon_watch_name_owner (conn->daemon, sender,
           sender_name_owner_changed, conn, NULL);
     }
@@ -232,7 +232,7 @@ gabble_mail_notification_request_inbox_url (
       G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
       GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, &empty_array,
       G_TYPE_INVALID);
-  
+
   gabble_svc_connection_interface_mail_notification_return_from_request_inbox_url (
       context, result);
 
@@ -473,7 +473,7 @@ store_unread_mails (GabbleConnection *conn,
 
   if (data.mails_added->len || mails_removed->len)
     gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
-        conn, g_hash_table_size (conn->unread_mails), data.mails_added, 
+        conn, g_hash_table_size (conn->unread_mails), data.mails_added,
         (const char **)mails_removed->pdata);
 
   DEBUG ("reached");
@@ -733,7 +733,7 @@ conn_mail_notif_properties_getter (GObject *object,
 
       g_object_get (object, "username", &username, NULL);
       g_object_get (object, "stream-server", &stream_server, NULL);
-      
+
       address = gabble_encode_jid (username, stream_server, NULL);
 
       g_free (username);

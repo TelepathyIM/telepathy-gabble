@@ -195,7 +195,7 @@ struct _GabbleConnection {
     gchar *inbox_url;
     GHashTable *unread_mails;
     guint new_mail_handler_id;
- 
+
     GabbleConnectionPrivate *priv;
 };
 

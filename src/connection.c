@@ -2581,7 +2581,7 @@ connection_disco_cb (GabbleDisco *disco,
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
     {
-       const gchar *ifaces[] = 
+       const gchar *ifaces[] =
          { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);

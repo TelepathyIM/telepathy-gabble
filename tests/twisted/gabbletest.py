@@ -303,7 +303,7 @@ class GoogleXmlStream(BaseXmlStream):
             feature['var'] = ns.GOOGLE_JINGLE_INFO
             feature = query.addElement('feature')
             feature['var'] = ns.GOOGLE_MAIL_NOTIFY
-            
+
             iq['type'] = 'result'
             iq['from'] = 'localhost'
             self.send(iq)

@@ -15,12 +15,12 @@ def check_properties_empty (conn, capabilities = 0):
        capabilities match the provided bit flags"""
 
     caps = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'Capabilities', 
+            cs.CONN_IFACE_MAIL_NOTIFICATION, 'Capabilities',
             dbus_interface=cs.PROPERTIES_IFACE)
     assert caps == capabilities
 
     mail_count = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMailCount', 
+            cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMailCount',
             dbus_interface=cs.PROPERTIES_IFACE)
     assert mail_count == 0
 
@@ -40,7 +40,7 @@ def test_google_featured(q, bus, conn, stream):
     # date are 32bit unsigned integer, lets use the biggest possible value
     thread1_date = (pow(2,32) - 1) * 1000L
     thread1_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread1_id)
-    thread1_senders = [('John Smith', 'john@smith.com'), 
+    thread1_senders = [('John Smith', 'john@smith.com'),
                        ('Denis Tremblay', 'denis@trempblay.qc.ca')]
     thread1_subject = "subject1"
     thread1_snippet = "body1"
@@ -70,7 +70,7 @@ def test_google_featured(q, bus, conn, stream):
                     | Supports_Unread_Mails\
                     | Supports_Request_Inbox_URL\
                     | Supports_Request_Mail_URL
-    
+
     # Nobody is subscribed yet, attributes should all be empty, and
     # capabilities are set properly.
     check_properties_empty(conn, expected_caps)
@@ -83,7 +83,7 @@ def test_google_featured(q, bus, conn, stream):
     mailbox = result.addElement('mailbox')
     mailbox['xmlns'] = ns.GOOGLE_MAIL_NOTIFY
     mailbox['url'] = inbox_url
-    
+
     # Set e-mail thread 1
     mail = mailbox.addElement('mail-thread-info')
     mail['tid'] = thread1_id
@@ -131,7 +131,7 @@ def test_google_featured(q, bus, conn, stream):
 
     # Get stored data to check we have same thing
     stored_unread_count = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMailCount', 
+            cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMailCount',
             dbus_interface=cs.PROPERTIES_IFACE)
     stored_unread_mails = conn.Get(
             cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMails',
@@ -181,7 +181,7 @@ def test_google_featured(q, bus, conn, stream):
             stored_mail2 = mail
         else:
             assert False, "Gabble stored an unkown mail id=" + str(mail['id'])
-    
+
     # Validate stored e-mails with original data
     assert stored_mail1 != None
     assert stored_mail1['received-timestamp'] == thread1_date / 1000
@@ -196,7 +196,7 @@ def test_google_featured(q, bus, conn, stream):
     assert stored_mail2['truncated'] == True
     assert stored_mail2['content'] == thread2_snippet
     assert stored_mail2['senders'] == thread2_senders
-    
+
     # Now we want to validate the update mechanism. Thus we wil send an
     # new-mail event, wait for gabble to query the latest mail and reply
     # a different list.
@@ -209,13 +209,13 @@ def test_google_featured(q, bus, conn, stream):
 
     # Wait for mail information request
     event = q.expect('stream-iq', query_ns=ns.GOOGLE_MAIL_NOTIFY)
-    
+
     result = make_result_iq (stream, event.stanza, False)
     mailbox = result.addElement('mailbox')
     mailbox['xmlns'] = ns.GOOGLE_MAIL_NOTIFY
     # We alter the URL to see if it gets detected
     mailbox['url'] = inbox_url + 'diff'
-    
+
     # Set e-mail thread 1 and change snippet to see if it's detected
     mail = mailbox.addElement('mail-thread-info')
     mail['tid'] = str(thread1_id)
@@ -263,7 +263,7 @@ def test_google_featured(q, bus, conn, stream):
     # Check the we can get an URL for a specific mail
     mail_url = conn.MailNotification.RequestMailURL(thread1_id,
             mails_added[0]['url-data']);
-    
+
     # Unsubscribe and check that all data has been dropped
     conn.MailNotification.Unsubscribe()
     check_properties_empty(conn, expected_caps)
@@ -315,7 +315,7 @@ def test_no_google_featured(q, bus, conn, stream):
     # Make sure all properties return with empty or 0 data including
     # capabilities
     check_properties_empty(conn)
-    
+
     # Unforbids events
     q.unforbid_events(forbidden)
 

@@ -31,17 +31,17 @@ def check_properties_empty(conn, capabilities=0):
 
 
 def test_google_featured(q, bus, conn, stream):
-    """Test functionnality when google mail notificagtion is supported"""
+    """Test functionnality when google mail notification is supported"""
 
     inbox_url = 'http://mail.google.com/mail'
 
     # E-mail thread 1 data
     thread1_id = "1"
-    # date are 32bit unsigned integer, lets use the biggest possible value
+    # Dates are 32bit unsigned integers, let's use the biggest possible value
     thread1_date = (pow(2,32) - 1) * 1000L
     thread1_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread1_id)
     thread1_senders = [('John Smith', 'john@smith.com'),
-                       ('Denis Tremblay', 'denis@trempblay.qc.ca')]
+                       ('Denis Tremblay', 'denis@tremblay.qc.ca')]
     thread1_subject = "subject1"
     thread1_snippet = "body1"
 
@@ -56,10 +56,10 @@ def test_google_featured(q, bus, conn, stream):
     # Email thread 3 data
     thread3_id = "3"
     thread3_date = 1235L
-    thread3_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread2_id)
+    thread3_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread3_id)
     thread3_senders = [('Le Chat', 'le@chat.fr'),]
-    thread3_subject = "subject2"
-    thread3_snippet = "body2"
+    thread3_subject = "subject3"
+    thread3_snippet = "body3"
 
     # Supported mail capability flags
     Supports_Unread_Mail_Count = 1
@@ -75,7 +75,7 @@ def test_google_featured(q, bus, conn, stream):
     # capabilities are set properly.
     check_properties_empty(conn, expected_caps)
 
-    # Check that gabble query mail data on initial subscribe.
+    # Check that Gabble queries mail data on initial call to Subscribe().
     conn.MailNotification.Subscribe()
     event = q.expect('stream-iq', query_ns=ns.GOOGLE_MAIL_NOTIFY)
 
@@ -143,7 +143,7 @@ def test_google_featured(q, bus, conn, stream):
     assert len(mails_added) == unread_count
     assert len(mails_removed) == 0
 
-    # Extract mails from signal, order is unkown
+    # Extract mails from signal, order is unknown
     mail1 = None
     mail2 = None
     for mail in mails_added:
@@ -152,7 +152,7 @@ def test_google_featured(q, bus, conn, stream):
         elif mail['id'] == thread2_id:
             mail2 = mail
         else:
-            assert False, "Gabble sent an unkown mail id=" + str(mail['id'])
+            assert False, "Gabble sent an unknown mail id=" + str(mail['id'])
 
     # Validate added e-mails with original data.
     assert mail1 != None
@@ -270,12 +270,12 @@ def test_google_featured(q, bus, conn, stream):
 
 
 def test_no_google_featured(q, bus, conn, stream):
-    """Check that Gabble react correctly when called on MailNotification
-    while the feature is not support."""
+    """Check that Gabble reacts correctly when called on MailNotification
+    while the feature is not supported."""
 
     not_implemented = 'org.freedesktop.Telepathy.Error.NotImplemented'
 
-    # Google mail notification is not support, gabble should not emit any
+    # Google mail notification is not supported, gabble should not emit any
     # signals.
     forbidden = [EventPattern('dbus-signal', signal='MailsReceived'),
                  EventPattern('dbus-signal', signal='UnreadMailsChanged'),
@@ -291,7 +291,7 @@ def test_no_google_featured(q, bus, conn, stream):
     m.addElement((ns.GOOGLE_MAIL_NOTIFY, 'new-mail'))
     stream.send(m)
 
-    # Make sure method return not implemented exception
+    # Make sure method returns not implemented exception
     try:
         conn.MailNotification.Subscribe()
     except dbus.DBusException, e:

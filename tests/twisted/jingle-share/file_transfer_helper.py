@@ -389,6 +389,18 @@ class SendFileTest(FileTransferTest):
 
         self.ft_channel.connect_to_signal('FileTransferStateChanged',
                                           ft_state_changed_cb)
+        self.ft_channel.connect_to_signal('InitialOffsetDefined',
+                                          initial_offset_defined_cb)
+
+        # try to accept our outgoing file transfer
+        try:
+            self.ft_channel.AcceptFile(self.address_type,
+                self.access_control, self.access_control_param, self.file.offset,
+                byte_arrays=True)
+        except dbus.DBusException, e:
+            assert e.get_dbus_name() == cs.NOT_AVAILABLE
+        else:
+            assert False
 
         self.address = self.ft_channel.ProvideFile(self.address_type,
                 self.access_control, self.access_control_param,

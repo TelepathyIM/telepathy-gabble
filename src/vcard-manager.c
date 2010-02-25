@@ -1009,14 +1009,17 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
       vcard_node = vcard_copy (msg->node, old_vcard, info->element_name);
     }
 
-  node = lm_message_node_add_child (vcard_node,
-      info->element_name, info->element_value);
-
-  for (iter = info->children; iter != NULL; iter = iter->next)
+  if (info->edit_type != GABBLE_VCARD_EDIT_DELETE)
     {
-      GabbleVCardChild *child = iter->data;
+      node = lm_message_node_add_child (vcard_node,
+          info->element_name, info->element_value);
 
-      lm_message_node_add_child (node, child->key, child->value);
+      for (iter = info->children; iter != NULL; iter = iter->next)
+        {
+          GabbleVCardChild *child = iter->data;
+
+          lm_message_node_add_child (node, child->key, child->value);
+        }
     }
 
   return msg;

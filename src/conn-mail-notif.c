@@ -231,7 +231,7 @@ gabble_mail_notification_request_inbox_url (
   empty_array = g_ptr_array_new ();
 
   result = tp_value_array_build (3,
-      G_TYPE_STRING, conn->inbox_url ?: "",
+      G_TYPE_STRING, conn->inbox_url ? conn->inbox_url : "",
       G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
       GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
       G_TYPE_INVALID);
@@ -272,7 +272,7 @@ gabble_mail_notification_request_mail_url (
   empty_array = g_ptr_array_new ();
 
   result = tp_value_array_build (3,
-      G_TYPE_STRING, url ?: "",
+      G_TYPE_STRING, url ? url : "",
       G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
       GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
       G_TYPE_INVALID);
@@ -295,14 +295,26 @@ sender_each (WockyXmppNode *node,
     {
       GType addr_type = GABBLE_STRUCT_TYPE_MAIL_ADDRESS;
       GValue sender = {0};
+      const gchar *name;
+      const gchar *address;
 
       g_value_init (&sender, addr_type);
       g_value_set_static_boxed (&sender,
           dbus_g_type_specialized_construct (addr_type));
 
+      name = wocky_xmpp_node_get_attribute (node, "name");
+
+      if (name == NULL)
+        name = "";
+
+      address = wocky_xmpp_node_get_attribute (node, "address");
+
+      if (address == NULL)
+        address = "";
+
       dbus_g_type_struct_set (&sender,
-          0, wocky_xmpp_node_get_attribute (node, "name") ?: "",
-          1, wocky_xmpp_node_get_attribute (node, "address") ?: "",
+          0, name,
+          1, address,
           G_MAXUINT);
 
       g_ptr_array_add (senders, g_value_get_boxed (&sender));

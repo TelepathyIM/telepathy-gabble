@@ -967,16 +967,33 @@ replace_reply_cb (GabbleConnection *conn,
 }
 
 static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src,
-    const gchar *exclude);
+    const gchar *exclude, gboolean *exclude_mattered);
 
 static LmMessage *
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
-    LmMessageNode *old_vcard)
+    LmMessageNode *old_vcard,
+    GabbleConnectionFeatures features)
 {
   LmMessage *msg;
   LmMessageNode *vcard_node;
   LmMessageNode *node;
   GList *iter;
+  gboolean maybe_changed = FALSE;
+
+  if ((features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) != 0 &&
+        (info->edit_type == GABBLE_VCARD_EDIT_APPEND ||
+         info->edit_type == GABBLE_VCARD_EDIT_REPLACE))
+    {
+      /* only N, FN, PHOTO can be set on GTalk servers */
+      if (tp_strdiff (info->element_name, "N") &&
+          tp_strdiff (info->element_name, "FN") &&
+          tp_strdiff (info->element_name, "PHOTO"))
+        {
+          DEBUG ("ignoring vcard node %s because this is a Google server",
+              info->element_name);
+          return NULL;
+        }
+    }
 
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
@@ -992,7 +1009,15 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
       node = lm_message_node_get_child (old_vcard, "PHOTO");
 
       if (node != NULL)
-        vcard_copy (vcard_node, node, NULL);
+        vcard_copy (vcard_node, node, NULL, NULL);
+
+      /* Yes, we can do this: "LmMessageNode" is really a WockyXmppNode */
+      if (wocky_xmpp_node_equal (old_vcard, vcard_node))
+        {
+          /* nothing actually happened, forget it */
+          lm_message_unref (msg);
+          return NULL;
+        }
 
       return msg;
     }
@@ -1000,17 +1025,20 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   if (info->edit_type == GABBLE_VCARD_EDIT_APPEND)
     {
       /* appending: keep all child nodes */
-      vcard_node = vcard_copy (msg->node, old_vcard, NULL);
+      vcard_node = vcard_copy (msg->node, old_vcard, NULL, NULL);
     }
   else
     {
       /* replacing or deleting: exclude all matching child nodes from
        * copying */
-      vcard_node = vcard_copy (msg->node, old_vcard, info->element_name);
+      vcard_node = vcard_copy (msg->node, old_vcard, info->element_name,
+          &maybe_changed);
     }
 
   if (info->edit_type != GABBLE_VCARD_EDIT_DELETE)
     {
+      maybe_changed = TRUE;
+
       node = lm_message_node_add_child (vcard_node,
           info->element_name, info->element_value);
 
@@ -1020,6 +1048,13 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
 
           lm_message_node_add_child (node, child->key, child->value);
         }
+    }
+
+  if ((!maybe_changed) || wocky_xmpp_node_equal (old_vcard, vcard_node))
+    {
+      /* nothing actually happened, forget it */
+      lm_message_unref (msg);
+      return NULL;
     }
 
   return msg;
@@ -1032,7 +1067,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
 static LmMessageNode *
 vcard_copy (LmMessageNode *parent,
     LmMessageNode *src,
-    const gchar *exclude)
+    const gchar *exclude,
+    gboolean *exclude_mattered)
 {
     LmMessageNode *new = lm_message_node_add_child (parent, src->name,
         lm_message_node_get_value (src));
@@ -1048,121 +1084,17 @@ vcard_copy (LmMessageNode *parent,
         LmMessageNode *child = node_iter_data (i);
 
         if (tp_strdiff (child->name, exclude))
-          vcard_copy (new, child, NULL);
+          {
+            vcard_copy (new, child, NULL, NULL);
+          }
+        else
+          {
+            if (exclude_mattered != NULL)
+              *exclude_mattered = TRUE;
+          }
       }
 
     return new;
-}
-
-static gboolean
-vcard_node_changed (GabbleConnection *conn,
-                    LmMessageNode *vcard_node,
-                    GabbleVCardManagerEditInfo *edit)
-{
-  LmMessageNode *node;
-
-  if (edit->edit_type == GABBLE_VCARD_EDIT_CLEAR)
-    {
-      /* for now we assume that a CLEAR is always a difference */
-      DEBUG ("vcard to be cleared, vcard needs update");
-      return TRUE;
-    }
-
-  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
-    {
-      /* Google's server only stores N, FN and PHOTO */
-      if (tp_strdiff (edit->element_name, "N") &&
-          tp_strdiff (edit->element_name, "FN") &&
-          tp_strdiff (edit->element_name, "PHOTO"))
-        {
-          DEBUG ("ignoring vcard node %s because this is a Google server",
-              edit->element_name);
-          return FALSE;
-        }
-    }
-
-  if (edit->edit_type == GABBLE_VCARD_EDIT_APPEND)
-    {
-      /* we're adding, not replacing, which is always a difference */
-      DEBUG ("vcard node %s to be appended, vcard needs update",
-          edit->element_name);
-      return TRUE;
-    }
-
-  node = lm_message_node_get_child (vcard_node, edit->element_name);
-
-  if (edit->edit_type == GABBLE_VCARD_EDIT_DELETE)
-    {
-      /* deleting and any other operation are mutually exclusive */
-      g_assert (edit->element_value == NULL);
-
-      if (node != NULL)
-        {
-          DEBUG ("vcard node %s deleted, vcard needs update",
-              edit->element_name);
-          return TRUE;
-        }
-      else
-        {
-          return FALSE;
-        }
-    }
-
-  if (node == NULL)
-    {
-          DEBUG ("vcard node %s added, vcard needs update",
-              edit->element_name);
-          return TRUE;
-    }
-  else
-    {
-      const gchar *node_value = lm_message_node_get_value (node);
-      const gchar *edit_value = edit->element_value;
-
-      /* NULL and "" are the same, as far as XML content goes */
-      if (edit_value == NULL)
-        edit_value = "";
-
-      if (node_value == NULL)
-        node_value = "";
-
-      if (tp_strdiff (node_value, edit_value))
-        {
-          DEBUG ("vcard node %s changed, vcard needs update",
-              edit->element_name);
-          return TRUE;
-        }
-
-      if (edit->children != NULL)
-        {
-          GList *iter;
-
-          for (iter = edit->children; iter != NULL; iter = iter->next)
-            {
-              GabbleVCardChild *pair = iter->data;
-              const gchar *v = pair->value;
-              LmMessageNode *child = lm_message_node_get_child (node,
-                  pair->key);
-
-              node_value = lm_message_node_get_value (child);
-
-              if (v == NULL)
-                v = "";
-
-              if (node_value == NULL)
-                node_value = "";
-
-              if (tp_strdiff (node_value, v))
-                {
-                  DEBUG ("vcard node %s/%s changed, vcard needs update",
-                      edit->element_name, pair->key);
-                  return TRUE;
-                }
-            }
-        }
-    }
-
-  return FALSE;
 }
 
 static void
@@ -1173,7 +1105,6 @@ manager_patch_vcard (GabbleVCardManager *self,
   LmMessage *msg = NULL;
   GList *li;
   GSList *edit_link;
-  gboolean vcard_changed = FALSE;
 
   /* Bail out if we don't have outstanding edits to make, or if we already
    * have a set request in progress.
@@ -1181,28 +1112,15 @@ manager_patch_vcard (GabbleVCardManager *self,
   if (priv->edits == NULL || priv->edit_pipeline_item != NULL)
       return;
 
-  for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
-    {
-      if (vcard_node_changed (priv->connection, vcard_node, edit_link->data))
-        {
-          vcard_changed = TRUE;
-          break;
-        }
-    }
-
-  if (!vcard_changed)
-    {
-      DEBUG ("nothing changed, not updating vcard");
-      goto out;
-    }
-
-  DEBUG("patching vcard");
-
   /* Apply any unsent edits to the patched vCard */
   for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
     {
       LmMessage *new_msg = gabble_vcard_manager_edit_info_apply (
-          edit_link->data, vcard_node);
+          edit_link->data, vcard_node, priv->connection->features);
+
+      /* edit_info_apply returns NULL if nothing happened */
+      if (new_msg == NULL)
+        continue;
 
       if (msg != NULL)
         lm_message_unref (msg);
@@ -1214,8 +1132,13 @@ manager_patch_vcard (GabbleVCardManager *self,
       g_assert (vcard_node != NULL);
     }
 
-  /* We applied at least one edit, so we must have a message now. */
-  g_assert (msg != NULL);
+  if (msg == NULL)
+    {
+      DEBUG ("nothing really changed, not updating vCard");
+      goto out;
+    }
+
+  DEBUG("patching vcard");
 
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the

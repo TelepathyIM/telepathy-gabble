@@ -244,7 +244,7 @@ static void
 gabble_mail_notification_request_mail_url (
     GabbleSvcConnectionInterfaceMailNotification *iface,
     const gchar *in_id,
-    const gchar *in_url_data,
+    const GValue *in_url_data,
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
@@ -400,7 +400,6 @@ mail_thread_info_each (WockyXmppNode *node,
       else
         {
           mail = tp_asv_new ("id", G_TYPE_STRING, tid,
-                             "type", G_TYPE_UINT, GABBLE_MAIL_TYPE_THREAD,
                              "url-data", G_TYPE_STRING, "",
                              NULL);
           dirty = TRUE;
@@ -714,6 +713,7 @@ conn_mail_notif_properties_getter (GObject *object,
             | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_UNREAD_MAILS
             | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_INBOX_URL
             | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_MAIL_URL
+            | GABBLE_MAIL_NOTIFICATION_FLAG_THREAD_BASED
             );
       else
         g_value_set_uint (value, 0);

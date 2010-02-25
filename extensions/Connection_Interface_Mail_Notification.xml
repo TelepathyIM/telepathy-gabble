@@ -22,6 +22,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     name="org.freedesktop.Telepathy.Connection.Interface.MailNotification.DRAFT"
     tp:causes-havoc="experimental">
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+    <tp:added version="0.19.1">(as draft 1)</tp:added>
 
     <tp:flags name="Mail_Notification_Flags" value-prefix="Mail_Notification_Flag" type="u" >
       <tp:flag suffix="Supports_Unread_Mail_Count" value="1">
@@ -70,6 +71,18 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
             <tp:member-ref>RequestInboxURL</tp:member-ref> if available.</p>
         </tp:docstring>
       </tp:flag>
+      <tp:flag suffix="Thread_Based" value="32">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>Each <tp:type>Mail</tp:type> represents a thread of e-mails, which
+            MAY have more than one sender.</p>
+
+          <tp:rationale>
+            <p>Google Talk notifies users about new mail in terms of unread
+              threads, rather than unread e-mails.</p>
+          </tp:rationale>
+        </tp:docstring>
+      </tp:flag>
+
       <tp:docstring>
         <p>Flags representing capabilities provided by a connection manager.
           Those values can be used as bitfield. Some flags depend on, or
@@ -159,30 +172,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:member>
     </tp:struct>
 
-    <!-- FIXME: should this be Mail_Notification_Type? -->
-    <tp:enum name="Mail_Type" type="u">
-      <tp:enumvalue suffix="Single" value="0">
-        <tp:docstring>
-          The <tp:type>Mail</tp:type> represents a single message, sent by
-          a single sender.
-        </tp:docstring>
-      </tp:enumvalue>
-      <tp:enumvalue suffix="Thread" value="1">
-        <tp:docstring>
-          The <tp:type>Mail</tp:type> represents a thread of e-mails, which
-          MAY have more than one sender.
-        </tp:docstring>
-      </tp:enumvalue>
-      <tp:docstring>
-        <p>The type of a mail notification.</p>
-
-        <tp:rationale>
-          <p>Google Talk notifies users about new mail in terms of unread
-            threads, rather than unread e-mails.</p>
-        </tp:rationale>
-      </tp:docstring>
-    </tp:enum>
-
     <tp:struct name="Mail_URL">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>A structure containing the required information to open a web-based
@@ -214,9 +203,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <tp:mapping name="Mail" array-name="Mail_List">
       <tp:docstring>
-        An extensible map representing a mail or a thread of mails.
-        All keys are optional where not otherwise stated; however, at least
-        one of "senders" and "subject" must be included.
+        An extensible map representing a mail, or (on protocols where
+        <tt>Thread_Based</tt> appears in
+        <tp:member-ref>MailNotificationFlags</tp:member-ref>) a thread of
+        mails. All keys are optional where not otherwise stated; however, at
+        least one of "senders" and "subject" must be included.
       </tp:docstring>
 
       <tp:member type="s" name="Key">
@@ -227,22 +218,30 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         <dl>
           <dt>id &#8212; s</dt>
           <dd>
-            A unique ID for this e-mail. CMs with <tt>Supports_Unread_Mails</tt>
-            set in <tp:member-ref>MailNotificationFlags</tp:member-ref> MUST provide this
-            key in each <tp:type>Mail</tp:type>. If provided, the ID MUST be
-            unique within the lifetime of the Connection.
+            <p>A unique ID for this e-mail. CMs with
+              <tt>Supports_Unread_Mails</tt> set in
+              <tp:member-ref>MailNotificationFlags</tp:member-ref> MUST provide
+              this key in each <tp:type>Mail</tp:type>.</p>
+
+            <p>If provided, the ID SHOULD be unique to a Mail at least until
+              that mail is removed with the
+              <tp:member-ref>UnreadMailsChanged</tp:member-ref> signal
+              (in protocols with <tt>Supports_Unread_Emails</tt>), or
+              unique for the duration of a session (otherwise).</p>
+
+            <tp:rationale>
+              <p>In protocols with Supports_Unread_Mails, this key is used to
+                indicate which mail was removed. In protocols without that
+                feature, it's impossible to tell when a mail has been removed
+                (and hence how long the identifier will remain valid for use
+                with <tp:member-ref>RequestMailURL</tp:member-ref>).</p>
+            </tp:rationale>
           </dd>
 
-          <dt>type &#8212; u (<tp:type>Mail_Type</tp:type>)</dt>
-          <dd>
-            The type of notification. If omitted, Mail_Type_Single MAY be
-            assumed. For protocols where notifications are about threads
-            rather than individual mails, this MUST be set to Mail_Type_Thread.
-          </dd>
-
-          <dt>url-data &#8212; s</dt>
-          <dd>An opaque string provided to the Connection when
-            calling <tp:member-ref>RequestMailURL</tp:member-ref>,
+          <dt>url-data &#8212; any type</dt>
+          <dd>An opaque identifier (typically a string or list of strings)
+            provided to the Connection when calling
+            <tp:member-ref>RequestMailURL</tp:member-ref>,
             containing information used by the Connection to build the URL.
           </dd>
 
@@ -265,15 +264,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           </dd>
 
           <dt>sent-timestamp &#8212; x (<tp:type>Unix_Timestamp64</tp:type>)</dt>
-          <dd>A UNIX timestamp indicating when the message was sent. When
-            <tp:type>Mail_Type</tp:type> is set to <tt>Thread</tt>, this value
-            indicates when the most recent message was sent.
+          <dd>A UNIX timestamp indicating when the message was sent, or for
+            a thread, when the most recent message was sent.
           </dd>
 
           <dt>received-timestamp &#8212; x (<tp:type>Unix_Timestamp64</tp:type>)</dt>
-          <dd>A UNIX timestamp indicating when the message was received. When
-            <tp:type>Mail_Type</tp:type> is set to <tt>Thread</tt>, this value
-            indicates when the most recent message was received.
+          <dd>A UNIX timestamp indicating when the message was received, or for
+            a thread, when the most recent message was received.
           </dd>
 
           <dt>has-attachments &#8212; b</dt>
@@ -345,12 +342,17 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <property name="UnreadMailCount" type="u" access="read"
       tp:name-for-bindings="Unread_Mail_Count">
-      <tp:docstring>
-        The number of unread messages in the Inbox. Change notification is via
-        <tp:member-ref>UnreadMailsChanged</tp:member-ref>. This property is
-        only useful if <tt>Supports_Unread_Mail_Count</tt> is set in the
-        <tp:member-ref>MailNotificationFlags</tp:member-ref>; otherwise, it MUST be
-        zero.
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>The number of unread messages in the Inbox. Change notification is
+          via <tp:member-ref>UnreadMailsChanged</tp:member-ref>.</p>
+
+        <p>This property is only useful if <tt>Supports_Unread_Mail_Count</tt>
+          is set in the <tp:member-ref>MailNotificationFlags</tp:member-ref>;
+          otherwise, it MUST be zero.</p>
+
+        <p>If <tt>Thread_Based</tt> appears in the
+          <tp:member-ref>MailNotificationFlags</tp:member-ref>, this property
+          counts the number of threads, not the number of mails.</p>
       </tp:docstring>
     </property>
 
@@ -382,14 +384,14 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <signal name="MailsReceived" tp:name-for-bindings="Mails_Received">
       <arg name="Mails" type="aa{sv}" tp:type="Mail[]">
-        <tp:docstring>
-          An array of <tp:type>Mail</tp:type>s. Those e-mail MAY NOT have the
-          "id" key.
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          <p>An array of <tp:type>Mail</tp:type>s. Those e-mail MUST NOT have
+            the "id" key.</p>
+
           <tp:rationale>
-            In this context, the "id" key is not very important since
-            e-mails will only be sent once. CMs may still set it to identify
-            the e-mail when <tp:member-ref>RequestMailURL</tp:member-ref>
-            is called.
+            <p>On connections that emit this signal, it's impossible to tell
+              when a mail has been removed, and hence when "id" has become
+              invalid.</p>
           </tp:rationale>
         </tp:docstring>
       </arg>
@@ -420,7 +422,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           <tp:rationale>
             <p>Mails may be updated when the URL information (URL and POST data)
               have changed, or senders were added or removed from an e-mail
-              thread (see <tp:type>Mail_Type</tp:type>_Thread).</p>
+              thread.</p>
           </tp:rationale>
 
           <p>If the <tt>Supports_Unread_Mails</tt> flag is not set, this list
@@ -544,11 +546,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           structure, or the empty string if no <tt>id</tt> key was provided.
         </tp:docstring>
       </arg>
-      <arg direction="in" name="URL_Data" type="s">
+      <arg direction="in" name="URL_Data" type="v">
         <tp:docstring>
-          The <tt>url-data</tt> as found in the <tp:type>Mail</tp:type>
-          structure, or the empty string if no <tt>url-data</tt> key was
-          provided.
+          Whatever <tt>url-data</tt> was found in the <tp:type>Mail</tp:type>
+          structure, or the boolean value False (D-Bus type 'b') if no
+          <tt>url-data</tt> was provided in the Mail.
         </tp:docstring>
       </arg>
       <arg direction="out" name="URL" type="(sua(ss))" tp:type="Mail_URL" >

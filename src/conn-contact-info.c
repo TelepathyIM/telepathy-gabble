@@ -719,10 +719,9 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       g_strfreev (field_values);
     }
 
-  if (edits)
-    gabble_vcard_manager_edit (self->vcard_manager, 0,
-        _set_contact_info_cb, context,
-        G_OBJECT (self), edits, TRUE);
+  gabble_vcard_manager_edit (self->vcard_manager, 0,
+      _set_contact_info_cb, context,
+      G_OBJECT (self), edits, TRUE);
 }
 
 static void

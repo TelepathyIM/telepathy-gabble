@@ -175,12 +175,12 @@ _insert_contact_field (GPtrArray *contact_info,
 
 static void
 _create_contact_field_extended (GPtrArray *contact_info,
-                                LmMessageNode *node,
+                                WockyXmppNode *node,
                                 const gchar * const *supported_types,
                                 const gchar * const *mandatory_fields)
 {
   guint i;
-  LmMessageNode *child_node;
+  WockyXmppNode *child_node;
   GPtrArray *field_params = NULL;
   gchar **field_values = NULL;
   guint supported_types_size = 0;
@@ -196,7 +196,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
     {
        gchar *tmp;
 
-       child_node = lm_message_node_get_child (node, supported_types[i]);
+       child_node = wocky_xmpp_node_get_child (node, supported_types[i]);
        if (child_node == NULL)
          continue;
 
@@ -215,9 +215,9 @@ _create_contact_field_extended (GPtrArray *contact_info,
       field_values = g_new0 (gchar *, mandatory_fields_size + 1);
       for (i = 0; i < mandatory_fields_size; ++i)
         {
-           child_node = lm_message_node_get_child (node, mandatory_fields[i]);
+           child_node = wocky_xmpp_node_get_child (node, mandatory_fields[i]);
            if (child_node != NULL)
-             field_values[i] = (gchar *) lm_message_node_get_value (child_node);
+             field_values[i] = child_node->content;
            else
              field_values[i] = (gchar *) "";
         }
@@ -234,7 +234,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
 }
 
 static GPtrArray *
-_parse_vcard (LmMessageNode *vcard_node,
+_parse_vcard (WockyXmppNode *vcard_node,
               GError **error)
 {
   GPtrArray *contact_info = dbus_g_type_specialized_construct (
@@ -243,7 +243,7 @@ _parse_vcard (LmMessageNode *vcard_node,
 
   for (i = node_iter (vcard_node); i; i = node_iter_next (i))
     {
-      LmMessageNode *node = node_iter_data (i);
+      WockyXmppNode *node = node_iter_data (i);
       const VCardField *field;
 
       if (!node->name || strcmp (node->name, "") == 0)
@@ -263,7 +263,7 @@ _parse_vcard (LmMessageNode *vcard_node,
         case FIELD_SIMPLE_ONCE:
             {
               const gchar * const field_values[2] = {
-                  lm_message_node_get_value (node),
+                  node->content,
                   NULL
               };
 
@@ -281,7 +281,7 @@ _parse_vcard (LmMessageNode *vcard_node,
 
         case FIELD_ORG:
             {
-              LmMessageNode *orgname = lm_message_node_get_child (node,
+              WockyXmppNode *orgname = wocky_xmpp_node_get_child (node,
                   "ORGNAME");
               NodeIter orgunit_iter;
               GPtrArray *field_values;
@@ -295,7 +295,7 @@ _parse_vcard (LmMessageNode *vcard_node,
 
               field_values = g_ptr_array_new ();
 
-              value = lm_message_node_get_value (orgname);
+              value = orgname->content;
 
               if (value == NULL)
                 value = "";
@@ -306,12 +306,12 @@ _parse_vcard (LmMessageNode *vcard_node,
                   orgunit_iter != NULL;
                   orgunit_iter = node_iter_next (orgunit_iter))
                 {
-                  LmMessageNode *orgunit = node_iter_data (orgunit_iter);
+                  WockyXmppNode *orgunit = node_iter_data (orgunit_iter);
 
                   if (tp_strdiff (orgunit->name, "ORGUNIT"))
                     continue;
 
-                  value = lm_message_node_get_value (orgunit);
+                  value = orgunit->content;
 
                   if (value == NULL)
                     value = "";
@@ -339,12 +339,12 @@ _parse_vcard (LmMessageNode *vcard_node,
                    line_iter = node_iter_next (line_iter))
                 {
                   const gchar *line;
-                  LmMessageNode *line_node = node_iter_data (line_iter);
+                  WockyXmppNode *line_node = node_iter_data (line_iter);
 
                   if (tp_strdiff (line_node->name, "LINE"))
                     continue;
 
-                  line = lm_message_node_get_value (line_node);
+                  line = line_node->content;
 
                   if (line != NULL)
                     {
@@ -375,7 +375,7 @@ _parse_vcard (LmMessageNode *vcard_node,
 static void
 _emit_contact_info_changed (GabbleSvcConnectionInterfaceContactInfo *iface,
                             TpHandle contact,
-                            LmMessageNode *vcard_node)
+                            WockyXmppNode *vcard_node)
 {
   GPtrArray *contact_info;
 
@@ -392,7 +392,7 @@ static void
 _request_vcards_cb (GabbleVCardManager *manager,
                     GabbleVCardManagerRequest *request,
                     TpHandle handle,
-                    LmMessageNode *vcard_node,
+                    WockyXmppNode *vcard_node,
                     GError *vcard_error,
                     gpointer user_data)
 {
@@ -446,7 +446,7 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
   for (i = 0; i < contacts->len; i++)
     {
-      LmMessageNode *vcard_node;
+      WockyXmppNode *vcard_node;
       TpHandle contact = g_array_index (contacts, TpHandle, i);
 
       if (gabble_vcard_manager_get_cached (self->vcard_manager,
@@ -488,7 +488,7 @@ gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 }
 
 static void
-_return_from_request_contact_info (LmMessageNode *vcard_node,
+_return_from_request_contact_info (WockyXmppNode *vcard_node,
                                    GError *vcard_error,
                                    DBusGMethodInvocation *context)
 {
@@ -536,7 +536,7 @@ static void
 _request_vcard_cb (GabbleVCardManager *self,
                    GabbleVCardManagerRequest *request,
                    TpHandle handle,
-                   LmMessageNode *vcard_node,
+                   WockyXmppNode *vcard_node,
                    GError *vcard_error,
                    gpointer user_data)
 {
@@ -564,7 +564,7 @@ gabble_connection_request_contact_info (GabbleSvcConnectionInterfaceContactInfo 
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
   GError *err = NULL;
-  LmMessageNode *vcard_node;
+  WockyXmppNode *vcard_node;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -654,7 +654,7 @@ _insert_edit_info (GSList *edits,
 static void
 _set_contact_info_cb (GabbleVCardManager *vcard_manager,
                       GabbleVCardManagerEditRequest *request,
-                      LmMessageNode *vcard_node,
+                      WockyXmppNode *vcard_node,
                       GError *vcard_error,
                       gpointer user_data)
 {
@@ -839,7 +839,7 @@ _vcard_updated (GObject *object,
                 gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  LmMessageNode *vcard_node;
+  WockyXmppNode *vcard_node;
 
   if (gabble_vcard_manager_get_cached (conn->vcard_manager,
                                        contact, &vcard_node))

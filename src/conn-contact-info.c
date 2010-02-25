@@ -200,6 +200,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
        gchar *tmp;
 
        child_node = wocky_xmpp_node_get_child (node, supported_types[i]);
+
        if (child_node == NULL)
          continue;
 
@@ -216,6 +217,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
 
       /* the mandatory field values need to be ordered properly */
       field_values = g_new0 (gchar *, mandatory_fields_size + 1);
+
       for (i = 0; i < mandatory_fields_size; ++i)
         {
            child_node = wocky_xmpp_node_get_child (node, mandatory_fields[i]);
@@ -265,21 +267,19 @@ _parse_vcard (WockyXmppNode *vcard_node,
         case FIELD_SIMPLE:
         case FIELD_SIMPLE_ONCE:
             {
-              const gchar * const field_values[2] = {
-                  node->content,
-                  NULL
-              };
+              const gchar * const field_values[2] = { node->content, NULL };
 
               _insert_contact_field (contact_info, node->name, NULL,
                   field_values);
-
             }
           break;
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-          _create_contact_field_extended (contact_info, node,
-              field->types, field->elements);
+            {
+              _create_contact_field_extended (contact_info, node,
+                  field->types, field->elements);
+            }
           break;
 
         case FIELD_ORG:
@@ -382,11 +382,13 @@ _emit_contact_info_changed (GabbleSvcConnectionInterfaceContactInfo *iface,
 {
   GPtrArray *contact_info;
 
-  if ((contact_info = _parse_vcard (vcard_node, NULL)) == NULL)
-    return;
+  contact_info = _parse_vcard (vcard_node, NULL);
 
-  gabble_svc_connection_interface_contact_info_emit_contact_info_changed (iface,
-      contact, contact_info);
+  if (contact_info == NULL)
+   return;
+
+  gabble_svc_connection_interface_contact_info_emit_contact_info_changed (
+      iface, contact, contact_info);
 
   g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 }
@@ -423,9 +425,10 @@ _request_vcards_cb (GabbleVCardManager *manager,
  *           or throw an error.
  */
 static void
-gabble_connection_get_contact_info (GabbleSvcConnectionInterfaceContactInfo *iface,
-                                    const GArray *contacts,
-                                    DBusGMethodInvocation *context)
+gabble_connection_get_contact_info (
+    GabbleSvcConnectionInterfaceContactInfo *iface,
+    const GArray *contacts,
+    DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -511,6 +514,7 @@ _return_from_request_contact_info (WockyXmppNode *vcard_node,
             case XMPP_ERROR_FORBIDDEN:
               tp_error.code = TP_ERROR_PERMISSION_DENIED;
               break;
+
             case XMPP_ERROR_ITEM_NOT_FOUND:
               tp_error.code = TP_ERROR_DOES_NOT_EXIST;
               break;
@@ -676,8 +680,10 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
       dbus_g_method_return_error (context, &tp_error);
     }
   else
-    gabble_svc_connection_interface_contact_info_return_from_set_contact_info (
-        context);
+    {
+      gabble_svc_connection_interface_contact_info_return_from_set_contact_info (
+          context);
+    }
 }
 
 static const gchar * const empty_strv[] = { NULL };
@@ -855,9 +861,11 @@ _vcard_updated (GObject *object,
 
   if (gabble_vcard_manager_get_cached (conn->vcard_manager,
                                        contact, &vcard_node))
-    _emit_contact_info_changed (
-        GABBLE_SVC_CONNECTION_INTERFACE_CONTACT_INFO (conn),
-        contact, vcard_node);
+    {
+      _emit_contact_info_changed (
+          GABBLE_SVC_CONNECTION_INTERFACE_CONTACT_INFO (conn),
+          contact, vcard_node);
+    }
 }
 
 void

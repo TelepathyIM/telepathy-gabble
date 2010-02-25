@@ -580,11 +580,13 @@ gabble_vcard_manager_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
   DEBUG ("%p", object);
 
-  if (priv->edits != NULL) {
-      g_slist_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
-          NULL);
+  if (priv->edits != NULL)
+    {
+      g_slist_foreach (priv->edits,
+          (GFunc) gabble_vcard_manager_edit_info_free, NULL);
       g_slist_free (priv->edits);
-  }
+    }
+
   priv->edits = NULL;
 
   if (priv->cache_timer)
@@ -1580,11 +1582,13 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
 
   info = gabble_vcard_manager_edit_info_new (
       element_name, element_value, GABBLE_VCARD_EDIT_REPLACE, NULL);
+
   if (info->element_value)
     DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
         (long) strlen (info->element_value), info->element_value);
   else
     DEBUG ("%s => null value", info->element_name);
+
   edits = g_slist_append (edits, info);
 
   return gabble_vcard_manager_edit (self, timeout, callback,
@@ -1826,10 +1830,13 @@ gabble_vcard_manager_edit_info_new (const gchar *element_name,
   info->children = NULL;
 
   va_start (ap, edit_type);
-  while ((key = va_arg (ap, const gchar *))) {
+
+  while ((key = va_arg (ap, const gchar *)))
+    {
       value = va_arg (ap, const gchar *);
       gabble_vcard_manager_edit_info_add_child (info, key, value);
-  }
+    }
+
   va_end (ap);
 
   return info;

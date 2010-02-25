@@ -1547,7 +1547,7 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
   edits = g_slist_append (edits, info);
 
   return gabble_vcard_manager_edit (self, timeout, callback,
-      user_data, object, edits, FALSE);
+      user_data, object, edits);
 }
 
 GabbleVCardManagerEditRequest *
@@ -1584,8 +1584,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
                            GabbleVCardManagerEditCb callback,
                            gpointer user_data,
                            GObject *object,
-                           GSList *edits,
-                           gboolean replace_vcard)
+                           GSList *edits)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
@@ -1604,15 +1603,6 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
       /* create dummy GET request if neccessary */
       gabble_vcard_manager_request (self, base->self_handle, 0, NULL,
           NULL, NULL);
-    }
-
-  if (replace_vcard)
-    {
-      /* If we're replacing the vCard, start from a "nearly-clean" slate
-       * (remove everything except the photo) */
-      priv->edits = g_slist_append (priv->edits,
-          gabble_vcard_manager_edit_info_new (NULL, NULL,
-            GABBLE_VCARD_EDIT_CLEAR, NULL));
     }
 
   priv->edits = g_slist_concat (priv->edits, edits);

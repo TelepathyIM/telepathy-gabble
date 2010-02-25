@@ -135,8 +135,7 @@ GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
                                                           GabbleVCardManagerEditCb,
                                                           gpointer user_data,
                                                           GObject *object,
-                                                          GSList *edits,
-                                                          gboolean replace_vcard);
+                                                          GSList *edits);
 
 void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);
 

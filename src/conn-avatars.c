@@ -853,7 +853,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 
   gabble_vcard_manager_edit (self->vcard_manager, 0,
       _set_avatar_cb2, ctx, (GObject *) self,
-      edits, FALSE);
+      edits);
 }
 
 

@@ -117,7 +117,7 @@ static VCardField known_fields[] = {
     /* Special cases with their own semantics */
       { "LABEL", NULL, FIELD_LABEL, 0,
           { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
-          { "LINE", NULL } },
+          { NULL } },
       { "ORG", NULL, FIELD_ORG, 0,
           { NULL },
           { "ORGNAME", "ORGUNIT", NULL } },
@@ -703,11 +703,46 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-        case FIELD_LABEL:
         case FIELD_ORG:
           edits = _insert_edit_info (edits, field,
               (const gchar * const *) field_params,
               (const gchar * const *) field_values);
+          break;
+
+        case FIELD_LABEL:
+            {
+              static const gchar * const empty_strv[] = { NULL };
+              GabbleVCardManagerEditInfo *edit_info;
+              gchar **lines;
+              guint j;
+
+              if (field_values[0] == NULL || field_values[1] != NULL)
+                {
+                  DEBUG ("LABEL field must have exactly one value, ignoring");
+                  break;
+                }
+
+              edits = _insert_edit_info (edits, field,
+                  (const gchar * const *) field_params,
+                  empty_strv);
+
+              edit_info = g_slist_last (edits)->data;
+
+              lines = g_strsplit (field_values[0], "\n", 0);
+
+              for (j = 0; lines[j] != NULL; j++)
+                {
+                  /* don't emit a trailing empty line if the label ended
+                   * with \n */
+                  if (lines[j][0] == '\0' && lines[j + 1] == NULL)
+                    continue;
+
+                  gabble_vcard_manager_edit_info_add_child (edit_info,
+                      "LINE", lines[j]);
+                }
+
+              g_strfreev (lines);
+            }
           break;
 
         default:

@@ -135,9 +135,12 @@ static VCardField known_fields[] = {
 
       { NULL }
 };
+/* static XML element name => static VCardField */
 static GHashTable *known_fields_xmpp = NULL;
+/* g_strdup'd Telepathy pseudo-vCard element name => static VCardField */
 static GHashTable *known_fields_vcard = NULL;
 
+/* one-per-process GABBLE_ARRAY_TYPE_FIELD_SPECS */
 static GPtrArray *supported_fields = NULL;
 
 /*

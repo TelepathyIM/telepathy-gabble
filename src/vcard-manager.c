@@ -966,21 +966,6 @@ replace_reply_cb (GabbleConnection *conn,
     }
 }
 
-static void
-patch_vcard_node_foreach (gpointer k, gpointer v, gpointer user_data)
-{
-  gchar *key = k;
-  gchar *value = v;
-  LmMessageNode *node = user_data;
-  LmMessageNode *child_node;
-
-  child_node = lm_message_node_get_child (node, key);
-  if (child_node)
-    lm_message_node_set_value (child_node, value);
-  else
-    lm_message_node_add_child (node, key, value);
-}
-
 static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src,
     const gchar *exclude);
 
@@ -1031,7 +1016,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
     {
       GabbleVCardChild *child = iter->data;
 
-      patch_vcard_node_foreach (child->key, child->value, node);
+      lm_message_node_add_child (node, child->key, child->value);
     }
 
   return msg;

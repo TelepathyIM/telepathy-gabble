@@ -277,9 +277,57 @@ _parse_vcard (LmMessageNode *vcard_node,
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-        case FIELD_ORG:
           _create_contact_field_extended (contact_info, node,
               field->types, field->elements);
+          break;
+
+        case FIELD_ORG:
+            {
+              LmMessageNode *orgname = lm_message_node_get_child (node,
+                  "ORGNAME");
+              NodeIter orgunit_iter;
+              GPtrArray *field_values;
+              const gchar *value;
+
+              if (orgname == NULL)
+                {
+                  DEBUG ("ignoring <ORG> with no <ORGNAME>");
+                  break;
+                }
+
+              field_values = g_ptr_array_new ();
+
+              value = lm_message_node_get_value (orgname);
+
+              if (value == NULL)
+                value = "";
+
+              g_ptr_array_add (field_values, (gpointer) value);
+
+              for (orgunit_iter = node_iter (node);
+                  orgunit_iter != NULL;
+                  orgunit_iter = node_iter_next (orgunit_iter))
+                {
+                  LmMessageNode *orgunit = node_iter_data (orgunit_iter);
+
+                  if (tp_strdiff (orgunit->name, "ORGUNIT"))
+                    continue;
+
+                  value = lm_message_node_get_value (orgunit);
+
+                  if (value == NULL)
+                    value = "";
+
+                  g_ptr_array_add (field_values, (gpointer) value);
+                }
+
+              g_ptr_array_add (field_values, NULL);
+
+              _insert_contact_field (contact_info, "org", NULL,
+                  (const gchar * const *) field_values->pdata);
+
+              g_ptr_array_free (field_values, TRUE);
+            }
           break;
 
         case FIELD_LABEL:

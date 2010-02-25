@@ -224,7 +224,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
            if (child_node != NULL)
              field_values[i] = child_node->content;
            else
-             field_values[i] = (gchar *) "";
+             field_values[i] = "";
         }
     }
 
@@ -547,7 +547,7 @@ _request_vcard_cb (GabbleVCardManager *self,
                    GError *vcard_error,
                    gpointer user_data)
 {
-  DBusGMethodInvocation *context = (DBusGMethodInvocation *) user_data;
+  DBusGMethodInvocation *context = user_data;
 
   _return_from_request_contact_info (vcard_node, vcard_error, context);
 }

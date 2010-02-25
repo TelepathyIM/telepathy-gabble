@@ -241,77 +241,83 @@ def make_message_event(stream, stanza):
     event.message_type = stanza.getAttribute('type')
     return event
 
-class PresenceDispatcher(object):
-    presences = {}
+class StreamFactory(twisted.internet.protocol.Factory):
+    def __init__(self, streams, jids):
+        self.streams = streams
+        self.jids = jids
+        self.presences = {}
+        self.mappings = dict(map (lambda jid, stream: (jid, stream),
+                                  jids, streams))
 
-    @staticmethod
-    def reset():
-        PresenceDispatcher.presences = {}
+        # Make a copy of the streams
+        self.factory_streams = list(streams)
+        self.factory_streams.reverse()
 
-    @staticmethod
-    def GotPresence (stream, jid, mappings, stanza):
+        if len(streams) > 1:
+            # We need to have a function here because lambda keeps a reference on
+            # the stream and jid and in the for loop, there is no context
+            def addObservers(stream, jid):
+                stream.addObserver('/iq', lambda x: \
+                                       self.forward_iq(stream, jid, x))
+                stream.addObserver('/presence', lambda x: \
+                                       self.got_presence(stream, jid, x))
+
+            for (jid, stream) in self.mappings.items():
+                addObservers(stream, jid)
+
+    def protocol(self, *args):
+        return self.factory_streams.pop()
+
+
+    def got_presence (self, stream, jid, stanza):
         stanza.attributes['from'] = jid
-        PresenceDispatcher.presences[jid] = stanza
+        self.presences[jid] = stanza
 
-        for dest_jid  in PresenceDispatcher.presences.keys():
+        for dest_jid  in self.presences.keys():
             if dest_jid != jid:
+                # Dispatch the new presence to other clients
                 stanza.attributes['to'] = dest_jid
-                mappings[dest_jid].send(stanza)
+                self.mappings[dest_jid].send(stanza)
 
-                presence = PresenceDispatcher.presences[dest_jid]
+                # Dispatch other client's presence to this stream
+                presence = self.presences[dest_jid]
                 presence.attributes['to'] = jid
                 stream.send(presence)
 
-    @staticmethod
-    def LostPresence(stream, jid, mappings):
-        if PresenceDispatcher.presences.has_key(jid):
-            del PresenceDispatcher.presences[jid]
-            for dest_jid  in PresenceDispatcher.presences.keys():
-                if dest_jid != jid:
-                    presence = domish.Element(('jabber:client', 'presence'))
-                    presence['from'] = jid
-                    presence['to'] = dest_jid
-                    presence['type'] = 'unavailable'
-                    mappings[dest_jid].send(presence)
+    def lost_presence(self, stream, jid):
+        if self.presences.has_key(jid):
+            del self.presences[jid]
+            for dest_jid  in self.presences.keys():
+                presence = domish.Element(('jabber:client', 'presence'))
+                presence['from'] = jid
+                presence['to'] = dest_jid
+                presence['type'] = 'unavailable'
+                self.mappings[dest_jid].send(presence)
 
+    def forward_iq(self, stream, jid, stanza):
+        stanza.attributes['from'] = jid
 
+        query = stanza.firstChildElement()
 
-def forward_iq(stream, jid, mappings, stanza):
-    stanza.attributes['from'] = jid
+        # Fake other accounts as being part of our roster
+        if query and query.uri == ns.ROSTER:
+            roster = make_result_iq(stream, stanza)
+            query = roster.firstChildElement()
+            for roster_jid in self.mappings.keys():
+                if jid != roster_jid:
+                    item = query.addElement('item')
+                    item['jid'] = roster_jid
+                    item['subscription'] = 'both'
+            stream.send(roster)
+            return
 
-    query = stanza.firstChildElement()
+        to = stanza.getAttribute('to')
+        dest = None
+        if to is not None:
+            dest = self.mappings.get(to)
 
-    # Fake other accounts as being part of our roster
-    if query and query.uri == ns.ROSTER:
-        roster = make_result_iq(stream, stanza)
-        query = roster.firstChildElement()
-        for roster_jid in mappings.keys():
-            if jid != roster_jid:
-                item = query.addElement('item')
-                item['jid'] = roster_jid
-                item['subscription'] = 'both'
-        stream.send(roster)
-        return
-
-    to = stanza.getAttribute('to')
-    dest = None
-    if to is not None:
-        dest = mappings.get(to)
-
-    if dest is not None:
-        dest.send(stanza)
-    elif to is not None:
-        # FIXME: should I broadcast or should I skip IQs without 'to' ?
-        return
-        for dest_jid, dest  in mappings.items():
-            if dest != stream:
-                stanza.attributes['to'] = dest_jid
-                # The other streams might not be connected yet
-                try:
-                    dest.send(stanza)
-                except:
-                    pass
-        del stanza.attributes['to']
+        if dest is not None:
+            dest.send(stanza)
 
 class BaseXmlStream(xmlstream.XmlStream):
     initiating = False
@@ -463,45 +469,20 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                                    authenticator=authenticator,
                                    resource=resource, idx=i))
 
+    factory = StreamFactory(streams, jids)
+    port = reactor.listenTCP(4242, factory)
 
-    if num_instances > 1:
-        mappings = dict(map (lambda jid, stream: (jid, stream), jids, streams))
-
-        def name_owner_changed(name, old_name, new_name, **kw):
+    def name_owner_changed(name, old_name, new_name, **kw):
+        if new_name == '':
             for i, conn in enumerate(conns):
                 stream = streams[i]
                 jid = jids[i]
-                if new_name == '' and conn._requested_bus_name == name:
-                    PresenceDispatcher.LostPresence(stream, jid, mappings)
+                if conn._requested_bus_name == name:
+                    factory.lost_presence(stream, jid)
+                    break
 
-        bus.add_signal_receiver(name_owner_changed, 'NameOwnerChanged',
-                                'org.freedesktop.DBus', None)
-
-        # We need to reset the presence dispatcher so if we run multiple
-        # exec_test in the same unit test, we won't get wrong presences being
-        # dispatched to not-yet-connected streams
-        PresenceDispatcher.reset()
-
-        def addObservers(stream, jid):
-            stream.addObserver('/iq', lambda x: \
-                                   forward_iq(stream, jid, mappings, x))
-            stream.addObserver('/presence', lambda x: \
-                                   PresenceDispatcher.GotPresence(stream, jid, \
-                                                                      mappings, x))
-        for (jid, stream) in mappings.items():
-            addObservers(stream, jid)
-
-
-    factory_streams = list(streams)
-    factory_streams.reverse()
-    def stream_factory(*args):
-        stream = factory_streams.pop()
-        return stream
-
-    factory = twisted.internet.protocol.Factory()
-    factory.protocol = stream_factory
-    port = reactor.listenTCP(4242, factory)
-
+    bus.add_signal_receiver(name_owner_changed, 'NameOwnerChanged',
+                            'org.freedesktop.DBus', None)
 
     error = None
 

@@ -93,10 +93,36 @@ def test(q, bus, conn, stream):
     assertEquals('King Robert I', xpath.queryForString('/iq/vCard/FN',
         vcard_set_event.stanza))
 
+    # Before the server replies, the user unsets their avatar
+    call_async(q, conn.Avatars, 'SetAvatar', '', '')
+    sync_dbus(bus, q, conn)
+
     # This acknowledgement is for the ContactInfo; SetContactInfo won't happen
     # until this has
     acknowledge_iq(stream, vcard_set_event.stanza)
     q.expect('dbus-return', method='SetContactInfo')
+
+    vcard_set_event = q.expect('stream-iq', iq_type='set',
+        query_ns=ns.VCARD_TEMP, query_name='vCard')
+    assertEquals('Bob', xpath.queryForString('/iq/vCard/NICKNAME',
+        vcard_set_event.stanza))
+    assertEquals(None, xpath.queryForNodes('/iq/vCard/PHOTO',
+        vcard_set_event.stanza))
+    assertLength(1, xpath.queryForNodes('/iq/vCard/N',
+        vcard_set_event.stanza))
+    assertEquals('Robert', xpath.queryForString('/iq/vCard/N/GIVEN',
+        vcard_set_event.stanza))
+    assertEquals('de Brus', xpath.queryForString('/iq/vCard/N/FAMILY',
+        vcard_set_event.stanza))
+    assertEquals('King', xpath.queryForString('/iq/vCard/N/PREFIX',
+        vcard_set_event.stanza))
+    assertEquals('King Robert I', xpath.queryForString('/iq/vCard/FN',
+        vcard_set_event.stanza))
+
+    # This acknowledgement is for the avatar; SetAvatar won't finish
+    # until this is received
+    acknowledge_iq(stream, vcard_set_event.stanza)
+    q.expect('dbus-return', method='SetAvatar')
 
     # Now Gabble gets disconnected.
     sync_stream(q, stream)

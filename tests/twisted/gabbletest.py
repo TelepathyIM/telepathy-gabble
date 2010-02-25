@@ -458,9 +458,10 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     streams = []
     resource = params.get('resource') if params is not None else None
     for i in range(0, num_instances):
-        suffix = i
-        if suffix == 0:
+        if i == 0:
             suffix = ''
+        else:
+            suffix = str(i)
         (conn, jid) = make_connection(bus, queue.append, params, suffix)
         conns.append(conn)
         jids.append(jid)

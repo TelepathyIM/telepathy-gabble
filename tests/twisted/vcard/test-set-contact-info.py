@@ -29,6 +29,12 @@ def test(q, bus, conn, stream):
                 (u'adr', ['type=work','type=postal','type=parcel'],
                     ['', '', '11 Kings Parade', 'Cambridge', 'Cambridgeshire',
                         'CB2 1SJ', 'UK']),
+                (u'label', ['type=work'], [
+                    '11 Kings Parade\n'
+                    'Cambridge\n'
+                    'Cambridgeshire\n'
+                    'CB2 1SJ\n'
+                    'UK\n']),
                 (u'tel', ['type=voice','type=work'], ['+44 1223 362967']),
                 (u'tel', ['type=voice','type=work'], ['+44 7700 900753']),
                 (u'email', ['type=internet','type=pref'],
@@ -70,6 +76,14 @@ def test(q, bus, conn, stream):
     assertEquals('Human Resources; Company Policy Enforcement',
             xpath.queryForString('/iq/vCard/ORG/ORGUNIT',
                 vcard_set_event.stanza))
+
+    assertLength(1, xpath.queryForNodes('/iq/vCard/LABEL',
+        vcard_set_event.stanza))
+    lines = xpath.queryForNodes('/iq/vCard/LABEL/LINE', vcard_set_event.stanza)
+    assertLength(5, lines)
+    for i, exp_line in enumerate(['11 Kings Parade', 'Cambridge',
+        'Cambridgeshire', 'CB2 1SJ', 'UK']):
+        assertEquals(exp_line, str(lines[i]))
 
     assertLength(2, xpath.queryForNodes('/iq/vCard/TEL',
         vcard_set_event.stanza))

@@ -763,16 +763,15 @@ conn_mail_notif_properties_getter (GObject *object,
     }
   else if (name == prop_quarks[PROP_MAIL_ADDRESS])
     {
-      gchar *address, *username, *stream_server;
-
-      g_object_get (object, "username", &username, NULL);
-      g_object_get (object, "stream-server", &stream_server, NULL);
-
-      address = gabble_encode_jid (username, stream_server, NULL);
-
-      g_free (username);
-      g_free (stream_server);
-      g_value_take_string (value, address);
+      TpBaseConnection *base = TP_BASE_CONNECTION (object);
+      TpHandleRepoIface *contact_handles = 
+        tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+      TpHandle self = tp_base_connection_get_self_handle (base);
+      const gchar *bare_jid = tp_handle_inspect (contact_handles, self);
+      
+      /* After some testing I found that the bare jid (username@stream_server)
+       * always represent the e-mail address on Google account. */
+      g_value_set_string (value, bare_jid);
     }
   else
     {

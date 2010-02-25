@@ -835,6 +835,8 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
       base64 = base64_encode (avatar->len, avatar->data, TRUE);
 
+      DEBUG ("Replacing avatar");
+
       edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
           NULL, GABBLE_VCARD_EDIT_REPLACE,
           "TYPE", mime_type,
@@ -844,12 +846,13 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
       g_free (base64);
     }
   else
-    edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
-        NULL, GABBLE_VCARD_EDIT_DELETE, NULL);
+    {
+      DEBUG ("Removing avatar");
+      edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
+          NULL, GABBLE_VCARD_EDIT_DELETE, NULL);
+    }
 
   edits = g_slist_append (edits, edit_info);
-
-  DEBUG ("called");
 
   gabble_vcard_manager_edit (self->vcard_manager, 0,
       _set_avatar_cb2, ctx, (GObject *) self,

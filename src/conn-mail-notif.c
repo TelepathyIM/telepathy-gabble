@@ -55,14 +55,6 @@ enum
   NUM_OF_PROP,
 };
 
-struct MailsHelperData
-{
-  GabbleConnection *conn;
-  GHashTable *unread_mails;
-  GHashTable *old_mails;
-  GPtrArray *mails_added;
-};
-
 
 static void unsubscribe (GabbleConnection *conn, const gchar *name,
     gboolean remove_all);
@@ -395,11 +387,21 @@ handle_snippet (WockyXmppNode *parent_node,
 }
 
 
+/* Structure used has user_data mail_thread_info_each callback */
+typedef struct
+{
+  GabbleConnection *conn;
+  /* stolen from conn -> unread_mails, the left items in this is 
+   * represent the removed emails */
+  GHashTable *old_mails;
+  GPtrArray *mails_added;
+} MailThreadCollector;
+
 static gboolean
 mail_thread_info_each (WockyXmppNode *node,
     gpointer user_data)
 {
-  struct MailsHelperData *data = user_data;
+  MailThreadCollector *collector = user_data;
 
   if (!tp_strdiff (node->name, "mail-thread-info"))
     {
@@ -416,10 +418,10 @@ mail_thread_info_each (WockyXmppNode *node,
 
       tid = g_strdup (val_str);
 
-      if (data->old_mails != NULL)
+      if (collector->old_mails != NULL)
         {
-          mail = g_hash_table_lookup (data->old_mails, tid);
-          g_hash_table_steal (data->old_mails, tid);
+          mail = g_hash_table_lookup (collector->old_mails, tid);
+          g_hash_table_steal (collector->old_mails, tid);
         }
 
       if (mail == NULL)
@@ -453,10 +455,10 @@ mail_thread_info_each (WockyXmppNode *node,
         dirty = TRUE;
 
       /* gives tid ownership to unread_mails hash table */
-      g_hash_table_insert (data->unread_mails, tid, mail);
+      g_hash_table_insert (collector->conn->unread_mails, tid, mail);
 
       if (dirty)
-        g_ptr_array_add (data->mails_added, mail);
+        g_ptr_array_add (collector->mails_added, mail);
     }
 
   return TRUE;
@@ -469,31 +471,30 @@ store_unread_mails (GabbleConnection *conn,
 {
   GHashTableIter iter;
   GPtrArray *mails_removed;
-  struct MailsHelperData data;
+  MailThreadCollector collector;
   const gchar *url;
 
-  data.unread_mails = g_hash_table_new_full (g_str_hash, g_str_equal,
+  collector.conn = conn;
+  collector.old_mails = conn->unread_mails;
+  conn->unread_mails = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, (GDestroyNotify) g_hash_table_unref);
-  data.conn = conn;
-  data.old_mails = conn->unread_mails;
-  conn->unread_mails = data.unread_mails;
-  data.mails_added = g_ptr_array_new ();
+  collector.mails_added = g_ptr_array_new ();
 
   url = wocky_xmpp_node_get_attribute (mailbox, "url");
   g_free (conn->inbox_url);
   conn->inbox_url = g_strdup (url);
 
   /* Store new mails */
-  wocky_xmpp_node_each_child (mailbox, mail_thread_info_each, &data);
+  wocky_xmpp_node_each_child (mailbox, mail_thread_info_each, &collector);
 
   /* Generate the list of removed thread IDs */
   mails_removed = g_ptr_array_new_with_free_func (g_free);
 
-  if (data.old_mails != NULL)
+  if (collector.old_mails != NULL)
     {
       gpointer key;
 
-      g_hash_table_iter_init (&iter, data.old_mails);
+      g_hash_table_iter_init (&iter, collector.old_mails);
 
       while (g_hash_table_iter_next (&iter, &key, NULL))
         {
@@ -501,16 +502,16 @@ store_unread_mails (GabbleConnection *conn,
           g_ptr_array_add (mails_removed, g_strdup (tid));
         }
 
-      g_hash_table_unref (data.old_mails);
+      g_hash_table_unref (collector.old_mails);
     }
   g_ptr_array_add (mails_removed, NULL);
 
-  if (data.mails_added->len > 0 || mails_removed->len > 0)
+  if (collector.mails_added->len > 0 || mails_removed->len > 0)
     gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
-        conn, g_hash_table_size (conn->unread_mails), data.mails_added,
+        conn, g_hash_table_size (conn->unread_mails), collector.mails_added,
         (const char **)mails_removed->pdata);
 
-  g_ptr_array_free (data.mails_added, TRUE);
+  g_ptr_array_free (collector.mails_added, TRUE);
   g_ptr_array_free (mails_removed, TRUE);
 }
 

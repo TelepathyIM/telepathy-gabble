@@ -984,12 +984,21 @@ patch_vcard_node_foreach (gpointer k, gpointer v, gpointer user_data)
     lm_message_node_add_child (node, key, value);
 }
 
-static void
+static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src);
+
+static LmMessage *
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
-    LmMessageNode *vcard_node)
+    LmMessageNode *old_vcard)
 {
+  LmMessage *msg;
+  LmMessageNode *vcard_node;
   LmMessageNode *node;
   GList *iter;
+
+  msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_SET);
+
+  vcard_node = vcard_copy (msg->node, old_vcard);
 
   node = lm_message_node_get_child (vcard_node, info->element_name);
 
@@ -1001,7 +1010,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
           lm_message_node_unref (node);
           node = lm_message_node_get_child (vcard_node, info->element_name);
         }
-      return;
+      return msg;
     }
 
   if (node && info->edit_type != GABBLE_VCARD_EDIT_APPEND)
@@ -1016,6 +1025,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
 
       patch_vcard_node_foreach (child->key, child->value, node);
     }
+
+  return msg;
 }
 
 /* Loudmouth hates me. The feelings are mutual.
@@ -1149,8 +1160,7 @@ manager_patch_vcard (GabbleVCardManager *self,
                      LmMessageNode *vcard_node)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
-  LmMessage *msg;
-  LmMessageNode *patched_vcard;
+  LmMessage *msg = NULL;
   GList *li;
   GSList *edit_link;
   gboolean vcard_changed = FALSE;
@@ -1178,12 +1188,13 @@ manager_patch_vcard (GabbleVCardManager *self,
 
   DEBUG("patching vcard");
 
-  msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
-
   if (priv->replace_vcard)
     {
       LmMessageNode *node;
+      LmMessageNode *patched_vcard;
+
+      msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+          LM_MESSAGE_SUB_TYPE_SET);
 
       patched_vcard = lm_message_node_add_child (msg->node, "vCard", "");
       lm_message_node_set_attribute (patched_vcard, "xmlns", "vcard-temp");
@@ -1193,20 +1204,33 @@ manager_patch_vcard (GabbleVCardManager *self,
       node = lm_message_node_get_child (vcard_node, "PHOTO");
       if (node)
         vcard_copy (patched_vcard, node);
+
+      vcard_node = patched_vcard;
     }
-  else
-    patched_vcard = vcard_copy (msg->node, vcard_node);
 
   /* Apply any unsent edits to the patched vCard */
   for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
     {
-      gabble_vcard_manager_edit_info_apply (edit_link->data, patched_vcard);
+      LmMessage *new_msg = gabble_vcard_manager_edit_info_apply (
+          edit_link->data, vcard_node);
+
+      if (msg != NULL)
+        lm_message_unref (msg);
+
+      msg = new_msg;
+      /* gabble_vcard_manager_edit_info_apply always returns an IQ message
+       * with one vCard child */
+      vcard_node = lm_message_node_get_child (msg->node, "vCard");
+      g_assert (vcard_node != NULL);
     }
+
+  /* We applied at least one edit, so we must have a message now. */
+  g_assert (msg != NULL);
 
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the
    * original vcard in the cache until that happens. */
-  priv->patched_vcard = lm_message_node_ref (patched_vcard);
+  priv->patched_vcard = lm_message_node_ref (vcard_node);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
       priv->connection->req_pipeline, msg, default_request_timeout,

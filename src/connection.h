@@ -122,6 +122,9 @@ struct _GabbleConnection {
     TpPresenceMixin presence;
     TpContactsMixin contacts;
 
+    /* DBus daemon instance */
+    TpDBusDaemon *daemon;
+
     /* loudmouth connection */
     LmConnection *lmconn;
     WockySession *session;
@@ -190,7 +193,6 @@ struct _GabbleConnection {
     GHashTable *pending_sidecars;
 
     /* Mail Notification */
-    TpDBusDaemon *daemon;
     GHashTable *mail_subscribers;
     gchar *inbox_url;
     GHashTable *unread_mails;

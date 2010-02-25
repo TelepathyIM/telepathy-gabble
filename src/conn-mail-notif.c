@@ -378,7 +378,7 @@ handle_snippet (WockyXmppNode *parent_node,
 typedef struct
 {
   GabbleConnection *conn;
-  /* stolen from conn -> unread_mails, the left items in this is 
+  /* stolen from conn -> unread_mails, the left items in this is
    * represent the removed emails */
   GHashTable *old_mails;
   GPtrArray *mails_added;
@@ -599,15 +599,6 @@ connection_status_changed (GabbleConnection *conn,
 void
 conn_mail_notif_init (GabbleConnection *conn)
 {
-  GError *error = NULL;
-
-  conn->daemon = tp_dbus_daemon_dup (&error);
-
-  if (conn->daemon == NULL)
-    {
-      g_error ("Failed to connect to dbus daemon: %s", error->message);
-    }
-
   conn->mail_subscribers = g_hash_table_new_full (g_str_hash, g_str_equal,
                                                   g_free, NULL);
   conn->inbox_url = NULL;
@@ -636,14 +627,12 @@ foreach_cancel_watch (gpointer key,
 void
 conn_mail_notif_dispose (GabbleConnection *conn)
 {
-  if (conn->daemon != NULL)
+  if (conn->mail_subscribers)
     {
       g_hash_table_foreach_remove (conn->mail_subscribers,
           foreach_cancel_watch, conn);
       g_hash_table_unref (conn->mail_subscribers);
       conn->mail_subscribers = NULL;
-      g_object_unref (conn->daemon);
-      conn->daemon = NULL;
     }
 
   g_free (conn->inbox_url);
@@ -752,11 +741,11 @@ conn_mail_notif_properties_getter (GObject *object,
   else if (name == prop_quarks[PROP_MAIL_ADDRESS])
     {
       TpBaseConnection *base = TP_BASE_CONNECTION (object);
-      TpHandleRepoIface *contact_handles = 
+      TpHandleRepoIface *contact_handles =
         tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
       TpHandle self = tp_base_connection_get_self_handle (base);
       const gchar *bare_jid = tp_handle_inspect (contact_handles, self);
-      
+
       /* After some testing I found that the bare jid (username@stream_server)
        * always represent the e-mail address on Google account. */
       g_value_set_string (value, bare_jid);

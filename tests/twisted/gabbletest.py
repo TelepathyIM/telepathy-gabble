@@ -201,8 +201,8 @@ class XmppAuthenticator(xmlstream.Authenticator):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         bind = result.addElement((NS_XMPP_BIND, 'bind'))
-        jid = bind.addElement('jid', content=('%s@localhost/%s' % \
-                                                  (self.username, resource)))
+        jid = bind.addElement('jid', content=('%s@localhost/%s' %
+                                              (self.username, resource)))
         self.xmlstream.send(result)
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
@@ -386,13 +386,11 @@ class GoogleXmlStream(BaseXmlStream):
             iq['from'] = 'localhost'
             self.send(iq)
 
-def make_connection(bus, event_func, params=None, idx=0):
+def make_connection(bus, event_func, params=None, suffix=''):
     # Gabble accepts a resource in 'account', but the value of 'resource'
     # overrides it if there is one.
-    if idx == 0:
-        idx = ""
 
-    account = 'test%s@localhost/%s' % (idx, re.sub(r'.*/', '', sys.argv[0]))
+    account = 'test%s@localhost/%s' % (suffix, re.sub(r'.*/', '', sys.argv[0]))
 
     default_params = {
         'account': account,
@@ -412,12 +410,10 @@ def make_connection(bus, event_func, params=None, idx=0):
     return (conn, jid)
 
 def make_stream(event_func, authenticator=None, protocol=None,
-                resource=None, idx=0):
+                resource=None, suffix=''):
     # set up Jabber server
-    if idx == 0:
-        idx = ""
     if authenticator is None:
-        authenticator = XmppAuthenticator('test%s' % idx, 'pass', resource=resource)
+        authenticator = XmppAuthenticator('test%s' % suffix, 'pass', resource=resource)
 
     if protocol is None:
         protocol = XmppXmlStream
@@ -462,12 +458,15 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     streams = []
     resource = params.get('resource') if params is not None else None
     for i in range(0, num_instances):
-        (conn, jid) = make_connection(bus, queue.append, params, i)
+        suffix = i
+        if suffix == 0:
+            suffix = ''
+        (conn, jid) = make_connection(bus, queue.append, params, suffix)
         conns.append(conn)
         jids.append(jid)
         streams.append(make_stream(queue.append, protocol=protocol,
                                    authenticator=authenticator,
-                                   resource=resource, idx=i))
+                                   resource=resource, suffix=suffix))
 
     factory = StreamFactory(streams, jids)
     port = reactor.listenTCP(4242, factory)

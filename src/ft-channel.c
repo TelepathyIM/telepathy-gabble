@@ -67,8 +67,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel
                            file_transfer_iface_init);
 );
 
-#define CHECK_STR_EMPTY(x) ((x) == NULL || (x)[0] == '\0')
-
 #define GABBLE_UNDEFINED_FILE_SIZE G_MAXUINT64
 
 static const char *gabble_file_transfer_channel_interfaces[] = { NULL };

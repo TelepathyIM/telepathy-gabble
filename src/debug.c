@@ -39,6 +39,7 @@ static GDebugKey keys[] = {
   { "search",        GABBLE_DEBUG_SEARCH },
   { "base-channel",  GABBLE_DEBUG_BASE_CHANNEL },
   { "plugins",       GABBLE_DEBUG_PLUGINS },
+  { "mail",          GABBLE_DEBUG_MAIL_NOTIF },
   { 0, },
 };
 

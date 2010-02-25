@@ -55,6 +55,7 @@
 #include "conn-location.h"
 #include "conn-presence.h"
 #include "conn-sidecars.h"
+#include "conn-mail-notif.h"
 #include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
@@ -95,7 +96,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_avatars_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
-    G_IMPLEMENT_INTERFACE(TP_TYPE_SVC_DBUS_PROPERTIES,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
        tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
       tp_contacts_mixin_iface_init);
@@ -118,6 +119,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       olpc_gadget_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_FUTURE,
       conn_future_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+      conn_mail_notif_iface_init);
     )
 
 /* properties */
@@ -333,6 +336,7 @@ gabble_connection_constructor (GType type,
   conn_olpc_activity_properties_init (self);
   conn_location_init (self);
   conn_sidecars_init (self);
+  conn_mail_notif_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -421,10 +425,18 @@ gabble_connection_constructed (GObject *object)
 static void
 gabble_connection_init (GabbleConnection *self)
 {
+  GError *error = NULL;
   GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
 
   DEBUG("Initializing (GabbleConnection *)%p", self);
+
+  self->daemon = tp_dbus_daemon_dup (&error);
+
+  if (self->daemon == NULL)
+    {
+      g_error ("Failed to connect to dbus daemon: %s", error->message);
+    }
 
   self->priv = priv;
   self->lmconn = lm_connection_new ();
@@ -724,6 +736,13 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "DecloakAutomatically", TWICE ("decloak-automatically") },
         { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl mail_notif_props[] = {
+        { "MailNotificationFlags", NULL, NULL },
+        { "UnreadMailCount", NULL, NULL },
+        { "UnreadMails", NULL, NULL },
+        { "MailAddress", NULL, NULL },
+        { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
         { GABBLE_IFACE_OLPC_GADGET,
           conn_olpc_gadget_properties_getter,
@@ -744,6 +763,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           tp_dbus_properties_mixin_getter_gobject_properties,
           tp_dbus_properties_mixin_setter_gobject_properties,
           decloak_props,
+        },
+        { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+          conn_mail_notif_properties_getter,
+          NULL,
+          mail_notif_props,
         },
         { NULL }
   };
@@ -1006,6 +1030,8 @@ gabble_connection_dispose (GObject *object)
 
   g_hash_table_destroy (self->avatar_requests);
 
+  conn_mail_notif_dispose (self);
+
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);
   g_assert (priv->olpc_msg_cb == NULL);
@@ -1078,6 +1104,12 @@ gabble_connection_dispose (GObject *object)
     }
 
   conn_sidecars_dispose (self);
+
+  if (self->daemon != NULL)
+    {
+      g_object_unref (self->daemon);
+      self->daemon = NULL;
+    }
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -2544,6 +2576,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE;
               else if (0 == strcmp (var, NS_PRIVACY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRIVACY;
+              else if (0 == strcmp (var, NS_GOOGLE_MAIL_NOTIFY))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY;
             }
         }
 
@@ -2555,6 +2589,14 @@ connection_disco_cb (GabbleDisco *disco,
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
           GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
           NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+    {
+       const gchar *ifaces[] =
+         { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
@@ -3287,7 +3329,7 @@ gabble_connection_send_presence (GabbleConnection *conn,
   if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
     lm_message_node_add_own_nick (message->node, conn);
 
-  if (status != NULL && status[0] != '\0')
+  if (!CHECK_STR_EMPTY(status))
     lm_message_node_add_child (message->node, "status", status);
 
   result = _gabble_connection_send (conn, message, error);

@@ -28,7 +28,7 @@ import dbus
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 NS_XMPP_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
 
-def make_result_iq(stream, iq):
+def make_result_iq(stream, iq, add_query_node=True):
     result = IQ(stream, "result")
     result["id"] = iq["id"]
     to = iq.getAttribute('to')
@@ -36,7 +36,7 @@ def make_result_iq(stream, iq):
         result["from"] = to
     query = iq.firstChildElement()
 
-    if query:
+    if query and add_query_node:
         result.addElement((query.uri, query.name))
 
     return result
@@ -301,6 +301,8 @@ class GoogleXmlStream(BaseXmlStream):
             feature['var'] = ns.GOOGLE_ROSTER
             feature = query.addElement('feature')
             feature['var'] = ns.GOOGLE_JINGLE_INFO
+            feature = query.addElement('feature')
+            feature['var'] = ns.GOOGLE_MAIL_NOTIFY
 
             iq['type'] = 'result'
             iq['from'] = 'localhost'

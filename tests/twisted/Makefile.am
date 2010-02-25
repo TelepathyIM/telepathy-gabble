@@ -160,7 +160,8 @@ TWISTED_TESTS = \
 	test-set-status-idempotence.py \
 	test-location.py \
 	pubsub.py \
-	sidecars.py
+	sidecars.py \
+	mail-notification.py
 
 TESTS =
 

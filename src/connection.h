@@ -28,6 +28,7 @@
 #include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
+#include <telepathy-glib/dbus.h>
 
 #include <wocky/wocky-session.h>
 #include <wocky/wocky-pep-service.h>
@@ -74,6 +75,7 @@ typedef enum
   GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE = 1 << 2,
   GABBLE_CONNECTION_FEATURES_PRIVACY = 1 << 3,
   GABBLE_CONNECTION_FEATURES_PEP = 1 << 4,
+  GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY = 1 << 5,
 } GabbleConnectionFeatures;
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
@@ -119,6 +121,9 @@ struct _GabbleConnection {
     TpBaseConnection parent;
     TpPresenceMixin presence;
     TpContactsMixin contacts;
+
+    /* DBus daemon instance */
+    TpDBusDaemon *daemon;
 
     /* loudmouth connection */
     LmConnection *lmconn;
@@ -186,6 +191,12 @@ struct _GabbleConnection {
 
     /* gchar *interface → GList<DBusGMethodInvocation> */
     GHashTable *pending_sidecars;
+
+    /* Mail Notification */
+    GHashTable *mail_subscribers;
+    gchar *inbox_url;
+    GHashTable *unread_mails;
+    guint new_mail_handler_id;
 
     GabbleConnectionPrivate *priv;
 };

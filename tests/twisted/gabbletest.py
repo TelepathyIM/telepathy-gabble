@@ -201,18 +201,20 @@ class XmppAuthenticator(xmlstream.Authenticator):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         bind = result.addElement((NS_XMPP_BIND, 'bind'))
-        jid = bind.addElement('jid', content=('test@localhost/%s' % resource))
+        jid = bind.addElement('jid', content=('%s@localhost/%s' %
+                                              (self.username, resource)))
         self.xmlstream.send(result)
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
-def make_stream_event(type, stanza):
+def make_stream_event(type, stanza, stream):
     event = servicetest.Event(type, stanza=stanza)
+    event.stream = stream
     event.to = stanza.getAttribute("to")
     return event
 
-def make_iq_event(iq):
-    event = make_stream_event('stream-iq', iq)
+def make_iq_event(stream, iq):
+    event = make_stream_event('stream-iq', iq, stream)
     event.iq_type = iq.getAttribute("type")
     event.iq_id = iq.getAttribute("id")
     query = iq.firstChildElement()
@@ -229,15 +231,93 @@ def make_iq_event(iq):
 
     return event
 
-def make_presence_event(stanza):
-    event = make_stream_event('stream-presence', stanza)
+def make_presence_event(stream, stanza):
+    event = make_stream_event('stream-presence', stanza, stream)
     event.presence_type = stanza.getAttribute('type')
     return event
 
-def make_message_event(stanza):
-    event = make_stream_event('stream-message', stanza)
+def make_message_event(stream, stanza):
+    event = make_stream_event('stream-message', stanza, stream)
     event.message_type = stanza.getAttribute('type')
     return event
+
+class StreamFactory(twisted.internet.protocol.Factory):
+    def __init__(self, streams, jids):
+        self.streams = streams
+        self.jids = jids
+        self.presences = {}
+        self.mappings = dict(map (lambda jid, stream: (jid, stream),
+                                  jids, streams))
+
+        # Make a copy of the streams
+        self.factory_streams = list(streams)
+        self.factory_streams.reverse()
+
+        if len(streams) > 1:
+            # We need to have a function here because lambda keeps a reference on
+            # the stream and jid and in the for loop, there is no context
+            def addObservers(stream, jid):
+                stream.addObserver('/iq', lambda x: \
+                                       self.forward_iq(stream, jid, x))
+                stream.addObserver('/presence', lambda x: \
+                                       self.got_presence(stream, jid, x))
+
+            for (jid, stream) in self.mappings.items():
+                addObservers(stream, jid)
+
+    def protocol(self, *args):
+        return self.factory_streams.pop()
+
+
+    def got_presence (self, stream, jid, stanza):
+        stanza.attributes['from'] = jid
+        self.presences[jid] = stanza
+
+        for dest_jid  in self.presences.keys():
+            if dest_jid != jid:
+                # Dispatch the new presence to other clients
+                stanza.attributes['to'] = dest_jid
+                self.mappings[dest_jid].send(stanza)
+
+                # Dispatch other client's presence to this stream
+                presence = self.presences[dest_jid]
+                presence.attributes['to'] = jid
+                stream.send(presence)
+
+    def lost_presence(self, stream, jid):
+        if self.presences.has_key(jid):
+            del self.presences[jid]
+            for dest_jid  in self.presences.keys():
+                presence = domish.Element(('jabber:client', 'presence'))
+                presence['from'] = jid
+                presence['to'] = dest_jid
+                presence['type'] = 'unavailable'
+                self.mappings[dest_jid].send(presence)
+
+    def forward_iq(self, stream, jid, stanza):
+        stanza.attributes['from'] = jid
+
+        query = stanza.firstChildElement()
+
+        # Fake other accounts as being part of our roster
+        if query and query.uri == ns.ROSTER:
+            roster = make_result_iq(stream, stanza)
+            query = roster.firstChildElement()
+            for roster_jid in self.mappings.keys():
+                if jid != roster_jid:
+                    item = query.addElement('item')
+                    item['jid'] = roster_jid
+                    item['subscription'] = 'both'
+            stream.send(roster)
+            return
+
+        to = stanza.getAttribute('to')
+        dest = None
+        if to is not None:
+            dest = self.mappings.get(to)
+
+        if dest is not None:
+            dest.send(stanza)
 
 class BaseXmlStream(xmlstream.XmlStream):
     initiating = False
@@ -247,11 +327,11 @@ class BaseXmlStream(xmlstream.XmlStream):
         xmlstream.XmlStream.__init__(self, authenticator)
         self.event_func = event_func
         self.addObserver('//iq', lambda x: event_func(
-            make_iq_event(x)))
+            make_iq_event(self, x)))
         self.addObserver('//message', lambda x: event_func(
-            make_message_event(x)))
+            make_message_event(self, x)))
         self.addObserver('//presence', lambda x: event_func(
-            make_presence_event(x)))
+            make_presence_event(self, x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
 
     def _cb_authd(self, _):
@@ -308,10 +388,12 @@ class GoogleXmlStream(BaseXmlStream):
             iq['from'] = 'localhost'
             self.send(iq)
 
-def make_connection(bus, event_func, params=None):
+def make_connection(bus, event_func, params=None, suffix=''):
     # Gabble accepts a resource in 'account', but the value of 'resource'
     # overrides it if there is one.
-    account = 'test@localhost/%s' % re.sub(r'.*tests/twisted/', '', sys.argv[0])
+
+    account = 'test%s@localhost/%s' % (suffix, re.sub(r'.*/', '', sys.argv[0]))
+
     default_params = {
         'account': account,
         'password': 'pass',
@@ -324,23 +406,22 @@ def make_connection(bus, event_func, params=None):
     if params:
         default_params.update(params)
 
-    return servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
-        default_params)
+    jid = default_params['account']
+    conn =  servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
+                                        default_params)
+    return (conn, jid)
 
-def make_stream(event_func, authenticator=None, protocol=None, port=4242, resource=None):
+def make_stream(event_func, authenticator=None, protocol=None,
+                resource=None, suffix=''):
     # set up Jabber server
-
     if authenticator is None:
-        authenticator = XmppAuthenticator('test', 'pass', resource=resource)
+        authenticator = XmppAuthenticator('test%s' % suffix, 'pass', resource=resource)
 
     if protocol is None:
         protocol = XmppXmlStream
 
     stream = protocol(event_func, authenticator)
-    factory = twisted.internet.protocol.Factory()
-    factory.protocol = lambda *args: stream
-    port = reactor.listenTCP(port, factory)
-    return (stream, port)
+    return stream
 
 def disconnect_conn(q, conn, stream, expected_before=[], expected_after=[]):
     call_async(q, conn, 'Disconnect')
@@ -359,7 +440,7 @@ def disconnect_conn(q, conn, stream, expected_before=[], expected_after=[]):
     return before_events[:-2], after_events[:-1]
 
 def exec_test_deferred(fun, params, protocol=None, timeout=None,
-                        authenticator=None):
+                        authenticator=None, num_instances=1):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
     colourer = None
@@ -367,21 +448,51 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     if sys.stdout.isatty() or 'CHECK_FORCE_COLOR' in os.environ:
         colourer = servicetest.install_colourer()
 
+    bus = dbus.SessionBus()
+
     queue = servicetest.IteratingEventQueue(timeout)
     queue.verbose = (
         os.environ.get('CHECK_TWISTED_VERBOSE', '') != ''
         or '-v' in sys.argv)
 
-    bus = dbus.SessionBus()
-    conn = make_connection(bus, queue.append, params)
+    conns = []
+    jids = []
+    streams = []
     resource = params.get('resource') if params is not None else None
-    (stream, port) = make_stream(queue.append, protocol=protocol,
-        authenticator=authenticator, resource=resource)
+    for i in range(0, num_instances):
+        if i == 0:
+            suffix = ''
+        else:
+            suffix = str(i)
+        (conn, jid) = make_connection(bus, queue.append, params, suffix)
+        conns.append(conn)
+        jids.append(jid)
+        streams.append(make_stream(queue.append, protocol=protocol,
+                                   authenticator=authenticator,
+                                   resource=resource, suffix=suffix))
+
+    factory = StreamFactory(streams, jids)
+    port = reactor.listenTCP(4242, factory)
+
+    def name_owner_changed(name, old_name, new_name, **kw):
+        if new_name == '':
+            for i, conn in enumerate(conns):
+                stream = streams[i]
+                jid = jids[i]
+                if conn._requested_bus_name == name:
+                    factory.lost_presence(stream, jid)
+                    break
+
+    bus.add_signal_receiver(name_owner_changed, 'NameOwnerChanged',
+                            'org.freedesktop.DBus', None)
 
     error = None
 
     try:
-        fun(queue, bus, conn, stream)
+        if len(conns) == 1:
+            fun(queue, bus, conns[0], streams[0])
+        else:
+            fun(queue, bus, conns, streams)
     except Exception, e:
         traceback.print_exc()
         error = e
@@ -398,24 +509,24 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
         d.addBoth((lambda *args: os._exit(1)))
 
     # Does the Connection object still exist?
-    if not bus.name_has_owner(conn.object.bus_name):
-        # Connection has already been disconnected and destroyed
-        return
-
-    try:
-        if conn.GetStatus() == cs.CONN_STATUS_CONNECTED:
-            # Connection is connected, properly disconnect it
-            disconnect_conn(queue, conn, stream)
-        else:
-            # Connection is not connected, call Disconnect() to destroy it
-            conn.Disconnect()
-    except dbus.DBusException, e:
-        pass
+    for i, conn in enumerate(conns):
+        if not bus.name_has_owner(conn.object.bus_name):
+            # Connection has already been disconnected and destroyed
+            continue
+        try:
+            if conn.GetStatus() == cs.CONN_STATUS_CONNECTED:
+                # Connection is connected, properly disconnect it
+                disconnect_conn(queue, conn, streams[i])
+            else:
+                # Connection is not connected, call Disconnect() to destroy it
+                conn.Disconnect()
+        except dbus.DBusException, e:
+            pass
 
 def exec_test(fun, params=None, protocol=None, timeout=None,
-              authenticator=None):
+              authenticator=None, num_instances=1):
     reactor.callWhenRunning(
-        exec_test_deferred, fun, params, protocol, timeout, authenticator)
+        exec_test_deferred, fun, params, protocol, timeout, authenticator, num_instances)
     reactor.run()
 
 # Useful routines for server-side vCard handling

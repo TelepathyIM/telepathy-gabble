@@ -285,32 +285,19 @@ sender_each (WockyXmppNode *node,
 
   if (!tp_strdiff ("1", wocky_xmpp_node_get_attribute (node, "unread")))
     {
-      GType addr_type = GABBLE_STRUCT_TYPE_MAIL_ADDRESS;
-      GValue sender = {0};
+      GValueArray *sender;
       const gchar *name;
       const gchar *address;
 
-      g_value_init (&sender, addr_type);
-      g_value_set_static_boxed (&sender,
-          dbus_g_type_specialized_construct (addr_type));
-
       name = wocky_xmpp_node_get_attribute (node, "name");
-
-      if (name == NULL)
-        name = "";
-
       address = wocky_xmpp_node_get_attribute (node, "address");
 
-      if (address == NULL)
-        address = "";
+      sender = tp_value_array_build (2,
+          G_TYPE_STRING, name ? name : "",
+          G_TYPE_STRING, address ? address : "",
+          G_TYPE_INVALID);
 
-      dbus_g_type_struct_set (&sender,
-          0, name,
-          1, address,
-          G_MAXUINT);
-
-      g_ptr_array_add (senders, g_value_get_boxed (&sender));
-      g_value_unset (&sender);
+      g_ptr_array_add (senders, sender);
     }
   return TRUE;
 }

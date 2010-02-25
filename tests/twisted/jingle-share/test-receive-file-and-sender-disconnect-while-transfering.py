@@ -28,8 +28,7 @@ class SendFileAndDisconnect (SendFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.request_ft_channel, self.create_ft_channel,
-                         self.provide_file, None,
+                         self.request_ft_channel, self.provide_file, None,
 
                          self.send_file, self.wait_for_completion,
                          self.disconnect, None,

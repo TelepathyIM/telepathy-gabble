@@ -14,8 +14,7 @@ class ReceiveFileDecline(ReceiveFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.check_new_channel, self.create_ft_channel,
-                         self.close_and_check, self.done]
+                         self.check_new_channel, self.close_and_check, self.done]
 
     def close_and_check(self):
         self.channel.Close()
@@ -49,8 +48,7 @@ class SendFileDeclined (SendFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.request_ft_channel, self.create_ft_channel,
-                         self.provide_file, None,
+                         self.request_ft_channel, self.provide_file, None,
 
                          self.check_declined, self.close_channel, self.done]
 

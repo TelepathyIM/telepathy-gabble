@@ -14,7 +14,7 @@ class ReceiveFileStopped(ReceiveFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.check_new_channel, self.create_ft_channel, None,
+                         self.check_new_channel, None,
 
                          self.check_stopped, None,
 
@@ -51,8 +51,7 @@ class SendFileAndClose (SendFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.request_ft_channel, self.create_ft_channel,
-                         self.provide_file, None,
+                         self.request_ft_channel, self.provide_file, None,
 
                          self.close_and_check, None,
 

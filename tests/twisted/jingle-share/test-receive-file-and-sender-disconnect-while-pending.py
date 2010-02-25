@@ -38,8 +38,8 @@ class SendFileAndDisconnect (SendFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.request_ft_channel, self.create_ft_channel,
-                         self.provide_file, self.disconnect, None,
+                         self.request_ft_channel, self.provide_file,
+                         self.disconnect, None,
 
                          self.close_channel, self.done]
 

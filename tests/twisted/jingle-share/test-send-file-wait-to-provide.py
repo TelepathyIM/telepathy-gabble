@@ -16,8 +16,7 @@ class SendFileAndWaitToProvide (SendFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.request_ft_channel, self.create_ft_channel,
-                         self.check_pending_state, None,
+                         self.request_ft_channel, self.check_pending_state, None,
 
                          self.check_accepted_state, self.provide_file,
                          self.send_file, self.wait_for_completion, None,

@@ -177,7 +177,7 @@ class ReceiveFileTest(FileTransferTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.check_new_channel, self.create_ft_channel,
+                         self.check_new_channel,
                          self.accept_file, None,
 
                          self.receive_file, None,
@@ -221,6 +221,8 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.FT_INITIAL_OFFSET] == 0, props
 
         self.ft_path = path
+
+        self.create_ft_channel()
 
     def accept_file(self):
         self.address = self.ft_channel.AcceptFile(self.address_type,
@@ -296,8 +298,7 @@ class SendFileTest(FileTransferTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.request_ft_channel, self.create_ft_channel,
-                         self.provide_file, None,
+                         self.request_ft_channel, self.provide_file, None,
 
                          self.send_file, self.wait_for_completion, None,
 
@@ -368,6 +369,29 @@ class SendFileTest(FileTransferTest):
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
 
+        self.create_ft_channel()
+
+        self.open = False
+        self.offset_defined = False
+        # In case a unit test accepts the FT before we ProvideFile
+        # then the ProvideFile will result in an OPEN state with reason REQUESTED
+        self.open_reason = cs.FT_STATE_CHANGE_REASON_NONE
+        def ft_state_changed_cb(state, reason):
+            if state == cs.FT_STATE_OPEN:
+                self.open = True
+            elif state == cs.FT_STATE_ACCEPTED:
+                self.open_reason = cs.FT_STATE_CHANGE_REASON_REQUESTED
+
+        def initial_offset_defined_cb(offset):
+            self.offset_defined = True
+            assert offset == 0, offset
+
+        self.ft_channel.connect_to_signal('FileTransferStateChanged',
+                                          ft_state_changed_cb)
+        self.ft_channel.connect_to_signal('InitialOffsetDefined',
+                                          initial_offset_defined_cb)
+
+
         # Make sure the file transfer is of type jingle-share
         event = self.q.expect('stream-iq', stream=self.stream,
                               query_name = 'session',
@@ -378,20 +402,6 @@ class SendFileTest(FileTransferTest):
             description_node.uri
 
     def provide_file(self):
-        self.open = False
-        self.offset_defined = False
-        def ft_state_changed_cb(state, reason):
-            if state == cs.FT_STATE_OPEN:
-                self.open = True
-        def initial_offset_defined_cb(offset):
-            self.offset_defined = True
-            assert offset == 0, offset
-
-        self.ft_channel.connect_to_signal('FileTransferStateChanged',
-                                          ft_state_changed_cb)
-        self.ft_channel.connect_to_signal('InitialOffsetDefined',
-                                          initial_offset_defined_cb)
-
         # try to accept our outgoing file transfer
         try:
             self.ft_channel.AcceptFile(self.address_type,
@@ -412,7 +422,7 @@ class SendFileTest(FileTransferTest):
         if self.open is False:
             self.q.expect('dbus-signal', signal='FileTransferStateChanged',
                           path=self.channel.__dbus_object_path__,
-                          args=[cs.FT_STATE_OPEN, cs.FT_STATE_CHANGE_REASON_NONE])
+                          args=[cs.FT_STATE_OPEN, self.open_reason])
 
         assert self.offset_defined == True
 

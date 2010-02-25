@@ -13,8 +13,8 @@ class SendFileBeforeAccept(SendFileTest):
 
                          self.wait_for_ft_caps, None,
 
-                         self.request_ft_channel, self.create_ft_channel,
-                         self.provide_file, self.set_open, self.send_file, None,
+                         self.request_ft_channel, self.provide_file,
+                         self.set_open, self.send_file, None,
 
                          self.wait_for_completion, None,
 

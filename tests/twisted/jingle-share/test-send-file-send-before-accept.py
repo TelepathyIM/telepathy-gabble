@@ -22,6 +22,7 @@ class SendFileBeforeAccept(SendFileTest):
 
     def set_open(self):
         self.open = True
+        self.offset_defined = True
 
 if __name__ == '__main__':
     exec_file_transfer_test(SendFileBeforeAccept, ReceiveFileTest)

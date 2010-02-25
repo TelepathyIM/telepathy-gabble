@@ -981,7 +981,8 @@ patch_vcard_node_foreach (gpointer k, gpointer v, gpointer user_data)
     lm_message_node_add_child (node, key, value);
 }
 
-static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src);
+static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src,
+    const gchar *exclude);
 
 static LmMessage *
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
@@ -1006,31 +1007,25 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
       node = lm_message_node_get_child (old_vcard, "PHOTO");
 
       if (node != NULL)
-        vcard_copy (vcard_node, node);
+        vcard_copy (vcard_node, node, NULL);
 
       return msg;
     }
 
-  vcard_node = vcard_copy (msg->node, old_vcard);
-
-  node = lm_message_node_get_child (vcard_node, info->element_name);
-
-  if (info->edit_type == GABBLE_VCARD_EDIT_DELETE)
+  if (info->edit_type == GABBLE_VCARD_EDIT_APPEND)
     {
-      while (node != NULL)
-        {
-          lm_message_node_unlink (node, vcard_node);
-          lm_message_node_unref (node);
-          node = lm_message_node_get_child (vcard_node, info->element_name);
-        }
-      return msg;
+      /* appending: keep all child nodes */
+      vcard_node = vcard_copy (msg->node, old_vcard, NULL);
+    }
+  else
+    {
+      /* replacing or deleting: exclude all matching child nodes from
+       * copying */
+      vcard_node = vcard_copy (msg->node, old_vcard, info->element_name);
     }
 
-  if (node && info->edit_type != GABBLE_VCARD_EDIT_APPEND)
-    lm_message_node_set_value (node, info->element_value);
-  else
-    node = lm_message_node_add_child (vcard_node,
-        info->element_name, info->element_value);
+  node = lm_message_node_add_child (vcard_node,
+      info->element_name, info->element_value);
 
   for (iter = info->children; iter != NULL; iter = iter->next)
     {
@@ -1047,7 +1042,9 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
  * Note that this function doesn't copy any attributes other than
  * xmlns, because LM provides no way to iterate over attributes. Thanks, LM. */
 static LmMessageNode *
-vcard_copy (LmMessageNode *parent, LmMessageNode *src)
+vcard_copy (LmMessageNode *parent,
+    LmMessageNode *src,
+    const gchar *exclude)
 {
     LmMessageNode *new = lm_message_node_add_child (parent, src->name,
         lm_message_node_get_value (src));
@@ -1059,7 +1056,12 @@ vcard_copy (LmMessageNode *parent, LmMessageNode *src)
       lm_message_node_set_attribute (new, "xmlns", xmlns);
 
     for (i = node_iter (src); i; i = node_iter_next (i))
-      vcard_copy (new, node_iter_data (i));
+      {
+        LmMessageNode *child = node_iter_data (i);
+
+        if (tp_strdiff (child->name, exclude))
+          vcard_copy (new, child, NULL);
+      }
 
     return new;
 }

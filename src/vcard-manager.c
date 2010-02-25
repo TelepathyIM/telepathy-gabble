@@ -858,6 +858,8 @@ observe_vcard (GabbleConnection *conn,
         }
     }
 
+  g_signal_emit (G_OBJECT (manager), signals[VCARD_UPDATE], 0, handle);
+
   old_alias = gabble_vcard_manager_get_cached_alias (manager, handle);
 
   if (old_alias != NULL && !tp_strdiff (old_alias, alias))
@@ -887,8 +889,6 @@ observe_vcard (GabbleConnection *conn,
 
   if ((old_alias != NULL) || (alias != NULL))
       g_signal_emit (G_OBJECT (manager), signals[NICKNAME_UPDATE], 0, handle);
-
-  g_signal_emit (G_OBJECT (manager), signals[VCARD_UPDATE], 0, handle);
 }
 
 /* Called when a pre-set get request failed, or when a set request succeeded

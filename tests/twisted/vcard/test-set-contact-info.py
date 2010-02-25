@@ -24,8 +24,7 @@ def test(q, bus, conn, stream):
     call_async(q, conn.ContactInfo, 'SetContactInfo',
                [(u'fn', [], [u'Wee Ninja']),
                 (u'n', ['language=ja'], [u'Ninja', u'Wee', u'', u'', u'-san']),
-                (u'org', [], ['Collabora, Ltd.',
-                    'Human Resources; Company Policy Enforcement']),
+                (u'org', [], ['Collabora, Ltd.']),
                 (u'adr', ['type=work','type=postal','type=parcel'],
                     ['', '', '11 Kings Parade', 'Cambridge', 'Cambridgeshire',
                         'CB2 1SJ', 'UK']),
@@ -73,8 +72,7 @@ def test(q, bus, conn, stream):
     assertEquals('Collabora, Ltd.',
             xpath.queryForString('/iq/vCard/ORG/ORGNAME',
                 vcard_set_event.stanza))
-    assertEquals('Human Resources; Company Policy Enforcement',
-            xpath.queryForString('/iq/vCard/ORG/ORGUNIT',
+    assertEquals(None, xpath.queryForNodes('/iq/vCard/ORG/ORGUNIT',
                 vcard_set_event.stanza))
 
     assertLength(1, xpath.queryForNodes('/iq/vCard/LABEL',
@@ -143,16 +141,17 @@ def test(q, bus, conn, stream):
     vcard_set_event = q.expect('stream-iq', iq_type='set',
             query_ns='vcard-temp', query_name='vCard')
 
-    # FIXME: ORG is currently just omitted if you try to have more than one
-    # ORGUNIT
-    #assertLength(1, xpath.queryForNodes('/iq/vCard/ORG',
-    #    vcard_set_event.stanza))
-    #assertEquals('Collabora, Ltd.',
-    #        xpath.queryForString('/iq/vCard/ORG/ORGNAME',
-    #            vcard_set_event.stanza))
-    #assertEquals('Human Resources; Company Policy Enforcement',
-    #        xpath.queryForString('/iq/vCard/ORG/ORGUNIT',
-    #            vcard_set_event.stanza))
+    assertLength(1, xpath.queryForNodes('/iq/vCard/ORG',
+        vcard_set_event.stanza))
+    assertEquals('Collabora, Ltd.',
+            xpath.queryForString('/iq/vCard/ORG/ORGNAME',
+                vcard_set_event.stanza))
+    units = xpath.queryForNodes('/iq/vCard/ORG/ORGUNIT',
+            vcard_set_event.stanza)
+    assertLength(2, units)
+    for i, exp_unit in enumerate(['Human Resources',
+            'Company Policy Enforcement']):
+        assertEquals(exp_unit, str(units[i]))
 
     assertLength(1, xpath.queryForNodes('/iq/vCard/TEL',
         vcard_set_event.stanza))

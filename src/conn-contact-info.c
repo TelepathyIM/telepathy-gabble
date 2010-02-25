@@ -458,10 +458,10 @@ gabble_connection_get_contact_info (
       if (gabble_vcard_manager_get_cached (self->vcard_manager,
                                            contact, &vcard_node))
         {
-          GPtrArray *contact_info;
+          GPtrArray *contact_info = _parse_vcard (vcard_node, NULL);
 
           /* we have the cached vcard but it cannot be parsed, skipping */
-          if ((contact_info = _parse_vcard (vcard_node, NULL)) == NULL)
+          if (contact_info == NULL)
             {
               DEBUG ("contact %d vcard is cached but cannot be parsed, "
                      "skipping.", contact);
@@ -526,7 +526,9 @@ _return_from_request_contact_info (WockyXmppNode *vcard_node,
       return;
     }
 
-  if ((contact_info = _parse_vcard (vcard_node, &error)) == NULL)
+  contact_info = _parse_vcard (vcard_node, &error);
+
+  if (contact_info == NULL)
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

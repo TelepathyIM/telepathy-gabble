@@ -700,10 +700,24 @@ status_changed_cb (GObject *object,
       alias_src = _gabble_connection_get_cached_alias (conn,
                                                        base->self_handle,
                                                        &alias);
+
       if (alias_src >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
-        priv->edits = g_slist_append (priv->edits,
-            gabble_vcard_manager_edit_info_new ("NICKNAME", alias,
-                GABBLE_VCARD_EDIT_REPLACE, NULL));
+        {
+          /* Same logic as in gabble_vcard_manager_edit_alias, which we
+           * don't use here to avoid a duplicate 'get' request */
+          if (gabble_vcard_manager_can_use_vcard_field (self, "NICKNAME"))
+            {
+              priv->edits = g_slist_append (priv->edits,
+                  gabble_vcard_manager_edit_info_new ("NICKNAME", alias,
+                      GABBLE_VCARD_EDIT_REPLACE, NULL));
+            }
+          else
+            {
+              priv->edits = g_slist_append (priv->edits,
+                  gabble_vcard_manager_edit_info_new ("FN", alias,
+                      GABBLE_VCARD_EDIT_REPLACE, NULL));
+            }
+        }
 
       g_free (alias);
 
@@ -1534,6 +1548,28 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
 
   return gabble_vcard_manager_edit (self, timeout, callback,
       user_data, object, edits, FALSE);
+}
+
+GabbleVCardManagerEditRequest *
+gabble_vcard_manager_edit_alias (GabbleVCardManager *self,
+    guint timeout,
+    GabbleVCardManagerEditCb callback,
+    gpointer user_data,
+    GObject *object,
+    const gchar *new_alias)
+{
+  if (gabble_vcard_manager_can_use_vcard_field (self, "NICKNAME"))
+    {
+      return gabble_vcard_manager_edit_one (self, timeout, callback, user_data,
+          object, "NICKNAME", new_alias);
+    }
+  else
+    {
+      /* Google Talk servers won't let us set a NICKNAME; recover by
+       * setting the FN */
+      return gabble_vcard_manager_edit_one (self, timeout, callback, user_data,
+          object, "FN", new_alias);
+    }
 }
 
 /* Add a pending request to edit the vCard. When it finishes, call the given

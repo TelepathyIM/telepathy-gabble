@@ -149,5 +149,30 @@ def test(q, bus, conn, stream):
         assertLength(1, xpath.queryForNodes('/TEL/VOICE', tel))
         assertLength(1, xpath.queryForNodes('/TEL/WORK', tel))
 
+    acknowledge_iq(stream, vcard_set_event.stanza)
+    q.expect_many(
+            EventPattern('dbus-return', method='SetContactInfo'),
+            EventPattern('dbus-signal', signal='ContactInfoChanged'),
+            )
+
+    # Finally, the ninja decides that publishing his contact details is not
+    # very ninja-like, and decides to be anonymous.
+    call_async(q, conn.ContactInfo, 'SetContactInfo', [])
+
+    event = q.expect('stream-iq', iq_type='get', query_ns='vcard-temp',
+        query_name='vCard')
+    acknowledge_iq(stream, event.stanza)
+
+    vcard_set_event = q.expect('stream-iq', iq_type='set',
+            query_ns='vcard-temp', query_name='vCard')
+    assertEquals(None, xpath.queryForNodes('/iq/vCard/*',
+        vcard_set_event.stanza))
+
+    acknowledge_iq(stream, vcard_set_event.stanza)
+    q.expect_many(
+            EventPattern('dbus-return', method='SetContactInfo'),
+            EventPattern('dbus-signal', signal='ContactInfoChanged'),
+            )
+
 if __name__ == '__main__':
     exec_test(test)

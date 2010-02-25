@@ -537,6 +537,20 @@ gabble_connection_request_contact_info (GabbleSvcConnectionInterfaceContactInfo 
         _request_vcard_cb, context, NULL);
 }
 
+static GabbleVCardManagerEditInfo *
+conn_contact_info_new_edit (const VCardField *field,
+    const gchar *value)
+{
+  GabbleVCardEditType edit_type = GABBLE_VCARD_EDIT_APPEND;
+
+  if (field->behaviour == FIELD_STRUCTURED_ONCE ||
+      field->behaviour == FIELD_SIMPLE_ONCE)
+    edit_type = GABBLE_VCARD_EDIT_REPLACE;
+
+  return gabble_vcard_manager_edit_info_new (field->xmpp_name, value,
+      edit_type, NULL);
+}
+
 static GSList *
 _insert_edit_info (GSList *edits,
                    const VCardField *field,
@@ -548,10 +562,6 @@ _insert_edit_info (GSList *edits,
   guint i;
   guint n_field_values = g_strv_length ((gchar **) field_values);
   guint n_elements = g_strv_length ((gchar **) field->elements);
-  GabbleVCardEditType edit_type = GABBLE_VCARD_EDIT_APPEND;
-
-  if (field->behaviour == FIELD_STRUCTURED_ONCE)
-    edit_type = GABBLE_VCARD_EDIT_REPLACE;
 
   if (n_field_values != n_elements)
     {
@@ -559,8 +569,7 @@ _insert_edit_info (GSList *edits,
       return edits;
     }
 
-  edit_info = gabble_vcard_manager_edit_info_new (field->xmpp_name, NULL,
-      edit_type, NULL);
+  edit_info = conn_contact_info_new_edit (field, NULL);
 
   for (p = field_params; *p != NULL; ++p)
     {
@@ -668,8 +677,6 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         case FIELD_SIMPLE_ONCE:
             {
               GabbleVCardManagerEditInfo *edit_info;
-              gchar *tmp;
-              GabbleVCardEditType edit_type = GABBLE_VCARD_EDIT_APPEND;
 
               if (n_field_values != 1)
                 {
@@ -678,13 +685,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   continue;
                 }
 
-              if (field->behaviour == FIELD_SIMPLE_ONCE)
-                edit_type = GABBLE_VCARD_EDIT_REPLACE;
-
-              tmp = g_ascii_strup (field_name, -1);
-              edit_info = gabble_vcard_manager_edit_info_new (tmp,
-                  field_values[0], edit_type, NULL);
-              g_free (tmp);
+              edit_info = conn_contact_info_new_edit (field, field_values[0]);
               edits = g_slist_append (edits, edit_info);
             }
           break;

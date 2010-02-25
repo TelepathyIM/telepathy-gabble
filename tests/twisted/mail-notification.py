@@ -199,6 +199,23 @@ def test_google_featured(q, bus, conn, stream):
     assert stored_mail2['content'] == thread2_snippet
     assert stored_mail2['senders'] == thread2_senders
 
+    # Check the we can get an URL for a specific mail
+    mail_url1 = conn.MailNotification.RequestMailURL(
+            stored_mail1['id'],
+            stored_mail1['url-data']);
+
+    mail_url2 = conn.MailNotification.RequestMailURL(
+            stored_mail2['id'],
+            stored_mail2['url-data']);
+    
+    assert mail_url1[0] == thread1_url
+    assert mail_url1[1] == 0
+    assert len(mail_url1[2]) == 0
+
+    assert mail_url2[0] == thread2_url
+    assert mail_url2[1] == 0
+    assert len(mail_url2[2]) == 0
+
     # Now we want to validate the update mechanism. Thus we wil send an
     # new-mail event, wait for gabble to query the latest mail and reply
     # a different list.
@@ -261,11 +278,7 @@ def test_google_featured(q, bus, conn, stream):
     assert mails_added[0]['id'] != mails_added[1]['id']
     assert len(mails_removed) == 1
     assert mails_removed[0] == thread2_id
-
-    # Check the we can get an URL for a specific mail
-    mail_url = conn.MailNotification.RequestMailURL(thread1_id,
-            mails_added[0]['url-data']);
-
+ 
     # Unsubscribe and check that all data has been dropped
     conn.MailNotification.Unsubscribe()
     check_properties_empty(conn, expected_flags)

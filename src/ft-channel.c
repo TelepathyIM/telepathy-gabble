@@ -1191,6 +1191,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
         break;
       case JS_STATE_ACTIVE:
         channel_open (self);
+        self->priv->remote_accepted = TRUE;
         break;
       case JS_STATE_ENDED:
         /* Do nothing, let the terminated signal set the correct state

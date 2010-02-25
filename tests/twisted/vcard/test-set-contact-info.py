@@ -4,11 +4,23 @@ Test ContactInfo setting support.
 """
 
 from servicetest import (EventPattern, call_async, assertEquals, assertLength,
-        assertContains)
-from gabbletest import exec_test, acknowledge_iq
+        assertContains, sync_dbus)
+from gabbletest import exec_test, acknowledge_iq, sync_stream
 import constants as cs
 
 from twisted.words.xish import xpath
+from twisted.words.protocols.jabber.client import IQ
+
+def repeat_previous_vcard(stream, iq, previous):
+    result = IQ(stream, 'result')
+    result['id'] = iq['id']
+    to = iq.getAttribute('to')
+
+    if to is not None:
+        result["from"] = to
+
+    result.addRawXml(previous.firstChildElement().toXml())
+    stream.send(result)
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -16,8 +28,11 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'))
-    # FIXME: this is racy: the vCard get sometimes happens before we want it to
+            query_name='vCard'),
+        )
+
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
 
     acknowledge_iq(stream, event.stanza)
 
@@ -110,16 +125,9 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-signal', signal='AliasesChanged',
                 predicate=lambda e: e.args[0][0][1] == 'HR Ninja'),
             EventPattern('dbus-signal', signal='ContactInfoChanged'),
-            # FIXME: check the args of ContactInfoChanged. We expect
-            # language=ja to have been dropped (doesn't actually happen yet),
-            # and the type=foo parameters might have been re-ordered
             )
 
-    # Following a reshuffle, Company Policy Enforcement is declared to be
-    # a sub-department within Human Resources, and the ninja no longer
-    # qualifies for a company phone
-    call_async(q, conn.ContactInfo, 'SetContactInfo',
-               [(u'fn', [], [u'Wee Ninja']),
+    vcard_in = [(u'fn', [], [u'Wee Ninja']),
                 (u'n', ['language=ja'], [u'Ninja', u'Wee', u'', u'', u'-san']),
                 (u'org', [], ['Collabora, Ltd.',
                     'Human Resources', 'Company Policy Enforcement']),
@@ -132,14 +140,22 @@ def test(q, bus, conn, stream):
                 (u'email', ['type=internet'], ['wee.ninja@example.com']),
                 (u'url', [], ['http://www.thinkgeek.com/geektoys/plush/8823/']),
                 (u'nickname', [], [u'HR Ninja']),
-                (u'nickname', [], [u'Enforcement Ninja'])])
+                (u'nickname', [], [u'Enforcement Ninja'])]
+
+    # Following a reshuffle, Company Policy Enforcement is declared to be
+    # a sub-department within Human Resources, and the ninja no longer
+    # qualifies for a company phone
+    call_async(q, conn.ContactInfo, 'SetContactInfo', vcard_in)
 
     event = q.expect('stream-iq', iq_type='get', query_ns='vcard-temp',
         query_name='vCard')
-    acknowledge_iq(stream, event.stanza)
+    repeat_previous_vcard(stream, event.stanza, vcard_set_event.stanza)
 
-    vcard_set_event = q.expect('stream-iq', iq_type='set',
-            query_ns='vcard-temp', query_name='vCard')
+    _, vcard_set_event = q.expect_many(
+            EventPattern('dbus-signal', signal='ContactInfoChanged'),
+            EventPattern('stream-iq', iq_type='set', query_ns='vcard-temp',
+                query_name='vCard'),
+            )
 
     assertLength(1, xpath.queryForNodes('/iq/vCard/ORG',
         vcard_set_event.stanza))
@@ -163,10 +179,24 @@ def test(q, bus, conn, stream):
         assertLength(1, xpath.queryForNodes('/TEL/WORK', tel))
 
     acknowledge_iq(stream, vcard_set_event.stanza)
-    q.expect_many(
+    _, event = q.expect_many(
             EventPattern('dbus-return', method='SetContactInfo'),
             EventPattern('dbus-signal', signal='ContactInfoChanged'),
             )
+
+    vcard_out = event.args[1][:]
+
+    # the only change we expect to see is that the language=ja disappears,
+    # perhaps the fields are re-ordered, and perhaps the types on the 'tel' are
+    # re-ordered
+
+    assertEquals(vcard_in[1][0], 'n')
+    del vcard_in[1][1][:]
+    assertEquals(vcard_in[4][0], 'tel')
+    vcard_in[4][1].sort()
+    assertEquals(vcard_out[4][0], 'tel')
+    vcard_out[4][1].sort()
+    assertEquals(vcard_in, vcard_out)
 
     # Finally, the ninja decides that publishing his contact details is not
     # very ninja-like, and decides to be anonymous. The first (most important)
@@ -176,7 +206,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', iq_type='get', query_ns='vcard-temp',
         query_name='vCard')
-    acknowledge_iq(stream, event.stanza)
+    repeat_previous_vcard(stream, event.stanza, vcard_set_event.stanza)
 
     vcard_set_event = q.expect('stream-iq', iq_type='set',
             query_ns='vcard-temp', query_name='vCard')

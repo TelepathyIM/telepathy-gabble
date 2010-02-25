@@ -82,7 +82,8 @@ struct _GabbleVCardManager {
 typedef enum {
     GABBLE_VCARD_EDIT_REPLACE,
     GABBLE_VCARD_EDIT_APPEND,
-    GABBLE_VCARD_EDIT_DELETE
+    GABBLE_VCARD_EDIT_DELETE,
+    GABBLE_VCARD_EDIT_CLEAR
 } GabbleVCardEditType;
 
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,

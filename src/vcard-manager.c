@@ -83,7 +83,9 @@ struct _GabbleVCardManagerEditInfo {
 
     /* If REPLACE, the first element with this name (if any) will be updated;
      * if APPEND, an element with this name will be added;
-     * if DELETE, all elements with this name will be removed.
+     * if DELETE, all elements with this name will be removed;
+     * if CLEAR, everything except PHOTO will be deleted, in preparation for a
+     *  SetContactInfo operation
      */
     GabbleVCardEditType edit_type;
 };
@@ -133,11 +135,6 @@ struct _GabbleVCardManagerPrivate
 
   /* list of pending edits (GabbleVCardManagerEditInfo structures) */
   GSList *edits;
-
-  /* Used by ContactInfo.SetContactInfo in order to replace the current vcard.
-   * This is needed cause there is no way to know which fields to update when
-   * there are multiple fields with the same name. */
-  gboolean replace_vcard;
 
   /* Contains RequestPipelineItem for our SET vCard request, or NULL if we
    * don't have SET request in the pipeline already. At most one SET request
@@ -998,6 +995,22 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
 
+  if (info->edit_type == GABBLE_VCARD_EDIT_CLEAR)
+    {
+      /* start from a clean slate... */
+      vcard_node = lm_message_node_add_child (msg->node, "vCard", "");
+      lm_message_node_set_attribute (vcard_node, "xmlns", "vcard-temp");
+
+      /* ... but as a special case, the photo gets copied in from the old
+       * vCard, because SetContactInfo doesn't touch photos */
+      node = lm_message_node_get_child (old_vcard, "PHOTO");
+
+      if (node != NULL)
+        vcard_copy (vcard_node, node);
+
+      return msg;
+    }
+
   vcard_node = vcard_copy (msg->node, old_vcard);
 
   node = lm_message_node_get_child (vcard_node, info->element_name);
@@ -1057,6 +1070,13 @@ vcard_node_changed (GabbleConnection *conn,
                     GabbleVCardManagerEditInfo *edit)
 {
   LmMessageNode *node;
+
+  if (edit->edit_type == GABBLE_VCARD_EDIT_CLEAR)
+    {
+      /* for now we assume that a CLEAR is always a difference */
+      DEBUG ("vcard to be cleared, vcard needs update");
+      return TRUE;
+    }
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
@@ -1188,26 +1208,6 @@ manager_patch_vcard (GabbleVCardManager *self,
 
   DEBUG("patching vcard");
 
-  if (priv->replace_vcard)
-    {
-      LmMessageNode *node;
-      LmMessageNode *patched_vcard;
-
-      msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-          LM_MESSAGE_SUB_TYPE_SET);
-
-      patched_vcard = lm_message_node_add_child (msg->node, "vCard", "");
-      lm_message_node_set_attribute (patched_vcard, "xmlns", "vcard-temp");
-
-      /* let's special case PHOTO here, as we don't parse PHOTO in contact-info,
-       * so replacing the PHOTO here wouldn't be correct */
-      node = lm_message_node_get_child (vcard_node, "PHOTO");
-      if (node)
-        vcard_copy (patched_vcard, node);
-
-      vcard_node = patched_vcard;
-    }
-
   /* Apply any unsent edits to the patched vCard */
   for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
     {
@@ -1244,7 +1244,6 @@ out:
       NULL);
   g_slist_free (priv->edits);
   priv->edits = NULL;
-  priv->replace_vcard = FALSE;
 
   /* Current edit requests are in the pipeline, remember it so we
    * know which ones we may complete when the SET returns */
@@ -1569,17 +1568,16 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
           NULL, NULL);
     }
 
-  /* set it to true and let manager_patch_vcard set it to FALSE when finished */
   if (replace_vcard)
     {
-      priv->replace_vcard = TRUE;
-      g_slist_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
-          NULL);
-      g_slist_free (priv->edits);
-      priv->edits = edits;
+      /* If we're replacing the vCard, start from a "nearly-clean" slate
+       * (remove everything except the photo) */
+      priv->edits = g_slist_append (priv->edits,
+          gabble_vcard_manager_edit_info_new (NULL, NULL,
+            GABBLE_VCARD_EDIT_CLEAR, NULL));
     }
-  else
-    priv->edits = g_slist_concat (priv->edits, edits);
+
+  priv->edits = g_slist_concat (priv->edits, edits);
 
   req = g_slice_new (GabbleVCardManagerEditRequest);
   req->manager = self;

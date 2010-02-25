@@ -31,6 +31,7 @@
 
 #include "base64.h"
 #include "conn-aliasing.h"
+#include "conn-contact-info.h"
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
@@ -1051,7 +1052,7 @@ static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src,
 static LmMessage *
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
     LmMessageNode *old_vcard,
-    GabbleConnectionFeatures features)
+    GabbleVCardManager *vcard_manager)
 {
   LmMessage *msg;
   LmMessageNode *vcard_node;
@@ -1059,17 +1060,14 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   GList *iter;
   gboolean maybe_changed = FALSE;
 
-  if ((features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) != 0 &&
-        (info->edit_type == GABBLE_VCARD_EDIT_APPEND ||
-         info->edit_type == GABBLE_VCARD_EDIT_REPLACE))
+  if (info->edit_type == GABBLE_VCARD_EDIT_APPEND ||
+      info->edit_type == GABBLE_VCARD_EDIT_REPLACE)
     {
-      /* only N, FN, PHOTO can be set on GTalk servers */
-      if (tp_strdiff (info->element_name, "N") &&
-          tp_strdiff (info->element_name, "FN") &&
-          tp_strdiff (info->element_name, "PHOTO"))
+      if (!gabble_vcard_manager_can_use_vcard_field (vcard_manager,
+            info->element_name))
         {
-          DEBUG ("ignoring vcard node %s because this is a Google server",
-              info->element_name);
+          DEBUG ("ignoring vcard node %s because this server doesn't "
+              "support it", info->element_name);
           return NULL;
         }
     }
@@ -1207,7 +1205,7 @@ manager_patch_vcard (GabbleVCardManager *self,
   for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
     {
       LmMessage *new_msg = gabble_vcard_manager_edit_info_apply (
-          edit_link->data, vcard_node, priv->connection->features);
+          edit_link->data, vcard_node, self);
 
       /* edit_info_apply returns NULL if nothing happened */
       if (new_msg == NULL)
@@ -1810,4 +1808,23 @@ gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info)
   g_list_foreach (info->children, (GFunc) gabble_vcard_child_free, NULL);
   g_list_free (info->children);
   g_slice_free (GabbleVCardManagerEditInfo, info);
+}
+
+gboolean
+gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
+    const gchar *field_name)
+{
+  if (self->priv->connection->features &
+      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+    {
+      /* Google's server only allows N, FN and PHOTO */
+      if (tp_strdiff (field_name, "N") &&
+          tp_strdiff (field_name, "FN") &&
+          tp_strdiff (field_name, "PHOTO"))
+        {
+          return FALSE;
+        }
+    }
+
+  return TRUE;
 }

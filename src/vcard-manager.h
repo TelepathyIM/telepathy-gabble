@@ -154,6 +154,9 @@ void gabble_vcard_manager_edit_info_add_child (
 
 void gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info);
 
+gboolean gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
+    const gchar *field_name);
+
 /* For unit tests only */
 void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);
 void gabble_vcard_manager_set_default_request_timeout (guint timeout);

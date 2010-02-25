@@ -985,10 +985,9 @@ patch_vcard_node_foreach (gpointer k, gpointer v, gpointer user_data)
 }
 
 static void
-patch_vcard_foreach (gpointer data, gpointer user_data)
+gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
+    LmMessageNode *vcard_node)
 {
-  GabbleVCardManagerEditInfo *info = data;
-  LmMessageNode *vcard_node = user_data;
   LmMessageNode *node;
   GList *iter;
 
@@ -1199,7 +1198,10 @@ manager_patch_vcard (GabbleVCardManager *self,
     patched_vcard = vcard_copy (msg->node, vcard_node);
 
   /* Apply any unsent edits to the patched vCard */
-  g_slist_foreach (priv->edits, patch_vcard_foreach, patched_vcard);
+  for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
+    {
+      gabble_vcard_manager_edit_info_apply (edit_link->data, patched_vcard);
+    }
 
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the

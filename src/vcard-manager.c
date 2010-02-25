@@ -966,6 +966,85 @@ replace_reply_cb (GabbleConnection *conn,
     }
 }
 
+/* This function must return TRUE for any significant change, but may also
+ * return TRUE for insignificant changes, as long as they aren't commonly done
+ * (NICKNAME, PHOTO and in future FN are the problematic ones). */
+static gboolean
+gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
+    LmMessageNode *old_vcard)
+{
+  gboolean seen = FALSE;
+  NodeIter i;
+
+  for (i = node_iter (old_vcard); i != NULL; i = node_iter_next (i))
+    {
+      LmMessageNode *node = node_iter_data (i);
+      const gchar *value;
+      const gchar *new_value;
+
+      /* skip over nodes that aren't the one we want to edit */
+      if (tp_strdiff (info->element_name, node->name))
+        continue;
+
+      /* if there are >= 2 copies of this field, we're going to reduce that
+       * to 1 */
+      if (seen)
+        return TRUE;
+
+      /* consider NULL and "" to be different representations for the
+       * same thing */
+      value = lm_message_node_get_value (node);
+      new_value = info->element_value;
+
+      if (value == NULL)
+        value = "";
+
+      if (new_value == NULL)
+        new_value = "";
+
+      if (tp_strdiff (value, new_value))
+        return TRUE;
+
+      /* we assume that a change to child nodes is always significant,
+       * unless it's the <PHOTO/> */
+      if (!tp_strdiff (node->name, "PHOTO"))
+        {
+          /* For the special case of PHOTO, we know that the child nodes
+           * are only meant to appear once, so we can be more aggressive
+           * about avoiding unnecessary edits: assume that the PHOTO on
+           * the server doesn't have extra children, and that one matching
+           * child is enough. */
+          GList *child_iter;
+
+          for (child_iter = info->children;
+              child_iter != NULL;
+              child_iter = child_iter->next)
+            {
+              GabbleVCardChild *child = child_iter->data;
+              LmMessageNode *child_node = lm_message_node_get_child (node,
+                  child->key);
+
+              if (child_node == NULL ||
+                  tp_strdiff (lm_message_node_get_value (child_node),
+                    child->value))
+                {
+                  return TRUE;
+                }
+            }
+        }
+      else
+        {
+          if (info->children != NULL)
+            return TRUE;
+        }
+    }
+
+  /* if there are no copies of this field, we're going to add one; otherwise,
+   * seen == TRUE implies we've seen exactly one copy, and it matched what
+   * we want */
+  return !seen;
+}
+
 static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src,
     const gchar *exclude, gboolean *exclude_mattered);
 
@@ -993,6 +1072,18 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
               info->element_name);
           return NULL;
         }
+    }
+
+  /* A special case for replacing one field with another: we detect no-op
+   * changes more actively, because we make changes of this type quite
+   * frequently (on every login), and as well as wasting bandwidth, setting
+   * the vCard too often can cause a memory leak in OpenFire (see fd.o#25341).
+   */
+  if (info->edit_type == GABBLE_VCARD_EDIT_REPLACE &&
+      ! gabble_vcard_manager_replace_is_significant (info, old_vcard))
+    {
+      DEBUG ("ignoring no-op vCard %s replacement", info->element_name);
+      return NULL;
     }
 
   msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,

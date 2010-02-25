@@ -278,6 +278,13 @@ def test_google_featured(q, bus, conn, stream):
     assert mails_added[0]['id'] != mails_added[1]['id']
     assert len(mails_removed) == 1
     assert mails_removed[0] == thread2_id
+
+    # Check attribue MailAddres
+    mail_address = conn.Get(
+            cs.CONN_IFACE_MAIL_NOTIFICATION, 'MailAddress',
+            dbus_interface=cs.PROPERTIES_IFACE)
+
+    assert mail_address == "test@localhost"
  
     # Unsubscribe and check that all data has been dropped
     conn.MailNotification.Unsubscribe()

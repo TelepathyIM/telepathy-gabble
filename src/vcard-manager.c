@@ -1,8 +1,8 @@
 /*
  * vcard-manager.c - Source for Gabble vCard lookup helper
  *
- * Copyright (C) 2007 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright (C) 2007-2010 Collabora Ltd.
+ * Copyright (C) 2006-2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

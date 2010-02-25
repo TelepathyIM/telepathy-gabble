@@ -169,7 +169,9 @@ def test(q, bus, conn, stream):
             )
 
     # Finally, the ninja decides that publishing his contact details is not
-    # very ninja-like, and decides to be anonymous.
+    # very ninja-like, and decides to be anonymous. The first (most important)
+    # of his nicknames from the old vCard is kept, due to nickname's dual role
+    # as ContactInfo and the alias.
     call_async(q, conn.ContactInfo, 'SetContactInfo', [])
 
     event = q.expect('stream-iq', iq_type='get', query_ns='vcard-temp',
@@ -178,7 +180,9 @@ def test(q, bus, conn, stream):
 
     vcard_set_event = q.expect('stream-iq', iq_type='set',
             query_ns='vcard-temp', query_name='vCard')
-    assertEquals(None, xpath.queryForNodes('/iq/vCard/*',
+    assertLength(1, xpath.queryForNodes('/iq/vCard/*',
+        vcard_set_event.stanza))
+    assertEquals('HR Ninja', xpath.queryForString('/iq/vCard/NICKNAME',
         vcard_set_event.stanza))
 
     acknowledge_iq(stream, vcard_set_event.stanza)

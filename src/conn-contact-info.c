@@ -832,6 +832,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       gabble_vcard_manager_edit_info_new (NULL, NULL,
         GABBLE_VCARD_EDIT_CLEAR, NULL));
 
+  /* fix the alias (if missing) afterwards */
+  edits = g_slist_append (edits,
+      gabble_vcard_manager_edit_info_new (NULL, NULL,
+        GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
+
   gabble_vcard_manager_edit (self->vcard_manager, 0,
       _set_contact_info_cb, context,
       G_OBJECT (self), edits);

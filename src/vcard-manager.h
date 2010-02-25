@@ -83,7 +83,8 @@ typedef enum {
     GABBLE_VCARD_EDIT_REPLACE,
     GABBLE_VCARD_EDIT_APPEND,
     GABBLE_VCARD_EDIT_DELETE,
-    GABBLE_VCARD_EDIT_CLEAR
+    GABBLE_VCARD_EDIT_CLEAR,
+    GABBLE_VCARD_EDIT_SET_ALIAS
 } GabbleVCardEditType;
 
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,

@@ -85,8 +85,14 @@ struct _GabbleVCardManagerEditInfo {
     /* If REPLACE, the first element with this name (if any) will be updated;
      * if APPEND, an element with this name will be added;
      * if DELETE, all elements with this name will be removed;
-     * if CLEAR, everything except PHOTO will be deleted, in preparation for a
-     *  SetContactInfo operation
+     * if CLEAR, everything except PHOTO and NICKNAME will be deleted, in
+     *    preparation for a SetContactInfo operation
+     * if SET_ALIAS and element_value is NULL, set the best alias we have
+     *    as the NICKNAME or FN (as appropriate) if that field doesn't already
+     *    have a value
+     * if SET_ALIAS and element_value is non-NULL, set that
+     *    as the NICKNAME or FN (as appropriate), overriding anything already
+     *    there
      */
     GabbleVCardEditType edit_type;
 };
@@ -703,20 +709,9 @@ status_changed_cb (GObject *object,
 
       if (alias_src >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
         {
-          /* Same logic as in gabble_vcard_manager_edit_alias, which we
-           * don't use here to avoid a duplicate 'get' request */
-          if (gabble_vcard_manager_can_use_vcard_field (self, "NICKNAME"))
-            {
-              priv->edits = g_slist_append (priv->edits,
-                  gabble_vcard_manager_edit_info_new ("NICKNAME", alias,
-                      GABBLE_VCARD_EDIT_REPLACE, NULL));
-            }
-          else
-            {
-              priv->edits = g_slist_append (priv->edits,
-                  gabble_vcard_manager_edit_info_new ("FN", alias,
-                      GABBLE_VCARD_EDIT_REPLACE, NULL));
-            }
+          priv->edits = g_slist_append (priv->edits,
+              gabble_vcard_manager_edit_info_new (NULL, alias,
+                  GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
         }
 
       g_free (alias);
@@ -1073,6 +1068,52 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   LmMessageNode *node;
   GList *iter;
   gboolean maybe_changed = FALSE;
+  GabbleConnection *conn = vcard_manager->priv->connection;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+
+  if (info->edit_type == GABBLE_VCARD_EDIT_SET_ALIAS)
+    {
+      /* SET_ALIAS is shorthand for a REPLACE operation or nothing */
+
+      g_assert (info->element_name == NULL);
+
+      if (gabble_vcard_manager_can_use_vcard_field (vcard_manager, "NICKNAME"))
+        {
+          info->element_name = g_strdup ("NICKNAME");
+        }
+      else
+        {
+          /* Google Talk servers won't let us set a NICKNAME; recover by
+           * setting the FN */
+          info->element_name = g_strdup ("FN");
+        }
+
+      if (info->element_value == NULL)
+        {
+          /* We're just trying to fix a possibly-incomplete SetContactInfo() -
+           * */
+          gchar *alias;
+
+          node = lm_message_node_get_child (old_vcard, info->element_name);
+
+          /* If the user has set this field explicitly via SetContactInfo(),
+           * that takes precedence */
+          if (node != NULL)
+            return NULL;
+
+          if (_gabble_connection_get_cached_alias (conn, base->self_handle,
+                &alias) < GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+            {
+              /* not good enough to want to put it in the vCard */
+              g_free (alias);
+              return NULL;
+            }
+
+          info->element_value = alias;
+        }
+
+      info->edit_type = GABBLE_VCARD_EDIT_REPLACE;
+    }
 
   if (info->edit_type == GABBLE_VCARD_EDIT_APPEND ||
       info->edit_type == GABBLE_VCARD_EDIT_REPLACE)
@@ -1548,28 +1589,6 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
 
   return gabble_vcard_manager_edit (self, timeout, callback,
       user_data, object, edits);
-}
-
-GabbleVCardManagerEditRequest *
-gabble_vcard_manager_edit_alias (GabbleVCardManager *self,
-    guint timeout,
-    GabbleVCardManagerEditCb callback,
-    gpointer user_data,
-    GObject *object,
-    const gchar *new_alias)
-{
-  if (gabble_vcard_manager_can_use_vcard_field (self, "NICKNAME"))
-    {
-      return gabble_vcard_manager_edit_one (self, timeout, callback, user_data,
-          object, "NICKNAME", new_alias);
-    }
-  else
-    {
-      /* Google Talk servers won't let us set a NICKNAME; recover by
-       * setting the FN */
-      return gabble_vcard_manager_edit_one (self, timeout, callback, user_data,
-          object, "FN", new_alias);
-    }
 }
 
 /* Add a pending request to edit the vCard. When it finishes, call the given

@@ -70,7 +70,7 @@ static void update_unread_mails (GabbleConnection *conn);
 
 
 static void
-sender_name_owner_changed (TpDBusDaemon *dbus_daemon,
+subscriber_name_owner_changed (TpDBusDaemon *dbus_daemon,
                            const gchar *name,
                            const gchar *new_owner,
                            gpointer user_data)
@@ -99,13 +99,13 @@ unsubscribe (GabbleConnection *conn,
   if (count == 1 || remove_all)
     {
       tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
-          sender_name_owner_changed, conn);
+          subscriber_name_owner_changed, conn);
 
       g_hash_table_remove (conn->mail_subscribers, name);
 
       if (g_hash_table_size (conn->mail_subscribers) == 0)
         {
-          DEBUG ("Last sender unsubscribed, cleaning up!");
+          DEBUG ("Last subscriber unsubscribed, cleaning up!");
           g_free (conn->inbox_url);
           conn->inbox_url = NULL;
 
@@ -150,21 +150,21 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  gchar *sender;
+  gchar *subscriber;
   guint count;
 
   if (check_supported_or_dbus_return (conn, context))
       return;
 
-  sender = dbus_g_method_get_sender (context);
+  subscriber = dbus_g_method_get_sender (context);
 
-  DEBUG ("Subscribe called by: %s", sender);
+  DEBUG ("Subscribe called by: %s", subscriber);
 
   count = GPOINTER_TO_UINT (
-      g_hash_table_lookup (conn->mail_subscribers, sender));
+      g_hash_table_lookup (conn->mail_subscribers, subscriber));
 
-  /* Gives sender ownership to mail_subscribers hash table */
-  g_hash_table_insert (conn->mail_subscribers, sender,
+  /* Gives subscriber ownership to mail_subscribers hash table */
+  g_hash_table_insert (conn->mail_subscribers, subscriber,
       GUINT_TO_POINTER (++count));
 
   if (count == 1)
@@ -172,8 +172,8 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
       if (g_hash_table_size (conn->mail_subscribers) == 1)
         update_unread_mails (conn);
 
-      tp_dbus_daemon_watch_name_owner (conn->daemon, sender,
-          sender_name_owner_changed, conn, NULL);
+      tp_dbus_daemon_watch_name_owner (conn->daemon, subscriber,
+          subscriber_name_owner_changed, conn, NULL);
     }
 
   gabble_svc_connection_interface_mail_notification_return_from_subscribe (
@@ -186,30 +186,30 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  gchar *sender;
+  gchar *subscriber;
 
   if (check_supported_or_dbus_return (conn, context))
       return;
 
-  sender = dbus_g_method_get_sender (context);
+  subscriber = dbus_g_method_get_sender (context);
 
-  DEBUG ("Unsubscribe called by: %s", sender);
+  DEBUG ("Unsubscribe called by: %s", subscriber);
 
-  if (!g_hash_table_lookup_extended (conn->mail_subscribers, sender,
+  if (!g_hash_table_lookup_extended (conn->mail_subscribers, subscriber,
                                     NULL, NULL))
     {
       GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "Not subscribed" };
 
-      DEBUG ("Sender '%s' is not subscribed!", sender);
+      DEBUG ("Subscriber '%s' is not subscribed!", subscriber);
 
       dbus_g_method_return_error (context, &e);
-      g_free (sender);
+      g_free (subscriber);
       return;
     }
 
-  unsubscribe (conn, sender, FALSE);
+  unsubscribe (conn, subscriber, FALSE);
 
-  g_free (sender);
+  g_free (subscriber);
   gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
 }
 
@@ -635,11 +635,11 @@ foreach_cancel_watch (gpointer key,
     gpointer value,
     gpointer user_data)
 {
-  const gchar *sender_name = key;
+  const gchar *subscriber = key;
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   tp_dbus_daemon_cancel_name_owner_watch (conn->daemon,
-      sender_name, sender_name_owner_changed, conn);
+      subscriber, subscriber_name_owner_changed, conn);
 
   return TRUE;
 }

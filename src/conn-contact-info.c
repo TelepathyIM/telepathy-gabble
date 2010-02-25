@@ -118,9 +118,7 @@ static VCardField known_fields[] = {
       { "LABEL", NULL, FIELD_LABEL, 0,
           { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
           { NULL } },
-      { "ORG", NULL, FIELD_ORG, 0,
-          { NULL },
-          { "ORGNAME", "ORGUNIT", NULL } },
+      { "ORG", NULL, FIELD_ORG, 0, { NULL }, { NULL } },
 
     /* Things we don't handle: */
 
@@ -679,6 +677,8 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
         context);
 }
 
+static const gchar * const empty_strv[] = { NULL };
+
 /**
  * gabble_connection_set_contact_info
  *
@@ -751,15 +751,41 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-        case FIELD_ORG:
           edits = _insert_edit_info (edits, field,
               (const gchar * const *) field_params,
               (const gchar * const *) field_values);
           break;
 
+        case FIELD_ORG:
+            {
+              GabbleVCardManagerEditInfo *edit_info;
+              guint j;
+
+              if (field_values[0] == NULL)
+                {
+                  DEBUG ("Ignoring empty 'org' field");
+                  break;
+                }
+
+              edits = _insert_edit_info (edits, field,
+                  (const gchar * const *) field_params,
+                  empty_strv);
+
+              edit_info = g_slist_last (edits)->data;
+
+              gabble_vcard_manager_edit_info_add_child (edit_info,
+                  "ORGNAME", field_values[0]);
+
+              for (j = 1; field_values[j] != NULL; j++)
+                {
+                  gabble_vcard_manager_edit_info_add_child (edit_info,
+                      "ORGUNIT", field_values[j]);
+                }
+            }
+          break;
+
         case FIELD_LABEL:
             {
-              static const gchar * const empty_strv[] = { NULL };
               GabbleVCardManagerEditInfo *edit_info;
               gchar **lines;
               guint j;

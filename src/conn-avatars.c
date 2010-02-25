@@ -829,7 +829,8 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
   ctx = g_new0 (struct _set_avatar_ctx, 1);
   ctx->conn = self;
   ctx->invocation = context;
-  if (avatar)
+
+  if (avatar != NULL && avatar->len > 0)
     {
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
       base64 = base64_encode (avatar->len, avatar->data, TRUE);

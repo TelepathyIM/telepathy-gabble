@@ -251,7 +251,7 @@ _parse_vcard (WockyXmppNode *vcard_node,
       WockyXmppNode *node = node_iter_data (i);
       const VCardField *field;
 
-      if (!node->name || strcmp (node->name, "") == 0)
+      if (node->name == NULL || !tp_strdiff (node->name, ""))
         continue;
 
       field = g_hash_table_lookup (known_fields_xmpp, node->name);
@@ -667,7 +667,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
 {
   DBusGMethodInvocation *context = user_data;
 
-  if (NULL == vcard_node)
+  if (vcard_node == NULL)
     {
       GError tp_error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           vcard_error->message };

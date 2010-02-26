@@ -277,11 +277,12 @@ class StreamFactory(twisted.internet.protocol.Factory):
         self.presences[jid] = stanza
 
         for dest_jid  in self.presences.keys():
-            if dest_jid != jid:
-                # Dispatch the new presence to other clients
-                stanza.attributes['to'] = dest_jid
-                self.mappings[dest_jid].send(stanza)
+            # Dispatch the new presence to other clients
+            stanza.attributes['to'] = dest_jid
+            self.mappings[dest_jid].send(stanza)
 
+            # Don't echo the presence twice
+            if dest_jid != jid:
                 # Dispatch other client's presence to this stream
                 presence = self.presences[dest_jid]
                 presence.attributes['to'] = jid

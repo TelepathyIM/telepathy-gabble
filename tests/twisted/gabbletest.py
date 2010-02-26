@@ -253,6 +253,9 @@ class StreamFactory(twisted.internet.protocol.Factory):
         self.factory_streams = list(streams)
         self.factory_streams.reverse()
 
+        # Do not add observers for single instances because it's unnecessary and
+        # some unit tests need to respond to the roster request, and we shouldn't
+        # answer it for them otherwise we break compatibility
         if len(streams) > 1:
             # We need to have a function here because lambda keeps a reference on
             # the stream and jid and in the for loop, there is no context

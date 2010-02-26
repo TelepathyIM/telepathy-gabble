@@ -365,22 +365,6 @@ def make_connection(bus, event_func, name, proto, params):
         proto, params)
     conn = wrap_connection(bus.get_object(connection_name, connection_path))
 
-    bus.add_signal_receiver(
-        lambda *args, **kw:
-            event_func(
-                Event('dbus-signal',
-                    path=unwrap(kw['path']),
-                    signal=kw['member'], args=map(unwrap, args),
-                    interface=kw['interface'])),
-        None,       # signal name
-        None,       # interface
-        None,
-        path_keyword='path',
-        member_keyword='member',
-        interface_keyword='interface',
-        byte_arrays=True
-        )
-
     return conn
 
 def make_channel_proxy(conn, path, iface):

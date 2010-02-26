@@ -15,8 +15,8 @@ import ns
 import constants as cs
 import servicetest
 from servicetest import (
-    assertEquals, assertLength, assertContains, wrap_channel, EventPattern, call_async
-    )
+    assertEquals, assertLength, assertContains, wrap_channel,
+    EventPattern, call_async, unwrap, Event)
 import twisted
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
@@ -474,17 +474,32 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     factory = StreamFactory(streams, jids)
     port = reactor.listenTCP(4242, factory)
 
-    def name_owner_changed(name, old_name, new_name, **kw):
-        if new_name == '':
-            for i, conn in enumerate(conns):
-                stream = streams[i]
-                jid = jids[i]
-                if conn._requested_bus_name == name:
-                    factory.lost_presence(stream, jid)
-                    break
+    def signal_receiver(*args, **kw):
+        if kw['path'] == '/org/freedesktop/DBus' and \
+                kw['member'] == 'NameOwnerChanged':
+            bus_name, old_name, new_name = args
+            if new_name == '':
+                for i, conn in enumerate(conns):
+                    stream = streams[i]
+                    jid = jids[i]
+                    if conn._requested_bus_name == bus_name:
+                        factory.lost_presence(stream, jid)
+                        break
+        queue.append(Event('dbus-signal',
+                           path=unwrap(kw['path']),
+                           signal=kw['member'], args=map(unwrap, args),
+                           interface=kw['interface']))
 
-    bus.add_signal_receiver(name_owner_changed, 'NameOwnerChanged',
-                            'org.freedesktop.DBus', None)
+    bus.add_signal_receiver(
+        signal_receiver,
+        None,       # signal name
+        None,       # interface
+        None,
+        path_keyword='path',
+        member_keyword='member',
+        interface_keyword='interface',
+        byte_arrays=True
+        )
 
     error = None
 

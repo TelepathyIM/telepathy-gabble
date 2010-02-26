@@ -14,6 +14,8 @@ from twisted.words.protocols.jabber import xmlstream
 import twisted.internet.protocol
 from twisted.internet import reactor
 
+from servicetest import (Event, unwrap)
+
 from gabbletest import (
     make_connection, make_stream, XmppAuthenticator, XmppXmlStream,
     disconnect_conn)
@@ -118,6 +120,22 @@ if __name__ == '__main__':
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda:stream2
     port1 = reactor.listenTCP(4343, factory)
+
+
+    bus.add_signal_receiver(
+        lambda *args, **kw:
+            queue.append(Event('dbus-signal',
+                               path=unwrap(kw['path']),
+                               signal=kw['member'], args=map(unwrap, args),
+                               interface=kw['interface'])),
+        None,       # signal name
+        None,       # interface
+        None,
+        path_keyword='path',
+        member_keyword='member',
+        interface_keyword='interface',
+        byte_arrays=True
+        )
 
     try:
         test(queue, bus, conn1, conn2, stream1, stream2)

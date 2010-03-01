@@ -673,38 +673,6 @@ conn_contact_info_edit_add_type_params (GabbleVCardManagerEditInfo *edit_info,
   return TRUE;
 }
 
-static GSList *
-_insert_edit_info (GSList *edits,
-                   const VCardField *field,
-                   const gchar * const * field_params,
-                   const gchar * const * field_values,
-                   GError **error)
-{
-  GabbleVCardManagerEditInfo *edit_info;
-  guint i;
-  guint n_field_values = g_strv_length ((gchar **) field_values);
-  guint n_elements = g_strv_length ((gchar **) field->elements);
-
-  if (n_field_values != n_elements)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "%s vCard field expects %u values but got %u",
-          field->xmpp_name, n_elements, n_field_values);
-      return edits;
-    }
-
-  edit_info = conn_contact_info_new_edit (field, NULL);
-
-  conn_contact_info_edit_add_type_params (edit_info, field, field_params,
-      error);
-
-  for (i = 0; i < n_elements; ++i)
-    gabble_vcard_manager_edit_info_add_child (edit_info,
-        field->elements[i], field_values[i]);
-
-  return g_slist_append (edits, edit_info);
-}
-
 static void
 _set_contact_info_cb (GabbleVCardManager *vcard_manager,
                       GabbleVCardManagerEditRequest *request,
@@ -812,12 +780,34 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-          edits = _insert_edit_info (edits, field, field_params, field_values,
-              &error);
+            {
+              GabbleVCardManagerEditInfo *edit_info;
+              guint n_elements = g_strv_length ((gchar **) field->elements);
+              guint j;
 
-          if (error != NULL)
-            goto finally;
+              if (n_field_values != n_elements)
+                {
+                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                      "%s vCard field expects %u values but got %u",
+                      field->xmpp_name, n_elements, n_field_values);
+                  goto finally;
+                }
 
+              edit_info = conn_contact_info_new_edit (field, NULL);
+
+              if (!conn_contact_info_edit_add_type_params (edit_info, field,
+                    field_params, &error))
+                {
+                  gabble_vcard_manager_edit_info_free (edit_info);
+                  goto finally;
+                }
+
+              for (j = 0; j < n_elements; ++j)
+                gabble_vcard_manager_edit_info_add_child (edit_info,
+                    field->elements[j], field_values[j]);
+
+              edits = g_slist_append (edits, edit_info);
+            }
           break;
 
         case FIELD_ORG:
@@ -868,13 +858,14 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   goto finally;
                 }
 
-              edits = _insert_edit_info (edits, field, field_params,
-                  empty_strv, &error);
+              edit_info = conn_contact_info_new_edit (field, NULL);
 
-              if (error != NULL)
-                goto finally;
-
-              edit_info = g_slist_last (edits)->data;
+              if (!conn_contact_info_edit_add_type_params (edit_info, field,
+                    field_params, &error))
+                {
+                  gabble_vcard_manager_edit_info_free (edit_info);
+                  goto finally;
+                }
 
               lines = g_strsplit (field_values[0], "\n", 0);
 
@@ -890,6 +881,8 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                 }
 
               g_strfreev (lines);
+
+              edits = g_slist_append (edits, edit_info);
             }
           break;
 

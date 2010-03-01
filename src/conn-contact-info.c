@@ -794,10 +794,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
               GabbleVCardManagerEditInfo *edit_info;
               guint j;
 
-              if (field_values[0] == NULL)
+              if (n_field_values == 0)
                 {
-                  DEBUG ("Ignoring empty 'org' field");
-                  break;
+                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                      "ORG vCard field expects at least one value but got 0");
+                  goto finally;
                 }
 
               edits = _insert_edit_info (edits, field,

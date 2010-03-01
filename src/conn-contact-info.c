@@ -189,7 +189,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
   guint supported_types_size = 0;
   guint mandatory_fields_size = 0;
 
-  if (supported_types)
+  if (supported_types != NULL)
     supported_types_size = g_strv_length ((gchar **) supported_types);
 
   field_params = g_ptr_array_new ();
@@ -218,7 +218,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
 
   g_ptr_array_add (field_params, NULL);
 
-  if (mandatory_fields)
+  if (mandatory_fields != NULL)
     {
       mandatory_fields_size = g_strv_length ((gchar **) mandatory_fields);
 
@@ -228,6 +228,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
       for (i = 0; i < mandatory_fields_size; ++i)
         {
            child_node = wocky_xmpp_node_get_child (node, mandatory_fields[i]);
+
            if (child_node != NULL)
              field_values[i] = child_node->content;
            else

@@ -38,7 +38,7 @@ def test(q, bus, conn, stream):
 
     call_async(q, conn.ContactInfo, 'SetContactInfo',
                [(u'fn', [], [u'Wee Ninja']),
-                (u'n', ['language=ja'], [u'Ninja', u'Wee', u'', u'', u'-san']),
+                (u'n', [], [u'Ninja', u'Wee', u'', u'', u'-san']),
                 (u'org', [], ['Collabora, Ltd.']),
                 (u'adr', ['type=work','type=postal','type=parcel'],
                     ['', '', '11 Kings Parade', 'Cambridge', 'Cambridgeshire',
@@ -171,7 +171,7 @@ def test(q, bus, conn, stream):
     # qualifies for a company phone
 
     vcard_in = [(u'fn', [], [u'Wee Ninja']),
-                (u'n', ['language=ja'], [u'Ninja', u'Wee', u'', u'', u'-san']),
+                (u'n', [], [u'Ninja', u'Wee', u'', u'', u'-san']),
                 (u'org', [], ['Collabora, Ltd.',
                     'Human Resources', 'Company Policy Enforcement']),
                 (u'adr', ['type=work','type=postal','type=parcel'],
@@ -226,12 +226,9 @@ def test(q, bus, conn, stream):
 
     vcard_out = event.args[1][:]
 
-    # the only change we expect to see is that the language=ja disappears,
-    # perhaps the fields are re-ordered, and perhaps the types on the 'tel' are
-    # re-ordered
+    # the only change we expect to see is that perhaps the fields are
+    # re-ordered, and perhaps the types on the 'tel' are re-ordered
 
-    assertEquals(vcard_in[1][0], 'n')
-    del vcard_in[1][1][:]
     assertEquals(vcard_in[4][0], 'tel')
     vcard_in[4][1].sort()
     assertEquals(vcard_out[4][0], 'tel')

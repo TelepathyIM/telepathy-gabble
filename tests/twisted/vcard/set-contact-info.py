@@ -127,6 +127,49 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-signal', signal='ContactInfoChanged'),
             )
 
+    # Exercise various invalid SetContactInfo operations
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+
+    forbidden = [EventPattern('stream-iq', query_ns='vcard-temp')]
+    q.forbid_events(forbidden)
+
+    # unknown field
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('x-salary', [], ['547 espressos per month'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # not enough values for a simple field
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('fn', [], [])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # too many values for a simple field
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('fn', [], ['Wee', 'Ninja'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # not enough values for LABEL
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('label', [], [])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # too many values for LABEL
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('label', [], ['11 Kings Parade', 'Cambridge'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # empty ORG
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('org', [], [])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    q.unforbid_events(forbidden)
+
+    # Following a reshuffle, Company Policy Enforcement is declared to be
+    # a sub-department within Human Resources, and the ninja no longer
+    # qualifies for a company phone
+
     vcard_in = [(u'fn', [], [u'Wee Ninja']),
                 (u'n', ['language=ja'], [u'Ninja', u'Wee', u'', u'', u'-san']),
                 (u'org', [], ['Collabora, Ltd.',
@@ -142,9 +185,6 @@ def test(q, bus, conn, stream):
                 (u'nickname', [], [u'HR Ninja']),
                 (u'nickname', [], [u'Enforcement Ninja'])]
 
-    # Following a reshuffle, Company Policy Enforcement is declared to be
-    # a sub-department within Human Resources, and the ninja no longer
-    # qualifies for a company phone
     call_async(q, conn.ContactInfo, 'SetContactInfo', vcard_in)
 
     event = q.expect('stream-iq', iq_type='get', query_ns='vcard-temp',

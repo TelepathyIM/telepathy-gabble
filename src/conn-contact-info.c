@@ -771,9 +771,10 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
               if (n_field_values != 1)
                 {
-                  DEBUG ("Trying to edit %s field with wrong arguments",
-                      field_name);
-                  continue;
+                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                      "%s vCard field expects one value but got %u",
+                      field_name, n_field_values);
+                  goto finally;
                 }
 
               edit_info = conn_contact_info_new_edit (field, field_values[0]);
@@ -822,10 +823,12 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
               gchar **lines;
               guint j;
 
-              if (field_values[0] == NULL || field_values[1] != NULL)
+              if (n_field_values != 1)
                 {
-                  DEBUG ("LABEL field must have exactly one value, ignoring");
-                  break;
+                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                      "%s vCard field expects one value but got %u",
+                      field_name, n_field_values);
+                  goto finally;
                 }
 
               edits = _insert_edit_info (edits, field,

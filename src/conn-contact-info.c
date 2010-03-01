@@ -727,6 +727,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
   TpBaseConnection *base = (TpBaseConnection *) self;
   GSList *edits = NULL;
   guint i;
+  GError *error = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -756,8 +757,9 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
       if (field == NULL)
         {
-          DEBUG ("unknown vCard field from D-Bus: %s", field_name);
-          continue;
+          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "unknown vCard field from D-Bus: %s", field_name);
+          goto finally;
         }
 
       switch (field->behaviour)
@@ -858,18 +860,30 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       g_strfreev (field_values);
     }
 
-  edits = g_slist_prepend (edits,
-      gabble_vcard_manager_edit_info_new (NULL, NULL,
-        GABBLE_VCARD_EDIT_CLEAR, NULL));
+finally:
+  if (error != NULL)
+    {
+      DEBUG ("%s", error->message);
+      g_slist_foreach (edits, (GFunc) gabble_vcard_manager_edit_info_free,
+          NULL);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+  else
+    {
+      edits = g_slist_prepend (edits,
+          gabble_vcard_manager_edit_info_new (NULL, NULL,
+            GABBLE_VCARD_EDIT_CLEAR, NULL));
 
-  /* fix the alias (if missing) afterwards */
-  edits = g_slist_append (edits,
-      gabble_vcard_manager_edit_info_new (NULL, NULL,
-        GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
+      /* fix the alias (if missing) afterwards */
+      edits = g_slist_append (edits,
+          gabble_vcard_manager_edit_info_new (NULL, NULL,
+            GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
 
-  gabble_vcard_manager_edit (self->vcard_manager, 0,
-      _set_contact_info_cb, context,
-      G_OBJECT (self), edits);
+      gabble_vcard_manager_edit (self->vcard_manager, 0,
+          _set_contact_info_cb, context,
+          G_OBJECT (self), edits);
+    }
 }
 
 static void

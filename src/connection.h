@@ -190,6 +190,9 @@ struct _GabbleConnection {
     /* gchar *interface → GList<DBusGMethodInvocation> */
     GHashTable *pending_sidecars;
 
+    /* ContactInfo.SupportedFields, or NULL to use the generic one */
+    GPtrArray *contact_info_fields;
+
     GabbleConnectionPrivate *priv;
 };
 

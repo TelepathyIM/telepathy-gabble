@@ -923,8 +923,20 @@ conn_contact_info_class_init (GabbleConnectionClass *klass)
 void
 conn_contact_info_init (GabbleConnection *conn)
 {
+  conn->contact_info_fields = NULL;
+
   g_signal_connect (conn->vcard_manager, "vcard-update",
       G_CALLBACK (_vcard_updated), conn);
+}
+
+void
+conn_contact_info_finalize (GabbleConnection *conn)
+{
+  if (conn->contact_info_fields != NULL)
+    {
+      g_boxed_free (GABBLE_ARRAY_TYPE_FIELD_SPECS, conn->contact_info_fields);
+      conn->contact_info_fields = NULL;
+    }
 }
 
 void
@@ -955,11 +967,23 @@ conn_contact_info_properties_getter (GObject *object,
                                      GValue *value,
                                      gpointer getter_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (object);
   GQuark q_supported_fields = g_quark_from_static_string (
       "SupportedFields");
 
   if (name == q_supported_fields)
-    g_value_set_static_boxed (value, supported_fields);
+    {
+      if (conn->contact_info_fields != NULL)
+        {
+          g_value_set_boxed (value, conn->contact_info_fields);
+        }
+      else
+        {
+          g_value_set_static_boxed (value, supported_fields);
+        }
+    }
   else
-    g_value_set_uint (value, GPOINTER_TO_UINT (getter_data));
+    {
+      g_value_set_uint (value, GPOINTER_TO_UINT (getter_data));
+    }
 }

@@ -27,6 +27,7 @@ G_BEGIN_DECLS
 
 void conn_contact_info_class_init (GabbleConnectionClass *klass);
 void conn_contact_info_init (GabbleConnection *conn);
+void conn_contact_info_finalize (GabbleConnection *conn);
 void conn_contact_info_iface_init (gpointer g_iface, gpointer iface_data);
 
 extern TpDBusPropertiesMixinPropImpl *conn_contact_info_properties;

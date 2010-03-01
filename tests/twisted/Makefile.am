@@ -84,9 +84,11 @@ TWISTED_TESTS = \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/test-get-available-tubes.py \
 	tubes/test-socks5-muc.py \
+	vcard/get-contact-info.py \
 	vcard/item-not-found.py \
 	vcard/overlapping-sets.py \
 	vcard/redundant-set.py \
+	vcard/set-contact-info.py \
 	vcard/set-set-disconnect.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
@@ -96,10 +98,8 @@ TWISTED_TESTS = \
 	vcard/test-avatar-retrieved.py \
 	vcard/test-avatar-tokens.py \
         vcard/test-avatar-multiple-resources.py \
-	vcard/test-contact-info.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
-	vcard/test-set-contact-info.py \
 	vcard/test-vcard-cache.py \
 	vcard/test-vcard-race.py \
 	vcard/update-get-failed.py \

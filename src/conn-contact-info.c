@@ -213,7 +213,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
       child_node = wocky_xmpp_node_get_child (node, child_name);
 
       if (child_node != NULL)
-        g_ptr_array_add (field_params, g_strdup (supported_types[i]));
+        g_ptr_array_add (field_params, (gchar *) supported_types[i]);
     }
 
   g_ptr_array_add (field_params, NULL);
@@ -240,9 +240,9 @@ _create_contact_field_extended (GPtrArray *contact_info,
       (const gchar * const *) field_params->pdata,
       (const gchar * const *) field_values);
 
-  /* We allocated the strings in params, so need to free them */
-  g_strfreev ((gchar **) g_ptr_array_free (field_params, FALSE));
-  /* But we borrowed the ones in values, so just free the box */
+  /* The strings in both arrays are borrowed, so we just need to free the
+   * arrays themselves. */
+  g_ptr_array_free (field_params, TRUE);
   g_free (field_values);
 }
 

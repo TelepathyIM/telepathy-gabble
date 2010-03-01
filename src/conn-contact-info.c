@@ -631,6 +631,13 @@ conn_contact_info_edit_add_type_params (GabbleVCardManagerEditInfo *edit_info,
   if (field_params == NULL)
     return TRUE;
 
+  if (field->types[0] == NULL && field_params[0] != NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "%s vCard field expects no type-parameters", field->xmpp_name);
+      return FALSE;
+    }
+
   for (p = field_params; *p != NULL; ++p)
     {
       guint i;
@@ -747,7 +754,6 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
   GSList *edits = NULL;
   guint i;
   GError *error = NULL;
-  gchar *field_name = NULL;
   gchar **field_params = NULL;
   gchar **field_values = NULL;
 

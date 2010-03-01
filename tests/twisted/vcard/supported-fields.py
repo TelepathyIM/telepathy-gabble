@@ -19,7 +19,7 @@
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-from servicetest import (EventPattern, assertEquals)
+from servicetest import (EventPattern, assertEquals, call_async)
 from gabbletest import (exec_test, GoogleXmlStream)
 import constants as cs
 
@@ -93,6 +93,12 @@ def test(q, bus, conn, stream, is_google=False):
 
     if is_google:
         check_google_props(props)
+
+        # on a Google server, we can't use most vCard fields
+        call_async(q, conn.ContactInfo, 'SetContactInfo',
+                [('x-jabber', [], ['wee.ninja@collabora.co.uk'])])
+        q.expect('dbus-error', method='SetContactInfo',
+                name=cs.INVALID_ARGUMENT)
     else:
         check_normal_props(props)
 

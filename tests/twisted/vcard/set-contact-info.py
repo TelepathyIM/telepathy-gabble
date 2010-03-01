@@ -54,6 +54,8 @@ def test(q, bus, conn, stream):
                 (u'email', ['type=internet','type=pref'],
                     ['wee.ninja@collabora.co.uk']),
                 (u'email', ['type=internet'], ['wee.ninja@example.com']),
+                (u'x-jabber', [], ['wee.ninja@collabora.co.uk']),
+                (u'x-jabber', [], ['wee.ninja@example.com']),
                 (u'url', [], ['http://www.thinkgeek.com/geektoys/plush/8823/']),
                 (u'nickname', [], [u'HR Ninja']),
                 (u'nickname', [], [u'Enforcement Ninja'])])
@@ -119,6 +121,13 @@ def test(q, bus, conn, stream):
         else:
             assertEquals(None, xpath.queryForNodes('/EMAIL/PREF', email))
 
+    assertLength(2, xpath.queryForNodes('/iq/vCard/JABBERID',
+        vcard_set_event.stanza))
+    for jid in xpath.queryForNodes('/iq/vCard/JABBERID',
+            vcard_set_event.stanza):
+        assertContains(xpath.queryForString('/JABBERID', jid),
+                ('wee.ninja@example.com', 'wee.ninja@collabora.co.uk'))
+
     acknowledge_iq(stream, vcard_set_event.stanza)
     q.expect_many(
             EventPattern('dbus-return', method='SetContactInfo'),
@@ -182,6 +191,17 @@ def test(q, bus, conn, stream):
     # empty ORG
     call_async(q, conn.ContactInfo, 'SetContactInfo',
             [('org', [], [])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # not enough values for N
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('n', [], ['Ninja'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # too many values for N
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('n', [],
+            'what could it mean if you have too many field values?'.split())])
     q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
 
     q.unforbid_events(forbidden)

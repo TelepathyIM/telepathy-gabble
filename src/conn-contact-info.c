@@ -165,22 +165,15 @@ _insert_contact_field (GPtrArray *contact_info,
                        const gchar * const *field_params,
                        const gchar * const *field_values)
 {
-   GValue contact_info_field = { 0, };
    gchar *field_name_down = g_ascii_strdown (field_name, -1);
 
-   g_value_init (&contact_info_field, GABBLE_STRUCT_TYPE_CONTACT_INFO_FIELD);
-   g_value_take_boxed (&contact_info_field, dbus_g_type_specialized_construct (
-       GABBLE_STRUCT_TYPE_CONTACT_INFO_FIELD));
-
-   dbus_g_type_struct_set (&contact_info_field,
-       0, field_name_down,
-       1, field_params,
-       2, field_values,
-       G_MAXUINT);
+   g_ptr_array_add (contact_info, tp_value_array_build (3,
+         G_TYPE_STRING, field_name_down,
+         G_TYPE_STRV, field_params,
+         G_TYPE_STRV, field_values,
+         G_TYPE_INVALID));
 
    g_free (field_name_down);
-
-   g_ptr_array_add (contact_info, g_value_get_boxed (&contact_info_field));
 }
 
 static void

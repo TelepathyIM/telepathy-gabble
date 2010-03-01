@@ -754,30 +754,24 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
   GSList *edits = NULL;
   guint i;
   GError *error = NULL;
-  gchar **field_params = NULL;
-  gchar **field_values = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
   for (i = 0; i < contact_info->len; i++)
     {
-      GValue contact_info_field = { 0, };
-      gchar *field_name = NULL;
+      GValueArray *structure = g_ptr_array_index (contact_info, i);
       guint n_field_values = 0;
       VCardField *field;
+      const gchar *field_name;
+      const gchar * const *field_params;
+      const gchar * const *field_values;
 
-      g_value_init (&contact_info_field, GABBLE_STRUCT_TYPE_CONTACT_INFO_FIELD);
-      g_value_set_static_boxed (&contact_info_field,
-          g_ptr_array_index (contact_info, i));
+      field_name = g_value_get_string (structure->values + 0);
+      field_params = g_value_get_boxed (structure->values + 1);
+      field_values = g_value_get_boxed (structure->values + 2);
 
-      dbus_g_type_struct_get (&contact_info_field,
-          0, &field_name,
-          1, &field_params,
-          2, &field_values,
-          G_MAXUINT);
-
-      if (field_values)
-        n_field_values = g_strv_length (field_values);
+      if (field_values != NULL)
+        n_field_values = g_strv_length ((gchar **) field_values);
 
       field = g_hash_table_lookup (known_fields_vcard, field_name);
 
@@ -785,11 +779,8 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         {
           g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "unknown vCard field from D-Bus: %s", field_name);
-          g_free (field_name);
           goto finally;
         }
-
-      g_free (field_name);
 
       switch (field->behaviour)
         {
@@ -809,7 +800,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
               edit_info = conn_contact_info_new_edit (field, field_values[0]);
 
               if (!conn_contact_info_edit_add_type_params (edit_info, field,
-                    (const gchar * const *) field_params, &error))
+                    field_params, &error))
                 {
                   gabble_vcard_manager_edit_info_free (edit_info);
                   goto finally;
@@ -821,9 +812,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
-          edits = _insert_edit_info (edits, field,
-              (const gchar * const *) field_params,
-              (const gchar * const *) field_values,
+          edits = _insert_edit_info (edits, field, field_params, field_values,
               &error);
 
           if (error != NULL)
@@ -846,7 +835,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
               edit_info = conn_contact_info_new_edit (field, NULL);
 
               if (!conn_contact_info_edit_add_type_params (edit_info, field,
-                    (const gchar * const *) field_params, &error))
+                    field_params, &error))
                 {
                   gabble_vcard_manager_edit_info_free (edit_info);
                   goto finally;
@@ -879,8 +868,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   goto finally;
                 }
 
-              edits = _insert_edit_info (edits, field,
-                  (const gchar * const *) field_params,
+              edits = _insert_edit_info (edits, field, field_params,
                   empty_strv, &error);
 
               if (error != NULL)
@@ -908,17 +896,9 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         default:
           g_assert_not_reached ();
         }
-
-      g_strfreev (field_params);
-      field_params = NULL;
-      g_strfreev (field_values);
-      field_values = NULL;
     }
 
 finally:
-  g_strfreev (field_params);
-  g_strfreev (field_values);
-
   if (error != NULL)
     {
       DEBUG ("%s", error->message);

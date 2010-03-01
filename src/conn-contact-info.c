@@ -36,8 +36,11 @@
 #include "debug.h"
 #include "util.h"
 
-#define MAX_TYPES 14    /* increase as needed */
-#define MAX_ELEMENTS 8  /* increase as needed */
+/* Arbitrary lengths for supported fields' types, increase as necessary when
+ * adding new fields */
+#define MAX_TYPES 14
+#define MAX_ELEMENTS 8
+#define MAX_TYPE_PARAM_LEN 8    /* strlen ("internet") in "type=internet" */
 
 typedef enum {
     /* in Telepathy: one value per field; in XMPP: one value per field */
@@ -98,7 +101,8 @@ static VCardField known_fields[] = {
       { "N", NULL, FIELD_STRUCTURED_ONCE, 0, { NULL },
           { "FAMILY", "GIVEN", "MIDDLE", "PREFIX", "SUFFIX", NULL } },
       { "ADR", NULL, FIELD_STRUCTURED, 0,
-          { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
+          { "type=home", "type=work", "type=postal", "type=parcel",
+            "type=dom", "type=intl", "type=pref", NULL },
           { "POBOX", "EXTADD", "STREET", "LOCALITY", "REGION", "PCODE", "CTRY",
             NULL } },
       { "GEO", NULL, FIELD_STRUCTURED_ONCE, 0,
@@ -107,16 +111,19 @@ static VCardField known_fields[] = {
       /* TEL and EMAIL are like structured fields: they have exactly one child
        * per occurrence */
       { "TEL", NULL, FIELD_STRUCTURED, 0,
-          { "HOME", "WORK", "VOICE", "FAX", "PAGER", "MSG", "CELL", "VIDEO",
-            "BBS", "MODEM", "ISDN", "PCS", "PREF", NULL },
+          { "type=home", "type=work", "type=voice", "type=fax", "type=pager",
+            "type=msg", "type=cell", "type=video", "type=bbs", "type=modem",
+            "type=isdn", "type=pcs", "type=pref", NULL },
           { "NUMBER", NULL } },
       { "EMAIL", NULL, FIELD_STRUCTURED, 0,
-          { "HOME", "WORK", "INTERNET", "PREF", "X400", NULL },
+          { "type=home", "type=work", "type=internet", "type=pref",
+            "type=x400", NULL },
           { "USERID", NULL } },
 
     /* Special cases with their own semantics */
       { "LABEL", NULL, FIELD_LABEL, 0,
-          { "HOME", "WORK", "POSTAL", "PARCEL", "DOM", "INTL", "PREF", NULL },
+          { "type=home", "type=work", "type=postal", "type=parcel",
+            "type=dom", "type=intl", "type=pref", NULL },
           { NULL } },
       { "ORG", NULL, FIELD_ORG, 0, { NULL }, { NULL } },
 
@@ -197,16 +204,23 @@ _create_contact_field_extended (GPtrArray *contact_info,
   /* we can simply omit a type if not found */
   for (i = 0; i < supported_types_size; ++i)
     {
-       gchar *tmp;
+      guint j;
+      gchar child_name[MAX_TYPE_PARAM_LEN + 1] = { '\0' };
 
-       child_node = wocky_xmpp_node_get_child (node, supported_types[i]);
+      /* the +5 is to skip over "type=" - all type-parameters we support have
+       * type=, which is verified in conn_contact_info_build_supported_fields
+       */
+      for (j = 0;
+          j < MAX_TYPE_PARAM_LEN && supported_types[i][j + 5] != '\0';
+          j++)
+        {
+          child_name[j] = g_ascii_toupper (supported_types[i][j + 5]);
+        }
 
-       if (child_node == NULL)
-         continue;
+      child_node = wocky_xmpp_node_get_child (node, child_name);
 
-       tmp = g_ascii_strdown (child_node->name, -1);
-       g_ptr_array_add (field_params, g_strdup_printf ("type=%s", tmp));
-       g_free (tmp);
+      if (child_node != NULL)
+        g_ptr_array_add (field_params, g_strdup (supported_types[i]));
     }
 
   g_ptr_array_add (field_params, NULL);
@@ -608,6 +622,7 @@ conn_contact_info_new_edit (const VCardField *field,
 
 static void
 conn_contact_info_edit_add_type_params (GabbleVCardManagerEditInfo *edit_info,
+    const VCardField *field,
     const gchar * const * field_params)
 {
   const gchar * const * p;
@@ -617,18 +632,22 @@ conn_contact_info_edit_add_type_params (GabbleVCardManagerEditInfo *edit_info,
 
   for (p = field_params; *p != NULL; ++p)
     {
-      gchar *tmp;
+      guint i;
 
-      /* all the type parameters that vcard-temp supports should be in the
-       * format type=foo in Telepathy; in particular, we don't support
-       * language=foo */
-      if (!g_str_has_prefix (*p, "type="))
-        continue;
+      for (i = 0; field->types[i] != NULL; i++)
+        {
+          if (!tp_strdiff (field->types[i], *p))
+            {
+              /* the +5 is to skip over "type=" - all type-parameters we
+               * support have type=, which is verified in
+               * conn_contact_info_build_supported_fields */
+              gchar *tmp = g_ascii_strup (field->types[i] + 5, -1);
 
-      tmp = g_ascii_strup (*p + strlen ("type="), -1);
-      gabble_vcard_manager_edit_info_add_child (edit_info,
-          tmp, NULL);
-      g_free (tmp);
+              gabble_vcard_manager_edit_info_add_child (edit_info,
+                  tmp, NULL);
+              g_free (tmp);
+            }
+        }
     }
 }
 
@@ -651,7 +670,7 @@ _insert_edit_info (GSList *edits,
 
   edit_info = conn_contact_info_new_edit (field, NULL);
 
-  conn_contact_info_edit_add_type_params (edit_info, field_params);
+  conn_contact_info_edit_add_type_params (edit_info, field, field_params);
 
   for (i = 0; i < n_elements; ++i)
     gabble_vcard_manager_edit_info_add_child (edit_info,
@@ -883,6 +902,20 @@ conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
       GValueArray *va;
       gchar *vcard_name;
       guint max_times;
+      guint i;
+
+#ifndef G_DISABLE_ASSERT
+      for (i = 0; field->types[i] != NULL; i++)
+        {
+          /* All type-parameters XMPP currently supports are of the form type=,
+           * which is assumed in _create_contact_field_extended and
+           * conn_contact_info_edit_add_type_params */
+          g_assert (g_str_has_prefix (field->types[i], "type="));
+
+          g_assert_cmpuint ((guint) strlen (field->types[i]), <=,
+              MAX_TYPE_PARAM_LEN + 5);
+        }
+#endif
 
       if (vcard_manager != NULL &&
           !gabble_vcard_manager_can_use_vcard_field (vcard_manager,

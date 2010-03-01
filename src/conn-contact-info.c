@@ -608,34 +608,30 @@ gabble_connection_request_contact_info (GabbleSvcConnectionInterfaceContactInfo 
 
 static GabbleVCardManagerEditInfo *
 conn_contact_info_new_edit (const VCardField *field,
-    const gchar *value)
+    const gchar *value,
+    const gchar * const *field_params,
+    GError **error)
 {
+  GabbleVCardManagerEditInfo *edit_info;
   GabbleVCardEditType edit_type = GABBLE_VCARD_EDIT_APPEND;
+  const gchar * const *p;
 
   if (field->behaviour == FIELD_STRUCTURED_ONCE ||
       field->behaviour == FIELD_SIMPLE_ONCE)
     edit_type = GABBLE_VCARD_EDIT_REPLACE;
 
-  return gabble_vcard_manager_edit_info_new (field->xmpp_name, value,
+  edit_info = gabble_vcard_manager_edit_info_new (field->xmpp_name, value,
       edit_type, NULL);
-}
-
-static gboolean
-conn_contact_info_edit_add_type_params (GabbleVCardManagerEditInfo *edit_info,
-    const VCardField *field,
-    const gchar * const * field_params,
-    GError **error)
-{
-  const gchar * const * p;
 
   if (field_params == NULL)
-    return TRUE;
+    return edit_info;
 
   if (field->types[0] == NULL && field_params[0] != NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "%s vCard field expects no type-parameters", field->xmpp_name);
-      return FALSE;
+      gabble_vcard_manager_edit_info_free (edit_info);
+      return NULL;
     }
 
   for (p = field_params; *p != NULL; ++p)
@@ -666,11 +662,12 @@ conn_contact_info_edit_add_type_params (GabbleVCardManagerEditInfo *edit_info,
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "%s vCard field does not support type-parameter %s",
               field->xmpp_name, *p);
-          return FALSE;
+          gabble_vcard_manager_edit_info_free (edit_info);
+          return NULL;
         }
     }
 
-  return TRUE;
+  return edit_info;
 }
 
 static void
@@ -764,12 +761,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   goto finally;
                 }
 
-              edit_info = conn_contact_info_new_edit (field, field_values[0]);
+              edit_info = conn_contact_info_new_edit (field, field_values[0],
+                  field_params, &error);
 
-              if (!conn_contact_info_edit_add_type_params (edit_info, field,
-                    field_params, &error))
+              if (edit_info == NULL)
                 {
-                  gabble_vcard_manager_edit_info_free (edit_info);
                   goto finally;
                 }
             }
@@ -789,12 +785,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   goto finally;
                 }
 
-              edit_info = conn_contact_info_new_edit (field, NULL);
+              edit_info = conn_contact_info_new_edit (field, NULL,
+                  field_params, &error);
 
-              if (!conn_contact_info_edit_add_type_params (edit_info, field,
-                    field_params, &error))
+              if (edit_info == NULL)
                 {
-                  gabble_vcard_manager_edit_info_free (edit_info);
                   goto finally;
                 }
 
@@ -815,12 +810,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   goto finally;
                 }
 
-              edit_info = conn_contact_info_new_edit (field, NULL);
+              edit_info = conn_contact_info_new_edit (field, NULL,
+                  field_params, &error);
 
-              if (!conn_contact_info_edit_add_type_params (edit_info, field,
-                    field_params, &error))
+              if (edit_info == NULL)
                 {
-                  gabble_vcard_manager_edit_info_free (edit_info);
                   goto finally;
                 }
 
@@ -848,12 +842,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   goto finally;
                 }
 
-              edit_info = conn_contact_info_new_edit (field, NULL);
+              edit_info = conn_contact_info_new_edit (field, NULL,
+                  field_params, &error);
 
-              if (!conn_contact_info_edit_add_type_params (edit_info, field,
-                    field_params, &error))
+              if (edit_info == NULL)
                 {
-                  gabble_vcard_manager_edit_info_free (edit_info);
                   goto finally;
                 }
 

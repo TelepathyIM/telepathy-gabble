@@ -733,6 +733,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
       const gchar *field_name;
       const gchar * const *field_params;
       const gchar * const *field_values;
+      GabbleVCardManagerEditInfo *edit_info;
 
       field_name = g_value_get_string (structure->values + 0);
       field_params = g_value_get_boxed (structure->values + 1);
@@ -755,8 +756,6 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         case FIELD_SIMPLE:
         case FIELD_SIMPLE_ONCE:
             {
-              GabbleVCardManagerEditInfo *edit_info;
-
               if (n_field_values != 1)
                 {
                   g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
@@ -773,15 +772,12 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   gabble_vcard_manager_edit_info_free (edit_info);
                   goto finally;
                 }
-
-              edits = g_slist_append (edits, edit_info);
             }
           break;
 
         case FIELD_STRUCTURED:
         case FIELD_STRUCTURED_ONCE:
             {
-              GabbleVCardManagerEditInfo *edit_info;
               guint n_elements = g_strv_length ((gchar **) field->elements);
               guint j;
 
@@ -805,14 +801,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
               for (j = 0; j < n_elements; ++j)
                 gabble_vcard_manager_edit_info_add_child (edit_info,
                     field->elements[j], field_values[j]);
-
-              edits = g_slist_append (edits, edit_info);
             }
           break;
 
         case FIELD_ORG:
             {
-              GabbleVCardManagerEditInfo *edit_info;
               guint j;
 
               if (n_field_values == 0)
@@ -839,14 +832,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                   gabble_vcard_manager_edit_info_add_child (edit_info,
                       "ORGUNIT", field_values[j]);
                 }
-
-              edits = g_slist_append (edits, edit_info);
             }
           break;
 
         case FIELD_LABEL:
             {
-              GabbleVCardManagerEditInfo *edit_info;
               gchar **lines;
               guint j;
 
@@ -881,14 +871,15 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                 }
 
               g_strfreev (lines);
-
-              edits = g_slist_append (edits, edit_info);
             }
           break;
 
         default:
           g_assert_not_reached ();
         }
+
+      g_assert (edit_info != NULL);
+      edits = g_slist_append (edits, edit_info);
     }
 
 finally:

@@ -870,25 +870,26 @@ _vcard_updated (GObject *object,
     }
 }
 
-void
-conn_contact_info_class_init (GabbleConnectionClass *klass)
+/* vcard_manager may be NULL. */
+static GPtrArray *
+conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
 {
-  VCardField *field;
-
-  /* These are never freed; they're only allocated once per run of Gabble.
-   * The destructor in the latter is only set for completeness */
-  known_fields_xmpp = g_hash_table_new (g_str_hash, g_str_equal);
-  known_fields_vcard = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, NULL);
-
-  supported_fields = dbus_g_type_specialized_construct (
+  GPtrArray *fields = dbus_g_type_specialized_construct (
           GABBLE_ARRAY_TYPE_FIELD_SPECS);
+  VCardField *field;
 
   for (field = known_fields; field->xmpp_name != NULL; field++)
     {
       GValueArray *va;
       gchar *vcard_name;
       guint max_times;
+
+      if (vcard_manager != NULL &&
+          !gabble_vcard_manager_can_use_vcard_field (vcard_manager,
+            field->xmpp_name))
+        {
+          continue;
+        }
 
       if (field->vcard_name != NULL)
         vcard_name = g_strdup (field->vcard_name);
@@ -913,10 +914,57 @@ conn_contact_info_class_init (GabbleConnectionClass *klass)
           G_TYPE_UINT, max_times,
           G_TYPE_INVALID);
 
-      g_ptr_array_add (supported_fields, va);
+      g_free (vcard_name);
+
+      g_ptr_array_add (fields, va);
+    }
+
+  return fields;
+}
+
+void
+conn_contact_info_class_init (GabbleConnectionClass *klass)
+{
+  VCardField *field;
+
+  /* These are never freed; they're only allocated once per run of Gabble.
+   * The destructor in the latter is only set for completeness */
+  known_fields_xmpp = g_hash_table_new (g_str_hash, g_str_equal);
+  known_fields_vcard = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, NULL);
+
+  supported_fields = conn_contact_info_build_supported_fields (NULL);
+
+  for (field = known_fields; field->xmpp_name != NULL; field++)
+    {
+      gchar *vcard_name;
+
+      if (field->vcard_name != NULL)
+        vcard_name = g_strdup (field->vcard_name);
+      else
+        vcard_name = g_ascii_strdown (field->xmpp_name, -1);
+
       g_hash_table_insert (known_fields_xmpp,
           (gchar *) field->xmpp_name, field);
       g_hash_table_insert (known_fields_vcard, vcard_name, field);
+    }
+}
+
+static void
+conn_contact_info_status_changed_cb (GabbleConnection *conn,
+    guint status,
+    guint reason,
+    gpointer user_data G_GNUC_UNUSED)
+{
+  if (status != TP_CONNECTION_STATUS_CONNECTED)
+    return;
+
+  g_assert (conn->contact_info_fields == NULL);
+
+  if (gabble_vcard_manager_has_limited_vcard_fields (conn->vcard_manager))
+    {
+      conn->contact_info_fields = conn_contact_info_build_supported_fields (
+          conn->vcard_manager);
     }
 }
 
@@ -927,6 +975,9 @@ conn_contact_info_init (GabbleConnection *conn)
 
   g_signal_connect (conn->vcard_manager, "vcard-update",
       G_CALLBACK (_vcard_updated), conn);
+
+  g_signal_connect (conn, "status-changed",
+      G_CALLBACK (conn_contact_info_status_changed_cb), NULL);
 }
 
 void

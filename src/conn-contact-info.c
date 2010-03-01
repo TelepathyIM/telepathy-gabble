@@ -942,7 +942,7 @@ conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
 
       va = tp_value_array_build (4,
           G_TYPE_STRING, vcard_name,
-          G_TYPE_STRV, NULL,            /* any type-param is allowed for now */
+          G_TYPE_STRV, field->types,
           G_TYPE_UINT, field->tp_flags,
           G_TYPE_UINT, max_times,
           G_TYPE_INVALID);

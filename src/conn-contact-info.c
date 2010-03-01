@@ -904,6 +904,16 @@ conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
       guint max_times;
       guint i;
 
+      /* Shorthand to avoid having to put it in the struct initialization:
+       * on XMPP, there is no field that supports arbitrary type-parameters.
+       * Setting Parameters_Mandatory eliminates the special case that an
+       * empty list means arbitrary parameters. */
+      if (field->types[0] == NULL)
+        {
+          field->tp_flags |=
+            GABBLE_CONTACT_INFO_FIELD_FLAG_PARAMETERS_MANDATORY;
+        }
+
 #ifndef G_DISABLE_ASSERT
       for (i = 0; field->types[i] != NULL; i++)
         {

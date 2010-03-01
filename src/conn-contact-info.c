@@ -747,6 +747,9 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
   GSList *edits = NULL;
   guint i;
   GError *error = NULL;
+  gchar *field_name = NULL;
+  gchar **field_params = NULL;
+  gchar **field_values = NULL;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -754,8 +757,6 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
     {
       GValue contact_info_field = { 0, };
       gchar *field_name = NULL;
-      gchar **field_params = NULL;
-      gchar **field_values = NULL;
       guint n_field_values = 0;
       VCardField *field;
 
@@ -778,8 +779,11 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
         {
           g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "unknown vCard field from D-Bus: %s", field_name);
+          g_free (field_name);
           goto finally;
         }
+
+      g_free (field_name);
 
       switch (field->behaviour)
         {
@@ -792,7 +796,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                 {
                   g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                       "%s vCard field expects one value but got %u",
-                      field_name, n_field_values);
+                      field->xmpp_name, n_field_values);
                   goto finally;
                 }
 
@@ -865,7 +869,7 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
                 {
                   g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
                       "%s vCard field expects one value but got %u",
-                      field_name, n_field_values);
+                      field->xmpp_name, n_field_values);
                   goto finally;
                 }
 
@@ -899,12 +903,16 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
           g_assert_not_reached ();
         }
 
-      g_free (field_name);
       g_strfreev (field_params);
+      field_params = NULL;
       g_strfreev (field_values);
+      field_values = NULL;
     }
 
 finally:
+  g_strfreev (field_params);
+  g_strfreev (field_values);
+
   if (error != NULL)
     {
       DEBUG ("%s", error->message);

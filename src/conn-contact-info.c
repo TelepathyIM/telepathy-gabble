@@ -740,6 +740,15 @@ gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *ifa
           goto finally;
         }
 
+      if (!gabble_vcard_manager_can_use_vcard_field (self->vcard_manager,
+            field->xmpp_name))
+        {
+          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "%s vCard field is not supported by this server",
+              field->xmpp_name);
+          goto finally;
+        }
+
       switch (field->behaviour)
         {
         case FIELD_SIMPLE:

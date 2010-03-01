@@ -698,8 +698,6 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
     }
 }
 
-static const gchar * const empty_strv[] = { NULL };
-
 /**
  * gabble_connection_set_contact_info
  *

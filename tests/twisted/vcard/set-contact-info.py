@@ -149,6 +149,21 @@ def test(q, bus, conn, stream):
             [('fn', [], ['Wee', 'Ninja'])])
     q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
 
+    # unsupported type-parameter for a simple field
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('fn', ['language=ja'], ['Wee Ninja'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # unsupported type-parameter for a structured field
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [(u'n', ['language=ja'], [u'Ninja', u'Wee', u'', u'', u'-san'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # unsupported type-parameter for LABEL
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('label', ['language=en'], ['Collabora Ltd.\n11 Kings Parade'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
     # not enough values for LABEL
     call_async(q, conn.ContactInfo, 'SetContactInfo',
             [('label', [], [])])
@@ -157,6 +172,11 @@ def test(q, bus, conn, stream):
     # too many values for LABEL
     call_async(q, conn.ContactInfo, 'SetContactInfo',
             [('label', [], ['11 Kings Parade', 'Cambridge'])])
+    q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
+
+    # unsupported type-parameter for ORG
+    call_async(q, conn.ContactInfo, 'SetContactInfo',
+            [('org', ['language=en'], ['Collabora Ltd.'])])
     q.expect('dbus-error', method='SetContactInfo', name=cs.INVALID_ARGUMENT)
 
     # empty ORG

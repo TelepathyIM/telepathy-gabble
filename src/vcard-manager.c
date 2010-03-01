@@ -141,7 +141,7 @@ struct _GabbleVCardManagerPrivate
   gboolean have_self_avatar;
 
   /* list of pending edits (GabbleVCardManagerEditInfo structures) */
-  GSList *edits;
+  GList *edits;
 
   /* Contains RequestPipelineItem for our SET vCard request, or NULL if we
    * don't have SET request in the pipeline already. At most one SET request
@@ -582,9 +582,9 @@ gabble_vcard_manager_dispose (GObject *object)
 
   if (priv->edits != NULL)
     {
-      g_slist_foreach (priv->edits,
+      g_list_foreach (priv->edits,
           (GFunc) gabble_vcard_manager_edit_info_free, NULL);
-      g_slist_free (priv->edits);
+      g_list_free (priv->edits);
     }
 
   priv->edits = NULL;
@@ -711,7 +711,7 @@ status_changed_cb (GObject *object,
 
       if (alias_src >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
         {
-          priv->edits = g_slist_append (priv->edits,
+          priv->edits = g_list_append (priv->edits,
               gabble_vcard_manager_edit_info_new (NULL, alias,
                   GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
         }
@@ -964,9 +964,9 @@ replace_reply_cb (GabbleConnection *conn,
       if (priv->edits != NULL)
         {
           /* All the requests for these edits have just been cancelled. */
-          g_slist_foreach (priv->edits,
+          g_list_foreach (priv->edits,
               (GFunc) gabble_vcard_manager_edit_info_free, NULL);
-          g_slist_free (priv->edits);
+          g_list_free (priv->edits);
           priv->edits = NULL;
         }
     }
@@ -1250,7 +1250,6 @@ manager_patch_vcard (GabbleVCardManager *self,
   GabbleVCardManagerPrivate *priv = self->priv;
   LmMessage *msg = NULL;
   GList *li;
-  GSList *edit_link;
 
   /* Bail out if we don't have outstanding edits to make, or if we already
    * have a set request in progress.
@@ -1259,10 +1258,10 @@ manager_patch_vcard (GabbleVCardManager *self,
       return;
 
   /* Apply any unsent edits to the patched vCard */
-  for (edit_link = priv->edits; edit_link != NULL; edit_link = edit_link->next)
+  for (li = priv->edits; li != NULL; li = li->next)
     {
       LmMessage *new_msg = gabble_vcard_manager_edit_info_apply (
-          edit_link->data, vcard_node, self);
+          li->data, vcard_node, self);
 
       /* edit_info_apply returns NULL if nothing happened */
       if (new_msg == NULL)
@@ -1299,9 +1298,9 @@ manager_patch_vcard (GabbleVCardManager *self,
 
 out:
   /* We've applied those, forget about them */
-  g_slist_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
+  g_list_foreach (priv->edits, (GFunc) gabble_vcard_manager_edit_info_free,
       NULL);
-  g_slist_free (priv->edits);
+  g_list_free (priv->edits);
   priv->edits = NULL;
 
   /* Current edit requests are in the pipeline, remember it so we
@@ -1399,9 +1398,9 @@ pipeline_reply_cb (GabbleConnection *conn,
       if (entry->handle == base->self_handle && priv->edits != NULL)
         {
           /* We won't have a chance to apply those, might as well forget them */
-          g_slist_foreach (priv->edits,
+          g_list_foreach (priv->edits,
               (GFunc) gabble_vcard_manager_edit_info_free, NULL);
-          g_slist_free (priv->edits);
+          g_list_free (priv->edits);
           priv->edits = NULL;
 
           replace_reply_cb (conn, reply_msg, self, error);
@@ -1577,7 +1576,7 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
                                const gchar *element_name,
                                const gchar *element_value)
 {
-  GSList *edits = NULL;
+  GList *edits = NULL;
   GabbleVCardManagerEditInfo *info;
 
   info = gabble_vcard_manager_edit_info_new (
@@ -1589,7 +1588,7 @@ gabble_vcard_manager_edit_one (GabbleVCardManager *self,
   else
     DEBUG ("%s => null value", info->element_name);
 
-  edits = g_slist_append (edits, info);
+  edits = g_list_append (edits, info);
 
   return gabble_vcard_manager_edit (self, timeout, callback,
       user_data, object, edits);
@@ -1607,7 +1606,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
                            GabbleVCardManagerEditCb callback,
                            gpointer user_data,
                            GObject *object,
-                           GSList *edits)
+                           GList *edits)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
@@ -1628,7 +1627,7 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
           NULL, NULL);
     }
 
-  priv->edits = g_slist_concat (priv->edits, edits);
+  priv->edits = g_list_concat (priv->edits, edits);
 
   req = g_slice_new (GabbleVCardManagerEditRequest);
   req->manager = self;

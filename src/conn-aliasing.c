@@ -525,7 +525,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
 
   if (base->self_handle == handle)
     {
-      GSList *edits = NULL;
+      GList *edits = NULL;
 
       /* User has called SetAliases on themselves - patch their vCard.
        * FIXME: because SetAliases is currently synchronous, we ignore errors
@@ -549,7 +549,7 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
           lm_message_unref (msg);
         }
 
-      edits = g_slist_append (edits, gabble_vcard_manager_edit_info_new (
+      edits = g_list_append (edits, gabble_vcard_manager_edit_info_new (
             NULL, alias, GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
       gabble_vcard_manager_edit (data->conn->vcard_manager, 0, NULL,
           NULL, G_OBJECT (data->conn), edits);

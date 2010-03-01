@@ -820,7 +820,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   GabbleVCardManagerEditInfo *edit_info;
-  GSList *edits = NULL;
+  GList *edits = NULL;
   struct _set_avatar_ctx *ctx;
   gchar *base64;
 
@@ -852,7 +852,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
           NULL, GABBLE_VCARD_EDIT_DELETE, NULL);
     }
 
-  edits = g_slist_append (edits, edit_info);
+  edits = g_list_append (edits, edit_info);
 
   gabble_vcard_manager_edit (self->vcard_manager, 0,
       _set_avatar_cb2, ctx, (GObject *) self,

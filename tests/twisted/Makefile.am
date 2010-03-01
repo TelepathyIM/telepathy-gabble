@@ -90,6 +90,7 @@ TWISTED_TESTS = \
 	vcard/redundant-set.py \
 	vcard/set-contact-info.py \
 	vcard/set-set-disconnect.py \
+	vcard/supported-fields.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \

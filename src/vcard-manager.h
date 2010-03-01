@@ -154,6 +154,8 @@ void gabble_vcard_manager_edit_info_add_child (
 
 void gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info);
 
+gboolean gabble_vcard_manager_has_limited_vcard_fields (
+    GabbleVCardManager *self);
 gboolean gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
     const gchar *field_name);
 

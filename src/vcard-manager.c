@@ -1863,6 +1863,16 @@ gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info)
 }
 
 gboolean
+gabble_vcard_manager_has_limited_vcard_fields (GabbleVCardManager *self)
+{
+  if (self->priv->connection->features &
+      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+    return TRUE;
+
+  return FALSE;
+}
+
+gboolean
 gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
     const gchar *field_name)
 {

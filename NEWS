@@ -1,7 +1,27 @@
-telepathy-gabble 0.9.7 (UNRELEASED)
+telepathy-gabble 0.9.7 (2010-03-03)
 ===================================
 
-...
+The "Faraday cake" release.
+
+Dependencies:
+
+* Gabble now needs telepathy-glib ≥ 0.9.2
+
+Enhancements:
+
+* Add support for draft 1 of Connection.Interface.MailNotification (stormer)
+
+* Improve regression test coverage (KaKaRoTo)
+
+* Update Wocky:
+  - data-form utility code (cassidy)
+  - node iterator utility functions (sjoerd)
+  - better gtk-doc, improve portability (smcv)
+
+Fixes:
+
+* Implement the 'accuracy' key in Location, not the deprecated XEP-0080
+  'error' (which is not in telepathy-spec) (cassidy)
 
 telepathy-gabble 0.9.6 (2010-02-23)
 ===================================

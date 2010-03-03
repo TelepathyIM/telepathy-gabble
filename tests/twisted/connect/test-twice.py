@@ -21,17 +21,17 @@ def test(q, bus, conns, streams):
     conn1.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED],
-             path=conn1.object.__dbus_object_path__)
+             path=conn1.object.object_path)
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresenceUpdate',
              args=[{1L: (0L, {u'available': {}})}],
-             path=conn1.object.__dbus_object_path__)
+             path=conn1.object.object_path)
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
-             path=conn1.object.__dbus_object_path__)
+             path=conn1.object.object_path)
     for target_id in ('publish', 'subscribe', 'stored'):
         event = q.expect('dbus-signal', signal='NewChannels',
-                         path=conn1.object.__dbus_object_path__)
+                         path=conn1.object.object_path)
         channels = event.args[0]
         assert len(channels) == 1
         path, props = channels[0]
@@ -42,18 +42,18 @@ def test(q, bus, conns, streams):
     conn2.Connect()
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED],
-             path=conn2.object.__dbus_object_path__)
+             path=conn2.object.object_path)
     q.expect('stream-authenticated')
     q.expect('dbus-signal', signal='PresenceUpdate',
              args=[{1L: (0L, {u'available': {}})}],
-             path=conn2.object.__dbus_object_path__)
+             path=conn2.object.object_path)
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
-             path=conn2.object.__dbus_object_path__)
+             path=conn2.object.object_path)
 
     for target_id in ('publish', 'subscribe', 'stored'):
         event = q.expect('dbus-signal', signal='NewChannels',
-                         path=conn2.object.__dbus_object_path__)
+                         path=conn2.object.object_path)
         channels = event.args[0]
         assert len(channels) == 1
         path, props = channels[0]

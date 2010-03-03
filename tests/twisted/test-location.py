@@ -107,6 +107,7 @@ def test(q, bus, conn, stream):
         'language': 'en',
         'timestamp': date,
         'country': 'Congo',
+        'accuracy': 1.4,
         # Gabble silently ignores unknown keys
         'badger': 'mushroom'})
 
@@ -124,6 +125,8 @@ def test(q, bus, conn, stream):
     assertEquals(str(timestamp), date_str)
     country = xpath.queryForNodes('/geoloc/country', geoloc)[0]
     assertEquals(str(country), 'Congo')
+    lat = xpath.queryForNodes('/geoloc/accuracy', geoloc)[0]
+    assertEquals(float(str(lat)), 1.4)
 
     # Request Bob's location
     bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
@@ -148,6 +151,7 @@ def test(q, bus, conn, stream):
     geoloc.addElement('lat', content='1.25')
     geoloc.addElement('lon', content='5.5')
     geoloc.addElement('country', content='Belgium')
+    geoloc.addElement('accuracy', content='2.3')
     geoloc.addElement('timestamp', content=date_str)
     # invalid element, will be discarded by Gabble
     geoloc.addElement('badger', content='mushroom')
@@ -158,11 +162,12 @@ def test(q, bus, conn, stream):
     handle, location = update_event.args
     assertEquals(handle, bob_handle)
 
-    assertLength(5, location)
+    assertLength(6, location)
     assertEquals(location['language'], 'en')
     assertEquals(location['lat'], 1.25)
     assertEquals(location['lon'], 5.5)
     assertEquals(location['country'], 'Belgium')
+    assertEquals(location['accuracy'], 2.3)
     assertEquals(location['timestamp'], date)
 
     q.forbid_events([geoloc_iq_set_event])

@@ -30,7 +30,6 @@ static const LocationMapping mappings[] = {
   { "building", "building", G_TYPE_STRING },
   { "country", "country", G_TYPE_STRING },
   { "description", "description", G_TYPE_STRING },
-  { "error", "error", G_TYPE_DOUBLE },
   { "floor", "floor", G_TYPE_STRING },
   { "lat", "lat", G_TYPE_DOUBLE },
   { "locality", "locality", G_TYPE_STRING },

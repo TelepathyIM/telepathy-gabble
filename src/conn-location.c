@@ -45,7 +45,6 @@ static const LocationMapping mappings[] = {
   { "timestamp", "timestamp", G_TYPE_INT64 },
   { "uri", "uri", G_TYPE_STRING },
   { "accuracy", "accuracy", G_TYPE_DOUBLE },
-  /* Not (yet?) part of XEP-0080 */
   { "countrycode", "countrycode", G_TYPE_STRING },
   /* language is a special case as it's not mapped on a node but on the
    * xml:lang attribute of the 'geoloc' node. */

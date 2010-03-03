@@ -15,6 +15,7 @@ EXTRA_DIST = \
     Connection_Future.xml \
     Connection_Interface_Contact_Info.xml \
     Connection_Interface_Gabble_Decloak.xml \
+    Connection_Interface_Mail_Notification.xml \
     Channel_Type_Contact_Search.xml \
     Gabble_Plugin_Gateways.xml \
     Gabble_Plugin_Test.xml \

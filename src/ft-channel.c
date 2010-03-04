@@ -110,6 +110,7 @@ enum
   PROP_TRANSFERRED_BYTES,
   PROP_INITIAL_OFFSET,
   PROP_RESUME_SUPPORTED,
+  PROP_FILE_COLLECTION,
 
   PROP_CONNECTION,
   LAST_PROPERTY
@@ -148,6 +149,7 @@ struct _GabbleFileTransferChannelPrivate {
   guint64 transferred_bytes;
   guint64 initial_offset;
   guint64 date;
+  gchar *file_collection;
 };
 
 
@@ -266,6 +268,9 @@ gabble_file_transfer_channel_get_property (GObject *object,
       case PROP_DATE:
         g_value_set_uint64 (value, self->priv->date);
         break;
+      case PROP_FILE_COLLECTION:
+        g_value_set_string (value, self->priv->file_collection);
+        break;
       case PROP_CHANNEL_DESTROYED:
         g_value_set_boolean (value, self->priv->closed);
         break;
@@ -294,6 +299,7 @@ gabble_file_transfer_channel_get_property (GObject *object,
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
+                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "FileCollection",
                 NULL));
         break;
       default:
@@ -367,6 +373,10 @@ gabble_file_transfer_channel_set_property (GObject *object,
         break;
       case PROP_INITIAL_OFFSET:
         self->priv->initial_offset = g_value_get_uint64 (value);
+        break;
+      case PROP_FILE_COLLECTION:
+        g_free (self->priv->file_collection);
+        self->priv->file_collection = g_value_dup_string (value);
         break;
       case PROP_RESUME_SUPPORTED:
         self->priv->resume_supported = g_value_get_boolean (value);
@@ -533,6 +543,7 @@ gabble_file_transfer_channel_class_init (
     { "TransferredBytes", "transferred-bytes", NULL },
     { "InitialOffset", "initial-offset", NULL },
     { "Date", "date", NULL },
+    { "FileCollection", "file-collection", NULL},
     { NULL }
   };
 
@@ -738,6 +749,15 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_RESUME_SUPPORTED,
       param_spec);
 
+  param_spec = g_param_spec_string (
+      "file-collection",
+      "gchar *file_colletion",
+      "Token identifying a collection of files",
+      "",
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_FILENAME, param_spec);
+
   gabble_file_transfer_channel_class->dbus_props_class.interfaces =
       prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -812,6 +832,7 @@ gabble_file_transfer_channel_finalize (GObject *object)
   g_free (self->priv->content_hash);
   g_free (self->priv->description);
   g_hash_table_destroy (self->priv->available_socket_types);
+  g_free (self->priv->file_collection);
 
   G_OBJECT_CLASS (gabble_file_transfer_channel_parent_class)->finalize (object);
 }

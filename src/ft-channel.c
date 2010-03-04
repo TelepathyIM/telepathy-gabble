@@ -128,7 +128,6 @@ struct _GabbleFileTransferChannelPrivate {
   TpSocketAddressType socket_type;
   GValue *socket_address;
   TpHandle initiator;
-  gboolean remote_accepted;
   gboolean resume_supported;
 
   GtalkFtManager *gtalk_ft;
@@ -1172,7 +1171,6 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
 
   gabble_file_transfer_channel_set_bytestream (self, bytestream);
 
-  self->priv->remote_accepted = TRUE;
 }
 
 static gboolean
@@ -1743,7 +1741,7 @@ gabble_file_transfer_channel_provide_file (
       return;
     }
 
-  if (self->priv->remote_accepted)
+  if (self->priv->state == TP_FILE_TRANSFER_STATE_ACCEPTED)
     {
       /* Remote already accepted the file. Channel is Open.
        * If not channel stay Pending. */

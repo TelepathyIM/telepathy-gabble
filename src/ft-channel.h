@@ -29,6 +29,8 @@
 
 typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 
+#include "gtalk-ft-manager.h"
+
 #include "bytestream-factory.h"
 
 G_BEGIN_DECLS
@@ -77,6 +79,12 @@ gboolean gabble_file_transfer_channel_set_bytestream (
     GabbleFileTransferChannel *self,
     GabbleBytestreamIface *bytestream);
 
+gboolean gabble_file_transfer_channel_set_gtalk_ft (
+    GabbleFileTransferChannel *self,
+    GtalkFtManager *gtalk_ft);
+
+void gabble_file_transfer_channel_set_gtalk_ft_state (
+    GabbleFileTransferChannel *self, guint gtalk_ft_state, guint reason);
 
 
 gboolean gabble_file_transfer_channel_offer_file (

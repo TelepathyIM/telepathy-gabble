@@ -27,9 +27,12 @@
 #include <extensions/_gen/interfaces.h>
 #include <extensions/_gen/enums.h>
 
+typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
+
+#include "bytestream-factory.h"
+
 G_BEGIN_DECLS
 
-typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 typedef struct _GabbleFileTransferChannelClass GabbleFileTransferChannelClass;
 typedef struct _GabbleFileTransferChannelPrivate GabbleFileTransferChannelPrivate;
 
@@ -74,9 +77,6 @@ gboolean gabble_file_transfer_channel_set_bytestream (
     GabbleFileTransferChannel *self,
     GabbleBytestreamIface *bytestream);
 
-gboolean gabble_file_transfer_channel_set_jingle_session (
-    GabbleFileTransferChannel *self,
-    GabbleJingleSession *session);
 
 
 gboolean gabble_file_transfer_channel_offer_file (

@@ -1,6 +1,6 @@
 /*
  * ft-manager.c - Source for GabbleFtManager
- * Copyright (C) 2009 Collabora Ltd.
+ * Copyright (C) 2009-2010 Collabora Ltd.
  *   @author: Guillaume Desmottes <guillaume.desmottes@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
@@ -57,6 +57,7 @@ channel_manager_iface_init (gpointer, gpointer);
 
 static void gabble_ft_manager_channel_created (GabbleFtManager *mgr,
     GabbleFileTransferChannel *chan, gpointer request_token);
+
 
 static void caps_channel_manager_iface_init (gpointer g_iface,
     gpointer iface_data);
@@ -334,7 +335,8 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
           NULL, filename, size, TP_FILE_HASH_TYPE_NONE, NULL,
           NULL, 0, 0, FALSE);
 
-      gabble_file_transfer_channel_set_jingle_session (chan, sess);
+      /* TODO */
+      //gabble_file_transfer_channel_set_jingle_session (chan, sess);
 
       gabble_ft_manager_channel_created (self, chan, NULL);
 

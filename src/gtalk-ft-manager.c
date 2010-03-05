@@ -430,6 +430,7 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
         {
           GList *i;
 
+          /* TODO */
           for (i = self->priv->channels; i; i = i->next)
             {
               GabbleChannel *c = i->data;
@@ -476,6 +477,7 @@ static void get_next_manifest_entry (GtalkFtManager *self,
       if (source_url[url_len -1] != '/')
         separator = "/";
 
+      /* TODO: URL encode */
       /* The session initiator will always be the full JID of the peer */
       buffer = g_strdup_printf ("GET %s%s%s HTTP/1.1\r\n"
           "Connection: Keep-Alive\r\n"
@@ -829,7 +831,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           gchar *next_line = http_read_line (buffer, len);
           if (next_line == NULL)
             return 0;
-
+          /* FIXME: check for 404 errors */
           DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
           if (*line == 0)
             {
@@ -993,7 +995,7 @@ nice_data_received_cb (NiceAgent *agent,
 }
 
 static void
-_hold_session (GtalkFtManager * self,
+set_session (GtalkFtManager * self,
     GabbleJingleSession *session, GabbleJingleContent *content)
 {
   self->priv->jingle = g_object_ref (session);
@@ -1009,8 +1011,8 @@ _hold_session (GtalkFtManager * self,
       (GCallback) content_completed, G_OBJECT (self));
 }
 
-static void
-_add_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
+static GabbleChannel *
+add_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
 {
   GabbleChannel *c = g_slice_new0 (GabbleChannel);
 
@@ -1064,9 +1066,10 @@ gtalk_ft_manager_new (GabbleFileTransferChannel *channel,
       "filesize", size,
       NULL);
 
-  _hold_session (self, session, content);
+  set_session (self, session, content);
 
-  _add_channel (self, channel);
+  add_channel (self, channel);
+
 
   return self;
 }
@@ -1095,7 +1098,7 @@ gtalk_ft_manager_new_from_session (GabbleJingleFactory *jingle_factory,
         }
     }
 
-  _hold_session (self, session, content);
+  set_session (self, session, content);
 
     /* TODO */
   /*
@@ -1211,4 +1214,6 @@ void
 gtalk_ft_manager_terminate (GtalkFtManager *self,
     GabbleFileTransferChannel * channel)
 {
+  /* TODO: remove GabbleChannel, check if current, switch to next, destroy self
+     if no more channels */
 }

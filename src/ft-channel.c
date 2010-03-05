@@ -1016,6 +1016,7 @@ check_address_and_access_control (GabbleFileTransferChannel *self,
 static void
 channel_open (GabbleFileTransferChannel *self)
 {
+  DEBUG ("Channel open");
   if (self->priv->socket_address != NULL)
     {
       /* ProvideFile has already been called. Channel is Open */
@@ -1026,10 +1027,9 @@ channel_open (GabbleFileTransferChannel *self)
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
           TP_FILE_TRANSFER_STATE_OPEN,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
-      /* TODO: should we unblock reading from libnice ?*/
-      if (self->priv->transport && self->priv->bytestream)
-        gibber_transport_block_receiving (self->priv->transport, FALSE);
-      if (self->priv->transport && self->priv->gtalk_ft)
+
+      if (self->priv->transport &&
+          (self->priv->bytestream || self->priv->gtalk_ft))
         gibber_transport_block_receiving (self->priv->transport, FALSE);
     }
   else
@@ -1248,6 +1248,7 @@ void
 gabble_file_transfer_channel_set_gtalk_ft_state (GabbleFileTransferChannel *self,
     guint state, guint reason)
 {
+  DEBUG ("gtalk ft state changed to %d", state);
   switch (state)
     {
       case PENDING:
@@ -1285,6 +1286,7 @@ gabble_file_transfer_channel_set_gtalk_ft_state (GabbleFileTransferChannel *self
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
 
         close_session_and_transport (self);
+        break;
       case COMPLETED:
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
@@ -1293,6 +1295,7 @@ gabble_file_transfer_channel_set_gtalk_ft_state (GabbleFileTransferChannel *self
 
         if (gibber_transport_buffer_is_empty (self->priv->transport))
           gibber_transport_disconnect (self->priv->transport);
+        break;
     }
 }
 

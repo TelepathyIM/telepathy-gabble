@@ -81,9 +81,9 @@ GtalkFtManager *gtalk_ft_manager_new_from_session (
     GabbleJingleFactory *jingle_factory,  GabbleJingleSession *session);
 
 void gtalk_ft_manager_initiate (GtalkFtManager *self,
-    GabbleFileTransferChannel * channel);
+    GabbleFileTransferChannel *channel);
 void gtalk_ft_manager_accept (GtalkFtManager *self,
-    GabbleFileTransferChannel * channel);
+    GabbleFileTransferChannel *channel);
 void gtalk_ft_manager_terminate (GtalkFtManager *self,
     GabbleFileTransferChannel * channel);
 void gtalk_ft_manager_block_reading (GtalkFtManager *self, gboolean block);

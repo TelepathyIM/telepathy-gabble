@@ -86,6 +86,9 @@ gboolean gabble_file_transfer_channel_set_gtalk_ft (
 void gabble_file_transfer_channel_set_gtalk_ft_state (
     GabbleFileTransferChannel *self, guint gtalk_ft_state, guint reason);
 
+void gabble_file_transfer_channel_gtalk_ft_write_blocked (
+    GabbleFileTransferChannel *self, gboolean blocked);
+
 
 gboolean gabble_file_transfer_channel_offer_file (
     GabbleFileTransferChannel *self, GError **error);

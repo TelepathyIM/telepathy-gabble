@@ -77,7 +77,7 @@ typedef struct
 {
   GabbleFileTransferChannel *channel;
   gboolean usable;
-  gboolean active;
+  gboolean reading;
 } GabbleChannel;
 
 struct _GtalkFtManagerPrivate
@@ -85,6 +85,7 @@ struct _GtalkFtManagerPrivate
   gboolean dispose_has_run;
 
   GList *channels;
+  GabbleChannel *current_channel;
   GabbleJingleFactory *jingle_factory;
   GabbleJingleSession *jingle;
   GHashTable *jingle_channels;
@@ -515,8 +516,8 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
     }
   else if (channel->http_status == HTTP_SERVER_SEND)
     {
-      /* TODO */
-      //gibber_transport_block_receiving (self->priv->transport, FALSE);
+      gabble_file_transfer_channel_gtalk_ft_write_blocked (
+          self->priv->current_channel->channel, FALSE);
       if (channel->write_buffer)
         {
           gint ret = nice_agent_send (agent, stream_id, component_id,
@@ -532,8 +533,8 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
               channel->write_len = channel->write_len - ret;
               g_free (to_free);
 
-              /* TODO */
-              //gibber_transport_block_receiving (self->priv->transport, TRUE);
+              gabble_file_transfer_channel_gtalk_ft_write_blocked (
+                  self->priv->current_channel->channel, TRUE);
             }
           else
             {
@@ -737,6 +738,20 @@ free_jingle_channel (gpointer data)
     }
   g_object_unref (channel->agent);
   g_slice_free (JingleChannel, channel);
+}
+
+static void
+set_current_channel (GtalkFtManager *self, GabbleChannel *channel)
+{
+  self->priv->current_channel = channel;
+
+  /* TODO */
+  if (channel)
+    {
+      gabble_file_transfer_channel_set_gtalk_ft_state (channel->channel,
+          OPEN, NONE);
+      gtalk_ft_manager_block_reading (self, channel->channel, !channel->reading);
+    }
 }
 
 /* Return the pointer at the end of the line or NULL if not \n found */
@@ -1128,7 +1143,13 @@ void
 gtalk_ft_manager_initiate (GtalkFtManager *self,
     GabbleFileTransferChannel * channel)
 {
+  GabbleChannel *c = get_channel_by_ft_channel (self, channel);
+
+  /* TODO: check jingle session status */
+
   gabble_jingle_session_accept (self->priv->jingle);
+  if (c)
+    c->usable = TRUE;
 }
 
 void
@@ -1185,27 +1206,37 @@ gtalk_ft_manager_send_data (GtalkFtManager *self,
 }
 
 void
-gtalk_ft_manager_block_reading (GtalkFtManager *self, gboolean block)
+gtalk_ft_manager_block_reading (GtalkFtManager *self,
+    GabbleFileTransferChannel *channel, gboolean block)
 {
-  JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
+  JingleChannel *j_channel = g_hash_table_lookup (self->priv->jingle_channels,
       GINT_TO_POINTER (1));
-  if (block)
+  GabbleChannel *c = get_channel_by_ft_channel (self, channel);
+
+  g_assert (c != NULL);
+
+  c->reading = !block;
+
+  if (c == self->priv->current_channel)
     {
-      if (channel && !channel->agent_attached)
+      if (block)
         {
-          channel->agent_attached = TRUE;
-          nice_agent_attach_recv (channel->agent, channel->stream_id,
-              channel->component_id, g_main_context_default (),
-              nice_data_received_cb, self);
+          if (j_channel && !j_channel->agent_attached)
+            {
+              j_channel->agent_attached = TRUE;
+              nice_agent_attach_recv (j_channel->agent, j_channel->stream_id,
+                  j_channel->component_id, g_main_context_default (),
+                  nice_data_received_cb, self);
+            }
         }
-    }
-  else
-    {
-      if (channel && channel->agent_attached)
+      else
         {
-          nice_agent_attach_recv (channel->agent, channel->stream_id,
-              channel->component_id, NULL, NULL, NULL);
-          channel->agent_attached = FALSE;
+          if (j_channel && j_channel->agent_attached)
+            {
+              nice_agent_attach_recv (j_channel->agent, j_channel->stream_id,
+                  j_channel->component_id, NULL, NULL, NULL);
+              j_channel->agent_attached = FALSE;
+            }
         }
     }
 }

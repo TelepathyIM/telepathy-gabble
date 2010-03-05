@@ -1525,7 +1525,7 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
       if (self->priv->bytestream)
         gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
       else if (self->priv->gtalk_ft)
-        gtalk_ft_manager_block_reading (self->priv->gtalk_ft, TRUE);
+        gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, TRUE);
     }
 }
 
@@ -1668,8 +1668,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
 
       /* Block the gtalk ft stream while the user is not connected
          to the socket */
-      /* TODO: do not block reading for other chans */
-      gtalk_ft_manager_block_reading (self->priv->gtalk_ft, TRUE);
+      gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, TRUE);
       gtalk_ft_manager_accept (self->priv->gtalk_ft, self);
     }
   else
@@ -1860,14 +1859,23 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
     gibber_transport_block_receiving (self->priv->transport, blocked);
 }
 
+void
+gabble_file_transfer_channel_gtalk_ft_write_blocked (
+    GabbleFileTransferChannel *self, gboolean blocked)
+{
+  if (self->priv->transport)
+    gibber_transport_block_receiving (self->priv->transport, blocked);
+}
+
+
 static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
   /* We shouldn't receive data if the bytestream isn't open otherwise it
      will error out */
-  if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)/* TODO: do not unblock reading for other chans */
+  if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)
     gibber_transport_block_receiving (self->priv->transport, FALSE);
-  else /* TODO: do not block reading for other chans */
+  else
     gibber_transport_block_receiving (self->priv->transport, TRUE);
 
   gibber_transport_set_handler (self->priv->transport, transport_handler,
@@ -1878,10 +1886,10 @@ static void
 file_transfer_receive (GabbleFileTransferChannel *self)
 {
   /* Client is connected, we can now receive data. Unblock the bytestream */
-  if (self->priv->bytestream)/* TODO: do not unblock reading for other chans */
+  if (self->priv->bytestream)
     gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
-  else if (self->priv->gtalk_ft)/* TODO: do not block reading for other chans */
-    gtalk_ft_manager_block_reading (self->priv->gtalk_ft, FALSE);
+  else if (self->priv->gtalk_ft)
+    gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, FALSE);
 }
 
 static void
@@ -1911,8 +1919,8 @@ transport_buffer_empty_cb (GibberTransport *transport,
   if (self->priv->bytestream)
     gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 
-  if (self->priv->gtalk_ft)/* TODO: check if we should unblock */
-    gtalk_ft_manager_block_reading (self->priv->gtalk_ft, FALSE);
+  if (self->priv->gtalk_ft)
+    gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, FALSE);
 
   if (self->priv->state > TP_FILE_TRANSFER_STATE_OPEN)
     gibber_transport_disconnect (transport);

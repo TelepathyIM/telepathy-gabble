@@ -1035,6 +1035,13 @@ add_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
   self->priv->channels = g_list_append (self->priv->channels, c);
 
   gabble_file_transfer_channel_set_gtalk_ft(channel, self);
+
+  /* TODO: construct param, only set it when creating channels */
+  /*g_object_set (channel,
+      "file-collection", self->priv->token,
+      NULL);*/
+
+  return c;
 }
 
 GtalkFtManager *
@@ -1181,28 +1188,36 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
   gabble_jingle_session_accept (self->priv->jingle);
 }
 
-gint
+gboolean
 gtalk_ft_manager_send_data (GtalkFtManager *self,
-    const gchar *data, guint length)
+    GabbleFileTransferChannel *channel, const gchar *data, guint length)
 {
 
-  JingleChannel *channel = g_hash_table_lookup (self->priv->jingle_channels,
+  JingleChannel *j_channel = g_hash_table_lookup (self->priv->jingle_channels,
       GINT_TO_POINTER (1));
-  gint ret = nice_agent_send (channel->agent, channel->stream_id,
-      channel->component_id, length, data);
+  gint ret;
 
+
+  if (self->priv->current_channel == NULL ||
+      self->priv->current_channel->channel != channel)
+    return FALSE;
+
+  ret = nice_agent_send (j_channel->agent, j_channel->stream_id,
+      j_channel->component_id, length, data);
+  /* TODO: check if we sent all the file, then send completed to ft channel
+     if done, reset current_channel and set http status to SERVER_IDLE */
   if (ret < 0 || (guint) ret < length)
     {
       if (ret < 0)
         ret = 0;
 
-      channel->write_buffer = g_memdup (data + ret,
+      j_channel->write_buffer = g_memdup (data + ret,
           length - ret);
-      channel->write_len = length - ret;
-      /*TODO*/
-      //gibber_transport_block_receiving (self->priv->transport, TRUE);
+      j_channel->write_len = length - ret;
+
+      gabble_file_transfer_channel_gtalk_ft_write_blocked (channel, TRUE);
     }
-  return ret;
+  return TRUE;
 }
 
 void

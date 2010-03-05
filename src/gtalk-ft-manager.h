@@ -89,7 +89,7 @@ void gtalk_ft_manager_terminate (GtalkFtManager *self,
 void gtalk_ft_manager_block_reading (GtalkFtManager *self,
     GabbleFileTransferChannel *channel, gboolean block);
 gboolean gtalk_ft_manager_send_data (GtalkFtManager *self,
-    const gchar *data, guint length);
+    GabbleFileTransferChannel *channel, const gchar *data, guint length);
 
 
 #endif /* __GTALK_FT_MANAGER_H__ */

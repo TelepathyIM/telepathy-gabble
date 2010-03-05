@@ -1822,7 +1822,7 @@ transport_handler (GibberTransport *transport,
     }
   else if (self->priv->gtalk_ft)
     {
-      if (!gtalk_ft_manager_send_data (self->priv->gtalk_ft,
+      if (!gtalk_ft_manager_send_data (self->priv->gtalk_ft, self,
               (const gchar *) data->data, data->length))
         {
           DEBUG ("Sending failed. Closing the jingle session");

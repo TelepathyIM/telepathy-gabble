@@ -63,6 +63,7 @@ typedef struct
   GabbleJingleShare *content;
   gint channel_id;
   HttpStatus http_status;
+  gchar *status_line;
   gboolean is_chunked;
   guint64 content_length;
   gchar *write_buffer;
@@ -206,6 +207,48 @@ get_jingle_channel (GtalkFtManager *self, NiceAgent *agent)
   return ret;
 }
 
+
+static GabbleChannel *
+get_channel_by_filename (GtalkFtManager *self, gchar *filename)
+{
+  GList *i;
+
+  for (i = self->priv->channels; i; i = i->next)
+    {
+      GabbleChannel *c = i->data;
+      gchar *file = NULL;
+
+      if (c->usable == FALSE)
+        continue;
+
+      g_object_get (c->channel,
+          "filename", &file,
+          NULL);
+
+      if (strcmp (file, filename) == 0)
+        return c;
+    }
+
+  return NULL;
+}
+
+
+
+static GabbleChannel *
+get_channel_by_ft_channel (GtalkFtManager *self,
+    GabbleFileTransferChannel *channel)
+{
+  GList *i;
+
+  for (i = self->priv->channels; i; i = i->next)
+    {
+      GabbleChannel *c = i->data;
+      if (c->channel == channel)
+        return c;
+    }
+
+  return NULL;
+}
 
 static void
 jingle_session_state_changed_cb (GabbleJingleSession *session,
@@ -785,6 +828,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
             return 0;
 
           channel->http_status = HTTP_SERVER_HEADERS;
+          channel->status_line = g_strdup (buffer);
 
           return headers - buffer;
         }
@@ -797,26 +841,75 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
             return 0;
 
           DEBUG ("Found server headers line (%d) : %s", strlen (line), line);
+          /* FIXME: how about content-length and an actual body ? */
           if (*line == 0)
             {
               gchar *response = NULL;
-              /* FIXME: how about content-length and an actual body ? */
-              channel->http_status = HTTP_SERVER_SEND;
+              gchar *get_line = NULL;
+              GabbleJingleShareManifest *manifest = NULL;
+              gchar *source_url = NULL;
+              guint url_len;
+              gchar *separator = "";
+              gchar *filename = NULL;
+              GabbleChannel *ft_channel = NULL;
+
+              g_assert (self->priv->current_channel == NULL);
+
               DEBUG ("Found empty line, now sending our response");
 
-              /* FIXME: actually check for the requested file's uri */
+              manifest = gabble_jingle_share_get_manifest (channel->content);
+              source_url = manifest->source_url;
+              url_len = strlen (source_url);
+              if (source_url[url_len -1] != '/')
+                separator = "/";
+
+              get_line = g_strdup_printf ("GET %s%s%%s HTTP/1.1",
+                  source_url, separator);
+              filename = g_malloc (strlen (channel->status_line));
+
+              if (sscanf (channel->status_line, get_line, filename) == 1)
+                  ft_channel = get_channel_by_filename (self, filename);
+
+              if (ft_channel)
+                {
+                  guint64 size;
+
+                  g_object_get (ft_channel->channel,
+                      "size", &size,
+                      NULL);
+
+                  DEBUG ("Found valid filename, result : 200");
+
+                  channel->http_status = HTTP_SERVER_SEND;
+                  response = g_strdup_printf ("HTTP/1.1 200\r\n"
+                      "Connection: Keep-Alive\r\n"
+                      "Content-Length: %llu\r\n"
+                      "Content-Type: application/octet-stream\r\n\r\n",
+                      size);
+
+                }
+              else
+                {
+                  DEBUG ("Unable to find valid filename, result : 404");
+
+                  channel->http_status = HTTP_SERVER_IDLE;
+                  response = g_strdup_printf ("HTTP/1.1 404\r\n"
+                      "Connection: Keep-Alive\r\n"
+                      "Content-Length: 0\r\n\r\n");
+                }
+
               /* FIXME: check for success of nice_agent_send */
-              /*TODO*/
-              response = g_strdup_printf ("HTTP/1.1 200\r\n"
-                  "Connection: Keep-Alive\r\n"
-                  "Content-Length: %llu\r\n"
-                  "Content-Type: application/octet-stream\r\n\r\n",
-                  (guint64) 0/* TODO self->priv->size*/);
               nice_agent_send (channel->agent, channel->stream_id,
                   channel->component_id, strlen (response), response);
+
               g_free (response);
-              /*TODO*/
-              //gibber_transport_block_receiving (self->priv->transport, FALSE);
+              g_free (filename);
+              g_free (get_line);
+
+              /* Now that we sent our response, we can assign the current
+                 channel which sets it to OPEN (if non NULL) so data can
+                 start flowing */
+              set_current_channel (self, ft_channel);
             }
 
           return next_line - buffer;
@@ -837,6 +930,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
             return 0;
 
           channel->http_status = HTTP_CLIENT_HEADERS;
+          channel->status_line = g_strdup (buffer);
 
           return headers - buffer;
         }

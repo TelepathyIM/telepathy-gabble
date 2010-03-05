@@ -298,7 +298,6 @@ gabble_file_transfer_channel_get_property (GObject *object,
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "FileCollection",
                 NULL));
         break;
       default:
@@ -542,7 +541,6 @@ gabble_file_transfer_channel_class_init (
     { "TransferredBytes", "transferred-bytes", NULL },
     { "InitialOffset", "initial-offset", NULL },
     { "Date", "date", NULL },
-    { "FileCollection", "file-collection", NULL},
     { NULL }
   };
 
@@ -755,7 +753,8 @@ gabble_file_transfer_channel_class_init (
       "",
       G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_FILENAME, param_spec);
+  g_object_class_install_property (object_class, PROP_FILE_COLLECTION,
+      param_spec);
 
   gabble_file_transfer_channel_class->dbus_props_class.interfaces =
       prop_interfaces;

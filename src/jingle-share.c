@@ -265,6 +265,14 @@ parse_description (GabbleJingleContent *content,
   LmMessageNode *protocol_node = NULL;
   LmMessageNode *http_node = NULL;
 
+  DEBUG ("parse description called");
+
+  if (priv->manifest != NULL)
+    {
+      DEBUG ("Not parsing description, we already have a manifest");
+      return;
+    }
+
   manifest_node = lm_message_node_get_child (desc_node, "manifest");
   protocol_node = lm_message_node_get_child (desc_node, "protocol");
   if (protocol_node != NULL)

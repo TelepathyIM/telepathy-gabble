@@ -1,3 +1,6 @@
+EXTRA_DIST = \
+    generate-wockyinclude_HEADERS
+
 if ENABLE_PLUGIN_API
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = telepathy-gabble.pc
@@ -10,7 +13,8 @@ gabbleinclude_HEADERS = \
     sidecar.h
 
 # We install these headers alongside gabble's so that an actual separate Wocky
-# installation won't clash with them.
+# installation won't clash with them. Update with:
+#   % ./gabble/generate-wockyinclude_HEADERS
 wockyincludedir = $(includedir)/telepathy-gabble-0/wocky
 wockyinclude_HEADERS = \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-types.h                  \

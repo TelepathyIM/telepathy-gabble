@@ -1564,6 +1564,7 @@ _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
         case XMPP_ERROR_SERVICE_UNAVAILABLE:
           tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_FULL,
                                   "room is full");
+          reason_code = TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
           break;
         case XMPP_ERROR_REGISTRATION_REQUIRED:
           tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_INVITE_ONLY,

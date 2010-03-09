@@ -1427,6 +1427,38 @@ void
 gtalk_ft_manager_terminate (GtalkFtManager *self,
     GabbleFileTransferChannel * channel)
 {
-  /* TODO: remove GabbleChannel, check if current, switch to next, destroy self
-     if no more channels */
+  GabbleChannel *c = get_channel_by_ft_channel (self, channel);
+
+  if (c == NULL)
+    return;
+
+  del_channel (self, channel);
+
+  if (self->priv->current_channel == c)
+    {
+      set_current_channel (self, NULL);
+
+      /* Cancel the whole thing if we terminate the current channel */
+      if (self->priv->status == GTALK_FT_STATUS_TRANSFERRING)
+        {
+          /* The terminate should call our terminated_cb callback which should
+             terminate all channels which should unref us which will unref the
+             jingle session */
+          self->priv->status = GTALK_FT_STATUS_TERMINATED;
+          gabble_jingle_session_terminate (self->priv->jingle,
+              TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+          return;
+        }
+    }
+
+  gabble_file_transfer_channel_set_gtalk_ft_state (c->channel, TERMINATED,
+      LOCAL_STOPPED);
+
+
+  if (g_list_length (self->priv->channels) == 0)
+    {
+      gabble_jingle_session_terminate (self->priv->jingle,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+      self->priv->status = GTALK_FT_STATUS_TERMINATED;
+    }
 }

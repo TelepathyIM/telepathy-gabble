@@ -1530,11 +1530,10 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
 }
 
 
-static void
-gtalk_data_received_cb (GtalkFtManager *gtalk_ft, const gchar *data, guint len,
-                        gpointer user_data)
+void
+gabble_file_transfer_channel_gtalk_ft_data_received (
+    GabbleFileTransferChannel *self, const gchar *data, guint len)
 {
-  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
   data_received_cb (self, (const guint8 *) data, len);
 }
 
@@ -1663,9 +1662,6 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
     }
   else if (self->priv->gtalk_ft)
     {
-      gabble_signal_connect_weak (self->priv->gtalk_ft, "data-received",
-          G_CALLBACK (gtalk_data_received_cb), G_OBJECT (self));
-
       /* Block the gtalk ft stream while the user is not connected
          to the socket */
       gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, TRUE);

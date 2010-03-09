@@ -16,7 +16,17 @@ from caps_helper import text_fixed_properties, text_allowed_properties, \
 from twisted.words.xish import domish, xpath
 
 import constants as cs
+import sys
 
+# These hash values need to be fixed depending on the features that get added
+# or removed. Simply add in the CAPS_VER_HASH the key/value as reported by the
+# assert, then run the test again and check the gabble-testing.log for a line
+# similar to :
+# "The verification string '<CAPS_VER_HASH key>' announced by '<full fid>'
+#  does not match our hash of their disco reply '<CAPS_VER_HASH value>'."
+
+CAPS_VER_HASH = {'sE90xarIraOnMRTnZqYNmZtoAck=':'m9aR1Li0PZTOfdvxys4jARpdGNY=',
+                 '3P6yJJDbtCEEfrrTqxq1V8N5+ms=': 'gGreg/ivJyPi+XauJumCPGz28h8='}
 
 class File(object):
     DEFAULT_DATA = "What a nice file"
@@ -135,9 +145,14 @@ class FileTransferTest(object):
         nodes = xpath.queryForNodes("/presence/c", stanza)
         c = nodes[0]
         if 'share-v1' in c.getAttribute('ext'):
-            assert c.getAttribute('ver') == '3P6yJJDbtCEEfrrTqxq1V8N5+ms='
+            assert c.getAttribute('ver') in CAPS_VER_HASH, \
+                """The capabilities hash has changed.
+                   Was expecting %s but got %s.
+                   Just fix it by setting the appropriate hash values in the
+                   file %s """ % (CAPS_VER_HASH.keys(), c.getAttribute('ver'),
+                                  sys.modules[__name__].__file__)
             # Replace ver hash from one with file-transfer ns to one without
-            c.attributes['ver'] = 'gGreg/ivJyPi+XauJumCPGz28h8='
+            c.attributes['ver'] = CAPS_VER_HASH[c.attributes['ver']]
 
     def _cb_disco_iq(self, iq):
         nodes = xpath.queryForNodes("/iq/query", iq)
@@ -146,16 +161,28 @@ class FileTransferTest(object):
             return
 
         if iq.getAttribute('type') == 'result':
-            n = query.attributes['node'].replace('3P6yJJDbtCEEfrrTqxq1V8N5+ms=',
-                                                 'gGreg/ivJyPi+XauJumCPGz28h8=')
+            node = query.attributes['node']
+            for hash in CAPS_VER_HASH:
+                if hash in node:
+                    break
+                hash = None
+            assert hash != None, "Couldn't find hash ver"
+            n = query.attributes['node'].replace(hash,
+                                                 CAPS_VER_HASH[hash])
             query.attributes['node'] = n
 
             for node in query.children:
                 if node.getAttribute('var') == ns.FILE_TRANSFER:
                     query.children.remove(node)
         elif iq.getAttribute('type') == 'get':
-            n = query.attributes['node'].replace('gGreg/ivJyPi+XauJumCPGz28h8=',
-                                                 '3P6yJJDbtCEEfrrTqxq1V8N5+ms=')
+            node = query.attributes['node']
+            for hash in CAPS_VER_HASH:
+                if CAPS_VER_HASH[hash] in node:
+                    break
+                hash = None
+            assert hash != None, "Couldn't find hash ver"
+            n = query.attributes['node'].replace(CAPS_VER_HASH[hash],
+                                                 hash)
             query.attributes['node'] = n
 
     def create_socket(self):

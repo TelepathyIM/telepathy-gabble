@@ -1356,10 +1356,12 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
      (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_ROOM);
 
   jid = tp_handle_inspect (contact_repo, self->priv->handle);
-
   if (gabble_get_room_handle_from_jid (room_repo, jid) == 0)
     {
       /* Not a MUC jid, need to get a resource */
+
+      /* FIXME: if we have access to google relays, should we give priority to
+         jingle-share instead of SI ? */
 
       /* FIXME: should we check for SI, bytestreams and/or IBB too?
        * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */

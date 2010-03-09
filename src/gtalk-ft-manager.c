@@ -1282,7 +1282,7 @@ gtalk_ft_manager_new_from_session (GabbleConnection *connection,
       channel = gabble_file_transfer_channel_new (connection,
           session->peer, session->peer, TP_FILE_TRANSFER_STATE_PENDING,
           NULL, entry->name, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
-          NULL, 0, 0, FALSE);
+          NULL, 0, 0, FALSE, self->priv->token);
       add_channel (self, channel);
     }
 

@@ -2084,7 +2084,8 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   const gchar *description,
                                   guint64 date,
                                   guint64 initial_offset,
-                                  gboolean resume_supported)
+                                  gboolean resume_supported,
+                                  const gchar *file_collection)
 
 {
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
@@ -2101,5 +2102,6 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "date", date,
       "initial-offset", initial_offset,
       "resume-supported", resume_supported,
+      "file-collection", file_collection,
       NULL);
 }

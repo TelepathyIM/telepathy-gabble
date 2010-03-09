@@ -1315,6 +1315,12 @@ offer_gtalk_ft (GabbleFileTransferChannel *self, const gchar *jid,
 
   gtalk_ft_manager_initiate (self->priv->gtalk_ft, self);
 
+  /* We would have gotten a set_gtalk_ft so we already hold an additional
+     reference to the object, so we can drop the reference we got from the
+     gtalk_ft_manager_new. If we didn't get our set_gtalk_ft called, then the
+     ft manager doesn't handle us, so it's best to just destroy it anyways */
+  g_object_unref (gtalk_ft);
+
   return TRUE;
 }
 

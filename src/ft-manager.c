@@ -283,6 +283,29 @@ file_channel_closed_cb (GabbleFileTransferChannel *chan,
 }
 
 static void
+gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
+{
+  GList *i;
+  GHashTable *new_channels = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, NULL);
+
+  for (i = channels; i ; i = i->next)
+    {
+      GabbleFileTransferChannel *chan = i->data;
+
+      gabble_signal_connect_weak (chan, "closed",
+          G_CALLBACK (file_channel_closed_cb), G_OBJECT (self));
+
+      self->priv->channels = g_list_append (self->priv->channels, chan);
+      g_hash_table_insert (new_channels, chan, NULL);
+    }
+
+  tp_channel_manager_emit_new_channels (self, new_channels);
+
+  g_hash_table_destroy (new_channels);
+}
+
+static void
 gabble_ft_manager_channel_created (GabbleFtManager *self,
                                    GabbleFileTransferChannel *chan,
                                    gpointer request_token)
@@ -310,39 +333,23 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
     gpointer data)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (data);
-  GList *cs;
+  GtalkFtManager *manager = NULL;
+  GList *channels = NULL;
 
-  if (gabble_jingle_session_get_content_type (sess) !=
-      GABBLE_TYPE_JINGLE_SHARE)
-    return;
-
-  cs = gabble_jingle_session_get_contents (sess);
-
-  if (cs != NULL)
+  manager = gtalk_ft_manager_new_from_session (self->priv->connection, sess);
+  if (manager)
     {
-      GabbleJingleShare *c = GABBLE_JINGLE_SHARE (cs->data);
-      const gchar *filename;
-      guint64 size;
-      GabbleFileTransferChannel *chan;
+      channels = gtalk_ft_manager_get_channels (manager);
 
-      g_object_get (c,
-          "filename", &filename,
-          "filesize", &size,
-          NULL);
+      if (g_list_length (channels) > 0)
+        gabble_ft_manager_channels_created (self, channels);
 
-      chan = gabble_file_transfer_channel_new (self->priv->connection,
-          sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,
-          NULL, filename, size, TP_FILE_HASH_TYPE_NONE, NULL,
-          NULL, 0, 0, FALSE);
+      g_list_free (channels);
 
-      /* TODO */
-      //gabble_file_transfer_channel_set_jingle_session (chan, sess);
-
-      gabble_ft_manager_channel_created (self, chan, NULL);
-
-      g_list_free (cs);
+      /* Channels will hold the reference to the gtalk ft manager, so we can drop
+         ours already. If no channels were created, then we destroy it anyways */
+      g_object_unref (manager);
     }
-
 }
 
 

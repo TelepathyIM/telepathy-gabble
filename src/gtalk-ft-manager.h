@@ -22,6 +22,7 @@
 
 #include <glib-object.h>
 #include "jingle-session.h"
+#include "connection.h"
 
 typedef struct _GtalkFtManager GtalkFtManager;
 
@@ -77,8 +78,10 @@ struct _GtalkFtManager {
 GtalkFtManager *gtalk_ft_manager_new (GabbleFileTransferChannel *channel,
     GabbleJingleFactory *jingle_factory, TpHandle handle, const gchar *resource);
 
-GtalkFtManager *gtalk_ft_manager_new_from_session (
-    GabbleJingleFactory *jingle_factory,  GabbleJingleSession *session);
+GtalkFtManager *gtalk_ft_manager_new_from_session (GabbleConnection *connection,
+    GabbleJingleSession *session);
+
+GList *gtalk_ft_manager_get_channels (GtalkFtManager *self);
 
 void gtalk_ft_manager_initiate (GtalkFtManager *self,
     GabbleFileTransferChannel *channel);

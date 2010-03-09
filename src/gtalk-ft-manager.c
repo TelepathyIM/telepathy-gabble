@@ -70,7 +70,6 @@ typedef struct
   guint write_len;
   gchar *read_buffer;
   guint read_len;
-  gint manifest_entry;
 } JingleChannel;
 
 
@@ -81,10 +80,21 @@ typedef struct
   gboolean reading;
 } GabbleChannel;
 
+typedef enum
+{
+  GTALK_FT_STATUS_PENDING,
+  GTALK_FT_STATUS_INITIATED,
+  GTALK_FT_STATUS_ACCEPTED,
+  GTALK_FT_STATUS_TRANSFERRING,
+  GTALK_FT_STATUS_WAITING,
+  GTALK_FT_STATUS_TERMINATED
+} GtalkFtStatus;
+
 struct _GtalkFtManagerPrivate
 {
   gboolean dispose_has_run;
 
+  GtalkFtStatus status;
   GList *channels;
   GabbleChannel *current_channel;
   GabbleJingleFactory *jingle_factory;
@@ -113,10 +123,12 @@ gtalk_ft_manager_init (GtalkFtManager *self)
   DEBUG ("gtalk ft manager init called");
   self->priv = priv;
 
+  self->priv->status = GTALK_FT_STATUS_PENDING;
+
   self->priv->jingle_channels = g_hash_table_new_full (NULL, NULL,
       NULL, free_jingle_channel);
 
-  for (i = 0; i < sizeof(buf); i++)
+  for (i = 0; i < sizeof (buf); i++)
     buf[i] = g_random_int_range (0, 256);
 
   self->priv->token = g_strdup_printf ("%x%x%x%x",
@@ -251,6 +263,50 @@ get_channel_by_ft_channel (GtalkFtManager *self,
 }
 
 static void
+set_current_channel (GtalkFtManager *self, GabbleChannel *channel)
+{
+  if (self->priv->current_channel)
+    g_object_unref (self->priv->current_channel->channel);
+
+  self->priv->current_channel = channel;
+
+  /* TODO */
+  if (channel)
+    {
+      g_object_ref (channel->channel);
+
+      gabble_file_transfer_channel_set_gtalk_ft_state (channel->channel,
+          OPEN, NONE);
+      gtalk_ft_manager_block_reading (self, channel->channel, !channel->reading);
+    }
+}
+
+static GabbleChannel *
+add_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
+{
+  GabbleChannel *c = g_slice_new0 (GabbleChannel);
+
+  c->channel = g_object_ref (channel);
+  self->priv->channels = g_list_append (self->priv->channels, c);
+
+  gabble_file_transfer_channel_set_gtalk_ft (channel, self);
+
+  return c;
+}
+
+static void
+del_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
+{
+  GabbleChannel *c = get_channel_by_ft_channel (self, channel);
+
+  if (c == NULL)
+    return;
+
+  g_object_unref (c->channel);
+  self->priv->channels = g_list_remove (self->priv->channels, c);
+}
+
+static void
 jingle_session_state_changed_cb (GabbleJingleSession *session,
                                  GParamSpec *arg1,
                                  GtalkFtManager *self)
@@ -310,6 +366,8 @@ jingle_session_terminated_cb (GabbleJingleSession *session,
   GList *i;
 
   g_assert (session == self->priv->jingle);
+
+  self->priv->status = GTALK_FT_STATUS_TERMINATED;
 
   for (i = self->priv->channels; i; i = i->next)
     {
@@ -494,24 +552,38 @@ static void get_next_manifest_entry (GtalkFtManager *self,
 {
   GabbleJingleShareManifest *manifest = NULL;
   GabbleJingleShareManifestEntry *entry = NULL;
+  GabbleChannel *gabble_channel = NULL;
+  GList *i;
+
+  if (self->priv->current_channel != NULL)
+    {
+      if (g_list_length (self->priv->channels) == 1)
+        {
+          GabbleJingleContent *content = \
+              GABBLE_JINGLE_CONTENT (channel->content);
+          DEBUG ("Received all the files. Transfer is complete");
+          gabble_jingle_content_send_complete (content);
+        }
+      gabble_file_transfer_channel_set_gtalk_ft_state (
+          self->priv->current_channel->channel, COMPLETED, NONE);
+      set_current_channel (self, NULL);
+    }
 
   manifest = gabble_jingle_share_get_manifest (channel->content);
-  channel->manifest_entry++;
-  entry = g_list_nth_data (manifest->entries, channel->manifest_entry);
-
-  /* FIXME: We only support one file per manifest for now! */
-  /* TODO */
-  if (channel->manifest_entry > 0)
-    entry = NULL;
-
-  /* TODO send COMPLETED state to the last active channel */
-  if (entry == NULL)
+  for (i = manifest->entries; i; i = i->next)
     {
-      GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (channel->content);
-      DEBUG ("Received all the files. Transfer is complete");
-      gabble_jingle_content_send_complete (content);
+      entry = i->data;
+
+      gabble_channel = get_channel_by_filename (self, entry->name);
+      if (gabble_channel != NULL)
+        break;
+      entry = NULL;
     }
-  else
+
+  self->priv->status = GTALK_FT_STATUS_WAITING;
+
+
+  if (entry != NULL)
     {
       gchar *buffer = NULL;
       gchar *source_url = manifest->source_url;
@@ -520,6 +592,8 @@ static void get_next_manifest_entry (GtalkFtManager *self,
 
       if (source_url[url_len -1] != '/')
         separator = "/";
+
+      self->priv->status = GTALK_FT_STATUS_TRANSFERRING;
 
       /* TODO: URL encode */
       /* The session initiator will always be the full JID of the peer */
@@ -538,11 +612,8 @@ static void get_next_manifest_entry (GtalkFtManager *self,
       g_free (buffer);
 
       channel->http_status = HTTP_CLIENT_RECEIVE;
-      /* Do not receive anything until the local socket is connected */
-      nice_agent_attach_recv (channel->agent, channel->stream_id,
-          channel->component_id, NULL, NULL, NULL);
-      channel->agent_attached = FALSE;
-      /* TODO: send OPEN state to channel so we can attach again */
+      /* Block or unblock accordingly */
+      set_current_channel (self, gabble_channel);
     }
 }
 
@@ -698,10 +769,6 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   channel->content = GABBLE_JINGLE_SHARE (content);
   channel->channel_id = channel_id;
 
-  /* We increment the manifest_entry before fetching the entry, so we
-     initialize it at -1, in order to start the index at 0 */
-  channel->manifest_entry = -1;
-
   if (self->priv->requested)
       channel->http_status = HTTP_SERVER_IDLE;
   else
@@ -783,19 +850,6 @@ free_jingle_channel (gpointer data)
   g_slice_free (JingleChannel, channel);
 }
 
-static void
-set_current_channel (GtalkFtManager *self, GabbleChannel *channel)
-{
-  self->priv->current_channel = channel;
-
-  /* TODO */
-  if (channel)
-    {
-      gabble_file_transfer_channel_set_gtalk_ft_state (channel->channel,
-          OPEN, NONE);
-      gtalk_ft_manager_block_reading (self, channel->channel, !channel->reading);
-    }
-}
 
 /* Return the pointer at the end of the line or NULL if not \n found */
 static gchar *
@@ -1118,25 +1172,24 @@ set_session (GtalkFtManager * self,
       (GCallback) content_new_channel_cb, G_OBJECT (self));
   gabble_signal_connect_weak (content, "completed",
       (GCallback) content_completed, G_OBJECT (self));
+
+  self->priv->status = GTALK_FT_STATUS_PENDING;
 }
 
-static GabbleChannel *
-add_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
+GList *
+gtalk_ft_manager_get_channels (GtalkFtManager *self)
 {
-  GabbleChannel *c = g_slice_new0 (GabbleChannel);
+  GList *ret = NULL;
+  GList *i;
+  for (i = self->priv->channels; i; i = i->next)
+    {
+      GabbleChannel *c = i->data;
+      ret = g_list_append (ret, c->channel);
+    }
 
-  c->channel = g_object_ref (channel);
-  self->priv->channels = g_list_append (self->priv->channels, c);
-
-  gabble_file_transfer_channel_set_gtalk_ft(channel, self);
-
-  /* TODO: construct param, only set it when creating channels */
-  /*g_object_set (channel,
-      "file-collection", self->priv->token,
-      NULL);*/
-
-  return c;
+  return ret;
 }
+
 
 GtalkFtManager *
 gtalk_ft_manager_new (GabbleFileTransferChannel *channel,
@@ -1191,15 +1244,17 @@ gtalk_ft_manager_new (GabbleFileTransferChannel *channel,
 }
 
 GtalkFtManager *
-gtalk_ft_manager_new_from_session (GabbleJingleFactory *jingle_factory,
+gtalk_ft_manager_new_from_session (GabbleConnection *connection,
     GabbleJingleSession *session)
 {
-  GtalkFtManager * self = g_object_new (GTALK_TYPE_FT_MANAGER, NULL);
+  GtalkFtManager * self = NULL;
   GabbleJingleContent *content = NULL;
-  GList *cs;
+  GList *cs, *i;
+  GabbleJingleShareManifest *manifest = NULL;
 
-  self->priv->jingle_factory = jingle_factory;
-  self->priv->requested = FALSE;
+  if (gabble_jingle_session_get_content_type (session) !=
+      GABBLE_TYPE_JINGLE_SHARE)
+    return NULL;
 
   cs = gabble_jingle_session_get_contents (session);
 
@@ -1208,34 +1263,29 @@ gtalk_ft_manager_new_from_session (GabbleJingleFactory *jingle_factory,
       content = GABBLE_JINGLE_CONTENT (cs->data);
 
       if (content == NULL)
-        {
-          g_object_unref (self);
-          return NULL;
-        }
+        return NULL;
+      g_list_free (cs);
     }
+
+  self = g_object_new (GTALK_TYPE_FT_MANAGER, NULL);
+
+  self->priv->jingle_factory = connection->jingle_factory;
+  self->priv->requested = FALSE;
 
   set_session (self, session, content);
 
-    /* TODO */
-  /*
-  {
-    GabbleJingleShareManifest *manifest = NULL;
-    GabbleJingleShareManifestEntry *entry = NULL;
+  manifest = gabble_jingle_share_get_manifest (GABBLE_JINGLE_SHARE (content));
+  for (i = manifest->entries; i; i = i->next)
+    {
+      GabbleJingleShareManifestEntry *entry = i->data;
+      GabbleFileTransferChannel *channel = NULL;
 
-    manifest = gabble_jingle_share_get_manifest (content);
-    entry = g_list_nth_data (manifest->entries, 0);
-    if (entry != NULL)
-      {
-        g_free (self->priv->filename);
-        if (entry->folder)
-          self->priv->filename = g_strdup_printf ("%s.tar", entry->name);
-        else
-          self->priv->filename = g_strdup (entry->name);
-
-        self->priv->size = entry->size;
-      }
-  }
-  */
+      channel = gabble_file_transfer_channel_new (connection,
+          session->peer, session->peer, TP_FILE_TRANSFER_STATE_PENDING,
+          NULL, entry->name, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
+          NULL, 0, 0, FALSE);
+      add_channel (self, channel);
+    }
 
   return self;
 }
@@ -1246,40 +1296,63 @@ gtalk_ft_manager_initiate (GtalkFtManager *self,
 {
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
 
-  /* TODO: check jingle session status */
-
-  gabble_jingle_session_accept (self->priv->jingle);
   if (c)
     c->usable = TRUE;
+
+  if (self->priv->status == GTALK_FT_STATUS_PENDING)
+    {
+      gabble_jingle_session_accept (self->priv->jingle);
+      self->priv->status = GTALK_FT_STATUS_INITIATED;
+    }
+
 }
 
 void
 gtalk_ft_manager_accept (GtalkFtManager *self,
     GabbleFileTransferChannel * channel)
 {
+  GabbleChannel *c = get_channel_by_ft_channel (self, channel);
   GList *cs = gabble_jingle_session_get_contents (self->priv->jingle);
 
-  if (cs != NULL)
+  if (c)
+    c->usable = TRUE;
+
+  if (self->priv->status == GTALK_FT_STATUS_PENDING)
     {
-      GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
-      guint initial_id = 0;
-      gint channel_id;
-
-      /* The new-channel signal will take care of the rest.. */
-      do
+      if (cs != NULL)
         {
-          gchar *channel_name = NULL;
+          GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
+          guint initial_id = 0;
+          gint channel_id;
 
-          channel_name = g_strdup_printf ("gabble-%d", ++initial_id);
-          channel_id = gabble_jingle_content_create_channel (content,
-              channel_name);
-          g_free (channel_name);
-        } while (channel_id <= 0 && initial_id < 10);
+          /* The new-channel signal will take care of the rest.. */
+          do
+            {
+              gchar *channel_name = NULL;
 
-      /* FIXME: not assert but actually cancel the FT? */
-      g_assert (channel_id > 0);
+              channel_name = g_strdup_printf ("gabble-%d", ++initial_id);
+              channel_id = gabble_jingle_content_create_channel (content,
+                  channel_name);
+              g_free (channel_name);
+            } while (channel_id <= 0 && initial_id < 10);
+
+          /* FIXME: not assert but actually cancel the FT? */
+          g_assert (channel_id > 0);
+          g_list_free (cs);
+        }
+
+      gabble_jingle_session_accept (self->priv->jingle);
+      self->priv->status = GTALK_FT_STATUS_ACCEPTED;
     }
-  gabble_jingle_session_accept (self->priv->jingle);
+
+  if (self->priv->status == GTALK_FT_STATUS_WAITING)
+    {
+      /* FIXME: this and two other lookups should not check for channel '1' */
+      JingleChannel *j_channel = g_hash_table_lookup (
+          self->priv->jingle_channels, GINT_TO_POINTER (1));
+
+      get_next_manifest_entry (self, j_channel);
+    }
 }
 
 gboolean

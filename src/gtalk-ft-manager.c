@@ -1396,11 +1396,21 @@ gtalk_ft_manager_block_reading (GtalkFtManager *self,
 
   g_assert (c != NULL);
 
+  DEBUG ("Channel %p %s reading ", channel, block?"blocks":"unblocks" );
   c->reading = !block;
 
   if (c == self->priv->current_channel)
     {
       if (block)
+        {
+          if (j_channel && j_channel->agent_attached)
+            {
+              nice_agent_attach_recv (j_channel->agent, j_channel->stream_id,
+                  j_channel->component_id, NULL, NULL, NULL);
+              j_channel->agent_attached = FALSE;
+            }
+        }
+      else
         {
           if (j_channel && !j_channel->agent_attached)
             {
@@ -1408,15 +1418,6 @@ gtalk_ft_manager_block_reading (GtalkFtManager *self,
               nice_agent_attach_recv (j_channel->agent, j_channel->stream_id,
                   j_channel->component_id, g_main_context_default (),
                   nice_data_received_cb, self);
-            }
-        }
-      else
-        {
-          if (j_channel && j_channel->agent_attached)
-            {
-              nice_agent_attach_recv (j_channel->agent, j_channel->stream_id,
-                  j_channel->component_id, NULL, NULL, NULL);
-              j_channel->agent_attached = FALSE;
             }
         }
     }

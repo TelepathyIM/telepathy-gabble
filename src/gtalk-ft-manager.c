@@ -270,19 +270,11 @@ get_channel_by_ft_channel (GtalkFtManager *self,
 static void
 set_current_channel (GtalkFtManager *self, GabbleChannel *channel)
 {
-  GabbleChannel *old_channel  = self->priv->current_channel;
-
   self->priv->current_channel = channel;
-
-  /* Avoid reentrance */
-  if (old_channel)
-    g_object_unref (old_channel->channel);
 
   /* TODO */
   if (channel)
     {
-      g_object_ref (channel->channel);
-
       gabble_file_transfer_channel_set_gtalk_ft_state (channel->channel,
           OPEN, NONE);
       gtalk_ft_manager_block_reading (self, channel->channel, !channel->reading);
@@ -313,6 +305,8 @@ del_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
 
   self->priv->channels = g_list_remove (self->priv->channels, c);
   g_object_weak_unref (G_OBJECT (channel), channel_disposed, self);
+  if (self->priv->current_channel == c)
+    set_current_channel (self, NULL);
   g_slice_free (GabbleChannel, c);
 }
 
@@ -1517,16 +1511,7 @@ gtalk_ft_manager_terminate (GtalkFtManager *self,
   if (self->priv->current_channel == c)
     {
 
-      set_current_channel (self, NULL);
-
-      c = get_channel_by_ft_channel (self, channel);
-
-      /* set_current_channel might cause re-entrance since it will unref the
-         channel which could cause it to dispose, calling our weak ref
-         channel_disposed which already calls del_channel. So make sure the
-         GabbleChannel still exists before trying to free/delete it */
-      if (c != NULL)
-        del_channel (self, channel);
+      del_channel (self, channel);
 
       /* Cancel the whole thing if we terminate the current channel */
       if (self->priv->status == GTALK_FT_STATUS_TRANSFERRING)
@@ -1567,14 +1552,10 @@ channel_disposed (gpointer data, GObject *object)
   if (c == NULL)
     return;
 
-  del_channel (self, channel);
 
   if (self->priv->current_channel == c)
     {
-      /* do not call set_current_channel since it will unref the
-         finalized channel object */
-      self->priv->current_channel = NULL;
-      g_warning ("Channel got finalized while being the current channel");
+      del_channel (self, channel);
 
       /* Cancel the whole thing if we terminate the current channel */
       if (self->priv->status == GTALK_FT_STATUS_TRANSFERRING)
@@ -1589,5 +1570,8 @@ channel_disposed (gpointer data, GObject *object)
           return;
         }
     }
-
+  else
+    {
+      del_channel (self, channel);
+    }
 }

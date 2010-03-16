@@ -478,15 +478,9 @@ class SendFileTest(FileTransferTest):
 
         # If not all the bytes transferred have been announced using
         # TransferredBytesChanged, wait for them
-        tries = 0
         while self.count < to_send:
-            try:
-                self.q.expect('dbus-signal', signal='TransferredBytesChanged',
-                              path=self.channel.__dbus_object_path__)
-            except TimeoutError, e:
-                tries += 1
-                if tries >= 3:
-                    raise e
+            self.q.expect('dbus-signal', signal='TransferredBytesChanged',
+                          path=self.channel.object_path)
 
         assert self.count == to_send
 
@@ -500,6 +494,7 @@ def exec_file_transfer_test(send_cls, recv_cls, file = None):
             file = File()
 
         def test(q, bus, conns, streams):
+            q.timeout = 15
             conn1, conn2 = conns
             stream1, stream2 = streams
             send = send_cls(file, addr_type, access_control,

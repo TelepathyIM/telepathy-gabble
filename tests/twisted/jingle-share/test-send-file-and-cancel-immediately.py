@@ -23,7 +23,7 @@ class ReceiveFileStopped(ReceiveFileTest):
     def check_stopped(self):
         state_event = self.q.expect ('dbus-signal',
                                         signal='FileTransferStateChanged',
-                                        path=self.channel.__dbus_object_path__)
+                                        path=self.channel.object_path)
 
         state, reason = state_event.args
         assert state == cs.FT_STATE_CANCELLED
@@ -62,9 +62,9 @@ class SendFileAndClose (SendFileTest):
 
         state_event, _ = self.q.expect_many(
             EventPattern('dbus-signal', signal='FileTransferStateChanged',
-                         path=self.channel.__dbus_object_path__),
+                         path=self.channel.object_path),
             EventPattern('dbus-signal', signal='Closed',
-                         path=self.channel.__dbus_object_path__))
+                         path=self.channel.object_path))
 
         state, reason = state_event.args
         assert state == cs.FT_STATE_CANCELLED

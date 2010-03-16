@@ -79,7 +79,7 @@ class FileTransferTest(object):
 
         self.q.expect('dbus-signal', signal='StatusChanged',
                       args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
-                      path=self.conn.object.__dbus_object_path__)
+                      path=self.conn.object.object_path)
 
         self.self_handle = self.conn.GetSelfHandle()
         self.self_handle_name =  self.conn.InspectHandles(cs.HT_CONTACT, [self.self_handle])[0]
@@ -95,7 +95,7 @@ class FileTransferTest(object):
                                         dbus.Array([], signature="s"))])
 
         self.q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
-                 path=self.conn.object.__dbus_object_path__,
+                 path=self.conn.object.object_path,
                  args=[{self.self_handle:generic_ft_caps}])
 
     def wait_for_ft_caps(self):
@@ -105,7 +105,7 @@ class FileTransferTest(object):
         if caps != dbus.Dictionary({self.handle:generic_ft_caps}):
             self.q.expect('dbus-signal',
                           signal='ContactCapabilitiesChanged',
-                          path=self.conn.object.__dbus_object_path__,
+                          path=self.conn.object.object_path,
                           args=[{self.handle:generic_ft_caps}])
             caps = conn_caps_iface.GetContactCapabilities([self.handle])
         assert caps == dbus.Dictionary({self.handle:generic_ft_caps}), caps
@@ -125,7 +125,7 @@ class FileTransferTest(object):
         if self.closed is False:
             self.channel.Close()
             self.q.expect('dbus-signal', signal='Closed',
-                          path=self.channel.__dbus_object_path__)
+                          path=self.channel.object_path)
 
     def done(self):
         pass
@@ -214,7 +214,7 @@ class ReceiveFileTest(FileTransferTest):
 
     def check_new_channel(self):
         e = self.q.expect('dbus-signal', signal='NewChannels',
-                          path=self.conn.object.__dbus_object_path__)
+                          path=self.conn.object.object_path)
         channels = e.args[0]
         assert len(channels) == 1
         path, props = channels[0]
@@ -259,7 +259,7 @@ class ReceiveFileTest(FileTransferTest):
 
         state_event = self.q.expect('dbus-signal',
                                     signal='FileTransferStateChanged',
-                                    path=self.channel.__dbus_object_path__)
+                                    path=self.channel.object_path)
 
         state, reason = state_event.args
         assert state == cs.FT_STATE_ACCEPTED
@@ -272,7 +272,7 @@ class ReceiveFileTest(FileTransferTest):
                           path=self.channel.object_path),
             EventPattern ('dbus-signal',
                           signal='InitialOffsetDefined',
-                          path=self.channel.__dbus_object_path__))
+                          path=self.channel.object_path))
 
         offset = offset_event.args[0]
         assert offset == 0
@@ -295,7 +295,7 @@ class ReceiveFileTest(FileTransferTest):
         to_receive = self.file.size
 
         e = self.q.expect('dbus-signal', signal='TransferredBytesChanged',
-                          path=self.channel.__dbus_object_path__)
+                          path=self.channel.object_path)
         count = e.args[0]
 
         while True:
@@ -308,11 +308,11 @@ class ReceiveFileTest(FileTransferTest):
         while count < to_receive:
             # Catch TransferredBytesChanged until we transfered all the data
             e = self.q.expect('dbus-signal', signal='TransferredBytesChanged',
-                              path=self.channel.__dbus_object_path__)
+                              path=self.channel.object_path)
             count = e.args[0]
 
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged',
-                          path=self.channel.__dbus_object_path__)
+                          path=self.channel.object_path)
         state, reason = e.args
         assert state == cs.FT_STATE_COMPLETED
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
@@ -448,8 +448,9 @@ class SendFileTest(FileTransferTest):
     def send_file(self):
 
         if self.open is False:
-            self.q.expect('dbus-signal', signal='FileTransferStateChanged',
-                          path=self.channel.__dbus_object_path__,
+            self.q.expect('dbus-signal',
+                          signal='FileTransferStateChanged',
+                          path=self.channel.object_path,
                           args=[cs.FT_STATE_OPEN, self.open_reason])
 
         assert self.offset_defined == True

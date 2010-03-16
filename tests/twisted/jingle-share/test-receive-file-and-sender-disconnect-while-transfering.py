@@ -7,7 +7,7 @@ from file_transfer_helper import SendFileTest, ReceiveFileTest, \
 class ReceiveFileAndSenderDisconnectWhileTransfering(ReceiveFileTest):
     def receive_file(self):
         self.q.expect('dbus-signal', signal='FileTransferStateChanged',
-                      path = self.channel.__dbus_object_path__,
+                      path = self.channel.object_path,
                       args=[cs.FT_STATE_CANCELLED, \
                                 cs.FT_STATE_CHANGE_REASON_REMOTE_STOPPED])
 

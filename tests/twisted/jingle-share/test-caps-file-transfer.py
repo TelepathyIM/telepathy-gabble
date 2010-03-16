@@ -147,7 +147,7 @@ def check_contact_caps(conn, handle, with_ft):
 def test2(q, bus, connections, streams):
 
     for i, conn in enumerate(connections):
-        path = conn.object.__dbus_object_path__
+        path = conn.object.object_path
         conn.Connect()
         q.expect('dbus-signal', signal='StatusChanged', path=path,
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
@@ -163,10 +163,10 @@ def test2(q, bus, connections, streams):
 
     q.expect_many(EventPattern('dbus-signal',
                                signal='ContactCapabilitiesChanged',
-                               path=conn1.object.__dbus_object_path__),
+                               path=conn1.object.object_path),
                   EventPattern('dbus-signal',
                                signal='ContactCapabilitiesChanged',
-                               path=conn2.object.__dbus_object_path__))
+                               path=conn2.object.object_path))
 
     check_contact_caps (conn1, handle2, False)
     check_contact_caps (conn2, handle1, False)
@@ -179,7 +179,7 @@ def test2(q, bus, connections, streams):
     _, presence, disco, _ = \
         q.expect_many(EventPattern('dbus-signal',
                                    signal='ContactCapabilitiesChanged',
-                                   path=conn1.object.__dbus_object_path__,
+                                   path=conn1.object.object_path,
                                    args=[{conn1_handle:generic_ft_caps}]),
                       EventPattern('stream-presence', stream=stream1),
                       EventPattern('stream-iq', stream=stream1,
@@ -187,7 +187,7 @@ def test2(q, bus, connections, streams):
                                    iq_type = 'result'),
                       EventPattern('dbus-signal',
                                    signal='ContactCapabilitiesChanged',
-                                   path=conn2.object.__dbus_object_path__,
+                                   path=conn2.object.object_path,
                                    args=[{handle1:generic_ft_caps}]))
 
     presence_c = xpath.queryForNodes('/presence/c', presence.stanza)[0]
@@ -211,12 +211,12 @@ def test2(q, bus, connections, streams):
     _, presence, _ = \
         q.expect_many(EventPattern('dbus-signal',
                                    signal='ContactCapabilitiesChanged',
-                                   path=conn2.object.__dbus_object_path__,
+                                   path=conn2.object.object_path,
                                    args=[{conn2_handle:generic_ft_caps}]),
                       EventPattern('stream-presence', stream=stream2),
                       EventPattern('dbus-signal',
                                    signal='ContactCapabilitiesChanged',
-                                   path=conn1.object.__dbus_object_path__,
+                                   path=conn1.object.object_path,
                                    args=[{handle2:generic_ft_caps}]))
 
     presence_c = xpath.queryForNodes('/presence/c', presence.stanza)[0]

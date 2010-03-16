@@ -8,7 +8,7 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
     def accept_file(self):
 
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged',
-                          path = self.channel.__dbus_object_path__,
+                          path = self.channel.object_path,
                           args=[cs.FT_STATE_CANCELLED, \
                                     cs.FT_STATE_CHANGE_REASON_REMOTE_STOPPED])
 

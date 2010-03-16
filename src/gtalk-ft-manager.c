@@ -598,22 +598,25 @@ static void get_next_manifest_entry (GtalkFtManager *self,
       gchar *source_url = manifest->source_url;
       guint url_len = strlen (source_url);
       gchar *separator = "";
+      gchar *filename = NULL;
 
       if (source_url[url_len -1] != '/')
         separator = "/";
 
       self->priv->status = GTALK_FT_STATUS_TRANSFERRING;
 
-      /* TODO: URL encode */
+      filename = g_uri_escape_string (entry->name, NULL, TRUE);
+
       /* The session initiator will always be the full JID of the peer */
       buffer = g_strdup_printf ("GET %s%s%s HTTP/1.1\r\n"
           "Connection: Keep-Alive\r\n"
           "Content-Length: 0\r\n"
           "Host: %s:0\r\n"
           "User-Agent: %s\r\n\r\n",
-          source_url, separator, entry->name,
+          source_url, separator, filename,
           gabble_jingle_session_get_initiator (self->priv->jingle),
           PACKAGE_STRING);
+      g_free (filename);
 
       /* FIXME: check for success */
       nice_agent_send (channel->agent, channel->stream_id,
@@ -926,7 +929,8 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
 
               g_assert (self->priv->current_channel == NULL);
 
-              DEBUG ("Found empty line, now sending our response");
+              DEBUG ("Found empty line, received request : %s ",
+                  channel->status_line);
 
               manifest = gabble_jingle_share_get_manifest (channel->content);
               source_url = manifest->source_url;
@@ -939,7 +943,12 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
               filename = g_malloc (strlen (channel->status_line));
 
               if (sscanf (channel->status_line, get_line, filename) == 1)
+                {
+                  gchar *unescaped = g_uri_unescape_string (filename, NULL);
+                  g_free (filename);
+                  filename = unescaped;
                   ft_channel = get_channel_by_filename (self, filename);
+                }
 
               if (ft_channel)
                 {
@@ -961,7 +970,8 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
                 }
               else
                 {
-                  DEBUG ("Unable to find valid filename, result : 404");
+                  DEBUG ("Unable to find valid filename (%s), result : 404",
+                      filename);
 
                   channel->http_status = HTTP_SERVER_IDLE;
                   response = g_strdup_printf ("HTTP/1.1 404\r\n"

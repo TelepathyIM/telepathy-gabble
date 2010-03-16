@@ -565,17 +565,25 @@ static void get_next_manifest_entry (GtalkFtManager *self,
           DEBUG ("Received all the files. Transfer is complete");
           gabble_jingle_content_send_complete (content);
         }
+
+      self->priv->current_channel->usable = FALSE;
       gabble_file_transfer_channel_set_gtalk_ft_state (
           self->priv->current_channel->channel, COMPLETED, NONE);
+
       set_current_channel (self, NULL);
     }
 
   manifest = gabble_jingle_share_get_manifest (channel->content);
   for (i = manifest->entries; i; i = i->next)
     {
+      gchar *filename = NULL;
+
       entry = i->data;
 
-      gabble_channel = get_channel_by_filename (self, entry->name);
+      filename = g_strdup_printf ("%s%s",
+          entry->name, entry->folder? ".tar":"");
+      gabble_channel = get_channel_by_filename (self, filename);
+      g_free (filename);
       if (gabble_channel != NULL)
         break;
       entry = NULL;
@@ -1281,11 +1289,15 @@ gtalk_ft_manager_new_from_session (GabbleConnection *connection,
     {
       GabbleJingleShareManifestEntry *entry = i->data;
       GabbleFileTransferChannel *channel = NULL;
+      gchar *filename = NULL;
 
+      filename = g_strdup_printf ("%s%s",
+          entry->name, entry->folder? ".tar":"");
       channel = gabble_file_transfer_channel_new (connection,
           session->peer, session->peer, TP_FILE_TRANSFER_STATE_PENDING,
-          NULL, entry->name, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
+          NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
           NULL, 0, 0, FALSE, self->priv->token);
+      g_free (filename);
       add_channel (self, channel);
     }
 

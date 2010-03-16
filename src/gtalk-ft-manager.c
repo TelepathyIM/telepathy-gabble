@@ -343,8 +343,9 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
         for (i = self->priv->channels; i; i = i->next)
           {
             GabbleChannel *c = i->data;
-            gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
-                ACCEPTED, NONE);
+            if (c->usable)
+              gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
+                  ACCEPTED, NONE);
           }
         break;
       case JS_STATE_ENDED:
@@ -1289,13 +1290,23 @@ gtalk_ft_manager_initiate (GtalkFtManager *self,
 {
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
 
+  DEBUG ("called");
+
   if (c)
-    c->usable = TRUE;
+    {
+      c->usable = TRUE;
+      c->reading = TRUE;
+    }
 
   if (self->priv->status == GTALK_FT_STATUS_PENDING)
     {
       gabble_jingle_session_accept (self->priv->jingle);
       self->priv->status = GTALK_FT_STATUS_INITIATED;
+    }
+  else
+    {
+      gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
+          ACCEPTED, NONE);
     }
 
 }
@@ -1306,6 +1317,8 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
 {
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
   GList *cs = gabble_jingle_session_get_contents (self->priv->jingle);
+
+  DEBUG ("called");
 
   if (c)
     c->usable = TRUE;
@@ -1336,6 +1349,11 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
 
       gabble_jingle_session_accept (self->priv->jingle);
       self->priv->status = GTALK_FT_STATUS_ACCEPTED;
+    }
+  else
+    {
+      gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
+          ACCEPTED, NONE);
     }
 
   if (self->priv->status == GTALK_FT_STATUS_WAITING)

@@ -1453,7 +1453,9 @@ gtalk_ft_manager_block_reading (GtalkFtManager *self,
 
   g_assert (c != NULL);
 
-  DEBUG ("Channel %p %s reading ", channel, block?"blocks":"unblocks" );
+  if (self->priv->status != GTALK_FT_STATUS_TRANSFERRING)
+    DEBUG ("Channel %p %s reading ", channel, block?"blocks":"unblocks" );
+
   c->reading = !block;
 
   if (c == self->priv->current_channel)

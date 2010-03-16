@@ -1512,7 +1512,8 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
 
   transferred_chunk (self, (guint64) len);
 
-  if (self->priv->transferred_bytes + self->priv->initial_offset >=
+  if (self->priv->bytestream &&
+      self->priv->transferred_bytes + self->priv->initial_offset >=
       self->priv->size)
     {
       DEBUG ("Received all the file. Transfer is complete");
@@ -1902,8 +1903,8 @@ transport_disconnected_cb (GibberTransport *transport,
 {
   DEBUG ("transport to local socket has been disconnected");
 
-  if (self->priv->transferred_bytes + self->priv->initial_offset <
-      self->priv->size)
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
+      self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
     {
 
       gabble_file_transfer_channel_set_state (

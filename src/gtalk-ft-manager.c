@@ -108,6 +108,7 @@ static void free_jingle_channel (gpointer data);
 static void nice_data_received_cb (NiceAgent *agent,
     guint stream_id, guint component_id, guint len, gchar *buffer,
     gpointer user_data);
+static void set_current_channel (GtalkFtManager *self, GabbleChannel *channel);
 
 static void
 gtalk_ft_manager_init (GtalkFtManager *self)
@@ -166,6 +167,9 @@ gtalk_ft_manager_dispose (GObject *object)
           self->priv->jingle = NULL;
         }
     }
+
+  set_current_channel (self, NULL);
+
   if (self->priv->jingle_channels != NULL)
     {
       g_hash_table_destroy (self->priv->jingle_channels);

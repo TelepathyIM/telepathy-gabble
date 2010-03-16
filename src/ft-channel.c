@@ -1906,8 +1906,10 @@ transport_disconnected_cb (GibberTransport *transport,
 {
   DEBUG ("transport to local socket has been disconnected");
 
-  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
-      self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
+  /* TODO: what about a FT from gtalk, receiving a directory where the size
+     is just an estimate.. we might be > size, but the FT hasn't completed yet */
+  if (self->priv->transferred_bytes + self->priv->initial_offset <
+      self->priv->size)
     {
 
       gabble_file_transfer_channel_set_state (

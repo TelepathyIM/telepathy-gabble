@@ -1496,7 +1496,9 @@ gtalk_ft_manager_completed (GtalkFtManager *self,
     return;
 
   /* We shouldn't set the FT to completed until we receive the 'complete' info
-     or we receive a new HTTP request */
+     or we receive a new HTTP request otherwise we might terminate the session
+     and cause a race condition where the peer thinks it got canceled before it
+     completed. */
   j_channel->http_status = HTTP_SERVER_IDLE;
   self->priv->status = GTALK_FT_STATUS_WAITING;
 }

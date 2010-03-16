@@ -332,9 +332,10 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
       case JS_STATE_PENDING_INITIATE_SENT:
       case JS_STATE_PENDING_INITIATED:
         /* TODO */
-        for (i = self->priv->channels; i; i = i->next)
+        for (i = self->priv->channels; i;)
           {
             GabbleChannel *c = i->data;
+            i = i->next;
             gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
                 PENDING, NONE);
           }
@@ -344,9 +345,10 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
         /* Do not set the channels to OPEN unless we're ready to send/receive
            data from them */
         /* TODO */
-        for (i = self->priv->channels; i; i = i->next)
+        for (i = self->priv->channels; i;)
           {
             GabbleChannel *c = i->data;
+            i = i->next;
             if (c->usable)
               gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
                   ACCEPTED, NONE);
@@ -374,9 +376,10 @@ jingle_session_terminated_cb (GabbleJingleSession *session,
 
   self->priv->status = GTALK_FT_STATUS_TERMINATED;
 
-  for (i = self->priv->channels; i; i = i->next)
+  for (i = self->priv->channels; i;)
     {
       GabbleChannel *c = i->data;
+      i = i->next;
       gabble_file_transfer_channel_set_gtalk_ft_state (c->channel, TERMINATED,
           local_terminator ? LOCAL_STOPPED: REMOTE_STOPPED);
     }
@@ -538,9 +541,10 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
           GList *i;
 
           /* TODO */
-          for (i = self->priv->channels; i; i = i->next)
+          for (i = self->priv->channels; i;)
             {
               GabbleChannel *c = i->data;
+              i = i->next;
               gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
                   CONNECTION_FAILED, LOCAL_ERROR);
             }
@@ -559,6 +563,8 @@ static void get_next_manifest_entry (GtalkFtManager *self,
   GabbleJingleShareManifestEntry *entry = NULL;
   GabbleChannel *gabble_channel = NULL;
   GList *i;
+
+  DEBUG ("called");
 
   if (self->priv->current_channel != NULL)
     {
@@ -835,11 +841,13 @@ content_completed (GabbleJingleContent *content, gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
   GList *i;
-  /* TODO: multi */
 
-  for (i = self->priv->channels; i; i = i->next)
+  DEBUG ("Received content completed");
+
+  for (i = self->priv->channels; i;)
     {
       GabbleChannel *c = i->data;
+      i = i->next;
       gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
           COMPLETED, NONE);
     }
@@ -1144,7 +1152,6 @@ nice_data_received_cb (NiceAgent *agent,
   JingleChannel *channel = get_jingle_channel (self, agent);
   gchar *free_buffer = NULL;
 
-
   if (channel->read_buffer != NULL)
     {
       gchar *tmp = g_malloc (channel->read_len + len);
@@ -1161,7 +1168,6 @@ nice_data_received_cb (NiceAgent *agent,
   while (len > 0)
     {
       guint consumed = http_data_received (self, channel, buffer, len);
-
       if (consumed == 0)
         {
           channel->read_buffer = g_memdup (buffer, len);

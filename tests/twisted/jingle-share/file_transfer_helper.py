@@ -403,21 +403,11 @@ class SendFileTest(FileTransferTest):
 
         self.open = False
         self.offset_defined = False
-        # In case a unit test accepts the FT before we ProvideFile
-        # then the ProvideFile will result in an OPEN state with reason REQUESTED
-        self.open_reason = cs.FT_STATE_CHANGE_REASON_NONE
-        def ft_state_changed_cb(state, reason):
-            if state == cs.FT_STATE_OPEN:
-                self.open = True
-            elif state == cs.FT_STATE_ACCEPTED:
-                self.open_reason = cs.FT_STATE_CHANGE_REASON_REQUESTED
 
         def initial_offset_defined_cb(offset):
             self.offset_defined = True
             assert offset == 0, offset
 
-        self.ft_channel.connect_to_signal('FileTransferStateChanged',
-                                          ft_state_changed_cb)
         self.ft_channel.connect_to_signal('InitialOffsetDefined',
                                           initial_offset_defined_cb)
 
@@ -441,6 +431,14 @@ class SendFileTest(FileTransferTest):
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
         else:
             assert False
+
+        # In case a unit test accepts the FT before we ProvideFile
+        # then the ProvideFile will result in an OPEN state with reason
+        state = self.ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER, 'State')
+        if state == cs.FT_STATE_ACCEPTED:
+            self.open_reason = cs.FT_STATE_CHANGE_REASON_REQUESTED
+        else:
+            self.open_reason = cs.FT_STATE_CHANGE_REASON_NONE
 
         self.address = self.ft_channel.ProvideFile(self.address_type,
                 self.access_control, self.access_control_param,

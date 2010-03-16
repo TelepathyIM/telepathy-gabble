@@ -1082,7 +1082,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
             {
               consumed = channel->content_length;
               gabble_file_transfer_channel_gtalk_ft_data_received (
-                  self->priv->current_channel->channel, buffer, len);
+                  self->priv->current_channel->channel, buffer, consumed);
               channel->content_length = 0;
               if (channel->is_chunked)
                 channel->http_status = HTTP_CLIENT_CHUNK_END;
@@ -1094,7 +1094,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
               consumed = len;
               channel->content_length -= len;
               gabble_file_transfer_channel_gtalk_ft_data_received (
-                  self->priv->current_channel->channel, buffer, len);
+                  self->priv->current_channel->channel, buffer, consumed);
             }
 
           return consumed;

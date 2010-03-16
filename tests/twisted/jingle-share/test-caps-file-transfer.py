@@ -161,10 +161,12 @@ def test2(q, bus, connections, streams):
     handle1 = conn2.RequestHandles(cs.HT_CONTACT, [conn1_jid])[0]
     handle2 = conn1.RequestHandles(cs.HT_CONTACT, [conn2_jid])[0]
 
-    q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
-             path=conn1.object.__dbus_object_path__)
-    q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
-             path=conn2.object.__dbus_object_path__)
+    q.expect_many(EventPattern('dbus-signal',
+                               signal='ContactCapabilitiesChanged',
+                               path=conn1.object.__dbus_object_path__),
+                  EventPattern('dbus-signal',
+                               signal='ContactCapabilitiesChanged',
+                               path=conn2.object.__dbus_object_path__))
 
     check_contact_caps (conn1, handle2, False)
     check_contact_caps (conn2, handle1, False)

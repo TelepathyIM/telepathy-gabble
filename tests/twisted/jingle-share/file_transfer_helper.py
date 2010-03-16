@@ -265,12 +265,14 @@ class ReceiveFileTest(FileTransferTest):
         assert state == cs.FT_STATE_ACCEPTED
         assert reason == cs.FT_STATE_CHANGE_REASON_REQUESTED
 
-        offset_event, state_event = self.q.expect_many(
-            EventPattern('dbus-signal', signal='InitialOffsetDefined',
-                         path=self.channel.__dbus_object_path__),
-            EventPattern('dbus-signal', signal='FileTransferStateChanged',
-                         path=self.channel.__dbus_object_path__,
-                         args=[cs.FT_STATE_OPEN, cs.FT_STATE_CHANGE_REASON_NONE]))
+
+        state_event, offset_event = self.q.expect_many(
+            EventPattern ('dbus-signal',
+                          signal='FileTransferStateChanged',
+                          path=self.channel.object_path),
+            EventPattern ('dbus-signal',
+                          signal='InitialOffsetDefined',
+                          path=self.channel.__dbus_object_path__))
 
         offset = offset_event.args[0]
         assert offset == 0

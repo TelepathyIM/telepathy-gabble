@@ -1,7 +1,23 @@
-telepathy-gabble 0.9.8 (UNRELEASED)
+telepathy-gabble 0.9.8 (2010-03-16)
 ===================================
 
-...
+The “Chat Roulette Funny Piano Improv #1” release.
+
+Enhancements:
+
+• Update Wocky:
+  - Lots of exciting new Pubsub code! (cassidy, wjt)
+  - Plus some crash fixes
+
+• Various correctness improvements to the test suite. (KaKaRoTo)
+
+Fixes:
+
+• No longer crashes on receiving a stanza error without an <error/>
+  node, which was a regression in 0.9.5. (wjt)
+
+• We can now spell “received” and “separate”! (smcv, courtesy of
+  Lintian)
 
 telepathy-gabble 0.9.7 (2010-03-03)
 ===================================

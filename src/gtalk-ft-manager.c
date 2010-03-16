@@ -885,6 +885,14 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           channel->http_status = HTTP_SERVER_HEADERS;
           channel->status_line = g_strdup (buffer);
 
+          if (self->priv->current_channel)
+            {
+              DEBUG ("Received status line with current channel set");
+              gabble_file_transfer_channel_set_gtalk_ft_state (
+                  self->priv->current_channel->channel, COMPLETED, NONE);
+              set_current_channel (self, NULL);
+            }
+
           return headers - buffer;
         }
         break;
@@ -1358,7 +1366,7 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
 
   if (self->priv->status == GTALK_FT_STATUS_WAITING)
     {
-      /* FIXME: this and two other lookups should not check for channel '1' */
+      /* FIXME: this and other lookups should not check for channel '1' */
       JingleChannel *j_channel = g_hash_table_lookup (
           self->priv->jingle_channels, GINT_TO_POINTER (1));
 
@@ -1382,8 +1390,7 @@ gtalk_ft_manager_send_data (GtalkFtManager *self,
 
   ret = nice_agent_send (j_channel->agent, j_channel->stream_id,
       j_channel->component_id, length, data);
-  /* TODO: check if we sent all the file, then send completed to ft channel
-     if done, reset current_channel and set http status to SERVER_IDLE */
+
   if (ret < 0 || (guint) ret < length)
     {
       if (ret < 0)
@@ -1433,6 +1440,25 @@ gtalk_ft_manager_block_reading (GtalkFtManager *self,
             }
         }
     }
+}
+
+void
+gtalk_ft_manager_completed (GtalkFtManager *self,
+    GabbleFileTransferChannel * channel)
+{
+  GabbleChannel *c = get_channel_by_ft_channel (self, channel);
+  JingleChannel *j_channel = g_hash_table_lookup (self->priv->jingle_channels,
+      GINT_TO_POINTER (1));
+
+  DEBUG ("called");
+
+  if (c == NULL || c != self->priv->current_channel)
+    return;
+
+  /* We shouldn't set the FT to completed until we receive the 'complete' info
+     or we receive a new HTTP request */
+  j_channel->http_status = HTTP_SERVER_IDLE;
+  self->priv->status = GTALK_FT_STATUS_WAITING;
 }
 
 void

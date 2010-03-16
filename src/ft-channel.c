@@ -1841,17 +1841,20 @@ transport_handler (GibberTransport *transport,
   if (self->priv->transferred_bytes + self->priv->initial_offset >=
       self->priv->size)
     {
-      DEBUG ("All the file has been sent. Closing the bytestream");
-
-      gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
-          TP_FILE_TRANSFER_STATE_COMPLETED,
-          TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
-
       if (self->priv->bytestream)
-        gabble_bytestream_iface_close (self->priv->bytestream, NULL);
+        {
+          DEBUG ("All the file has been sent. Closing the bytestream");
+          gabble_file_transfer_channel_set_state (
+              TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+              TP_FILE_TRANSFER_STATE_COMPLETED,
+              TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+          gabble_bytestream_iface_close (self->priv->bytestream, NULL);
+        }
       else if (self->priv->gtalk_ft)
-        gtalk_ft_manager_terminate (self->priv->gtalk_ft, self);
+        {
+          DEBUG ("All the file has been sent.");
+          gtalk_ft_manager_completed (self->priv->gtalk_ft, self);
+        }
     }
 }
 

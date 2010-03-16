@@ -109,6 +109,7 @@ static void nice_data_received_cb (NiceAgent *agent,
     guint stream_id, guint component_id, guint len, gchar *buffer,
     gpointer user_data);
 static void set_current_channel (GtalkFtManager *self, GabbleChannel *channel);
+static void channel_disposed (gpointer data, GObject *where_the_object_was);
 
 static void
 gtalk_ft_manager_init (GtalkFtManager *self)
@@ -179,7 +180,7 @@ gtalk_ft_manager_dispose (GObject *object)
   for (i = self->priv->channels; i; i = i->next)
     {
       GabbleChannel *c = i->data;
-      g_object_unref (c->channel);
+      g_object_weak_unref (G_OBJECT (c->channel), channel_disposed, self);
       g_slice_free (GabbleChannel, c);
     }
   g_list_free (self->priv->channels);
@@ -290,8 +291,9 @@ add_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
 {
   GabbleChannel *c = g_slice_new0 (GabbleChannel);
 
-  c->channel = g_object_ref (channel);
+  c->channel = channel;
   self->priv->channels = g_list_append (self->priv->channels, c);
+  g_object_weak_ref (G_OBJECT (channel), channel_disposed, self);
 
   gabble_file_transfer_channel_set_gtalk_ft (channel, self);
 
@@ -306,8 +308,9 @@ del_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
   if (c == NULL)
     return;
 
-  g_object_unref (c->channel);
   self->priv->channels = g_list_remove (self->priv->channels, c);
+  g_object_weak_unref (G_OBJECT (channel), channel_disposed, self);
+  g_slice_free (GabbleChannel, c);
 }
 
 static void
@@ -1520,15 +1523,42 @@ gtalk_ft_manager_terminate (GtalkFtManager *self,
           return;
         }
     }
-
-  gabble_file_transfer_channel_set_gtalk_ft_state (c->channel, TERMINATED,
-      LOCAL_STOPPED);
+}
 
 
-  if (g_list_length (self->priv->channels) == 0)
+static void
+channel_disposed (gpointer data, GObject *object)
+{
+  GtalkFtManager *self = data;
+  GabbleFileTransferChannel *channel = (GabbleFileTransferChannel *)object;
+  GabbleChannel *c = get_channel_by_ft_channel (self, channel);
+
+  DEBUG ("channel %p got destroyed", channel);
+
+  if (c == NULL)
+    return;
+
+  del_channel (self, channel);
+
+  if (self->priv->current_channel == c)
     {
-      gabble_jingle_session_terminate (self->priv->jingle,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
-      self->priv->status = GTALK_FT_STATUS_TERMINATED;
+      /* do not call set_current_channel since it will unref the
+         finalized channel object */
+      self->priv->current_channel = NULL;
+      g_warning ("Channel got finalized while being the current channel");
+
+      /* Cancel the whole thing if we terminate the current channel */
+      if (self->priv->status == GTALK_FT_STATUS_TRANSFERRING)
+        {
+
+          /* The terminate should call our terminated_cb callback which should
+             terminate all channels which should unref us which will unref the
+             jingle session */
+          self->priv->status = GTALK_FT_STATUS_TERMINATED;
+          gabble_jingle_session_terminate (self->priv->jingle,
+              TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+          return;
+        }
     }
+
 }

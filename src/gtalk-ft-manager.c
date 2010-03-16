@@ -270,10 +270,13 @@ get_channel_by_ft_channel (GtalkFtManager *self,
 static void
 set_current_channel (GtalkFtManager *self, GabbleChannel *channel)
 {
-  if (self->priv->current_channel)
-    g_object_unref (self->priv->current_channel->channel);
+  GabbleChannel *old_channel  = self->priv->current_channel;
 
   self->priv->current_channel = channel;
+
+  /* Avoid reentrance */
+  if (old_channel)
+    g_object_unref (old_channel->channel);
 
   /* TODO */
   if (channel)
@@ -1502,18 +1505,29 @@ gtalk_ft_manager_terminate (GtalkFtManager *self,
 {
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
 
+  DEBUG ("called");
+
   if (c == NULL)
     return;
 
-  del_channel (self, channel);
-
   if (self->priv->current_channel == c)
     {
+
       set_current_channel (self, NULL);
+
+      c = get_channel_by_ft_channel (self, channel);
+
+      /* set_current_channel might cause re-entrance since it will unref the
+         channel which could cause it to dispose, calling our weak ref
+         channel_disposed which already calls del_channel. So make sure the
+         GabbleChannel still exists before trying to free/delete it */
+      if (c != NULL)
+        del_channel (self, channel);
 
       /* Cancel the whole thing if we terminate the current channel */
       if (self->priv->status == GTALK_FT_STATUS_TRANSFERRING)
         {
+
           /* The terminate should call our terminated_cb callback which should
              terminate all channels which should unref us which will unref the
              jingle session */
@@ -1522,6 +1536,17 @@ gtalk_ft_manager_terminate (GtalkFtManager *self,
               TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
           return;
         }
+      return;
+    }
+  else
+    {
+      del_channel (self, channel);
+
+      /* If this was the last channel, it will cause it to unref us and
+         the dispose will be called, which will call
+         gabble_jingle_session_terminate */
+      gabble_file_transfer_channel_set_gtalk_ft_state (channel, TERMINATED,
+          LOCAL_STOPPED);
     }
 }
 

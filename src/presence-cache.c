@@ -1422,6 +1422,17 @@ _process_caps (GabblePresenceCache *cache,
       _parse_node (presence, lm_node, resource, serial);
     }
 
+  /* XEP-0115 §8.4 allows a server to strip out <c/> from presences it relays
+   * to a client if it knows that the <c/> hasn't changed since the last time
+   * it relayed one for this resource to the client. Thus, the client MUST NOT
+   * expect to get <c/> on every <presence/>, and shouldn't erase previous caps
+   * in that case.
+   *
+   * If the <presence/> stanza didn't contain a <c/> node at all, then there
+   * will be no iterations of this loop, and hence no calls to
+   * gabble_presence_set_capabilities(), and hence the caps will be preserved.
+   * Not pretty, but it seems to work.
+   */
   for (i = uris; NULL != i; i = i->next)
     {
       _process_caps_uri (cache, from, (gchar *) i->data, hash, ver, handle,

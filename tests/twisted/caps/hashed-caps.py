@@ -1,4 +1,4 @@
-
+# coding=utf-8
 """
 Test the verification string introduced in version 1.5 of XEP-0115
 
@@ -25,7 +25,7 @@ import dbus
 from twisted.words.xish import xpath
 
 from gabbletest import exec_test, make_result_iq, make_presence, sync_stream
-from servicetest import sync_dbus, EventPattern
+from servicetest import sync_dbus, EventPattern, assertLength
 import constants as cs
 import ns
 from caps_helper import (
@@ -85,7 +85,23 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    caps_diff = event.args[0]
+    media_diff = [c for c in caps_diff
+                    if c[1] == cs.CHANNEL_TYPE_STREAMED_MEDIA][0]
+    assert media_diff[5] & cs.MEDIA_CAP_AUDIO, media_diff[5]
     caps_changed_flag = False
+
+    # Send presence without any capabilities. XEP-0115 §8.4 Caps Optimization
+    # says “receivers of presence notifications MUST NOT expect an annotation
+    # on every presence notification they receive”, so the contact should still
+    # be media-capable afterwards.
+    stream.send(make_presence(contact, status='very capable'))
+    q.expect('dbus-signal', signal='PresencesChanged',
+        args=[{contact_handle: (2, u'available', 'very capable')}])
+    ye_olde_caps = conn.Capabilities.GetCapabilities([contact_handle])
+    assertLength(1, [c for c in ye_olde_caps
+                       if c[1] == cs.CHANNEL_TYPE_STREAMED_MEDIA and
+                          c[3] & cs.MEDIA_CAP_AUDIO])
 
     # send bogus presence
     caps = {

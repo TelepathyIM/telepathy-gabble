@@ -459,7 +459,7 @@ store_unread_mails (GabbleConnection *conn,
   GHashTableIter iter;
   GPtrArray *mails_removed;
   MailThreadCollector collector;
-  const gchar *url;
+  const gchar *url, *unread_count;
 
   collector.conn = conn;
   collector.old_mails = conn->unread_mails;
@@ -493,9 +493,16 @@ store_unread_mails (GabbleConnection *conn,
     }
   g_ptr_array_add (mails_removed, NULL);
 
+  unread_count = wocky_xmpp_node_get_attribute (mailbox, "total-matched");
+
+  if (unread_count != NULL)
+    conn->unread_mails_count = (guint)g_ascii_strtoll (unread_count, NULL, 0);
+  else
+    conn->unread_mails_count = g_hash_table_size (conn->unread_mails);
+
   if (collector.mails_added->len > 0 || mails_removed->len > 0)
     gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
-        conn, g_hash_table_size (conn->unread_mails), collector.mails_added,
+        conn, conn->unread_mails_count, collector.mails_added,
         (const char **)mails_removed->pdata);
 
   g_ptr_array_free (collector.mails_added, TRUE);
@@ -642,6 +649,7 @@ conn_mail_notif_dispose (GabbleConnection *conn)
     g_hash_table_unref (conn->unread_mails);
 
   conn->unread_mails = NULL;
+  conn->unread_mails_count = 0;
 
   if (conn->new_mail_handler_id != 0)
     {
@@ -729,8 +737,7 @@ conn_mail_notif_properties_getter (GObject *object,
     }
   else if (name == prop_quarks[PROP_UNREAD_MAIL_COUNT])
     {
-      g_value_set_uint (value,
-          conn->unread_mails ? g_hash_table_size (conn->unread_mails) : 0);
+      g_value_set_uint (value, conn->unread_mails_count);
     }
   else if (name == prop_quarks[PROP_UNREAD_MAILS])
     {

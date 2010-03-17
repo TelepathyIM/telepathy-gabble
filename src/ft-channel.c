@@ -73,6 +73,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_FILE_TRANSFER,
                            file_transfer_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_FILETRANSFER_FUTURE,
+                           NULL);
 );
 
 #define GABBLE_UNDEFINED_FILE_SIZE G_MAXUINT64
@@ -298,6 +300,7 @@ gabble_file_transfer_channel_get_property (GObject *object,
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
                 TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
+                GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
                 NULL));
         break;
       default:
@@ -544,6 +547,11 @@ gabble_file_transfer_channel_class_init (
     { NULL }
   };
 
+  static TpDBusPropertiesMixinPropImpl file_future_props[] = {
+    { "FileCollection", "file-collection", NULL },
+    { NULL }
+  };
+
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
     { TP_IFACE_CHANNEL,
       tp_dbus_properties_mixin_getter_gobject_properties,
@@ -554,6 +562,11 @@ gabble_file_transfer_channel_class_init (
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       file_props
+    },
+    { GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      file_future_props
     },
     { NULL }
   };

@@ -26,6 +26,15 @@
 
 typedef struct _GtalkFtManager GtalkFtManager;
 
+typedef enum {
+  GTALK_FT_MANAGER_STATE_PENDING,
+  GTALK_FT_MANAGER_STATE_ACCEPTED,
+  GTALK_FT_MANAGER_STATE_OPEN,
+  GTALK_FT_MANAGER_STATE_TERMINATED,
+  GTALK_FT_MANAGER_STATE_CONNECTION_FAILED,
+  GTALK_FT_MANAGER_STATE_COMPLETED
+} GtalkFtManagerState;
+
 #include "ft-channel.h"
 
 G_BEGIN_DECLS
@@ -61,19 +70,6 @@ struct _GtalkFtManager {
     GObject parent;
     GtalkFtManagerPrivate *priv;
 };
-
-
-#define PENDING 0
-#define ACCEPTED 1
-#define OPEN 2
-#define TERMINATED 3
-#define CONNECTION_FAILED 4
-#define COMPLETED 5
-
-#define NONE 0
-#define LOCAL_STOPPED 1
-#define REMOTE_STOPPED 2
-#define LOCAL_ERROR 3
 
 GtalkFtManager *gtalk_ft_manager_new (GabbleFileTransferChannel *channel,
     GabbleJingleFactory *jingle_factory, TpHandle handle, const gchar *resource);

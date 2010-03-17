@@ -272,11 +272,10 @@ set_current_channel (GtalkFtManager *self, GabbleChannel *channel)
 {
   self->priv->current_channel = channel;
 
-  /* TODO */
   if (channel)
     {
       gabble_file_transfer_channel_set_gtalk_ft_state (channel->channel,
-          OPEN, NONE);
+          GTALK_FT_MANAGER_STATE_OPEN, FALSE);
       gtalk_ft_manager_block_reading (self, channel->channel, !channel->reading);
     }
 }
@@ -331,27 +330,25 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
         break;
       case JS_STATE_PENDING_INITIATE_SENT:
       case JS_STATE_PENDING_INITIATED:
-        /* TODO */
         for (i = self->priv->channels; i;)
           {
             GabbleChannel *c = i->data;
             i = i->next;
             gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
-                PENDING, NONE);
+                GTALK_FT_MANAGER_STATE_PENDING, FALSE);
           }
         break;
       case JS_STATE_PENDING_ACCEPT_SENT:
       case JS_STATE_ACTIVE:
         /* Do not set the channels to OPEN unless we're ready to send/receive
            data from them */
-        /* TODO */
         for (i = self->priv->channels; i;)
           {
             GabbleChannel *c = i->data;
             i = i->next;
             if (c->usable)
               gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
-                  ACCEPTED, NONE);
+                  GTALK_FT_MANAGER_STATE_ACCEPTED, FALSE);
           }
         break;
       case JS_STATE_ENDED:
@@ -380,8 +377,8 @@ jingle_session_terminated_cb (GabbleJingleSession *session,
     {
       GabbleChannel *c = i->data;
       i = i->next;
-      gabble_file_transfer_channel_set_gtalk_ft_state (c->channel, TERMINATED,
-          local_terminator ? LOCAL_STOPPED: REMOTE_STOPPED);
+      gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
+          GTALK_FT_MANAGER_STATE_TERMINATED, local_terminator);
     }
 }
 
@@ -540,13 +537,12 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
         {
           GList *i;
 
-          /* TODO */
           for (i = self->priv->channels; i;)
             {
               GabbleChannel *c = i->data;
               i = i->next;
               gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
-                  CONNECTION_FAILED, LOCAL_ERROR);
+                  GTALK_FT_MANAGER_STATE_CONNECTION_FAILED, TRUE);
             }
           /* return because we don't want to use the content after it
              has been destroyed.. */
@@ -578,7 +574,8 @@ static void get_next_manifest_entry (GtalkFtManager *self,
 
       self->priv->current_channel->usable = FALSE;
       gabble_file_transfer_channel_set_gtalk_ft_state (
-          self->priv->current_channel->channel, COMPLETED, NONE);
+          self->priv->current_channel->channel,
+          GTALK_FT_MANAGER_STATE_COMPLETED, FALSE);
 
       set_current_channel (self, NULL);
     }
@@ -850,7 +847,7 @@ content_completed (GabbleJingleContent *content, gpointer user_data)
       GabbleChannel *c = i->data;
       i = i->next;
       gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
-          COMPLETED, NONE);
+          GTALK_FT_MANAGER_STATE_COMPLETED, FALSE);
     }
 }
 
@@ -913,7 +910,8 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
             {
               DEBUG ("Received status line with current channel set");
               gabble_file_transfer_channel_set_gtalk_ft_state (
-                  self->priv->current_channel->channel, COMPLETED, NONE);
+                  self->priv->current_channel->channel,
+                  GTALK_FT_MANAGER_STATE_COMPLETED, FALSE);
               set_current_channel (self, NULL);
             }
 
@@ -1349,7 +1347,7 @@ gtalk_ft_manager_initiate (GtalkFtManager *self,
   else
     {
       gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
-          ACCEPTED, NONE);
+          GTALK_FT_MANAGER_STATE_ACCEPTED, FALSE);
     }
 
 }
@@ -1396,7 +1394,7 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
   else
     {
       gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
-          ACCEPTED, NONE);
+          GTALK_FT_MANAGER_STATE_ACCEPTED, FALSE);
     }
 
   if (self->priv->status == GTALK_FT_STATUS_WAITING)
@@ -1537,8 +1535,8 @@ gtalk_ft_manager_terminate (GtalkFtManager *self,
       /* If this was the last channel, it will cause it to unref us and
          the dispose will be called, which will call
          gabble_jingle_session_terminate */
-      gabble_file_transfer_channel_set_gtalk_ft_state (channel, TERMINATED,
-          LOCAL_STOPPED);
+      gabble_file_transfer_channel_set_gtalk_ft_state (channel,
+          GTALK_FT_MANAGER_STATE_TERMINATED, TRUE);
     }
 }
 

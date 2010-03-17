@@ -1259,40 +1259,40 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
 
 void
 gabble_file_transfer_channel_set_gtalk_ft_state (GabbleFileTransferChannel *self,
-    guint state, guint reason)
+    GtalkFtManagerState state, gboolean local_terminator)
 {
   DEBUG ("gtalk ft state changed to %d", state);
   switch (state)
     {
-      case PENDING:
+      case GTALK_FT_MANAGER_STATE_PENDING:
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
             TP_FILE_TRANSFER_STATE_PENDING,
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
         break;
-      case ACCEPTED:
+      case GTALK_FT_MANAGER_STATE_ACCEPTED:
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
             TP_FILE_TRANSFER_STATE_ACCEPTED,
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
         break;
-      case OPEN:
+      case GTALK_FT_MANAGER_STATE_OPEN:
         channel_open (self);
         break;
-      case TERMINATED:
+      case GTALK_FT_MANAGER_STATE_TERMINATED:
         if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
             self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
           {
             gabble_file_transfer_channel_set_state (
                 TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
                 TP_FILE_TRANSFER_STATE_CANCELLED,
-                reason == LOCAL_STOPPED ?
+                local_terminator ?
                 TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED:
                 TP_FILE_TRANSFER_STATE_CHANGE_REASON_REMOTE_STOPPED);
           }
         close_session_and_transport (self);
         break;
-      case CONNECTION_FAILED:
+      case GTALK_FT_MANAGER_STATE_CONNECTION_FAILED:
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
             TP_FILE_TRANSFER_STATE_CANCELLED,
@@ -1300,7 +1300,7 @@ gabble_file_transfer_channel_set_gtalk_ft_state (GabbleFileTransferChannel *self
 
         close_session_and_transport (self);
         break;
-      case COMPLETED:
+      case GTALK_FT_MANAGER_STATE_COMPLETED:
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
             TP_FILE_TRANSFER_STATE_COMPLETED,

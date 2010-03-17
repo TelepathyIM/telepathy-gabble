@@ -1547,7 +1547,7 @@ static void
 channel_disposed (gpointer data, GObject *object)
 {
   GtalkFtManager *self = data;
-  GabbleFileTransferChannel *channel = (GabbleFileTransferChannel *)object;
+  GabbleFileTransferChannel *channel = (GabbleFileTransferChannel *) object;
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
 
   DEBUG ("channel %p got destroyed", channel);

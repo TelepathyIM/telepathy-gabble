@@ -652,6 +652,7 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
     }
   else if (channel->http_status == HTTP_SERVER_SEND)
     {
+      /* TODO: What about current_channel == NULL */
       gabble_file_transfer_channel_gtalk_ft_write_blocked (
           self->priv->current_channel->channel, FALSE);
       if (channel->write_buffer)
@@ -1002,6 +1003,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
               /* Now that we sent our response, we can assign the current
                  channel which sets it to OPEN (if non NULL) so data can
                  start flowing */
+              self->priv->status = GTALK_FT_STATUS_TRANSFERRING;
               set_current_channel (self, ft_channel);
             }
 
@@ -1092,6 +1094,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
 
           if (len >= channel->content_length)
             {
+              /* TODO: what if current_channel == NULL */
               consumed = channel->content_length;
               gabble_file_transfer_channel_gtalk_ft_data_received (
                   self->priv->current_channel->channel, buffer, consumed);

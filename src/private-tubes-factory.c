@@ -733,16 +733,6 @@ copy_caps (Feature *feat)
 }
 
 static void
-copy_caps_helper (gpointer key, gpointer value, gpointer user_data)
-{
-  GHashTable *out = user_data;
-  gchar *str = key;
-  Feature *feat = value;
-
-  g_hash_table_insert (out, g_strdup (str), copy_caps (feat));
-}
-
-static void
 gabble_private_tubes_factory_copy_caps (
     GabbleCapsChannelManager *manager,
     gpointer *specific_caps_out,
@@ -753,13 +743,15 @@ gabble_private_tubes_factory_copy_caps (
 
   caps_out->stream_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, gabble_private_tubes_factory_free_feat);
-  g_hash_table_foreach (caps_in->stream_tube_caps, copy_caps_helper,
-      caps_out->stream_tube_caps);
+  tp_g_hash_table_update (caps_out->stream_tube_caps,
+      caps_in->stream_tube_caps, (GBoxedCopyFunc) g_strdup,
+      (GBoxedCopyFunc) copy_caps);
 
   caps_out->dbus_tube_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, gabble_private_tubes_factory_free_feat);
-  g_hash_table_foreach (caps_in->dbus_tube_caps, copy_caps_helper,
-      caps_out->dbus_tube_caps);
+  tp_g_hash_table_update (caps_out->dbus_tube_caps,
+      caps_in->dbus_tube_caps, (GBoxedCopyFunc) g_strdup,
+      (GBoxedCopyFunc) copy_caps);
 
   caps_out->tubes_supported = caps_in->tubes_supported;
 

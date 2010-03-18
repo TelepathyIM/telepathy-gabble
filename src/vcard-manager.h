@@ -1,8 +1,8 @@
 /*
  * vcard-manager.h - vCard lookup helper for Gabble connections
  *
- * Copyright (C) 2006 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright (C) 2006-2010 Collabora Ltd.
+ * Copyright (C) 2006-2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -33,6 +33,7 @@ typedef struct _GabbleVCardManagerPrivate GabbleVCardManagerPrivate;
 typedef struct _GabbleVCardManagerClass GabbleVCardManagerClass;
 typedef struct _GabbleVCardManagerRequest GabbleVCardManagerRequest;
 typedef struct _GabbleVCardManagerEditRequest GabbleVCardManagerEditRequest;
+typedef struct _GabbleVCardManagerEditInfo GabbleVCardManagerEditInfo;
 
 /**
  * GabbleVCardManagerError:
@@ -78,6 +79,14 @@ struct _GabbleVCardManager {
     GabbleVCardManagerPrivate *priv;
 };
 
+typedef enum {
+    GABBLE_VCARD_EDIT_REPLACE,
+    GABBLE_VCARD_EDIT_APPEND,
+    GABBLE_VCARD_EDIT_DELETE,
+    GABBLE_VCARD_EDIT_CLEAR,
+    GABBLE_VCARD_EDIT_SET_ALIAS
+} GabbleVCardEditType;
+
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,
                                     GabbleVCardManagerRequest *request,
                                     TpHandle handle,
@@ -115,18 +124,44 @@ typedef void (*GabbleVCardManagerEditCb)(GabbleVCardManager *self,
                                          GError *error,
                                          gpointer user_data);
 
+GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_one (GabbleVCardManager *,
+                                                              guint timeout,
+                                                              GabbleVCardManagerEditCb,
+                                                              gpointer user_data,
+                                                              GObject *object,
+                                                              const gchar *element_name,
+                                                              const gchar *element_value);
 GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
                                                           guint timeout,
                                                           GabbleVCardManagerEditCb,
                                                           gpointer user_data,
                                                           GObject *object,
-                                                          size_t n_pairs,
-                                                          ...);
-
+                                                          GList *edits);
 
 void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);
 
 gchar *vcard_get_avatar_sha1 (LmMessageNode *vcard);
+
+GabbleVCardManagerEditInfo *gabble_vcard_manager_edit_info_new (
+    const gchar *element_name,
+    const gchar *element_value,
+    GabbleVCardEditType edit_type,
+    ...) G_GNUC_NULL_TERMINATED;
+
+void gabble_vcard_manager_edit_info_add_child (
+    GabbleVCardManagerEditInfo *edit_info, const gchar *key,
+    const gchar *value);
+
+void gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info);
+
+gboolean gabble_vcard_manager_has_limited_vcard_fields (
+    GabbleVCardManager *self);
+gboolean gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
+    const gchar *field_name);
+
+GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_alias (
+    GabbleVCardManager *self, guint timeout, GabbleVCardManagerEditCb callback,
+    gpointer user_data, GObject *object, const gchar *new_alias);
 
 /* For unit tests only */
 void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);

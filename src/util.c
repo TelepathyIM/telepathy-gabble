@@ -131,13 +131,6 @@ lm_message_node_add_own_nick (LmMessageNode *node,
 }
 
 void
-lm_message_node_unlink (LmMessageNode *orphan,
-    LmMessageNode *parent)
-{
-  parent->children = g_slist_remove (parent->children, orphan);
-}
-
-void
 lm_message_node_steal_children (LmMessageNode *snatcher,
                                 LmMessageNode *mum)
 {

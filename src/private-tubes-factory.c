@@ -717,23 +717,29 @@ gabble_private_tubes_factory_free_caps (
  g_free (caps);
 }
 
+static Feature *
+copy_caps (Feature *feat)
+{
+  Feature *copy;
+
+  if (feat == NULL)
+    return NULL;
+
+  copy = g_new0 (Feature, 1);
+  copy->feature_type = feat->feature_type;
+  copy->ns = g_strdup (feat->ns);
+  copy->caps = feat->caps;
+  return copy;
+}
+
 static void
 copy_caps_helper (gpointer key, gpointer value, gpointer user_data)
 {
   GHashTable *out = user_data;
   gchar *str = key;
   Feature *feat = value;
-  Feature *copy = NULL;
 
-  if (value != NULL)
-    {
-      copy = g_new0 (Feature, 1);
-      copy->feature_type = feat->feature_type;
-      copy->ns = g_strdup (feat->ns);
-      copy->caps = feat->caps;
-    }
-
-  g_hash_table_insert (out, g_strdup (str), copy);
+  g_hash_table_insert (out, g_strdup (str), copy_caps (feat));
 }
 
 static void

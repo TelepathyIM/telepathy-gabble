@@ -888,11 +888,11 @@ gabble_private_tubes_factory_add_self_capability (
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
-      Feature *feat = g_new0 (Feature, 1);
       gchar *service = g_strdup (tp_asv_get_string (cap,
           TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service"));
       if (service != NULL)
         {
+          Feature *feat = g_new0 (Feature, 1);
           feat->feature_type = FEATURE_OPTIONAL;
           feat->ns = g_strdup_printf ("%s/stream#%s", NS_TUBES, service);
           feat->caps = 0;
@@ -901,11 +901,11 @@ gabble_private_tubes_factory_add_self_capability (
     }
   else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
-      Feature *feat = g_new0 (Feature, 1);
       gchar *service = g_strdup (tp_asv_get_string (cap,
           TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName"));
       if (service != NULL)
         {
+          Feature *feat = g_new0 (Feature, 1);
           feat->feature_type = FEATURE_OPTIONAL;
           feat->ns = g_strdup_printf ("%s/dbus#%s", NS_TUBES, service);
           feat->caps = 0;

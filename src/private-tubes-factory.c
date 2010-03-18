@@ -779,9 +779,11 @@ gabble_private_tubes_factory_update_caps (
     return;
 
   tp_g_hash_table_update (caps_out->stream_tube_caps,
-      caps_in->stream_tube_caps, (GBoxedCopyFunc) g_strdup, NULL);
+      caps_in->stream_tube_caps, (GBoxedCopyFunc) g_strdup,
+      (GBoxedCopyFunc) copy_caps);
   tp_g_hash_table_update (caps_out->dbus_tube_caps,
-      caps_in->dbus_tube_caps, (GBoxedCopyFunc) g_strdup, NULL);
+      caps_in->dbus_tube_caps, (GBoxedCopyFunc) g_strdup,
+      (GBoxedCopyFunc) copy_caps);
 }
 
 static gboolean

@@ -235,7 +235,7 @@ get_channel_by_filename (GtalkFtManager *self, gchar *filename)
       GabbleChannel *c = i->data;
       gchar *file = NULL;
 
-      if (c->usable == FALSE)
+      if (!c->usable)
         continue;
 
       g_object_get (c->channel,

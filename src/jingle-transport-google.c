@@ -258,8 +258,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (name == NULL)
           break;
 
-      if (g_hash_table_lookup_extended (priv->channels, name,
-              NULL, NULL) == FALSE)
+      if (!g_hash_table_lookup_extended (priv->channels, name, NULL, NULL))
         {
           DEBUG ("Couldn't find name %s in channels", name);
           break;
@@ -622,8 +621,7 @@ jingle_transport_google_set_component_name (
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
 
-  if (g_hash_table_lookup_extended (priv->channels, name,
-          NULL, NULL) == TRUE)
+  if (g_hash_table_lookup_extended (priv->channels, name, NULL, NULL))
       return FALSE;
 
   g_hash_table_insert (priv->channels, g_strdup (name),

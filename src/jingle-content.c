@@ -638,7 +638,7 @@ new_channel (GabbleJingleContent *c, const gchar *name)
 
       gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
 
-      if (jingle_transport_google_set_component_name (gtrans, name, id) == FALSE)
+      if (!jingle_transport_google_set_component_name (gtrans, name, id))
         return 0;
 
       priv->last_channel_component_id++;

@@ -141,6 +141,7 @@ TWISTED_TESTS = \
 	jingle-share/test-receive-file-decline.py \
 	jingle-share/test-send-file-and-cancel-immediately.py \
 	jingle-share/test-send-file-wait-to-provide.py \
+	jingle-share/test-multift.py \
 	file-transfer/test-caps-file-transfer.py \
 	file-transfer/test-ibb-too-early.py \
 	file-transfer/test-receive-file-and-close-socket-while-receiving.py \

@@ -297,6 +297,8 @@ gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
           G_CALLBACK (file_channel_closed_cb), G_OBJECT (self));
 
       self->priv->channels = g_list_append (self->priv->channels, chan);
+      /* The channels can't satisfy a request because this will always be called
+         when we receive an incoming jingle-share session */
       g_hash_table_insert (new_channels, chan, NULL);
     }
 

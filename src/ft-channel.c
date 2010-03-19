@@ -1153,10 +1153,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   if (presence == NULL)
     {
       DEBUG ("can't find contact's presence");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
-            "can't find contact's presence");
-
+      g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+          "can't find contact's presence");
       return FALSE;
     }
 
@@ -1180,10 +1178,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       if (resource == NULL)
         {
           DEBUG ("contact doesn't have file transfer capabilities");
-          if (error != NULL)
-            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
-                "contact doesn't have file transfer capabilities");
-
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+              "contact doesn't have file transfer capabilities");
           return FALSE;
         }
 

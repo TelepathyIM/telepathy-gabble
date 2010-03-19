@@ -492,10 +492,8 @@ start_stream_initiation (GabbleTubeStream *self,
       if (presence == NULL)
         {
           DEBUG ("can't find initiator's presence");
-          if (error != NULL)
-            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                "can't find initiator's presence");
-
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "can't find initiator's presence");
           return FALSE;
         }
 
@@ -504,10 +502,8 @@ start_stream_initiation (GabbleTubeStream *self,
       if (resource == NULL)
         {
           DEBUG ("initiator doesn't have tubes capabilities");
-          if (error != NULL)
-            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                "initiator doesn't have tubes capabilities");
-
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "initiator doesn't have tubes capabilities");
           return FALSE;
         }
 
@@ -2245,10 +2241,8 @@ send_tube_offer (GabbleTubeStream *self,
   if (presence == NULL)
     {
       DEBUG ("can't find tube recipient's presence");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "can't find tube recipient's presence");
-
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "can't find tube recipient's presence");
       return FALSE;
     }
 
@@ -2257,10 +2251,8 @@ send_tube_offer (GabbleTubeStream *self,
   if (resource == NULL)
     {
       DEBUG ("tube recipient doesn't have tubes capabilities");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "tube recipient doesn't have tubes capabilities");
-
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "tube recipient doesn't have tubes capabilities");
       return FALSE;
     }
 

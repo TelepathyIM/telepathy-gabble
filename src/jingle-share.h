@@ -75,8 +75,6 @@ typedef struct {
   GList *entries;
 } GabbleJingleShareManifest;
 
-const gchar *gabble_jingle_share_parse (GabbleJingleShare *sess,
-    LmMessage *message, GError **error);
 void jingle_share_register (GabbleJingleFactory *factory);
 
 gchar *gabble_jingle_share_get_source_url (GabbleJingleShare *content);

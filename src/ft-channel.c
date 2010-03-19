@@ -1142,10 +1142,10 @@ set_bytestream (GabbleFileTransferChannel *self,
     GabbleBytestreamIface *bytestream)
 
 {
-  if (bytestream == NULL)
-    return FALSE;
+  g_return_val_if_fail (self->priv->bytestream == NULL &&
+      self->priv->gtalk_ft == NULL, FALSE);
 
-  if (self->priv->bytestream != NULL || self->priv->gtalk_ft != NULL)
+  if (bytestream == NULL)
     return FALSE;
 
   DEBUG ("Setting bytestream to %p", bytestream);
@@ -1164,11 +1164,11 @@ static gboolean
 set_gtalk_ft (
     GabbleFileTransferChannel *self, GtalkFtManager *gtalk_ft)
 {
-  if (gtalk_ft == NULL)
-    return FALSE;
+  g_return_val_if_fail (self->priv->bytestream == NULL &&
+      self->priv->gtalk_ft == NULL, FALSE);
 
-  if (self->priv->bytestream != NULL || self->priv->gtalk_ft != NULL)
-    return FALSE;
+  if (gtalk_ft == NULL)
+      return FALSE;
 
   self->priv->gtalk_ft = g_object_ref (gtalk_ft);
 
@@ -1361,9 +1361,7 @@ offer_gtalk_ft (GabbleFileTransferChannel *self, const gchar *jid,
   gtalk_ft = gtalk_ft_manager_new (self, self->priv->connection->jingle_factory,
       self->priv->handle, resource);
 
-
-  if (gtalk_ft == NULL)
-    return FALSE;
+  g_return_val_if_fail (gtalk_ft != NULL, FALSE);
 
   set_gtalk_ft (self, gtalk_ft);
 
@@ -1391,10 +1389,12 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
 
   g_assert (!CHECK_STR_EMPTY (self->priv->filename));
   g_assert (self->priv->size != GABBLE_UNDEFINED_FILE_SIZE);
-  g_assert (self->priv->bytestream == NULL && self->priv->gtalk_ft == NULL);
+  g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
+  g_return_val_if_fail (self->priv->gtalk_ft == NULL, FALSE);
 
   presence = gabble_presence_cache_get (self->priv->connection->presence_cache,
       self->priv->handle);
+
   if (presence == NULL)
     {
       DEBUG ("can't find contact's presence");

@@ -297,8 +297,7 @@ del_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
 {
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
 
-  if (c == NULL)
-    return;
+  g_return_if_fail (c != NULL);
 
   self->priv->channels = g_list_remove (self->priv->channels, c);
   g_object_weak_unref (G_OBJECT (channel), channel_disposed, self);
@@ -1285,17 +1284,16 @@ gtalk_ft_manager_new_from_session (GabbleConnection *connection,
 
   if (gabble_jingle_session_get_content_type (session) !=
       GABBLE_TYPE_JINGLE_SHARE)
-    return NULL;
+      return NULL;
 
   cs = gabble_jingle_session_get_contents (session);
 
   if (cs != NULL)
     {
       content = GABBLE_JINGLE_CONTENT (cs->data);
-
-      if (content == NULL)
-        return NULL;
       g_list_free (cs);
+      if (content == NULL)
+          return NULL;
     }
 
   self = g_object_new (GTALK_TYPE_FT_MANAGER, NULL);
@@ -1417,9 +1415,8 @@ gtalk_ft_manager_send_data (GtalkFtManager *self,
   gint ret;
 
 
-  if (self->priv->current_channel == NULL ||
-      self->priv->current_channel->channel != channel)
-    return FALSE;
+  g_return_val_if_fail (self->priv->current_channel != NULL, FALSE);
+  g_return_val_if_fail (self->priv->current_channel->channel == channel, FALSE);
 
   ret = nice_agent_send (j_channel->agent, j_channel->stream_id,
       j_channel->component_id, length, data);
@@ -1487,8 +1484,8 @@ gtalk_ft_manager_completed (GtalkFtManager *self,
 
   DEBUG ("called");
 
-  if (c == NULL || c != self->priv->current_channel)
-    return;
+  g_return_if_fail (c != NULL);
+  g_return_if_fail (c == self->priv->current_channel);
 
   /* We shouldn't set the FT to completed until we receive the 'complete' info
      or we receive a new HTTP request otherwise we might terminate the session
@@ -1550,9 +1547,7 @@ channel_disposed (gpointer data, GObject *object)
 
   DEBUG ("channel %p got destroyed", channel);
 
-  if (c == NULL)
-    return;
-
+  g_return_if_fail (c != NULL);
 
   if (self->priv->current_channel == c)
     {

@@ -1242,7 +1242,9 @@ gtalk_ft_manager_new (GabbleFileTransferChannel *channel,
       return NULL;
     }
 
-  g_object_set (session, "dialect", JINGLE_DIALECT_GTALK4, NULL);
+  g_object_set (session,
+      "dialect", JINGLE_DIALECT_GTALK4,
+      NULL);
 
   content = gabble_jingle_session_add_content (session,
       JINGLE_MEDIA_TYPE_FILE, "share", NS_GOOGLE_SESSION_SHARE,

@@ -289,8 +289,6 @@ add_channel (GtalkFtManager * self, GabbleFileTransferChannel *channel)
   self->priv->channels = g_list_append (self->priv->channels, c);
   g_object_weak_ref (G_OBJECT (channel), channel_disposed, self);
 
-  gabble_file_transfer_channel_set_gtalk_ft (channel, self);
-
   return c;
 }
 
@@ -1317,7 +1315,7 @@ gtalk_ft_manager_new_from_session (GabbleConnection *connection,
       channel = gabble_file_transfer_channel_new (connection,
           session->peer, session->peer, TP_FILE_TRANSFER_STATE_PENDING,
           NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
-          NULL, 0, 0, FALSE, self->priv->token);
+          NULL, 0, 0, FALSE, NULL, self, self->priv->token);
       g_free (filename);
       add_channel (self, channel);
     }

@@ -500,7 +500,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, initial_offset, TRUE, NULL);
+      description, date, initial_offset, TRUE, NULL, NULL, NULL);
 
   if (!gabble_file_transfer_channel_offer_file (chan, &error))
     {
@@ -656,9 +656,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, 0, resume_supported, NULL);
-
-  gabble_file_transfer_channel_set_bytestream (chan, bytestream);
+      description, date, 0, resume_supported, bytestream, NULL, NULL);
 
   gabble_ft_manager_channel_created (self, chan, NULL);
 }

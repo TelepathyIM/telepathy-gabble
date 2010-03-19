@@ -62,6 +62,11 @@
 static void channel_iface_init (gpointer g_iface, gpointer iface_data);
 static void file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
 static void transferred_chunk (GabbleFileTransferChannel *self, guint64 count);
+static gboolean set_bytestream (GabbleFileTransferChannel *self,
+    GabbleBytestreamIface *bytestream);
+static gboolean set_gtalk_ft (GabbleFileTransferChannel *self,
+    GtalkFtManager *gtalk_ft);
+
 
 
 G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel,
@@ -115,6 +120,8 @@ enum
   PROP_FILE_COLLECTION,
 
   PROP_CONNECTION,
+  PROP_BYTESTREAM,
+  PROP_GTALK_FT,
   LAST_PROPERTY
 };
 
@@ -303,6 +310,12 @@ gabble_file_transfer_channel_get_property (GObject *object,
                 GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
                 NULL));
         break;
+      case PROP_BYTESTREAM:
+        g_value_set_object (value, self->priv->bytestream);
+        break;
+      case PROP_GTALK_FT:
+        g_value_set_object (value, self->priv->gtalk_ft);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -381,6 +394,14 @@ gabble_file_transfer_channel_set_property (GObject *object,
         break;
       case PROP_RESUME_SUPPORTED:
         self->priv->resume_supported = g_value_get_boolean (value);
+        break;
+      case PROP_BYTESTREAM:
+        set_bytestream (self,
+            GABBLE_BYTESTREAM_IFACE (g_value_get_object (value)));
+        break;
+      case PROP_GTALK_FT:
+        set_gtalk_ft (self,
+            GTALK_FT_MANAGER (g_value_get_object (value)));
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -750,6 +771,24 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_DATE,
       param_spec);
 
+  param_spec = g_param_spec_object (
+      "bytestream",
+      "Object implementing the GabbleBytestreamIface interface",
+      "Bytestream object used to send the file",
+      G_TYPE_OBJECT,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_BYTESTREAM,
+      param_spec);
+
+  param_spec = g_param_spec_object (
+      "gtalk-ft",
+      "GtalkFtManager object for gtalk-compatible file transfer",
+      "Gtalk compatible file transfer manager",
+      G_TYPE_OBJECT,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_GTALK_FT,
+      param_spec);
+
   param_spec = g_param_spec_boolean (
       "resume-supported",
       "resume is supported",
@@ -1098,9 +1137,9 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 static void bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
                                          gboolean blocked,
                                          GabbleFileTransferChannel *self);
-gboolean
-gabble_file_transfer_channel_set_bytestream (GabbleFileTransferChannel *self,
-                                             GabbleBytestreamIface *bytestream)
+static gboolean
+set_bytestream (GabbleFileTransferChannel *self,
+    GabbleBytestreamIface *bytestream)
 
 {
   if (bytestream == NULL)
@@ -1121,8 +1160,8 @@ gabble_file_transfer_channel_set_bytestream (GabbleFileTransferChannel *self,
   return TRUE;
 }
 
-gboolean
-gabble_file_transfer_channel_set_gtalk_ft (
+static gboolean
+set_gtalk_ft (
     GabbleFileTransferChannel *self, GtalkFtManager *gtalk_ft)
 {
   if (gtalk_ft == NULL)
@@ -1181,7 +1220,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
   DEBUG ("receiver accepted file offer (offset: %" G_GUINT64_FORMAT ")",
       self->priv->initial_offset);
 
-  gabble_file_transfer_channel_set_bytestream (self, bytestream);
+  set_bytestream (self, bytestream);
 
 }
 
@@ -1325,6 +1364,8 @@ offer_gtalk_ft (GabbleFileTransferChannel *self, const gchar *jid,
 
   if (gtalk_ft == NULL)
     return FALSE;
+
+  set_gtalk_ft (self, gtalk_ft);
 
   gtalk_ft_manager_initiate (self->priv->gtalk_ft, self);
 
@@ -2112,6 +2153,8 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   guint64 date,
                                   guint64 initial_offset,
                                   gboolean resume_supported,
+                                  GabbleBytestreamIface *bytestream,
+                                  GtalkFtManager *gtalk_ft,
                                   const gchar *file_collection)
 
 {
@@ -2130,5 +2173,7 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "initial-offset", initial_offset,
       "resume-supported", resume_supported,
       "file-collection", file_collection,
+      "bytestream", bytestream,
+      "gtalk-ft", gtalk_ft,
       NULL);
 }

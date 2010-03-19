@@ -73,15 +73,8 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     const gchar *content_type, const gchar *filename, guint64 size,
     TpFileHashType content_hash_type, const gchar *content_hash,
     const gchar *description, guint64 date, guint64 initial_offset,
-    gboolean resume_supported, const gchar *file_collection);
-
-gboolean gabble_file_transfer_channel_set_bytestream (
-    GabbleFileTransferChannel *self,
-    GabbleBytestreamIface *bytestream);
-
-gboolean gabble_file_transfer_channel_set_gtalk_ft (
-    GabbleFileTransferChannel *self,
-    GtalkFtManager *gtalk_ft);
+    gboolean resume_supported, GabbleBytestreamIface *bytestream,
+    GtalkFtManager *gtalk_ft, const gchar *file_collection);
 
 void gabble_file_transfer_channel_set_gtalk_ft_state (
     GabbleFileTransferChannel *self, GtalkFtManagerState gtalk_ft_state,

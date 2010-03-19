@@ -343,7 +343,7 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
     {
       channels = gtalk_ft_manager_get_channels (manager);
 
-      if (g_list_length (channels) > 0)
+      if (channels != NULL)
         gabble_ft_manager_channels_created (self, channels);
 
       g_list_free (channels);

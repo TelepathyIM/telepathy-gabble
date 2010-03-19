@@ -75,6 +75,7 @@ typedef struct
 
 typedef struct
 {
+  /* Only hold a weak-ref on the channel*/
   GabbleFileTransferChannel *channel;
   gboolean usable;
   gboolean reading;
@@ -95,10 +96,13 @@ struct _GtalkFtManagerPrivate
   gboolean dispose_has_run;
 
   GtalkFtStatus status;
+  /* GList of g_slice_new (GabbleChannel) */
   GList *channels;
   GabbleChannel *current_channel;
   GabbleJingleFactory *jingle_factory;
   GabbleJingleSession *jingle;
+  /* ICE component id to jingle channel association
+     GINT_TO_POINTER (candidate->component) => g_slice_new(JingleChannel) */
   GHashTable *jingle_channels;
   gboolean requested;
   gchar *token;

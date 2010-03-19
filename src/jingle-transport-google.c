@@ -68,7 +68,10 @@ struct _GabbleJingleTransportGooglePrivate
   GabbleJingleContent *content;
   JingleTransportState state;
   gchar *transport_ns;
-  GHashTable *channels; /* Google transport 'channels', not TP channels */
+
+  /* Google transport 'channels', not TP channels
+     g_strdup'd channel name => GINT_TO_POINTER (component id) */
+  GHashTable *channels;
 
   GList *local_candidates;
 

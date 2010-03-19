@@ -72,6 +72,7 @@ typedef struct {
 typedef struct {
   gchar *source_url;
   gchar *preview_url;
+  /* a list of g_slice_new (GabbleJingleShareManifestEntry) */
   GList *entries;
 } GabbleJingleShareManifest;
 

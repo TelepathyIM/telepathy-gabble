@@ -1080,8 +1080,7 @@ channel_open (GabbleFileTransferChannel *self)
           TP_FILE_TRANSFER_STATE_OPEN,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
 
-      if (self->priv->transport != NULL &&
-          (self->priv->bytestream != NULL || self->priv->gtalk_ft != NULL))
+      if (self->priv->transport != NULL)
         gibber_transport_block_receiving (self->priv->transport, FALSE);
     }
   else

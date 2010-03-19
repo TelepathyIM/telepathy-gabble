@@ -99,7 +99,7 @@ free_manifest (GabbleJingleShare *self)
 }
 
 static void
-gen_manifest (GabbleJingleShare *self)
+ensure_manifest (GabbleJingleShare *self)
 {
   if (self->priv->manifest == NULL)
     {
@@ -415,7 +415,7 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
 
   DEBUG ("produce description called");
 
-  gen_manifest (self);
+  ensure_manifest (self);
 
   desc_node = lm_message_node_add_child (content_node, "description", NULL);
 
@@ -477,7 +477,7 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
 GabbleJingleShareManifest *
 gabble_jingle_share_get_manifest (GabbleJingleShare *self)
 {
-  gen_manifest (self);
+  ensure_manifest (self);
   return self->priv->manifest;
 }
 

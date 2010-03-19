@@ -1080,8 +1080,8 @@ channel_open (GabbleFileTransferChannel *self)
           TP_FILE_TRANSFER_STATE_OPEN,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
 
-      if (self->priv->transport &&
-          (self->priv->bytestream || self->priv->gtalk_ft))
+      if (self->priv->transport != NULL &&
+          (self->priv->bytestream != NULL || self->priv->gtalk_ft != NULL))
         gibber_transport_block_receiving (self->priv->transport, FALSE);
     }
   else
@@ -1145,7 +1145,7 @@ set_bytestream (GabbleFileTransferChannel *self,
   if (bytestream == NULL)
     return FALSE;
 
-  if (self->priv->bytestream || self->priv->gtalk_ft)
+  if (self->priv->bytestream != NULL || self->priv->gtalk_ft != NULL)
     return FALSE;
 
   DEBUG ("Setting bytestream to %p", bytestream);
@@ -1167,7 +1167,7 @@ set_gtalk_ft (
   if (gtalk_ft == NULL)
     return FALSE;
 
-  if (self->priv->bytestream || self->priv->gtalk_ft)
+  if (self->priv->bytestream != NULL || self->priv->gtalk_ft != NULL)
     return FALSE;
 
   self->priv->gtalk_ft = g_object_ref (gtalk_ft);
@@ -1566,7 +1566,7 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
 
   transferred_chunk (self, (guint64) len);
 
-  if (self->priv->bytestream &&
+  if (self->priv->bytestream != NULL &&
       self->priv->transferred_bytes + self->priv->initial_offset >=
       self->priv->size)
     {
@@ -1585,9 +1585,9 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
   if (!gibber_transport_buffer_is_empty (self->priv->transport))
     {
       /* We don't want to send more data while the buffer isn't empty */
-      if (self->priv->bytestream)
+      if (self->priv->bytestream != NULL)
         gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
-      else if (self->priv->gtalk_ft)
+      else if (self->priv->gtalk_ft != NULL)
         gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, TRUE);
     }
 }
@@ -1710,7 +1710,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       self->priv->initial_offset = 0;
     }
 
-  if (self->priv->bytestream)
+  if (self->priv->bytestream != NULL)
     {
       gabble_signal_connect_weak (self->priv->bytestream, "data-received",
           G_CALLBACK (bytestream_data_received_cb), G_OBJECT (self));
@@ -1723,7 +1723,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
           self);
     }
-  else if (self->priv->gtalk_ft)
+  else if (self->priv->gtalk_ft != NULL)
     {
       /* Block the gtalk ft stream while the user is not connected
          to the socket */
@@ -1869,7 +1869,7 @@ transport_handler (GibberTransport *transport,
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
 
-  if (self->priv->bytestream)
+  if (self->priv->bytestream != NULL)
     {
       if (!gabble_bytestream_iface_send (self->priv->bytestream, data->length,
               (const gchar *) data->data))
@@ -1879,7 +1879,7 @@ transport_handler (GibberTransport *transport,
           return;
         }
     }
-  else if (self->priv->gtalk_ft)
+  else if (self->priv->gtalk_ft != NULL)
     {
       if (!gtalk_ft_manager_send_data (self->priv->gtalk_ft, self,
               (const gchar *) data->data, data->length))
@@ -1895,7 +1895,7 @@ transport_handler (GibberTransport *transport,
   if (self->priv->transferred_bytes + self->priv->initial_offset >=
       self->priv->size)
     {
-      if (self->priv->bytestream)
+      if (self->priv->bytestream != NULL)
         {
           DEBUG ("All the file has been sent. Closing the bytestream");
           gabble_file_transfer_channel_set_state (
@@ -1904,7 +1904,7 @@ transport_handler (GibberTransport *transport,
               TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
           gabble_bytestream_iface_close (self->priv->bytestream, NULL);
         }
-      else if (self->priv->gtalk_ft)
+      else if (self->priv->gtalk_ft != NULL)
         {
           DEBUG ("All the file has been sent.");
           gtalk_ft_manager_completed (self->priv->gtalk_ft, self);
@@ -1917,7 +1917,7 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
                              gboolean blocked,
                              GabbleFileTransferChannel *self)
 {
-  if (self->priv->transport)
+  if (self->priv->transport != NULL)
     gibber_transport_block_receiving (self->priv->transport, blocked);
 }
 
@@ -1925,7 +1925,7 @@ void
 gabble_file_transfer_channel_gtalk_ft_write_blocked (
     GabbleFileTransferChannel *self, gboolean blocked)
 {
-  if (self->priv->transport)
+  if (self->priv->transport != NULL)
     gibber_transport_block_receiving (self->priv->transport, blocked);
 }
 
@@ -1948,9 +1948,9 @@ static void
 file_transfer_receive (GabbleFileTransferChannel *self)
 {
   /* Client is connected, we can now receive data. Unblock the bytestream */
-  if (self->priv->bytestream)
+  if (self->priv->bytestream != NULL)
     gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
-  else if (self->priv->gtalk_ft)
+  else if (self->priv->gtalk_ft != NULL)
     gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, FALSE);
 }
 
@@ -1980,10 +1980,10 @@ transport_buffer_empty_cb (GibberTransport *transport,
                            GabbleFileTransferChannel *self)
 {
   /* Buffer is empty so we can unblock the buffer if it was blocked */
-  if (self->priv->bytestream)
+  if (self->priv->bytestream != NULL)
     gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 
-  if (self->priv->gtalk_ft)
+  if (self->priv->gtalk_ft != NULL)
     gtalk_ft_manager_block_reading (self->priv->gtalk_ft, self, FALSE);
 
   if (self->priv->state > TP_FILE_TRANSFER_STATE_OPEN)

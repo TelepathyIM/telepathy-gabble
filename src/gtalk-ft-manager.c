@@ -156,13 +156,13 @@ gtalk_ft_manager_dispose (GObject *object)
   DEBUG ("dispose called");
   self->priv->dispose_has_run = TRUE;
 
-  if (self->priv->jingle)
+  if (self->priv->jingle != NULL)
     {
       gabble_jingle_session_terminate (self->priv->jingle,
           TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
 
       /* the terminate could synchronously unref it and set it to NULL */
-      if (self->priv->jingle)
+      if (self->priv->jingle != NULL)
         {
           g_object_unref (self->priv->jingle);
           self->priv->jingle = NULL;
@@ -272,7 +272,7 @@ set_current_channel (GtalkFtManager *self, GabbleChannel *channel)
 {
   self->priv->current_channel = channel;
 
-  if (channel)
+  if (channel != NULL)
     {
       gabble_file_transfer_channel_set_gtalk_ft_state (channel->channel,
           GTALK_FT_MANAGER_STATE_OPEN, FALSE);
@@ -424,7 +424,7 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
         candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
       else
       candidate_id = c->id;*/
-      if (candidate->id)
+      if (candidate->id != NULL)
         strncpy (cand->foundation, candidate->id,
             NICE_CANDIDATE_MAX_FOUNDATION - 1);
       cand->username = g_strdup (candidate->username?candidate->username:"");
@@ -650,7 +650,7 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
       /* TODO: What about current_channel == NULL */
       gabble_file_transfer_channel_gtalk_ft_write_blocked (
           self->priv->current_channel->channel, FALSE);
-      if (channel->write_buffer)
+      if (channel->write_buffer != NULL)
         {
           gint ret = nice_agent_send (agent, stream_id, component_id,
               channel->write_len, channel->write_buffer);
@@ -699,31 +699,31 @@ set_relay_info (gpointer item, gpointer user_data)
   GValue *value;
 
   value = g_hash_table_lookup (relay, "ip");
-  if (value)
+  if (value != NULL)
     server_ip = g_value_get_string (value);
   else
     return;
 
   value = g_hash_table_lookup (relay, "port");
-  if (value)
+  if (value != NULL)
     server_port = g_value_get_uint (value);
   else
     return;
 
   value = g_hash_table_lookup (relay, "username");
-  if (value)
+  if (value != NULL)
     username = g_value_get_string (value);
   else
     return;
 
   value = g_hash_table_lookup (relay, "password");
-  if (value)
+  if (value != NULL)
     password = g_value_get_string (value);
   else
     return;
 
   value = g_hash_table_lookup (relay, "type");
-  if (value)
+  if (value != NULL)
     type_str = g_value_get_string (value);
   else
     return;
@@ -756,7 +756,7 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
       return;
     }
 
-  if (relays)
+  if (relays != NULL)
       g_ptr_array_foreach (relays, set_relay_info, user_data);
 
   nice_agent_gather_candidates (data->channel->agent, data->channel->stream_id);
@@ -856,12 +856,12 @@ free_jingle_channel (gpointer data)
 
   DEBUG ("Freeing jingle channel");
 
-  if (channel->write_buffer)
+  if (channel->write_buffer != NULL)
     {
       g_free (channel->write_buffer);
       channel->write_buffer = NULL;
     }
-  if (channel->read_buffer)
+  if (channel->read_buffer != NULL)
     {
       g_free (channel->read_buffer);
       channel->read_buffer = NULL;
@@ -904,7 +904,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           channel->http_status = HTTP_SERVER_HEADERS;
           channel->status_line = g_strdup (buffer);
 
-          if (self->priv->current_channel)
+          if (self->priv->current_channel != NULL)
             {
               DEBUG ("Received status line with current channel set");
               gabble_file_transfer_channel_set_gtalk_ft_state (
@@ -959,7 +959,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
                   ft_channel = get_channel_by_filename (self, filename);
                 }
 
-              if (ft_channel)
+              if (ft_channel != NULL)
                 {
                   guint64 size;
 
@@ -1333,7 +1333,7 @@ gtalk_ft_manager_initiate (GtalkFtManager *self,
 
   DEBUG ("called");
 
-  if (c)
+  if (c != NULL)
     {
       c->usable = TRUE;
       c->reading = TRUE;
@@ -1361,7 +1361,7 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
 
   DEBUG ("called");
 
-  if (c)
+  if (c != NULL)
     c->usable = TRUE;
 
   if (self->priv->status == GTALK_FT_STATUS_PENDING)

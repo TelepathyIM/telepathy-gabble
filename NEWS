@@ -1,3 +1,22 @@
+telepathy-gabble 0.8.12 (2010-03-19)
+====================================
+
+The “Joey, do you like movies about gladiators?” release.
+
+Fixes:
+
+• Jingle: Don't send a content-modify message if the content
+  hasn't been sent yet. (ptlo)
+
+• Improve Windows portability. (smcv)
+
+• Location: implement the 'accuracy' key instead of the deprecated
+  'error' one. (cassidy)
+
+• Fix a crash when updating the tube capabilities of a contact.
+  (fd.o #27131, cassidy)
+
+
 telepathy-gabble 0.8.11 (2010-02-16)
 ====================================
 

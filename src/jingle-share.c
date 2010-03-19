@@ -320,11 +320,11 @@ parse_description (GabbleJingleContent *content,
 
           width = lm_message_node_get_attribute (image, "width");
           if (width)
-            m->image_width = atoi (width);
+            m->image_width = g_ascii_strtoull (width, NULL, 10);
 
           height =lm_message_node_get_attribute (image, "height");
           if (height)
-            m->image_height = atoi (height);
+            m->image_height = g_ascii_strtoull (height, NULL, 10);
         }
       priv->manifest->entries = g_list_prepend (priv->manifest->entries, m);
     }

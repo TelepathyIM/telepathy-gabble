@@ -483,6 +483,7 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
       for (cands = all_candidates; cands != NULL;  cands = g_list_next (cands))
         {
           JingleCandidate *c2 = ((GList *) cands->data)->data;
+
           if (c->component == c2->component)
             {
               break;

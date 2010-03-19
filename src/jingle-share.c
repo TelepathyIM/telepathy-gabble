@@ -85,6 +85,7 @@ free_manifest (GabbleJingleShare *self)
       for (i = self->priv->manifest->entries; i; i = i->next)
         {
           GabbleJingleShareManifestEntry *item = i->data;
+
           g_free (item->name);
           g_slice_free (GabbleJingleShareManifestEntry, item);
         }
@@ -369,6 +370,7 @@ parse_description (GabbleJingleContent *content,
       if (g_list_length (priv->manifest->entries) == 1)
         {
           GabbleJingleShareManifestEntry *m = priv->manifest->entries->data;
+
           if (m->folder)
             priv->filename = g_strdup_printf ("%s.tar", m->name);
           else
@@ -380,6 +382,7 @@ parse_description (GabbleJingleContent *content,
         {
           GList *li;
           gchar *temp;
+
           priv->filename = g_strdup ("");
           for (li = priv->manifest->entries; li; li = li->next)
             {

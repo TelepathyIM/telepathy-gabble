@@ -264,6 +264,7 @@ get_channel_by_ft_channel (GtalkFtManager *self,
   for (i = self->priv->channels; i; i = i->next)
     {
       GabbleChannel *c = i->data;
+
       if (c->channel == channel)
         return c;
     }
@@ -334,6 +335,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
         for (i = self->priv->channels; i;)
           {
             GabbleChannel *c = i->data;
+
             i = i->next;
             gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
                 GTALK_FT_MANAGER_STATE_PENDING, FALSE);
@@ -346,6 +348,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
         for (i = self->priv->channels; i;)
           {
             GabbleChannel *c = i->data;
+
             i = i->next;
             if (c->usable)
               gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
@@ -377,6 +380,7 @@ jingle_session_terminated_cb (GabbleJingleSession *session,
   for (i = self->priv->channels; i;)
     {
       GabbleChannel *c = i->data;
+
       i = i->next;
       gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
           GTALK_FT_MANAGER_STATE_TERMINATED, local_terminator);
@@ -541,6 +545,7 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
           for (i = self->priv->channels; i;)
             {
               GabbleChannel *c = i->data;
+
               i = i->next;
               gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
                   GTALK_FT_MANAGER_STATE_CONNECTION_FAILED, TRUE);
@@ -569,6 +574,7 @@ static void get_next_manifest_entry (GtalkFtManager *self,
         {
           GabbleJingleContent *content = \
               GABBLE_JINGLE_CONTENT (channel->content);
+
           DEBUG ("Received all the files. Transfer is complete");
           gabble_jingle_content_send_complete (content);
         }
@@ -657,9 +663,11 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
         {
           gint ret = nice_agent_send (agent, stream_id, component_id,
               channel->write_len, channel->write_buffer);
+
           if (ret < 0 || (guint) ret < channel->write_len)
             {
               gchar *to_free = channel->write_buffer;
+
               if (ret < 0)
                 ret = 0;
 
@@ -846,6 +854,7 @@ content_completed (GabbleJingleContent *content, gpointer user_data)
   for (i = self->priv->channels; i;)
     {
       GabbleChannel *c = i->data;
+
       i = i->next;
       gabble_file_transfer_channel_set_gtalk_ft_state (c->channel,
           GTALK_FT_MANAGER_STATE_COMPLETED, FALSE);
@@ -901,6 +910,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
       case HTTP_SERVER_IDLE:
         {
           gchar *headers = http_read_line (buffer, len);
+
           if (headers == NULL)
             return 0;
 
@@ -923,6 +933,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
         {
           gchar *line = buffer;
           gchar *next_line = http_read_line (buffer, len);
+
           if (next_line == NULL)
             return 0;
 
@@ -957,6 +968,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
               if (sscanf (channel->status_line, get_line, filename) == 1)
                 {
                   gchar *unescaped = g_uri_unescape_string (filename, NULL);
+
                   g_free (filename);
                   filename = unescaped;
                   ft_channel = get_channel_by_filename (self, filename);
@@ -1020,6 +1032,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
       case HTTP_CLIENT_RECEIVE:
         {
           gchar *headers = http_read_line (buffer, len);
+
           if (headers == NULL)
             return 0;
 
@@ -1032,8 +1045,10 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
         {
           gchar *line = buffer;
           gchar *next_line = http_read_line (buffer, len);
+
           if (next_line == NULL)
             return 0;
+
           /* FIXME: check for 404 errors */
           DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
           if (*line == 0)
@@ -1073,6 +1088,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
         {
           gchar *line = buffer;
           gchar *next_line = http_read_line (buffer, len);
+
           if (next_line == NULL)
             return 0;
 
@@ -1117,6 +1133,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
       case HTTP_CLIENT_CHUNK_END:
         {
           gchar *chunk = http_read_line (buffer, len);
+
           if (chunk == NULL)
             return 0;
 
@@ -1128,6 +1145,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
       case HTTP_CLIENT_CHUNK_FINAL:
         {
           gchar *end = http_read_line (buffer, len);
+
           if (end == NULL)
             return 0;
 
@@ -1157,6 +1175,7 @@ nice_data_received_cb (NiceAgent *agent,
   if (channel->read_buffer != NULL)
     {
       gchar *tmp = g_malloc (channel->read_len + len);
+
       memcpy (tmp, channel->read_buffer, channel->read_len);
       memcpy (tmp + channel->read_len, buffer, len);
 
@@ -1170,6 +1189,7 @@ nice_data_received_cb (NiceAgent *agent,
   while (len > 0)
     {
       guint consumed = http_data_received (self, channel, buffer, len);
+
       if (consumed == 0)
         {
           channel->read_buffer = g_memdup (buffer, len);
@@ -1213,9 +1233,11 @@ gtalk_ft_manager_get_channels (GtalkFtManager *self)
 {
   GList *ret = NULL;
   GList *i;
+
   for (i = self->priv->channels; i; i = i->next)
     {
       GabbleChannel *c = i->data;
+
       ret = g_list_append (ret, c->channel);
     }
 

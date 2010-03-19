@@ -360,10 +360,10 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    gabble_marshal_VOID__STRING_INT,
+    gabble_marshal_VOID__STRING_UINT,
     G_TYPE_NONE,
     2,
-    G_TYPE_STRING, G_TYPE_INT);
+    G_TYPE_STRING, G_TYPE_UINT);
 
   signals[COMPLETED] = g_signal_new (
     "completed",

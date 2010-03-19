@@ -61,7 +61,7 @@ typedef struct
   guint component_id;
   gboolean agent_attached;
   GabbleJingleShare *content;
-  gint channel_id;
+  guint channel_id;
   HttpStatus http_status;
   gchar *status_line;
   gboolean is_chunked;
@@ -779,7 +779,7 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
 
 static void
 content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
-    gint channel_id, gpointer user_data)
+    guint channel_id, gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
   JingleChannel *channel = g_slice_new0 (JingleChannel);
@@ -1394,7 +1394,7 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
         {
           GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
           guint initial_id = 0;
-          gint channel_id;
+          guint channel_id;
 
           /* The new-channel signal will take care of the rest.. */
           do
@@ -1405,7 +1405,7 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
               channel_id = gabble_jingle_content_create_channel (content,
                   channel_name);
               g_free (channel_name);
-            } while (channel_id <= 0 && initial_id < 10);
+            } while (channel_id == 0 && initial_id < 10);
 
           /* FIXME: not assert but actually cancel the FT? */
           g_assert (channel_id > 0);

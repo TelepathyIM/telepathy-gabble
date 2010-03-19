@@ -63,7 +63,7 @@ void jingle_transport_google_register (GabbleJingleFactory *factory);
 
 gboolean jingle_transport_google_set_component_name (
     GabbleJingleTransportGoogle *transport,
-    const gchar *name, gint component_id);
+    const gchar *name, guint component_id);
 
 #endif /* __JINGLE_TRANSPORT_GOOGLE_H__ */
 

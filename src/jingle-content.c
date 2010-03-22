@@ -44,7 +44,7 @@ enum
   READY,
   NEW_CANDIDATES,
   REMOVED,
-  NEW_CHANNEL,
+  NEW_SHARE_CHANNEL,
   COMPLETED,
   LAST_SIGNAL
 };
@@ -87,7 +87,7 @@ struct _GabbleJingleContentPrivate
   gboolean have_local_candidates;
 
   guint gtalk4_event_id;
-  guint last_channel_component_id;
+  guint last_share_channel_component_id;
 
   gboolean dispose_has_run;
 };
@@ -354,8 +354,8 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     NULL, NULL,
     g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
-  signals[NEW_CHANNEL] = g_signal_new (
-    "new-channel",
+  signals[NEW_SHARE_CHANNEL] = g_signal_new (
+    "new-share-channel",
     G_TYPE_FROM_CLASS (cls),
     G_SIGNAL_RUN_LAST,
     0,
@@ -626,7 +626,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 }
 
 static guint
-new_channel (GabbleJingleContent *c, const gchar *name)
+new_share_channel (GabbleJingleContent *c, const gchar *name)
 {
   GabbleJingleContentPrivate *priv = c->priv;
   GabbleJingleTransportGoogle *gtrans = NULL;
@@ -634,26 +634,26 @@ new_channel (GabbleJingleContent *c, const gchar *name)
   if (priv->transport &&
       GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (priv->transport))
     {
-      guint id = priv->last_channel_component_id + 1;
+      guint id = priv->last_share_channel_component_id + 1;
 
       gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
 
       if (!jingle_transport_google_set_component_name (gtrans, name, id))
         return 0;
 
-      priv->last_channel_component_id++;
+      priv->last_share_channel_component_id++;
 
-      DEBUG ("New channel '%s' with id : %d", name, id);
+      DEBUG ("New Share channel '%s' with id : %d", name, id);
 
-      g_signal_emit (c, signals[NEW_CHANNEL], 0, name, id);
+      g_signal_emit (c, signals[NEW_SHARE_CHANNEL], 0, name, id);
 
-      return priv->last_channel_component_id;
+      return priv->last_share_channel_component_id;
     }
   return 0;
 }
 
 guint
-gabble_jingle_content_create_channel (GabbleJingleContent *self,
+gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
     const gchar *name)
 {
   GabbleJingleContentPrivate *priv = self->priv;
@@ -673,7 +673,7 @@ gabble_jingle_content_create_channel (GabbleJingleContent *self,
 
   gabble_jingle_session_send (self->session, msg, NULL, NULL);
 
-  return new_channel (self, name);
+  return new_share_channel (self, name);
 }
 
 void
@@ -710,7 +710,7 @@ gabble_jingle_content_parse_info (GabbleJingleContent *c,
       const gchar *name;
       name = lm_message_node_get_attribute (channel_node, "name");
       if (name != NULL)
-        new_channel (c, name);
+        new_share_channel (c, name);
     }
   else if (complete_node)
     {

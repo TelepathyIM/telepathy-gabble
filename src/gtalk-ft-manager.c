@@ -778,8 +778,8 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
 
 
 static void
-content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
-    guint channel_id, gpointer user_data)
+content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
+    guint share_channel_id, gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
   JingleChannel *channel = g_slice_new0 (JingleChannel);
@@ -790,13 +790,14 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
   guint stun_port;
   GoogleRelaySessionData *relay_data = NULL;
 
-  DEBUG ("New channel %s was created and linked to id %d", name, channel_id);
+  DEBUG ("New Share channel %s was created and linked to id %d", name,
+      share_channel_id);
 
   channel->agent = agent;
   channel->stream_id = stream_id;
   channel->component_id = NICE_COMPONENT_TYPE_RTP;
   channel->content = GABBLE_JINGLE_SHARE (content);
-  channel->channel_id = channel_id;
+  channel->channel_id = share_channel_id;
 
   if (self->priv->requested)
       channel->http_status = HTTP_SERVER_IDLE;
@@ -817,7 +818,7 @@ content_new_channel_cb (GabbleJingleContent *content, const gchar *name,
      gathering finishes synchronously, and the callback tries to add local
      candidates to the content, it needs to find the channel id.. */
   g_hash_table_insert (self->priv->jingle_channels,
-      GINT_TO_POINTER (channel_id), channel);
+      GINT_TO_POINTER (share_channel_id), channel);
 
   channel->agent_attached = TRUE;
   nice_agent_attach_recv (agent, stream_id, channel->component_id,
@@ -1220,8 +1221,8 @@ set_session (GtalkFtManager * self,
   gabble_signal_connect_weak (session, "terminated",
       (GCallback) jingle_session_terminated_cb, G_OBJECT (self));
 
-  gabble_signal_connect_weak (content, "new-channel",
-      (GCallback) content_new_channel_cb, G_OBJECT (self));
+  gabble_signal_connect_weak (content, "new-share-channel",
+      (GCallback) content_new_share_channel_cb, G_OBJECT (self));
   gabble_signal_connect_weak (content, "completed",
       (GCallback) content_completed, G_OBJECT (self));
 
@@ -1402,7 +1403,7 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
               gchar *channel_name = NULL;
 
               channel_name = g_strdup_printf ("gabble-%d", ++initial_id);
-              channel_id = gabble_jingle_content_create_channel (content,
+              channel_id = gabble_jingle_content_create_share_channel (content,
                   channel_name);
               g_free (channel_name);
             } while (channel_id == 0 && initial_id < 10);

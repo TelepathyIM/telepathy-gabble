@@ -69,9 +69,9 @@ struct _GabbleJingleTransportGooglePrivate
   JingleTransportState state;
   gchar *transport_ns;
 
-  /* Google transport 'channels', not TP channels
+  /* Google jingle-share transport 'channels', not TP channels
      g_strdup'd channel name => GINT_TO_POINTER (component id) */
-  GHashTable *channels;
+  GHashTable *share_channels;
 
   GList *local_candidates;
 
@@ -92,7 +92,8 @@ gabble_jingle_transport_google_init (GabbleJingleTransportGoogle *obj)
          GabbleJingleTransportGooglePrivate);
   obj->priv = priv;
 
-  priv->channels = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
+  priv->share_channels = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, NULL);
 
   priv->dispose_has_run = FALSE;
 }
@@ -109,8 +110,8 @@ gabble_jingle_transport_google_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  g_hash_table_destroy (priv->channels);
-  priv->channels = NULL;
+  g_hash_table_destroy (priv->share_channels);
+  priv->share_channels = NULL;
 
   jingle_transport_free_candidates (priv->remote_candidates);
   priv->remote_candidates = NULL;
@@ -261,13 +262,14 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (name == NULL)
           break;
 
-      if (!g_hash_table_lookup_extended (priv->channels, name, NULL, NULL))
+      if (!g_hash_table_lookup_extended (priv->share_channels, name, NULL, NULL))
         {
-          DEBUG ("Couldn't find name %s in channels", name);
+          DEBUG ("Couldn't find name %s in share channels", name);
           break;
         }
 
-      component = GPOINTER_TO_INT (g_hash_table_lookup (priv->channels, name));
+      component = GPOINTER_TO_INT (g_hash_table_lookup (priv->share_channels,
+              name));
       address = lm_message_node_get_attribute (node, "address");
       if (address == NULL)
           break;
@@ -507,7 +509,7 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
       gchar *name = NULL;
       JingleCandidate *c = ((GList *) cands->data)->data;
 
-      g_hash_table_iter_init (&iter, priv->channels);
+      g_hash_table_iter_init (&iter, priv->share_channels);
       while (g_hash_table_iter_next (&iter, &key, &value))
         {
           if (GPOINTER_TO_INT (value) == c->component)
@@ -625,10 +627,10 @@ jingle_transport_google_set_component_name (
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
 
-  if (g_hash_table_lookup_extended (priv->channels, name, NULL, NULL))
+  if (g_hash_table_lookup_extended (priv->share_channels, name, NULL, NULL))
       return FALSE;
 
-  g_hash_table_insert (priv->channels, g_strdup (name),
+  g_hash_table_insert (priv->share_channels, g_strdup (name),
       GINT_TO_POINTER (component_id));
 
   return TRUE;

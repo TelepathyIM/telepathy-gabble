@@ -61,7 +61,7 @@ typedef struct
   guint component_id;
   gboolean agent_attached;
   GabbleJingleShare *content;
-  guint channel_id;
+  guint share_channel_id;
   HttpStatus http_status;
   gchar *status_line;
   gboolean is_chunked;
@@ -70,7 +70,7 @@ typedef struct
   guint write_len;
   gchar *read_buffer;
   guint read_len;
-} JingleChannel;
+} ShareChannel;
 
 
 typedef struct
@@ -101,14 +101,14 @@ struct _GtalkFtManagerPrivate
   GabbleChannel *current_channel;
   GabbleJingleFactory *jingle_factory;
   GabbleJingleSession *jingle;
-  /* ICE component id to jingle channel association
-     GINT_TO_POINTER (candidate->component) => g_slice_new(JingleChannel) */
-  GHashTable *jingle_channels;
+  /* ICE component id to jingle share channel association
+     GINT_TO_POINTER (candidate->component) => g_slice_new(ShareChannel) */
+  GHashTable *share_channels;
   gboolean requested;
   gchar *token;
 };
 
-static void free_jingle_channel (gpointer data);
+static void free_share_channel (gpointer data);
 static void nice_data_received_cb (NiceAgent *agent,
     guint stream_id, guint component_id, guint len, gchar *buffer,
     gpointer user_data);
@@ -131,8 +131,8 @@ gtalk_ft_manager_init (GtalkFtManager *self)
 
   self->priv->status = GTALK_FT_STATUS_PENDING;
 
-  self->priv->jingle_channels = g_hash_table_new_full (NULL, NULL,
-      NULL, free_jingle_channel);
+  self->priv->share_channels = g_hash_table_new_full (NULL, NULL,
+      NULL, free_share_channel);
 
   for (i = 0; i < sizeof (buf); i++)
     buf[i] = g_random_int_range (0, 256);
@@ -141,8 +141,8 @@ gtalk_ft_manager_init (GtalkFtManager *self)
       uint_buf[0], uint_buf[1], uint_buf[2], uint_buf[3]);
 
   /* FIXME: we should start creating a nice agent already and have it start
-     the candidate gathering.. but we don't know which channel name to
-     assign it to... */
+     the candidate gathering.. but we don't know which jingle-share transport
+     channel name to assign it to... */
 
   priv->dispose_has_run = FALSE;
 }
@@ -175,10 +175,10 @@ gtalk_ft_manager_dispose (GObject *object)
 
   set_current_channel (self, NULL);
 
-  if (self->priv->jingle_channels != NULL)
+  if (self->priv->share_channels != NULL)
     {
-      g_hash_table_destroy (self->priv->jingle_channels);
-      self->priv->jingle_channels = NULL;
+      g_hash_table_destroy (self->priv->share_channels);
+      self->priv->share_channels = NULL;
     }
 
   for (i = self->priv->channels; i; i = i->next)
@@ -207,20 +207,20 @@ gtalk_ft_manager_class_init (GtalkFtManagerClass *cls)
 }
 
 
-static JingleChannel *
-get_jingle_channel (GtalkFtManager *self, NiceAgent *agent)
+static ShareChannel *
+get_share_channel (GtalkFtManager *self, NiceAgent *agent)
 {
   GHashTableIter iter;
   gpointer key, value;
-  JingleChannel *ret = NULL;
+  ShareChannel *ret = NULL;
 
-  g_hash_table_iter_init (&iter, self->priv->jingle_channels);
+  g_hash_table_iter_init (&iter, self->priv->share_channels);
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
-      JingleChannel *channel = (JingleChannel *) value;
-      if (channel->agent == agent)
+      ShareChannel *share_channel = (ShareChannel *) value;
+      if (share_channel->agent == agent)
         {
-          ret = channel;
+          ret = share_channel;
           break;
         }
     }
@@ -400,15 +400,15 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
     {
       JingleCandidate *candidate = li->data;
       NiceCandidate *cand = NULL;
-      JingleChannel *channel = NULL;
+      ShareChannel *share_channel = NULL;
       GSList *candidates = NULL;
 
       if (candidate->type != JINGLE_TRANSPORT_PROTOCOL_UDP)
         continue;
 
-      channel = g_hash_table_lookup (self->priv->jingle_channels,
+      share_channel = g_hash_table_lookup (self->priv->share_channels,
           GINT_TO_POINTER (candidate->component));
-      if (channel == NULL)
+      if (share_channel == NULL)
         continue;
 
       cand = nice_candidate_new (
@@ -424,8 +424,8 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
       nice_address_set_from_string (&cand->addr, candidate->address);
       nice_address_set_port (&cand->addr, candidate->port);
       cand->priority = candidate->preference * 1000;
-      cand->stream_id = channel->stream_id;
-      cand->component_id = channel->component_id;
+      cand->stream_id = share_channel->stream_id;
+      cand->component_id = share_channel->component_id;
       /*
       if (c->id == NULL)
         candidate_id = g_strdup_printf ("R%d", ++priv->remote_candidate_count);
@@ -438,8 +438,8 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
       cand->password = g_strdup (candidate->password?candidate->password:"");
 
       candidates = g_slist_append (candidates, cand);
-      nice_agent_set_remote_candidates (channel->agent,
-          channel->stream_id, channel->component_id, candidates);
+      nice_agent_set_remote_candidates (share_channel->agent,
+          share_channel->stream_id, share_channel->component_id, candidates);
       g_slist_foreach (candidates, (GFunc)nice_candidate_free, NULL);
       g_slist_free (candidates);
     }
@@ -450,8 +450,8 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
     gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
-  JingleChannel *channel = get_jingle_channel (self, agent);
-  GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (channel->content);
+  ShareChannel *share_channel = get_share_channel (self, agent);
+  GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (share_channel->content);
   GList *candidates = NULL;
   GList *remote_candidates = NULL;
   GSList *local_candidates;
@@ -468,7 +468,7 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
 
   /* Send gathered local candidates to the content */
   local_candidates = nice_agent_get_local_candidates (agent, stream_id,
-      channel->component_id);
+      share_channel->component_id);
 
   for (li = local_candidates; li; li = li->next)
     {
@@ -492,7 +492,7 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
           /* id */
           cand->foundation,
           /* component */
-          channel->channel_id,
+          share_channel->share_channel_id,
           /* address */
           ip,
           /* port */
@@ -519,8 +519,8 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
     guint component_id, guint state, gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
-  JingleChannel *channel = get_jingle_channel (self, agent);
-  GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (channel->content);
+  ShareChannel *share_channel = get_share_channel (self, agent);
+  GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (share_channel->content);
   JingleTransportState ts = JINGLE_TRANSPORT_STATE_DISCONNECTED;
 
   DEBUG ("libnice component state changed %d!!!!", state);
@@ -559,7 +559,7 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
 }
 
 static void get_next_manifest_entry (GtalkFtManager *self,
-    JingleChannel *channel)
+    ShareChannel *share_channel)
 {
   GabbleJingleShareManifest *manifest = NULL;
   GabbleJingleShareManifestEntry *entry = NULL;
@@ -573,7 +573,7 @@ static void get_next_manifest_entry (GtalkFtManager *self,
       if (g_list_length (self->priv->channels) == 1)
         {
           GabbleJingleContent *content = \
-              GABBLE_JINGLE_CONTENT (channel->content);
+              GABBLE_JINGLE_CONTENT (share_channel->content);
 
           DEBUG ("Received all the files. Transfer is complete");
           gabble_jingle_content_send_complete (content);
@@ -587,7 +587,7 @@ static void get_next_manifest_entry (GtalkFtManager *self,
       set_current_channel (self, NULL);
     }
 
-  manifest = gabble_jingle_share_get_manifest (channel->content);
+  manifest = gabble_jingle_share_get_manifest (share_channel->content);
   for (i = manifest->entries; i; i = i->next)
     {
       gchar *filename = NULL;
@@ -633,11 +633,11 @@ static void get_next_manifest_entry (GtalkFtManager *self,
       g_free (filename);
 
       /* FIXME: check for success */
-      nice_agent_send (channel->agent, channel->stream_id,
-          channel->component_id, strlen (buffer), buffer);
+      nice_agent_send (share_channel->agent, share_channel->stream_id,
+          share_channel->component_id, strlen (buffer), buffer);
       g_free (buffer);
 
-      channel->http_status = HTTP_CLIENT_RECEIVE;
+      share_channel->http_status = HTTP_CLIENT_RECEIVE;
       /* Block or unblock accordingly */
       set_current_channel (self, gabble_channel);
     }
@@ -648,32 +648,33 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
     gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
-  JingleChannel *channel = get_jingle_channel (self, agent);
+  ShareChannel *share_channel = get_share_channel (self, agent);
 
-  if (channel->http_status == HTTP_CLIENT_IDLE)
+  if (share_channel->http_status == HTTP_CLIENT_IDLE)
     {
-      get_next_manifest_entry (self, channel);
+      get_next_manifest_entry (self, share_channel);
     }
-  else if (channel->http_status == HTTP_SERVER_SEND)
+  else if (share_channel->http_status == HTTP_SERVER_SEND)
     {
       /* TODO: What about current_channel == NULL */
       gabble_file_transfer_channel_gtalk_ft_write_blocked (
           self->priv->current_channel->channel, FALSE);
-      if (channel->write_buffer != NULL)
+      if (share_channel->write_buffer != NULL)
         {
           gint ret = nice_agent_send (agent, stream_id, component_id,
-              channel->write_len, channel->write_buffer);
+              share_channel->write_len, share_channel->write_buffer);
 
-          if (ret < 0 || (guint) ret < channel->write_len)
+          if (ret < 0 || (guint) ret < share_channel->write_len)
             {
-              gchar *to_free = channel->write_buffer;
+              gchar *to_free = share_channel->write_buffer;
 
               if (ret < 0)
                 ret = 0;
 
-              channel->write_buffer = g_memdup (channel->write_buffer + ret,
-                  channel->write_len - ret);
-              channel->write_len = channel->write_len - ret;
+              share_channel->write_buffer = g_memdup (
+                  share_channel->write_buffer + ret,
+                  share_channel->write_len - ret);
+              share_channel->write_len = share_channel->write_len - ret;
               g_free (to_free);
 
               gabble_file_transfer_channel_gtalk_ft_write_blocked (
@@ -681,9 +682,9 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
             }
           else
             {
-              g_free (channel->write_buffer);
-              channel->write_buffer = NULL;
-              channel->write_len = 0;
+              g_free (share_channel->write_buffer);
+              share_channel->write_buffer = NULL;
+              share_channel->write_len = 0;
             }
         }
     }
@@ -693,7 +694,7 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
 typedef struct
 {
   GtalkFtManager *self;
-  JingleChannel *channel;
+  ShareChannel *share_channel;
 } GoogleRelaySessionData;
 
 static void
@@ -748,8 +749,8 @@ set_relay_info (gpointer item, gpointer user_data)
   else
     return;
 
-  nice_agent_set_relay_info (data->channel->agent,
-      data->channel->stream_id, data->channel->component_id,
+  nice_agent_set_relay_info (data->share_channel->agent,
+      data->share_channel->stream_id, data->share_channel->component_id,
       server_ip, server_port,
       username, password, type);
 
@@ -770,7 +771,8 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
   if (relays != NULL)
       g_ptr_array_foreach (relays, set_relay_info, user_data);
 
-  nice_agent_gather_candidates (data->channel->agent, data->channel->stream_id);
+  nice_agent_gather_candidates (data->share_channel->agent,
+      data->share_channel->stream_id);
 
   g_object_remove_weak_pointer (G_OBJECT (data->self), (gpointer *)&data->self);
   g_slice_free (GoogleRelaySessionData, data);
@@ -782,7 +784,7 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
     guint share_channel_id, gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
-  JingleChannel *channel = g_slice_new0 (JingleChannel);
+  ShareChannel *share_channel = g_slice_new0 (ShareChannel);
   NiceAgent *agent = nice_agent_new_reliable (g_main_context_default (),
       NICE_COMPATIBILITY_GOOGLE);
   guint stream_id = nice_agent_add_stream (agent, 1);
@@ -793,16 +795,16 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   DEBUG ("New Share channel %s was created and linked to id %d", name,
       share_channel_id);
 
-  channel->agent = agent;
-  channel->stream_id = stream_id;
-  channel->component_id = NICE_COMPONENT_TYPE_RTP;
-  channel->content = GABBLE_JINGLE_SHARE (content);
-  channel->channel_id = share_channel_id;
+  share_channel->agent = agent;
+  share_channel->stream_id = stream_id;
+  share_channel->component_id = NICE_COMPONENT_TYPE_RTP;
+  share_channel->content = GABBLE_JINGLE_SHARE (content);
+  share_channel->share_channel_id = share_channel_id;
 
   if (self->priv->requested)
-      channel->http_status = HTTP_SERVER_IDLE;
+      share_channel->http_status = HTTP_SERVER_IDLE;
   else
-      channel->http_status = HTTP_CLIENT_IDLE;
+      share_channel->http_status = HTTP_CLIENT_IDLE;
 
   gabble_signal_connect_weak (agent, "candidate-gathering-done",
       G_CALLBACK (nice_candidate_gathering_done), G_OBJECT (self));
@@ -816,12 +818,12 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
 
   /* Add the agent to the hash table before gathering candidates in case the
      gathering finishes synchronously, and the callback tries to add local
-     candidates to the content, it needs to find the channel id.. */
-  g_hash_table_insert (self->priv->jingle_channels,
-      GINT_TO_POINTER (share_channel_id), channel);
+     candidates to the content, it needs to find the share channel id.. */
+  g_hash_table_insert (self->priv->share_channels,
+      GINT_TO_POINTER (share_channel_id), share_channel);
 
-  channel->agent_attached = TRUE;
-  nice_agent_attach_recv (agent, stream_id, channel->component_id,
+  share_channel->agent_attached = TRUE;
+  nice_agent_attach_recv (agent, stream_id, share_channel->component_id,
       g_main_context_default (), nice_data_received_cb, self);
 
   if (gabble_jingle_factory_get_stun_server (
@@ -836,7 +838,7 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
 
   relay_data = g_slice_new0 (GoogleRelaySessionData);
   relay_data->self = self;
-  relay_data->channel = channel;
+  relay_data->share_channel = share_channel;
   g_object_add_weak_pointer (G_OBJECT (relay_data->self),
       (gpointer *)&relay_data->self);
   gabble_jingle_factory_create_google_relay_session (
@@ -863,24 +865,24 @@ content_completed (GabbleJingleContent *content, gpointer user_data)
 }
 
 static void
-free_jingle_channel (gpointer data)
+free_share_channel (gpointer data)
 {
-  JingleChannel *channel = (JingleChannel *) data;
+  ShareChannel *share_channel = (ShareChannel *) data;
 
-  DEBUG ("Freeing jingle channel");
+  DEBUG ("Freeing jingle Share channel");
 
-  if (channel->write_buffer != NULL)
+  if (share_channel->write_buffer != NULL)
     {
-      g_free (channel->write_buffer);
-      channel->write_buffer = NULL;
+      g_free (share_channel->write_buffer);
+      share_channel->write_buffer = NULL;
     }
-  if (channel->read_buffer != NULL)
+  if (share_channel->read_buffer != NULL)
     {
-      g_free (channel->read_buffer);
-      channel->read_buffer = NULL;
+      g_free (share_channel->read_buffer);
+      share_channel->read_buffer = NULL;
     }
-  g_object_unref (channel->agent);
-  g_slice_free (JingleChannel, channel);
+  g_object_unref (share_channel->agent);
+  g_slice_free (ShareChannel, share_channel);
 }
 
 
@@ -902,11 +904,11 @@ http_read_line (gchar *buffer, guint len)
 }
 
 static guint
-http_data_received (GtalkFtManager *self, JingleChannel *channel,
+http_data_received (GtalkFtManager *self, ShareChannel *share_channel,
     gchar *buffer, guint len)
 {
 
-  switch (channel->http_status)
+  switch (share_channel->http_status)
     {
       case HTTP_SERVER_IDLE:
         {
@@ -915,8 +917,8 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           if (headers == NULL)
             return 0;
 
-          channel->http_status = HTTP_SERVER_HEADERS;
-          channel->status_line = g_strdup (buffer);
+          share_channel->http_status = HTTP_SERVER_HEADERS;
+          share_channel->status_line = g_strdup (buffer);
 
           if (self->priv->current_channel != NULL)
             {
@@ -954,9 +956,10 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
               g_assert (self->priv->current_channel == NULL);
 
               DEBUG ("Found empty line, received request : %s ",
-                  channel->status_line);
+                  share_channel->status_line);
 
-              manifest = gabble_jingle_share_get_manifest (channel->content);
+              manifest = gabble_jingle_share_get_manifest (
+                  share_channel->content);
               source_url = manifest->source_url;
               url_len = strlen (source_url);
               if (source_url[url_len -1] != '/')
@@ -964,9 +967,9 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
 
               get_line = g_strdup_printf ("GET %s%s%%s HTTP/1.1",
                   source_url, separator);
-              filename = g_malloc (strlen (channel->status_line));
+              filename = g_malloc (strlen (share_channel->status_line));
 
-              if (sscanf (channel->status_line, get_line, filename) == 1)
+              if (sscanf (share_channel->status_line, get_line, filename) == 1)
                 {
                   gchar *unescaped = g_uri_unescape_string (filename, NULL);
 
@@ -985,7 +988,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
 
                   DEBUG ("Found valid filename, result : 200");
 
-                  channel->http_status = HTTP_SERVER_SEND;
+                  share_channel->http_status = HTTP_SERVER_SEND;
                   response = g_strdup_printf ("HTTP/1.1 200\r\n"
                       "Connection: Keep-Alive\r\n"
                       "Content-Length: %llu\r\n"
@@ -998,15 +1001,15 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
                   DEBUG ("Unable to find valid filename (%s), result : 404",
                       filename);
 
-                  channel->http_status = HTTP_SERVER_IDLE;
+                  share_channel->http_status = HTTP_SERVER_IDLE;
                   response = g_strdup_printf ("HTTP/1.1 404\r\n"
                       "Connection: Keep-Alive\r\n"
                       "Content-Length: 0\r\n\r\n");
                 }
 
               /* FIXME: check for success of nice_agent_send */
-              nice_agent_send (channel->agent, channel->stream_id,
-                  channel->component_id, strlen (response), response);
+              nice_agent_send (share_channel->agent, share_channel->stream_id,
+                  share_channel->component_id, strlen (response), response);
 
               g_free (response);
               g_free (filename);
@@ -1037,8 +1040,8 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           if (headers == NULL)
             return 0;
 
-          channel->http_status = HTTP_CLIENT_HEADERS;
-          channel->status_line = g_strdup (buffer);
+          share_channel->http_status = HTTP_CLIENT_HEADERS;
+          share_channel->status_line = g_strdup (buffer);
 
           return headers - buffer;
         }
@@ -1055,30 +1058,30 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           if (*line == 0)
             {
               DEBUG ("Found empty line, now receiving file data");
-              if (channel->is_chunked)
+              if (share_channel->is_chunked)
                 {
-                  channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
+                  share_channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
                 }
               else
                 {
-                  channel->http_status = HTTP_CLIENT_BODY;
-                  if (channel->content_length == 0)
-                    get_next_manifest_entry (self, channel);
+                  share_channel->http_status = HTTP_CLIENT_BODY;
+                  if (share_channel->content_length == 0)
+                    get_next_manifest_entry (self, share_channel);
                 }
             }
           else if (!g_ascii_strncasecmp (line, "Content-Length: ", 16))
             {
-              channel->is_chunked = FALSE;
+              share_channel->is_chunked = FALSE;
               /* Check strtoull read all the length */
-              channel->content_length = g_ascii_strtoull (line + 16,
+              share_channel->content_length = g_ascii_strtoull (line + 16,
                   NULL, 10);
-              DEBUG ("Found data length : %llu", channel->content_length);
+              DEBUG ("Found data length : %llu", share_channel->content_length);
             }
           else if (!g_ascii_strncasecmp (line,
                   "Transfer-Encoding: chunked", 26))
             {
-              channel->is_chunked = TRUE;
-              channel->content_length = 0;
+              share_channel->is_chunked = TRUE;
+              share_channel->content_length = 0;
               DEBUG ("Found file is chunked");
             }
 
@@ -1094,11 +1097,11 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
             return 0;
 
           /* FIXME : check validity of strtoul */
-          channel->content_length = strtoul (line, NULL, 16);
-          if (channel->content_length > 0)
-              channel->http_status = HTTP_CLIENT_BODY;
+          share_channel->content_length = strtoul (line, NULL, 16);
+          if (share_channel->content_length > 0)
+              share_channel->http_status = HTTP_CLIENT_BODY;
           else
-              channel->http_status = HTTP_CLIENT_CHUNK_FINAL;
+              share_channel->http_status = HTTP_CLIENT_CHUNK_FINAL;
 
 
           return next_line - buffer;
@@ -1108,22 +1111,22 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
         {
           guint consumed = 0;
 
-          if (len >= channel->content_length)
+          if (len >= share_channel->content_length)
             {
               /* TODO: what if current_channel == NULL */
-              consumed = channel->content_length;
+              consumed = share_channel->content_length;
               gabble_file_transfer_channel_gtalk_ft_data_received (
                   self->priv->current_channel->channel, buffer, consumed);
-              channel->content_length = 0;
-              if (channel->is_chunked)
-                channel->http_status = HTTP_CLIENT_CHUNK_END;
+              share_channel->content_length = 0;
+              if (share_channel->is_chunked)
+                share_channel->http_status = HTTP_CLIENT_CHUNK_END;
               else
-                get_next_manifest_entry (self, channel);
+                get_next_manifest_entry (self, share_channel);
             }
           else
             {
               consumed = len;
-              channel->content_length -= len;
+              share_channel->content_length -= len;
               gabble_file_transfer_channel_gtalk_ft_data_received (
                   self->priv->current_channel->channel, buffer, consumed);
             }
@@ -1138,7 +1141,7 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           if (chunk == NULL)
             return 0;
 
-          channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
+          share_channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
 
           return chunk - buffer;
         }
@@ -1150,8 +1153,8 @@ http_data_received (GtalkFtManager *self, JingleChannel *channel,
           if (end == NULL)
             return 0;
 
-          channel->http_status = HTTP_CLIENT_IDLE;
-          get_next_manifest_entry (self, channel);
+          share_channel->http_status = HTTP_CLIENT_IDLE;
+          get_next_manifest_entry (self, share_channel);
 
           return end - buffer;
         }
@@ -1170,31 +1173,31 @@ nice_data_received_cb (NiceAgent *agent,
                        gpointer user_data)
 {
   GtalkFtManager *self = GTALK_FT_MANAGER (user_data);
-  JingleChannel *channel = get_jingle_channel (self, agent);
+  ShareChannel *share_channel = get_share_channel (self, agent);
   gchar *free_buffer = NULL;
 
-  if (channel->read_buffer != NULL)
+  if (share_channel->read_buffer != NULL)
     {
-      gchar *tmp = g_malloc (channel->read_len + len);
+      gchar *tmp = g_malloc (share_channel->read_len + len);
 
-      memcpy (tmp, channel->read_buffer, channel->read_len);
-      memcpy (tmp + channel->read_len, buffer, len);
+      memcpy (tmp, share_channel->read_buffer, share_channel->read_len);
+      memcpy (tmp + share_channel->read_len, buffer, len);
 
       free_buffer = buffer = tmp;
-      len += channel->read_len;
+      len += share_channel->read_len;
 
-      g_free (channel->read_buffer);
-      channel->read_buffer = NULL;
-      channel->read_len = 0;
+      g_free (share_channel->read_buffer);
+      share_channel->read_buffer = NULL;
+      share_channel->read_len = 0;
     }
   while (len > 0)
     {
-      guint consumed = http_data_received (self, channel, buffer, len);
+      guint consumed = http_data_received (self, share_channel, buffer, len);
 
       if (consumed == 0)
         {
-          channel->read_buffer = g_memdup (buffer, len);
-          channel->read_len = len;
+          share_channel->read_buffer = g_memdup (buffer, len);
+          share_channel->read_len = len;
           break;
         }
       else
@@ -1395,21 +1398,21 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
         {
           GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
           guint initial_id = 0;
-          guint channel_id;
+          guint share_channel_id;
 
-          /* The new-channel signal will take care of the rest.. */
+          /* The new-share-channel signal will take care of the rest.. */
           do
             {
-              gchar *channel_name = NULL;
+              gchar *share_channel_name = NULL;
 
-              channel_name = g_strdup_printf ("gabble-%d", ++initial_id);
-              channel_id = gabble_jingle_content_create_share_channel (content,
-                  channel_name);
-              g_free (channel_name);
-            } while (channel_id == 0 && initial_id < 10);
+              share_channel_name = g_strdup_printf ("gabble-%d", ++initial_id);
+              share_channel_id = gabble_jingle_content_create_share_channel (
+                  content, share_channel_name);
+              g_free (share_channel_name);
+            } while (share_channel_id == 0 && initial_id < 10);
 
           /* FIXME: not assert but actually cancel the FT? */
-          g_assert (channel_id > 0);
+          g_assert (share_channel_id > 0);
           g_list_free (cs);
         }
 
@@ -1425,10 +1428,10 @@ gtalk_ft_manager_accept (GtalkFtManager *self,
   if (self->priv->status == GTALK_FT_STATUS_WAITING)
     {
       /* FIXME: this and other lookups should not check for channel '1' */
-      JingleChannel *j_channel = g_hash_table_lookup (
-          self->priv->jingle_channels, GINT_TO_POINTER (1));
+      ShareChannel *share_channel = g_hash_table_lookup (
+          self->priv->share_channels, GINT_TO_POINTER (1));
 
-      get_next_manifest_entry (self, j_channel);
+      get_next_manifest_entry (self, share_channel);
     }
 }
 
@@ -1437,7 +1440,7 @@ gtalk_ft_manager_send_data (GtalkFtManager *self,
     GabbleFileTransferChannel *channel, const gchar *data, guint length)
 {
 
-  JingleChannel *j_channel = g_hash_table_lookup (self->priv->jingle_channels,
+  ShareChannel *share_channel = g_hash_table_lookup (self->priv->share_channels,
       GINT_TO_POINTER (1));
   gint ret;
 
@@ -1445,17 +1448,17 @@ gtalk_ft_manager_send_data (GtalkFtManager *self,
   g_return_val_if_fail (self->priv->current_channel != NULL, FALSE);
   g_return_val_if_fail (self->priv->current_channel->channel == channel, FALSE);
 
-  ret = nice_agent_send (j_channel->agent, j_channel->stream_id,
-      j_channel->component_id, length, data);
+  ret = nice_agent_send (share_channel->agent, share_channel->stream_id,
+      share_channel->component_id, length, data);
 
   if (ret < 0 || (guint) ret < length)
     {
       if (ret < 0)
         ret = 0;
 
-      j_channel->write_buffer = g_memdup (data + ret,
+      share_channel->write_buffer = g_memdup (data + ret,
           length - ret);
-      j_channel->write_len = length - ret;
+      share_channel->write_len = length - ret;
 
       gabble_file_transfer_channel_gtalk_ft_write_blocked (channel, TRUE);
     }
@@ -1466,7 +1469,7 @@ void
 gtalk_ft_manager_block_reading (GtalkFtManager *self,
     GabbleFileTransferChannel *channel, gboolean block)
 {
-  JingleChannel *j_channel = g_hash_table_lookup (self->priv->jingle_channels,
+  ShareChannel *share_channel = g_hash_table_lookup (self->priv->share_channels,
       GINT_TO_POINTER (1));
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
 
@@ -1481,21 +1484,22 @@ gtalk_ft_manager_block_reading (GtalkFtManager *self,
     {
       if (block)
         {
-          if (j_channel && j_channel->agent_attached)
+          if (share_channel && share_channel->agent_attached)
             {
-              nice_agent_attach_recv (j_channel->agent, j_channel->stream_id,
-                  j_channel->component_id, NULL, NULL, NULL);
-              j_channel->agent_attached = FALSE;
+              nice_agent_attach_recv (share_channel->agent,
+                  share_channel->stream_id, share_channel->component_id,
+                  NULL, NULL, NULL);
+              share_channel->agent_attached = FALSE;
             }
         }
       else
         {
-          if (j_channel && !j_channel->agent_attached)
+          if (share_channel && !share_channel->agent_attached)
             {
-              j_channel->agent_attached = TRUE;
-              nice_agent_attach_recv (j_channel->agent, j_channel->stream_id,
-                  j_channel->component_id, g_main_context_default (),
-                  nice_data_received_cb, self);
+              share_channel->agent_attached = TRUE;
+              nice_agent_attach_recv (share_channel->agent,
+                  share_channel->stream_id, share_channel->component_id,
+                  g_main_context_default (), nice_data_received_cb, self);
             }
         }
     }
@@ -1506,7 +1510,7 @@ gtalk_ft_manager_completed (GtalkFtManager *self,
     GabbleFileTransferChannel * channel)
 {
   GabbleChannel *c = get_channel_by_ft_channel (self, channel);
-  JingleChannel *j_channel = g_hash_table_lookup (self->priv->jingle_channels,
+  ShareChannel *share_channel = g_hash_table_lookup (self->priv->share_channels,
       GINT_TO_POINTER (1));
 
   DEBUG ("called");
@@ -1518,7 +1522,7 @@ gtalk_ft_manager_completed (GtalkFtManager *self,
      or we receive a new HTTP request otherwise we might terminate the session
      and cause a race condition where the peer thinks it got canceled before it
      completed. */
-  j_channel->http_status = HTTP_SERVER_IDLE;
+  share_channel->http_status = HTTP_SERVER_IDLE;
   self->priv->status = GTALK_FT_STATUS_WAITING;
 }
 

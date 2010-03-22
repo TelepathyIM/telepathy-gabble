@@ -1,0 +1,34 @@
+#!/usr/bin/env python
+from __future__ import with_statement
+
+headers = []
+new_makefile = []
+
+with open("lib/ext/wocky/wocky/Makefile.am") as wocky_makefile:
+    in_handwritten_sources = False
+
+    for line in wocky_makefile:
+        if line.startswith("HANDWRITTEN_SOURCES = "):
+            in_handwritten_sources = True
+        elif line == '\n':
+            in_handwritten_sources = False
+        elif in_handwritten_sources and line.find(".h") > -1:
+            headers.append('    $(top_srcdir)/lib/ext/wocky/wocky/%s'
+                % line[2:])
+
+with open("gabble/Makefile.am") as gabble_makefile:
+    in_wockyinclude_HEADERS = False
+
+    for line in gabble_makefile:
+        if line == '\n':
+            in_wockyinclude_HEADERS = False
+
+        if not in_wockyinclude_HEADERS:
+            new_makefile.append(line)
+
+        if line.startswith("wockyinclude_HEADERS = "):
+            in_wockyinclude_HEADERS = True
+            new_makefile += headers
+
+with open("gabble/Makefile.am", "w") as gabble_makefile:
+    gabble_makefile.write(''.join(new_makefile))

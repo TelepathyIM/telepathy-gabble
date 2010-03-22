@@ -1,3 +1,6 @@
+EXTRA_DIST = \
+    generate-wockyinclude_HEADERS
+
 if ENABLE_PLUGIN_API
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = telepathy-gabble.pc
@@ -10,7 +13,8 @@ gabbleinclude_HEADERS = \
     sidecar.h
 
 # We install these headers alongside gabble's so that an actual separate Wocky
-# installation won't clash with them.
+# installation won't clash with them. Update with:
+#   % ./gabble/generate-wockyinclude_HEADERS
 wockyincludedir = $(includedir)/telepathy-gabble-0/wocky
 wockyinclude_HEADERS = \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-types.h                  \
@@ -36,6 +40,13 @@ wockyinclude_HEADERS = \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-roster.h                 \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-contact-factory.h        \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-session.h                \
-    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pep-service.h
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-muc.h                    \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pep-service.h            \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-data-forms.h             \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-helpers.h         \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-service.h         \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-service-protected.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-node.h            \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-node-protected.h
 
 endif

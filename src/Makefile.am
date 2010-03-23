@@ -71,8 +71,8 @@ libgabble_convenience_la_SOURCES = \
     ft-manager.h \
     gabble.c \
     gabble.h \
-    gtalk-ft-manager.h \
-    gtalk-ft-manager.c \
+    gtalk-file-collection.h \
+    gtalk-file-collection.c \
     im-channel.h \
     im-channel.c \
     im-factory.h \

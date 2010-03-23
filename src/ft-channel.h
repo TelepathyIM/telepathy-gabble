@@ -29,7 +29,7 @@
 
 typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 
-#include "gtalk-ft-manager.h"
+#include "gtalk-file-collection.h"
 
 #include "bytestream-factory.h"
 
@@ -74,16 +74,16 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     TpFileHashType content_hash_type, const gchar *content_hash,
     const gchar *description, guint64 date, guint64 initial_offset,
     gboolean resume_supported, GabbleBytestreamIface *bytestream,
-    GtalkFtManager *gtalk_ft, const gchar *file_collection);
+    GTalkFileCollection *gtalk_fc, const gchar *file_collection);
 
-void gabble_file_transfer_channel_set_gtalk_ft_state (
-    GabbleFileTransferChannel *self, GtalkFtManagerState gtalk_ft_state,
+void gabble_file_transfer_channel_set_gtalk_file_collection_state (
+    GabbleFileTransferChannel *self, GTalkFileCollectionState gtalk_fc_state,
     gboolean local_terminator);
 
-void gabble_file_transfer_channel_gtalk_ft_write_blocked (
+void gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
     GabbleFileTransferChannel *self, gboolean blocked);
 
-void gabble_file_transfer_channel_gtalk_ft_data_received (
+void gabble_file_transfer_channel_gtalk_file_collection_data_received (
     GabbleFileTransferChannel *self, const gchar *data, guint len);
 
 gboolean gabble_file_transfer_channel_offer_file (

@@ -335,22 +335,24 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
     gpointer data)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (data);
-  GtalkFtManager *manager = NULL;
+  GTalkFileCollection *gtalk_fc = NULL;
   GList *channels = NULL;
 
-  manager = gtalk_ft_manager_new_from_session (self->priv->connection, sess);
-  if (manager)
+  gtalk_fc = gtalk_file_collection_new_from_session (self->priv->connection,
+      sess);
+  if (gtalk_fc)
     {
-      channels = gtalk_ft_manager_get_channels (manager);
+      channels = gtalk_file_collection_get_channels (gtalk_fc);
 
       if (channels != NULL)
         gabble_ft_manager_channels_created (self, channels);
 
       g_list_free (channels);
 
-      /* Channels will hold the reference to the gtalk ft manager, so we can drop
-         ours already. If no channels were created, then we destroy it anyways */
-      g_object_unref (manager);
+      /* Channels will hold the reference to the gtalk file collection,
+         so we can drop ours already. If no channels were created,
+         then we destroy it anyways */
+      g_object_unref (gtalk_fc);
     }
 }
 

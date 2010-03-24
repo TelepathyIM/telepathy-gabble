@@ -1361,8 +1361,8 @@ offer_gtalk_file_transfer (GabbleFileTransferChannel *self, const gchar *jid,
 
   GTalkFileCollection *gtalk_fc;
 
-  gtalk_fc = gtalk_file_collection_new (self, self->priv->connection->jingle_factory,
-      self->priv->handle, resource);
+  gtalk_fc = gtalk_file_collection_new (self,
+      self->priv->connection->jingle_factory, self->priv->handle, resource);
 
   g_return_val_if_fail (gtalk_fc != NULL, FALSE);
 
@@ -1372,8 +1372,8 @@ offer_gtalk_file_transfer (GabbleFileTransferChannel *self, const gchar *jid,
 
   /* We would have gotten a set_gtalk_fc so we already hold an additional
      reference to the object, so we can drop the reference we got from the
-     gtalk_file_collection_new. If we didn't get our set_gtalk_fc called, then the
-     ft manager doesn't handle us, so it's best to just destroy it anyways */
+     gtalk_file_collection_new. If we didn't get our set_gtalk_fc called, then
+     the ft manager doesn't handle us, so it's best to just destroy it anyways */
   g_object_unref (gtalk_fc);
 
   return TRUE;

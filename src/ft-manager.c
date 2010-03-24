@@ -336,23 +336,65 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (data);
   GTalkFileCollection *gtalk_fc = NULL;
+  GabbleJingleContent *content = NULL;
+  GabbleJingleShareManifest *manifest = NULL;
   GList *channels = NULL;
+  GList *cs, *i;
 
-  gtalk_fc = gtalk_file_collection_new_from_session (self->priv->connection,
-      sess);
-  if (gtalk_fc)
+  if (gabble_jingle_session_get_content_type (sess) ==
+      GABBLE_TYPE_JINGLE_SHARE)
     {
-      channels = gtalk_file_collection_get_channels (gtalk_fc);
+      cs = gabble_jingle_session_get_contents (sess);
 
-      if (channels != NULL)
-        gabble_ft_manager_channels_created (self, channels);
+      if (cs != NULL)
+        {
+          content = GABBLE_JINGLE_CONTENT (cs->data);
+          g_list_free (cs);
+        }
 
-      g_list_free (channels);
+      if (content == NULL)
+          return;
 
-      /* Channels will hold the reference to the gtalk file collection,
-         so we can drop ours already. If no channels were created,
-         then we destroy it anyways */
-      g_object_unref (gtalk_fc);
+      gtalk_fc = gtalk_file_collection_new_from_session (jf, sess);
+
+      if (gtalk_fc)
+        {
+          gchar *token = NULL;
+
+          g_object_get (gtalk_fc,
+              "token", &token,
+              NULL);
+
+          manifest = gabble_jingle_share_get_manifest (
+              GABBLE_JINGLE_SHARE (content));
+          for (i = manifest->entries; i; i = i->next)
+            {
+              GabbleJingleShareManifestEntry *entry = i->data;
+              GabbleFileTransferChannel *channel = NULL;
+              gchar *filename = NULL;
+
+              filename = g_strdup_printf ("%s%s",
+                  entry->name, entry->folder? ".tar":"");
+              channel = gabble_file_transfer_channel_new (self->priv->connection,
+                  sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,
+                  NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
+                  NULL, 0, 0, FALSE, NULL, gtalk_fc, token);
+              g_free (filename);
+
+              gtalk_file_collection_add_channel (gtalk_fc, channel);
+              channels = g_list_prepend (channels, channel);
+            }
+
+          if (channels != NULL)
+            gabble_ft_manager_channels_created (self, channels);
+
+          g_list_free (channels);
+
+          /* Channels will hold the reference to the gtalk file collection,
+             so we can drop ours already. If no channels were created,
+             then we need to destroy it anyways */
+          g_object_unref (gtalk_fc);
+        }
     }
 }
 

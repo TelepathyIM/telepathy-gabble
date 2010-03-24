@@ -1341,13 +1341,12 @@ gtalk_file_collection_new (GabbleFileTransferChannel *channel,
 }
 
 GTalkFileCollection *
-gtalk_file_collection_new_from_session (GabbleConnection *connection,
+gtalk_file_collection_new_from_session (GabbleJingleFactory *jingle_factory,
     GabbleJingleSession *session)
 {
   GTalkFileCollection * self = NULL;
   GabbleJingleContent *content = NULL;
-  GList *cs, *i;
-  GabbleJingleShareManifest *manifest = NULL;
+  GList *cs;
 
   if (gabble_jingle_session_get_content_type (session) !=
       GABBLE_TYPE_JINGLE_SHARE)
@@ -1359,35 +1358,26 @@ gtalk_file_collection_new_from_session (GabbleConnection *connection,
     {
       content = GABBLE_JINGLE_CONTENT (cs->data);
       g_list_free (cs);
-      if (content == NULL)
-          return NULL;
     }
+
+  if (content == NULL)
+    return NULL;
 
   self = g_object_new (GTALK_TYPE_FILE_COLLECTION, NULL);
 
-  self->priv->jingle_factory = connection->jingle_factory;
+  self->priv->jingle_factory = jingle_factory;
   self->priv->requested = FALSE;
 
   set_session (self, session, content);
 
-  manifest = gabble_jingle_share_get_manifest (GABBLE_JINGLE_SHARE (content));
-  for (i = manifest->entries; i; i = i->next)
-    {
-      GabbleJingleShareManifestEntry *entry = i->data;
-      GabbleFileTransferChannel *channel = NULL;
-      gchar *filename = NULL;
-
-      filename = g_strdup_printf ("%s%s",
-          entry->name, entry->folder? ".tar":"");
-      channel = gabble_file_transfer_channel_new (connection,
-          session->peer, session->peer, TP_FILE_TRANSFER_STATE_PENDING,
-          NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
-          NULL, 0, 0, FALSE, NULL, self, self->priv->token);
-      g_free (filename);
-      add_channel (self, channel);
-    }
-
   return self;
+}
+
+void
+gtalk_file_collection_add_channel (GTalkFileCollection *self,
+    GabbleFileTransferChannel *channel)
+{
+      add_channel (self, channel);
 }
 
 void

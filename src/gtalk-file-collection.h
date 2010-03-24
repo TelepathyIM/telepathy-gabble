@@ -76,9 +76,12 @@ GTalkFileCollection *gtalk_file_collection_new (
     TpHandle handle, const gchar *resource);
 
 GTalkFileCollection *gtalk_file_collection_new_from_session (
-    GabbleConnection *connection, GabbleJingleSession *session);
+    GabbleJingleFactory *jingle_factory, GabbleJingleSession *session);
 
 GList *gtalk_file_collection_get_channels (GTalkFileCollection *self);
+
+void gtalk_file_collection_add_channel (GTalkFileCollection *self,
+    GabbleFileTransferChannel *channel);
 
 void gtalk_file_collection_initiate (GTalkFileCollection *self,
     GabbleFileTransferChannel *channel);

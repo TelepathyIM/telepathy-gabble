@@ -1141,11 +1141,11 @@ set_bytestream (GabbleFileTransferChannel *self,
     GabbleBytestreamIface *bytestream)
 
 {
-  g_return_val_if_fail (self->priv->bytestream == NULL &&
-      self->priv->gtalk_fc == NULL, FALSE);
-
   if (bytestream == NULL)
     return FALSE;
+
+  g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
+  g_return_val_if_fail (self->priv->gtalk_fc == NULL, FALSE);
 
   DEBUG ("Setting bytestream to %p", bytestream);
 
@@ -1163,11 +1163,11 @@ static gboolean
 set_gtalk_fc (
     GabbleFileTransferChannel *self, GTalkFileCollection *gtalk_fc)
 {
-  g_return_val_if_fail (self->priv->bytestream == NULL &&
-      self->priv->gtalk_fc == NULL, FALSE);
-
   if (gtalk_fc == NULL)
       return FALSE;
+
+  g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
+  g_return_val_if_fail (self->priv->gtalk_fc == NULL, FALSE);
 
   self->priv->gtalk_fc = g_object_ref (gtalk_fc);
 

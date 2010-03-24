@@ -37,6 +37,77 @@
 
 #include <nice/agent.h>
 
+/*
+ * This GTalk compatible file transfer protocol is a bit complicated, so here
+ * is an explanation on how it works :
+ *
+ * A pseudo-good initial source of information is available here :
+ * http://code.google.com/apis/talk/libjingle/file_share.html
+ *
+ * The current object interaction is like this :
+ *
+ *                GabbleFileTransferChannelManager
+ *                               |
+ *                               |
+ *                               |
+ *                               |
+ *                               * ref
+ *                     GabbleFileTransferChannel
+ *                weakref *         *
+ *                       /           \
+ *                      /             \
+ *                     /               \
+ *                    /                 \
+ *                   /                   \
+ *                  /                     \
+ *                 /                       \
+ *            ref /                         \
+ *      GTalkFileCollection                  \
+ *              |                             \
+ *              |                              \
+ *          ref |                               \
+ *     GabbleJingleSession                       \
+ *              |                                 \ (one at a time)
+ *              |                                  \
+ *          ref |                                   \
+ *     GabbleJingleShare  ------------------*- ShareChannel -------- NiceAgent
+ *              |                                                       |
+ *              |                                                       |
+ *         ref  |                           ref                         |
+ *   GabbleTransportGoogle ----------------*- JingleCandidate        PseudoTCP
+ *
+ * The protocol works like this :
+ * Once you receive an invitation, the manifest will contain a number of files
+ * and folders. Some files might have image attributes (width/height) that help
+ * specify that they are images.
+ * If there are images in the invitation, a new ShareChannel gets created and
+ * connectivity must be established. Then on that stream, an HTTP GET request
+ * is sent for each image being transfered with the URL as :
+ * GET <preview-path>/filename?width=X&height=Y
+ * where X and Y are the thumbnail's requested width and height.
+ * The peer should at this point scale down the image to the requested width and
+ * height and send the thumbnail for showing the preview of the image in the FT
+ * UI.
+ * Once the invitation is accepted, a new ShareChannel is created, which will
+ * cause a new NiceAgent to be created and connectivity to be established on that
+ * ShareChannel. The resulting stream is then used as an HTTP server/client to
+ * request files on it using the <source-path> as prefix to the URL.
+ * Simple files are being transferred normally, while directories will be
+ * transferred as a tarball with 'chuncked' Transfer-Encoding since the resulting
+ * size of the tarball isn't known in advance.
+ * Once a file is completely transferred, then the next file is requested on the
+ * same ShareChannel. If all files are transferred, then the <complete> info
+ * action is being sent through the jingle signaling, and the session can then
+ * be terminated safely.
+ *
+ * Since telepathy doesn't currently support image previews, so the 'preview'
+ * ShareChannel is never created with gabble.
+ * Also note that we only create one ShareChannel and we serialize the file
+ * transfers one after the other, they do not each get one ShareChannel and they
+ * cannot be downloaded in parallel.
+ *
+ */
+
 G_DEFINE_TYPE (GTalkFileCollection, gtalk_file_collection, G_TYPE_OBJECT);
 
 /* properties */

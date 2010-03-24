@@ -76,6 +76,15 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     gboolean resume_supported, GabbleBytestreamIface *bytestream,
     GTalkFileCollection *gtalk_fc, const gchar *file_collection);
 
+gboolean gabble_file_transfer_channel_offer_file (
+    GabbleFileTransferChannel *self, GError **error);
+
+/* The following methods are a hack, they are 'signal-like' callbacks for the
+   GTalkFileCollection. They have to be made this way because the FileCollection
+   can't send out signals since it needs its signals to be sent to a specific
+   channel only. So instead it calls these callbacks directly on the channel it
+   needs to notify. This is a known layering violation and accepted as the lesser
+   of any other evil [hack]. */
 void gabble_file_transfer_channel_gtalk_file_collection_state_changed (
     GabbleFileTransferChannel *self, GTalkFileCollectionState gtalk_fc_state,
     gboolean local_terminator);
@@ -86,8 +95,6 @@ void gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
 void gabble_file_transfer_channel_gtalk_file_collection_data_received (
     GabbleFileTransferChannel *self, const gchar *data, guint len);
 
-gboolean gabble_file_transfer_channel_offer_file (
-    GabbleFileTransferChannel *self, GError **error);
 
 G_END_DECLS
 

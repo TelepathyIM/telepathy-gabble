@@ -40,6 +40,33 @@
 #include "namespaces.h"
 #include "util.h"
 
+/******************************************************************
+ * Example description XML:
+ *
+ * <description xmlns="http://www.google.com/session/share">
+ *   <manifest>
+ *     <file size='341'>
+ *       <name>foo.txt</name>
+ *     </file>
+ *     <file size='51321'>
+ *       <name>foo.jpg</name>
+ *       <image width='480' height='320'/>
+ *     </file>
+ *     <folder>
+ *       <name>stuff</name>
+ *     </folder>
+ *   </manifest>
+ *   <protocol>
+ *     <http>
+ *       <url name='source-path'>/temporary/23A53F01/</url>
+ *       <url name='preview-path'>/temporary/90266EA1/</url>
+ *     </http>
+ *   </protocol>
+ * </description>
+ *
+ *******************************************************************/
+
+
 G_DEFINE_TYPE (GabbleJingleShare,
     gabble_jingle_share, GABBLE_TYPE_JINGLE_CONTENT);
 

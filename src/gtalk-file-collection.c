@@ -1269,23 +1269,6 @@ set_session (GTalkFileCollection * self,
   self->priv->status = GTALK_FT_STATUS_PENDING;
 }
 
-GList *
-gtalk_file_collection_get_channels (GTalkFileCollection *self)
-{
-  GList *ret = NULL;
-  GList *i;
-
-  for (i = self->priv->channels; i; i = i->next)
-    {
-      GabbleChannel *c = i->data;
-
-      ret = g_list_append (ret, c->channel);
-    }
-
-  return ret;
-}
-
-
 GTalkFileCollection *
 gtalk_file_collection_new (GabbleFileTransferChannel *channel,
     GabbleJingleFactory *jingle_factory, TpHandle handle, const gchar *resource)

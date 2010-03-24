@@ -315,7 +315,7 @@ set_current_channel (GTalkFileCollection *self, GabbleChannel *channel)
 
   if (channel != NULL)
     {
-      gabble_file_transfer_channel_set_gtalk_file_collection_state (
+      gabble_file_transfer_channel_gtalk_file_collection_state_changed (
           channel->channel, GTALK_FILE_COLLECTION_STATE_OPEN, FALSE);
       gtalk_file_collection_block_reading (self, channel->channel,
           !channel->reading);
@@ -374,7 +374,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
             GabbleChannel *c = i->data;
 
             i = i->next;
-            gabble_file_transfer_channel_set_gtalk_file_collection_state (
+            gabble_file_transfer_channel_gtalk_file_collection_state_changed (
                 c->channel, GTALK_FILE_COLLECTION_STATE_PENDING, FALSE);
           }
         break;
@@ -388,7 +388,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
 
             i = i->next;
             if (c->usable)
-              gabble_file_transfer_channel_set_gtalk_file_collection_state (
+              gabble_file_transfer_channel_gtalk_file_collection_state_changed (
                   c->channel, GTALK_FILE_COLLECTION_STATE_ACCEPTED, FALSE);
           }
         break;
@@ -419,8 +419,8 @@ jingle_session_terminated_cb (GabbleJingleSession *session,
       GabbleChannel *c = i->data;
 
       i = i->next;
-      gabble_file_transfer_channel_set_gtalk_file_collection_state (c->channel,
-          GTALK_FILE_COLLECTION_STATE_TERMINATED, local_terminator);
+      gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+          c->channel, GTALK_FILE_COLLECTION_STATE_TERMINATED, local_terminator);
     }
 }
 
@@ -584,8 +584,9 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
               GabbleChannel *c = i->data;
 
               i = i->next;
-              gabble_file_transfer_channel_set_gtalk_file_collection_state (
-                  c->channel, GTALK_FILE_COLLECTION_STATE_CONNECTION_FAILED, TRUE);
+              gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+                  c->channel, GTALK_FILE_COLLECTION_STATE_CONNECTION_FAILED,
+                  TRUE);
             }
           /* return because we don't want to use the content after it
              has been destroyed.. */
@@ -617,7 +618,7 @@ static void get_next_manifest_entry (GTalkFileCollection *self,
         }
 
       self->priv->current_channel->usable = FALSE;
-      gabble_file_transfer_channel_set_gtalk_file_collection_state (
+      gabble_file_transfer_channel_gtalk_file_collection_state_changed (
           self->priv->current_channel->channel,
           GTALK_FILE_COLLECTION_STATE_COMPLETED, FALSE);
 
@@ -896,8 +897,8 @@ content_completed (GabbleJingleContent *content, gpointer user_data)
       GabbleChannel *c = i->data;
 
       i = i->next;
-      gabble_file_transfer_channel_set_gtalk_file_collection_state (c->channel,
-          GTALK_FILE_COLLECTION_STATE_COMPLETED, FALSE);
+      gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+          c->channel, GTALK_FILE_COLLECTION_STATE_COMPLETED, FALSE);
     }
 }
 
@@ -960,7 +961,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
           if (self->priv->current_channel != NULL)
             {
               DEBUG ("Received status line with current channel set");
-              gabble_file_transfer_channel_set_gtalk_file_collection_state (
+              gabble_file_transfer_channel_gtalk_file_collection_state_changed (
                   self->priv->current_channel->channel,
                   GTALK_FILE_COLLECTION_STATE_COMPLETED, FALSE);
               set_current_channel (self, NULL);
@@ -1384,8 +1385,8 @@ gtalk_file_collection_initiate (GTalkFileCollection *self,
     }
   else
     {
-      gabble_file_transfer_channel_set_gtalk_file_collection_state (c->channel,
-          GTALK_FILE_COLLECTION_STATE_ACCEPTED, FALSE);
+      gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+          c->channel, GTALK_FILE_COLLECTION_STATE_ACCEPTED, FALSE);
     }
 
 }
@@ -1431,8 +1432,8 @@ gtalk_file_collection_accept (GTalkFileCollection *self,
     }
   else
     {
-      gabble_file_transfer_channel_set_gtalk_file_collection_state (c->channel,
-          GTALK_FILE_COLLECTION_STATE_ACCEPTED, FALSE);
+      gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+          c->channel, GTALK_FILE_COLLECTION_STATE_ACCEPTED, FALSE);
     }
 
   if (self->priv->status == GTALK_FT_STATUS_WAITING)
@@ -1574,7 +1575,7 @@ gtalk_file_collection_terminate (GTalkFileCollection *self,
       /* If this was the last channel, it will cause it to unref us and
          the dispose will be called, which will call
          gabble_jingle_session_terminate */
-      gabble_file_transfer_channel_set_gtalk_file_collection_state (channel,
+      gabble_file_transfer_channel_gtalk_file_collection_state_changed (channel,
           GTALK_FILE_COLLECTION_STATE_TERMINATED, TRUE);
     }
 }

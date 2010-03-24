@@ -1296,7 +1296,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
 
 
 void
-gabble_file_transfer_channel_set_gtalk_file_collection_state (
+gabble_file_transfer_channel_gtalk_file_collection_state_changed (
     GabbleFileTransferChannel *self,
     GTalkFileCollectionState state, gboolean local_terminator)
 {

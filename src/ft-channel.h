@@ -76,7 +76,7 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     gboolean resume_supported, GabbleBytestreamIface *bytestream,
     GTalkFileCollection *gtalk_fc, const gchar *file_collection);
 
-void gabble_file_transfer_channel_set_gtalk_file_collection_state (
+void gabble_file_transfer_channel_gtalk_file_collection_state_changed (
     GabbleFileTransferChannel *self, GTalkFileCollectionState gtalk_fc_state,
     gboolean local_terminator);
 

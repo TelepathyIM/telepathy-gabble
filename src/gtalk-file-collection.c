@@ -39,6 +39,13 @@
 
 G_DEFINE_TYPE (GTalkFileCollection, gtalk_file_collection, G_TYPE_OBJECT);
 
+/* properties */
+enum
+{
+  PROP_TOKEN = 1,
+  LAST_PROPERTY
+};
+
 typedef enum
   {
     HTTP_SERVER_IDLE,
@@ -196,6 +203,25 @@ gtalk_file_collection_dispose (GObject *object)
     G_OBJECT_CLASS (gtalk_file_collection_parent_class)->dispose (object);
 }
 
+static void
+gtalk_file_collection_get_property (GObject *object,
+                                           guint property_id,
+                                           GValue *value,
+                                           GParamSpec *pspec)
+{
+  GTalkFileCollection *self = GTALK_FILE_COLLECTION (object);
+
+  switch (property_id)
+    {
+      case PROP_TOKEN:
+        g_value_set_string (value, self->priv->token);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+        break;
+    }
+}
+
 
 static void
 gtalk_file_collection_class_init (GTalkFileCollectionClass *cls)
@@ -204,7 +230,16 @@ gtalk_file_collection_class_init (GTalkFileCollectionClass *cls)
 
   g_type_class_add_private (cls, sizeof (GTalkFileCollectionPrivate));
 
+  object_class->get_property = gtalk_file_collection_get_property;
   object_class->dispose = gtalk_file_collection_dispose;
+
+  g_object_class_install_property (object_class, PROP_TOKEN,
+      g_param_spec_string (
+          "token",
+          "Unique token identifiying the FileCollection",
+          "Token identifying a collection of files",
+          "",
+          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 }
 
 

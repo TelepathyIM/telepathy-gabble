@@ -1310,10 +1310,13 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
         break;
       case GTALK_FILE_COLLECTION_STATE_ACCEPTED:
-        gabble_file_transfer_channel_set_state (
-            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
-            TP_FILE_TRANSFER_STATE_ACCEPTED,
-            TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+        if (self->priv->state == TP_FILE_TRANSFER_STATE_PENDING)
+          {
+            gabble_file_transfer_channel_set_state (
+                TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+                TP_FILE_TRANSFER_STATE_ACCEPTED,
+                TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+          }
         break;
       case GTALK_FILE_COLLECTION_STATE_OPEN:
         channel_open (self);

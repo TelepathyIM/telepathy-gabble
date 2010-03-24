@@ -165,6 +165,7 @@ def test(q, bus, conn, stream):
         # Get the FileCollection and make sure it exists
         if file_collection is None:
             file_collection = props[cs.FT_FILE_COLLECTION]
+            assert file_collection != ''
         assert file_collection is not None
 
         # FileCollection must be the same for every channel

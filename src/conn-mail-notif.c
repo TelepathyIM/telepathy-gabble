@@ -98,6 +98,7 @@ unsubscribe (GabbleConnection *conn,
       if (g_hash_table_size (conn->mail_subscribers) == 0)
         {
           DEBUG ("Last subscriber unsubscribed, cleaning up!");
+          conn->unread_mails_count = 0;
           g_free (conn->inbox_url);
           conn->inbox_url = NULL;
 

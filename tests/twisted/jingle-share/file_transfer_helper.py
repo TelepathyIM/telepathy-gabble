@@ -27,7 +27,8 @@ import sys
 #  does not match our hash of their disco reply '<CAPS_VER_HASH value>'."
 
 CAPS_VER_HASH = {'sE90xarIraOnMRTnZqYNmZtoAck=':'m9aR1Li0PZTOfdvxys4jARpdGNY=',
-                 '3P6yJJDbtCEEfrrTqxq1V8N5+ms=': 'gGreg/ivJyPi+XauJumCPGz28h8='}
+                 '3P6yJJDbtCEEfrrTqxq1V8N5+ms=': 'gGreg/ivJyPi+XauJumCPGz28h8=',
+                 'yIG4v/nhJ6zxlzYRm2ORqzDt4Zc=': 'J8BSW4OHozfJw+HXJRfAOhYj6Ik='}
 
 class File(object):
     DEFAULT_DATA = "What a nice file"

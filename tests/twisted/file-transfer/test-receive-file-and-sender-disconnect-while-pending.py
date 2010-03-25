@@ -21,7 +21,7 @@ class ReceiveFileAndSenderDisconnectWhilePendingTest(ReceiveFileTest):
 
         # We can't accept the transfer now
         try:
-            # IPv4 is otherwise guaranteed to be available
+            # IPv4 is always guaranteed to be available
             self.ft_channel.AcceptFile(cs.SOCKET_ADDRESS_TYPE_IPV4,
                 cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "", 0)
         except dbus.DBusException, e:

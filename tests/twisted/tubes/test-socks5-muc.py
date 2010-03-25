@@ -3,7 +3,8 @@
 import os
 
 if os.name != 'posix':
-    raise SystemExit(77)    # skipped on non-unix for now
+    # skipped on non-Unix for now, because it uses a Unix socket
+    raise SystemExit(77)
 
 from servicetest import call_async, EventPattern, EventProtocolClientFactory
 from gabbletest import acknowledge_iq, make_muc_presence, exec_test

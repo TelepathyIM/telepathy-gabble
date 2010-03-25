@@ -817,7 +817,10 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
 
 typedef struct
 {
-  GTalkFileCollection *self;
+  union {
+    gpointer ptr;
+    GTalkFileCollection *self;
+  };
   ShareChannel *share_channel;
 } GoogleRelaySessionData;
 
@@ -898,7 +901,7 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
   nice_agent_gather_candidates (data->share_channel->agent,
       data->share_channel->stream_id);
 
-  g_object_remove_weak_pointer (G_OBJECT (data->self), (gpointer *)&data->self);
+  g_object_remove_weak_pointer (G_OBJECT (data->self), &data->ptr);
   g_slice_free (GoogleRelaySessionData, data);
 }
 
@@ -964,7 +967,7 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   relay_data->self = self;
   relay_data->share_channel = share_channel;
   g_object_add_weak_pointer (G_OBJECT (relay_data->self),
-      (gpointer *)&relay_data->self);
+      &relay_data->ptr);
   gabble_jingle_factory_create_google_relay_session (
       self->priv->jingle_factory, 1,
       google_relay_session_cb, relay_data);

@@ -1350,6 +1350,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
   if (JINGLE_IS_GOOGLE_DIALECT (priv->dialect))
     {
       GHashTableIter iter;
+      gpointer value;
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
         {
@@ -1381,8 +1382,9 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
         }
 
         g_hash_table_iter_init (&iter, priv->initiator_contents);
-        while (g_hash_table_iter_next (&iter, NULL, (gpointer) &c))
+        while (g_hash_table_iter_next (&iter, NULL, &value))
           {
+            c = value;
             gabble_jingle_content_parse_transport_info (c, node, error);
             if (error != NULL && *error != NULL)
               break;

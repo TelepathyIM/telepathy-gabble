@@ -24,6 +24,8 @@
 
 #include <glib-object.h>
 
+#ifdef G_OS_UNIX
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -109,5 +111,7 @@ gboolean gibber_unix_transport_recv_credentials (GibberUnixTransport *transport,
     gpointer user_data);
 
 G_END_DECLS
+
+#endif /* G_OS_UNIX */
 
 #endif /* #ifndef __GIBBER_UNIX_TRANSPORT_H__*/

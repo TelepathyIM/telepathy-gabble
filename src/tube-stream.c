@@ -22,12 +22,13 @@
 
 #include <string.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <unistd.h>
-#include <fcntl.h>
 #include <errno.h>
-#include <netdb.h>
+
+#include <gibber/gibber-sockets.h>
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #include <glib/gstdio.h>
 #include <loudmouth/loudmouth.h>
@@ -102,8 +103,10 @@ static const gchar *gabble_tube_stream_interfaces[] = {
  * not guaranteed to be big enough for AF_UNIX addresses */
 typedef union
 {
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   /* we'd call this unix, but gcc predefines that. Thanks, gcc */
   struct sockaddr_un un;
+#endif
   struct sockaddr_in ipv4;
   struct sockaddr_in6 ipv6;
 } SockAddr;
@@ -216,6 +219,7 @@ static void data_received_cb (GabbleBytestreamIface *ibb, TpHandle sender,
 static void transport_connected_cb (GibberTransport *transport,
     transport_connected_data *data);
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
 static void
 generate_ascii_string (guint len,
                        gchar *buf)
@@ -230,6 +234,7 @@ generate_ascii_string (guint len,
   for (i = 0; i < len; i++)
     buf[i] = chars[g_random_int_range (0, 64)];
 }
+#endif
 
 static void
 transport_handler (GibberTransport *transport,
@@ -586,6 +591,7 @@ fire_new_local_connection (GabbleTubeStream *self,
       connection_id);
 }
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
 static void
 credentials_received_cb (GibberUnixTransport *transport,
                          GibberBuffer *buffer,
@@ -635,6 +641,7 @@ credentials_received_cb_out:
   /* start_stream_initiation reffed the transport if everything went fine */
   g_object_unref (transport);
 }
+#endif
 
 static gboolean
 check_incoming_connection (GabbleTubeStream *self,
@@ -646,6 +653,7 @@ check_incoming_connection (GabbleTubeStream *self,
     {
       return TRUE;
     }
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
     {
       if (!gibber_unix_transport_recv_credentials (
@@ -665,6 +673,7 @@ check_incoming_connection (GabbleTubeStream *self,
        * started yet. */
       return FALSE;
     }
+#endif
   else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
     {
       struct sockaddr_storage addr;
@@ -763,6 +772,7 @@ local_new_connection_cb (GibberListener *listener,
     }
 }
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
 static gboolean
 set_credentials_access_control_param (GValue *access_control_param,
     GibberTransport *transport)
@@ -786,6 +796,7 @@ set_credentials_access_control_param (GValue *access_control_param,
 
   return TRUE;
 }
+#endif
 
 static gboolean
 set_port_access_control_param (GValue *access_control_param,
@@ -862,6 +873,7 @@ fire_new_remote_connection (GabbleTubeStream *self,
   GValue access_control_param = {0,};
   guint connection_id;
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
     {
       if (!set_credentials_access_control_param (&access_control_param,
@@ -871,7 +883,9 @@ fire_new_remote_connection (GabbleTubeStream *self,
           return;
         }
     }
-  else if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
+  else
+#endif
+  if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_PORT)
     {
       if (!set_port_access_control_param (&access_control_param, transport))
         {
@@ -925,6 +939,7 @@ new_connection_to_socket (GabbleTubeStream *self,
 
   g_assert (priv->initiator == priv->self_handle);
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
@@ -935,7 +950,9 @@ new_connection_to_socket (GabbleTubeStream *self,
       gibber_unix_transport_connect (GIBBER_UNIX_TRANSPORT (transport),
           array->data, NULL);
     }
-  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ||
+  else
+#endif
+  if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4 ||
       priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
       gchar *ip;
@@ -1002,6 +1019,8 @@ tube_stream_open (GabbleTubeStream *self,
 
   g_signal_connect (priv->local_listener, "new-connection",
       G_CALLBACK (local_new_connection_cb), self);
+
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       GArray *array;
@@ -1040,7 +1059,9 @@ tube_stream_open (GabbleTubeStream *self,
 
       g_free (path);
     }
-  else if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+  else
+#endif
+  if (priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
     {
       int ret;
 
@@ -2013,6 +2034,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
     }
 }
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
 static gboolean
 check_unix_params (TpSocketAddressType address_type,
                    const GValue *address,
@@ -2095,6 +2117,7 @@ check_unix_params (TpSocketAddressType address_type,
       "%u socket access control is not supported", access_control);
   return FALSE;
 }
+#endif
 
 static gboolean
 check_ip_params (TpSocketAddressType address_type,
@@ -2199,9 +2222,11 @@ gabble_tube_stream_check_params (TpSocketAddressType address_type,
 {
   switch (address_type)
     {
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
       case TP_SOCKET_ADDRESS_TYPE_UNIX:
         return check_unix_params (address_type, address, access_control,
             access_control_param, error);
+#endif
 
       case TP_SOCKET_ADDRESS_TYPE_IPV4:
       case TP_SOCKET_ADDRESS_TYPE_IPV6:
@@ -2339,12 +2364,16 @@ GHashTable *
 gabble_tube_stream_get_supported_socket_types (void)
 {
   GHashTable *ret;
-  GArray *unix_tab, *ipv4_tab, *ipv6_tab;
+  GArray *ipv4_tab, *ipv6_tab;
   TpSocketAccessControl access_control;
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
+  GArray *unix_tab;
+#endif
 
   ret = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       destroy_socket_control_list);
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   /* Socket_Address_Type_Unix */
   unix_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),
       1);
@@ -2361,6 +2390,7 @@ gabble_tube_stream_get_supported_socket_types (void)
 
   g_hash_table_insert (ret, GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX),
       unix_tab);
+#endif
 
   /* Socket_Address_Type_IPv4 */
   ipv4_tab = g_array_sized_new (FALSE, FALSE, sizeof (TpSocketAccessControl),

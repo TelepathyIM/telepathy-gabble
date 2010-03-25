@@ -18,15 +18,19 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
 
 #include <stdio.h>
 #include <stdlib.h>
 
 #include <errno.h>
-#include <fcntl.h>
 #include <string.h>
-#include <unistd.h>
 
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
+
+#include "gibber-sockets.h"
 #include "gibber-tcp-transport.h"
 
 #define DEBUG_FLAG DEBUG_NET
@@ -172,11 +176,11 @@ try_to_connect (GibberTCPTransport *self)
       DEBUG ("connect succeeded");
 
       clean_all_connect_attempts (self);
-      gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (self), fd);
+      gibber_fd_transport_set_fd (GIBBER_FD_TRANSPORT (self), fd, TRUE);
       return FALSE;
     }
 
-  if (errno == EALREADY || errno == EINPROGRESS)
+  if (gibber_connect_errno_requires_retry ())
     {
       /* We have to wait longer */
       return TRUE;
@@ -224,12 +228,13 @@ new_connect_attempt (GibberTCPTransport *self)
 
   if (fd < 0)
     {
-      DEBUG("socket failed: %s", strerror (errno));
+      DEBUG("socket failed: #%d %s", gibber_socket_errno (),
+          gibber_socket_strerror ());
       goto failed;
     }
 
-  fcntl (fd, F_SETFL, O_NONBLOCK);
-  priv->channel = g_io_channel_unix_new (fd);
+  gibber_socket_set_nonblocking (fd);
+  priv->channel = gibber_io_channel_new_from_socket (fd);
   g_io_channel_set_close_on_unref (priv->channel, FALSE);
   g_io_channel_set_encoding (priv->channel, NULL, NULL);
   g_io_channel_set_buffered (priv->channel, FALSE);

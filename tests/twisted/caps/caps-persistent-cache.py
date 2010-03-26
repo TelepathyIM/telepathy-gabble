@@ -68,9 +68,18 @@ def test2(q, bus, conn, stream):
     send_presence(q, stream, contact_jid, 'client/pc//thane')
     capabilities_changed(q, contact_handle)
 
-    # Overflow the cache. 51 is the cache size (during test runs) plus one.
+    # Overflow the cache. GC is considered every 50 inserts, and then only
+    # performed if the cache has more entries than a threshold which is set to
+    # 50 in the test suite, reducing the cache to 0.95 * that threshold, which
+    # is 47 in the test suite.
+    #
+    # We want to ensure that Macbeth is removed from the cache. In the worst
+    # case, GC is considered and performed when we insert the 46th witch, which
+    # will leave Macbeth in the cache. Inserting a further 50 witches will
+    # ensure that Macbeth is flushed even in this worst case. Let's round up to
+    # 100 witches.
 
-    for i in range(51):
+    for i in range(100):
         overflow_contact_jid = 'witch%d@forest/cauldron' % i
         overflow_identity = 'client/pc//prophecy%d' % i
         send_presence(q, stream, overflow_contact_jid, overflow_identity)

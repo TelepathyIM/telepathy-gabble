@@ -820,7 +820,7 @@ typedef struct
   union {
     gpointer ptr;
     GTalkFileCollection *self;
-  };
+  } u;
   ShareChannel *share_channel;
 } GoogleRelaySessionData;
 
@@ -888,7 +888,7 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
 {
   GoogleRelaySessionData *data = user_data;
 
-  if (data->self == NULL)
+  if (data->u.self == NULL)
     {
       DEBUG ("Received relay session callback but self got destroyed");
       g_slice_free (GoogleRelaySessionData, data);
@@ -901,7 +901,7 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
   nice_agent_gather_candidates (data->share_channel->agent,
       data->share_channel->stream_id);
 
-  g_object_remove_weak_pointer (G_OBJECT (data->self), &data->ptr);
+  g_object_remove_weak_pointer (G_OBJECT (data->u.self), &data->u.ptr);
   g_slice_free (GoogleRelaySessionData, data);
 }
 
@@ -964,10 +964,10 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
     }
 
   relay_data = g_slice_new0 (GoogleRelaySessionData);
-  relay_data->self = self;
+  relay_data->u.self = self;
   relay_data->share_channel = share_channel;
-  g_object_add_weak_pointer (G_OBJECT (relay_data->self),
-      &relay_data->ptr);
+  g_object_add_weak_pointer (G_OBJECT (relay_data->u.self),
+      &relay_data->u.ptr);
   gabble_jingle_factory_create_google_relay_session (
       self->priv->jingle_factory, 1,
       google_relay_session_cb, relay_data);

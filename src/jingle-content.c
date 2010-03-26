@@ -929,15 +929,15 @@ gboolean
 gabble_jingle_content_is_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
-  JingleMediaType media_type;
+  GabbleJingleContentClass *cls = GABBLE_JINGLE_CONTENT_GET_CLASS (self);
 
-  g_object_get (self, "media-type", &media_type, NULL);
   if (priv->created_by_us)
     {
       /* If it's created by us, media ready, not signalled, and we have
        * at least one local candidate, it's ready to be added. */
       if (priv->media_ready && priv->state == JINGLE_CONTENT_STATE_EMPTY &&
-          (media_type == JINGLE_MEDIA_TYPE_FILE || priv->have_local_candidates))
+          (cls->requires_initiate_before_candidates ||
+              priv->have_local_candidates))
         return TRUE;
     }
   else
@@ -945,8 +945,7 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
       /* If it's created by peer, media and transports ready,
        * and not acknowledged yet, it's ready for acceptance. */
       if (priv->media_ready && priv->state == JINGLE_CONTENT_STATE_NEW &&
-          (media_type == JINGLE_MEDIA_TYPE_FILE ||
-              gabble_jingle_transport_iface_can_accept (priv->transport)))
+          gabble_jingle_transport_iface_can_accept (priv->transport))
         return TRUE;
     }
 

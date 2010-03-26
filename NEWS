@@ -1,3 +1,18 @@
+telepathy-gabble 0.9.9 (2010-03-26)
+===================================
+
+The “It's release o'clock, quick, say something funny” release.
+
+Enhancements:
+
+• Update Wocky:
+  - New and exiting Dataforms code! (wjt)
+• Various portability improvements (smcv)
+
+Fixes:
+
+• Fix mail notification on GTalk showing at most 30 unread mails (Nicolas)
+
 telepathy-gabble 0.9.8 (2010-03-16)
 ===================================
 

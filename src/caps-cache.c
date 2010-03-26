@@ -202,6 +202,18 @@ gabble_caps_cache_constructor (
     }
 
   ret = sqlite3_exec (self->priv->db,
+      "PRAGMA journal_mode = MEMORY;"
+      "PRAGMA synchronous = OFF",
+      NULL, NULL, &error);
+
+  if (ret != SQLITE_OK)
+    {
+      DEBUG ("failed to turn off fsync() and on-disk journalling: %s", error);
+      sqlite3_free (error);
+      /* Let's just continue; this isn't fatal. */
+    }
+
+  ret = sqlite3_exec (self->priv->db,
       "CREATE TABLE IF NOT EXISTS capabilities (\n"
       "  node text PRIMARY KEY,\n"
       "  namespaces text,\n"

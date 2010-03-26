@@ -402,7 +402,6 @@ gabble_caps_cache_lookup (GabbleCapsCache *self, const gchar *node)
     }
 
   DEBUG ("caps cache hit: %s", node);
-  sqlite3_column_bytes (stmt, 0);
   value = (gchar *) sqlite3_column_text (stmt, 0);
   uris = g_strsplit (value, "\n", 0);
   caps = gabble_capability_set_new ();

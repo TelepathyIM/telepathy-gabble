@@ -618,6 +618,10 @@ gabble_call_channel_dispose (GObject *object)
   g_list_free (priv->contents);
   priv->contents = NULL;
 
+  if (priv->session != NULL)
+    g_object_unref (priv->session);
+  priv->session = NULL;
+
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose (object);
 }
@@ -1112,6 +1116,8 @@ call_channel_init_async (GAsyncInitable *initable,
       priv->transport_ns = g_strdup (transport);
       priv->session = gabble_jingle_factory_create_session (
         priv->conn->jingle_factory, priv->target, resource, FALSE);
+
+      g_object_ref (priv->session);
 
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), G_OBJECT (self));

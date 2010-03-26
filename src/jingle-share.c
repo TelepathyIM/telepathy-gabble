@@ -245,6 +245,12 @@ gabble_jingle_share_set_property (GObject *object,
     }
 }
 
+static JingleContentSenders
+get_default_senders (GabbleJingleContent *c)
+{
+  return JINGLE_CONTENT_SENDERS_INITIATOR;
+}
+
 static void
 gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
 {
@@ -259,6 +265,7 @@ gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
 
   content_class->parse_description = parse_description;
   content_class->produce_description = produce_description;
+  content_class->get_default_senders = get_default_senders;
 
   /* This property is here only because jingle-session sets the media-type
      when constructing the object.. */

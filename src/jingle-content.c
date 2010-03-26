@@ -269,6 +269,12 @@ gabble_jingle_content_set_property (GObject *object,
   }
 }
 
+static JingleContentSenders
+get_default_senders_real (GabbleJingleContent *c)
+{
+  return JINGLE_CONTENT_SENDERS_BOTH;
+}
+
 static void
 gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
 {
@@ -280,6 +286,8 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
   object_class->get_property = gabble_jingle_content_get_property;
   object_class->set_property = gabble_jingle_content_set_property;
   object_class->dispose = gabble_jingle_content_dispose;
+
+  cls->get_default_senders = get_default_senders_real;
 
   /* property definitions */
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
@@ -388,6 +396,17 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     G_TYPE_NONE, 0);
 }
 
+
+static JingleContentSenders
+get_default_senders (GabbleJingleContent *c)
+{
+  JingleContentSenders (*virtual_method)(GabbleJingleContent *) = \
+      GABBLE_JINGLE_CONTENT_GET_CLASS (c)->get_default_senders;
+
+  g_assert (virtual_method != NULL);
+  return virtual_method (c);
+}
+
 static JingleContentSenders
 parse_senders (const gchar *txt)
 {
@@ -484,24 +503,14 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   GType transport_type = 0;
   GabbleJingleTransportIface *trans = NULL;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
-  JingleMediaType media_type;
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   creator = lm_message_node_get_attribute (content_node, "creator");
   name = lm_message_node_get_attribute (content_node, "name");
   senders = lm_message_node_get_attribute (content_node, "senders");
-  g_object_get (c, "media-type", &media_type, NULL);
 
   g_assert (priv->transport_ns == NULL);
-
-  if (senders == NULL)
-    {
-      if (media_type == JINGLE_MEDIA_TYPE_FILE)
-        senders = "initiator";
-      else
-        senders = "both";
-    }
 
   if (google_mode)
     {
@@ -566,7 +575,11 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     }
 
   priv->created_by_us = FALSE;
-  priv->senders = parse_senders (senders);
+  if (senders == NULL)
+    priv->senders = get_default_senders (c);
+  else
+    priv->senders = parse_senders (senders);
+
   if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
     {
       SET_BAD_REQ ("invalid content senders");
@@ -744,14 +757,10 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     }
 
   if (senders == NULL)
-    {
-      if (media_type == JINGLE_MEDIA_TYPE_FILE)
-        senders = "initiator";
-      else
-        senders = "both";
-    }
+    newsenders = get_default_senders (c);
+  else
+    newsenders = parse_senders (senders);
 
-  newsenders = parse_senders (senders);
   if (newsenders == JINGLE_CONTENT_SENDERS_NONE)
     {
       SET_BAD_REQ ("invalid content senders");
@@ -761,7 +770,7 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   if (newsenders != priv->senders)
     {
       DEBUG ("changing senders from %s to %s", produce_senders (priv->senders),
-          senders);
+          produce_senders (newsenders));
       priv->senders = newsenders;
       g_object_notify ((GObject *) c, "senders");
     }

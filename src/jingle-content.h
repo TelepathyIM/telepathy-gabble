@@ -88,6 +88,7 @@ struct _GabbleJingleContentClass {
     void  (*produce_description) (GabbleJingleContent *, LmMessageNode *);
     void  (*transport_created) (GabbleJingleContent *,
         GabbleJingleTransportIface *);
+    JingleContentSenders (*get_default_senders) (GabbleJingleContent *);
 };
 
 typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;

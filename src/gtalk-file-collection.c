@@ -1386,7 +1386,7 @@ gtalk_file_collection_new (GabbleFileTransferChannel *channel,
       NULL);
 
   content = gabble_jingle_session_add_content (session,
-      JINGLE_MEDIA_TYPE_FILE, "share", NS_GOOGLE_SESSION_SHARE,
+      JINGLE_MEDIA_TYPE_NONE, "share", NS_GOOGLE_SESSION_SHARE,
       NS_GOOGLE_TRANSPORT_P2P);
 
   if (content == NULL)

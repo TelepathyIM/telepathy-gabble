@@ -32,7 +32,6 @@ typedef enum {
   JINGLE_MEDIA_TYPE_NONE = 0,
   JINGLE_MEDIA_TYPE_AUDIO,
   JINGLE_MEDIA_TYPE_VIDEO,
-  JINGLE_MEDIA_TYPE_FILE
 } JingleMediaType;
 
 typedef enum {

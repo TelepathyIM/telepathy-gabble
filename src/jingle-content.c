@@ -34,6 +34,7 @@
 #include "jingle-session.h"
 #include "jingle-transport-iface.h"
 #include "jingle-transport-google.h"
+#include "jingle-media-rtp.h"
 #include "namespaces.h"
 #include "util.h"
 #include "gabble-signals-marshal.h"
@@ -275,6 +276,7 @@ get_default_senders_real (GabbleJingleContent *c)
   return JINGLE_CONTENT_SENDERS_BOTH;
 }
 
+
 static void
 gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
 {
@@ -406,6 +408,7 @@ get_default_senders (GabbleJingleContent *c)
   g_assert (virtual_method != NULL);
   return virtual_method (c);
 }
+
 
 static JingleContentSenders
 parse_senders (const gchar *txt)
@@ -741,14 +744,12 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   LmMessageNode *trans_node, *desc_node;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
   JingleContentSenders newsenders;
-  JingleMediaType media_type;
 
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   senders = lm_message_node_get_attribute (content_node, "senders");
-  g_object_get (c, "media-type", &media_type, NULL);
 
-  if (media_type != JINGLE_MEDIA_TYPE_FILE &&
+  if (GABBLE_IS_JINGLE_MEDIA_RTP (c) &&
       JINGLE_IS_GOOGLE_DIALECT (dialect) && trans_node == NULL)
     {
       DEBUG ("no transport node, assuming GTalk3 dialect");

@@ -1180,7 +1180,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
           if (next_line == NULL)
             return 0;
 
-          /* FIXME: check for 404 errors */
+          /* TODO: check for 404 errors */
           DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
           if (*line == 0)
             {

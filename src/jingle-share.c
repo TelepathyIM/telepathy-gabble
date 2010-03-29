@@ -92,14 +92,13 @@ struct _GabbleJingleSharePrivate
 static gchar *
 generate_temp_url (void)
 {
-  gchar buf[sizeof (guint32) * 2];
-  guint32 *uint_buf = (guint32 *) buf;
-  guint i;
+  gchar *uuid = gabble_generate_id ();
+  gchar *url = NULL;
 
-  for (i = 0; i < sizeof (buf); i++)
-    buf[i] = g_random_int_range (0, 256);
+  url = g_strdup_printf ("/temporary/%s/", uuid);
+  g_free (uuid);
 
-  return g_strdup_printf ("/temporary/%x%x/", uint_buf[0], uint_buf[1]);
+  return url;
 }
 
 static void

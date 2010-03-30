@@ -783,7 +783,21 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
     }
   else if (share_channel->http_status == HTTP_SERVER_SEND)
     {
-      /* TODO: What about current_channel == NULL */
+      if (self->priv->current_channel == NULL)
+        {
+          GList *i;
+
+          DEBUG ("Unexpected current_channel == NULL!");
+          for (i = self->priv->channels; i;)
+            {
+              GabbleFileTransferChannel *channel = i->data;
+
+              i = i->next;
+              gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+                  channel, GTALK_FILE_COLLECTION_STATE_ERROR, FALSE);
+            }
+          return;
+        }
       gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
           self->priv->current_channel, FALSE);
       if (share_channel->write_buffer != NULL)
@@ -1250,7 +1264,24 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
 
           if (len >= share_channel->content_length)
             {
-              /* TODO: what if current_channel == NULL */
+              if (self->priv->current_channel == NULL)
+                {
+                  GList *i;
+
+                  DEBUG ("Unexpected current_channel == NULL!");
+                  for (i = self->priv->channels; i;)
+                    {
+                      GabbleFileTransferChannel *channel = i->data;
+
+                      i = i->next;
+                      gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+                          channel, GTALK_FILE_COLLECTION_STATE_ERROR, FALSE);
+                    }
+                  /* FIXME: Who knows what might happen here if we got destroyed
+                     It shouldn't crash since our object isn't dereferences
+                     anymore, but.. */
+                  return len;
+                }
               consumed = share_channel->content_length;
               gabble_file_transfer_channel_gtalk_file_collection_data_received (
                   self->priv->current_channel, buffer, consumed);

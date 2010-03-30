@@ -158,6 +158,7 @@ struct _GabbleFileTransferChannelPrivate {
   guint64 initial_offset;
   guint64 date;
   gchar *file_collection;
+  gboolean channel_opened;
 };
 
 
@@ -1069,6 +1070,11 @@ static void
 channel_open (GabbleFileTransferChannel *self)
 {
   DEBUG ("Channel open");
+
+  /* This is needed in case the ProvideFile wasn't called yet, to know if we
+     should go into OPEN state when ProvideFile gets called. */
+  self->priv->channel_opened = TRUE;
+
   if (self->priv->socket_address != NULL)
     {
       /* ProvideFile has already been called. Channel is Open */
@@ -1806,7 +1812,7 @@ gabble_file_transfer_channel_provide_file (
       return;
     }
 
-  if (self->priv->state == TP_FILE_TRANSFER_STATE_ACCEPTED)
+  if (self->priv->channel_opened)
     {
       /* Remote already accepted the file. Channel is Open.
        * If not channel stay Pending. */

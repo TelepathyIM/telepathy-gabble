@@ -457,6 +457,8 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
       case JS_STATE_ACTIVE:
         /* Do not set the channels to OPEN unless we're ready to send/receive
            data from them */
+        if (self->priv->status == GTALK_FT_STATUS_INITIATED)
+          self->priv->status = GTALK_FT_STATUS_ACCEPTED;
         for (i = self->priv->channels; i;)
           {
             GabbleFileTransferChannel *channel = i->data;

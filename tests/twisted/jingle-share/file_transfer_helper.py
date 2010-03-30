@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import dbus
 import socket
 import hashlib
@@ -32,7 +31,7 @@ CAPS_VER_HASH = {'sE90xarIraOnMRTnZqYNmZtoAck=':'m9aR1Li0PZTOfdvxys4jARpdGNY=',
 
 class File(object):
     DEFAULT_DATA = "What a nice file"
-    DEFAULT_NAME = "The greek foo δοκιμή.txt"
+    DEFAULT_NAME = "The foo.txt"
     DEFAULT_CONTENT_TYPE = 'text/plain'
     DEFAULT_DESCRIPTION = "A nice file to test"
 

@@ -682,7 +682,7 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
 }
 
 static void get_next_manifest_entry (GTalkFileCollection *self,
-    ShareChannel *share_channel)
+    ShareChannel *share_channel, gboolean error)
 {
   GabbleJingleShareManifest *manifest = NULL;
   GabbleJingleShareManifestEntry *entry = NULL;
@@ -706,6 +706,7 @@ static void get_next_manifest_entry (GTalkFileCollection *self,
           GINT_TO_POINTER (FALSE));
       gabble_file_transfer_channel_gtalk_file_collection_state_changed (
           self->priv->current_channel,
+          error ? GTALK_FILE_COLLECTION_STATE_ERROR:
           GTALK_FILE_COLLECTION_STATE_COMPLETED, FALSE);
 
       set_current_channel (self, NULL);
@@ -776,7 +777,7 @@ nice_component_writable (NiceAgent *agent, guint stream_id, guint component_id,
 
   if (share_channel->http_status == HTTP_CLIENT_IDLE)
     {
-      get_next_manifest_entry (self, share_channel);
+      get_next_manifest_entry (self, share_channel, FALSE);
     }
   else if (share_channel->http_status == HTTP_SERVER_SEND)
     {
@@ -1180,20 +1181,27 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
           if (next_line == NULL)
             return 0;
 
-          /* TODO: check for 404 errors */
           DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
           if (*line == 0)
             {
               DEBUG ("Found empty line, now receiving file data");
-              if (share_channel->is_chunked)
+              if (g_str_has_prefix (share_channel->status_line,
+                      "HTTP/1.1 200"))
                 {
-                  share_channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
+                  if (share_channel->is_chunked)
+                    {
+                      share_channel->http_status = HTTP_CLIENT_CHUNK_SIZE;
+                    }
+                  else
+                    {
+                      share_channel->http_status = HTTP_CLIENT_BODY;
+                      if (share_channel->content_length == 0)
+                        get_next_manifest_entry (self, share_channel, FALSE);
+                    }
                 }
               else
                 {
-                  share_channel->http_status = HTTP_CLIENT_BODY;
-                  if (share_channel->content_length == 0)
-                    get_next_manifest_entry (self, share_channel);
+                  get_next_manifest_entry (self, share_channel, TRUE);
                 }
             }
           else if (!g_ascii_strncasecmp (line, "Content-Length: ", 16))
@@ -1248,7 +1256,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
               if (share_channel->is_chunked)
                 share_channel->http_status = HTTP_CLIENT_CHUNK_END;
               else
-                get_next_manifest_entry (self, share_channel);
+                get_next_manifest_entry (self, share_channel, FALSE);
             }
           else
             {
@@ -1281,7 +1289,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
             return 0;
 
           share_channel->http_status = HTTP_CLIENT_IDLE;
-          get_next_manifest_entry (self, share_channel);
+          get_next_manifest_entry (self, share_channel, FALSE);
 
           return end - buffer;
         }
@@ -1531,7 +1539,7 @@ gtalk_file_collection_accept (GTalkFileCollection *self,
       ShareChannel *share_channel = g_hash_table_lookup (
           self->priv->share_channels, GINT_TO_POINTER (1));
 
-      get_next_manifest_entry (self, share_channel);
+      get_next_manifest_entry (self, share_channel, FALSE);
     }
 }
 

@@ -1243,6 +1243,8 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   else
     full_jid = g_strdup (jid);
 
+  DEBUG ("Offering SI Bytestream file transfer to %s", full_jid);
+
   /* Outgoing FT , we'll need SOCK5 proxies */
   gabble_bytestream_factory_query_socks5_proxies (
       self->priv->connection->bytestream_factory);
@@ -1340,6 +1342,7 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
           }
         close_session_and_transport (self);
         break;
+      case GTALK_FILE_COLLECTION_STATE_ERROR:
       case GTALK_FILE_COLLECTION_STATE_CONNECTION_FAILED:
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
@@ -1366,6 +1369,8 @@ offer_gtalk_file_transfer (GabbleFileTransferChannel *self, const gchar *jid,
 {
 
   GTalkFileCollection *gtalk_file_collection;
+
+  DEBUG ("Offering Gtalk file transfer to %s/%s", jid, resource);
 
   gtalk_file_collection = gtalk_file_collection_new (self,
       self->priv->connection->jingle_factory, self->priv->handle, resource);
@@ -1458,9 +1463,6 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
     {
       /* MUC jid, we already have the full jid */
     }
-
-  DEBUG ("Offering file transfer to %s%s%s", jid,
-      resource? "/":"", resource? resource:"");
 
   if (si)
     result = offer_bytestream (self, jid, resource, error);

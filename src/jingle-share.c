@@ -265,7 +265,6 @@ gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
   content_class->parse_description = parse_description;
   content_class->produce_description = produce_description;
   content_class->get_default_senders = get_default_senders;
-  content_class->requires_initiate_before_candidates = TRUE;
 
   /* This property is here only because jingle-session sets the media-type
      when constructing the object.. */

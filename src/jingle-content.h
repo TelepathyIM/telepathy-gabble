@@ -88,7 +88,6 @@ struct _GabbleJingleContentClass {
     void  (*transport_created) (GabbleJingleContent *,
         GabbleJingleTransportIface *);
     JingleContentSenders (*get_default_senders) (GabbleJingleContent *);
-  gboolean requires_initiate_before_candidates;
 };
 
 typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;

@@ -1400,8 +1400,9 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   TpHandleRepoIface *contact_repo, *room_repo;
   const gchar *jid;
   gboolean si = FALSE;
-  const gchar *resource = NULL;
-
+  gboolean jingle_share = FALSE;
+  const gchar *si_resource = NULL;
+  const gchar *share_resource = NULL;
   g_assert (!CHECK_STR_EMPTY (self->priv->filename));
   g_assert (self->priv->size != GABBLE_UNDEFINED_FILE_SIZE);
   g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
@@ -1429,45 +1430,46 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
     {
       /* Not a MUC jid, need to get a resource */
 
-      /* FIXME: if we have access to google relays, should we give priority to
-         jingle-share instead of SI ? */
-
       /* FIXME: should we check for SI, bytestreams and/or IBB too?
        * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */
-      resource = gabble_presence_pick_resource_by_caps (presence,
+      si_resource = gabble_presence_pick_resource_by_caps (presence,
           gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
 
-      if (resource == NULL)
-        {
-          resource = gabble_presence_pick_resource_by_caps (presence,
-              gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_SHARE);
-          if (resource == NULL)
-            {
-              DEBUG ("contact doesn't have file transfer capabilities");
-              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
-                  "contact doesn't have file transfer capabilities");
-
-              return FALSE;
-            }
-          else
-            {
-              si = FALSE;
-            }
-        }
+      if (si_resource == NULL)
+        si = FALSE;
       else
-      {
         si = TRUE;
-      }
+
+      share_resource = gabble_presence_pick_resource_by_caps (presence,
+          gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_SHARE);
+      if (share_resource == NULL)
+        jingle_share = FALSE;
+      else
+        jingle_share = TRUE;
     }
   else
     {
       /* MUC jid, we already have the full jid */
+      si = gabble_presence_has_cap (presence, NS_FILE_TRANSFER);
+      jingle_share = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_SHARE);
     }
 
-  if (si)
-    result = offer_bytestream (self, jid, resource, error);
+  /* Use bytestream if we have SI, but no jingle-share or if we have SI and
+     jingle-share but we have no google relay token */
+  if (si &&
+      (!jingle_share ||
+          gabble_jingle_factory_get_google_relay_token (
+              self->priv->connection->jingle_factory) == NULL))
+    result = offer_bytestream (self, jid, si_resource, error);
+  else if (jingle_share)
+    result = offer_gtalk_file_transfer (self, jid, share_resource, error);
   else
-    result = offer_gtalk_file_transfer (self, jid, resource, error);
+    {
+      DEBUG ("contact doesn't have file transfer capabilities");
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+          "contact doesn't have file transfer capabilities");
+      result = FALSE;
+    }
 
   return result;
 }

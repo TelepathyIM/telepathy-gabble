@@ -356,17 +356,11 @@ get_channel_by_filename (GTalkFileCollection *self, gchar *filename)
   for (i = self->priv->channels; i; i = i->next)
     {
       GabbleFileTransferChannel *channel = i->data;
-      gboolean usable;
       gchar *file = NULL;
 
       g_object_get (channel,
           "filename", &file,
           NULL);
-
-      usable = GPOINTER_TO_INT (g_hash_table_lookup (
-              self->priv->channels_usable, channel));
-      if (!usable)
-        continue;
 
       if (strcmp (file, filename) == 0)
         return channel;
@@ -716,6 +710,7 @@ static void get_next_manifest_entry (GTalkFileCollection *self,
   for (i = manifest->entries; i; i = i->next)
     {
       gchar *filename = NULL;
+      gboolean usable;
 
       entry = i->data;
 
@@ -724,7 +719,12 @@ static void get_next_manifest_entry (GTalkFileCollection *self,
       channel = get_channel_by_filename (self, filename);
       g_free (filename);
       if (channel != NULL)
-        break;
+        {
+          usable = GPOINTER_TO_INT (g_hash_table_lookup (
+                  self->priv->channels_usable, channel));
+          if (usable)
+            break;
+        }
       entry = NULL;
     }
 

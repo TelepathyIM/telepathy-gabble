@@ -1975,12 +1975,21 @@ static void
 transport_disconnected_cb (GibberTransport *transport,
                            GabbleFileTransferChannel *self)
 {
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
+  gboolean requested = (self->priv->initiator == base_conn->self_handle);
+
   DEBUG ("transport to local socket has been disconnected");
 
-  /* TODO: what about a FT from gtalk, receiving a directory where the size
-     is just an estimate.. we might be > size, but the FT hasn't completed yet */
-  if (self->priv->transferred_bytes + self->priv->initial_offset <
-      self->priv->size)
+  /* If we are sending the file, we can expect the transport to be closed as
+     soon as we received all the data. Otherwise, it should only get closed once
+     the channel has gone to state COMPLETED.
+     This allows to make sure we detect an error if the channel is closed while
+     receiving a gtalk-ft folder where the size is an approximation of the real
+     size to be received */
+  if ((requested &&
+          self->priv->transferred_bytes + self->priv->initial_offset <
+          self->priv->size) ||
+      (!requested && self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED))
     {
 
       gabble_file_transfer_channel_set_state (

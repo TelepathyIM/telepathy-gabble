@@ -55,6 +55,15 @@ enum
   NUM_OF_PROP,
 };
 
+struct _GabbleConnectionMailNotificationPrivate
+{
+  GHashTable *subscribers;
+  gchar *inbox_url;
+  GHashTable *unread_mails;
+  guint unread_count;
+  guint new_mail_handler_id;
+};
+
 
 static void unsubscribe (GabbleConnection *conn, const gchar *name,
     gboolean remove_all);
@@ -81,37 +90,38 @@ static void
 unsubscribe (GabbleConnection *conn,
     const gchar *name, gboolean remove_all)
 {
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
   guint count;
 
-  g_return_if_fail (g_hash_table_size (conn->mail_subscribers) > 0);
+  g_return_if_fail (g_hash_table_size (priv->subscribers) > 0);
 
   count = GPOINTER_TO_UINT (
-          g_hash_table_lookup (conn->mail_subscribers, name));
+          g_hash_table_lookup (priv->subscribers, name));
 
   if (count == 1 || remove_all)
     {
       tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
           subscriber_name_owner_changed, conn);
 
-      g_hash_table_remove (conn->mail_subscribers, name);
+      g_hash_table_remove (priv->subscribers, name);
 
-      if (g_hash_table_size (conn->mail_subscribers) == 0)
+      if (g_hash_table_size (priv->subscribers) == 0)
         {
           DEBUG ("Last subscriber unsubscribed, cleaning up!");
-          conn->unread_mails_count = 0;
-          g_free (conn->inbox_url);
-          conn->inbox_url = NULL;
+          priv->unread_count = 0;
+          g_free (priv->inbox_url);
+          priv->inbox_url = NULL;
 
-          if (conn->unread_mails != NULL)
+          if (priv->unread_mails != NULL)
             {
-              g_hash_table_unref (conn->unread_mails);
-              conn->unread_mails = NULL;
+              g_hash_table_unref (priv->unread_mails);
+              priv->unread_mails = NULL;
             }
         }
     }
   else
     {
-      g_hash_table_insert (conn->mail_subscribers, g_strdup (name),
+      g_hash_table_insert (priv->subscribers, g_strdup (name),
           GUINT_TO_POINTER (--count));
     }
 }
@@ -143,6 +153,7 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
   gchar *subscriber;
   guint count;
 
@@ -154,15 +165,15 @@ gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification
   DEBUG ("Subscribe called by: %s", subscriber);
 
   count = GPOINTER_TO_UINT (
-      g_hash_table_lookup (conn->mail_subscribers, subscriber));
+      g_hash_table_lookup (priv->subscribers, subscriber));
 
-  /* Gives subscriber ownership to mail_subscribers hash table */
-  g_hash_table_insert (conn->mail_subscribers, subscriber,
+  /* Gives subscriber ownership to subscribers hash table */
+  g_hash_table_insert (priv->subscribers, subscriber,
       GUINT_TO_POINTER (++count));
 
   if (count == 1)
     {
-      if (g_hash_table_size (conn->mail_subscribers) == 1)
+      if (g_hash_table_size (priv->subscribers) == 1)
         update_unread_mails (conn);
 
       tp_dbus_daemon_watch_name_owner (conn->daemon, subscriber,
@@ -179,6 +190,7 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
   gchar *subscriber;
 
   if (check_supported_or_dbus_return (conn, context))
@@ -188,7 +200,7 @@ gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotificati
 
   DEBUG ("Unsubscribe called by: %s", subscriber);
 
-  if (!g_hash_table_lookup_extended (conn->mail_subscribers, subscriber,
+  if (!g_hash_table_lookup_extended (priv->subscribers, subscriber,
                                     NULL, NULL))
     {
       GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "Not subscribed" };
@@ -213,6 +225,7 @@ gabble_mail_notification_request_inbox_url (
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
   GValueArray *result;
   GPtrArray *empty_array;
 
@@ -224,7 +237,7 @@ gabble_mail_notification_request_inbox_url (
   empty_array = g_ptr_array_new ();
 
   result = tp_value_array_build (3,
-      G_TYPE_STRING, conn->inbox_url ? conn->inbox_url : "",
+      G_TYPE_STRING, priv->inbox_url ? priv->inbox_url : "",
       G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
       GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
       G_TYPE_INVALID);
@@ -245,6 +258,7 @@ gabble_mail_notification_request_mail_url (
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
   GValueArray *result;
   gchar *url = NULL;
   GPtrArray *empty_array;
@@ -254,12 +268,12 @@ gabble_mail_notification_request_mail_url (
 
   /* TODO Make sure we don't have to authenticate again */
 
-  if (conn->inbox_url != NULL)
+  if (priv->inbox_url != NULL)
     {
       /* IDs are decimal on the XMPP side and hexadecimal on the wemail side. */
       guint64 tid = g_ascii_strtoull (in_id, NULL, 0);
       url = g_strdup_printf ("%s/#inbox/%" G_GINT64_MODIFIER "x",
-          conn->inbox_url, tid);
+          priv->inbox_url, tid);
     }
 
   empty_array = g_ptr_array_new ();
@@ -443,7 +457,7 @@ mail_thread_info_each (WockyNode *node,
         dirty = TRUE;
 
       /* gives tid ownership to unread_mails hash table */
-      g_hash_table_insert (collector->conn->unread_mails, tid, mail);
+      g_hash_table_insert (collector->conn->mail_priv->unread_mails, tid, mail);
 
       if (dirty)
         g_ptr_array_add (collector->mails_added, mail);
@@ -457,20 +471,21 @@ static void
 store_unread_mails (GabbleConnection *conn,
     WockyNode *mailbox)
 {
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
   GHashTableIter iter;
   GPtrArray *mails_removed;
   MailThreadCollector collector;
   const gchar *url, *unread_count;
 
   collector.conn = conn;
-  collector.old_mails = conn->unread_mails;
-  conn->unread_mails = g_hash_table_new_full (g_str_hash, g_str_equal,
+  collector.old_mails = priv->unread_mails;
+  priv->unread_mails = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, (GDestroyNotify) g_hash_table_unref);
   collector.mails_added = g_ptr_array_new ();
 
   url = wocky_node_get_attribute (mailbox, "url");
-  g_free (conn->inbox_url);
-  conn->inbox_url = g_strdup (url);
+  g_free (priv->inbox_url);
+  priv->inbox_url = g_strdup (url);
 
   /* Store new mails */
   wocky_node_each_child (mailbox, mail_thread_info_each, &collector);
@@ -497,13 +512,13 @@ store_unread_mails (GabbleConnection *conn,
   unread_count = wocky_node_get_attribute (mailbox, "total-matched");
 
   if (unread_count != NULL)
-    conn->unread_mails_count = (guint)g_ascii_strtoll (unread_count, NULL, 0);
+    priv->unread_count = (guint)g_ascii_strtoll (unread_count, NULL, 0);
   else
-    conn->unread_mails_count = g_hash_table_size (conn->unread_mails);
+    priv->unread_count = g_hash_table_size (priv->unread_mails);
 
   if (collector.mails_added->len > 0 || mails_removed->len > 0)
     gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
-        conn, conn->unread_mails_count, collector.mails_added,
+        conn, priv->unread_count, collector.mails_added,
         (const char **)mails_removed->pdata);
 
   g_ptr_array_free (collector.mails_added, TRUE);
@@ -571,7 +586,7 @@ new_mail_handler (WockyPorter *porter,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (g_hash_table_size (conn->mail_subscribers) > 0)
+  if (g_hash_table_size (conn->mail_priv->subscribers) > 0)
     {
       DEBUG ("Got Google <new-mail> notification");
       update_unread_mails (conn);
@@ -592,7 +607,7 @@ connection_status_changed (GabbleConnection *conn,
     {
       DEBUG ("Connected, registering Google 'new-mail' notification");
 
-      conn->new_mail_handler_id =
+      conn->mail_priv->new_mail_handler_id =
         wocky_porter_register_handler (wocky_session_get_porter (conn->session),
             WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
             NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
@@ -608,11 +623,13 @@ connection_status_changed (GabbleConnection *conn,
 void
 conn_mail_notif_init (GabbleConnection *conn)
 {
-  conn->mail_subscribers = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                                  g_free, NULL);
-  conn->inbox_url = NULL;
-  conn->unread_mails = NULL;
+  GabbleConnectionMailNotificationPrivate *priv;
+  
+  conn->mail_priv = g_slice_new0(GabbleConnectionMailNotificationPrivate);
+  priv = conn->mail_priv;
 
+  priv->subscribers = g_hash_table_new_full (g_str_hash, g_str_equal,
+                                             g_free, NULL);
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed), conn);
 }
@@ -636,29 +653,37 @@ foreach_cancel_watch (gpointer key,
 void
 conn_mail_notif_dispose (GabbleConnection *conn)
 {
-  if (conn->mail_subscribers)
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
+
+  if (priv == NULL)
+    return;
+
+  if (priv->subscribers)
     {
-      g_hash_table_foreach_remove (conn->mail_subscribers,
+      g_hash_table_foreach_remove (priv->subscribers,
           foreach_cancel_watch, conn);
-      g_hash_table_unref (conn->mail_subscribers);
-      conn->mail_subscribers = NULL;
+      g_hash_table_unref (priv->subscribers);
+      priv->subscribers = NULL;
     }
 
-  g_free (conn->inbox_url);
-  conn->inbox_url = NULL;
+  g_free (priv->inbox_url);
+  priv->inbox_url = NULL;
 
-  if (conn->unread_mails != NULL)
-    g_hash_table_unref (conn->unread_mails);
+  if (priv->unread_mails != NULL)
+    g_hash_table_unref (priv->unread_mails);
 
-  conn->unread_mails = NULL;
-  conn->unread_mails_count = 0;
+  priv->unread_mails = NULL;
+  priv->unread_count = 0;
 
-  if (conn->new_mail_handler_id != 0)
+  if (priv->new_mail_handler_id != 0)
     {
       WockyPorter *porter = wocky_session_get_porter (conn->session);
-      wocky_porter_unregister_handler (porter, conn->new_mail_handler_id);
-      conn->new_mail_handler_id = 0;
+      wocky_porter_unregister_handler (porter, priv->new_mail_handler_id);
+      priv->new_mail_handler_id = 0;
     }
+
+  g_slice_free (GabbleConnectionMailNotificationPrivate, priv);
+  conn->mail_priv = NULL;
 }
 
 
@@ -681,13 +706,14 @@ conn_mail_notif_iface_init (gpointer g_iface,
 static GPtrArray *
 get_unread_mails (GabbleConnection *conn)
 {
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
   GPtrArray *mails = g_ptr_array_new ();
   GHashTableIter iter;
   gpointer value;
 
-  if (conn->unread_mails != NULL)
+  if (priv->unread_mails != NULL)
     {
-      g_hash_table_iter_init (&iter, conn->unread_mails);
+      g_hash_table_iter_init (&iter, priv->unread_mails);
 
       while (g_hash_table_iter_next (&iter, NULL, &value))
         {
@@ -709,6 +735,7 @@ conn_mail_notif_properties_getter (GObject *object,
 {
   static GQuark prop_quarks[NUM_OF_PROP] = {0};
   GabbleConnection *conn = GABBLE_CONNECTION (object);
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
 
   if (G_UNLIKELY (prop_quarks[0] == 0))
     {
@@ -739,7 +766,7 @@ conn_mail_notif_properties_getter (GObject *object,
     }
   else if (name == prop_quarks[PROP_UNREAD_MAIL_COUNT])
     {
-      g_value_set_uint (value, conn->unread_mails_count);
+      g_value_set_uint (value, priv->unread_count);
     }
   else if (name == prop_quarks[PROP_UNREAD_MAILS])
     {

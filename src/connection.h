@@ -80,6 +80,7 @@ typedef enum
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
+typedef struct _GabbleConnectionMailNotificationPrivate GabbleConnectionMailNotificationPrivate;
 
 typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          LmMessage *sent_msg,
@@ -196,11 +197,7 @@ struct _GabbleConnection {
     GHashTable *pending_sidecars;
 
     /* Mail Notification */
-    GHashTable *mail_subscribers;
-    gchar *inbox_url;
-    GHashTable *unread_mails;
-    guint unread_mails_count;
-    guint new_mail_handler_id;
+    GabbleConnectionMailNotificationPrivate *mail_priv;
 
     /* ContactInfo.SupportedFields, or NULL to use the generic one */
     GPtrArray *contact_info_fields;

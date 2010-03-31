@@ -1519,12 +1519,28 @@ connector_error_disconnect (GabbleConnection *self,
 
   DEBUG ("connection failed: %s", error->message);
 
-  if (error->domain == WOCKY_CONNECTOR_ERROR)
+  if (error->domain == WOCKY_SASL_AUTH_ERROR)
+    {
+      switch (error->code)
+        {
+          case WOCKY_SASL_AUTH_ERROR_NETWORK:
+          case WOCKY_SASL_AUTH_ERROR_CONNRESET:
+          case WOCKY_SASL_AUTH_ERROR_STREAM:
+          case WOCKY_SASL_AUTH_ERROR_INVALID_REPLY:
+          case WOCKY_SASL_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
+            reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+            break;
+          default:
+            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+        }
+    }
+  else if (error->domain == WOCKY_CONNECTOR_ERROR)
     {
       /* Connector error */
       switch (error->code)
         {
           case WOCKY_CONNECTOR_ERROR_SESSION_DENIED:
+          case WOCKY_CONNECTOR_ERROR_JABBER_AUTH_REJECTED:
             reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
             break;
 

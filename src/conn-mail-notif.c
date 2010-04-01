@@ -62,6 +62,7 @@ struct _GabbleConnectionMailNotificationPrivate
   GHashTable *unread_mails;
   guint unread_count;
   guint new_mail_handler_id;
+  GList *inbox_url_requests; /* list of DBusGMethodInvocation */
 };
 
 
@@ -69,6 +70,63 @@ static void unsubscribe (GabbleConnection *conn, const gchar *name,
     gboolean remove_all);
 static void update_unread_mails (GabbleConnection *conn);
 
+static void
+return_from_request_inbox_url (GabbleConnection *conn)
+{
+  GValueArray *result = NULL;
+  GPtrArray *empty_array = NULL;
+  GError *error = NULL;
+  GList *it;
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
+
+  if (priv->inbox_url != NULL && priv->inbox_url[0] == '\0')
+      {
+        error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+            "Server did not provide base URL.");
+      }
+  else if (priv->inbox_url == NULL)
+      {
+        error = g_error_new (TP_ERRORS, TP_ERROR_DISCONNECTED,
+            "Connection was disconnected during request.");
+      }
+  else
+    {
+      empty_array = g_ptr_array_new ();
+      result = tp_value_array_build (3,
+          G_TYPE_STRING, priv->inbox_url,
+          G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
+          GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
+          G_TYPE_INVALID);
+    }
+
+  it = priv->inbox_url_requests;
+
+  while (it != NULL)
+  {
+    DBusGMethodInvocation *context = it->data;
+
+    if (error != NULL)
+      dbus_g_method_return_error (context, error);
+    else
+      gabble_svc_connection_interface_mail_notification_return_from_request_inbox_url (
+          context, result);
+
+    it = g_list_next (it);
+  }
+
+  if (error == NULL)
+    {
+      g_value_array_free (result);
+      g_ptr_array_free (empty_array, TRUE);
+    }
+  else
+    {
+      g_error_free (error);
+    }
+
+  g_list_free (priv->inbox_url_requests);
+  priv->inbox_url_requests = NULL;
+}
 
 static void
 subscriber_name_owner_changed (TpDBusDaemon *dbus_daemon,
@@ -111,6 +169,8 @@ unsubscribe (GabbleConnection *conn,
           priv->unread_count = 0;
           g_free (priv->inbox_url);
           priv->inbox_url = NULL;
+
+          return_from_request_inbox_url (conn);
 
           if (priv->unread_mails != NULL)
             {
@@ -226,27 +286,16 @@ gabble_mail_notification_request_inbox_url (
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
-  GValueArray *result;
-  GPtrArray *empty_array;
 
   if (check_supported_or_dbus_return (conn, context))
     return;
 
   /* TODO Make sure we don't have to authenticate again */
 
-  empty_array = g_ptr_array_new ();
+  priv->inbox_url_requests = g_list_append (priv->inbox_url_requests, context);
 
-  result = tp_value_array_build (3,
-      G_TYPE_STRING, priv->inbox_url ? priv->inbox_url : "",
-      G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
-      GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
-      G_TYPE_INVALID);
-
-  gabble_svc_connection_interface_mail_notification_return_from_request_inbox_url (
-      context, result);
-
-  g_value_array_free (result);
-  g_ptr_array_free (empty_array, TRUE);
+  if (priv->inbox_url != NULL)
+    return_from_request_inbox_url (conn);
 }
 
 
@@ -259,36 +308,44 @@ gabble_mail_notification_request_mail_url (
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
-  GValueArray *result;
-  gchar *url = NULL;
-  GPtrArray *empty_array;
 
   if (check_supported_or_dbus_return (conn, context))
     return;
 
   /* TODO Make sure we don't have to authenticate again */
 
-  if (priv->inbox_url != NULL)
+  if (priv->inbox_url != NULL && priv->inbox_url[0] != 0)
     {
+      GValueArray *result;
+      gchar *url = NULL;
+      GPtrArray *empty_array;
+
       /* IDs are decimal on the XMPP side and hexadecimal on the wemail side. */
       guint64 tid = g_ascii_strtoull (in_id, NULL, 0);
       url = g_strdup_printf ("%s/#inbox/%" G_GINT64_MODIFIER "x",
           priv->inbox_url, tid);
+
+      empty_array = g_ptr_array_new ();
+
+      result = tp_value_array_build (3,
+          G_TYPE_STRING, url ? url : "",
+          G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
+          GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
+          G_TYPE_INVALID);
+
+      gabble_svc_connection_interface_mail_notification_return_from_request_mail_url (
+          context, result);
+
+      g_value_array_free (result);
+      g_ptr_array_free (empty_array, TRUE);
+      g_free (url);
     }
-
-  empty_array = g_ptr_array_new ();
-
-  result = tp_value_array_build (3,
-      G_TYPE_STRING, url ? url : "",
-      G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
-      GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
-      G_TYPE_INVALID);
-
-  gabble_svc_connection_interface_mail_notification_return_from_request_mail_url (
-      context, result);
-
-  g_value_array_free (result);
-  g_ptr_array_free (empty_array, TRUE);
+  else
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Failed to retrieve URL from server."};
+      dbus_g_method_return_error (context, &error);
+    }
 }
 
 
@@ -485,7 +542,13 @@ store_unread_mails (GabbleConnection *conn,
 
   url = wocky_node_get_attribute (mailbox, "url");
   g_free (priv->inbox_url);
-  priv->inbox_url = g_strdup (url);
+
+  /* Use empty string to differentiate pending request from server failing to
+     provide an URL.*/
+  if (url != NULL)
+    priv->inbox_url = g_strdup (url);
+  else
+    priv->inbox_url = g_strdup ("");
 
   /* Store new mails */
   wocky_node_each_child (mailbox, mail_thread_info_each, &collector);
@@ -534,6 +597,7 @@ query_unread_mails_cb (GObject *source_object,
   WockyNode *node;
   WockyPorter *porter = WOCKY_PORTER (source_object);
   WockyStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   if (error != NULL)
     {
@@ -542,19 +606,23 @@ query_unread_mails_cb (GObject *source_object,
       goto end;
     }
 
-  DEBUG ("Got unread mail details");
-
-  node = wocky_node_get_child (wocky_stanza_get_top_node (reply), "mailbox");
-
-  if (node != NULL)
+  if (g_hash_table_size (conn->mail_priv->subscribers) > 0)
     {
-      GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-      store_unread_mails (conn, node);
+      DEBUG ("Got unread mail details");
+
+      node = wocky_node_get_child (wocky_stanza_get_top_node (reply), "mailbox");
+
+      if (node != NULL)
+        {
+          store_unread_mails (conn, node);
+        }
     }
 
 end:
   if (reply != NULL)
     g_object_unref (reply);
+
+  return_from_request_inbox_url (conn);
 }
 
 
@@ -623,7 +691,7 @@ void
 conn_mail_notif_init (GabbleConnection *conn)
 {
   GabbleConnectionMailNotificationPrivate *priv;
-  
+
   conn->mail_priv = g_slice_new0(GabbleConnectionMailNotificationPrivate);
   priv = conn->mail_priv;
 
@@ -667,6 +735,8 @@ conn_mail_notif_dispose (GabbleConnection *conn)
 
   g_free (priv->inbox_url);
   priv->inbox_url = NULL;
+
+  return_from_request_inbox_url (conn);
 
   if (priv->unread_mails != NULL)
     g_hash_table_unref (priv->unread_mails);

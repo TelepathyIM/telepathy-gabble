@@ -516,10 +516,9 @@ store_unread_mails (GabbleConnection *conn,
   else
     priv->unread_count = g_hash_table_size (priv->unread_mails);
 
-  if (collector.mails_added->len > 0 || mails_removed->len > 0)
-    gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
-        conn, priv->unread_count, collector.mails_added,
-        (const char **)mails_removed->pdata);
+  gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
+      conn, priv->unread_count, collector.mails_added,
+      (const char **)mails_removed->pdata);
 
   g_ptr_array_free (collector.mails_added, TRUE);
   g_ptr_array_free (mails_removed, TRUE);

@@ -56,6 +56,7 @@ def run_outgoing_test(jp, q, bus, conn, stream):
           cs.CALL_INITIAL_AUDIO: True,
          }, byte_arrays = True)
 
+    q.expect('stream-presence', to = muc + "/test")
     stream.send(make_muc_presence('none', 'participant', muc, 'test'))
 
     e = q.expect ('dbus-return', method='CreateChannel')

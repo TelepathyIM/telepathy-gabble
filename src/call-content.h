@@ -68,6 +68,7 @@ void gabble_call_content_accept (GabbleCallContent *content);
 void gabble_call_content_deinit (GabbleCallContent *content);
 const gchar *gabble_call_content_get_name (GabbleCallContent *self);
 JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
+GList *gabble_call_content_get_local_codecs (GabbleCallContent *self);
 
 void gabble_call_content_add_member_content (GabbleCallContent *self,
     GabbleCallMemberContent *content);

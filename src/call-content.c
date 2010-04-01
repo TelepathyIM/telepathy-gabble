@@ -80,6 +80,15 @@ enum
   PROP_CODEC_OFFER,
 };
 
+/* signal enum */
+enum
+{
+    LOCAL_CODECS_UPDATED,
+    LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = {0};
+
 /* private structure */
 struct _GabbleCallContentPrivate
 {
@@ -390,6 +399,14 @@ gabble_call_content_class_init (
   g_object_class_install_property (object_class, PROP_CODEC_OFFER,
       param_spec);
 
+  signals[LOCAL_CODECS_UPDATED] = g_signal_new ("local-codecs-updated",
+      G_OBJECT_CLASS_TYPE (gabble_call_content_class),
+      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+      0,
+      NULL, NULL,
+      g_cclosure_marshal_VOID__POINTER,
+      G_TYPE_NONE, 1, G_TYPE_POINTER);
+
   gabble_call_content_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleCallContentClass, dbus_props_class));
@@ -475,6 +492,7 @@ call_content_set_local_codecs (GabbleCallContent *self,
         jingle_media_rtp_copy_codecs (priv->local_codecs), TRUE, NULL);
     }
 
+  g_signal_emit (self, signals[LOCAL_CODECS_UPDATED], 0, priv->local_codecs);
 }
 
 static void
@@ -716,6 +734,12 @@ const gchar *
 gabble_call_content_get_name (GabbleCallContent *self)
 {
   return self->priv->name;
+}
+
+GList *
+gabble_call_content_get_local_codecs (GabbleCallContent *self)
+{
+  return self->priv->local_codecs;
 }
 
 JingleMediaType

@@ -120,7 +120,7 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
 void
 jingle_media_rtp_codec_free (JingleCodec *p)
 {
-  g_hash_table_destroy (p->params);
+  g_hash_table_unref (p->params);
   g_free (p->name);
   g_slice_free (JingleCodec, p);
 }
@@ -826,8 +826,8 @@ string_string_maps_equal (GHashTable *a,
  *
  * Returns: %TRUE if the update made sense, %FALSE with @error set otherwise
  */
-static gboolean
-compare_codecs (GList *old,
+gboolean
+jingle_media_rtp_compare_codecs (GList *old,
                 GList *new,
                 GList **changed,
                 GError **e)
@@ -885,7 +885,8 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
 
       g_assert (priv->local_codec_updates == NULL);
 
-      if (!compare_codecs (priv->local_codecs, codecs, &changed, &err))
+      if (!jingle_media_rtp_compare_codecs (priv->local_codecs,
+            codecs, &changed, &err))
         {
           DEBUG ("codec update was illegal: %s", err->message);
           jingle_media_rtp_free_codecs (codecs);

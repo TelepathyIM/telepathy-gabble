@@ -120,6 +120,8 @@ GabbleCallContent * gabble_base_call_channel_add_content (
 void base_call_channel_remove_content (GabbleBaseCallChannel *self,
     GabbleCallContent *content);
 
+GHashTable *gabble_base_call_channel_get_members (GabbleBaseCallChannel *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_BASE_CALL_CHANNEL_H__*/

@@ -1033,3 +1033,9 @@ gabble_base_call_channel_get_contents (GabbleBaseCallChannel *self)
 {
   return self->priv->contents;
 }
+
+GHashTable *
+gabble_base_call_channel_get_members (GabbleBaseCallChannel *self)
+{
+  return self->priv->members;
+}

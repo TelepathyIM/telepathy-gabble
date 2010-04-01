@@ -2009,6 +2009,7 @@ handle_error (GObject *source,
           case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
             tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_FULL,
                 "room is full");
+            reason = TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
             break;
 
           case WOCKY_XMPP_ERROR_REGISTRATION_REQUIRED:

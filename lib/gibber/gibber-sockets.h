@@ -1,6 +1,6 @@
 /*
- * gibber-util.h - Header for Gibber utility functions
- * Copyright (C) 2007 Collabora Ltd.
+ * gibber-sockets.h - meta-header for assorted semi-portable socket code
+ * Copyright (C) 2009 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,18 +17,33 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GIBBER_UTIL_H__
-#define __GIBBER_UTIL_H__
+#include <config.h>
 
-#include "gibber-sockets.h"
+#ifndef GIBBER_SOCKETS_H
+#define GIBBER_SOCKETS_H
 
 #include <glib.h>
 
+#ifdef G_OS_WIN32
+#   include "gibber-sockets-win32.h"
+#else
+#   include "gibber-sockets-unix.h"
+#endif
+
 G_BEGIN_DECLS
 
-void gibber_normalize_address (struct sockaddr_storage *addr);
-gboolean gibber_strdiff (const gchar *left, const gchar *right);
+gboolean gibber_connect_errno_requires_retry (void);
+gboolean gibber_socket_errno_is_eafnosupport (void);
+gboolean gibber_socket_errno_is_eaddrinuse (void);
+void gibber_socket_set_error (GError **error, const gchar *context,
+    GQuark domain, gint code);
+gint gibber_socket_errno (void);
+const gchar *gibber_socket_strerror (void);
+
+GIOChannel *gibber_io_channel_new_from_socket (gint sockfd);
+
+void gibber_socket_set_nonblocking (gint sockfd);
 
 G_END_DECLS
 
-#endif /* #ifndef __GIBBER_UTIL_H__ */
+#endif

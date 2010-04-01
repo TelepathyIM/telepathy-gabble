@@ -339,6 +339,7 @@ def wrap_connection(conn):
          ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),
          ('Location', cs.CONN_IFACE_LOCATION),
          ('Future', tp_name_prefix + '.Connection.FUTURE'),
+         ('MailNotification', cs.CONN_IFACE_MAIL_NOTIFICATION),
         ]))
 
 def wrap_channel(chan, type_, extra=None):
@@ -363,22 +364,6 @@ def make_connection(bus, event_func, name, proto, params):
     connection_name, connection_path = cm_iface.RequestConnection(
         proto, params)
     conn = wrap_connection(bus.get_object(connection_name, connection_path))
-
-    bus.add_signal_receiver(
-        lambda *args, **kw:
-            event_func(
-                Event('dbus-signal',
-                    path=unwrap(kw['path']),
-                    signal=kw['member'], args=map(unwrap, args),
-                    interface=kw['interface'])),
-        None,       # signal name
-        None,       # interface
-        None,
-        path_keyword='path',
-        member_keyword='member',
-        interface_keyword='interface',
-        byte_arrays=True
-        )
 
     return conn
 

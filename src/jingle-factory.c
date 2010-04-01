@@ -555,8 +555,8 @@ gabble_jingle_factory_constructor (GType type,
   priv = self->priv;
 
   /* FIXME: why was this in _constructed in media factory? */
-  g_signal_connect (priv->conn,
-      "status-changed", (GCallback) connection_status_changed_cb, self);
+  gabble_signal_connect_weak (priv->conn, "status-changed",
+      (GCallback) connection_status_changed_cb, G_OBJECT (self));
 
   jingle_media_rtp_register (self);
   jingle_transport_google_register (self);
@@ -881,7 +881,8 @@ create_session (GabbleJingleFactory *fac,
 
   sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, peer,
       peer_resource, local_hold);
-  g_signal_connect (sess, "terminated", (GCallback) session_terminated_cb, fac);
+  gabble_signal_connect_weak (sess, "terminated",
+      (GCallback) session_terminated_cb, G_OBJECT (fac));
 
   /* Takes ownership of key */
   g_hash_table_insert (priv->sessions, key, sess);

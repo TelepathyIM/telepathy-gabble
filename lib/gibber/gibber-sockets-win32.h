@@ -1,6 +1,9 @@
+/* To be included by gibber-sockets.h only.
+ * Do not include this header directly. */
+
 /*
- * gibber-util.h - Header for Gibber utility functions
- * Copyright (C) 2007 Collabora Ltd.
+ * gibber-sockets-win32.h - meta-header for assorted semi-portable socket code
+ * Copyright (C) 2009 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,18 +20,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GIBBER_UTIL_H__
-#define __GIBBER_UTIL_H__
-
-#include "gibber-sockets.h"
-
-#include <glib.h>
-
-G_BEGIN_DECLS
-
-void gibber_normalize_address (struct sockaddr_storage *addr);
-gboolean gibber_strdiff (const gchar *left, const gchar *right);
-
-G_END_DECLS
-
-#endif /* #ifndef __GIBBER_UTIL_H__ */
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#include <Windows.h>
+#include <Winbase.h>
+/* Winsock makes some inappropriately-namespaced definitions */
+#undef ERROR
+#undef interface

@@ -101,6 +101,7 @@ CONN_IFACE_SIMPLE_PRESENCE = CONN + '.Interface.SimplePresence'
 CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 CONN_IFACE_LOCATION = CONN + '.Interface.Location'
 CONN_IFACE_GABBLE_DECLOAK = CONN + '.Interface.Gabble.Decloak'
+CONN_IFACE_MAIL_NOTIFICATION = CONN + '.Interface.MailNotification.DRAFT'
 
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 

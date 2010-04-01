@@ -21,7 +21,9 @@
 #include "config.h"
 #include "gabble.h"
 
-#include <unistd.h>
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #include <telepathy-glib/debug.h>
 #include <telepathy-glib/debug-sender.h>

@@ -1,6 +1,6 @@
 /*
- * gibber-util.h - Header for Gibber utility functions
- * Copyright (C) 2007 Collabora Ltd.
+ * conn-mail-notif.h - Header for Gabble connection mail notification interface
+ * Copyright (C) 2009 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,18 +17,22 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GIBBER_UTIL_H__
-#define __GIBBER_UTIL_H__
+#ifndef __CONN_EMAIL_NOTIF_H__
+#define __CONN_EMAIL_NOTIF_H__
 
-#include "gibber-sockets.h"
+#include <glib-object.h>
 
-#include <glib.h>
+#include "connection.h"
 
 G_BEGIN_DECLS
 
-void gibber_normalize_address (struct sockaddr_storage *addr);
-gboolean gibber_strdiff (const gchar *left, const gchar *right);
+void conn_mail_notif_init (GabbleConnection *conn);
+void conn_mail_notif_dispose (GabbleConnection *conn);
+void conn_mail_notif_iface_init (gpointer g_iface, gpointer iface_data);
+void conn_mail_notif_properties_getter (GObject *object, GQuark interface,
+    GQuark name, GValue *value, gpointer getter_data);
 
 G_END_DECLS
 
-#endif /* #ifndef __GIBBER_UTIL_H__ */
+#endif /* __CONN_EMAIL_NOTIF_H__ */
+

@@ -18,16 +18,21 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include <config.h>
+
 #include <glib/gstdio.h>
 #include <dbus/dbus-glib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <errno.h>
 #include <sys/types.h>
-#include <sys/socket.h>
-#include <sys/un.h>
+
+#include <gibber/gibber-sockets.h>
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
 
 #define DEBUG_FLAG GABBLE_DEBUG_FT
 #include "debug.h"
@@ -36,6 +41,7 @@
 
 #include <gibber/gibber-listener.h>
 #include <gibber/gibber-transport.h>
+#include <gibber/gibber-unix-transport.h>       /* just for the feature-test */
 
 #include "bytestream-factory.h"
 #include "connection.h"
@@ -66,8 +72,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_FILE_TRANSFER,
                            file_transfer_iface_init);
 );
-
-#define CHECK_STR_EMPTY(x) ((x) == NULL || (x)[0] == '\0')
 
 #define GABBLE_UNDEFINED_FILE_SIZE G_MAXUINT64
 
@@ -460,6 +464,7 @@ gabble_file_transfer_channel_constructor (GType type,
   self->priv->available_socket_types = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, (GDestroyNotify) free_array);
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   /* Socket_Address_Type_Unix */
   socket_access = g_array_sized_new (FALSE, FALSE,
       sizeof (TpSocketAccessControl), 1);
@@ -467,6 +472,7 @@ gabble_file_transfer_channel_constructor (GType type,
   g_array_append_val (socket_access, access_control);
   g_hash_table_insert (self->priv->available_socket_types,
       GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_UNIX), socket_access);
+#endif
 
   /* Socket_Address_Type_IPv4 */
   socket_access = g_array_sized_new (FALSE, FALSE,
@@ -846,7 +852,7 @@ gabble_file_transfer_channel_finalize (GObject *object)
 }
 
 static void
-close_bytestrean_and_transport (GabbleFileTransferChannel *self)
+close_bytestream_and_transport (GabbleFileTransferChannel *self)
 {
   if (self->priv->bytestream != NULL)
     {
@@ -882,7 +888,7 @@ gabble_file_transfer_channel_close (TpSvcChannel *iface,
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
 
-      close_bytestrean_and_transport (self);
+      close_bytestream_and_transport (self);
     }
 
   gabble_file_transfer_channel_do_close (GABBLE_FILE_TRANSFER_CHANNEL (iface));
@@ -1017,6 +1023,9 @@ bytestream_open (GabbleFileTransferChannel *self)
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
           TP_FILE_TRANSFER_STATE_OPEN,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
+
+      if (self->priv->transport)
+        gibber_transport_block_receiving (self->priv->transport, FALSE);
     }
   else
     {
@@ -1066,6 +1075,9 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
     }
 }
 
+static void bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
+                                         gboolean blocked,
+                                         GabbleFileTransferChannel *self);
 static void
 set_bytestream (GabbleFileTransferChannel *self,
                 GabbleBytestreamIface *bytestream)
@@ -1077,6 +1089,8 @@ set_bytestream (GabbleFileTransferChannel *self,
 
   gabble_signal_connect_weak (bytestream, "state-changed",
       G_CALLBACK (bytestream_state_changed_cb), G_OBJECT (self));
+  gabble_signal_connect_weak (self->priv->bytestream, "write-blocked",
+      G_CALLBACK (bytestream_write_blocked_cb), G_OBJECT (self));
 }
 
 static void
@@ -1147,10 +1161,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   if (presence == NULL)
     {
       DEBUG ("can't find contact's presence");
-      if (error != NULL)
-        g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
-            "can't find contact's presence");
-
+      g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+          "can't find contact's presence");
       return FALSE;
     }
 
@@ -1174,10 +1186,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       if (resource == NULL)
         {
           DEBUG ("contact doesn't have file transfer capabilities");
-          if (error != NULL)
-            g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
-                "contact doesn't have file transfer capabilities");
-
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+              "contact doesn't have file transfer capabilities");
           return FALSE;
         }
 
@@ -1583,6 +1593,7 @@ file_transfer_iface_init (gpointer g_iface,
 #undef IMPLEMENT
 }
 
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
 static gchar *
 get_local_unix_socket_path (GabbleFileTransferChannel *self)
 {
@@ -1608,6 +1619,7 @@ get_local_unix_socket_path (GabbleFileTransferChannel *self)
 
   return path;
 }
+#endif
 
 /*
  * Data is available from the channel so we can send it.
@@ -1623,7 +1635,7 @@ transport_handler (GibberTransport *transport,
         (const gchar *) data->data))
     {
       DEBUG ("Sending failed. Closing the bytestream");
-      close_bytestrean_and_transport (self);
+      close_bytestream_and_transport (self);
       return;
     }
 
@@ -1649,15 +1661,20 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
                              gboolean blocked,
                              GabbleFileTransferChannel *self)
 {
-  gibber_transport_block_receiving (self->priv->transport, blocked);
+  if (self->priv->transport)
+    gibber_transport_block_receiving (self->priv->transport, blocked);
 }
 
 static void
 file_transfer_send (GabbleFileTransferChannel *self)
 {
-  gabble_signal_connect_weak (self->priv->bytestream, "write-blocked",
-    G_CALLBACK (bytestream_write_blocked_cb), G_OBJECT (self));
   gibber_transport_set_handler (self->priv->transport, transport_handler, self);
+  /* We shouldn't receive data if the bytestream isn't open otherwise it will
+     error out */
+  if (self->priv->state == TP_FILE_TRANSFER_STATE_OPEN)
+    gibber_transport_block_receiving (self->priv->transport, FALSE);
+  else
+    gibber_transport_block_receiving (self->priv->transport, TRUE);
 }
 
 static void
@@ -1676,7 +1693,7 @@ transport_disconnected_cb (GibberTransport *transport,
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED)
     {
-      close_bytestrean_and_transport (self);
+      close_bytestream_and_transport (self);
 
       gabble_file_transfer_channel_set_state (
           TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
@@ -1745,6 +1762,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
 
   /* Add this stage the address_type and access_control have been checked and
    * are supposed to be valid */
+#ifdef GIBBER_TYPE_UNIX_TRANSPORT
   if (address_type == TP_SOCKET_ADDRESS_TYPE_UNIX)
     {
       gchar *path;
@@ -1777,7 +1795,9 @@ setup_local_socket (GabbleFileTransferChannel *self,
       g_free (path);
       g_array_free (array, TRUE);
     }
-  else if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
+  else
+#endif
+  if (address_type == TP_SOCKET_ADDRESS_TYPE_IPV4)
     {
       int ret;
 

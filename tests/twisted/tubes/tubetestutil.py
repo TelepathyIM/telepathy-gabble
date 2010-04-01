@@ -158,6 +158,14 @@ def check_NewChannels_signal(conn, args, channel_type, chan_path, contact_handle
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
     assertContains((path, props), all_channels)
 
+def check_platform_socket_types(sock_types):
+    assertContains(cs.SOCKET_ADDRESS_TYPE_IPV4, sock_types)
+    assertContains(cs.SOCKET_ADDRESS_TYPE_IPV6, sock_types)
+
+    if os.name == 'posix':
+        # true on at least Linux
+        assertContains(cs.SOCKET_ADDRESS_TYPE_UNIX, sock_types)
+
 def check_channel_properties(q, bus, conn, channel, channel_type,
                              contact_handle, contact_id, state=None):
     """
@@ -204,8 +212,7 @@ def check_channel_properties(q, bus, conn, channel, channel_type,
             supported_socket_types = None
 
     if supported_socket_types is not None:
-        # FIXME: this should check for particular types, not just a magic length
-        assert len(supported_socket_types) == 3
+        check_platform_socket_types(supported_socket_types)
 
 class Echo(EventProtocol):
     """
@@ -359,7 +366,8 @@ def exec_tube_test(test, *args):
             test(q, bus, conn, stream, bytestream_cls, *args))
 
 def exec_stream_tube_test(test):
-    exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
+    if os.name == 'posix':
+        exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_UNIX, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
     exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_LOCALHOST, "")
     exec_tube_test(test, cs.SOCKET_ADDRESS_TYPE_IPV4, cs.SOCKET_ACCESS_CONTROL_PORT, ('127.0.0.1', dbus.UInt16(8631)))
     # we only guarantee to support credentials-passing on Linux

@@ -21,19 +21,24 @@
 #include "config.h"
 #include "bytestream-socks5.h"
 
-#include <arpa/inet.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <netdb.h>
-#include <net/if.h>
-#include <netinet/in.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include <gibber/gibber-sockets.h>
 
-#ifdef HAVE_GETIFADDRS
+#include <errno.h>
+
+/* on Darwin, net/if.h requires sys/sockets.h, which is included by
+ * gibber-sockets.h; so this must come after that header */
+#ifdef HAVE_NET_IF_H
+# include <net/if.h>
+#endif
+
+#include <string.h>
+#include <sys/types.h>
+
+#ifdef HAVE_UNISTD_H
+# include <unistd.h>
+#endif
+
+#ifdef HAVE_IFADDRS_H
  #include <ifaddrs.h>
 #endif
 
@@ -1626,6 +1631,19 @@ socks5_init_error:
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+#ifdef G_OS_WIN32
+
+static GSList *
+get_local_interfaces_ips (void)
+{
+  /* FIXME: fd.o#24775: please implement this using ioctlsocket() and
+   * SIO_GET_INTERFACE_LIST, if you care about doing SOCKS5 bytestreams on
+   * Windows */
+  return NULL;
+}
+
+#else
+
 /* get_local_interfaces_ips original code from Farsight 2 (function
  * fs_interfaces_get_local_ips in /gst-libs/gst/farsight/fs-interfaces.c).
  *   Copyright (C) 2006 Youness Alaoui <kakaroto@kakaroto.homelinux.net>
@@ -1775,6 +1793,8 @@ get_local_interfaces_ips (void)
 }
 
 #endif /* ! HAVE_GETIFADDRS */
+
+#endif /* ! G_OS_WIN32 */
 
 static void
 new_connection_cb (GibberListener *listener,

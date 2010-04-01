@@ -1,5 +1,11 @@
 """Check if SOCKS5 relays are disabled in muc"""
 
+import os
+
+if os.name != 'posix':
+    # skipped on non-Unix for now, because it uses a Unix socket
+    raise SystemExit(77)
+
 from servicetest import call_async, EventPattern, EventProtocolClientFactory
 from gabbletest import acknowledge_iq, make_muc_presence, exec_test
 import constants as cs

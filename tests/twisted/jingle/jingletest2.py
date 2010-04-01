@@ -184,7 +184,7 @@ class JingleProtocol:
     def can_do_video_only(self):
         return True
 
-    def seperate_contents(self):
+    def separate_contents(self):
         return True
 
     def has_mutable_streams(self):
@@ -293,7 +293,7 @@ class GtalkProtocol03(JingleProtocol):
         else:
             return (sid, ['fake-audio'], [])
 
-    def seperate_contents(self):
+    def separate_contents(self):
         return False
 
     def has_mutable_streams(self):
@@ -584,7 +584,7 @@ class JingleTest2:
 
         contents = []
 
-        if not jp.seperate_contents() and self.video_names:
+        if not jp.separate_contents() and self.video_names:
             assert jp.can_do_video()
             assert self.audio_names
 
@@ -647,7 +647,7 @@ class JingleTest2:
         media type.
         """
         jp = self.jp
-        assert jp.seperate_contents()
+        assert jp.separate_contents()
         c = query.firstChildElement()
 
         if media == 'audio':

@@ -962,7 +962,7 @@ _gabble_roster_create_channel (GabbleRoster *roster,
     {
       /* Not associating the request with the channel; gabble_roster_request
        * does that for all requests except (channel newly created && roster
-       * already recieved).
+       * already received).
        */
       DEBUG ("roster not yet received, not emitting signal for %s list "
           "channel", name);

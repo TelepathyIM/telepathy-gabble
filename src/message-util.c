@@ -22,8 +22,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define _GNU_SOURCE /* Needed for strptime (_XOPEN_SOURCE can also be used). */
-
 #include "message-util.h"
 
 #include <string.h>
@@ -100,11 +98,11 @@ gabble_message_util_send_message (GObject *obj,
   gchar *id = NULL;
   guint n_parts;
 
-#define INVALID_ARGUMENT(msg, args...) \
+#define INVALID_ARGUMENT(msg, ...) \
   G_STMT_START { \
-    DEBUG (msg , ## args); \
+    DEBUG (msg , ## __VA_ARGS__); \
     g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, \
-        msg , ## args); \
+        msg , ## __VA_ARGS__); \
     goto despair_island; \
   } G_STMT_END
 
@@ -409,22 +407,30 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
       NS_X_DELAY);
   if (node != NULL)
     {
-      const gchar *stamp_str, *p;
-      struct tm stamp_tm = { 0, };
+      const gchar *stamp_str;
 
+      /* These timestamps do not contain a timezone, but are understood to be
+       * in GMT. They're in the format yyyymmddThhmmss, so if we append 'Z'
+       * we'll get (one of the many valid syntaxes for) an ISO-8601 timestamp.
+       */
       stamp_str = lm_message_node_get_attribute (node, "stamp");
+
       if (stamp_str != NULL)
         {
-          p = strptime (stamp_str, "%Y%m%dT%T", &stamp_tm);
-          if (p == NULL || *p != '\0')
+          GTimeVal timeval = { 0, 0 };
+          gchar *stamp_dup = g_strdup_printf ("%sZ", stamp_str);
+
+          if (g_time_val_from_iso8601 (stamp_dup, &timeval))
+            {
+              *stamp = timeval.tv_sec;
+            }
+          else
             {
               DEBUG ("%s: malformed date string '%s' for jabber:x:delay",
                   G_STRFUNC, stamp_str);
             }
-          else
-            {
-              *stamp = timegm (&stamp_tm);
-            }
+
+          g_free (stamp_dup);
         }
     }
 

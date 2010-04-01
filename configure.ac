@@ -9,7 +9,7 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [9])
-m4_define([gabble_micro_version], [4])
+m4_define([gabble_micro_version], [9])
 m4_define([gabble_nano_version], [1])
 
 # Some magic
@@ -36,6 +36,38 @@ AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
+
+AC_CHECK_HEADERS_ONCE([
+    arpa/inet.h
+    arpa/nameser.h
+    fcntl.h
+    ifaddrs.h
+    netdb.h
+    netinet/in.h
+    sys/ioctl.h
+    sys/un.h
+    unistd.h
+    ])
+
+# on Darwin, these headers are interdependent, according to autoconf.info
+AC_CHECK_HEADERS([sys/socket.h], [], [],
+[
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+])
+AC_CHECK_HEADERS([net/if.h], [], [],
+[
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/types.h>
+#ifdef HAVE_SYS_SOCKET_H
+# include <sys/socket.h>
+#endif
+])
+
+# Autoconf has a handy macro for this, since it tends to have dependencies
+AC_HEADER_RESOLV
 
 COMPILER_OPTIMISATIONS
 COMPILER_COVERAGE
@@ -139,14 +171,19 @@ GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 
 AC_ARG_ENABLE(plugins,
-  AC_HELP_STRING([--enable-plugins],
-                 [enable experimental plugin support]),
-    [enable_plugins=$enableval], [enable_plugins=no])
+  AC_HELP_STRING([--disable-plugins],
+                 [disable plugin loader]),
+    [enable_plugins=$enableval], [enable_plugins=yes])
 
 if test x$enable_plugins = xyes; then
   AC_DEFINE(ENABLE_PLUGINS, [], [Enable plugins])
-  dnl If we want plugins, we need gmodule
   PKG_CHECK_MODULES(GMODULE, [gmodule-2.0])
+
+  AC_ARG_ENABLE(plugin-api,
+    AC_HELP_STRING([--enable-plugin-api],
+                   [install headers for third-party plugins (experimental)]),
+    [enable_plugin_api=$enableval],
+    [enable_plugin_api=no])
 fi
 
 AC_SUBST(GMODULE_CFLAGS)
@@ -154,6 +191,8 @@ AC_SUBST(GMODULE_LIBS)
 
 AM_CONDITIONAL(ENABLE_PLUGINS, test x$enable_plugins = xyes)
 AC_SUBST(ENABLE_PLUGINS)
+
+AM_CONDITIONAL(ENABLE_PLUGIN_API, test x$enable_plugin_api = xyes)
 
 AC_ARG_ENABLE(channel-type-call,
   AC_HELP_STRING([--disable-channel-type-call],
@@ -172,7 +211,7 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.7.37])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.9.2])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)

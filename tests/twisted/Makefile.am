@@ -145,6 +145,7 @@ TWISTED_TESTS = \
 	file-transfer/test-send-file-provide-immediately.py \
 	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
+	file-transfer/test-send-file-send-before-accept.py \
 	test-debug.py \
 	connect/disconnect-timeout.py \
 	connect/test-fail.py \
@@ -160,7 +161,8 @@ TWISTED_TESTS = \
 	test-set-status-idempotence.py \
 	test-location.py \
 	pubsub.py \
-	sidecars.py
+	sidecars.py \
+	mail-notification.py
 
 TESTS =
 

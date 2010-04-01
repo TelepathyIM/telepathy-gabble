@@ -16,6 +16,7 @@ GOOGLE_ROSTER = 'google:roster'
 GOOGLE_SESSION = "http://www.google.com/session"
 GOOGLE_SESSION_PHONE = "http://www.google.com/session/phone"
 GOOGLE_SESSION_VIDEO = "http://www.google.com/session/video"
+GOOGLE_MAIL_NOTIFY = "google:mail:notify"
 IBB = 'http://jabber.org/protocol/ibb'
 JINGLE_015 = "http://jabber.org/protocol/jingle"
 JINGLE_015_AUDIO = "http://jabber.org/protocol/jingle/description/audio"

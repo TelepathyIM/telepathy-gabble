@@ -30,7 +30,6 @@ static const LocationMapping mappings[] = {
   { "building", "building", G_TYPE_STRING },
   { "country", "country", G_TYPE_STRING },
   { "description", "description", G_TYPE_STRING },
-  { "error", "error", G_TYPE_DOUBLE },
   { "floor", "floor", G_TYPE_STRING },
   { "lat", "lat", G_TYPE_DOUBLE },
   { "locality", "locality", G_TYPE_STRING },
@@ -43,7 +42,7 @@ static const LocationMapping mappings[] = {
   { "text", "text", G_TYPE_STRING },
   { "timestamp", "timestamp", G_TYPE_INT64 },
   { "uri", "uri", G_TYPE_STRING },
-  /* Not (yet?) part of XEP-0080 */
+  { "accuracy", "accuracy", G_TYPE_DOUBLE },
   { "countrycode", "countrycode", G_TYPE_STRING },
   /* language is a special case as it's not mapped on a node but on the
    * xml:lang attribute of the 'geoloc' node. */

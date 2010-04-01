@@ -227,6 +227,10 @@ gabble_call_channel_dispose (GObject *object)
   self->priv->dispose_has_run = TRUE;
 
 
+  if (priv->session != NULL)
+    g_object_unref (priv->session);
+  priv->session = NULL;
+
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose (object);
 }

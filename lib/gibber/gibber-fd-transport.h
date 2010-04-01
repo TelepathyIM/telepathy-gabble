@@ -23,10 +23,7 @@
 
 #include <glib-object.h>
 
-#include <sys/socket.h>
-#include <netdb.h>
-#include <netinet/in.h>
-
+#include "gibber-sockets.h"
 #include "gibber-transport.h"
 
 typedef enum {
@@ -87,7 +84,8 @@ GType gibber_fd_transport_get_type (void);
    GibberFdTransportClass))
 
 void
-gibber_fd_transport_set_fd (GibberFdTransport *fd_transport, int fd);
+gibber_fd_transport_set_fd (GibberFdTransport *fd_transport, int fd,
+    gboolean is_socket);
 
 GibberFdIOResult gibber_fd_transport_read (GibberFdTransport *transport,
     GIOChannel *channel,

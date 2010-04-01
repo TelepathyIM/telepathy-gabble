@@ -66,7 +66,12 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
     GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
     LmMessage *msg);
 
+#ifdef G_OS_UNIX
+/* Slight encapsulation violation: this function isn't portable, but we
+ * happen to know that it's only needed if we support Unix sockets, and
+ * we only do *that* on Unix. Otherwise, we can leave it undefined. */
 const gchar * gabble_ft_manager_get_tmp_dir (GabbleFtManager *self);
+#endif
 
 G_END_DECLS
 

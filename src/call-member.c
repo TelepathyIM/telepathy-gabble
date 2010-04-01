@@ -446,6 +446,7 @@ gabble_call_member_start_session (GabbleCallMember *self,
   GabbleCallMemberPrivate *priv = self->priv;
   const gchar *resource;
   JingleDialect dialect;
+  gchar *jid;
   const gchar *transport;
   GabbleJingleSession *session;
 
@@ -460,9 +461,11 @@ gabble_call_member_start_session (GabbleCallMember *self,
       return FALSE;
     }
 
+  jid = gabble_peer_to_jid (priv->call->conn, priv->call->target, resource);
+
   session = gabble_jingle_factory_create_session (
-        priv->call->conn->jingle_factory,
-        priv->target, resource, FALSE);
+        priv->call->conn->jingle_factory, priv->call->target, jid, FALSE);
+  g_free (jid);
 
   gabble_call_member_set_session (self, session);
   g_object_set (session, "dialect", dialect, NULL);

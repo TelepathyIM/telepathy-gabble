@@ -125,4 +125,8 @@ GValueArray *gabble_value_array_build (gsize length,
 
 GPtrArray *gabble_call_candidates_to_array (GList *candidates);
 
+gchar * gabble_peer_to_jid (GabbleConnection *conn,
+    TpHandle peer,
+    const gchar *resource);
+
 #endif /* __GABBLE_UTIL_H__ */

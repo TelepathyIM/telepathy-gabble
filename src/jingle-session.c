@@ -25,6 +25,7 @@
 #include <glib.h>
 
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/handle-repo-dynamic.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -60,8 +61,8 @@ enum
 {
   PROP_CONNECTION = 1,
   PROP_SESSION_ID,
+  PROP_PEER_JID,
   PROP_PEER,
-  PROP_PEER_RESOURCE,
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
   PROP_DIALECT,
@@ -255,9 +256,6 @@ gabble_jingle_session_get_property (GObject *object,
     case PROP_PEER:
       g_value_set_uint (value, sess->peer);
       break;
-    case PROP_PEER_RESOURCE:
-      g_value_set_string (value, priv->peer_resource);
-      break;
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
       break;
@@ -303,13 +301,8 @@ gabble_jingle_session_set_property (GObject *object,
     case PROP_DIALECT:
       priv->dialect = g_value_get_uint (value);
       break;
-    case PROP_PEER:
-      sess->peer = g_value_get_uint (value);
-      /* priv->conn might not yet be set, so we'll ref this in constructed */
-      break;
-    case PROP_PEER_RESOURCE:
-      g_free (priv->peer_resource);
-      priv->peer_resource = g_value_dup_string (value);
+    case PROP_PEER_JID:
+      priv->peer_jid = g_value_dup_string (value);
       break;
     case PROP_LOCAL_HOLD:
       {
@@ -350,48 +343,42 @@ gabble_jingle_session_constructed (GObject *object)
     chain_up (object);
 
   g_assert (priv->conn != NULL);
-  g_assert (self->peer != 0);
+  g_assert (priv->peer_jid != NULL);
   g_assert (priv->sid != NULL);
 
-  tp_handle_ref (contact_repo, self->peer);
-
-  /* It's a tad silly that, for incoming calls, the caller of
-   * gabble_jingle_session_new() has just deconstructed the jid into a handle
-   * and a resource, only for us to stitch it back together here. Perhaps there
-   * should be two variants: one taking handle + resource, and another taking a
-   * full JID; the other fields could be filled in here.
-   */
-  if (priv->peer_resource == NULL)
-    {
-      priv->peer_jid = g_strdup (tp_handle_inspect (contact_repo, self->peer));
-    }
-  else
-    {
-      priv->peer_jid = g_strdup_printf ("%s/%s",
-          tp_handle_inspect (contact_repo, self->peer),
-          priv->peer_resource);
-    }
+  self->peer = tp_handle_ensure (contact_repo, priv->peer_jid, NULL, NULL);
 
   if (priv->local_initiator)
     priv->initiator = gabble_connection_get_full_jid (priv->conn);
   else
     priv->initiator = g_strdup (priv->peer_jid);
+
+  /* FIXME Gabble resource part handling falls apart when it comes to mucs, so
+   * jump though some hoops here */
+  if (tp_dynamic_handle_repo_lookup_exact (contact_repo, priv->peer_jid) == 0)
+    {
+      /* The peer jid isn't exactly what is in the contact repo so it will have
+       * a resource */
+      if (gabble_decode_jid (priv->peer_jid, NULL, NULL,
+          &priv->peer_resource))
+        {
+          /* fake for gcc */;
+        }
+    }
 }
 
 GabbleJingleSession *
 gabble_jingle_session_new (GabbleConnection *connection,
                            const gchar *session_id,
                            gboolean local_initiator,
-                           TpHandle peer,
-                           const gchar *peer_resource,
+                           const gchar *jid,
                            gboolean local_hold)
 {
   return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
       "session-id", session_id,
       "connection", connection,
       "local-initiator", local_initiator,
-      "peer", peer,
-      "peer-resource", peer_resource,
+      "peer-jid", jid,
       "local-hold", local_hold,
       NULL);
 }
@@ -426,20 +413,20 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
       "Specifies if local end initiated the session.",
       TRUE,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_LOCAL_INITIATOR, param_spec);
+  g_object_class_install_property (object_class, PROP_LOCAL_INITIATOR,
+      param_spec);
 
   param_spec = g_param_spec_uint ("peer", "Session peer",
       "The TpHandle representing the other party in the session.",
       0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
-  param_spec = g_param_spec_string ("peer-resource", "Session peer's resource",
-      "The resource of the contact with whom this session communicates, "
-      "or NULL if communicating with a bare JID",
+  param_spec = g_param_spec_string ("peer-jid", "Session peer's jid",
+      "The full jid of the contact with whom this session communicates",
       NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_PEER_RESOURCE,
+  g_object_class_install_property (object_class, PROP_PEER_JID,
       param_spec);
 
   param_spec = g_param_spec_uint ("state", "Session state",
@@ -2320,3 +2307,8 @@ gabble_jingle_session_get_dialect (GabbleJingleSession *sess)
   return sess->priv->dialect;
 }
 
+const gchar *
+gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess)
+{
+  return sess->priv->peer_jid;
+}

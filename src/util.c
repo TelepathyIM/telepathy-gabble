@@ -1312,3 +1312,18 @@ gabble_call_candidates_to_array (GList *candidates)
 
   return arr;
 }
+
+gchar *
+gabble_peer_to_jid (GabbleConnection *conn,
+    TpHandle peer,
+    const gchar *resource)
+{
+  TpHandleRepoIface *repo = tp_base_connection_get_handles (
+    TP_BASE_CONNECTION (conn), TP_HANDLE_TYPE_CONTACT);
+  const gchar *target = tp_handle_inspect (repo, peer);
+
+  if (resource == NULL)
+    return g_strdup (target);
+
+  return g_strdup_printf ("%s/%s", target, resource);
+}

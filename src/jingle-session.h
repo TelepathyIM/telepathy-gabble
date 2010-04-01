@@ -82,8 +82,7 @@ struct _GabbleJingleSession {
 GabbleJingleSession *gabble_jingle_session_new (GabbleConnection *connection,
     const gchar *session_id,
     gboolean local_initiator,
-    TpHandle peer,
-    const gchar *peer_resource,
+    const gchar *jid,
     gboolean local_hold);
 
 const gchar * gabble_jingle_session_detect (LmMessage *message,
@@ -133,6 +132,8 @@ gboolean gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess);
 
 gboolean gabble_jingle_session_defines_action (GabbleJingleSession *sess,
     JingleAction action);
+
+const gchar *gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess);
 
 #endif /* __JINGLE_SESSION_H__ */
 

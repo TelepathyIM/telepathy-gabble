@@ -778,12 +778,14 @@ call_content_setup_jingle (GabbleCallContent *self,
       "connection", priv->conn,
       "jingle-content", jingle,
       NULL);
-  g_free (path);
+
 
   jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle),
       jingle_media_rtp_copy_codecs (priv->local_codecs), TRUE, NULL);
 
   priv->streams = g_list_prepend (priv->streams, stream);
+  gabble_svc_call_content_emit_stream_added (self, path);
+  g_free (path);
 }
 
 static void

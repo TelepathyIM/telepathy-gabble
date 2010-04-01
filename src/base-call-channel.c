@@ -664,9 +664,10 @@ gabble_base_call_channel_close (GabbleBaseCallChannel *self)
           GabbleJingleSession *session =
               gabble_call_member_get_session (member);
 
-          gabble_jingle_session_terminate (session,
-           TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
-            NULL, NULL);
+          if (session != NULL)
+            gabble_jingle_session_terminate (session,
+              TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+              NULL, NULL);
        }
 
       tp_svc_channel_emit_closed (self);

@@ -951,11 +951,8 @@ gabble_base_call_channel_registered (GabbleBaseCallChannel *self)
 }
 
 static void
-call_member_flags_changed_cb (GabbleCallMember *member,
-  GabbleCallMemberFlags flags,
-  gpointer user_data)
+base_call_channel_signal_call_members (GabbleBaseCallChannel *self)
 {
-  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (user_data);
   GArray *empty = g_array_new (TRUE, TRUE, sizeof (TpHandle));
   GHashTable *members;
 
@@ -963,9 +960,19 @@ call_member_flags_changed_cb (GabbleCallMember *member,
 
   gabble_svc_channel_type_call_emit_call_members_changed (self,
       members, empty);
-  g_array_unref (empty);
 
+  g_array_unref (empty);
   g_hash_table_unref (members);
+}
+
+static void
+call_member_flags_changed_cb (GabbleCallMember *member,
+  GabbleCallMemberFlags flags,
+  gpointer user_data)
+{
+  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (user_data);
+
+  base_call_channel_signal_call_members (self);
 }
 
 GabbleCallMember *
@@ -994,6 +1001,8 @@ gabble_base_call_channel_ensure_member_from_handle (
       g_hash_table_insert (priv->members, GUINT_TO_POINTER (handle), m);
       gabble_signal_connect_weak (m, "flags-changed",
         G_CALLBACK (call_member_flags_changed_cb), G_OBJECT (self));
+
+      base_call_channel_signal_call_members (self);
     }
 
   return m;

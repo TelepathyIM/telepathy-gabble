@@ -94,6 +94,8 @@ gboolean gabble_call_member_start_session (GabbleCallMember *self,
     const gchar *video_name,
     GError **error);
 
+void gabble_call_member_accept (GabbleCallMember *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CALL_MEMBER_H__*/

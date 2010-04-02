@@ -63,6 +63,7 @@ struct _GabbleCallMemberPrivate
 
   GList *contents;
   gchar *transport_ns;
+  gboolean accepted;
 
   gboolean dispose_has_run;
 };
@@ -78,6 +79,7 @@ gabble_call_member_init (GabbleCallMember *self)
     GABBLE_CALL_MEMBER_GET_PRIVATE (self);
 
   self->priv = priv;
+  priv->accepted = FALSE;
 }
 
 static void
@@ -335,6 +337,9 @@ gabble_call_member_set_session (GabbleCallMember *self,
     G_CALLBACK (remote_state_changed_cb), G_OBJECT (self));
   gabble_signal_connect_weak (priv->session, "new-content",
     G_CALLBACK (new_content_cb), G_OBJECT (self));
+
+  if (priv->accepted)
+    gabble_call_member_accept (self);
 }
 
 GabbleJingleSession *
@@ -435,6 +440,15 @@ gabble_call_member_create_content (GabbleCallMember *self,
   gabble_call_member_add_member_content (self, content);
 
   return content;
+}
+
+void
+gabble_call_member_accept (GabbleCallMember *self)
+{
+  self->priv->accepted = TRUE;
+
+  if (self->priv->session != NULL)
+    gabble_jingle_session_accept (self->priv->session);
 }
 
 gboolean

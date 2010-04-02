@@ -398,11 +398,22 @@ gabble_call_member_content_set_remote_codecs (GabbleCallMemberContent *self,
 {
   GabbleCallMemberContentPrivate *priv = self->priv;
 
+  DEBUG ("New codecs set directly on the member");
+
+  if (priv->remote_codecs != NULL)
+    {
+      GList *changed = NULL;
+
+      if (!jingle_media_rtp_compare_codecs (priv->remote_codecs, codecs,
+            &changed, NULL) || changed == NULL)
+        return;
+
+      g_list_free (changed);
+    }
 
   jingle_media_rtp_free_codecs (priv->remote_codecs);
   priv->remote_codecs = codecs;
 
-  DEBUG ("New codecs set directly on the member");
 
   g_signal_emit (self, signals[CODECS_CHANGED], 0);
 }

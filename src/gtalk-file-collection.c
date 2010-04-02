@@ -1583,6 +1583,9 @@ gtalk_file_collection_accept (GTalkFileCollection *self,
           guint initial_id = 0;
           guint share_channel_id;
 
+          gabble_jingle_session_accept (self->priv->jingle);
+          self->priv->status = GTALK_FT_STATUS_ACCEPTED;
+
           /* The new-share-channel signal will take care of the rest.. */
           do
             {
@@ -1599,8 +1602,6 @@ gtalk_file_collection_accept (GTalkFileCollection *self,
           g_list_free (cs);
         }
 
-      gabble_jingle_session_accept (self->priv->jingle);
-      self->priv->status = GTALK_FT_STATUS_ACCEPTED;
     }
   else
     {

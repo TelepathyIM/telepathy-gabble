@@ -23,6 +23,7 @@
 #include <stdlib.h>
 
 #include <telepathy-glib/interfaces.h>
+#include <wocky/wocky-muc.h>
 
 #include "muc-channel.h"
 #include "call-muc-channel.h"
@@ -63,6 +64,8 @@ struct _GabbleCallMucChannelPrivate
   gboolean dispose_has_run;
 
   GabbleMucChannel *muc;
+  WockyMuc *wmuc;
+  gboolean initialized;
 };
 
 #define GABBLE_CALL_MUC_CHANNEL_GET_PRIVATE(o)   \
@@ -178,6 +181,10 @@ gabble_call_muc_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (priv->wmuc != NULL)
+    g_object_unref (priv->wmuc);
+  priv->wmuc = NULL;
+
   tp_external_group_mixin_finalize (object);
 
   /* release any references held by the object here */
@@ -195,13 +202,106 @@ gabble_call_muc_channel_finalize (GObject *object)
 }
 
 static void
-muc_channel_ready_cb (GabbleMucChannel *channel,
+call_muc_channel_content_local_codecs_updated (GabbleCallContent *content,
+    GList *local_codecs,
+    gpointer user_data)
+{
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
+
+  DEBUG ("Local codecs of a content updated, forcing presence sent");
+  gabble_muc_channel_send_presence (self->priv->muc, NULL);
+}
+
+static void
+call_muc_channel_setup_content (GabbleCallMucChannel *self,
+    GabbleCallContent *content)
+{
+  DEBUG ("Setting up content");
+  gabble_signal_connect_weak (content, "local-codecs-updated",
+    G_CALLBACK (call_muc_channel_content_local_codecs_updated),
+    G_OBJECT (self));
+}
+
+static void
+call_muc_channel_presence_cb (WockyMuc *wmuc,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    WockyMucMember *who,
+    gpointer user_data)
+{
+
+}
+
+static void
+call_muc_channel_joined_cb (WockyMuc *muc,
+  WockyXmppStanza *stanza,
+  GHashTable *code,
+  gpointer user_data)
+{
+}
+
+static void
+call_muc_channel_pre_presence_cb (WockyMuc *wmuc,
+    WockyXmppStanza *stanza,
+    gpointer user_data)
+{
+}
+
+static void
+call_muc_channel_own_presence_cb (WockyMuc *wmuc,
+    WockyXmppStanza *stanza,
+    GHashTable *code,
+    gpointer user_data)
+{
+  DEBUG ("Got our own presence");
+}
+
+static void
+call_muc_channel_ready (GabbleCallMucChannel *self)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
+
+  g_object_get (priv->muc, "wocky-muc", &(priv->wmuc), NULL);
+  g_assert (priv->wmuc != NULL);
+
+  /* we care about presences */
+  gabble_signal_connect_weak (priv->wmuc,
+      "joined",
+      G_CALLBACK (call_muc_channel_joined_cb),
+      G_OBJECT (self));
+  gabble_signal_connect_weak (priv->wmuc,
+      "presence",
+      G_CALLBACK (call_muc_channel_presence_cb),
+      G_OBJECT (self));
+  gabble_signal_connect_weak (priv->wmuc,
+      "own-presence",
+      G_CALLBACK (call_muc_channel_own_presence_cb),
+      G_OBJECT (self));
+
+  gabble_signal_connect_weak (priv->muc,
+      "pre-presence",
+      G_CALLBACK (call_muc_channel_pre_presence_cb),
+      G_OBJECT (self));
+
+  priv->initialized = TRUE;
+  gabble_base_call_channel_register (GABBLE_BASE_CALL_CHANNEL (self));
+}
+
+static void
+call_muc_channel_ready_cb (GabbleMucChannel *muc,
   gpointer user_data)
 {
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GabbleCallMucChannel *self =
+    GABBLE_CALL_MUC_CHANNEL (g_async_result_get_source_object (
+      G_ASYNC_RESULT (result)));
 
+  DEBUG ("Happy muc");
+
+  call_muc_channel_ready (self);
   g_simple_async_result_complete (result);
   g_object_unref (result);
+  g_object_unref (self);
 }
 
 static void
@@ -214,20 +314,41 @@ call_muc_channel_init_async (GAsyncInitable *initable,
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (initable);
   GabbleCallMucChannelPrivate *priv =
     GABBLE_CALL_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  GabbleCallContent *content;
   GSimpleAsyncResult *result;
 
   result = g_simple_async_result_new (G_OBJECT (initable),
       callback, user_data, NULL);
 
+  if (base->initial_audio)
+    {
+      content = gabble_base_call_channel_add_content (base,
+        "Audio", JINGLE_MEDIA_TYPE_AUDIO,
+        GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+      call_muc_channel_setup_content (self, content);
+    }
+
+  if (base->initial_video)
+    {
+      content = gabble_base_call_channel_add_content (base,
+        "Video", JINGLE_MEDIA_TYPE_VIDEO,
+        GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+      call_muc_channel_setup_content (self, content);
+    }
+
   if (_gabble_muc_channel_is_ready (priv->muc))
     {
+      DEBUG ("Muc channel is ready to fly");
+      call_muc_channel_ready (self);
       g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
     }
   else
     {
+      DEBUG ("Muc channel isn't ready yet");
       gabble_signal_connect_weak (priv->muc,
-        "ready", G_CALLBACK (muc_channel_ready_cb), G_OBJECT (result));
+        "ready", G_CALLBACK (call_muc_channel_ready_cb), G_OBJECT (result));
     }
 }
 
@@ -246,6 +367,19 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
+  gboolean initial_audio = FALSE;
+  gboolean initial_video = FALSE;
+
+  DEBUG ("Starting initialisation of a Muji call channel");
+
+  if (request != NULL)
+    {
+      initial_audio = tp_asv_get_boolean (request,
+        GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
+      initial_video = tp_asv_get_boolean (request,
+        GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
+    }
+
   g_async_initable_new_async (GABBLE_TYPE_CALL_MUC_CHANNEL,
     G_PRIORITY_DEFAULT,
     NULL,
@@ -255,8 +389,9 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
     "object-path", object_path,
     "connection", connection,
     "handle", target,
-    "initial-audio", TRUE,
     "requested", request != NULL,
+    "initial-audio", initial_audio,
+    "initial-video", initial_video,
     NULL);
 }
 

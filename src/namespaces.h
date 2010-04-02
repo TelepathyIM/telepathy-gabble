@@ -32,7 +32,7 @@
 #define NS_GABBLE_CAPS          "http://telepathy.freedesktop.org/caps"
 #define NS_GOOGLE_CAPS          "http://www.google.com/xmpp/client/caps"
 #define NS_GOOGLE_FEAT_SESSION  "http://www.google.com/xmpp/protocol/session"
-#define NS_GOOGLE_FEAT_SHARE    "http://www.google.com/xmpp/protocol/share/v1"
+#define NS_GOOGLE_FEAT_SHARE    "http://google.com/xmpp/protocol/share/v1"
 #define NS_GOOGLE_FEAT_VOICE    "http://www.google.com/xmpp/protocol/voice/v1"
 #define NS_GOOGLE_FEAT_VIDEO    "http://www.google.com/xmpp/protocol/video/v1"
 #define NS_GOOGLE_JINGLE_INFO   "google:jingleinfo"

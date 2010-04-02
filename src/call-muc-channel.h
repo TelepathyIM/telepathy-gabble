@@ -24,6 +24,7 @@
 #include <glib-object.h>
 
 #include "base-call-channel.h"
+#include "jingle-session.h"
 
 G_BEGIN_DECLS
 
@@ -71,6 +72,9 @@ void gabble_call_muc_channel_new_async (GabbleConnection *connection,
 GabbleCallMucChannel * gabble_call_muc_channel_new_finish (GObject *source,
     GAsyncResult *result,
     GError **error);
+
+void gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
+    GabbleJingleSession *session);
 
 G_END_DECLS
 

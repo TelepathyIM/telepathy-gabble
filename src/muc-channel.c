@@ -289,8 +289,9 @@ struct _GabbleMucChannelPrivate
                                 GabbleMucChannelPrivate))
 
 static void
-gabble_muc_channel_init (GabbleMucChannel *obj)
+gabble_muc_channel_init (GabbleMucChannel *self)
 {
+  self->priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
 }
 
 
@@ -3994,6 +3995,21 @@ gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
   return TRUE;
 }
 
+
+gboolean
+gabble_muc_channel_handle_jingle_session (GabbleMucChannel *self,
+    GabbleJingleSession *session)
+{
+  GabbleMucChannelPrivate *priv = self->priv;
+
+  /* No Muji no need to handle call sessions */
+  if (priv->call == NULL)
+    return FALSE;
+
+  gabble_call_muc_channel_incoming_session (priv->call, session);
+
+  return TRUE;
+}
 
 void
 gabble_muc_channel_teardown (GabbleMucChannel *gmuc)

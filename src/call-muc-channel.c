@@ -28,6 +28,10 @@
 #include "call-muc-channel.h"
 #include "util.h"
 
+#define DEBUG_FLAG GABBLE_DEBUG_MEDIA
+
+#include "debug.h"
+
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
@@ -259,4 +263,28 @@ gabble_call_muc_channel_new_finish (GObject *source,
   o = g_async_initable_new_finish (G_ASYNC_INITABLE (source), result, error);
 
   return o != NULL ? GABBLE_CALL_MUC_CHANNEL (o) : NULL;
+}
+
+void
+gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
+    GabbleJingleSession *session)
+{
+  GabbleCallMember *member;
+  DEBUG ("New incoming session from %s",
+    gabble_jingle_session_get_peer_jid (session));
+
+  member = gabble_base_call_channel_get_member_from_handle
+    (GABBLE_BASE_CALL_CHANNEL (self), session->peer);
+
+  if (member == NULL || gabble_call_member_get_session (member) != NULL)
+    {
+      gabble_jingle_session_terminate (session,
+        TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+        "Muji jingle session initiated while there already was one",
+        NULL);
+    }
+  else
+    {
+      gabble_call_member_set_session (member, session);
+    }
 }

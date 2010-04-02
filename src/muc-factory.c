@@ -1862,6 +1862,33 @@ gabble_muc_factory_ensure_channel (TpChannelManager *manager,
       FALSE);
 }
 
+gboolean
+gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
+  GabbleJingleSession *session)
+{
+  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+  TpHandle room;
+
+  room = gabble_get_room_handle_from_jid (room_repo,
+    gabble_jingle_session_get_peer_jid (session));
+
+  if (room != 0)
+    {
+      GabbleMucChannel *channel;
+
+      channel = g_hash_table_lookup (priv->text_channels,
+        GUINT_TO_POINTER (room));
+      g_assert (GABBLE_IS_MUC_CHANNEL (channel));
+
+      if (channel != NULL)
+        return gabble_muc_channel_handle_jingle_session (channel, session);
+    }
+
+  return FALSE;
+}
+
 
 static void
 channel_manager_iface_init (gpointer g_iface,

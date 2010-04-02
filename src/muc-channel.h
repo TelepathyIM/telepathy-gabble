@@ -128,6 +128,9 @@ gboolean gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
     gpointer *token,
     GError **error);
 
+gboolean gabble_muc_channel_handle_jingle_session (GabbleMucChannel *channel,
+    GabbleJingleSession *session);
+
 void gabble_muc_channel_teardown (GabbleMucChannel *gmuc);
 void gabble_muc_channel_close_tube (GabbleMucChannel *gmuc);
 

@@ -68,6 +68,9 @@ void gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
 
 void gabble_muc_factory_broadcast_presence (GabbleMucFactory *self);
 
+gboolean gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
+  GabbleJingleSession *session);
+
 G_END_DECLS
 
 #endif /* #ifndef __MUC_FACTORY_H__ */

@@ -442,13 +442,17 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
     gpointer data)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (data);
+  GabbleMediaFactoryPrivate *priv = self->priv;
 
   if (gabble_jingle_session_get_content_type (sess) !=
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
     return;
 
-
-  if (self->priv->use_call_channels)
+  if (gabble_muc_factory_handle_jingle_session (priv->conn->muc_factory, sess))
+    {
+      /* Muji channel the muc factory is taking care of it */
+    }
+  else if (self->priv->use_call_channels)
     {
       new_call_channel (self, sess, sess->peer, FALSE, FALSE, NULL);
     }

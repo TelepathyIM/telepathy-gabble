@@ -25,6 +25,7 @@
 #include "call-member.h"
 #include "base-call-channel.h"
 #include "util.h"
+#include "namespaces.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 #include "debug.h"
@@ -161,6 +162,12 @@ gabble_call_member_class_init (
       GABBLE_TYPE_BASE_CALL_CHANNEL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CALL, param_spec);
+
+  param_spec = g_param_spec_object ("session", "Session",
+      "The jingle session below this call",
+      GABBLE_TYPE_JINGLE_SESSION,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
 
   param_spec = g_param_spec_uint ("target", "Target",
       "the target handle of member",
@@ -304,6 +311,30 @@ new_content_cb (GabbleJingleSession *session,
   gabble_call_member_add_member_content (self, content);
 }
 
+static gboolean
+call_member_update_existing_content (GabbleCallMember *self,
+    GabbleJingleContent *content)
+{
+  GList *l;
+
+  for (l = self->priv->contents; l != NULL ; l = g_list_next (l))
+    {
+      GabbleCallMemberContent *mcontent = GABBLE_CALL_MEMBER_CONTENT (l->data);
+
+      if (gabble_call_member_content_has_jingle_content (mcontent))
+        continue;
+
+      if (!tp_strdiff (gabble_call_member_content_get_name (mcontent),
+          gabble_jingle_content_get_name (content)))
+        {
+          gabble_call_member_content_set_jingle_content (mcontent, content);
+          return TRUE;
+        }
+    }
+
+  return FALSE;
+}
+
 void
 gabble_call_member_set_session (GabbleCallMember *self,
     GabbleJingleSession *session)
@@ -312,18 +343,15 @@ gabble_call_member_set_session (GabbleCallMember *self,
   GList *c;
 
   g_assert (priv->session == NULL);
+  g_assert (session != NULL);
+
+  DEBUG ("Setting session: %p -> %p\n", self, session);
   priv->session = g_object_ref (session);
 
   for (c = gabble_jingle_session_get_contents (session) ;
       c != NULL; c = g_list_next (c))
     {
       GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (c->data);
-      GabbleCallMemberContent *mcontent;
-
-      mcontent = gabble_call_member_content_from_jingle_content (content,
-        self);
-
-      gabble_call_member_add_member_content (self, mcontent);
 
       if (priv->transport_ns == NULL)
         {
@@ -331,7 +359,18 @@ gabble_call_member_set_session (GabbleCallMember *self,
             &priv->transport_ns,
             NULL);
         }
+
+      if (!call_member_update_existing_content (self, content))
+        {
+          GabbleCallMemberContent *mcontent =
+              gabble_call_member_content_from_jingle_content (content,
+                self);
+
+          gabble_call_member_add_member_content (self, mcontent);
+        }
     }
+
+  g_object_notify (G_OBJECT (self), "session");
 
   gabble_signal_connect_weak (priv->session, "remote-state-changed",
     G_CALLBACK (remote_state_changed_cb), G_OBJECT (self));
@@ -379,11 +418,14 @@ gabble_call_member_ensure_content (GabbleCallMember *self,
 
   for (l = priv->contents ; l != NULL; l = g_list_next (l))
     {
-      content = GABBLE_CALL_MEMBER_CONTENT (l->data);
+      GabbleCallMemberContent *c = GABBLE_CALL_MEMBER_CONTENT (l->data);
 
-      if (gabble_call_member_content_get_media_type (content) == mtype &&
-          !tp_strdiff (gabble_call_member_content_get_name (content), name))
-        break;
+      if (gabble_call_member_content_get_media_type (c) == mtype &&
+          !tp_strdiff (gabble_call_member_content_get_name (c), name))
+        {
+          content = c;
+          break;
+        }
     }
 
   if (content == NULL)
@@ -410,6 +452,8 @@ gabble_call_member_create_content (GabbleCallMember *self,
   g_assert (priv->session != NULL);
 
   peer_resource = gabble_jingle_session_get_peer_resource (priv->session);
+
+  DEBUG ("Creating new content %s, type %d", name, mtype);
 
   if (peer_resource != NULL)
     DEBUG ("existing call, using peer resource %s", peer_resource);
@@ -449,6 +493,35 @@ gabble_call_member_accept (GabbleCallMember *self)
 
   if (self->priv->session != NULL)
     gabble_jingle_session_accept (self->priv->session);
+}
+
+/**
+ * Start a new session using the existing contents for this member. For now
+ * assumes we're using the latest jingle dialec and ice-udp
+ * FIXME: make dialect and transport selection more dynamic?
+ */
+gboolean
+gabble_call_member_open_session (GabbleCallMember *self,
+    GError **error)
+{
+  GabbleCallMemberPrivate *priv = self->priv;
+  GabbleJingleSession *session;
+  gchar *jid;
+
+  jid = gabble_peer_to_jid (priv->call->conn, priv->target, NULL);
+
+  session = gabble_jingle_factory_create_session (
+        priv->call->conn->jingle_factory,
+        priv->target, jid, FALSE);
+  DEBUG ("Created a jingle session: %p", session);
+
+  g_object_set (session, "dialect", JINGLE_DIALECT_V032, NULL);
+
+  priv->transport_ns = g_strdup (NS_JINGLE_TRANSPORT_ICEUDP);
+
+  gabble_call_member_set_session (self, session);
+
+  return TRUE;
 }
 
 gboolean

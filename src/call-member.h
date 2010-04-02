@@ -94,6 +94,9 @@ gboolean gabble_call_member_start_session (GabbleCallMember *self,
     const gchar *video_name,
     GError **error);
 
+gboolean gabble_call_member_open_session (GabbleCallMember *self,
+    GError **error);
+
 void gabble_call_member_accept (GabbleCallMember *self);
 
 GabbleConnection * gabble_call_member_get_connection (GabbleCallMember *self);

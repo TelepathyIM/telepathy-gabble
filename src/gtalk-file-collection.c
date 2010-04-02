@@ -711,8 +711,8 @@ get_next_manifest_entry (GTalkFileCollection *self,
           gabble_jingle_content_send_complete (content);
         }
 
-      g_hash_table_replace (self->priv->channels_usable, channel,
-          GINT_TO_POINTER (FALSE));
+      g_hash_table_replace (self->priv->channels_usable,
+          self->priv->current_channel, GINT_TO_POINTER (FALSE));
       gabble_file_transfer_channel_gtalk_file_collection_state_changed (
           self->priv->current_channel,
           error ? GTALK_FILE_COLLECTION_STATE_ERROR:

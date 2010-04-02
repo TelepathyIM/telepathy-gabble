@@ -166,7 +166,8 @@ gabble_jingle_session_defines_action (GabbleJingleSession *sess,
         return (a == JINGLE_ACTION_SESSION_ACCEPT ||
             a == JINGLE_ACTION_SESSION_INITIATE ||
             a == JINGLE_ACTION_SESSION_TERMINATE ||
-            a == JINGLE_ACTION_TRANSPORT_INFO);
+            a == JINGLE_ACTION_TRANSPORT_INFO ||
+            a == JINGLE_ACTION_INFO);
       default:
         return FALSE;
     }

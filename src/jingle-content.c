@@ -682,7 +682,7 @@ gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
   msg = gabble_jingle_session_new_message (self->session,
       JINGLE_ACTION_INFO, &sess_node);
 
-  DEBUG ("Sending Gtalk4 'info' message to peer : channel %s", name);
+  DEBUG ("Sending 'info' message to peer : channel %s", name);
   channel_node = lm_message_node_add_child (sess_node, "channel", NULL);
   lm_message_node_set_attribute (channel_node, "xmlns", priv->content_ns);
   lm_message_node_set_attribute (channel_node, "name", name);
@@ -702,7 +702,7 @@ gabble_jingle_content_send_complete (GabbleJingleContent *self)
   msg = gabble_jingle_session_new_message (self->session,
       JINGLE_ACTION_INFO, &sess_node);
 
-  DEBUG ("Sending Gtalk4 'info' message to peer : complete");
+  DEBUG ("Sending 'info' message to peer : complete");
   complete_node = lm_message_node_add_child (sess_node, "complete", NULL);
   lm_message_node_set_attribute (complete_node, "xmlns", priv->content_ns);
 

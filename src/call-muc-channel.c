@@ -129,6 +129,10 @@ gabble_call_muc_channel_constructed (GObject *obj)
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (obj);
 
   tp_external_group_mixin_init (obj, G_OBJECT (self->priv->muc));
+
+  if (G_OBJECT_CLASS (gabble_call_muc_channel_parent_class)->constructed
+      != NULL)
+    G_OBJECT_CLASS (gabble_call_muc_channel_parent_class)->constructed (obj);
 }
 
 static void

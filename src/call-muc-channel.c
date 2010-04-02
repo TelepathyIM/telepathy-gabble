@@ -224,13 +224,243 @@ call_muc_channel_setup_content (GabbleCallMucChannel *self,
 }
 
 static void
+call_muc_channel_member_content_added_cb (GabbleCallMember *member,
+    GabbleCallMemberContent *content,
+    gpointer user_data)
+{
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
+  const gchar *name;
+  JingleMediaType mtype;
+  GList *l;
+  GabbleCallContent *ccontent;
+
+  /* A new content was added for one of the members, match it up with the call
+   * channels contents */
+  name = gabble_call_member_content_get_name (content);
+  mtype = gabble_call_member_content_get_media_type (content);
+
+  DEBUG ("New call member content: %s (type: %d)", name, mtype);
+
+  for (l = gabble_base_call_channel_get_contents (
+      GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
+    {
+      const char *cname;
+      JingleMediaType cmtype;
+
+      ccontent = GABBLE_CALL_CONTENT (l->data);
+      cname = gabble_call_content_get_name (ccontent);
+      cmtype = gabble_call_content_get_media_type (ccontent);
+
+      if (!tp_strdiff (cname, name) && mtype == cmtype)
+        goto have_content;
+    }
+
+  ccontent = gabble_base_call_channel_add_content (
+      GABBLE_BASE_CALL_CHANNEL (self), name, mtype,
+      self->priv->initialized ? GABBLE_CALL_CONTENT_DISPOSITION_INITIAL : 0);
+  call_muc_channel_setup_content (self, ccontent);
+
+have_content:
+  gabble_call_content_add_member_content (ccontent, content);
+}
+
+static GList *
+call_muc_channel_parse_codecs (GabbleCallMucChannel *self,
+    WockyXmppNode *description)
+{
+  GList *codecs = NULL;
+  WockyXmppNodeIter iter;
+  WockyXmppNode *payload;
+
+  wocky_xmpp_node_iter_init (&iter, description,
+      "payload-type", NS_JINGLE_RTP);
+  while (wocky_xmpp_node_iter_next (&iter, &payload))
+    {
+      const gchar *name;
+      const gchar *value;
+      guint id;
+      guint clockrate = 0;
+      guint channels = 0;
+      JingleCodec *codec;
+      WockyXmppNodeIter param_iter;
+      WockyXmppNode *parameter;
+
+      value = wocky_xmpp_node_get_attribute (payload, "id");
+      if (value == NULL)
+        continue;
+      id = atoi (value);
+
+      name = wocky_xmpp_node_get_attribute (payload, "name");
+      if (name == NULL)
+        continue;
+
+      value = wocky_xmpp_node_get_attribute (payload, "clockrate");
+      if (value != NULL)
+        clockrate = atoi (value);
+
+      value = wocky_xmpp_node_get_attribute (payload, "channels");
+      if (value != NULL)
+        channels = atoi (value);
+
+      codec = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
+
+      codecs = g_list_append (codecs, codec);
+
+      wocky_xmpp_node_iter_init (&param_iter, payload,
+        "parameter", NS_JINGLE_RTP);
+      while (wocky_xmpp_node_iter_next (&param_iter, &parameter))
+        {
+          const gchar *key;
+
+          key = wocky_xmpp_node_get_attribute (parameter, "name");
+          value = wocky_xmpp_node_get_attribute (parameter, "value");
+
+          if (key == NULL || value == NULL)
+            continue;
+
+          g_hash_table_insert (codec->params,
+              g_strdup (key), g_strdup (value));
+        }
+    }
+
+  return codecs;
+}
+
+static void
+call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
+  WockyMucMember *member,
+  WockyXmppStanza *stanza)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
+  GabbleCallMember *call_member;
+  TpHandle handle;
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles (
+      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  WockyXmppNode *muji;
+  WockyXmppNodeIter iter;
+  WockyXmppNode *content;
+
+  muji = wocky_xmpp_node_get_child_ns (stanza->node, "muji", NS_MUJI);
+
+  if (muji == NULL)
+    return;
+
+  DEBUG ("Muji participant: %s", member->from);
+
+  handle = tp_handle_ensure (contact_repo, member->from, NULL, NULL);
+
+  call_member = gabble_base_call_channel_get_member_from_handle (
+    GABBLE_BASE_CALL_CHANNEL (self), handle);
+
+  if (call_member == NULL)
+    {
+      call_member = gabble_base_call_channel_ensure_member_from_handle (
+        GABBLE_BASE_CALL_CHANNEL (self), handle);
+      gabble_signal_connect_weak (call_member, "content-added",
+        G_CALLBACK (call_muc_channel_member_content_added_cb),
+        G_OBJECT (self));
+      gabble_call_member_accept (call_member);
+    }
+
+  wocky_xmpp_node_iter_init (&iter, muji, "content", NS_MUJI);
+  while (wocky_xmpp_node_iter_next (&iter, &content))
+    {
+      GabbleCallMemberContent *member_content;
+      WockyXmppNode *description;
+      JingleMediaType mtype;
+      const gchar *name;
+      const gchar *mattr;
+      GList *codecs;
+
+      name = wocky_xmpp_node_get_attribute (content, "name");
+      if (name == NULL)
+        {
+          DEBUG ("Content is missing the name attribute");
+          continue;
+        }
+
+      DEBUG ("Parsing content: %s", name);
+
+      description = wocky_xmpp_node_get_child (content, "description");
+      if (description == NULL)
+        {
+          DEBUG ("Content %s is missing a description", name);
+          continue;
+        }
+
+      mattr = wocky_xmpp_node_get_attribute (description, "media");
+      if (mattr == NULL)
+        {
+          DEBUG ("Content %s is missing a media type", name);
+          continue;
+        }
+
+      if (!tp_strdiff (mattr, "video"))
+        {
+          mtype = JINGLE_MEDIA_TYPE_VIDEO;
+        }
+      else if (!tp_strdiff (mattr, "audio"))
+        {
+          mtype = JINGLE_MEDIA_TYPE_AUDIO;
+        }
+      else
+        {
+          DEBUG ("Content %s has an unknown media type: %s", name, mattr);
+          continue;
+        }
+
+      member_content = gabble_call_member_ensure_content (call_member,
+        name, mtype);
+
+      if (gabble_call_member_content_has_jingle_content (member_content))
+        continue;
+
+      codecs = call_muc_channel_parse_codecs (self, description);
+      gabble_call_member_content_set_remote_codecs (member_content, codecs);
+
+      if (!priv->initialized)
+        {
+          if (mtype == JINGLE_MEDIA_TYPE_AUDIO)
+            g_object_set (self, "initial-audio", TRUE, NULL);
+          else
+            g_object_set (self, "initial-video", TRUE, NULL);
+        }
+    }
+}
+
+static void
 call_muc_channel_presence_cb (WockyMuc *wmuc,
     WockyXmppStanza *stanza,
     GHashTable *code,
     WockyMucMember *who,
     gpointer user_data)
 {
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
 
+  call_muc_channel_got_participant_presence (self, who, stanza);
+}
+
+static void
+call_muc_channel_update_all_members (GabbleCallMucChannel *self)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
+  GHashTable *members;
+  GHashTableIter iter;
+  gpointer value;
+
+  members = wocky_muc_members (priv->wmuc);
+
+  g_hash_table_iter_init (&iter, members);
+
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      WockyMucMember *member = (WockyMucMember *) value;
+
+      call_muc_channel_got_participant_presence (self,
+        member, member->presence_stanza);
+    }
 }
 
 static void
@@ -239,6 +469,9 @@ call_muc_channel_joined_cb (WockyMuc *muc,
   GHashTable *code,
   gpointer user_data)
 {
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
+
+  call_muc_channel_update_all_members (self);
 }
 
 static void
@@ -338,6 +571,9 @@ call_muc_channel_ready (GabbleCallMucChannel *self)
 
   g_object_get (priv->muc, "wocky-muc", &(priv->wmuc), NULL);
   g_assert (priv->wmuc != NULL);
+
+  if (wocky_muc_get_state (priv->wmuc) == WOCKY_MUC_JOINED)
+    call_muc_channel_update_all_members (self);
 
   /* we care about presences */
   gabble_signal_connect_weak (priv->wmuc,

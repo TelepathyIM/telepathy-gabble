@@ -521,7 +521,7 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
       ShareChannel *share_channel = NULL;
       GSList *candidates = NULL;
 
-      if (candidate->type != JINGLE_TRANSPORT_PROTOCOL_UDP)
+      if (candidate->protocol != JINGLE_TRANSPORT_PROTOCOL_UDP)
         {
           DEBUG ("Ignoring candidate %s because of non-UDP protocol : %d",
               candidate->username, candidate->protocol);

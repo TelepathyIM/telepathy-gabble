@@ -34,6 +34,8 @@
 
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
+static void call_muc_channel_accept (GabbleBaseCallChannel *channel);
+
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   gabble_call_muc_channel, GABBLE_TYPE_BASE_CALL_CHANNEL,
   G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_INITABLE, async_initable_iface_init);
@@ -149,6 +151,7 @@ gabble_call_muc_channel_class_init (
   object_class->finalize = gabble_call_muc_channel_finalize;
 
   base_call_class->handle_type = TP_HANDLE_TYPE_ROOM;
+  base_call_class->accept = call_muc_channel_accept;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",
@@ -286,5 +289,26 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
   else
     {
       gabble_call_member_set_session (member, session);
+    }
+}
+
+static void
+call_muc_channel_accept (GabbleBaseCallChannel *channel)
+{
+  GHashTable *members;
+  GHashTableIter iter;
+  gpointer value;
+
+  DEBUG ("Accepted muji channel, starting sessions");
+
+  members = gabble_base_call_channel_get_members (channel);
+
+  g_hash_table_iter_init (&iter, members);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      GabbleCallMember *member = GABBLE_CALL_MEMBER (value);
+
+      gabble_call_member_open_session (member, NULL);
+      gabble_call_member_accept (member);
     }
 }

@@ -28,6 +28,7 @@
 #include "muc-channel.h"
 #include "call-muc-channel.h"
 #include "util.h"
+#include "namespaces.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -245,6 +246,80 @@ call_muc_channel_pre_presence_cb (WockyMuc *wmuc,
     WockyXmppStanza *stanza,
     gpointer user_data)
 {
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
+  WockyXmppNode *muji;
+  GList *l;
+
+  for (l = gabble_base_call_channel_get_contents (
+      GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
+    {
+      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
+
+      if (gabble_call_content_get_local_codecs (content) == NULL)
+        return;
+    }
+
+  DEBUG ("%p got our a prepresence signal, putting in codecs", self);
+
+  muji = wocky_xmpp_node_add_child_ns (stanza->node, "muji", NS_MUJI);
+  for (l = gabble_base_call_channel_get_contents (
+      GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
+    {
+      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
+      const gchar *name = gabble_call_content_get_name (content);
+      WockyXmppNode *mcontent;
+      WockyXmppNode *description;
+      GList *codecs;
+      JingleMediaType mtype = gabble_call_content_get_media_type (content);
+
+      mcontent = wocky_xmpp_node_add_child (muji, "content");
+      wocky_xmpp_node_set_attribute (mcontent, "name", name);
+
+      description = wocky_xmpp_node_add_child_ns (mcontent,
+        "description", NS_JINGLE_RTP);
+      wocky_xmpp_node_set_attribute (description, "media",
+        mtype == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video");
+
+      for (codecs = gabble_call_content_get_local_codecs (content) ;
+          codecs != NULL ; codecs = g_list_next (codecs))
+        {
+          JingleCodec *codec = codecs->data;
+          WockyXmppNode *pt;
+          GHashTableIter iter;
+          gpointer key, value;
+          gchar *idstr;
+
+          pt = wocky_xmpp_node_add_child (description, "payload-type");
+
+          idstr = g_strdup_printf ("%d", codec->id);
+          wocky_xmpp_node_set_attribute (pt, "id", idstr);
+          g_free (idstr);
+
+          wocky_xmpp_node_set_attribute (pt, "name", codec->name);
+
+          if (codec->clockrate > 0)
+            {
+              gchar *rate = g_strdup_printf ("%d", codec->clockrate);
+              wocky_xmpp_node_set_attribute (pt, "clockrate", rate);
+              g_free (rate);
+            }
+
+          if (codec->channels > 0)
+            {
+              gchar *channels = g_strdup_printf ("%d", codec->channels);
+              wocky_xmpp_node_set_attribute (pt, "channels", channels);
+              g_free (channels);
+            }
+
+          g_hash_table_iter_init (&iter, codec->params);
+          while (g_hash_table_iter_next (&iter, &key, &value))
+            {
+              WockyXmppNode *p = wocky_xmpp_node_add_child (pt, "parameter");
+              wocky_xmpp_node_set_attribute (p, "name", (gchar *) key);
+              wocky_xmpp_node_set_attribute (p, "value", (gchar *) value);
+            }
+        }
+    }
 }
 
 static void

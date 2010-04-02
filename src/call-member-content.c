@@ -26,6 +26,7 @@
 #include "call-member-content.h"
 #include "jingle-media-rtp.h"
 #include "util.h"
+#include "namespaces.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 #include "debug.h"
@@ -121,7 +122,8 @@ gabble_call_member_content_set_property (GObject *object,
   switch (property_id)
     {
       case PROP_JINGLE_CONTENT:
-        priv->jingle_content = g_value_dup_object (value);
+        gabble_call_member_content_set_jingle_content (self,
+          g_value_get_object (value));
         break;
       case PROP_MEMBER:
         priv->member = g_value_dup_object (value);
@@ -144,6 +146,62 @@ static void gabble_call_member_content_dispose (GObject *object);
 static void gabble_call_member_content_finalize (GObject *object);
 
 static void
+member_got_session_cb (GabbleCallMember *member,
+  GParamSpec *param, gpointer user_data)
+{
+  GabbleCallMemberContent *self = GABBLE_CALL_MEMBER_CONTENT (user_data);
+  GabbleCallMemberContentPrivate *priv = self->priv;
+  const gchar *content_ns;
+  GabbleJingleSession *session;
+  GabbleJingleContent *content;
+  const gchar *peer_resource;
+  const gchar *transport_ns;
+
+  DEBUG ("Session set for: %s (current jingle %p)",
+    priv->name, priv->jingle_content);
+
+  if (priv->jingle_content != NULL)
+    return;
+
+  session = gabble_call_member_get_session (priv->member);
+  transport_ns = gabble_call_member_get_transport_ns (priv->member);
+  content_ns = NS_JINGLE_RTP;
+
+  g_assert (session != NULL);
+
+  peer_resource = gabble_jingle_session_get_peer_resource (session);
+
+  if (peer_resource != NULL)
+    DEBUG ("existing call, using peer resource %s", peer_resource);
+  else
+    DEBUG ("existing call, using bare JID");
+
+  DEBUG ("Creating new jingle content with ns %s : %s",
+    content_ns, transport_ns);
+
+  content = gabble_jingle_session_add_content (session,
+      priv->media_type, priv->name, content_ns, transport_ns);
+
+  gabble_call_member_content_set_jingle_content (self, content);
+
+}
+
+static void
+gabble_call_member_content_constructed (GObject *obj)
+{
+  GabbleCallMemberContent *self = GABBLE_CALL_MEMBER_CONTENT (obj);
+  GabbleCallMemberContentPrivate *priv = self->priv;
+
+  gabble_signal_connect_weak (priv->member, "notify::session",
+    G_CALLBACK (member_got_session_cb), G_OBJECT (self));
+
+  if (G_OBJECT_CLASS (gabble_call_member_content_parent_class)->constructed
+      != NULL)
+    G_OBJECT_CLASS (
+      gabble_call_member_content_parent_class)->constructed (obj);
+}
+
+static void
 gabble_call_member_content_class_init (
   GabbleCallMemberContentClass *gabble_call_member_content_class)
 {
@@ -159,6 +217,7 @@ gabble_call_member_content_class_init (
 
   object_class->get_property = gabble_call_member_content_get_property;
   object_class->set_property = gabble_call_member_content_set_property;
+  object_class->constructed = gabble_call_member_content_constructed;
 
   param_spec = g_param_spec_string ("name", "Name",
       "The name of this jingle content",
@@ -306,12 +365,8 @@ gabble_call_member_content_from_jingle_content (
     NULL);
 
   content = gabble_call_member_content_new (name, mtype, member);
-  content->priv->jingle_content = g_object_ref (jingle_content);
 
-  gabble_signal_connect_weak (jingle_content, "removed",
-      G_CALLBACK (call_member_content_jingle_removed_cb), G_OBJECT (content));
-  gabble_signal_connect_weak (jingle_content, "remote-codecs",
-    G_CALLBACK (call_member_content_jingle_codecs_cb), G_OBJECT (content));
+  gabble_call_member_content_set_jingle_content (content, jingle_content);
 
   g_free (name);
 
@@ -356,4 +411,23 @@ GabbleCallMember *
 gabble_call_member_content_get_member (GabbleCallMemberContent *self)
 {
   return self->priv->member;
+}
+
+void
+gabble_call_member_content_set_jingle_content (GabbleCallMemberContent *self,
+    GabbleJingleContent *content)
+{
+  g_assert (self->priv->jingle_content == NULL);
+
+  if (content == NULL)
+    return;
+
+  self->priv->jingle_content = g_object_ref (content);
+
+  gabble_signal_connect_weak (content, "removed",
+      G_CALLBACK (call_member_content_jingle_removed_cb), G_OBJECT (self));
+  gabble_signal_connect_weak (content, "remote-codecs",
+    G_CALLBACK (call_member_content_jingle_codecs_cb), G_OBJECT (self));
+
+  g_signal_emit (self, signals[GOT_JINGLE_CONTENT], 0);
 }

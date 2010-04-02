@@ -93,6 +93,10 @@ GList * gabble_call_member_content_get_remote_codecs (
 GabbleCallMember *gabble_call_member_content_get_member (
     GabbleCallMemberContent *self);
 
+void gabble_call_member_content_set_jingle_content (
+    GabbleCallMemberContent *self,
+    GabbleJingleContent *content);
+
 G_END_DECLS
 
 #endif /* #ifndef __CALL_MEMBER_CONTENT_H__*/

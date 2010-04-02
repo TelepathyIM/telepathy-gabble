@@ -1357,7 +1357,8 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
             TP_FILE_TRANSFER_STATE_COMPLETED,
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
 
-        if (gibber_transport_buffer_is_empty (self->priv->transport))
+        if (self->priv->transport &&
+            gibber_transport_buffer_is_empty (self->priv->transport))
           gibber_transport_disconnect (self->priv->transport);
         break;
     }

@@ -512,7 +512,7 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
   GTalkFileCollection *self = GTALK_FILE_COLLECTION (user_data);
   GList *li;
 
-  DEBUG ("Got new remote candidates");
+  DEBUG ("Got new remote candidates : %d", g_list_length (clist));
 
   for (li = clist; li; li = li->next)
     {
@@ -522,12 +522,20 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
       GSList *candidates = NULL;
 
       if (candidate->type != JINGLE_TRANSPORT_PROTOCOL_UDP)
-        continue;
+        {
+          DEBUG ("Ignoring candidate %s because of non-UDP protocol : %d",
+              candidate->username, candidate->protocol);
+          continue;
+        }
 
       share_channel = g_hash_table_lookup (self->priv->share_channels,
           GINT_TO_POINTER (candidate->component));
       if (share_channel == NULL)
-        continue;
+        {
+          DEBUG ("Ignoring candidate %s because of unknown component id %d",
+              candidate->id, candidate->component);
+          continue;
+        }
 
       cand = nice_candidate_new (
           candidate->type == JINGLE_CANDIDATE_TYPE_LOCAL?

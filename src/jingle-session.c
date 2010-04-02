@@ -1923,6 +1923,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   if (priv->dialect == JINGLE_DIALECT_GTALK3)
     {
       gboolean has_video = FALSE;
+      gboolean has_audio = FALSE;
       GHashTableIter iter;
       gpointer value;
 
@@ -1938,17 +1939,25 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
               has_video = TRUE;
               break;
             }
+          else if (type == JINGLE_MEDIA_TYPE_AUDIO)
+            {
+              has_audio = TRUE;
+              break;
+            }
         }
 
-      sess_node = lm_message_node_add_child (sess_node, "description",
-        NULL);
+      if (has_video || has_audio)
+        {
+          sess_node = lm_message_node_add_child (sess_node, "description",
+              NULL);
 
-      if (has_video)
-        lm_message_node_set_attribute (sess_node, "xmlns",
-          NS_GOOGLE_SESSION_VIDEO);
-      else
-        lm_message_node_set_attribute (sess_node, "xmlns",
-          NS_GOOGLE_SESSION_PHONE);
+          if (has_video)
+            lm_message_node_set_attribute (sess_node, "xmlns",
+                NS_GOOGLE_SESSION_VIDEO);
+          else
+            lm_message_node_set_attribute (sess_node, "xmlns",
+                NS_GOOGLE_SESSION_PHONE);
+        }
     }
 
 

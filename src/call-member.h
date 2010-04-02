@@ -96,6 +96,10 @@ gboolean gabble_call_member_start_session (GabbleCallMember *self,
 
 void gabble_call_member_accept (GabbleCallMember *self);
 
+GabbleConnection * gabble_call_member_get_connection (GabbleCallMember *self);
+
+const gchar *gabble_call_member_get_transport_ns (GabbleCallMember *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CALL_MEMBER_H__*/

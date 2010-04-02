@@ -496,3 +496,15 @@ gabble_call_member_start_session (GabbleCallMember *self,
 
   return TRUE;
 }
+
+GabbleConnection *
+gabble_call_member_get_connection (GabbleCallMember *self)
+{
+  return self->priv->call->conn;
+}
+
+const gchar *
+gabble_call_member_get_transport_ns (GabbleCallMember *self)
+{
+  return self->priv->transport_ns;
+}

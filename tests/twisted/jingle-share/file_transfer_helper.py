@@ -28,7 +28,8 @@ import sys
 CAPS_VER_HASH = {'sE90xarIraOnMRTnZqYNmZtoAck=':'m9aR1Li0PZTOfdvxys4jARpdGNY=',
                  '3P6yJJDbtCEEfrrTqxq1V8N5+ms=': 'gGreg/ivJyPi+XauJumCPGz28h8=',
                  'yIG4v/nhJ6zxlzYRm2ORqzDt4Zc=': 'J8BSW4OHozfJw+HXJRfAOhYj6Ik=',
-                 'aX4j/bU4FXVhk0mb+c0sZBY5P1I=': 'aCbskcGhfOntWROjwqCQCI9LPac='}
+                 'aX4j/bU4FXVhk0mb+c0sZBY5P1I=': 'aCbskcGhfOntWROjwqCQCI9LPac=',
+                 'vCJUYxwhPLEOl2/BM+NVeVIBP+I=': 'jfxTIGB6heqcD39DsB8P7jIi11Y='}
 
 class File(object):
     DEFAULT_DATA = "What a nice file"

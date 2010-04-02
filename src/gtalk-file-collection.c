@@ -630,7 +630,7 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
           /* generation */
           0,
           /* preference */
-          cand->priority / 1000,
+          (gfloat) cand->priority / 1000.0,
           /* username */
           cand->username?cand->username:"",
           /* password */

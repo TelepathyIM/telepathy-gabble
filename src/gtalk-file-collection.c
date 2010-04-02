@@ -560,6 +560,10 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
       if (candidate->id != NULL)
         strncpy (cand->foundation, candidate->id,
             NICE_CANDIDATE_MAX_FOUNDATION - 1);
+      else if (candidate->username != NULL)
+        strncpy (cand->foundation, candidate->username,
+            NICE_CANDIDATE_MAX_FOUNDATION - 1);
+
       cand->username = g_strdup (candidate->username?candidate->username:"");
       cand->password = g_strdup (candidate->password?candidate->password:"");
 

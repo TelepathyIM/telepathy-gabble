@@ -123,6 +123,8 @@ gabble_call_channel_constructed (GObject *obj)
                 cbase->initial_video = TRUE;
                 break;
               default:
+                DEBUG ("Unknown media type: %d",
+                  gabble_call_member_content_get_media_type (content));
                 break;
             }
         }
@@ -225,7 +227,6 @@ gabble_call_channel_dispose (GObject *object)
     return;
 
   self->priv->dispose_has_run = TRUE;
-
 
   if (priv->session != NULL)
     g_object_unref (priv->session);

@@ -25,7 +25,6 @@
 
 #include <extensions/extensions.h>
 
-#include "connection.h"
 #include "jingle-content.h"
 #include "call-member.h"
 #include "call-content.h"

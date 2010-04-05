@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 #include <wocky/wocky-muc.h>
 

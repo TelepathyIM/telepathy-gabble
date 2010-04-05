@@ -22,6 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "connection.h"
 #include "call-member.h"
 #include "base-call-channel.h"
 #include "util.h"

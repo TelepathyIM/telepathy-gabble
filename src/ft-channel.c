@@ -1807,7 +1807,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
           GIBBER_AF_IPV4, &error);
       if (!ret)
         {
-          DEBUG ("Error listening on socket: %s", error->message);
+          DEBUG ("Error listening on ipv4 socket: %s", error->message);
           g_error_free (error);
           return FALSE;
         }
@@ -1833,7 +1833,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
           GIBBER_AF_IPV6, &error);
       if (!ret)
         {
-          DEBUG ("Error listening on socket: %s", error->message);
+          DEBUG ("Error listening on ipv6 socket: %s", error->message);
           g_error_free (error);
           return FALSE;
         }

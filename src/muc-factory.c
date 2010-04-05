@@ -1661,7 +1661,6 @@ call_muc_channel_request_cb (GObject *source,
   gpointer request_token;
   GError *error = NULL;
 
-
   if (!gabble_muc_channel_request_call_finish (channel,
       result, &request_token, &error))
     {
@@ -1671,7 +1670,7 @@ call_muc_channel_request_cb (GObject *source,
     }
 
   /* No need to handle a successful request, this is handled when the muc
-   * signals a new call cahnnel automagically */
+   * signals a new call channel automagically */
 }
 
 static gboolean

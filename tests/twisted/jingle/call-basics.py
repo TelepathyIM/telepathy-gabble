@@ -176,7 +176,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     else:
         assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
             stream_props["Senders"][remote_handle])
-        assertEquals (cs.CALL_SENDING_STATE_SENDING,
+        assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
             stream_props["Senders"][self_handle])
 
 

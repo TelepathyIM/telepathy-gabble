@@ -81,8 +81,6 @@ gboolean gabble_base_call_channel_registered (GabbleBaseCallChannel *self);
 
 void gabble_base_call_channel_set_transport (GabbleBaseCallChannel *self,
     const gchar *transport);
-void gabble_base_call_channel_set_session (GabbleBaseCallChannel *self,
-    GabbleJingleSession *session);
 const gchar* gabble_base_call_channel_create_content (
     GabbleBaseCallChannel *self,
     const gchar *name,

@@ -129,6 +129,9 @@ gabble_base_call_channel_constructed (GObject *obj)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (obj);
   GabbleBaseCallChannelPrivate *priv = self->priv;
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
+  TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              base_conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->requested)
     gabble_base_call_channel_set_state (self,
@@ -136,6 +139,13 @@ gabble_base_call_channel_constructed (GObject *obj)
   else
     gabble_base_call_channel_set_state (self,
       GABBLE_CALL_STATE_PENDING_RECEIVER);
+
+  /* ref target and creator handles if we got them */
+  if (priv->creator != 0)
+    tp_handle_ref (repo, priv->creator);
+
+  if (self->target != 0)
+    tp_handle_ref (repo, self->target);
 
   if (G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->constructed
       != NULL)
@@ -529,6 +539,9 @@ gabble_base_call_channel_dispose (GObject *object)
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (object);
   GabbleBaseCallChannelPrivate *priv = self->priv;
   GList *l;
+  TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
+  TpHandleRepoIface *repo = tp_base_connection_get_handles (
+              base_conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->dispose_has_run)
     return;
@@ -544,6 +557,12 @@ gabble_base_call_channel_dispose (GObject *object)
 
   g_list_free (priv->contents);
   priv->contents = NULL;
+
+  if (priv->creator != 0)
+    tp_handle_unref (repo, priv->creator);
+
+  if (self->target != 0)
+    tp_handle_unref (repo, self->target);
 
   if (G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->dispose (object);

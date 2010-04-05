@@ -349,7 +349,7 @@ gabble_call_member_set_session (GabbleCallMember *self,
   DEBUG ("Setting session: %p -> %p\n", self, session);
   priv->session = g_object_ref (session);
 
-  for (c = gabble_jingle_session_get_contents (session) ;
+  for (c = gabble_jingle_session_get_contents (session);
       c != NULL; c = g_list_next (c))
     {
       GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (c->data);

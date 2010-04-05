@@ -415,30 +415,12 @@ call_stream_update_sender_states (GabbleCallStream *self)
   created_by_us = gabble_jingle_content_is_created_by_us (priv->content);
   updates = g_hash_table_new (g_direct_hash, g_direct_equal);
 
-  DEBUG ("Created by us?: %d", created_by_us);
+  DEBUG ("Created by us?: %d, State: %d", created_by_us, state);
 
   if (gabble_jingle_content_sending (priv->content))
     {
-      if (state == JINGLE_CONTENT_STATE_EMPTY && created_by_us)
-        {
-          local_state = GABBLE_SENDING_STATE_SENDING;
-        }
-      else if (created_by_us || state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        {
-          gpointer state_p;
-          gboolean exists;
-
-          exists = g_hash_table_lookup_extended (priv->senders,
-              GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
-              NULL,
-              &state_p);
-
-          if (exists && GPOINTER_TO_UINT (state_p) ==
-              GABBLE_SENDING_STATE_SENDING)
-            local_state = GABBLE_SENDING_STATE_SENDING;
-          else
-            local_state = GABBLE_SENDING_STATE_PENDING_SEND;
-        }
+      if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
+        local_state = GABBLE_SENDING_STATE_SENDING;
       else
         local_state = GABBLE_SENDING_STATE_PENDING_SEND;
     }

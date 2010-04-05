@@ -386,7 +386,7 @@ call_stream_sender_update_state (GabbleCallStream *self,
   if (exists && GPOINTER_TO_UINT (state_p) == state)
     return FALSE;
 
-  DEBUG ("Updating sender %d state: %d => %d\n", contact,
+  DEBUG ("Updating sender %d state: %d => %d", contact,
     GPOINTER_TO_UINT (state_p), state);
 
 

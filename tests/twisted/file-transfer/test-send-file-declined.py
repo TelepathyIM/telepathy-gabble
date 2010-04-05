@@ -31,13 +31,13 @@ class SendFileDeclinedTest(SendFileTest):
         # no byte has been transferred as the file was declined
         assert transferred == 0
 
-        # try to provide the file
+        # try to provide the file, assert that this finishes the test (e.g.
+        # couldn't go further because of ipv6) or that it raises
+        # cs.NOT_AVAILABLE
         try:
-            self.provide_file()
+            assert self.provide_file()
         except dbus.DBusException, e:
             assert e.get_dbus_name() == cs.NOT_AVAILABLE
-        else:
-            assert False
 
         # stop test
         return True

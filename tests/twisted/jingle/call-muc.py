@@ -14,24 +14,32 @@ from servicetest import (
     assertEquals, assertContains, assertLength, assertNotEquals
     )
 import constants as cs
-from jingletest2 import JingleTest2, test_all_dialects
+from jingletest2 import JingleTest2, test_all_dialects, JingleProtocol031
 import ns
 
 from gabbletest import make_muc_presence
 from mucutil import join_muc_and_check
 
+from callutils import *
+
 muc = "muji@test"
 
-def run_incoming_test(jp, q, bus, conn, stream):
-    conn.Connect()
+def run_incoming_test(q, bus, conn, stream):
+    jp = JingleProtocol031 ()
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'bob@bob')
+    jt.prepare()
 
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+    self_handle = conn.GetSelfHandle()
+
     _, _, test_handle, bob_handle = \
         join_muc_and_check(q, bus, conn, stream, muc)
 
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
-    muji = presence.addElement((ns.MUJI, 'muji'))
+    muji =  ('muji', ns.MUJI, {},
+        [('content', ns.MUJI, { "name": "Voice" },
+            [( 'description', None, {"media": "audio"},
+            jt.generate_payloads(jt.audio_codecs))])])
+    presence.addChild(jp._simple_xml(muji))
 
     stream.send(presence)
 
@@ -41,13 +49,43 @@ def run_incoming_test(jp, q, bus, conn, stream):
             e.args[0][0][1][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CALL )
 
     (path, props) = e.args[0][0]
+
+    assertContains((cs.CHANNEL_TYPE_CALL + '.InitialAudio', True),
+        props.items())
+    assertContains((cs.CHANNEL_TYPE_CALL + '.InitialVideo', False),
+        props.items())
+
     general_tests (jp, q, bus, conn, stream, path, props)
 
-def run_outgoing_test(jp, q, bus, conn, stream):
-    conn.Connect()
+    channel = bus.get_object (conn.bus_name, path)
+    props = channel.GetAll (cs.CHANNEL_TYPE_CALL,
+        dbus_interface = dbus.PROPERTIES_IFACE)
 
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+    content = bus.get_object (conn.bus_name, props['Contents'][0])
+
+    check_state (q, channel, cs.CALL_STATE_PENDING_RECEIVER)
+
+    codecs = jt.get_call_audio_codecs_dbus()
+
+    check_and_accept_offer (q, bus, conn, self_handle, 0,
+            content, codecs)
+    channel.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
+
+    e = q.expect ('dbus-signal', signal = 'StreamAdded')
+    cstream = bus.get_object (conn.bus_name, e.args[0])
+
+    candidates = jt.get_call_remote_transports_dbus ()
+    cstream.AddCandidates (candidates,
+        dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+
+    q.expect('stream-iq',
+        predicate=jp.action_predicate('session-initiate'))
+
+
+def run_outgoing_test(q, bus, conn, stream):
+    jp = JingleProtocol031 ()
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + '/bob')
+    jt.prepare()
 
     call_async (q, conn.Requests, 'CreateChannel',
         { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
@@ -64,16 +102,51 @@ def run_outgoing_test(jp, q, bus, conn, stream):
     (path, props) = e.value
 
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
-    muji = presence.addElement((ns.MUJI, 'muji'))
-    stream.send(presence)
+    #muji = presence.addElement((ns.MUJI, 'muji'))
+    #stream.send(presence)
 
     general_tests (jp, q, bus, conn, stream, path, props)
 
-def general_tests (jp, q, bus, conn, stream, path, props):
+    channel = bus.get_object (conn.bus_name, path)
+    channel.Accept()
 
+    props = channel.GetAll (cs.CHANNEL_TYPE_CALL,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+
+    content = bus.get_object (conn.bus_name, props['Contents'][0])
+    codecs = jt.get_call_audio_codecs_dbus()
+    content.SetCodecs(codecs)
+
+    presence = q.expect('stream-presence', to = muc + "/test")
+    mujinode = xpath.queryForNodes("/presence/muji", presence.stanza)
+    assertLength (1, mujinode)
+
+    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+    muji =  ('muji', ns.MUJI, {},
+        [('content', ns.MUJI, { "name": "Audio" },
+            [( 'description', None, {"media": "audio"},
+            jt.generate_payloads(jt.audio_codecs))])])
+    presence.addChild(jp._simple_xml(muji))
+    stream.send(presence)
+
+    # Bob appears and starts a session right afterwards
+    q.expect('dbus-signal', signal = 'CallMembersChanged')
+
+    jt.incoming_call()
+
+    e = q.expect ('dbus-signal', signal = 'StreamAdded')
+    cstream = bus.get_object (conn.bus_name, e.args[0])
+
+def general_tests (jp, q, bus, conn, stream, path, props):
     assertEquals (cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
 
-if __name__ == '__main__':
-    test_all_dialects(run_outgoing_test)
-    test_all_dialects(run_incoming_test)
+    channel = bus.get_object (conn.bus_name, path)
+    chan_props = channel.GetAll (cs.CHANNEL_TYPE_CALL,
+        dbus_interface = dbus.PROPERTIES_IFACE)
 
+    contents = chan_props['Contents']
+    assertLength(1, contents)
+
+if __name__ == '__main__':
+    exec_test (run_outgoing_test)
+    exec_test (run_incoming_test)

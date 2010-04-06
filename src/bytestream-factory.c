@@ -120,14 +120,14 @@ bytestream_id_free (gpointer v)
 static GabbleSocks5Proxy *
 gabble_socks5_proxy_new (const gchar *jid,
                          const gchar *host,
-                         const gchar *port)
+                         guint16 port)
 {
   GabbleSocks5Proxy *proxy;
 
   proxy = g_slice_new (GabbleSocks5Proxy);
   proxy->jid = g_strdup (jid);
   proxy->host = g_strdup (host);
-  proxy->port = g_strdup (port);
+  proxy->port = port;
 
   return proxy;
 }
@@ -137,7 +137,6 @@ gabble_socks5_proxy_free (GabbleSocks5Proxy *proxy)
 {
   g_free (proxy->jid);
   g_free (proxy->host);
-  g_free (proxy->port);
 
   g_slice_free (GabbleSocks5Proxy, proxy);
 }
@@ -262,7 +261,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
   found = g_slist_find_custom (*list, proxy, cmp_proxy);
   if (found != NULL)
     {
-      DEBUG ("%s SOCKS5 proxy (%s %s:%s) is already known; "
+      DEBUG ("%s SOCKS5 proxy (%s %s:%d) is already known; "
           "move it to the head of the list",
           fallback ? "Fallback": "Discovered",
           proxy->jid, proxy->host, proxy->port);
@@ -271,7 +270,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
     }
   else
     {
-      DEBUG ("Add %s SOCKS5 proxy: %s %s:%s",
+      DEBUG ("Add %s SOCKS5 proxy: %s %s:%d",
           fallback ? "fallback": "discovered",
           proxy->jid, proxy->host, proxy->port);
 
@@ -306,7 +305,8 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
       self);
   LmMessageNode *query, *streamhost;
   const gchar *from;
-  const gchar *jid, *host, *port;
+  const gchar *jid, *host, *portstr;
+  gint64 port;
   GabbleSocks5Proxy *proxy;
   gboolean fallback = GPOINTER_TO_INT (user_data);
   GSList *found = NULL;
@@ -329,9 +329,14 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 
   jid = lm_message_node_get_attribute (streamhost, "jid");
   host = lm_message_node_get_attribute (streamhost, "host");
-  port = lm_message_node_get_attribute (streamhost, "port");
+  portstr = lm_message_node_get_attribute (streamhost, "port");
 
-  if (jid == NULL || host == NULL || port == NULL)
+  if (jid == NULL || host == NULL || portstr == NULL)
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  port = g_ascii_strtoll (portstr, NULL, 10);
+
+  if (port <= 0 || port > G_MAXUINT16)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 
   proxy = gabble_socks5_proxy_new (jid, host, port);

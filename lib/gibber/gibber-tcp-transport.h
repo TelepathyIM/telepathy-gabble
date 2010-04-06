@@ -60,7 +60,7 @@ GibberTCPTransport *
 gibber_tcp_transport_new (void);
 
 void gibber_tcp_transport_connect (GibberTCPTransport *tcp_transport,
-    const gchar *host, const gchar *port);
+    const gchar *host, guint16 port);
 
 G_END_DECLS
 

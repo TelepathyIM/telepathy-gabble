@@ -956,21 +956,18 @@ new_connection_to_socket (GabbleTubeStream *self,
       priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
       gchar *ip;
-      gchar *port_str;
-      guint port;
+      guint16 port;
 
       dbus_g_type_struct_get (priv->address,
           0, &ip,
           1, &port,
           G_MAXUINT);
-      port_str = g_strdup_printf ("%d", port);
 
       transport = GIBBER_TRANSPORT (gibber_tcp_transport_new ());
       gibber_tcp_transport_connect (GIBBER_TCP_TRANSPORT (transport), ip,
-          port_str);
+          port);
 
       g_free (ip);
-      g_free (port_str);
     }
   else
     {

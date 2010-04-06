@@ -522,6 +522,8 @@ gabble_call_member_open_session (GabbleCallMember *self,
 
   gabble_call_member_set_session (self, session);
 
+  g_free (jid);
+
   return TRUE;
 }
 

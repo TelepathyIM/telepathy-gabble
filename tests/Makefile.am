@@ -23,7 +23,12 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
 
 TESTS = $(noinst_PROGRAMS)
 
-TESTS_ENVIRONMENT = G_DEBUG=fatal-warnings,fatal-criticals
+TESTS_ENVIRONMENT = \
+  abs_top_builddir=@abs_top_builddir@ \
+  G_DEBUG=fatal-warnings,fatal-criticals \
+  sh $(top_srcdir)/tests/twisted/tools/with-session-bus.sh \
+    --config-file=$(top_srcdir)/tests/twisted/tools/tmp-session-bus.conf --
+
 
 check-valgrind: $(TESTS)
 	G_SLICE=always-malloc \

@@ -524,9 +524,10 @@ typedef struct {
 } GetContactCapsClosure;
 
 static void
-get_contact_caps_foreach (gpointer ns,
+get_contact_caps_foreach (gpointer data,
     gpointer user_data)
 {
+  const gchar *ns = data;
   GetContactCapsClosure *closure = user_data;
 
   if (!g_str_has_prefix (ns, NS_TUBES))

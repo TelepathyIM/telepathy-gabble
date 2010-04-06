@@ -332,12 +332,12 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   portstr = lm_message_node_get_attribute (streamhost, "port");
 
   if (jid == NULL || host == NULL || portstr == NULL)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    goto fail;
 
   port = g_ascii_strtoll (portstr, NULL, 10);
 
   if (port <= 0 || port > G_MAXUINT16)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    goto fail;
 
   proxy = gabble_socks5_proxy_new (jid, host, port);
 

@@ -53,6 +53,17 @@ AS_COMPILER_FLAG(-Wno-missing-field-initializers,
 AS_COMPILER_FLAG(-Wno-unused-parameter,
         wno_unused_parameter=yes,
         wno_unused_parameter=no)
+AS_COMPILER_FLAG(-Wno-deprecated-declarations,
+        wno_deprecated_declarations=yes,
+        wno_deprecated_declarations=no)
+
+# -Wdeprecated-declarations is on by default, so if we can't have it, then
+# we can't safely make warnings fatal
+if test "x$wno_deprecated_declarations" = xyes; then
+    ERROR_CFLAGS="$ERROR_CFLAGS -Wno-deprecated-declarations"
+else
+    werror=no
+fi
 
 ifelse(gabble_nano_version, 0, [],
     [

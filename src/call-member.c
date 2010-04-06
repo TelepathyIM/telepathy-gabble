@@ -498,7 +498,7 @@ gabble_call_member_accept (GabbleCallMember *self)
 
 /**
  * Start a new session using the existing contents for this member. For now
- * assumes we're using the latest jingle dialec and ice-udp
+ * assumes we're using the latest jingle dialect and ice-udp
  * FIXME: make dialect and transport selection more dynamic?
  */
 gboolean

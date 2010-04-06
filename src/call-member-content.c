@@ -243,7 +243,7 @@ gabble_call_member_content_class_init (
     param_spec);
 
   param_spec = g_param_spec_object ("member", "CallMember",
-      "The call member  that has this as a content",
+      "The call member that has this as a content",
       GABBLE_TYPE_CALL_MEMBER,
       G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEMBER,

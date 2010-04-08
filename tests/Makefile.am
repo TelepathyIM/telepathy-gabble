@@ -27,7 +27,7 @@ TESTS_ENVIRONMENT = \
   abs_top_builddir=@abs_top_builddir@ \
   G_DEBUG=fatal-warnings,fatal-criticals \
   sh $(top_srcdir)/tests/twisted/tools/with-session-bus.sh \
-    --config-file=$(top_srcdir)/tests/twisted/tools/tmp-session-bus.conf --
+    --config-file=$(top_builddir)/tests/twisted/tools/tmp-session-bus.conf --
 
 
 check-valgrind: $(TESTS)

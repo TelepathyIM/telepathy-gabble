@@ -1043,7 +1043,7 @@ http_read_line (gchar *buffer, guint len)
     {
       *p = 0;
       if (p > buffer && *(p-1) == '\r')
-        *(p-1) = 0;
+        *(p-1) = '\0';
       p++;
     }
 
@@ -1089,7 +1089,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
 
           DEBUG ("Found server headers line (%d) : %s", strlen (line), line);
           /* FIXME: how about content-length and an actual body ? */
-          if (*line == 0)
+          if (line[0] == '\0')
             {
               gchar *response = NULL;
               gchar *get_line = NULL;
@@ -1201,7 +1201,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
             return 0;
 
           DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
-          if (*line == 0)
+          if (line[0] == '\0')
             {
               DEBUG ("Found empty line, now receiving file data");
               if (g_str_has_prefix (share_channel->status_line,

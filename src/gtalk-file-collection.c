@@ -1222,6 +1222,11 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
                 }
               else
                 {
+                  /* We expect content-length to be 0 and no chunks for
+                     non-200 statuses (404 error) */
+                  g_assert (!share_channel->is_chunked);
+                  g_assert (share_channel->content_length == 0);
+
                   get_next_manifest_entry (self, share_channel, TRUE);
                 }
             }
@@ -1377,6 +1382,8 @@ nice_data_received_cb (NiceAgent *agent,
       else
         {
           /* we assume http_data_received never returns consumed > len */
+          g_assert (consumed <= len);
+
           len -= consumed;
           buffer += consumed;
         }

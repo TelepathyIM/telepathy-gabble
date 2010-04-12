@@ -750,7 +750,7 @@ get_next_manifest_entry (GTalkFileCollection *self,
     {
       gchar *buffer = NULL;
       gchar *source_url = manifest->source_url;
-      guint url_len = source_url != NULL? strlen (source_url) : 0;
+      guint url_len = (source_url != NULL? strlen (source_url) : 0);
       gchar *separator = "";
       gchar *filename = NULL;
 
@@ -767,7 +767,8 @@ get_next_manifest_entry (GTalkFileCollection *self,
           "Content-Length: 0\r\n"
           "Host: %s:0\r\n" /* e.g. alice@example.com/Empathy:0 */
           "User-Agent: %s\r\n\r\n",
-          source_url != NULL?source_url:"", separator, filename,
+          (source_url != NULL ? source_url : ""),
+          separator, filename,
           gabble_jingle_session_get_initiator (self->priv->jingle),
           PACKAGE_STRING);
       g_free (filename);
@@ -1121,12 +1122,13 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
               manifest = gabble_jingle_share_get_manifest (
                   share_channel->content);
               source_url = manifest->source_url;
-              url_len = source_url != NULL?strlen (source_url):0;
+              url_len = (source_url != NULL? strlen (source_url) : 0);
               if (source_url != NULL && source_url[url_len -1] != '/')
                 separator = "/";
 
               get_line = g_strdup_printf ("GET %s%s%%s HTTP/1.1",
-                  source_url != NULL? source_url:"", separator);
+                  (source_url != NULL ? source_url : ""),
+                  separator);
               filename = g_malloc (strlen (share_channel->status_line));
 
               if (sscanf (share_channel->status_line, get_line, filename) == 1)

@@ -717,8 +717,8 @@ get_next_manifest_entry (GTalkFileCollection *self,
 
       entry = i->data;
 
-      filename = g_strdup_printf ("%s%s",
-          entry->name, entry->folder? ".tar":"");
+      filename = g_strdup_printf ("%s%s", entry->name,
+          (entry->folder ? ".tar" : ""));
       channel = get_channel_by_filename (self, filename);
       g_free (filename);
       if (channel != NULL)
@@ -753,7 +753,7 @@ get_next_manifest_entry (GTalkFileCollection *self,
       buffer = g_strdup_printf ("GET %s%s%s HTTP/1.1\r\n"
           "Connection: Keep-Alive\r\n"
           "Content-Length: 0\r\n"
-          "Host: %s:0\r\n"
+          "Host: %s:0\r\n" /* e.g. alice@example.com/Empathy:0 */
           "User-Agent: %s\r\n\r\n",
           source_url, separator, filename,
           gabble_jingle_session_get_initiator (self->priv->jingle),
@@ -1031,7 +1031,9 @@ free_share_channel (gpointer data)
 }
 
 
-/* Return the pointer at the end of the line or NULL if not \n found */
+/* If buffer contains a line ending, 0-terminate the first line and
+ * return a pointer to the beginning of the next line. Otherwise
+ * return NULL. */
 static gchar *
 http_read_line (gchar *buffer, guint len)
 {
@@ -1144,7 +1146,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
               else
                 {
                   DEBUG ("Unable to find valid filename (%s), result : 404",
-                      filename);
+                      (filename != NULL? filename : ""));
 
                   share_channel->http_status = HTTP_SERVER_IDLE;
                   response = g_strdup_printf ("HTTP/1.1 404\r\n"

@@ -101,10 +101,6 @@ def run_outgoing_test(q, bus, conn, stream):
 
     (path, props) = e.value
 
-    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
-    #muji = presence.addElement((ns.MUJI, 'muji'))
-    #stream.send(presence)
-
     general_tests (jp, q, bus, conn, stream, path, props)
 
     channel = bus.get_object (conn.bus_name, path)

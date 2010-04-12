@@ -1434,18 +1434,11 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
        * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */
       si_resource = gabble_presence_pick_resource_by_caps (presence,
           gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
-
-      if (si_resource == NULL)
-        si = FALSE;
-      else
-        si = TRUE;
+      si = (si_resource != NULL);
 
       share_resource = gabble_presence_pick_resource_by_caps (presence,
           gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_SHARE);
-      if (share_resource == NULL)
-        jingle_share = FALSE;
-      else
-        jingle_share = TRUE;
+      jingle_share  = (share_resource != NULL);
     }
   else
     {
@@ -1460,9 +1453,13 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       (!jingle_share ||
           gabble_jingle_factory_get_google_relay_token (
               self->priv->connection->jingle_factory) == NULL))
-    result = offer_bytestream (self, jid, si_resource, error);
+    {
+      result = offer_bytestream (self, jid, si_resource, error);
+    }
   else if (jingle_share)
-    result = offer_gtalk_file_transfer (self, jid, share_resource, error);
+    {
+      result = offer_gtalk_file_transfer (self, jid, share_resource, error);
+    }
   else
     {
       DEBUG ("contact doesn't have file transfer capabilities");

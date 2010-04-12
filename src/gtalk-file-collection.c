@@ -677,7 +677,8 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
   gabble_jingle_content_set_transport_state (content, ts);
 }
 
-static void get_next_manifest_entry (GTalkFileCollection *self,
+static void
+get_next_manifest_entry (GTalkFileCollection *self,
     ShareChannel *share_channel, gboolean error)
 {
   GabbleJingleShareManifest *manifest = NULL;

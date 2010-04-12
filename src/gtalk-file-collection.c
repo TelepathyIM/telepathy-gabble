@@ -1087,7 +1087,8 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found server headers line (%d) : %s", strlen (line), line);
+          DEBUG ("Found server headers line (" G_GSIZE_FORMAT ") : %s",
+              strlen (line), line);
           /* FIXME: how about content-length and an actual body ? */
           if (line[0] == '\0')
             {
@@ -1138,7 +1139,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
                   share_channel->http_status = HTTP_SERVER_SEND;
                   response = g_strdup_printf ("HTTP/1.1 200\r\n"
                       "Connection: Keep-Alive\r\n"
-                      "Content-Length: %llu\r\n"
+                      "Content-Length: %" G_GUINT64_FORMAT "\r\n"
                       "Content-Type: application/octet-stream\r\n\r\n",
                       size);
 
@@ -1200,7 +1201,8 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found client headers line (%d) : %s", strlen (line), line);
+          DEBUG ("Found client headers line (" G_GSIZE_FORMAT ") : %s",
+              strlen (line), line);
           if (line[0] == '\0')
             {
               DEBUG ("Found empty line, now receiving file data");
@@ -1229,7 +1231,8 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
               /* Check strtoull read all the length */
               share_channel->content_length = g_ascii_strtoull (line + 16,
                   NULL, 10);
-              DEBUG ("Found data length : %llu", share_channel->content_length);
+              DEBUG ("Found data length : %" G_GUINT64_FORMAT,
+                  share_channel->content_length);
             }
           else if (!g_ascii_strncasecmp (line,
                   "Transfer-Encoding: chunked", 26))

@@ -1205,7 +1205,9 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
               strlen (line), line);
           if (line[0] == '\0')
             {
-              DEBUG ("Found empty line, now receiving file data");
+              DEBUG ("Found empty line, GET response : %s",
+                  share_channel->status_line);
+
               if (g_str_has_prefix (share_channel->status_line,
                       "HTTP/1.1 200"))
                 {
@@ -1224,10 +1226,25 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
                 {
                   /* We expect content-length to be 0 and no chunks for
                      non-200 statuses (404 error) */
-                  g_assert (!share_channel->is_chunked);
-                  g_assert (share_channel->content_length == 0);
+                  if (share_channel->is_chunked ||
+                      share_channel->content_length != 0)
+                    {
+                      GList *i;
 
-                  get_next_manifest_entry (self, share_channel, TRUE);
+                      DEBUG ("Unexpected body for non-200 error!");
+                      for (i = self->priv->channels; i;)
+                        {
+                          GabbleFileTransferChannel *channel = i->data;
+
+                          i = i->next;
+                          gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+                              channel, GTALK_FILE_COLLECTION_STATE_ERROR, FALSE);
+                        }
+                    }
+                  else
+                    {
+                      get_next_manifest_entry (self, share_channel, TRUE);
+                    }
                 }
             }
           else if (!g_ascii_strcasecmp (line, "Content-Length: "))

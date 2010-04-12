@@ -1225,7 +1225,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
                   get_next_manifest_entry (self, share_channel, TRUE);
                 }
             }
-          else if (!g_ascii_strncasecmp (line, "Content-Length: ", 16))
+          else if (!g_ascii_strcasecmp (line, "Content-Length: "))
             {
               share_channel->is_chunked = FALSE;
               /* Check strtoull read all the length */
@@ -1234,8 +1234,8 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
               DEBUG ("Found data length : %" G_GUINT64_FORMAT,
                   share_channel->content_length);
             }
-          else if (!g_ascii_strncasecmp (line,
-                  "Transfer-Encoding: chunked", 26))
+          else if (!g_ascii_strcasecmp (line,
+                  "Transfer-Encoding: chunked"))
             {
               share_channel->is_chunked = TRUE;
               share_channel->content_length = 0;

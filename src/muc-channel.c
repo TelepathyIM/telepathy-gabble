@@ -2404,8 +2404,8 @@ handle_join (WockyMuc *muc,
       GError *error = NULL;
       gboolean sent = FALSE;
       WockyXmppStanza *accept = wocky_xmpp_stanza_build (
-          WOCKY_STANZA_TYPE_IQ,
-          WOCKY_STANZA_SUB_TYPE_SET,
+          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+          NULL, NULL,
             WOCKY_NODE, "query", WOCKY_NODE_XMLNS, WOCKY_NS_MUC_OWN,
               WOCKY_NODE, "x", WOCKY_NODE_XMLNS, WOCKY_XMPP_NS_DATA,
                 WOCKY_NODE_ATTRIBUTE, "type", "submit",

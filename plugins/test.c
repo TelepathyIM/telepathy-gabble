@@ -375,12 +375,12 @@ sidecar_iq_init_async (
 
   iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_GET, NULL, "sidecar.example.com",
-        WOCKY_NODE, "query",
-          WOCKY_NODE_XMLNS, "http://example.com/sidecar",
-          WOCKY_NODE, "oh-hai",
-          WOCKY_NODE_END,
-        WOCKY_NODE_END,
-      WOCKY_STANZA_END);
+        '(', "query",
+          ':', "http://example.com/sidecar",
+          '(', "oh-hai",
+          ')',
+        ')',
+      NULL);
   wocky_porter_send_iq_async (porter, iq, cancellable, iq_cb, result);
 }
 

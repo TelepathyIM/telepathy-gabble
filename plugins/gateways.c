@@ -280,7 +280,7 @@ presence_cb (WockyPorter *porter,
       DEBUG ("Allowing gateway '%s' to subscribe to us", normalized);
       reply = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
           WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, NULL, normalized,
-          WOCKY_STANZA_END);
+          NULL);
       wocky_porter_send (porter, reply);
       g_object_unref (reply);
     }
@@ -318,11 +318,11 @@ gabble_gateway_sidecar_constructed (GObject *object)
   self->priv->subscribe_id = wocky_porter_register_handler (porter,
       WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, NULL,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
-      WOCKY_STANZA_END);
+      NULL);
   self->priv->subscribed_id = wocky_porter_register_handler (porter,
       WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, NULL,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
-      WOCKY_STANZA_END);
+      NULL);
 }
 
 static void
@@ -447,7 +447,7 @@ register_cb (GObject *source,
        * harmless if we're already subscribed to it?) */
       request = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
           WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, NULL, pr->gateway,
-          WOCKY_STANZA_END);
+          NULL);
       wocky_porter_send (porter, request);
       g_object_unref (request);
 
@@ -523,15 +523,15 @@ gateways_register (
   stanza = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET,
       NULL, normalized_gateway,
-        WOCKY_NODE, "query", WOCKY_NODE_XMLNS, WOCKY_XEP77_NS_REGISTER,
-          WOCKY_NODE, "username",
-            WOCKY_NODE_TEXT, username,
-          WOCKY_NODE_END,
-          WOCKY_NODE, "password",
-            WOCKY_NODE_TEXT, password,
-          WOCKY_NODE_END,
-        WOCKY_NODE_END,
-      WOCKY_STANZA_END);
+        '(', "query", ':', WOCKY_XEP77_NS_REGISTER,
+          '(', "username",
+            '$', username,
+          ')',
+          '(', "password",
+            '$', password,
+          ')',
+        ')',
+      NULL);
 
   wocky_porter_send_iq_async (porter, stanza, NULL, register_cb,
       pending_registration_new (context, normalized_gateway));

@@ -25,7 +25,7 @@ lm_message_new (const gchar *to,
     LmMessageType type)
 {
   return wocky_xmpp_stanza_build (type, WOCKY_STANZA_SUB_TYPE_NONE,
-      NULL, to, WOCKY_STANZA_END);
+      NULL, to, NULL);
 }
 
 LmMessage *
@@ -34,7 +34,7 @@ lm_message_new_with_sub_type (const gchar *to,
     LmMessageSubType sub_type)
 {
   return wocky_xmpp_stanza_build (type, sub_type,
-      NULL, to, WOCKY_STANZA_END);
+      NULL, to, NULL);
 }
 
 LmMessage *

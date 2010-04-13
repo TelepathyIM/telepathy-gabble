@@ -2406,12 +2406,12 @@ handle_join (WockyMuc *muc,
       WockyXmppStanza *accept = wocky_xmpp_stanza_build (
           WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
           NULL, NULL,
-            WOCKY_NODE, "query", WOCKY_NODE_XMLNS, WOCKY_NS_MUC_OWN,
-              WOCKY_NODE, "x", WOCKY_NODE_XMLNS, WOCKY_XMPP_NS_DATA,
-                WOCKY_NODE_ATTRIBUTE, "type", "submit",
-              WOCKY_NODE_END,
-            WOCKY_NODE_END,
-          WOCKY_STANZA_END);
+            '(', "query", ':', WOCKY_NS_MUC_OWN,
+              '(', "x", ':', WOCKY_XMPP_NS_DATA,
+                '@', "type", "submit",
+              ')',
+            ')',
+          NULL);
 
       sent = _gabble_connection_send_with_reply (priv->conn, accept,
           room_created_submit_reply_cb, data, NULL, &error);

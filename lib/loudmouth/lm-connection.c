@@ -78,7 +78,7 @@ lm_connection_register_message_handler (LmConnection *connection,
 
   handler->handler_id = wocky_porter_register_handler (connection->porter,
       type, WOCKY_STANZA_SUB_TYPE_NONE, NULL, priority, stanza_cb,
-      handler, WOCKY_STANZA_END);
+      handler, NULL);
 }
 
 void

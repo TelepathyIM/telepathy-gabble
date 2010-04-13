@@ -554,10 +554,10 @@ update_unread_mails (GabbleConnection *conn)
 
   query = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_GET, NULL, NULL,
-      WOCKY_NODE, "query",
-      WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
-      WOCKY_NODE_END,
-      WOCKY_STANZA_END);
+      '(', "query",
+        ':', NS_GOOGLE_MAIL_NOTIFY,
+      ')',
+      NULL);
   wocky_porter_send_iq_async (porter, query, NULL, query_unread_mails_cb, conn);
   g_object_unref (query);
 }
@@ -596,10 +596,10 @@ connection_status_changed (GabbleConnection *conn,
             WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
             NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
             new_mail_handler, conn,
-            WOCKY_NODE, "new-mail",
-              WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
-              WOCKY_NODE_END,
-              WOCKY_STANZA_END);
+            '(', "new-mail",
+              ':', NS_GOOGLE_MAIL_NOTIFY,
+            ')',
+            NULL);
     }
 }
 

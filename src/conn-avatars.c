@@ -1,7 +1,7 @@
 /*
  * conn-avatars.c - Gabble connection avatar interface
- * Copyright (C) 2005-2007 Collabora Ltd.
- * Copyright (C) 2005-2007 Nokia Corporation
+ * Copyright (C) 2005-2010 Collabora Ltd.
+ * Copyright (C) 2005-2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -819,8 +819,9 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
+  GabbleVCardManagerEditInfo *edit_info;
+  GList *edits = NULL;
   struct _set_avatar_ctx *ctx;
-  gchar *value = NULL;
   gchar *base64;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
@@ -828,20 +829,34 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
   ctx = g_new0 (struct _set_avatar_ctx, 1);
   ctx->conn = self;
   ctx->invocation = context;
-  if (avatar)
+
+  if (avatar != NULL && avatar->len > 0)
     {
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
       base64 = base64_encode (avatar->len, avatar->data, TRUE);
-      value = g_strdup_printf ("%s %s", mime_type, base64);
+
+      DEBUG ("Replacing avatar");
+
+      edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
+          NULL, GABBLE_VCARD_EDIT_REPLACE,
+          "TYPE", mime_type,
+          "BINVAL", base64,
+          NULL);
+
       g_free (base64);
     }
+  else
+    {
+      DEBUG ("Removing avatar");
+      edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
+          NULL, GABBLE_VCARD_EDIT_DELETE, NULL);
+    }
 
-  DEBUG ("called");
+  edits = g_list_append (edits, edit_info);
 
   gabble_vcard_manager_edit (self->vcard_manager, 0,
       _set_avatar_cb2, ctx, (GObject *) self,
-      1, "PHOTO", value);
-  g_free (value);
+      edits);
 }
 
 

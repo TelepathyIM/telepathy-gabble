@@ -21,7 +21,6 @@ def test(q, bus, conn, stream):
 
     handle = conn.GetSelfHandle()
     call_async(q, conn.Aliasing, 'SetAliases', {handle: 'Robert the Bruce'})
-    q.expect('dbus-return', method='SetAliases')
     sync_dbus(bus, q, conn)
     acknowledge_iq(stream, vcard_get_event.stanza)
 

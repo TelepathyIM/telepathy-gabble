@@ -21,6 +21,7 @@ def test(q, bus, conn, stream):
 
     handle = conn.GetSelfHandle()
     call_async(q, conn.Aliasing, 'SetAliases', {handle: 'Robert the Bruce'})
+    q.expect('dbus-return', method='SetAliases')
     sync_dbus(bus, q, conn)
     acknowledge_iq(stream, vcard_get_event.stanza)
 
@@ -69,11 +70,13 @@ def test(q, bus, conn, stream):
     # This acknowledgement is for the avatar; SetAvatar won't happen
     # until this has
     acknowledge_iq(stream, vcard_set_event.stanza)
-    q.expect('dbus-return', method='SetAvatar')
 
     # This sets the ContactInfo
-    vcard_set_event = q.expect('stream-iq', iq_type='set',
-        query_ns=ns.VCARD_TEMP, query_name='vCard')
+    vcard_set_event, ev = q.expect_many(
+        EventPattern('stream-iq', iq_type='set',
+                     query_ns=ns.VCARD_TEMP, query_name='vCard'),
+        EventPattern('dbus-return', method='SetAvatar'))
+
     assertEquals('Bob', xpath.queryForString('/iq/vCard/NICKNAME',
         vcard_set_event.stanza))
     assertLength(1, xpath.queryForNodes('/iq/vCard/PHOTO',
@@ -100,10 +103,11 @@ def test(q, bus, conn, stream):
     # This acknowledgement is for the ContactInfo; SetContactInfo won't happen
     # until this has
     acknowledge_iq(stream, vcard_set_event.stanza)
-    q.expect('dbus-return', method='SetContactInfo')
 
-    vcard_set_event = q.expect('stream-iq', iq_type='set',
-        query_ns=ns.VCARD_TEMP, query_name='vCard')
+    vcard_set_event, ev = q.expect_many(
+        EventPattern('stream-iq', iq_type='set',
+                     query_ns=ns.VCARD_TEMP, query_name='vCard'),
+        EventPattern('dbus-return', method='SetContactInfo'))
     assertEquals('Bob', xpath.queryForString('/iq/vCard/NICKNAME',
         vcard_set_event.stanza))
     assertEquals(None, xpath.queryForNodes('/iq/vCard/PHOTO',

@@ -479,20 +479,6 @@ gabble_connection_get_contact_info (
           g_hash_table_insert (ret, GUINT_TO_POINTER (contact),
               contact_info);
         }
-      else
-        {
-          if (g_hash_table_lookup (self->vcard_requests,
-                                   GUINT_TO_POINTER (contact)) == NULL)
-            {
-              GabbleVCardManagerRequest *request;
-
-              request = gabble_vcard_manager_request (self->vcard_manager,
-                contact, 0, _request_vcards_cb, self, NULL);
-
-              g_hash_table_insert (self->vcard_requests,
-                  GUINT_TO_POINTER (contact), request);
-            }
-        }
     }
 
   gabble_svc_connection_interface_contact_info_return_from_get_contact_info (

@@ -171,6 +171,9 @@ struct _GabbleConnection {
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
 
+    /* outstanding vcard requests */
+    GHashTable *vcard_requests;
+
     /* jingle factory */
     GabbleJingleFactory *jingle_factory;
 
@@ -198,6 +201,9 @@ struct _GabbleConnection {
     GHashTable *unread_mails;
     guint unread_mails_count;
     guint new_mail_handler_id;
+
+    /* ContactInfo.SupportedFields, or NULL to use the generic one */
+    GPtrArray *contact_info_fields;
 
     GabbleConnectionPrivate *priv;
 };

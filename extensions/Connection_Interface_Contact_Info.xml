@@ -162,7 +162,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         name="Contact_Info"/>
     </tp:mapping>
 
-    <signal name="ContactInfoChanged" tp:name-for-bindings="ContactInfoChanged">
+    <signal name="ContactInfoChanged" tp:name-for-bindings="Contact_Info_Changed">
       <arg name="Contact" type="u" tp:type="Contact_Handle">
         <tp:docstring>
           An integer handle for the contact whose info has changed.

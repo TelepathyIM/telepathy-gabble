@@ -72,7 +72,7 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, vcard_set_event.stanza)
 
     # This sets the ContactInfo
-    vcard_set_event, ev = q.expect_many(
+    vcard_set_event, _ = q.expect_many(
         EventPattern('stream-iq', iq_type='set',
                      query_ns=ns.VCARD_TEMP, query_name='vCard'),
         EventPattern('dbus-return', method='SetAvatar'))
@@ -104,7 +104,7 @@ def test(q, bus, conn, stream):
     # until this has
     acknowledge_iq(stream, vcard_set_event.stanza)
 
-    vcard_set_event, ev = q.expect_many(
+    vcard_set_event, _ = q.expect_many(
         EventPattern('stream-iq', iq_type='set',
                      query_ns=ns.VCARD_TEMP, query_name='vCard'),
         EventPattern('dbus-return', method='SetContactInfo'))

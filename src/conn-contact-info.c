@@ -549,6 +549,58 @@ _request_vcard_cb (GabbleVCardManager *self,
 }
 
 /**
+ * gabble_connection_refresh_contact_info
+ *
+ * Implements D-Bus method RefreshContactInfo
+ * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
+ *
+ * @context: The D-Bus invocation context to use to return values
+ *           or throw an error.
+ */
+static void
+gabble_connection_refresh_contact_info (GabbleSvcConnectionInterfaceContactInfo *iface,
+                                        const GArray *contacts,
+                                        DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contacts_repo =
+      tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+  GError *error = NULL;
+  guint i;
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (TP_BASE_CONNECTION (iface),
+      context);
+
+  if (!tp_handles_are_valid (contacts_repo, contacts, FALSE, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle contact = g_array_index (contacts, TpHandle, i);
+
+      if (g_hash_table_lookup (self->vcard_requests,
+                               GUINT_TO_POINTER (contact)) == NULL)
+        {
+          GabbleVCardManagerRequest *request;
+
+          request = gabble_vcard_manager_request (self->vcard_manager,
+            contact, 0, _request_vcards_cb, self, NULL);
+
+          g_hash_table_insert (self->vcard_requests,
+              GUINT_TO_POINTER (contact), request);
+        }
+    }
+
+  gabble_svc_connection_interface_contact_info_return_from_refresh_contact_info (
+      context);
+}
+
+/**
  * gabble_connection_request_contact_info
  *
  * Implements D-Bus method RequestContactInfo
@@ -1057,6 +1109,7 @@ conn_contact_info_iface_init (gpointer g_iface, gpointer iface_data)
 #define IMPLEMENT(x) gabble_svc_connection_interface_contact_info_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(get_contact_info);
+  IMPLEMENT(refresh_contact_info);
   IMPLEMENT(request_contact_info);
   IMPLEMENT(set_contact_info);
 #undef IMPLEMENT

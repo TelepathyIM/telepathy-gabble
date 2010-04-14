@@ -88,6 +88,7 @@ TWISTED_TESTS = \
 	vcard/item-not-found.py \
 	vcard/overlapping-sets.py \
 	vcard/redundant-set.py \
+	vcard/refresh-contact-info.py \
 	vcard/set-contact-info.py \
 	vcard/set-set-disconnect.py \
 	vcard/supported-fields.py \

@@ -941,7 +941,7 @@ conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
       if (field->types[0] == NULL)
         {
           field->tp_flags |=
-            GABBLE_CONTACT_INFO_FIELD_FLAG_PARAMETERS_MANDATORY;
+            GABBLE_CONTACT_INFO_FIELD_FLAG_PARAMETERS_EXACT;
         }
 
 #ifndef G_DISABLE_ASSERT

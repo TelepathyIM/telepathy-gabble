@@ -20,7 +20,7 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
 
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    call_async(q, conn.ContactInfo, 'GetContactInfo', [handle])
+    call_async(q, conn.ContactInfo, 'RefreshContactInfo', [handle])
 
     event = q.expect('stream-iq', to='bob@foo.com', query_ns='vcard-temp',
         query_name='vCard')
@@ -45,7 +45,7 @@ def test(q, bus, conn, stream):
 
     q.expect('dbus-signal', signal='ContactInfoChanged')
 
-    # A second request should be satisfied from the cache.
+    # The request should be satisfied from the cache.
     assertEquals(
         {handle: [(u'fn', [], [u'Bob']),
                   (u'n', [], [u'', u'Bob', u'', u'', u'']),

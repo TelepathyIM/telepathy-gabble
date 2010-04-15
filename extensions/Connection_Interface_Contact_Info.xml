@@ -17,9 +17,8 @@ Lesser General Public License for more details.</p>
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
   </tp:license>
-  <interface name="org.freedesktop.Telepathy.Connection.Interface.ContactInfo.DRAFT"
-    tp:causes-havoc="experimental">
-    <tp:added version="0.17.18">(as a draft)</tp:added>
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.ContactInfo">
+    <tp:added version="0.19.4">(as stable API)</tp:added>
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
 
     <tp:struct name="Contact_Info_Field" array-name="Contact_Info_Field_List">
@@ -221,7 +220,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           Integer handles for contacts.
         </tp:docstring>
       </arg>
-      <tp:added version="0.19.UNRELEASED"/>
       <tp:docstring>
         Retrieve information for the given contact, requesting it from the
         network if an up-to-date version is not cached locally. This method
@@ -410,8 +408,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           <tp:member-ref>ContactInfoFlags</tp:member-ref> does not contain the
           Can_Set flag.</p>
 
-        <p>For example, an implementation of XEP-0054, which defines a mapping
-          of vCards to XML for use over XMPP, would set this property to the
+        <p>For example, a protocol in which arbitrary vCards were stored
+          as-is would set this property to the
           empty list. A protocol whose notion of contact information is one
           each of personal phone number, mobile phone number, location, email
           address and date of birth, with no attributes allowed on each piece
@@ -420,22 +418,24 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
         <pre>
 [
-  ('tel', ['home'], Parameters_Exact, 1),
-  ('tel', ['cell'], Parameters_Exact, 1),
+  ('tel', ['type=home'], Parameters_Exact, 1),
+  ('tel', ['type=cell'], Parameters_Exact, 1),
   ('adr', [], Parameters_Exact, 1),
   ('bday', [], Parameters_Exact, 1),
-  ('email', ['internet'], Parameters_Exact, 1),
+  ('email', ['type=internet'], Parameters_Exact, 1),
 ]</pre>
 
         <p>A protocol which allows users to specify up to four phone numbers,
           which may be labelled as personal and/or mobile, would set this
-          property to <code>[ ('tel', ['home', 'cell'], 0, 4), ]</code>.</p>
+          property to
+          <code>[ ('tel', ['type=home', 'type=cell'], 0, 4), ]</code>.</p>
 
         <tp:rationale>
           <p>Studying existing IM protocols shows that in practice protocols
             allow either a very restricted set of fields (such as MSN, which
-            seems to correspond roughly to the largest example above) or
-            something mapping 1-1 to vCard (such as XMPP).</p>
+            seems to correspond roughly to the largest example above), or
+            something mapping 1:1 to a large subset of vCard (such as XMPP's
+            XEP-0054).</p>
         </tp:rationale>
 
         <p>This property MAY change, without change notification, at any time

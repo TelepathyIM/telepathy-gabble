@@ -321,7 +321,8 @@ send_data_to (GabbleBytestreamMuc *self,
 
   if (groupchat)
     {
-      lm_message_node_set_attribute (msg->node, "type", "groupchat");
+      lm_message_node_set_attribute (wocky_stanza_get_top_node (msg),
+          "type", "groupchat");
     }
 
   sent = 0;
@@ -427,8 +428,8 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
 
   /* caller must have checked for this in order to know which bytestream to
    * route this packet to */
-  data = lm_message_node_get_child_with_namespace (msg->node, "data",
-      NS_MUC_BYTESTREAM);
+  data = lm_message_node_get_child_with_namespace (
+    wocky_stanza_get_top_node (msg), "data", NS_MUC_BYTESTREAM);
   g_assert (data != NULL);
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
@@ -438,7 +439,8 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
       return;
     }
 
-  from = lm_message_node_get_attribute (msg->node, "from");
+  from = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (msg), "from");
   g_return_if_fail (from != NULL);
   sender = tp_handle_lookup (contact_repo, from,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);

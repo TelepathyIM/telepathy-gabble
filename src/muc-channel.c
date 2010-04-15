@@ -289,27 +289,27 @@ static TpHandle create_room_identity (GabbleMucChannel *)
 /*  signatures for presence handlers */
 
 static void handle_fill_presence (WockyMuc *muc,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     gpointer user_data);
 
 static void handle_renamed (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     gpointer data);
 
 static void handle_error (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     WockyXmppError errnum,
     const gchar *message,
     gpointer data);
 
 static void handle_join (WockyMuc *muc,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     gpointer data);
 
 static void handle_parted (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     const gchar *actor_jid,
     const gchar *why,
@@ -317,7 +317,7 @@ static void handle_parted (GObject *source,
     gpointer data);
 
 static void handle_left (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     WockyMucMember *who,
     const gchar *actor_jid,
@@ -326,13 +326,13 @@ static void handle_left (GObject *source,
     gpointer data);
 
 static void handle_presence (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     WockyMucMember *who,
     gpointer data);
 
 static void handle_perms (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     const gchar *actor,
     const gchar *why,
@@ -340,7 +340,7 @@ static void handle_perms (GObject *source,
 
 /* signatures for message handlers */
 static void handle_message (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
     time_t stamp,
@@ -351,7 +351,7 @@ static void handle_message (GObject *source,
     gpointer data);
 
 static void handle_errmsg (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
     time_t stamp,
@@ -1642,7 +1642,7 @@ config_form_get_form_node (LmMessage *msg)
   NodeIter i;
 
   /* find the query node */
-  node = lm_message_node_get_child (msg->node, "query");
+  node = lm_message_node_get_child (wocky_stanza_get_top_node (msg), "query");
   if (node == NULL)
     return NULL;
 
@@ -1851,7 +1851,8 @@ update_permissions (GabbleMucChannel *chan)
 
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = lm_message_node_add_child (msg->node, "query", NULL);
+      node = lm_message_node_add_child (
+          wocky_stanza_get_top_node (msg), "query", NULL);
       lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
       success = _gabble_connection_send_with_reply (priv->conn, msg,
@@ -1929,7 +1930,7 @@ get_aff_from_backend (WockyMucAffiliation aff)
 /* connect to wocky-muc:SIG_PRESENCE_ERROR */
 static void
 handle_error (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     WockyXmppError errnum,
     const gchar *message,
     gpointer data)
@@ -2062,18 +2063,18 @@ new_tube (GabbleMucChannel *gmuc,
 static void
 handle_tube_presence (GabbleMucChannel *gmuc,
     TpHandle from,
-    WockyXmppStanza *stanza)
+    WockyStanza *stanza)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
-  WockyXmppNode *node = stanza->node;
+  WockyNode *node = wocky_stanza_get_top_node (stanza);
 
   if (from == 0)
     return;
 
   if (priv->tube == NULL)
     {
-      WockyXmppNode *tubes;
-      tubes = wocky_xmpp_node_get_child_ns (node, "tubes", NS_TUBES);
+      WockyNode *tubes;
+      tubes = wocky_node_get_child_ns (node, "tubes", NS_TUBES);
 
       /* presence doesn't contain tubes information, no need
        * to create a tubes channel */
@@ -2093,7 +2094,7 @@ handle_tube_presence (GabbleMucChannel *gmuc,
  * us that we have left the channel                                          */
 static void
 handle_parted (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     const gchar *actor_jid,
     const gchar *why,
@@ -2149,7 +2150,8 @@ handle_parted (GObject *source,
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
   if (priv->tube != NULL)
-    gabble_tubes_channel_presence_updated (priv->tube, member, stanza->node);
+    gabble_tubes_channel_presence_updated (priv->tube, member,
+      wocky_stanza_get_top_node (stanza));
 
   close_channel (gmuc, why, FALSE, actor, reason);
 
@@ -2164,7 +2166,7 @@ handle_parted (GObject *source,
  * us someone [else] has left the channel                                    */
 static void
 handle_left (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     WockyMucMember *who,
     const gchar *actor_jid,
@@ -2219,7 +2221,8 @@ handle_left (GObject *source,
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
   if (priv->tube != NULL)
-    gabble_tubes_channel_presence_updated (priv->tube, member, stanza->node);
+    gabble_tubes_channel_presence_updated (priv->tube, member,
+        wocky_stanza_get_top_node (stanza));
 
   tp_group_mixin_change_members (data, why, NULL, handles, NULL, NULL,
       actor, reason);
@@ -2234,7 +2237,7 @@ handle_left (GObject *source,
  * MUC informs us our role/affiliation has been altered                 */
 static void
 handle_perms (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     const gchar *actor,
     const gchar *why,
@@ -2256,7 +2259,7 @@ handle_perms (GObject *source,
 
 static void
 handle_fill_presence (WockyMuc *muc,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     gpointer user_data)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
@@ -2284,7 +2287,7 @@ handle_fill_presence (WockyMuc *muc,
  * MUC informs us our nick has been changed for some reason             */
 static void
 handle_renamed (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     gpointer data)
 {
@@ -2364,7 +2367,7 @@ update_roster_presence (GabbleMucChannel *gmuc,
  * changed by the MUC we will already have received a SIG_NICK_CHANGE:       */
 static void
 handle_join (WockyMuc *muc,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     gpointer data)
 {
@@ -2403,7 +2406,7 @@ handle_join (WockyMuc *muc,
     {
       GError *error = NULL;
       gboolean sent = FALSE;
-      WockyXmppStanza *accept = wocky_xmpp_stanza_build (
+      WockyStanza *accept = wocky_stanza_build (
           WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
           NULL, NULL,
             '(', "query", ':', WOCKY_NS_MUC_OWN,
@@ -2445,7 +2448,7 @@ handle_join (WockyMuc *muc,
  * NOT our own after the initial roster has been received:                  */
 static void
 handle_presence (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     WockyMucMember *who,
     gpointer data)
@@ -2511,7 +2514,7 @@ handle_presence (GObject *source,
 
 static void
 handle_message (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
     time_t stamp,
@@ -2603,7 +2606,7 @@ handle_message (GObject *source,
 
 static void
 handle_errmsg (GObject *source,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
     time_t stamp,
@@ -2693,10 +2696,12 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       LmMessageNode *node;
       const gchar *err_desc = NULL;
 
-      node = lm_message_node_get_child (msg->node, "error");
+      node = lm_message_node_get_child (
+          wocky_stanza_get_top_node (msg), "error");
       if (node)
         {
-          GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (node, NULL);
+          GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (node,
+              NULL);
           err_desc = gabble_xmpp_error_description (xmpp_error);
         }
 
@@ -2822,7 +2827,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
        * that this would happen if we send an error stanza and the MUC reflects
        * it back at us, so let's just ignore it.
        */
-      NODE_DEBUG (msg->node, "ignoring error stanza from ourself");
+      STANZA_DEBUG (msg, "ignoring error stanza from ourself");
 
       return;
     }
@@ -2841,7 +2846,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
    */
   if (!is_echo && !is_error && sender_handle_type == TP_HANDLE_TYPE_ROOM)
     {
-      NODE_DEBUG (msg->node, "ignoring message from muc");
+      STANZA_DEBUG (msg, "ignoring message from muc");
 
       return;
     }
@@ -3135,7 +3140,8 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 
   msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
 
-  x_node = lm_message_node_add_child (msg->node, "x", NULL);
+  x_node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "x", NULL);
   lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
 
   invite_node = lm_message_node_add_child (x_node, "invite", NULL);
@@ -3284,7 +3290,8 @@ gabble_muc_channel_remove_member (GObject *obj,
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_SET);
 
-  query_node = lm_message_node_add_child (msg->node, "query", NULL);
+  query_node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "query", NULL);
   lm_message_node_set_attribute (query_node, "xmlns", NS_MUC_ADMIN);
 
   item_node = lm_message_node_add_child (query_node, "item", NULL);
@@ -3347,7 +3354,8 @@ gabble_muc_channel_do_set_properties (GObject *obj,
 
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-      lm_message_node_add_child (msg->node, "subject", str);
+      lm_message_node_add_child (
+          wocky_stanza_get_top_node (msg), "subject", str);
 
       success = _gabble_connection_send (priv->conn, msg, error);
 
@@ -3362,7 +3370,8 @@ gabble_muc_channel_do_set_properties (GObject *obj,
     {
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = lm_message_node_add_child (msg->node, "query", NULL);
+      node = lm_message_node_add_child (
+          wocky_stanza_get_top_node (msg), "query", NULL);
       lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
       success = _gabble_connection_send_with_reply (priv->conn, msg,
@@ -3413,7 +3422,8 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_SET);
 
-  node = lm_message_node_add_child (msg->node, "query", NULL);
+  node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "query", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
   submit_node = lm_message_node_add_child (node, "x", NULL);
@@ -3764,7 +3774,7 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
                                   GError **error)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
-  WockyXmppStanza *stanza;
+  WockyStanza *stanza;
   gboolean result;
 
   /* do nothing if we havn't actually joined yet */

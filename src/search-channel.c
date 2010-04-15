@@ -427,8 +427,8 @@ query_reply_cb (GabbleConnection *conn,
   LmMessageNode *query_node;
   GError *err = NULL;
 
-  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
-      "query", NS_SEARCH);
+  query_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -467,7 +467,8 @@ request_search_fields (GabbleSearchChannel *chan)
 
   msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "query", NULL);
   lm_message_node_set_attribute (lm_node, "xmlns", NS_SEARCH);
 
   if (! _gabble_connection_send_with_reply (chan->base.conn, msg,
@@ -862,8 +863,8 @@ search_reply_cb (GabbleConnection *conn,
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
-  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
-      "query", NS_SEARCH);
+  query_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -1048,7 +1049,8 @@ do_search (GabbleSearchChannel *chan,
 
   msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_SET);
-  query = lm_message_node_add_child (msg->node, "query", NULL);
+  query = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "query", NULL);
   lm_message_node_set_attribute (query, "xmlns", NS_SEARCH);
 
   if (chan->priv->xforms)

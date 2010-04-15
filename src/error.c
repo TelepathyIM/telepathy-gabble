@@ -498,8 +498,8 @@ gabble_message_get_xmpp_error (LmMessage *msg)
 
   if (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
-      LmMessageNode *error_node = lm_message_node_get_child (msg->node,
-          "error");
+      LmMessageNode *error_node = lm_message_node_get_child (
+          wocky_stanza_get_top_node (msg), "error");
 
       if (error_node != NULL)
         {

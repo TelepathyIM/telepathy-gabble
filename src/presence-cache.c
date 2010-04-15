@@ -1497,7 +1497,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
     }
   g_free (my_full_jid);
 
-  presence_node = message->node;
+  presence_node = wocky_stanza_get_top_node (message);
   g_assert (0 == strcmp (presence_node->name, "presence"));
 
   resource = strchr (from, '/');
@@ -1534,7 +1534,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
         priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
     }
 
-  child_node = wocky_xmpp_node_get_child_ns (presence_node, "temppres",
+  child_node = wocky_node_get_child_ns (presence_node, "temppres",
       NS_TEMPPRES);
 
   if (child_node != NULL)
@@ -1669,11 +1669,12 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   g_assert (lmconn == priv->conn->lmconn);
 
-  from = lm_message_node_get_attribute (message->node, "from");
+  from = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+      "from");
 
   if (NULL == from)
     {
-      NODE_DEBUG (message->node, "message without from attribute, ignoring");
+      STANZA_DEBUG (message, "message without from attribute, ignoring");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
@@ -1681,7 +1682,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   if (0 == handle)
     {
-      NODE_DEBUG (message->node, "ignoring message from malformed jid");
+      STANZA_DEBUG (message, "ignoring message from malformed jid");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 

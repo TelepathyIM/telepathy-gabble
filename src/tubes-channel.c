@@ -1133,7 +1133,8 @@ pre_presence_cb (GabbleMucChannel *muc,
   LmMessageNode *node;
 
   /* Augment the muc presence with tubes information */
-  node = lm_message_node_add_child (msg->node, "tubes", NULL);
+  node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "tubes", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_TUBES);
   data.self = self;
   data.tubes_node = node;
@@ -1173,8 +1174,8 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
    */
   g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
   g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
-  si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
-      NS_SI);
+  si_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_return_if_fail (si_node != NULL);
   stream_id = lm_message_node_get_attribute (si_node, "id");
   g_return_if_fail (stream_id != NULL);
@@ -1260,8 +1261,8 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
   g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
 
-  si_node = lm_message_node_get_child_with_namespace (msg->node, "si",
-      NS_SI);
+  si_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_return_if_fail (si_node != NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -1369,8 +1370,8 @@ tube_msg_offered (GabbleTubesChannel *self,
   GabbleTubeIface *tube;
 
   g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_MESSAGE);
-  tube_node = lm_message_node_get_child_with_namespace (msg->node, "tube",
-      NS_TUBES);
+  tube_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
   g_return_if_fail (tube_node != NULL);
 
   if (!extract_tube_information (self, tube_node, NULL, NULL,
@@ -1427,8 +1428,8 @@ tube_msg_close (GabbleTubesChannel *self,
   GabbleTubeIface *tube;
   TpTubeType type;
 
-  close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
-      NS_TUBES);
+  close_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "close", NS_TUBES);
   g_assert (close_node != NULL);
 
   tmp = lm_message_node_get_attribute (close_node, "tube");
@@ -1469,16 +1470,16 @@ gabble_tubes_channel_tube_msg (GabbleTubesChannel *self,
 {
   LmMessageNode *node;
 
-  node = lm_message_node_get_child_with_namespace (msg->node, "tube",
-      NS_TUBES);
+  node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
   if (node != NULL)
     {
       tube_msg_offered (self, msg);
       return;
     }
 
-  node = lm_message_node_get_child_with_namespace (msg->node, "close",
-      NS_TUBES);
+  node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "close", NS_TUBES);
   if (node != NULL)
     {
       tube_msg_close (self, msg);

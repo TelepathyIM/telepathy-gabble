@@ -21,7 +21,7 @@
 #ifndef __LM_CONNECTION_H__
 #define __LM_CONNECTION_H__
 
-#include <wocky/wocky-xmpp-stanza.h>
+#include <wocky/wocky-stanza.h>
 #include <wocky/wocky-porter.h>
 
 #include "lm-types.h"

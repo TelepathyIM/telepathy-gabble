@@ -487,7 +487,8 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   GabbleFileTransferChannel *chan;
   gboolean resume_supported;
 
-  si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 
   file_node = lm_message_node_get_child_with_namespace (si_node, "file",

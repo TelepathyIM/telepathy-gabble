@@ -21,11 +21,11 @@
 #ifndef __LM_MESSAGE_NODE_H__
 #define __LM_MESSAGE_NODE_H__
 
-#include <wocky/wocky-xmpp-node.h>
+#include <wocky/wocky-node.h>
 
 G_BEGIN_DECLS
 
-typedef WockyXmppNode LmMessageNode;
+typedef WockyNode LmMessageNode;
 
 LmMessageNode * lm_message_node_ref (LmMessageNode *node)
   G_GNUC_WARN_UNUSED_RESULT;

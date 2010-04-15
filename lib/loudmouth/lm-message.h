@@ -21,13 +21,13 @@
 #ifndef __LM_MESSAGE_H__
 #define __LM_MESSAGE_H__
 
-#include <wocky/wocky-xmpp-stanza.h>
+#include <wocky/wocky-stanza.h>
 
 #include "lm-message-node.h"
 
 G_BEGIN_DECLS
 
-typedef WockyXmppStanza LmMessage;
+typedef WockyStanza LmMessage;
 
 typedef WockyStanzaType LmMessageType;
 

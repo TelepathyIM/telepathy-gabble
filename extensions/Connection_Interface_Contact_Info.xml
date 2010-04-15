@@ -306,7 +306,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:possible-errors>
     </method>
 
-    <tp:enum name="Contact_Info_Flags" value-prefix="Contact_Info_Flag"
+    <tp:flags name="Contact_Info_Flags" value-prefix="Contact_Info_Flag"
       type="u">
       <tp:docstring>
         Flags defining the behaviour of contact information on this protocol.
@@ -315,22 +315,22 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         and when it changes.
       </tp:docstring>
 
-      <tp:enumvalue suffix="Can_Set" value="1">
+      <tp:flag suffix="Can_Set" value="1">
         <tp:docstring>
           Indicates that <tp:member-ref>SetContactInfo</tp:member-ref> is
           supported on this connection.
         </tp:docstring>
-      </tp:enumvalue>
+      </tp:flag>
 
-      <tp:enumvalue suffix="Push" value="2">
+      <tp:flag suffix="Push" value="2">
         <tp:docstring>
           Indicates that the protocol pushes all contacts' information to the
           connection manager without prompting. If set,
           <tp:member-ref>ContactInfoChanged</tp:member-ref> will be emitted
           whenever contacts' information changes.
         </tp:docstring>
-      </tp:enumvalue>
-    </tp:enum>
+      </tp:flag>
+    </tp:flags>
 
     <tp:simple-type name="VCard_Field" type="s">
       <tp:docstring>

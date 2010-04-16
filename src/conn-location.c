@@ -92,7 +92,7 @@ pep_reply_cb (GObject *source,
     {
       DEBUG ("Query failed: %s", error->message);
       g_error_free (error);
-      return;
+      goto out;
     }
 
   from = lm_message_node_get_attribute (reply_msg->node, "from");
@@ -100,6 +100,9 @@ pep_reply_cb (GObject *source,
   if (from != NULL)
     update_location_from_msg (conn, from, reply_msg);
   g_object_unref (reply_msg);
+
+out:
+  g_object_unref (conn);
 }
 
 static GHashTable *
@@ -127,7 +130,7 @@ get_cached_location_or_query (GabbleConnection *conn,
 
   /* Send a query */
   wocky_pep_service_get_async (conn->pep_location, contact, NULL, pep_reply_cb,
-      conn);
+      g_object_ref (conn));
 
   g_object_unref (contact);
   return NULL;

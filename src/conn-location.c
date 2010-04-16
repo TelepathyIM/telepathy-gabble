@@ -567,19 +567,21 @@ conn_location_fill_contact_attributes (GObject *obj,
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
       GHashTable *location;
+      GValue *val;
 
       location = get_cached_location_or_query (self, handle, NULL);
       if (location != NULL)
-        {
-          GValue *val = tp_g_value_slice_new_boxed (
-              TP_HASH_TYPE_STRING_VARIANT_MAP, location);
+        g_hash_table_ref (location);
+      else
+        location = g_hash_table_new (NULL, NULL);
 
-          tp_contacts_mixin_set_contact_attribute (attributes_hash,
-            handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION"/location",
-            val);
+      val = tp_g_value_slice_new_boxed (TP_HASH_TYPE_STRING_VARIANT_MAP,
+          location);
 
-          g_hash_table_unref (location);
-        }
+      tp_contacts_mixin_set_contact_attribute (attributes_hash,
+          handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION"/location", val);
+
+      g_hash_table_unref (location);
     }
 }
 

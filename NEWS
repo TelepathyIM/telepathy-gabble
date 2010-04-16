@@ -1,3 +1,17 @@
+telepathy-gabble 0.8.13 (2010-04-16)
+====================================
+
+The “like soldiers marching into the sea” release.
+
+Enhancements:
+
+• Expose “MUC full” as Busy on the Group interface. (wjt)
+
+Fixes:
+
+• GetContactAttributes(): return an empty hash for a contact's location
+  if we don't know their location. Fixes fd.o#27694 (cassidy)
+
 telepathy-gabble 0.8.12 (2010-03-19)
 ====================================
 

@@ -2537,11 +2537,12 @@ handle_presence (GObject *source,
 
   if (!priv->call_initiating)
     {
-      WockyXmppNode *m;
+      WockyNode *m;
       /* Check for muji nodes */
-      m = wocky_xmpp_node_get_child_ns (stanza->node, "muji", NS_MUJI);
+      m = wocky_node_get_child_ns (
+          wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
       if (m != NULL &&
-          wocky_xmpp_node_get_child_ns (m, "content", NS_MUJI) != NULL)
+          wocky_node_get_child_ns (m, "content", NS_MUJI) != NULL)
         {
           DEBUG ("Detected a muji call in progress, starting a call channel!");
           gabble_muc_channel_start_call_creation (gmuc, NULL);

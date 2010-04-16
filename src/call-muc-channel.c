@@ -267,15 +267,15 @@ have_content:
 
 static GList *
 call_muc_channel_parse_codecs (GabbleCallMucChannel *self,
-    WockyXmppNode *description)
+    WockyNode *description)
 {
   GList *codecs = NULL;
-  WockyXmppNodeIter iter;
-  WockyXmppNode *payload;
+  WockyNodeIter iter;
+  WockyNode *payload;
 
-  wocky_xmpp_node_iter_init (&iter, description,
+  wocky_node_iter_init (&iter, description,
       "payload-type", NS_JINGLE_RTP);
-  while (wocky_xmpp_node_iter_next (&iter, &payload))
+  while (wocky_node_iter_next (&iter, &payload))
     {
       const gchar *name;
       const gchar *value;
@@ -283,23 +283,23 @@ call_muc_channel_parse_codecs (GabbleCallMucChannel *self,
       guint clockrate = 0;
       guint channels = 0;
       JingleCodec *codec;
-      WockyXmppNodeIter param_iter;
-      WockyXmppNode *parameter;
+      WockyNodeIter param_iter;
+      WockyNode *parameter;
 
-      value = wocky_xmpp_node_get_attribute (payload, "id");
+      value = wocky_node_get_attribute (payload, "id");
       if (value == NULL)
         continue;
       id = atoi (value);
 
-      name = wocky_xmpp_node_get_attribute (payload, "name");
+      name = wocky_node_get_attribute (payload, "name");
       if (name == NULL)
         continue;
 
-      value = wocky_xmpp_node_get_attribute (payload, "clockrate");
+      value = wocky_node_get_attribute (payload, "clockrate");
       if (value != NULL)
         clockrate = atoi (value);
 
-      value = wocky_xmpp_node_get_attribute (payload, "channels");
+      value = wocky_node_get_attribute (payload, "channels");
       if (value != NULL)
         channels = atoi (value);
 
@@ -307,14 +307,14 @@ call_muc_channel_parse_codecs (GabbleCallMucChannel *self,
 
       codecs = g_list_append (codecs, codec);
 
-      wocky_xmpp_node_iter_init (&param_iter, payload,
+      wocky_node_iter_init (&param_iter, payload,
         "parameter", NS_JINGLE_RTP);
-      while (wocky_xmpp_node_iter_next (&param_iter, &parameter))
+      while (wocky_node_iter_next (&param_iter, &parameter))
         {
           const gchar *key;
 
-          key = wocky_xmpp_node_get_attribute (parameter, "name");
-          value = wocky_xmpp_node_get_attribute (parameter, "value");
+          key = wocky_node_get_attribute (parameter, "name");
+          value = wocky_node_get_attribute (parameter, "value");
 
           if (key == NULL || value == NULL)
             continue;
@@ -330,7 +330,7 @@ call_muc_channel_parse_codecs (GabbleCallMucChannel *self,
 static void
 call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
   WockyMucMember *member,
-  WockyXmppStanza *stanza)
+  WockyStanza *stanza)
 {
   GabbleCallMucChannelPrivate *priv = self->priv;
   GabbleCallMember *call_member;
@@ -339,11 +339,12 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
     tp_base_connection_get_handles (
       (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
         TP_HANDLE_TYPE_CONTACT);
-  WockyXmppNode *muji;
-  WockyXmppNodeIter iter;
-  WockyXmppNode *content;
+  WockyNode *muji;
+  WockyNodeIter iter;
+  WockyNode *content;
 
-  muji = wocky_xmpp_node_get_child_ns (stanza->node, "muji", NS_MUJI);
+  muji = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
 
   if (muji == NULL)
     return;
@@ -365,17 +366,17 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
       gabble_call_member_accept (call_member);
     }
 
-  wocky_xmpp_node_iter_init (&iter, muji, "content", NS_MUJI);
-  while (wocky_xmpp_node_iter_next (&iter, &content))
+  wocky_node_iter_init (&iter, muji, "content", NS_MUJI);
+  while (wocky_node_iter_next (&iter, &content))
     {
       GabbleCallMemberContent *member_content;
-      WockyXmppNode *description;
+      WockyNode *description;
       JingleMediaType mtype;
       const gchar *name;
       const gchar *mattr;
       GList *codecs;
 
-      name = wocky_xmpp_node_get_attribute (content, "name");
+      name = wocky_node_get_attribute (content, "name");
       if (name == NULL)
         {
           DEBUG ("Content is missing the name attribute");
@@ -384,14 +385,14 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
 
       DEBUG ("Parsing content: %s", name);
 
-      description = wocky_xmpp_node_get_child (content, "description");
+      description = wocky_node_get_child (content, "description");
       if (description == NULL)
         {
           DEBUG ("Content %s is missing a description", name);
           continue;
         }
 
-      mattr = wocky_xmpp_node_get_attribute (description, "media");
+      mattr = wocky_node_get_attribute (description, "media");
       if (mattr == NULL)
         {
           DEBUG ("Content %s is missing a media type", name);
@@ -433,7 +434,7 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
 
 static void
 call_muc_channel_presence_cb (WockyMuc *wmuc,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     WockyMucMember *who,
     gpointer user_data)
@@ -466,7 +467,7 @@ call_muc_channel_update_all_members (GabbleCallMucChannel *self)
 
 static void
 call_muc_channel_joined_cb (WockyMuc *muc,
-  WockyXmppStanza *stanza,
+  WockyStanza *stanza,
   GHashTable *code,
   gpointer user_data)
 {
@@ -477,11 +478,11 @@ call_muc_channel_joined_cb (WockyMuc *muc,
 
 static void
 call_muc_channel_pre_presence_cb (WockyMuc *wmuc,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
-  WockyXmppNode *muji;
+  WockyNode *muji;
   GList *l;
 
   for (l = gabble_base_call_channel_get_contents (
@@ -495,62 +496,63 @@ call_muc_channel_pre_presence_cb (WockyMuc *wmuc,
 
   DEBUG ("%p got our a prepresence signal, putting in codecs", self);
 
-  muji = wocky_xmpp_node_add_child_ns (stanza->node, "muji", NS_MUJI);
+  muji = wocky_node_add_child_ns (
+      wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
   for (l = gabble_base_call_channel_get_contents (
       GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
     {
       GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
       const gchar *name = gabble_call_content_get_name (content);
-      WockyXmppNode *mcontent;
-      WockyXmppNode *description;
+      WockyNode *mcontent;
+      WockyNode *description;
       GList *codecs;
       JingleMediaType mtype = gabble_call_content_get_media_type (content);
 
-      mcontent = wocky_xmpp_node_add_child (muji, "content");
-      wocky_xmpp_node_set_attribute (mcontent, "name", name);
+      mcontent = wocky_node_add_child (muji, "content");
+      wocky_node_set_attribute (mcontent, "name", name);
 
-      description = wocky_xmpp_node_add_child_ns (mcontent,
+      description = wocky_node_add_child_ns (mcontent,
         "description", NS_JINGLE_RTP);
-      wocky_xmpp_node_set_attribute (description, "media",
+      wocky_node_set_attribute (description, "media",
         mtype == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video");
 
       for (codecs = gabble_call_content_get_local_codecs (content) ;
           codecs != NULL ; codecs = g_list_next (codecs))
         {
           JingleCodec *codec = codecs->data;
-          WockyXmppNode *pt;
+          WockyNode *pt;
           GHashTableIter iter;
           gpointer key, value;
           gchar *idstr;
 
-          pt = wocky_xmpp_node_add_child (description, "payload-type");
+          pt = wocky_node_add_child (description, "payload-type");
 
           idstr = g_strdup_printf ("%d", codec->id);
-          wocky_xmpp_node_set_attribute (pt, "id", idstr);
+          wocky_node_set_attribute (pt, "id", idstr);
           g_free (idstr);
 
-          wocky_xmpp_node_set_attribute (pt, "name", codec->name);
+          wocky_node_set_attribute (pt, "name", codec->name);
 
           if (codec->clockrate > 0)
             {
               gchar *rate = g_strdup_printf ("%d", codec->clockrate);
-              wocky_xmpp_node_set_attribute (pt, "clockrate", rate);
+              wocky_node_set_attribute (pt, "clockrate", rate);
               g_free (rate);
             }
 
           if (codec->channels > 0)
             {
               gchar *channels = g_strdup_printf ("%d", codec->channels);
-              wocky_xmpp_node_set_attribute (pt, "channels", channels);
+              wocky_node_set_attribute (pt, "channels", channels);
               g_free (channels);
             }
 
           g_hash_table_iter_init (&iter, codec->params);
           while (g_hash_table_iter_next (&iter, &key, &value))
             {
-              WockyXmppNode *p = wocky_xmpp_node_add_child (pt, "parameter");
-              wocky_xmpp_node_set_attribute (p, "name", (gchar *) key);
-              wocky_xmpp_node_set_attribute (p, "value", (gchar *) value);
+              WockyNode *p = wocky_node_add_child (pt, "parameter");
+              wocky_node_set_attribute (p, "name", (gchar *) key);
+              wocky_node_set_attribute (p, "value", (gchar *) value);
             }
         }
     }
@@ -558,7 +560,7 @@ call_muc_channel_pre_presence_cb (WockyMuc *wmuc,
 
 static void
 call_muc_channel_own_presence_cb (WockyMuc *wmuc,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GHashTable *code,
     gpointer user_data)
 {

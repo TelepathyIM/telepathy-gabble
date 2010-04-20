@@ -77,7 +77,7 @@ lm_message_node_set_attribute (LmMessageNode *node,
     const gchar *value)
 {
   if (!wocky_strdiff (name, "xmlns"))
-    wocky_node_set_ns (node, value);
+    node->ns = g_quark_from_string (value);
   else if (!wocky_strdiff (name, "xml:lang"))
     wocky_node_set_language (node, value);
   else

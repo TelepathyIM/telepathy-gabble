@@ -241,12 +241,7 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
 
             g_return_if_fail (key != NULL);
             g_return_if_fail (value != NULL);
-            if (!tp_strdiff (key, "xmlns"))
-              wocky_node_set_ns (stack->data, value);
-            else if (!tp_strdiff (key, "xml:lang"))
-              wocky_node_set_language (stack->data, value);
-            else
-              lm_message_node_set_attribute (stack->data, key, value);
+            lm_message_node_set_attribute (stack->data, key, value);
           }
           break;
 

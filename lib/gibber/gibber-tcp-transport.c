@@ -36,6 +36,8 @@
 #define DEBUG_FLAG DEBUG_NET
 #include "gibber-debug.h"
 
+#include <gio/gio.h>
+
 #include "errno.h"
 
 G_DEFINE_TYPE(GibberTCPTransport, gibber_tcp_transport,
@@ -47,8 +49,8 @@ typedef struct _GibberTCPTransportPrivate GibberTCPTransportPrivate;
 struct _GibberTCPTransportPrivate
 {
   GIOChannel *channel;
-  struct addrinfo *ans;
-  struct addrinfo *tmpaddr;
+  GList *addresses;
+  guint16 port;
   guint watch_in;
 
   gboolean dispose_has_run;
@@ -110,13 +112,8 @@ clean_all_connect_attempts (GibberTCPTransport *self)
 
   clean_connect_attempt (self);
 
-  if (priv->ans != NULL)
-    {
-      freeaddrinfo (priv->ans);
-      priv->ans = NULL;
-    }
-
-  priv->tmpaddr = NULL;
+  g_resolver_free_addresses (priv->addresses);
+  priv->addresses = NULL;
 }
 
 void
@@ -163,13 +160,23 @@ try_to_connect (GibberTCPTransport *self)
 {
   GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
       self);
+  GSocketAddress *gaddr;
+  struct sockaddr_storage addr;
   gint fd;
   int ret;
 
   g_assert (priv->channel != NULL);
 
   fd = g_io_channel_unix_get_fd (priv->channel);
-  ret = connect (fd, priv->tmpaddr->ai_addr, priv->tmpaddr->ai_addrlen);
+
+  gaddr = g_inet_socket_address_new (G_INET_ADDRESS (priv->addresses->data),
+    priv->port);
+
+  g_socket_address_to_native (gaddr, &addr, sizeof (addr), NULL);
+  ret = connect (fd, (struct sockaddr *)&addr,
+    g_socket_address_get_native_size (gaddr));
+
+  g_object_unref (gaddr);
 
   if (ret == 0)
     {
@@ -187,8 +194,10 @@ try_to_connect (GibberTCPTransport *self)
     }
 
   clean_connect_attempt (self);
-  priv->tmpaddr = priv->tmpaddr->ai_next;
+  g_object_unref (priv->addresses->data);
+  priv->addresses = g_list_remove_link (priv->addresses, priv->addresses);
   new_connect_attempt (self);
+
   return FALSE;
 }
 
@@ -208,23 +217,24 @@ new_connect_attempt (GibberTCPTransport *self)
   GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
       self);
   int fd;
-  char name[NI_MAXHOST], portname[NI_MAXSERV];
+  GSocketAddress *gaddr;
+  gchar *tmpstr;
 
-  if (priv->tmpaddr == NULL)
+  if (priv->addresses == NULL)
     {
       /* no more candidate to try */
       DEBUG ("connection failed");
       goto failed;
     }
 
-  getnameinfo (priv->tmpaddr->ai_addr, priv->tmpaddr->ai_addrlen,
-      name, sizeof (name), portname, sizeof (portname),
-      NI_NUMERICHOST | NI_NUMERICSERV);
+  tmpstr = g_inet_address_to_string (G_INET_ADDRESS (priv->addresses->data));
+  DEBUG ("Trying %s port %d...", tmpstr, priv->port);
+  g_free (tmpstr);
 
-  DEBUG ("Trying %s port %s...", name, portname);
-
-  fd = socket (priv->tmpaddr->ai_family, priv->tmpaddr->ai_socktype,
-      priv->tmpaddr->ai_protocol);
+  gaddr = g_inet_socket_address_new (G_INET_ADDRESS (priv->addresses->data),
+    priv->port);
+  fd = socket (g_socket_address_get_family (gaddr), SOCK_STREAM, IPPROTO_TCP);
+  g_object_unref (gaddr);
 
   if (fd < 0)
     {
@@ -254,37 +264,36 @@ failed:
 
 void
 gibber_tcp_transport_connect (GibberTCPTransport *tcp_transport,
-    const gchar *host, const gchar *port)
+    const gchar *host, guint16 port)
 {
   GibberTCPTransportPrivate *priv = GIBBER_TCP_TRANSPORT_GET_PRIVATE (
       tcp_transport);
-  int ret = -1;
-  struct addrinfo req;
+  GResolver *resolver = g_resolver_get_default ();
+  GError *error = NULL;
 
   gibber_transport_set_state (GIBBER_TRANSPORT (tcp_transport),
                              GIBBER_TRANSPORT_CONNECTING);
 
-  memset (&req, 0, sizeof (req));
-  req.ai_flags = 0;
-  req.ai_family = AF_UNSPEC;
-  req.ai_socktype = SOCK_STREAM;
-  req.ai_protocol = IPPROTO_TCP;
+  priv->port = port;
 
-  g_assert (priv->ans == NULL);
-  g_assert (priv->tmpaddr == NULL);
+  g_assert (priv->addresses == NULL);
   g_assert (priv->channel == NULL);
 
-  ret = getaddrinfo (host, port, &req, &priv->ans);
-  if (ret != 0)
+  priv->addresses = g_resolver_lookup_by_name (resolver, host, NULL, &error);
+
+  if (priv->addresses == NULL)
     {
-      DEBUG("getaddrinfo failed: %s", gai_strerror (ret));
+      DEBUG("Address lookup failed: %s", error->message);
 
       gibber_transport_set_state (GIBBER_TRANSPORT (tcp_transport),
           GIBBER_TRANSPORT_DISCONNECTED);
-      return;
+
+      g_error_free (error);
+      goto out;
     }
 
-  priv->tmpaddr = priv->ans;
-
   new_connect_attempt (tcp_transport);
+
+out:
+  g_object_unref (resolver);
 }

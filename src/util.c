@@ -131,13 +131,6 @@ lm_message_node_add_own_nick (LmMessageNode *node,
 }
 
 void
-lm_message_node_unlink (LmMessageNode *orphan,
-    LmMessageNode *parent)
-{
-  parent->children = g_slist_remove (parent->children, orphan);
-}
-
-void
 lm_message_node_steal_children (LmMessageNode *snatcher,
                                 LmMessageNode *mum)
 {
@@ -171,7 +164,7 @@ lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
 const gchar *
 lm_message_node_get_namespace (LmMessageNode *node)
 {
-  return wocky_xmpp_node_get_ns (node);
+  return wocky_node_get_ns (node);
 }
 
 const gchar *
@@ -196,7 +189,10 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
   LmMessageNode *found;
   NodeIter i;
 
-  found = wocky_xmpp_node_get_child_ns (node, name, ns);
+  NODE_DEBUG (node, name);
+  NODE_DEBUG (node, ns);
+
+  found = wocky_node_get_child_ns (node, name, ns);
   if (found != NULL)
     return found;
 
@@ -245,12 +241,7 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
 
             g_return_if_fail (key != NULL);
             g_return_if_fail (value != NULL);
-            if (!tp_strdiff (key, "xmlns"))
-              wocky_xmpp_node_set_ns (stack->data, value);
-            else if (!tp_strdiff (key, "xml:lang"))
-              wocky_xmpp_node_set_language (stack->data, value);
-            else
-              lm_message_node_set_attribute (stack->data, key, value);
+            lm_message_node_set_attribute (stack->data, key, value);
           }
           break;
 
@@ -326,7 +317,8 @@ lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
 
   msg = lm_message_new (to, type);
   va_start (ap, spec);
-  lm_message_node_add_build_va (msg->node, spec, ap);
+  lm_message_node_add_build_va (
+      wocky_stanza_get_top_node (msg), spec, ap);
   va_end (ap);
   return msg;
 }
@@ -346,7 +338,8 @@ lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
 
   msg = lm_message_new_with_sub_type (to, type, sub_type);
   va_start (ap, spec);
-  lm_message_node_add_build_va (msg->node, spec, ap);
+  lm_message_node_add_build_va (
+      wocky_stanza_get_top_node (msg), spec, ap);
   va_end (ap);
   return msg;
 }
@@ -1004,7 +997,7 @@ lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
     const gchar *attribute,
     const gchar *ns)
 {
-  return wocky_xmpp_node_get_attribute_ns (node, attribute, ns);
+  return wocky_node_get_attribute_ns (node, attribute, ns);
 }
 
 GPtrArray *

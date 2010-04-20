@@ -279,19 +279,19 @@ gabble_mail_notification_request_mail_url (
 
 
 static gboolean
-sender_each (WockyXmppNode *node,
+sender_each (WockyNode *node,
     gpointer user_data)
 {
   GPtrArray *senders = user_data;
 
-  if (!tp_strdiff ("1", wocky_xmpp_node_get_attribute (node, "unread")))
+  if (!tp_strdiff ("1", wocky_node_get_attribute (node, "unread")))
     {
       GValueArray *sender;
       const gchar *name;
       const gchar *address;
 
-      name = wocky_xmpp_node_get_attribute (node, "name");
-      address = wocky_xmpp_node_get_attribute (node, "address");
+      name = wocky_node_get_attribute (node, "name");
+      address = wocky_node_get_attribute (node, "address");
 
       sender = tp_value_array_build (2,
           G_TYPE_STRING, name ? name : "",
@@ -305,20 +305,20 @@ sender_each (WockyXmppNode *node,
 
 
 static gboolean
-handle_senders (WockyXmppNode *parent_node,
+handle_senders (WockyNode *parent_node,
     GHashTable *mail)
 {
   gboolean dirty = FALSE;
-  WockyXmppNode *node;
+  WockyNode *node;
 
-  node = wocky_xmpp_node_get_child (parent_node, "senders");
+  node = wocky_node_get_child (parent_node, "senders");
   if (node != NULL)
     {
       GType addr_list_type = GABBLE_ARRAY_TYPE_MAIL_ADDRESS_LIST;
       GPtrArray *senders, *old_senders;
 
       senders = g_ptr_array_new ();
-      wocky_xmpp_node_each_child (node, sender_each, senders);
+      wocky_node_each_child (node, sender_each, senders);
 
       old_senders = tp_asv_get_boxed (mail, "senders", addr_list_type);
 
@@ -333,13 +333,13 @@ handle_senders (WockyXmppNode *parent_node,
 
 
 static gboolean
-handle_subject (WockyXmppNode *parent_node,
+handle_subject (WockyNode *parent_node,
     GHashTable *mail)
 {
   gboolean dirty = FALSE;
-  WockyXmppNode *node;
+  WockyNode *node;
 
-  node = wocky_xmpp_node_get_child (parent_node, "subject");
+  node = wocky_node_get_child (parent_node, "subject");
   if (node != NULL)
     {
       if (tp_strdiff (node->content, tp_asv_get_string (mail, "subject")))
@@ -354,13 +354,13 @@ handle_subject (WockyXmppNode *parent_node,
 
 
 static gboolean
-handle_snippet (WockyXmppNode *parent_node,
+handle_snippet (WockyNode *parent_node,
     GHashTable *mail)
 {
   gboolean dirty = FALSE;
-  WockyXmppNode *node;
+  WockyNode *node;
 
-  node = wocky_xmpp_node_get_child (parent_node, "snippet");
+  node = wocky_node_get_child (parent_node, "snippet");
   if (node != NULL)
     {
       if (tp_strdiff (node->content, tp_asv_get_string (mail, "content")))
@@ -386,7 +386,7 @@ typedef struct
 } MailThreadCollector;
 
 static gboolean
-mail_thread_info_each (WockyXmppNode *node,
+mail_thread_info_each (WockyNode *node,
     gpointer user_data)
 {
   MailThreadCollector *collector = user_data;
@@ -398,7 +398,7 @@ mail_thread_info_each (WockyXmppNode *node,
       gchar *tid;
       gboolean dirty = FALSE;
 
-      val_str = wocky_xmpp_node_get_attribute (node, "tid");
+      val_str = wocky_node_get_attribute (node, "tid");
 
       /* We absolutly need an ID */
       if (val_str == NULL)
@@ -420,7 +420,7 @@ mail_thread_info_each (WockyXmppNode *node,
           dirty = TRUE;
         }
 
-      val_str = wocky_xmpp_node_get_attribute (node, "date");
+      val_str = wocky_node_get_attribute (node, "date");
 
       if (val_str != NULL)
         {
@@ -455,7 +455,7 @@ mail_thread_info_each (WockyXmppNode *node,
 
 static void
 store_unread_mails (GabbleConnection *conn,
-    WockyXmppNode *mailbox)
+    WockyNode *mailbox)
 {
   GHashTableIter iter;
   GPtrArray *mails_removed;
@@ -468,12 +468,12 @@ store_unread_mails (GabbleConnection *conn,
       g_free, (GDestroyNotify) g_hash_table_unref);
   collector.mails_added = g_ptr_array_new ();
 
-  url = wocky_xmpp_node_get_attribute (mailbox, "url");
+  url = wocky_node_get_attribute (mailbox, "url");
   g_free (conn->inbox_url);
   conn->inbox_url = g_strdup (url);
 
   /* Store new mails */
-  wocky_xmpp_node_each_child (mailbox, mail_thread_info_each, &collector);
+  wocky_node_each_child (mailbox, mail_thread_info_each, &collector);
 
   /* Generate the list of removed thread IDs */
   mails_removed = g_ptr_array_new_with_free_func (g_free);
@@ -494,7 +494,7 @@ store_unread_mails (GabbleConnection *conn,
     }
   g_ptr_array_add (mails_removed, NULL);
 
-  unread_count = wocky_xmpp_node_get_attribute (mailbox, "total-matched");
+  unread_count = wocky_node_get_attribute (mailbox, "total-matched");
 
   if (unread_count != NULL)
     conn->unread_mails_count = (guint)g_ascii_strtoll (unread_count, NULL, 0);
@@ -517,9 +517,9 @@ query_unread_mails_cb (GObject *source_object,
     gpointer user_data)
 {
   GError *error = NULL;
-  WockyXmppNode *node;
+  WockyNode *node;
   WockyPorter *porter = WOCKY_PORTER (source_object);
-  WockyXmppStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
+  WockyStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
 
   if (error != NULL)
     {
@@ -530,7 +530,7 @@ query_unread_mails_cb (GObject *source_object,
 
   DEBUG ("Got unread mail details");
 
-  node = wocky_xmpp_node_get_child (reply->node, "mailbox");
+  node = wocky_node_get_child (wocky_stanza_get_top_node (reply), "mailbox");
 
   if (node != NULL)
     {
@@ -547,25 +547,26 @@ end:
 static void
 update_unread_mails (GabbleConnection *conn)
 {
-  WockyXmppStanza *query;
+  WockyStanza *query;
   WockyPorter *porter = wocky_session_get_porter (conn->session);
 
   DEBUG ("Updating unread mails information");
 
-  query = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+  query = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_GET, NULL, NULL,
-      WOCKY_NODE, "query",
-      WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
-      WOCKY_NODE_END,
-      WOCKY_STANZA_END);
-  wocky_porter_send_iq_async (porter, query, NULL, query_unread_mails_cb, conn);
+      '(', "query",
+        ':', NS_GOOGLE_MAIL_NOTIFY,
+      ')',
+      NULL);
+  wocky_porter_send_iq_async (porter, query, NULL,
+      query_unread_mails_cb, conn);
   g_object_unref (query);
 }
 
 
 static gboolean
 new_mail_handler (WockyPorter *porter,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
@@ -596,10 +597,10 @@ connection_status_changed (GabbleConnection *conn,
             WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
             NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
             new_mail_handler, conn,
-            WOCKY_NODE, "new-mail",
-              WOCKY_NODE_XMLNS, NS_GOOGLE_MAIL_NOTIFY,
-              WOCKY_NODE_END,
-              WOCKY_STANZA_END);
+            '(', "new-mail",
+              ':', NS_GOOGLE_MAIL_NOTIFY,
+            ')',
+            NULL);
     }
 }
 

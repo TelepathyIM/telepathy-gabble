@@ -413,7 +413,8 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
   g_free (current_method);
   g_list_free (all_methods);
 
-  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si = lm_message_node_get_child_with_namespace (
+    wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 
   if (func != NULL)

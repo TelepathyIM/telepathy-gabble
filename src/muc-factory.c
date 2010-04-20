@@ -624,7 +624,8 @@ process_muc_invite (GabbleMucFactory *fac,
   gchar *room;
 
   /* does it have a muc subnode? */
-  x_node = lm_message_node_get_child_with_namespace (message->node, "x",
+  x_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (message), "x",
       NS_MUC_USER);
 
   if (x_node == NULL)
@@ -639,7 +640,7 @@ process_muc_invite (GabbleMucFactory *fac,
   /* FIXME: do something with these? */
   if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
-      NODE_DEBUG (message->node, "got a MUC invitation message with a send "
+      STANZA_DEBUG (message, "got a MUC invitation message with a send "
           "error; ignoring");
 
       return TRUE;
@@ -648,7 +649,7 @@ process_muc_invite (GabbleMucFactory *fac,
   invite_from = lm_message_node_get_attribute (invite_node, "from");
   if (invite_from == NULL)
     {
-      NODE_DEBUG (message->node, "got a MUC invitation message with no JID; "
+      STANZA_DEBUG (message, "got a MUC invitation message with no JID; "
           "ignoring");
 
       return TRUE;
@@ -658,7 +659,7 @@ process_muc_invite (GabbleMucFactory *fac,
       NULL, NULL);
   if (inviter_handle == 0)
     {
-      NODE_DEBUG (message->node, "got a MUC invitation message with invalid "
+      STANZA_DEBUG (message, "got a MUC invitation message with invalid "
           "inviter JID; ignoring");
 
       return TRUE;
@@ -698,8 +699,8 @@ process_obsolete_invite (GabbleMucFactory *fac,
   struct DiscoInviteData *disco_udata;
 
   /* check for obsolete invite method */
-  x_node = lm_message_node_get_child_with_namespace (message->node, "x",
-      NS_X_CONFERENCE);
+  x_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (message), "x", NS_X_CONFERENCE);
   if (x_node == NULL)
     return FALSE;
 
@@ -707,7 +708,8 @@ process_obsolete_invite (GabbleMucFactory *fac,
    * client or something */
   if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
-      NODE_DEBUG (message->node, "got an obsolete MUC invitation message with "
+      STANZA_DEBUG (message,
+          "got an obsolete MUC invitation message with "
           "a send error; ignoring");
 
       return TRUE;
@@ -717,8 +719,8 @@ process_obsolete_invite (GabbleMucFactory *fac,
   room = lm_message_node_get_attribute (x_node, "jid");
   if (room == NULL)
     {
-      NODE_DEBUG (message->node, "got a obsolete MUC invitation with no room "
-          "JID; ignoring");
+      STANZA_DEBUG (message,
+          "got a obsolete MUC invitation with no room JID; ignoring");
 
       return TRUE;
     }
@@ -727,7 +729,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
   inviter_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
   if (inviter_handle == 0)
     {
-      NODE_DEBUG (message->node, "got an obsolete MUC invitation message from "
+      STANZA_DEBUG (message, "got an obsolete MUC invitation message from "
           "an invalid JID; ignoring");
 
       return TRUE;

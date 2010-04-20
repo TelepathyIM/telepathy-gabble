@@ -213,9 +213,20 @@ class ReceiveFileTest(FileTransferTest):
         self.ft_path = path
 
     def accept_file(self):
-        self.address = self.ft_channel.AcceptFile(self.address_type,
-                self.access_control, self.access_control_param, self.file.offset,
+        try:
+            self.address = self.ft_channel.AcceptFile(self.address_type,
+                self.access_control, self.access_control_param,
+                self.file.offset,
                 byte_arrays=True)
+        except dbus.DBusException, e:
+            if self.address_type == cs.SOCKET_ADDRESS_TYPE_IPV6 and \
+                e.get_dbus_name() == cs.NOT_AVAILABLE and \
+                e.get_dbus_message() == "Could not set up local socket":
+                print "Ignoring error for ipv6 address space"
+                return True
+            else:
+                raise e
+
 
         state_event, iq_event = self.q.expect_many(
             EventPattern('dbus-signal', signal='FileTransferStateChanged'),
@@ -387,9 +398,18 @@ class SendFileTest(FileTransferTest):
         assert range is not None
 
     def provide_file(self):
-        self.address = self.ft_channel.ProvideFile(self.address_type,
+        try:
+            self.address = self.ft_channel.ProvideFile(self.address_type,
                 self.access_control, self.access_control_param,
                 byte_arrays=True)
+        except dbus.DBusException, e:
+            if self.address_type == cs.SOCKET_ADDRESS_TYPE_IPV6 and \
+              e.get_dbus_name() == cs.NOT_AVAILABLE and \
+              e.get_dbus_message() == "Could not set up local socket":
+                print "Ignoring error for ipv6 address space"
+                return True
+            else:
+                raise e
 
     def client_accept_file(self):
         # accept SI offer

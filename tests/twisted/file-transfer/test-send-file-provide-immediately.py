@@ -15,7 +15,8 @@ class SendFileTransferProvideImmediately(SendFileTest):
         else:
             assert False
 
-        SendFileTest.provide_file(self)
+        if SendFileTest.provide_file(self):
+            return True
 
         # state is still Pending as remote didn't accept the transfer yet
         state = self.ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER, 'State')

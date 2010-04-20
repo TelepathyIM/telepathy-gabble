@@ -1,3 +1,27 @@
+telepathy-gabble 0.9.10 (2010-04-08)
+====================================
+
+The “Cartoons and Macramé Wounds” release.
+
+Enhancements:
+
+• Updated Wocky:
+  - Improve Windows portability (Ole André Vadla Ravnås)
+  - Fix a double-free (KaKaRoTo)
+  - Even more exciting PubSub code (wjt)
+
+Fixes:
+
+• Properly expose more authentication failure errors from Wocky in
+  Connection.StatusChanged (sjoerd)
+
+• Run tests in a temporary D-Bus session, which fixes fd.o#25816
+  (sjoerd)
+
+• Fix tests on machines with no ipv6 (sjoerd)
+
+• Avoid doing undefined void-pointer arithmetic (smcv)
+
 telepathy-gabble 0.9.9 (2010-03-26)
 ===================================
 

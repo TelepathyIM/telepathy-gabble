@@ -1,7 +1,7 @@
 /*
  * gabble-connection.c - Source for GabbleConnection
- * Copyright (C) 2005, 2006, 2008 Collabora Ltd.
- * Copyright (C) 2005, 2006, 2008 Nokia Corporation
+ * Copyright (C) 2005-2010 Collabora Ltd.
+ * Copyright (C) 2005-2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -52,6 +52,7 @@
 #include "caps-hash.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
+#include "conn-contact-info.h"
 #include "conn-location.h"
 #include "conn-presence.h"
 #include "conn-sidecars.h"
@@ -94,6 +95,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_aliasing_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
       conn_avatars_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO,
+      conn_contact_info_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -332,6 +335,7 @@ gabble_connection_constructor (GType type,
 
   conn_aliasing_init (self);
   conn_avatars_init (self);
+  conn_contact_info_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
   conn_location_init (self);
@@ -349,6 +353,7 @@ gabble_connection_constructor (GType type,
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
   self->avatar_requests = g_hash_table_new (NULL, NULL);
+  self->vcard_requests = g_hash_table_new (NULL, NULL);
 
   if (priv->fallback_socks5_proxies == NULL)
     {
@@ -716,6 +721,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+      GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
       GABBLE_IFACE_OLPC_GADGET,
@@ -744,22 +750,27 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-        { GABBLE_IFACE_OLPC_GADGET,
+        /* 0 */ { GABBLE_IFACE_OLPC_GADGET,
           conn_olpc_gadget_properties_getter,
           NULL,
           olpc_gadget_props,
         },
-        { TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+        /* 1 */ { TP_IFACE_CONNECTION_INTERFACE_LOCATION,
           conn_location_properties_getter,
           conn_location_properties_setter,
           location_props,
         },
-        { TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+        /* 2 */ { TP_IFACE_CONNECTION_INTERFACE_AVATARS,
           conn_avatars_properties_getter,
           NULL,
           NULL,
         },
-        { GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+        /* 3 */ { GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+          conn_contact_info_properties_getter,
+          NULL,
+          NULL,
+        },
+        /* 4 */ { GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
           tp_dbus_properties_mixin_getter_gobject_properties,
           tp_dbus_properties_mixin_setter_gobject_properties,
           decloak_props,
@@ -773,6 +784,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   };
 
   prop_interfaces[2].props = conn_avatars_properties;
+  prop_interfaces[3].props = conn_contact_info_properties;
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 
@@ -979,6 +991,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   conn_presence_class_init (gabble_connection_class);
 
+  conn_contact_info_class_init (gabble_connection_class);
 }
 
 static void
@@ -1029,6 +1042,7 @@ gabble_connection_dispose (GObject *object)
   conn_olpc_activity_properties_dispose (self);
 
   g_hash_table_destroy (self->avatar_requests);
+  g_hash_table_destroy (self->vcard_requests);
 
   conn_mail_notif_dispose (self);
 
@@ -1141,6 +1155,7 @@ gabble_connection_finalize (GObject *object)
   tp_contacts_mixin_finalize (G_OBJECT(self));
 
   conn_presence_finalize (self);
+  conn_contact_info_finalize (self);
 
   gabble_capabilities_finalize (self);
 
@@ -2343,11 +2358,12 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_ERROR);
 
-  lm_message_node_set_attribute (msg->node, "id", id);
+  lm_message_node_set_attribute (wocky_stanza_get_top_node (msg), "id", id);
 
-  lm_message_node_steal_children (msg->node, iq_node);
+  lm_message_node_steal_children (
+      wocky_stanza_get_top_node (msg), iq_node);
 
-  gabble_xmpp_error_to_node (error, msg->node, errmsg);
+  gabble_xmpp_error_to_node (error, wocky_stanza_get_top_node (msg), errmsg);
 
   _gabble_connection_send (conn, msg, NULL);
 
@@ -2500,7 +2516,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 
   g_assert (connection == conn->lmconn);
 
-  NODE_DEBUG (message->node, "got unknown iq");
+  STANZA_DEBUG (message, "got unknown iq");
 
   switch (lm_message_get_sub_type (message))
     {
@@ -3343,10 +3359,12 @@ gabble_connection_send_presence (GabbleConnection *conn,
       sub_type);
 
   if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
-    lm_message_node_add_own_nick (message->node, conn);
+    lm_message_node_add_own_nick (
+        wocky_stanza_get_top_node (message), conn);
 
   if (!CHECK_STR_EMPTY(status))
-    lm_message_node_add_child (message->node, "status", status);
+    lm_message_node_add_child (
+        wocky_stanza_get_top_node (message), "status", status);
 
   result = _gabble_connection_send (conn, message, error);
 

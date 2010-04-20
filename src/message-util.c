@@ -41,23 +41,24 @@ _add_chat_state (LmMessage *msg,
                  TpChannelChatState state)
 {
   LmMessageNode *node = NULL;
+  WockyNode *n = wocky_stanza_get_top_node (msg);
 
   switch (state)
     {
       case TP_CHANNEL_CHAT_STATE_GONE:
-        node = lm_message_node_add_child (msg->node, "gone", NULL);
+        node = lm_message_node_add_child (n, "gone", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_INACTIVE:
-        node = lm_message_node_add_child (msg->node, "inactive", NULL);
+        node = lm_message_node_add_child (n, "inactive", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_ACTIVE:
-        node = lm_message_node_add_child (msg->node, "active", NULL);
+        node = lm_message_node_add_child (n, "active", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_PAUSED:
-        node = lm_message_node_add_child (msg->node, "paused", NULL);
+        node = lm_message_node_add_child (n, "paused", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_COMPOSING:
-        node = lm_message_node_add_child (msg->node, "composing", NULL);
+        node = lm_message_node_add_child (n, "composing", NULL);
         break;
     }
 
@@ -92,6 +93,7 @@ gabble_message_util_send_message (GObject *obj,
   GError *error = NULL;
   const GHashTable *part;
   LmMessage *msg;
+  WockyNode *node;
   guint type = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
   gboolean result = TRUE;
   const gchar *content_type, *text;
@@ -151,24 +153,25 @@ gabble_message_util_send_message (GObject *obj,
 
   msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
       subtype);
+  node = wocky_stanza_get_top_node (msg);
   /* Generate a UUID for the message */
   id = gabble_generate_id ();
-  lm_message_node_set_attribute (msg->node, "id", id);
+  lm_message_node_set_attribute (node, "id", id);
   tp_message_set_string (message, 0, "message-token", id);
 
   if (send_nick)
-    lm_message_node_add_own_nick (msg->node, conn);
+    lm_message_node_add_own_nick (node, conn);
 
   if (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION)
     {
       gchar *tmp;
       tmp = g_strconcat ("/me ", text, NULL);
-      lm_message_node_add_child (msg->node, "body", tmp);
+      lm_message_node_add_child (node, "body", tmp);
       g_free (tmp);
     }
   else
     {
-      lm_message_node_add_child (msg->node, "body", text);
+      lm_message_node_add_child (node, "body", text);
     }
 
   _add_chat_state (msg, state);
@@ -320,7 +323,8 @@ _tp_chat_state_from_message (LmMessage *message)
   LmMessageNode *node;
 
 #define MAP_TO(str, state) \
-  node = lm_message_node_get_child_with_namespace (message->node, str, \
+  node = lm_message_node_get_child_with_namespace ( \
+      wocky_stanza_get_top_node (message), str, \
       NS_CHAT_STATES); \
   if (node != NULL) \
     return state;
@@ -381,21 +385,26 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
     {
       LmMessageNode *error_node;
 
-      error_node = lm_message_node_get_child (message->node, "error");
+      error_node = lm_message_node_get_child (
+        wocky_stanza_get_top_node (message), "error");
 
-      *send_error = _tp_send_error_from_error_node (error_node, delivery_status);
+      *send_error = _tp_send_error_from_error_node (error_node,
+          delivery_status);
     }
 
-  *id = lm_message_node_get_attribute (message->node, "id");
+  *id = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+      "id");
 
-  *from = lm_message_node_get_attribute (message->node, "from");
+  *from = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+      "from");
   if (*from == NULL)
     {
-      NODE_DEBUG (message->node, "got a message without a from field");
+      STANZA_DEBUG (message, "got a message without a from field");
       return FALSE;
     }
 
-  type = lm_message_node_get_attribute (message->node, "type");
+  type = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+    "type");
 
   /*
    * Parse timestamp of delayed messages. For non-delayed, it's
@@ -403,8 +412,8 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
    */
   *stamp = 0;
 
-  node = lm_message_node_get_child_with_namespace (message->node, "x",
-      NS_X_DELAY);
+  node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (message), "x", NS_X_DELAY);
   if (node != NULL)
     {
       const gchar *stamp_str;
@@ -437,7 +446,8 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
   /*
    * Parse body if it exists.
    */
-  node = lm_message_node_get_child (message->node, "body");
+  node = lm_message_node_get_child (wocky_stanza_get_top_node (message),
+      "body");
 
   if (node)
     {
@@ -460,9 +470,11 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
   if (body != NULL)
     {
       if (type == NULL &&
-          lm_message_node_get_child_with_namespace (message->node,
+          lm_message_node_get_child_with_namespace (
+              wocky_stanza_get_top_node (message),
               "time", "google:timestamp") != NULL &&
-          lm_message_node_get_child_with_namespace (message->node,
+          lm_message_node_get_child_with_namespace (
+              wocky_stanza_get_top_node (message),
               "x", "jabber:x:delay") != NULL)
         {
           /* Google servers send offline messages without a type. Work around

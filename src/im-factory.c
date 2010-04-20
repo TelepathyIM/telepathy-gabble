@@ -236,7 +236,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
   if (handle == 0)
     {
-      NODE_DEBUG (message->node, "ignoring message node from malformed jid");
+      STANZA_DEBUG (message, "ignoring message node from malformed jid");
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 

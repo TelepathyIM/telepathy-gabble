@@ -24,11 +24,14 @@ def test(q, bus, conn, stream, is_google):
     result = make_result_iq(stream, iq_event.stanza)
 
     # Testing reveals that Google's vCard server does not actually support
-    # NICKNAME (or indeed any fields beside FN and PHOTO): if you set a vCard
-    # including it, it accepts the request but strips out the unsupported
-    # fields. So if the server looks like Google, we don't bother re-setting
-    # the NICKNAME.
-    if not is_google:
+    # NICKNAME (or indeed any fields beside FN, N and PHOTO): if you set a
+    # vCard including it, it accepts the request but strips out the unsupported
+    # fields. So if the server looks like Google, it's a redundant set
+    # operation on FN that we want to avoid.
+    if is_google:
+        vcard = result.firstChildElement()
+        vcard.addElement('FN', content='oh hello there')
+    else:
         vcard = result.firstChildElement()
         vcard.addElement('NICKNAME', content='oh hello there')
 

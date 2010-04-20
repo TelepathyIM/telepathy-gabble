@@ -23,7 +23,8 @@ class SendFileTransferWaitToProvideTest(SendFileTest):
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
     def provide_file(self):
-        SendFileTest.provide_file(self)
+        if SendFileTest.provide_file(self):
+            return True
 
         e = self.q.expect('dbus-signal', signal='InitialOffsetDefined')
         offset = e.args[0]

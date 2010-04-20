@@ -619,7 +619,8 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
 
   /* caller must have checked for this in order to know which bytestream to
    * route this packet to */
-  data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
+  data = lm_message_node_get_child_with_namespace (
+    wocky_stanza_get_top_node (msg), "data", NS_IBB);
   g_assert (data != NULL);
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
@@ -720,7 +721,8 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_IBB);
-  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 
   if (func != NULL)
@@ -755,11 +757,13 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
 
   if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
     {
-      gabble_xmpp_error_to_node (error->code, msg->node, error->message);
+      gabble_xmpp_error_to_node (error->code,
+        wocky_stanza_get_top_node (msg), error->message);
     }
   else
     {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN, msg->node,
+      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN,
+          wocky_stanza_get_top_node (msg),
           "Offer Declined");
     }
 

@@ -41,10 +41,9 @@ copy_node (WockyNode *node)
   WockyNode *copy;
   GSList *l;
 
-  copy = wocky_node_new (node->name, NULL);
+  copy = wocky_node_new (node->name, wocky_node_get_ns (node));
   wocky_node_set_content (copy, node->content);
   wocky_node_set_language (copy, wocky_node_get_language (node));
-  wocky_node_set_ns (copy, wocky_node_get_ns (node));
 
   wocky_node_each_attribute (node, copy_attribute, copy);
 

@@ -82,7 +82,7 @@ pep_reply_cb (GObject *source,
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  WockyXmppStanza *reply_msg;
+  WockyStanza *reply_msg;
   GError *error = NULL;
   const gchar *from;
 
@@ -95,7 +95,8 @@ pep_reply_cb (GObject *source,
       goto out;
     }
 
-  from = lm_message_node_get_attribute (reply_msg->node, "from");
+  from = lm_message_node_get_attribute (
+    wocky_stanza_get_top_node (reply_msg), "from");
 
   if (from != NULL)
     update_location_from_msg (conn, from, reply_msg);
@@ -272,7 +273,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *msg;
   LmMessageNode *geoloc;
-  WockyXmppNode *item;
+  WockyNode *item;
   GHashTableIter iter;
   gpointer key, value;
   GError *err = NULL;
@@ -292,7 +293,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
   gabble_connection_ensure_capabilities (conn,
       gabble_capabilities_get_geoloc_notify ());
   msg = wocky_pep_service_make_publish_stanza (conn->pep_location, &item);
-  geoloc = wocky_xmpp_node_add_child_ns (item, "geoloc", NS_GEOLOC);
+  geoloc = wocky_node_add_child_ns (item, "geoloc", NS_GEOLOC);
 
   DEBUG ("SetLocation to");
 
@@ -442,7 +443,8 @@ update_location_from_msg (GabbleConnection *conn,
 
   TpHandle contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
-  node = lm_message_node_find_child (msg->node, "geoloc");
+  node = lm_message_node_find_child (wocky_stanza_get_top_node (msg),
+      "geoloc");
   if (node == NULL)
     return FALSE;
 
@@ -528,7 +530,7 @@ update_location_from_msg (GabbleConnection *conn,
 static void
 location_pep_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (

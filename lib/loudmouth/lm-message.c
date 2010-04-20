@@ -24,7 +24,7 @@ LmMessage *
 lm_message_new (const gchar *to,
     LmMessageType type)
 {
-  return wocky_xmpp_stanza_build (type, WOCKY_STANZA_SUB_TYPE_NONE,
+  return wocky_stanza_build (type, WOCKY_STANZA_SUB_TYPE_NONE,
       NULL, to, NULL);
 }
 
@@ -33,7 +33,7 @@ lm_message_new_with_sub_type (const gchar *to,
     LmMessageType type,
     LmMessageSubType sub_type)
 {
-  return wocky_xmpp_stanza_build (type, sub_type,
+  return wocky_stanza_build (type, sub_type,
       NULL, to, NULL);
 }
 
@@ -54,7 +54,7 @@ lm_message_get_type (LmMessage *message)
 {
   WockyStanzaType type;
 
-  wocky_xmpp_stanza_get_type_info (message, &type, NULL);
+  wocky_stanza_get_type_info (message, &type, NULL);
   return type;
 }
 
@@ -63,12 +63,12 @@ lm_message_get_sub_type (LmMessage *message)
 {
   WockyStanzaSubType sub_type;
 
-  wocky_xmpp_stanza_get_type_info (message, NULL, &sub_type);
+  wocky_stanza_get_type_info (message, NULL, &sub_type);
   return sub_type;
 }
 
 LmMessageNode *
 lm_message_get_node (LmMessage *message)
 {
-  return message->node;
+  return wocky_stanza_get_top_node (message);
 }

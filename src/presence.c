@@ -473,9 +473,10 @@ OUT:
 
 void
 gabble_presence_add_status_and_vcard (GabblePresence *presence,
-  WockyXmppStanza *stanza)
+  WockyStanza *stanza)
 {
-  WockyXmppNode *vcard_node;
+  WockyNode *node = wocky_stanza_get_top_node (stanza);
+  WockyNode *vcard_node;
 
   switch (presence->status)
     {
@@ -484,19 +485,19 @@ gabble_presence_add_status_and_vcard (GabblePresence *presence,
     case GABBLE_PRESENCE_HIDDEN:
       break;
     case GABBLE_PRESENCE_AWAY:
-      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+      wocky_node_add_child_with_content (node, "show",
           JABBER_PRESENCE_SHOW_AWAY);
       break;
     case GABBLE_PRESENCE_CHAT:
-      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+      wocky_node_add_child_with_content (node, "show",
           JABBER_PRESENCE_SHOW_CHAT);
       break;
     case GABBLE_PRESENCE_DND:
-      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+      wocky_node_add_child_with_content (node, "show",
           JABBER_PRESENCE_SHOW_DND);
       break;
     case GABBLE_PRESENCE_XA:
-      wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+      wocky_node_add_child_with_content (node, "show",
           JABBER_PRESENCE_SHOW_XA);
       break;
     default:
@@ -505,15 +506,15 @@ gabble_presence_add_status_and_vcard (GabblePresence *presence,
     }
 
   if (presence->status_message)
-    wocky_xmpp_node_add_child_with_content (stanza->node, "status",
+    wocky_node_add_child_with_content (node, "status",
         presence->status_message);
 
-  vcard_node = wocky_xmpp_node_add_child_ns (stanza->node, "x",
+  vcard_node = wocky_node_add_child_ns (node, "x",
         NS_VCARD_TEMP_UPDATE);
 
   if (presence->avatar_sha1 != NULL)
     {
-      wocky_xmpp_node_add_child_with_content (vcard_node, "photo",
+      wocky_node_add_child_with_content (vcard_node, "photo",
         presence->avatar_sha1);
     }
 }
@@ -537,7 +538,7 @@ gabble_presence_as_message (GabblePresence *presence,
   message = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_PRESENCE,
               subtype);
 
-  gabble_presence_add_status_and_vcard (presence, WOCKY_XMPP_STANZA (message));
+  gabble_presence_add_status_and_vcard (presence, message);
 
   if (res->priority)
     {

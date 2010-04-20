@@ -741,18 +741,19 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
   const gchar *from;
   TpHandle handle;
 
-  tube_node = lm_message_node_get_child_with_namespace (msg->node, "tube",
-      NS_TUBES);
-  close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
-      NS_TUBES);
+  tube_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
+  close_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "close", NS_TUBES);
 
   if (tube_node == NULL && close_node == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  from = lm_message_node_get_attribute (msg->node, "from");
+  from = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (msg), "from");
   if (from == NULL)
     {
-      NODE_DEBUG (msg->node, "got a message without a from field");
+      STANZA_DEBUG (msg, "got a message without a from field");
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 

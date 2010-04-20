@@ -525,7 +525,8 @@ start_stream_initiation (GabbleTubeStream *self,
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
       stream_id, NS_TUBES);
 
-  si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 
   id_str = g_strdup_printf ("%u", priv->id);

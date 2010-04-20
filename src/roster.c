@@ -735,7 +735,8 @@ _gabble_roster_message_new (GabbleRoster *roster,
                                           LM_MESSAGE_TYPE_IQ,
                                           sub_type);
 
-  query_node = lm_message_node_add_child (message->node, "query", NULL);
+  query_node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (message), "query", NULL);
 
   if (NULL != query_return)
     *query_return = query_node;
@@ -1243,7 +1244,8 @@ got_roster_iq (GabbleRoster *roster,
   if (query_node == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  from = lm_message_node_get_attribute (message->node, "from");
+  from = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (message), "from");
 
   if (from != NULL)
     {
@@ -2585,7 +2587,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
   tp_handle_set_add (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  NODE_DEBUG (message->node, "Roster item as message");
+  STANZA_DEBUG (message, "Roster item as message");
   tp_handle_set_remove (item->groups, group);
 
   /* keep the handle valid until roster_edited_cb runs; it will do the unref */

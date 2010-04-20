@@ -1147,7 +1147,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   if (info->edit_type == GABBLE_VCARD_EDIT_CLEAR)
     {
       /* start from a clean slate... */
-      vcard_node = lm_message_node_add_child (msg->node, "vCard", "");
+      vcard_node = lm_message_node_add_child (
+          wocky_stanza_get_top_node (msg), "vCard", "");
       lm_message_node_set_attribute (vcard_node, "xmlns", "vcard-temp");
 
       /* ... but as a special case, the photo gets copied in from the old
@@ -1157,8 +1158,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
       if (node != NULL)
         vcard_copy (vcard_node, node, NULL, NULL);
 
-      /* Yes, we can do this: "LmMessageNode" is really a WockyXmppNode */
-      if (wocky_xmpp_node_equal (old_vcard, vcard_node))
+      /* Yes, we can do this: "LmMessageNode" is really a WockyNode */
+      if (wocky_node_equal (old_vcard, vcard_node))
         {
           /* nothing actually happened, forget it */
           lm_message_unref (msg);
@@ -1171,13 +1172,15 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   if (info->edit_type == GABBLE_VCARD_EDIT_APPEND)
     {
       /* appending: keep all child nodes */
-      vcard_node = vcard_copy (msg->node, old_vcard, NULL, NULL);
+      vcard_node = vcard_copy (
+          wocky_stanza_get_top_node (msg), old_vcard, NULL, NULL);
     }
   else
     {
       /* replacing or deleting: exclude all matching child nodes from
        * copying */
-      vcard_node = vcard_copy (msg->node, old_vcard, info->element_name,
+      vcard_node = vcard_copy (
+          wocky_stanza_get_top_node (msg), old_vcard, info->element_name,
           &maybe_changed);
     }
 
@@ -1196,7 +1199,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
         }
     }
 
-  if ((!maybe_changed) || wocky_xmpp_node_equal (old_vcard, vcard_node))
+  if ((!maybe_changed) || wocky_node_equal (old_vcard, vcard_node))
     {
       /* nothing actually happened, forget it */
       lm_message_unref (msg);
@@ -1273,7 +1276,8 @@ manager_patch_vcard (GabbleVCardManager *self,
       msg = new_msg;
       /* gabble_vcard_manager_edit_info_apply always returns an IQ message
        * with one vCard child */
-      vcard_node = lm_message_node_get_child (msg->node, "vCard");
+      vcard_node = lm_message_node_get_child (
+          wocky_stanza_get_top_node (msg), "vCard");
       g_assert (vcard_node != NULL);
     }
 
@@ -1372,7 +1376,8 @@ pipeline_reply_cb (GabbleConnection *conn,
        *        from an XMPP stanza.
        */
       if (reply_msg != NULL)
-        error_node = lm_message_node_get_child (reply_msg->node, "error");
+        error_node = lm_message_node_get_child (
+            wocky_stanza_get_top_node (reply_msg), "error");
 
       if (error_node != NULL)
         xmpp_error = gabble_xmpp_error_from_node (error_node, &error_type);
@@ -1413,7 +1418,8 @@ pipeline_reply_cb (GabbleConnection *conn,
 
   g_assert (reply_msg != NULL);
 
-  vcard_node = lm_message_node_get_child (reply_msg->node, "vCard");
+  vcard_node = lm_message_node_get_child (
+      wocky_stanza_get_top_node (reply_msg), "vCard");
 
   if (NULL == vcard_node)
     {
@@ -1421,7 +1427,8 @@ pipeline_reply_cb (GabbleConnection *conn,
       DEBUG ("successful lookup response contained no <vCard> node, "
           "creating an empty one");
 
-      vcard_node = lm_message_node_add_child (reply_msg->node, "vCard",
+      vcard_node = lm_message_node_add_child (
+          wocky_stanza_get_top_node (reply_msg), "vCard",
           NULL);
       lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
     }

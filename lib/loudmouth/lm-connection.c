@@ -23,7 +23,7 @@
 
 static gboolean
 stanza_cb (WockyPorter *self,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     gpointer user_data)
 {
   LmMessageHandler *handler = (LmMessageHandler *) user_data;
@@ -144,7 +144,7 @@ iq_reply_cb (GObject *source,
     gpointer user_data)
 {
   LmMessageHandler *handler = (LmMessageHandler *) user_data;
-  WockyXmppStanza *reply;
+  WockyStanza *reply;
   GError *error = NULL;
 
   reply = wocky_porter_send_iq_finish (WOCKY_PORTER (source), res, &error);

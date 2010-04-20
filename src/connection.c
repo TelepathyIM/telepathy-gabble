@@ -2358,11 +2358,12 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_ERROR);
 
-  lm_message_node_set_attribute (msg->node, "id", id);
+  lm_message_node_set_attribute (wocky_stanza_get_top_node (msg), "id", id);
 
-  lm_message_node_steal_children (msg->node, iq_node);
+  lm_message_node_steal_children (
+      wocky_stanza_get_top_node (msg), iq_node);
 
-  gabble_xmpp_error_to_node (error, msg->node, errmsg);
+  gabble_xmpp_error_to_node (error, wocky_stanza_get_top_node (msg), errmsg);
 
   _gabble_connection_send (conn, msg, NULL);
 
@@ -2515,7 +2516,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 
   g_assert (connection == conn->lmconn);
 
-  NODE_DEBUG (message->node, "got unknown iq");
+  STANZA_DEBUG (message, "got unknown iq");
 
   switch (lm_message_get_sub_type (message))
     {
@@ -3358,10 +3359,12 @@ gabble_connection_send_presence (GabbleConnection *conn,
       sub_type);
 
   if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
-    lm_message_node_add_own_nick (message->node, conn);
+    lm_message_node_add_own_nick (
+        wocky_stanza_get_top_node (message), conn);
 
   if (!CHECK_STR_EMPTY(status))
-    lm_message_node_add_child (message->node, "status", status);
+    lm_message_node_add_child (
+        wocky_stanza_get_top_node (message), "status", status);
 
   result = _gabble_connection_send (conn, message, error);
 

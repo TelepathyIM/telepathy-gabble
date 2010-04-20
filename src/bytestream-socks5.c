@@ -759,7 +759,8 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
       LmMessageNode *node;
       Streamhost *current_streamhost;
 
-      node = lm_message_node_add_child (iq_result->node, "query", "");
+      node = lm_message_node_add_child (
+        wocky_stanza_get_top_node (iq_result), "query", "");
       lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
 
       /* streamhost-used informs the other end of the streamhost we
@@ -1429,7 +1430,8 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_BYTESTREAMS);
-  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si = lm_message_node_get_child_with_namespace (
+    wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 
   if (func != NULL)
@@ -1466,11 +1468,13 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
 
   if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
     {
-      gabble_xmpp_error_to_node (error->code, msg->node, error->message);
+      gabble_xmpp_error_to_node (error->code,
+        wocky_stanza_get_top_node (msg), error->message);
     }
   else
     {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN, msg->node,
+      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN,
+          wocky_stanza_get_top_node (msg),
           "Offer Declined");
     }
 
@@ -1576,8 +1580,8 @@ socks5_init_reply_cb (GabbleConnection *conn,
       LmMessageNode *query, *streamhost = NULL;
       const gchar *jid;
 
-      query = lm_message_node_get_child_with_namespace (reply_msg->node,
-          "query", NS_BYTESTREAMS);
+      query = lm_message_node_get_child_with_namespace (
+        wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
 
       if (query != NULL)
         streamhost = lm_message_node_get_child (query, "streamhost-used");
@@ -1877,7 +1881,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {
       LmMessageNode *node;
-      NodeIter i = node_iter (msg->node);
+      NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
 
       node = lm_message_node_add_child (node_iter_data (i),
           "streamhost", "");
@@ -1906,7 +1910,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
           LmMessageNode *node;
           gchar *portstr;
           GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
-          NodeIter i = node_iter (msg->node);
+          NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
 
           node = lm_message_node_add_child (node_iter_data (i),
               "streamhost", "");

@@ -20,7 +20,7 @@
 
 #include "config.h"
 #include "conn-presence.h"
-
+#include "namespaces.h"
 #include <string.h>
 
 #include <telepathy-glib/dbus.h>
@@ -181,6 +181,151 @@ emit_one_presence_update (GabbleConnection *self,
   g_array_free (handles, TRUE);
 }
 
+static gboolean
+conn_presence_create_invisible_privacy_list (GabbleConnection *self,
+    GError **error)
+{
+    LmMessage *message;
+    LmMessageNode *node;
+    gboolean ret;
+
+    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+              LM_MESSAGE_SUB_TYPE_SET);
+
+    node = lm_message_get_node (message);
+
+    node = lm_message_node_add_child (node, "query", NULL);
+    lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
+
+    node = lm_message_node_add_child (node, "list", NULL);
+    lm_message_node_set_attribute (node, "name", "invisible");
+
+    node = lm_message_node_add_child (node, "item", NULL);
+    lm_message_node_set_attributes (node, "action", "deny", "order", "1",
+        NULL);
+
+    node = lm_message_node_add_child (node, "presence-out", NULL);
+
+    ret = _gabble_connection_send (self, message, error);
+
+    lm_message_unref (message);
+
+    return ret;
+}
+
+static gboolean
+conn_presence_privacy_list_set_invisible (GabbleConnection *self,
+    gboolean initial,
+    GError **error)
+{
+    LmMessage *message;
+    LmMessageNode *node;
+    gboolean ret;
+
+    if (!initial)
+      {
+        if (!gabble_connection_send_presence (self,
+                LM_MESSAGE_SUB_TYPE_UNAVAILABLE, "", "", error))
+            return FALSE;
+      }
+
+    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+              LM_MESSAGE_SUB_TYPE_SET);
+
+    node = lm_message_get_node (message);
+
+    node = lm_message_node_add_child (node, "query", NULL);
+    lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
+
+    node = lm_message_node_add_child (node, "active", NULL);
+
+    lm_message_node_set_attribute (node, "name", "invisible");
+
+    ret = _gabble_connection_send (self, message, error);
+
+    lm_message_unref (message);
+
+    if (!ret)
+      return FALSE;
+
+    ret = gabble_connection_send_presence (self,
+        LM_MESSAGE_SUB_TYPE_NOT_SET, "", "", error);
+
+    return ret;
+}
+
+static gboolean
+conn_presence_privacy_list_set_visible (GabbleConnection *self,
+    GError **error)
+{
+    LmMessage *message;
+    LmMessageNode *node;
+    gboolean ret;
+
+    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+              LM_MESSAGE_SUB_TYPE_SET);
+
+    node = lm_message_get_node (message);
+
+    node = lm_message_node_add_child (node, "query", NULL);
+    lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
+
+    node = lm_message_node_add_child (node, "active", NULL);
+
+    ret = _gabble_connection_send (self, message, error);
+
+    lm_message_unref (message);
+
+    if (!ret)
+      return FALSE;
+
+    ret = conn_presence_signal_own_presence (self, NULL, error);
+
+    return ret;
+}
+
+gboolean
+conn_presence_set_initial_presence (GabbleConnection *self, GError **error)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+
+  g_return_val_if_fail (base->status == TP_CONNECTION_STATUS_CONNECTING,
+      FALSE);
+
+  if (self->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
+    {
+      if (!conn_presence_create_invisible_privacy_list (self, error))
+        {
+          g_prefix_error (error, "failed to create invisible privacy list: ");
+          return FALSE;
+        }
+
+      if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+        {
+          if (!conn_presence_privacy_list_set_invisible (self, TRUE, error))
+            {
+              g_prefix_error (error,
+                  "failed to activate invisible privacy list: ");
+              return FALSE;
+            }
+          else
+            {
+              return TRUE;
+            }
+        }
+    }
+
+  /* send presence to the server to indicate availability */
+  /* TODO: some way for the user to set this */
+  if (!conn_presence_signal_own_presence (self, NULL, error))
+    {
+      g_prefix_error (error, "sending initial presence failed: ");
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 /**
  * conn_presence_signal_own_presence:
  * @self: A #GabbleConnection
@@ -201,14 +346,17 @@ conn_presence_signal_own_presence (GabbleConnection *self,
   LmMessage *message = gabble_presence_as_message (presence, to);
   gboolean ret;
 
-  if (presence->status == GABBLE_PRESENCE_HIDDEN)
+  if (presence->status == GABBLE_PRESENCE_HIDDEN && to == NULL)
     {
-      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0
-          && to == NULL)
+      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0)
         lm_message_node_set_attribute (lm_message_get_node (message),
             "type", "invisible");
       /* FIXME: or if sending directed presence, should we add
        * <show>away</show>? */
+
+            if ((self->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0)
+       lm_message_node_set_attribute (lm_message_get_node (message),
+           "type", "unavailable");
     }
 
   gabble_connection_fill_in_caps (self, message);
@@ -255,6 +403,7 @@ set_own_status_cb (GObject *obj,
   gchar *resource;
   gint8 prio;
   gboolean retval = TRUE;
+  GabblePresenceId prev_status = conn->self_presence->status;
 
   g_object_get (conn,
         "resource", &resource,
@@ -314,17 +463,42 @@ set_own_status_cb (GObject *obj,
     }
 
   if (gabble_presence_update (conn->self_presence, resource, i,
-        message_str, prio))
+          message_str, prio))
     {
-      if (base->status == TP_CONNECTION_STATUS_CONNECTED)
+      if (base->status != TP_CONNECTION_STATUS_CONNECTED)
         {
-          emit_one_presence_update (conn, base->self_handle);
-          retval = conn_presence_signal_own_presence (conn, NULL, error);
+          retval = TRUE;
+          goto OUT;
+        }
+      else if (prev_status != i && prev_status == GABBLE_PRESENCE_HIDDEN)
+        {
+          if (FALSE)
+            {
+              /* TODO: XEP-0186 */
+            }
+          if ((conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0)
+            {
+              retval = conn_presence_privacy_list_set_visible (conn, error);
+            }
+        }
+      else if (prev_status != i && i == GABBLE_PRESENCE_HIDDEN)
+        {
+          if (FALSE)
+            {
+              /* TODO: XEP-0186 */
+            }
+          if ((conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0)
+            {
+              retval = conn_presence_privacy_list_set_invisible (conn, FALSE,
+                  error);
+            }
         }
       else
         {
-          retval = TRUE;
+          retval = conn_presence_signal_own_presence (conn, NULL, error);
         }
+
+      emit_one_presence_update (conn, base->self_handle);
     }
 
 OUT:
@@ -372,7 +546,8 @@ status_available_cb (GObject *obj, guint status)
 
   if (base->status == TP_CONNECTION_STATUS_CONNECTED &&
       gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
-      (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0)
+      (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE ||
+          GABBLE_CONNECTION_FEATURES_PRIVACY == 0))
     return FALSE;
   else
     return TRUE;

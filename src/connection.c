@@ -2647,11 +2647,9 @@ set_status_to_connected (GabbleConnection *conn)
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
 
-  /* send presence to the server to indicate availability */
-  /* TODO: some way for the user to set this */
-  if (!conn_presence_signal_own_presence (conn, NULL, &error))
+  if (!conn_presence_set_initial_presence (conn, &error))
     {
-      DEBUG ("sending initial presence failed: %s", error->message);
+      DEBUG ("failed to set initial presence: %s", error->message);
       goto ERROR;
     }
 

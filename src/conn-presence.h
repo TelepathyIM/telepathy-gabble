@@ -37,6 +37,8 @@ gboolean conn_presence_signal_own_presence (GabbleConnection *self,
     const gchar *to, GError **error);
 gboolean conn_presence_visible_to (GabbleConnection *self,
     TpHandle recipient);
+gboolean conn_presence_set_initial_presence (GabbleConnection *self,
+    GError **error);
 
 void conn_decloak_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_decloak_emit_requested (GabbleConnection *conn,

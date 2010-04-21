@@ -45,15 +45,19 @@ G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
     tp_external_group_mixin_iface_init));
 
-/* signal enum */
-#if 0
-enum
+typedef enum
 {
-    LAST_SIGNAL
-};
-
-static guint signals[LAST_SIGNAL] = {0};
-#endif
+  STATE_NOT_JOINED = 0,
+  /* Internally preparing before we can sent muji information to the muc, only
+   * happens on the initial join */
+  STATE_PREPARING,
+  /* Sent the stanza with the preparing node */
+  STATE_PREPARING_SENT,
+  /* We know when our turn is, now waiting for it */
+  STATE_WAIT_FOR_TURN,
+  /* Our state matches the state we published */
+  STATE_STABLE,
+} MucCallState;
 
 enum
 {
@@ -67,20 +71,33 @@ struct _GabbleCallMucChannelPrivate
 
   GabbleMucChannel *muc;
   WockyMuc *wmuc;
-  gboolean initialized;
-};
 
-#define GABBLE_CALL_MUC_CHANNEL_GET_PRIVATE(o)   \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), \
-  GABBLE_TYPE_CALL_MUC_CHANNEL, GabbleCallMucChannelPrivate))
+  gboolean initialized;
+  MucCallState state;
+
+  /* The list of members who should sent an update before us */
+  GQueue *before;
+  GQueue *after;
+
+  /* List of members we should initial a session to after joining */
+  GQueue *sessions_to_open;
+  gboolean sessions_opened;
+
+  /* Our current muji information */
+  WockyNodeTree *muji;
+};
 
 static void
 gabble_call_muc_channel_init (GabbleCallMucChannel *self)
 {
   GabbleCallMucChannelPrivate *priv =
-    GABBLE_CALL_MUC_CHANNEL_GET_PRIVATE (self);
+    G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_CALL_MUC_CHANNEL, GabbleCallMucChannelPrivate);
 
   self->priv = priv;
+  priv->before = g_queue_new ();
+  priv->after = g_queue_new ();
+  priv->sessions_to_open = g_queue_new ();
 }
 
 static void
@@ -175,8 +192,7 @@ void
 gabble_call_muc_channel_dispose (GObject *object)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (object);
-  GabbleCallMucChannelPrivate *priv =
-    GABBLE_CALL_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleCallMucChannelPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -186,6 +202,10 @@ gabble_call_muc_channel_dispose (GObject *object)
   if (priv->wmuc != NULL)
     g_object_unref (priv->wmuc);
   priv->wmuc = NULL;
+
+  if (priv->muji != NULL)
+    g_object_unref (priv->muji);
+  priv->muji = NULL;
 
   tp_external_group_mixin_finalize (object);
 
@@ -198,9 +218,71 @@ gabble_call_muc_channel_dispose (GObject *object)
 void
 gabble_call_muc_channel_finalize (GObject *object)
 {
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (object);
+  GabbleCallMucChannelPrivate *priv = self->priv;
+
   /* free any data held directly by the object here */
+  g_queue_free (priv->before);
+  g_queue_free (priv->after);
+  g_queue_free (priv->sessions_to_open);
 
   G_OBJECT_CLASS (gabble_call_muc_channel_parent_class)->finalize (object);
+}
+
+static gboolean
+call_muc_channel_got_codecs (GabbleCallMucChannel *self)
+{
+  GList *l;
+
+  for (l = gabble_base_call_channel_get_contents (
+      GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
+    {
+      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
+
+      if (gabble_call_content_get_local_codecs (content) == NULL)
+        return FALSE;
+    }
+
+  return TRUE;
+}
+
+/* Decide on what to do next for an update */
+static void
+call_muc_do_update (GabbleCallMucChannel *self)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
+  MucCallState old = priv->state;
+
+  switch (priv->state)
+    {
+      case STATE_NOT_JOINED:
+      case STATE_PREPARING_SENT:
+      case STATE_WAIT_FOR_TURN:
+        /* we either didn't want to join yet or are already in the progress of
+         * doing one, no need to take action */
+        break;
+      case STATE_PREPARING:
+        g_assert (priv->muji == NULL);
+
+        if (!call_muc_channel_got_codecs (self))
+          {
+            DEBUG ("Postponing sending prepare, waiting for codecs");
+            break;
+          }
+
+        priv->muji = wocky_node_tree_new ("muji", NS_MUJI, NULL);
+        /* fall through */
+      case STATE_STABLE:
+        /* Start preperation of the next round */
+        g_assert (priv->muji != NULL);
+        wocky_node_add_child (wocky_node_tree_get_top_node (priv->muji),
+          "preparing");
+        priv->state = STATE_PREPARING_SENT;
+        gabble_muc_channel_send_presence (priv->muc, NULL);
+        break;
+    }
+
+  DEBUG ("Updating muji state %d -> %d", old, priv->state);
 }
 
 static void
@@ -210,8 +292,20 @@ call_muc_channel_content_local_codecs_updated (GabbleCallContent *content,
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
 
-  DEBUG ("Local codecs of a content updated, forcing presence sent");
-  gabble_muc_channel_send_presence (self->priv->muc, NULL);
+  DEBUG ("Local codecs of a content updated");
+  call_muc_do_update (self);
+}
+
+static void
+call_muc_channel_open_sessions (GabbleCallMucChannel *self)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
+  GabbleCallMember *m;
+
+  priv->sessions_opened = TRUE;
+
+  while ((m = g_queue_pop_head (priv->sessions_to_open)) != NULL)
+    gabble_call_member_open_session (m, 0);
 }
 
 static void
@@ -328,43 +422,94 @@ call_muc_channel_parse_codecs (GabbleCallMucChannel *self,
 }
 
 static void
-call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
-  WockyMucMember *member,
-  WockyStanza *stanza)
+call_muc_channel_send_new_state (GabbleCallMucChannel *self)
 {
   GabbleCallMucChannelPrivate *priv = self->priv;
-  GabbleCallMember *call_member;
-  TpHandle handle;
-  TpHandleRepoIface *contact_repo =
-    tp_base_connection_get_handles (
-      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
-        TP_HANDLE_TYPE_CONTACT);
-  WockyNode *muji;
+  /* Our turn! */
+  GQueue *t;
+  WockyNode *m;
+  GList *l;
+
+  /* switch the before and after queues */
+  t = priv->before;
+  priv->before = priv->after;
+  priv->after = t;
+
+  g_object_unref (priv->muji);
+  priv->muji = wocky_node_tree_new ("muji", NS_MUJI, '*', &m, NULL);
+
+  for (l = gabble_base_call_channel_get_contents (
+      GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
+    {
+      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
+      const gchar *name = gabble_call_content_get_name (content);
+      WockyNode *description;
+      GList *codecs;
+      JingleMediaType mtype = gabble_call_content_get_media_type (content);
+
+      wocky_node_add_build (m,
+        '(', "content", '@', "name", name,
+          '(', "description", ':', NS_JINGLE_RTP, '*', &description,
+            '@', "media", mtype == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video",
+          ')',
+        ')',
+        NULL);
+
+      for (codecs = gabble_call_content_get_local_codecs (content) ;
+          codecs != NULL ; codecs = g_list_next (codecs))
+        {
+          JingleCodec *codec = codecs->data;
+          WockyNode *pt;
+          GHashTableIter iter;
+          gpointer key, value;
+          gchar *idstr;
+
+          idstr = g_strdup_printf ("%d", codec->id);
+          wocky_node_add_build (description,
+            '(', "payload-type", '*', &pt,
+                '@', "id", idstr,
+                '@', "name", codec->name,
+             ')',
+            NULL);
+          g_free (idstr);
+
+          if (codec->clockrate > 0)
+            {
+              gchar *rate = g_strdup_printf ("%d", codec->clockrate);
+              wocky_node_set_attribute (pt, "clockrate", rate);
+              g_free (rate);
+            }
+
+          if (codec->channels > 0)
+            {
+              gchar *channels = g_strdup_printf ("%d", codec->channels);
+              wocky_node_set_attribute (pt, "channels", channels);
+              g_free (channels);
+            }
+
+          g_hash_table_iter_init (&iter, codec->params);
+          while (g_hash_table_iter_next (&iter, &key, &value))
+              wocky_node_add_build (pt,
+                '(', "parameter",
+                  '@', "name", (gchar *) key,
+                  '@', "value", (gchar *) value,
+                ')',
+                NULL);
+        }
+    }
+
+  priv->state = STATE_STABLE;
+  gabble_muc_channel_send_presence (priv->muc, NULL);
+}
+
+static void
+call_muc_channel_parse_participant (GabbleCallMucChannel *self,
+  GabbleCallMember *member,
+  WockyNode *muji)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
   WockyNodeIter iter;
   WockyNode *content;
-
-  muji = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
-
-  if (muji == NULL)
-    return;
-
-  DEBUG ("Muji participant: %s", member->from);
-
-  handle = tp_handle_ensure (contact_repo, member->from, NULL, NULL);
-
-  call_member = gabble_base_call_channel_get_member_from_handle (
-    GABBLE_BASE_CALL_CHANNEL (self), handle);
-
-  if (call_member == NULL)
-    {
-      call_member = gabble_base_call_channel_ensure_member_from_handle (
-        GABBLE_BASE_CALL_CHANNEL (self), handle);
-      gabble_signal_connect_weak (call_member, "content-added",
-        G_CALLBACK (call_muc_channel_member_content_added_cb),
-        G_OBJECT (self));
-      gabble_call_member_accept (call_member);
-    }
 
   wocky_node_iter_init (&iter, muji, "content", NS_MUJI);
   while (wocky_node_iter_next (&iter, &content))
@@ -413,7 +558,7 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
           continue;
         }
 
-      member_content = gabble_call_member_ensure_content (call_member,
+      member_content = gabble_call_member_ensure_content (member,
         name, mtype);
 
       if (gabble_call_member_content_has_jingle_content (member_content))
@@ -430,6 +575,83 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
             g_object_set (self, "initial-video", TRUE, NULL);
         }
     }
+}
+
+static void
+call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
+  WockyMucMember *member,
+  WockyStanza *stanza)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
+  GabbleCallMember *call_member;
+  TpHandle handle;
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles (
+      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  WockyNode *muji;
+
+  muji = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
+
+  DEBUG ("Muji participant: %s", member->from);
+
+  handle = tp_handle_ensure (contact_repo, member->from, NULL, NULL);
+
+  call_member = gabble_base_call_channel_get_member_from_handle (
+    GABBLE_BASE_CALL_CHANNEL (self), handle);
+
+  if (muji == NULL)
+    {
+      /* Member without muji information remove it if needed */
+      if (call_member != NULL)
+        {
+          g_queue_remove (priv->before, call_member);
+          g_queue_remove (priv->after, call_member);
+          g_queue_remove (priv->sessions_to_open, call_member);
+        }
+      /* TODO remove member from the call if needed */
+      return;
+    }
+
+  if (call_member == NULL)
+    {
+      call_member = gabble_base_call_channel_ensure_member_from_handle (
+        GABBLE_BASE_CALL_CHANNEL (self), handle);
+      gabble_signal_connect_weak (call_member, "content-added",
+        G_CALLBACK (call_muc_channel_member_content_added_cb),
+        G_OBJECT (self));
+      gabble_call_member_accept (call_member);
+    }
+
+  if (!priv->sessions_opened && priv->state < STATE_WAIT_FOR_TURN)
+    g_queue_push_tail (priv->sessions_to_open, call_member);
+
+  call_muc_channel_parse_participant (self, call_member, muji);
+
+  if (wocky_node_get_child (muji, "preparing"))
+    {
+      /* remote member is preparing something, add to the right queue */
+      if (!g_queue_find (priv->before, call_member)
+          && !g_queue_find (priv->after, call_member))
+        {
+          g_queue_push_tail (
+              priv->state != STATE_WAIT_FOR_TURN ? priv->before : priv->after,
+              call_member);
+        }
+    }
+  else
+    {
+      /* remote member isn't preparing or at least not anymore */
+      g_queue_remove (priv->before, call_member);
+      g_queue_remove (priv->after, call_member);
+      if (priv->state == STATE_WAIT_FOR_TURN &&
+          g_queue_is_empty (priv->before))
+        {
+          call_muc_channel_send_new_state (self);
+        }
+    }
+
 }
 
 static void
@@ -482,80 +704,12 @@ call_muc_channel_pre_presence_cb (WockyMuc *wmuc,
     gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
-  WockyNode *muji;
-  GList *l;
 
-  for (l = gabble_base_call_channel_get_contents (
-      GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
-    {
-      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
+  if (self->priv->muji == NULL)
+    return;
 
-      if (gabble_call_content_get_local_codecs (content) == NULL)
-        return;
-    }
-
-  DEBUG ("%p got our a prepresence signal, putting in codecs", self);
-
-  muji = wocky_node_add_child_ns (
-      wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
-  for (l = gabble_base_call_channel_get_contents (
-      GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
-    {
-      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
-      const gchar *name = gabble_call_content_get_name (content);
-      WockyNode *mcontent;
-      WockyNode *description;
-      GList *codecs;
-      JingleMediaType mtype = gabble_call_content_get_media_type (content);
-
-      mcontent = wocky_node_add_child (muji, "content");
-      wocky_node_set_attribute (mcontent, "name", name);
-
-      description = wocky_node_add_child_ns (mcontent,
-        "description", NS_JINGLE_RTP);
-      wocky_node_set_attribute (description, "media",
-        mtype == JINGLE_MEDIA_TYPE_AUDIO ? "audio" : "video");
-
-      for (codecs = gabble_call_content_get_local_codecs (content) ;
-          codecs != NULL ; codecs = g_list_next (codecs))
-        {
-          JingleCodec *codec = codecs->data;
-          WockyNode *pt;
-          GHashTableIter iter;
-          gpointer key, value;
-          gchar *idstr;
-
-          pt = wocky_node_add_child (description, "payload-type");
-
-          idstr = g_strdup_printf ("%d", codec->id);
-          wocky_node_set_attribute (pt, "id", idstr);
-          g_free (idstr);
-
-          wocky_node_set_attribute (pt, "name", codec->name);
-
-          if (codec->clockrate > 0)
-            {
-              gchar *rate = g_strdup_printf ("%d", codec->clockrate);
-              wocky_node_set_attribute (pt, "clockrate", rate);
-              g_free (rate);
-            }
-
-          if (codec->channels > 0)
-            {
-              gchar *channels = g_strdup_printf ("%d", codec->channels);
-              wocky_node_set_attribute (pt, "channels", channels);
-              g_free (channels);
-            }
-
-          g_hash_table_iter_init (&iter, codec->params);
-          while (g_hash_table_iter_next (&iter, &key, &value))
-            {
-              WockyNode *p = wocky_node_add_child (pt, "parameter");
-              wocky_node_set_attribute (p, "name", (gchar *) key);
-              wocky_node_set_attribute (p, "value", (gchar *) value);
-            }
-        }
-    }
+  wocky_node_add_node_tree (wocky_stanza_get_top_node (stanza),
+    self->priv->muji);
 }
 
 static void
@@ -564,7 +718,39 @@ call_muc_channel_own_presence_cb (WockyMuc *wmuc,
     GHashTable *code,
     gpointer user_data)
 {
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
+  GabbleCallMucChannelPrivate *priv = self->priv;
+  WockyNode *muji;
+
   DEBUG ("Got our own presence");
+
+  muji = wocky_node_get_child_ns (
+    wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
+
+  /* If our presence didn't have a muji stanza or had an older version we don't
+   * care about it */
+  if (muji == NULL ||
+      !wocky_node_equal (muji, wocky_node_tree_get_top_node (priv->muji)))
+    return;
+
+  switch (priv->state)
+    {
+      case STATE_PREPARING_SENT:
+        DEBUG ("Got our preperation message, now waiting for our turn");
+        priv->state = STATE_WAIT_FOR_TURN;
+
+        if (g_queue_is_empty (priv->before))
+          call_muc_channel_send_new_state (self);
+        break;
+      case STATE_WAIT_FOR_TURN:
+        break;
+      case STATE_STABLE:
+        if (!priv->sessions_opened)
+          call_muc_channel_open_sessions (self);
+        break;
+      default:
+        DEBUG ("Got a muji presence from ourselves before we sent one ?!");
+    }
 }
 
 static void
@@ -626,8 +812,7 @@ call_muc_channel_init_async (GAsyncInitable *initable,
   gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (initable);
-  GabbleCallMucChannelPrivate *priv =
-    GABBLE_CALL_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleCallMucChannelPrivate *priv = self->priv;
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
   GabbleCallContent *content;
   GSimpleAsyncResult *result;
@@ -748,20 +933,14 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
 static void
 call_muc_channel_accept (GabbleBaseCallChannel *channel)
 {
-  GHashTable *members;
-  GHashTableIter iter;
-  gpointer value;
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (channel);
 
-  DEBUG ("Accepted muji channel, starting sessions");
+  if (self->priv->state != STATE_NOT_JOINED)
+    return;
 
-  members = gabble_base_call_channel_get_members (channel);
+  DEBUG ("Accepted muji channel");
 
-  g_hash_table_iter_init (&iter, members);
-  while (g_hash_table_iter_next (&iter, NULL, &value))
-    {
-      GabbleCallMember *member = GABBLE_CALL_MEMBER (value);
-
-      gabble_call_member_open_session (member, NULL);
-      gabble_call_member_accept (member);
-    }
+  /* Start preparing to join the conference */
+  self->priv->state = STATE_PREPARING;
+  call_muc_do_update (self);
 }

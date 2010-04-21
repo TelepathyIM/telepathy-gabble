@@ -34,6 +34,7 @@
 #include "jingle-factory.h"
 #include "muc-factory.h"
 #include "olpc-gadget-manager.h"
+#include "slacker.h"
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -172,6 +173,9 @@ struct _GabbleConnection {
     GPtrArray *channel_managers;
     GPtrArray *channel_requests;
     gboolean has_tried_connection;
+
+    GabbleSlacker *slacker;
+    guint slacker_inactivity_changed_id;
 
     GabbleConnectionPrivate *priv;
 };

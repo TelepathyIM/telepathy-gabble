@@ -100,12 +100,21 @@ def echo_presence (q, stream, stanza, affiliation, role):
 
     stream.send (stanza)
 
+def no_muji_presences ():
+    return EventPattern ('stream-presence',
+        to = muc + "/test",
+        predicate = lambda x:
+            xpath.queryForNodes("/presence/muji", x.stanza))
 
 def run_outgoing_test(q, bus, conn, stream):
     jp = JingleProtocol031 ()
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + '/bob')
     jt.prepare()
 
+    # Not allowed to have muji releated presences before we accept the channel
+    forbidden = [ no_muji_presences () ]
+
+    q.forbid_events(forbidden)
     call_async (q, conn.Requests, 'CreateChannel',
         { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
           cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
@@ -123,7 +132,6 @@ def run_outgoing_test(q, bus, conn, stream):
     general_tests (jp, q, bus, conn, stream, path, props)
 
     channel = bus.get_object (conn.bus_name, path)
-    channel.Accept()
 
     props = channel.GetAll (cs.CHANNEL_TYPE_CALL,
         dbus_interface = dbus.PROPERTIES_IFACE)
@@ -131,6 +139,10 @@ def run_outgoing_test(q, bus, conn, stream):
     content = bus.get_object (conn.bus_name, props['Contents'][0])
     codecs = jt.get_call_audio_codecs_dbus()
     content.SetCodecs(codecs)
+
+    # Accept the channel, which means we can get muji presences
+    q.unforbid_events (forbidden)
+    channel.Accept()
 
     presence = q.expect('stream-presence', to = muc + "/test")
     mujinode = xpath.queryForNodes("/presence/muji", presence.stanza)

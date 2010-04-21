@@ -5,6 +5,8 @@ BUILT_SOURCES = \
 
 CLEANFILES = $(BUILT_SOURCES)
 
+EXTRA_DIST =
+
 libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
@@ -158,6 +160,8 @@ libgabble_convenience_la_SOURCES = \
     server-sasl-channel.c \
     $(top_srcdir)/gabble/sidecar.h \
     sidecar.c \
+    slacker.h \
+    slacker.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \

@@ -71,6 +71,14 @@ def run_incoming_test(q, bus, conn, stream):
             content, codecs)
     channel.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
 
+    # Preparing stanza
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
+
+    # Codecs stanza
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
+
     e = q.expect ('dbus-signal', signal = 'StreamAdded')
     cstream = bus.get_object (conn.bus_name, e.args[0])
 
@@ -80,6 +88,17 @@ def run_incoming_test(q, bus, conn, stream):
 
     q.expect('stream-iq',
         predicate=jp.action_predicate('session-initiate'))
+
+def echo_presence (q, stream, stanza, affiliation, role):
+    x = stanza.addElement((ns.MUC_USER, 'x'))
+    stanza['from'] = stanza['to']
+    del stanza['to']
+
+    item = x.addElement('item')
+    item['affiliation'] = affiliation
+    item['role'] = role
+
+    stream.send (stanza)
 
 
 def run_outgoing_test(q, bus, conn, stream):
@@ -94,8 +113,8 @@ def run_outgoing_test(q, bus, conn, stream):
           cs.CALL_INITIAL_AUDIO: True,
          }, byte_arrays = True)
 
-    q.expect('stream-presence', to = muc + "/test")
-    stream.send(make_muc_presence('none', 'participant', muc, 'test'))
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
 
     e = q.expect ('dbus-return', method='CreateChannel')
 

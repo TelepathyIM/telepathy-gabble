@@ -2071,23 +2071,7 @@ connection_shut_down (TpBaseConnection *base)
   tp_base_connection_finish_shutdown (base);
 }
 
-gboolean
-gabble_connection_visible_to (GabbleConnection *self,
-    TpHandle recipient)
-{
-  if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
-    return FALSE;
-
-  if ((gabble_roster_handle_get_subscription (self->roster, recipient)
-      & GABBLE_ROSTER_SUBSCRIPTION_FROM) == 0)
-    return FALSE;
-
-  /* FIXME: other reasons they might not be able to see our presence? */
-
-  return TRUE;
-}
-
-static void
+void
 gabble_connection_fill_in_caps (GabbleConnection *self,
     LmMessage *presence_message)
 {
@@ -2146,7 +2130,7 @@ gabble_connection_send_capabilities (GabbleConnection *self,
    * getting our presence... */
   handle = tp_handle_lookup (contact_repo, recipient, NULL, NULL);
 
-  if (handle != 0 && gabble_connection_visible_to (self, handle))
+  if (handle != 0 && conn_presence_visible_to (self, handle))
     {
       /* nothing to do, they should already have had our presence */
       return TRUE;
@@ -2161,51 +2145,6 @@ gabble_connection_send_capabilities (GabbleConnection *self,
   ret = _gabble_connection_send (self, message, error);
 
   lm_message_unref (message);
-
-  return ret;
-}
-
-/**
- * _gabble_connection_signal_own_presence:
- * @self: A #GabbleConnection
- * @to: bare or full JID for directed presence, or NULL
- * @error: pointer in which to return a GError in case of failure.
- *
- * Signal the user's stored presence to @to, or to the jabber server
- *
- * Retuns: FALSE if an error occurred
- */
-gboolean
-_gabble_connection_signal_own_presence (GabbleConnection *self,
-    const gchar *to,
-    GError **error)
-{
-  GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence, to);
-  gboolean ret;
-
-  if (presence->status == GABBLE_PRESENCE_HIDDEN)
-    {
-      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0
-          && to == NULL)
-        lm_message_node_set_attribute (lm_message_get_node (message),
-            "type", "invisible");
-      /* FIXME: or if sending directed presence, should we add
-       * <show>away</show>? */
-    }
-
-  gabble_connection_fill_in_caps (self, message);
-
-  ret = _gabble_connection_send (self, message, error);
-
-  lm_message_unref (message);
-
-  /* FIXME: if sending broadcast presence, should we echo it to everyone we
-   * previously sent directed presence to? (Perhaps also GC them after a
-   * while?) */
-
-  if (to == NULL && !self->priv->closing)
-    gabble_muc_factory_broadcast_presence (self->muc_factory);
 
   return ret;
 }
@@ -2291,7 +2230,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
       return FALSE;
     }
 
-  if (!_gabble_connection_signal_own_presence (self, NULL, &error))
+  if (!conn_presence_signal_own_presence (self, NULL, &error))
     {
       gabble_capability_set_free (save_set);
       DEBUG ("error sending presence: %s", error->message);
@@ -2634,7 +2573,7 @@ connection_disco_cb (GabbleDisco *disco,
 
   /* send presence to the server to indicate availability */
   /* TODO: some way for the user to set this */
-  if (!_gabble_connection_signal_own_presence (conn, NULL, &error))
+  if (!conn_presence_signal_own_presence (conn, NULL, &error))
     {
       DEBUG ("sending initial presence failed: %s", error->message);
       goto ERROR;

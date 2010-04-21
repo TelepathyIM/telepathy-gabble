@@ -69,6 +69,8 @@ libgabble_convenience_la_SOURCES = \
     conn-presence.c \
     conn-sidecars.h \
     conn-sidecars.c \
+    conn-slacker.h \
+    conn-slacker.c \
     conn-mail-notif.h \
     conn-mail-notif.c \
     connection.h \

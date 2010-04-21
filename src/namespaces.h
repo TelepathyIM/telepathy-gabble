@@ -36,6 +36,7 @@
 #define NS_GOOGLE_FEAT_VIDEO    "http://www.google.com/xmpp/protocol/video/v1"
 #define NS_GOOGLE_JINGLE_INFO   "google:jingleinfo"
 #define NS_GOOGLE_ROSTER        "google:roster"
+#define NS_GOOGLE_QUEUE         "google:queue"
 #define NS_IBB                  "http://jabber.org/protocol/ibb"
 
 /* Namespaces for XEP-0166 draft v0.15, the most capable Jingle dialect

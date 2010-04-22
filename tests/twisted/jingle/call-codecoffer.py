@@ -142,7 +142,9 @@ def test(jp, q, bus, conn, stream):
         print 'Gabble probably crashed'
         raise e
     else:
-        assertLength (1, ret)
+        # depending on the age of our telepathy-glib, we have at least
+        # SelfHandle, and might also have Interfaces and Status
+        assert len(ret) > 0
 
 if __name__ == '__main__':
     test_dialects(test, [JingleProtocol031])

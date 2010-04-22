@@ -579,15 +579,19 @@ status_available_cb (GObject *obj, guint status)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  GabbleConnectionFeatures invisibility_features =
+    GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE |
+    GABBLE_CONNECTION_FEATURES_PRIVACY | GABBLE_CONNECTION_FEATURES_INVISIBLE;
+  TpConnectionPresenceType presence_type =
+    gabble_statuses[status].presence_type;
 
   /* If we've gone online and found that the server doesn't support invisible,
    * reject it.
    */
 
   if (base->status == TP_CONNECTION_STATUS_CONNECTED &&
-      gabble_statuses[status].presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
-      (conn->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE ||
-          GABBLE_CONNECTION_FEATURES_PRIVACY == 0))
+      presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
+      (conn->features & invisibility_features) == 0)
     return FALSE;
   else
     return TRUE;

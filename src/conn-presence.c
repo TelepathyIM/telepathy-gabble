@@ -248,8 +248,35 @@ conn_presence_privacy_list_set_invisible (GabbleConnection *self,
     if (!ret)
       return FALSE;
 
-    ret = gabble_connection_send_presence (self,
-        LM_MESSAGE_SUB_TYPE_NOT_SET, "", "", error);
+    return gabble_connection_send_presence (self, LM_MESSAGE_SUB_TYPE_NOT_SET,
+        "", "", error);
+}
+
+static gboolean
+conn_presence_set_invisible (GabbleConnection *self,
+    gboolean invisible,
+    GError **error)
+{
+    LmMessage *message;
+    LmMessageNode *node;
+    gboolean ret;
+
+    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+              LM_MESSAGE_SUB_TYPE_SET);
+
+    node = lm_message_get_node (message);
+
+    node = lm_message_node_add_child (node,
+        invisible ? "invisible" : "visible", NULL);
+
+    lm_message_node_set_attribute (node, "xmlns", NS_INVISIBLE);
+
+    ret = _gabble_connection_send (self, message, error);
+
+    lm_message_unref (message);
+
+    if (!invisible && ret)
+      return conn_presence_signal_own_presence (self, NULL, error);
 
     return ret;
 }
@@ -279,9 +306,7 @@ conn_presence_privacy_list_set_visible (GabbleConnection *self,
     if (!ret)
       return FALSE;
 
-    ret = conn_presence_signal_own_presence (self, NULL, error);
-
-    return ret;
+    return conn_presence_signal_own_presence (self, NULL, error);
 }
 
 gboolean
@@ -292,7 +317,22 @@ conn_presence_set_initial_presence (GabbleConnection *self, GError **error)
   g_return_val_if_fail (base->status == TP_CONNECTION_STATUS_CONNECTING,
       FALSE);
 
-  if (self->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
+  if (self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
+    {
+      if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+        {
+          if (!conn_presence_set_invisible (self, TRUE, error))
+            {
+              g_prefix_error (error, "failed to become invisible: ");
+              return FALSE;
+            }
+          else
+            {
+              return TRUE;
+            }
+        }
+    }
+  else if (self->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
     {
       if (!conn_presence_create_invisible_privacy_list (self, error))
         {
@@ -353,10 +393,6 @@ conn_presence_signal_own_presence (GabbleConnection *self,
             "type", "invisible");
       /* FIXME: or if sending directed presence, should we add
        * <show>away</show>? */
-
-            if ((self->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0)
-       lm_message_node_set_attribute (lm_message_get_node (message),
-           "type", "unavailable");
     }
 
   gabble_connection_fill_in_caps (self, message);
@@ -472,26 +508,18 @@ set_own_status_cb (GObject *obj,
         }
       else if (prev_status != i && prev_status == GABBLE_PRESENCE_HIDDEN)
         {
-          if (FALSE)
-            {
-              /* TODO: XEP-0186 */
-            }
-          if ((conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0)
-            {
-              retval = conn_presence_privacy_list_set_visible (conn, error);
-            }
+          if (conn->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
+            retval = conn_presence_set_invisible (conn, FALSE, error);
+          else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
+            retval = conn_presence_privacy_list_set_visible (conn, error);
         }
       else if (prev_status != i && i == GABBLE_PRESENCE_HIDDEN)
         {
-          if (FALSE)
-            {
-              /* TODO: XEP-0186 */
-            }
-          if ((conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0)
-            {
-              retval = conn_presence_privacy_list_set_invisible (conn, FALSE,
-                  error);
-            }
+          if (conn->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
+            retval = conn_presence_set_invisible (conn, TRUE, error);
+          else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
+            retval = conn_presence_privacy_list_set_invisible (conn, FALSE,
+                error);
         }
       else
         {

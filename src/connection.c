@@ -2747,6 +2747,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE;
               else if (0 == strcmp (var, NS_PRIVACY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRIVACY;
+              else if (0 == strcmp (var, NS_INVISIBLE))
+                conn->features |= GABBLE_CONNECTION_FEATURES_INVISIBLE;
               else if (0 == strcmp (var, NS_GOOGLE_MAIL_NOTIFY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY;
             }

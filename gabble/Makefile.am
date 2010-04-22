@@ -23,16 +23,18 @@ wockyinclude_HEADERS = \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-xmpp-connection.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-debug.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-namespaces.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-node-tree.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-utils.h \
-    $(top_srcdir)/lib/ext/wocky/wocky/wocky-xmpp-node.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-node.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-node-private.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-xmpp-reader.h \
-    $(top_srcdir)/lib/ext/wocky/wocky/wocky-xmpp-stanza.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-xmpp-writer.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-xmpp-error.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-auth.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-digest-md5.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-handler.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-plain.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-stanza.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-porter.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-contact.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-bare-contact.h \

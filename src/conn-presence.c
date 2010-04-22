@@ -524,6 +524,8 @@ set_own_status_cb (GObject *obj,
             retval = conn_presence_set_invisible (conn, FALSE, error);
           else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
             retval = conn_presence_privacy_list_set_visible (conn, error);
+          else
+            retval = conn_presence_signal_own_presence (conn, NULL, error);
         }
       else if (prev_status != i && i == GABBLE_PRESENCE_HIDDEN)
         {
@@ -532,6 +534,8 @@ set_own_status_cb (GObject *obj,
           else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
             retval = conn_presence_privacy_list_set_invisible (conn, FALSE,
                 error);
+          else
+            retval = conn_presence_signal_own_presence (conn, NULL, error);
         }
       else
         {

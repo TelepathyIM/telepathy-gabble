@@ -521,20 +521,26 @@ set_own_status_cb (GObject *obj,
       else if (prev_status != i && prev_status == GABBLE_PRESENCE_HIDDEN)
         {
           if (conn->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
+            /* XEP-0186 */
             retval = conn_presence_set_invisible (conn, FALSE, error);
           else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
+            /* XEP-0126 */
             retval = conn_presence_privacy_list_set_visible (conn, error);
           else
+            /* XEP-0018 */
             retval = conn_presence_signal_own_presence (conn, NULL, error);
         }
       else if (prev_status != i && i == GABBLE_PRESENCE_HIDDEN)
         {
           if (conn->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
+            /* XEP-0186 */
             retval = conn_presence_set_invisible (conn, TRUE, error);
           else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
+            /* XEP-0126 */
             retval = conn_presence_privacy_list_set_invisible (conn, FALSE,
                 error);
           else
+            /* XEP-0018 */
             retval = conn_presence_signal_own_presence (conn, NULL, error);
         }
       else

@@ -185,32 +185,32 @@ static gboolean
 conn_presence_create_invisible_privacy_list (GabbleConnection *self,
     GError **error)
 {
-    LmMessage *message;
-    LmMessageNode *node;
-    gboolean ret;
+  LmMessage *message;
+  LmMessageNode *node;
+  gboolean ret;
 
-    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-              LM_MESSAGE_SUB_TYPE_SET);
+  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_SET);
 
-    node = lm_message_get_node (message);
+  node = lm_message_get_node (message);
 
-    node = lm_message_node_add_child (node, "query", NULL);
-    lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
+  node = lm_message_node_add_child (node, "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
 
-    node = lm_message_node_add_child (node, "list", NULL);
-    lm_message_node_set_attribute (node, "name", "invisible");
+  node = lm_message_node_add_child (node, "list", NULL);
+  lm_message_node_set_attribute (node, "name", "invisible");
 
-    node = lm_message_node_add_child (node, "item", NULL);
-    lm_message_node_set_attributes (node, "action", "deny", "order", "1",
-        NULL);
+  node = lm_message_node_add_child (node, "item", NULL);
+  lm_message_node_set_attributes (node, "action", "deny", "order", "1",
+      NULL);
 
-    node = lm_message_node_add_child (node, "presence-out", NULL);
+  node = lm_message_node_add_child (node, "presence-out", NULL);
 
-    ret = _gabble_connection_send (self, message, error);
+  ret = _gabble_connection_send (self, message, error);
 
-    lm_message_unref (message);
+  lm_message_unref (message);
 
-    return ret;
+  return ret;
 }
 
 static gboolean
@@ -218,38 +218,44 @@ conn_presence_privacy_list_set_invisible (GabbleConnection *self,
     gboolean initial,
     GError **error)
 {
-    LmMessage *message;
-    LmMessageNode *node;
-    gboolean ret;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  LmMessage *message;
+  LmMessageNode *node;
+  gboolean ret;
 
-    if (!initial)
-      {
-        if (!gabble_connection_send_presence (self,
-                LM_MESSAGE_SUB_TYPE_UNAVAILABLE, "", "", error))
-            return FALSE;
-      }
+  if (!initial)
+    {
+      if (!gabble_connection_send_presence (self,
+              LM_MESSAGE_SUB_TYPE_UNAVAILABLE, "", "", error))
+        return FALSE;
+    }
 
-    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-              LM_MESSAGE_SUB_TYPE_SET);
+  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_SET);
 
-    node = lm_message_get_node (message);
+  node = lm_message_get_node (message);
 
-    node = lm_message_node_add_child (node, "query", NULL);
-    lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
+  node = lm_message_node_add_child (node, "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
 
-    node = lm_message_node_add_child (node, "active", NULL);
+  node = lm_message_node_add_child (node, "active", NULL);
 
-    lm_message_node_set_attribute (node, "name", "invisible");
+  lm_message_node_set_attribute (node, "name", "invisible");
 
-    ret = _gabble_connection_send (self, message, error);
+  ret = _gabble_connection_send (self, message, error);
 
-    lm_message_unref (message);
+  lm_message_unref (message);
 
-    if (!ret)
-      return FALSE;
+  if (!ret)
+    return FALSE;
 
-    return gabble_connection_send_presence (self, LM_MESSAGE_SUB_TYPE_NOT_SET,
-        "", "", error);
+  ret = gabble_connection_send_presence (self, LM_MESSAGE_SUB_TYPE_NOT_SET,
+      "", "", error);
+
+  if (base->status == TP_CONNECTION_STATUS_CONNECTED)
+    gabble_muc_factory_broadcast_presence (self->muc_factory);
+
+  return ret;
 }
 
 static gboolean
@@ -257,56 +263,62 @@ conn_presence_set_invisible (GabbleConnection *self,
     gboolean invisible,
     GError **error)
 {
-    LmMessage *message;
-    LmMessageNode *node;
-    gboolean ret;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  LmMessage *message;
+  LmMessageNode *node;
+  gboolean ret;
 
-    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-              LM_MESSAGE_SUB_TYPE_SET);
+  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_SET);
 
-    node = lm_message_get_node (message);
+  node = lm_message_get_node (message);
 
-    node = lm_message_node_add_child (node,
-        invisible ? "invisible" : "visible", NULL);
+  node = lm_message_node_add_child (node,
+      invisible ? "invisible" : "visible", NULL);
 
-    lm_message_node_set_attribute (node, "xmlns", NS_INVISIBLE);
+  lm_message_node_set_attribute (node, "xmlns", NS_INVISIBLE);
 
-    ret = _gabble_connection_send (self, message, error);
+  ret = _gabble_connection_send (self, message, error);
 
-    lm_message_unref (message);
+  lm_message_unref (message);
 
-    if (!invisible && ret)
-      return conn_presence_signal_own_presence (self, NULL, error);
+  if (!ret)
+    return FALSE;
 
-    return ret;
+  if (!invisible)
+    ret =  conn_presence_signal_own_presence (self, NULL, error);
+  else if (base->status == TP_CONNECTION_STATUS_CONNECTED)
+    gabble_muc_factory_broadcast_presence (self->muc_factory);
+
+  return ret;
 }
 
 static gboolean
 conn_presence_privacy_list_set_visible (GabbleConnection *self,
     GError **error)
 {
-    LmMessage *message;
-    LmMessageNode *node;
-    gboolean ret;
+  LmMessage *message;
+  LmMessageNode *node;
+  gboolean ret;
 
-    message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-              LM_MESSAGE_SUB_TYPE_SET);
+  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
+      LM_MESSAGE_SUB_TYPE_SET);
 
-    node = lm_message_get_node (message);
+  node = lm_message_get_node (message);
 
-    node = lm_message_node_add_child (node, "query", NULL);
-    lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
+  node = lm_message_node_add_child (node, "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
 
-    node = lm_message_node_add_child (node, "active", NULL);
+  node = lm_message_node_add_child (node, "active", NULL);
 
-    ret = _gabble_connection_send (self, message, error);
+  ret = _gabble_connection_send (self, message, error);
 
-    lm_message_unref (message);
+  lm_message_unref (message);
 
-    if (!ret)
-      return FALSE;
+  if (!ret)
+    return FALSE;
 
-    return conn_presence_signal_own_presence (self, NULL, error);
+  return conn_presence_signal_own_presence (self, NULL, error);
 }
 
 gboolean

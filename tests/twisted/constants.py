@@ -4,6 +4,8 @@ Some handy constants for other tests to share and enjoy.
 
 from dbus import PROPERTIES_IFACE
 
+CM = "org.freedesktop.Telepathy.ConnectionManager"
+
 HT_NONE = 0
 HT_CONTACT = 1
 HT_ROOM = 2

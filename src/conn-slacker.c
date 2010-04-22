@@ -26,12 +26,28 @@
 #include "util.h"
 
 static void
+conn_slacker_send_command (
+    GabbleConnection *conn,
+    const gchar *command)
+{
+  LmMessage *stanza = lm_message_build_with_sub_type (NULL,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_SET,
+      '(', "query", "",
+        '@', "xmlns", NS_GOOGLE_QUEUE,
+        '(', command, "", ')',
+      ')',
+      NULL);
+
+  _gabble_connection_send_with_reply (conn, stanza, NULL, NULL, NULL, NULL);
+  lm_message_unref (stanza);
+}
+
+
+static void
 conn_slacker_update_inactivity (
     GabbleConnection *conn,
     gboolean is_inactive)
 {
-  LmMessage *command;
-
   if (DEBUGGING)
     {
       gchar *jid = gabble_connection_get_full_jid (conn);
@@ -43,15 +59,18 @@ conn_slacker_update_inactivity (
       g_free (jid);
     }
 
-  command = lm_message_build_with_sub_type (NULL,
-      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_SET,
-      '(', "query", "",
-        '@', "xmlns", NS_GOOGLE_QUEUE,
-        '(', (is_inactive ? "enable" : "disable"), "", ')',
-      ')',
-      NULL);
-  _gabble_connection_send_with_reply (conn, command, NULL, NULL, NULL, NULL);
-  lm_message_unref (command);
+  if (is_inactive)
+    {
+      conn_slacker_send_command (conn, "enable");
+    }
+  else
+    {
+      /* It seems that disabling the queue doesn't flush it, so we need to
+       * explicitly flush it too.
+       */
+      conn_slacker_send_command (conn, "disable");
+      conn_slacker_send_command (conn, "flush");
+    }
 }
 
 static void

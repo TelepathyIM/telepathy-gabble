@@ -51,10 +51,10 @@ class FakeMCE(dbus.service.Object):
         self.inactive = new_value
 
 
-def expect_command(q, inactive):
+def expect_command(q, name):
     event = q.expect('stream-iq', query_name='query', query_ns=ns.GOOGLE_QUEUE)
     command = event.query.firstChildElement()
-    assertEquals('enable' if inactive else 'disable', command.name)
+    assertEquals(name, command.name)
 
 def test(q, bus, conn, stream, initially_inactive=False):
     mce = FakeMCE(q, bus, initially_inactive)
@@ -63,20 +63,22 @@ def test(q, bus, conn, stream, initially_inactive=False):
     q.expect('get-inactivity-called')
 
     if initially_inactive:
-        expect_command(q, True)
+        expect_command(q, 'enable')
     else:
         mce.InactivityChanged(True)
-        expect_command(q, True)
+        expect_command(q, 'enable')
 
     mce.InactivityChanged(False)
-    expect_command(q, False)
+    expect_command(q, 'disable')
+    expect_command(q, 'flush')
 
     # Just cycle it a bit to check it doesn't blow up slowly
     mce.InactivityChanged(True)
-    expect_command(q, True)
+    expect_command(q, 'enable')
 
     mce.InactivityChanged(False)
-    expect_command(q, False)
+    expect_command(q, 'disable')
+    expect_command(q, 'flush')
 
     mce.remove_from_connection()
 

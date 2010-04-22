@@ -2,11 +2,7 @@ from servicetest import call_async, EventPattern
 from gabbletest import exec_test, acknowledge_iq, make_result_iq
 import constants as cs
 
-def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
+def test_get_all(conn):
     props = conn.GetAll(cs.CONN_IFACE_AVATARS,
             dbus_interface=cs.PROPERTIES_IFACE)
     types = props['SupportedAvatarMIMETypes']
@@ -28,6 +24,15 @@ def test(q, bus, conn, stream):
     assert maxb == 8192, maxb
     assert recw == 64, recw
     assert rech == 64, rech
+
+def test(q, bus, conn, stream):
+    test_get_all(conn)
+
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    test_get_all(conn)
 
     # deprecated version
     types, minw, minh, maxw, maxh, maxb = conn.Avatars.GetAvatarRequirements()

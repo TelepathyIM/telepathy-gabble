@@ -209,6 +209,10 @@ def run_outgoing_test(q, bus, conn, stream):
     q.forbid_events(forbidden)
 
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+    muji =  ('muji', ns.MUJI, {}, [('preparing' )])
+    stream.send(presence)
+
+    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
     muji =  ('muji', ns.MUJI, {},
         [('content', ns.MUJI, { "name": "Audio" },
             [( 'description', None, {"media": "audio"},

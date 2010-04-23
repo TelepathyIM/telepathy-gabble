@@ -26,7 +26,7 @@ muc = "muji@test"
 
 def run_incoming_test(q, bus, conn, stream):
     jp = JingleProtocol031 ()
-    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'bob@bob')
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + "/bob")
     jt.prepare()
 
     self_handle = conn.GetSelfHandle()

@@ -185,30 +185,25 @@ static gboolean
 conn_presence_create_invisible_privacy_list (GabbleConnection *self,
     GError **error)
 {
-  LmMessage *message;
-  LmMessageNode *node;
   gboolean ret;
-
-  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
-
-  node = lm_message_get_node (message);
-
-  node = lm_message_node_add_child (node, "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
-
-  node = lm_message_node_add_child (node, "list", NULL);
-  lm_message_node_set_attribute (node, "name", "invisible");
-
-  node = lm_message_node_add_child (node, "item", NULL);
-  lm_message_node_set_attributes (node, "action", "deny", "order", "1",
+  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+        '(', "query",
+          ':', NS_PRIVACY,
+          '(', "list",
+            '@', "name", "invisible",
+            '(', "item",
+              '@', "action", "deny",
+              '@', "order", "1",
+              '(', "presence-out", ')',
+            ')',
+          ')',
+        ')',
       NULL);
 
-  node = lm_message_node_add_child (node, "presence-out", NULL);
+  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
 
-  ret = _gabble_connection_send (self, message, error);
-
-  lm_message_unref (message);
+  g_object_unref (iq);
 
   return ret;
 }
@@ -218,10 +213,17 @@ conn_presence_privacy_list_set_invisible (GabbleConnection *self,
     gboolean initial,
     GError **error)
 {
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  LmMessage *message;
-  LmMessageNode *node;
   gboolean ret;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+        '(', "query",
+          ':', NS_PRIVACY,
+          '(', "active",
+            '@', "name", "invisible",
+          ')',
+        ')',
+      NULL);
 
   if (!initial)
     {
@@ -230,21 +232,9 @@ conn_presence_privacy_list_set_invisible (GabbleConnection *self,
         return FALSE;
     }
 
-  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
+  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
 
-  node = lm_message_get_node (message);
-
-  node = lm_message_node_add_child (node, "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
-
-  node = lm_message_node_add_child (node, "active", NULL);
-
-  lm_message_node_set_attribute (node, "name", "invisible");
-
-  ret = _gabble_connection_send (self, message, error);
-
-  lm_message_unref (message);
+  g_object_unref (iq);
 
   if (!ret)
     return FALSE;
@@ -264,23 +254,17 @@ conn_presence_set_invisible (GabbleConnection *self,
     GError **error)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
-  LmMessage *message;
-  LmMessageNode *node;
   gboolean ret;
+  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+        '(', invisible ? "invisible" : "visible",
+         ':', NS_INVISIBLE,
+        ')',
+      NULL);
 
-  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
+  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
 
-  node = lm_message_get_node (message);
-
-  node = lm_message_node_add_child (node,
-      invisible ? "invisible" : "visible", NULL);
-
-  lm_message_node_set_attribute (node, "xmlns", NS_INVISIBLE);
-
-  ret = _gabble_connection_send (self, message, error);
-
-  lm_message_unref (message);
+  g_object_unref (iq);
 
   if (!ret)
     return FALSE;
@@ -297,23 +281,18 @@ static gboolean
 conn_presence_privacy_list_set_visible (GabbleConnection *self,
     GError **error)
 {
-  LmMessage *message;
-  LmMessageNode *node;
   gboolean ret;
+  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+        '(', "query",
+          ':', NS_PRIVACY,
+          '(', "active", ')',
+        ')',
+      NULL);
 
-  message = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
+  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
 
-  node = lm_message_get_node (message);
-
-  node = lm_message_node_add_child (node, "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_PRIVACY);
-
-  node = lm_message_node_add_child (node, "active", NULL);
-
-  ret = _gabble_connection_send (self, message, error);
-
-  lm_message_unref (message);
+  g_object_unref (iq);
 
   if (!ret)
     return FALSE;

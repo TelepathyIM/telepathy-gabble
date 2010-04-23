@@ -97,6 +97,9 @@ void gabble_call_member_content_set_jingle_content (
     GabbleCallMemberContent *self,
     GabbleJingleContent *content);
 
+void gabble_call_member_content_add_to_session (
+    GabbleCallMemberContent *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __CALL_MEMBER_CONTENT_H__*/

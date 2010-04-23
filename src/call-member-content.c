@@ -145,11 +145,9 @@ gabble_call_member_content_set_property (GObject *object,
 static void gabble_call_member_content_dispose (GObject *object);
 static void gabble_call_member_content_finalize (GObject *object);
 
-static void
-member_got_session_cb (GabbleCallMember *member,
-  GParamSpec *param, gpointer user_data)
+void
+gabble_call_member_content_add_to_session (GabbleCallMemberContent *self)
 {
-  GabbleCallMemberContent *self = GABBLE_CALL_MEMBER_CONTENT (user_data);
   GabbleCallMemberContentPrivate *priv = self->priv;
   const gchar *content_ns;
   GabbleJingleSession *session;
@@ -157,11 +155,12 @@ member_got_session_cb (GabbleCallMember *member,
   const gchar *peer_resource;
   const gchar *transport_ns;
 
-  DEBUG ("Session set for: %s (current jingle %p)",
-    priv->name, priv->jingle_content);
 
   if (priv->jingle_content != NULL)
     return;
+
+  DEBUG ("Session set for: %s (current jingle %p)",
+    priv->name, priv->jingle_content);
 
   session = gabble_call_member_get_session (priv->member);
   transport_ns = gabble_call_member_get_transport_ns (priv->member);
@@ -183,7 +182,14 @@ member_got_session_cb (GabbleCallMember *member,
       priv->media_type, priv->name, content_ns, transport_ns);
 
   gabble_call_member_content_set_jingle_content (self, content);
+}
 
+static void
+member_got_session_cb (GabbleCallMember *member,
+  GParamSpec *param, gpointer user_data)
+{
+  gabble_call_member_content_add_to_session (
+      GABBLE_CALL_MEMBER_CONTENT (user_data));
 }
 
 static void

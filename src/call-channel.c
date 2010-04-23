@@ -55,6 +55,11 @@ static void call_member_content_added_cb (GabbleCallMember *member,
     GabbleCallMemberContent *content, GabbleCallChannel *self);
 
 static void call_channel_accept (GabbleBaseCallChannel *channel);
+static GabbleCallContent * call_channel_add_content (
+    GabbleBaseCallChannel *base,
+    const gchar *name,
+    JingleMediaType type,
+    GError **error);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   GABBLE_TYPE_BASE_CALL_CHANNEL,
@@ -74,6 +79,8 @@ struct _GabbleCallChannelPrivate
 {
   gboolean dispose_has_run;
 
+  /* Our only call member, owned by the base channel */
+  GabbleCallMember *member;
   GabbleJingleSession *session;
 };
 
@@ -87,6 +94,7 @@ gabble_call_channel_constructed (GObject *obj)
 
   member = gabble_base_call_channel_ensure_member_from_handle (cbase,
     cbase->target);
+  priv->member = member;
 
   if (priv->session != NULL)
     {
@@ -209,6 +217,7 @@ gabble_call_channel_class_init (
 
   base_call_class->handle_type = TP_HANDLE_TYPE_CONTACT;
   base_call_class->accept = call_channel_accept;
+  base_call_class->add_content = call_channel_add_content;
 
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session associated with this media channel object.",
@@ -526,4 +535,27 @@ call_channel_accept (GabbleBaseCallChannel *channel)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (channel);
   gabble_jingle_session_accept (self->priv->session);
+}
+
+static GabbleCallContent *
+call_channel_add_content (GabbleBaseCallChannel *base,
+    const gchar *name,
+    JingleMediaType type,
+    GError **error)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (base);
+  GabbleCallContent *content = NULL;
+  GabbleCallMemberContent *mcontent;
+
+  mcontent = gabble_call_member_create_content (self->priv->member, name,
+      type, error);
+
+  if (mcontent != NULL)
+    {
+      content = gabble_base_call_channel_add_content (base,
+        name, type, GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+      gabble_call_content_add_member_content (content, mcontent);
+    }
+
+  return content;
 }

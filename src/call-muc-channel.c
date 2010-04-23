@@ -38,6 +38,11 @@
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
 static void call_muc_channel_accept (GabbleBaseCallChannel *channel);
+static GabbleCallContent * call_muc_channel_add_content (
+    GabbleBaseCallChannel *base,
+    const gchar *name,
+    JingleMediaType type,
+    GError **error);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   gabble_call_muc_channel, GABBLE_TYPE_BASE_CALL_CHANNEL,
@@ -181,6 +186,7 @@ gabble_call_muc_channel_class_init (
 
   base_call_class->handle_type = TP_HANDLE_TYPE_ROOM;
   base_call_class->accept = call_muc_channel_accept;
+  base_call_class->add_content = call_muc_channel_add_content;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",
@@ -965,4 +971,25 @@ call_muc_channel_accept (GabbleBaseCallChannel *channel)
   /* Start preparing to join the conference */
   self->priv->state = STATE_PREPARING;
   call_muc_do_update (self);
+}
+
+static GabbleCallContent *
+call_muc_channel_add_content (GabbleBaseCallChannel *base,
+    const gchar *name,
+    JingleMediaType type,
+    GError **error)
+{
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (base);
+  GabbleCallMucChannelPrivate *priv = self->priv;
+  GabbleCallContent *content;
+
+  content = gabble_base_call_channel_add_content (base,
+        name, type,
+        GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+
+  if (priv->sessions_opened)
+    g_queue_push_tail (priv->new_contents, content);
+  call_muc_do_update (self);
+
+  return content;
 }

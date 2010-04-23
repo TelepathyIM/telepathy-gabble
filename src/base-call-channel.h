@@ -40,9 +40,12 @@ struct _GabbleBaseCallChannelClass {
 
     TpHandleType handle_type;
     void (*accept) (GabbleBaseCallChannel *self);
+    GabbleCallContent * (*add_content) (GabbleBaseCallChannel *self,
+      const gchar *name,
+      JingleMediaType media,
+      GError **error);
 
     TpDBusPropertiesMixinClass dbus_props_class;
-
 };
 
 struct _GabbleBaseCallChannel {

@@ -890,18 +890,17 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
   GabbleBaseCallChannelPrivate *priv = self->priv;
+  GabbleBaseCallChannelClass *base_class =
+      GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self);
   JingleMediaType type = JINGLE_MEDIA_TYPE_NONE;
-  const char *path = NULL;
-  GHashTableIter iter;
-  gpointer value;
   GError *error = NULL;
+  GabbleCallContent *content;
 
   if (priv->state == GABBLE_CALL_STATE_ENDED)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "No contents can be added. The call has already ended.");
-      dbus_g_method_return_error (context, error);
-      return;
+      goto error;
     }
 
   if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
@@ -911,43 +910,25 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
   else
     goto unicorns;
 
-  /* FIXME needs to be a virtual method that calls up to the implementation so
-   * that it can actually do the right thing (tm) */
+  content = base_class->add_content (self, name, type, &error);
 
-  g_hash_table_iter_init (&iter, priv->members);
-  while (g_hash_table_iter_next (&iter, NULL, &value))
-    {
-      GabbleCallMember *member = GABBLE_CALL_MEMBER (value);
-      GabbleCallMemberContent *content;
+  if (content == NULL)
+    goto error;
 
-      content = gabble_call_member_create_content (member, name, type, &error);
-
-      if (content != NULL)
-        {
-          GabbleCallContent *c;
-          c = gabble_base_call_channel_add_content (self,
-            name, type, GABBLE_CALL_CONTENT_DISPOSITION_NONE);
-          gabble_call_content_add_member_content (c, content);
-          path = gabble_call_content_get_object_path (c);
-        }
-      break;
-    }
-
-  if (path == NULL)
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  gabble_svc_channel_type_call_return_from_add_content (context, path);
+  gabble_svc_channel_type_call_return_from_add_content (context,
+    gabble_call_content_get_object_path (content));
   return;
 
 unicorns:
   {
     GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED, "Unknown content type" };
     dbus_g_method_return_error (context, &e);
+    return;
   }
+
+error:
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
 }
 
 

@@ -83,6 +83,8 @@ struct _GabbleCallMucChannelPrivate
   GQueue *sessions_to_open;
   gboolean sessions_opened;
 
+  GQueue *new_contents;
+
   /* Our current muji information */
   WockyNodeTree *muji;
 };
@@ -98,6 +100,7 @@ gabble_call_muc_channel_init (GabbleCallMucChannel *self)
   priv->before = g_queue_new ();
   priv->after = g_queue_new ();
   priv->sessions_to_open = g_queue_new ();
+  priv->new_contents = g_queue_new ();
 }
 
 static void
@@ -225,6 +228,7 @@ gabble_call_muc_channel_finalize (GObject *object)
   g_queue_free (priv->before);
   g_queue_free (priv->after);
   g_queue_free (priv->sessions_to_open);
+  g_queue_free (priv->new_contents);
 
   G_OBJECT_CLASS (gabble_call_muc_channel_parent_class)->finalize (object);
 }
@@ -297,25 +301,44 @@ call_muc_channel_content_local_codecs_updated (GabbleCallContent *content,
 }
 
 static void
-call_muc_channel_open_sessions (GabbleCallMucChannel *self)
+call_muc_channel_open_new_streams (GabbleCallMucChannel *self)
 {
   GabbleCallMucChannelPrivate *priv = self->priv;
   GabbleCallMember *m;
+  GabbleCallContent *c;
 
   priv->sessions_opened = TRUE;
 
   while ((m = g_queue_pop_head (priv->sessions_to_open)) != NULL)
     gabble_call_member_open_session (m, 0);
+
+  while ((c = g_queue_pop_head (priv->new_contents)) != NULL)
+    {
+      GList *l;
+
+      l = gabble_call_content_get_member_contents (c);
+      for (; l != NULL; l = g_list_next (l))
+        {
+          gabble_call_member_content_add_to_session (
+              GABBLE_CALL_MEMBER_CONTENT (l->data));
+        }
+    }
 }
 
 static void
 call_muc_channel_setup_content (GabbleCallMucChannel *self,
     GabbleCallContent *content)
 {
+  GabbleCallMucChannelPrivate *priv = self->priv;
+
   DEBUG ("Setting up content");
+
   gabble_signal_connect_weak (content, "local-codecs-updated",
     G_CALLBACK (call_muc_channel_content_local_codecs_updated),
     G_OBJECT (self));
+
+  if (priv->sessions_opened)
+    g_queue_push_tail (priv->new_contents, content);
 }
 
 static void
@@ -745,8 +768,7 @@ call_muc_channel_own_presence_cb (WockyMuc *wmuc,
       case STATE_WAIT_FOR_TURN:
         break;
       case STATE_STABLE:
-        if (!priv->sessions_opened)
-          call_muc_channel_open_sessions (self);
+        call_muc_channel_open_new_streams (self);
         break;
       default:
         DEBUG ("Got a muji presence from ourselves before we sent one ?!");

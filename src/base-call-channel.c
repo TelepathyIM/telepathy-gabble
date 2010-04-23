@@ -627,11 +627,14 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   GabbleBaseCallChannelPrivate *priv = self->priv;
   gchar *object_path;
   GabbleCallContent *content;
+  gchar *escaped;
 
   /* FIXME could clash when other party in a one-to-one call creates a stream
    * with the same media type and name */
+  escaped = tp_escape_as_identifier (name);
   object_path =
-    g_strdup_printf ("%s/Content_%s_%d", priv->object_path, name, mtype);
+    g_strdup_printf ("%s/Content_%s_%d", priv->object_path, escaped, mtype);
+  g_free (escaped);
 
   content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
     "connection", self->conn,

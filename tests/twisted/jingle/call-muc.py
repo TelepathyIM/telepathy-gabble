@@ -201,9 +201,14 @@ def run_outgoing_test(q, bus, conn, stream):
     q.unforbid_events (forbidden)
     channel.Accept()
 
-    presence = q.expect('stream-presence', to = muc + "/test")
-    mujinode = xpath.queryForNodes("/presence/muji", presence.stanza)
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    mujinode = xpath.queryForNodes("/presence/muji", e.stanza)
     assertLength (1, mujinode)
+
+    # The one with the codecs
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Gabble shouldn't send new presences for a while
     q.forbid_events(forbidden)

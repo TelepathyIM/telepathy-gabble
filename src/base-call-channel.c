@@ -645,6 +645,11 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
 
   priv->contents = g_list_prepend (priv->contents, content);
 
+  gabble_svc_channel_type_call_emit_content_added (self,
+     gabble_call_content_get_object_path (content),
+     mtype == JINGLE_MEDIA_TYPE_AUDIO ?
+      TP_MEDIA_STREAM_TYPE_AUDIO : TP_MEDIA_STREAM_TYPE_VIDEO);
+
   return GABBLE_CALL_CONTENT (content);
 }
 
@@ -934,8 +939,6 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
       g_error_free (error);
       return;
     }
-
-  gabble_svc_channel_type_call_emit_content_added (self, path, type);
 
   gabble_svc_channel_type_call_return_from_add_content (context, path);
   return;

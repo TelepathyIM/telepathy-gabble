@@ -205,6 +205,9 @@ def run_outgoing_test(q, bus, conn, stream):
     mujinode = xpath.queryForNodes("/presence/muji", presence.stanza)
     assertLength (1, mujinode)
 
+    # Gabble shouldn't send new presences for a while
+    q.forbid_events(forbidden)
+
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
     muji =  ('muji', ns.MUJI, {},
         [('content', ns.MUJI, { "name": "Audio" },

@@ -189,9 +189,6 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
   LmMessageNode *found;
   NodeIter i;
 
-  NODE_DEBUG (node, name);
-  NODE_DEBUG (node, ns);
-
   found = wocky_node_get_child_ns (node, name, ns);
   if (found != NULL)
     return found;

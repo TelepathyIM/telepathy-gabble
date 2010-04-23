@@ -228,6 +228,22 @@ def run_outgoing_test(q, bus, conn, stream):
     e = q.expect ('dbus-signal', signal = 'StreamAdded')
     cstream = bus.get_object (conn.bus_name, e.args[0])
 
+    candidates = jt.get_call_remote_transports_dbus ()
+    cstream.AddCandidates (candidates,
+        dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+
+    # Fake our endpoint being connected
+    endpoints = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
+        "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
+    assertLength (1, endpoints)
+
+    endpoint = bus.get_object (conn.bus_name, endpoints[0])
+
+    endpoint.SetStreamState (cs.MEDIA_STREAM_STATE_CONNECTED,
+        dbus_interface=cs.CALL_STREAM_ENDPOINT)
+
+    q.expect ('stream-iq', predicate = jp.action_predicate ('session-accept'))
+
 def general_tests (jp, q, bus, conn, stream, path, props):
     assertEquals (cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
 

@@ -614,11 +614,11 @@ class JingleTest2:
 
         return contents
 
-    def incoming_call(self, audio=True, video=False):
+    def incoming_call(self, audio = "audio1", video = None):
         jp = self.jp
 
-        self.audio_names = ['audio1'] if audio else []
-        self.video_names = ['video1'] if video else []
+        self.audio_names = [ audio ] if audio != None else []
+        self.video_names = [ video ] if video != None else []
 
         contents = self.generate_contents()
 

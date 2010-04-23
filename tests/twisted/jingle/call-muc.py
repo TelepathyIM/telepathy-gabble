@@ -216,7 +216,7 @@ def run_outgoing_test(q, bus, conn, stream):
     # Bob appears and starts a session right afterwards
     q.expect('dbus-signal', signal = 'CallMembersChanged')
 
-    jt.incoming_call()
+    jt.incoming_call(audio = "Audio")
 
     e = q.expect ('dbus-signal', signal = 'StreamAdded')
     cstream = bus.get_object (conn.bus_name, e.args[0])

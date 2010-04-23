@@ -28,6 +28,7 @@ def run_incoming_test(q, bus, conn, stream):
     jp = JingleProtocol031 ()
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + "/bob")
     jt.prepare()
+    forbidden = [ no_muji_presences () ]
 
     self_handle = conn.GetSelfHandle()
 
@@ -79,6 +80,9 @@ def run_incoming_test(q, bus, conn, stream):
     e = q.expect('stream-presence', to = muc + "/test")
     echo_presence (q, stream, e.stanza, 'none', 'participant')
 
+    # Gabble shouldn't send new presences for a while
+    q.forbid_events(forbidden)
+
     e = q.expect ('dbus-signal', signal = 'StreamAdded')
     cstream = bus.get_object (conn.bus_name, e.args[0])
 
@@ -86,8 +90,61 @@ def run_incoming_test(q, bus, conn, stream):
     cstream.AddCandidates (candidates,
         dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
-    q.expect('stream-iq',
+    e = q.expect('stream-iq',
         predicate=jp.action_predicate('session-initiate'))
+    jt.parse_session_initiate (e.query)
+
+    jt.accept()
+
+   # Bob adds a Video content
+    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+    muji =  ('muji', ns.MUJI, {}, [('preparing' )])
+    stream.send(presence)
+
+    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+    muji =  ('muji', ns.MUJI, {},
+        [('content', ns.MUJI, { "name": "Voice" },
+            [( 'description', None, {"media": "audio"},
+            jt.generate_payloads(jt.audio_codecs))]),
+         ('content', ns.MUJI, { "name": "Camera" },
+            [( 'description', None, {"media": "video"},
+            jt.generate_payloads(jt.video_codecs))]),
+        ])
+    presence.addChild(jp._simple_xml(muji))
+    stream.send(presence)
+
+    # Gabble noticed bob added a content
+    e = q.expect('dbus-signal', signal = 'ContentAdded')
+    assertEquals (e.args[1], cs.MEDIA_STREAM_TYPE_VIDEO)
+
+    q.unforbid_events (forbidden)
+    content = bus.get_object (conn.bus_name, e.args[0])
+    check_and_accept_offer (q, bus, conn, self_handle, 0,
+            content, jt.get_call_video_codecs_dbus())
+
+    # Gabble sends a presence to prepare
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
+
+    # Gabble sends a presence with the video codecs
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
+
+    # Gabble adds a content to the jingle session and thus a stream is added
+    e = q.expect ('dbus-signal', signal = 'StreamAdded')
+    cstream = bus.get_object (conn.bus_name, e.args[0])
+
+    candidates = jt.get_call_remote_transports_dbus ()
+    cstream.AddCandidates (candidates,
+        dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+
+    # And now the content-add on the jingle streams
+    e = q.expect('stream-iq', to = muc + "/bob",
+        predicate = lambda x: \
+        xpath.queryForNodes("/iq/jingle[@action='content-add']", x.stanza))
+
+    # success!
+
 
 def echo_presence (q, stream, stanza, affiliation, role):
     x = stanza.addElement((ns.MUC_USER, 'x'))

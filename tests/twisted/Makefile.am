@@ -15,6 +15,7 @@ TWISTED_TESTS = \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
+	device-idleness.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \
@@ -192,12 +193,19 @@ else
 ENABLE_ASSUMED_FT_CAP_PYBOOL = False
 endif
 
+if HAVE_MCE
+HAVE_MCE_PYBOOL = True
+else
+HAVE_MCE_PYBOOL = False
+endif
+
 config.py: Makefile
 	$(QUIET_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
 		echo "CLIENT_TYPE = '$(CLIENT_TYPE)'"; \
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
 		echo "ENABLE_ASSUMED_FT_CAP = $(ENABLE_ASSUMED_FT_CAP_PYBOOL)"; \
+		echo "HAVE_MCE = $(HAVE_MCE_PYBOOL)"; \
 	} > $@
 
 BUILT_SOURCES = config.py

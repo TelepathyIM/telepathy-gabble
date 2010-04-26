@@ -237,6 +237,14 @@ else
   AC_MSG_WARN([libuuid not found, falling back to generating random IDs])
 fi
 
+dnl Check for MCE, a Maemo service used by Gabble to determine when the device
+dnl is idle.
+PKG_CHECK_MODULES([MCE], mce >= 1.5, [HAVE_MCE=yes], [HAVE_MCE=no])
+AM_CONDITIONAL([HAVE_MCE], [test x"$HAVE_MCE" = xyes])
+if test x"$HAVE_MCE" = xyes; then
+  AC_DEFINE([HAVE_MCE], [1], [Define if mce is available])
+fi
+
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
 SHAVE_INIT(.)

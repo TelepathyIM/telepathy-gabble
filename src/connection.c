@@ -53,6 +53,7 @@
 #include "conn-location.h"
 #include "conn-presence.h"
 #include "conn-olpc.h"
+#include "conn-slacker.h"
 #include "debug.h"
 #include "disco.h"
 #include "media-channel.h"
@@ -624,6 +625,7 @@ base_connected_cb (TpBaseConnection *base_conn)
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
 
   gabble_connection_connected_olpc (conn);
+  gabble_connection_slacker_start (conn);
 }
 
 static void
@@ -1546,6 +1548,7 @@ connection_shut_down (TpBaseConnection *base)
   g_assert (GABBLE_IS_CONNECTION (conn));
 
   cancel_connect_timeout (conn);
+  gabble_connection_slacker_stop (conn);
 
   /* If we're shutting down by user request, we don't want to be
    * unreffed until the LM connection actually closes; the event handler

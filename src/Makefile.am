@@ -7,6 +7,8 @@ BUILT_SOURCES = \
 
 CLEANFILES = $(BUILT_SOURCES)
 
+EXTRA_DIST =
+
 libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
@@ -43,6 +45,8 @@ libgabble_convenience_la_SOURCES = \
     conn-olpc.c \
     conn-presence.h \
     conn-presence.c \
+    conn-slacker.h \
+    conn-slacker.c \
     connection.h \
     connection.c \
     connection-manager.h \
@@ -126,6 +130,8 @@ libgabble_convenience_la_SOURCES = \
     roomlist-channel.c \
     roomlist-manager.h \
     roomlist-manager.c \
+    slacker.h \
+    slacker.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \

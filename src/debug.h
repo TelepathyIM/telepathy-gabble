@@ -72,6 +72,8 @@ G_STMT_START { \
 
 #define DEBUGGING 0
 
+#define STANZA_DEBUG(st, s) G_STMT_START { } G_STMT_END
+
 #define NODE_DEBUG(n, s) G_STMT_START { } G_STMT_END
 
 #endif /* DEBUG_FLAG */

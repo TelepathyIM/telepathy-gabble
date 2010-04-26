@@ -610,6 +610,15 @@ toggle_presence_visibility_cb (GObject *source_object,
           error->message);
 
       g_error_free (error);
+      error = NULL;
+
+      self->self_presence->status = GABBLE_PRESENCE_DND;
+
+      if (!conn_presence_signal_own_presence (self, NULL, &error))
+        {
+          DEBUG ("Failed to set fallback status: %s", error->message);
+          g_error_free (error);
+        }
     }
 
   emit_one_presence_update (self, base->self_handle);

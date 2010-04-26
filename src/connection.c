@@ -1480,6 +1480,8 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
 static void decrement_waiting_connected (GabbleConnection *connection);
+static void connection_initial_presence_cb (GObject *, GAsyncResult *,
+    gpointer);
 
 static void
 remote_closed_cb (WockyPorter *porter,
@@ -2627,7 +2629,6 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 static void
 set_status_to_connected (GabbleConnection *conn)
 {
-  GError *error = NULL;
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
@@ -2647,25 +2648,9 @@ set_status_to_connected (GabbleConnection *conn)
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
 
-  if (!conn_presence_set_initial_presence (conn, &error))
-    {
-      DEBUG ("failed to set initial presence: %s", error->message);
-      goto ERROR;
-    }
-
   /* go go gadget on-line */
   tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
-
-  return;
-
-ERROR:
-  if (error != NULL)
-    g_error_free (error);
-
-  tp_base_connection_change_status (base,
-      TP_CONNECTION_STATUS_DISCONNECTED,
-      TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 }
 
 static void
@@ -2757,7 +2742,9 @@ connection_disco_cb (GabbleDisco *disco,
       DEBUG ("set features flags to %d", conn->features);
     }
 
-  decrement_waiting_connected (conn);
+  conn_presence_set_initial_presence_async (conn,
+      connection_initial_presence_cb, NULL);
+
   return;
 
 ERROR:
@@ -2769,6 +2756,39 @@ ERROR:
       TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
   return;
+}
+
+/**
+ * connection_initial_presence_cb
+ *
+ * Stage 4 of connecting, this function is called by after presence is properly
+ * set. This is required when sending more than simple <presence/> stanzas, and
+ * asynchronous results are needed.
+ *
+ */
+static void
+connection_initial_presence_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = (GabbleConnection *) source_object;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  GError *error = NULL;
+
+  if (!conn_presence_set_initial_presence_finished (self, res, &error))
+    {
+      DEBUG ("error setting up initial presence: %s", error->message);
+
+      tp_base_connection_change_status (base,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+
+      g_error_free (error);
+    }
+  else
+    {
+      decrement_waiting_connected (self);
+    }
 }
 
 

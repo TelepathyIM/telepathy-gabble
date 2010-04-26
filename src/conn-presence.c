@@ -70,6 +70,26 @@ static const TpPresenceStatusSpec gabble_statuses[] = {
   { NULL, 0, FALSE, NULL, NULL, NULL }
 };
 
+static LmHandlerResult set_xep0186_invisible_cb (GabbleConnection *conn,
+    LmMessage *sent_msg, LmMessage *reply_msg, GObject *obj,
+    gpointer user_data);
+
+static LmHandlerResult set_xep0126_invisible_cb (GabbleConnection *conn,
+    LmMessage *sent_msg, LmMessage *reply_msg, GObject *obj,
+    gpointer user_data);
+
+static LmHandlerResult create_invisible_privacy_list_cb (
+    GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
+    GObject *obj, gpointer user_data);
+
+GQuark
+conn_presence_error_quark (void)
+{
+  static GQuark quark = 0;
+  if (!quark)
+    quark = g_quark_from_static_string ("conn-presence-error");
+  return quark;
+}
 
 static GHashTable *
 construct_contact_statuses_cb (GObject *obj,
@@ -181,11 +201,184 @@ emit_one_presence_update (GabbleConnection *self,
   g_array_free (handles, TRUE);
 }
 
-static gboolean
-conn_presence_create_invisible_privacy_list (GabbleConnection *self,
-    GError **error)
+static void
+set_xep0126_invisible (GabbleConnection *self,
+    gboolean invisible,
+    GSimpleAsyncResult *result)
 {
-  gboolean ret;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  WockyXmppStanza *iq;
+  GError *error = NULL;
+
+  if (invisible)
+    iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+        WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+        '(', "query",
+        ':', NS_PRIVACY,
+        '(', "active",
+        '@', "name", "invisible",
+        ')',
+        ')',
+        NULL);
+  else
+    iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+        WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+        '(', "query",
+        ':', NS_PRIVACY,
+        '(', "active",
+        ')',
+        ')',
+        NULL);
+
+  g_object_ref (result);
+
+  if (base->status == TP_CONNECTION_STATUS_CONNECTED)
+    {
+      if (!gabble_connection_send_presence (self,
+              LM_MESSAGE_SUB_TYPE_UNAVAILABLE, "", "", &error))
+          goto OUT;
+    }
+
+  _gabble_connection_send_with_reply (self, (LmMessage *) iq,
+      set_xep0126_invisible_cb, NULL, result, &error);
+
+ OUT:
+  if (error != NULL)
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_simple_async_result_complete (result);
+      g_error_free (error);
+      g_object_unref (result);
+    }
+
+  g_object_unref (iq);
+}
+
+static LmHandlerResult
+set_xep0126_invisible_cb (GabbleConnection *conn,
+    LmMessage *sent_msg,
+    LmMessage *reply_msg,
+    GObject *obj,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
+  GError *error = NULL;
+
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      g_simple_async_result_set_error (result,
+          CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_SET_PRIVACY_LIST,
+          "error setting 'invisible' privacy list");
+    }
+  else
+    {
+      LmMessageNode *node = lm_message_node_find_child (
+          lm_message_get_node (sent_msg), "active");
+
+      g_assert (node != NULL);
+
+      if (g_strcmp0 (lm_message_node_get_attribute (node, "name"),
+              "invisible") == 0)
+        {
+          gabble_connection_send_presence (conn, LM_MESSAGE_SUB_TYPE_NOT_SET,
+              "", "", &error);
+          gabble_muc_factory_broadcast_presence (conn->muc_factory);
+        }
+      else
+        {
+          conn_presence_signal_own_presence (conn, NULL, &error);
+        }
+    }
+
+  if (error != NULL)
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_error_free (error);
+    }
+
+  g_simple_async_result_complete (result);
+  g_object_unref (result);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+set_xep0186_invisible (GabbleConnection *self,
+    gboolean invisible,
+    GSimpleAsyncResult *result)
+{
+  GError *error = NULL;
+  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+        '(', invisible ? "invisible" : "visible",
+         ':', NS_INVISIBLE,
+        ')',
+      NULL);
+
+  g_object_ref (result);
+
+  if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
+          set_xep0186_invisible_cb, NULL, result, &error))
+    {
+      if (error != NULL)
+        {
+          g_simple_async_result_set_from_error (result, error);
+          g_error_free (error);
+        }
+
+      g_simple_async_result_complete (result);
+      g_object_unref (result);
+    }
+
+  g_object_unref (iq);
+}
+
+static LmHandlerResult
+set_xep0186_invisible_cb (GabbleConnection *conn,
+    LmMessage *sent_msg,
+    LmMessage *reply_msg,
+    GObject *obj,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
+  GError *error = NULL;
+
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      g_simple_async_result_set_error (result,
+          CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_SET_INVISIBLE,
+          "error setting XEP-0186 (in)visiblity");
+    }
+  else
+    {
+      LmMessageNode *node = lm_message_get_node (sent_msg);
+      if (lm_message_node_find_child (node, "invisible") != NULL)
+        {
+          gabble_muc_factory_broadcast_presence (conn->muc_factory);
+        }
+      else
+        {
+          conn_presence_signal_own_presence (conn, NULL, &error);
+        }
+    }
+
+  if (error != NULL)
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_error_free (error);
+    }
+
+  g_simple_async_result_complete (result);
+  g_object_unref (result);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+presence_create_invisible_privacy_list (GabbleConnection *self,
+    GSimpleAsyncResult *result)
+{
+  GError *error = NULL;
   WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', "query",
@@ -201,160 +394,101 @@ conn_presence_create_invisible_privacy_list (GabbleConnection *self,
         ')',
       NULL);
 
-  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
+  g_object_ref (result);
 
-  g_object_unref (iq);
-
-  return ret;
-}
-
-static gboolean
-conn_presence_privacy_list_set_invisible (GabbleConnection *self,
-    gboolean initial,
-    GError **error)
-{
-  gboolean ret;
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
-      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', "query",
-          ':', NS_PRIVACY,
-          '(', "active",
-            '@', "name", "invisible",
-          ')',
-        ')',
-      NULL);
-
-  if (!initial)
+  if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
+          create_invisible_privacy_list_cb, NULL, result, &error))
     {
-      if (!gabble_connection_send_presence (self,
-              LM_MESSAGE_SUB_TYPE_UNAVAILABLE, "", "", error))
-        return FALSE;
+      if (error != NULL)
+        {
+          g_simple_async_result_set_from_error (result, error);
+          g_error_free (error);
+        }
+
+      g_simple_async_result_complete (result);
+      g_object_unref (result);
     }
 
-  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
-
   g_object_unref (iq);
-
-  if (!ret)
-    return FALSE;
-
-  ret = gabble_connection_send_presence (self, LM_MESSAGE_SUB_TYPE_NOT_SET,
-      "", "", error);
-
-  if (base->status == TP_CONNECTION_STATUS_CONNECTED)
-    gabble_muc_factory_broadcast_presence (self->muc_factory);
-
-  return ret;
 }
 
-static gboolean
-conn_presence_set_invisible (GabbleConnection *self,
-    gboolean invisible,
-    GError **error)
+static LmHandlerResult
+create_invisible_privacy_list_cb (GabbleConnection *conn,
+    LmMessage *sent_msg,
+    LmMessage *reply_msg,
+    GObject *obj,
+    gpointer user_data)
 {
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  gboolean ret;
-  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
-      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', invisible ? "invisible" : "visible",
-         ':', NS_INVISIBLE,
-        ')',
-      NULL);
+  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
 
-  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      g_simple_async_result_set_error (result,
+          CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_CREATE_PRIVACY_LIST,
+          "error creating 'invisible' privacy list");
+      g_simple_async_result_complete (result);
+    }
+  else if (conn->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+    {
+      set_xep0126_invisible (conn, TRUE, result);
+    }
+  else
+    {
+      g_simple_async_result_complete (result);
+    }
 
-  g_object_unref (iq);
-
-  if (!ret)
-    return FALSE;
-
-  if (!invisible)
-    ret =  conn_presence_signal_own_presence (self, NULL, error);
-  else if (base->status == TP_CONNECTION_STATUS_CONNECTED)
-    gabble_muc_factory_broadcast_presence (self->muc_factory);
-
-  return ret;
+  g_object_unref (result);
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static gboolean
-conn_presence_privacy_list_set_visible (GabbleConnection *self,
-    GError **error)
+void
+conn_presence_set_initial_presence_async (GabbleConnection *self,
+    GAsyncReadyCallback callback, gpointer user_data)
 {
-  gboolean ret;
-  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
-      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', "query",
-          ':', NS_PRIVACY,
-          '(', "active", ')',
-        ')',
-      NULL);
+  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
+      callback, user_data, conn_presence_set_initial_presence_finished);
 
-  ret = _gabble_connection_send (self, (LmMessage *) iq, error);
+  if ((self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE) != 0 &&
+      self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+    {
+      set_xep0186_invisible (self, TRUE, result);
+    }
+  else if ((self->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0 &&
+      (self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE) == 0)
+    {
+      presence_create_invisible_privacy_list (self, result);
+    }
+  else
+    {
+      GError *error = NULL;
+      /* send presence to the server to indicate availability */
+      /* TODO: some way for the user to set this */
+      if (!conn_presence_signal_own_presence (self, NULL, &error))
+        {
+          g_simple_async_result_set_from_error (result, error);
+          g_error_free (error);
+        }
+      g_simple_async_result_complete (result);
+    }
 
-  g_object_unref (iq);
-
-  if (!ret)
-    return FALSE;
-
-  return conn_presence_signal_own_presence (self, NULL, error);
+  g_object_unref (result);
 }
 
 gboolean
-conn_presence_set_initial_presence (GabbleConnection *self, GError **error)
+conn_presence_set_initial_presence_finished (GabbleConnection *self,
+    GAsyncResult *result,
+    GError **error)
 {
-  TpBaseConnection *base = (TpBaseConnection *) self;
+  gboolean rv = TRUE;
 
-  g_return_val_if_fail (base->status == TP_CONNECTION_STATUS_CONNECTING,
-      FALSE);
+  g_return_val_if_fail (g_simple_async_result_is_valid (result,
+    G_OBJECT (self), conn_presence_set_initial_presence_finished), FALSE);
 
-  if (self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
-    {
-      if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
-        {
-          if (!conn_presence_set_invisible (self, TRUE, error))
-            {
-              g_prefix_error (error, "failed to become invisible: ");
-              return FALSE;
-            }
-          else
-            {
-              return TRUE;
-            }
-        }
-    }
-  else if (self->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
-    {
-      if (!conn_presence_create_invisible_privacy_list (self, error))
-        {
-          g_prefix_error (error, "failed to create invisible privacy list: ");
-          return FALSE;
-        }
+  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
+      error))
+    rv = FALSE;
 
-      if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
-        {
-          if (!conn_presence_privacy_list_set_invisible (self, TRUE, error))
-            {
-              g_prefix_error (error,
-                  "failed to activate invisible privacy list: ");
-              return FALSE;
-            }
-          else
-            {
-              return TRUE;
-            }
-        }
-    }
-
-  /* send presence to the server to indicate availability */
-  /* TODO: some way for the user to set this */
-  if (!conn_presence_signal_own_presence (self, NULL, error))
-    {
-      g_prefix_error (error, "sending initial presence failed: ");
-      return FALSE;
-    }
-
-  return TRUE;
+  return rv;
 }
 
 /**
@@ -416,6 +550,64 @@ conn_presence_visible_to (GabbleConnection *self,
   /* FIXME: other reasons they might not be able to see our presence? */
 
   return TRUE;
+}
+
+static void
+toggle_presence_visibility_async (GabbleConnection *self,
+    GAsyncReadyCallback callback)
+{
+  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
+      callback, NULL, NULL);
+  gboolean set_invisible =
+    (self->self_presence->status == GABBLE_PRESENCE_HIDDEN);
+
+  if ((self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE) != 0)
+    {
+      /* XEP-0186 */
+      set_xep0186_invisible (self, set_invisible, result);
+    }
+  else if ((self->features & GABBLE_CONNECTION_FEATURES_PRIVACY) != 0)
+    {
+      /* XEP-0126 */
+      set_xep0126_invisible (self, set_invisible, result);
+    }
+  else
+    {
+      GError *error;
+      /* XEP-0018 */
+      if (!conn_presence_signal_own_presence (self, NULL, &error))
+        {
+          g_simple_async_result_set_from_error (result, error);
+          g_error_free (error);
+        }
+      g_simple_async_result_complete (result);
+    }
+
+  g_object_unref (result);
+}
+
+static void
+toggle_presence_visibility_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = (GabbleConnection *) source_object;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  GError *error = NULL;
+
+  g_return_if_fail (g_simple_async_result_is_valid (res, G_OBJECT (self),
+          NULL));
+
+  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (res),
+      &error))
+    {
+      DEBUG ("Error setting visibility, falling back to dnd: %s",
+          error->message);
+
+      g_error_free (error);
+    }
+
+  emit_one_presence_update (self, base->self_handle);
 }
 
 static gboolean
@@ -497,37 +689,18 @@ set_own_status_cb (GObject *obj,
           retval = TRUE;
           goto OUT;
         }
-      else if (prev_status != i && prev_status == GABBLE_PRESENCE_HIDDEN)
+      if (prev_status != i && (prev_status == GABBLE_PRESENCE_HIDDEN ||
+            i  == GABBLE_PRESENCE_HIDDEN))
         {
-          if (conn->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
-            /* XEP-0186 */
-            retval = conn_presence_set_invisible (conn, FALSE, error);
-          else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
-            /* XEP-0126 */
-            retval = conn_presence_privacy_list_set_visible (conn, error);
-          else
-            /* XEP-0018 */
-            retval = conn_presence_signal_own_presence (conn, NULL, error);
-        }
-      else if (prev_status != i && i == GABBLE_PRESENCE_HIDDEN)
-        {
-          if (conn->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
-            /* XEP-0186 */
-            retval = conn_presence_set_invisible (conn, TRUE, error);
-          else if (conn->features & GABBLE_CONNECTION_FEATURES_PRIVACY)
-            /* XEP-0126 */
-            retval = conn_presence_privacy_list_set_invisible (conn, FALSE,
-                error);
-          else
-            /* XEP-0018 */
-            retval = conn_presence_signal_own_presence (conn, NULL, error);
+          toggle_presence_visibility_async (conn,
+              toggle_presence_visibility_cb);
         }
       else
         {
           retval = conn_presence_signal_own_presence (conn, NULL, error);
+          emit_one_presence_update (conn, base->self_handle);
         }
 
-      emit_one_presence_update (conn, base->self_handle);
     }
 
 OUT:

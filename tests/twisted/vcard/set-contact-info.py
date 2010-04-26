@@ -31,11 +31,6 @@ def test(q, bus, conn, stream):
             query_name='vCard'),
         )
 
-    sync_stream(q, stream)
-    sync_dbus(bus, q, conn)
-
-    acknowledge_iq(stream, event.stanza)
-
     call_async(q, conn.ContactInfo, 'SetContactInfo',
                [(u'fn', [], [u'Wee Ninja']),
                 (u'n', [], [u'Ninja', u'Wee', u'', u'', u'-san']),
@@ -59,6 +54,13 @@ def test(q, bus, conn, stream):
                 (u'url', [], ['http://www.thinkgeek.com/geektoys/plush/8823/']),
                 (u'nickname', [], [u'HR Ninja']),
                 (u'nickname', [], [u'Enforcement Ninja'])])
+
+    # We don't acknowledge the initial vCard get until we're sure that Gabble's
+    # received our call to SetContactInfo. This ensures that it will issue a
+    # set when we send the reply, rather than issuing another get to ensure the
+    # vCard is really, absolutely up to date before editing it.
+    sync_dbus(bus, q, conn)
+    acknowledge_iq(stream, event.stanza)
 
     vcard_set_event = q.expect('stream-iq', iq_type='set',
                 query_ns='vcard-temp', query_name='vCard')

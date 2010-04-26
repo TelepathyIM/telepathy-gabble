@@ -75,6 +75,26 @@ def test_error_reply_initial(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PresencesChanged',
                      args=[{1: (5, u'hidden', u'')}]))
 
+def test_really_broken_initial(q, bus, conn, stream):
+    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    assertNotEquals({}, props['Statuses'])
+
+    conn.SimplePresence.SetPresence("hidden", "")
+
+    conn.Connect()
+
+    q.expect('stream-iq', query_name='invisible', query_ns=ns.INVISIBLE)
+
+    q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+
+    q.expect_many(
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+                     args=[{1: (6, u'dnd', u'')}]))
+
 if __name__ == '__main__':
     exec_test(test_error_reply_initial, protocol=BrokenInvisibleXmlStream)
     exec_test(test_error_reply, protocol=BrokenInvisibleXmlStream)
+    exec_test(test_really_broken_initial,
+              protocol=ReallyBrokenInvisibleXmlStream)

@@ -1,3 +1,28 @@
+telepathy-gabble 0.9.11 (2010-04-26)
+====================================
+
+The “This place is a narrative mess” release.
+
+Enhancements:
+
+• The ContactInfo interface is now implemented! (andrunko, smcv)
+
+• Updated Wocky:
+  · Permit ASCII mnemonics in wocky_stanza_build(), and detect more
+    errors (wjt)
+  · Renamed WockyXmpp{Stanza,Node} to Wocky{Stanza,Node}; add more
+    helper code for building, storing, and serializing trees of nodes
+    (sjoerd)
+  · Refactored PubSub response distillery, and added support for
+    retriving node configuration and modifying affiliates (wjt)
+
+Fixes:
+
+• fd.o#25775: crash in pep_reply_cb() (cassidy)
+
+• fd.o#27694: GetContactAttributes should return {} as location if there
+  is no location for the contact (cassidy)
+
 telepathy-gabble 0.9.10 (2010-04-08)
 ====================================
 

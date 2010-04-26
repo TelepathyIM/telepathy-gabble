@@ -2163,6 +2163,11 @@ handle_fill_presence (WockyMuc *muc,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
   gabble_presence_add_status_and_vcard (base->conn->self_presence, stanza);
 
+  /* If we are invisible, show us as dnd in muc, since we can't be invisible */
+  if (priv->conn->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+    wocky_xmpp_node_add_child_with_content (stanza->node, "show",
+        JABBER_PRESENCE_SHOW_DND);
+
   /* Sync the presence we send over the wire with what is in our presence cache
    */
   gabble_presence_cache_update (base->conn->presence_cache, self_handle,

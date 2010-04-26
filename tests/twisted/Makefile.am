@@ -47,6 +47,7 @@ TWISTED_TESTS = \
 	presence/decloak.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
+	presence/invisible_fallbacks.py \
 	presence/invisible_xep_0126.py \
 	presence/invisible_xep_0186.py \
 	presence/presence.py \
@@ -283,7 +284,8 @@ EXTRA_DIST = \
 	tubes/tubetestutil.py \
 	sasl/saslutil.py \
 	search/search_helper.py \
-	file-transfer/file_transfer_helper.py
+	file-transfer/file_transfer_helper.py \
+	presence/invisible_helper.py
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

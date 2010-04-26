@@ -40,11 +40,16 @@
  * #GabbleBaseChannel:requested, whose default implementation is "initiator ==
  * self_handle?".
  *
- * Subclasses should fill in #GabbleBaseChannel:channel_type,
- * #GabbleBaseChannel:interfaces during construction, and ensure that
- * #GabbleBaseChannel:object_path is not %NULL by the time construction is
- * finished (if it is not set by the object's creator, they must fill it in
- * themself); #GabbleBaseChannel will take care of freeing it.
+ * Subclasses should fill in #GabbleBaseChannelClass:channel_type,
+ * #GabbleBaseChannelClass:target_type and #GabbleBaseChannelClass:interfaces;
+ * if some instances of the channel need a different set of interfaces, they
+ * may set #GabbleBaseChannel:interfaces to override the default set for the
+ * class.
+ *
+ * Subclasse should ensure that #GabbleBaseChannel:object_path is not %NULL by
+ * the time construction is finished (if it is not set by the object's creator,
+ * they must fill it in themself); #GabbleBaseChannel will take care of freeing
+ * it.
  */
 
 #include "config.h"
@@ -124,6 +129,7 @@ gabble_base_channel_init (GabbleBaseChannel *self)
 static void
 gabble_base_channel_constructed (GObject *object)
 {
+  GabbleBaseChannelClass *klass = GABBLE_BASE_CHANNEL_GET_CLASS (object);
   GObjectClass *parent_class = gabble_base_channel_parent_class;
   GabbleBaseChannel *chan = GABBLE_BASE_CHANNEL (object);
   TpBaseConnection *conn = (TpBaseConnection *) chan->conn;
@@ -132,9 +138,12 @@ gabble_base_channel_constructed (GObject *object)
   if (parent_class->constructed != NULL)
     parent_class->constructed (object);
 
-  if (chan->target_type != TP_HANDLE_TYPE_NONE)
+  if (chan->interfaces == NULL)
+    chan->interfaces = klass->interfaces;
+
+  if (klass->target_type != TP_HANDLE_TYPE_NONE)
     {
-      handles = tp_base_connection_get_handles (conn, chan->target_type);
+      handles = tp_base_connection_get_handles (conn, klass->target_type);
       g_assert (handles != NULL);
       g_assert (chan->target != 0);
       tp_handle_ref (handles, chan->target);
@@ -155,6 +164,7 @@ gabble_base_channel_get_property (GObject *object,
                                   GParamSpec *pspec)
 {
   GabbleBaseChannel *chan = GABBLE_BASE_CHANNEL (object);
+  GabbleBaseChannelClass *klass = GABBLE_BASE_CHANNEL_GET_CLASS (chan);
   TpBaseConnection *base_conn = (TpBaseConnection *) chan->conn;
 
   switch (property_id) {
@@ -162,10 +172,10 @@ gabble_base_channel_get_property (GObject *object,
       g_value_set_string (value, chan->object_path);
       break;
     case PROP_CHANNEL_TYPE:
-      g_value_set_static_string (value, chan->channel_type);
+      g_value_set_static_string (value, klass->channel_type);
       break;
     case PROP_HANDLE_TYPE:
-      g_value_set_uint (value, chan->target_type);
+      g_value_set_uint (value, klass->target_type);
       break;
     case PROP_HANDLE:
       g_value_set_uint (value, chan->target);
@@ -174,7 +184,7 @@ gabble_base_channel_get_property (GObject *object,
       if (chan->target != 0)
         {
           TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              base_conn, chan->target_type);
+              base_conn, klass->target_type);
 
           g_value_set_string (value, tp_handle_inspect (repo, chan->target));
         }
@@ -294,12 +304,13 @@ static void
 gabble_base_channel_finalize (GObject *object)
 {
   GabbleBaseChannel *chan = GABBLE_BASE_CHANNEL (object);
+  GabbleBaseChannelClass *klass = GABBLE_BASE_CHANNEL_GET_CLASS (chan);
   TpBaseConnection *conn = (TpBaseConnection *) chan->conn;
   TpHandleRepoIface *handles;
 
   if (chan->target != 0)
     {
-      handles = tp_base_connection_get_handles (conn, chan->target_type);
+      handles = tp_base_connection_get_handles (conn, klass->target_type);
       tp_handle_unref (handles, chan->target);
     }
 
@@ -409,18 +420,19 @@ static void
 gabble_base_channel_get_channel_type (TpSvcChannel *iface,
                                       DBusGMethodInvocation *context)
 {
-  GabbleBaseChannel *chan = GABBLE_BASE_CHANNEL (iface);
+  GabbleBaseChannelClass *klass = GABBLE_BASE_CHANNEL_GET_CLASS (iface);
 
-  tp_svc_channel_return_from_get_channel_type (context, chan->channel_type);
+  tp_svc_channel_return_from_get_channel_type (context, klass->channel_type);
 }
 
 static void
 gabble_base_channel_get_handle (TpSvcChannel *iface,
                                 DBusGMethodInvocation *context)
 {
+  GabbleBaseChannelClass *klass = GABBLE_BASE_CHANNEL_GET_CLASS (iface);
   GabbleBaseChannel *chan = GABBLE_BASE_CHANNEL (iface);
 
-  tp_svc_channel_return_from_get_handle (context, chan->target_type,
+  tp_svc_channel_return_from_get_handle (context, klass->target_type,
       chan->target);
 }
 

@@ -37,6 +37,10 @@ typedef struct _GabbleBaseChannelPrivate GabbleBaseChannelPrivate;
 struct _GabbleBaseChannelClass {
     GObjectClass parent_class;
 
+    const gchar *channel_type;
+    TpHandleType target_type;
+    const gchar **interfaces;
+
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
@@ -46,10 +50,8 @@ struct _GabbleBaseChannel {
     GabbleConnection *conn;
 
     char *object_path;
-
-    const gchar *channel_type;
     const gchar **interfaces;
-    TpHandleType target_type;
+
     TpHandle target;
     TpHandle initiator;
 

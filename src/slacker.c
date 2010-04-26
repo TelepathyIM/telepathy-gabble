@@ -253,12 +253,8 @@ gabble_slacker_dispose (GObject *object)
       dbus_g_connection_unref (priv->bus);
       priv->bus = NULL;
     }
-}
 
-static void
-gabble_slacker_finalize (GObject *object)
-{
-  /* GabbleSlacker *self = GABBLE_SLACKER (object); */
+  ((GObjectClass *) gabble_slacker_parent_class)->dispose (object);
 }
 
 static void
@@ -269,7 +265,6 @@ gabble_slacker_class_init (GabbleSlackerClass *klass)
   object_class->constructor = gabble_slacker_constructor;
   object_class->constructed = gabble_slacker_constructed;
   object_class->dispose = gabble_slacker_dispose;
-  object_class->finalize = gabble_slacker_finalize;
 
   g_type_class_add_private (klass, sizeof (GabbleSlackerPrivate));
 

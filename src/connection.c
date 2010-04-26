@@ -2779,9 +2779,33 @@ connection_initial_presence_cb (GObject *source_object,
     {
       DEBUG ("error setting up initial presence: %s", error->message);
 
-      tp_base_connection_change_status (base,
-          TP_CONNECTION_STATUS_DISCONNECTED,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      if (error->domain == CONN_PRESENCE_ERROR)
+        {
+          switch (error->code) {
+            case CONN_PRESENCE_ERROR_SET_INVISIBLE:
+              self->features &= ~GABBLE_CONNECTION_FEATURES_INVISIBLE;
+              conn_presence_set_initial_presence_async (self,
+                  connection_initial_presence_cb, NULL);
+              break;
+            case CONN_PRESENCE_ERROR_SET_PRIVACY_LIST:
+            case CONN_PRESENCE_ERROR_CREATE_PRIVACY_LIST:
+              self->features &= ~GABBLE_CONNECTION_FEATURES_PRIVACY;
+              conn_presence_set_initial_presence_async (self,
+                  connection_initial_presence_cb, NULL);
+              break;
+            default:
+              tp_base_connection_change_status (base,
+                  TP_CONNECTION_STATUS_DISCONNECTED,
+                  TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+              break;
+          }
+        }
+      else
+        {
+          tp_base_connection_change_status (base,
+              TP_CONNECTION_STATUS_DISCONNECTED,
+              TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+        }
 
       g_error_free (error);
     }

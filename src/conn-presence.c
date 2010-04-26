@@ -461,6 +461,11 @@ conn_presence_set_initial_presence_async (GabbleConnection *self,
   else
     {
       GError *error = NULL;
+
+      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) == 0
+          && self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+        self->self_presence->status = GABBLE_PRESENCE_DND;
+
       /* send presence to the server to indicate availability */
       /* TODO: some way for the user to set this */
       if (!conn_presence_signal_own_presence (self, NULL, &error))

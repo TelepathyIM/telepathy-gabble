@@ -24,6 +24,7 @@
 #include <glib-object.h>
 
 #include "connection.h"
+#include "base-channel.h"
 
 G_BEGIN_DECLS
 
@@ -32,13 +33,11 @@ typedef struct _GabbleRoomlistChannelPrivate GabbleRoomlistChannelPrivate;
 typedef struct _GabbleRoomlistChannelClass GabbleRoomlistChannelClass;
 
 struct _GabbleRoomlistChannelClass {
-    GObjectClass parent_class;
-
-    TpDBusPropertiesMixinClass dbus_props_class;
+    GabbleBaseChannelClass parent_class;
 };
 
 struct _GabbleRoomlistChannel {
-    GObject parent;
+    GabbleBaseChannel parent;
 
     GabbleRoomlistChannelPrivate *priv;
 };

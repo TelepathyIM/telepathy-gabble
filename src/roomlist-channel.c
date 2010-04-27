@@ -45,14 +45,10 @@ static void channel_iface_init (gpointer, gpointer);
 static void roomlist_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
-    G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-      tp_dbus_properties_mixin_iface_init);
+    GABBLE_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST,
       roomlist_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
     );
 
 static const gchar *gabble_roomlist_channel_interfaces[] = {
@@ -62,18 +58,7 @@ static const gchar *gabble_roomlist_channel_interfaces[] = {
 /* properties */
 enum
 {
-  PROP_OBJECT_PATH = 1,
-  PROP_CHANNEL_TYPE,
-  PROP_HANDLE_TYPE,
-  PROP_HANDLE,
-  PROP_TARGET_ID,
-  PROP_REQUESTED,
-  PROP_INITIATOR_HANDLE,
-  PROP_INITIATOR_ID,
-  PROP_CONNECTION,
-  PROP_INTERFACES,
-  PROP_CONFERENCE_SERVER,
-  PROP_CHANNEL_DESTROYED,
+  PROP_CONFERENCE_SERVER = 1,
   PROP_CHANNEL_PROPERTIES,
   LAST_PROPERTY
 };
@@ -82,11 +67,8 @@ enum
 
 struct _GabbleRoomlistChannelPrivate
 {
-  GabbleConnection *conn;
-  gchar *object_path;
   gchar *conference_server;
 
-  gboolean closed;
   gboolean listing;
 
   gpointer disco_pipeline;
@@ -109,27 +91,25 @@ gabble_roomlist_channel_init (GabbleRoomlistChannel *self)
       GABBLE_TYPE_ROOMLIST_CHANNEL, GabbleRoomlistChannelPrivate);
 
   self->priv = priv;
-
   priv->pending_room_signals = g_ptr_array_new ();
 }
 
-
-static GObject *
-gabble_roomlist_channel_constructor (GType type, guint n_props,
-                               GObjectConstructParam *props)
+static void
+gabble_roomlist_channel_constructed (GObject *obj)
 {
-  GObject *obj;
-  GabbleRoomlistChannelPrivate *priv;
-  DBusGConnection *bus;
+  GObjectClass *parent_class = gabble_roomlist_channel_parent_class;
+  GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (obj);
+  GabbleBaseChannel *base_chan = (GabbleBaseChannel *) self;
+  TpBaseConnection *conn = (TpBaseConnection *) base_chan->conn;
+  TpHandleRepoIface *room_handles;
 
-  obj = G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->
-           constructor (type, n_props, props);
-  priv = GABBLE_ROOMLIST_CHANNEL (obj)->priv;
+  if (parent_class->constructed != NULL)
+    parent_class->constructed (obj);
 
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  room_handles = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_ROOM);
+  self->priv->signalled_rooms = tp_handle_set_new (room_handles);
 
-  return obj;
+  gabble_base_channel_register (GABBLE_BASE_CHANNEL (obj));
 }
 
 static void
@@ -139,53 +119,11 @@ gabble_roomlist_channel_get_property (GObject    *object,
                                 GParamSpec *pspec)
 {
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
-  GabbleRoomlistChannelPrivate *priv =
-    chan->priv;
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  GabbleRoomlistChannelPrivate *priv = chan->priv;
 
   switch (property_id) {
-    case PROP_OBJECT_PATH:
-      g_value_set_string (value, priv->object_path);
-      break;
-    case PROP_CHANNEL_TYPE:
-      g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
-      break;
-    case PROP_HANDLE_TYPE:
-      g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
-      break;
-    case PROP_HANDLE:
-      g_value_set_uint (value, 0);
-      break;
-    case PROP_TARGET_ID:
-      g_value_set_static_string (value, "");
-      break;
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
-    case PROP_INTERFACES:
-      g_value_set_boxed (value, gabble_roomlist_channel_interfaces);
-      break;
     case PROP_CONFERENCE_SERVER:
       g_value_set_string (value, priv->conference_server);
-      break;
-    case PROP_INITIATOR_HANDLE:
-      /* Room listing is always initiated by the local user */
-      g_value_set_uint (value, conn->self_handle);
-      break;
-    case PROP_INITIATOR_ID:
-        {
-          TpHandleRepoIface *repo = tp_base_connection_get_handles (conn,
-              TP_HANDLE_TYPE_CONTACT);
-
-          g_value_set_string (value,
-              tp_handle_inspect (repo, conn->self_handle));
-        }
-      break;
-    case PROP_REQUESTED:
-      g_value_set_boolean (value, TRUE);
-      break;
-    case PROP_CHANNEL_DESTROYED:
-      g_value_set_boolean (value, priv->closed);
       break;
     case PROP_CHANNEL_PROPERTIES:
       g_value_take_boxed (value,
@@ -214,42 +152,9 @@ gabble_roomlist_channel_set_property (GObject     *object,
                                 GParamSpec   *pspec)
 {
   GabbleRoomlistChannel *chan = GABBLE_ROOMLIST_CHANNEL (object);
-  GabbleRoomlistChannelPrivate *priv =
-    chan->priv;
-  TpBaseConnection *conn;
-  TpHandleRepoIface *room_handles;
-  TpHandleSet *new_signalled_rooms;
+  GabbleRoomlistChannelPrivate *priv = chan->priv;
 
   switch (property_id) {
-    case PROP_OBJECT_PATH:
-      g_free (priv->object_path);
-      priv->object_path = g_value_dup_string (value);
-      break;
-    case PROP_HANDLE_TYPE:
-    case PROP_HANDLE:
-    case PROP_CHANNEL_TYPE:
-      /* these properties are writable in the interface, but not actually
-       * meaningfully changeable on this channel, so we do nothing */
-      break;
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      conn = (TpBaseConnection *) priv->conn;
-
-      room_handles = tp_base_connection_get_handles (conn,
-          TP_HANDLE_TYPE_ROOM);
-
-      new_signalled_rooms = tp_handle_set_new (room_handles);
-      if (priv->signalled_rooms != NULL)
-        {
-          const TpIntSet *add;
-          TpIntSet *tmp;
-          add = tp_handle_set_peek (priv->signalled_rooms);
-          tmp = tp_handle_set_update (new_signalled_rooms, add);
-          tp_handle_set_destroy (priv->signalled_rooms);
-          tp_intset_destroy (tmp);
-        }
-      priv->signalled_rooms = new_signalled_rooms;
-      break;
     case PROP_CONFERENCE_SERVER:
       g_free (priv->conference_server);
       priv->conference_server = g_value_dup_string (value);
@@ -264,95 +169,31 @@ static void gabble_roomlist_channel_dispose (GObject *object);
 static void gabble_roomlist_channel_finalize (GObject *object);
 
 static void
-gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_channel_class)
+gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *klass)
 {
-  static TpDBusPropertiesMixinPropImpl channel_props[] = {
-      { "TargetHandleType", "handle-type", NULL },
-      { "TargetHandle", "handle", NULL },
-      { "TargetID", "target-id", NULL },
-      { "ChannelType", "channel-type", NULL },
-      { "Interfaces", "interfaces", NULL },
-      { "Requested", "requested", NULL },
-      { "InitiatorHandle", "initiator-handle", NULL },
-      { "InitiatorID", "initiator-id", NULL },
-      { NULL }
-  };
   static TpDBusPropertiesMixinPropImpl roomlist_props[] = {
       { "Server", "conference-server", NULL },
       { NULL }
   };
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { TP_IFACE_CHANNEL,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        channel_props,
-      },
-      { TP_IFACE_CHANNEL_TYPE_ROOM_LIST,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        roomlist_props,
-      },
-      { NULL }
-  };
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_roomlist_channel_class);
+  GabbleBaseChannelClass *base_class = GABBLE_BASE_CHANNEL_CLASS (klass);
+  GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (gabble_roomlist_channel_class,
-      sizeof (GabbleRoomlistChannelPrivate));
+  g_type_class_add_private (klass, sizeof (GabbleRoomlistChannelPrivate));
 
-  object_class->constructor = gabble_roomlist_channel_constructor;
-
+  object_class->constructed = gabble_roomlist_channel_constructed;
   object_class->get_property = gabble_roomlist_channel_get_property;
   object_class->set_property = gabble_roomlist_channel_set_property;
-
   object_class->dispose = gabble_roomlist_channel_dispose;
   object_class->finalize = gabble_roomlist_channel_finalize;
 
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
-      "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
-      "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
-      "handle-type");
-  g_object_class_override_property (object_class, PROP_HANDLE,
-      "handle");
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_ROOM_LIST;
+  base_class->interfaces = gabble_roomlist_channel_interfaces;
+  base_class->target_type = TP_HANDLE_TYPE_NONE;
 
-  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
-      "channel-destroyed");
+  /* We need to override these to add conference-server */
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
-
-  param_spec = g_param_spec_string ("target-id", "Target JID",
-      "Currently empty, because this channel always has handle 0.",
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
-
-  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
-      "The contact who initiated the channel",
-      0, G_MAXUINT32, 0,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
-      param_spec);
-
-  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
-      "The string obtained by inspecting the initiator-handle",
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
-      param_spec);
-
-  param_spec = g_param_spec_boolean ("requested", "Requested?",
-      "True if this channel was requested by the local user",
-      FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this room list channel object.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
   param_spec = g_param_spec_string ("conference-server",
       "Name of conference server to use",
@@ -362,15 +203,10 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *gabble_roomlist_
   g_object_class_install_property (object_class, PROP_CONFERENCE_SERVER,
       param_spec);
 
-  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
-      "Additional Channel.Interface.* interfaces",
-      G_TYPE_STRV,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
-
-  gabble_roomlist_channel_class->dbus_props_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleRoomlistChannelClass, dbus_props_class));
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_TYPE_ROOM_LIST,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      roomlist_props);
 }
 
 static void stop_listing (GabbleRoomlistChannel *self);
@@ -379,8 +215,8 @@ static void
 gabble_roomlist_channel_dispose (GObject *object)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (object);
-  GabbleRoomlistChannelPrivate *priv =
-    self->priv;
+  GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
+  GabbleRoomlistChannelPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -389,10 +225,10 @@ gabble_roomlist_channel_dispose (GObject *object)
 
   stop_listing (self);
 
-  if (!priv->closed)
+  if (!base->closed)
     {
-      priv->closed = TRUE;
-      tp_svc_channel_emit_closed ((TpSvcChannel *) object);
+      base->closed = TRUE;
+      tp_svc_channel_emit_closed (self);
     }
 
   g_assert (priv->pending_room_signals != NULL);
@@ -408,12 +244,10 @@ static void
 gabble_roomlist_channel_finalize (GObject *object)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (object);
-  GabbleRoomlistChannelPrivate *priv =
-    self->priv;
+  GabbleRoomlistChannelPrivate *priv = self->priv;
 
   /* free any data held directly by the object here */
 
-  g_free (priv->object_path);
   g_free (priv->conference_server);
 
   if (priv->signalled_rooms != NULL)
@@ -427,13 +261,19 @@ _gabble_roomlist_channel_new (GabbleConnection *conn,
                               const gchar *object_path,
                               const gchar *conference_server)
 {
+  TpHandle initiator;
+
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
   g_return_val_if_fail (object_path != NULL, NULL);
   g_return_val_if_fail (conference_server != NULL, NULL);
 
+  /* We are always the initiator. */
+  initiator = tp_base_connection_get_self_handle ((TpBaseConnection *) conn);
+
   return GABBLE_ROOMLIST_CHANNEL (
       g_object_new (GABBLE_TYPE_ROOMLIST_CHANNEL,
                     "connection", conn,
+                    "initiator-handle", initiator,
                     "object-path", object_path,
                     "conference-server", conference_server, NULL));
 }
@@ -469,6 +309,7 @@ static void
 room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 {
   GabbleRoomlistChannel *chan = user_data;
+  GabbleBaseChannel *base;
   GabbleRoomlistChannelPrivate *priv;
   TpHandleRepoIface *room_handles;
   const char *jid, *category, *type, *var, *name;
@@ -488,9 +329,10 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
     } while (0)
 
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (chan));
+  base = GABBLE_BASE_CHANNEL (chan);
   priv = chan->priv;
   room_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) base->conn, TP_HANDLE_TYPE_ROOM);
 
   jid = item->jid;
   name = item->name;
@@ -653,59 +495,20 @@ gabble_roomlist_channel_close (TpSvcChannel *iface,
                                DBusGMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
+  GabbleBaseChannel *base = (GabbleBaseChannel *) self;
 
   DEBUG ("called on %p", self);
 
-  g_object_run_dispose (G_OBJECT (self));
+  if (!base->closed)
+    {
+      stop_listing (self);
+
+      base->closed = TRUE;
+      tp_svc_channel_emit_closed (self);
+    }
 
   tp_svc_channel_return_from_close (context);
 }
-
-
-/**
- * gabble_roomlist_channel_get_channel_type
- *
- * Implements D-Bus method GetChannelType
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_roomlist_channel_get_channel_type (TpSvcChannel *iface,
-                                          DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_channel_type (context,
-      TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
-}
-
-
-/**
- * gabble_roomlist_channel_get_handle
- *
- * Implements D-Bus method GetHandle
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_roomlist_channel_get_handle (TpSvcChannel *self,
-                                    DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_handle (context, 0, 0);
-}
-
-
-/**
- * gabble_roomlist_channel_get_interfaces
- *
- * Implements D-Bus method GetInterfaces
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_roomlist_channel_get_interfaces (TpSvcChannel *iface,
-                                        DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_interfaces (context,
-      gabble_roomlist_channel_interfaces);
-}
-
 
 /**
  * gabble_roomlist_channel_get_listing_rooms
@@ -751,17 +554,14 @@ gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
-  GabbleRoomlistChannelPrivate *priv;
-
-  g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
-
-  priv = self->priv;
+  GabbleRoomlistChannelPrivate *priv = self->priv;
+  GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
 
   priv->listing = TRUE;
   tp_svc_channel_type_room_list_emit_listing_rooms (iface, TRUE);
 
   if (priv->disco_pipeline == NULL)
-    priv->disco_pipeline = gabble_disco_pipeline_init (priv->conn->disco,
+    priv->disco_pipeline = gabble_disco_pipeline_init (base->conn->disco,
         room_info_cb, rooms_end_cb, self);
 
   gabble_disco_pipeline_run (priv->disco_pipeline, priv->conference_server);
@@ -799,9 +599,6 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 #define IMPLEMENT(x) tp_svc_channel_implement_##x (\
     klass, gabble_roomlist_channel_##x)
   IMPLEMENT(close);
-  IMPLEMENT(get_channel_type);
-  IMPLEMENT(get_handle);
-  IMPLEMENT(get_interfaces);
 #undef IMPLEMENT
 }
 

@@ -168,6 +168,8 @@ def run_outgoing_test(q, bus, conn, stream):
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + '/bob')
     jt.prepare()
 
+    self_handle = conn.GetSelfHandle()
+
     # Not allowed to have muji releated presences before we accept the channel
     forbidden = [ no_muji_presences () ]
 
@@ -247,7 +249,61 @@ def run_outgoing_test(q, bus, conn, stream):
     endpoint.SetStreamState (cs.MEDIA_STREAM_STATE_CONNECTED,
         dbus_interface=cs.CALL_STREAM_ENDPOINT)
 
-    q.expect ('stream-iq', predicate = jp.action_predicate ('session-accept'))
+    e = q.expect ('stream-iq',
+        predicate = jp.action_predicate ('session-accept'))
+    stream.send(jp.xml(jp.ResultIq(jt.peer, e.stanza, [])))
+
+    # But we want video as well !
+    c = channel.AddContent ("Camera!", cs.MEDIA_STREAM_TYPE_VIDEO,
+        dbus_interface=cs.CHANNEL_TYPE_CALL)
+
+    e = q.expect('dbus-signal', signal = 'ContentAdded')
+    assertEquals (e.args[1], cs.MEDIA_STREAM_TYPE_VIDEO)
+
+    content = bus.get_object (conn.bus_name, c)
+    codecs = jt.get_call_video_codecs_dbus()
+    content.SetCodecs(codecs)
+
+    q.unforbid_events(forbidden)
+
+    # preparing
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
+
+    #codecs
+    e = q.expect('stream-presence', to = muc + "/test")
+    echo_presence (q, stream, e.stanza, 'none', 'participant')
+
+    # Bob would like to join our video party
+    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+    muji =  ('muji', ns.MUJI, {},
+        [('content', ns.MUJI, { "name": "Audio" },
+            [( 'description', None, {"media": "audio"},
+            jt.generate_payloads(jt.audio_codecs))]),
+         ('content', ns.MUJI, { "name": "Camera!" },
+            [( 'description', None, {"media": "video"},
+            jt.generate_payloads(jt.video_codecs))]),
+        ])
+    presence.addChild(jp._simple_xml(muji))
+    stream.send(presence)
+
+    # new codec offer as bob threw in some codecs
+    q.expect('dbus-signal', signal='NewCodecOffer')
+    check_and_accept_offer (q, bus, conn, self_handle, 0,
+            content, codecs)
+
+    # Bob sends a content
+    node = jp.SetIq(jt.peer, jt.jid, [
+        jp.Jingle(jt.sid, jt.peer, 'content-add', [
+            jp.Content('videostream', 'initiator', 'both',
+                jp.Description('video', [
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt.video_codecs ]),
+            jp.TransportGoogleP2P()) ]) ])
+    stream.send(jp.xml(node))
+
+    # We get a new stream
+    e = q.expect('dbus-signal', signal = 'StreamAdded')
 
 def general_tests (jp, q, bus, conn, stream, path, props):
     assertEquals (cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])

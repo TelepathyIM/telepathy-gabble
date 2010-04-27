@@ -14,6 +14,7 @@ TWISTED_TESTS = \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
 	gateways.py \
+	muc/conference.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \

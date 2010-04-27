@@ -45,6 +45,11 @@ struct _GabbleBaseCallChannelClass {
       JingleMediaType media,
       GError **error);
 
+    void (*hangup) (GabbleBaseCallChannel *self,
+      guint reason,
+      const gchar *detailed_reason,
+      const gchar *message);
+
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 

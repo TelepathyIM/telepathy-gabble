@@ -307,6 +307,20 @@ def run_outgoing_test(q, bus, conn, stream):
     # We get a new stream
     e = q.expect('dbus-signal', signal = 'StreamAdded')
 
+    # happyness.. Now let's hang up
+    channel.Hangup (0, "", "", dbus_interface=cs.CHANNEL_TYPE_CALL)
+
+    # Should change the call state to ended, send a session-terminate to our
+    # only peer and send a muc presence without any mention of muji
+    q.forbid_events(forbidden)
+    q.expect_many (
+        EventPattern ('dbus-signal', signal = 'CallStateChanged'),
+        EventPattern ('stream-presence', to = muc + "/test"),
+        EventPattern ('stream-iq',
+            predicate = jp.action_predicate ('session-terminate'))
+        )
+
+
 def general_tests (jp, q, bus, conn, stream, path, props):
     assertEquals (cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
 

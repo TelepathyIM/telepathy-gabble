@@ -43,6 +43,11 @@ static GabbleCallContent * call_muc_channel_add_content (
     const gchar *name,
     JingleMediaType type,
     GError **error);
+static void call_muc_channel_hangup (
+    GabbleBaseCallChannel *base,
+    guint reason,
+    const gchar *detailed_reason,
+    const gchar *message);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   gabble_call_muc_channel, GABBLE_TYPE_BASE_CALL_CHANNEL,
@@ -62,6 +67,8 @@ typedef enum
   STATE_WAIT_FOR_TURN,
   /* Our state matches the state we published */
   STATE_STABLE,
+  /* we left this muc */
+  STATE_LEFT,
 } MucCallState;
 
 enum
@@ -187,6 +194,7 @@ gabble_call_muc_channel_class_init (
   base_call_class->handle_type = TP_HANDLE_TYPE_ROOM;
   base_call_class->accept = call_muc_channel_accept;
   base_call_class->add_content = call_muc_channel_add_content;
+  base_call_class->hangup = call_muc_channel_hangup;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",
@@ -289,6 +297,9 @@ call_muc_do_update (GabbleCallMucChannel *self)
           "preparing");
         priv->state = STATE_PREPARING_SENT;
         gabble_muc_channel_send_presence (priv->muc, NULL);
+        break;
+      case STATE_LEFT:
+        /* we left not doing anything */
         break;
     }
 
@@ -1000,4 +1011,20 @@ call_muc_channel_add_content (GabbleBaseCallChannel *base,
   call_muc_do_update (self);
 
   return content;
+}
+
+static void call_muc_channel_hangup (GabbleBaseCallChannel *base,
+    guint reason,
+    const gchar *detailed_reason,
+    const gchar *message)
+{
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (base);
+  GabbleCallMucChannelPrivate *priv = self->priv;
+
+  if (priv->muji != NULL)
+    g_object_unref (priv->muji);
+  priv->muji = NULL;
+
+  priv->state = STATE_LEFT;
+  gabble_muc_channel_send_presence (priv->muc, NULL);
 }

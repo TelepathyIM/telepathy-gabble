@@ -868,6 +868,8 @@ gabble_base_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
   GabbleBaseCallChannelPrivate *priv = self->priv;
+  GabbleBaseCallChannelClass *base_class =
+      GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self);
   GHashTableIter iter;
   gpointer value;
 
@@ -881,6 +883,12 @@ gabble_base_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
         TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
         message, NULL);
     }
+
+  if (base_class->hangup)
+    base_class->hangup (self, reason, detailed_reason, message);
+
+  gabble_base_call_channel_set_state ( GABBLE_BASE_CALL_CHANNEL (self),
+          GABBLE_CALL_STATE_ENDED);
 
   gabble_svc_channel_type_call_return_from_hangup (context);
 }

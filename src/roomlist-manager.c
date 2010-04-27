@@ -64,7 +64,6 @@ struct _GabbleRoomlistManagerPrivate
   GabbleConnection *conn;
   gulong status_changed_id;
 
-  guint next_channel_number;
   GPtrArray *channels;
 
   gboolean dispose_has_run;
@@ -318,12 +317,10 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
                                         gboolean require_new)
 {
   GabbleRoomlistManager *self = GABBLE_ROOMLIST_MANAGER (manager);
-  TpBaseConnection *conn = (TpBaseConnection *) self->priv->conn;
   GabbleRoomlistChannel *channel = NULL;
   GError *error = NULL;
   GSList *request_tokens;
   const gchar *server;
-  gchar *object_path;
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"),
@@ -388,15 +385,7 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
     }
 
   /* no existing channel is suitable - make a new one */
-
-  /* FIXME: next_channel_number can theoretically wrap around, it would
-   * be better for the object path to use the channel's pointer value
-   * (but that would require that the channel chose it) */
-  object_path = g_strdup_printf ("%s/RoomlistChannel%u", conn->object_path,
-      self->priv->next_channel_number++);
-
-  channel = _gabble_roomlist_channel_new (self->priv->conn, object_path,
-      server);
+  channel = _gabble_roomlist_channel_new (self->priv->conn, server);
   g_signal_connect (channel, "closed", (GCallback) roomlist_channel_closed_cb,
       self);
   g_ptr_array_add (self->priv->channels, channel);
@@ -405,8 +394,6 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
   tp_channel_manager_emit_new_channel (self,
       TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
-
-  g_free (object_path);
 
   return TRUE;
 

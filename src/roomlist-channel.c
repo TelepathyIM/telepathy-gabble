@@ -109,6 +109,8 @@ gabble_roomlist_channel_constructed (GObject *obj)
   room_handles = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_ROOM);
   self->priv->signalled_rooms = tp_handle_set_new (room_handles);
 
+  base_chan->object_path = g_strdup_printf ("%s/RoomlistChannel%p",
+      conn->object_path, self);
   gabble_base_channel_register (GABBLE_BASE_CHANNEL (obj));
 }
 
@@ -258,13 +260,11 @@ gabble_roomlist_channel_finalize (GObject *object)
 
 GabbleRoomlistChannel *
 _gabble_roomlist_channel_new (GabbleConnection *conn,
-                              const gchar *object_path,
                               const gchar *conference_server)
 {
   TpHandle initiator;
 
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
-  g_return_val_if_fail (object_path != NULL, NULL);
   g_return_val_if_fail (conference_server != NULL, NULL);
 
   /* We are always the initiator. */
@@ -274,7 +274,6 @@ _gabble_roomlist_channel_new (GabbleConnection *conn,
       g_object_new (GABBLE_TYPE_ROOMLIST_CHANNEL,
                     "connection", conn,
                     "initiator-handle", initiator,
-                    "object-path", object_path,
                     "conference-server", conference_server, NULL));
 }
 

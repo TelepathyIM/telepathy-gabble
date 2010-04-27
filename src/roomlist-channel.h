@@ -63,7 +63,7 @@ GType gabble_roomlist_channel_get_type (void);
 
 
 GabbleRoomlistChannel *_gabble_roomlist_channel_new (GabbleConnection *conn,
-    const gchar *object_path, const gchar *conference_server);
+    const gchar *conference_server);
 
 
 G_END_DECLS

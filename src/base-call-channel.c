@@ -879,9 +879,9 @@ gabble_base_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
       GabbleCallMember *member = GABBLE_CALL_MEMBER (value);
       GabbleJingleSession *session = gabble_call_member_get_session (member);
 
-      gabble_jingle_session_terminate (session,
-        TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
-        message, NULL);
+      if (session != NULL)
+        gabble_jingle_session_terminate (session,
+          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, message, NULL);
     }
 
   if (base_class->hangup)

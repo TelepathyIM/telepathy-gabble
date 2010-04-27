@@ -227,6 +227,8 @@ def run_outgoing_test(q, bus, conn, stream):
     presence.addChild(jp._simple_xml(muji))
     stream.send(presence)
 
+    q.expect('dbus-signal', signal = 'CallStateChanged')
+
     # Bob appears and starts a session right afterwards
     q.expect('dbus-signal', signal = 'CallMembersChanged')
 

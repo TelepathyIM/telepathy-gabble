@@ -313,6 +313,14 @@ call_muc_channel_open_new_streams (GabbleCallMucChannel *self)
   GabbleCallMember *m;
   GabbleCallContent *c;
 
+  if (!priv->sessions_opened)
+    {
+      /* At the point where we opened the sessions we're accepted i
+         in the call ? */
+      gabble_base_call_channel_set_state ( GABBLE_BASE_CALL_CHANNEL (self),
+          GABBLE_CALL_STATE_ACCEPTED);
+    }
+
   priv->sessions_opened = TRUE;
 
   while ((m = g_queue_pop_head (priv->sessions_to_open)) != NULL)

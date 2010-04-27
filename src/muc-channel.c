@@ -250,15 +250,14 @@ struct _GabbleMucChannelPrivate
   char **initial_ids;
 };
 
-#define GABBLE_MUC_CHANNEL_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_CHANNEL, \
-                                GabbleMucChannelPrivate))
-
 static void
-gabble_muc_channel_init (GabbleMucChannel *obj)
+gabble_muc_channel_init (GabbleMucChannel *self)
 {
-}
+  GabbleMucChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelPrivate);
 
+  self->priv = priv;
+}
 
 static TpHandle create_room_identity (GabbleMucChannel *)
   G_GNUC_WARN_UNUSED_RESULT;
@@ -344,7 +343,7 @@ static void
 gabble_muc_channel_constructed (GObject *obj)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
   TpBaseConnection *conn = (TpBaseConnection *) base->conn;
   TpHandleRepoIface *room_handles, *contact_handles;
@@ -729,7 +728,7 @@ room_properties_update (GabbleMucChannel *chan)
   GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
   base = GABBLE_BASE_CHANNEL (chan);
 
   if (gabble_disco_request (base->conn->disco, GABBLE_DISCO_TYPE_INFO,
@@ -745,7 +744,7 @@ static TpHandle
 create_room_identity (GabbleMucChannel *chan)
 {
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (chan);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   TpBaseConnection *conn = (TpBaseConnection *) base->conn;
   TpHandleRepoIface *contact_repo;
   gchar *alias = NULL;
@@ -788,7 +787,7 @@ send_join_request (GabbleMucChannel *gmuc,
                    const gchar *password,
                    GError **error)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
 
   g_object_set (priv->wmuc, "password", password, NULL);
   wocky_muc_join (priv->wmuc, NULL);
@@ -802,7 +801,7 @@ static gboolean
 send_leave_message (GabbleMucChannel *gmuc,
                     const gchar *reason)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (gmuc);
   LmMessage *msg;
   GError *error = NULL;
@@ -839,7 +838,7 @@ gabble_muc_channel_get_property (GObject    *object,
                                  GParamSpec *pspec)
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_STATE:
@@ -904,7 +903,7 @@ gabble_muc_channel_set_property (GObject     *object,
                                  GParamSpec   *pspec)
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   GabbleMucState prev_state;
 
   switch (property_id) {
@@ -1139,7 +1138,7 @@ void
 gabble_muc_channel_dispose (GObject *object)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -1164,7 +1163,7 @@ void
 gabble_muc_channel_finalize (GObject *object)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
 
   DEBUG ("called");
 
@@ -1204,7 +1203,7 @@ gabble_muc_channel_finalize (GObject *object)
 
 static void clear_join_timer (GabbleMucChannel *chan)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
 
   if (priv->join_timer_id != 0)
     {
@@ -1215,7 +1214,7 @@ static void clear_join_timer (GabbleMucChannel *chan)
 
 static void clear_poll_timer (GabbleMucChannel *chan)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
 
   if (priv->poll_timer_id != 0)
     {
@@ -1234,7 +1233,7 @@ change_password_flags (GabbleMucChannel *chan,
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
 
   added = add & ~priv->password_flags;
   priv->password_flags |= added;
@@ -1255,7 +1254,7 @@ change_password_flags (GabbleMucChannel *chan,
 static void
 provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
 
   if (priv->password_ctx)
     {
@@ -1303,7 +1302,7 @@ channel_state_changed (GabbleMucChannel *chan,
                        GabbleMucState prev_state,
                        GabbleMucState new_state)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (chan);
 
   DEBUG ("state changed from %s to %s", muc_states[prev_state],
@@ -1358,7 +1357,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
                gboolean inform_muc, TpHandle actor, guint reason_code)
 {
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (chan);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
 
   TpIntSet *set;
   GArray *handles;
@@ -1409,7 +1408,7 @@ _gabble_muc_channel_is_ready (GabbleMucChannel *chan)
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
 
   return priv->ready;
 }
@@ -1418,7 +1417,7 @@ static gboolean
 handle_nick_conflict (GabbleMucChannel *chan,
                       GError **tp_error)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (chan);
   TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -1514,7 +1513,7 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
                             gpointer user_data)
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   LmMessageNode *form_node;
   NodeIter i;
 
@@ -1570,7 +1569,7 @@ OUT:
 static void
 update_permissions (GabbleMucChannel *chan)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (chan);
   TpChannelGroupFlags grp_flags_add, grp_flags_rem;
   TpPropertyFlags prop_flags_add, prop_flags_rem;
@@ -1773,7 +1772,7 @@ handle_error (GObject *source,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (gmuc));
@@ -1844,7 +1843,7 @@ static void
 tube_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpHandle room;
 
   if (priv->tube != NULL)
@@ -1861,7 +1860,7 @@ new_tube (GabbleMucChannel *gmuc,
     TpHandle initiator,
     gboolean requested)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (gmuc);
   TpBaseConnection *conn = (TpBaseConnection *) base->conn;
   char *object_path;
@@ -1903,7 +1902,7 @@ handle_tube_presence (GabbleMucChannel *gmuc,
     TpHandle from,
     WockyStanza *stanza)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   WockyNode *node = wocky_stanza_get_top_node (stanza);
 
   if (from == 0)
@@ -1942,7 +1941,7 @@ handle_parted (GObject *source,
   WockyMuc *wmuc = WOCKY_MUC (source);
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (gmuc);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles ((TpBaseConnection *) base->conn,
@@ -2015,7 +2014,7 @@ handle_left (GObject *source,
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (gmuc);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles ((TpBaseConnection *) base->conn,
@@ -2085,7 +2084,7 @@ handle_perms (GObject *source,
 {
   WockyMuc *wmuc = WOCKY_MUC (source);
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpHandle myself = TP_GROUP_MIXIN (gmuc)->self_handle;
 
   priv->self_role = get_role_from_backend (wocky_muc_role (wmuc));
@@ -2104,7 +2103,7 @@ handle_fill_presence (WockyMuc *muc,
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) base->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle self_handle;
@@ -2522,7 +2521,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
 
   is_error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
@@ -2656,7 +2655,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  priv = chan->priv;
   base = GABBLE_BASE_CHANNEL (chan);
   base_conn = (TpBaseConnection *) base->conn;
   muc_self_handle = chan->group.self_handle;
@@ -2837,7 +2836,7 @@ gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   tp_svc_channel_interface_password_return_from_get_password_flags (context,
       priv->password_flags);
@@ -2864,7 +2863,7 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0 ||
       priv->password_ctx != NULL)
@@ -2903,7 +2902,7 @@ gabble_muc_channel_send (GObject *obj,
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
 
   flags &= TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
 
@@ -2920,7 +2919,7 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
                                 GError **error)
 {
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
   LmMessage *msg;
   LmMessageNode *x_node, *invite_node;
   gboolean result;
@@ -2964,7 +2963,7 @@ gabble_muc_channel_add_member (GObject *obj,
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
   TpGroupMixin *mixin;
   const gchar *jid;
 
@@ -3061,7 +3060,7 @@ gabble_muc_channel_remove_member (GObject *obj,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (obj);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (chan);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   TpGroupMixin *group = TP_GROUP_MIXIN (chan);
   LmMessage *msg;
   LmMessageNode *query_node, *item_node;
@@ -3126,13 +3125,12 @@ gabble_muc_channel_do_set_properties (GObject *obj,
                                       TpPropertiesContext *ctx,
                                       GError **error)
 {
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (obj);
-  GabbleMucChannelPrivate *priv;
+  GabbleMucChannelPrivate *priv = self->priv;
   LmMessage *msg;
   LmMessageNode *node;
   gboolean success;
-
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (GABBLE_MUC_CHANNEL (obj));
 
   g_assert (priv->properties_ctx == NULL);
 
@@ -3191,7 +3189,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (chan);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   TpPropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
   LmMessage *msg = NULL;
@@ -3475,7 +3473,7 @@ request_config_form_submit_reply_cb (GabbleConnection *conn,
                                      gpointer user_data)
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (chan);
+  GabbleMucChannelPrivate *priv = chan->priv;
   TpPropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
   gboolean returned;
@@ -3531,7 +3529,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
 
-  priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   if (state >= NUM_TP_CHANNEL_CHAT_STATES)
     {
@@ -3567,7 +3565,7 @@ gboolean
 gabble_muc_channel_send_presence (GabbleMucChannel *self,
                                   GError **error)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  GabbleMucChannelPrivate *priv = self->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
   WockyStanza *stanza;
   gboolean result;
@@ -3589,7 +3587,7 @@ gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
     TpHandle initiator,
     gboolean requested)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
 
   if (priv->tube == NULL)
     priv->tube = new_tube (gmuc, initiator, requested);
@@ -3603,7 +3601,7 @@ gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
 void
 gabble_muc_channel_close_tube (GabbleMucChannel *gmuc)
 {
-  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
 
   if (priv->tube != NULL)
     {

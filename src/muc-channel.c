@@ -1568,8 +1568,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   g_assert (priv->call_requests == NULL);
 
   if (priv->call != NULL)
-    g_object_unref (priv->call);
-  priv->call = NULL;
+    gabble_base_call_channel_close (GABBLE_BASE_CALL_CHANNEL (priv->call));
 
   /* Remove us from member list */
   set = tp_intset_new ();

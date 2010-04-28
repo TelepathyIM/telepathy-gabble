@@ -733,6 +733,8 @@ call_muc_channel_update_all_members (GabbleCallMucChannel *self)
       call_muc_channel_got_participant_presence (self,
         member, member->presence_stanza);
     }
+
+  g_hash_table_unref (members);
 }
 
 static void

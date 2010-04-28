@@ -434,6 +434,9 @@ gabble_call_content_dispose (GObject *object)
   g_list_free (priv->streams);
   priv->streams = NULL;
 
+  jingle_media_rtp_free_codecs (priv->local_codecs);
+  priv->local_codecs = NULL;
+
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose (object);
 }
@@ -446,6 +449,7 @@ gabble_call_content_finalize (GObject *object)
 
   /* free any data held directly by the object here */
   g_free (priv->object_path);
+  g_free (priv->name);
 
   G_OBJECT_CLASS (gabble_call_content_parent_class)->finalize (object);
 }
@@ -467,10 +471,10 @@ call_content_set_local_codecs (GabbleCallContent *self,
 
       c = jingle_media_rtp_codec_new (
         g_value_get_uint (va->values + 0),
-        g_value_dup_string (va->values + 1),
+        g_value_get_string (va->values + 1),
         g_value_get_uint (va->values + 2),
         g_value_get_uint (va->values + 3),
-        g_value_dup_boxed (va->values + 4));
+        g_value_get_boxed (va->values + 4));
 
         l = g_list_append (l, c);
     }
@@ -594,6 +598,8 @@ call_content_codec_list_to_array (GList *codecs)
   GList *l;
 
   arr = g_ptr_array_sized_new (g_list_length (codecs));
+  g_ptr_array_set_free_func (arr,
+    (GDestroyNotify) g_value_array_free);
 
   for (l = codecs; l != NULL; l = g_list_next (l))
     {

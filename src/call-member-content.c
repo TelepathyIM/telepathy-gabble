@@ -126,7 +126,7 @@ gabble_call_member_content_set_property (GObject *object,
           g_value_get_object (value));
         break;
       case PROP_MEMBER:
-        priv->member = g_value_dup_object (value);
+        priv->member = g_value_get_object (value);
         break;
       case PROP_CONTENT_NAME:
         priv->name = g_value_dup_string (value);
@@ -291,6 +291,10 @@ gabble_call_member_content_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
+  if (priv->jingle_content != NULL)
+    g_object_unref (priv->jingle_content);
+  priv->jingle_content = NULL;
+
   /* release any references held by the object here */
 
   if (G_OBJECT_CLASS (gabble_call_member_content_parent_class)->dispose)
@@ -300,7 +304,10 @@ gabble_call_member_content_dispose (GObject *object)
 void
 gabble_call_member_content_finalize (GObject *object)
 {
-  /* free any data held directly by the object here */
+  GabbleCallMemberContent *self = GABBLE_CALL_MEMBER_CONTENT (object);
+  GabbleCallMemberContentPrivate *priv = self->priv;
+
+  g_free (priv->name);
 
   G_OBJECT_CLASS (gabble_call_member_content_parent_class)->finalize (object);
 }

@@ -341,7 +341,7 @@ gabble_call_member_set_session (GabbleCallMember *self,
     GabbleJingleSession *session)
 {
   GabbleCallMemberPrivate *priv = self->priv;
-  GList *c;
+  GList *c, *contents;
 
   g_assert (priv->session == NULL);
   g_assert (session != NULL);
@@ -349,8 +349,8 @@ gabble_call_member_set_session (GabbleCallMember *self,
   DEBUG ("Setting session: %p -> %p\n", self, session);
   priv->session = g_object_ref (session);
 
-  for (c = gabble_jingle_session_get_contents (session);
-      c != NULL; c = g_list_next (c))
+  contents = gabble_jingle_session_get_contents (session);
+  for (c = contents ; c != NULL; c = g_list_next (c))
     {
       GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (c->data);
 
@@ -380,6 +380,8 @@ gabble_call_member_set_session (GabbleCallMember *self,
 
   if (priv->accepted)
     gabble_call_member_accept (self);
+
+  g_list_free (contents);
 }
 
 GabbleJingleSession *

@@ -2669,6 +2669,93 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   return ret;
 }
 
+gboolean
+gabble_roster_handle_subscribe (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  GabbleRosterPrivate *priv = roster->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+
+
+  /* add item to the roster (GTalk depends on this, clearing the H flag) */
+  gabble_roster_handle_add (priv->conn->roster, handle, NULL);
+
+  /* send <presence type="subscribe"> */
+  return gabble_connection_send_presence (priv->conn,
+      LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
+}
+
+gboolean
+gabble_roster_handle_unsubscribe (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+
+  /* send <presence type="unsubscribe"> */
+  return gabble_connection_send_presence (roster->priv->conn,
+      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
+}
+
+gboolean
+gabble_roster_handle_subscribed (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+
+  /* send <presence type="subscribed"> */
+  return gabble_connection_send_presence (roster->priv->conn,
+      LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
+}
+
+gboolean
+gabble_roster_handle_unsubscribed (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+  GabbleRosterChannel *publish = _gabble_roster_get_channel (roster,
+      TP_HANDLE_TYPE_LIST, GABBLE_LIST_HANDLE_PUBLISH, NULL, NULL);
+  gboolean ret;
+
+  /* send <presence type="unsubscribed"> */
+  ret = gabble_connection_send_presence (roster->priv->conn,
+      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, message, error);
+
+  /* remove it from publish:local_pending here, because roster callback doesn't
+     know if it can (subscription='none' is used both during request and
+     when it's rejected) */
+  if (tp_handle_set_is_member (publish->group.local_pending, handle))
+    {
+      TpIntSet *rem = tp_intset_new ();
+
+      tp_intset_add (rem, handle);
+      tp_group_mixin_change_members (G_OBJECT (publish), "", NULL, rem, NULL,
+          NULL, 0, 0);
+
+      tp_intset_destroy (rem);
+    }
+
+  return ret;
+}
 
 static const gchar * const list_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",

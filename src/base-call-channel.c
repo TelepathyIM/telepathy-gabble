@@ -679,6 +679,7 @@ gabble_base_call_channel_close (GabbleBaseCallChannel *self)
 
   if (!priv->closed)
     {
+      GList *l;
       GHashTableIter iter;
       gpointer value;
 
@@ -689,11 +690,13 @@ gabble_base_call_channel_close (GabbleBaseCallChannel *self)
         gabble_call_member_shutdown (value);
 
 
-          if (session != NULL)
-            gabble_jingle_session_terminate (session,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
-              NULL, NULL);
-       }
+      /* shutdown all our contents */
+      for (l = priv->contents ; l != NULL; l = g_list_next (l))
+        {
+          gabble_call_content_deinit (GABBLE_CALL_CONTENT (l->data));
+        }
+      g_list_free (priv->contents);
+      priv->contents = NULL;
 
       tp_svc_channel_emit_closed (self);
     }

@@ -42,8 +42,17 @@ def add_roster_item(query, contact, state, ask, attrs={}):
 
     return item
 
-def test(q, bus, conn, stream):
-    conn.Connect()
+def is_stored(event):
+    return event.path.endswith('/stored')
+
+def is_subscribe(event):
+    return event.path.endswith('/subscribe')
+
+def test_inital_roster(q, bus, conn, stream):
+    """
+    This part of the test checks that Gabble correctly alters on which lists
+    contacts appear based on the google:roster attributes and special-cases.
+    """
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     query = event.query
@@ -88,6 +97,14 @@ def test(q, bus, conn, stream):
     stored = expect_list_channel(q, bus, conn, 'stored',
         expected_contacts+rp_contacts)
 
+    return (publish, subscribe, stored)
+
+def test_flickering(q, bus, conn, stream, subscribe):
+    """
+    Google's server is buggy, and subscription state transitions "flicker"
+    sometimes. Here, we test that Gabble is suppressing the flickers.
+    """
+
     contact = 'bob@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
 
@@ -123,12 +140,6 @@ def test(q, bus, conn, stream):
     iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
             "none", True)
     stream.send(iq)
-
-    def is_stored(event):
-        return event.path.endswith('/stored')
-
-    def is_subscribe(event):
-        return event.path.endswith('/subscribe')
 
     # Gabble should report this update to the UI.
     q.expect_many(
@@ -208,6 +219,13 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
     q.unforbid_events(change_events)
+
+def test(q, bus, conn, stream):
+    conn.Connect()
+
+    publish, subscribe, stored = test_inital_roster(q, bus, conn, stream)
+
+    test_flickering(q, bus, conn, stream, subscribe)
 
 if __name__ == '__main__':
     exec_test(test, protocol=GoogleXmlStream)

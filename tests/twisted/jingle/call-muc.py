@@ -120,7 +120,8 @@ def run_incoming_test(q, bus, conn, stream):
     q.unforbid_events (forbidden)
     content = bus.get_object (conn.bus_name, e.args[0])
     check_and_accept_offer (q, bus, conn, self_handle, 0,
-            content, jt.get_call_video_codecs_dbus())
+            content, jt.get_call_video_codecs_dbus(),
+            check_codecs_changed = False)
 
     # Gabble sends a presence to prepare
     e = q.expect('stream-presence', to = muc + "/test")
@@ -292,7 +293,7 @@ def run_outgoing_test(q, bus, conn, stream):
     # new codec offer as bob threw in some codecs
     q.expect('dbus-signal', signal='NewCodecOffer')
     check_and_accept_offer (q, bus, conn, self_handle, 0,
-            content, codecs)
+            content, codecs, check_codecs_changed = False)
 
     # Bob sends a content
     node = jp.SetIq(jt.peer, jt.jid, [

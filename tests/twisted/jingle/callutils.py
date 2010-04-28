@@ -30,7 +30,7 @@ def check_state (q, chan, state, wait = False):
         properties["CallState"])
 
 def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
-        content, codecs, offer_path = None):
+        content, codecs, offer_path = None, check_codecs_changed = True ):
 
     [path, codecmap] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
@@ -53,8 +53,8 @@ def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
 
     assertEquals (codecs,  current_codecs[self_handle])
 
-    o = q.expect ('dbus-signal', signal='CodecsChanged')
-
     codecmap[self_handle] = codecs
 
-    assertEquals ([codecmap, []], o.args)
+    if check_codecs_changed:
+        o = q.expect ('dbus-signal', signal='CodecsChanged')
+        assertEquals ([codecmap, []], o.args)

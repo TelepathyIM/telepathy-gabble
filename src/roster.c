@@ -2043,6 +2043,34 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
                                          GObject *roster_obj,
                                          gpointer user_data);
 
+/*
+ * Cancel any subscriptions on @item by sending unsubscribe and/or
+ * unsubscribed, as appropriate.
+ */
+static gboolean
+roster_item_cancel_subscriptions (
+    GabbleRoster *roster,
+    TpHandle contact,
+    GabbleRosterItem *item,
+    GError **error)
+{
+  gboolean ret = TRUE;
+
+  if (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+    {
+      DEBUG ("sending unsubscribed");
+      ret = gabble_roster_handle_unsubscribed (roster, contact, NULL, error);
+    }
+
+  if (ret && (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_TO))
+    {
+      DEBUG ("sending unsubscribe");
+      ret = gabble_roster_handle_unsubscribe (roster, contact, NULL, error);
+    }
+
+  return ret;
+}
+
 /* Apply the unsent edits to the given roster item.
  *
  * \param roster The roster
@@ -2054,7 +2082,7 @@ roster_item_apply_edits (GabbleRoster *roster,
                          TpHandle contact,
                          GabbleRosterItem *item)
 {
-  gboolean altered = FALSE, ret;
+  gboolean altered = FALSE, ret = TRUE;
   GabbleRosterItem edited_item;
   TpIntSet *intset;
   GabbleRosterPrivate *priv = roster->priv;
@@ -2080,22 +2108,6 @@ roster_item_apply_edits (GabbleRoster *roster,
     }
 #endif
 
-  if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_INVALID
-      && edits->new_subscription != item->subscription)
-    {
-      DEBUG ("Changing subscription from %d to %d",
-             item->subscription, edits->new_subscription);
-      altered = TRUE;
-      edited_item.subscription = edits->new_subscription;
-    }
-
-  if (edits->new_name != NULL && tp_strdiff (item->name, edits->new_name))
-    {
-      DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
-      altered = TRUE;
-      edited_item.name = edits->new_name;
-    }
-
   if (edits->new_google_type != GOOGLE_ITEM_TYPE_INVALID
       && edits->new_google_type != item->google_type)
     {
@@ -2103,6 +2115,42 @@ roster_item_apply_edits (GabbleRoster *roster,
              edits->new_google_type);
       altered = TRUE;
       edited_item.google_type = edits->new_google_type;
+    }
+
+  if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_INVALID
+      && edits->new_subscription != item->subscription)
+    {
+      /* Here we check the google_type of the *edited* item (as patched in the
+       * block above) to deal correctly with a batch of edits containing both
+       * (un)block and remove.
+       */
+      if (edits->new_subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE &&
+          edited_item.google_type == GOOGLE_ITEM_TYPE_BLOCKED)
+        {
+          /* If they're blocked, we can't just remove them from the roster,
+           * because that would unblock them! So instead, we cancel both
+           * subscription directions.
+           */
+          DEBUG ("contact is blocked; not removing");
+          ret = roster_item_cancel_subscriptions (roster, contact, item, NULL);
+          /* deliberately not setting altered: we haven't altered the roster
+           * directly.
+           */
+        }
+      else
+        {
+          DEBUG ("Changing subscription from %d to %d",
+              item->subscription, edits->new_subscription);
+          altered = TRUE;
+          edited_item.subscription = edits->new_subscription;
+        }
+    }
+
+  if (edits->new_name != NULL && tp_strdiff (item->name, edits->new_name))
+    {
+      DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
+      altered = TRUE;
+      edited_item.name = edits->new_name;
     }
 
   if (edits->add_to_groups || edits->remove_from_groups)
@@ -2187,7 +2235,7 @@ roster_item_apply_edits (GabbleRoster *roster,
       &edited_item);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(contact), NULL);
+      GUINT_TO_POINTER(contact), NULL) && ret;
   if (ret)
     {
       /* assume everything will be OK */
@@ -2452,6 +2500,15 @@ gabble_roster_handle_remove (GabbleRoster *roster,
        */
       item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
       return TRUE;
+    }
+  else if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
+    {
+      /* If they're blocked, we can't just remove them from the roster,
+       * because that would unblock them! So instead, we cancel both
+       * subscription directions.
+       */
+      DEBUG ("contact#%u is blocked; not removing", handle);
+      return roster_item_cancel_subscriptions (roster, handle, item, error);
     }
   else
     {

@@ -999,16 +999,13 @@ call_muc_channel_add_content (GabbleBaseCallChannel *base,
     GError **error)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (base);
-  GabbleCallMucChannelPrivate *priv = self->priv;
   GabbleCallContent *content;
 
   content = gabble_base_call_channel_add_content (base,
         name, type,
         GABBLE_CALL_CONTENT_DISPOSITION_NONE);
 
-  if (priv->sessions_opened)
-    g_queue_push_tail (priv->new_contents, content);
-  call_muc_do_update (self);
+  call_muc_channel_setup_content (self, content);
 
   return content;
 }

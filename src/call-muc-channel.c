@@ -303,7 +303,7 @@ call_muc_do_update (GabbleCallMucChannel *self)
         break;
     }
 
-  DEBUG ("Updating muji state %d -> %d", old, priv->state);
+  DEBUG ("Updated muji state %d -> %d", old, priv->state);
 }
 
 static void

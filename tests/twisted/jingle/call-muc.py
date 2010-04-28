@@ -320,6 +320,15 @@ def run_outgoing_test(q, bus, conn, stream):
             predicate = jp.action_predicate ('session-terminate'))
         )
 
+    channel.Close()
+    q.expect ('dbus-signal', signal = "Closed", path = path)
+
+    try:
+        channel.Close()
+        raise AssertionError ("Channel didn't actually close")
+    except DBusException:
+        pass
+
 
 def general_tests (jp, q, bus, conn, stream, path, props):
     assertEquals (cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])

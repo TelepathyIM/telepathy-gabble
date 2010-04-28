@@ -3880,6 +3880,16 @@ gabble_muc_channel_get_call (GabbleMucChannel *gmuc)
 }
 
 static void
+muc_channel_call_closed_cb (GabbleCallMucChannel *muc, gpointer user_data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+
+  g_object_unref (priv->call);
+  priv->call = NULL;
+}
+
+static void
 muc_channel_call_channel_done_cb (GObject *source,
     GAsyncResult *result,
     gpointer user_data)
@@ -3893,6 +3903,10 @@ muc_channel_call_channel_done_cb (GObject *source,
 
   priv->call = gabble_call_muc_channel_new_finish (source,
     result, &error);
+
+  g_signal_connect (priv->call, "closed",
+    G_CALLBACK (muc_channel_call_closed_cb),
+    gmuc);
 
   if (priv->call != NULL)
     {

@@ -686,10 +686,8 @@ gabble_base_call_channel_close (GabbleBaseCallChannel *self)
 
       g_hash_table_iter_init (&iter, priv->members);
       while (g_hash_table_iter_next (&iter, NULL, &value))
-        {
-          GabbleCallMember *member = GABBLE_CALL_MEMBER (value);
-          GabbleJingleSession *session =
-              gabble_call_member_get_session (member);
+        gabble_call_member_shutdown (value);
+
 
           if (session != NULL)
             gabble_jingle_session_terminate (session,
@@ -875,14 +873,7 @@ gabble_base_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
 
   g_hash_table_iter_init (&iter, priv->members);
   while (g_hash_table_iter_next (&iter, NULL, &value))
-    {
-      GabbleCallMember *member = GABBLE_CALL_MEMBER (value);
-      GabbleJingleSession *session = gabble_call_member_get_session (member);
-
-      if (session != NULL)
-        gabble_jingle_session_terminate (session,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, message, NULL);
-    }
+    gabble_call_member_shutdown (GABBLE_CALL_MEMBER (value));
 
   if (base_class->hangup)
     base_class->hangup (self, reason, detailed_reason, message);

@@ -584,3 +584,15 @@ gabble_call_member_get_transport_ns (GabbleCallMember *self)
 {
   return self->priv->transport_ns;
 }
+
+void
+gabble_call_member_shutdown (GabbleCallMember *self)
+{
+  GabbleCallMemberPrivate *priv = self->priv;
+
+  if (priv->session != NULL)
+    {
+      gabble_jingle_session_terminate (priv->session,
+        TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+    }
+}

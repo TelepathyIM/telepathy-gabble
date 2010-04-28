@@ -78,6 +78,14 @@ def test_inital_roster(q, bus, conn, stream):
     add_roster_item(query, 'this-is-a-jid@badger.com', 'none', True)
     add_roster_item(query, 'lp-bug-298293@gmail.com', 'both', False,
         {'gr:autosub': 'true'})
+    # This contact is blocked but we're subscribed to them, so they should
+    # show up in all of the lists.
+    add_roster_item(query, 'blocked-but-subscribed@boards.ca', 'both', False,
+        {'gr:t': 'B'})
+    # This contact is blocked, and we have no other subscription to them; so,
+    # they should not show up in 'stored'.
+    add_roster_item(query, 'blocked-and-no-sub@boards.ca', 'none', False,
+        {'gr:t': 'B'})
 
     # Send back the roster
     stream.send(result)
@@ -88,16 +96,22 @@ def test_inital_roster(q, bus, conn, stream):
     # <https://bugs.launchpad.net/ubuntu/+source/telepathy-gabble/+bug/398293>,
     # where Gabble was incorrectly hiding valid contacts.
 
-    expected_contacts = ['lp-bug-298293@gmail.com']
+    mutually_subscribed_contacts = ['lp-bug-298293@gmail.com',
+        'blocked-but-subscribed@boards.ca']
     rp_contacts = ['this-is-a-jid@badger.com']
+    blocked_contacts = ['blocked-but-subscribed@boards.ca',
+        'blocked-and-no-sub@boards.ca']
 
-    publish = expect_list_channel(q, bus, conn, 'publish', expected_contacts)
+    publish = expect_list_channel(q, bus, conn, 'publish',
+        mutually_subscribed_contacts)
     subscribe = expect_list_channel(q, bus, conn, 'subscribe',
-        expected_contacts, rp_contacts=rp_contacts)
+        mutually_subscribed_contacts, rp_contacts=rp_contacts)
     stored = expect_list_channel(q, bus, conn, 'stored',
-        expected_contacts+rp_contacts)
+        mutually_subscribed_contacts+rp_contacts)
+    deny = expect_list_channel(q, bus, conn, 'deny',
+        blocked_contacts)
 
-    return (publish, subscribe, stored)
+    return (publish, subscribe, stored, deny)
 
 def test_flickering(q, bus, conn, stream, subscribe):
     """
@@ -223,7 +237,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    publish, subscribe, stored = test_inital_roster(q, bus, conn, stream)
+    publish, subscribe, stored, deny = test_inital_roster(q, bus, conn, stream)
 
     test_flickering(q, bus, conn, stream, subscribe)
 

@@ -273,6 +273,17 @@ gabble_base_channel_set_property (GObject *object,
     case PROP_CONNECTION:
       chan->conn = g_value_get_object (value);
       break;
+    case PROP_REQUESTED:
+      /* This property is writeable so that subclasses that have a more
+       * complicated definition can use g_object_class_override_property() and
+       * actually implement setting it.
+       */
+      if (g_value_get_boolean (value))
+        g_warning ("%s: ignoring TRUE value for \"requested\". %s should have "
+            "overriden the property if it wanted it to be settable",
+            G_STRFUNC, G_OBJECT_TYPE_NAME (object));
+
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -394,7 +405,7 @@ gabble_base_channel_class_init (GabbleBaseChannelClass *gabble_base_channel_clas
   param_spec = g_param_spec_boolean ("requested", "Requested?",
       "True if this channel was requested by the local user",
       FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
 
   param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",

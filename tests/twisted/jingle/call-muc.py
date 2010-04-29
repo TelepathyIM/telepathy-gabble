@@ -308,7 +308,7 @@ def run_outgoing_test(q, bus, conn, stream):
     # We get a new stream
     e = q.expect('dbus-signal', signal = 'StreamAdded')
 
-    # happyness.. Now let's hang up
+    # happiness.. Now let's hang up
     channel.Hangup (0, "", "", dbus_interface=cs.CHANNEL_TYPE_CALL)
 
     # Should change the call state to ended, send a session-terminate to our

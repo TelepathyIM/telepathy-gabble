@@ -326,8 +326,8 @@ call_muc_channel_open_new_streams (GabbleCallMucChannel *self)
 
   if (!priv->sessions_opened)
     {
-      /* At the point where we opened the sessions we're accepted i
-         in the call ? */
+      /* At the point where we opened the sessions we're accepted
+         in the call */
       gabble_base_call_channel_set_state ( GABBLE_BASE_CALL_CHANNEL (self),
           GABBLE_CALL_STATE_ACCEPTED);
     }

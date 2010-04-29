@@ -84,6 +84,11 @@ G_STMT_START { \
 
 #ifdef DEBUG_FLAG
 
+#define ERROR(format, ...) G_STMT_START { } G_STMT_END
+#define CRITICAL(format, ...) G_STMT_START { } G_STMT_END
+#define WARNING(format, ...) G_STMT_START { } G_STMT_END
+#define MESSAGE(format, ...) G_STMT_START { } G_STMT_END
+#define INFO(format, ...) G_STMT_START { } G_STMT_END
 #define DEBUG(format, ...) G_STMT_START { } G_STMT_END
 
 #define DEBUGGING 0

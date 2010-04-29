@@ -1,7 +1,7 @@
 /*
- * gabble-roster-channel.c - Source for GabbleRosterChannel
- * Copyright (C) 2005, 2006 Collabora Ltd.
- * Copyright (C) 2005 Nokia Corporation
+ * roster-channel.c - Source for GabbleRosterChannel
+ * Copyright © 2005, 2006, 2008, 2010 Collabora Ltd.
+ * Copyright © 2005, 2008, 2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -450,6 +450,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
                                       GError **error)
 {
   GabbleRosterChannelPrivate *priv;
+  GabbleRoster *roster;
   gboolean ret = FALSE;
 #ifdef ENABLE_DEBUG
   TpHandleRepoIface *handle_repo;
@@ -458,6 +459,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL (obj)->priv;
+  roster = priv->conn->roster;
 
 #ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles ((TpBaseConnection *) priv->conn,
@@ -474,7 +476,7 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {
-      ret = gabble_roster_handle_add_to_group (priv->conn->roster,
+      ret = gabble_roster_handle_add_to_group (roster,
           handle, priv->handle, error);
     }
   else if (TP_HANDLE_TYPE_LIST != priv->handle_type)
@@ -486,19 +488,12 @@ _gabble_roster_channel_add_member_cb (GObject *obj,
   /* publish list */
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
-      /* send <presence type="subscribed"> */
-      ret = gabble_connection_send_presence (priv->conn,
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
+      ret = gabble_roster_handle_subscribed (roster, handle, message, error);
     }
   /* subscribe list */
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
-      /* add item to the roster (GTalk depends on this, clearing the H flag) */
-      gabble_roster_handle_add (priv->conn->roster, handle, NULL);
-
-      /* send <presence type="subscribe"> */
-      ret = gabble_connection_send_presence (priv->conn,
-          LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
+      ret = gabble_roster_handle_subscribe (roster, handle, message, error);
     }
   /* deny list */
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
@@ -528,6 +523,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
                                          GError **error)
 {
   GabbleRosterChannelPrivate *priv;
+  GabbleRoster *roster;
   TpBaseConnection *conn;
   TpHandleRepoIface *contact_repo;
 #ifdef ENABLE_DEBUG
@@ -537,6 +533,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   const gchar *contact_id;
 
   priv = GABBLE_ROSTER_CHANNEL (obj)->priv;
+  roster = priv->conn->roster;
   conn = (TpBaseConnection *) priv->conn;
 #ifdef ENABLE_DEBUG
   handle_repo = tp_base_connection_get_handles (conn, priv->handle_type);
@@ -551,7 +548,7 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
 
   if (TP_HANDLE_TYPE_GROUP == priv->handle_type)
     {
-      ret = gabble_roster_handle_remove_from_group (priv->conn->roster,
+      ret = gabble_roster_handle_remove_from_group (roster,
           handle, priv->handle, error);
     }
   else if (TP_HANDLE_TYPE_LIST != priv->handle_type)
@@ -563,42 +560,24 @@ _gabble_roster_channel_remove_member_cb (GObject *obj,
   /* publish list */
   else if (GABBLE_LIST_HANDLE_PUBLISH == priv->handle)
     {
-      /* send <presence type="unsubscribed"> */
-      ret = gabble_connection_send_presence (priv->conn,
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, message, error);
-
-      /* remove it from local_pending here, because roster callback doesn't
-         know if it can (subscription='none' is used both during request and
-         when it's rejected) */
-      if (tp_handle_set_is_member (GABBLE_ROSTER_CHANNEL (obj)->group.local_pending, handle))
-        {
-          TpIntSet *rem = tp_intset_new ();
-
-          tp_intset_add (rem, handle);
-          tp_group_mixin_change_members (obj, "", NULL, rem, NULL, NULL,
-              0, 0);
-
-          tp_intset_destroy (rem);
-        }
+      ret = gabble_roster_handle_unsubscribed (roster, handle, message, error);
     }
   /* subscribe list */
   else if (GABBLE_LIST_HANDLE_SUBSCRIBE == priv->handle)
     {
-      /* send <presence type="unsubscribe"> */
-      ret = gabble_connection_send_presence (priv->conn,
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
+      ret = gabble_roster_handle_unsubscribe (roster, handle, message, error);
     }
   /* stored list */
   else if (GABBLE_LIST_HANDLE_STORED == priv->handle)
     {
       /* send roster subscription=remove IQ */
-      ret = gabble_roster_handle_remove (priv->conn->roster, handle, error);
+      ret = gabble_roster_handle_remove (roster, handle, error);
     }
   /* deny list */
   else if (GABBLE_LIST_HANDLE_DENY == priv->handle)
     {
       /* unblock contact */
-      ret = gabble_roster_handle_set_blocked (priv->conn->roster, handle,
+      ret = gabble_roster_handle_set_blocked (roster, handle,
           FALSE, error);
     }
   else

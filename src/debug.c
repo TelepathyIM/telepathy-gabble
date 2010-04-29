@@ -114,7 +114,8 @@ gabble_debug_free (void)
 }
 
 static void
-log_to_debug_sender (GabbleDebugFlags flag,
+log_to_debug_sender (GLogLevelFlags level,
+    GabbleDebugFlags flag,
     const gchar *message)
 {
   TpDebugSender *dbg;
@@ -125,12 +126,13 @@ log_to_debug_sender (GabbleDebugFlags flag,
   g_get_current_time (&now);
 
   tp_debug_sender_add_message (dbg, &now, debug_flag_to_domain (flag),
-      G_LOG_LEVEL_DEBUG, message);
+      level, message);
 
   g_object_unref (dbg);
 }
 
-void gabble_debug (GabbleDebugFlags flag,
+void gabble_debug (GLogLevelFlags level,
+    GabbleDebugFlags flag,
     const gchar *format,
     ...)
 {
@@ -141,10 +143,10 @@ void gabble_debug (GabbleDebugFlags flag,
   message = g_strdup_vprintf (format, args);
   va_end (args);
 
-  log_to_debug_sender (flag, message);
+  log_to_debug_sender (level, flag, message);
 
   if (flag & flags)
-    g_log (G_LOG_DOMAIN, G_LOG_LEVEL_DEBUG, "%s", message);
+    g_log (G_LOG_DOMAIN, level, "%s", message);
 
   g_free (message);
 }

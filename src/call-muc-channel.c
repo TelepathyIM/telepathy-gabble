@@ -335,7 +335,7 @@ call_muc_channel_open_new_streams (GabbleCallMucChannel *self)
   priv->sessions_opened = TRUE;
 
   while ((m = g_queue_pop_head (priv->sessions_to_open)) != NULL)
-    gabble_call_member_open_session (m, 0);
+    gabble_call_member_open_session (m, NULL);
 
   while ((c = g_queue_pop_head (priv->new_contents)) != NULL)
     {

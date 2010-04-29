@@ -11,7 +11,7 @@ from gabbletest import (
     )
 from servicetest import (
     call_async, sync_dbus, EventPattern,
-    assertLength, assertEquals, assertContains,
+    assertLength, assertEquals, assertContains, assertDoesNotContain,
     )
 import constants as cs
 import ns
@@ -85,9 +85,11 @@ def test_inital_roster(q, bus, conn, stream):
     add_roster_item(query, 'this-is-a-jid@badger.com', 'none', True)
     add_roster_item(query, 'lp-bug-298293@gmail.com', 'both', False,
         {'gr:autosub': 'true'})
-    # This contact is blocked but we're subscribed to them, so they should
+    # These contacts are blocked but we're subscribed to them, so they should
     # show up in all of the lists.
     add_roster_item(query, 'blocked-but-subscribed@boards.ca', 'both', False,
+        {'gr:t': 'B'})
+    add_roster_item(query, 'music-is-math@boards.ca', 'both', False,
         {'gr:t': 'B'})
     # This contact is blocked, and we have no other subscription to them; so,
     # they should not show up in 'stored'.
@@ -104,10 +106,12 @@ def test_inital_roster(q, bus, conn, stream):
     # where Gabble was incorrectly hiding valid contacts.
 
     mutually_subscribed_contacts = ['lp-bug-298293@gmail.com',
-        'blocked-but-subscribed@boards.ca']
+        'blocked-but-subscribed@boards.ca',
+        'music-is-math@boards.ca']
     rp_contacts = ['this-is-a-jid@badger.com']
     blocked_contacts = ['blocked-but-subscribed@boards.ca',
-        'blocked-and-no-sub@boards.ca']
+        'blocked-and-no-sub@boards.ca',
+        'music-is-math@boards.ca']
 
     publish = expect_list_channel(q, bus, conn, 'publish',
         mutually_subscribed_contacts)
@@ -426,6 +430,67 @@ def test_deny_overlap_two(q, bus, conn, stream,
     # And we're done. Clean up.
     q.unforbid_events(remove_events)
 
+def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
+    """
+    Test unblocking a contact, and, while that request is pending, deleting
+    them.
+    """
+
+    # This contact was on our roster, blocked and subscribed, when we started.
+    contact = 'music-is-math@boards.ca'
+    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+
+    # They're blocked, and we have a bidi subscription, so they should be on
+    # deny and stored. (We already checked this earlier, but we've been messing
+    # with the roster so let's be sure the preconditions are okay...)
+    assertContains(handle,
+        deny.Properties.Get(cs.CHANNEL_IFACE_GROUP, "Members"))
+    assertContains(handle,
+        stored.Properties.Get(cs.CHANNEL_IFACE_GROUP, "Members"))
+
+    # Unblock them.
+    deny.Group.RemoveMembers([handle], '')
+
+    roster_event = q.expect('stream-iq', query_ns=ns.ROSTER)
+    item = roster_event.query.firstChildElement()
+    assertEquals(contact, item['jid'])
+    assertDoesNotContain((ns.GOOGLE_ROSTER, 't'), item.attributes)
+
+    # If we now remove them from stored, the edit shouldn't be sent until the
+    # unblock event has had a reply.
+    q.forbid_events(remove_events)
+    stored.Group.RemoveMembers([handle], '')
+
+    # Make sure if the remove is sent prematurely, we catch it.
+    sync_stream(q, stream)
+    q.unforbid_events(remove_events)
+
+    # So now we send a roster push and reply for the unblock request.
+    stream.send(make_set_roster_iq(stream, 'test@localhost/Resource', contact,
+        'both', False, attrs={}))
+    acknowledge_iq(stream, roster_event.stanza)
+
+    # And on receiving the push and reply, Gabble should show them being
+    # removed from deny, and send a remove.
+
+    _, roster_event = q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [], [handle], [], [], 0, cs.GC_REASON_NONE],
+            predicate=is_deny),
+        remove_events[0],
+        )
+    item = roster_event.query.firstChildElement()
+    assertEquals(contact, item['jid'])
+
+    stream.send(make_set_roster_iq(stream, 'test@localhost/Resource', contact,
+        'remove', False, attrs={}))
+    acknowledge_iq(stream, roster_event.stanza)
+
+    q.expect('dbus-signal', signal='MembersChanged',
+        args=['', [], [handle], [], [], 0, cs.GC_REASON_NONE],
+        predicate=is_stored)
+
+
 def test(q, bus, conn, stream):
     conn.Connect()
 
@@ -436,6 +501,7 @@ def test(q, bus, conn, stream):
     test_deny_overlap_one(q, bus, conn, stream, subscribe, stored, deny)
     test_deny_overlap_two(q, bus, conn, stream,
         subscribe, publish, stored, deny)
+    test_deny_unblock_remove(q, bus, conn, stream, stored, deny)
 
 if __name__ == '__main__':
     exec_test(test, protocol=GoogleXmlStream)

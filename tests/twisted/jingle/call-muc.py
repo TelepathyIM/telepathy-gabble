@@ -171,7 +171,7 @@ def run_outgoing_test(q, bus, conn, stream):
 
     self_handle = conn.GetSelfHandle()
 
-    # Not allowed to have muji releated presences before we accept the channel
+    # Not allowed to have muji related presences before we accept the channel
     forbidden = [ no_muji_presences () ]
 
     q.forbid_events(forbidden)

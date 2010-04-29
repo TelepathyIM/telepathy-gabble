@@ -58,7 +58,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
 typedef enum
 {
   STATE_NOT_JOINED = 0,
-  /* Internally preparing before we can sent muji information to the muc, only
+  /* Internally preparing before we can send muji information to the muc, only
    * happens on the initial join */
   STATE_PREPARING,
   /* Sent the stanza with the preparing node */
@@ -291,7 +291,7 @@ call_muc_do_update (GabbleCallMucChannel *self)
         priv->muji = wocky_node_tree_new ("muji", NS_MUJI, NULL);
         /* fall through */
       case STATE_STABLE:
-        /* Start preperation of the next round */
+        /* Start preparation of the next round */
         g_assert (priv->muji != NULL);
         wocky_node_add_child (wocky_node_tree_get_top_node (priv->muji),
           "preparing");

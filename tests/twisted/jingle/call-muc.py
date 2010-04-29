@@ -38,7 +38,7 @@ def run_incoming_test(q, bus, conn, stream):
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
     muji =  ('muji', ns.MUJI, {},
         [('content', ns.MUJI, { "name": "Voice" },
-            [( 'description', None, {"media": "audio"},
+            [( 'description', ns.JINGLE_RTP, {"media": "audio"},
             jt.generate_payloads(jt.audio_codecs))])])
     presence.addChild(jp._simple_xml(muji))
 
@@ -104,10 +104,10 @@ def run_incoming_test(q, bus, conn, stream):
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
     muji =  ('muji', ns.MUJI, {},
         [('content', ns.MUJI, { "name": "Voice" },
-            [( 'description', None, {"media": "audio"},
+            [( 'description', ns.JINGLE_RTP, {"media": "audio"},
             jt.generate_payloads(jt.audio_codecs))]),
          ('content', ns.MUJI, { "name": "Camera" },
-            [( 'description', None, {"media": "video"},
+            [( 'description', ns.JINGLE_RTP, {"media": "video"},
             jt.generate_payloads(jt.video_codecs))]),
         ])
     presence.addChild(jp._simple_xml(muji))
@@ -223,7 +223,7 @@ def run_outgoing_test(q, bus, conn, stream):
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
     muji =  ('muji', ns.MUJI, {},
         [('content', ns.MUJI, { "name": "Audio" },
-            [( 'description', None, {"media": "audio"},
+            [( 'description', ns.JINGLE_RTP, {"media": "audio"},
             jt.generate_payloads(jt.audio_codecs))])])
     presence.addChild(jp._simple_xml(muji))
     stream.send(presence)
@@ -281,10 +281,10 @@ def run_outgoing_test(q, bus, conn, stream):
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
     muji =  ('muji', ns.MUJI, {},
         [('content', ns.MUJI, { "name": "Audio" },
-            [( 'description', None, {"media": "audio"},
+            [( 'description', ns.JINGLE_RTP, {"media": "audio"},
             jt.generate_payloads(jt.audio_codecs))]),
          ('content', ns.MUJI, { "name": "Camera!" },
-            [( 'description', None, {"media": "video"},
+            [( 'description', ns.JINGLE_RTP, {"media": "video"},
             jt.generate_payloads(jt.video_codecs))]),
         ])
     presence.addChild(jp._simple_xml(muji))

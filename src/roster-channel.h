@@ -1,7 +1,7 @@
 /*
- * gabble-roster-channel.h - Header for GabbleRosterChannel
- * Copyright (C) 2005 Collabora Ltd.
- * Copyright (C) 2005 Nokia Corporation
+ * roster-channel.h - Header for GabbleRosterChannel
+ * Copyright © 2005, 2008 Collabora Ltd.
+ * Copyright © 2005, 2008 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

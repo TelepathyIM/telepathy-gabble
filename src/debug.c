@@ -131,7 +131,7 @@ log_to_debug_sender (GLogLevelFlags level,
   g_object_unref (dbg);
 }
 
-void gabble_debug (GLogLevelFlags level,
+void gabble_log (GLogLevelFlags level,
     GabbleDebugFlags flag,
     const gchar *format,
     ...)

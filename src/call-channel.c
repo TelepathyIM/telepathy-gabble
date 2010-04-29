@@ -401,7 +401,7 @@ call_channel_continue_init (GabbleCallChannel *self,
          goto out;
        }
 
-      priv->session = gabble_call_member_get_session (member);
+      priv->session = g_object_ref (gabble_call_member_get_session (member));
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), G_OBJECT (self));
 

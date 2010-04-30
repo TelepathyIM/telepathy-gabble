@@ -20,6 +20,7 @@ TWISTED_TESTS = \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \
+	muc/scrollback.py \
 	muc/send-error.py \
 	muc/subject.py \
 	muc/test-ensure.py \

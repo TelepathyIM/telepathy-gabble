@@ -33,6 +33,7 @@
 #include "base64.h"
 #include "presence.h"
 #include "presence-cache.h"
+#include "conn-presence.h"
 #include "namespaces.h"
 #include "vcard-manager.h"
 #include "util.h"
@@ -63,7 +64,7 @@ update_own_avatar_sha1 (GabbleConnection *conn,
   g_free (conn->self_presence->avatar_sha1);
   conn->self_presence->avatar_sha1 = g_strdup (sha1);
 
-  if (!_gabble_connection_signal_own_presence (conn, NULL, &error))
+  if (!conn_presence_signal_own_presence (conn, NULL, &error))
     {
       DEBUG ("failed to signal changed avatar sha1 to the server: %s",
           error->message);
@@ -784,7 +785,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
           presence->avatar_sha1 = NULL;
         }
 
-      if (_gabble_connection_signal_own_presence (ctx->conn, NULL, &error))
+      if (conn_presence_signal_own_presence (ctx->conn, NULL, &error))
         {
           tp_svc_connection_interface_avatars_return_from_set_avatar (
               ctx->invocation, presence->avatar_sha1);

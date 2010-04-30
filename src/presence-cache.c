@@ -806,7 +806,7 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
   priv->avatar_reset_pending = TRUE;
   g_free (presence->avatar_sha1);
   presence->avatar_sha1 = NULL;
-  if (!_gabble_connection_signal_own_presence (priv->conn, NULL, &error))
+  if (!conn_presence_signal_own_presence (priv->conn, NULL, &error))
     {
       DEBUG ("failed to send own presence: %s", error->message);
       g_error_free (error);

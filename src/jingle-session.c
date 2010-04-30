@@ -30,6 +30,7 @@
 
 #include "capabilities.h"
 #include "connection.h"
+#include "conn-presence.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "jingle-content.h"
@@ -1851,8 +1852,8 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
       /* send directed presence (including our own caps, avatar etc.) to
        * the peer, if we aren't already visible to them */
-      if (!gabble_connection_visible_to (priv->conn, sess->peer))
-        _gabble_connection_signal_own_presence (priv->conn,
+      if (!conn_presence_visible_to (priv->conn, sess->peer))
+        conn_presence_signal_own_presence (priv->conn,
             tp_handle_inspect (contact_repo, sess->peer), NULL);
 
       action = JINGLE_ACTION_SESSION_INITIATE;

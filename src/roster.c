@@ -1550,10 +1550,11 @@ got_roster_iq (GabbleRoster *roster,
           /* We are handling the response to our initial roster request. */
           GArray *members;
 
-          tp_group_mixin_get_members ((GObject *) pub_chan, &members, NULL);
-          /* If somebody's on our roster, and we haven't received presence
-           * from them, we know they're offline. Let clients know that.
+          /* If we're subscribed to somebody (subscription=to or =both),
+           * and we haven't received presence from them,
+           * we know they're offline. Let clients know that.
            */
+          tp_group_mixin_get_members ((GObject *) sub_chan, &members, NULL);
           conn_presence_emit_presence_update (priv->conn, members);
           g_array_free (members, TRUE);
         }

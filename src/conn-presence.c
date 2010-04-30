@@ -112,7 +112,7 @@ construct_contact_statuses_cb (GObject *obj,
       else
         {
          if (gabble_roster_handle_get_subscription (self->roster, handle)
-           & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+             & GABBLE_ROSTER_SUBSCRIPTION_TO)
            status = GABBLE_PRESENCE_OFFLINE;
          else
            status = GABBLE_PRESENCE_UNKNOWN;

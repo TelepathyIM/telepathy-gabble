@@ -1,12 +1,9 @@
-
 #ifndef __DEBUG_H__
 #define __DEBUG_H__
 
 #include "config.h"
 
 #include <glib.h>
-
-#ifdef ENABLE_DEBUG
 
 G_BEGIN_DECLS
 
@@ -48,8 +45,14 @@ G_END_DECLS
 #ifdef DEBUG_FLAG
 
 #define ERROR(format, ...) \
-  gabble_log (G_LOG_LEVEL_ERROR, DEBUG_FLAG, "%s: " format, \
-      G_STRFUNC, ##__VA_ARGS__)
+  G_STMT_START \
+    { \
+      gabble_log (G_LOG_LEVEL_ERROR, DEBUG_FLAG, "%s: " format, \
+          G_STRFUNC, ##__VA_ARGS__); \
+      g_assert_not_reached (); \
+    } \
+  G_STMT_END
+
 #define CRITICAL(format, ...) \
   gabble_log (G_LOG_LEVEL_CRITICAL, DEBUG_FLAG, "%s: " format, \
       G_STRFUNC, ##__VA_ARGS__)
@@ -62,46 +65,30 @@ G_END_DECLS
 #define INFO(format, ...) \
   gabble_log (G_LOG_LEVEL_INFO, DEBUG_FLAG, "%s: " format, \
       G_STRFUNC, ##__VA_ARGS__)
-#define DEBUG(format, ...) \
-  gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s: " format, \
-      G_STRFUNC, ##__VA_ARGS__)
 
-#define DEBUGGING gabble_debug_flag_is_set (DEBUG_FLAG)
+#ifdef ENABLE_DEBUG
+#   define DEBUG(format, ...) \
+      gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s: " format, \
+          G_STRFUNC, ##__VA_ARGS__)
+#   define DEBUGGING gabble_debug_flag_is_set (DEBUG_FLAG)
 
-#define STANZA_DEBUG(st, s) \
-  NODE_DEBUG (wocky_stanza_get_top_node (st), s)
+#   define STANZA_DEBUG(st, s) \
+      NODE_DEBUG (wocky_stanza_get_top_node (st), s)
 
-#define NODE_DEBUG(n, s) \
-G_STMT_START { \
-  gchar *debug_tmp = lm_message_node_to_string (n); \
-  gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s: %s:\n%s", G_STRFUNC, s, debug_tmp); \
-  g_free (debug_tmp); \
-} G_STMT_END
+#   define NODE_DEBUG(n, s) \
+    G_STMT_START { \
+      gchar *debug_tmp = lm_message_node_to_string (n); \
+      gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s: %s:\n%s", G_STRFUNC, s, debug_tmp); \
+      g_free (debug_tmp); \
+    } G_STMT_END
 
-#endif /* DEBUG_FLAG */
-
-#else /* ENABLE_DEBUG */
-
-#ifdef DEBUG_FLAG
-
-#define ERROR(format, ...) G_STMT_START { } G_STMT_END
-#define CRITICAL(format, ...) G_STMT_START { } G_STMT_END
-#define WARNING(format, ...) G_STMT_START { } G_STMT_END
-#define MESSAGE(format, ...) G_STMT_START { } G_STMT_END
-#define INFO(format, ...) G_STMT_START { } G_STMT_END
-#define DEBUG(format, ...) G_STMT_START { } G_STMT_END
-
-#define DEBUGGING 0
-
-#define STANZA_DEBUG(st, s) G_STMT_START { } G_STMT_END
-
-#define NODE_DEBUG(n, s) G_STMT_START { } G_STMT_END
+#else /* !defined (ENABLE_DEBUG) */
+#   define DEBUG(format, ...) G_STMT_START { } G_STMT_END
+#   define DEBUGGING 0
+#   define STANZA_DEBUG(st, s) G_STMT_START { } G_STMT_END
+#   define NODE_DEBUG(n, s) G_STMT_START { } G_STMT_END
+#endif /* !defined (ENABLE_DEBUG) */
 
 #endif /* DEBUG_FLAG */
-
-#define gabble_debug_free() G_STMT_START { } G_STMT_END
-
-#endif /* ENABLE_DEBUG */
 
 #endif /* __DEBUG_H__ */
-

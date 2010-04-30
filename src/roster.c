@@ -1214,6 +1214,23 @@ roster_item_cancel_flicker_timeout (GabbleRosterItem *item)
     }
 }
 
+static gboolean
+is_google_roster_push (
+    GabbleRoster *roster,
+    LmMessageNode *query_node)
+{
+  if (roster->priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+    {
+      const char *gr_ext = lm_message_node_get_attribute_with_namespace (
+          query_node, "ext", NS_GOOGLE_ROSTER);
+
+      if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
 /**
  * validate_roster_item:
  * @contact_repo: the handle repository for contacts
@@ -1300,19 +1317,8 @@ process_roster (
   TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
 
   GabbleRosterChannel *pub_chan, *sub_chan, *chan;
-  gboolean google_roster = FALSE;
+  gboolean google_roster = is_google_roster_push (roster, query_node);
   NodeIter j;
-
-  if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
-    {
-      const char *gr_ext;
-
-      gr_ext = lm_message_node_get_attribute_with_namespace (query_node, "ext",
-          NS_GOOGLE_ROSTER);
-
-      if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
-        google_roster = TRUE;
-    }
 
   if (google_roster)
     {

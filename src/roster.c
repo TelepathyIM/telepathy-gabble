@@ -1299,7 +1299,6 @@ process_roster (
       (GDestroyNotify) _group_mem_update_destroy);
   TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
 
-  TpHandle handle;
   GabbleRosterChannel *pub_chan, *sub_chan, *chan;
   gboolean google_roster = FALSE;
   NodeIter j;
@@ -1335,9 +1334,10 @@ process_roster (
   /* iterate every sub-node, which we expect to be <item>s */
   for (j = node_iter (query_node); j; j = node_iter_next (j))
     {
-      const char *jid;
-      GabbleRosterItem *item;
       LmMessageNode *item_node = node_iter_data (j);
+      const char *jid;
+      TpHandle handle;
+      GabbleRosterItem *item;
 
       handle = validate_roster_item (contact_repo, item_node, &jid);
 
@@ -1500,9 +1500,8 @@ process_roster (
   tp_group_mixin_change_members ((GObject *) sub_chan,
         "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
 
-  handle = GABBLE_LIST_HANDLE_STORED;
-  chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-      NULL, NULL);
+  chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+      GABBLE_LIST_HANDLE_STORED, NULL, NULL);
 
   DEBUG ("calling change members on stored channel");
   tp_group_mixin_change_members ((GObject *) chan,
@@ -1513,9 +1512,8 @@ process_roster (
 
   if (google_roster)
     {
-      handle = GABBLE_LIST_HANDLE_DENY;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          handle, NULL, NULL);
+          GABBLE_LIST_HANDLE_DENY, NULL, NULL);
 
       DEBUG ("calling change members on deny channel");
       tp_group_mixin_change_members ((GObject *) chan,

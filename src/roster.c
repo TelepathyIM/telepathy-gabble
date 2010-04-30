@@ -1298,12 +1298,10 @@ process_roster (
   GHashTable *group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
       (GDestroyNotify) _group_mem_update_destroy);
   TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
-  GArray *removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
   TpHandle handle;
   GabbleRosterChannel *pub_chan, *sub_chan, *chan;
   gboolean google_roster = FALSE;
-  guint i;
   NodeIter j;
 
   if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
@@ -1489,12 +1487,9 @@ process_roster (
             }
         }
 
-      /* delay removing items from roster until signals have been emitted;
-       * otherwise handles go out of scope!
-       * FIXME: this probably isn't true any more because of
-       * referenced_handles */
+      /* Remove removed contacts from the roster. */
       if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
-        g_array_append_val (removed, handle);
+        _gabble_roster_item_remove (roster, handle);
     }
 
   DEBUG ("calling change members on publish channel");
@@ -1530,10 +1525,6 @@ process_roster (
       tp_intset_destroy (deny_rem);
     }
 
-  for (i = 0; i < removed->len; i++)
-      _gabble_roster_item_remove (roster,
-          g_array_index (removed, TpHandle, i));
-
   tp_intset_destroy (pub_add);
   tp_intset_destroy (pub_rem);
   tp_intset_destroy (sub_add);
@@ -1541,7 +1532,6 @@ process_roster (
   tp_intset_destroy (sub_rp);
   tp_intset_destroy (stored_add);
   tp_intset_destroy (stored_rem);
-  g_array_free (removed, TRUE);
   g_hash_table_destroy (group_update_table);
   tp_handle_set_destroy (referenced_handles);
 }

@@ -45,20 +45,28 @@ def test(q, bus, conn, stream):
 
     q.expect('dbus-signal', signal='ContactInfoChanged')
 
+    contact_info = [(u'fn', [], [u'Bob']),
+                    (u'n', [], [u'', u'Bob', u'', u'', u'']),
+                    (u'nickname', [], [r'bob,bob1\,,bob2,bob3\,bob4']),
+                    # LABEL comes out as a single blob of text
+                    (u'label', [], ['42 West Wallaby Street\n'
+                                    "Bishop's Stortford\n"
+                                    'Huntingdon\n']),
+                    # ORG is a sequence of decreasingly large org.units, starting
+                    # with the organisation
+                    (u'org', [], [u'Collabora Ltd.', u'Dept. of Examples',
+                                  u'Exemplary Team']),
+                   ]
     # The request should be satisfied from the cache.
     assertEquals(
-        {handle: [(u'fn', [], [u'Bob']),
-                  (u'n', [], [u'', u'Bob', u'', u'', u'']),
-                  (u'nickname', [], [r'bob,bob1\,,bob2,bob3\,bob4']),
-                  # LABEL comes out as a single blob of text
-                  (u'label', [], ['42 West Wallaby Street\n'
-                      "Bishop's Stortford\n"
-                      'Huntingdon\n']),
-                  # ORG is a sequence of decreasingly large org.units, starting
-                  # with the organisation
-                  (u'org', [], [u'Collabora Ltd.', u'Dept. of Examples',
-                      u'Exemplary Team']),
-                  ]}, conn.ContactInfo.GetContactInfo([handle]))
+        {handle: contact_info}, conn.ContactInfo.GetContactInfo([handle]))
+
+    # check the ContactAttribute
+    assertEquals(
+        {handle: {cs.CONN_IFACE_CONTACT_INFO + '/info': contact_info,
+                  'org.freedesktop.Telepathy.Connection/contact-id': 'bob@foo.com'}},
+        conn.Contacts.GetContactAttributes([handle],
+                                           [cs.CONN_IFACE_CONTACT_INFO], False))
 
 
 if __name__ == '__main__':

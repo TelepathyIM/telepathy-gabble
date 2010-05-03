@@ -178,6 +178,7 @@ create_sidecar_cb (
             path, props);
 
       g_hash_table_unref (props);
+      g_free (path);
     }
   else
     {

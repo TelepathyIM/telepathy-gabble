@@ -594,31 +594,27 @@ query_unread_mails_cb (GObject *source_object,
     gpointer user_data)
 {
   GError *error = NULL;
-  WockyNode *node;
   WockyPorter *porter = WOCKY_PORTER (source_object);
   WockyStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (error != NULL)
+  if (reply == NULL ||
+      wocky_stanza_extract_errors (reply, NULL, &error, NULL, NULL))
     {
       DEBUG ("Failed retreive unread emails information: %s", error->message);
       g_error_free (error);
-      goto end;
     }
-
-  if (g_hash_table_size (conn->mail_priv->subscribers) > 0)
+  else if (g_hash_table_size (conn->mail_priv->subscribers) > 0)
     {
+      WockyNode *node = wocky_node_get_child (
+          wocky_stanza_get_top_node (reply), "mailbox");
+
       DEBUG ("Got unread mail details");
 
-      node = wocky_node_get_child (wocky_stanza_get_top_node (reply), "mailbox");
-
       if (node != NULL)
-        {
-          store_unread_mails (conn, node);
-        }
+        store_unread_mails (conn, node);
     }
 
-end:
   if (reply != NULL)
     g_object_unref (reply);
 

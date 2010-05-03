@@ -16,7 +16,7 @@ from pprint import pformat
 import constants as cs
 import ns
 
-def call_create(q, requests, server):
+def call_create(q, conn, server):
     """
     Calls CreateChannel for the given contact search server, and returns the IQ
     stanza received by the server.
@@ -27,13 +27,13 @@ def call_create(q, requests, server):
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_SEARCH,
             cs.CONTACT_SEARCH_SERVER: server,
         }, signature='sv')
-    call_async(q, requests, 'CreateChannel', request)
+    call_async(q, conn.Requests, 'CreateChannel', request)
 
     iq_event = q.expect('stream-iq', to=server, query_ns=ns.SEARCH)
     return iq_event.stanza
 
-def not_a_search_server(q, stream, requests):
-    iq = call_create(q, requests, 'notajud.localhost')
+def not_a_search_server(q, stream, conn):
+    iq = call_create(q, conn, 'notajud.localhost')
 
     e = domish.Element((None, 'error'))
     e['type'] = 'cancel'
@@ -43,8 +43,8 @@ def not_a_search_server(q, stream, requests):
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
 
-def returns_invalid_fields(q, stream, requests):
-    iq = call_create(q, requests, 'broken.localhost')
+def returns_invalid_fields(q, stream, conn):
+    iq = call_create(q, conn, 'broken.localhost')
 
     result = make_result_iq(stream, iq)
     query = result.firstChildElement()
@@ -55,9 +55,9 @@ def returns_invalid_fields(q, stream, requests):
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
 
-def returns_error_from_search(q, stream, conn, requests):
+def returns_error_from_search(q, stream, conn):
     server = 'nofunforyou.localhost'
-    iq = call_create(q, requests, server)
+    iq = call_create(q, conn, server)
 
     result = make_result_iq(stream, iq)
     query = result.firstChildElement()
@@ -93,9 +93,9 @@ def returns_error_from_search(q, stream, conn, requests):
 
     c.Close()
 
-def returns_bees_from_search(q, stream, conn, requests):
+def returns_bees_from_search(q, stream, conn):
     server = 'hivemind.localhost'
-    iq = call_create(q, requests, server)
+    iq = call_create(q, conn, server)
 
     result = make_result_iq(stream, iq)
     query = result.firstChildElement()
@@ -131,16 +131,16 @@ def returns_bees_from_search(q, stream, conn, requests):
 
     c.Close()
 
-def disconnected_before_reply(q, stream, conn, requests):
-    iq = call_create(q, requests, 'slow.localhost')
+def disconnected_before_reply(q, stream, conn):
+    iq = call_create(q, conn, 'slow.localhost')
 
     call_async(q, conn, 'Disconnect')
 
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == cs.DISCONNECTED, event.error
 
-def forbidden(q, stream, conn, requests):
-    iq = call_create(q, requests, 'notforyou.localhost')
+def forbidden(q, stream, conn):
+    iq = call_create(q, conn, 'notforyou.localhost')
 
     e = domish.Element((None, 'error'))
     e['type'] = 'cancel'
@@ -150,8 +150,8 @@ def forbidden(q, stream, conn, requests):
     event = q.expect('dbus-error', method='CreateChannel')
     assert event.error.get_dbus_name() == cs.PERMISSION_DENIED, event.error
 
-def invalid_jid(q, stream, conn, requests):
-    iq = call_create(q, requests, 'invalid.localhost')
+def invalid_jid(q, stream, conn):
+    iq = call_create(q, conn, 'invalid.localhost')
 
     e = domish.Element((None, 'error'))
     e['type'] = 'cancel'
@@ -166,15 +166,13 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-
-    not_a_search_server(q, stream, requests)
-    returns_invalid_fields(q, stream, requests)
-    returns_error_from_search(q, stream, conn, requests)
-    returns_bees_from_search(q, stream, conn, requests)
-    forbidden(q, stream, conn, requests)
-    invalid_jid(q, stream, conn, requests)
-    disconnected_before_reply(q, stream, conn, requests)
+    not_a_search_server(q, stream, conn)
+    returns_invalid_fields(q, stream, conn)
+    returns_error_from_search(q, stream, conn)
+    returns_bees_from_search(q, stream, conn)
+    forbidden(q, stream, conn)
+    invalid_jid(q, stream, conn)
+    disconnected_before_reply(q, stream, conn)
 
     stream.sendFooter()
     q.expect('dbus-return', method='Disconnect')

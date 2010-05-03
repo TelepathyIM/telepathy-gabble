@@ -27,15 +27,13 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-
     for f in [complete_search, cancelled_while_in_progress]:
-        f(q, bus, conn, requests, stream, 'jud.localhost')
+        f(q, bus, conn, stream, 'jud.localhost')
 
-def complete_search(q, bus, conn, requests, stream, server):
-    call_create(q, requests, server)
+def complete_search(q, bus, conn, stream, server):
+    call_create(q, conn, server)
 
-    # the channel is not yet in Requests.Channels as it's not ready yet
+    # the channel is not yet in conn.Requests.Channels as it's not ready yet
     channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
         dbus_interface=cs.PROPERTIES_IFACE)
     for path, props in channels:
@@ -53,7 +51,7 @@ def complete_search(q, bus, conn, requests, stream, server):
         pformat(props)
     assert cs.CONTACT_SEARCH_STATE not in props, pformat(props)
 
-    # check that channel is listed in Requests.Channels
+    # check that channel is listed in conn.Requests.Channels
     channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
         dbus_interface=cs.PROPERTIES_IFACE)
     assert (path, props) in channels
@@ -121,8 +119,8 @@ def complete_search(q, bus, conn, requests, stream, server):
         call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
         q.expect('dbus-error', method='InspectHandles')
 
-def cancelled_while_in_progress(q, bus, conn, requests, stream, server):
-    call_create(q, requests, server)
+def cancelled_while_in_progress(q, bus, conn, stream, server):
+    call_create(q, conn, server)
 
     ret, _ = answer_field_query(q, stream, server)
     path, props = ret.value

@@ -7,8 +7,10 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test
-from servicetest import call_async, unwrap, make_channel_proxy, EventPattern
+from gabbletest import exec_test, acknowledge_iq
+from servicetest import (
+    call_async, unwrap, make_channel_proxy, EventPattern, assertEquals,
+)
 from search_helper import call_create, answer_extended_field_query, make_search, send_results_extended
 
 from pprint import pformat
@@ -26,7 +28,8 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    for f in [complete_search, complete_search2, openfire_search, double_nick]:
+    for f in [complete_search, complete_search2, openfire_search, double_nick,
+              no_x_in_reply]:
         f(q, bus, conn, stream)
 
 def do_one_search(q, bus, conn, stream, fields, expected_search_keys,
@@ -248,6 +251,29 @@ def double_nick(q, bus, conn, stream):
 
     search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, stream,
         fields, expected_search_keys, terms, results.values())
+
+def no_x_in_reply(q, bus, conn, stream):
+    fields = [('nickname', 'text-single', 'NickName', []),
+        ('nick', 'text-single', 'Nick', []),]
+    terms = { 'nickname': 'Badger' }
+
+    call_create(q, conn, server)
+    ret, nc_sig = answer_extended_field_query(q, stream, server, fields)
+
+    path, _ = ret.value
+    c = make_channel_proxy(conn, path, 'Channel')
+    c_props = dbus.Interface(c, cs.PROPERTIES_IFACE)
+    c_search = dbus.Interface(c, cs.CHANNEL_TYPE_CONTACT_SEARCH)
+
+    iq = make_search(q, c_search, c_props, server, terms)
+
+    # The server sends back an IQ with a <query/> but no <x/> inside the query.
+    acknowledge_iq(stream, iq)
+
+    # Gabble should tell us the query failed, and not crash.
+    event = q.expect('dbus-signal', signal='SearchStateChanged')
+    state = event.args[0]
+    assertEquals(cs.SEARCH_FAILED, state)
 
 if __name__ == '__main__':
     exec_test(test)

@@ -2429,8 +2429,6 @@ handle_message (GObject *source,
           case WOCKY_MUC_MSG_STATE_PAUSED:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_PAUSED;
             break;
-          case WOCKY_MUC_MSG_STATE_GONE:
-            tp_msg_state = TP_CHANNEL_CHAT_STATE_GONE;
           default:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
         }

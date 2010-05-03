@@ -362,16 +362,14 @@ new_im_channel (GabbleImFactory *fac,
 
   object_path = g_strdup_printf ("%s/ImChannel%u",
       conn->object_path, handle);
-
   chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
                        "connection", priv->conn,
                        "object-path", object_path,
                        "handle", handle,
                        "initiator-handle", initiator,
                        NULL);
-
   DEBUG ("object path %s", object_path);
-
+  gabble_base_channel_register ((GabbleBaseChannel *) chan);
   g_free (object_path);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);

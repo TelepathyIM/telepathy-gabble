@@ -1114,9 +1114,6 @@ gabble_search_channel_constructor (GType type,
   base = GABBLE_BASE_CHANNEL (obj);
   conn = (TpBaseConnection *) base->conn;
 
-  base->channel_type = GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH;
-  base->interfaces = gabble_search_channel_interfaces;
-  base->target_type = TP_HANDLE_TYPE_NONE;
   base->target = 0;
   base->initiator = conn->self_handle;
 
@@ -1249,6 +1246,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
       { NULL }
   };
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  GabbleBaseChannelClass *base_class = GABBLE_BASE_CHANNEL_CLASS (klass);
   GParamSpec *param_spec;
 
   g_type_class_add_private (klass, sizeof (GabbleSearchChannelPrivate));
@@ -1261,6 +1259,10 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
 
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
+
+  base_class->channel_type = GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH;
+  base_class->interfaces = gabble_search_channel_interfaces;
+  base_class->target_type = TP_HANDLE_TYPE_NONE;
 
   param_spec = g_param_spec_uint ("search-state", "Search state",
       "The current state of the search represented by this channel",

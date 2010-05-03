@@ -27,6 +27,8 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/message-mixin.h>
 
+#include "base-channel.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleIMChannel GabbleIMChannel;
@@ -34,13 +36,11 @@ typedef struct _GabbleIMChannelClass GabbleIMChannelClass;
 typedef struct _GabbleIMChannelPrivate GabbleIMChannelPrivate;
 
 struct _GabbleIMChannelClass {
-    GObjectClass parent_class;
-
-    TpDBusPropertiesMixinClass dbus_props_class;
+    GabbleBaseChannelClass parent_class;
 };
 
 struct _GabbleIMChannel {
-    GObject parent;
+    GabbleBaseChannel parent;
 
     TpMessageMixin message_mixin;
 

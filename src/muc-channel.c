@@ -66,6 +66,9 @@ static void password_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
 static void gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
     GHashTable *request);
+static void muc_call_channel_finish_requests (GabbleMucChannel *self,
+    GabbleCallMucChannel *call,
+    GError *error);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_TYPE_OBJECT,
@@ -1554,6 +1557,10 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 
   TpIntSet *set;
   GArray *handles;
+  GError error = { TP_ERRORS,
+      TP_ERROR_CANCELLED,
+      "Muc channel closed below us"
+  };
 
   DEBUG ("Closing");
 
@@ -1563,6 +1570,8 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   priv->closed = TRUE;
 
   gabble_muc_channel_close_tube (chan);
+
+  muc_call_channel_finish_requests (chan, NULL, &error);
 
   /* FIXME don't assert this but fix it properly */
   g_assert (priv->call_requests == NULL);
@@ -3889,13 +3898,54 @@ muc_channel_call_closed_cb (GabbleCallMucChannel *muc, gpointer user_data)
 }
 
 static void
+muc_call_channel_finish_requests (GabbleMucChannel *self,
+  GabbleCallMucChannel *call,
+  GError *error)
+{
+  GList *l;
+
+  if (call != NULL)
+    {
+      GSList *requests = NULL;
+
+      DEBUG ("Call channel created");
+
+      for (l = self->priv->call_requests ; l != NULL; l = g_list_next (l))
+        requests = g_slist_append (requests,
+          g_simple_async_result_get_op_res_gpointer (
+            G_SIMPLE_ASYNC_RESULT(l->data)));
+
+      g_signal_emit (self, signals[NEW_CALL], 0, self->priv->call,
+          requests);
+      g_slist_free (requests);
+    }
+  else
+    {
+      DEBUG ("Failed to create call channel: %s", error->message);
+    }
+
+  for (l = self->priv->call_requests ; l != NULL; l = g_list_next (l))
+    {
+      GSimpleAsyncResult *r = G_SIMPLE_ASYNC_RESULT (l->data);
+
+      if (error != NULL)
+        g_simple_async_result_set_from_error (r, error);
+
+      g_simple_async_result_complete (r);
+      g_object_unref (r);
+    }
+
+  g_list_free (self->priv->call_requests);
+  self->priv->call_requests = NULL;
+}
+
+static void
 muc_channel_call_channel_done_cb (GObject *source,
     GAsyncResult *result,
     gpointer user_data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
-  GList *l;
   GError *error = NULL;
 
   g_assert (priv->call == NULL);
@@ -3907,39 +3957,9 @@ muc_channel_call_channel_done_cb (GObject *source,
     G_CALLBACK (muc_channel_call_closed_cb),
     gmuc);
 
-  if (priv->call != NULL)
-    {
-      GSList *requests = NULL;
+  muc_call_channel_finish_requests (gmuc, priv->call, error);
 
-      DEBUG ("Call channel created");
-
-      for (l = priv->call_requests ; l != NULL; l = g_list_next (l))
-        requests = g_slist_append (requests,
-          g_simple_async_result_get_op_res_gpointer (
-            G_SIMPLE_ASYNC_RESULT(l->data)));
-
-      g_signal_emit (gmuc, signals[NEW_CALL], 0, priv->call,
-          requests);
-      g_slist_free (requests);
-    }
-  else
-    {
-      DEBUG ("Failed to create call channel: %s", error->message);
-    }
-
-  for (l = priv->call_requests ; l != NULL; l = g_list_next (l))
-    {
-      GSimpleAsyncResult *r = G_SIMPLE_ASYNC_RESULT (l->data);
-
-      if (error != NULL)
-        g_simple_async_result_set_from_error (r, error);
-
-      g_simple_async_result_complete (r);
-      g_object_unref (r);
-    }
-
-  g_list_free (priv->call_requests);
-  priv->call_requests = NULL;
+  g_clear_error (&error);
 }
 
 static void

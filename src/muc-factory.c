@@ -1706,7 +1706,7 @@ handle_call_channel_request (GabbleMucFactory *self,
       return FALSE;
     }
 
-  ensure_muc_channel (self, priv, handle, &muc, TRUE, NULL, NULL, NULL);
+  ensure_muc_channel (self, priv, handle, &muc, FALSE, NULL, NULL, NULL);
 
   call = gabble_muc_channel_get_call (muc);
 

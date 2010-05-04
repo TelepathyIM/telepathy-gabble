@@ -162,6 +162,7 @@ try_to_connect (GibberTCPTransport *self)
       self);
   GSocketAddress *gaddr;
   struct sockaddr_storage addr;
+  gssize native_size;
   gint fd;
   int ret;
 
@@ -172,9 +173,14 @@ try_to_connect (GibberTCPTransport *self)
   gaddr = g_inet_socket_address_new (G_INET_ADDRESS (priv->addresses->data),
     priv->port);
 
+  native_size = g_socket_address_get_native_size (gaddr);
+  /* _get_native_size() really shouldn't fail... */
+  g_return_val_if_fail (native_size > 0, FALSE);
+  /* ...and if sockaddr_storage isn't big enough, we're basically screwed. */
+  g_return_val_if_fail ((gsize) native_size <= sizeof (addr), FALSE);
+
   g_socket_address_to_native (gaddr, &addr, sizeof (addr), NULL);
-  ret = connect (fd, (struct sockaddr *)&addr,
-    g_socket_address_get_native_size (gaddr));
+  ret = connect (fd, (struct sockaddr *)&addr, (gsize) native_size);
 
   g_object_unref (gaddr);
 

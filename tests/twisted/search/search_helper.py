@@ -6,7 +6,7 @@ from gabbletest import make_result_iq
 import constants as cs
 import ns
 
-def call_create(q, requests, server):
+def call_create(q, conn, server):
     request = dbus.Dictionary(
         {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_SEARCH,
@@ -15,7 +15,7 @@ def call_create(q, requests, server):
     if server is not None:
         request[cs.CONTACT_SEARCH_SERVER] = server
 
-    call_async(q, requests, 'CreateChannel', request)
+    call_async(q, conn.Requests, 'CreateChannel', request)
 
 def _wait_for_server_query(q, stream, server):
     # Gabble asks the server what search fields it supports

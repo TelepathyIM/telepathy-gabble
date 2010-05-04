@@ -472,6 +472,33 @@ gabble_ft_manager_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_destroy (table);
 }
 
+static LmMessageNode *
+hyvaa_vappua (
+    LmMessageNode *si_node,
+    const gchar **filename,
+    const gchar **size_str,
+    GError **error)
+{
+#define die_if_null(var, msg) \
+  if ((var) == NULL) \
+    { \
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, msg); \
+      return NULL; \
+    }
+
+  LmMessageNode *file_node = lm_message_node_get_child_with_namespace (si_node,
+      "file", NS_FILE_TRANSFER);
+
+  die_if_null (file_node, "Invalid file transfer SI request: no <file>")
+  die_if_null (*filename = lm_message_node_get_attribute (file_node, "name"),
+      "Invalid file transfer SI request: missing file name")
+  die_if_null (*size_str = lm_message_node_get_attribute (file_node, "size"),
+      "Invalid file transfer SI request: missing file size")
+
+  return file_node;
+#undef die_if_null
+}
+
 void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
                                           GabbleBytestreamIface *bytestream,
                                           TpHandle handle,
@@ -486,49 +513,29 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   TpFileHashType content_hash_type;
   GabbleFileTransferChannel *chan;
   gboolean resume_supported;
+  GError *error = NULL;
 
   si_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 
-  file_node = lm_message_node_get_child_with_namespace (si_node, "file",
-      NS_FILE_TRANSFER);
+  file_node = hyvaa_vappua (si_node, &filename, &size_str, &error);
+
   if (file_node == NULL)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "Invalid file transfer SI request: no <file>" };
-
-      DEBUG ("%s", e.message);
-      gabble_bytestream_iface_close (bytestream, &e);
+      DEBUG ("%s", error->message);
+      gabble_bytestream_iface_close (bytestream, error);
+      g_clear_error (&error);
+      return;
     }
 
-  filename = lm_message_node_get_attribute (file_node, "name");
-  if (filename == NULL)
-    {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "Invalid file transfer SI request: missing file name" };
-
-      DEBUG ("%s", e.message);
-      gabble_bytestream_iface_close (bytestream, &e);
-    }
-
-  size_str = lm_message_node_get_attribute (file_node, "size");
-  if (size_str == NULL)
-    {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "Invalid file transfer SI request: missing file size" };
-
-      DEBUG ("%s", e.message);
-      gabble_bytestream_iface_close (bytestream, &e);
-    }
   size = g_ascii_strtoull (size_str, NULL, 0);
 
   content_type = lm_message_node_get_attribute (file_node, "mime-type");
   if (content_type == NULL)
-    {
-      content_type = "application/octet-stream";
-    }
+    content_type = "application/octet-stream";
 
+  /* The hash is always an MD5-sum, if present. */
   content_hash = lm_message_node_get_attribute (file_node, "hash");
   if (content_hash != NULL)
     content_hash_type = TP_FILE_HASH_TYPE_MD5;

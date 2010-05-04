@@ -28,11 +28,9 @@ def server_discovered(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
-    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-
     # no search server has been discovered yet. The CreateChannel operation
     # will be completed once the disco process is finished.
-    call_create(q, requests, server=None)
+    call_create(q, conn, server=None)
 
     # reply to IQ query
     reply = make_result_iq(stream, disco_event.stanza)
@@ -55,7 +53,7 @@ def server_discovered(q, bus, conn, stream):
     answer_field_query(q, stream, JUD_SERVER)
 
     # Now that the search server has been discovered, it is used right away.
-    call_create(q, requests, server=None)
+    call_create(q, conn, server=None)
     answer_field_query(q, stream, JUD_SERVER)
 
 def no_server_discovered(q, bus, conn, stream):
@@ -70,11 +68,9 @@ def no_server_discovered(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
-    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-
     # no search server has been discovered yet. The CreateChannel operation
     # will fail once the disco process is finished.
-    call_create(q, requests, server=None)
+    call_create(q, conn, server=None)
 
     # reply to IQ query. No search server is present
     reply = make_result_iq(stream, disco_event.stanza)
@@ -85,7 +81,7 @@ def no_server_discovered(q, bus, conn, stream):
 
     # This server doesn't have a search server. We can't create Search channel
     # without specifying a Server property
-    call_create(q, requests, server=None)
+    call_create(q, conn, server=None)
     e = q.expect('dbus-error', method='CreateChannel')
     assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
@@ -101,11 +97,9 @@ def disconnect_before_disco(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
-    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-
     # try to create a channel before the disco process is completed.
     # This creation will fail
-    call_create(q, requests, server=None)
+    call_create(q, conn, server=None)
 
     # connection is disconnected. CreateChannel fails
     disconnect_conn(q, conn, stream, [

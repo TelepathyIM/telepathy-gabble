@@ -4004,7 +4004,7 @@ gabble_muc_channel_request_call (GabbleMucChannel *gmuc,
   if (require_new && priv->call_initiating)
     {
       g_simple_async_report_error_in_idle (G_OBJECT (gmuc),
-        user_data, callback,
+        callback, user_data,
         TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "A request for a call is already in progress");
       return;

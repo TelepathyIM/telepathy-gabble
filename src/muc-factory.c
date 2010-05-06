@@ -65,6 +65,11 @@ enum
   LAST_PROPERTY
 };
 
+typedef struct {
+  GabbleMucFactory *self;
+  gpointer token;
+} Request;
+
 struct _GabbleMucFactoryPrivate
 {
   GabbleConnection *conn;
@@ -1658,13 +1663,14 @@ call_muc_channel_request_cb (GObject *source,
   GAsyncResult *result,
   gpointer user_data)
 {
-  GabbleMucFactory *self = GABBLE_MUC_FACTORY (user_data);
+  Request *r = user_data;
+  GabbleMucFactory *self = GABBLE_MUC_FACTORY (r->self);
   GabbleMucChannel *channel = GABBLE_MUC_CHANNEL (source);
-  gpointer request_token;
+  gpointer request_token = r->token;
   GError *error = NULL;
 
   if (!gabble_muc_channel_request_call_finish (channel,
-      result, &request_token, &error))
+      result, &error))
     {
       tp_channel_manager_emit_request_failed (self,
         request_token, error->domain, error->code, error->message);
@@ -1673,6 +1679,9 @@ call_muc_channel_request_cb (GObject *source,
 
   /* No need to handle a successful request, this is handled when the muc
    * signals a new call channel automagically */
+
+  g_object_unref (r->self);
+  g_slice_free (Request, r);
 }
 
 static gboolean
@@ -1687,6 +1696,7 @@ handle_call_channel_request (GabbleMucFactory *self,
   gboolean initial_audio, initial_video;
   GabbleMucChannel *muc;
   GabbleCallMucChannel *call;
+  Request *r;
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
           muc_channel_fixed_properties,
@@ -1728,12 +1738,16 @@ handle_call_channel_request (GabbleMucFactory *self,
     }
 
   /* FIXME not coping properly with deinitialisation */
+  r = g_slice_new (Request);
+  r->self = g_object_ref (self);
+  r->token = request_token;
+
   gabble_muc_channel_request_call (muc,
       request_properties,
       require_new,
       request_token,
       call_muc_channel_request_cb,
-      self);
+      r);
 out:
   return TRUE;
 

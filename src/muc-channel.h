@@ -125,7 +125,6 @@ void gabble_muc_channel_request_call (GabbleMucChannel *gmuc,
 
 gboolean gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
     GAsyncResult *result,
-    gpointer *token,
     GError **error);
 
 gboolean gabble_muc_channel_handle_jingle_session (GabbleMucChannel *channel,

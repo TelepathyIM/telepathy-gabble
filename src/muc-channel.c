@@ -4023,12 +4023,8 @@ gabble_muc_channel_request_call (GabbleMucChannel *gmuc,
 gboolean
 gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
     GAsyncResult *result,
-    gpointer *token,
     GError **error)
 {
-  *token = g_simple_async_result_get_op_res_gpointer (
-    G_SIMPLE_ASYNC_RESULT (result));
-
   if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
       error))
     return FALSE;

@@ -207,11 +207,11 @@ set_xep0126_invisible (GabbleConnection *self,
     GSimpleAsyncResult *result)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
-  WockyXmppStanza *iq;
+  WockyStanza *iq;
   GError *error = NULL;
 
   if (invisible)
-    iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+    iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
         WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', "query",
         ':', NS_PRIVACY,
@@ -221,7 +221,7 @@ set_xep0126_invisible (GabbleConnection *self,
         ')',
         NULL);
   else
-    iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+    iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
         WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', "query",
         ':', NS_PRIVACY,
@@ -308,7 +308,7 @@ set_xep0186_invisible (GabbleConnection *self,
     GSimpleAsyncResult *result)
 {
   GError *error = NULL;
-  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+  WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', invisible ? "invisible" : "visible",
          ':', NS_INVISIBLE,
@@ -379,7 +379,7 @@ presence_create_invisible_privacy_list (GabbleConnection *self,
     GSimpleAsyncResult *result)
 {
   GError *error = NULL;
-  WockyXmppStanza *iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+  WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', "query",
           ':', NS_PRIVACY,

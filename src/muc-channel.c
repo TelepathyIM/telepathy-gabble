@@ -2164,9 +2164,9 @@ handle_fill_presence (WockyMuc *muc,
   gabble_presence_add_status_and_vcard (base->conn->self_presence, stanza);
 
   /* If we are invisible, show us as dnd in muc, since we can't be invisible */
-  if (priv->conn->self_presence->status == GABBLE_PRESENCE_HIDDEN)
-    wocky_xmpp_node_add_child_with_content (stanza->node, "show",
-        JABBER_PRESENCE_SHOW_DND);
+  if (base->conn->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+    wocky_node_add_child_with_content (wocky_stanza_get_top_node (stanza),
+        "show", JABBER_PRESENCE_SHOW_DND);
 
   /* Sync the presence we send over the wire with what is in our presence cache
    */

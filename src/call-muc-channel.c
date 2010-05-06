@@ -908,7 +908,7 @@ async_initable_iface_init (GAsyncInitableIface *iface)
 
 void
 gabble_call_muc_channel_new_async (GabbleConnection *connection,
-    const gchar *object_path,
+    const gchar *path_prefix,
     GabbleMucChannel *muc,
     TpHandle target,
     GHashTable *request,
@@ -934,7 +934,7 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
     callback,
     user_data,
     "muc", muc,
-    "object-path", object_path,
+    "object-path-prefix", path_prefix,
     "connection", connection,
     "handle", target,
     "requested", request != NULL,

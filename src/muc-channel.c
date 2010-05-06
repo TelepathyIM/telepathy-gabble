@@ -4005,15 +4005,12 @@ gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
   GHashTable *request)
 {
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
-  gchar *object_path;
 
   g_assert (!priv->call_initiating);
   priv->call_initiating = TRUE;
 
-  object_path = g_strdup_printf ("%s/CallMucChannel", priv->object_path);
-
   gabble_call_muc_channel_new_async (priv->conn,
-      object_path,
+      priv->object_path,
       gmuc,
       priv->handle,
       request,

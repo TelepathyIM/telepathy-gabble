@@ -70,6 +70,7 @@ static const gchar *gabble_base_call_channel_interfaces[] = {
 enum
 {
   PROP_OBJECT_PATH = 1,
+  PROP_OBJECT_PATH_PREFIX,
   PROP_CHANNEL_TYPE,
   PROP_HANDLE_TYPE,
   PROP_TARGET_HANDLE,
@@ -112,6 +113,7 @@ static guint signals[LAST_SIGNAL] = { 0, };
 struct _GabbleBaseCallChannelPrivate
 {
   gchar *object_path;
+  gchar *object_path_prefix;
   TpHandle creator;
 
   gboolean closed;
@@ -140,6 +142,13 @@ gabble_base_call_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
   TpHandleRepoIface *repo = tp_base_connection_get_handles (
               base_conn, TP_HANDLE_TYPE_CONTACT);
+
+  if (priv->object_path == NULL)
+    {
+      g_assert (priv->object_path_prefix != NULL);
+      priv->object_path = g_strdup_printf ("%s/CallChannel%p",
+        priv->object_path_prefix, obj);
+    }
 
   if (priv->requested)
     gabble_base_call_channel_set_state (self,
@@ -197,7 +206,9 @@ gabble_base_call_channel_get_property (GObject    *object,
     {
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
-        g_assert (priv->object_path != NULL);
+        break;
+      case PROP_OBJECT_PATH_PREFIX:
+        g_value_set_string (value, priv->object_path_prefix);
         break;
       case PROP_CHANNEL_TYPE:
         g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_CALL);
@@ -324,8 +335,10 @@ gabble_base_call_channel_set_property (GObject *object,
   switch (property_id)
     {
       case PROP_OBJECT_PATH:
-        g_free (priv->object_path);
         priv->object_path = g_value_dup_string (value);
+        break;
+      case PROP_OBJECT_PATH_PREFIX:
+        priv->object_path_prefix = g_value_dup_string (value);
         break;
       case PROP_REQUESTED:
         priv->requested = g_value_get_boolean (value);
@@ -436,6 +449,13 @@ gabble_base_call_channel_class_init (
       NULL, NULL,
       g_cclosure_marshal_VOID__VOID,
       G_TYPE_NONE, 0);
+
+  param_spec = g_param_spec_string ("object-path-prefix", "Object path prefix",
+      "prefix of the object path",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_OBJECT_PATH_PREFIX,
+      param_spec);
 
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "Target JID of the call" ,

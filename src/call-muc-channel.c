@@ -679,8 +679,10 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
           g_queue_remove (priv->before, call_member);
           g_queue_remove (priv->after, call_member);
           g_queue_remove (priv->sessions_to_open, call_member);
+
+          gabble_base_call_channel_remove_member (
+            GABBLE_BASE_CALL_CHANNEL (self), call_member);
         }
-      /* TODO remove member from the call if needed */
       return;
     }
 

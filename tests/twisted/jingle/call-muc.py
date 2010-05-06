@@ -98,7 +98,7 @@ def run_incoming_test(q, bus, conn, stream):
 
    # Bob adds a Video content
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
-    muji =  ('muji', ns.MUJI, {}, [('preparing' )])
+    presence.addElement ((ns.MUJI, 'muji')).addElement('preparing')
     stream.send(presence)
 
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
@@ -144,7 +144,13 @@ def run_incoming_test(q, bus, conn, stream):
         predicate = lambda x: \
         xpath.queryForNodes("/iq/jingle[@action='content-add']", x.stanza))
 
-    # success!
+    # Bob leaves the call, bye bob
+    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+    stream.send(presence)
+    e = q.expect('dbus-signal', signal = 'CallMembersChanged')
+
+    # Just bob left
+    assertLength (1, e.args[1])
 
 def run_outgoing_test(q, bus, conn, stream):
     jp = JingleProtocol031 ()
@@ -187,7 +193,7 @@ def run_outgoing_test(q, bus, conn, stream):
     q.forbid_events(forbidden)
 
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
-    muji =  ('muji', ns.MUJI, {}, [('preparing' )])
+    presence.addElement ((ns.MUJI, 'muji')).addElement('preparing')
     stream.send(presence)
 
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')

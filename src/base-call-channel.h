@@ -100,6 +100,9 @@ GabbleCallMember *gabble_base_call_channel_ensure_member (
     GabbleBaseCallChannel *self,
     const gchar *jid);
 
+void gabble_base_call_channel_remove_member (GabbleBaseCallChannel *self,
+    GabbleCallMember *member);
+
 GabbleCallMember *gabble_base_call_channel_ensure_member_from_handle (
     GabbleBaseCallChannel *self,
     TpHandle handle);

@@ -999,17 +999,21 @@ gabble_base_call_channel_registered (GabbleBaseCallChannel *self)
 }
 
 static void
-base_call_channel_signal_call_members (GabbleBaseCallChannel *self)
+base_call_channel_signal_call_members (GabbleBaseCallChannel *self,
+  TpHandle handle)
 {
-  GArray *empty = g_array_new (TRUE, TRUE, sizeof (TpHandle));
+  GArray *removals = g_array_new (TRUE, TRUE, sizeof (TpHandle));
   GHashTable *members;
 
   members = members_to_hash (self);
 
-  gabble_svc_channel_type_call_emit_call_members_changed (self,
-      members, empty);
+  if (handle != 0)
+    g_array_append_val (removals, handle);
 
-  g_array_unref (empty);
+  gabble_svc_channel_type_call_emit_call_members_changed (self,
+      members, removals);
+
+  g_array_unref (removals);
   g_hash_table_unref (members);
 }
 
@@ -1020,7 +1024,7 @@ call_member_flags_changed_cb (GabbleCallMember *member,
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (user_data);
 
-  base_call_channel_signal_call_members (self);
+  base_call_channel_signal_call_members (self, 0);
 }
 
 GabbleCallMember *
@@ -1050,10 +1054,24 @@ gabble_base_call_channel_ensure_member_from_handle (
       gabble_signal_connect_weak (m, "flags-changed",
         G_CALLBACK (call_member_flags_changed_cb), G_OBJECT (self));
 
-      base_call_channel_signal_call_members (self);
+      base_call_channel_signal_call_members (self, 0);
     }
 
   return m;
+}
+
+void
+gabble_base_call_channel_remove_member (GabbleBaseCallChannel *self,
+    GabbleCallMember *member)
+{
+  TpHandle h = gabble_call_member_get_handle (member);
+
+  g_assert (g_hash_table_lookup (self->priv->members,
+    GUINT_TO_POINTER (h))== member);
+
+  gabble_call_member_shutdown (member);
+  g_hash_table_remove (self->priv->members, GUINT_TO_POINTER (h));
+  base_call_channel_signal_call_members (self, h);
 }
 
 static GHashTable *

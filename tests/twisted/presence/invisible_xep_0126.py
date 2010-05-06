@@ -6,7 +6,9 @@ A simple smoke-test for XEP-0126 invisibility
 from twisted.words.xish import domish
 
 from gabbletest import exec_test, make_presence, XmppXmlStream, elem_iq
-from servicetest import EventPattern, assertNotEquals
+from servicetest import (
+    EventPattern, assertEquals, assertNotEquals, assertContains,
+)
 import ns
 import constants as cs
 from twisted.words.xish import domish, xpath
@@ -47,8 +49,8 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
-    assert ("hidden" in conn.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses",
-                                 dbus_interface=cs.PROPERTIES_IFACE).keys())
+    assertContains("hidden",
+        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
 
     conn.SimplePresence.SetPresence("hidden", "")
 
@@ -58,7 +60,7 @@ def test(q, bus, conn, stream):
         EventPattern('stream-presence'))
 
     active = xpath.queryForNodes('//active', event.query)[0]
-    assert (active.compareAttribute('name', 'invisible'))
+    assertEquals('invisible', active['name'])
 
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',

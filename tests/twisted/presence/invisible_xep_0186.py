@@ -4,7 +4,9 @@ A simple smoke-test for XEP-0186 invisibility
 """
 
 from gabbletest import exec_test
-from servicetest import EventPattern, assertEquals, assertNotEquals
+from servicetest import (
+    EventPattern, assertEquals, assertNotEquals, assertContains,
+)
 import ns
 import constants as cs
 from invisible_helper import InvisibleXmlStream
@@ -34,8 +36,8 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    assert ("hidden" in conn.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses",
-                                 dbus_interface=cs.PROPERTIES_IFACE).keys())
+    assertContains("hidden",
+        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
 
     conn.SimplePresence.SetPresence("hidden", "")
 

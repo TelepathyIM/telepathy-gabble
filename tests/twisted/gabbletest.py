@@ -521,12 +521,6 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
 
     d = port.stopListening()
 
-    if error is None:
-        d.addBoth((lambda *args: reactor.crash()))
-    else:
-        # please ignore the POSIX behind the curtain
-        d.addBoth((lambda *args: os._exit(1)))
-
     # Does the Connection object still exist?
     for i, conn in enumerate(conns):
         if not bus.name_has_owner(conn.object.bus_name):
@@ -541,6 +535,22 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                 conn.Disconnect()
         except dbus.DBusException, e:
             pass
+
+        try:
+            conn.Disconnect()
+            raise AssertionError("Connection didn't disappear")
+        except dbus.DBusException, e:
+            pass
+        except Exception, e:
+            traceback.print_exc()
+            error = e
+
+    if error is None:
+        d.addBoth((lambda *args: reactor.crash()))
+    else:
+        # please ignore the POSIX behind the curtain
+        d.addBoth((lambda *args: os._exit(1)))
+
 
 def exec_test(fun, params=None, protocol=None, timeout=None,
               authenticator=None, num_instances=1):

@@ -1002,6 +1002,9 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
       gabble_tubes_channel_foreach (tube, data->foreach, data->user_data);
       g_object_unref (tube);
     }
+
+  g_list_foreach (gabble_muc_channel_get_call_channels (gmuc),
+      (GFunc) data->foreach, data->user_data);
 }
 
 static void

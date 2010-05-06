@@ -99,6 +99,14 @@ enum
   LAST_PROPERTY
 };
 
+enum
+{
+  ENDED,
+  LAST_SIGNAL
+};
+
+static guint signals[LAST_SIGNAL] = { 0, };
+
 
 /* private structure */
 struct _GabbleBaseCallChannelPrivate
@@ -421,6 +429,14 @@ gabble_base_call_channel_class_init (
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
       "channel-properties");
 
+  signals[ENDED] = g_signal_new ("ended",
+      G_OBJECT_CLASS_TYPE (object_class),
+      G_SIGNAL_RUN_LAST,
+      0,
+      NULL, NULL,
+      g_cclosure_marshal_VOID__VOID,
+      G_TYPE_NONE, 0);
+
   param_spec = g_param_spec_string ("target-id", "Target JID",
       "Target JID of the call" ,
       NULL,
@@ -586,6 +602,10 @@ gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
   GabbleCallState state)
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
+
+  /* signal when going to the ended state */
+  if (state != priv->state && state == GABBLE_CALL_STATE_ENDED)
+    g_signal_emit (self, signals[ENDED], 0);
 
   priv->state = state;
 

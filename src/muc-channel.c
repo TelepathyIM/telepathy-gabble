@@ -277,7 +277,11 @@ struct _GabbleMucChannelPrivate
   WockyMuc *wmuc;
   GabbleTubesChannel *tube;
 
+  /* Current active call */
   GabbleCallMucChannel *call;
+  /* All calls, active one + potential ended ones */
+  GList *calls;
+
   /* List of GSimpleAsyncResults for the various request for a call */
   GList *call_requests;
   gboolean call_initiating;
@@ -1576,8 +1580,9 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   /* FIXME don't assert this but fix it properly */
   g_assert (priv->call_requests == NULL);
 
-  if (priv->call != NULL)
-    gabble_base_call_channel_close (GABBLE_BASE_CALL_CHANNEL (priv->call));
+  while (priv->calls != NULL)
+    gabble_base_call_channel_close (
+        GABBLE_BASE_CALL_CHANNEL (priv->calls->data));
 
   /* Remove us from member list */
   set = tp_intset_new ();
@@ -2543,7 +2548,7 @@ handle_presence (GObject *source,
 
   handle_tube_presence (gmuc, handle, stanza);
 
-  if (!priv->call_initiating)
+  if (!priv->call_initiating && priv->call == NULL)
     {
       WockyNode *m;
       /* Check for muji nodes */
@@ -3887,14 +3892,36 @@ gabble_muc_channel_get_call (GabbleMucChannel *gmuc)
   return priv->call;
 }
 
+GList *
+gabble_muc_channel_get_call_channels (GabbleMucChannel *self)
+{
+  return self->priv->calls;
+}
+
+static void
+muc_channel_call_ended_cb (GabbleCallMucChannel *muc, gpointer user_data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
+
+  g_assert (priv->call == muc);
+  priv->call = NULL;
+}
+
 static void
 muc_channel_call_closed_cb (GabbleCallMucChannel *muc, gpointer user_data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
 
-  g_object_unref (priv->call);
-  priv->call = NULL;
+  g_assert (g_list_find (priv->calls, muc) != NULL);
+
+  /* closed the active muc */
+  if (priv->call == muc)
+    priv->call = NULL;
+
+  priv->calls = g_list_remove (priv->calls, muc);
+  g_object_unref (muc);
 }
 
 static void
@@ -3950,13 +3977,24 @@ muc_channel_call_channel_done_cb (GObject *source,
 
   g_assert (priv->call == NULL);
 
+  priv->call_initiating = FALSE;
   priv->call = gabble_call_muc_channel_new_finish (source,
     result, &error);
+
+  if (priv->call == NULL)
+    goto error;
+
+  priv->calls = g_list_prepend (priv->calls, priv->call);
 
   g_signal_connect (priv->call, "closed",
     G_CALLBACK (muc_channel_call_closed_cb),
     gmuc);
 
+  g_signal_connect (priv->call, "ended",
+    G_CALLBACK (muc_channel_call_ended_cb),
+    gmuc);
+
+error:
   muc_call_channel_finish_requests (gmuc, priv->call, error);
 
   g_clear_error (&error);

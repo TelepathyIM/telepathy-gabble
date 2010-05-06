@@ -115,6 +115,7 @@ gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
     gboolean requested);
 
 GabbleCallMucChannel * gabble_muc_channel_get_call (GabbleMucChannel *gmuc);
+GList * gabble_muc_channel_get_call_channels (GabbleMucChannel *self);
 
 void gabble_muc_channel_request_call (GabbleMucChannel *gmuc,
     GHashTable *request,

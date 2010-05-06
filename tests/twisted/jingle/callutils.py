@@ -17,6 +17,8 @@ import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 import ns
 
+from mucutil import echo_muc_presence
+
 def check_state (q, chan, state, wait = False):
     if wait:
         q.expect('dbus-signal', signal='CallStateChanged',
@@ -58,3 +60,25 @@ def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
     if check_codecs_changed:
         o = q.expect ('dbus-signal', signal='CodecsChanged')
         assertEquals ([codecmap, []], o.args)
+
+def no_muji_presences (muc):
+    return EventPattern ('stream-presence',
+        to = muc + "/test",
+        predicate = lambda x:
+            xpath.queryForNodes("/presence/muji", x.stanza))
+
+def create_muji_channel (q, conn, stream, muc, in_muc = False):
+    call_async (q, conn.Requests, 'CreateChannel',
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+          cs.TARGET_ID: muc,
+          cs.CALL_INITIAL_AUDIO: True,
+         }, byte_arrays = True)
+
+    if not in_muc:
+        e = q.expect('stream-presence', to = muc + "/test")
+        echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
+
+    e = q.expect ('dbus-return', method='CreateChannel')
+
+    return e.value

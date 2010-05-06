@@ -18,7 +18,7 @@ from jingletest2 import JingleTest2, test_all_dialects, JingleProtocol031
 import ns
 
 from gabbletest import make_muc_presence
-from mucutil import join_muc_and_check
+from mucutil import *
 
 from callutils import *
 
@@ -28,7 +28,7 @@ def run_incoming_test(q, bus, conn, stream):
     jp = JingleProtocol031 ()
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + "/bob")
     jt.prepare()
-    forbidden = [ no_muji_presences () ]
+    forbidden = [ no_muji_presences (muc) ]
 
     self_handle = conn.GetSelfHandle()
 
@@ -74,11 +74,11 @@ def run_incoming_test(q, bus, conn, stream):
 
     # Preparing stanza
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Codecs stanza
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Gabble shouldn't send new presences for a while
     q.forbid_events(forbidden)
@@ -125,11 +125,11 @@ def run_incoming_test(q, bus, conn, stream):
 
     # Gabble sends a presence to prepare
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Gabble sends a presence with the video codecs
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Gabble adds a content to the jingle session and thus a stream is added
     e = q.expect ('dbus-signal', signal = 'StreamAdded')
@@ -146,24 +146,6 @@ def run_incoming_test(q, bus, conn, stream):
 
     # success!
 
-
-def echo_presence (q, stream, stanza, affiliation, role):
-    x = stanza.addElement((ns.MUC_USER, 'x'))
-    stanza['from'] = stanza['to']
-    del stanza['to']
-
-    item = x.addElement('item')
-    item['affiliation'] = affiliation
-    item['role'] = role
-
-    stream.send (stanza)
-
-def no_muji_presences ():
-    return EventPattern ('stream-presence',
-        to = muc + "/test",
-        predicate = lambda x:
-            xpath.queryForNodes("/presence/muji", x.stanza))
-
 def run_outgoing_test(q, bus, conn, stream):
     jp = JingleProtocol031 ()
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + '/bob')
@@ -172,23 +154,11 @@ def run_outgoing_test(q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
 
     # Not allowed to have muji related presences before we accept the channel
-    forbidden = [ no_muji_presences () ]
+    forbidden = [ no_muji_presences (muc) ]
+
+    (path, props) = create_muji_channel (q, conn, stream, muc)
 
     q.forbid_events(forbidden)
-    call_async (q, conn.Requests, 'CreateChannel',
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-          cs.TARGET_ID: muc,
-          cs.CALL_INITIAL_AUDIO: True,
-         }, byte_arrays = True)
-
-    e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
-
-    e = q.expect ('dbus-return', method='CreateChannel')
-
-    (path, props) = e.value
-
     general_tests (jp, q, bus, conn, stream, path, props)
 
     channel = bus.get_object (conn.bus_name, path)
@@ -205,13 +175,13 @@ def run_outgoing_test(q, bus, conn, stream):
     channel.Accept()
 
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
     mujinode = xpath.queryForNodes("/presence/muji", e.stanza)
     assertLength (1, mujinode)
 
     # The one with the codecs
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Gabble shouldn't send new presences for a while
     q.forbid_events(forbidden)
@@ -271,11 +241,11 @@ def run_outgoing_test(q, bus, conn, stream):
 
     # preparing
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     #codecs
     e = q.expect('stream-presence', to = muc + "/test")
-    echo_presence (q, stream, e.stanza, 'none', 'participant')
+    echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Bob would like to join our video party
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')

@@ -286,6 +286,8 @@ struct _GabbleMucChannelPrivate
   GList *call_requests;
   gboolean call_initiating;
 
+  GCancellable *requests_cancellable;
+
   GPtrArray *initial_channels;
   GArray *initial_handles;
   char **initial_ids;
@@ -299,6 +301,7 @@ static void
 gabble_muc_channel_init (GabbleMucChannel *self)
 {
   self->priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (self);
+  self->priv->requests_cancellable = g_cancellable_new ();
 }
 
 
@@ -1345,6 +1348,8 @@ gabble_muc_channel_dispose (GObject *object)
       tp_svc_channel_emit_closed (self);
     }
 
+  g_object_unref (priv->requests_cancellable);
+
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
 }
@@ -1577,8 +1582,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 
   muc_call_channel_finish_requests (chan, NULL, &error);
 
-  /* FIXME don't assert this but fix it properly */
-  g_assert (priv->call_requests == NULL);
+  g_cancellable_cancel (priv->requests_cancellable);
 
   while (priv->calls != NULL)
     gabble_base_call_channel_close (
@@ -3976,6 +3980,8 @@ muc_channel_call_channel_done_cb (GObject *source,
   GError *error = NULL;
 
   g_assert (priv->call == NULL);
+  if (priv->closed)
+    goto out;
 
   priv->call_initiating = FALSE;
   priv->call = gabble_call_muc_channel_new_finish (source,
@@ -3998,6 +4004,10 @@ error:
   muc_call_channel_finish_requests (gmuc, priv->call, error);
 
   g_clear_error (&error);
+
+out:
+  /* we kept ourselves reffed while the call channel was being created */
+  g_object_unref (gmuc);
 }
 
 static void
@@ -4007,17 +4017,20 @@ gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
   GabbleMucChannelPrivate *priv = GABBLE_MUC_CHANNEL_GET_PRIVATE (gmuc);
 
   g_assert (!priv->call_initiating);
+  g_assert (priv->call == NULL);
+
   priv->call_initiating = TRUE;
 
+  /* Keep ourselves reffed while call channels are created */
+  g_object_ref (gmuc);
   gabble_call_muc_channel_new_async (priv->conn,
+      priv->requests_cancellable,
       priv->object_path,
       gmuc,
       priv->handle,
       request,
       muc_channel_call_channel_done_cb,
       gmuc);
-
-  g_free (object_path);
 }
 
 void
@@ -4090,6 +4103,9 @@ void
 gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
 {
   close_channel (gmuc, NULL, FALSE, 0, 0);
+  tp_dbus_daemon_unregister_object (
+    tp_base_connection_get_dbus_daemon ((TpBaseConnection *) gmuc->priv->conn),
+    gmuc);
 }
 
 static void

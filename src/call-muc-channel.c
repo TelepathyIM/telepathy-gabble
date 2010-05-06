@@ -101,6 +101,28 @@ struct _GabbleCallMucChannelPrivate
   WockyNodeTree *muji;
 };
 
+typedef struct {
+    GabbleCallMucChannel *self;
+    GSimpleAsyncResult *result;
+    GCancellable *cancellable;
+    gulong cancel_id;
+    gulong ready_id;
+} ChannelInitialisation;
+
+static void
+channel_init_free (ChannelInitialisation *ci)
+{
+  g_cancellable_disconnect (ci->cancellable, ci->cancel_id);
+
+  if (ci->cancellable != NULL)
+    g_object_unref (ci->cancellable);
+
+  g_signal_handler_disconnect (ci->self->priv->muc, ci->ready_id);
+  g_object_unref (ci->result);
+
+  g_slice_free (ChannelInitialisation, ci);
+}
+
 static void
 gabble_call_muc_channel_init (GabbleCallMucChannel *self)
 {
@@ -837,20 +859,35 @@ call_muc_channel_ready (GabbleCallMucChannel *self)
 }
 
 static void
+call_muc_channel_cancelled_cb (GCancellable *cancellable,
+    gpointer user_data)
+{
+  ChannelInitialisation *ci = user_data;
+
+  DEBUG ("Cancelled");
+
+  g_simple_async_result_set_error (ci->result,
+    G_IO_ERROR, G_IO_ERROR_CANCELLED, "Channel request was cancelled");
+  g_simple_async_result_complete (ci->result);
+
+  /* called, don't disconnect */
+  ci->cancel_id = 0;
+
+  channel_init_free (ci);
+}
+
+static void
 call_muc_channel_ready_cb (GabbleMucChannel *muc,
   gpointer user_data)
 {
-  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
-  GabbleCallMucChannel *self =
-    GABBLE_CALL_MUC_CHANNEL (g_async_result_get_source_object (
-      G_ASYNC_RESULT (result)));
+  ChannelInitialisation *ci = user_data;
 
   DEBUG ("Happy muc");
 
-  call_muc_channel_ready (self);
-  g_simple_async_result_complete (result);
-  g_object_unref (result);
-  g_object_unref (self);
+  call_muc_channel_ready (ci->self);
+
+  g_simple_async_result_complete (ci->result);
+  channel_init_free (ci);
 }
 
 static void
@@ -894,9 +931,22 @@ call_muc_channel_init_async (GAsyncInitable *initable,
     }
   else
     {
+      ChannelInitialisation *ci = g_slice_new0 (ChannelInitialisation);
+
       DEBUG ("Muc channel isn't ready yet");
-      gabble_signal_connect_weak (priv->muc,
-        "ready", G_CALLBACK (call_muc_channel_ready_cb), G_OBJECT (result));
+
+      ci->self = self;
+      ci->result = result;
+
+      ci->ready_id = g_signal_connect (priv->muc,
+        "ready", G_CALLBACK (call_muc_channel_ready_cb), ci);
+
+      if (cancellable != NULL)
+        {
+          ci->cancellable = g_object_ref (cancellable);
+          ci->cancel_id = g_cancellable_connect (cancellable,
+            G_CALLBACK (call_muc_channel_cancelled_cb), ci, NULL);
+        }
     }
 }
 
@@ -908,6 +958,7 @@ async_initable_iface_init (GAsyncInitableIface *iface)
 
 void
 gabble_call_muc_channel_new_async (GabbleConnection *connection,
+    GCancellable *cancellable,
     const gchar *path_prefix,
     GabbleMucChannel *muc,
     TpHandle target,
@@ -930,7 +981,7 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
 
   g_async_initable_new_async (GABBLE_TYPE_CALL_MUC_CHANNEL,
     G_PRIORITY_DEFAULT,
-    NULL,
+    cancellable,
     callback,
     user_data,
     "muc", muc,

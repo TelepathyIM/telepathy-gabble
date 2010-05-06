@@ -62,6 +62,7 @@ GType gabble_call_muc_channel_get_type (void);
     GabbleCallMucChannelClass))
 
 void gabble_call_muc_channel_new_async (GabbleConnection *connection,
+    GCancellable *cancellable,
     const gchar *path_prefix,
     GabbleMucChannel *muc,
     TpHandle target,

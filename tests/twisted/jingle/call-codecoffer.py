@@ -136,13 +136,5 @@ def test(jp, q, bus, conn, stream):
     else:
         assert False, 'Offer still exists'
 
-    try:
-        ret = conn.GetAll (cs.CONN, dbus_interface=dbus.PROPERTIES_IFACE)
-    except Exception, e:
-        print 'Gabble probably crashed'
-        raise e
-    else:
-        assertLength (1, ret)
-
 if __name__ == '__main__':
     test_dialects(test, [JingleProtocol031])

@@ -701,9 +701,8 @@ set_own_status_cb (GObject *obj,
       if (base->status != TP_CONNECTION_STATUS_CONNECTED)
         {
           retval = TRUE;
-          goto OUT;
         }
-      if (prev_status != i && (prev_status == GABBLE_PRESENCE_HIDDEN ||
+      else if (prev_status != i && (prev_status == GABBLE_PRESENCE_HIDDEN ||
             i  == GABBLE_PRESENCE_HIDDEN))
         {
           toggle_presence_visibility_async (conn,

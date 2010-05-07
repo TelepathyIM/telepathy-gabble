@@ -29,6 +29,8 @@
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/interfaces.h>
 
+#include <wocky/wocky-utils.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
 #include "extensions/extensions.h"    /* for Decloak */
@@ -243,7 +245,7 @@ set_xep0126_invisible (GabbleConnection *self,
   if (error != NULL)
     {
       g_simple_async_result_set_from_error (result, error);
-      g_simple_async_result_complete (result);
+      g_simple_async_result_complete_in_idle (result);
       g_error_free (error);
       g_object_unref (result);
     }
@@ -322,7 +324,7 @@ set_xep0186_invisible (GabbleConnection *self,
           g_error_free (error);
         }
 
-      g_simple_async_result_complete (result);
+      g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
     }
 
@@ -401,7 +403,7 @@ presence_create_invisible_privacy_list (GabbleConnection *self,
           g_error_free (error);
         }
 
-      g_simple_async_result_complete (result);
+      g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
     }
 
@@ -469,7 +471,8 @@ conn_presence_set_initial_presence_async (GabbleConnection *self,
           g_simple_async_result_set_from_error (result, error);
           g_error_free (error);
         }
-      g_simple_async_result_complete (result);
+
+      g_simple_async_result_complete_in_idle (result);
     }
 
   g_object_unref (result);
@@ -555,10 +558,11 @@ conn_presence_visible_to (GabbleConnection *self,
 
 static void
 toggle_presence_visibility_async (GabbleConnection *self,
-    GAsyncReadyCallback callback)
+    GAsyncReadyCallback callback,
+    gpointer user_data)
 {
   GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
-      callback, NULL, NULL);
+      callback, user_data, toggle_presence_visibility_async);
   gboolean set_invisible =
     (self->self_presence->status == GABBLE_PRESENCE_HIDDEN);
 
@@ -582,10 +586,20 @@ toggle_presence_visibility_async (GabbleConnection *self,
           g_simple_async_result_set_from_error (result, error);
           g_error_free (error);
         }
-      g_simple_async_result_complete (result);
+
+      g_simple_async_result_complete_in_idle (result);
     }
 
   g_object_unref (result);
+}
+
+static gboolean
+toggle_presence_visibility_finish (
+    GabbleConnection *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  wocky_implement_finish_void (self, toggle_presence_visibility_async)
 }
 
 static void
@@ -593,15 +607,12 @@ toggle_presence_visibility_cb (GObject *source_object,
     GAsyncResult *res,
     gpointer user_data)
 {
-  GabbleConnection *self = (GabbleConnection *) source_object;
+  GabbleConnection *self = GABBLE_CONNECTION (source_object);
   TpBaseConnection *base = (TpBaseConnection *) self;
   GError *error = NULL;
 
-  g_return_if_fail (g_simple_async_result_is_valid (res, G_OBJECT (self),
-          NULL));
 
-  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (res),
-      &error))
+  if (!toggle_presence_visibility_finish (self, res, &error))
     {
       DEBUG ("Error setting visibility, falling back to dnd: %s",
           error->message);
@@ -703,7 +714,7 @@ set_own_status_cb (GObject *obj,
             i  == GABBLE_PRESENCE_HIDDEN))
         {
           toggle_presence_visibility_async (conn,
-              toggle_presence_visibility_cb);
+              toggle_presence_visibility_cb, NULL);
         }
       else
         {

@@ -1,6 +1,7 @@
-from gabbletest import XmppXmlStream, elem_iq
+from gabbletest import XmppXmlStream, acknowledge_iq, send_error_reply
 import ns
 from twisted.words.xish import domish, xpath
+from functools import partial
 
 class InvisibleXmlStream(XmppXmlStream):
     FEATURES = [ns.INVISIBLE, ns.PRIVACY]
@@ -24,18 +25,8 @@ class InvisibleXmlStream(XmppXmlStream):
 
             for pattern, success in self.RESPONDERS.items():
                 if success:
-                    self.addObserver(
-                        pattern, self._cb_invisible_success)
+                    self.addObserver(pattern, partial(acknowledge_iq, self))
                 else:
-                    self.addObserver(
-                        pattern, self._cb_invisible_fail)
+                    self.addObserver(pattern, partial(send_error_reply, self))
 
             self.send(iq)
-
-    def _cb_invisible_success(self, iq):
-        reply = elem_iq(self, 'result', id=iq["id"])
-        self.send(reply)
-
-    def _cb_invisible_fail(self, iq):
-        reply = elem_iq(self, 'error', id=iq["id"])
-        self.send(reply)

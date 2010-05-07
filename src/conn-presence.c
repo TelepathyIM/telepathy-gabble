@@ -578,7 +578,8 @@ toggle_presence_visibility_async (GabbleConnection *self,
     }
   else
     {
-      GError *error;
+      GError *error = NULL;
+
       /* XEP-0018 */
       if (!conn_presence_signal_own_presence (self, NULL, &error))
         {

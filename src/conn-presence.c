@@ -213,20 +213,17 @@ set_xep0126_invisible (GabbleConnection *self,
   if (invisible)
     iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
         WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', "query",
-        ':', NS_PRIVACY,
-        '(', "active",
-        '@', "name", "invisible",
-        ')',
+        '(', "query", ':', NS_PRIVACY,
+          '(', "active",
+            '@', "name", "invisible",
+          ')',
         ')',
         NULL);
   else
     iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
         WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', "query",
-        ':', NS_PRIVACY,
-        '(', "active",
-        ')',
+        '(', "query", ':', NS_PRIVACY,
+          '(', "active", ')',
         ')',
         NULL);
 
@@ -308,11 +305,10 @@ set_xep0186_invisible (GabbleConnection *self,
     GSimpleAsyncResult *result)
 {
   GError *error = NULL;
+  const gchar *element = invisible ? "invisible" : "visible";
   WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', invisible ? "invisible" : "visible",
-         ':', NS_INVISIBLE,
-        ')',
+        '(', element, ':', NS_INVISIBLE, ')',
       NULL);
 
   g_object_ref (result);

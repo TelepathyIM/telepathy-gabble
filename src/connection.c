@@ -2775,7 +2775,7 @@ connection_initial_presence_cb (GObject *source_object,
   TpBaseConnection *base = (TpBaseConnection *) self;
   GError *error = NULL;
 
-  if (!conn_presence_set_initial_presence_finished (self, res, &error))
+  if (!conn_presence_set_initial_presence_finish (self, res, &error))
     {
       DEBUG ("error setting up initial presence: %s", error->message);
 

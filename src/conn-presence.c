@@ -431,7 +431,7 @@ conn_presence_set_initial_presence_async (GabbleConnection *self,
     GAsyncReadyCallback callback, gpointer user_data)
 {
   GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
-      callback, user_data, conn_presence_set_initial_presence_finished);
+      callback, user_data, conn_presence_set_initial_presence_async);
 
   if ((self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE) != 0 &&
       self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
@@ -466,20 +466,11 @@ conn_presence_set_initial_presence_async (GabbleConnection *self,
 }
 
 gboolean
-conn_presence_set_initial_presence_finished (GabbleConnection *self,
+conn_presence_set_initial_presence_finish (GabbleConnection *self,
     GAsyncResult *result,
     GError **error)
 {
-  gboolean rv = TRUE;
-
-  g_return_val_if_fail (g_simple_async_result_is_valid (result,
-    G_OBJECT (self), conn_presence_set_initial_presence_finished), FALSE);
-
-  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
-      error))
-    rv = FALSE;
-
-  return rv;
+  wocky_implement_finish_void (self, conn_presence_set_initial_presence_async)
 }
 
 /**

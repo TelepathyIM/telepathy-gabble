@@ -41,8 +41,11 @@ def test(q, bus, conn, stream):
 
     conn.SimplePresence.SetPresence("hidden", "")
 
+    # First we send an <invisible/> command.
     q.expect('stream-iq', query_name='invisible')
+    # (acked by InvisibleXmlStream)
 
+    # When that's returned successfully, we can signal the change on D-Bus.
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      args=[{1: (0, {'hidden': {}})}]),
@@ -52,9 +55,15 @@ def test(q, bus, conn, stream):
 
     conn.SimplePresence.SetPresence("away", "gone")
 
+    # First Gabble sends a <visible/> command.
     q.expect('stream-iq', query_name='visible')
+    # (acked by InvisibleXmlStream)
 
+    # Then: "It is the responsibility of the client to send an undirected
+    # presence notification to the server". Plus, we should signal the change
+    # on D-Bus.
     q.expect_many(
+        EventPattern('stream-presence', to=None),
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      args=[{1: (0, {'away': {'message': 'gone'}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',

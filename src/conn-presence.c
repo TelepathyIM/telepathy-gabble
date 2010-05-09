@@ -234,7 +234,7 @@ set_xep0126_invisible (GabbleConnection *self,
   if (base->status == TP_CONNECTION_STATUS_CONNECTED)
     {
       if (!gabble_connection_send_presence (self,
-              LM_MESSAGE_SUB_TYPE_UNAVAILABLE, "", "", &error))
+              LM_MESSAGE_SUB_TYPE_UNAVAILABLE, NULL, NULL, &error))
           goto OUT;
     }
 
@@ -271,22 +271,10 @@ set_xep0126_invisible_cb (GabbleConnection *conn,
     }
   else
     {
-      LmMessageNode *node = lm_message_node_find_child (
-          lm_message_get_node (sent_msg), "active");
-
-      g_assert (node != NULL);
-
-      if (g_strcmp0 (lm_message_node_get_attribute (node, "name"),
-              "invisible") == 0)
-        {
-          gabble_connection_send_presence (conn, LM_MESSAGE_SUB_TYPE_NOT_SET,
-              "", "", &error);
-          gabble_muc_factory_broadcast_presence (conn->muc_factory);
-        }
-      else
-        {
-          conn_presence_signal_own_presence (conn, NULL, &error);
-        }
+      /* Whether we were becoming invisible or visible, we now need to
+       * re-broadcast our presence.
+       */
+      conn_presence_signal_own_presence (conn, NULL, &error);
     }
 
   if (error != NULL)

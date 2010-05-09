@@ -83,6 +83,7 @@ typedef enum
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 typedef struct _GabbleConnectionMailNotificationPrivate GabbleConnectionMailNotificationPrivate;
+typedef struct _GabbleConnectionPresencePrivate GabbleConnectionPresencePrivate;
 
 typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          LmMessage *sent_msg,
@@ -146,6 +147,7 @@ struct _GabbleConnection {
     /* presence */
     GabblePresenceCache *presence_cache;
     GabblePresence *self_presence;
+    GabbleConnectionPresencePrivate *presence_priv;
 
     /* IQ request pipeline helper, so simultaneous requests don't make
      * servers hate us */

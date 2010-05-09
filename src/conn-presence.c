@@ -326,7 +326,7 @@ set_xep0186_invisible_cb (GabbleConnection *conn,
     GObject *obj,
     gpointer user_data)
 {
-  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
+  GSimpleAsyncResult *result = user_data;
   GError *error = NULL;
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
@@ -337,15 +337,14 @@ set_xep0186_invisible_cb (GabbleConnection *conn,
     }
   else
     {
-      LmMessageNode *node = lm_message_get_node (sent_msg);
-      if (lm_message_node_find_child (node, "invisible") != NULL)
-        {
-          gabble_muc_factory_broadcast_presence (conn->muc_factory);
-        }
-      else
-        {
-          conn_presence_signal_own_presence (conn, NULL, &error);
-        }
+      /* If we've become visible, broadcast our new presence and update our MUC
+       * presences.
+       *
+       * If we've become invisible, we only need to do the latter, but the
+       * server will block the former in any case, so let's not bother adding
+       * complexity.
+       */
+      conn_presence_signal_own_presence (conn, NULL, &error);
     }
 
   if (error != NULL)

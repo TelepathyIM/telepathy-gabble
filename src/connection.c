@@ -1967,8 +1967,9 @@ disconnect_callbacks (TpBaseConnection *base)
  *
  * Stage 1 is _gabble_connection_connect calling wocky_connector_connect_async
  * Stage 2 is connector_connected initiating service discovery
- * Stage 3 is set_status_to_connected advertising initial presence, requesting
- *   the roster and setting the CONNECTED state
+ * Stage 3 is connection_disco_cb processing the server's features, and setting
+ *            initial presence
+ * Stage 4 is set_status_to_connected setting the CONNECTED state.
  */
 static gboolean
 _gabble_connection_connect (TpBaseConnection *base,
@@ -2621,10 +2622,9 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 /**
  * set_status_to_connected
  *
- * Stage 3 of connecting, this function is called once all the events we were
+ * Stage 4 of connecting, this function is called once all the events we were
  * waiting for happened.
- * It sends the user's initial presence to the server, marking them as
- * available, and requests the roster.
+ *
  */
 static void
 set_status_to_connected (GabbleConnection *conn)
@@ -2761,10 +2761,10 @@ ERROR:
 /**
  * connection_initial_presence_cb
  *
- * Stage 4 of connecting, this function is called by after presence is properly
- * set. This is required when sending more than simple <presence/> stanzas, and
- * asynchronous results are needed.
- *
+ * Stage 4 of connecting, this function is called after our initial presence
+ * has been set (or has failed unrecoverably). It marks the connection as
+ * online (or failed, as appropriate); the former triggers the roster being
+ * retrieved.
  */
 static void
 connection_initial_presence_cb (GObject *source_object,

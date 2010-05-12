@@ -1135,6 +1135,7 @@ _caps_disco_cb (GabbleDisco *disco,
   TpBaseConnection *base_conn;
   gchar *resource;
   gboolean jid_is_valid;
+  gpointer key;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1213,15 +1214,22 @@ _caps_disco_cb (GabbleDisco *disco,
       trust = capability_info_recvd (cache, node, handle, cap_set, 1);
     }
 
+  /* Remove the node from the hash table without freeing the key or list of
+   * waiters.
+   *
+   * In the 'enough trust' case, this needs to be done before emitting the
+   * signal, so that when recipients of the capabilities-discovered signal ask
+   * whether we're unsure about the handle, there is no pending disco request
+   * that would make us unsure.
+   *
+   * In the 'not enough trust' branch, we re-use 'key' when updating the table.
+   */
+  if (!g_hash_table_lookup_extended (priv->disco_pending, node, &key, NULL))
+    g_assert_not_reached ();
+  g_hash_table_steal (priv->disco_pending, node);
+
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
     {
-      /* Remove the node from the hash table without freeing it. This needs
-       * to be done before emitting the signal, so that when recipients of
-       * the capabilities-discovered signal ask whether we're unsure about
-       * the handle, there is no pending disco request that would make us
-       * unsure. */
-      g_hash_table_steal (priv->disco_pending, node);
-
       /* We trust this caps node. Serve all its waiters. */
       for (i = waiters; NULL != i; i = i->next)
         {
@@ -1231,11 +1239,11 @@ _caps_disco_cb (GabbleDisco *disco,
           emit_capabilities_discovered (cache, waiter->handle);
         }
 
+      g_free (key);
       disco_waiter_list_free (waiters);
     }
   else
     {
-      gpointer key;
       /* We don't trust this yet (either the hash was bad, or we haven't had
        * enough responses, as appropriate).
        */
@@ -1249,11 +1257,6 @@ _caps_disco_cb (GabbleDisco *disco,
         set_caps_for (waiter_self, cache, cap_set, handle, jid);
 
       waiters = g_slist_remove (waiters, waiter_self);
-
-      if (!g_hash_table_lookup_extended (priv->disco_pending, node, &key, NULL))
-        g_assert_not_reached ();
-
-      g_hash_table_steal (priv->disco_pending, key);
       g_hash_table_insert (priv->disco_pending, key, waiters);
 
       emit_capabilities_discovered (cache, waiter_self->handle);

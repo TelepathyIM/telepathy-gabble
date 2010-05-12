@@ -103,7 +103,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    client = 'http://telepathy.freedesktop.org/fake-client'
+    client = 'http://telepathy.freedesktop.org/fake-ft-client'
 
     test_ft_caps_from_contact(q, bus, conn, stream, 'bilbo1@foo.com/Foo',
         2L, client)

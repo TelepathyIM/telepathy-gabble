@@ -588,6 +588,9 @@ gabble_connection_refresh_contact_info (GabbleSvcConnectionInterfaceContactInfo 
         {
           GabbleVCardManagerRequest *request;
 
+          gabble_vcard_manager_invalidate_cache (self->vcard_manager,
+            contact);
+
           request = gabble_vcard_manager_request (self->vcard_manager,
             contact, 0, _request_vcards_cb, self, NULL);
 

@@ -57,6 +57,12 @@ def test(q, bus, conn, stream):
                             u'Exemplary Team']),
                             ]])
 
+    # Refresh the contact info again; gabble should contact the server again
+    call_async(q, conn.ContactInfo, 'RefreshContactInfo', [handle])
+
+    event = q.expect('stream-iq', to='bob@foo.com', query_ns='vcard-temp',
+        query_name='vCard')
+
 
 if __name__ == '__main__':
     exec_test(test)

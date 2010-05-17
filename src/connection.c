@@ -31,6 +31,7 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 #include <wocky/wocky-connector.h>
+#include <wocky/wocky-ping.h>
 #include <wocky/wocky-xmpp-error.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
@@ -162,6 +163,7 @@ struct _GabbleConnectionPrivate
 {
   WockyConnector *connector;
   WockyPorter *porter;
+  WockyPing *pinger;
 
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
@@ -641,6 +643,9 @@ gabble_connection_set_property (GObject      *object,
       break;
     case PROP_KEEPALIVE_INTERVAL:
       priv->keepalive_interval = g_value_get_uint (value);
+      if (priv->pinger != NULL)
+        g_object_set (priv->pinger, "ping-interval",
+            priv->keepalive_interval, NULL);
       break;
 
     case PROP_DECLOAK_AUTOMATICALLY:
@@ -1684,6 +1689,7 @@ connector_connected (GabbleConnection *self,
 
   self->session = wocky_session_new (conn);
   priv->porter = wocky_session_get_porter (self->session);
+  priv->pinger = wocky_ping_new (priv->porter, priv->keepalive_interval);
 
   g_signal_connect (priv->porter, "remote-closed",
       G_CALLBACK (remote_closed_cb), self);
@@ -2046,6 +2052,12 @@ connection_shut_down (TpBaseConnection *base)
     return;
 
   priv->closing = TRUE;
+
+  if (priv->pinger != NULL)
+    {
+      g_object_unref (priv->pinger);
+      priv->pinger = NULL;
+    }
 
   if (priv->porter != NULL)
     {

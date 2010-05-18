@@ -1534,15 +1534,15 @@ connector_error_disconnect (GabbleConnection *self,
 
   DEBUG ("connection failed: %s", error->message);
 
-  if (error->domain == WOCKY_SASL_AUTH_ERROR)
+  if (error->domain == WOCKY_AUTH_ERROR)
     {
       switch (error->code)
         {
-          case WOCKY_SASL_AUTH_ERROR_NETWORK:
-          case WOCKY_SASL_AUTH_ERROR_CONNRESET:
-          case WOCKY_SASL_AUTH_ERROR_STREAM:
-          case WOCKY_SASL_AUTH_ERROR_INVALID_REPLY:
-          case WOCKY_SASL_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
+          case WOCKY_AUTH_ERROR_NETWORK:
+          case WOCKY_AUTH_ERROR_CONNRESET:
+          case WOCKY_AUTH_ERROR_STREAM:
+          case WOCKY_AUTH_ERROR_INVALID_REPLY:
+          case WOCKY_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
             reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
             break;
           default:
@@ -1555,7 +1555,6 @@ connector_error_disconnect (GabbleConnection *self,
       switch (error->code)
         {
           case WOCKY_CONNECTOR_ERROR_SESSION_DENIED:
-          case WOCKY_CONNECTOR_ERROR_JABBER_AUTH_REJECTED:
             reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
             break;
 
@@ -1888,7 +1887,8 @@ _gabble_connection_connect (TpBaseConnection *base,
   g_assert (priv->resource != NULL);
 
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
-  priv->connector = wocky_connector_new (jid, priv->password, priv->resource);
+  priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
+      NULL);
   g_free (jid);
 
   /* system certs */

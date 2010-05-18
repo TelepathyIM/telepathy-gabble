@@ -26,6 +26,7 @@
 
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/gtypes.h>
 
 #include "extensions/extensions.h"
 
@@ -1082,9 +1083,43 @@ conn_contact_info_status_changed_cb (GabbleConnection *conn,
     }
 }
 
+static void
+conn_contact_info_fill_contact_attributes (GObject *obj,
+    const GArray *contacts,
+    GHashTable *attributes_hash)
+{
+  guint i;
+  GabbleConnection *self = GABBLE_CONNECTION (obj);
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle contact = g_array_index (contacts, TpHandle, i);
+      WockyNode *vcard_node;
+
+      if (gabble_vcard_manager_get_cached (self->vcard_manager,
+                                           contact, &vcard_node))
+        {
+          GPtrArray *contact_info = _parse_vcard (vcard_node, NULL);
+          if (contact_info != NULL)
+            {
+              GValue *val =  tp_g_value_slice_new_take_boxed (
+                      TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
+
+              tp_contacts_mixin_set_contact_attribute (attributes_hash,
+                      contact, TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO"/info",
+                      val);
+            }
+        }
+    }
+}
+
 void
 conn_contact_info_init (GabbleConnection *conn)
 {
+  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+    conn_contact_info_fill_contact_attributes);
+
   conn->contact_info_fields = NULL;
 
   g_signal_connect (conn->vcard_manager, "vcard-update",

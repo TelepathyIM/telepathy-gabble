@@ -69,6 +69,10 @@ struct _GabbleJingleTransportGooglePrivate
   JingleTransportState state;
   gchar *transport_ns;
 
+  /* Component names or jingle-share transport 'channels'
+     g_strdup'd component name => GINT_TO_POINTER (component id) */
+  GHashTable *component_names;
+
   GList *local_candidates;
 
   /* A pointer into "local_candidates" list to mark the
@@ -88,6 +92,9 @@ gabble_jingle_transport_google_init (GabbleJingleTransportGoogle *obj)
          GabbleJingleTransportGooglePrivate);
   obj->priv = priv;
 
+  priv->component_names = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, NULL);
+
   priv->dispose_has_run = FALSE;
 }
 
@@ -102,6 +109,9 @@ gabble_jingle_transport_google_dispose (GObject *object)
 
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
+
+  g_hash_table_destroy (priv->component_names);
+  priv->component_names = NULL;
 
   jingle_transport_free_candidates (priv->remote_candidates);
   priv->remote_candidates = NULL;
@@ -231,11 +241,9 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportGooglePrivate *priv = t->priv;
   GList *candidates = NULL;
   JingleMediaType media_type;
-  JingleDialect dialect;
   NodeIter i;
 
   g_object_get (priv->content, "media-type", &media_type, NULL);
-  dialect = gabble_jingle_session_get_dialect (priv->content->session);
 
   for (i = node_iter (transport_node); i; i = node_iter_next (i))
     {
@@ -254,32 +262,15 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (name == NULL)
           break;
 
-      if (g_str_has_prefix (name, "video_"))
+      if (!g_hash_table_lookup_extended (priv->component_names, name,
+              NULL, NULL))
         {
-          if (media_type != JINGLE_MEDIA_TYPE_VIDEO)
-            continue;
-
-          if (!tp_strdiff (name, "video_rtp"))
-            component = 1;
-          else if (!tp_strdiff (name, "video_rtcp"))
-            component = 2;
-          else
-            break;
-        }
-      else
-        {
-          if (media_type != JINGLE_MEDIA_TYPE_AUDIO
-              && JINGLE_IS_GOOGLE_DIALECT (dialect))
-            continue;
-
-          if (!tp_strdiff (name, "rtp"))
-            component = 1;
-          else if (!tp_strdiff (name, "rtcp"))
-            component = 2;
-          else
-            break;
+          DEBUG ("Couldn't find name %s in share channels", name);
+          break;
         }
 
+      component = GPOINTER_TO_INT (g_hash_table_lookup (priv->component_names,
+              name));
       address = lm_message_node_get_attribute (node, "address");
       if (address == NULL)
           break;
@@ -483,40 +474,63 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
     GList *candidates)
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
-  GList *rtp_candidates = NULL;
-  GList *rtcp_candidates = NULL;
-  JingleDialect dialect;
+  GList *all_candidates = NULL;
   JingleMediaType media;
   GList *li;
+  GList *cands;
 
   for (li = candidates; li != NULL; li = g_list_next (li))
     {
       JingleCandidate *c = li->data;
 
-      if (c->component == 1)
-        rtp_candidates = g_list_prepend (rtp_candidates, c);
-      else if (c->component == 2)
-        rtcp_candidates = g_list_prepend (rtcp_candidates, c);
-      else
-        DEBUG ("Ignoring unknown component %d", c->component);
+      for (cands = all_candidates; cands != NULL;  cands = g_list_next (cands))
+        {
+          JingleCandidate *c2 = ((GList *) cands->data)->data;
+
+          if (c->component == c2->component)
+            {
+              break;
+            }
+        }
+      if (cands == NULL)
+        {
+          all_candidates = g_list_prepend (all_candidates, NULL);
+          cands = all_candidates;
+        }
+
+      cands->data = g_list_prepend (cands->data, c);
     }
 
-  dialect = gabble_jingle_session_get_dialect (priv->content->session);
   g_object_get (priv->content, "media-type", &media, NULL);
 
-  if (media == JINGLE_MEDIA_TYPE_VIDEO && JINGLE_IS_GOOGLE_DIALECT (dialect))
+  for (cands = all_candidates; cands != NULL;  cands = g_list_next (cands))
     {
-      transmit_candidates (transport, "video_rtp", rtp_candidates);
-      transmit_candidates (transport, "video_rtcp", rtcp_candidates);
-    }
-  else
-    {
-      transmit_candidates (transport, "rtp", rtp_candidates);
-      transmit_candidates (transport, "rtcp", rtcp_candidates);
+      GHashTableIter iter;
+      gpointer key, value;
+      gchar *name = NULL;
+      JingleCandidate *c = ((GList *) cands->data)->data;
+
+      g_hash_table_iter_init (&iter, priv->component_names);
+      while (g_hash_table_iter_next (&iter, &key, &value))
+        {
+          if (GPOINTER_TO_INT (value) == c->component)
+            {
+              name = key;
+              break;
+            }
+        }
+      if (name)
+        {
+          transmit_candidates (transport, name, cands->data);
+        }
+      else
+        {
+          DEBUG ("Ignoring unknown component %d", c->component);
+        }
+      g_list_free (cands->data);
     }
 
-  g_list_free (rtp_candidates);
-  g_list_free (rtcp_candidates);
+  g_list_free (all_candidates);
 }
 
 /* Takes in a list of slice-allocated JingleCandidate structs */
@@ -604,6 +618,23 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_local_candidates = get_local_candidates;
   klass->get_transport_type = get_transport_type;
+}
+
+/* Returns FALSE if the component name already exists */
+gboolean
+jingle_transport_google_set_component_name (
+    GabbleJingleTransportGoogle *transport,
+    const gchar *name, guint component_id)
+{
+  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+
+  if (g_hash_table_lookup_extended (priv->component_names, name, NULL, NULL))
+      return FALSE;
+
+  g_hash_table_insert (priv->component_names, g_strdup (name),
+      GINT_TO_POINTER (component_id));
+
+  return TRUE;
 }
 
 void

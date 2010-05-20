@@ -32,6 +32,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "jingle-share.h"
 #include "jingle-media-rtp.h"
 #include "jingle-session.h"
 #include "jingle-transport-google.h"
@@ -560,6 +561,7 @@ gabble_jingle_factory_constructor (GType type,
   gabble_signal_connect_weak (priv->conn, "status-changed",
       (GCallback) connection_status_changed_cb, G_OBJECT (self));
 
+  jingle_share_register (self);
   jingle_media_rtp_register (self);
   jingle_transport_google_register (self);
   jingle_transport_rawudp_register (self);
@@ -706,13 +708,14 @@ get_unique_sid_for (GabbleJingleFactory *factory,
 {
   guint32 val;
   gchar *sid = NULL;
-  gchar *key_;
+  gchar *key_ = NULL;
 
   do
     {
       val = g_random_int_range (1000000, G_MAXINT);
 
       g_free (sid);
+      g_free (key_);
       sid = g_strdup_printf ("%u", val);
       key_ = make_session_map_key (peer, resource, sid);
     }

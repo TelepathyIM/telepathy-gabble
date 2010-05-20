@@ -31,7 +31,7 @@ G_BEGIN_DECLS
 typedef enum {
   JINGLE_MEDIA_TYPE_NONE = 0,
   JINGLE_MEDIA_TYPE_AUDIO,
-  JINGLE_MEDIA_TYPE_VIDEO
+  JINGLE_MEDIA_TYPE_VIDEO,
 } JingleMediaType;
 
 typedef enum {
@@ -85,6 +85,9 @@ struct _GabbleJingleContentClass {
     void  (*parse_description) (GabbleJingleContent *, LmMessageNode *,
         GError **);
     void  (*produce_description) (GabbleJingleContent *, LmMessageNode *);
+    void  (*transport_created) (GabbleJingleContent *,
+        GabbleJingleTransportIface *);
+    JingleContentSenders (*get_default_senders) (GabbleJingleContent *);
 };
 
 typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;
@@ -109,10 +112,14 @@ void gabble_jingle_content_produce_node (GabbleJingleContent *c,
 void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   LmMessageNode *content_node, gboolean google_mode, GError **error);
 
+void gabble_jingle_content_parse_info (GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error);
 void gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
   LmMessageNode *trans_node, GError **error);
 void gabble_jingle_content_parse_description_info (GabbleJingleContent *self,
   LmMessageNode *trans_node, GError **error);
+guint gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
+    const gchar *name);
 void gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li);
 void _gabble_jingle_content_set_media_ready (GabbleJingleContent *self);
 gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self);
@@ -143,6 +150,8 @@ gboolean gabble_jingle_content_receiving (GabbleJingleContent *self);
 
 void gabble_jingle_content_set_sending (GabbleJingleContent *self,
   gboolean send);
+
+void gabble_jingle_content_send_complete (GabbleJingleContent *self);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

@@ -51,6 +51,7 @@ typedef struct _GabbleJingleTransportGoogle GabbleJingleTransportGoogle;
 typedef struct _GabbleJingleTransportRawUdp GabbleJingleTransportRawUdp;
 typedef struct _GabbleJingleTransportIceUdp GabbleJingleTransportIceUdp;
 typedef struct _GabbleJingleMediaRtp GabbleJingleMediaRtp;
+typedef struct _GabbleJingleShare GabbleJingleShare;
 
 typedef struct _JingleCandidate JingleCandidate;
 

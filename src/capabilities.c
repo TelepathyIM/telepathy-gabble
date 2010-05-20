@@ -68,6 +68,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_GOOGLE_TRANSPORT_P2P },
   { FEATURE_OPTIONAL, NS_JINGLE_TRANSPORT_ICEUDP },
 
+  { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_SHARE },
   { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_VOICE },
   { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_VIDEO },
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_AUDIO },
@@ -92,6 +93,7 @@ static const Feature quirks[] = {
 };
 
 static GabbleCapabilitySet *legacy_caps = NULL;
+static GabbleCapabilitySet *share_v1_caps = NULL;
 static GabbleCapabilitySet *voice_v1_caps = NULL;
 static GabbleCapabilitySet *video_v1_caps = NULL;
 static GabbleCapabilitySet *any_audio_caps = NULL;
@@ -108,6 +110,12 @@ const GabbleCapabilitySet *
 gabble_capabilities_get_legacy (void)
 {
   return legacy_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_bundle_share_v1 (void)
+{
+  return share_v1_caps;
 }
 
 const GabbleCapabilitySet *
@@ -246,6 +254,9 @@ gabble_capabilities_init (GabbleConnection *conn)
           gabble_capability_set_add (legacy_caps, feat->ns);
         }
 
+      share_v1_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (share_v1_caps, NS_GOOGLE_FEAT_SHARE);
+
       voice_v1_caps = gabble_capability_set_new ();
       gabble_capability_set_add (voice_v1_caps, NS_GOOGLE_FEAT_VOICE);
 
@@ -311,6 +322,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
   if (--feature_handles_refcount == 0)
     {
       gabble_capability_set_free (legacy_caps);
+      gabble_capability_set_free (share_v1_caps);
       gabble_capability_set_free (voice_v1_caps);
       gabble_capability_set_free (video_v1_caps);
       gabble_capability_set_free (any_audio_caps);
@@ -324,6 +336,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       gabble_capability_set_free (olpc_caps);
 
       legacy_caps = NULL;
+      share_v1_caps = NULL;
       voice_v1_caps = NULL;
       video_v1_caps = NULL;
       any_audio_caps = NULL;
@@ -364,8 +377,10 @@ capabilities_fill_cache (GabblePresenceCache *cache)
   GOOGLE_BUNDLE ("voice-v1", NS_GOOGLE_FEAT_VOICE);
   GOOGLE_BUNDLE ("video-v1", NS_GOOGLE_FEAT_VIDEO);
 
-  /* Not really sure what these ones are. */
-  GOOGLE_BUNDLE ("share-v1", NULL);
+  /* File transfer support */
+  GOOGLE_BUNDLE ("share-v1", NS_GOOGLE_FEAT_SHARE);
+
+  /* Not really sure what this ones is. */
   GOOGLE_BUNDLE ("sms-v1", NULL);
 
   /* TODO: remove this when we fix fd.o#22768. */
@@ -387,6 +402,8 @@ capabilities_fill_cache (GabblePresenceCache *cache)
       NS_GABBLE_CAPS "#" BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE);
   gabble_presence_cache_add_bundle_caps (cache,
       NS_GABBLE_CAPS "#" BUNDLE_VIDEO_V1, NS_GOOGLE_FEAT_VIDEO);
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_SHARE_V1, NS_GOOGLE_FEAT_SHARE);
 }
 
 const CapabilityConversionData capabilities_conversions[] =

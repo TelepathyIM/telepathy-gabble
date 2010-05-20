@@ -474,7 +474,7 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
 
       if (m->size > 0)
         {
-          size_str = g_strdup_printf ("%llu", m->size);
+          size_str = g_strdup_printf ("%" G_GUINT64_FORMAT, m->size);
           lm_message_node_set_attribute (file_node, "size", size_str);
           g_free (size_str);
         }

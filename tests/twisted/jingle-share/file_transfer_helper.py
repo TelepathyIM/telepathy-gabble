@@ -4,32 +4,20 @@ import hashlib
 import time
 import datetime
 
-from servicetest import EventPattern, TimeoutError
-from gabbletest import exec_test, sync_stream, make_result_iq
+from servicetest import EventPattern, TimeoutError, assertEquals, assertLength
+from gabbletest import exec_test, sync_stream, make_result_iq, elem_iq, elem
 import ns
 
 from caps_helper import text_fixed_properties, text_allowed_properties, \
     stream_tube_fixed_properties, stream_tube_allowed_properties, \
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, \
-    ft_fixed_properties, ft_allowed_properties
+    ft_fixed_properties, ft_allowed_properties, compute_caps_hash
 
 from twisted.words.xish import domish, xpath
 
 import constants as cs
 import sys
 
-# These hash values need to be fixed depending on the features that get added
-# or removed. Simply add in the CAPS_VER_HASH the key/value as reported by the
-# assert, then run the test again and check the gabble-testing.log for a line
-# similar to :
-# "The verification string '<CAPS_VER_HASH key>' announced by '<full fid>'
-#  does not match our hash of their disco reply '<CAPS_VER_HASH value>'."
-
-CAPS_VER_HASH = {'sE90xarIraOnMRTnZqYNmZtoAck=':'m9aR1Li0PZTOfdvxys4jARpdGNY=',
-                 '3P6yJJDbtCEEfrrTqxq1V8N5+ms=': 'gGreg/ivJyPi+XauJumCPGz28h8=',
-                 'yIG4v/nhJ6zxlzYRm2ORqzDt4Zc=': 'J8BSW4OHozfJw+HXJRfAOhYj6Ik=',
-                 'aX4j/bU4FXVhk0mb+c0sZBY5P1I=': 'aCbskcGhfOntWROjwqCQCI9LPac=',
-                 'vCJUYxwhPLEOl2/BM+NVeVIBP+I=': 'jfxTIGB6heqcD39DsB8P7jIi11Y='}
 
 class File(object):
     DEFAULT_DATA = "What a nice file"
@@ -69,6 +57,10 @@ generic_caps = [(text_fixed_properties, text_allowed_properties),
                    (dbus_tube_fixed_properties, dbus_tube_allowed_properties)]
 
 class FileTransferTest(object):
+    caps_identities = None
+    caps_features = None
+    caps_ft = None
+
     def __init__(self, file, address_type, access_control, access_control_param):
         self.file = file
         self.address_type = address_type
@@ -148,45 +140,86 @@ class FileTransferTest(object):
         nodes = xpath.queryForNodes("/presence/c", stanza)
         c = nodes[0]
         if 'share-v1' in c.getAttribute('ext'):
-            assert c.getAttribute('ver') in CAPS_VER_HASH, \
-                """The capabilities hash has changed.
-                   Was expecting %s but got %s.
-                   Just fix it by setting the appropriate hash values in the
-                   file %s """ % (CAPS_VER_HASH.keys(), c.getAttribute('ver'),
-                                  sys.modules[__name__].__file__)
+            assert FileTransferTest.caps_identities is not None and \
+                FileTransferTest.caps_features is not None
+
+            new_hash = compute_caps_hash(FileTransferTest.caps_identities,
+                                         FileTransferTest.caps_features + \
+                                             [ns.GOOGLE_FEAT_SHARE],
+                                         {})
             # Replace ver hash from one with file-transfer ns to one without
-            c.attributes['ver'] = CAPS_VER_HASH[c.attributes['ver']]
+            FileTransferTest.caps_ft = c.attributes['ver']
+            c.attributes['ver'] = new_hash
+        else:
+            node = c.attributes['node']
+            ver = c.attributes['ver']
+            # ask for raw caps
+            request = elem_iq(self.stream, 'get',
+                              from_='fake_contact@jabber.org/resource')(
+                elem(ns.DISCO_INFO, 'query', node=(node + '#' + ver)))
+            self.stream.send(request)
+
 
     def _cb_disco_iq(self, iq):
         nodes = xpath.queryForNodes("/iq/query", iq)
         query = nodes[0]
+
         if query.getAttribute('node') is None:
             return
 
-        if iq.getAttribute('type') == 'result':
-            node = query.attributes['node']
-            for hash in CAPS_VER_HASH:
-                if hash in node:
-                    break
-                hash = None
-            assert hash != None, "Couldn't find hash ver"
-            n = query.attributes['node'].replace(hash,
-                                                 CAPS_VER_HASH[hash])
-            query.attributes['node'] = n
+        node = query.attributes['node']
+        ver = node.replace("http://telepathy.freedesktop.org/caps#", "")
 
-            for node in query.children:
-                if node.getAttribute('var') == ns.FILE_TRANSFER:
-                    query.children.remove(node)
+        if iq.getAttribute('type') == 'result':
+
+            if FileTransferTest.caps_identities is None or \
+                    FileTransferTest.caps_features is None:
+                identity_nodes = xpath.queryForNodes('/iq/query/identity', iq)
+                assertLength(1, identity_nodes)
+                identity_node = identity_nodes[0]
+
+                identity_category = identity_node['category']
+                identity_type = identity_node['type']
+                identity_name = identity_node['name']
+                identity = '%s/%s//%s' % (identity_category, identity_type,
+                                          identity_name)
+                FileTransferTest.caps_identities = [identity]
+
+                FileTransferTest.caps_features = []
+                for feature in xpath.queryForNodes('/iq/query/feature', iq):
+                    FileTransferTest.caps_features.append(feature['var'])
+
+                # Check if the hash matches the announced capabilities
+                assertEquals(compute_caps_hash(FileTransferTest.caps_identities,
+                                               FileTransferTest.caps_features,
+                                               {}), ver)
+
+            if ver == FileTransferTest.caps_ft:
+                caps_share = compute_caps_hash(FileTransferTest.caps_identities,
+                                               FileTransferTest.caps_features + \
+                                                   [ns.GOOGLE_FEAT_SHARE],
+                                               {})
+                n = query.attributes['node'].replace(ver, caps_share)
+                query.attributes['node'] = n
+
+                for feature in xpath.queryForNodes('/iq/query/feature', iq):
+                        query.children.remove(feature)
+
+                for f in FileTransferTest.caps_features + [ns.GOOGLE_FEAT_SHARE]:
+                    el = domish.Element((None, 'feature'))
+                    el['var'] = f
+                    query.addChild(el)
+
         elif iq.getAttribute('type') == 'get':
-            node = query.attributes['node']
-            for hash in CAPS_VER_HASH:
-                if CAPS_VER_HASH[hash] in node:
-                    break
-                hash = None
-            assert hash != None, "Couldn't find hash ver"
-            n = query.attributes['node'].replace(CAPS_VER_HASH[hash],
-                                                 hash)
-            query.attributes['node'] = n
+            caps_share = compute_caps_hash(FileTransferTest.caps_identities,
+                                           FileTransferTest.caps_features + \
+                                               [ns.GOOGLE_FEAT_SHARE],
+                                           {})
+
+            if ver == caps_share:
+                n = query.attributes['node'].replace(ver,
+                                                     FileTransferTest.caps_ft)
+                query.attributes['node'] = n
 
     def create_socket(self):
         if self.address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:

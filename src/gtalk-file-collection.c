@@ -1100,7 +1100,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found server headers line (" G_GSIZE_FORMAT ") : %s",
+          DEBUG ("Found server headers line (%" G_GSIZE_FORMAT ") : %s",
               strlen (line), line);
           /* FIXME: how about content-length and an actual body ? */
           if (line[0] == '\0')
@@ -1215,7 +1215,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
           if (next_line == NULL)
             return 0;
 
-          DEBUG ("Found client headers line (" G_GSIZE_FORMAT ") : %s",
+          DEBUG ("Found client headers line (%" G_GSIZE_FORMAT ") : %s",
               strlen (line), line);
           if (line[0] == '\0')
             {

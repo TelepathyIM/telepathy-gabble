@@ -1,7 +1,7 @@
 /*
  * conn-aliasing.c - Gabble connection aliasing interface
- * Copyright (C) 2005-2007 Collabora Ltd.
- * Copyright (C) 2005-2007 Nokia Corporation
+ * Copyright (C) 2005-2010 Collabora Ltd.
+ * Copyright (C) 2005-2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -228,7 +228,7 @@ aliases_request_cache_pep (GabbleConnection *self,
     }
   else if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      NODE_DEBUG (msg->node, "Error getting alias from PEP");
+      STANZA_DEBUG (msg, "Error getting alias from PEP");
       _cache_negatively (self, handle);
     }
   else
@@ -472,7 +472,8 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
     {
       LmMessageNode *error_node;
 
-      error_node = lm_message_node_get_child (reply_msg->node, "error");
+      error_node = lm_message_node_get_child (
+          wocky_stanza_get_top_node (reply_msg), "error");
 
       if (error_node != NULL)
         {
@@ -525,6 +526,8 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
 
   if (base->self_handle == handle)
     {
+      GList *edits = NULL;
+
       /* User has called SetAliases on themselves - patch their vCard.
        * FIXME: because SetAliases is currently synchronous, we ignore errors
        * here, and just let the request happen in the background.
@@ -534,11 +537,11 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
         {
           /* Publish nick using PEP */
           LmMessage *msg;
-          WockyXmppNode *item;
+          WockyNode *item;
 
           msg = wocky_pep_service_make_publish_stanza (data->conn->pep_nick,
               &item);
-          wocky_xmpp_node_add_child_with_content_ns (item, "nick",
+          wocky_node_add_child_with_content_ns (item, "nick",
               alias, NS_NICK);
 
           _gabble_connection_send_with_reply (data->conn, msg,
@@ -547,8 +550,10 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
           lm_message_unref (msg);
         }
 
-      gabble_vcard_manager_edit (data->conn->vcard_manager, 0, NULL, NULL,
-          G_OBJECT(data->conn), 1, "NICKNAME", alias);
+      edits = g_list_append (edits, gabble_vcard_manager_edit_info_new (
+            NULL, alias, GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
+      gabble_vcard_manager_edit (data->conn->vcard_manager, 0, NULL,
+          NULL, G_OBJECT (data->conn), edits);
     }
 
   if (NULL != error)
@@ -661,7 +666,7 @@ _grab_nickname (GabbleConnection *self,
 static void
 pep_nick_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -678,12 +683,13 @@ pep_nick_node_changed (WockyPepService *pep,
       return;
     }
 
-  node = lm_message_node_find_child (stanza->node, "item");
+  node = lm_message_node_find_child (wocky_stanza_get_top_node (stanza),
+      "item");
   if (NULL == node)
     {
-    NODE_DEBUG (stanza->node, "PEP event without item node, ignoring");
-    return;
-  }
+      STANZA_DEBUG (stanza, "PEP event without item node, ignoring");
+      return;
+    }
 
   _grab_nickname (conn, handle, node);
 }
@@ -698,22 +704,22 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
   gboolean found = FALSE;
   NodeIter i;
 
-  pubsub_node = lm_message_node_get_child_with_namespace (msg->node,
-      "pubsub", NS_PUBSUB);
+  pubsub_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB);
   if (pubsub_node == NULL)
     {
-      pubsub_node = lm_message_node_get_child_with_namespace (msg->node,
-        "pubsub", NS_PUBSUB "#event");
+      pubsub_node = lm_message_node_get_child_with_namespace (
+        wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB "#event");
 
       if (pubsub_node == NULL)
         {
-          NODE_DEBUG (msg->node, "PEP reply with no <pubsub>, ignoring");
+          STANZA_DEBUG (msg, "PEP reply with no <pubsub>, ignoring");
           _cache_negatively (conn, handle);
           return;
         }
       else
         {
-          NODE_DEBUG (msg->node, "PEP reply from buggy server with #event "
+          STANZA_DEBUG (msg, "PEP reply from buggy server with #event "
               "on <pubsub> namespace");
         }
     }
@@ -721,7 +727,7 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
   items_node = lm_message_node_get_child (pubsub_node, "items");
   if (items_node == NULL)
     {
-      NODE_DEBUG (msg->node, "No items in PEP reply");
+      STANZA_DEBUG (msg, "No items in PEP reply");
       _cache_negatively (conn, handle);
       return;
     }

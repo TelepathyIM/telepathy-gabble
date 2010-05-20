@@ -80,6 +80,7 @@ typedef enum
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 typedef struct _GabbleConnectionClass GabbleConnectionClass;
+typedef struct _GabbleConnectionMailNotificationPrivate GabbleConnectionMailNotificationPrivate;
 
 typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          LmMessage *sent_msg,
@@ -171,6 +172,9 @@ struct _GabbleConnection {
     /* outstanding avatar requests */
     GHashTable *avatar_requests;
 
+    /* outstanding vcard requests */
+    GHashTable *vcard_requests;
+
     /* jingle factory */
     GabbleJingleFactory *jingle_factory;
 
@@ -193,11 +197,10 @@ struct _GabbleConnection {
     GHashTable *pending_sidecars;
 
     /* Mail Notification */
-    GHashTable *mail_subscribers;
-    gchar *inbox_url;
-    GHashTable *unread_mails;
-    guint unread_mails_count;
-    guint new_mail_handler_id;
+    GabbleConnectionMailNotificationPrivate *mail_priv;
+
+    /* ContactInfo.SupportedFields, or NULL to use the generic one */
+    GPtrArray *contact_info_fields;
 
     GabbleConnectionPrivate *priv;
 };
@@ -249,8 +252,6 @@ void _gabble_connection_send_iq_error (GabbleConnection *conn,
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,
     const gchar *jid);
-gboolean _gabble_connection_signal_own_presence (GabbleConnection *,
-    const gchar *to, GError **);
 
 void gabble_connection_ensure_capabilities (GabbleConnection *self,
     const GabbleCapabilitySet *ensured);
@@ -259,14 +260,14 @@ gboolean gabble_connection_send_presence (GabbleConnection *conn,
     LmMessageSubType sub_type, const gchar *contact, const gchar *status,
     GError **error);
 
-gboolean gabble_connection_visible_to (GabbleConnection *self,
-    TpHandle recipient);
-
 gboolean gabble_connection_send_capabilities (GabbleConnection *self,
     const gchar *recipient, GError **error);
 
 gboolean gabble_connection_request_decloak (GabbleConnection *self,
     const gchar *to, const gchar *reason, GError **error);
+
+void gabble_connection_fill_in_caps (GabbleConnection *self,
+    LmMessage *presence_message);
 
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,

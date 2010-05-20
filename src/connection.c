@@ -1,7 +1,7 @@
 /*
  * gabble-connection.c - Source for GabbleConnection
- * Copyright (C) 2005, 2006, 2008 Collabora Ltd.
- * Copyright (C) 2005, 2006, 2008 Nokia Corporation
+ * Copyright (C) 2005-2010 Collabora Ltd.
+ * Copyright (C) 2005-2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -52,6 +52,7 @@
 #include "caps-hash.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
+#include "conn-contact-info.h"
 #include "conn-location.h"
 #include "conn-presence.h"
 #include "conn-sidecars.h"
@@ -94,6 +95,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_aliasing_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
       conn_avatars_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO,
+      conn_contact_info_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
       capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -332,6 +335,7 @@ gabble_connection_constructor (GType type,
 
   conn_aliasing_init (self);
   conn_avatars_init (self);
+  conn_contact_info_init (self);
   conn_presence_init (self);
   conn_olpc_activity_properties_init (self);
   conn_location_init (self);
@@ -349,6 +353,7 @@ gabble_connection_constructor (GType type,
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
   self->avatar_requests = g_hash_table_new (NULL, NULL);
+  self->vcard_requests = g_hash_table_new (NULL, NULL);
 
   if (priv->fallback_socks5_proxies == NULL)
     {
@@ -716,6 +721,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+      GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
       GABBLE_IFACE_OLPC_GADGET,
@@ -744,22 +750,27 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-        { GABBLE_IFACE_OLPC_GADGET,
+        /* 0 */ { GABBLE_IFACE_OLPC_GADGET,
           conn_olpc_gadget_properties_getter,
           NULL,
           olpc_gadget_props,
         },
-        { TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+        /* 1 */ { TP_IFACE_CONNECTION_INTERFACE_LOCATION,
           conn_location_properties_getter,
           conn_location_properties_setter,
           location_props,
         },
-        { TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+        /* 2 */ { TP_IFACE_CONNECTION_INTERFACE_AVATARS,
           conn_avatars_properties_getter,
           NULL,
           NULL,
         },
-        { GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+        /* 3 */ { GABBLE_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+          conn_contact_info_properties_getter,
+          NULL,
+          NULL,
+        },
+        /* 4 */ { GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
           tp_dbus_properties_mixin_getter_gobject_properties,
           tp_dbus_properties_mixin_setter_gobject_properties,
           decloak_props,
@@ -773,6 +784,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   };
 
   prop_interfaces[2].props = conn_avatars_properties;
+  prop_interfaces[3].props = conn_contact_info_properties;
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 
@@ -979,6 +991,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 
   conn_presence_class_init (gabble_connection_class);
 
+  conn_contact_info_class_init (gabble_connection_class);
 }
 
 static void
@@ -1029,6 +1042,7 @@ gabble_connection_dispose (GObject *object)
   conn_olpc_activity_properties_dispose (self);
 
   g_hash_table_destroy (self->avatar_requests);
+  g_hash_table_destroy (self->vcard_requests);
 
   conn_mail_notif_dispose (self);
 
@@ -1141,6 +1155,7 @@ gabble_connection_finalize (GObject *object)
   tp_contacts_mixin_finalize (G_OBJECT(self));
 
   conn_presence_finalize (self);
+  conn_contact_info_finalize (self);
 
   gabble_capabilities_finalize (self);
 
@@ -1519,12 +1534,28 @@ connector_error_disconnect (GabbleConnection *self,
 
   DEBUG ("connection failed: %s", error->message);
 
-  if (error->domain == WOCKY_CONNECTOR_ERROR)
+  if (error->domain == WOCKY_SASL_AUTH_ERROR)
+    {
+      switch (error->code)
+        {
+          case WOCKY_SASL_AUTH_ERROR_NETWORK:
+          case WOCKY_SASL_AUTH_ERROR_CONNRESET:
+          case WOCKY_SASL_AUTH_ERROR_STREAM:
+          case WOCKY_SASL_AUTH_ERROR_INVALID_REPLY:
+          case WOCKY_SASL_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
+            reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+            break;
+          default:
+            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+        }
+    }
+  else if (error->domain == WOCKY_CONNECTOR_ERROR)
     {
       /* Connector error */
       switch (error->code)
         {
           case WOCKY_CONNECTOR_ERROR_SESSION_DENIED:
+          case WOCKY_CONNECTOR_ERROR_JABBER_AUTH_REJECTED:
             reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
             break;
 
@@ -2040,23 +2071,7 @@ connection_shut_down (TpBaseConnection *base)
   tp_base_connection_finish_shutdown (base);
 }
 
-gboolean
-gabble_connection_visible_to (GabbleConnection *self,
-    TpHandle recipient)
-{
-  if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
-    return FALSE;
-
-  if ((gabble_roster_handle_get_subscription (self->roster, recipient)
-      & GABBLE_ROSTER_SUBSCRIPTION_FROM) == 0)
-    return FALSE;
-
-  /* FIXME: other reasons they might not be able to see our presence? */
-
-  return TRUE;
-}
-
-static void
+void
 gabble_connection_fill_in_caps (GabbleConnection *self,
     LmMessage *presence_message)
 {
@@ -2119,7 +2134,7 @@ gabble_connection_send_capabilities (GabbleConnection *self,
    * getting our presence... */
   handle = tp_handle_lookup (contact_repo, recipient, NULL, NULL);
 
-  if (handle != 0 && gabble_connection_visible_to (self, handle))
+  if (handle != 0 && conn_presence_visible_to (self, handle))
     {
       /* nothing to do, they should already have had our presence */
       return TRUE;
@@ -2134,51 +2149,6 @@ gabble_connection_send_capabilities (GabbleConnection *self,
   ret = _gabble_connection_send (self, message, error);
 
   lm_message_unref (message);
-
-  return ret;
-}
-
-/**
- * _gabble_connection_signal_own_presence:
- * @self: A #GabbleConnection
- * @to: bare or full JID for directed presence, or NULL
- * @error: pointer in which to return a GError in case of failure.
- *
- * Signal the user's stored presence to @to, or to the jabber server
- *
- * Retuns: FALSE if an error occurred
- */
-gboolean
-_gabble_connection_signal_own_presence (GabbleConnection *self,
-    const gchar *to,
-    GError **error)
-{
-  GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence, to);
-  gboolean ret;
-
-  if (presence->status == GABBLE_PRESENCE_HIDDEN)
-    {
-      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0
-          && to == NULL)
-        lm_message_node_set_attribute (lm_message_get_node (message),
-            "type", "invisible");
-      /* FIXME: or if sending directed presence, should we add
-       * <show>away</show>? */
-    }
-
-  gabble_connection_fill_in_caps (self, message);
-
-  ret = _gabble_connection_send (self, message, error);
-
-  lm_message_unref (message);
-
-  /* FIXME: if sending broadcast presence, should we echo it to everyone we
-   * previously sent directed presence to? (Perhaps also GC them after a
-   * while?) */
-
-  if (to == NULL && !self->priv->closing)
-    gabble_muc_factory_broadcast_presence (self->muc_factory);
 
   return ret;
 }
@@ -2264,7 +2234,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
       return FALSE;
     }
 
-  if (!_gabble_connection_signal_own_presence (self, NULL, &error))
+  if (!conn_presence_signal_own_presence (self, NULL, &error))
     {
       gabble_capability_set_free (save_set);
       DEBUG ("error sending presence: %s", error->message);
@@ -2331,11 +2301,12 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_ERROR);
 
-  lm_message_node_set_attribute (msg->node, "id", id);
+  lm_message_node_set_attribute (wocky_stanza_get_top_node (msg), "id", id);
 
-  lm_message_node_steal_children (msg->node, iq_node);
+  lm_message_node_steal_children (
+      wocky_stanza_get_top_node (msg), iq_node);
 
-  gabble_xmpp_error_to_node (error, msg->node, errmsg);
+  gabble_xmpp_error_to_node (error, wocky_stanza_get_top_node (msg), errmsg);
 
   _gabble_connection_send (conn, msg, NULL);
 
@@ -2492,7 +2463,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 
   g_assert (connection == conn->lmconn);
 
-  NODE_DEBUG (message->node, "got unknown iq");
+  STANZA_DEBUG (message, "got unknown iq");
 
   switch (lm_message_get_sub_type (message))
     {
@@ -2611,7 +2582,7 @@ connection_disco_cb (GabbleDisco *disco,
 
   /* send presence to the server to indicate availability */
   /* TODO: some way for the user to set this */
-  if (!_gabble_connection_signal_own_presence (conn, NULL, &error))
+  if (!conn_presence_signal_own_presence (conn, NULL, &error))
     {
       DEBUG ("sending initial presence failed: %s", error->message);
       goto ERROR;
@@ -3335,10 +3306,12 @@ gabble_connection_send_presence (GabbleConnection *conn,
       sub_type);
 
   if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
-    lm_message_node_add_own_nick (message->node, conn);
+    lm_message_node_add_own_nick (
+        wocky_stanza_get_top_node (message), conn);
 
   if (!CHECK_STR_EMPTY(status))
-    lm_message_node_add_child (message->node, "status", status);
+    lm_message_node_add_child (
+        wocky_stanza_get_top_node (message), "status", status);
 
   result = _gabble_connection_send (conn, message, error);
 

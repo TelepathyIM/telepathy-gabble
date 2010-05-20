@@ -69,7 +69,7 @@ GType gabble_bytestream_factory_get_type (void);
 typedef struct {
     gchar *jid;
     gchar *host;
-    gchar *port;
+    guint16 port;
 } GabbleSocks5Proxy;
 
 typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (

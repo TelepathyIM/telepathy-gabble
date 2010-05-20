@@ -125,14 +125,14 @@ struct _Streamhost
 {
   gchar *jid;
   gchar *host;
-  gchar *port;
+  guint16 port;
 };
 typedef struct _Streamhost Streamhost;
 
 static Streamhost *
 streamhost_new (const gchar *jid,
                 const gchar *host,
-                const gchar *port)
+                guint16 port)
 {
   Streamhost *streamhost;
 
@@ -142,7 +142,7 @@ streamhost_new (const gchar *jid,
   streamhost = g_slice_new0 (Streamhost);
   streamhost->jid = g_strdup (jid);
   streamhost->host = g_strdup (host);
-  streamhost->port = g_strdup (port);
+  streamhost->port = port;
 
   return streamhost;
 }
@@ -155,7 +155,7 @@ streamhost_free (Streamhost *streamhost)
 
   g_free (streamhost->jid);
   g_free (streamhost->host);
-  g_free (streamhost->port);
+
   g_slice_free (Streamhost, streamhost);
 }
 
@@ -759,7 +759,8 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
       LmMessageNode *node;
       Streamhost *current_streamhost;
 
-      node = lm_message_node_add_child (iq_result->node, "query", "");
+      node = lm_message_node_add_child (
+        wocky_stanza_get_top_node (iq_result), "query", "");
       lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
 
       /* streamhost-used informs the other end of the streamhost we
@@ -1244,7 +1245,7 @@ socks5_connect (GabbleBytestreamSocks5 *self)
       return;
     }
 
-  DEBUG ("Trying streamhost %s on port %s", streamhost->host,
+  DEBUG ("Trying streamhost %s on port %d", streamhost->host,
       streamhost->port);
 
   transport = gibber_tcp_transport_new ();
@@ -1274,7 +1275,8 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
   const gchar *zeroconf;
   const gchar *jid;
   const gchar *host;
-  const gchar *port;
+  const gchar *portstr;
+  gint64 port;
   Streamhost *streamhost;
 
   g_return_if_fail (!tp_strdiff (streamhost_node->name, "streamhost"));
@@ -1301,22 +1303,29 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
       return;
     }
 
-  port = lm_message_node_get_attribute (streamhost_node, "port");
-  if (port == NULL)
+  portstr = lm_message_node_get_attribute (streamhost_node, "port");
+  if (portstr == NULL)
     {
       DEBUG ("streamhost doesn't contain a port");
       return;
     }
 
-  if (tp_strdiff (jid, priv->peer_jid) && priv->muc_contact)
+  port = g_ascii_strtoll (portstr, NULL, 10);
+  if (port <= 0 || port > G_MAXUINT16)
     {
-      DEBUG ("skip streamhost %s (%s:%s); we don't support relay with muc "
-          "contact", jid, host, port);
+      DEBUG ("Invalid port: %s", portstr);
       return;
     }
 
-  DEBUG ("streamhost with jid %s, host %s and port %s added", jid, host,
-      port);
+  if (tp_strdiff (jid, priv->peer_jid) && priv->muc_contact)
+    {
+      DEBUG ("skip streamhost %s (%s:%"G_GINT64_FORMAT
+          "); we don't support relay with muc contact", jid, host, port);
+      return;
+    }
+
+  DEBUG ("streamhost with jid %s, host %s and port %"G_GINT64_FORMAT" added",
+      jid, host, port);
 
   streamhost = streamhost_new (jid, host, port);
   priv->streamhosts = g_slist_append (priv->streamhosts, streamhost);
@@ -1421,7 +1430,8 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_BYTESTREAMS);
-  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si = lm_message_node_get_child_with_namespace (
+    wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 
   if (func != NULL)
@@ -1458,11 +1468,13 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
 
   if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
     {
-      gabble_xmpp_error_to_node (error->code, msg->node, error->message);
+      gabble_xmpp_error_to_node (error->code,
+        wocky_stanza_get_top_node (msg), error->message);
     }
   else
     {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN, msg->node,
+      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN,
+          wocky_stanza_get_top_node (msg),
           "Offer Declined");
     }
 
@@ -1541,7 +1553,7 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
       return;
     }
 
-  DEBUG ("connect to proxy: %s (%s:%s)", proxy->jid, proxy->host, proxy->port);
+  DEBUG ("connect to proxy: %s (%s:%d)", proxy->jid, proxy->host, proxy->port);
   priv->socks5_state = SOCKS5_STATE_INITIATOR_TRYING_CONNECT;
 
   transport = gibber_tcp_transport_new ();
@@ -1568,8 +1580,8 @@ socks5_init_reply_cb (GabbleConnection *conn,
       LmMessageNode *query, *streamhost = NULL;
       const gchar *jid;
 
-      query = lm_message_node_get_child_with_namespace (reply_msg->node,
-          "query", NS_BYTESTREAMS);
+      query = lm_message_node_get_child_with_namespace (
+        wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
 
       if (query != NULL)
         streamhost = lm_message_node_get_child (query, "streamhost-used");
@@ -1869,7 +1881,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {
       LmMessageNode *node;
-      NodeIter i = node_iter (msg->node);
+      NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
 
       node = lm_message_node_add_child (node_iter_data (i),
           "streamhost", "");
@@ -1896,17 +1908,21 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       for (l = proxies; l != NULL; l = g_slist_next (l))
         {
           LmMessageNode *node;
+          gchar *portstr;
           GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
-          NodeIter i = node_iter (msg->node);
+          NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
 
           node = lm_message_node_add_child (node_iter_data (i),
               "streamhost", "");
 
+          portstr = g_strdup_printf ("%d", proxy->port);
+
           lm_message_node_set_attributes (node,
               "jid", proxy->jid,
               "host", proxy->host,
-              "port", proxy->port,
+              "port", portstr,
               NULL);
+          g_free (portstr);
         }
       g_slist_free (proxies);
     }

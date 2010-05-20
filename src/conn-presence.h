@@ -33,10 +33,15 @@ void conn_presence_finalize (GabbleConnection *conn);
 void conn_presence_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_presence_emit_presence_update (
     GabbleConnection *, const GArray *contact_handles);
+gboolean conn_presence_signal_own_presence (GabbleConnection *self,
+    const gchar *to, GError **error);
+gboolean conn_presence_visible_to (GabbleConnection *self,
+    TpHandle recipient);
 
 void conn_decloak_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_decloak_emit_requested (GabbleConnection *conn,
     TpHandle contact, const gchar *reason, gboolean decloaked);
+
 
 G_END_DECLS
 

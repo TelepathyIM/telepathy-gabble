@@ -160,6 +160,11 @@ create_sidecar_cb (
               actual_iface, ctx->sidecar_iface);
         }
     }
+  else /* sidecar == NULL */
+    {
+      /* If creating the sidecar failed, 'error' should have been set */
+      g_return_if_fail (error != NULL);
+    }
 
   if (error == NULL)
     {
@@ -173,6 +178,7 @@ create_sidecar_cb (
             path, props);
 
       g_hash_table_unref (props);
+      g_free (path);
     }
   else
     {
@@ -185,7 +191,9 @@ out:
   if (sidecar != NULL)
     g_object_unref (sidecar);
 
-  g_clear_error (&error);
+  if (error != NULL)
+    g_clear_error (&error);
+
   grr_free (ctx);
 }
 

@@ -29,28 +29,27 @@ copy_attribute (const gchar *key,
     const gchar *ns,
     gpointer user_data)
 {
-  WockyXmppNode *copy = (WockyXmppNode *) user_data;
+  WockyNode *copy = (WockyNode *) user_data;
 
-  wocky_xmpp_node_set_attribute_ns (copy, key, value, ns);
+  wocky_node_set_attribute_ns (copy, key, value, ns);
   return TRUE;
 }
 
-static WockyXmppNode *
-copy_node (WockyXmppNode *node)
+static WockyNode *
+copy_node (WockyNode *node)
 {
-  WockyXmppNode *copy;
+  WockyNode *copy;
   GSList *l;
 
-  copy = wocky_xmpp_node_new (node->name);
-  wocky_xmpp_node_set_content (copy, node->content);
-  wocky_xmpp_node_set_language (copy, wocky_xmpp_node_get_language (node));
-  wocky_xmpp_node_set_ns (copy, wocky_xmpp_node_get_ns (node));
+  copy = wocky_node_new (node->name, wocky_node_get_ns (node));
+  wocky_node_set_content (copy, node->content);
+  wocky_node_set_language (copy, wocky_node_get_language (node));
 
-  wocky_xmpp_node_each_attribute (node, copy_attribute, copy);
+  wocky_node_each_attribute (node, copy_attribute, copy);
 
   for (l = node->children; l != NULL; l = g_slist_next (l))
     {
-      WockyXmppNode *child = l->data;
+      WockyNode *child = l->data;
 
       copy->children = g_slist_prepend (copy->children, copy_node (child));
     }
@@ -62,14 +61,14 @@ copy_node (WockyXmppNode *node)
 LmMessageNode *
 lm_message_node_ref (LmMessageNode *node)
 {
-  /* WockyXmppNode is not ref counted. Return a copy of the node */
+  /* WockyNode is not ref counted. Return a copy of the node */
   return copy_node (node);
 }
 
 void
 lm_message_node_unref (LmMessageNode *node)
 {
-  wocky_xmpp_node_free (node);
+  wocky_node_free (node);
 }
 
 void
@@ -78,11 +77,11 @@ lm_message_node_set_attribute (LmMessageNode *node,
     const gchar *value)
 {
   if (!wocky_strdiff (name, "xmlns"))
-    wocky_xmpp_node_set_ns (node, value);
+    node->ns = g_quark_from_string (value);
   else if (!wocky_strdiff (name, "xml:lang"))
-    wocky_xmpp_node_set_language (node, value);
+    wocky_node_set_language (node, value);
   else
-    wocky_xmpp_node_set_attribute (node, name, value);
+    wocky_node_set_attribute (node, name, value);
 }
 
 const gchar *
@@ -90,11 +89,11 @@ lm_message_node_get_attribute (LmMessageNode *node,
     const gchar *name)
 {
   if (!wocky_strdiff (name, "xmlns"))
-    return wocky_xmpp_node_get_ns (node);
+    return wocky_node_get_ns (node);
   else if (!wocky_strdiff (name, "xml:lang"))
-    return wocky_xmpp_node_get_language (node);
+    return wocky_node_get_language (node);
 
-  return wocky_xmpp_node_get_attribute (node, name);
+  return wocky_node_get_attribute (node, name);
 }
 
 void
@@ -124,30 +123,30 @@ lm_message_node_add_child (LmMessageNode *node,
     const gchar *name,
     const gchar *value)
 {
-  return wocky_xmpp_node_add_child_with_content (node, name, value);
+  return wocky_node_add_child_with_content (node, name, value);
 }
 
 LmMessageNode *
 lm_message_node_get_child (LmMessageNode *node,
     const gchar *child_name)
 {
-  return wocky_xmpp_node_get_child (node, child_name);
+  return wocky_node_get_child (node, child_name);
 }
 
 LmMessageNode *
 lm_message_node_find_child (LmMessageNode *node,
     const gchar *child_name)
 {
-  WockyXmppNode *found;
+  WockyNode *found;
   GSList *l;
 
-  found = wocky_xmpp_node_get_child (node, child_name);
+  found = wocky_node_get_child (node, child_name);
   if (found != NULL)
     return found;
 
   for (l = node->children; l != NULL; l = g_slist_next (l))
     {
-      WockyXmppNode *child = l->data;
+      WockyNode *child = l->data;
 
       found = lm_message_node_find_child (child, child_name);
       if (found != NULL)
@@ -167,11 +166,11 @@ void
 lm_message_node_set_value (LmMessageNode *node,
     const gchar *value)
 {
-  wocky_xmpp_node_set_content (node, value);
+  wocky_node_set_content (node, value);
 }
 
 gchar *
 lm_message_node_to_string (LmMessageNode *node)
 {
-  return wocky_xmpp_node_to_string (node);
+  return wocky_node_to_string (node);
 }

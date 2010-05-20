@@ -236,7 +236,7 @@ gabble_gateway_sidecar_dispose (GObject *object)
 
 static gboolean
 presence_cb (WockyPorter *porter,
-    WockyXmppStanza *stanza,
+    WockyStanza *stanza,
     gpointer user_data)
 {
   GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (user_data);
@@ -245,7 +245,7 @@ presence_cb (WockyPorter *porter,
   gboolean ret = FALSE;
   WockyStanzaSubType subtype;
 
-  wocky_xmpp_stanza_get_type_info (stanza, NULL, &subtype);
+  wocky_stanza_get_type_info (stanza, NULL, &subtype);
 
   switch (subtype)
     {
@@ -261,7 +261,8 @@ presence_cb (WockyPorter *porter,
       g_return_val_if_reached (FALSE);
     }
 
-  from = wocky_xmpp_node_get_attribute (stanza->node, "from");
+  from = wocky_node_get_attribute (
+      wocky_stanza_get_top_node (stanza), "from");
 
   if (from == NULL || strchr (from, '@') != NULL || strchr (from, '/') != NULL)
     goto finally;
@@ -273,14 +274,14 @@ presence_cb (WockyPorter *porter,
 
   if (subtype == WOCKY_STANZA_SUB_TYPE_SUBSCRIBE)
     {
-      WockyXmppStanza *reply;
+      WockyStanza *reply;
 
       /* It's a gateway we've registered with during this session, and they
        * want to subscribe to us. OK, let them. */
       DEBUG ("Allowing gateway '%s' to subscribe to us", normalized);
-      reply = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
+      reply = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
           WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, NULL, normalized,
-          WOCKY_STANZA_END);
+          NULL);
       wocky_porter_send (porter, reply);
       g_object_unref (reply);
     }
@@ -318,11 +319,11 @@ gabble_gateway_sidecar_constructed (GObject *object)
   self->priv->subscribe_id = wocky_porter_register_handler (porter,
       WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, NULL,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
-      WOCKY_STANZA_END);
+      NULL);
   self->priv->subscribed_id = wocky_porter_register_handler (porter,
       WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, NULL,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
-      WOCKY_STANZA_END);
+      NULL);
 }
 
 static void
@@ -393,13 +394,13 @@ register_cb (GObject *source,
 {
   WockyPorter *porter = WOCKY_PORTER (source);
   PendingRegistration *pr = user_data;
-  WockyXmppStanza *reply;
+  WockyStanza *reply;
   GError *error = NULL;
 
   reply = wocky_porter_send_iq_finish (porter, result, &error);
 
   if (reply == NULL ||
-      wocky_xmpp_stanza_extract_errors (reply, NULL, &error, NULL, NULL))
+      wocky_stanza_extract_errors (reply, NULL, &error, NULL, NULL))
     {
       GError *tp_error = NULL;
 
@@ -439,15 +440,15 @@ register_cb (GObject *source,
     }
   else
     {
-      WockyXmppStanza *request;
+      WockyStanza *request;
 
       DEBUG ("Registered with '%s', exchanging presence...", pr->gateway);
 
       /* attempt to subscribe to the gateway's presence (FIXME: is this
        * harmless if we're already subscribed to it?) */
-      request = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
+      request = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE,
           WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, NULL, pr->gateway,
-          WOCKY_STANZA_END);
+          NULL);
       wocky_porter_send (porter, request);
       g_object_unref (request);
 
@@ -471,7 +472,7 @@ gateways_register (
 {
   GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (sidecar);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
-  WockyXmppStanza *stanza;
+  WockyStanza *stanza;
   gchar *normalized_gateway;
   GError *error = NULL;
 
@@ -520,18 +521,18 @@ gateways_register (
    * method Service.Release() [distributed refcounting]
    */
 
-  stanza = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+  stanza = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET,
       NULL, normalized_gateway,
-        WOCKY_NODE, "query", WOCKY_NODE_XMLNS, WOCKY_XEP77_NS_REGISTER,
-          WOCKY_NODE, "username",
-            WOCKY_NODE_TEXT, username,
-          WOCKY_NODE_END,
-          WOCKY_NODE, "password",
-            WOCKY_NODE_TEXT, password,
-          WOCKY_NODE_END,
-        WOCKY_NODE_END,
-      WOCKY_STANZA_END);
+        '(', "query", ':', WOCKY_XEP77_NS_REGISTER,
+          '(', "username",
+            '$', username,
+          ')',
+          '(', "password",
+            '$', password,
+          ')',
+        ')',
+      NULL);
 
   wocky_porter_send_iq_async (porter, stanza, NULL, register_cb,
       pending_registration_new (context, normalized_gateway));

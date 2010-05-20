@@ -255,8 +255,8 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
   LmMessageSubType sub_type;
   LmMessageNode *query_node, *node;
 
-  query_node = lm_message_node_get_child_with_namespace (message->node,
-      "query", NS_GOOGLE_JINGLE_INFO);
+  query_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (message), "query", NS_GOOGLE_JINGLE_INFO);
 
   if (query_node == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -267,7 +267,8 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
     {
       GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
 
-      node = lm_message_node_get_child (message->node, "error");
+      node = lm_message_node_get_child (wocky_stanza_get_top_node (message),
+          "error");
       if (node != NULL)
         {
           xmpp_error = gabble_xmpp_error_from_node (node, NULL);
@@ -452,7 +453,8 @@ jingle_info_send_request (GabbleJingleFactory *fac)
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_GET);
 
-  node = lm_message_node_add_child (msg->node, "query", NULL);
+  node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "query", NULL);
   lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_JINGLE_INFO);
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,

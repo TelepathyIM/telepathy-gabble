@@ -238,7 +238,8 @@ buddy_view_query_result_cb (GabbleConnection *conn,
   LmMessageNode *view_node;
   GabbleOlpcView *self = GABBLE_OLPC_VIEW (_view);
 
-  view_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+  view_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (reply_msg),
       "view", NS_OLPC_BUDDY);
   if (view_node == NULL)
     return LM_HANDLER_RESULT_REMOVE_MESSAGE;

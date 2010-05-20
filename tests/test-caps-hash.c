@@ -9,7 +9,8 @@ check_hash (LmMessage *stanza,
 {
   gchar *hash;
 
-  hash = caps_hash_compute_from_lm_node (stanza->node);
+  hash = caps_hash_compute_from_lm_node (
+      wocky_stanza_get_top_node (stanza));
   g_assert (!tp_strdiff (hash, expected));
   lm_message_unref (stanza);
   g_free (hash);
@@ -26,8 +27,10 @@ test_simple (void)
       '@', "name", "Exodus 0.9.1",
       '@', "type", "pc",
     ')',
-    '(', "feature", "", '@', "var", "http://jabber.org/protocol/disco#info", ')',
-    '(', "feature", "", '@', "var", "http://jabber.org/protocol/disco#items", ')',
+    '(', "feature", "",
+        '@', "var", "http://jabber.org/protocol/disco#info", ')',
+    '(', "feature", "",
+        '@', "var", "http://jabber.org/protocol/disco#items", ')',
     '(', "feature", "", '@', "var", "http://jabber.org/protocol/muc", ')',
     '(', "feature", "", '@', "var", "http://jabber.org/protocol/caps", ')',
     ')',

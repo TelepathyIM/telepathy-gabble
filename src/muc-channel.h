@@ -30,6 +30,7 @@
 #include <telepathy-glib/message-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 
+#include "base-channel.h"
 #include "types.h"
 #include "tubes-channel.h"
 
@@ -47,15 +48,14 @@ typedef struct _GabbleMucChannelClass GabbleMucChannelClass;
 typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 
 struct _GabbleMucChannelClass {
-    GObjectClass parent_class;
+    GabbleBaseChannelClass parent_class;
 
     TpGroupMixinClass group_class;
     TpPropertiesMixinClass properties_class;
-    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleMucChannel {
-    GObject parent;
+    GabbleBaseChannel parent;
 
     TpGroupMixin group;
     TpPropertiesMixin properties;

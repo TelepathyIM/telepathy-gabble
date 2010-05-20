@@ -399,7 +399,8 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   if (!g_list_find (priv->requests, request))
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  query_node = lm_message_node_get_child_with_namespace (reply_msg->node,
+  query_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (reply_msg),
       "query", disco_type_to_xmlns (request->type));
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
@@ -510,7 +511,8 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   priv->requests = g_list_prepend (priv->requests, request);
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
                                            LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = lm_message_node_add_child (msg->node, "query", NULL);
+  lm_node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "query", NULL);
 
   lm_message_node_set_attribute (lm_node, "xmlns", disco_type_to_xmlns (type));
 

@@ -181,6 +181,68 @@ emit_one_presence_update (GabbleConnection *self,
   g_array_free (handles, TRUE);
 }
 
+/**
+ * conn_presence_signal_own_presence:
+ * @self: A #GabbleConnection
+ * @to: bare or full JID for directed presence, or NULL
+ * @error: pointer in which to return a GError in case of failure.
+ *
+ * Signal the user's stored presence to @to, or to the jabber server
+ *
+ * Retuns: FALSE if an error occurred
+ */
+gboolean
+conn_presence_signal_own_presence (GabbleConnection *self,
+    const gchar *to,
+    GError **error)
+{
+  GabblePresence *presence = self->self_presence;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  LmMessage *message = gabble_presence_as_message (presence, to);
+  gboolean ret;
+
+  if (presence->status == GABBLE_PRESENCE_HIDDEN)
+    {
+      if ((self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE) != 0
+          && to == NULL)
+        lm_message_node_set_attribute (lm_message_get_node (message),
+            "type", "invisible");
+      /* FIXME: or if sending directed presence, should we add
+       * <show>away</show>? */
+    }
+
+  gabble_connection_fill_in_caps (self, message);
+
+  ret = _gabble_connection_send (self, message, error);
+
+  lm_message_unref (message);
+
+  /* FIXME: if sending broadcast presence, should we echo it to everyone we
+   * previously sent directed presence to? (Perhaps also GC them after a
+   * while?) */
+
+  if (to == NULL && base->status == TP_CONNECTION_STATUS_CONNECTED)
+    gabble_muc_factory_broadcast_presence (self->muc_factory);
+
+  return ret;
+}
+
+gboolean
+conn_presence_visible_to (GabbleConnection *self,
+    TpHandle recipient)
+{
+  if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
+    return FALSE;
+
+  if ((gabble_roster_handle_get_subscription (self->roster, recipient)
+      & GABBLE_ROSTER_SUBSCRIPTION_FROM) == 0)
+    return FALSE;
+
+  /* FIXME: other reasons they might not be able to see our presence? */
+
+  return TRUE;
+}
+
 static gboolean
 set_own_status_cb (GObject *obj,
                    const TpPresenceStatus *status,
@@ -257,7 +319,7 @@ set_own_status_cb (GObject *obj,
       if (base->status == TP_CONNECTION_STATUS_CONNECTED)
         {
           emit_one_presence_update (conn, base->self_handle);
-          retval = _gabble_connection_signal_own_presence (conn, NULL, error);
+          retval = conn_presence_signal_own_presence (conn, NULL, error);
         }
       else
         {
@@ -380,9 +442,9 @@ conn_presence_send_directed_presence (
    * people we think ought to be receiving it anyway, because if we didn't,
    * you could confuse them by sending directed presence that was less
    * informative than the broadcast presence they already saw. */
-  if (full || gabble_connection_visible_to (self, contact))
+  if (full || conn_presence_visible_to (self, contact))
     {
-      ok = _gabble_connection_signal_own_presence (self, jid, &error);
+      ok = conn_presence_signal_own_presence (self, jid, &error);
     }
   else
     {

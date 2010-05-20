@@ -120,14 +120,14 @@ bytestream_id_free (gpointer v)
 static GabbleSocks5Proxy *
 gabble_socks5_proxy_new (const gchar *jid,
                          const gchar *host,
-                         const gchar *port)
+                         guint16 port)
 {
   GabbleSocks5Proxy *proxy;
 
   proxy = g_slice_new (GabbleSocks5Proxy);
   proxy->jid = g_strdup (jid);
   proxy->host = g_strdup (host);
-  proxy->port = g_strdup (port);
+  proxy->port = port;
 
   return proxy;
 }
@@ -137,7 +137,6 @@ gabble_socks5_proxy_free (GabbleSocks5Proxy *proxy)
 {
   g_free (proxy->jid);
   g_free (proxy->host);
-  g_free (proxy->port);
 
   g_slice_free (GabbleSocks5Proxy, proxy);
 }
@@ -262,7 +261,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
   found = g_slist_find_custom (*list, proxy, cmp_proxy);
   if (found != NULL)
     {
-      DEBUG ("%s SOCKS5 proxy (%s %s:%s) is already known; "
+      DEBUG ("%s SOCKS5 proxy (%s %s:%d) is already known; "
           "move it to the head of the list",
           fallback ? "Fallback": "Discovered",
           proxy->jid, proxy->host, proxy->port);
@@ -271,7 +270,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
     }
   else
     {
-      DEBUG ("Add %s SOCKS5 proxy: %s %s:%s",
+      DEBUG ("Add %s SOCKS5 proxy: %s %s:%d",
           fallback ? "fallback": "discovered",
           proxy->jid, proxy->host, proxy->port);
 
@@ -306,20 +305,22 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
       self);
   LmMessageNode *query, *streamhost;
   const gchar *from;
-  const gchar *jid, *host, *port;
+  const gchar *jid, *host, *portstr;
+  gint64 port;
   GabbleSocks5Proxy *proxy;
   gboolean fallback = GPOINTER_TO_INT (user_data);
   GSList *found = NULL;
 
-  from = lm_message_node_get_attribute (reply_msg->node, "from");
+  from = lm_message_node_get_attribute (
+    wocky_stanza_get_top_node (reply_msg), "from");
   if (from == NULL)
     goto fail;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     goto fail;
 
-  query = lm_message_node_get_child_with_namespace (reply_msg->node, "query",
-      NS_BYTESTREAMS);
+  query = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
   if (query == NULL)
     goto fail;
 
@@ -329,10 +330,15 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 
   jid = lm_message_node_get_attribute (streamhost, "jid");
   host = lm_message_node_get_attribute (streamhost, "host");
-  port = lm_message_node_get_attribute (streamhost, "port");
+  portstr = lm_message_node_get_attribute (streamhost, "port");
 
-  if (jid == NULL || host == NULL || port == NULL)
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  if (jid == NULL || host == NULL || portstr == NULL)
+    goto fail;
+
+  port = g_ascii_strtoll (portstr, NULL, 10);
+
+  if (port <= 0 || port > G_MAXUINT16)
+    goto fail;
 
   proxy = gabble_socks5_proxy_new (jid, host, port);
 
@@ -835,16 +841,16 @@ streaminit_parse_request (LmMessage *message,
                           GSList **stream_methods,
                           gboolean *multiple)
 {
-  LmMessageNode *iq = message->node;
+  LmMessageNode *iq = wocky_stanza_get_top_node (message);
   LmMessageNode *feature, *x, *si_multiple;
   NodeIter i, j;
 
   *stream_init_id = lm_message_node_get_attribute (iq, "id");
 
-  *from = lm_message_node_get_attribute (message->node, "from");
+  *from = lm_message_node_get_attribute (iq, "from");
   if (*from == NULL)
     {
-      NODE_DEBUG (message->node, "got a message without a from field");
+      STANZA_DEBUG (message, "got a message without a from field");
       return FALSE;
     }
 
@@ -853,7 +859,7 @@ streaminit_parse_request (LmMessage *message,
   *stream_id = lm_message_node_get_attribute (si, "id");
   if (*stream_id == NULL)
     {
-      NODE_DEBUG (message->node, "got a SI request without a stream id field");
+      STANZA_DEBUG (message, "got a SI request without a stream id field");
       return FALSE;
     }
 
@@ -864,7 +870,7 @@ streaminit_parse_request (LmMessage *message,
   *profile = lm_message_node_get_attribute (si, "profile");
   if (*profile == NULL)
     {
-      NODE_DEBUG (message->node, "got a SI request without a profile field");
+      STANZA_DEBUG (message, "got a SI request without a profile field");
       return FALSE;
     }
 
@@ -873,14 +879,14 @@ streaminit_parse_request (LmMessage *message,
       NS_FEATURENEG);
   if (feature == NULL)
     {
-      NODE_DEBUG (message->node, "got a SI request without a feature field");
+      STANZA_DEBUG (message, "got a SI request without a feature field");
       return FALSE;
     }
 
   x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
   if (x == NULL)
     {
-      NODE_DEBUG (message->node, "got a SI request without a X data field");
+      STANZA_DEBUG (message, "got a SI request without a X data field");
       return FALSE;
     }
 
@@ -896,7 +902,7 @@ streaminit_parse_request (LmMessage *message,
       if (tp_strdiff (lm_message_node_get_attribute (field, "type"),
             "list-single"))
         {
-          NODE_DEBUG (message->node, "SI request's stream-method field was "
+          STANZA_DEBUG (message, "SI request's stream-method field was "
               "not of type list-single");
           return FALSE;
         }
@@ -931,7 +937,7 @@ streaminit_parse_request (LmMessage *message,
 
   if (*stream_methods == NULL)
     {
-      NODE_DEBUG (message->node,
+      STANZA_DEBUG (message,
           "got a SI request without stream method proposed");
       return FALSE;
     }
@@ -1081,7 +1087,7 @@ si_tube_received (GabbleBytestreamFactory *self,
           "<muc-stream>" };
 
       /* Invalid tube SI request */
-      NODE_DEBUG (msg->node, e.message);
+      STANZA_DEBUG (msg, e.message);
       gabble_bytestream_iface_close (bytestream, &e);
     }
 }
@@ -1119,7 +1125,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  si = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si = lm_message_node_get_child_with_namespace (
+    wocky_stanza_get_top_node (msg), "si", NS_SI);
   if (si == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
@@ -1158,8 +1165,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
       /* we are not in a muc so our own jid is the one in the 'to' attribute */
-      self_jid = g_strdup (lm_message_node_get_attribute (msg->node,
-            "to"));
+      self_jid = g_strdup (lm_message_node_get_attribute (
+        wocky_stanza_get_top_node (msg), "to"));
     }
   else
     {
@@ -1302,12 +1309,13 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
 
-  open_node = lm_message_node_get_child_with_namespace (msg->node, "open",
-      NS_IBB);
+  open_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "open", NS_IBB);
   if (open_node == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
+  bsid.jid = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (msg), "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
@@ -1376,12 +1384,13 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
 
-  close_node = lm_message_node_get_child_with_namespace (msg->node, "close",
-      NS_IBB);
+  close_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "close", NS_IBB);
   if (close_node == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
+  bsid.jid = lm_message_node_get_attribute (wocky_stanza_get_top_node (msg),
+      "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
@@ -1434,11 +1443,13 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   if (is_iq && lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
 
-  data = lm_message_node_get_child_with_namespace (msg->node, "data", NS_IBB);
+  data = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "data", NS_IBB);
   if (data == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
+  bsid.jid = lm_message_node_get_attribute (wocky_stanza_get_top_node (msg),
+    "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
@@ -1489,12 +1500,13 @@ handle_muc_data (GabbleBytestreamFactory *self,
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  data = lm_message_node_get_child_with_namespace (msg->node, "data",
-      NS_MUC_BYTESTREAM);
+  data = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "data", NS_MUC_BYTESTREAM);
   if (data == NULL)
     return FALSE;
 
-  from = lm_message_node_get_attribute (msg->node, "from");
+  from = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (msg), "from");
   if (from == NULL)
     {
       DEBUG ("got a message without a from field");
@@ -1591,12 +1603,13 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
 
-  query_node = lm_message_node_get_child_with_namespace (msg->node,
-      "query", NS_BYTESTREAMS);
+  query_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "query", NS_BYTESTREAMS);
   if (query_node == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (msg->node, "from");
+  bsid.jid = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (msg), "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
@@ -1943,15 +1956,14 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
       NS_FEATURENEG);
   if (feature == NULL)
     {
-      NODE_DEBUG (reply_msg->node,
-          "got a SI reply without a feature field");
+      STANZA_DEBUG (reply_msg, "got a SI reply without a feature field");
       return NULL;
     }
 
   x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
   if (x == NULL)
     {
-      NODE_DEBUG (reply_msg->node, "got a SI reply without a x field");
+      STANZA_DEBUG (reply_msg, "got a SI reply without a x field");
       return NULL;
     }
 
@@ -1967,7 +1979,7 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
       value = lm_message_node_get_child (field, "value");
       if (value == NULL)
         {
-          NODE_DEBUG (reply_msg->node, "SI reply's stream-method field "
+          STANZA_DEBUG (reply_msg, "SI reply's stream-method field "
               "doesn't contain stream-method value");
           return NULL;
         }
@@ -2051,10 +2063,11 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   /* stream accepted */
 
-  from = lm_message_node_get_attribute (reply_msg->node, "from");
+  from = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (reply_msg), "from");
   if (from == NULL)
     {
-      NODE_DEBUG (reply_msg->node, "got a message without a from field");
+      STANZA_DEBUG (reply_msg, "got a message without a from field");
       goto END;
     }
 
@@ -2078,8 +2091,8 @@ streaminit_reply_cb (GabbleConnection *conn,
         }
 
       /* we are not in a muc so our own jid is the one in the 'to' attribute */
-      self_jid = g_strdup (lm_message_node_get_attribute (reply_msg->node,
-            "to"));
+      self_jid = g_strdup (lm_message_node_get_attribute (
+          wocky_stanza_get_top_node (reply_msg), "to"));
     }
   else
     {
@@ -2098,11 +2111,11 @@ streaminit_reply_cb (GabbleConnection *conn,
       g_object_get (muc, "self-jid", &self_jid, NULL);
     }
 
-  si = lm_message_node_get_child_with_namespace (reply_msg->node, "si",
-      NS_SI);
+  si = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (reply_msg), "si", NS_SI);
   if (si == NULL)
     {
-      NODE_DEBUG (reply_msg->node, "got a SI reply without a si field");
+      STANZA_DEBUG (reply_msg, "got a SI reply without a si field");
       goto END;
     }
 

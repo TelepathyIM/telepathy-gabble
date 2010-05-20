@@ -7,8 +7,10 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test
-from servicetest import call_async, unwrap, make_channel_proxy, EventPattern
+from gabbletest import exec_test, acknowledge_iq
+from servicetest import (
+    call_async, unwrap, make_channel_proxy, EventPattern, assertEquals,
+)
 from search_helper import call_create, answer_extended_field_query, make_search, send_results_extended
 
 from pprint import pformat
@@ -26,15 +28,14 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
+    for f in [complete_search, complete_search2, openfire_search, double_nick,
+              no_x_in_reply]:
+        f(q, bus, conn, stream)
 
-    for f in [complete_search, complete_search2, openfire_search, double_nick]:
-        f(q, bus, conn, requests, stream)
+def do_one_search(q, bus, conn, stream, fields, expected_search_keys,
+                  terms, results):
 
-def do_one_search(q, bus, conn, requests, stream, fields, expected_search_keys,
-    terms, results):
-
-    call_create(q, requests, server)
+    call_create(q, conn, server)
 
     ret, nc_sig = answer_extended_field_query(q, stream, server, fields)
 
@@ -100,7 +101,7 @@ def search_done(q, c, c_search, c_props):
         EventPattern('dbus-signal', signal='ChannelClosed'),
         )
 
-def complete_search(q, bus, conn, requests, stream):
+def complete_search(q, bus, conn, stream):
     fields = [('first', 'text-single', 'Given Name', []),
         ('last', 'text-single', 'Family Name', []),
         ('x-gender', 'list-single', 'Gender', [('male', 'Male'), ('female', 'Female')])]
@@ -116,7 +117,7 @@ def complete_search(q, bus, conn, requests, stream):
 
     results = { g_jid: g_results, f_jid: f_results }
 
-    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
+    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, stream,
         fields, expected_search_keys, terms, results.values())
 
     assert len(search_fields) == 1
@@ -150,7 +151,7 @@ def complete_search(q, bus, conn, requests, stream):
         call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
         q.expect('dbus-error', method='InspectHandles')
 
-def complete_search2(q, bus, conn, requests, stream):
+def complete_search2(q, bus, conn, stream):
     # uses other, dataform specific, fields
     fields = [('given', 'text-single', 'Name', []),
         ('family', 'text-single', 'Family Name', []),
@@ -167,7 +168,7 @@ def complete_search2(q, bus, conn, requests, stream):
 
     results = { g_jid: g_results, f_jid: f_results }
 
-    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
+    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, stream,
         fields, expected_search_keys, terms, results.values())
 
     assert len(search_fields) == 1
@@ -195,7 +196,7 @@ def complete_search2(q, bus, conn, requests, stream):
 
     search_done(q, chan, c_search, c_props)
 
-def openfire_search(q, bus, conn, requests, stream):
+def openfire_search(q, bus, conn, stream):
     # Openfire only supports one text field and a bunch of checkboxes
     fields = [('search', 'text-single', 'Search', []),
         ('Username', 'boolean', 'Username', []),
@@ -209,7 +210,7 @@ def openfire_search(q, bus, conn, requests, stream):
     jid = 'badger@mushroom.org'
     results = {jid : { 'jid': jid, 'Name': 'Badger Badger', 'Email': jid, 'Username': 'badger'}}
 
-    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
+    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, stream,
         fields, expected_search_keys, terms, results.values())
 
     assert len(search_fields) == 4
@@ -237,7 +238,7 @@ def openfire_search(q, bus, conn, requests, stream):
 
 # Server supports 'nickname' and 'nick' which are both mapped to the
 # "nickname" in Telepathy
-def double_nick(q, bus, conn, requests, stream):
+def double_nick(q, bus, conn, stream):
     fields = [('nickname', 'text-single', 'NickName', []),
         ('nick', 'text-single', 'Nick', []),]
 
@@ -248,8 +249,31 @@ def double_nick(q, bus, conn, requests, stream):
 
     results = { }
 
-    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, requests, stream,
+    search_fields, chan, c_search, c_props = do_one_search (q, bus, conn, stream,
         fields, expected_search_keys, terms, results.values())
+
+def no_x_in_reply(q, bus, conn, stream):
+    fields = [('nickname', 'text-single', 'NickName', []),
+        ('nick', 'text-single', 'Nick', []),]
+    terms = { 'nickname': 'Badger' }
+
+    call_create(q, conn, server)
+    ret, nc_sig = answer_extended_field_query(q, stream, server, fields)
+
+    path, _ = ret.value
+    c = make_channel_proxy(conn, path, 'Channel')
+    c_props = dbus.Interface(c, cs.PROPERTIES_IFACE)
+    c_search = dbus.Interface(c, cs.CHANNEL_TYPE_CONTACT_SEARCH)
+
+    iq = make_search(q, c_search, c_props, server, terms)
+
+    # The server sends back an IQ with a <query/> but no <x/> inside the query.
+    acknowledge_iq(stream, iq)
+
+    # Gabble should tell us the query failed, and not crash.
+    event = q.expect('dbus-signal', signal='SearchStateChanged')
+    state = event.args[0]
+    assertEquals(cs.SEARCH_FAILED, state)
 
 if __name__ == '__main__':
     exec_test(test)

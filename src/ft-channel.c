@@ -1203,7 +1203,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       return;
     }
 
-  file = lm_message_node_find_child (msg->node, "file");
+  file = lm_message_node_find_child (wocky_stanza_get_top_node (msg), "file");
   if (file != NULL)
     {
       LmMessageNode *range;
@@ -1255,7 +1255,8 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
       stream_id, NS_FILE_TRANSFER);
 
-  si_node = lm_message_node_get_child_with_namespace (msg->node, "si", NS_SI);
+  si_node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 
   size_str = g_strdup_printf ("%" G_GUINT64_FORMAT, self->priv->size);
@@ -2109,7 +2110,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
           GIBBER_AF_IPV4, &error);
       if (!ret)
         {
-          DEBUG ("Error listening on socket: %s", error->message);
+          DEBUG ("Error listening on ipv4 socket: %s", error->message);
           g_error_free (error);
           return FALSE;
         }
@@ -2135,7 +2136,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
           GIBBER_AF_IPV6, &error);
       if (!ret)
         {
-          DEBUG ("Error listening on socket: %s", error->message);
+          DEBUG ("Error listening on ipv6 socket: %s", error->message);
           g_error_free (error);
           return FALSE;
         }

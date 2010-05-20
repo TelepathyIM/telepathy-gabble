@@ -14,6 +14,7 @@ TWISTED_TESTS = \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
 	gateways.py \
+	muc/conference.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \
@@ -84,10 +85,14 @@ TWISTED_TESTS = \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/test-get-available-tubes.py \
 	tubes/test-socks5-muc.py \
+	vcard/get-contact-info.py \
 	vcard/item-not-found.py \
 	vcard/overlapping-sets.py \
 	vcard/redundant-set.py \
+	vcard/refresh-contact-info.py \
+	vcard/set-contact-info.py \
 	vcard/set-set-disconnect.py \
+	vcard/supported-fields.py \
 	vcard/test-alias-empty-vcard.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \

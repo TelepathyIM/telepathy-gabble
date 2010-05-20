@@ -24,6 +24,7 @@
 #include <glib-object.h>
 
 #include "connection.h"
+#include "base-channel.h"
 
 G_BEGIN_DECLS
 
@@ -32,13 +33,11 @@ typedef struct _GabbleRoomlistChannelPrivate GabbleRoomlistChannelPrivate;
 typedef struct _GabbleRoomlistChannelClass GabbleRoomlistChannelClass;
 
 struct _GabbleRoomlistChannelClass {
-    GObjectClass parent_class;
-
-    TpDBusPropertiesMixinClass dbus_props_class;
+    GabbleBaseChannelClass parent_class;
 };
 
 struct _GabbleRoomlistChannel {
-    GObject parent;
+    GabbleBaseChannel parent;
 
     GabbleRoomlistChannelPrivate *priv;
 };
@@ -64,7 +63,7 @@ GType gabble_roomlist_channel_get_type (void);
 
 
 GabbleRoomlistChannel *_gabble_roomlist_channel_new (GabbleConnection *conn,
-    const gchar *object_path, const gchar *conference_server);
+    const gchar *conference_server);
 
 
 G_END_DECLS

@@ -1,8 +1,8 @@
 /*
  * roster.c - Source for Gabble roster helper
  *
- * Copyright (C) 2006 Collabora Ltd.
- * Copyright (C) 2006 Nokia Corporation
+ * Copyright © 2006–2010 Collabora Ltd.
+ * Copyright © 2006–2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -735,7 +735,8 @@ _gabble_roster_message_new (GabbleRoster *roster,
                                           LM_MESSAGE_TYPE_IQ,
                                           sub_type);
 
-  query_node = lm_message_node_add_child (message->node, "query", NULL);
+  query_node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (message), "query", NULL);
 
   if (NULL != query_return)
     *query_return = query_node;
@@ -1243,7 +1244,8 @@ got_roster_iq (GabbleRoster *roster,
   if (query_node == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  from = lm_message_node_get_attribute (message->node, "from");
+  from = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (message), "from");
 
   if (from != NULL)
     {
@@ -2044,6 +2046,34 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
                                          GObject *roster_obj,
                                          gpointer user_data);
 
+/*
+ * Cancel any subscriptions on @item by sending unsubscribe and/or
+ * unsubscribed, as appropriate.
+ */
+static gboolean
+roster_item_cancel_subscriptions (
+    GabbleRoster *roster,
+    TpHandle contact,
+    GabbleRosterItem *item,
+    GError **error)
+{
+  gboolean ret = TRUE;
+
+  if (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+    {
+      DEBUG ("sending unsubscribed");
+      ret = gabble_roster_handle_unsubscribed (roster, contact, NULL, error);
+    }
+
+  if (ret && (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_TO))
+    {
+      DEBUG ("sending unsubscribe");
+      ret = gabble_roster_handle_unsubscribe (roster, contact, NULL, error);
+    }
+
+  return ret;
+}
+
 /* Apply the unsent edits to the given roster item.
  *
  * \param roster The roster
@@ -2055,7 +2085,7 @@ roster_item_apply_edits (GabbleRoster *roster,
                          TpHandle contact,
                          GabbleRosterItem *item)
 {
-  gboolean altered = FALSE, ret;
+  gboolean altered = FALSE, ret = TRUE;
   GabbleRosterItem edited_item;
   TpIntSet *intset;
   GabbleRosterPrivate *priv = roster->priv;
@@ -2081,22 +2111,6 @@ roster_item_apply_edits (GabbleRoster *roster,
     }
 #endif
 
-  if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_INVALID
-      && edits->new_subscription != item->subscription)
-    {
-      DEBUG ("Changing subscription from %d to %d",
-             item->subscription, edits->new_subscription);
-      altered = TRUE;
-      edited_item.subscription = edits->new_subscription;
-    }
-
-  if (edits->new_name != NULL && tp_strdiff (item->name, edits->new_name))
-    {
-      DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
-      altered = TRUE;
-      edited_item.name = edits->new_name;
-    }
-
   if (edits->new_google_type != GOOGLE_ITEM_TYPE_INVALID
       && edits->new_google_type != item->google_type)
     {
@@ -2104,6 +2118,42 @@ roster_item_apply_edits (GabbleRoster *roster,
              edits->new_google_type);
       altered = TRUE;
       edited_item.google_type = edits->new_google_type;
+    }
+
+  if (edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_INVALID
+      && edits->new_subscription != item->subscription)
+    {
+      /* Here we check the google_type of the *edited* item (as patched in the
+       * block above) to deal correctly with a batch of edits containing both
+       * (un)block and remove.
+       */
+      if (edits->new_subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE &&
+          edited_item.google_type == GOOGLE_ITEM_TYPE_BLOCKED)
+        {
+          /* If they're blocked, we can't just remove them from the roster,
+           * because that would unblock them! So instead, we cancel both
+           * subscription directions.
+           */
+          DEBUG ("contact is blocked; not removing");
+          ret = roster_item_cancel_subscriptions (roster, contact, item, NULL);
+          /* deliberately not setting altered: we haven't altered the roster
+           * directly.
+           */
+        }
+      else
+        {
+          DEBUG ("Changing subscription from %d to %d",
+              item->subscription, edits->new_subscription);
+          altered = TRUE;
+          edited_item.subscription = edits->new_subscription;
+        }
+    }
+
+  if (edits->new_name != NULL && tp_strdiff (item->name, edits->new_name))
+    {
+      DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
+      altered = TRUE;
+      edited_item.name = edits->new_name;
     }
 
   if (edits->add_to_groups || edits->remove_from_groups)
@@ -2188,7 +2238,7 @@ roster_item_apply_edits (GabbleRoster *roster,
       &edited_item);
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(contact), NULL);
+      GUINT_TO_POINTER(contact), NULL) && ret;
   if (ret)
     {
       /* assume everything will be OK */
@@ -2454,6 +2504,15 @@ gabble_roster_handle_remove (GabbleRoster *roster,
       item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
       return TRUE;
     }
+  else if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
+    {
+      /* If they're blocked, we can't just remove them from the roster,
+       * because that would unblock them! So instead, we cancel both
+       * subscription directions.
+       */
+      DEBUG ("contact#%u is blocked; not removing", handle);
+      return roster_item_cancel_subscriptions (roster, handle, item, error);
+    }
   else
     {
       DEBUG ("immediate edit to contact#%u - change subscription to REMOVE",
@@ -2585,7 +2644,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
   tp_handle_set_add (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  NODE_DEBUG (message->node, "Roster item as message");
+  STANZA_DEBUG (message, "Roster item as message");
   tp_handle_set_remove (item->groups, group);
 
   /* keep the handle valid until roster_edited_cb runs; it will do the unref */
@@ -2667,6 +2726,93 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   return ret;
 }
 
+gboolean
+gabble_roster_handle_subscribe (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  GabbleRosterPrivate *priv = roster->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+
+
+  /* add item to the roster (GTalk depends on this, clearing the H flag) */
+  gabble_roster_handle_add (priv->conn->roster, handle, NULL);
+
+  /* send <presence type="subscribe"> */
+  return gabble_connection_send_presence (priv->conn,
+      LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
+}
+
+gboolean
+gabble_roster_handle_unsubscribe (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+
+  /* send <presence type="unsubscribe"> */
+  return gabble_connection_send_presence (roster->priv->conn,
+      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
+}
+
+gboolean
+gabble_roster_handle_subscribed (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+
+  /* send <presence type="subscribed"> */
+  return gabble_connection_send_presence (roster->priv->conn,
+      LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
+}
+
+gboolean
+gabble_roster_handle_unsubscribed (
+    GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
+  GabbleRosterChannel *publish = _gabble_roster_get_channel (roster,
+      TP_HANDLE_TYPE_LIST, GABBLE_LIST_HANDLE_PUBLISH, NULL, NULL);
+  gboolean ret;
+
+  /* send <presence type="unsubscribed"> */
+  ret = gabble_connection_send_presence (roster->priv->conn,
+      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, message, error);
+
+  /* remove it from publish:local_pending here, because roster callback doesn't
+     know if it can (subscription='none' is used both during request and
+     when it's rejected) */
+  if (tp_handle_set_is_member (publish->group.local_pending, handle))
+    {
+      TpIntSet *rem = tp_intset_new ();
+
+      tp_intset_add (rem, handle);
+      tp_group_mixin_change_members (G_OBJECT (publish), "", NULL, rem, NULL,
+          NULL, 0, 0);
+
+      tp_intset_destroy (rem);
+    }
+
+  return ret;
+}
 
 static const gchar * const list_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",

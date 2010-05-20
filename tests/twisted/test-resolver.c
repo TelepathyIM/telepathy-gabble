@@ -136,6 +136,24 @@ lookup_service_finish (GResolver *resolver,
   return g_simple_async_result_get_op_res_gpointer (simple);
 }
 
+static GList *
+lookup_by_name (GResolver *resolver,
+    const gchar *hostname,
+    GCancellable *cancellable,
+    GError **error)
+{
+  GList *result;
+
+  result = find_fake_hosts (TEST_RESOLVER (resolver), hostname);
+
+  if (result == NULL)
+    g_set_error (error, G_RESOLVER_ERROR,
+        G_RESOLVER_ERROR_NOT_FOUND,
+        "No fake hostname record registered");
+
+  return result;
+}
+
 static void
 lookup_by_name_async (GResolver *resolver,
                       const gchar *hostname,
@@ -143,17 +161,23 @@ lookup_by_name_async (GResolver *resolver,
                       GAsyncReadyCallback  cb,
                       gpointer data)
 {
-  TestResolver *tr = TEST_RESOLVER (resolver);
-  GList *addr = find_fake_hosts (tr, hostname);
   GObject *source = G_OBJECT (resolver);
   GSimpleAsyncResult *res =
-      g_simple_async_result_new (source, cb, data, lookup_service_async);
+      g_simple_async_result_new (source, cb, data, NULL);
+  GList *addr;
+  GError *error = NULL;
+
+  addr = lookup_by_name (resolver, hostname, NULL, &error);
 
   if (addr != NULL)
-    g_simple_async_result_set_op_res_gpointer (res, addr, NULL);
+    {
+      g_simple_async_result_set_op_res_gpointer (res, addr, NULL);
+    }
   else
-    g_simple_async_result_set_error (res, G_RESOLVER_ERROR,
-        G_RESOLVER_ERROR_NOT_FOUND, "No fake hostname record registered");
+    {
+      g_simple_async_result_set_from_error (res, error);
+      g_error_free (error);
+    }
 
   g_simple_async_result_complete_in_idle (res);
   g_object_unref (res);
@@ -189,6 +213,7 @@ test_resolver_class_init (TestResolverClass *klass)
   resolver_class->lookup_by_name_finish    = lookup_by_name_finish;
   resolver_class->lookup_service_async     = lookup_service_async;
   resolver_class->lookup_service_finish    = lookup_service_finish;
+  resolver_class->lookup_by_name = lookup_by_name;
 }
 
 void

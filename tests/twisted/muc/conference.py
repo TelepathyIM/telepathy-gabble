@@ -39,7 +39,9 @@ def create_pmuc(q, conn, stream, extra_props=None):
     r = q.expect('stream-presence')
     pmuc_name = r.to.split('/', 2)[0]
 
-    assert re.match(r'^private-chat-\w{8}-\w{4}-\w{4}-\w{4}-\w{12}@groupchat.google.com$', pmuc_name)
+    assert re.match(
+        r'^private-chat-\w{8}-\w{4}-\w{4}-\w{4}-\w{12}@conf.localhost$',
+        pmuc_name), pmuc_name
 
     stream.send(make_muc_presence('owner', 'moderator', pmuc_name, 'test'))
 
@@ -92,4 +94,4 @@ def test_create_pmuc_with_invitee(q, conn, stream):
             ['bob@localhost']
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test, params={ 'fallback-conference-server': 'conf.localhost' } )

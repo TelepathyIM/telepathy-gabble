@@ -331,7 +331,7 @@ iq_cb (
 {
   GSimpleAsyncResult *result = user_data;
   GError *error = NULL;
-  WockyXmppStanza *reply;
+  WockyStanza *reply;
 
   reply = wocky_porter_send_iq_finish (WOCKY_PORTER (source),
       nested_result, &error);
@@ -345,7 +345,7 @@ iq_cb (
     {
       WockyStanzaSubType t;
 
-      wocky_xmpp_stanza_get_type_info (reply, NULL, &t);
+      wocky_stanza_get_type_info (reply, NULL, &t);
 
       if (t == WOCKY_STANZA_SUB_TYPE_RESULT)
         g_simple_async_result_set_op_res_gboolean (result, TRUE);
@@ -371,16 +371,16 @@ sidecar_iq_init_async (
   GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, sidecar_iq_init_async);
   WockyPorter *porter = wocky_session_get_porter (self->session);
-  WockyXmppStanza *iq;
+  WockyStanza *iq;
 
-  iq = wocky_xmpp_stanza_build (WOCKY_STANZA_TYPE_IQ,
+  iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_GET, NULL, "sidecar.example.com",
-        WOCKY_NODE, "query",
-          WOCKY_NODE_XMLNS, "http://example.com/sidecar",
-          WOCKY_NODE, "oh-hai",
-          WOCKY_NODE_END,
-        WOCKY_NODE_END,
-      WOCKY_STANZA_END);
+        '(', "query",
+          ':', "http://example.com/sidecar",
+          '(', "oh-hai",
+          ')',
+        ')',
+      NULL);
   wocky_porter_send_iq_async (porter, iq, cancellable, iq_cb, result);
 }
 

@@ -236,7 +236,7 @@ im_factory_message_cb (LmMessageHandler *handler,
   handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
   if (handle == 0)
     {
-      NODE_DEBUG (message->node, "ignoring message node from malformed jid");
+      STANZA_DEBUG (message, "ignoring message node from malformed jid");
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
@@ -362,16 +362,14 @@ new_im_channel (GabbleImFactory *fac,
 
   object_path = g_strdup_printf ("%s/ImChannel%u",
       conn->object_path, handle);
-
   chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
                        "connection", priv->conn,
                        "object-path", object_path,
                        "handle", handle,
                        "initiator-handle", initiator,
                        NULL);
-
   DEBUG ("object path %s", object_path);
-
+  gabble_base_channel_register ((GabbleBaseChannel *) chan);
   g_free (object_path);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);

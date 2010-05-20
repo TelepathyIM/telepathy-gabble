@@ -1531,6 +1531,12 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
  * The callback may be NULL if you just want the side-effect of this
  * operation, which is to update the cached alias.
  *
+ * Note: this method assumes that vCard for the given handle is not available
+ * already. Before using it either check that the vCard is not available
+ * using gabble_vcard_manager_get_cached(), or explicitly invalidate the
+ * cache using gabble_vcard_manager_invalidate_cache() to request cache
+ * refresh.
+ *
  * FIXME: the timeout is not always obeyed when there is already a request
  *        on the same handle. It should perhaps be removed.
  */

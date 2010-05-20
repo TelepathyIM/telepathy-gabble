@@ -1261,7 +1261,7 @@ http_data_received (GTalkFileCollection *self, ShareChannel *share_channel,
                     }
                 }
             }
-          else if (!g_ascii_strcasecmp (line, "Content-Length: "))
+          else if (!g_ascii_strncasecmp (line, "Content-Length: ", 16))
             {
               share_channel->is_chunked = FALSE;
               /* Check strtoull read all the length */

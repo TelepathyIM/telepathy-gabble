@@ -822,6 +822,9 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
       if (content == gabble_call_stream_get_jingle_content (stream))
         {
           priv->streams = g_list_delete_link (priv->streams, l);
+          gabble_svc_call_content_emit_stream_removed (self,
+            gabble_call_stream_get_object_path (stream));
+
           g_object_unref (stream);
           break;
         }

@@ -147,10 +147,15 @@ def run_incoming_test(q, bus, conn, stream):
     # Bob leaves the call, bye bob
     presence = make_muc_presence('owner', 'moderator', muc, 'bob')
     stream.send(presence)
-    e = q.expect('dbus-signal', signal = 'CallMembersChanged')
+    (cmembers, _, _) = q.expect_many(
+        EventPattern ('dbus-signal', signal = 'CallMembersChanged'),
+        # Audio and video stream
+        EventPattern ('dbus-signal', signal = 'StreamRemoved'),
+        EventPattern ('dbus-signal', signal = 'StreamRemoved'))
+
 
     # Just bob left
-    assertLength (1, e.args[1])
+    assertLength (1, cmembers.args[1])
 
 def run_outgoing_test(q, bus, conn, stream):
     jp = JingleProtocol031 ()

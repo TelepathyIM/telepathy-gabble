@@ -3946,8 +3946,7 @@ muc_call_channel_finish_requests (GabbleMucChannel *self,
           g_simple_async_result_get_op_res_gpointer (
             G_SIMPLE_ASYNC_RESULT(l->data)));
 
-      g_signal_emit (self, signals[NEW_CALL], 0, self->priv->call,
-          requests);
+      g_signal_emit (self, signals[NEW_CALL], 0, call, requests);
       g_slist_free (requests);
     }
   else

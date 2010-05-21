@@ -100,6 +100,9 @@ void gabble_call_member_content_set_jingle_content (
 void gabble_call_member_content_add_to_session (
     GabbleCallMemberContent *self);
 
+void gabble_call_member_content_remove (
+    GabbleCallMemberContent *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __CALL_MEMBER_CONTENT_H__*/

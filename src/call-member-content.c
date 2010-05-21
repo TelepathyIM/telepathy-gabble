@@ -66,6 +66,7 @@ struct _GabbleCallMemberContentPrivate
   JingleMediaType media_type;
 
   GList *remote_codecs;
+  gboolean removed;
 };
 
 #define GABBLE_CALL_MEMBER_CONTENT_GET_PRIVATE(o)  \
@@ -348,7 +349,11 @@ static void
 call_member_content_jingle_removed_cb (GabbleJingleContent *jingle_content,
     GabbleCallMemberContent *content)
 {
-  g_signal_emit (content, signals[REMOVED], 0);
+  if (!content->priv->removed)
+    {
+      content->priv->removed = TRUE;
+      g_signal_emit (content, signals[REMOVED], 0);
+    }
 }
 
 static void
@@ -454,4 +459,21 @@ gabble_call_member_content_set_jingle_content (GabbleCallMemberContent *self,
     G_CALLBACK (call_member_content_jingle_codecs_cb), G_OBJECT (self));
 
   g_signal_emit (self, signals[GOT_JINGLE_CONTENT], 0);
+}
+
+void
+gabble_call_member_content_remove (GabbleCallMemberContent *self)
+{
+  GabbleCallMemberContentPrivate *priv = self->priv;
+
+  g_object_ref (self);
+  /* Remove ourselves from the sesison */
+  if (priv->jingle_content != NULL)
+      gabble_jingle_content_remove (priv->jingle_content, TRUE);
+
+  if (!priv->removed)
+    g_signal_emit (self, signals[REMOVED], 0);
+  priv->removed = TRUE;
+
+  g_object_unref (self);
 }

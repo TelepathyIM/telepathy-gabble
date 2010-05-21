@@ -10,7 +10,7 @@ import jingletest
 
 import constants as cs
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, channel_type):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
     conn.Connect()
@@ -30,9 +30,11 @@ def test(q, bus, conn, stream):
 
     handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
 
-    path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT,
-        handle, True)
-    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
+    if channel_type == cs.CHANNEL_TYPE_STREAMED_MEDIA:
+        path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.HT_CONTACT, handle, True)
+        media_iface = make_channel_proxy(conn, path,
+            'Channel.Type.StreamedMedia')
 
     # So it turns out that the calls to RequestStreams and Disconnect could be
     # reordered while the first waits on the result of introspecting the
@@ -43,16 +45,34 @@ def test(q, bus, conn, stream):
     sync_dbus(bus, q, conn)
 
     # Now we request streams before either <presence> or caps have arrived
-    call_async(q, media_iface, 'RequestStreams', handle,
-        [cs.MEDIA_STREAM_TYPE_AUDIO])
+    if channel_type == cs.CHANNEL_TYPE_STREAMED_MEDIA:
+        call_async(q, media_iface, 'RequestStreams', handle,
+            [cs.MEDIA_STREAM_TYPE_AUDIO])
 
-    before_events, after_events = disconnect_conn(q, conn, stream,
-        [EventPattern('dbus-error', method='RequestStreams')])
+        before_events, after_events = disconnect_conn(q, conn, stream,
+            [EventPattern('dbus-error', method='RequestStreams')])
 
-    # RequestStreams should now return NotAvailable
-    assert before_events[0].error.get_dbus_name() == cs.NOT_AVAILABLE, \
+        # RequestStreams should now return NotAvailable
+        assert before_events[0].error.get_dbus_name() == cs.NOT_AVAILABLE, \
+            before_events[0].error
+    else:
+        call_async(q, conn.Requests, 'CreateChannel',
+            { cs.CHANNEL_TYPE: channel_type,
+              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+              cs.TARGET_ID: jt.remote_jid,
+              cs.CALL_INITIAL_AUDIO: True
+            })
+
+        before_events, after_events = disconnect_conn(q, conn, stream,
+            [EventPattern('dbus-error', method='CreateChannel')])
+
+        # CreateChannel should now return Disconnected
+        assert before_events[0].error.get_dbus_name() == cs.DISCONNECTED, \
             before_events[0].error
 
 if __name__ == '__main__':
-    exec_test(test, timeout=10)
+    exec_test(lambda q, bus, conn, stream:
+        test(q, bus, conn, stream, cs.CHANNEL_TYPE_CALL), timeout=10)
+    exec_test(lambda q, bus, conn, stream:
+        test(q, bus, conn, stream, cs.CHANNEL_TYPE_STREAMED_MEDIA), timeout=10)
 

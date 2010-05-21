@@ -102,7 +102,7 @@ TWISTED_TESTS = \
 	vcard/test-avatar.py \
 	vcard/test-avatar-retrieved.py \
 	vcard/test-avatar-tokens.py \
-        vcard/test-avatar-multiple-resources.py \
+	vcard/test-avatar-multiple-resources.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
 	vcard/test-vcard-cache.py \
@@ -110,9 +110,12 @@ TWISTED_TESTS = \
 	vcard/update-get-failed.py \
 	vcard/update-rejected.py \
 	jingle/accept-extra-stream.py \
-	jingle/call-state.py \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
+	jingle/call-muc.py \
+	jingle/call-muc-cancel.py \
+	jingle/call-muc-re-re-request.py
+	jingle/call-state.py \
 	jingle/decloak-peer.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \

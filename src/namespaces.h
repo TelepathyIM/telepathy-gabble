@@ -98,6 +98,7 @@
 #define NS_SI                   "http://jabber.org/protocol/si"
 #define NS_SI_MULTIPLE          "http://telepathy.freedesktop.org/xmpp/si-multiple"
 #define NS_TUBES                "http://telepathy.freedesktop.org/xmpp/tubes"
+#define NS_MUJI                 "http://telepathy.freedesktop.org/xmpp/muji"
 #define NS_VCARD_TEMP           "vcard-temp"
 #define NS_VCARD_TEMP_UPDATE    "vcard-temp:x:update"
 #define NS_X_DATA               "jabber:x:data"

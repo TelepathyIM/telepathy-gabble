@@ -143,7 +143,7 @@ void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
 GabbleJingleSession *gabble_jingle_factory_create_session (
     GabbleJingleFactory *fac,
     TpHandle peer,
-    const gchar *peer_resource,
+    const gchar *jid,
     gboolean local_hold);
 
 typedef void (*GabbleJingleFactoryRelaySessionCb) (GPtrArray *relays,

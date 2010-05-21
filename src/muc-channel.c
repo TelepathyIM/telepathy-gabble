@@ -51,6 +51,10 @@
 #include "util.h"
 #include "presence-cache.h"
 
+#include "call-muc-channel.h"
+
+#include "gabble-signals-marshal.h"
+
 #define DEFAULT_JOIN_TIMEOUT 180
 #define MAX_NICK_RETRIES 3
 
@@ -60,6 +64,11 @@
 static void channel_iface_init (gpointer, gpointer);
 static void password_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
+static void gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
+    GHashTable *request);
+static void muc_call_channel_finish_requests (GabbleMucChannel *self,
+    GabbleCallMucChannel *call,
+    GError *error);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     GABBLE_TYPE_BASE_CHANNEL,
@@ -102,6 +111,8 @@ enum
     CONTACT_JOIN,
     PRE_PRESENCE,
     NEW_TUBE,
+
+    NEW_CALL,
     LAST_SIGNAL
 };
 
@@ -236,14 +247,25 @@ struct _GabbleMucChannelPrivate
 
   TpPropertiesContext *properties_ctx;
 
-  unsigned ready:1;
-  unsigned dispose_has_run:1;
-  unsigned invited:1;
+  gboolean ready;
+  gboolean dispose_has_run;
+  gboolean invited;
 
   gchar *invitation_message;
 
   WockyMuc *wmuc;
   GabbleTubesChannel *tube;
+
+  /* Current active call */
+  GabbleCallMucChannel *call;
+  /* All calls, active one + potential ended ones */
+  GList *calls;
+
+  /* List of GSimpleAsyncResults for the various request for a call */
+  GList *call_requests;
+  gboolean call_initiating;
+
+  GCancellable *requests_cancellable;
 
   GPtrArray *initial_channels;
   GArray *initial_handles;
@@ -257,6 +279,8 @@ gabble_muc_channel_init (GabbleMucChannel *self)
       GABBLE_TYPE_MUC_CHANNEL, GabbleMucChannelPrivate);
 
   self->priv = priv;
+
+  priv->requests_cancellable = g_cancellable_new ();
 }
 
 static TpHandle create_room_identity (GabbleMucChannel *)
@@ -871,6 +895,9 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_TUBE:
       g_value_set_object (value, priv->tube);
       break;
+    case PROP_WOCKY_MUC:
+      g_value_set_object (value, priv->wmuc);
+      break;
     case PROP_INVITATION_MESSAGE:
       g_value_set_string (value, "");
       break;
@@ -1109,6 +1136,16 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   g_cclosure_marshal_VOID__OBJECT,
                   G_TYPE_NONE, 1, GABBLE_TYPE_TUBES_CHANNEL);
 
+  signals[NEW_CALL] = g_signal_new ("new-call",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  gabble_marshal_VOID__OBJECT_POINTER,
+                  G_TYPE_NONE, 2,
+                  GABBLE_TYPE_CALL_MUC_CHANNEL,
+                  G_TYPE_POINTER);
+
   tp_properties_mixin_class_init (object_class,
                                       G_STRUCT_OFFSET (GabbleMucChannelClass,
                                         properties_class),
@@ -1154,6 +1191,8 @@ gabble_muc_channel_dispose (GObject *object)
     g_object_unref (priv->wmuc);
 
   priv->wmuc = NULL;
+
+  g_object_unref (priv->requests_cancellable);
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
@@ -1361,6 +1400,10 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 
   TpIntSet *set;
   GArray *handles;
+  GError error = { TP_ERRORS,
+      TP_ERROR_CANCELLED,
+      "Muc channel closed below us"
+  };
 
   DEBUG ("Closing");
 
@@ -1370,6 +1413,14 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   base->closed = TRUE;
 
   gabble_muc_channel_close_tube (chan);
+
+  muc_call_channel_finish_requests (chan, NULL, &error);
+
+  g_cancellable_cancel (priv->requests_cancellable);
+
+  while (priv->calls != NULL)
+    gabble_base_call_channel_close (
+        GABBLE_BASE_CALL_CHANNEL (priv->calls->data));
 
   /* Remove us from member list */
   set = tp_intset_new ();
@@ -2294,6 +2345,7 @@ handle_presence (GObject *source,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (gmuc);
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles ((TpBaseConnection *) base->conn,
@@ -2340,6 +2392,20 @@ handle_presence (GObject *source,
   tp_group_mixin_add_handle_owner (data, handle, owner);
 
   handle_tube_presence (gmuc, handle, stanza);
+
+  if (!priv->call_initiating && priv->call == NULL)
+    {
+      WockyNode *m;
+      /* Check for muji nodes */
+      m = wocky_node_get_child_ns (
+          wocky_stanza_get_top_node (stanza), "muji", NS_MUJI);
+      if (m != NULL &&
+          wocky_node_get_child_ns (m, "content", NS_MUJI) != NULL)
+        {
+          DEBUG ("Detected a muji call in progress, starting a call channel!");
+          gabble_muc_channel_start_call_creation (gmuc, NULL);
+        }
+    }
 
   /* zap the handle refs we created */
  out:
@@ -3614,10 +3680,223 @@ gabble_muc_channel_close_tube (GabbleMucChannel *gmuc)
     }
 }
 
+GabbleCallMucChannel *
+gabble_muc_channel_get_call (GabbleMucChannel *gmuc)
+{
+  return gmuc->priv->call;
+}
+
+GList *
+gabble_muc_channel_get_call_channels (GabbleMucChannel *self)
+{
+  return self->priv->calls;
+}
+
+static void
+muc_channel_call_ended_cb (GabbleCallMucChannel *muc, gpointer user_data)
+{
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+
+  g_assert (self->priv->call == muc);
+  self->priv->call = NULL;
+}
+
+static void
+muc_channel_call_closed_cb (GabbleCallMucChannel *muc, gpointer user_data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+
+  g_assert (g_list_find (priv->calls, muc) != NULL);
+
+  /* closed the active muc */
+  if (priv->call == muc)
+    priv->call = NULL;
+
+  priv->calls = g_list_remove (priv->calls, muc);
+  g_object_unref (muc);
+}
+
+static void
+muc_call_channel_finish_requests (GabbleMucChannel *self,
+  GabbleCallMucChannel *call,
+  GError *error)
+{
+  GList *l;
+
+  if (call != NULL)
+    {
+      GSList *requests = NULL;
+
+      DEBUG ("Call channel created");
+
+      for (l = self->priv->call_requests ; l != NULL; l = g_list_next (l))
+        requests = g_slist_append (requests,
+          g_simple_async_result_get_op_res_gpointer (
+            G_SIMPLE_ASYNC_RESULT(l->data)));
+
+      g_signal_emit (self, signals[NEW_CALL], 0, call, requests);
+      g_slist_free (requests);
+    }
+  else
+    {
+      DEBUG ("Failed to create call channel: %s", error->message);
+    }
+
+  for (l = self->priv->call_requests ; l != NULL; l = g_list_next (l))
+    {
+      GSimpleAsyncResult *r = G_SIMPLE_ASYNC_RESULT (l->data);
+
+      if (error != NULL)
+        g_simple_async_result_set_from_error (r, error);
+
+      g_simple_async_result_complete (r);
+      g_object_unref (r);
+    }
+
+  g_list_free (self->priv->call_requests);
+  self->priv->call_requests = NULL;
+}
+
+static void
+muc_channel_call_channel_done_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+  GError *error = NULL;
+
+  g_assert (priv->call == NULL);
+  if (GABBLE_BASE_CHANNEL (gmuc)->closed)
+    goto out;
+
+  priv->call_initiating = FALSE;
+  priv->call = gabble_call_muc_channel_new_finish (source,
+    result, &error);
+
+  if (priv->call == NULL)
+    goto error;
+
+  priv->calls = g_list_prepend (priv->calls, priv->call);
+
+  g_signal_connect (priv->call, "closed",
+    G_CALLBACK (muc_channel_call_closed_cb),
+    gmuc);
+
+  g_signal_connect (priv->call, "ended",
+    G_CALLBACK (muc_channel_call_ended_cb),
+    gmuc);
+
+error:
+  muc_call_channel_finish_requests (gmuc, priv->call, error);
+
+  g_clear_error (&error);
+
+out:
+  /* we kept ourselves reffed while the call channel was being created */
+  g_object_unref (gmuc);
+}
+
+static void
+gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
+  GHashTable *request)
+{
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+  GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (gmuc);
+
+  g_assert (!priv->call_initiating);
+  g_assert (priv->call == NULL);
+
+  priv->call_initiating = TRUE;
+
+  /* Keep ourselves reffed while call channels are created */
+  g_object_ref (gmuc);
+  gabble_call_muc_channel_new_async (base->conn,
+      priv->requests_cancellable,
+      base->object_path,
+      gmuc,
+      base->target,
+      request,
+      muc_channel_call_channel_done_cb,
+      gmuc);
+}
+
+void
+gabble_muc_channel_request_call (GabbleMucChannel *gmuc,
+    GHashTable *request,
+    gboolean require_new,
+    gpointer token,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+  GSimpleAsyncResult *res;
+
+  /* FIXME: Ponder whether this function should even be used when the call
+   * already exists and to have the return indicate that it was already
+   * satisfied (instead of a newly created channel) */
+  g_assert (priv->call == NULL);
+
+  if (require_new && priv->call_initiating)
+    {
+      g_simple_async_report_error_in_idle (G_OBJECT (gmuc),
+        callback, user_data,
+        TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "A request for a call is already in progress");
+      return;
+    }
+
+  if (!priv->call_initiating)
+    gabble_muc_channel_start_call_creation (gmuc, request);
+
+  res = g_simple_async_result_new (G_OBJECT (gmuc),
+      callback, user_data, gabble_muc_channel_request_call_finish);
+  g_simple_async_result_set_op_res_gpointer (res, token, NULL);
+
+  priv->call_requests = g_list_append (priv->call_requests, res);
+}
+
+gboolean
+gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
+    GAsyncResult *result,
+    GError **error)
+{
+  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
+      error))
+    return FALSE;
+
+  g_return_val_if_fail (g_simple_async_result_is_valid (result,
+    G_OBJECT (gmuc), gabble_muc_channel_request_call_finish), FALSE);
+
+  return TRUE;
+}
+
+
+gboolean
+gabble_muc_channel_handle_jingle_session (GabbleMucChannel *self,
+    GabbleJingleSession *session)
+{
+  GabbleMucChannelPrivate *priv = self->priv;
+
+  /* No Muji no need to handle call sessions */
+  if (priv->call == NULL)
+    return FALSE;
+
+  gabble_call_muc_channel_incoming_session (priv->call, session);
+
+  return TRUE;
+}
+
 void
 gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
 {
+  GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (gmuc);
+
   close_channel (gmuc, NULL, FALSE, 0, 0);
+  tp_dbus_daemon_unregister_object (
+    tp_base_connection_get_dbus_daemon ((TpBaseConnection *) base->conn),
+    gmuc);
 }
 
 static void

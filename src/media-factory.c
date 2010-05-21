@@ -374,6 +374,12 @@ new_call_channel (GabbleMediaFactory *self,
   MediaChannelRequest *mcr;
   gchar *object_path;
   TpBaseConnection *conn = TP_BASE_CONNECTION (self->priv->conn);
+  TpHandle initiator;
+
+  if (sess != NULL)
+    initiator = sess->peer;
+  else
+    initiator = conn->self_handle;
 
   object_path = g_strdup_printf ("%s/CallChannel%u",
     conn->object_path, self->priv->channel_index);
@@ -386,6 +392,8 @@ new_call_channel (GabbleMediaFactory *self,
     "handle", peer,
     "initial-audio", initial_audio,
     "initial-video", initial_video,
+    "requested", request_token != NULL,
+    "creator", initiator,
     NULL);
 
   g_free (object_path);
@@ -417,8 +425,8 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
 
   /* Close will cause the channel to be removed from the list indirectly..*/
   while (priv->call_channels != NULL)
-    gabble_call_channel_close (
-        GABBLE_CALL_CHANNEL (priv->call_channels->data));
+    gabble_base_call_channel_close (
+        GABBLE_BASE_CALL_CHANNEL (priv->call_channels->data));
 
   if (priv->status_changed_id != 0)
     {
@@ -434,13 +442,17 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
     gpointer data)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (data);
+  GabbleMediaFactoryPrivate *priv = self->priv;
 
   if (gabble_jingle_session_get_content_type (sess) !=
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
     return;
 
-
-  if (self->priv->use_call_channels)
+  if (gabble_muc_factory_handle_jingle_session (priv->conn->muc_factory, sess))
+    {
+      /* Muji channel the muc factory is taking care of it */
+    }
+  else if (self->priv->use_call_channels)
     {
       new_call_channel (self, sess, sess->peer, FALSE, FALSE, NULL);
     }
@@ -604,6 +616,12 @@ static const gchar * const call_both_allowed_immutable[] = {
 static const gchar * const anon_channel_allowed_properties[] = {
     NULL
 };
+
+const gchar * const *
+gabble_media_factory_call_channel_allowed_properties (void)
+{
+  return call_channel_allowed_properties;
+}
 
 static GHashTable *
 gabble_media_factory_streamed_media_channel_class (void)

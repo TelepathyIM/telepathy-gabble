@@ -30,8 +30,8 @@ def worker(q, bus, conn, stream, remote_jid):
         jp.Jingle(jt2.sid, jt2.peer, 'session-initiate', [
             jp.Content('audiostream', 'initiator', 'both',
                 jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt2.audio_codecs ]),
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
@@ -116,8 +116,8 @@ def worker(q, bus, conn, stream, remote_jid):
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
             jp.Content('videostream', 'initiator', 'both',
                 jp.Description('video', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.video_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt2.video_codecs ]),
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 

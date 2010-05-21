@@ -613,6 +613,7 @@ gabble_base_call_channel_finalize (GObject *object)
   g_hash_table_unref (priv->details);
   g_value_array_free (priv->reason);
   g_free (self->priv->object_path);
+  g_free (self->priv->object_path_prefix);
 
   G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->finalize (object);
 }

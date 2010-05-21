@@ -2,20 +2,14 @@
 """
 A simple smoke-test for XEP-0126 invisibility
 """
-
-from twisted.words.xish import domish
-
-from gabbletest import exec_test, make_presence, XmppXmlStream, elem_iq
+from gabbletest import exec_test, XmppXmlStream, acknowledge_iq
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
 )
 import ns
 import constants as cs
-from twisted.words.xish import domish, xpath
-from invisible_helper import InvisibleXmlStream
-
-class PrivacyListXmlStream(InvisibleXmlStream):
-    FEATURES = [ns.PRIVACY]
+from twisted.words.xish import xpath
+from invisible_helper import PrivacyListXmlStream
 
 def test_invisible_on_connect(q, bus, conn, stream):
     props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
@@ -29,25 +23,30 @@ def test_invisible_on_connect(q, bus, conn, stream):
 
     conn.Connect()
 
-    create_list, set_active = q.expect_many(
-        EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type='set'),
-        EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type='set'))
+    create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    # Check its name
+    assertNotEquals([],
+        xpath.queryForNodes('/query/list/item/presence-out', create_list.query))
+    acknowledge_iq(stream, create_list.stanza)
+
+    set_active = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    active = xpath.queryForNodes('//active', set_active.query)[0]
+    assertEquals('invisible', active['name'])
+    acknowledge_iq(stream, set_active.stanza)
 
     q.unforbid_events([presence_event_pattern])
 
-    assertNotEquals (xpath.queryForNodes('/query/list/item/presence-out',
-                                         create_list.query), [])
-
     q.expect('dbus-signal', signal='StatusChanged',
-             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
 def test(q, bus, conn, stream):
     conn.Connect()
 
-    event, _ = q.expect_many(
-        EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type='set'),
-        EventPattern('dbus-signal', signal='StatusChanged',
-             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+    create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    acknowledge_iq(stream, create_list.stanza)
+
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     assertContains("hidden",
         conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
@@ -66,6 +65,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     active = xpath.queryForNodes('//active', event.query)[0]
     assertEquals('invisible', active['name'])
+    acknowledge_iq(stream, event.stanza)
 
     # In order to appear globally invisible, the client MUST now re-send the
     # user's presence for broadcasting to all contacts, which the active rule
@@ -92,6 +92,7 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     active = xpath.queryForNodes('//active', event.query)[0]
     assert (not active.compareAttribute('name', 'invisible'))
+    acknowledge_iq(stream, event.stanza)
 
     # In order to ensure synchronization of presence notifications, the client
     # SHOULD now re-send the user's presence for broadcasting to all contacts.

@@ -7,7 +7,7 @@ from gabbletest import make_presence
 from twisted.words.xish import domish
 from twisted.words.protocols.jabber.client import IQ
 import dbus
-from caps_helper import make_caps_disco_reply
+from caps_helper import send_disco_reply
 
 class JingleTest:
 
@@ -110,10 +110,7 @@ class JingleTest:
 
 
     def send_remote_disco_reply(self, stanza):
-        reply = make_caps_disco_reply(self.stream, stanza,
-            self.remote_feats)
-        self.stream.send(reply.toXml())
-
+        send_disco_reply(self.stream, stanza, [], self.remote_feats)
 
     def incoming_call(self, codec_parameters=None):
         self.direction = 'incoming'

@@ -50,13 +50,15 @@ GType gabble_call_stream_get_type (void);
 #define GABBLE_CALL_STREAM(obj) \
   (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CALL_STREAM, GabbleCallStream))
 #define GABBLE_CALL_STREAM_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CALL_STREAM, GabbleCallStreamClass))
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CALL_STREAM, \
+    GabbleCallStreamClass))
 #define GABBLE_IS_CALL_STREAM(obj) \
   (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_CALL_STREAM))
 #define GABBLE_IS_CALL_STREAM_CLASS(klass) \
   (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_CALL_STREAM))
 #define GABBLE_CALL_STREAM_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CALL_STREAM, GabbleCallStreamClass))
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CALL_STREAM, \
+    GabbleCallStreamClass))
 
 
 const gchar *gabble_call_stream_get_object_path (GabbleCallStream *stream);

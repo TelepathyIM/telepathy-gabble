@@ -773,7 +773,7 @@ gabble_server_sasl_channel_abort (
     {
       case GABBLE_ABORT_REASON_INVALID_CHALLENGE:
         code = WOCKY_AUTH_ERROR_INVALID_REPLY;
-        dbus_error = "org.freedesktop.Telepathy.Error.Sasl.InvalidReply";
+        dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
         break;
 
       case GABBLE_ABORT_REASON_USER_ABORT:
@@ -971,7 +971,31 @@ gabble_server_sasl_channel_failure_func (WockyAuthRegistry *auth_registry,
     GError *error)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (auth_registry);
-  const gchar *dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
+  const gchar *dbus_error = TP_ERROR_STR_NETWORK_ERROR;
+
+  if (error->domain == WOCKY_AUTH_ERROR)
+    {
+      switch (error->code)
+        {
+        case WOCKY_AUTH_ERROR_INIT_FAILED:
+        case WOCKY_AUTH_ERROR_NOT_SUPPORTED:
+        case WOCKY_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
+          dbus_error = TP_ERROR_STR_NOT_AVAILABLE;
+          break;
+        case WOCKY_AUTH_ERROR_STREAM:
+        case WOCKY_AUTH_ERROR_NETWORK:
+          dbus_error = TP_ERROR_STR_NETWORK_ERROR;
+          break;
+        case WOCKY_AUTH_ERROR_RESOURCE_CONFLICT:
+          dbus_error = TP_ERROR_STR_ALREADY_CONNECTED;
+          break;
+        case WOCKY_AUTH_ERROR_CONNRESET:
+          dbus_error = TP_ERROR_STR_CONNECTION_LOST;
+          break;
+        default:
+          dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
+        }
+    }
 
   DEBUG ("auth failed: %s", error->message);
 

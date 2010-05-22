@@ -139,10 +139,9 @@ def connect_and_get_sasl_channel(q, bus, conn):
     raise AssertionError, "SASL channel not created."
 
 def abort_auth(q, chan, reason, message):
-    reason_err_map = {cs.SASL_ABORT_REASON_USER_ABORT :
-                      "org.freedesktop.Telepathy.Error.Cancelled",
-                      cs.SASL_ABORT_REASON_INVALID_CHALLENGE :
-                      "org.freedesktop.Telepathy.Error.Sasl.InvalidReply"}
+    reason_err_map = {
+        cs.SASL_ABORT_REASON_USER_ABORT : cs.CANCELLED,
+        cs.SASL_ABORT_REASON_INVALID_CHALLENGE : cs.AUTHENTICATION_FAILED}
 
     chan.SaslAuthentication.Abort(reason, message)
 

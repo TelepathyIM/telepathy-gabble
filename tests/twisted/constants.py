@@ -126,6 +126,7 @@ CONNECTION_LOST = ERROR + '.ConnectionLost'
 CANCELLED = ERROR + '.Cancelled'
 DISCONNECTED = ERROR + '.Disconnected'
 REGISTRATION_EXISTS = ERROR + '.RegistrationExists'
+AUTHENTICATION_FAILED = ERROR + '.AuthenticationFailed'
 
 UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 

@@ -1,0 +1,221 @@
+<?xml version="1.0" ?>
+<node name="/Channel_Interface_Sasl_Authentication"
+      xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
+  <tp:copyright> Copyright © 2010 Collabora Limited </tp:copyright>
+  <tp:license xmlns="http://www.w3.org/1999/xhtml">
+    <p>This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.</p>
+
+<p>This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.</p>
+
+<p>You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
+  </tp:license>
+  <interface name="org.freedesktop.Telepathy.Channel.Interface.SaslAuthentication.DRAFT" tp:causes-havoc="experimental">
+    <tp:requires interface="org.freedesktop.Telepathy.Channel"/>
+	<tp:requires interface="org.freedesktop.Telepathy.Channel.Type.Server.Authentication.DRAFT"/>
+    <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+      A channel interface for SASL authentication.
+    </tp:docstring>
+
+
+    <property name="AvailableMechanisms"
+             tp:name-for-bindings="Available_Mechanisms"
+              type="as" access="read">
+      <tp:docstring>
+        Example: [ "PLAIN", "DIGEST-MD5", "SCRAM-SHA-1" ]
+        The SASL mechanisms as offered by the server.
+      </tp:docstring>
+    </property>
+
+    <property name="CurrentChallenge" tp:name-for-bindings="Current_Challenge"
+              type="ay" access="read">
+      <tp:docstring>
+        The current challenge from the server. change notification via
+        NewChallenge. The handler either needs to respond by calling Response
+        (if it needs to send reply data), Accept (If the challenge
+        contained final data) or Abort (in case of errors)
+      </tp:docstring>
+    </property>
+
+    <property name="CurrentState" tp:name-for-bindings="Current_State"
+              type="(uss)" tp:type="Sasl_State" access="read">
+      <tp:docstring>
+        The current state of the authentication.
+        Change notification via StateChanged signal.
+      </tp:docstring>
+    </property>
+
+    <method name="StartMechanism" tp:name-for-bindings="Start_Mechanism">
+      <arg direction="in" name="Mechanism" type="s">
+        <tp:docstring>
+          The chosen mechanism.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="InitialData" type="ay">
+        <tp:docstring>
+          Initial data to send with the mechanism.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Start an authentication try using Mechanism. If the choosen SASL
+        mechanism is client-first then the first data must be passed in
+        InitialData, otherwise InitialData must be an empty array.
+      </tp:docstring>
+    </method>
+
+    <method name="Respond" tp:name-for-bindings="Respond">
+      <arg direction="in" name="Response_Data" type="ay">
+        <tp:docstring>
+          The response data.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Our response to the CurrentChallenge if required.
+      </tp:docstring>
+    </method>
+
+    <method name="Accept" tp:name-for-bindings="Accept">
+      <tp:docstring>
+        Handler accepts the authentication as finished. Can be called
+        whenever the Handler considered the authentication process to
+        be (successfully) finished from its part.
+      </tp:docstring>
+    </method>
+
+    <method name="Abort" tp:name-for-bindings="Abort">
+      <arg direction="in" name="Reason" type="u" tp:type="Abort_Reason">
+        <tp:docstring>
+          Reason for abort.
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="Debug_Message" type="s">
+        <tp:docstring>
+          Debug message for abort.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Abort the current authentication try.
+      </tp:docstring>
+    </method>
+
+    <signal name="StateChanged" tp:name-for-bindings="State_Changed">
+      <tp:docstring>
+        Notifies of CurrentState changing
+      </tp:docstring>
+      <arg type="u" tp:type="Sasl_Status" name="Status">
+        <tp:docstring>
+          The status of the state.
+        </tp:docstring>
+      </arg>
+      <arg type="s" tp:type="DBus_Error_Name" name="Reason">
+        <tp:docstring>
+          The reason for the state.
+        </tp:docstring>
+      </arg>
+      <arg type="s" name="DebugMessage">
+        <tp:docstring>
+          A non-localized debug message.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <signal name="NewChallenge" tp:name-for-bindings="New_Challenge">
+      <tp:docstring>
+        Recieved a new challenge from the server.
+      </tp:docstring>
+      <arg name="ChallengeData" type="ay">
+        <tp:docstring>
+          The challenge data from the server.
+        </tp:docstring>
+      </arg>
+    </signal>
+
+    <tp:enum name="Abort_Reason" type="u">
+      <tp:enumvalue suffix="Invalid_Challenge" value="0">
+        <tp:docstring>
+          Server sent an invalid challenge or data.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="User_Abort" value="1">
+        <tp:docstring>
+          User aborted the authentication.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+
+    <tp:enum name="Sasl_Status" type="u">
+      <tp:enumvalue suffix="Not_Started" value="0">
+        <tp:docstring>
+          Need to call StartMechanism to start.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="In_Progress" value="1">
+        <tp:docstring>
+          Challenge/Response cycle in progress
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Server_Succeeded" value="2">
+        <tp:docstring>
+          Server indicated successful authentication, handler needs to
+          Accept or Abort.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Client_Accepted" value="3">
+        <tp:docstring>
+          Handler indicates that from its perspective the
+          authentication has successfully finished.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Succeeded" value="4">
+        <tp:docstring>
+          Everyone is happy (server sent success, client sent Accept),                    up to the handler to close the channel.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Server_Failed" value="5">
+        <tp:docstring>
+          Server indicated an authentication failure,
+          Authentication can be restarted by calling
+          StartMechanism again or completely aborted by Closing
+          the channel.
+        </tp:docstring>
+      </tp:enumvalue>
+      <tp:enumvalue suffix="Client_Failed" value="6">
+        <tp:docstring>
+          Client indicated an authentication failure,
+          Authentication can be restarted by calling
+          StartMechanism again or completely aborted by Closing
+          the channel.
+        </tp:docstring>
+      </tp:enumvalue>
+    </tp:enum>
+
+    <tp:struct name="Sasl_State">
+      <tp:member type="u" tp:type="Sasl_Status" name="Status">
+        <tp:docstring>
+          The status of the state.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member type="s" tp:type="DBus_Error_Name" name="Reason">
+        <tp:docstring>
+          The reason for the state.
+        </tp:docstring>
+      </tp:member>
+
+      <tp:member type="s" name="DebugMessage">
+        <tp:docstring>
+          A non-localized debug message.
+        </tp:docstring>
+      </tp:member>
+    </tp:struct>
+
+  </interface>
+</node>
+<!-- vim:set sw=2 sts=2 et ft=xml: -->

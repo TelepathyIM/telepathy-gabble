@@ -6,7 +6,7 @@ import dbus
 from servicetest import EventPattern, assertEquals
 from gabbletest import exec_test
 import constants as cs
-from saslutil import SaslComplexAuthenticator, SaslChannelWrapper
+from saslutil import SaslComplexAuthenticator, connect_and_get_sasl_channel
 
 JID = "test@example.org"
 EXCHANGE = [("", "Hi dear"),
@@ -17,32 +17,17 @@ EXCHANGE = [("", "Hi dear"),
 MECHANISMS = ["PLAIN", "DIGEST-MD5", "POLITE-TEST"]
 
 def test_complex_success(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-             args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
-
-    old_signal, new_signal = q.expect_many(
-            EventPattern('dbus-signal', signal='NewChannel'),
-            EventPattern('dbus-signal', signal='NewChannels'),
-            )
-
-    path, type, handle_type, handle, suppress_handler = old_signal.args
-
-    chan = SaslChannelWrapper(bus.get_object(conn.bus_name, path))
-
-    avail_mechs = chan.Properties.Get(cs.CHANNEL_IFACE_SASL_AUTH,
-                                      "AvailableMechanisms")
+    chan, auth_info, avail_mechs = connect_and_get_sasl_channel(q, bus, conn)
 
     assertEquals(MECHANISMS, avail_mechs)
 
-#    try:
-#        chan.SaslAuthentication.StartMechanism("FOO", "")
-#    except dbus.DBusException:
-#        pass
-#    else:
-#        raise AssertionError, \
-#           "Expected DBusException when choosing unavailable mechanism"
+    try:
+        chan.SaslAuthentication.StartMechanism("FOO", "")
+    except dbus.DBusException:
+        pass
+    else:
+        raise AssertionError, \
+           "Expected DBusException when choosing unavailable mechanism"
 
     if EXCHANGE[0][0] == "":
         initial_data = EXCHANGE[0][1]

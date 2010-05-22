@@ -56,6 +56,7 @@ TWISTED_TESTS = \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
 	sasl/abort.py \
+	sasl/jabber_auth.py \
 	sasl/plain.py \
 	sasl/complex.py \
 	search/ceci-nest-pas-un-serveur.py \

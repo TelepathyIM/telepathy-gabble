@@ -152,7 +152,7 @@ struct _GabbleServerSaslChannelPrivate
   GHashTable *auth_info;
 
   /* SASL Auth Iface */
-  gchar **available_mechanisms;
+  GPtrArray *available_mechanisms;
   GValueArray *current_state;
   GArray *challenge;
   gchar *mechanism;
@@ -182,9 +182,12 @@ gabble_server_sasl_channel_constructor (GType type,
   self = GABBLE_SERVER_SASL_CHANNEL (obj);
   priv = self->priv;
 
+  priv->closed = TRUE;
+
   priv->challenge = g_array_new (FALSE, FALSE, sizeof (gchar));
 
-  priv->closed = TRUE;
+  priv->available_mechanisms = g_ptr_array_new_with_free_func (
+      (GDestroyNotify) g_free);
 
   priv->current_state = tp_value_array_build (3,
       G_TYPE_UINT, GABBLE_SASL_STATUS_NOT_STARTED,
@@ -273,10 +276,8 @@ gabble_server_sasl_channel_get_property (GObject *object,
       g_value_set_string (value, priv->mechanism);
       break;
     case PROP_AVAILABLE_MECHANISMS:
-      DEBUG ("Sending available mechs: (%p) %s",
-          chan->priv->available_mechanisms,
-          chan->priv->available_mechanisms[0]);
-      g_value_set_boxed (value, chan->priv->available_mechanisms);
+      g_value_set_boxed (value,
+          (gchar **) chan->priv->available_mechanisms->pdata);
       break;
     case PROP_CHALLENGE:
       g_value_set_boxed (value, chan->priv->challenge);
@@ -332,7 +333,7 @@ gabble_server_sasl_channel_dispose (GObject *object)
 
   g_free (priv->object_path);
 
-  g_strfreev (priv->available_mechanisms);
+  g_ptr_array_free (priv->available_mechanisms, TRUE);
 
   g_value_array_free (priv->current_state);
 
@@ -815,7 +816,6 @@ gabble_server_sasl_channel_start_auth_async_func (
       GabbleServerSaslChannelPrivate *priv = self->priv;
       DBusGConnection *bus = tp_get_bus ();
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-      GPtrArray *arr = g_ptr_array_new ();
       GSList *i;
 
       DEBUG ("");
@@ -823,7 +823,7 @@ gabble_server_sasl_channel_start_auth_async_func (
       g_assert (priv->result == NULL);
       g_assert (conn->object_path != NULL);
 
-      g_strfreev (priv->available_mechanisms);
+      g_ptr_array_set_size (priv->available_mechanisms, 0);
 
       if (priv->auth_info != NULL)
         g_hash_table_unref (priv->auth_info);
@@ -838,11 +838,10 @@ gabble_server_sasl_channel_start_auth_async_func (
           user_data, wocky_auth_registry_start_auth_finish);
 
       for (i = (GSList *) mechanisms; i != NULL; i = i->next)
-        g_ptr_array_add (arr, g_strdup ((gchar *)i->data));
+        g_ptr_array_add (priv->available_mechanisms,
+            g_strdup ((gchar *)i->data));
 
-      g_ptr_array_add (arr, NULL);
-
-      priv->available_mechanisms = (gchar **) g_ptr_array_free (arr, FALSE);
+      g_ptr_array_add (priv->available_mechanisms, NULL);
 
       priv->object_path = g_strdup_printf ("%s/SaslChannel_%p",
           conn->object_path, self);

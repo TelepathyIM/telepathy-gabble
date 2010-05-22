@@ -599,25 +599,49 @@ gabble_server_sasl_channel_start_mechanism (
   GabbleServerSaslChannelPrivate *priv = self->priv;
   WockyAuthRegistryStartData *start_data;
   GSimpleAsyncResult *r = priv->result;
-  GString *initial_data = g_string_new_len (in_InitialData->data,
-      in_InitialData->len);
+  GString *initial_data;
+  guint i;
+  gboolean mechanism_available = FALSE;
 
   DEBUG ("");
 
-  priv->result = NULL;
+  for (i = 0; i < priv->available_mechanisms->len - 1; i++)
+    {
+      gchar *mech =
+        (gchar *) g_ptr_array_index (priv->available_mechanisms, i);
 
-  start_data =
-    wocky_auth_registry_start_data_new (in_Mechanism, initial_data);
+      if (g_strcmp0 (mech, in_Mechanism) == 0)
+        mechanism_available = TRUE;
+    }
 
-  g_string_free (initial_data, TRUE);
+  if (mechanism_available)
+    {
+      priv->result = NULL;
 
-  g_simple_async_result_set_op_res_gpointer (r,
-      start_data, (GDestroyNotify) wocky_auth_registry_start_data_free);
+      initial_data = g_string_new_len (in_InitialData->data,
+          in_InitialData->len);
 
-  dbus_g_method_return (context);
+      start_data =
+        wocky_auth_registry_start_data_new (in_Mechanism, initial_data);
 
-  g_simple_async_result_complete_in_idle (r);
-  g_object_unref (r);
+      g_simple_async_result_set_op_res_gpointer (r,
+          start_data, (GDestroyNotify) wocky_auth_registry_start_data_free);
+
+      dbus_g_method_return (context);
+
+      g_simple_async_result_complete_in_idle (r);
+      g_object_unref (r);
+      g_string_free (initial_data, TRUE);
+    }
+  else
+    {
+      GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Selected mechanism is not available.");
+
+      dbus_g_method_return_error (context, error);
+
+      g_error_free (error);
+    }
 }
 
 static void

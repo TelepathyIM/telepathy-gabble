@@ -9,6 +9,8 @@ libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
+    auth-manager.h \
+    auth-manager.c \
     base64.h \
     base64.c \
     base-channel.h \
@@ -152,6 +154,8 @@ libgabble_convenience_la_SOURCES = \
     search-channel.c \
     search-manager.h \
     search-manager.c \
+    server-sasl-channel.h \
+    server-sasl-channel.c \
     $(top_srcdir)/gabble/sidecar.h \
     sidecar.c \
     tube-iface.h \

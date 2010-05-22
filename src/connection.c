@@ -51,6 +51,7 @@
 #include "capabilities.h"
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
+#include "auth-manager.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
 #include "conn-contact-info.h"
@@ -230,6 +231,9 @@ struct _GabbleConnectionPrivate
   /* the union of the above */
   GabbleCapabilitySet *all_caps;
 
+  /* auth manager */
+  GabbleAuthManager *auth_manager;
+
   /* stream id returned by the connector */
   gchar *stream_id;
 
@@ -275,6 +279,10 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
       g_object_new (GABBLE_TYPE_SEARCH_MANAGER,
         "connection", self,
         NULL));
+
+  self->priv->auth_manager = g_object_new (GABBLE_TYPE_AUTH_MANAGER,
+      "connection", self, NULL);
+  g_ptr_array_add (channel_managers, self->priv->auth_manager);
 
   self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
       "connection", self,
@@ -1036,6 +1044,7 @@ gabble_connection_dispose (GObject *object)
   self->roster = NULL;
   self->muc_factory = NULL;
   self->private_tubes_factory = NULL;
+  priv->auth_manager = NULL;
 
   if (self->self_presence != NULL)
     g_object_unref (self->self_presence);
@@ -1546,8 +1555,6 @@ connector_error_disconnect (GabbleConnection *self,
           case WOCKY_AUTH_ERROR_NETWORK:
           case WOCKY_AUTH_ERROR_CONNRESET:
           case WOCKY_AUTH_ERROR_STREAM:
-          case WOCKY_AUTH_ERROR_INVALID_REPLY:
-          case WOCKY_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
             reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
             break;
           default:
@@ -1838,6 +1845,8 @@ disconnect_callbacks (TpBaseConnection *base)
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = conn->priv;
 
+  DEBUG ("");
+
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
   g_assert (priv->olpc_msg_cb != NULL);
@@ -1889,12 +1898,11 @@ _gabble_connection_connect (TpBaseConnection *base,
   g_assert (priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
   g_assert (priv->username != NULL);
-  g_assert (priv->password != NULL);
   g_assert (priv->resource != NULL);
 
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
   priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
-      NULL);
+      gabble_auth_manager_get_auth_registry (priv->auth_manager));
   g_free (jid);
 
   /* system certs */

@@ -55,6 +55,9 @@ TWISTED_TESTS = \
 	roster/test-roster-item-deletion.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
+	sasl/abort.py \
+	sasl/plain.py \
+	sasl/complex.py \
 	search/ceci-nest-pas-un-serveur.py \
 	search/extended.py \
 	search/no-server-property.py \
@@ -247,6 +250,7 @@ EXTRA_DIST = \
 	olpc/util.py \
 	tubes/muctubeutil.py \
 	tubes/tubetestutil.py \
+	sasl/saslutil.py \
 	search/search_helper.py \
 	file-transfer/file_transfer_helper.py
 

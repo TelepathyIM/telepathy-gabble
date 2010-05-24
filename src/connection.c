@@ -1220,6 +1220,17 @@ OUT:
   return result;
 }
 
+static const gchar *
+get_bare_jid (GabbleConnection *conn)
+{
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandle self = tp_base_connection_get_self_handle (base);
+
+  return tp_handle_inspect (contact_handles, self);
+}
+
 /**
  * gabble_connection_get_full_jid:
  *
@@ -1229,11 +1240,7 @@ OUT:
 gchar *
 gabble_connection_get_full_jid (GabbleConnection *conn)
 {
-  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  TpHandle self = tp_base_connection_get_self_handle (base);
-  const gchar *bare_jid = tp_handle_inspect (contact_handles, self);
+  const gchar *bare_jid = get_bare_jid (conn);
 
   return g_strconcat (bare_jid, "/", conn->priv->resource, NULL);
 }

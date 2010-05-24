@@ -678,9 +678,17 @@ static gchar *
 gabble_connection_get_unique_name (TpBaseConnection *self)
 {
   GabbleConnectionPrivate *priv = GABBLE_CONNECTION (self)->priv;
+  gchar *unique_name = gabble_encode_jid (priv->username, priv->stream_server,
+      priv->resource);
 
-  return gabble_encode_jid (
-      priv->username, priv->stream_server, priv->resource);
+  if (priv->username == NULL)
+    {
+      gchar *tmp = unique_name;
+      unique_name = g_strdup_printf ("%s_%p", tmp, self);
+      g_free (tmp);
+    }
+
+  return unique_name;
 }
 
 /* must be in the same order as GabbleListHandle in connection.h */

@@ -2409,24 +2409,24 @@ construct_stream (GabbleMediaChannel *chan,
   /* if any RequestStreams call was waiting for a stream to be created for
    * that content, return from it successfully */
     {
-      GList *link = priv->pending_stream_requests;
+      GList *l = priv->pending_stream_requests;
 
-      while (link != NULL)
+      while (l != NULL)
         {
-          if (pending_stream_request_maybe_satisfy (link->data,
+          if (pending_stream_request_maybe_satisfy (l->data,
                 chan, c, stream))
             {
-              GList *dead = link;
+              GList *dead = l;
 
               pending_stream_request_free (dead->data);
 
-              link = dead->next;
+              l = dead->next;
               priv->pending_stream_requests = g_list_delete_link (
                   priv->pending_stream_requests, dead);
             }
           else
             {
-              link = link->next;
+              l = l->next;
             }
         }
     }
@@ -2554,26 +2554,26 @@ content_removed_cb (GabbleJingleContent *content,
 
   if (d->self != NULL)
     {
-      GList *link = d->self->priv->pending_stream_requests;
+      GList *l = d->self->priv->pending_stream_requests;
 
       /* if any RequestStreams call was waiting for a stream to be created for
        * that content, return from it unsuccessfully */
-      while (link != NULL)
+      while (l != NULL)
         {
-          if (pending_stream_request_maybe_fail (link->data,
+          if (pending_stream_request_maybe_fail (l->data,
                 d->self, d->content))
             {
-              GList *dead = link;
+              GList *dead = l;
 
               pending_stream_request_free (dead->data);
 
-              link = dead->next;
+              l = dead->next;
               d->self->priv->pending_stream_requests = g_list_delete_link (
                   d->self->priv->pending_stream_requests, dead);
             }
           else
             {
-              link = link->next;
+              l = l->next;
             }
         }
     }

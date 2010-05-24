@@ -348,6 +348,9 @@ class BaseXmlStream(xmlstream.XmlStream):
     def _cb_disco_iq(self, iq):
         if iq.getAttribute('to') == 'localhost':
             # add PEP support
+            # This is actually wrong. PEP support should be advertised when
+            # discoing user's bare JID, not the server. Lot of old ejabberd
+            # versions still behave this way though.
             nodes = xpath.queryForNodes(
                 "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
                 iq)

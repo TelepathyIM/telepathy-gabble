@@ -846,7 +846,7 @@ gabble_server_sasl_channel_start_auth_async_func (
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
-  if (password == NULL)
+  if (password == NULL || username == NULL)
     {
       GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (
           auth_registry);

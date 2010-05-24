@@ -39,6 +39,25 @@ def test_plain_success(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='StatusChanged',
                  args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
+def test_plain_no_account(q, bus, conn, stream):
+    chan, auth_info, avail_mechs = connect_and_get_sasl_channel(q, bus, conn)
+
+    chan.SaslAuthentication.StartMechanism(
+        'PLAIN', '\0' + JID.split('@')[0] + '\0' + PASSWORD)
+
+    q.expect('dbus-signal', signal='StateChanged',
+             interface=cs.CHANNEL_IFACE_SASL_AUTH,
+             args=[cs.SASL_STATUS_SERVER_SUCCEEDED, '', ''])
+
+    chan.SaslAuthentication.Accept()
+
+    q.expect('dbus-signal', signal='StateChanged',
+             interface=cs.CHANNEL_IFACE_SASL_AUTH,
+             args=[cs.SASL_STATUS_SUCCEEDED, '', ''])
+
+    e = q.expect('dbus-signal', signal='StatusChanged',
+                 args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
 def test_plain_fail(q, bus, conn, stream):
     chan, auth_info, avail_mechs = connect_and_get_sasl_channel(q, bus, conn)
 
@@ -75,6 +94,11 @@ def test_plain_abort(q, bus, conn, stream):
 if __name__ == '__main__':
     exec_test(
         test_plain_success, {'password': None, 'account' : JID},
+        authenticator=SaslPlainAuthenticator(JID.split('@')[0], PASSWORD))
+
+    exec_test(
+        test_plain_no_account,
+        {'password': None, 'account' : 'example.com'},
         authenticator=SaslPlainAuthenticator(JID.split('@')[0], PASSWORD))
 
     exec_test(

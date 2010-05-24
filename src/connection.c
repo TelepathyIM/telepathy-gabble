@@ -1204,7 +1204,7 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   result = TRUE;
 
   if (!gabble_decode_jid (account, &username, &server, &resource) ||
-      username == NULL)
+      server == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to get username and server from account");
@@ -1897,7 +1897,6 @@ _gabble_connection_connect (TpBaseConnection *base,
   g_assert (priv->connector == NULL);
   g_assert (priv->port <= G_MAXUINT16);
   g_assert (priv->stream_server != NULL);
-  g_assert (priv->username != NULL);
   g_assert (priv->resource != NULL);
 
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);

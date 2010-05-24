@@ -414,7 +414,11 @@ def make_connection(bus, event_func, params=None, suffix=''):
     if default_params['password'] is None:
         del default_params['password']
 
-    jid = default_params['account']
+     # Allow omitting the 'account' param
+    if default_params['account'] is None:
+        del default_params['account']
+
+    jid = default_params.get('account', None)
     conn =  servicetest.make_connection(bus, event_func, 'gabble', 'jabber',
                                         default_params)
     return (conn, jid)

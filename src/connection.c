@@ -1649,6 +1649,46 @@ connector_error_disconnect (GabbleConnection *self,
       TP_CONNECTION_STATUS_DISCONNECTED, reason);
 }
 
+static void
+bare_jid__disco_cb (GabbleDisco *disco,
+    GabbleDiscoRequest *request,
+    const gchar *jid,
+    const gchar *node,
+    LmMessageNode *result,
+    GError *disco_error,
+    gpointer user_data)
+{
+  GabbleConnection *conn = user_data;
+  NodeIter i;
+
+  if (disco_error != NULL)
+    {
+      DEBUG ("Got disco error on bare jid: %s", disco_error->message);
+      return;
+    }
+
+  for (i = node_iter (result); i; i = node_iter_next (i))
+    {
+      LmMessageNode *child = node_iter_data (i);
+
+      if (!tp_strdiff (child->name, "identity"))
+        {
+          const gchar *category = lm_message_node_get_attribute (child,
+              "category");
+          const gchar *type = lm_message_node_get_attribute (child, "type");
+
+          if (!tp_strdiff (category, "pubsub") &&
+              !tp_strdiff (type, "pep"))
+            {
+              DEBUG ("Server advertise PEP support in our jid features");
+              conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+            }
+        }
+    }
+
+  /* FIXME: add OLPC iface if PEP is supported? */
+}
+
 /**
  * connector_connected
  *
@@ -1764,6 +1804,17 @@ connector_connected (GabbleConnection *self,
       tp_base_connection_change_status ((TpBaseConnection *) self,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+    }
+
+  /* Disco our own bare jid to check if PEP is supported */
+  if (!gabble_disco_request_with_timeout (self->disco, GABBLE_DISCO_TYPE_INFO,
+      get_bare_jid (self), NULL, disco_reply_timeout, bare_jid__disco_cb, self,
+      G_OBJECT (self), &error))
+    {
+      DEBUG ("Sending disco request to our own bare jid failed: %s",
+          error->message);
+
+      g_error_free (error);
     }
 }
 
@@ -2548,8 +2599,10 @@ connection_disco_cb (GabbleDisco *disco,
 
               if (!tp_strdiff (category, "pubsub") &&
                   !tp_strdiff (type, "pep"))
-                /* XXX: should we also check for specific PubSub <feature>s? */
-                conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+                {
+                  DEBUG ("Server advertise PEP support in its features");
+                  conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+                }
             }
           else if (0 == strcmp (child->name, "feature"))
             {

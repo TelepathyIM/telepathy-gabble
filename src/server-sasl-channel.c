@@ -572,6 +572,18 @@ gabble_server_sasl_channel_close_async (TpSvcChannel *iface,
 }
 
 static void
+gabble_server_sasl_channel_get_interfaces_async (TpSvcChannel *iface,
+    DBusGMethodInvocation *context)
+{
+  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (iface);
+
+  g_assert (GABBLE_IS_SERVER_SASL_CHANNEL (self));
+
+  tp_svc_channel_return_from_get_interfaces (context,
+      gabble_server_sasl_channel_interfaces);
+}
+
+static void
 channel_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
@@ -580,6 +592,7 @@ channel_iface_init (gpointer g_iface,
 #define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
     klass, gabble_server_sasl_channel_##x##suffix)
   IMPLEMENT(close,_async);
+  IMPLEMENT(get_interfaces,_async);
 #undef IMPLEMENT
 }
 

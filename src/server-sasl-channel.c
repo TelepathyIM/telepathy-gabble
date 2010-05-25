@@ -601,6 +601,18 @@ channel_iface_init (gpointer g_iface,
  */
 
 static void
+gabble_server_sasl_channel_raise_not_available (DBusGMethodInvocation *context,
+    const gchar *message)
+{
+  GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      message);
+
+  dbus_g_method_return_error (context, error);
+
+  g_error_free (error);
+}
+
+static void
 gabble_server_sasl_channel_start_mechanism (
     GabbleSvcChannelInterfaceSaslAuthentication *mechanisms_chooser,
     const gchar *in_Mechanism,
@@ -615,8 +627,17 @@ gabble_server_sasl_channel_start_mechanism (
   GString *initial_data;
   guint i;
   gboolean mechanism_available = FALSE;
-
   DEBUG ("");
+
+  if (!g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
+          G_OBJECT (self), wocky_auth_registry_start_auth_finish))
+    {
+      gabble_server_sasl_channel_raise_not_available (context,
+          "Authentication not in pre-start state.");
+
+      return;
+    }
+
 
   for (i = 0; i < priv->available_mechanisms->len - 1; i++)
     {
@@ -648,12 +669,8 @@ gabble_server_sasl_channel_start_mechanism (
     }
   else
     {
-      GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      gabble_server_sasl_channel_raise_not_available (context,
           "Selected mechanism is not available.");
-
-      dbus_g_method_return_error (context, error);
-
-      g_error_free (error);
     }
 }
 
@@ -668,7 +685,14 @@ gabble_server_sasl_channel_respond (
   GString *response_data;
   GSimpleAsyncResult *r = self->priv->result;
 
-  g_assert (r != NULL);
+  if (!g_simple_async_result_is_valid (G_ASYNC_RESULT (r), G_OBJECT (self),
+          wocky_auth_registry_challenge_finish))
+    {
+      gabble_server_sasl_channel_raise_not_available (context,
+          "Authentication waiting for response.");
+
+      return;
+    }
 
   self->priv->result = NULL;
 
@@ -734,12 +758,7 @@ gabble_server_sasl_channel_accept (
 
   if (message != NULL)
     {
-      GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          message);
-
-      dbus_g_method_return_error (context, error);
-
-      g_error_free (error);
+      gabble_server_sasl_channel_raise_not_available (context, message);
 
       return;
     }
@@ -772,12 +791,8 @@ gabble_server_sasl_channel_abort (
   if (current_status == GABBLE_SASL_STATUS_SUCCEEDED ||
       current_status == GABBLE_SASL_STATUS_CLIENT_ACCEPTED)
     {
-      GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      gabble_server_sasl_channel_raise_not_available (context,
           "Authentication has already succeeded.");
-
-      dbus_g_method_return_error (context, error);
-
-      g_error_free (error);
 
       return;
     }

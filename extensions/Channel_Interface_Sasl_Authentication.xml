@@ -34,13 +34,23 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
+    <property name="Secure"
+             tp:name-for-bindings="Secure" type="b" access="read">
+      <tp:docstring>
+        Is this exchange secure (ie. TLS)? Good to know if you need to take
+        a calculated risk with plaintext.
+      </tp:docstring>
+    </property>
+
     <property name="CurrentChallenge" tp:name-for-bindings="Current_Challenge"
               type="ay" access="read">
       <tp:docstring>
         The current challenge from the server. change notification via
-        NewChallenge. The handler either needs to respond by calling Response
-        (if it needs to send reply data), Accept (If the challenge
-        contained final data) or Abort (in case of errors)
+        <tp:member-ref>NewChallenge</tp:member-ref>. The handler either needs
+        to respond by calling <tp:member-ref>Respond</tp:member-ref>
+        (if it needs to send reply data), <tp:member-ref>Accept</tp:member-ref>
+        (If the challenge contained final data) or
+        <tp:member-ref>Abort</tp:member-ref> (in case of errors).
       </tp:docstring>
     </property>
 
@@ -48,7 +58,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
               type="(uss)" tp:type="Sasl_State" access="read">
       <tp:docstring>
         The current state of the authentication.
-        Change notification via StateChanged signal.
+        Change notification via <tp:member-ref>StateChanged</tp:member-ref>
+        signal.
       </tp:docstring>
     </property>
 
@@ -107,7 +118,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <signal name="StateChanged" tp:name-for-bindings="State_Changed">
       <tp:docstring>
-        Notifies of CurrentState changing
+        Notifies of <tp:member-ref>CurrentState</tp:member-ref> changing
       </tp:docstring>
       <arg type="u" tp:type="Sasl_Status" name="Status">
         <tp:docstring>
@@ -153,7 +164,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     <tp:enum name="Sasl_Status" type="u">
       <tp:enumvalue suffix="Not_Started" value="0">
         <tp:docstring>
-          Need to call StartMechanism to start.
+          Need to call <tp:member-ref>StartMechanism</tp:member-ref> to start.
         </tp:docstring>
       </tp:enumvalue>
       <tp:enumvalue suffix="In_Progress" value="1">
@@ -215,7 +226,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         </tp:docstring>
       </tp:member>
     </tp:struct>
-
   </interface>
 </node>
 <!-- vim:set sw=2 sts=2 et ft=xml: -->

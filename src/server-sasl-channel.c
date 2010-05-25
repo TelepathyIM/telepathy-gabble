@@ -133,6 +133,7 @@ enum
   PROP_MECHANISM,
   PROP_CHALLENGE,
   PROP_AVAILABLE_MECHANISMS,
+  PROP_SECURE,
 
   LAST_PROPERTY,
 };
@@ -156,6 +157,7 @@ struct _GabbleServerSaslChannelPrivate
   GValueArray *current_state;
   GArray *challenge;
   gchar *mechanism;
+  gboolean secure;
 
   GSimpleAsyncResult *result;
 };
@@ -261,6 +263,8 @@ gabble_server_sasl_channel_get_property (GObject *object,
               "AuthenticationMethod",
               GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
               "AvailableMechanisms",
+              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+              "Secure",
               NULL));
       break;
     case PROP_CURRENT_STATE:
@@ -278,6 +282,9 @@ gabble_server_sasl_channel_get_property (GObject *object,
     case PROP_AVAILABLE_MECHANISMS:
       g_value_set_boxed (value,
           (gchar **) chan->priv->available_mechanisms->pdata);
+      break;
+    case PROP_SECURE:
+      g_value_set_boolean (value, chan->priv->secure);
       break;
     case PROP_CHALLENGE:
       g_value_set_boxed (value, chan->priv->challenge);
@@ -370,6 +377,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   static TpDBusPropertiesMixinPropImpl sasl_auth_props[] = {
     { "CurrentState", "current-state", NULL },
     { "AvailableMechanisms", "available-mechanisms", NULL },
+    { "Secure", "secure", NULL },
     { "CurrentChallenge", "challenge", NULL },
     { NULL }
   };
@@ -500,6 +508,14 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
       G_TYPE_STRV,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_AVAILABLE_MECHANISMS,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("secure",
+      "Is secure",
+      "Is this channel secure (encrypted)?",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SECURE,
       param_spec);
 
   param_spec = g_param_spec_boxed ("challenge",
@@ -897,6 +913,8 @@ gabble_server_sasl_channel_start_auth_async_func (
 
       priv->object_path = g_strdup_printf ("%s/SaslChannel_%p",
           conn->object_path, self);
+
+      priv->secure = is_secure_channel;
 
       dbus_g_connection_register_g_object (bus, priv->object_path,
           G_OBJECT (self));

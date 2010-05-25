@@ -72,6 +72,10 @@ void _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
 TpChannelMediaCapabilities
 _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps);
 
+const gchar * const * gabble_media_factory_call_channel_allowed_properties (
+    void);
+
+
 G_END_DECLS
 
 #endif /* #ifndef __MEDIA_FACTORY_H__ */

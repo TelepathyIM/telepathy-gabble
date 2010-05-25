@@ -375,7 +375,7 @@ call_stream_sender_update_state (GabbleCallStream *self,
     GabbleSendingState state)
 {
   GabbleCallStreamPrivate *priv = self->priv;
-  gpointer state_p;
+  gpointer state_p = 0;
   gboolean exists;
 
   exists = g_hash_table_lookup_extended (priv->senders,
@@ -385,6 +385,10 @@ call_stream_sender_update_state (GabbleCallStream *self,
 
   if (exists && GPOINTER_TO_UINT (state_p) == state)
     return FALSE;
+
+  DEBUG ("Updating sender %d state: %d => %d", contact,
+    GPOINTER_TO_UINT (state_p), state);
+
 
   g_hash_table_insert (priv->senders,
     GUINT_TO_POINTER (contact),
@@ -401,31 +405,22 @@ call_stream_update_sender_states (GabbleCallStream *self)
   JingleContentState state;
   GabbleSendingState local_state = 0;
   GabbleSendingState remote_state = 0;
-  GHashTable *updates = g_hash_table_new (g_direct_hash, g_direct_equal);
+  GHashTable *updates;
 
   g_object_get (priv->content, "state", &state, NULL);
+
+  if (state == JINGLE_CONTENT_STATE_REMOVING)
+    return;
+
   created_by_us = gabble_jingle_content_is_created_by_us (priv->content);
+  updates = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+  DEBUG ("Created by us?: %d, State: %d", created_by_us, state);
 
   if (gabble_jingle_content_sending (priv->content))
     {
-      if (state == JINGLE_CONTENT_STATE_EMPTY && created_by_us)
+      if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
         local_state = GABBLE_SENDING_STATE_SENDING;
-      else if (created_by_us || state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        {
-          gpointer state_p;
-          gboolean exists;
-
-          exists = g_hash_table_lookup_extended (priv->senders,
-              GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
-              NULL,
-              &state_p);
-
-          if (exists && GPOINTER_TO_UINT (state_p) ==
-              GABBLE_SENDING_STATE_SENDING)
-            local_state = GABBLE_SENDING_STATE_SENDING;
-          else
-            local_state = GABBLE_SENDING_STATE_PENDING_SEND;
-        }
       else
         local_state = GABBLE_SENDING_STATE_PENDING_SEND;
     }
@@ -818,4 +813,10 @@ gabble_call_stream_get_local_sending_state (GabbleCallStream *self)
     return GPOINTER_TO_UINT (state_p);
   else
     return GABBLE_SENDING_STATE_NONE;
+}
+
+GabbleJingleContent *
+gabble_call_stream_get_jingle_content (GabbleCallStream *stream)
+{
+  return stream->priv->content;
 }

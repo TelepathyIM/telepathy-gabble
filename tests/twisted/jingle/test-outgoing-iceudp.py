@@ -133,8 +133,8 @@ def worker(jp, q, bus, conn, stream):
         jp.Jingle(jt2.sid, jt2.peer, 'session-accept', [
             jp.Content('Audio', 'initiator', 'both',
                 jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt2.audio_codecs ]),
                 transport) ]) ])
     stream.send(jp.xml(node))
 

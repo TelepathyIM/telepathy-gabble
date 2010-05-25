@@ -10,6 +10,18 @@ from gabbletest import make_muc_presence, request_muc_handle
 import constants as cs
 import ns
 
+
+def echo_muc_presence (q, stream, stanza, affiliation, role):
+    x = stanza.addElement((ns.MUC_USER, 'x'))
+    stanza['from'] = stanza['to']
+    del stanza['to']
+
+    item = x.addElement('item')
+    item['affiliation'] = affiliation
+    item['role'] = role
+
+    stream.send (stanza)
+
 def join_muc(q, bus, conn, stream, muc, request=None,
         also_capture=[], role='participant'):
     """

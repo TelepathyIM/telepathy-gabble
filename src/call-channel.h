@@ -22,6 +22,7 @@
 #define __GABBLE_CALL_CHANNEL_H__
 
 #include <glib-object.h>
+#include "base-call-channel.h"
 
 G_BEGIN_DECLS
 
@@ -30,13 +31,11 @@ typedef struct _GabbleCallChannelPrivate GabbleCallChannelPrivate;
 typedef struct _GabbleCallChannelClass GabbleCallChannelClass;
 
 struct _GabbleCallChannelClass {
-    GObjectClass parent_class;
-
-    TpDBusPropertiesMixinClass dbus_props_class;
+    GabbleBaseCallChannelClass parent_class;
 };
 
 struct _GabbleCallChannel {
-    GObject parent;
+    GabbleBaseCallChannel parent;
 
     GabbleCallChannelPrivate *priv;
 };
@@ -59,8 +58,6 @@ GType gabble_call_channel_get_type (void);
 #define GABBLE_CALL_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
    GABBLE_TYPE_CALL_CHANNEL, GabbleCallChannelClass))
-
-void gabble_call_channel_close (GabbleCallChannel *self);
 
 G_END_DECLS
 

@@ -269,7 +269,7 @@ _latch_to_session (GabbleMediaChannel *chan)
 static void
 create_session (GabbleMediaChannel *chan,
     TpHandle peer,
-    const gchar *resource)
+    const gchar *jid)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   gboolean local_hold = (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD);
@@ -280,7 +280,7 @@ create_session (GabbleMediaChannel *chan,
 
   priv->session = g_object_ref (
       gabble_jingle_factory_create_session (priv->conn->jingle_factory,
-          peer, resource, local_hold));
+          peer, jid, local_hold));
 
   _latch_to_session (chan);
 }
@@ -1576,6 +1576,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
   /* no existing call; we should choose a recipient and a mode */
   else
     {
+      gchar *jid;
+
       DEBUG ("picking the best resource (want audio: %u, want video: %u",
             want_audio, want_video);
 
@@ -1593,7 +1595,9 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
           peer_resource == NULL ? "(null)" : peer_resource,
           transport_ns, dialect);
 
-      create_session (chan, peer, peer_resource);
+      jid = gabble_peer_to_jid (priv->conn, peer, peer_resource);
+      create_session (chan, peer, jid);
+      g_free (jid);
 
       g_object_set (priv->session, "dialect", dialect, NULL);
 

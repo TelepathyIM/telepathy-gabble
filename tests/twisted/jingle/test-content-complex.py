@@ -101,8 +101,8 @@ def worker(jp, q, bus, conn, stream):
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
             jp.Content('bogus', 'initiator', 'both',
                 jp.Description('hologram', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt2.audio_codecs ]),
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
@@ -127,8 +127,8 @@ def worker(jp, q, bus, conn, stream):
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
             jp.Content(jt2.audio_names[0], 'initiator', 'both',
                 jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt2.audio_codecs ]),
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
@@ -177,8 +177,8 @@ def worker(jp, q, bus, conn, stream):
         jp.Jingle(jt2.sid, jt2.peer, 'content-add', [
             jp.Content(d['name'], 'initiator', 'both',
                 jp.Description('audio', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt2.audio_codecs ]),
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 
@@ -213,8 +213,8 @@ def worker(jp, q, bus, conn, stream):
         jp.Jingle(jt2.sid, jt2.peer, 'content-accept', [
             jp.Content(d['name'], d['creator'], d['senders'],
                 jp.Description('video', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt2.audio_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters ) in jt2.audio_codecs ]),
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 

@@ -90,7 +90,7 @@ static LmHandlerResult jingle_cb (LmMessageHandler *handler,
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid,
     TpHandle peer,
-    const gchar *peer_resource,
+    const gchar *jid,
     gboolean local_hold);
 
 static void session_terminated_cb (GabbleJingleSession *sess,
@@ -682,26 +682,22 @@ connection_status_changed_cb (GabbleConnection *conn,
 }
 
 /* The 'session' map is keyed by:
- * "<peer's handle>\n<peer's resource>\n<session id>"
- * or for bare JIDs
- * "<peer's handle>\n\001\n<session id>"
- * (\001 is not a valid character in a resource, as per resourceprep).
+ * "<peer's handle>\n<peer's jid>\n<session id>"
  */
 #define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
 
 static gchar *
 make_session_map_key (TpHandle peer,
-    const gchar *resource,
+    const gchar *jid,
     const gchar *sid)
 {
-  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer,
-      resource == NULL ? "\001" : resource, sid);
+  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer, jid, sid);
 }
 
 static gchar *
 get_unique_sid_for (GabbleJingleFactory *factory,
     TpHandle peer,
-    const gchar *resource,
+    const gchar *jid,
     gchar **key)
 {
   guint32 val;
@@ -714,7 +710,7 @@ get_unique_sid_for (GabbleJingleFactory *factory,
 
       g_free (sid);
       sid = g_strdup_printf ("%u", val);
-      key_ = make_session_map_key (peer, resource, sid);
+      key_ = make_session_map_key (peer, jid, sid);
     }
   while (g_hash_table_lookup (factory->priv->sessions, key_) != NULL);
 
@@ -734,22 +730,9 @@ ensure_session (GabbleJingleFactory *self,
   GabbleJingleFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *resource;
   gchar *key;
   GabbleJingleSession *sess;
   TpHandle peer;
-
-  resource = strchr (from, '/');
-
-  if (resource == NULL || *resource == '\0')
-    {
-      /* if we're called by a SIP gateway, it might be using a bare JID */
-      resource = NULL;
-    }
-  else
-    {
-      resource++;
-    }
 
   peer = tp_handle_ensure (contact_repo, from, NULL, error);
 
@@ -759,7 +742,8 @@ ensure_session (GabbleJingleFactory *self,
       return NULL;
     }
 
-  key = make_session_map_key (peer, resource, sid);
+  /* If we can ensure the handle, we can decode the jid */
+  key = make_session_map_key (peer, from, sid);
   sess = g_hash_table_lookup (priv->sessions, key);
   g_free (key);
 
@@ -767,7 +751,7 @@ ensure_session (GabbleJingleFactory *self,
     {
       if (action == JINGLE_ACTION_SESSION_INITIATE)
         {
-          sess = create_session (self, sid, peer, resource, FALSE);
+          sess = create_session (self, sid, peer, from, FALSE);
           g_object_set (sess, "dialect", dialect, NULL);
           *new_session = TRUE;
         }
@@ -852,27 +836,26 @@ static GabbleJingleSession *
 create_session (GabbleJingleFactory *fac,
     const gchar *sid,
     TpHandle peer,
-    const gchar *peer_resource,
+    const gchar *jid,
     gboolean local_hold)
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
   GabbleJingleSession *sess;
   gboolean local_initiator;
   gchar *sid_, *key;
-  const gchar *resource_sep;
 
-  g_assert (peer != 0);
+  g_assert (jid != NULL);
 
   if (sid != NULL)
     {
-      key = make_session_map_key (peer, peer_resource, sid);
+      key = make_session_map_key (peer, jid, sid);
       sid_ = g_strdup (sid);
 
       local_initiator = FALSE;
     }
   else
     {
-      sid_ = get_unique_sid_for (fac, peer, peer_resource, &key);
+      sid_ = get_unique_sid_for (fac, peer, jid, &key);
 
       local_initiator = TRUE;
     }
@@ -881,22 +864,15 @@ create_session (GabbleJingleFactory *fac,
    * get_unique_sid_for should have ensured the key is fresh. */
   g_assert (NULL == g_hash_table_lookup (priv->sessions, key));
 
-  sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, peer,
-      peer_resource, local_hold);
-  gabble_signal_connect_weak (sess, "terminated",
-      (GCallback) session_terminated_cb, G_OBJECT (fac));
+  sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, jid,
+      local_hold);
+  g_signal_connect (sess, "terminated",
+    (GCallback) session_terminated_cb, fac);
 
   /* Takes ownership of key */
   g_hash_table_insert (priv->sessions, key, sess);
 
-  if (peer_resource == NULL)
-    resource_sep = "'";
-  else
-    resource_sep = "";
-
-  DEBUG ("new session (%u, %s%s%s, %s) @ %p", peer, resource_sep,
-      peer_resource == NULL ? "(no resource)" : peer_resource, resource_sep,
-      sid_, sess);
+  DEBUG ("new session (%s, %s) @ %p", jid, sid_, sess);
 
   g_free (sid_);
 
@@ -906,10 +882,10 @@ create_session (GabbleJingleFactory *fac,
 GabbleJingleSession *
 gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
     TpHandle peer,
-    const gchar *peer_resource,
+    const gchar *jid,
     gboolean local_hold)
 {
-  return create_session (fac, NULL, peer, peer_resource, local_hold);
+  return create_session (fac, NULL, peer, jid, local_hold);
 }
 
 void
@@ -959,7 +935,7 @@ session_terminated_cb (GabbleJingleSession *session,
                        GabbleJingleFactory *factory)
 {
   gchar *key = make_session_map_key (session->peer,
-      gabble_jingle_session_get_peer_resource (session),
+      gabble_jingle_session_get_peer_jid (session),
       gabble_jingle_session_get_sid (session));
 
   DEBUG ("removing terminated session with key %s", key);

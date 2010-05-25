@@ -229,6 +229,8 @@ gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
   GabbleCallContentCodecofferPrivate *priv = self->priv;
   DBusGConnection *bus = tp_get_bus ();
 
+  DEBUG ("%s was accepted", priv->object_path);
+
   if (priv->cancellable != NULL)
     {
       g_cancellable_disconnect (priv->cancellable, priv->handler_id);
@@ -255,6 +257,8 @@ gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
   GabbleCallContentCodecoffer *self = GABBLE_CALL_CONTENT_CODECOFFER (iface);
   GabbleCallContentCodecofferPrivate *priv = self->priv;
   DBusGConnection *bus = tp_get_bus ();
+
+  DEBUG ("%s was rejected", priv->object_path);
 
   if (priv->cancellable != NULL)
     {

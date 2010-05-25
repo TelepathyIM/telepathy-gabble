@@ -151,10 +151,10 @@ def incoming(jp, q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
 
-    for a, v in [(True, False), (False, True), (True, True)]:
-        if v and not jp.can_do_video():
+    for a, v in [("audio1", None), (None, "video1"), ("audio1", "video1")]:
+        if v!= None and not jp.can_do_video():
             continue
-        if not a and v and not jp.can_do_video_only():
+        if a == None and v != None and not jp.can_do_video_only():
             continue
 
         jt.incoming_call(audio=a, video=v)
@@ -167,8 +167,8 @@ def incoming(jp, q, bus, conn, stream):
         path, props = chans[0]
 
         assertEquals(cs.CHANNEL_TYPE_STREAMED_MEDIA, props[cs.CHANNEL_TYPE])
-        assertEquals(a, props[cs.INITIAL_AUDIO])
-        assertEquals(v, props[cs.INITIAL_VIDEO])
+        assertEquals(a != None, props[cs.INITIAL_AUDIO])
+        assertEquals(v != None, props[cs.INITIAL_VIDEO])
 
         # FIXME: This doesn't check non-Google contacts that can only do one
         # media type, as such contacts as simulated by JingleTest2 can always

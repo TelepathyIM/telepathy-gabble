@@ -57,8 +57,8 @@ def mutable_stream_tests(jp, jt, q, bus, conn, stream, chan, handle):
         jp.Jingle(jt.sid, jt.peer, 'content-add', [
             jp.Content('videostream', 'initiator', 'both',
                 jp.Description('video', [
-                    jp.PayloadType(name, str(rate), str(id)) for
-                        (name, id, rate) in jt.video_codecs ]),
+                    jp.PayloadType(name, str(rate), str(id), parameters) for
+                        (name, id, rate, parameters) in jt.video_codecs ]),
             jp.TransportGoogleP2P()) ]) ])
     stream.send(jp.xml(node))
 

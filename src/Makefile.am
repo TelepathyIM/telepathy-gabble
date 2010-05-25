@@ -13,6 +13,8 @@ libgabble_convenience_la_SOURCES = \
     base64.c \
     base-channel.h \
     base-channel.c \
+    base-call-channel.h \
+    base-call-channel.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \
@@ -31,6 +33,12 @@ libgabble_convenience_la_SOURCES = \
     call-content-codecoffer.c \
     call-channel.h \
     call-channel.c \
+    call-muc-channel.h \
+    call-muc-channel.c \
+    call-member.h \
+    call-member.c \
+    call-member-content.h \
+    call-member-content.c \
     call-stream.h \
     call-stream.c \
     call-stream-endpoint.h \

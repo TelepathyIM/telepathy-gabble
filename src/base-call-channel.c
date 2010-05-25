@@ -1001,15 +1001,15 @@ gabble_base_call_channel_registered (GabbleBaseCallChannel *self)
 
 static void
 base_call_channel_signal_call_members (GabbleBaseCallChannel *self,
-  TpHandle handle)
+  TpHandle removed_handle)
 {
   GArray *removals = g_array_new (TRUE, TRUE, sizeof (TpHandle));
   GHashTable *members;
 
   members = members_to_hash (self);
 
-  if (handle != 0)
-    g_array_append_val (removals, handle);
+  if (removed_handle != 0)
+    g_array_append_val (removals, removed_handle);
 
   gabble_svc_channel_type_call_emit_call_members_changed (self,
       members, removals);

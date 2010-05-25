@@ -551,7 +551,7 @@ change_current_state (GabbleServerSaslChannel *self,
           &current_dbus_error, &current_message);
 
       gabble_svc_channel_interface_sasl_authentication_emit_state_changed (
-          self,current_status, current_dbus_error, current_message);
+          self, current_status, current_dbus_error, current_message);
     }
 }
 

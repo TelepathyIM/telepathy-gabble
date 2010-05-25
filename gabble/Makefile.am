@@ -32,7 +32,7 @@ wockyinclude_HEADERS = \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-xmpp-error.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-auth.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-digest-md5.h \
-    $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-handler.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-auth-handler.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-sasl-plain.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-stanza.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-porter.h \
@@ -49,6 +49,11 @@ wockyinclude_HEADERS = \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-service.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-service-protected.h \
     $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-node.h \
-    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-node-protected.h
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-pubsub-node-protected.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-auth-registry.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-jabber-auth.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-jabber-auth-digest.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-jabber-auth-password.h \
+    $(top_srcdir)/lib/ext/wocky/wocky/wocky-ping.h
 
 endif

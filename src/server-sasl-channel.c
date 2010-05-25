@@ -911,8 +911,8 @@ gabble_server_sasl_channel_start_auth_async_func (
 
       g_ptr_array_add (priv->available_mechanisms, NULL);
 
-      priv->object_path = g_strdup_printf ("%s/SaslChannel_%p",
-          conn->object_path, self);
+      priv->object_path = g_strdup_printf ("%s/SaslChannel",
+          conn->object_path);
 
       priv->secure = is_secure_channel;
 

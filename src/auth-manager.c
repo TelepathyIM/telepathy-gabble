@@ -54,9 +54,6 @@ struct _GabbleAuthManagerPrivate
 {
   GabbleConnection *conn;
 
-  /* Used to represent a set of channels.
-   * Keys are GabbleCertificateChannel *, values are an arbitrary non-NULL pointer.
-   */
   GabbleServerSaslChannel *server_sasl_channel;
 
   GSimpleAsyncResult *result;

@@ -61,15 +61,6 @@ struct _GabbleAuthManagerPrivate
   gboolean dispose_has_run;
 };
 
-static const gchar * const server_sasl_channel_fixed_properties[] = {
-    TP_IFACE_CHANNEL ".ChannelType",
-    NULL
-};
-
-static const gchar * const server_sasl_channel_allowed_properties[] = {
-    NULL
-};
-
 static void
 gabble_auth_manager_init (GabbleAuthManager *self)
 {

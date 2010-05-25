@@ -103,21 +103,20 @@ auth_channel_closed_cb (GObject *sender,
       TP_EXPORTABLE_CHANNEL (sender));
 }
 
-static GObject *
-gabble_auth_manager_constructor (GType type,
-    guint n_props,
-    GObjectConstructParam *props)
+static void
+gabble_auth_manager_constructed (GObject *object)
 {
-  GObject *obj = G_OBJECT_CLASS (gabble_auth_manager_parent_class)->
-           constructor (type, n_props, props);
-  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (obj);
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (object);
   GabbleServerSaslChannel *chan = gabble_server_sasl_channel_new (
       self->priv->conn);
+
+  if (G_OBJECT_CLASS (gabble_auth_manager_parent_class)->constructed != NULL)
+    G_OBJECT_CLASS (gabble_auth_manager_parent_class)->constructed (object);
 
   self->priv->dispose_has_run = FALSE;
 
   gabble_signal_connect_weak (self->priv->conn, "status-changed",
-      G_CALLBACK (connection_status_changed_cb), obj);
+      G_CALLBACK (connection_status_changed_cb), object);
 
   self->priv->server_sasl_channel = chan;
 
@@ -126,8 +125,6 @@ gabble_auth_manager_constructor (GType type,
 
   g_signal_connect (G_OBJECT (chan), "notify::channel-destroyed",
       G_CALLBACK (auth_channel_destroyed_cb), self);
-
-  return obj;
 }
 
 static void
@@ -198,7 +195,7 @@ gabble_auth_manager_class_init (GabbleAuthManagerClass *klass)
   g_type_class_add_private (klass,
       sizeof (GabbleAuthManagerPrivate));
 
-  object_class->constructor = gabble_auth_manager_constructor;
+  object_class->constructed = gabble_auth_manager_constructed;
   object_class->dispose = gabble_auth_manager_dispose;
 
   object_class->get_property = gabble_auth_manager_get_property;

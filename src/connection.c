@@ -1211,11 +1211,10 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   username = server = resource = NULL;
   result = TRUE;
 
-  if (!gabble_decode_jid (account, &username, &server, &resource) ||
-      server == NULL)
+  if (!gabble_decode_jid (account, &username, &server, &resource))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "unable to get username and server from account");
+          "unable to extract JID from account name");
       result = FALSE;
       goto OUT;
     }

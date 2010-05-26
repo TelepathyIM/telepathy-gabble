@@ -129,13 +129,24 @@ gabble_presence_new (void)
 }
 
 static gboolean
-resource_better_than (Resource *a, Resource *b)
+resource_better_than (Resource *a, Resource *b, gboolean prefer_phones)
 {
     if (a->priority < 0)
         return FALSE;
 
     if (NULL == b)
         return TRUE;
+
+    if (prefer_phones)
+      {
+        gboolean a_p = gabble_capability_set_has (a->cap_set, QUIRK_IS_A_PHONE);
+        gboolean b_p = gabble_capability_set_has (b->cap_set, QUIRK_IS_A_PHONE);
+
+        if (a_p && !b_p)
+          return TRUE;
+        if (!a_p && b_p)
+          return FALSE;
+      }
 
     if (a->status < b->status)
         return FALSE;
@@ -182,7 +193,9 @@ gabble_presence_has_resources (GabblePresence *self)
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
-    GabbleCapabilitySetPredicate predicate, gconstpointer user_data)
+    gboolean prefer_phones,
+    GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data)
 {
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
@@ -196,7 +209,7 @@ gabble_presence_pick_resource_by_caps (
       Resource *res = (Resource *) i->data;
 
       if (predicate (res->cap_set, user_data) &&
-          (resource_better_than (res, chosen)))
+          (resource_better_than (res, chosen, prefer_phones)))
               chosen = res;
     }
 

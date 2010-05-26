@@ -1018,6 +1018,7 @@ jingle_pick_resource_or_bare_jid (GabblePresence *presence,
   if (gabble_presence_has_resources (presence))
     {
       ret = gabble_presence_pick_resource_by_caps (presence,
+          I_REALLY_LIKE_PHONES,
           gabble_capability_set_predicate_at_least, caps);
 
       if (resource != NULL)

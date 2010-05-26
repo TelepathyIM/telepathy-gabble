@@ -503,6 +503,7 @@ start_stream_initiation (GabbleTubeStream *self,
         }
 
       resource = gabble_presence_pick_resource_by_caps (presence,
+          DEVICE_AGNOSTIC,
           gabble_capability_set_predicate_has, NS_TUBES);
       if (resource == NULL)
         {
@@ -2270,6 +2271,7 @@ send_tube_offer (GabbleTubeStream *self,
     }
 
   resource = gabble_presence_pick_resource_by_caps (presence,
+      DEVICE_AGNOSTIC,
       gabble_capability_set_predicate_has, NS_TUBES);
   if (resource == NULL)
     {

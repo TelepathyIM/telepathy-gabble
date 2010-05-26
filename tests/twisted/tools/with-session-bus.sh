@@ -75,13 +75,11 @@ dbus-daemon $dbus_daemon_args
 e=0
 DBUS_SESSION_BUS_ADDRESS="`cat $me-$$.address`"
 export DBUS_SESSION_BUS_ADDRESS
-# Break glass in case of emergency.
-#dbus-monitor &
 
 if [ -n "$WITH_SESSION_BUS_FORK_DBUS_MONITOR" ] ; then
   echo -n "Forking dbus-monitor $WITH_SESSION_BUS_FORK_DBUS_MONITOR_OPT" >&2
   dbus-monitor $WITH_SESSION_BUS_FORK_DBUS_MONITOR_OPT \
-        &> $me-$$.dbus-monitor-logs &
+        > $me-$$.dbus-monitor-logs 2>&1 &
 fi
 
 "$@" || e=$?

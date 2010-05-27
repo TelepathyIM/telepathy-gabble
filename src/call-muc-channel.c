@@ -648,6 +648,20 @@ call_muc_channel_parse_participant (GabbleCallMucChannel *self,
 }
 
 static void
+call_muc_channel_remove_member (GabbleCallMucChannel *self,
+  GabbleCallMember *call_member)
+{
+  GabbleCallMucChannelPrivate *priv = self->priv;
+
+   g_queue_remove (priv->before, call_member);
+   g_queue_remove (priv->after, call_member);
+   g_queue_remove (priv->sessions_to_open, call_member);
+
+   gabble_base_call_channel_remove_member (
+      GABBLE_BASE_CALL_CHANNEL (self), call_member);
+}
+
+static void
 call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
   WockyMucMember *member,
   WockyStanza *stanza)
@@ -673,16 +687,10 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
 
   if (muji == NULL)
     {
-      /* Member without muji information remove it if needed */
+      /* Member without muji information remove it if needed otherwise
+         ignore */
       if (call_member != NULL)
-        {
-          g_queue_remove (priv->before, call_member);
-          g_queue_remove (priv->after, call_member);
-          g_queue_remove (priv->sessions_to_open, call_member);
-
-          gabble_base_call_channel_remove_member (
-            GABBLE_BASE_CALL_CHANNEL (self), call_member);
-        }
+        call_muc_channel_remove_member (self, call_member);
       return;
     }
 
@@ -737,6 +745,35 @@ call_muc_channel_presence_cb (WockyMuc *wmuc,
 
   call_muc_channel_got_participant_presence (self, who, stanza);
 }
+
+static void
+call_muc_channel_left_cb (GObject *source,
+  WockyStanza *stanza,
+  GHashTable *code,
+  WockyMucMember *member,
+  const gchar *actor_jid,
+  const gchar *why,
+  const gchar *msg,
+  gpointer user_data)
+{
+  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
+  TpHandleRepoIface *contact_repo =
+    tp_base_connection_get_handles (
+      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
+        TP_HANDLE_TYPE_CONTACT);
+  TpHandle handle;
+  GabbleCallMember *call_member;
+
+  handle = tp_handle_ensure (contact_repo, member->from, NULL, NULL);
+  call_member = gabble_base_call_channel_get_member_from_handle (
+    GABBLE_BASE_CALL_CHANNEL (self), handle);
+
+  DEBUG ("%s left the room, %p", member->from, call_member);
+
+  if (call_member != NULL)
+    call_muc_channel_remove_member (self, call_member);
+}
+
 
 static void
 call_muc_channel_update_all_members (GabbleCallMucChannel *self)
@@ -849,6 +886,10 @@ call_muc_channel_ready (GabbleCallMucChannel *self)
   gabble_signal_connect_weak (priv->wmuc,
       "own-presence",
       G_CALLBACK (call_muc_channel_own_presence_cb),
+      G_OBJECT (self));
+  gabble_signal_connect_weak (priv->wmuc,
+      "left",
+      G_CALLBACK (call_muc_channel_left_cb),
       G_OBJECT (self));
 
   gabble_signal_connect_weak (priv->muc,

@@ -7,7 +7,7 @@ from dbus.exceptions import DBusException
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test
+from gabbletest import exec_test, make_presence
 from servicetest import (
     make_channel_proxy, wrap_channel,
     EventPattern, call_async,
@@ -24,7 +24,7 @@ from callutils import *
 
 muc = "muji@test"
 
-def run_incoming_test(q, bus, conn, stream):
+def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     jp = JingleProtocol031 ()
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + "/bob")
     jt.prepare()
@@ -145,7 +145,12 @@ def run_incoming_test(q, bus, conn, stream):
         xpath.queryForNodes("/iq/jingle[@action='content-add']", x.stanza))
 
     # Bob leaves the call, bye bob
-    presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+    if bob_leaves_room:
+        presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+        presence['type'] = 'unavailable'
+    else:
+        presence = make_muc_presence('owner', 'moderator', muc, 'bob')
+
     stream.send(presence)
     (cmembers, _, _) = q.expect_many(
         EventPattern ('dbus-signal', signal = 'CallMembersChanged'),
@@ -325,3 +330,4 @@ def general_tests (jp, q, bus, conn, stream, path, props):
 if __name__ == '__main__':
     exec_test (run_outgoing_test)
     exec_test (run_incoming_test)
+    exec_test (lambda q,b, c, s: run_incoming_test (q, b, c, s, True))

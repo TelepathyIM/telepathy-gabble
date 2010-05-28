@@ -30,9 +30,8 @@ enum
     PROP_PATH = 1,
 };
 
-static GObject *
-gabble_caps_cache_constructor (
-    GType type, guint n_props, GObjectConstructParam *props);
+static void
+gabble_caps_cache_constructed (GObject *object);
 
 static void
 gabble_caps_cache_get_property (GObject *object, guint property_id,
@@ -97,7 +96,7 @@ gabble_caps_cache_class_init (GabbleCapsCacheClass *klass)
 
   g_type_class_add_private (klass, sizeof (GabbleCapsCachePrivate));
 
-  object_class->constructor = gabble_caps_cache_constructor;
+  object_class->constructed = gabble_caps_cache_constructed;
   object_class->get_property = gabble_caps_cache_get_property;
   object_class->set_property = gabble_caps_cache_set_property;
   object_class->dispose = gabble_caps_cache_dispose;
@@ -148,16 +147,12 @@ get_path (void)
   return ret;
 }
 
-static GObject *
-gabble_caps_cache_constructor (
-    GType type, guint n_props, GObjectConstructParam *props)
+static void
+gabble_caps_cache_constructed (GObject *object)
 {
+  GabbleCapsCache *self = GABBLE_CAPS_CACHE (object);
   int ret;
-  GabbleCapsCache *self;
   gchar *error;
-
-  self = (GabbleCapsCache *) G_OBJECT_CLASS (gabble_caps_cache_parent_class)
-      ->constructor (type, n_props, props);
 
   ret = sqlite3_open (self->priv->path, &self->priv->db);
 
@@ -226,8 +221,6 @@ gabble_caps_cache_constructor (
       sqlite3_close (self->priv->db);
       self->priv->db = NULL;
     }
-
-  return (GObject *) self;
 }
 
 static void

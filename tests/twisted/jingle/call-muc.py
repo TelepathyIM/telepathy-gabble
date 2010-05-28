@@ -162,7 +162,7 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     # Just bob left
     assertLength (1, cmembers.args[1])
 
-def run_outgoing_test(q, bus, conn, stream):
+def run_outgoing_test(q, bus, conn, stream, close_channel=False):
     jp = JingleProtocol031 ()
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + '/bob')
     jt.prepare()
@@ -295,20 +295,25 @@ def run_outgoing_test(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal = 'StreamAdded')
 
     # happiness.. Now let's hang up
-    channel.Hangup (0, "", "", dbus_interface=cs.CHANNEL_TYPE_CALL)
+    if close_channel:
+        channel.Close()
+        hangup_event = EventPattern ('dbus-signal', signal = "Closed",
+            path = path)
+    else:
+        channel.Hangup (0, "", "", dbus_interface=cs.CHANNEL_TYPE_CALL)
+        hangup_event = EventPattern ('dbus-signal', signal='CallStateChanged')
 
     # Should change the call state to ended, send a session-terminate to our
     # only peer and send a muc presence without any mention of muji
     q.forbid_events(forbidden)
-    q.expect_many (
-        EventPattern ('dbus-signal', signal = 'CallStateChanged'),
-        EventPattern ('stream-presence', to = muc + "/test"),
+    q.expect_many (EventPattern ('stream-presence', to = muc + "/test"),
         EventPattern ('stream-iq',
-            predicate = jp.action_predicate ('session-terminate'))
-        )
+                predicate=jp.action_predicate ('session-terminate')),
+        hangup_event)
 
-    channel.Close()
-    q.expect ('dbus-signal', signal = "Closed", path = path)
+    if not close_channel:
+        channel.Close()
+        q.expect ('dbus-signal', signal="Closed", path = path)
 
     try:
         channel.Close()
@@ -329,5 +334,6 @@ def general_tests (jp, q, bus, conn, stream, path, props):
 
 if __name__ == '__main__':
     exec_test (run_outgoing_test)
+    exec_test (lambda q,b, c, s: run_outgoing_test (q, b, c, s, True))
     exec_test (run_incoming_test)
     exec_test (lambda q,b, c, s: run_incoming_test (q, b, c, s, True))

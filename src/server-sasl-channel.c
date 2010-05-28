@@ -645,8 +645,9 @@ gabble_server_sasl_channel_start_mechanism (
   gboolean mechanism_available = FALSE;
   DEBUG ("");
 
-  if (!g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
-          G_OBJECT (self), wocky_auth_registry_start_auth_finish))
+  if (r == NULL || !g_simple_async_result_is_valid (
+          G_ASYNC_RESULT (priv->result), G_OBJECT (self),
+          wocky_auth_registry_start_auth_finish))
     {
       gabble_server_sasl_channel_raise_not_available (context,
           "Authentication not in pre-start state.");
@@ -701,8 +702,8 @@ gabble_server_sasl_channel_respond (
   GString *response_data;
   GSimpleAsyncResult *r = self->priv->result;
 
-  if (!g_simple_async_result_is_valid (G_ASYNC_RESULT (r), G_OBJECT (self),
-          wocky_auth_registry_challenge_finish))
+  if (r == NULL || !g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+          G_OBJECT (self), wocky_auth_registry_challenge_finish))
     {
       gabble_server_sasl_channel_raise_not_available (context,
           "Authentication waiting for response.");

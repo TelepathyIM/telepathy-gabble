@@ -2541,6 +2541,52 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static void
+set_status_to_connected (GabbleConnection *conn)
+{
+  GError *error = NULL;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
+    {
+      const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
+          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
+          NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+    {
+       const gchar *ifaces[] =
+         { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
+  /* send presence to the server to indicate availability */
+  /* TODO: some way for the user to set this */
+  if (!conn_presence_signal_own_presence (conn, NULL, &error))
+    {
+      DEBUG ("sending initial presence failed: %s", error->message);
+      goto ERROR;
+    }
+
+  /* go go gadget on-line */
+  tp_base_connection_change_status (base,
+      TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
+
+  return;
+
+ERROR:
+  if (error != NULL)
+    g_error_free (error);
+
+  tp_base_connection_change_status (base,
+      TP_CONNECTION_STATUS_DISCONNECTED,
+      TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+}
+
 /**
  * connection_disco_cb
  *
@@ -2627,35 +2673,7 @@ connection_disco_cb (GabbleDisco *disco,
       DEBUG ("set features flags to %d", conn->features);
     }
 
-  if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
-    {
-      const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
-          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
-          NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
-    }
-
-  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
-    {
-       const gchar *ifaces[] =
-         { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
-    }
-
-  /* send presence to the server to indicate availability */
-  /* TODO: some way for the user to set this */
-  if (!conn_presence_signal_own_presence (conn, NULL, &error))
-    {
-      DEBUG ("sending initial presence failed: %s", error->message);
-      goto ERROR;
-    }
-
-  /* go go gadget on-line */
-  tp_base_connection_change_status (base,
-      TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
-
+  set_status_to_connected (conn);
   return;
 
 ERROR:

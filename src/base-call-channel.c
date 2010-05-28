@@ -720,16 +720,20 @@ gabble_base_call_channel_close (GabbleBaseCallChannel *self)
 
   if (!priv->closed)
     {
+      GabbleBaseCallChannelClass *base_class =
+        GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self);
       GList *l;
       GHashTableIter iter;
       gpointer value;
 
       priv->closed = TRUE;
 
+      if (base_class->close != NULL)
+        base_class->close (self);
+
       g_hash_table_iter_init (&iter, priv->members);
       while (g_hash_table_iter_next (&iter, NULL, &value))
         gabble_call_member_shutdown (value);
-
 
       /* shutdown all our contents */
       for (l = priv->contents ; l != NULL; l = g_list_next (l))

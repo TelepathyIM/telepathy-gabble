@@ -50,6 +50,8 @@ struct _GabbleBaseCallChannelClass {
       const gchar *detailed_reason,
       const gchar *message);
 
+    void (*close) (GabbleBaseCallChannel *self);
+
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 

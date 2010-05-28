@@ -46,22 +46,8 @@ def test_no_pep(q, bus, conn, stream):
 def test_pep(q, bus, conn, stream):
     conn.Connect()
 
-    e = q.expect('stream-iq', iq_type='get', to='test@localhost',
-            query_ns=ns.DISCO_INFO)
-
-    iq = e.stanza
-    nodes = xpath.queryForNodes(
-    "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']", iq)
-    query = nodes[0]
-    identity = query.addElement('identity')
-    identity['category'] = 'pubsub'
-    identity['type'] = 'pep'
-
-    iq['type'] = 'result'
-    iq['from'] = 'test@localhost'
-    stream.send(iq)
-
-    sync_stream(q, stream)
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     call_async(q, conn.Location, 'SetLocation', {
         'lat': 0.0,
@@ -75,16 +61,30 @@ def test_pep(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
     q.expect('dbus-return', method='SetLocation')
 
-class MyXmppStream(BaseXmlStream):
+class PEPinJidDiscoXmppStream(BaseXmlStream):
     version = (1, 0)
 
     def _cb_disco_iq(self, iq):
-        if iq.getAttribute('to') == 'localhost':
-            iq['type'] = 'result'
-            iq['from'] = 'localhost'
-            self.send(iq)
+        # Server disco doesn't contain PEP
+        iq['type'] = 'result'
+        iq['from'] = 'localhost'
+        self.send(iq)
+
+    def _cb_bare_jid_disco_iq(self, iq):
+        # ...but our own jid disco does
+        nodes = xpath.queryForNodes(
+            "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            iq)
+        query = nodes[0]
+        identity = query.addElement('identity')
+        identity['category'] = 'pubsub'
+        identity['type'] = 'pep'
+
+        iq['type'] = 'result'
+        iq['from'] = iq['to']
+        self.send(iq)
 
 if __name__ == '__main__':
     exec_test(test_legacy)
     exec_test(test_no_pep, protocol=GoogleXmlStream)
-    exec_test(test_pep, protocol=MyXmppStream)
+    exec_test(test_pep, protocol=PEPinJidDiscoXmppStream)

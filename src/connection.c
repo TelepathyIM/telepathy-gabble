@@ -236,6 +236,10 @@ struct _GabbleConnectionPrivate
   /* timer used when trying to properly disconnect */
   guint disconnect_timer;
 
+  /* Number of things we are waiting for before changing the connection status
+   * to connected */
+  guint waiting_connected;
+
   gboolean closing;
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -1452,6 +1456,7 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
+static void decrement_waiting_connected (GabbleConnection *connection);
 
 static void
 remote_closed_cb (WockyPorter *porter,
@@ -1686,7 +1691,7 @@ bare_jid_disco_cb (GabbleDisco *disco,
         }
     }
 
-  /* FIXME: add OLPC iface if PEP is supported? */
+  decrement_waiting_connected (conn);
 }
 
 /**
@@ -1694,8 +1699,8 @@ bare_jid_disco_cb (GabbleDisco *disco,
  *
  * Stage 2 of connecting, this function is called once the connect operation
  * has finished. It checks if the connection succeeded, creates and starts
- * the WockyPorter, then sends a discovery request to find the
- * server's features.
+ * the WockyPorter, then sends two discovery requests to find the
+ * server's features (one to the server and one to our bare jid).
  */
 static void
 connector_connected (GabbleConnection *self,
@@ -1790,6 +1795,7 @@ connector_connected (GabbleConnection *self,
   /* set initial capabilities */
   gabble_connection_refresh_capabilities (self, NULL);
 
+  /* Disco server features */
   if (!gabble_disco_request_with_timeout (self->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL,
                                           disco_reply_timeout,
@@ -1815,7 +1821,13 @@ connector_connected (GabbleConnection *self,
           error->message);
 
       g_error_free (error);
+
+      tp_base_connection_change_status ((TpBaseConnection *) self,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
+
+  self->priv->waiting_connected = 2;
 }
 
 static void
@@ -1931,7 +1943,7 @@ disconnect_callbacks (TpBaseConnection *base)
  *
  * Stage 1 is _gabble_connection_connect calling wocky_connector_connect_async
  * Stage 2 is connector_connected initiating service discovery
- * Stage 3 is connection_disco_cb advertising initial presence, requesting
+ * Stage 3 is set_status_to_connected advertising initial presence, requesting
  *   the roster and setting the CONNECTED state
  */
 static gboolean
@@ -2541,6 +2553,14 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+/**
+ * connection_disco_cb
+ *
+ * Stage 3 of connecting, this function is called once all the events we were
+ * waiting for happened.
+ * It sends the user's initial presence to the server, marking them as
+ * available, and requests the roster.
+ */
 static void
 set_status_to_connected (GabbleConnection *conn)
 {
@@ -2587,14 +2607,15 @@ ERROR:
       TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 }
 
-/**
- * connection_disco_cb
- *
- * Stage 3 of connecting, this function is called by GabbleDisco after the
- * result of the non-blocking server feature discovery call is known. It sends
- * the user's initial presence to the server, marking them as available,
- * and requests the roster.
- */
+static void
+decrement_waiting_connected (GabbleConnection *conn)
+{
+  conn->priv->waiting_connected--;
+
+  if (conn->priv->waiting_connected == 0)
+    set_status_to_connected (conn);
+}
+
 static void
 connection_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
@@ -2673,7 +2694,7 @@ connection_disco_cb (GabbleDisco *disco,
       DEBUG ("set features flags to %d", conn->features);
     }
 
-  set_status_to_connected (conn);
+  decrement_waiting_connected (conn);
   return;
 
 ERROR:

@@ -341,27 +341,34 @@ class BaseXmlStream(xmlstream.XmlStream):
     def _cb_authd(self, _):
         # called when stream is authenticated
         self.addObserver(
-            "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            "/iq[@to='localhost']/query[@xmlns='http://jabber.org/protocol/disco#info']",
             self._cb_disco_iq)
+        self.addObserver(
+            "/iq[@to='test@localhost']/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            self._cb_bare_jid_disco_iq)
         self.event_func(servicetest.Event('stream-authenticated'))
 
     def _cb_disco_iq(self, iq):
-        if iq.getAttribute('to') == 'localhost':
-            # add PEP support
-            # This is actually wrong. PEP support should be advertised when
-            # discoing user's bare JID, not the server. Lot of old ejabberd
-            # versions still behave this way though.
-            nodes = xpath.queryForNodes(
-                "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
-                iq)
-            query = nodes[0]
-            identity = query.addElement('identity')
-            identity['category'] = 'pubsub'
-            identity['type'] = 'pep'
+        # add PEP support
+        # This is actually wrong. PEP support should be advertised when
+        # discoing user's bare JID, not the server. Lot of old ejabberd
+        # versions still behave this way though.
+        nodes = xpath.queryForNodes(
+            "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            iq)
+        query = nodes[0]
+        identity = query.addElement('identity')
+        identity['category'] = 'pubsub'
+        identity['type'] = 'pep'
 
-            iq['type'] = 'result'
-            iq['from'] = iq['to']
-            self.send(iq)
+        iq['type'] = 'result'
+        iq['from'] = iq['to']
+        self.send(iq)
+
+    def _cb_bare_jid_disco_iq(self, iq):
+        iq['type'] = 'result'
+        iq['from'] = iq['to']
+        self.send(iq)
 
     def onDocumentEnd(self):
         self.event_func(servicetest.Event('stream-closed'))

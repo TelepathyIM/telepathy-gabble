@@ -44,12 +44,11 @@ def test_no_pep(q, bus, conn, stream):
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         )
 
-    try:
-        conn.Location.SetLocation({'lat': 0.0, 'lon': 0.0})
-    except dbus.DBusException:
-        pass
-    else:
-        assert False, "Should have had an error!"
+    call_async(q, conn.Location, 'SetLocation', {
+        'lat': 0.0,
+        'lon': 0.0})
+
+    q.expect('dbus-error', name=cs.NOT_IMPLEMENTED)
 
 #PEP is advertised using the right protocol
 def test_pep(q, bus, conn, stream):

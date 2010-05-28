@@ -14,12 +14,8 @@ import ns
 def test_legacy(q, bus, conn, stream):
     conn.Connect()
 
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='set',
-            query_ns=ns.PUBSUB),
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        )
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     call_async(q, conn.Location, 'SetLocation', {
         'lat': 0.0,
@@ -37,12 +33,8 @@ def test_legacy(q, bus, conn, stream):
 def test_no_pep(q, bus, conn, stream):
     conn.Connect()
 
-    q.expect_many(
-        EventPattern('stream-iq', iq_type='set',
-            query_ns=ns.PUBSUB),
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        )
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     call_async(q, conn.Location, 'SetLocation', {
         'lat': 0.0,
@@ -54,14 +46,8 @@ def test_no_pep(q, bus, conn, stream):
 def test_pep(q, bus, conn, stream):
     conn.Connect()
 
-    _, _, e = q.expect_many(
-        EventPattern('stream-iq', iq_type='set',
-            query_ns=ns.PUBSUB),
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', iq_type='get', to='test@localhost',
+    e = q.expect('stream-iq', iq_type='get', to='test@localhost',
             query_ns=ns.DISCO_INFO)
-        )
 
     iq = e.stanza
     nodes = xpath.queryForNodes(

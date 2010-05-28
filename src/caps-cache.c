@@ -14,9 +14,6 @@
 
 G_DEFINE_TYPE (GabbleCapsCache, gabble_caps_cache, G_TYPE_OBJECT)
 
-#define GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_CAPS_CACHE, GabbleCapsCachePrivate))
-
 static GabbleCapsCache *shared_cache = NULL;
 
 struct _GabbleCapsCachePrivate

@@ -9,8 +9,13 @@
 
 #include <sqlite3.h>
 
+#include <wocky/wocky-xmpp-reader.h>
+#include <wocky/wocky-xmpp-writer.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"
+
+#define DB_USER_VERSION 2
 
 G_DEFINE_TYPE (GabbleCapsCache, gabble_caps_cache, G_TYPE_OBJECT)
 
@@ -21,6 +26,9 @@ struct _GabbleCapsCachePrivate
   gchar *path;
   sqlite3 *db;
   guint inserts;
+
+  WockyXmppReader *reader;
+  WockyXmppWriter *writer;
 };
 
 enum
@@ -87,6 +95,18 @@ gabble_caps_cache_finalize (GObject *object)
       self->priv->db = NULL;
     }
 
+  if (self->priv->reader != NULL)
+    {
+      g_object_unref (self->priv->reader);
+      self->priv->reader = NULL;
+    }
+
+  if (self->priv->writer != NULL)
+    {
+      g_object_unref (self->priv->writer);
+      self->priv->writer = NULL;
+    }
+
   G_OBJECT_CLASS (gabble_caps_cache_parent_class)->finalize (object);
 }
 
@@ -148,84 +168,138 @@ get_path (void)
   return ret;
 }
 
-static void
-gabble_caps_cache_constructed (GObject *object)
+static gboolean
+caps_cache_check_version (GabbleCapsCache *self)
 {
-  GabbleCapsCache *self = GABBLE_CAPS_CACHE (object);
-  int ret;
+  guint version;
+
+  if (!caps_cache_get_one_uint (self, "PRAGMA user_version;", &version))
+    return FALSE;
+
+  if (version == 0)
+    {
+    /* ______________________________________________________________________
+      ( Unfortunately the first incarnation of the caps cache db didn't set  )
+      ( user_version, so we can't tell if 0 means this is a new, empty       )
+      ( database or an old one.                                              )
+      (                                                                      )
+      ( So... let's check if the capabilities table exists. If so, we'll     )
+      ( pretend user_version was 1.                                          )
+      (                                                                      )
+      ( When there's nothing left to burn, you have to set yourself on fire. )
+       ----------------------------------------------------------------------
+                o   ^__^
+                 o  (oo)\_______
+                    (__)\       )\/\
+                        ||----w |
+                        ||     ||   */
+      guint dummy;
+
+      if (caps_cache_get_one_uint (self, "PRAGMA table_info(capabilities)",
+            &dummy))
+        {
+          DEBUG ("capabilities table exists; this isn't a new database");
+          version = 1;
+        }
+    }
+
+  switch (version)
+    {
+      case 0:
+        DEBUG ("opened new, empty database at %s", self->priv->path);
+        return TRUE;
+
+      case DB_USER_VERSION:
+        DEBUG ("opened %s, user_version %u", self->priv->path, version);
+        return TRUE;
+
+      default:
+        DEBUG ("%s is version %u, not our version %u; let's nuke it",
+            self->priv->path, version, DB_USER_VERSION);
+        return FALSE;
+    }
+}
+
+static gboolean
+caps_cache_open (GabbleCapsCache *self)
+{
+  gint ret;
   gchar *error;
+
+  g_return_val_if_fail (self->priv->db == NULL, FALSE);
 
   ret = sqlite3_open (self->priv->path, &self->priv->db);
 
-  if (ret == SQLITE_OK)
+  if (ret != SQLITE_OK)
     {
-      DEBUG ("opened database at %s", self->priv->path);
-    }
-  else
-    {
-      DEBUG ("opening database failed: %s", sqlite3_errmsg (self->priv->db));
-
-      /* Can't open it. Nuke it and try again. */
-      sqlite3_close (self->priv->db);
-      ret = unlink (self->priv->path);
-
-      if (ret != 0)
-        {
-          DEBUG ("removing database failed: %s", g_strerror (errno));
-
-          /* Can't open it or remove it. Just pretend it isn't there. */
-          self->priv->db = NULL;
-        }
-      else
-        {
-          ret = sqlite3_open (self->priv->path, &self->priv->db);
-
-          if (ret == SQLITE_OK)
-            {
-              DEBUG ("opened database at %s", self->priv->path);
-            }
-          else
-            {
-              DEBUG ("database open after remove failed: %s",
-                  sqlite3_errmsg (self->priv->db));
-              /* Can't open it after removing it. Just pretend it isn't there.
-               */
-
-              sqlite3_close (self->priv->db);
-              self->priv->db = NULL;
-            }
-        }
+      DEBUG ("opening database %s failed: %s", self->priv->path,
+          sqlite3_errmsg (self->priv->db));
+      goto err;
     }
 
-  /* If we couldn't open the DB, give up. */
-  if (self->priv->db == NULL)
-    return;
+  if (!caps_cache_check_version (self))
+    goto err;
 
   ret = sqlite3_exec (self->priv->db,
+      "PRAGMA user_version = " G_STRINGIFY (DB_USER_VERSION) ";"
       "PRAGMA journal_mode = MEMORY;"
       "PRAGMA synchronous = OFF",
       NULL, NULL, &error);
 
   if (ret != SQLITE_OK)
     {
-      DEBUG ("failed to turn off fsync() and on-disk journalling: %s", error);
+      DEBUG ("failed to set user_version, turn off fsync() and "
+          "turn off on-disk journalling: %s", error);
       sqlite3_free (error);
-      /* Let's just continue; this isn't fatal. */
+      goto err;
     }
 
   ret = sqlite3_exec (self->priv->db,
       "CREATE TABLE IF NOT EXISTS capabilities (\n"
       "  node text PRIMARY KEY,\n"
-      "  namespaces text,\n"
+      "  disco_reply text,\n"
       "  timestamp int)", NULL, NULL, &error);
 
   if (ret != SQLITE_OK)
     {
       DEBUG ("failed to ensure table exists: %s", error);
       sqlite3_free (error);
-      sqlite3_close (self->priv->db);
-      self->priv->db = NULL;
+      goto err;
     }
+
+  return TRUE;
+
+ err:
+  sqlite3_close (self->priv->db);
+  self->priv->db = NULL;
+  return FALSE;
+}
+
+static void
+gabble_caps_cache_constructed (GObject *object)
+{
+  GabbleCapsCache *self = GABBLE_CAPS_CACHE (object);
+
+  if (!caps_cache_open (self))
+    {
+      /* Couldn't open it, or it's got a different user_version. Nuke it and
+       * try again. */
+      int ret = unlink (self->priv->path);
+
+      if (ret != 0)
+        DEBUG ("removing database failed: %s", g_strerror (errno));
+      else if (caps_cache_open (self))
+        g_assert (self->priv->db != NULL);
+    }
+
+  if (self->priv->db == NULL)
+    {
+      DEBUG ("couldn't open db; giving up");
+      return;
+    }
+
+  self->priv->reader = wocky_xmpp_reader_new_no_stream ();
+  self->priv->writer = wocky_xmpp_writer_new_no_stream ();
 }
 
 static void
@@ -403,23 +477,24 @@ caps_cache_touch (GabbleCapsCache *self, const gchar *node)
   sqlite3_finalize (stmt);
 }
 
-/* Caller is responsible for freeing the returned set.
- */
-GabbleCapabilitySet *
-gabble_caps_cache_lookup (GabbleCapsCache *self, const gchar *node)
+/* Caller is responsible for unreffing the returned node tree */
+WockyNodeTree *
+gabble_caps_cache_lookup (
+    GabbleCapsCache *self,
+    const gchar *node)
 {
   gint ret;
-  const gchar *value = NULL;
   sqlite3_stmt *stmt;
-  gchar **i, **uris;
-  GabbleCapabilitySet *caps;
+  const guchar *value;
+  int bytes;
+  WockyNodeTree *query_node;
 
   if (!self->priv->db)
     /* DB open failed. */
     return NULL;
 
   if (!caps_cache_prepare (self,
-        "SELECT namespaces FROM capabilities WHERE node=?", &stmt))
+        "SELECT disco_reply FROM capabilities WHERE node=?", &stmt))
     return NULL;
 
   if (!caps_cache_bind_text (self, stmt, 1, -1, node))
@@ -444,51 +519,53 @@ gabble_caps_cache_lookup (GabbleCapsCache *self, const gchar *node)
     }
 
   DEBUG ("caps cache hit: %s", node);
-  value = (gchar *) sqlite3_column_text (stmt, 0);
-  uris = g_strsplit (value, "\n", 0);
-  caps = gabble_capability_set_new ();
+  value = sqlite3_column_text (stmt, 0);
+  bytes = sqlite3_column_bytes (stmt, 0);
+  wocky_xmpp_reader_push (self->priv->reader, value, bytes);
+  query_node = (WockyNodeTree *)
+      wocky_xmpp_reader_pop_stanza (self->priv->reader);
 
-  for (i = uris; *i != NULL; i++)
-      gabble_capability_set_add (caps, *i);
+  if (query_node == NULL)
+    {
+      GError *error = wocky_xmpp_reader_get_error (self->priv->reader);
 
-  g_strfreev (uris);
+      g_warning ("could not parse query_node of %s: %s", node,
+          (error != NULL ? error->message : "no error; incomplete xml?"));
+
+      if (error != NULL)
+        g_error_free (error);
+    }
+
+  wocky_xmpp_reader_reset (self->priv->reader);
+
   sqlite3_finalize (stmt);
   caps_cache_touch (self, node);
-  return caps;
-}
-
-static void
-append_uri (gchar *uri, GPtrArray *array)
-{
-  g_ptr_array_add (array, uri);
+  return query_node;
 }
 
 static void
 caps_cache_insert (
     GabbleCapsCache *self,
     const gchar *node,
-    GabbleCapabilitySet *caps)
+    WockyNodeTree *query_node)
 {
-  gchar *val;
+  const guint8 *val;
+  gsize len;
   gint ret;
   sqlite3_stmt *stmt;
-  GPtrArray *uris;
 
   if (!caps_cache_prepare (self,
-        "INSERT INTO capabilities (node, namespaces, timestamp) "
+        "INSERT INTO capabilities (node, disco_reply, timestamp) "
         "VALUES (?, ?, ?)", &stmt))
     return;
 
   if (!caps_cache_bind_text (self, stmt, 1, -1, node))
     return;
 
-  /* The plus one is for the terminating NULL. */
-  uris = g_ptr_array_sized_new (gabble_capability_set_size (caps) + 1);
-  gabble_capability_set_foreach (caps, (GFunc) append_uri, uris);
-  g_ptr_array_add (uris, NULL);
-  val = g_strjoinv ("\n", (gchar **) uris->pdata);
+  wocky_xmpp_writer_write_node_tree (self->priv->writer, query_node,
+      &val, &len);
 
-  if (!caps_cache_bind_text (self, stmt, 2, -1, val))
+  if (!caps_cache_bind_text (self, stmt, 2, len, (const gchar *) val))
     goto OUT;
 
   if (!caps_cache_bind_int (self, stmt, 3, time (NULL)))
@@ -508,8 +585,6 @@ caps_cache_insert (
 
 OUT:
   sqlite3_finalize (stmt);
-  g_ptr_array_free (uris, TRUE);
-  g_free (val);
 }
 
 static gboolean
@@ -596,7 +671,7 @@ void
 gabble_caps_cache_insert (
     GabbleCapsCache *self,
     const gchar *node,
-    GabbleCapabilitySet *caps)
+    WockyNodeTree *query_node)
 {
   guint size = get_size ();
 
@@ -605,7 +680,7 @@ gabble_caps_cache_insert (
     return;
 
   DEBUG ("caps cache insert: %s", node);
-  caps_cache_insert (self, node, caps);
+  caps_cache_insert (self, node, query_node);
 
   /* Remove old entries after every 50th insert. */
 

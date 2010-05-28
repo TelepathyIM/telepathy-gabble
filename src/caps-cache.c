@@ -2,6 +2,7 @@
 #include "config.h"
 #include "caps-cache.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -168,9 +169,9 @@ gabble_caps_cache_constructed (GObject *object)
       sqlite3_close (self->priv->db);
       ret = unlink (self->priv->path);
 
-      if (!ret)
+      if (ret != 0)
         {
-          DEBUG ("removing database failed: %s", strerror (ret));
+          DEBUG ("removing database failed: %s", g_strerror (errno));
 
           /* Can't open it or remove it. Just pretend it isn't there. */
           self->priv->db = NULL;
@@ -195,6 +196,10 @@ gabble_caps_cache_constructed (GObject *object)
             }
         }
     }
+
+  /* If we couldn't open the DB, give up. */
+  if (self->priv->db == NULL)
+    return;
 
   ret = sqlite3_exec (self->priv->db,
       "PRAGMA journal_mode = MEMORY;"

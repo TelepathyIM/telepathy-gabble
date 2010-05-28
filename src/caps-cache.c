@@ -28,8 +28,11 @@ enum
     PROP_PATH = 1,
 };
 
-static void
-gabble_caps_cache_constructed (GObject *object);
+static void gabble_caps_cache_constructed (GObject *object);
+static gboolean caps_cache_get_one_uint (
+    GabbleCapsCache *self,
+    const gchar *sql,
+    guint *value);
 
 static void
 gabble_caps_cache_get_property (GObject *object, guint property_id,
@@ -328,6 +331,48 @@ caps_cache_bind_text (
   return TRUE;
 }
 
+/*
+ * caps_cache_get_one_uint:
+ * @self: the caps cache
+ * @sql: a query expected to yield one row with one integer colum
+ * @value: location at which to store that single unsigned integer
+ *
+ * Returns: %TRUE if @value was successfully retrieved; %FALSE otherwise.
+ */
+static gboolean
+caps_cache_get_one_uint (
+    GabbleCapsCache *self,
+    const gchar *sql,
+    guint *value)
+{
+  sqlite3_stmt *stmt;
+  int ret;
+
+  if (!caps_cache_prepare (self, sql, &stmt))
+    return FALSE;
+
+  ret = sqlite3_step (stmt);
+
+  switch (ret)
+    {
+      case SQLITE_ROW:
+        *value = sqlite3_column_int (stmt, 0);
+        sqlite3_finalize (stmt);
+        return TRUE;
+
+      case SQLITE_DONE:
+        DEBUG ("'%s' returned no results", sql);
+        break;
+
+      default:
+        DEBUG ("executing '%s' failed: %s", sql,
+            sqlite3_errmsg (self->priv->db));
+    }
+
+  sqlite3_finalize (stmt);
+  return FALSE;
+}
+
 /* Update cache entry timestmp. */
 static void
 caps_cache_touch (GabbleCapsCache *self, const gchar *node)
@@ -468,28 +513,11 @@ OUT:
 static gboolean
 caps_cache_count_entries (GabbleCapsCache *self, guint *count)
 {
-  gint ret;
-  sqlite3_stmt *stmt;
-
   if (!self->priv->db)
     return FALSE;
 
-  if (!caps_cache_prepare (self, "SELECT COUNT(*) FROM capabilities", &stmt))
-    return FALSE;
-
-  ret = sqlite3_step (stmt);
-
-  if (ret != SQLITE_ROW)
-    {
-      DEBUG ("statement execution failed: %s",
-          sqlite3_errmsg (self->priv->db));
-      sqlite3_finalize (stmt);
-      return FALSE;
-    }
-
-  *count = sqlite3_column_int (stmt, 0);
-  sqlite3_finalize (stmt);
-  return TRUE;
+  return caps_cache_get_one_uint (self, "SELECT COUNT(*) FROM capabilities",
+      count);
 }
 
 /* If the number of entries is above @high_threshold, remove entries older

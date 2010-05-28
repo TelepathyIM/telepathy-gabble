@@ -277,7 +277,7 @@ caps_cache_prepare (
 
   if (ret != SQLITE_OK)
     {
-      DEBUG ("preparing statement failed: %s",
+      DEBUG ("preparing statement '%s' failed: %s", sql,
           sqlite3_errmsg (self->priv->db));
       return FALSE;
     }

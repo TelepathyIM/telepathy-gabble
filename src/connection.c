@@ -1650,7 +1650,7 @@ connector_error_disconnect (GabbleConnection *self,
 }
 
 static void
-bare_jid__disco_cb (GabbleDisco *disco,
+bare_jid_disco_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
     const gchar *jid,
     const gchar *node,
@@ -1808,7 +1808,7 @@ connector_connected (GabbleConnection *self,
 
   /* Disco our own bare jid to check if PEP is supported */
   if (!gabble_disco_request_with_timeout (self->disco, GABBLE_DISCO_TYPE_INFO,
-      get_bare_jid (self), NULL, disco_reply_timeout, bare_jid__disco_cb, self,
+      get_bare_jid (self), NULL, disco_reply_timeout, bare_jid_disco_cb, self,
       G_OBJECT (self), &error))
     {
       DEBUG ("Sending disco request to our own bare jid failed: %s",

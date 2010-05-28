@@ -49,6 +49,8 @@ static void call_muc_channel_hangup (
     const gchar *detailed_reason,
     const gchar *message);
 
+static void call_muc_channel_close (GabbleBaseCallChannel *base);
+
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   gabble_call_muc_channel, GABBLE_TYPE_BASE_CALL_CHANNEL,
   G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_INITABLE, async_initable_iface_init);
@@ -217,6 +219,7 @@ gabble_call_muc_channel_class_init (
   base_call_class->accept = call_muc_channel_accept;
   base_call_class->add_content = call_muc_channel_add_content;
   base_call_class->hangup = call_muc_channel_hangup;
+  base_call_class->close = call_muc_channel_close;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",
@@ -1106,13 +1109,13 @@ call_muc_channel_add_content (GabbleBaseCallChannel *base,
   return content;
 }
 
-static void call_muc_channel_hangup (GabbleBaseCallChannel *base,
-    guint reason,
-    const gchar *detailed_reason,
-    const gchar *message)
+static void
+call_muc_channel_leave (GabbleCallMucChannel *self)
 {
-  GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (base);
   GabbleCallMucChannelPrivate *priv = self->priv;
+
+  if (priv->state == STATE_LEFT)
+    return;
 
   if (priv->muji != NULL)
     g_object_unref (priv->muji);
@@ -1120,4 +1123,19 @@ static void call_muc_channel_hangup (GabbleBaseCallChannel *base,
 
   priv->state = STATE_LEFT;
   gabble_muc_channel_send_presence (priv->muc, NULL);
+}
+
+static void
+call_muc_channel_hangup (GabbleBaseCallChannel *base,
+    guint reason,
+    const gchar *detailed_reason,
+    const gchar *message)
+{
+  call_muc_channel_leave (GABBLE_CALL_MUC_CHANNEL (base));
+}
+
+static void
+call_muc_channel_close (GabbleBaseCallChannel *base)
+{
+  call_muc_channel_leave (GABBLE_CALL_MUC_CHANNEL (base));
 }

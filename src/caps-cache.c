@@ -277,7 +277,7 @@ caps_cache_prepare (
 
   if (ret != SQLITE_OK)
     {
-      DEBUG ("preparing statement '%s' failed: %s", sql,
+      g_warning ("preparing statement '%s' failed: %s", sql,
           sqlite3_errmsg (self->priv->db));
       return FALSE;
     }
@@ -298,7 +298,8 @@ caps_cache_bind_int (
 
   if (ret != SQLITE_OK)
     {
-      DEBUG ("parameter binding failed: %s", sqlite3_errmsg (self->priv->db));
+      g_warning ("parameter binding failed: %s",
+          sqlite3_errmsg (self->priv->db));
       sqlite3_finalize (stmt);
       return FALSE;
     }
@@ -323,7 +324,8 @@ caps_cache_bind_text (
 
   if (ret != SQLITE_OK)
     {
-      DEBUG ("parameter binding failed: %s", sqlite3_errmsg (self->priv->db));
+      g_warning ("parameter binding failed: %s",
+          sqlite3_errmsg (self->priv->db));
       sqlite3_finalize (stmt);
       return FALSE;
     }

@@ -23,6 +23,8 @@
 
 #include <glib-object.h>
 
+#include <gabble/types.h>
+
 G_BEGIN_DECLS
 
 #define GABBLE_TYPE_SIDECAR (gabble_sidecar_get_type ())
@@ -34,7 +36,6 @@ G_BEGIN_DECLS
     (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_SIDECAR, \
         GabbleSidecarInterface))
 
-typedef struct _GabbleSidecar GabbleSidecar;
 typedef struct _GabbleSidecarInterface GabbleSidecarInterface;
 
 typedef GHashTable * (*GabbleSidecarGetImmutablePropertiesImpl) (

@@ -28,6 +28,7 @@
 #include <wocky/wocky-session.h>
 
 #include <gabble/sidecar.h>
+#include <gabble/types.h>
 
 G_BEGIN_DECLS
 
@@ -40,7 +41,6 @@ G_BEGIN_DECLS
     (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_PLUGIN, \
         GabblePluginInterface))
 
-typedef struct _GabblePlugin GabblePlugin;
 typedef struct _GabblePluginInterface GabblePluginInterface;
 
 typedef void (*GabblePluginCreateSidecarImpl) (

@@ -26,7 +26,7 @@
 #include <telepathy-glib/base-connection.h>
 #include <wocky/wocky-session.h>
 
-#include "sidecar.h"
+#include "gabble/sidecar.h"
 
 typedef struct _GabblePluginLoader GabblePluginLoader;
 typedef struct _GabblePluginLoaderClass GabblePluginLoaderClass;

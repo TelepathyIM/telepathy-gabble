@@ -27,7 +27,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 #include "debug.h"
 #include "plugin-loader.h"
-#include "sidecar.h"
+#include "gabble/sidecar.h"
 
 static void
 sidecars_conn_status_changed_cb (

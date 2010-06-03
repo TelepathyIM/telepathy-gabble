@@ -30,7 +30,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PLUGINS
 #include "debug.h"
-#include "plugin.h"
+#include "gabble/plugin.h"
 
 G_DEFINE_TYPE(GabblePluginLoader,
     gabble_plugin_loader,

@@ -167,6 +167,7 @@ libgabble_convenience_la_SOURCES = \
     tube-dbus.c \
     tube-stream.h \
     tube-stream.c \
+    $(top_srcdir)/gabble/types.h \
     types.h \
     util.h \
     util.c \
@@ -208,7 +209,6 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @SOUP_CFLAGS@ @UUID_CFLAGS@ @GMODULE_CFLAGS@ \
 	    @SQLITE_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
-	    -I $(top_srcdir)/gabble \
 	    -DG_LOG_DOMAIN=\"gabble\" \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 

@@ -26,6 +26,8 @@
 
 #include <telepathy-glib/handle.h>
 
+#include "gabble/types.h"
+
 G_BEGIN_DECLS
 
 typedef struct _GabbleConnection GabbleConnection;

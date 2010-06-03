@@ -11,7 +11,8 @@ gabbleinclude_HEADERS = \
     error.h \
     gabble.h \
     plugin.h \
-    sidecar.h
+    sidecar.h \
+    types.h
 
 # We install these headers alongside gabble's so that an actual separate Wocky
 # installation won't clash with them. Update with:

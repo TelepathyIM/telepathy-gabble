@@ -1,6 +1,7 @@
 /*
- * gabble.h — API for telepathy-gabble plugins
+ * types.h - type definitions available to telepathy-gabble plugins
  * Copyright © 2010 Collabora Ltd.
+ * Copyright © 2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,19 +18,17 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_PLUGINS_GABBLE_H__
-#define __GABBLE_PLUGINS_GABBLE_H__
+#ifndef __GABBLE_PLUGINS_TYPES_H__
+#define __GABBLE_PLUGINS_TYPES_H__
 
-#define IN_GABBLE_PLUGINS_GABBLE_H
+#include <glib.h>
 
-#include <glib-object.h>
+G_BEGIN_DECLS
 
-#include <gabble/capabilities-set.h>
-#include <gabble/error.h>
-#include <gabble/plugin.h>
-#include <gabble/sidecar.h>
-#include <gabble/types.h>
+typedef struct _GabbleCapabilitySet GabbleCapabilitySet;
+typedef struct _GabblePlugin GabblePlugin;
+typedef struct _GabbleSidecar GabbleSidecar;
 
-#undef IN_GABBLE_PLUGINS_GABBLE_H
+G_END_DECLS
 
 #endif

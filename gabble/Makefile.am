@@ -13,6 +13,7 @@ gabbleinclude_HEADERS = \
     disco-identity.h \
     error.h \
     gabble.h \
+    namespaces.h \
     plugin.h \
     sidecar.h \
     types.h

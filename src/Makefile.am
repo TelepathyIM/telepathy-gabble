@@ -50,6 +50,7 @@ libgabble_convenience_la_SOURCES = \
     capabilities.c \
     caps-cache.h \
     caps-cache.c \
+    $(top_srcdir)/gabble/caps-hash.h \
     caps-hash.h \
     caps-hash.c \
     caps-channel-manager.h \
@@ -79,6 +80,7 @@ libgabble_convenience_la_SOURCES = \
     debug.c \
     disco.h \
     disco.c \
+    $(top_srcdir)/gabble/disco-identity.h \
     error.c \
     error.h \
     ft-channel.c \
@@ -121,6 +123,7 @@ libgabble_convenience_la_SOURCES = \
     muc-channel.c \
     muc-factory.h \
     muc-factory.c \
+    $(top_srcdir)/gabble/namespaces.h \
     namespaces.h \
     olpc-activity.h \
     olpc-activity.c \

@@ -167,7 +167,10 @@ if test x$enable_plugins = xyes; then
   AC_ARG_ENABLE(plugin-api,
     AC_HELP_STRING([--enable-plugin-api],
                    [install headers for third-party plugins (experimental)]),
-    [enable_plugin_api=$enableval],
+    [
+      enable_plugin_api=$enableval
+      wocky_install_headers_dir="${includedir}/telepathy-gabble-0"
+    ],
     [enable_plugin_api=no])
 fi
 
@@ -228,9 +231,18 @@ AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 
 # We have to run Wocky's configure *before* looking for it with PKG_CHECK_MODULES so wocky-uninstalled.pc has been generated
 
+# We tell Wocky to install its headers alongside gabble's so that an actual
+# separate Wocky installation won't clash with them. This is a bit of a hack.
+# AX_CONFIG_DIR doesn't make it very easy to pass extra arguments to the
+# submodule's configure.
+prev_ac_configure_args=$ac_configure_args
+ac_configure_args="$ac_configure_args --with-installed-headers=${wocky_install_headers_dir}"
+
 prev_top_build_prefix=$ac_top_build_prefix
 AX_CONFIG_DIR([lib/ext/wocky])
 ac_top_build_prefix=$prev_top_build_prefix
+
+ac_configure_args=$prev_ac_configure_args
 
 dnl Check for Wocky
 # re-enable once Wocky has been released as a lib

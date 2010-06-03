@@ -1,5 +1,5 @@
 /*
- * plugin.h — API for telepathy-gabble plugins
+ * plugin.h — plugin API for telepathy-gabble plugins
  * Copyright © 2009 Collabora Ltd.
  * Copyright © 2009 Nokia Corporation
  *

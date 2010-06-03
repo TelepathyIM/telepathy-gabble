@@ -1,5 +1,5 @@
-/* error.h — error API available to telepathy-gabble plugins (and internals)
- *
+/*
+ * error.h — error API available to telepathy-gabble plugins (and internals)
  * Copyright © 2010 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or

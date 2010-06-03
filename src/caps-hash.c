@@ -430,7 +430,7 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
 {
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities_copy = ((identities == NULL) ?
-      g_ptr_array_new () : gabble_g_ptr_array_copy (identities));
+      g_ptr_array_new () : gabble_disco_identity_array_copy (identities));
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 

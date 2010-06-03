@@ -26,6 +26,7 @@
 
 #include <gabble/capabilities-set.h>
 #include <gabble/connection.h>
+#include <gabble/disco-identity.h>
 #include <gabble/error.h>
 #include <gabble/plugin.h>
 #include <gabble/sidecar.h>

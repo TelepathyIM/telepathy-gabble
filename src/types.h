@@ -58,6 +58,14 @@ typedef struct _GabbleCallMemberContent GabbleCallMemberContent;
 
 typedef struct _JingleCandidate JingleCandidate;
 
+struct _GabbleDiscoIdentity
+{
+    gchar *category;
+    gchar *type;
+    gchar *lang;
+    gchar *name;
+};
+
 typedef enum {
     INITIATOR_INVALID = -1,
     INITIATOR_LOCAL = 0,

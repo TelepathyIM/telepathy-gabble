@@ -9,6 +9,7 @@ gabbleincludedir = $(includedir)/telepathy-gabble-0/gabble
 gabbleinclude_HEADERS = \
     capabilities-set.h \
     connection.h \
+    disco-identity.h \
     error.h \
     gabble.h \
     plugin.h \

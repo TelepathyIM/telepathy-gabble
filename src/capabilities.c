@@ -417,7 +417,7 @@ gabble_capability_set_new (void)
 }
 
 GabbleCapabilitySet *
-gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
+gabble_capability_set_new_from_stanza (WockyNode *query_result)
 {
   GabbleCapabilitySet *ret;
   const gchar *var;
@@ -429,7 +429,7 @@ gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
 
   for (ni = node_iter (query_result); ni != NULL; ni = node_iter_next (ni))
     {
-      LmMessageNode *child = node_iter_data (ni);
+      WockyNode *child = node_iter_data (ni);
 
       if (!tp_strdiff (child->name, "identity"))
         {

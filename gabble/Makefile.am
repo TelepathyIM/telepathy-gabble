@@ -7,6 +7,7 @@ pkgconfig_DATA = telepathy-gabble.pc
 
 gabbleincludedir = $(includedir)/telepathy-gabble-0/gabble
 gabbleinclude_HEADERS = \
+    capabilities-set.h \
     error.h \
     gabble.h \
     plugin.h \

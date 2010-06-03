@@ -24,6 +24,7 @@
 
 #include <glib-object.h>
 
+#include <gabble/capabilities-set.h>
 #include <gabble/error.h>
 #include <gabble/plugin.h>
 #include <gabble/sidecar.h>

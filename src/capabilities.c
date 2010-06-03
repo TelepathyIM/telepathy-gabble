@@ -611,7 +611,7 @@ gabble_capability_set_free (GabbleCapabilitySet *caps)
 gint
 gabble_capability_set_size (const GabbleCapabilitySet *caps)
 {
-  g_return_val_if_fail (caps != NULL, TRUE);
+  g_return_val_if_fail (caps != NULL, 0);
   return tp_handle_set_size (caps->handles);
 }
 

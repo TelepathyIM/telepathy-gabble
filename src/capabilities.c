@@ -216,10 +216,10 @@ omits_content_creators (LmMessageNode *identity)
 static gboolean
 is_a_phone (LmMessageNode *identity)
 {
-  return (!tp_strdiff (lm_message_node_get_attribute (identity, "category"),
-                       "client") &&
-          !tp_strdiff (lm_message_node_get_attribute (identity, "type"),
-                       "phone"));
+  const gchar *category = lm_message_node_get_attribute (identity, "category");
+  const gchar *type = lm_message_node_get_attribute (identity, "type");
+
+  return !tp_strdiff (category, "client") && !tp_strdiff (type, "phone");
 }
 
 static gsize feature_handles_refcount = 0;

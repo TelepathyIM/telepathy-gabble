@@ -20,10 +20,6 @@
 #ifndef __GABBLE_PLUGINS_ERROR_H__
 #define __GABBLE_PLUGINS_ERROR_H__
 
-#ifndef IN_GABBLE_PLUGINS_GABBLE_H
-#error Use #include <gabble/gabble.h> instead of <gabble/error.h>
-#endif
-
 #include <glib.h>
 
 #include <wocky/wocky-xmpp-error.h>

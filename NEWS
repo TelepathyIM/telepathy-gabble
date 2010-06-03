@@ -1,3 +1,51 @@
+telepathy-gabble 0.9.12 (2010-06-03)
+====================================
+
+The “Show me the face of you” release.
+
+Dependencies:
+
+• libuuid is now required.
+
+Enhancements:
+
+• The capabilities cache now persists on-disk. (daf)
+
+• Multi-user calls are now supported, using the Muji protocol! Frabjous
+  day, etc. Empathy does not yet support multi-user calls; there's a
+  test client written in Python, but you'll need bleeding-edge Farsight
+  to run it. (sjoerd, Maiku)
+
+• Support the /info contact attribute for ContactInfo. (andrunko)
+
+• XMPP keepalives are now sent and acked; this fixes the biggest
+  remaining regression from 0.8! (ptlo)
+
+• When making outgoing calls, Gabble now prefers to call resources which
+  claim to be phones. (fd.o#28265, wjt)
+
+• The current draft of SASL authentication channels is implemented,
+  allowing channel handlers to support SASL mechanisms like
+  X-GOOGLE-TOKEN. As a result, 'account' and 'password' are now optional
+  connection parameters, since SASL mechanisms such as ANONYMOUS (see
+  XEP-0175) require neither. (eeejay, danni)
+
+Fixes:
+
+• From Wocky:
+  › Don't treat error replies from PEP nodes as PEP updates. (fd.o#28232,
+    cassidy)
+  › Don't drop backlog messages from former members of MUCs. (fd.o#27913,
+    wjt)
+
+• Blocked contacts are no longer accidentally unblocked if you remove
+  them from the 'stored' list. (fd.o#20597, wjt)
+
+• Gabble MailNotification.RequestInboxURL no longer returns an empty
+  string in some situations (fd.o#27157, stormer)
+
+• Various fixes for issues found by Coverity (wjt)
+
 telepathy-gabble 0.9.11 (2010-04-26)
 ====================================
 

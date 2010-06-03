@@ -33,6 +33,7 @@
 #include <wocky/wocky-session.h>
 #include <wocky/wocky-pep-service.h>
 
+#include "gabble/connection.h"
 #include "capabilities.h"
 #include "error.h"
 #include "ft-manager.h"

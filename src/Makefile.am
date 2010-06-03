@@ -70,6 +70,7 @@ libgabble_convenience_la_SOURCES = \
     conn-sidecars.c \
     conn-mail-notif.h \
     conn-mail-notif.c \
+    $(top_srcdir)/gabble/connection.h \
     connection.h \
     connection.c \
     connection-manager.h \

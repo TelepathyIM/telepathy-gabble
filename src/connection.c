@@ -225,6 +225,8 @@ struct _GabbleConnectionPrivate
    * AdvertiseCapabilities or UpdateCapabilities, for vague historical
    * reasons */
   GabbleCapabilitySet *bonus_caps;
+  /* sidecar caps set by gabble_connection_update_sidecar_capabilities */
+  GabbleCapabilitySet *sidecar_caps;
   /* caps provided via ContactCapabilities.UpdateCapabilities ()
    * gchar * (client name) => GabbleCapabilitySet * */
   GHashTable *client_caps;
@@ -377,6 +379,7 @@ gabble_connection_constructor (GType type,
   priv->all_caps = gabble_capability_set_new ();
   priv->notify_caps = gabble_capability_set_new ();
   priv->legacy_caps = gabble_capability_set_new ();
+  priv->sidecar_caps = gabble_capability_set_new ();
   priv->client_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, (GDestroyNotify) gabble_capability_set_free);
 
@@ -1095,6 +1098,7 @@ gabble_connection_dispose (GObject *object)
   gabble_capability_set_free (priv->all_caps);
   gabble_capability_set_free (priv->notify_caps);
   gabble_capability_set_free (priv->legacy_caps);
+  gabble_capability_set_free (priv->sidecar_caps);
   gabble_capability_set_free (priv->bonus_caps);
 
   if (priv->disconnect_timer != 0)
@@ -2220,6 +2224,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
       gabble_capabilities_get_fixed_caps ());
   gabble_capability_set_update (self->priv->all_caps, self->priv->notify_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->legacy_caps);
+  gabble_capability_set_update (self->priv->all_caps, self->priv->sidecar_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
 
   g_hash_table_iter_init (&iter, self->priv->client_caps);
@@ -3370,4 +3375,48 @@ void
 gabble_connection_set_disco_reply_timeout (guint timeout)
 {
   disco_reply_timeout = timeout;
+}
+
+void
+gabble_connection_update_sidecar_capabilities (TpBaseConnection *conn,
+                                               GabbleCapabilitySet *add_set,
+                                               GabbleCapabilitySet *remove_set)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (conn);
+  GabbleConnectionPrivate *priv = self->priv;
+  GabbleCapabilitySet *save_set;
+
+  if (add_set == NULL && remove_set == NULL)
+    return;
+
+  if (add_set != NULL)
+    gabble_capability_set_update (priv->sidecar_caps, add_set);
+  if (remove_set != NULL)
+    gabble_capability_set_exclude (priv->sidecar_caps, remove_set);
+
+  if (DEBUGGING)
+    {
+      if (add_set != NULL)
+        {
+          gchar *add_str = gabble_capability_set_dump (add_set, "  ");
+
+          DEBUG ("sidecar caps to add:\n%s", add_str);
+          g_free (add_str);
+        }
+
+      if (remove_set != NULL)
+        {
+          gchar *remove_str = gabble_capability_set_dump (remove_set, "  ");
+
+          DEBUG ("sidecar caps to remove:\n%s", remove_str);
+          g_free (remove_str);
+        }
+    }
+
+  if (gabble_connection_refresh_capabilities (self, &save_set))
+    {
+      _emit_capabilities_changed (self, conn->self_handle,
+          save_set, priv->all_caps);
+      gabble_capability_set_free (save_set);
+    }
 }

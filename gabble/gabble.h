@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef GABBLE_PLUGINS_GABBLE_H
-#define GABBLE_PLUGINS_GABBLE_H
+#ifndef __GABBLE_PLUGINS_GABBLE_H__
+#define __GABBLE_PLUGINS_GABBLE_H__
 
 #define IN_GABBLE_PLUGINS_GABBLE_H
 

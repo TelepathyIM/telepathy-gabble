@@ -17,8 +17,9 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef __PLUGIN_H__
-#define __PLUGIN_H__
+
+#ifndef __GABBLE_PLUGINS_PLUGIN_H__
+#define __GABBLE_PLUGINS_PLUGIN_H__
 
 #include <glib-object.h>
 #include <gio/gio.h>

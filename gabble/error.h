@@ -17,6 +17,9 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef __GABBLE_PLUGINS_ERROR_H__
+#define __GABBLE_PLUGINS_ERROR_H__
+
 #ifndef IN_GABBLE_PLUGINS_GABBLE_H
 #error Use #include <gabble/gabble.h> instead of <gabble/error.h>
 #endif
@@ -25,3 +28,5 @@
 
 void gabble_set_tp_error_from_wocky (const GError *wocky_error,
     GError **error);
+
+#endif

@@ -2351,6 +2351,22 @@ add_feature_node (gpointer namespace,
   lm_message_node_set_attribute (feature_node, "var", namespace);
 }
 
+static void
+add_identity_node (const GabbleDiscoIdentity *identity,
+    gpointer result_query)
+{
+  LmMessageNode *identity_node;
+
+  identity_node = lm_message_node_add_child
+      (result_query, "identity", NULL);
+  lm_message_node_set_attribute (identity_node, "category", identity->category);
+  lm_message_node_set_attribute (identity_node, "type", identity->type);
+  if (identity->lang)
+    lm_message_node_set_attribute (identity_node, "lang", identity->lang);
+  if (identity->name)
+    lm_message_node_set_attribute (identity_node, "name", identity->name);
+}
+
 /**
  * connection_iq_disco_cb
  *
@@ -2458,6 +2474,12 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         {
           gabble_capability_set_foreach (features, add_feature_node,
               result_query);
+        }
+
+      if (info && info->identities)
+        {
+          g_ptr_array_foreach (info->identities,
+              (GFunc) add_identity_node, result_query);
         }
 
       NODE_DEBUG (result_iq, "sending disco response");

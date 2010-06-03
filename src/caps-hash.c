@@ -38,6 +38,7 @@
 #include "presence-cache.h"
 #include "presence.h"
 #include "util.h"
+#include "gabble/disco-identity.h"
 
 typedef struct _DataFormField DataFormField;
 
@@ -63,6 +64,29 @@ char_cmp (gconstpointer a, gconstpointer b)
   gchar *right = *(gchar **) b;
 
   return strcmp (left, right);
+}
+
+static gint
+identity_cmp (gconstpointer a, gconstpointer b)
+{
+  GabbleDiscoIdentity *left = (GabbleDiscoIdentity *) a;
+  GabbleDiscoIdentity *right = (GabbleDiscoIdentity *) b;
+  gchar *left_str = g_strdup_printf ("%s/%s/%s/%s",
+      left->category, left->type,
+      left->lang ? left->lang : "",
+      left->name ? left->name : "");
+  gchar *right_str = g_strdup_printf ("%s/%s/%s/%s",
+      right->category, right->type,
+      right->lang ? right->lang : "",
+      right->name ? right->name : "");
+  gint ret;
+
+  ret = strcmp (left_str, right_str);
+
+  g_free (left_str);
+  g_free (right_str);
+
+  return ret;
 }
 
 static gint
@@ -115,11 +139,10 @@ gabble_presence_free_xep0115_hash (
     GPtrArray *dataforms)
 {
   g_ptr_array_foreach (features, (GFunc) g_free, NULL);
-  g_ptr_array_foreach (identities, (GFunc) g_free, NULL);
+  gabble_disco_identity_array_free (identities);
   g_ptr_array_foreach (dataforms, _free_form, NULL);
 
   g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (identities, TRUE);
   g_ptr_array_free (dataforms, TRUE);
 }
 
@@ -134,7 +157,7 @@ caps_hash_compute (
   guint i;
   gchar *encoded;
 
-  g_ptr_array_sort (identities, char_cmp);
+  g_ptr_array_sort (identities, identity_cmp);
   g_ptr_array_sort (features, char_cmp);
   g_ptr_array_sort (dataforms, dataforms_cmp);
 
@@ -142,8 +165,14 @@ caps_hash_compute (
 
   for (i = 0 ; i < identities->len ; i++)
     {
-      g_string_append (s, g_ptr_array_index (identities, i));
+      const GabbleDiscoIdentity *identity = g_ptr_array_index (identities, i);
+      gchar *str = g_strdup_printf ("%s/%s/%s/%s",
+          identity->category, identity->type,
+          identity->lang ? identity->lang : "",
+          identity->name ? identity->name : "");
+      g_string_append (s, str);
       g_string_append_c (s, '<');
+      g_free (str);
     }
 
   for (i = 0 ; i < features->len ; i++)
@@ -296,6 +325,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           const gchar *name;
           const gchar *type;
           const gchar *xmllang;
+          GabbleDiscoIdentity *identity;
 
           category = lm_message_node_get_attribute (child, "category");
           name = lm_message_node_get_attribute (child, "name");
@@ -311,8 +341,8 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           if (NULL == xmllang)
             xmllang = "";
 
-          g_ptr_array_add (identities,
-              g_strdup_printf ("%s/%s/%s/%s", category, type, xmllang, name));
+          identity = gabble_disco_identity_new (category, type, xmllang, name);
+          g_ptr_array_add (identities, identity);
         }
       else if (g_str_equal (child->name, "feature"))
         {
@@ -372,8 +402,9 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   gchar *str;
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
-  g_ptr_array_add (identities, g_strdup_printf (
-      "client/%s//%s", CLIENT_TYPE, PACKAGE_STRING));
+  g_ptr_array_add (identities,
+      gabble_disco_identity_new ("client", CLIENT_TYPE,
+          NULL, PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 

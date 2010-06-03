@@ -9,5 +9,8 @@ clean-local:
 		cd wocky && $(MAKE) clean ; \
 	fi
 
+uninstall-local:
+	@cd wocky/wocky && $(MAKE) uninstall
+
 install-data-local:
-	@cd wocky && $(MAKE) install
+	@cd wocky/wocky && $(MAKE) install

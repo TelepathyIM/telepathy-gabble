@@ -24,11 +24,30 @@
 #include <telepathy-glib/base-connection.h>
 
 #include <gabble/capabilities-set.h>
+#include <gabble/types.h>
 
 G_BEGIN_DECLS
 
+#define GABBLE_TYPE_CONNECTION (gabble_connection_get_type ())
+#define GABBLE_CONNECTION(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION, GabbleConnection))
+#define GABBLE_CONNECTION_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CONNECTION, \
+                           GabbleConnectionClass))
+#define GABBLE_IS_CONNECTION(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_CONNECTION))
+#define GABBLE_IS_CONNECTION_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_CONNECTION))
+#define GABBLE_CONNECTION_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, \
+                              GabbleConnectionClass))
+
+typedef struct _GabbleConnectionClass GabbleConnectionClass;
+
+GType gabble_connection_get_type (void);
+
 void gabble_connection_update_sidecar_capabilities (
-    TpBaseConnection *connection,
+    GabbleConnection *connection,
     GabbleCapabilitySet *add_set,
     GabbleCapabilitySet *remove_set);
 

@@ -66,7 +66,7 @@ GabblePluginLoader *gabble_plugin_loader_dup (void);
 void gabble_plugin_loader_create_sidecar (
     GabblePluginLoader *self,
     const gchar *sidecar_interface,
-    TpBaseConnection *connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);

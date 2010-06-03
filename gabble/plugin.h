@@ -27,6 +27,7 @@
 #include <telepathy-glib/base-connection.h>
 #include <wocky/wocky-session.h>
 
+#include <gabble/connection.h>
 #include <gabble/sidecar.h>
 #include <gabble/types.h>
 
@@ -46,7 +47,7 @@ typedef struct _GabblePluginInterface GabblePluginInterface;
 typedef void (*GabblePluginCreateSidecarImpl) (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    TpBaseConnection *connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
@@ -93,7 +94,7 @@ gboolean gabble_plugin_implements_sidecar (
 void gabble_plugin_create_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    TpBaseConnection *connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);

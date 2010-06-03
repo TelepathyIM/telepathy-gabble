@@ -30,7 +30,6 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleConnection GabbleConnection;
 typedef struct _GabbleDisco GabbleDisco;
 typedef struct _GabbleMucChannel GabbleMucChannel;
 typedef struct _GabblePresence GabblePresence;

@@ -26,6 +26,7 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleCapabilitySet GabbleCapabilitySet;
+typedef struct _GabbleConnection GabbleConnection;
 typedef struct _GabblePlugin GabblePlugin;
 typedef struct _GabbleSidecar GabbleSidecar;
 

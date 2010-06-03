@@ -3378,11 +3378,10 @@ gabble_connection_set_disco_reply_timeout (guint timeout)
 }
 
 void
-gabble_connection_update_sidecar_capabilities (TpBaseConnection *conn,
+gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
                                                GabbleCapabilitySet *add_set,
                                                GabbleCapabilitySet *remove_set)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (conn);
   GabbleConnectionPrivate *priv = self->priv;
   GabbleCapabilitySet *save_set;
 
@@ -3415,7 +3414,7 @@ gabble_connection_update_sidecar_capabilities (TpBaseConnection *conn,
 
   if (gabble_connection_refresh_capabilities (self, &save_set))
     {
-      _emit_capabilities_changed (self, conn->self_handle,
+      _emit_capabilities_changed (self, TP_BASE_CONNECTION (self)->self_handle,
           save_set, priv->all_caps);
       gabble_capability_set_free (save_set);
     }

@@ -3445,3 +3445,13 @@ gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
       gabble_capability_set_free (save_set);
     }
 }
+
+void
+gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
+    const gchar *ver,
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *identities)
+{
+    gabble_presence_cache_add_own_caps (self->presence_cache, ver,
+        cap_set, identities);
+}

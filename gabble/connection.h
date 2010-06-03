@@ -50,6 +50,11 @@ void gabble_connection_update_sidecar_capabilities (
     GabbleConnection *connection,
     GabbleCapabilitySet *add_set,
     GabbleCapabilitySet *remove_set);
+void gabble_connection_add_sidecar_own_caps (
+    GabbleConnection *connection,
+    const gchar *ver,
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *identities);
 
 G_END_DECLS
 

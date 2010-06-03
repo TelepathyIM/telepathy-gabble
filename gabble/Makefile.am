@@ -8,6 +8,7 @@ pkgconfig_DATA = telepathy-gabble.pc
 gabbleincludedir = $(includedir)/telepathy-gabble-0/gabble
 gabbleinclude_HEADERS = \
     capabilities-set.h \
+    caps-hash.h \
     connection.h \
     disco-identity.h \
     error.h \

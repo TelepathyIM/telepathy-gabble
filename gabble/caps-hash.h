@@ -1,6 +1,6 @@
 /*
- * gabble.h — API for telepathy-gabble plugins
- * Copyright © 2010 Collabora Ltd.
+ * caps-hash.h - caps computing string hash (XEP-0115 v1.5) API available to telepathy-gabble plugins
+ * Copyright (C) 2008-2010 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,22 +17,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_PLUGINS_GABBLE_H__
-#define __GABBLE_PLUGINS_GABBLE_H__
+#ifndef __GABBLE_PLUGINS_CAPS_HASH_H__
+#define __GABBLE_PLUGINS_CAPS_HASH_H__
 
-#define IN_GABBLE_PLUGINS_GABBLE_H
-
-#include <glib-object.h>
+#include <glib.h>
 
 #include <gabble/capabilities-set.h>
-#include <gabble/caps-hash.h>
-#include <gabble/connection.h>
-#include <gabble/disco-identity.h>
-#include <gabble/error.h>
-#include <gabble/plugin.h>
-#include <gabble/sidecar.h>
-#include <gabble/types.h>
 
-#undef IN_GABBLE_PLUGINS_GABBLE_H
+G_BEGIN_DECLS
 
-#endif
+gchar *gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
+    GPtrArray *identities);
+
+G_END_DECLS
+
+#endif /* __CAPS_HASH_H__ */

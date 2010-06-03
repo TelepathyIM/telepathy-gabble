@@ -419,3 +419,33 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   return str;
 }
 
+/**
+ * Compute the hash as defined by the XEP-0115 from a received GabbleCapabilitySet
+ *
+ * Returns: the hash. The called must free the returned hash with g_free().
+ */
+gchar *
+gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
+    GPtrArray *identities)
+{
+  GPtrArray *features = g_ptr_array_new ();
+  GPtrArray *identities_copy = ((identities == NULL) ?
+      g_ptr_array_new () : gabble_g_ptr_array_copy (identities));
+  GPtrArray *dataforms = g_ptr_array_new ();
+  gchar *str;
+
+  /* XEP-0030 requires at least 1 identity. We don't need more. */
+  if (identities_copy->len == 0)
+    g_ptr_array_add (identities_copy,
+        gabble_disco_identity_new ("client", CLIENT_TYPE,
+            NULL, PACKAGE_STRING));
+
+  /* FIXME: allow iteration over the strings without copying */
+  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+
+  str = caps_hash_compute (features, identities_copy, dataforms);
+
+  gabble_presence_free_xep0115_hash (features, identities_copy, dataforms);
+
+  return str;
+}

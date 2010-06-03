@@ -2367,7 +2367,8 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
-  const GabbleCapabilitySet *features;
+  const GabbleCapabilityInfo *info = NULL;
+  const GabbleCapabilitySet *features = NULL;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2425,8 +2426,11 @@ connection_iq_disco_cb (LmMessageHandler *handler,
    * 1.5. Let's see if it's a verification string we've told the cache about.
    */
   else
-    features = gabble_presence_cache_peek_own_caps (self->presence_cache,
+    info = gabble_presence_cache_peek_own_caps (self->presence_cache,
         suffix);
+
+  if (info)
+    features = info->cap_set;
 
   if (features == NULL)
     {

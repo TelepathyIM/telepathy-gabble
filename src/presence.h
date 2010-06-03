@@ -89,10 +89,13 @@ const GabbleCapabilitySet *gabble_presence_peek_caps (GabblePresence *presence);
 
 gboolean gabble_presence_has_resources (GabblePresence *self);
 
-#define I_REALLY_LIKE_PHONES TRUE
-#define DEVICE_AGNOSTIC FALSE
+typedef enum {
+    DEVICE_AGNOSTIC = 0,
+    PREFER_PHONES = 1
+} DevicePreference;
+
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
-    gboolean prefer_phones,
+    DevicePreference any_special_requests,
     GabbleCapabilitySetPredicate predicate,
     gconstpointer user_data);
 

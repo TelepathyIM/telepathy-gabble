@@ -1929,7 +1929,8 @@ void
 gabble_presence_cache_add_own_caps (
     GabblePresenceCache *cache,
     const gchar *ver,
-    const GabbleCapabilitySet *cap_set)
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities)
 {
   gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
   GabbleCapabilityInfo *info = capability_info_get (cache, uri);
@@ -1952,6 +1953,9 @@ gabble_presence_cache_add_own_caps (
       gabble_capability_set_clear (info->cap_set);
       gabble_capability_set_update (info->cap_set, cap_set);
     }
+
+  gabble_disco_identity_array_free (info->identities);
+  info->identities = gabble_disco_identity_array_copy (identities);
 
   info->complete = TRUE;
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;

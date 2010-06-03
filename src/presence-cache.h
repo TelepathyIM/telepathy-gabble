@@ -62,6 +62,9 @@ struct _GabbleCapabilityInfo
    * caps. In this case, cap_set is NULL. */
   GabbleCapabilitySet *cap_set;
 
+  /* array of GabbleDiscoIdentity or NULL */
+  GPtrArray *identities;
+
   TpIntSet *guys;
   guint trust;
 
@@ -102,7 +105,8 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     const gchar *node, const gchar *ns);
 void gabble_presence_cache_add_own_caps (GabblePresenceCache *cache,
     const gchar *ver,
-    const GabbleCapabilitySet *cap_set);
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities);
 const GabbleCapabilityInfo *gabble_presence_cache_peek_own_caps (
     GabblePresenceCache *cache,
     const gchar *ver);

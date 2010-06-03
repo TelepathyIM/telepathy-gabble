@@ -19,8 +19,6 @@
 #include <telepathy-glib/debug.h>
 #include <telepathy-glib/debug-sender.h>
 
-#ifdef ENABLE_DEBUG
-
 static GabbleDebugFlags flags = 0;
 
 static GDebugKey keys[] = {
@@ -146,10 +144,8 @@ void gabble_log (GLogLevelFlags level,
 
   log_to_debug_sender (level, flag, message);
 
-  if (flag & flags)
+  if (flag & flags || level > G_LOG_LEVEL_DEBUG)
     g_log (G_LOG_DOMAIN, level, "%s", message);
 
   g_free (message);
 }
-
-#endif /* ENABLE_DEBUG */

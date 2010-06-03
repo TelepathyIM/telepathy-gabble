@@ -88,8 +88,16 @@ GabbleCapabilitySet *gabble_presence_dup_caps (GabblePresence *presence);
 const GabbleCapabilitySet *gabble_presence_peek_caps (GabblePresence *presence);
 
 gboolean gabble_presence_has_resources (GabblePresence *self);
+
+typedef enum {
+    DEVICE_AGNOSTIC = 0,
+    PREFER_PHONES = 1
+} DevicePreference;
+
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
-    GabbleCapabilitySetPredicate predicate, gconstpointer user_data);
+    DevicePreference any_special_requests,
+    GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data);
 
 gboolean gabble_presence_resource_has_caps (GabblePresence *presence,
     const gchar *resource, GabbleCapabilitySetPredicate predicate,

@@ -4,7 +4,7 @@
 
 #include <glib-object.h>
 
-#include <capabilities.h>
+#include <wocky/wocky-node-tree.h>
 
 G_BEGIN_DECLS
 
@@ -47,14 +47,14 @@ gabble_caps_cache_get_type (void);
 GabbleCapsCache *
 gabble_caps_cache_get_singleton (void);
 
-GabbleCapabilitySet *
-gabble_caps_cache_lookup (GabbleCapsCache *self, const gchar *node);
+WockyNodeTree *gabble_caps_cache_lookup (
+    GabbleCapsCache *self,
+    const gchar *node);
 
-void
-gabble_caps_cache_insert (
+void gabble_caps_cache_insert (
     GabbleCapsCache *cache,
     const gchar *node,
-    GabbleCapabilitySet *set);
+    WockyNodeTree *query_node);
 
 GabbleCapsCache *
 gabble_caps_cache_new (const gchar *path);

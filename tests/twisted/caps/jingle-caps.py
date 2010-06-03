@@ -3,11 +3,16 @@ Test several different permutations of features that should a client audio
 and/or video capable
 """
 
+from functools import partial
+
 from gabbletest import exec_test, make_presence, sync_stream
-from servicetest import assertContains, assertEquals, EventPattern
+from servicetest import (
+    assertContains, assertEquals, EventPattern, make_channel_proxy
+    )
 import constants as cs
 import ns
 from caps_helper import presence_and_disco, compute_caps_hash
+from jingle.jingletest2 import JingleTest2, JingleProtocol031
 
 client = 'http://telepathy.freedesktop.org/fake-client'
 caps = { 'node': client, 'ver':  "dummy", 'hash': 'sha-1' }
@@ -128,6 +133,74 @@ def test(q, bus, conn, stream):
     test_caps(q, conn, stream, "audio@google", features, True, False,
         google=True)
 
+def test_prefer_phones(q, bus, conn, stream, expect_disco):
+    cat = 'cat@windowsill'
+
+    def sign_in_a_cat(jid, identities, show=None):
+        caps['ver'] = compute_caps_hash(identities, features, {})
+
+        presence_and_disco(q, conn, stream, jid, expect_disco, client, caps, features,
+            identities=identities, initial=False, show=show)
+        # Make sure Gabble's got the caps
+        sync_stream(q, stream)
+
+    def make_call(expected_recipient):
+        jp = JingleProtocol031()
+        jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'dummy')
+
+        conn.Requests.CreateChannel({
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+            cs.TARGET_ID: cat,
+            cs.INITIAL_AUDIO: True,
+        })
+
+        e = q.expect('dbus-signal', signal='NewSessionHandler')
+        session = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
+        session.Ready()
+
+        e = q.expect('dbus-signal', signal='NewStreamHandler')
+
+        stream_handler = make_channel_proxy(conn, e.args[0],
+            'Media.StreamHandler')
+        stream_handler.NewNativeCandidate("fake",
+            jt.get_remote_transports_dbus())
+        stream_handler.Ready(jt.get_audio_codecs_dbus())
+        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
+
+        e = q.expect('stream-iq',
+            predicate=jp.action_predicate('session-initiate'))
+        assertEquals(expected_recipient, e.to)
+
+    conn.Connect()
+    q.expect('dbus-signal', signal='StatusChanged',
+            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    features = [ ns.JINGLE_RTP, ns.JINGLE_RTP_AUDIO, ns.JINGLE_RTP_VIDEO
+               ] + all_transports
+
+    # My cat is signed in with their laptop (which is available)...
+    laptop_jid = 'cat@windowsill/Laptop'
+    sign_in_a_cat(laptop_jid, ['client/pc//clocks'])
+
+    # ...and a web client, which is away.
+    cloud_jid = 'cat@windowsill/Cloud'
+    sign_in_a_cat(cloud_jid, ['client/web//zomg'], show='away')
+
+    # The laptop is more available, so the call should go there.
+    make_call(expected_recipient=laptop_jid)
+
+    # But if my cat signs in with a phone, also set to away...
+    phone_jid = 'cat@windowsill/Fido'
+    sign_in_a_cat(phone_jid, ['client/phone//mars rover'], show='away')
+
+    # ...then calls should go there, even though the laptop is more available.
+    make_call(expected_recipient=phone_jid)
 
 if __name__ == '__main__':
     exec_test(test)
+
+    exec_test(partial(test_prefer_phones, expect_disco=True))
+    # And again, this time pulling the caps from the cache. This tests that the
+    # quirk is cached!
+    exec_test(partial(test_prefer_phones, expect_disco=False))

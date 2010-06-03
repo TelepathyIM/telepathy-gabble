@@ -35,6 +35,8 @@
 #define QUIRK_OMITS_CONTENT_CREATORS "\x07omits-content-creators"
 /* The Google Webmail client doesn't support some features */
 #define QUIRK_GOOGLE_WEBMAIL_CLIENT "\x07google-webmail-client"
+/* This client says it's a phone! */
+#define QUIRK_IS_A_PHONE QUIRK_PREFIX "is-a-phone"
 
 /**
  * GabbleCapabilitySet:

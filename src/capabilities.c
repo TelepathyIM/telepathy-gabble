@@ -213,6 +213,15 @@ omits_content_creators (LmMessageNode *identity)
     }
 }
 
+static gboolean
+is_a_phone (LmMessageNode *identity)
+{
+  const gchar *category = lm_message_node_get_attribute (identity, "category");
+  const gchar *type = lm_message_node_get_attribute (identity, "type");
+
+  return !tp_strdiff (category, "client") && !tp_strdiff (type, "phone");
+}
+
 static gsize feature_handles_refcount = 0;
 /* The handles in this repository are not really handles in the tp-spec sense
  * of the word; we're just using it as a convenient implementation of a
@@ -425,9 +434,10 @@ gabble_capability_set_new_from_stanza (LmMessageNode *query_result)
       if (!tp_strdiff (child->name, "identity"))
         {
           if (omits_content_creators (child))
-            {
-              gabble_capability_set_add (ret, QUIRK_OMITS_CONTENT_CREATORS);
-            }
+            gabble_capability_set_add (ret, QUIRK_OMITS_CONTENT_CREATORS);
+
+          if (is_a_phone (child))
+            gabble_capability_set_add (ret, QUIRK_IS_A_PHONE);
 
           continue;
         }

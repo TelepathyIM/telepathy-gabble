@@ -1231,12 +1231,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
     {
-      GabbleCapsCache *caps_cache;
+      WockyNodeTree *query_node = wocky_node_tree_new_from_node (query_result);
+      GabbleCapsCache *caps_cache = gabble_caps_cache_dup_shared ();
 
       /* Update external cache. */
-      caps_cache = gabble_caps_cache_dup_shared ();
-      gabble_caps_cache_insert (caps_cache, node, cap_set);
+      gabble_caps_cache_insert (caps_cache, node, query_node);
       g_object_unref (caps_cache);
+      g_object_unref (query_node);
 
       /* We trust this caps node. Serve all its waiters. */
       for (i = waiters; NULL != i; i = i->next)
@@ -1304,6 +1305,7 @@ _process_caps_uri (GabblePresenceCache *cache,
                    guint serial)
 {
   CapabilityInfo *info;
+  WockyNodeTree *cached_query_reply;
   GabbleCapabilitySet *cached_caps = NULL;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
@@ -1315,7 +1317,26 @@ _process_caps_uri (GabblePresenceCache *cache,
   info = capability_info_get (cache, uri);
 
   caps_cache = gabble_caps_cache_dup_shared ();
-  cached_caps = gabble_caps_cache_lookup (caps_cache, uri);
+  cached_query_reply = gabble_caps_cache_lookup (caps_cache, uri);
+
+  if (cached_query_reply != NULL)
+    {
+      WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
+
+      cached_caps = gabble_capability_set_new_from_stanza (query);
+
+      if (cached_caps == NULL)
+        {
+          gchar *query_str = wocky_node_to_string (query);
+
+          g_warning ("couldn't re-parse cached query node, which was: %s",
+              query_str);
+          g_free (query_str);
+        }
+
+      g_object_unref (cached_query_reply);
+    }
+
   g_object_unref (caps_cache);
 
   if (cached_caps != NULL ||

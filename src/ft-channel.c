@@ -1181,6 +1181,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       /* FIXME: should we check for SI, bytestreams and/or IBB too?
        * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */
       resource = gabble_presence_pick_resource_by_caps (presence,
+          DEVICE_AGNOSTIC,
           gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
 
       if (resource == NULL)

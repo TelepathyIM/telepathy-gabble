@@ -29,6 +29,8 @@
 
 #include <gabble/sidecar.h>
 
+G_BEGIN_DECLS
+
 #define GABBLE_TYPE_PLUGIN (gabble_plugin_get_type ())
 #define GABBLE_PLUGIN(obj) \
     (G_TYPE_CHECK_INSTANCE_CAST ((obj), GABBLE_TYPE_PLUGIN, GabblePlugin))
@@ -111,5 +113,7 @@ GabbleSidecar *gabble_plugin_create_sidecar_finish (
 GabblePlugin *gabble_plugin_create (void);
 
 typedef GabblePlugin *(*GabblePluginCreateImpl) (void);
+
+G_END_DECLS
 
 #endif

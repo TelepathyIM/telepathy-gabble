@@ -23,6 +23,8 @@
 
 #include <glib-object.h>
 
+G_BEGIN_DECLS
+
 #define GABBLE_TYPE_SIDECAR (gabble_sidecar_get_type ())
 #define GABBLE_SIDECAR(obj) \
     (G_TYPE_CHECK_INSTANCE_CAST ((obj), GABBLE_TYPE_SIDECAR, GabbleSidecar))
@@ -56,5 +58,7 @@ GType gabble_sidecar_get_type (void);
 
 const gchar *gabble_sidecar_get_interface (GabbleSidecar *sidecar);
 GHashTable *gabble_sidecar_get_immutable_properties (GabbleSidecar *sidecar);
+
+G_END_DECLS
 
 #endif

@@ -245,6 +245,7 @@ EXTRA_DIST = \
 	constants.py \
 	gabbletest.py \
 	httptest.py \
+	jingle/callutils.py \
 	jingle/jingletest.py \
 	jingle/jingletest2.py \
 	mucutil.py \

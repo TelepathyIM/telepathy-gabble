@@ -885,7 +885,7 @@ gabble_server_sasl_channel_start_auth_async_func (
       GabbleServerSaslChannelPrivate *priv = self->priv;
       DBusGConnection *bus = tp_get_bus ();
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-      GSList *i;
+      const GSList *i;
 
       DEBUG ("");
 
@@ -906,9 +906,8 @@ gabble_server_sasl_channel_start_auth_async_func (
       priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
           user_data, wocky_auth_registry_start_auth_finish);
 
-      for (i = (GSList *) mechanisms; i != NULL; i = i->next)
-        g_ptr_array_add (priv->available_mechanisms,
-            g_strdup ((gchar *)i->data));
+      for (i = mechanisms; i != NULL; i = i->next)
+        g_ptr_array_add (priv->available_mechanisms, g_strdup (i->data));
 
       g_ptr_array_add (priv->available_mechanisms, NULL);
 

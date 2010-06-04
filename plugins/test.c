@@ -104,7 +104,8 @@ test_plugin_create_sidecar (
   else if (!tp_strdiff (sidecar_interface, IFACE_TEST_IQ))
     {
       g_async_initable_new_async (TEST_TYPE_SIDECAR_IQ, G_PRIORITY_DEFAULT,
-          NULL, sidecar_iq_created_cb, result, "session", session, NULL);
+          NULL, sidecar_iq_created_cb, result, "session", session,
+          "connection", connection, NULL);
       return;
     }
   else
@@ -255,7 +256,8 @@ G_DEFINE_TYPE_WITH_CODE (TestSidecarIQ, test_sidecar_iq, G_TYPE_OBJECT,
     )
 
 enum {
-    PROP_SESSION = 1
+    PROP_SESSION = 1,
+    PROP_CONNECTION = 2
 };
 
 static void
@@ -278,6 +280,41 @@ test_sidecar_iq_set_property (
       case PROP_SESSION:
         self->session = g_value_dup_object (value);
         break;
+      case PROP_CONNECTION:
+        {
+          self->connection = g_value_dup_object (value);
+
+          if (self->connection)
+            {
+              GabbleCapabilitySet *features;
+              const gchar *applications[] = { "com.example.test1",
+                  "com.example.test2", NULL };
+              GPtrArray *identities;
+              GabbleDiscoIdentity *identity;
+              gchar *hash;
+              guint i;
+
+              features = gabble_capability_set_new ();
+              for (i = 0; applications[i] != NULL; i++)
+                gabble_capability_set_add (features, applications[i]);
+
+              identities = gabble_disco_identity_array_new ();
+              identity = gabble_disco_identity_new ("test", "app-list",
+                  NULL, "Test");
+              g_ptr_array_add (identities, identity);
+
+              hash = gabble_caps_hash_compute (features, identities);
+
+              /* set own caps so we proper reply to disco#info */
+              gabble_connection_add_sidecar_own_caps (self->connection, hash,
+                  features, identities);
+
+              g_free (hash);
+              gabble_disco_identity_array_free (identities);
+              gabble_capability_set_free (features);
+            }
+        }
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     }
@@ -295,6 +332,12 @@ test_sidecar_iq_dispose (GObject *object)
       g_object_unref (self->session);
       self->session = NULL;
     }
+
+  if (self->connection != NULL)
+    {
+      g_object_unref (self->connection);
+      self->connection = NULL;
+    }
 }
 
 static void
@@ -309,6 +352,11 @@ test_sidecar_iq_class_init (TestSidecarIQClass *klass)
       g_param_spec_object ("session", "SESSION",
           "THIS IS A WOCKY SESSION YOU CAN TELL BY THE TYPE",
           WOCKY_TYPE_SESSION,
+          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+  g_object_class_install_property (object_class, PROP_CONNECTION,
+      g_param_spec_object ("connection", "Gabble Connection",
+          "Gabble connection",
+          GABBLE_TYPE_CONNECTION,
           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 

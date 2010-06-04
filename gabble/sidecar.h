@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_PLUGINS_SIDECAR_H__
-#define __GABBLE_PLUGINS_SIDECAR_H__
+#ifndef GABBLE_PLUGINS_SIDECAR_H
+#define GABBLE_PLUGINS_SIDECAR_H
 
 #include <glib-object.h>
 

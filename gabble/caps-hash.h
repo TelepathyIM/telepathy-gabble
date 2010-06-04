@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_PLUGINS_CAPS_HASH_H__
-#define __GABBLE_PLUGINS_CAPS_HASH_H__
+#ifndef GABBLE_PLUGINS_CAPS_HASH_H
+#define GABBLE_PLUGINS_CAPS_HASH_H
 
 #include <glib.h>
 
@@ -31,4 +31,4 @@ gchar *gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
 
 G_END_DECLS
 
-#endif /* __CAPS_HASH_H__ */
+#endif

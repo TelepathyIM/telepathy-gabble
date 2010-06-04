@@ -18,8 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_PLUGINS_CONNECTION_H__
-#define __GABBLE_PLUGINS_CONNECTION_H__
+#ifndef GABBLE_PLUGINS_CONNECTION_H
+#define GABBLE_PLUGINS_CONNECTION_H
 
 #include <telepathy-glib/base-connection.h>
 

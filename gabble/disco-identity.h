@@ -41,6 +41,7 @@ const gchar *gabble_disco_identity_get_name (GabbleDiscoIdentity *identity);
 void gabble_disco_identity_free (GabbleDiscoIdentity *identity);
 
 /* array of GabbleDiscoIdentity helper methods */
+GPtrArray *gabble_disco_identity_array_new (void);
 GPtrArray *gabble_disco_identity_array_copy (const GPtrArray *source);
 void gabble_disco_identity_array_free (GPtrArray *arr);
 

@@ -310,7 +310,7 @@ gchar *
 caps_hash_compute_from_lm_node (LmMessageNode *node)
 {
   GPtrArray *features = g_ptr_array_new ();
-  GPtrArray *identities = g_ptr_array_new ();
+  GPtrArray *identities = gabble_disco_identity_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
   NodeIter i;
@@ -397,7 +397,7 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   GabblePresence *presence = self->self_presence;
   const GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
-  GPtrArray *identities = g_ptr_array_new ();
+  GPtrArray *identities = gabble_disco_identity_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 
@@ -430,7 +430,8 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
 {
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities_copy = ((identities == NULL) ?
-      g_ptr_array_new () : gabble_disco_identity_array_copy (identities));
+      gabble_disco_identity_array_new () :
+      gabble_disco_identity_array_copy (identities));
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 

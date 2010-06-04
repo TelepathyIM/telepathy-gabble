@@ -1376,6 +1376,29 @@ gabble_disco_identity_free (GabbleDiscoIdentity *identity)
     g_free (identity);
 }
 
+/**
+ * Creates a new array of GabbleDiscoIdentity objects.
+ *
+ * \return A newly instantiated array.
+ * \sa gabble_disco_identity_array_free
+ */
+GPtrArray *
+gabble_disco_identity_array_new (void)
+{
+    return g_ptr_array_new_with_free_func (
+            (GDestroyNotify) gabble_disco_identity_free);
+}
+
+/**
+ * Copies an array of GabbleDiscoIdentity objects.
+ *
+ * The returned array contains new copies of the contents of the source array.
+ *
+ * \param source The source array to be copied.
+ * \return A newly instantiated array with new copies of the contents of the
+ *         source array.
+ * \sa gabble_disco_identity_array_new
+ */
 GPtrArray *
 gabble_disco_identity_array_copy (const GPtrArray *source)
 {
@@ -1386,6 +1409,7 @@ gabble_disco_identity_array_copy (const GPtrArray *source)
     return NULL;
 
   ret = g_ptr_array_sized_new (source->len);
+  g_ptr_array_set_free_func (ret, (GDestroyNotify) gabble_disco_identity_free);
   for (i = 0; i < source->len; ++i)
     {
       g_ptr_array_add (ret,
@@ -1394,12 +1418,22 @@ gabble_disco_identity_array_copy (const GPtrArray *source)
   return ret;
 }
 
+/**
+ * Frees an array of GabbleDiscoIdentity objects created with
+ * gabble_disco_identity_array_new() or returned by
+ * gabble_disco_identity_array_copy().
+ *
+ * Note that if this method is called with an array created with
+ * g_ptr_array_new, the caller should also free the array contents.
+ *
+ * \param arr Array to be freed.
+ * \sa gabble_disco_identity_array_new, gabble_disco_identity_array_copy
+ */
 void
 gabble_disco_identity_array_free (GPtrArray *arr)
 {
   if (!arr)
     return;
 
-  g_ptr_array_foreach (arr,
-      (GFunc) gabble_disco_identity_free, NULL);
+  g_ptr_array_free (arr, TRUE);
 }

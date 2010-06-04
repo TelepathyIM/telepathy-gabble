@@ -71,22 +71,15 @@ identity_cmp (gconstpointer a, gconstpointer b)
 {
   GabbleDiscoIdentity *left = (GabbleDiscoIdentity *) a;
   GabbleDiscoIdentity *right = (GabbleDiscoIdentity *) b;
-  gchar *left_str = g_strdup_printf ("%s/%s/%s/%s",
-      left->category, left->type,
-      left->lang ? left->lang : "",
-      left->name ? left->name : "");
-  gchar *right_str = g_strdup_printf ("%s/%s/%s/%s",
-      right->category, right->type,
-      right->lang ? right->lang : "",
-      right->name ? right->name : "");
   gint ret;
 
-  ret = strcmp (left_str, right_str);
-
-  g_free (left_str);
-  g_free (right_str);
-
-  return ret;
+  if ((ret = strcmp (left->category, right->category)) != 0)
+    return ret;
+  if ((ret = strcmp (left->type, right->type)) != 0)
+    return ret;
+  if ((ret = strcmp (left->lang, right->lang)) != 0)
+    return ret;
+  return strcmp (left->name, right->name);
 }
 
 static gint

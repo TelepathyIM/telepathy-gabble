@@ -1,5 +1,5 @@
 /*
- * sidecar.h — sidecar API availbale to telepathy-gabble plugins
+ * sidecar.h — sidecar API available to telepathy-gabble plugins
  * Copyright © 2009 Collabora Ltd.
  * Copyright © 2009 Nokia Corporation
  *

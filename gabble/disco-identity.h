@@ -1,7 +1,7 @@
 /*
  * disco-identity.h —  utility API representing a Disco Identity for telepathy-gabble plugins
- * Copyright © 2009 Collabora Ltd.
- * Copyright © 2009 Nokia Corporation
+ * Copyright © 2010 Collabora Ltd.
+ * Copyright © 2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public

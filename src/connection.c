@@ -2385,6 +2385,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   const gchar *node, *suffix;
   const GabbleCapabilityInfo *info = NULL;
   const GabbleCapabilitySet *features = NULL;
+  const GPtrArray *identities = NULL;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2426,15 +2427,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   DEBUG ("got disco request for node %s", node);
 
-  /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
-   * one identity. If you change the identity here, you also need to change
-   * caps_hash_compute_from_self_presence(). */
-  identity = lm_message_node_add_child
-      (result_query, "identity", NULL);
-  lm_message_node_set_attribute (identity, "category", "client");
-  lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
-  lm_message_node_set_attribute (identity, "type", CLIENT_TYPE);
-
   if (node == NULL)
     features = gabble_presence_peek_caps (self->self_presence);
   /* If node is not NULL, it can be either a caps bundle as defined in the
@@ -2446,7 +2438,27 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         suffix);
 
   if (info)
-    features = info->cap_set;
+    {
+      features = info->cap_set;
+      identities = info->identities;
+    }
+
+  if (identities && identities->len != 0)
+    {
+      g_ptr_array_foreach ((GPtrArray *) identities,
+          (GFunc) add_identity_node, result_query);
+    }
+  else
+    {
+      /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
+       * one identity. If you change the identity here, you also need to change
+       * caps_hash_compute_from_self_presence(). */
+      identity = lm_message_node_add_child
+          (result_query, "identity", NULL);
+      lm_message_node_set_attribute (identity, "category", "client");
+      lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
+      lm_message_node_set_attribute (identity, "type", CLIENT_TYPE);
+    }
 
   if (features == NULL)
     {
@@ -2474,12 +2486,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
         {
           gabble_capability_set_foreach (features, add_feature_node,
               result_query);
-        }
-
-      if (info && info->identities)
-        {
-          g_ptr_array_foreach (info->identities,
-              (GFunc) add_identity_node, result_query);
         }
 
       NODE_DEBUG (result_iq, "sending disco response");

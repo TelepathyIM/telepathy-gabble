@@ -119,7 +119,7 @@ TWISTED_TESTS = \
 	jingle/call-codecoffer.py \
 	jingle/call-muc.py \
 	jingle/call-muc-cancel.py \
-	jingle/call-muc-re-re-request.py
+	jingle/call-muc-re-re-request.py \
 	jingle/call-state.py \
 	jingle/decloak-peer.py \
 	jingle/google-relay.py \

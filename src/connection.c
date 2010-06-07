@@ -60,6 +60,7 @@
 #include "conn-sidecars.h"
 #include "conn-mail-notif.h"
 #include "conn-olpc.h"
+#include "conn-slacker.h"
 #include "debug.h"
 #include "disco.h"
 #include "media-channel.h"
@@ -726,6 +727,7 @@ base_connected_cb (TpBaseConnection *base_conn)
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
 
   gabble_connection_connected_olpc (conn);
+  gabble_connection_slacker_start (conn);
 }
 
 #define TWICE(x) (x), (x)
@@ -2066,6 +2068,8 @@ connection_shut_down (TpBaseConnection *base)
     return;
 
   priv->closing = TRUE;
+
+  gabble_connection_slacker_stop (self);
 
   if (priv->pinger != NULL)
     {

@@ -15,6 +15,7 @@ TWISTED_TESTS = \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
+	device-idleness.py \
 	gateways.py \
 	muc/conference.py \
 	muc/name-conflict.py \
@@ -228,6 +229,12 @@ else
 CHANNEL_TYPE_CALL_ENABLED_PYBOOL = False
 endif
 
+if HAVE_MCE
+HAVE_MCE_PYBOOL = True
+else
+HAVE_MCE_PYBOOL = False
+endif
+
 config.py: Makefile
 	$(AM_V_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
@@ -235,6 +242,7 @@ config.py: Makefile
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
 		echo "PLUGINS_ENABLED = $(PLUGINS_ENABLED_PYBOOL)"; \
 		echo "CHANNEL_TYPE_CALL_ENABLED = $(CHANNEL_TYPE_CALL_ENABLED_PYBOOL)"; \
+		echo "HAVE_MCE = $(HAVE_MCE_PYBOOL)"; \
 	} > $@
 
 BUILT_SOURCES = config.py

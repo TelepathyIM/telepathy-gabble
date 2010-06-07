@@ -12,6 +12,7 @@ GOOGLE_FEAT_VOICE = 'http://www.google.com/xmpp/protocol/voice/v1'
 GOOGLE_FEAT_VIDEO = 'http://www.google.com/xmpp/protocol/video/v1'
 GOOGLE_JINGLE_INFO = 'google:jingleinfo'
 GOOGLE_P2P = "http://www.google.com/transport/p2p"
+GOOGLE_QUEUE = 'google:queue'
 GOOGLE_ROSTER = 'google:roster'
 GOOGLE_SESSION = "http://www.google.com/session"
 GOOGLE_SESSION_PHONE = "http://www.google.com/session/phone"

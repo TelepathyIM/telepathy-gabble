@@ -105,6 +105,9 @@ TpMediaStreamType gabble_media_stream_get_media_type (GabbleMediaStream *self);
 
 GabbleJingleMediaRtp *gabble_media_stream_get_content (GabbleMediaStream *self);
 
+void gabble_media_stream_start_telephony_event (GabbleMediaStream *self, guchar event);
+void gabble_media_stream_stop_telephony_event (GabbleMediaStream *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_MEDIA_STREAM_H__*/

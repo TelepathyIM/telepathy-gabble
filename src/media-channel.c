@@ -55,15 +55,19 @@
 #define MAX_STREAMS 99
 
 static void channel_iface_init (gpointer, gpointer);
+static void dtmf_iface_init (gpointer, gpointer);
 static void media_signalling_iface_init (gpointer, gpointer);
 static void streamed_media_iface_init (gpointer, gpointer);
 static void session_handler_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL,
+      channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE,
       gabble_media_channel_call_state_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DTMF,
+      dtmf_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
@@ -83,6 +87,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
 
 static const gchar *gabble_media_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
+    TP_IFACE_CHANNEL_INTERFACE_DTMF,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
@@ -2801,6 +2806,53 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
   tp_svc_media_session_handler_return_from_error (context);
 }
 
+static void
+gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
+                                 guint stream_id,
+                                 guchar event,
+                                 DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GabbleMediaStream *stream;
+  GError *error = NULL;
+
+  stream = _find_stream_by_id (self, stream_id, &error);
+
+  if (stream == NULL)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  gabble_media_stream_start_telephony_event (stream, event);
+
+  tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+}
+
+static void
+gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
+                                guint stream_id,
+                                DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GabbleMediaStream *stream;
+  GError *error = NULL;
+
+  stream = _find_stream_by_id (self, stream_id, &error);
+
+  if (stream == NULL)
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  gabble_media_stream_stop_telephony_event (stream);
+
+  tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
+}
+
 
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
@@ -2813,6 +2865,18 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_channel_type,);
   IMPLEMENT(get_handle,);
   IMPLEMENT(get_interfaces,);
+#undef IMPLEMENT
+}
+
+static void
+dtmf_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceDTMFClass *klass = (TpSvcChannelInterfaceDTMFClass *)g_iface;
+
+#define IMPLEMENT(x) tp_svc_channel_interface_dtmf_implement_##x (\
+    klass, gabble_media_channel_##x)
+  IMPLEMENT(start_tone);
+  IMPLEMENT(stop_tone);
 #undef IMPLEMENT
 }
 

@@ -3452,12 +3452,15 @@ gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
     }
 }
 
-void
+gchar *
 gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
-    const gchar *ver,
     GabbleCapabilitySet *cap_set,
     GPtrArray *identities)
 {
+    gchar *ver = gabble_caps_hash_compute (cap_set, identities);
+
     gabble_presence_cache_add_own_caps (self->presence_cache, ver,
         cap_set, identities);
+
+    return ver;
 }

@@ -303,10 +303,8 @@ test_sidecar_iq_set_property (
                   NULL, "Test");
               g_ptr_array_add (identities, identity);
 
-              hash = gabble_caps_hash_compute (features, identities);
-
               /* set own caps so we proper reply to disco#info */
-              gabble_connection_add_sidecar_own_caps (self->connection, hash,
+              hash = gabble_connection_add_sidecar_own_caps (self->connection,
                   features, identities);
 
               g_free (hash);

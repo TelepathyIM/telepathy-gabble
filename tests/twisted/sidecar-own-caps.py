@@ -54,5 +54,8 @@ def test(q, bus, conn, stream):
             for identity in xpath.queryForNodes('/iq/query/identity', e.stanza)]
         assertEquals(identities, returned_identities)
 
+        new_ver = compute_caps_hash(returned_identities, returned_features, {})
+        assertEquals(new_ver, ver)
+
 if __name__ == '__main__':
     exec_test(test)

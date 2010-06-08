@@ -1319,7 +1319,7 @@ gabble_disco_identity_new (const gchar *category,
     g_return_val_if_fail (category != NULL, NULL);
     g_return_val_if_fail (type != NULL, NULL);
 
-    ret = g_new (GabbleDiscoIdentity, 1);
+    ret = g_slice_new (GabbleDiscoIdentity);
     ret->category = g_strdup (category);
     ret->type = g_strdup (type);
     ret->lang = g_strdup (lang);
@@ -1373,7 +1373,7 @@ gabble_disco_identity_free (GabbleDiscoIdentity *identity)
     g_free (identity->type);
     g_free (identity->lang);
     g_free (identity->name);
-    g_free (identity);
+    g_slice_free (GabbleDiscoIdentity, identity);
 }
 
 /**

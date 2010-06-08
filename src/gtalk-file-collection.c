@@ -1446,7 +1446,7 @@ set_session (GTalkFileCollection * self,
 
 GTalkFileCollection *
 gtalk_file_collection_new (GabbleFileTransferChannel *channel,
-    GabbleJingleFactory *jingle_factory, TpHandle handle, const gchar *resource)
+    GabbleJingleFactory *jingle_factory, TpHandle handle, const gchar *jid)
 {
   GTalkFileCollection * self = g_object_new (GTALK_TYPE_FILE_COLLECTION, NULL);
   GabbleJingleSession *session = NULL;
@@ -1458,7 +1458,7 @@ gtalk_file_collection_new (GabbleFileTransferChannel *channel,
   self->priv->requested = TRUE;
 
   session = gabble_jingle_factory_create_session (jingle_factory,
-      handle, resource, FALSE);
+      handle, jid, FALSE);
 
   if (session == NULL)
     {

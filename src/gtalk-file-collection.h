@@ -74,7 +74,7 @@ struct _GTalkFileCollection {
 
 GTalkFileCollection *gtalk_file_collection_new (
     GabbleFileTransferChannel *channel, GabbleJingleFactory *jingle_factory,
-    TpHandle handle, const gchar *resource);
+    TpHandle handle, const gchar *jid);
 
 GTalkFileCollection *gtalk_file_collection_new_from_session (
     GabbleJingleFactory *jingle_factory, GabbleJingleSession *session);

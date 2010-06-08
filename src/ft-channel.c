@@ -1366,16 +1366,16 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
 }
 
 static gboolean
-offer_gtalk_file_transfer (GabbleFileTransferChannel *self, const gchar *jid,
-              const gchar *resource, GError **error)
+offer_gtalk_file_transfer (GabbleFileTransferChannel *self,
+    const gchar *full_jid, GError **error)
 {
 
   GTalkFileCollection *gtalk_file_collection;
 
-  DEBUG ("Offering Gtalk file transfer to %s/%s", jid, resource);
+  DEBUG ("Offering Gtalk file transfer to %s", full_jid);
 
   gtalk_file_collection = gtalk_file_collection_new (self,
-      self->priv->connection->jingle_factory, self->priv->handle, resource);
+      self->priv->connection->jingle_factory, self->priv->handle, full_jid);
 
   g_return_val_if_fail (gtalk_file_collection != NULL, FALSE);
 
@@ -1462,7 +1462,10 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
     }
   else if (jingle_share)
     {
-      result = offer_gtalk_file_transfer (self, jid, share_resource, error);
+      gchar *full_jid = gabble_peer_to_jid (self->priv->connection,
+        self->priv->handle, share_resource);
+      result = offer_gtalk_file_transfer (self, full_jid, error);
+      g_free (full_jid);
     }
   else
     {

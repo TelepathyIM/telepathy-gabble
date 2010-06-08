@@ -183,27 +183,31 @@ gabble_ft_manager_constructed (GObject *object)
       "status-changed", (GCallback) connection_status_changed_cb, object);
 }
 
+static void
+ft_manager_close_all (GabbleFtManager *self)
+{
+  GList *l;
+
+  while ((l = self->priv->channels) != NULL)
+    {
+      gabble_file_transfer_channel_do_close (l->data);
+      /* Channels should have closed and disappeared from the list */
+      g_assert (l != self->priv->channels);
+    }
+}
+
 
 void
 gabble_ft_manager_dispose (GObject *object)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (object);
-  GList *tmp, *l;
 
   if (self->priv->dispose_has_run)
     return;
 
   self->priv->dispose_has_run = TRUE;
 
-  tmp = self->priv->channels;
-  self->priv->channels = NULL;
-
-  for (l = tmp; l != NULL; l = g_list_next (l))
-    {
-      g_object_unref (l->data);
-    }
-
-  g_list_free (tmp);
+  ft_manager_close_all (self);
 
   if (G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose (object);
@@ -409,11 +413,13 @@ connection_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
       case TP_CONNECTION_STATUS_CONNECTING:
-        g_signal_connect (self->priv->connection->jingle_factory, "new-session",
+        g_signal_connect (self->priv->connection->jingle_factory,
+            "new-session",
             G_CALLBACK (new_jingle_session_cb), self);
         break;
 
       case TP_CONNECTION_STATUS_DISCONNECTED:
+        ft_manager_close_all (self);
         if (self->priv->status_changed_id != 0)
           {
             g_signal_handler_disconnect (self->priv->connection,

@@ -176,6 +176,7 @@ TWISTED_TESTS = \
 	test-set-status-idempotence.py \
 	test-location.py \
 	pubsub.py \
+	sidecar-own-caps.py \
 	sidecars.py \
 	mail-notification.py
 

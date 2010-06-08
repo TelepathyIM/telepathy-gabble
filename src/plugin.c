@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "plugin.h"
+#include "gabble/plugin.h"
 
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/util.h>
@@ -95,7 +95,7 @@ void
 gabble_plugin_create_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    TpBaseConnection *connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data)

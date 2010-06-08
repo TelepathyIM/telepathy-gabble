@@ -2,6 +2,7 @@
 
 #include <gio/gio.h>
 #include <wocky/wocky-session.h>
+#include <gabble/gabble.h>
 
 /* Plugin */
 typedef struct _TestPluginClass TestPluginClass;
@@ -103,6 +104,7 @@ struct _TestSidecarIQ {
     GObject parent;
     GSimpleAsyncResult *result;
     WockySession *session;
+    GabbleConnection *connection;
 };
 
 GType test_sidecar_iq_get_type (void);

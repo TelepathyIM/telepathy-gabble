@@ -1,6 +1,7 @@
 /*
- * gabble.h — API for telepathy-gabble plugins
- * Copyright © 2010 Collabora Ltd.
+ * namespaces.h — namespace constants definitions that can be used by telepathy-gabble plugins
+ * Copyright © 2009 Collabora Ltd.
+ * Copyright © 2009 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -17,23 +18,10 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef GABBLE_PLUGINS_GABBLE_H
-#define GABBLE_PLUGINS_GABBLE_H
+#ifndef GABBLE_PLUGINS_NAMESPACES_H
+#define GABBLE_PLUGINS_NAMESPACES_H
 
-#define IN_GABBLE_PLUGINS_GABBLE_H
-
-#include <glib-object.h>
-
-#include <gabble/capabilities-set.h>
-#include <gabble/caps-hash.h>
-#include <gabble/connection.h>
-#include <gabble/disco-identity.h>
-#include <gabble/error.h>
-#include <gabble/namespaces.h>
-#include <gabble/plugin.h>
-#include <gabble/sidecar.h>
-#include <gabble/types.h>
-
-#undef IN_GABBLE_PLUGINS_GABBLE_H
+#define NS_CAPS        "http://jabber.org/protocol/caps"
+#define NS_GABBLE_CAPS "http://telepathy.freedesktop.org/caps"
 
 #endif

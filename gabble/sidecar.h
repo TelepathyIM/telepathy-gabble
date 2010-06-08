@@ -1,5 +1,5 @@
 /*
- * sidecar.h — interface for connection sidecars
+ * sidecar.h — sidecar API available to telepathy-gabble plugins
  * Copyright © 2009 Collabora Ltd.
  * Copyright © 2009 Nokia Corporation
  *
@@ -17,10 +17,15 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef __SIDECAR_H__
-#define __SIDECAR_H__
+
+#ifndef GABBLE_PLUGINS_SIDECAR_H
+#define GABBLE_PLUGINS_SIDECAR_H
 
 #include <glib-object.h>
+
+#include <gabble/types.h>
+
+G_BEGIN_DECLS
 
 #define GABBLE_TYPE_SIDECAR (gabble_sidecar_get_type ())
 #define GABBLE_SIDECAR(obj) \
@@ -31,7 +36,6 @@
     (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_SIDECAR, \
         GabbleSidecarInterface))
 
-typedef struct _GabbleSidecar GabbleSidecar;
 typedef struct _GabbleSidecarInterface GabbleSidecarInterface;
 
 typedef GHashTable * (*GabbleSidecarGetImmutablePropertiesImpl) (
@@ -55,5 +59,7 @@ GType gabble_sidecar_get_type (void);
 
 const gchar *gabble_sidecar_get_interface (GabbleSidecar *sidecar);
 GHashTable *gabble_sidecar_get_immutable_properties (GabbleSidecar *sidecar);
+
+G_END_DECLS
 
 #endif

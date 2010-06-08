@@ -219,33 +219,15 @@ disco_waiter_list_get_request_count (GSList *list)
   return c;
 }
 
-typedef struct _CapabilityInfo CapabilityInfo;
-
-struct _CapabilityInfo
-{
-  /* struct _CapabilityInfo can be allocated before receiving the contact's
-   * caps. In this case, cap_set is NULL. */
-  GabbleCapabilitySet *cap_set;
-
-  TpIntSet *guys;
-  guint trust;
-
-  /* TRUE if this cache entry is one of our own, so between caps and
-   * per_channel_manager_caps it holds the complete set of features for the
-   * node.
-   */
-  gboolean complete;
-};
-
-static CapabilityInfo *
+static GabbleCapabilityInfo *
 capability_info_get (GabblePresenceCache *cache, const gchar *node)
 {
   GabblePresenceCachePrivate *priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
-  CapabilityInfo *info = g_hash_table_lookup (priv->capabilities, node);
+  GabbleCapabilityInfo *info = g_hash_table_lookup (priv->capabilities, node);
 
   if (NULL == info)
     {
-      info = g_slice_new0 (CapabilityInfo);
+      info = g_slice_new0 (GabbleCapabilityInfo);
       info->cap_set = NULL;
       info->guys = tp_intset_new ();
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
@@ -255,7 +237,7 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node)
 }
 
 static void
-capability_info_free (CapabilityInfo *info)
+capability_info_free (GabbleCapabilityInfo *info)
 {
   if (info->cap_set != NULL)
     {
@@ -263,9 +245,12 @@ capability_info_free (CapabilityInfo *info)
       info->cap_set = NULL;
     }
 
+  gabble_disco_identity_array_free (info->identities);
+  info->identities = NULL;
+
   tp_intset_destroy (info->guys);
 
-  g_slice_free (CapabilityInfo, info);
+  g_slice_free (GabbleCapabilityInfo, info);
 }
 
 static guint
@@ -275,7 +260,7 @@ capability_info_recvd (GabblePresenceCache *cache,
     GabbleCapabilitySet *cap_set,
     guint trust_inc)
 {
-  CapabilityInfo *info = capability_info_get (cache, node);
+  GabbleCapabilityInfo *info = capability_info_get (cache, node);
 
   if (info->cap_set == NULL ||
       !gabble_capability_set_equals (cap_set, info->cap_set))
@@ -1304,7 +1289,7 @@ _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *resource,
                    guint serial)
 {
-  CapabilityInfo *info;
+  GabbleCapabilityInfo *info;
   WockyNodeTree *cached_query_reply;
   GabbleCapabilitySet *cached_caps = NULL;
   GabblePresenceCachePrivate *priv;
@@ -1926,7 +1911,7 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     const gchar *node,
     const gchar *namespace)
 {
-  CapabilityInfo *info;
+  GabbleCapabilityInfo *info;
 
   info = capability_info_get (cache, node);
 
@@ -1944,10 +1929,11 @@ void
 gabble_presence_cache_add_own_caps (
     GabblePresenceCache *cache,
     const gchar *ver,
-    const GabbleCapabilitySet *cap_set)
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities)
 {
   gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
-  CapabilityInfo *info = capability_info_get (cache, uri);
+  GabbleCapabilityInfo *info = capability_info_get (cache, uri);
 
   if (info->complete)
     goto out;
@@ -1967,6 +1953,9 @@ gabble_presence_cache_add_own_caps (
       gabble_capability_set_clear (info->cap_set);
       gabble_capability_set_update (info->cap_set, cap_set);
     }
+
+  gabble_disco_identity_array_free (info->identities);
+  info->identities = gabble_disco_identity_array_copy (identities);
 
   info->complete = TRUE;
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
@@ -1994,20 +1983,20 @@ out:
  *
  * Returns: a set of capabilities, if we know exactly what @ver means.
  */
-const GabbleCapabilitySet *
+const GabbleCapabilityInfo *
 gabble_presence_cache_peek_own_caps (
     GabblePresenceCache *cache,
     const gchar *ver)
 {
   gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
-  CapabilityInfo *info = capability_info_get (cache, uri);
+  GabbleCapabilityInfo *info = capability_info_get (cache, uri);
 
   g_free (uri);
 
   if (info->complete)
     {
       g_assert (info->cap_set != NULL);
-      return info->cap_set;
+      return info;
     }
   else
     {

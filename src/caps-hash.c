@@ -38,6 +38,7 @@
 #include "presence-cache.h"
 #include "presence.h"
 #include "util.h"
+#include "gabble/disco-identity.h"
 
 typedef struct _DataFormField DataFormField;
 
@@ -63,6 +64,22 @@ char_cmp (gconstpointer a, gconstpointer b)
   gchar *right = *(gchar **) b;
 
   return strcmp (left, right);
+}
+
+static gint
+identity_cmp (gconstpointer a, gconstpointer b)
+{
+  GabbleDiscoIdentity *left = (GabbleDiscoIdentity *) a;
+  GabbleDiscoIdentity *right = (GabbleDiscoIdentity *) b;
+  gint ret;
+
+  if ((ret = strcmp (left->category, right->category)) != 0)
+    return ret;
+  if ((ret = strcmp (left->type, right->type)) != 0)
+    return ret;
+  if ((ret = strcmp (left->lang, right->lang)) != 0)
+    return ret;
+  return strcmp (left->name, right->name);
 }
 
 static gint
@@ -115,11 +132,10 @@ gabble_presence_free_xep0115_hash (
     GPtrArray *dataforms)
 {
   g_ptr_array_foreach (features, (GFunc) g_free, NULL);
-  g_ptr_array_foreach (identities, (GFunc) g_free, NULL);
+  gabble_disco_identity_array_free (identities);
   g_ptr_array_foreach (dataforms, _free_form, NULL);
 
   g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (identities, TRUE);
   g_ptr_array_free (dataforms, TRUE);
 }
 
@@ -134,7 +150,7 @@ caps_hash_compute (
   guint i;
   gchar *encoded;
 
-  g_ptr_array_sort (identities, char_cmp);
+  g_ptr_array_sort (identities, identity_cmp);
   g_ptr_array_sort (features, char_cmp);
   g_ptr_array_sort (dataforms, dataforms_cmp);
 
@@ -142,8 +158,14 @@ caps_hash_compute (
 
   for (i = 0 ; i < identities->len ; i++)
     {
-      g_string_append (s, g_ptr_array_index (identities, i));
+      const GabbleDiscoIdentity *identity = g_ptr_array_index (identities, i);
+      gchar *str = g_strdup_printf ("%s/%s/%s/%s",
+          identity->category, identity->type,
+          identity->lang ? identity->lang : "",
+          identity->name ? identity->name : "");
+      g_string_append (s, str);
       g_string_append_c (s, '<');
+      g_free (str);
     }
 
   for (i = 0 ; i < features->len ; i++)
@@ -281,7 +303,7 @@ gchar *
 caps_hash_compute_from_lm_node (LmMessageNode *node)
 {
   GPtrArray *features = g_ptr_array_new ();
-  GPtrArray *identities = g_ptr_array_new ();
+  GPtrArray *identities = gabble_disco_identity_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
   NodeIter i;
@@ -296,6 +318,7 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           const gchar *name;
           const gchar *type;
           const gchar *xmllang;
+          GabbleDiscoIdentity *identity;
 
           category = lm_message_node_get_attribute (child, "category");
           name = lm_message_node_get_attribute (child, "name");
@@ -311,8 +334,8 @@ caps_hash_compute_from_lm_node (LmMessageNode *node)
           if (NULL == xmllang)
             xmllang = "";
 
-          g_ptr_array_add (identities,
-              g_strdup_printf ("%s/%s/%s/%s", category, type, xmllang, name));
+          identity = gabble_disco_identity_new (category, type, xmllang, name);
+          g_ptr_array_add (identities, identity);
         }
       else if (g_str_equal (child->name, "feature"))
         {
@@ -367,13 +390,14 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   GabblePresence *presence = self->self_presence;
   const GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
-  GPtrArray *identities = g_ptr_array_new ();
+  GPtrArray *identities = gabble_disco_identity_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
-  g_ptr_array_add (identities, g_strdup_printf (
-      "client/%s//%s", CLIENT_TYPE, PACKAGE_STRING));
+  g_ptr_array_add (identities,
+      gabble_disco_identity_new ("client", CLIENT_TYPE,
+          NULL, PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
 
@@ -388,3 +412,28 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   return str;
 }
 
+/**
+ * Compute the hash as defined by the XEP-0115 from a received GabbleCapabilitySet
+ *
+ * Returns: the hash. The called must free the returned hash with g_free().
+ */
+gchar *
+gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities)
+{
+  GPtrArray *features = g_ptr_array_new ();
+  GPtrArray *identities_copy = ((identities == NULL) ?
+      gabble_disco_identity_array_new () :
+      gabble_disco_identity_array_copy (identities));
+  GPtrArray *dataforms = g_ptr_array_new ();
+  gchar *str;
+
+  /* FIXME: allow iteration over the strings without copying */
+  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+
+  str = caps_hash_compute (features, identities_copy, dataforms);
+
+  gabble_presence_free_xep0115_hash (features, identities_copy, dataforms);
+
+  return str;
+}

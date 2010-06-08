@@ -226,6 +226,8 @@ struct _GabbleConnectionPrivate
    * AdvertiseCapabilities or UpdateCapabilities, for vague historical
    * reasons */
   GabbleCapabilitySet *bonus_caps;
+  /* sidecar caps set by gabble_connection_update_sidecar_capabilities */
+  GabbleCapabilitySet *sidecar_caps;
   /* caps provided via ContactCapabilities.UpdateCapabilities ()
    * gchar * (client name) => GabbleCapabilitySet * */
   GHashTable *client_caps;
@@ -378,6 +380,7 @@ gabble_connection_constructor (GType type,
   priv->all_caps = gabble_capability_set_new ();
   priv->notify_caps = gabble_capability_set_new ();
   priv->legacy_caps = gabble_capability_set_new ();
+  priv->sidecar_caps = gabble_capability_set_new ();
   priv->client_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, (GDestroyNotify) gabble_capability_set_free);
 
@@ -1097,6 +1100,7 @@ gabble_connection_dispose (GObject *object)
   gabble_capability_set_free (priv->all_caps);
   gabble_capability_set_free (priv->notify_caps);
   gabble_capability_set_free (priv->legacy_caps);
+  gabble_capability_set_free (priv->sidecar_caps);
   gabble_capability_set_free (priv->bonus_caps);
 
   if (priv->disconnect_timer != 0)
@@ -2124,7 +2128,7 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
 
   /* Ensure this set of capabilities is in the cache. */
   gabble_presence_cache_add_own_caps (self->presence_cache, caps_hash,
-      gabble_presence_peek_caps (presence));
+      gabble_presence_peek_caps (presence), NULL);
 
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
@@ -2224,6 +2228,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
       gabble_capabilities_get_fixed_caps ());
   gabble_capability_set_update (self->priv->all_caps, self->priv->notify_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->legacy_caps);
+  gabble_capability_set_update (self->priv->all_caps, self->priv->sidecar_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
 
   g_hash_table_iter_init (&iter, self->priv->client_caps);
@@ -2350,6 +2355,22 @@ add_feature_node (gpointer namespace,
   lm_message_node_set_attribute (feature_node, "var", namespace);
 }
 
+static void
+add_identity_node (const GabbleDiscoIdentity *identity,
+    gpointer result_query)
+{
+  LmMessageNode *identity_node;
+
+  identity_node = lm_message_node_add_child
+      (result_query, "identity", NULL);
+  lm_message_node_set_attribute (identity_node, "category", identity->category);
+  lm_message_node_set_attribute (identity_node, "type", identity->type);
+  if (identity->lang)
+    lm_message_node_set_attribute (identity_node, "lang", identity->lang);
+  if (identity->name)
+    lm_message_node_set_attribute (identity_node, "name", identity->name);
+}
+
 /**
  * connection_iq_disco_cb
  *
@@ -2366,7 +2387,9 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   LmMessage *result;
   LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
   const gchar *node, *suffix;
-  const GabbleCapabilitySet *features;
+  const GabbleCapabilityInfo *info = NULL;
+  const GabbleCapabilitySet *features = NULL;
+  const GPtrArray *identities = NULL;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -2408,15 +2431,6 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   DEBUG ("got disco request for node %s", node);
 
-  /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
-   * one identity. If you change the identity here, you also need to change
-   * caps_hash_compute_from_self_presence(). */
-  identity = lm_message_node_add_child
-      (result_query, "identity", NULL);
-  lm_message_node_set_attribute (identity, "category", "client");
-  lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
-  lm_message_node_set_attribute (identity, "type", CLIENT_TYPE);
-
   if (node == NULL)
     features = gabble_presence_peek_caps (self->self_presence);
   /* If node is not NULL, it can be either a caps bundle as defined in the
@@ -2424,8 +2438,31 @@ connection_iq_disco_cb (LmMessageHandler *handler,
    * 1.5. Let's see if it's a verification string we've told the cache about.
    */
   else
-    features = gabble_presence_cache_peek_own_caps (self->presence_cache,
+    info = gabble_presence_cache_peek_own_caps (self->presence_cache,
         suffix);
+
+  if (info)
+    {
+      features = info->cap_set;
+      identities = info->identities;
+    }
+
+  if (identities && identities->len != 0)
+    {
+      g_ptr_array_foreach ((GPtrArray *) identities,
+          (GFunc) add_identity_node, result_query);
+    }
+  else
+    {
+      /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
+       * one identity. If you change the identity here, you also need to change
+       * caps_hash_compute_from_self_presence(). */
+      identity = lm_message_node_add_child
+          (result_query, "identity", NULL);
+      lm_message_node_set_attribute (identity, "category", "client");
+      lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
+      lm_message_node_set_attribute (identity, "type", CLIENT_TYPE);
+    }
 
   if (features == NULL)
     {
@@ -3374,4 +3411,73 @@ void
 gabble_connection_set_disco_reply_timeout (guint timeout)
 {
   disco_reply_timeout = timeout;
+}
+
+void
+gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
+                                               const GabbleCapabilitySet *add_set,
+                                               const GabbleCapabilitySet *remove_set)
+{
+  GabbleConnectionPrivate *priv = self->priv;
+  GabbleCapabilitySet *save_set;
+
+  if (add_set == NULL && remove_set == NULL)
+    return;
+
+  if (add_set != NULL)
+    gabble_capability_set_update (priv->sidecar_caps, add_set);
+  if (remove_set != NULL)
+    gabble_capability_set_exclude (priv->sidecar_caps, remove_set);
+
+  if (DEBUGGING)
+    {
+      if (add_set != NULL)
+        {
+          gchar *add_str = gabble_capability_set_dump (add_set, "  ");
+
+          DEBUG ("sidecar caps to add:\n%s", add_str);
+          g_free (add_str);
+        }
+
+      if (remove_set != NULL)
+        {
+          gchar *remove_str = gabble_capability_set_dump (remove_set, "  ");
+
+          DEBUG ("sidecar caps to remove:\n%s", remove_str);
+          g_free (remove_str);
+        }
+    }
+
+  if (gabble_connection_refresh_capabilities (self, &save_set))
+    {
+      _emit_capabilities_changed (self, TP_BASE_CONNECTION (self)->self_handle,
+          save_set, priv->all_caps);
+      gabble_capability_set_free (save_set);
+    }
+}
+
+gchar *
+gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities)
+{
+  GPtrArray *identities_copy = ((identities == NULL) ?
+      gabble_disco_identity_array_new () :
+      gabble_disco_identity_array_copy (identities));
+  gchar *ver;
+
+  /* XEP-0030 requires at least 1 identity. We don't need more. */
+  if (identities_copy->len == 0)
+    g_ptr_array_add (identities_copy,
+        gabble_disco_identity_new ("client", CLIENT_TYPE,
+            NULL, PACKAGE_STRING));
+
+  ver = gabble_caps_hash_compute (cap_set, identities_copy);
+
+  gabble_presence_cache_add_own_caps (self->presence_cache, ver,
+      cap_set, identities_copy);
+
+  gabble_disco_identity_array_free (identities_copy);
+
+  return ver;
 }

@@ -33,6 +33,7 @@
 #include <wocky/wocky-session.h>
 #include <wocky/wocky-pep-service.h>
 
+#include "gabble/connection.h"
 #include "capabilities.h"
 #include "error.h"
 #include "ft-manager.h"
@@ -80,7 +81,6 @@ typedef enum
 } GabbleConnectionFeatures;
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
-typedef struct _GabbleConnectionClass GabbleConnectionClass;
 typedef struct _GabbleConnectionMailNotificationPrivate GabbleConnectionMailNotificationPrivate;
 
 typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
@@ -218,24 +218,6 @@ typedef enum {
     GABBLE_CONNECTION_ALIAS_FROM_PRESENCE,
     GABBLE_CONNECTION_ALIAS_FROM_ROSTER
 } GabbleConnectionAliasSource;
-
-GType gabble_connection_get_type (void);
-
-/* TYPE MACROS */
-#define GABBLE_TYPE_CONNECTION \
-  (gabble_connection_get_type ())
-#define GABBLE_CONNECTION(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION, GabbleConnection))
-#define GABBLE_CONNECTION_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CONNECTION, \
-                           GabbleConnectionClass))
-#define GABBLE_IS_CONNECTION(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_CONNECTION))
-#define GABBLE_IS_CONNECTION_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_CONNECTION))
-#define GABBLE_CONNECTION_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, \
-                              GabbleConnectionClass))
 
 gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
 

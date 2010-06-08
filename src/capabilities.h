@@ -26,6 +26,7 @@
 #include <loudmouth/loudmouth.h>
 
 #include "types.h"
+#include "gabble/capabilities-set.h"
 
 /* Pseudo-capabilities for buggy or strange implementations, represented as
  * strings starting with a character not allowed in XML (the ASCII beep :-) */
@@ -37,58 +38,6 @@
 #define QUIRK_GOOGLE_WEBMAIL_CLIENT "\x07google-webmail-client"
 /* This client says it's a phone! */
 #define QUIRK_IS_A_PHONE QUIRK_PREFIX "is-a-phone"
-
-/**
- * GabbleCapabilitySet:
- *
- * A set of capabilities.
- */
-typedef struct _GabbleCapabilitySet GabbleCapabilitySet;
-
-GabbleCapabilitySet *gabble_capability_set_new (void);
-GabbleCapabilitySet *gabble_capability_set_new_from_stanza (
-    LmMessageNode *query_result);
-GabbleCapabilitySet *gabble_capability_set_copy (
-    const GabbleCapabilitySet *caps);
-void gabble_capability_set_update (GabbleCapabilitySet *target,
-    const GabbleCapabilitySet *source);
-void gabble_capability_set_add (GabbleCapabilitySet *caps,
-    const gchar *cap);
-gboolean gabble_capability_set_remove (GabbleCapabilitySet *caps,
-    const gchar *cap);
-void gabble_capability_set_exclude (GabbleCapabilitySet *caps,
-    const GabbleCapabilitySet *removed);
-void gabble_capability_set_intersect (GabbleCapabilitySet *target,
-    const GabbleCapabilitySet *source);
-gint gabble_capability_set_size (const GabbleCapabilitySet *caps);
-gboolean gabble_capability_set_has (const GabbleCapabilitySet *caps,
-    const gchar *cap);
-gboolean gabble_capability_set_has_one (const GabbleCapabilitySet *caps,
-    const GabbleCapabilitySet *alternatives);
-gboolean gabble_capability_set_at_least (const GabbleCapabilitySet *caps,
-    const GabbleCapabilitySet *query);
-gboolean gabble_capability_set_equals (const GabbleCapabilitySet *a,
-    const GabbleCapabilitySet *b);
-void gabble_capability_set_clear (GabbleCapabilitySet *caps);
-void gabble_capability_set_free (GabbleCapabilitySet *caps);
-void gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
-    GFunc func, gpointer user_data);
-gchar *gabble_capability_set_dump (const GabbleCapabilitySet *caps,
-    const gchar *indent);
-
-/* A predicate used by the presence code to select suitable resources */
-typedef gboolean (*GabbleCapabilitySetPredicate) (
-    const GabbleCapabilitySet *set, gconstpointer user_data);
-/* These functions are compatible with GabbleCapabilitySetPredicate;
- * pass in the desired capabilities as the user_data */
-#define gabble_capability_set_predicate_equals \
-  ((GabbleCapabilitySetPredicate) gabble_capability_set_equals)
-#define gabble_capability_set_predicate_has \
-  ((GabbleCapabilitySetPredicate) gabble_capability_set_has)
-#define gabble_capability_set_predicate_has_one \
-  ((GabbleCapabilitySetPredicate) gabble_capability_set_has_one)
-#define gabble_capability_set_predicate_at_least \
-  ((GabbleCapabilitySetPredicate) gabble_capability_set_at_least)
 
 /* Some useful capability sets for Jingle etc. */
 const GabbleCapabilitySet *gabble_capabilities_get_legacy (void);

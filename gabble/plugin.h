@@ -1,5 +1,5 @@
 /*
- * plugin.h — API for telepathy-gabble plugins
+ * plugin.h — plugin API for telepathy-gabble plugins
  * Copyright © 2009 Collabora Ltd.
  * Copyright © 2009 Nokia Corporation
  *
@@ -17,8 +17,9 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#ifndef __PLUGIN_H__
-#define __PLUGIN_H__
+
+#ifndef GABBLE_PLUGINS_PLUGIN_H
+#define GABBLE_PLUGINS_PLUGIN_H
 
 #include <glib-object.h>
 #include <gio/gio.h>
@@ -26,7 +27,11 @@
 #include <telepathy-glib/base-connection.h>
 #include <wocky/wocky-session.h>
 
+#include <gabble/connection.h>
 #include <gabble/sidecar.h>
+#include <gabble/types.h>
+
+G_BEGIN_DECLS
 
 #define GABBLE_TYPE_PLUGIN (gabble_plugin_get_type ())
 #define GABBLE_PLUGIN(obj) \
@@ -37,13 +42,12 @@
     (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_PLUGIN, \
         GabblePluginInterface))
 
-typedef struct _GabblePlugin GabblePlugin;
 typedef struct _GabblePluginInterface GabblePluginInterface;
 
 typedef void (*GabblePluginCreateSidecarImpl) (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    TpBaseConnection *connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
@@ -90,7 +94,7 @@ gboolean gabble_plugin_implements_sidecar (
 void gabble_plugin_create_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    TpBaseConnection *connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
@@ -110,5 +114,7 @@ GabbleSidecar *gabble_plugin_create_sidecar_finish (
 GabblePlugin *gabble_plugin_create (void);
 
 typedef GabblePlugin *(*GabblePluginCreateImpl) (void);
+
+G_END_DECLS
 
 #endif

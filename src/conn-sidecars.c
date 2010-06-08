@@ -27,7 +27,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 #include "debug.h"
 #include "plugin-loader.h"
-#include "sidecar.h"
+#include "gabble/sidecar.h"
 
 static void
 sidecars_conn_status_changed_cb (
@@ -268,7 +268,7 @@ gabble_connection_ensure_sidecar (
       GabblePluginLoader *loader = gabble_plugin_loader_dup ();
 
       DEBUG ("requesting %s from the plugin loader", sidecar_iface);
-      gabble_plugin_loader_create_sidecar (loader, sidecar_iface, base_conn,
+      gabble_plugin_loader_create_sidecar (loader, sidecar_iface, conn,
           conn->session, create_sidecar_cb, grr_new (conn, sidecar_iface));
       g_object_unref (loader);
     }
@@ -319,7 +319,6 @@ sidecars_conn_status_changed_cb (
     }
   else if (status == TP_CONNECTION_STATUS_CONNECTED)
     {
-      TpBaseConnection *base_conn = TP_BASE_CONNECTION (conn);
       GabblePluginLoader *loader = gabble_plugin_loader_dup ();
 
       DEBUG ("connected; requesting sidecars from plugins");
@@ -330,7 +329,7 @@ sidecars_conn_status_changed_cb (
           const gchar *sidecar_iface = key;
 
           DEBUG ("requesting %s from the plugin loader", sidecar_iface);
-          gabble_plugin_loader_create_sidecar (loader, sidecar_iface, base_conn,
+          gabble_plugin_loader_create_sidecar (loader, sidecar_iface, conn,
               conn->session, create_sidecar_cb, grr_new (conn, sidecar_iface));
         }
 

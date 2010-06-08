@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "sidecar.h"
+#include "gabble/sidecar.h"
 
 GType
 gabble_sidecar_get_type (void)

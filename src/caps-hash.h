@@ -22,7 +22,9 @@
 #define __CAPS_HASH_H__
 
 #include <loudmouth/loudmouth.h>
+
 #include "connection.h"
+#include "gabble/caps-hash.h"
 
 gchar *caps_hash_compute_from_lm_node (LmMessageNode *node);
 gchar *caps_hash_compute_from_self_presence (

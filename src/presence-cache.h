@@ -54,6 +54,27 @@ G_BEGIN_DECLS
 #define JABBER_PRESENCE_SHOW_DND "dnd"
 #define JABBER_PRESENCE_SHOW_XA "xa"
 
+typedef struct _GabbleCapabilityInfo GabbleCapabilityInfo;
+
+struct _GabbleCapabilityInfo
+{
+  /* struct _GabbleCapabilityInfo can be allocated before receiving the contact's
+   * caps. In this case, cap_set is NULL. */
+  GabbleCapabilitySet *cap_set;
+
+  /* array of GabbleDiscoIdentity or NULL */
+  GPtrArray *identities;
+
+  TpIntSet *guys;
+  guint trust;
+
+  /* TRUE if this cache entry is one of our own, so between caps and
+   * per_channel_manager_caps it holds the complete set of features for the
+   * node.
+   */
+  gboolean complete;
+};
+
 typedef struct _GabblePresenceCachePrivate GabblePresenceCachePrivate;
 
 struct _GabblePresenceCache {
@@ -84,8 +105,9 @@ void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     const gchar *node, const gchar *ns);
 void gabble_presence_cache_add_own_caps (GabblePresenceCache *cache,
     const gchar *ver,
-    const GabbleCapabilitySet *cap_set);
-const GabbleCapabilitySet *gabble_presence_cache_peek_own_caps (
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities);
+const GabbleCapabilityInfo *gabble_presence_cache_peek_own_caps (
     GabblePresenceCache *cache,
     const gchar *ver);
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,

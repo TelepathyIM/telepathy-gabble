@@ -47,10 +47,12 @@ libgabble_convenience_la_SOURCES = \
     call-stream.c \
     call-stream-endpoint.h \
     call-stream-endpoint.c \
+    $(top_srcdir)/gabble/capabilities-set.h \
     capabilities.h \
     capabilities.c \
     caps-cache.h \
     caps-cache.c \
+    $(top_srcdir)/gabble/caps-hash.h \
     caps-hash.h \
     caps-hash.c \
     caps-channel-manager.h \
@@ -73,6 +75,7 @@ libgabble_convenience_la_SOURCES = \
     conn-slacker.c \
     conn-mail-notif.h \
     conn-mail-notif.c \
+    $(top_srcdir)/gabble/connection.h \
     connection.h \
     connection.c \
     connection-manager.h \
@@ -81,6 +84,7 @@ libgabble_convenience_la_SOURCES = \
     debug.c \
     disco.h \
     disco.c \
+    $(top_srcdir)/gabble/disco-identity.h \
     error.c \
     error.h \
     ft-channel.c \
@@ -123,6 +127,7 @@ libgabble_convenience_la_SOURCES = \
     muc-channel.c \
     muc-factory.h \
     muc-factory.c \
+    $(top_srcdir)/gabble/namespaces.h \
     namespaces.h \
     olpc-activity.h \
     olpc-activity.c \
@@ -172,6 +177,7 @@ libgabble_convenience_la_SOURCES = \
     tube-dbus.c \
     tube-stream.h \
     tube-stream.c \
+    $(top_srcdir)/gabble/types.h \
     types.h \
     util.h \
     util.c \
@@ -213,7 +219,6 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @SOUP_CFLAGS@ @UUID_CFLAGS@ @GMODULE_CFLAGS@ \
 	    @SQLITE_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
-	    -I $(top_srcdir)/gabble \
 	    -DG_LOG_DOMAIN=\"gabble\" \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 

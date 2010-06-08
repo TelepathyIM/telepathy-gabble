@@ -27,7 +27,7 @@
 G_BEGIN_DECLS
 
 gchar *gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
-    GPtrArray *identities);
+    const GPtrArray *identities);
 
 G_END_DECLS
 

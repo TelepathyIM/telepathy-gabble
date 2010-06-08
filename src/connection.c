@@ -3454,13 +3454,26 @@ gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
 
 gchar *
 gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
-    GabbleCapabilitySet *cap_set,
-    GPtrArray *identities)
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities)
 {
-    gchar *ver = gabble_caps_hash_compute (cap_set, identities);
+  GPtrArray *identities_copy = ((identities == NULL) ?
+      gabble_disco_identity_array_new () :
+      gabble_disco_identity_array_copy (identities));
+  gchar *ver;
 
-    gabble_presence_cache_add_own_caps (self->presence_cache, ver,
-        cap_set, identities);
+  /* XEP-0030 requires at least 1 identity. We don't need more. */
+  if (identities_copy->len == 0)
+    g_ptr_array_add (identities_copy,
+        gabble_disco_identity_new ("client", CLIENT_TYPE,
+            NULL, PACKAGE_STRING));
 
-    return ver;
+  ver = gabble_caps_hash_compute (cap_set, identities_copy);
+
+  gabble_presence_cache_add_own_caps (self->presence_cache, ver,
+      cap_set, identities_copy);
+
+  gabble_disco_identity_array_free (identities_copy);
+
+  return ver;
 }

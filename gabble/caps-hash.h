@@ -27,7 +27,7 @@
 G_BEGIN_DECLS
 
 gchar *gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
-    const GPtrArray *identities);
+    const GPtrArray *identities) G_GNUC_WARN_UNUSED_RESULT;
 
 G_END_DECLS
 

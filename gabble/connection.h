@@ -53,7 +53,7 @@ void gabble_connection_update_sidecar_capabilities (
 gchar *gabble_connection_add_sidecar_own_caps (
     GabbleConnection *connection,
     const GabbleCapabilitySet *cap_set,
-    const GPtrArray *identities);
+    const GPtrArray *identities) G_GNUC_WARN_UNUSED_RESULT;
 
 G_END_DECLS
 

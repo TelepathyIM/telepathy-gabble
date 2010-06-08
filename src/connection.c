@@ -3411,8 +3411,8 @@ gabble_connection_set_disco_reply_timeout (guint timeout)
 
 void
 gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
-                                               GabbleCapabilitySet *add_set,
-                                               GabbleCapabilitySet *remove_set)
+                                               const GabbleCapabilitySet *add_set,
+                                               const GabbleCapabilitySet *remove_set)
 {
   GabbleConnectionPrivate *priv = self->priv;
   GabbleCapabilitySet *save_set;

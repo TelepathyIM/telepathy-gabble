@@ -48,8 +48,8 @@ GType gabble_connection_get_type (void);
 
 void gabble_connection_update_sidecar_capabilities (
     GabbleConnection *connection,
-    GabbleCapabilitySet *add_set,
-    GabbleCapabilitySet *remove_set);
+    const GabbleCapabilitySet *add_set,
+    const GabbleCapabilitySet *remove_set);
 gchar *gabble_connection_add_sidecar_own_caps (
     GabbleConnection *connection,
     const GabbleCapabilitySet *cap_set,

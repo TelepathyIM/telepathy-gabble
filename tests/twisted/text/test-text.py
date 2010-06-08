@@ -7,8 +7,11 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test
-from servicetest import EventPattern, wrap_channel, assertNotEquals
+from gabbletest import exec_test, elem
+from servicetest import (
+    EventPattern, wrap_channel,
+    assertEquals, assertNotEquals, assertLength,
+    )
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -122,9 +125,9 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
-    elem = stream_message.stanza
-    assert elem.name == 'message'
-    assert elem['type'] == 'normal'
+    elt = stream_message.stanza
+    assert elt.name == 'message'
+    assert elt['type'] == 'normal'
     body = list(stream_message.stanza.elements())[0]
     assert body.name == 'body'
     assert body.children[0] == u'what up'
@@ -153,9 +156,9 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
-    elem = stream_message.stanza
-    assert elem.name == 'message'
-    assert elem['type'] == 'chat'
+    elt = stream_message.stanza
+    assert elt.name == 'message'
+    assert elt['type'] == 'chat'
     body = list(stream_message.stanza.elements())[0]
     assert body.name == 'body'
     assert body.children[0] == u'goodbye'
@@ -172,6 +175,25 @@ def test(q, bus, conn, stream):
 
     assert sent.args[1] == 0, sent.args # message type normal
     assert sent.args[2] == u'goodbye', sent.args
+
+    # And now let's try a message with a malformed type='' attribute.
+    malformed = elem(
+        'message', from_='foo@bar.com/fubber', type="'")(
+          elem('body')(u'Internettt!'),
+          elem('subject')(u'xyzzy'),
+          elem('thread')(u'6666'),
+        )
+    stream.send(malformed)
+
+    event = q.expect('dbus-signal', signal='MessageReceived')
+    message, = event.args
+    assertLength(2, message)
+    header, body = message
+
+    # Gabble should treat the unparseable type as if it were 'normal' or
+    # omitted (not to be confused with Telepathy's Normal, which is 'chat' in
+    # XMPP...)
+    assertEquals(cs.MT_NOTICE, header['message-type'])
 
 if __name__ == '__main__':
     exec_test(test)

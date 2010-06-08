@@ -33,8 +33,11 @@
 #include "jingle-factory.h"
 #include "jingle-session.h"
 #include "jingle-transport-iface.h"
+#include "jingle-transport-google.h"
+#include "jingle-media-rtp.h"
 #include "namespaces.h"
 #include "util.h"
+#include "gabble-signals-marshal.h"
 
 /* signal enum */
 enum
@@ -42,6 +45,8 @@ enum
   READY,
   NEW_CANDIDATES,
   REMOVED,
+  NEW_SHARE_CHANNEL,
+  COMPLETED,
   LAST_SIGNAL
 };
 
@@ -83,6 +88,7 @@ struct _GabbleJingleContentPrivate
   gboolean have_local_candidates;
 
   guint gtalk4_event_id;
+  guint last_share_channel_component_id;
 
   gboolean dispose_has_run;
 };
@@ -96,6 +102,7 @@ G_DEFINE_TYPE(GabbleJingleContent, gabble_jingle_content, G_TYPE_OBJECT);
 static void new_transport_candidates_cb (GabbleJingleTransportIface *trans,
     GList *candidates, GabbleJingleContent *content);
 static void _maybe_ready (GabbleJingleContent *self);
+static void transport_created (GabbleJingleContent *c);
 
 static void
 gabble_jingle_content_init (GabbleJingleContent *obj)
@@ -237,6 +244,8 @@ gabble_jingle_content_set_property (GObject *object,
 
           g_signal_connect (priv->transport, "new-candidates",
               (GCallback) new_transport_candidates_cb, self);
+
+          transport_created (self);
         }
       break;
     case PROP_NAME:
@@ -261,6 +270,13 @@ gabble_jingle_content_set_property (GObject *object,
   }
 }
 
+static JingleContentSenders
+get_default_senders_real (GabbleJingleContent *c)
+{
+  return JINGLE_CONTENT_SENDERS_BOTH;
+}
+
+
 static void
 gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
 {
@@ -272,6 +288,8 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
   object_class->get_property = gabble_jingle_content_get_property;
   object_class->set_property = gabble_jingle_content_set_property;
   object_class->dispose = gabble_jingle_content_dispose;
+
+  cls->get_default_senders = get_default_senders_real;
 
   /* property definitions */
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
@@ -346,6 +364,27 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     NULL, NULL,
     g_cclosure_marshal_VOID__POINTER, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  signals[NEW_SHARE_CHANNEL] = g_signal_new (
+    "new-share-channel",
+    G_TYPE_FROM_CLASS (cls),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    gabble_marshal_VOID__STRING_UINT,
+    G_TYPE_NONE,
+    2,
+    G_TYPE_STRING, G_TYPE_UINT);
+
+  signals[COMPLETED] = g_signal_new (
+    "completed",
+    G_TYPE_FROM_CLASS (cls),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__VOID,
+    G_TYPE_NONE,
+    0);
+
   /* This signal serves as notification that the GabbleJingleContent is now
    * meaningless; everything holding a reference should drop it after receiving
    * 'removed'.
@@ -358,6 +397,18 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
     g_cclosure_marshal_VOID__VOID,
     G_TYPE_NONE, 0);
 }
+
+
+static JingleContentSenders
+get_default_senders (GabbleJingleContent *c)
+{
+  JingleContentSenders (*virtual_method)(GabbleJingleContent *) = \
+      GABBLE_JINGLE_CONTENT_GET_CLASS (c)->get_default_senders;
+
+  g_assert (virtual_method != NULL);
+  return virtual_method (c);
+}
+
 
 static JingleContentSenders
 parse_senders (const gchar *txt)
@@ -406,6 +457,17 @@ new_transport_candidates_cb (GabbleJingleTransportIface *trans,
 }
 
 static void
+transport_created (GabbleJingleContent *c)
+{
+  void (*virtual_method)(GabbleJingleContent *, GabbleJingleTransportIface *) = \
+      GABBLE_JINGLE_CONTENT_GET_CLASS (c)->transport_created;
+
+  if (virtual_method != NULL)
+    virtual_method (c, c->priv->transport);
+}
+
+
+static void
 parse_description (GabbleJingleContent *c, LmMessageNode *desc_node,
     GError **error)
 {
@@ -452,9 +514,6 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   senders = lm_message_node_get_attribute (content_node, "senders");
 
   g_assert (priv->transport_ns == NULL);
-
-  if (senders == NULL)
-      senders = "both";
 
   if (google_mode)
     {
@@ -519,7 +578,11 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     }
 
   priv->created_by_us = FALSE;
-  priv->senders = parse_senders (senders);
+  if (senders == NULL)
+    priv->senders = get_default_senders (c);
+  else
+    priv->senders = parse_senders (senders);
+
   if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
     {
       SET_BAD_REQ ("invalid content senders");
@@ -561,6 +624,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
 
   g_assert (priv->transport == NULL);
   priv->transport = trans;
+  transport_created (c);
 
   g_assert (priv->creator == NULL);
   priv->creator = g_strdup (creator);
@@ -577,6 +641,100 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   return;
 }
 
+static guint
+new_share_channel (GabbleJingleContent *c, const gchar *name)
+{
+  GabbleJingleContentPrivate *priv = c->priv;
+  GabbleJingleTransportGoogle *gtrans = NULL;
+
+  if (priv->transport &&
+      GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (priv->transport))
+    {
+      guint id = priv->last_share_channel_component_id + 1;
+
+      gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (priv->transport);
+
+      if (!jingle_transport_google_set_component_name (gtrans, name, id))
+        return 0;
+
+      priv->last_share_channel_component_id++;
+
+      DEBUG ("New Share channel '%s' with id : %d", name, id);
+
+      g_signal_emit (c, signals[NEW_SHARE_CHANNEL], 0, name, id);
+
+      return priv->last_share_channel_component_id;
+    }
+  return 0;
+}
+
+guint
+gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
+    const gchar *name)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  LmMessageNode *sess_node, *channel_node;
+  LmMessage *msg = NULL;
+
+  /* Send the info action before creating the channel, in case candidates need
+     to be sent on the signal emit. It doesn't matter if the channel already
+     exists anyways... */
+  msg = gabble_jingle_session_new_message (self->session,
+      JINGLE_ACTION_INFO, &sess_node);
+
+  DEBUG ("Sending 'info' message to peer : channel %s", name);
+  channel_node = lm_message_node_add_child (sess_node, "channel", NULL);
+  lm_message_node_set_attribute (channel_node, "xmlns", priv->content_ns);
+  lm_message_node_set_attribute (channel_node, "name", name);
+
+  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+
+  return new_share_channel (self, name);
+}
+
+void
+gabble_jingle_content_send_complete (GabbleJingleContent *self)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  LmMessageNode *sess_node, *complete_node;
+  LmMessage *msg = NULL;
+
+  msg = gabble_jingle_session_new_message (self->session,
+      JINGLE_ACTION_INFO, &sess_node);
+
+  DEBUG ("Sending 'info' message to peer : complete");
+  complete_node = lm_message_node_add_child (sess_node, "complete", NULL);
+  lm_message_node_set_attribute (complete_node, "xmlns", priv->content_ns);
+
+  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+
+}
+
+void
+gabble_jingle_content_parse_info (GabbleJingleContent *c,
+    LmMessageNode *content_node, GError **error)
+{
+  LmMessageNode *channel_node;
+  LmMessageNode *complete_node;
+
+  channel_node = lm_message_node_get_child_any_ns (content_node, "channel");
+  complete_node = lm_message_node_get_child_any_ns (content_node, "complete");
+
+  DEBUG ("parsing info message : %p - %p", channel_node, complete_node);
+  if (channel_node)
+    {
+      const gchar *name;
+      name = lm_message_node_get_attribute (channel_node, "name");
+      if (name != NULL)
+        new_share_channel (c, name);
+    }
+  else if (complete_node)
+    {
+      g_signal_emit (c, signals[COMPLETED], 0);
+    }
+
+}
+
 void
 gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     LmMessageNode *content_node, gboolean google_mode, GError **error)
@@ -591,7 +749,8 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   senders = lm_message_node_get_attribute (content_node, "senders");
 
-  if (JINGLE_IS_GOOGLE_DIALECT (dialect) && trans_node == NULL)
+  if (GABBLE_IS_JINGLE_MEDIA_RTP (c) &&
+      JINGLE_IS_GOOGLE_DIALECT (dialect) && trans_node == NULL)
     {
       DEBUG ("no transport node, assuming GTalk3 dialect");
       /* gtalk lj0.3 assumes google-p2p transport */
@@ -599,9 +758,10 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
     }
 
   if (senders == NULL)
-      senders = "both";
+    newsenders = get_default_senders (c);
+  else
+    newsenders = parse_senders (senders);
 
-  newsenders = parse_senders (senders);
   if (newsenders == JINGLE_CONTENT_SENDERS_NONE)
     {
       SET_BAD_REQ ("invalid content senders");
@@ -610,7 +770,8 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
 
   if (newsenders != priv->senders)
     {
-      DEBUG ("changing senders from %s to %s", produce_senders (priv->senders), senders);
+      DEBUG ("changing senders from %s to %s", produce_senders (priv->senders),
+          produce_senders (newsenders));
       priv->senders = newsenders;
       g_object_notify ((GObject *) c, "senders");
     }
@@ -774,17 +935,17 @@ gabble_jingle_content_is_ready (GabbleJingleContent *self)
     {
       /* If it's created by us, media ready, not signalled, and we have
        * at least one local candidate, it's ready to be added. */
-      if (priv->media_ready && priv->have_local_candidates &&
-          (priv->state == JINGLE_CONTENT_STATE_EMPTY))
+      if (priv->media_ready && priv->state == JINGLE_CONTENT_STATE_EMPTY &&
+          (!GABBLE_IS_JINGLE_MEDIA_RTP (self) || priv->have_local_candidates))
         return TRUE;
     }
   else
     {
       /* If it's created by peer, media and transports ready,
        * and not acknowledged yet, it's ready for acceptance. */
-      if (priv->media_ready &&
-          gabble_jingle_transport_iface_can_accept (priv->transport) &&
-          (priv->state == JINGLE_CONTENT_STATE_NEW))
+      if (priv->media_ready && priv->state == JINGLE_CONTENT_STATE_NEW &&
+          (!GABBLE_IS_JINGLE_MEDIA_RTP (self) ||
+              gabble_jingle_transport_iface_can_accept (priv->transport)))
         return TRUE;
     }
 

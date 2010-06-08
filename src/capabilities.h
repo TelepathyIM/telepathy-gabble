@@ -110,10 +110,12 @@ const GabbleCapabilitySet *gabble_capabilities_get_olpc_notify (void);
  * clients require the bundle names "voice-v1" and "video-v1". We keep these
  * names for compatibility.
  */
+#define BUNDLE_SHARE_V1         "share-v1"
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_VIDEO_V1         "video-v1"
 #define BUNDLE_PMUC_V1          "pmuc-v1"
 
+const GabbleCapabilitySet *gabble_capabilities_get_bundle_share_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_voice_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
 

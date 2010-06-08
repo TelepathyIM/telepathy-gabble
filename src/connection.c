@@ -2108,7 +2108,7 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   GabblePresence *presence = self->self_presence;
   LmMessageNode *node = lm_message_get_node (presence_message);
   gchar *caps_hash;
-  gboolean voice_v1, video_v1;
+  gboolean share_v1, voice_v1, video_v1;
   GString *ext = g_string_new ("");
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
@@ -2131,8 +2131,12 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
 
   g_string_append (ext, BUNDLE_PMUC_V1);
 
+  share_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_SHARE);
   voice_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VOICE);
   video_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_VIDEO);
+
+  if (share_v1)
+    g_string_append (ext, " " BUNDLE_SHARE_V1);
 
   if (voice_v1)
     g_string_append (ext, " " BUNDLE_VOICE_V1);
@@ -2434,6 +2438,10 @@ connection_iq_disco_cb (LmMessageHandler *handler,
        * because capabilities_get_features() always includes a few bonus
        * features...
        */
+
+      if (!tp_strdiff (suffix, BUNDLE_SHARE_V1))
+        features = gabble_capabilities_get_bundle_share_v1 ();
+
       if (!tp_strdiff (suffix, BUNDLE_VOICE_V1))
         features = gabble_capabilities_get_bundle_voice_v1 ();
 

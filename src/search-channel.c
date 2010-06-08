@@ -24,6 +24,7 @@
 #include <string.h>
 
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/util.h>
@@ -1095,7 +1096,7 @@ gabble_search_channel_init (GabbleSearchChannel *self)
 static void
 free_info (GPtrArray *info)
 {
-  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, info);
+  g_boxed_free (TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, info);
 }
 
 static GObject *

@@ -28,8 +28,6 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/gtypes.h>
 
-#include "extensions/extensions.h"
-
 #include "vcard-manager.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
@@ -71,7 +69,7 @@ typedef struct {
     /* General type of field */
     FieldBehaviour behaviour;
     /* Telepathy flags for this field (none are applicable to XMPP yet) */
-    GabbleContactInfoFieldFlags tp_flags;
+    TpContactInfoFieldFlags tp_flags;
     /* Valid values for the TYPE type-parameter, in upper case */
     const gchar * const types[MAX_TYPES];
     /* Child elements for structured/repeating fields, in upper case */
@@ -252,7 +250,7 @@ _parse_vcard (WockyNode *vcard_node,
               GError **error)
 {
   GPtrArray *contact_info = dbus_g_type_specialized_construct (
-      GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
+      TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
   NodeIter i;
 
   for (i = node_iter (vcard_node); i; i = node_iter_next (i))
@@ -385,7 +383,7 @@ _parse_vcard (WockyNode *vcard_node,
 }
 
 static void
-_emit_contact_info_changed (GabbleSvcConnectionInterfaceContactInfo *iface,
+_emit_contact_info_changed (TpSvcConnectionInterfaceContactInfo *iface,
                             TpHandle contact,
                             WockyNode *vcard_node)
 {
@@ -396,10 +394,10 @@ _emit_contact_info_changed (GabbleSvcConnectionInterfaceContactInfo *iface,
   if (contact_info == NULL)
    return;
 
-  gabble_svc_connection_interface_contact_info_emit_contact_info_changed (
+  tp_svc_connection_interface_contact_info_emit_contact_info_changed (
       iface, contact, contact_info);
 
-  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
+  g_boxed_free (TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 }
 
 static void
@@ -411,8 +409,8 @@ _request_vcards_cb (GabbleVCardManager *manager,
                     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  GabbleSvcConnectionInterfaceContactInfo *iface =
-      (GabbleSvcConnectionInterfaceContactInfo *) conn;
+  TpSvcConnectionInterfaceContactInfo *iface =
+      (TpSvcConnectionInterfaceContactInfo *) conn;
 
   g_assert (g_hash_table_lookup (conn->vcard_requests,
       GUINT_TO_POINTER (handle)));
@@ -435,7 +433,7 @@ _request_vcards_cb (GabbleVCardManager *manager,
  */
 static void
 gabble_connection_get_contact_info (
-    GabbleSvcConnectionInterfaceContactInfo *iface,
+    TpSvcConnectionInterfaceContactInfo *iface,
     const GArray *contacts,
     DBusGMethodInvocation *context)
 {
@@ -457,7 +455,7 @@ gabble_connection_get_contact_info (
       return;
     }
 
-  ret = dbus_g_type_specialized_construct (GABBLE_HASH_TYPE_CONTACT_INFO_MAP);
+  ret = dbus_g_type_specialized_construct (TP_HASH_TYPE_CONTACT_INFO_MAP);
 
   for (i = 0; i < contacts->len; i++)
     {
@@ -482,10 +480,10 @@ gabble_connection_get_contact_info (
         }
     }
 
-  gabble_svc_connection_interface_contact_info_return_from_get_contact_info (
+  tp_svc_connection_interface_contact_info_return_from_get_contact_info (
       context, ret);
 
-  g_boxed_free (GABBLE_HASH_TYPE_CONTACT_INFO_MAP, ret);
+  g_boxed_free (TP_HASH_TYPE_CONTACT_INFO_MAP, ret);
 }
 
 static void
@@ -530,10 +528,10 @@ _return_from_request_contact_info (WockyNode *vcard_node,
       return;
     }
 
-  gabble_svc_connection_interface_contact_info_return_from_request_contact_info (
+  tp_svc_connection_interface_contact_info_return_from_request_contact_info (
       context, contact_info);
 
-  g_boxed_free (GABBLE_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
+  g_boxed_free (TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 }
 
 static void
@@ -559,7 +557,7 @@ _request_vcard_cb (GabbleVCardManager *self,
  *           or throw an error.
  */
 static void
-gabble_connection_refresh_contact_info (GabbleSvcConnectionInterfaceContactInfo *iface,
+gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
                                         const GArray *contacts,
                                         DBusGMethodInvocation *context)
 {
@@ -600,7 +598,7 @@ gabble_connection_refresh_contact_info (GabbleSvcConnectionInterfaceContactInfo 
         }
     }
 
-  gabble_svc_connection_interface_contact_info_return_from_refresh_contact_info (
+  tp_svc_connection_interface_contact_info_return_from_refresh_contact_info (
       context);
 }
 
@@ -614,7 +612,7 @@ gabble_connection_refresh_contact_info (GabbleSvcConnectionInterfaceContactInfo 
  *           or throw an error.
  */
 static void
-gabble_connection_request_contact_info (GabbleSvcConnectionInterfaceContactInfo *iface,
+gabble_connection_request_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
                                         guint contact,
                                         DBusGMethodInvocation *context)
 {
@@ -729,7 +727,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
     }
   else
     {
-      gabble_svc_connection_interface_contact_info_return_from_set_contact_info (
+      tp_svc_connection_interface_contact_info_return_from_set_contact_info (
           context);
     }
 }
@@ -744,7 +742,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
  *           or throw an error.
  */
 static void
-gabble_connection_set_contact_info (GabbleSvcConnectionInterfaceContactInfo *iface,
+gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
                                     const GPtrArray *contact_info,
                                     DBusGMethodInvocation *context)
 {
@@ -956,7 +954,7 @@ _vcard_updated (GObject *object,
                                        contact, &vcard_node))
     {
       _emit_contact_info_changed (
-          GABBLE_SVC_CONNECTION_INTERFACE_CONTACT_INFO (conn),
+          TP_SVC_CONNECTION_INTERFACE_CONTACT_INFO (conn),
           contact, vcard_node);
     }
 }
@@ -966,7 +964,7 @@ static GPtrArray *
 conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
 {
   GPtrArray *fields = dbus_g_type_specialized_construct (
-          GABBLE_ARRAY_TYPE_FIELD_SPECS);
+          TP_ARRAY_TYPE_FIELD_SPECS);
   VCardField *field;
 
   for (field = known_fields; field->xmpp_name != NULL; field++)
@@ -983,7 +981,7 @@ conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
       if (field->types[0] == NULL)
         {
           field->tp_flags |=
-            GABBLE_CONTACT_INFO_FIELD_FLAG_PARAMETERS_EXACT;
+            TP_CONTACT_INFO_FIELD_FLAG_PARAMETERS_EXACT;
         }
 
 #ifndef G_DISABLE_ASSERT
@@ -1134,7 +1132,7 @@ conn_contact_info_finalize (GabbleConnection *conn)
 {
   if (conn->contact_info_fields != NULL)
     {
-      g_boxed_free (GABBLE_ARRAY_TYPE_FIELD_SPECS, conn->contact_info_fields);
+      g_boxed_free (TP_ARRAY_TYPE_FIELD_SPECS, conn->contact_info_fields);
       conn->contact_info_fields = NULL;
     }
 }
@@ -1142,9 +1140,9 @@ conn_contact_info_finalize (GabbleConnection *conn)
 void
 conn_contact_info_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcConnectionInterfaceContactInfoClass *klass = g_iface;
+  TpSvcConnectionInterfaceContactInfoClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_connection_interface_contact_info_implement_##x (\
+#define IMPLEMENT(x) tp_svc_connection_interface_contact_info_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(get_contact_info);
   IMPLEMENT(refresh_contact_info);
@@ -1154,7 +1152,7 @@ conn_contact_info_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 static TpDBusPropertiesMixinPropImpl props[] = {
-      { "ContactInfoFlags", GUINT_TO_POINTER (GABBLE_CONTACT_INFO_FLAG_CAN_SET),
+      { "ContactInfoFlags", GUINT_TO_POINTER (TP_CONTACT_INFO_FLAG_CAN_SET),
         NULL },
       { "SupportedFields", NULL, NULL },
       { NULL }

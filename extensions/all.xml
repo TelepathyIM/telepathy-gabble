@@ -43,7 +43,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="OLPC_Channel_Type_ActivityView.xml"/>
 
 <xi:include href="Channel_Type_Contact_Search.xml"/>
-<xi:include href="Connection_Interface_Contact_Info.xml"/>
 <xi:include href="Connection_Interface_Gabble_Decloak.xml"/>
 <xi:include href="Channel_Interface_Conference.xml"/>
 <xi:include href="Connection_Interface_Mail_Notification.xml"/>
@@ -77,6 +76,12 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <tp:external-type name="DBus_Well_Known_Name" type="s"
     from="Telepathy specification"/>
   <tp:external-type name="Handler_Capability_Token" type="s"
+    from="Telepathy specification"/>
+  <tp:external-type name="VCard_Field" type="s"
+    from="Telepathy specification"/>
+  <tp:external-type name="VCard_Type_Parameter" type="s"
+    from="Telepathy specification"/>
+  <tp:external-type name="Contact_Info_Field" type="(sasas)"
     from="Telepathy specification"/>
 
   <!-- for localisation -->

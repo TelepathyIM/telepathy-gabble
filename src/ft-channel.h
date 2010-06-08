@@ -95,6 +95,9 @@ void gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
 void gabble_file_transfer_channel_gtalk_file_collection_data_received (
     GabbleFileTransferChannel *self, const gchar *data, guint len);
 
+void
+gabble_file_transfer_channel_do_close (GabbleFileTransferChannel *self);
+
 
 G_END_DECLS
 

@@ -162,7 +162,7 @@ struct _GabbleFileTransferChannelPrivate {
 };
 
 
-static void
+void
 gabble_file_transfer_channel_do_close (GabbleFileTransferChannel *self)
 {
   if (self->priv->closed)

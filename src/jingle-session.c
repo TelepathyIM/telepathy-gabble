@@ -1938,12 +1938,10 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
           if (type == JINGLE_MEDIA_TYPE_VIDEO)
             {
               has_video = TRUE;
-              break;
             }
           else if (type == JINGLE_MEDIA_TYPE_AUDIO)
             {
               has_audio = TRUE;
-              break;
             }
         }
 

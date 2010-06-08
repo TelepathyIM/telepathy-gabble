@@ -1,3 +1,18 @@
+telepathy-gabble 0.8.14 (2010-06-08)
+====================================
+
+The “I look at them on the plate, but they do not look back.” release.
+
+Enhancements:
+
+• On Maemo, when connected to Google Talk, suppress presence updates
+  while the device is idle. (wjt)
+
+Fixes:
+
+• Blocked contacts are no longer unblocked if they're removed from
+  stored. (fd.o#20597, wjt)
+
 telepathy-gabble 0.8.13 (2010-04-16)
 ====================================
 

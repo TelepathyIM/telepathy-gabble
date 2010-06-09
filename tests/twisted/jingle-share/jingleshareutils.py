@@ -12,7 +12,11 @@ from caps_helper import compute_caps_hash, \
 
 import ns
 
+run = 0
+
 def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, client):
+    global run
+    run += 1
 
     conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACT_CAPS)
     conn_contacts_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACTS)
@@ -21,7 +25,7 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     presence = make_presence(contact, status='hello')
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
-    c['ver'] = compute_caps_hash([], [], {})
+    c['ver'] = compute_caps_hash(['client/pc//jingleshareutils-%d' % run], [], {})
     c['ext'] = ""
     stream.send(presence)
 

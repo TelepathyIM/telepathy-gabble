@@ -1215,6 +1215,58 @@ roster_item_cancel_flicker_timeout (GabbleRosterItem *item)
 }
 
 /**
+ * validate_roster_item:
+ * @contact_repo: the handle repository for contacts
+ * @item_node: a child of a <query xmlns='jabber:iq:roster'>, purporting to be
+ *             an <item>
+ * @jid_out: location at which to store the roster item's jid, borrowed from
+ *           @item_node, if the item is valid.
+ *
+ * Returns: a reference to a handle for the roster item, or 0 if the item seems
+ *          to be malformed.
+ */
+static TpHandle
+validate_roster_item (
+    TpHandleRepoIface *contact_repo,
+    LmMessageNode *item_node,
+    const gchar **jid_out)
+{
+  const gchar *jid;
+  TpHandle handle;
+
+  if (strcmp (item_node->name, "item"))
+    {
+      NODE_DEBUG (item_node, "query sub-node is not item, skipping");
+      return 0;
+    }
+
+  jid = lm_message_node_get_attribute (item_node, "jid");
+  if (!jid)
+    {
+      NODE_DEBUG (item_node, "item node has no jid, skipping");
+      return 0;
+    }
+
+  if (strchr (jid, '/') != NULL)
+    {
+      /* Avoid fd.o #12791 */
+      NODE_DEBUG (item_node,
+          "item node has resource in jid, skipping");
+      return 0;
+    }
+
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  if (handle == 0)
+    {
+      NODE_DEBUG (item_node, "item jid is malformed, skipping");
+      return 0;
+    }
+
+  *jid_out = jid;
+  return handle;
+}
+
+/**
  * gabble_roster_iq_cb
  *
  * Called by loudmouth when we get an incoming <iq>. This handler
@@ -1330,33 +1382,11 @@ got_roster_iq (GabbleRoster *roster,
           GabbleRosterItem *item;
           LmMessageNode *item_node = node_iter_data (j);
 
-          if (strcmp (item_node->name, "item"))
-            {
-              NODE_DEBUG (item_node, "query sub-node is not item, skipping");
-              continue;
-            }
+          handle = validate_roster_item (contact_repo, item_node, &jid);
 
-          jid = lm_message_node_get_attribute (item_node, "jid");
-          if (!jid)
-            {
-              NODE_DEBUG (item_node, "item node has no jid, skipping");
-              continue;
-            }
-
-          if (strchr (jid, '/') != NULL)
-            {
-              /* Avoid fd.o #12791 */
-              NODE_DEBUG (item_node,
-                  "item node has resource in jid, skipping");
-              continue;
-            }
-
-          handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
           if (handle == 0)
-            {
-              NODE_DEBUG (item_node, "item jid is malformed, skipping");
-              continue;
-            }
+            continue;
+
           /* transfer ownership of the reference to referenced_handles */
           tp_handle_set_add (referenced_handles, handle);
           tp_handle_unref (contact_repo, handle);

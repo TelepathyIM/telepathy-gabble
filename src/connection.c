@@ -1685,7 +1685,7 @@ bare_jid_disco_cb (GabbleDisco *disco,
           if (!tp_strdiff (category, "pubsub") &&
               !tp_strdiff (type, "pep"))
             {
-              DEBUG ("Server advertise PEP support in our jid features");
+              DEBUG ("Server advertises PEP support in our jid features");
               conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
             }
         }
@@ -2554,7 +2554,7 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 }
 
 /**
- * connection_disco_cb
+ * set_status_to_connected
  *
  * Stage 3 of connecting, this function is called once all the events we were
  * waiting for happened.
@@ -2667,7 +2667,7 @@ connection_disco_cb (GabbleDisco *disco,
               if (!tp_strdiff (category, "pubsub") &&
                   !tp_strdiff (type, "pep"))
                 {
-                  DEBUG ("Server advertise PEP support in its features");
+                  DEBUG ("Server advertises PEP support in its features");
                   conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
                 }
             }

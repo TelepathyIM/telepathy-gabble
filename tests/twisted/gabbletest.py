@@ -87,14 +87,17 @@ def sync_stream(q, stream):
         predicate=(lambda event:
             event.stanza['id'] == id and event.iq_type == 'result'))
 
-class JabberAuthenticator(xmlstream.Authenticator):
-    "Trivial XML stream authenticator that accepts one username/digest pair."
-
+class GabbleAuthenticator(xmlstream.Authenticator):
     def __init__(self, username, password, resource=None):
         self.username = username
         self.password = password
         self.resource = resource
+        self.bare_jid = None
+        self.full_jid = None
         xmlstream.Authenticator.__init__(self)
+
+class JabberAuthenticator(GabbleAuthenticator):
+    "Trivial XML stream authenticator that accepts one username/digest pair."
 
     # Patch in fix from http://twistedmatrix.com/trac/changeset/23418.
     # This monkeypatch taken from Gadget source code
@@ -145,18 +148,18 @@ class JabberAuthenticator(xmlstream.Authenticator):
         if self.resource is not None:
             assertEquals(self.resource, str(resource[0]))
 
+        self.bare_jid = '%s@localhost' % self.username
+        self.full_jid = '%s/%s' % (self.bare_jid, resource)
+
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         self.xmlstream.send(result)
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
 
-class XmppAuthenticator(xmlstream.Authenticator):
+class XmppAuthenticator(GabbleAuthenticator):
     def __init__(self, username, password, resource=None):
-        xmlstream.Authenticator.__init__(self)
-        self.username = username
-        self.password = password
-        self.resource = resource
+        GabbleAuthenticator.__init__(self, username, password, resource)
         self.authenticated = False
 
     def streamStarted(self, root=None):
@@ -201,8 +204,9 @@ class XmppAuthenticator(xmlstream.Authenticator):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         bind = result.addElement((NS_XMPP_BIND, 'bind'))
-        jid = bind.addElement('jid', content=('%s@localhost/%s' %
-                                              (self.username, resource)))
+        self.bare_jid = '%s@localhost' % self.username
+        self.full_jid = '%s/%s' % (self.bare_jid, resource)
+        jid = bind.addElement('jid', content=self.full_jid)
         self.xmlstream.send(result)
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
@@ -340,11 +344,15 @@ class BaseXmlStream(xmlstream.XmlStream):
 
     def _cb_authd(self, _):
         # called when stream is authenticated
+        assert self.authenticator.full_jid is not None
+        assert self.authenticator.bare_jid is not None
+
         self.addObserver(
             "/iq[@to='localhost']/query[@xmlns='http://jabber.org/protocol/disco#info']",
             self._cb_disco_iq)
         self.addObserver(
-            "/iq[@to='test@localhost']/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            "/iq[@to='%s']/query[@xmlns='http://jabber.org/protocol/disco#info']"
+                % self.authenticator.bare_jid,
             self._cb_bare_jid_disco_iq)
         self.event_func(servicetest.Event('stream-authenticated'))
 

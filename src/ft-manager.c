@@ -207,7 +207,7 @@ gabble_ft_manager_dispose (GObject *object)
 
   self->priv->dispose_has_run = TRUE;
 
-  ft_manager_close_all (self);
+  g_assert (self->priv->channels == NULL);
 
   if (G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose (object);

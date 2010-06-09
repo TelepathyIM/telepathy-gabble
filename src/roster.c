@@ -1266,52 +1266,23 @@ validate_roster_item (
   return handle;
 }
 
-/**
- * gabble_roster_iq_cb
+/*
+ * process_roster:
+ * @roster: a roster object
+ * @query_node: a &lt;query xmlns='jabber:iq:roster'/&gt; node
  *
- * Called by loudmouth when we get an incoming <iq>. This handler
- * is concerned only with roster queries, and allows other handlers
- * if queries other than rosters are received.
+ * Processes an incoming roster push.
  */
-static LmHandlerResult
-got_roster_iq (GabbleRoster *roster,
-    LmMessage *message)
+static void
+process_roster (
+    GabbleRoster *roster,
+    LmMessageNode *query_node)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *iq_node, *query_node;
-  LmMessageSubType sub_type;
-  const gchar *from;
   gboolean google_roster = FALSE;
-
-  if (priv->list_channels == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  iq_node = lm_message_get_node (message);
-  query_node = lm_message_node_get_child_with_namespace (iq_node, "query",
-      NS_ROSTER);
-
-  if (query_node == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  from = lm_message_node_get_attribute (
-      wocky_stanza_get_top_node (message), "from");
-
-  if (from != NULL)
-    {
-      TpHandle sender;
-
-      sender = tp_handle_lookup (contact_repo, from, NULL, NULL);
-
-      if (sender != conn->self_handle)
-        {
-           NODE_DEBUG (iq_node, "discarding roster IQ which is not from "
-              "ourselves or the server");
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-    }
 
   if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
@@ -1324,11 +1295,7 @@ got_roster_iq (GabbleRoster *roster,
         google_roster = TRUE;
     }
 
-  sub_type = lm_message_get_sub_type (message);
-
-  /* if this is a result, it's from our initial query. if it's a set,
-   * it's a roster push. either way, parse the items. */
-  switch (sub_type)
+  /* deliberately mis-indented for now, to keep the diff reviewable -smcv */
     {
       TpIntSet *pub_add, *pub_rem,
                *sub_add, *sub_rem, *sub_rp,
@@ -1342,8 +1309,6 @@ got_roster_iq (GabbleRoster *roster,
       guint i;
       NodeIter j;
 
-    case LM_MESSAGE_SUB_TYPE_RESULT:
-    case LM_MESSAGE_SUB_TYPE_SET:
       /* asymmetry is because we don't get locally pending subscription
        * requests via <roster>, we get it via <presence> */
       pub_add = tp_intset_new ();
@@ -1575,20 +1540,6 @@ got_roster_iq (GabbleRoster *roster,
           _gabble_roster_item_remove (roster,
               g_array_index (removed, TpHandle, i));
 
-      if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
-        {
-          /* We are handling the response to our initial roster request. */
-          GArray *members;
-
-          /* If we're subscribed to somebody (subscription=to or =both),
-           * and we haven't received presence from them,
-           * we know they're offline. Let clients know that.
-           */
-          tp_group_mixin_get_members ((GObject *) sub_chan, &members, NULL);
-          conn_presence_emit_presence_update (priv->conn, members);
-          g_array_free (members, TRUE);
-        }
-
       tp_intset_destroy (pub_add);
       tp_intset_destroy (pub_rem);
       tp_intset_destroy (sub_add);
@@ -1599,26 +1550,91 @@ got_roster_iq (GabbleRoster *roster,
       g_array_free (removed, TRUE);
       g_hash_table_destroy (group_update_table);
       tp_handle_set_destroy (referenced_handles);
-      break;
+    }
+}
 
-    default:
-       NODE_DEBUG (iq_node, "unhandled roster IQ");
+/**
+ * gabble_roster_iq_cb
+ *
+ * Called by loudmouth when we get an incoming <iq>. This handler
+ * is concerned only with roster queries, and allows other handlers
+ * if queries other than rosters are received.
+ */
+static LmHandlerResult
+got_roster_iq (GabbleRoster *roster,
+    LmMessage *message)
+{
+  GabbleRosterPrivate *priv = roster->priv;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+  LmMessageNode *iq_node, *query_node;
+  LmMessageSubType sub_type;
+  const gchar *from;
+
+  if (priv->list_channels == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  iq_node = lm_message_get_node (message);
+  query_node = lm_message_node_get_child_with_namespace (iq_node, "query",
+      NS_ROSTER);
+
+  if (query_node == NULL)
+    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+
+  from = lm_message_node_get_attribute (
+      wocky_stanza_get_top_node (message), "from");
+
+  if (from != NULL)
+    {
+      TpHandle sender;
+
+      sender = tp_handle_lookup (contact_repo, from, NULL, NULL);
+
+      if (sender != conn->self_handle)
+        {
+           NODE_DEBUG (iq_node, "discarding roster IQ which is not from "
+              "ourselves or the server");
+          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+        }
+    }
+
+  sub_type = lm_message_get_sub_type (message);
+
+  /* if this is a result, it's from our initial query. if it's a set,
+   * it's a roster push. otherwise, it's not for us. */
+  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
+      sub_type != LM_MESSAGE_SUB_TYPE_SET)
+    {
+      NODE_DEBUG (iq_node, "unhandled roster IQ");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  switch (sub_type)
+  process_roster (roster, query_node);
+
+  if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
     {
-    case LM_MESSAGE_SUB_TYPE_RESULT:
-      /* result means it's a roster push, so the roster is now complete and we
-       * can emit signals */
+      /* We are handling the response to our initial roster request. */
+      GabbleRosterChannel *sub_chan;
+      GArray *members;
+
+      /* If we're subscribed to somebody (subscription=to or =both),
+       * and we haven't received presence from them,
+       * we know they're offline. Let clients know that.
+       */
+      sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
+      tp_group_mixin_get_members ((GObject *) sub_chan, &members, NULL);
+      conn_presence_emit_presence_update (priv->conn, members);
+      g_array_free (members, TRUE);
+
+      /* The roster is now complete and we can emit signals */
       _gabble_roster_received (roster);
-      break;
-    case LM_MESSAGE_SUB_TYPE_SET:
+    }
+  else /* LM_MESSAGE_SUB_TYPE_SET */
+    {
       /* acknowledge roster */
       _gabble_connection_acknowledge_set_iq (priv->conn, message);
-      break;
-    default:
-      break;
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

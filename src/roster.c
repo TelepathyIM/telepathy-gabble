@@ -1282,16 +1282,27 @@ process_roster (
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  gboolean google_roster = FALSE;
-  TpIntSet *pub_add, *pub_rem,
-           *sub_add, *sub_rem, *sub_rp,
-           *stored_add, *stored_rem,
-           *deny_add, *deny_rem;
-  TpHandleSet *referenced_handles;
-  GArray *removed;
+
+  /* asymmetry is because we don't get locally pending subscription
+   * requests via <roster>, we get it via <presence> */
+  TpIntSet *pub_add = tp_intset_new (),
+           *pub_rem = tp_intset_new (),
+           *sub_add = tp_intset_new (),
+           *sub_rem = tp_intset_new (),
+           *sub_rp = tp_intset_new (),
+           *stored_add = tp_intset_new (),
+           *stored_rem = tp_intset_new ();
+  /* We may not have a deny list */
+  TpIntSet *deny_add, *deny_rem;
+
+  GHashTable *group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
+      (GDestroyNotify) _group_mem_update_destroy);
+  TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
+  GArray *removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+
   TpHandle handle;
   GabbleRosterChannel *pub_chan, *sub_chan, *chan;
-  GHashTable *group_update_table;
+  gboolean google_roster = FALSE;
   guint i;
   NodeIter j;
 
@@ -1305,20 +1316,6 @@ process_roster (
       if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
         google_roster = TRUE;
     }
-
-  /* asymmetry is because we don't get locally pending subscription
-   * requests via <roster>, we get it via <presence> */
-  pub_add = tp_intset_new ();
-  pub_rem = tp_intset_new ();
-  sub_add = tp_intset_new ();
-  sub_rem = tp_intset_new ();
-  sub_rp = tp_intset_new ();
-  stored_add = tp_intset_new ();
-  stored_rem = tp_intset_new ();
-  group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
-      (GDestroyNotify)_group_mem_update_destroy);
-  removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-  referenced_handles = tp_handle_set_new (contact_repo);
 
   if (google_roster)
     {

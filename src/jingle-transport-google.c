@@ -241,10 +241,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
   GabbleJingleTransportGooglePrivate *priv = t->priv;
   GList *candidates = NULL;
-  JingleMediaType media_type;
   NodeIter i;
-
-  g_object_get (priv->content, "media-type", &media_type, NULL);
 
   for (i = node_iter (transport_node); i; i = node_iter_next (i))
     {
@@ -266,8 +263,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (!g_hash_table_lookup_extended (priv->component_names, name,
               NULL, NULL))
         {
-          DEBUG ("Couldn't find name %s in share channels", name);
-          break;
+          DEBUG ("component name %s unknown to this transport", name);
+          continue;
         }
 
       component = GPOINTER_TO_INT (g_hash_table_lookup (priv->component_names,

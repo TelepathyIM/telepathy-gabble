@@ -766,6 +766,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   static TpDBusPropertiesMixinPropImpl location_props[] = {
         { "LocationAccessControlTypes", NULL, NULL },
         { "LocationAccessControl", NULL, NULL },
+        { "SupportedLocationFeatures", NULL, NULL },
         { NULL }
   };
   static TpDBusPropertiesMixinPropImpl decloak_props[] = {

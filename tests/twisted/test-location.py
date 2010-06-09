@@ -12,6 +12,10 @@ import ns
 Rich_Presence_Access_Control_Type_Publish_List = 1
 
 def test(q, bus, conn, stream):
+    # we don't yet know we have PEP
+    assertEquals(0, conn.Get(cs.CONN_IFACE_LOCATION,
+        "SupportedLocationFeatures", dbus_interface=cs.PROPERTIES_IFACE))
+
     conn.Connect()
 
     # discard activities request and status change
@@ -21,6 +25,10 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
         )
+
+    # we now know we have PEP
+    assertEquals(cs.LOCATION_FEATURE_CAN_SET, conn.Get(cs.CONN_IFACE_LOCATION,
+        "SupportedLocationFeatures", dbus_interface=cs.PROPERTIES_IFACE))
 
     # check location properties
 

@@ -372,6 +372,8 @@ conn_location_properties_getter (GObject *object,
                                  GValue *value,
                                  gpointer getter_data)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (object);
+
   if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
     {
       guint access_control_type =
@@ -407,6 +409,15 @@ conn_location_properties_getter (GObject *object,
       tp_g_value_slice_free (allocated_value);
 
       g_value_take_boxed (value, access_control);
+    }
+  else if (name == g_quark_from_static_string ("SupportedLocationFeatures"))
+    {
+      TpLocationFeatures flags = 0;
+
+      if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
+        flags |= TP_LOCATION_FEATURE_CAN_SET;
+
+      g_value_set_uint (value, flags);
     }
   else
     {

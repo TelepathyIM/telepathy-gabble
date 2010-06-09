@@ -11,7 +11,7 @@ check_hash (LmMessage *stanza,
 
   hash = caps_hash_compute_from_lm_node (
       wocky_stanza_get_top_node (stanza));
-  g_assert (!tp_strdiff (hash, expected));
+  g_assert_cmpstr (hash, ==, expected);
   lm_message_unref (stanza);
   g_free (hash);
   return TRUE;

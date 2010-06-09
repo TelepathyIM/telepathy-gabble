@@ -169,8 +169,8 @@ gabble_file_transfer_channel_do_close (GabbleFileTransferChannel *self)
     return;
 
   DEBUG ("Emitting closed signal for %s", self->priv->object_path);
-  tp_svc_channel_emit_closed (self);
   self->priv->closed = TRUE;
+  tp_svc_channel_emit_closed (self);
 }
 
 static void

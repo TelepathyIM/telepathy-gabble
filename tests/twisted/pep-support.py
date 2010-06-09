@@ -11,6 +11,29 @@ import ns
 
 # PEP supports is advertised in Server's disco which is wrong but that's what
 # old ejabberd used to do.
+class PepInServerDiscoXmlStream(BaseXmlStream):
+    version = (1, 0)
+
+    def _cb_disco_iq(self, iq):
+        # Advertise PEP support in server disco rather than when discoing our
+        # bare JID
+        nodes = xpath.queryForNodes(
+            "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            iq)
+        query = nodes[0]
+        identity = query.addElement('identity')
+        identity['category'] = 'pubsub'
+        identity['type'] = 'pep'
+
+        iq['type'] = 'result'
+        iq['from'] = 'localhost'
+        self.send(iq)
+
+    def _cb_bare_jid_disco_iq(self, iq):
+        iq['type'] = 'result'
+        iq['from'] = iq['to']
+        self.send(iq)
+
 def test_legacy(q, bus, conn, stream):
     conn.Connect()
 
@@ -61,30 +84,7 @@ def test_pep(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
     q.expect('dbus-return', method='SetLocation')
 
-class PEPinJidDiscoXmppStream(BaseXmlStream):
-    version = (1, 0)
-
-    def _cb_disco_iq(self, iq):
-        # Server disco doesn't contain PEP
-        iq['type'] = 'result'
-        iq['from'] = 'localhost'
-        self.send(iq)
-
-    def _cb_bare_jid_disco_iq(self, iq):
-        # ...but our own jid disco does
-        nodes = xpath.queryForNodes(
-            "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
-            iq)
-        query = nodes[0]
-        identity = query.addElement('identity')
-        identity['category'] = 'pubsub'
-        identity['type'] = 'pep'
-
-        iq['type'] = 'result'
-        iq['from'] = iq['to']
-        self.send(iq)
-
 if __name__ == '__main__':
-    exec_test(test_legacy)
+    exec_test(test_legacy, protocol=PepInServerDiscoXmlStream)
     exec_test(test_no_pep, protocol=GoogleXmlStream)
-    exec_test(test_pep, protocol=PEPinJidDiscoXmppStream)
+    exec_test(test_pep)

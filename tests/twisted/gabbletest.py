@@ -349,10 +349,12 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.event_func(servicetest.Event('stream-authenticated'))
 
     def _cb_disco_iq(self, iq):
-        # add PEP support
-        # This is actually wrong. PEP support should be advertised when
-        # discoing user's bare JID, not the server. Lot of old ejabberd
-        # versions still behave this way though.
+        iq['type'] = 'result'
+        iq['from'] = iq['to']
+        self.send(iq)
+
+    def _cb_bare_jid_disco_iq(self, iq):
+        # advertise PEP support
         nodes = xpath.queryForNodes(
             "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
             iq)
@@ -361,11 +363,6 @@ class BaseXmlStream(xmlstream.XmlStream):
         identity['category'] = 'pubsub'
         identity['type'] = 'pep'
 
-        iq['type'] = 'result'
-        iq['from'] = iq['to']
-        self.send(iq)
-
-    def _cb_bare_jid_disco_iq(self, iq):
         iq['type'] = 'result'
         iq['from'] = iq['to']
         self.send(iq)
@@ -401,6 +398,13 @@ class GoogleXmlStream(BaseXmlStream):
             iq['type'] = 'result'
             iq['from'] = 'localhost'
             self.send(iq)
+
+    def _cb_bare_jid_disco_iq(self, iq):
+        # Google talk doesn't support PEP :(
+        iq['type'] = 'result'
+        iq['from'] = iq['to']
+        self.send(iq)
+
 
 def make_connection(bus, event_func, params=None, suffix=''):
     # Gabble accepts a resource in 'account', but the value of 'resource'

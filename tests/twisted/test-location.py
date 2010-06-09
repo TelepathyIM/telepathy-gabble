@@ -2,7 +2,7 @@ import dbus
 import time
 import datetime
 
-from gabbletest import exec_test, make_result_iq, elem
+from gabbletest import exec_test, make_result_iq, elem, acknowledge_iq, send_error_reply
 from servicetest import call_async, EventPattern, assertEquals, assertLength
 
 from twisted.words.xish import xpath
@@ -101,7 +101,7 @@ def test(q, bus, conn, stream):
     date_str = datetime.datetime.utcfromtimestamp(date).strftime('%FT%H:%M:%SZ')
 
     # set a Location
-    conn.Location.SetLocation({
+    call_async(q, conn.Location, 'SetLocation', {
         'lat': dbus.Double(0.0, variant_level=1),
         'lon': 0.0,
         'language': 'en',
@@ -127,6 +127,21 @@ def test(q, bus, conn, stream):
     assertEquals(str(country), 'Congo')
     lat = xpath.queryForNodes('/geoloc/accuracy', geoloc)[0]
     assertEquals(float(str(lat)), 1.4)
+
+    acknowledge_iq(stream, event.stanza)
+    q.expect('dbus-return', method='SetLocation')
+
+    # Server refuses to set Location
+    call_async(q, conn.Location, 'SetLocation', {
+        'lat': 0.0,
+        'lon': 0.0})
+
+    geoloc_iq_set_event = EventPattern('stream-iq', predicate=lambda x:
+        xpath.queryForNodes("/iq/pubsub/publish/item/geoloc", x.stanza))
+    event = q.expect_many(geoloc_iq_set_event)[0]
+
+    send_error_reply(stream, event.stanza)
+    q.expect('dbus-error', method='SetLocation')
 
     # Request Bob's location
     bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]

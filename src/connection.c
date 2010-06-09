@@ -243,6 +243,10 @@ struct _GabbleConnectionPrivate
   /* timer used when trying to properly disconnect */
   guint disconnect_timer;
 
+  /* Number of things we are waiting for before changing the connection status
+   * to connected */
+  guint waiting_connected;
+
   gboolean closing;
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -1242,6 +1246,17 @@ OUT:
   return result;
 }
 
+static const gchar *
+get_bare_jid (GabbleConnection *conn)
+{
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandle self = tp_base_connection_get_self_handle (base);
+
+  return tp_handle_inspect (contact_handles, self);
+}
+
 /**
  * gabble_connection_get_full_jid:
  *
@@ -1251,11 +1266,7 @@ OUT:
 gchar *
 gabble_connection_get_full_jid (GabbleConnection *conn)
 {
-  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  TpHandle self = tp_base_connection_get_self_handle (base);
-  const gchar *bare_jid = tp_handle_inspect (contact_handles, self);
+  const gchar *bare_jid = get_bare_jid (conn);
 
   return g_strconcat (bare_jid, "/", conn->priv->resource, NULL);
 }
@@ -1467,6 +1478,7 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
     LmConnection *, LmMessage *, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
+static void decrement_waiting_connected (GabbleConnection *connection);
 
 static void
 remote_closed_cb (WockyPorter *porter,
@@ -1662,13 +1674,53 @@ connector_error_disconnect (GabbleConnection *self,
       TP_CONNECTION_STATUS_DISCONNECTED, reason);
 }
 
+static void
+bare_jid_disco_cb (GabbleDisco *disco,
+    GabbleDiscoRequest *request,
+    const gchar *jid,
+    const gchar *node,
+    LmMessageNode *result,
+    GError *disco_error,
+    gpointer user_data)
+{
+  GabbleConnection *conn = user_data;
+  NodeIter i;
+
+  if (disco_error != NULL)
+    {
+      DEBUG ("Got disco error on bare jid: %s", disco_error->message);
+      return;
+    }
+
+  for (i = node_iter (result); i; i = node_iter_next (i))
+    {
+      LmMessageNode *child = node_iter_data (i);
+
+      if (!tp_strdiff (child->name, "identity"))
+        {
+          const gchar *category = lm_message_node_get_attribute (child,
+              "category");
+          const gchar *type = lm_message_node_get_attribute (child, "type");
+
+          if (!tp_strdiff (category, "pubsub") &&
+              !tp_strdiff (type, "pep"))
+            {
+              DEBUG ("Server advertises PEP support in our jid features");
+              conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+            }
+        }
+    }
+
+  decrement_waiting_connected (conn);
+}
+
 /**
  * connector_connected
  *
  * Stage 2 of connecting, this function is called once the connect operation
  * has finished. It checks if the connection succeeded, creates and starts
- * the WockyPorter, then sends a discovery request to find the
- * server's features.
+ * the WockyPorter, then sends two discovery requests to find the
+ * server's features (one to the server and one to our bare jid).
  */
 static void
 connector_connected (GabbleConnection *self,
@@ -1763,6 +1815,7 @@ connector_connected (GabbleConnection *self,
   /* set initial capabilities */
   gabble_connection_refresh_capabilities (self, NULL);
 
+  /* Disco server features */
   if (!gabble_disco_request_with_timeout (self->disco, GABBLE_DISCO_TYPE_INFO,
                                           priv->stream_server, NULL,
                                           disco_reply_timeout,
@@ -1778,6 +1831,23 @@ connector_connected (GabbleConnection *self,
           TP_CONNECTION_STATUS_DISCONNECTED,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
     }
+
+  /* Disco our own bare jid to check if PEP is supported */
+  if (!gabble_disco_request_with_timeout (self->disco, GABBLE_DISCO_TYPE_INFO,
+      get_bare_jid (self), NULL, disco_reply_timeout, bare_jid_disco_cb, self,
+      G_OBJECT (self), &error))
+    {
+      DEBUG ("Sending disco request to our own bare jid failed: %s",
+          error->message);
+
+      g_error_free (error);
+
+      tp_base_connection_change_status ((TpBaseConnection *) self,
+          TP_CONNECTION_STATUS_DISCONNECTED,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+    }
+
+  self->priv->waiting_connected = 2;
 }
 
 static void
@@ -1895,7 +1965,7 @@ disconnect_callbacks (TpBaseConnection *base)
  *
  * Stage 1 is _gabble_connection_connect calling wocky_connector_connect_async
  * Stage 2 is connector_connected initiating service discovery
- * Stage 3 is connection_disco_cb advertising initial presence, requesting
+ * Stage 3 is set_status_to_connected advertising initial presence, requesting
  *   the roster and setting the CONNECTED state
  */
 static gboolean
@@ -2539,13 +2609,68 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 }
 
 /**
- * connection_disco_cb
+ * set_status_to_connected
  *
- * Stage 3 of connecting, this function is called by GabbleDisco after the
- * result of the non-blocking server feature discovery call is known. It sends
- * the user's initial presence to the server, marking them as available,
- * and requests the roster.
+ * Stage 3 of connecting, this function is called once all the events we were
+ * waiting for happened.
+ * It sends the user's initial presence to the server, marking them as
+ * available, and requests the roster.
  */
+static void
+set_status_to_connected (GabbleConnection *conn)
+{
+  GError *error = NULL;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
+    {
+      const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
+          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
+          NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
+  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+    {
+       const gchar *ifaces[] =
+         { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
+  /* send presence to the server to indicate availability */
+  /* TODO: some way for the user to set this */
+  if (!conn_presence_signal_own_presence (conn, NULL, &error))
+    {
+      DEBUG ("sending initial presence failed: %s", error->message);
+      goto ERROR;
+    }
+
+  /* go go gadget on-line */
+  tp_base_connection_change_status (base,
+      TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
+
+  return;
+
+ERROR:
+  if (error != NULL)
+    g_error_free (error);
+
+  tp_base_connection_change_status (base,
+      TP_CONNECTION_STATUS_DISCONNECTED,
+      TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+}
+
+static void
+decrement_waiting_connected (GabbleConnection *conn)
+{
+  conn->priv->waiting_connected--;
+
+  if (conn->priv->waiting_connected == 0)
+    set_status_to_connected (conn);
+}
+
 static void
 connection_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
@@ -2596,8 +2721,10 @@ connection_disco_cb (GabbleDisco *disco,
 
               if (!tp_strdiff (category, "pubsub") &&
                   !tp_strdiff (type, "pep"))
-                /* XXX: should we also check for specific PubSub <feature>s? */
-                conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+                {
+                  DEBUG ("Server advertises PEP support in its features");
+                  conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+                }
             }
           else if (0 == strcmp (child->name, "feature"))
             {
@@ -2622,35 +2749,7 @@ connection_disco_cb (GabbleDisco *disco,
       DEBUG ("set features flags to %d", conn->features);
     }
 
-  if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
-    {
-      const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
-          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
-          NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
-    }
-
-  if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
-    {
-       const gchar *ifaces[] =
-         { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
-    }
-
-  /* send presence to the server to indicate availability */
-  /* TODO: some way for the user to set this */
-  if (!conn_presence_signal_own_presence (conn, NULL, &error))
-    {
-      DEBUG ("sending initial presence failed: %s", error->message);
-      goto ERROR;
-    }
-
-  /* go go gadget on-line */
-  tp_base_connection_change_status (base,
-      TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
-
+  decrement_waiting_connected (conn);
   return;
 
 ERROR:

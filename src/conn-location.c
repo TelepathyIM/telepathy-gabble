@@ -265,6 +265,35 @@ add_to_geoloc_node (const gchar *tp_name,
   return TRUE;
 }
 
+static LmHandlerResult
+set_location_sent_cb (GabbleConnection *conn,
+    LmMessage *sent_msg,
+    LmMessage *reply_msg,
+    GObject *object,
+    gpointer user_data)
+{
+  DBusGMethodInvocation *context = user_data;
+  GError *error = NULL;
+
+  error = gabble_message_get_xmpp_error (reply_msg);
+  if (error == NULL)
+    {
+      dbus_g_method_return (context);
+    }
+  else
+    {
+      GError tp_error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          error->message };
+
+      DEBUG ("SetLocation failed: %s", error->message);
+
+      dbus_g_method_return_error (context, &tp_error);
+      g_error_free (error);
+    }
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 static void
 location_set_location (TpSvcConnectionInterfaceLocation *iface,
                        GHashTable *location,
@@ -311,16 +340,14 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
         }
     }
 
-  /* XXX: use _ignore_reply */
-  if (!_gabble_connection_send (conn, msg, NULL))
+  if (!_gabble_connection_send_with_reply (conn, msg, set_location_sent_cb,
+        G_OBJECT (conn), context, NULL))
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
           "Failed to send msg" };
 
       dbus_g_method_return_error (context, &error);
     }
-  else
-    dbus_g_method_return (context);
 
 out:
   lm_message_unref (msg);

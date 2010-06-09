@@ -464,21 +464,31 @@ _google_roster_item_should_keep (const gchar *jid,
 }
 
 static GabbleRosterItem *
-_gabble_roster_item_get (GabbleRoster *roster,
-                         TpHandle handle)
+_gabble_roster_item_lookup (GabbleRoster *roster,
+    TpHandle handle)
 {
   GabbleRosterPrivate *priv = roster->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
-  GabbleRosterItem *item;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
+  return g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
+}
+
+static GabbleRosterItem *
+_gabble_roster_item_ensure (GabbleRoster *roster,
+    TpHandle handle)
+{
+  GabbleRosterPrivate *priv = roster->priv;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItem *item;
+
+  item = _gabble_roster_item_lookup (roster, handle);
+
+  g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
   if (NULL == item)
     {
@@ -621,7 +631,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
   g_assert (tp_handle_is_valid (ctx.contact_repo, contact_handle, NULL));
   g_assert (node != NULL);
 
-  item = _gabble_roster_item_get (roster, contact_handle);
+  item = _gabble_roster_item_ensure (roster, contact_handle);
 
   item->subscription = _parse_item_subscription (node);
 
@@ -803,7 +813,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
   if (!item)
-    item = _gabble_roster_item_get (roster, handle);
+    item = _gabble_roster_item_ensure (roster, handle);
 
   message = _gabble_roster_message_new (roster, LM_MESSAGE_SUB_TYPE_SET,
       &query_node);
@@ -2302,11 +2312,11 @@ roster_edited_cb (GabbleConnection *conn,
 {
   GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
   TpHandle contact = GPOINTER_TO_UINT (user_data);
-  GabbleRosterItem *item = _gabble_roster_item_get (roster, contact);
+  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, contact);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
-  if (item->unsent_edits)
+  if (item != NULL && item->unsent_edits != NULL)
     {
       /* more edits have been queued since we sent this batch */
       roster_item_apply_edits (roster, contact, item);
@@ -2361,7 +2371,7 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   g_return_val_if_fail (priv->conn->features &
       GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER, FALSE);
 
-  item = _gabble_roster_item_get (roster, handle);
+  item = _gabble_roster_item_ensure (roster, handle);
   orig_type = item->google_type;
 
   if (item->unsent_edits)
@@ -2472,7 +2482,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
       FALSE);
   g_return_val_if_fail (name != NULL, FALSE);
 
-  item = _gabble_roster_item_get (roster, handle);
+  item = _gabble_roster_item_ensure (roster, handle);
   g_return_val_if_fail (item != NULL, FALSE);
 
   if (item->unsent_edits)
@@ -2526,7 +2536,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
 
-  item = _gabble_roster_item_get (roster, handle);
+  item = _gabble_roster_item_ensure (roster, handle);
 
   if (item->unsent_edits)
     {
@@ -2591,7 +2601,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
   if (!gabble_roster_handle_has_entry (roster, handle))
       do_add = TRUE;
 
-  item = _gabble_roster_item_get (roster, handle);
+  item = _gabble_roster_item_ensure (roster, handle);
 
   if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
     do_add = TRUE;
@@ -2651,7 +2661,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
       FALSE);
 
-  item = _gabble_roster_item_get (roster, handle);
+  item = _gabble_roster_item_ensure (roster, handle);
 
   if (item->unsent_edits)
     {
@@ -2713,7 +2723,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
       FALSE);
 
-  item = _gabble_roster_item_get (roster, handle);
+  item = _gabble_roster_item_ensure (roster, handle);
 
   if (item->unsent_edits)
     {

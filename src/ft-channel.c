@@ -828,11 +828,11 @@ gabble_file_transfer_channel_dispose (GObject *object)
 
   DEBUG ("dispose called");
   self->priv->dispose_has_run = TRUE;
+  gabble_file_transfer_channel_do_close (self);
 
   tp_handle_unref (handle_repo, self->priv->handle);
   tp_handle_unref (handle_repo, self->priv->initiator);
 
-  gabble_file_transfer_channel_do_close (self);
 
   if (self->priv->progress_timer != 0)
     {

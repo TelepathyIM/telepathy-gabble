@@ -1408,7 +1408,7 @@ process_roster (
             {
               if (tp_handle_set_is_member (sub_chan->group.members, handle))
                 {
-                  DEBUG("not letting gtalk demote member %u to pending",
+                  DEBUG ("not letting gtalk demote member %u to pending",
                       handle);
                 }
               else
@@ -1547,7 +1547,7 @@ process_roster (
 }
 
 /**
- * gabble_roster_iq_cb
+ * got_roster_iq:
  *
  * Called by loudmouth when we get an incoming <iq>. This handler
  * is concerned only with roster queries, and allows other handlers

@@ -69,8 +69,8 @@ char_cmp (gconstpointer a, gconstpointer b)
 static gint
 identity_cmp (gconstpointer a, gconstpointer b)
 {
-  GabbleDiscoIdentity *left = (GabbleDiscoIdentity *) a;
-  GabbleDiscoIdentity *right = (GabbleDiscoIdentity *) b;
+  GabbleDiscoIdentity *left = *(GabbleDiscoIdentity **) a;
+  GabbleDiscoIdentity *right = *(GabbleDiscoIdentity **) b;
   gint ret;
 
   if ((ret = strcmp (left->category, right->category)) != 0)

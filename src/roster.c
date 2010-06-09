@@ -1283,6 +1283,17 @@ process_roster (
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
   gboolean google_roster = FALSE;
+  TpIntSet *pub_add, *pub_rem,
+           *sub_add, *sub_rem, *sub_rp,
+           *stored_add, *stored_rem,
+           *deny_add, *deny_rem;
+  TpHandleSet *referenced_handles;
+  GArray *removed;
+  TpHandle handle;
+  GabbleRosterChannel *pub_chan, *sub_chan, *chan;
+  GHashTable *group_update_table;
+  guint i;
+  NodeIter j;
 
   if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
@@ -1294,20 +1305,6 @@ process_roster (
       if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
         google_roster = TRUE;
     }
-
-  /* deliberately mis-indented for now, to keep the diff reviewable -smcv */
-    {
-      TpIntSet *pub_add, *pub_rem,
-               *sub_add, *sub_rem, *sub_rp,
-               *stored_add, *stored_rem,
-               *deny_add, *deny_rem;
-      TpHandleSet *referenced_handles;
-      GArray *removed;
-      TpHandle handle;
-      GabbleRosterChannel *pub_chan, *sub_chan, *chan;
-      GHashTable *group_update_table;
-      guint i;
-      NodeIter j;
 
       /* asymmetry is because we don't get locally pending subscription
        * requests via <roster>, we get it via <presence> */
@@ -1550,7 +1547,6 @@ process_roster (
       g_array_free (removed, TRUE);
       g_hash_table_destroy (group_update_table);
       tp_handle_set_destroy (referenced_handles);
-    }
 }
 
 /**

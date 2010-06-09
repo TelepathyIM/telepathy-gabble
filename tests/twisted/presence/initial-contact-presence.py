@@ -36,10 +36,10 @@ def test(q, bus, conn, stream):
 
     q.expect('dbus-signal', signal='PresencesChanged',
         args=[{amy: (cs.PRESENCE_OFFLINE, u'offline', u''),
-               bob: (cs.PRESENCE_OFFLINE, u'offline', u'')}])
+               che: (cs.PRESENCE_OFFLINE, u'offline', u'')}])
     assertEquals({amy: (cs.PRESENCE_OFFLINE, u'offline', u''),
-                  bob: (cs.PRESENCE_OFFLINE, u'offline', u''),
-                  che: (cs.PRESENCE_UNKNOWN, u'unknown', u'')},
+                  bob: (cs.PRESENCE_UNKNOWN, u'unknown', u''),
+                  che: (cs.PRESENCE_OFFLINE, u'offline', u'')},
         conn.SimplePresence.GetPresences([amy, bob, che]))
 
 if __name__ == '__main__':

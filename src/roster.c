@@ -1214,8 +1214,334 @@ roster_item_cancel_flicker_timeout (GabbleRosterItem *item)
     }
 }
 
+static gboolean
+is_google_roster_push (
+    GabbleRoster *roster,
+    LmMessageNode *query_node)
+{
+  if (roster->priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+    {
+      const char *gr_ext = lm_message_node_get_attribute_with_namespace (
+          query_node, "ext", NS_GOOGLE_ROSTER);
+
+      if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
 /**
- * gabble_roster_iq_cb
+ * validate_roster_item:
+ * @contact_repo: the handle repository for contacts
+ * @item_node: a child of a <query xmlns='jabber:iq:roster'>, purporting to be
+ *             an <item>
+ * @jid_out: location at which to store the roster item's jid, borrowed from
+ *           @item_node, if the item is valid.
+ *
+ * Returns: a reference to a handle for the roster item, or 0 if the item seems
+ *          to be malformed.
+ */
+static TpHandle
+validate_roster_item (
+    TpHandleRepoIface *contact_repo,
+    LmMessageNode *item_node,
+    const gchar **jid_out)
+{
+  const gchar *jid;
+  TpHandle handle;
+
+  if (strcmp (item_node->name, "item"))
+    {
+      NODE_DEBUG (item_node, "query sub-node is not item, skipping");
+      return 0;
+    }
+
+  jid = lm_message_node_get_attribute (item_node, "jid");
+  if (!jid)
+    {
+      NODE_DEBUG (item_node, "item node has no jid, skipping");
+      return 0;
+    }
+
+  if (strchr (jid, '/') != NULL)
+    {
+      /* Avoid fd.o #12791 */
+      NODE_DEBUG (item_node,
+          "item node has resource in jid, skipping");
+      return 0;
+    }
+
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  if (handle == 0)
+    {
+      NODE_DEBUG (item_node, "item jid is malformed, skipping");
+      return 0;
+    }
+
+  *jid_out = jid;
+  return handle;
+}
+
+/*
+ * process_roster:
+ * @roster: a roster object
+ * @query_node: a &lt;query xmlns='jabber:iq:roster'/&gt; node
+ *
+ * Processes an incoming roster push.
+ */
+static void
+process_roster (
+    GabbleRoster *roster,
+    LmMessageNode *query_node)
+{
+  GabbleRosterPrivate *priv = roster->priv;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+
+  /* asymmetry is because we don't get locally pending subscription
+   * requests via <roster>, we get it via <presence> */
+  TpIntSet *pub_add = tp_intset_new (),
+           *pub_rem = tp_intset_new (),
+           *sub_add = tp_intset_new (),
+           *sub_rem = tp_intset_new (),
+           *sub_rp = tp_intset_new (),
+           *stored_add = tp_intset_new (),
+           *stored_rem = tp_intset_new ();
+  /* We may not have a deny list */
+  TpIntSet *deny_add, *deny_rem;
+
+  GHashTable *group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
+      (GDestroyNotify) _group_mem_update_destroy);
+  TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
+
+  GabbleRosterChannel *pub_chan, *sub_chan, *chan;
+  gboolean google_roster = is_google_roster_push (roster, query_node);
+  NodeIter j;
+
+  if (google_roster)
+    {
+      deny_add = tp_intset_new ();
+      deny_rem = tp_intset_new ();
+    }
+  else
+    {
+      deny_add = NULL;
+      deny_rem = NULL;
+    }
+
+  /* we need these for preserving "fragile" local/remote pending states */
+  pub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+      GABBLE_LIST_HANDLE_PUBLISH, NULL, NULL);
+  sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+      GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
+
+  /* iterate every sub-node, which we expect to be <item>s */
+  for (j = node_iter (query_node); j; j = node_iter_next (j))
+    {
+      LmMessageNode *item_node = node_iter_data (j);
+      const char *jid;
+      TpHandle handle;
+      GabbleRosterItem *item;
+
+      handle = validate_roster_item (contact_repo, item_node, &jid);
+
+      if (handle == 0)
+        continue;
+
+      /* transfer ownership of the reference to referenced_handles */
+      tp_handle_set_add (referenced_handles, handle);
+      tp_handle_unref (contact_repo, handle);
+
+      item = _gabble_roster_item_update (roster, handle, item_node,
+                                         group_update_table,
+                                         google_roster);
+#ifdef ENABLE_DEBUG
+      if (DEBUGGING)
+        {
+          gchar *dump = _gabble_roster_item_dump (item);
+          DEBUG ("jid: %s, %s", jid, dump);
+          g_free (dump);
+        }
+#endif
+
+      /* handle publish list changes */
+      switch (item->subscription)
+        {
+        case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+        case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+          if (google_roster && !_google_roster_item_should_keep (jid, item))
+            tp_intset_add (pub_rem, handle);
+          else
+            tp_intset_add (pub_add, handle);
+          break;
+        case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+        case GABBLE_ROSTER_SUBSCRIPTION_TO:
+        case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+          /* publish channel is a bit odd, the roster item doesn't tell us
+           * if someone is awaiting our approval - we get this via presence
+           * type=subscribe, so we have to not remove them if they're
+           * already local_pending in our publish channel */
+          if (!tp_handle_set_is_member (pub_chan->group.local_pending,
+                handle))
+            {
+              tp_intset_add (pub_rem, handle);
+            }
+          break;
+        default:
+          g_assert_not_reached ();
+        }
+
+      /* handle subscribe list changes */
+      switch (item->subscription)
+        {
+        case GABBLE_ROSTER_SUBSCRIPTION_TO:
+        case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+          if (google_roster && !_google_roster_item_should_keep (jid, item))
+            tp_intset_add (sub_rem, handle);
+          else
+            tp_intset_add (sub_add, handle);
+
+          roster_item_cancel_flicker_timeout (item);
+
+          break;
+        case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+        case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+          if (item->ask_subscribe)
+            {
+              if (tp_handle_set_is_member (sub_chan->group.members, handle))
+                {
+                  DEBUG ("not letting gtalk demote member %u to pending",
+                      handle);
+                }
+              else
+                {
+                  if (item->flicker_prevention_id == 0)
+                    roster_item_ensure_flicker_timeout (roster, handle, item);
+                  else
+                    roster_item_cancel_flicker_timeout (item);
+
+                  tp_intset_add (sub_rp, handle);
+                }
+            }
+          else if (item->flicker_prevention_id == 0)
+            {
+              /* We're not expecting this contact's ask=subscribe to
+               * flicker off and on again, so let's remove them immediately.
+               */
+              tp_intset_add (sub_rem, handle);
+            }
+          else
+            {
+              DEBUG ("delaying removal of %s from pending", jid);
+            }
+          break;
+        case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+          tp_intset_add (sub_rem, handle);
+          break;
+        default:
+          g_assert_not_reached ();
+        }
+
+      /* handle stored list changes */
+      switch (item->subscription)
+        {
+        case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+        case GABBLE_ROSTER_SUBSCRIPTION_TO:
+        case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+        case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+          if (google_roster &&
+              /* Don't hide contacts from stored if they're remote pending.
+               * This works around Google Talk flickering ask="subscribe"
+               * when you try to subscribe to someone; see
+               * test-google-roster.py.
+               */
+              !tp_handle_set_is_member (sub_chan->group.remote_pending,
+                  handle) &&
+              !_google_roster_item_should_keep (jid, item))
+            tp_intset_add (stored_rem, handle);
+          else
+            tp_intset_add (stored_add, handle);
+          break;
+        case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+          tp_intset_add (stored_rem, handle);
+          break;
+        default:
+          g_assert_not_reached ();
+        }
+
+      /* handle deny list changes */
+      if (google_roster)
+        {
+          switch (item->subscription)
+            {
+            case GABBLE_ROSTER_SUBSCRIPTION_NONE:
+            case GABBLE_ROSTER_SUBSCRIPTION_TO:
+            case GABBLE_ROSTER_SUBSCRIPTION_FROM:
+            case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
+              if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
+                tp_intset_add (deny_add, handle);
+              else
+                tp_intset_add (deny_rem, handle);
+              break;
+            case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
+              tp_intset_add (deny_rem, handle);
+              break;
+            default:
+              g_assert_not_reached ();
+            }
+        }
+
+      /* Remove removed contacts from the roster. */
+      if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
+        _gabble_roster_item_remove (roster, handle);
+    }
+
+  DEBUG ("calling change members on publish channel");
+  tp_group_mixin_change_members ((GObject *) pub_chan,
+        "", pub_add, pub_rem, NULL, NULL, 0, 0);
+
+  DEBUG ("calling change members on subscribe channel");
+  tp_group_mixin_change_members ((GObject *) sub_chan,
+        "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
+
+  chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+      GABBLE_LIST_HANDLE_STORED, NULL, NULL);
+
+  DEBUG ("calling change members on stored channel");
+  tp_group_mixin_change_members ((GObject *) chan,
+        "", stored_add, stored_rem, NULL, NULL, 0, 0);
+
+  DEBUG ("calling change members on any group channels");
+  g_hash_table_foreach_remove (group_update_table, _update_group, roster);
+
+  if (google_roster)
+    {
+      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          GABBLE_LIST_HANDLE_DENY, NULL, NULL);
+
+      DEBUG ("calling change members on deny channel");
+      tp_group_mixin_change_members ((GObject *) chan,
+          "", deny_add, deny_rem, NULL, NULL, 0, 0);
+
+      tp_intset_destroy (deny_add);
+      tp_intset_destroy (deny_rem);
+    }
+
+  tp_intset_destroy (pub_add);
+  tp_intset_destroy (pub_rem);
+  tp_intset_destroy (sub_add);
+  tp_intset_destroy (sub_rem);
+  tp_intset_destroy (sub_rp);
+  tp_intset_destroy (stored_add);
+  tp_intset_destroy (stored_rem);
+  g_hash_table_destroy (group_update_table);
+  tp_handle_set_destroy (referenced_handles);
+}
+
+/**
+ * got_roster_iq:
  *
  * Called by loudmouth when we get an incoming <iq>. This handler
  * is concerned only with roster queries, and allows other handlers
@@ -1232,7 +1558,6 @@ got_roster_iq (GabbleRoster *roster,
   LmMessageNode *iq_node, *query_node;
   LmMessageSubType sub_type;
   const gchar *from;
-  gboolean google_roster = FALSE;
 
   if (priv->list_channels == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1261,333 +1586,42 @@ got_roster_iq (GabbleRoster *roster,
         }
     }
 
-  if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
-    {
-      const char *gr_ext;
-
-      gr_ext = lm_message_node_get_attribute_with_namespace (query_node, "ext",
-          NS_GOOGLE_ROSTER);
-
-      if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
-        google_roster = TRUE;
-    }
-
   sub_type = lm_message_get_sub_type (message);
 
   /* if this is a result, it's from our initial query. if it's a set,
-   * it's a roster push. either way, parse the items. */
-  switch (sub_type)
+   * it's a roster push. otherwise, it's not for us. */
+  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
+      sub_type != LM_MESSAGE_SUB_TYPE_SET)
     {
-      TpIntSet *pub_add, *pub_rem,
-               *sub_add, *sub_rem, *sub_rp,
-               *stored_add, *stored_rem,
-               *deny_add, *deny_rem;
-      TpHandleSet *referenced_handles;
-      GArray *removed;
-      TpHandle handle;
-      GabbleRosterChannel *pub_chan, *sub_chan, *chan;
-      GHashTable *group_update_table;
-      guint i;
-      NodeIter j;
-
-    case LM_MESSAGE_SUB_TYPE_RESULT:
-    case LM_MESSAGE_SUB_TYPE_SET:
-      /* asymmetry is because we don't get locally pending subscription
-       * requests via <roster>, we get it via <presence> */
-      pub_add = tp_intset_new ();
-      pub_rem = tp_intset_new ();
-      sub_add = tp_intset_new ();
-      sub_rem = tp_intset_new ();
-      sub_rp = tp_intset_new ();
-      stored_add = tp_intset_new ();
-      stored_rem = tp_intset_new ();
-      group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
-          (GDestroyNotify)_group_mem_update_destroy);
-      removed = g_array_new (FALSE, FALSE, sizeof (TpHandle));
-      referenced_handles = tp_handle_set_new (contact_repo);
-
-      if (google_roster)
-        {
-          deny_add = tp_intset_new ();
-          deny_rem = tp_intset_new ();
-        }
-      else
-        {
-          deny_add = NULL;
-          deny_rem = NULL;
-        }
-
-      /* we need these for preserving "fragile" local/remote pending states */
-      pub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          GABBLE_LIST_HANDLE_PUBLISH, NULL, NULL);
-      sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
-
-      /* iterate every sub-node, which we expect to be <item>s */
-      for (j = node_iter (query_node); j; j = node_iter_next (j))
-        {
-          const char *jid;
-          GabbleRosterItem *item;
-          LmMessageNode *item_node = node_iter_data (j);
-
-          if (strcmp (item_node->name, "item"))
-            {
-              NODE_DEBUG (item_node, "query sub-node is not item, skipping");
-              continue;
-            }
-
-          jid = lm_message_node_get_attribute (item_node, "jid");
-          if (!jid)
-            {
-              NODE_DEBUG (item_node, "item node has no jid, skipping");
-              continue;
-            }
-
-          if (strchr (jid, '/') != NULL)
-            {
-              /* Avoid fd.o #12791 */
-              NODE_DEBUG (item_node,
-                  "item node has resource in jid, skipping");
-              continue;
-            }
-
-          handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
-          if (handle == 0)
-            {
-              NODE_DEBUG (item_node, "item jid is malformed, skipping");
-              continue;
-            }
-          /* transfer ownership of the reference to referenced_handles */
-          tp_handle_set_add (referenced_handles, handle);
-          tp_handle_unref (contact_repo, handle);
-
-          item = _gabble_roster_item_update (roster, handle, item_node,
-                                             group_update_table,
-                                             google_roster);
-#ifdef ENABLE_DEBUG
-          if (DEBUGGING)
-            {
-              gchar *dump = _gabble_roster_item_dump (item);
-              DEBUG ("jid: %s, %s", jid, dump);
-              g_free (dump);
-            }
-#endif
-
-          /* handle publish list changes */
-          switch (item->subscription)
-            {
-            case GABBLE_ROSTER_SUBSCRIPTION_FROM:
-            case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (google_roster && !_google_roster_item_should_keep (jid, item))
-                tp_intset_add (pub_rem, handle);
-              else
-                tp_intset_add (pub_add, handle);
-              break;
-            case GABBLE_ROSTER_SUBSCRIPTION_NONE:
-            case GABBLE_ROSTER_SUBSCRIPTION_TO:
-            case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              /* publish channel is a bit odd, the roster item doesn't tell us
-               * if someone is awaiting our approval - we get this via presence
-               * type=subscribe, so we have to not remove them if they're
-               * already local_pending in our publish channel */
-              if (!tp_handle_set_is_member (pub_chan->group.local_pending,
-                    handle))
-                {
-                  tp_intset_add (pub_rem, handle);
-                }
-              break;
-            default:
-              g_assert_not_reached ();
-            }
-
-          /* handle subscribe list changes */
-          switch (item->subscription)
-            {
-            case GABBLE_ROSTER_SUBSCRIPTION_TO:
-            case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (google_roster && !_google_roster_item_should_keep (jid, item))
-                tp_intset_add (sub_rem, handle);
-              else
-                tp_intset_add (sub_add, handle);
-
-              roster_item_cancel_flicker_timeout (item);
-
-              break;
-            case GABBLE_ROSTER_SUBSCRIPTION_NONE:
-            case GABBLE_ROSTER_SUBSCRIPTION_FROM:
-              if (item->ask_subscribe)
-                {
-                  if (tp_handle_set_is_member (sub_chan->group.members, handle))
-                    {
-                      DEBUG("not letting gtalk demote member %u to pending",
-                          handle);
-                    }
-                  else
-                    {
-                      if (item->flicker_prevention_id == 0)
-                        roster_item_ensure_flicker_timeout (roster, handle, item);
-                      else
-                        roster_item_cancel_flicker_timeout (item);
-
-                      tp_intset_add (sub_rp, handle);
-                    }
-                }
-              else if (item->flicker_prevention_id == 0)
-                {
-                  /* We're not expecting this contact's ask=subscribe to
-                   * flicker off and on again, so let's remove them immediately.
-                   */
-                  tp_intset_add (sub_rem, handle);
-                }
-              else
-                {
-                  DEBUG ("delaying removal of %s from pending", jid);
-                }
-              break;
-            case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              tp_intset_add (sub_rem, handle);
-              break;
-            default:
-              g_assert_not_reached ();
-            }
-
-          /* handle stored list changes */
-          switch (item->subscription)
-            {
-            case GABBLE_ROSTER_SUBSCRIPTION_NONE:
-            case GABBLE_ROSTER_SUBSCRIPTION_TO:
-            case GABBLE_ROSTER_SUBSCRIPTION_FROM:
-            case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-              if (google_roster &&
-                  /* Don't hide contacts from stored if they're remote pending.
-                   * This works around Google Talk flickering ask="subscribe"
-                   * when you try to subscribe to someone; see
-                   * test-google-roster.py.
-                   */
-                  !tp_handle_set_is_member (sub_chan->group.remote_pending,
-                      handle) &&
-                  !_google_roster_item_should_keep (jid, item))
-                tp_intset_add (stored_rem, handle);
-              else
-                tp_intset_add (stored_add, handle);
-              break;
-            case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              tp_intset_add (stored_rem, handle);
-              break;
-            default:
-              g_assert_not_reached ();
-            }
-
-          /* handle deny list changes */
-          if (google_roster)
-            {
-              switch (item->subscription)
-                {
-                case GABBLE_ROSTER_SUBSCRIPTION_NONE:
-                case GABBLE_ROSTER_SUBSCRIPTION_TO:
-                case GABBLE_ROSTER_SUBSCRIPTION_FROM:
-                case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
-                  if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
-                    tp_intset_add (deny_add, handle);
-                  else
-                    tp_intset_add (deny_rem, handle);
-                  break;
-                case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-                  tp_intset_add (deny_rem, handle);
-                  break;
-                default:
-                  g_assert_not_reached ();
-                }
-            }
-
-          /* delay removing items from roster until signals have been emitted;
-           * otherwise handles go out of scope!
-           * FIXME: this probably isn't true any more because of
-           * referenced_handles */
-          if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
-            g_array_append_val (removed, handle);
-        }
-
-      DEBUG ("calling change members on publish channel");
-      tp_group_mixin_change_members ((GObject *) pub_chan,
-            "", pub_add, pub_rem, NULL, NULL, 0, 0);
-
-      DEBUG ("calling change members on subscribe channel");
-      tp_group_mixin_change_members ((GObject *) sub_chan,
-            "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
-
-      handle = GABBLE_LIST_HANDLE_STORED;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST, handle,
-          NULL, NULL);
-
-      DEBUG ("calling change members on stored channel");
-      tp_group_mixin_change_members ((GObject *) chan,
-            "", stored_add, stored_rem, NULL, NULL, 0, 0);
-
-      DEBUG ("calling change members on any group channels");
-      g_hash_table_foreach_remove (group_update_table, _update_group, roster);
-
-      if (google_roster)
-        {
-          handle = GABBLE_LIST_HANDLE_DENY;
-          chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-              handle, NULL, NULL);
-
-          DEBUG ("calling change members on deny channel");
-          tp_group_mixin_change_members ((GObject *) chan,
-              "", deny_add, deny_rem, NULL, NULL, 0, 0);
-
-          tp_intset_destroy (deny_add);
-          tp_intset_destroy (deny_rem);
-        }
-
-      for (i = 0; i < removed->len; i++)
-          _gabble_roster_item_remove (roster,
-              g_array_index (removed, TpHandle, i));
-
-      if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
-        {
-          /* We are handling the response to our initial roster request. */
-          GArray *members;
-
-          tp_group_mixin_get_members ((GObject *) pub_chan, &members, NULL);
-          /* If somebody's on our roster, and we haven't received presence
-           * from them, we know they're offline. Let clients know that.
-           */
-          conn_presence_emit_presence_update (priv->conn, members);
-          g_array_free (members, TRUE);
-        }
-
-      tp_intset_destroy (pub_add);
-      tp_intset_destroy (pub_rem);
-      tp_intset_destroy (sub_add);
-      tp_intset_destroy (sub_rem);
-      tp_intset_destroy (sub_rp);
-      tp_intset_destroy (stored_add);
-      tp_intset_destroy (stored_rem);
-      g_array_free (removed, TRUE);
-      g_hash_table_destroy (group_update_table);
-      tp_handle_set_destroy (referenced_handles);
-      break;
-
-    default:
-       NODE_DEBUG (iq_node, "unhandled roster IQ");
+      NODE_DEBUG (iq_node, "unhandled roster IQ");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  switch (sub_type)
+  process_roster (roster, query_node);
+
+  if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
     {
-    case LM_MESSAGE_SUB_TYPE_RESULT:
-      /* result means it's a roster push, so the roster is now complete and we
-       * can emit signals */
+      /* We are handling the response to our initial roster request. */
+      GabbleRosterChannel *sub_chan;
+      GArray *members;
+
+      /* If we're subscribed to somebody (subscription=to or =both),
+       * and we haven't received presence from them,
+       * we know they're offline. Let clients know that.
+       */
+      sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+          GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
+      tp_group_mixin_get_members ((GObject *) sub_chan, &members, NULL);
+      conn_presence_emit_presence_update (priv->conn, members);
+      g_array_free (members, TRUE);
+
+      /* The roster is now complete and we can emit signals */
       _gabble_roster_received (roster);
-      break;
-    case LM_MESSAGE_SUB_TYPE_SET:
+    }
+  else /* LM_MESSAGE_SUB_TYPE_SET */
+    {
       /* acknowledge roster */
       _gabble_connection_acknowledge_set_iq (priv->conn, message);
-      break;
-    default:
-      break;
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

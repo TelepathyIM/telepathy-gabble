@@ -103,6 +103,7 @@ struct _GabbleRosterItemEdit
   gchar *new_name;
   TpHandleSet *add_to_groups;
   TpHandleSet *remove_from_groups;
+  gboolean remove_from_all_other_groups;
 };
 
 typedef struct _GabbleRosterItem GabbleRosterItem;
@@ -2320,12 +2321,13 @@ roster_item_apply_edits (GabbleRoster *roster,
       edited_item.name = edits->new_name;
     }
 
-  if (edits->add_to_groups || edits->remove_from_groups)
+  if (edits->add_to_groups != NULL || edits->remove_from_groups != NULL ||
+      edits->remove_from_all_other_groups)
     {
 #ifdef ENABLE_DEBUG
       if (DEBUGGING)
         {
-          if (edits->add_to_groups)
+          if (edits->add_to_groups != NULL)
             {
               GString *str = g_string_new ("Adding to groups: ");
               tp_intset_foreach (tp_handle_set_peek (edits->add_to_groups),
@@ -2336,7 +2338,13 @@ roster_item_apply_edits (GabbleRoster *roster,
             {
               DEBUG ("Not adding to any groups");
             }
-          if (edits->remove_from_groups)
+
+          if (edits->remove_from_all_other_groups)
+            {
+              DEBUG ("Removing from all other groups");
+            }
+
+          if (edits->remove_from_groups != NULL)
             {
               GString *str = g_string_new ("Removing from groups: ");
               tp_intset_foreach (tp_handle_set_peek (edits->remove_from_groups),
@@ -2350,18 +2358,18 @@ roster_item_apply_edits (GabbleRoster *roster,
         }
 #endif
       edited_item.groups = tp_handle_set_new (group_repo);
-      intset = tp_handle_set_update (edited_item.groups,
-          tp_handle_set_peek (item->groups));
-      tp_intset_destroy (intset);
+
+      if (!edits->remove_from_all_other_groups)
+        {
+          intset = tp_handle_set_update (edited_item.groups,
+              tp_handle_set_peek (item->groups));
+          tp_intset_destroy (intset);
+        }
 
       if (edits->add_to_groups)
         {
           intset = tp_handle_set_update (edited_item.groups,
               tp_handle_set_peek (edits->add_to_groups));
-          if (tp_intset_size (intset) > 0)
-            {
-              altered = TRUE;
-            }
           tp_intset_destroy (intset);
         }
 
@@ -2369,12 +2377,12 @@ roster_item_apply_edits (GabbleRoster *roster,
         {
           intset = tp_handle_set_difference_update (edited_item.groups,
               tp_handle_set_peek (edits->remove_from_groups));
-          if (tp_intset_size (intset) > 0)
-            {
-              altered = TRUE;
-            }
           tp_intset_destroy (intset);
         }
+
+      if (!tp_intset_is_equal (tp_handle_set_peek (edited_item.groups),
+            tp_handle_set_peek (item->groups)))
+          altered = TRUE;
     }
 
 #ifdef ENABLE_DEBUG

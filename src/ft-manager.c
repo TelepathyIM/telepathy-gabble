@@ -1,6 +1,6 @@
 /*
  * ft-manager.c - Source for GabbleFtManager
- * Copyright (C) 2009 Collabora Ltd.
+ * Copyright (C) 2009-2010 Collabora Ltd.
  *   @author: Guillaume Desmottes <guillaume.desmottes@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or
@@ -28,6 +28,8 @@
 #include <string.h>
 #include <glib/gstdio.h>
 
+#include "jingle-session.h"
+#include "jingle-share.h"
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "ft-manager.h"
@@ -56,6 +58,7 @@ channel_manager_iface_init (gpointer, gpointer);
 static void gabble_ft_manager_channel_created (GabbleFtManager *mgr,
     GabbleFileTransferChannel *chan, gpointer request_token);
 
+
 static void caps_channel_manager_iface_init (gpointer g_iface,
     gpointer iface_data);
 
@@ -80,6 +83,7 @@ struct _GabbleFtManagerPrivate
   GList *channels;
   /* path of the temporary directory used to store UNIX sockets */
   gchar *tmp_dir;
+  gulong status_changed_id;
 };
 
 static void
@@ -93,8 +97,13 @@ gabble_ft_manager_init (GabbleFtManager *obj)
   obj->priv->channels = NULL;
 }
 
+static void gabble_ft_manager_constructed (GObject *object);
 static void gabble_ft_manager_dispose (GObject *object);
 static void gabble_ft_manager_finalize (GObject *object);
+static void connection_status_changed_cb (GabbleConnection *conn,
+                                          guint status,
+                                          guint reason,
+                                          GabbleFtManager *self);
 
 static void
 gabble_ft_manager_get_property (GObject *object,
@@ -143,6 +152,7 @@ gabble_ft_manager_class_init (GabbleFtManagerClass *gabble_ft_manager_class)
   g_type_class_add_private (gabble_ft_manager_class,
                             sizeof (GabbleFtManagerPrivate));
 
+  object_class->constructed = gabble_ft_manager_constructed;
   object_class->get_property = gabble_ft_manager_get_property;
   object_class->set_property = gabble_ft_manager_set_property;
 
@@ -158,26 +168,46 @@ gabble_ft_manager_class_init (GabbleFtManagerClass *gabble_ft_manager_class)
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 }
 
+
+static void
+gabble_ft_manager_constructed (GObject *object)
+{
+  void (*chain_up) (GObject *) =
+      G_OBJECT_CLASS (gabble_ft_manager_parent_class)->constructed;
+  GabbleFtManager *self = GABBLE_FT_MANAGER (object);
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+  self->priv->status_changed_id = g_signal_connect (self->priv->connection,
+      "status-changed", (GCallback) connection_status_changed_cb, object);
+}
+
+static void
+ft_manager_close_all (GabbleFtManager *self)
+{
+  GList *l;
+
+  while ((l = self->priv->channels) != NULL)
+    {
+      gabble_file_transfer_channel_do_close (l->data);
+      /* Channels should have closed and disappeared from the list */
+      g_assert (l != self->priv->channels);
+    }
+}
+
+
 void
 gabble_ft_manager_dispose (GObject *object)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (object);
-  GList *tmp, *l;
 
   if (self->priv->dispose_has_run)
     return;
 
   self->priv->dispose_has_run = TRUE;
 
-  tmp = self->priv->channels;
-  self->priv->channels = NULL;
-
-  for (l = tmp; l != NULL; l = g_list_next (l))
-    {
-      g_object_unref (l->data);
-    }
-
-  g_list_free (tmp);
+  g_assert (self->priv->channels == NULL);
 
   if (G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_ft_manager_parent_class)->dispose (object);
@@ -257,6 +287,31 @@ file_channel_closed_cb (GabbleFileTransferChannel *chan,
 }
 
 static void
+gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
+{
+  GList *i;
+  GHashTable *new_channels = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, NULL);
+
+  for (i = channels; i ; i = i->next)
+    {
+      GabbleFileTransferChannel *chan = i->data;
+
+      gabble_signal_connect_weak (chan, "closed",
+          G_CALLBACK (file_channel_closed_cb), G_OBJECT (self));
+
+      self->priv->channels = g_list_append (self->priv->channels, chan);
+      /* The channels can't satisfy a request because this will always be called
+         when we receive an incoming jingle-share session */
+      g_hash_table_insert (new_channels, chan, NULL);
+    }
+
+  tp_channel_manager_emit_new_channels (self, new_channels);
+
+  g_hash_table_destroy (new_channels);
+}
+
+static void
 gabble_ft_manager_channel_created (GabbleFtManager *self,
                                    GabbleFileTransferChannel *chan,
                                    gpointer request_token)
@@ -275,6 +330,104 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
       requests);
 
   g_slist_free (requests);
+}
+
+
+static void
+new_jingle_session_cb (GabbleJingleFactory *jf,
+    GabbleJingleSession *sess,
+    gpointer data)
+{
+  GabbleFtManager *self = GABBLE_FT_MANAGER (data);
+  GTalkFileCollection *gtalk_fc = NULL;
+  GabbleJingleContent *content = NULL;
+  GabbleJingleShareManifest *manifest = NULL;
+  GList *channels = NULL;
+  GList *cs, *i;
+
+  if (gabble_jingle_session_get_content_type (sess) ==
+      GABBLE_TYPE_JINGLE_SHARE)
+    {
+      cs = gabble_jingle_session_get_contents (sess);
+
+      if (cs != NULL)
+        {
+          content = GABBLE_JINGLE_CONTENT (cs->data);
+          g_list_free (cs);
+        }
+
+      if (content == NULL)
+          return;
+
+      gtalk_fc = gtalk_file_collection_new_from_session (jf, sess);
+
+      if (gtalk_fc)
+        {
+          gchar *token = NULL;
+
+          g_object_get (gtalk_fc,
+              "token", &token,
+              NULL);
+
+          manifest = gabble_jingle_share_get_manifest (
+              GABBLE_JINGLE_SHARE (content));
+          for (i = manifest->entries; i; i = i->next)
+            {
+              GabbleJingleShareManifestEntry *entry = i->data;
+              GabbleFileTransferChannel *channel = NULL;
+              gchar *filename = NULL;
+
+              filename = g_strdup_printf ("%s%s",
+                  entry->name, entry->folder? ".tar":"");
+              channel = gabble_file_transfer_channel_new (self->priv->connection,
+                  sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,
+                  NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
+                  NULL, 0, 0, FALSE, NULL, gtalk_fc, token);
+              g_free (filename);
+
+              gtalk_file_collection_add_channel (gtalk_fc, channel);
+              channels = g_list_prepend (channels, channel);
+            }
+
+          if (channels != NULL)
+            gabble_ft_manager_channels_created (self, channels);
+
+          g_list_free (channels);
+
+          /* Channels will hold the reference to the gtalk file collection,
+             so we can drop ours already. If no channels were created,
+             then we need to destroy it anyways */
+          g_object_unref (gtalk_fc);
+        }
+    }
+}
+
+
+static void
+connection_status_changed_cb (GabbleConnection *conn,
+                              guint status,
+                              guint reason,
+                              GabbleFtManager *self)
+{
+
+  switch (status)
+    {
+      case TP_CONNECTION_STATUS_CONNECTING:
+        g_signal_connect (self->priv->connection->jingle_factory,
+            "new-session",
+            G_CALLBACK (new_jingle_session_cb), self);
+        break;
+
+      case TP_CONNECTION_STATUS_DISCONNECTED:
+        ft_manager_close_all (self);
+        if (self->priv->status_changed_id != 0)
+          {
+            g_signal_handler_disconnect (self->priv->connection,
+                self->priv->status_changed_id);
+            self->priv->status_changed_id = 0;
+          }
+        break;
+    }
 }
 
 static gboolean
@@ -399,7 +552,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, initial_offset, NULL, TRUE);
+      description, date, initial_offset, TRUE, NULL, NULL, NULL);
 
   if (!gabble_file_transfer_channel_offer_file (chan, &error))
     {
@@ -563,7 +716,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, 0, bytestream, resume_supported);
+      description, date, 0, resume_supported, bytestream, NULL, NULL);
 
   gabble_ft_manager_channel_created (self, chan, NULL);
 }
@@ -653,7 +806,8 @@ gabble_ft_manager_get_contact_caps (
     const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
-  if (gabble_capability_set_has (caps, NS_FILE_TRANSFER))
+  if (gabble_capability_set_has (caps, NS_FILE_TRANSFER) ||
+      gabble_capability_set_has (caps, NS_GOOGLE_FEAT_SHARE))
     add_file_transfer_channel_class (arr);
 }
 
@@ -683,6 +837,7 @@ gabble_ft_manager_represent_client (
 
       DEBUG ("client %s supports file transfer", client_name);
       gabble_capability_set_add (cap_set, NS_FILE_TRANSFER);
+      gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_SHARE);
       /* there's no point in looking at the subsequent filters if we've
        * already added the FT capability */
       break;

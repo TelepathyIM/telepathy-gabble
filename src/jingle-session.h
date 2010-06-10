@@ -111,6 +111,8 @@ GType gabble_jingle_session_get_content_type (GabbleJingleSession *);
 GList *gabble_jingle_session_get_contents (GabbleJingleSession *sess);
 const gchar *gabble_jingle_session_get_peer_resource (
     GabbleJingleSession *sess);
+const gchar *gabble_jingle_session_get_initiator (
+    GabbleJingleSession *sess);
 const gchar *gabble_jingle_session_get_sid (GabbleJingleSession *sess);
 JingleDialect gabble_jingle_session_get_dialect (GabbleJingleSession *sess);
 

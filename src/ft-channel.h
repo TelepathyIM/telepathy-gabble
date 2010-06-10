@@ -27,9 +27,14 @@
 #include <extensions/_gen/interfaces.h>
 #include <extensions/_gen/enums.h>
 
+typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
+
+#include "gtalk-file-collection.h"
+
+#include "bytestream-factory.h"
+
 G_BEGIN_DECLS
 
-typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 typedef struct _GabbleFileTransferChannelClass GabbleFileTransferChannelClass;
 typedef struct _GabbleFileTransferChannelPrivate GabbleFileTransferChannelPrivate;
 
@@ -68,10 +73,31 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     const gchar *content_type, const gchar *filename, guint64 size,
     TpFileHashType content_hash_type, const gchar *content_hash,
     const gchar *description, guint64 date, guint64 initial_offset,
-    GabbleBytestreamIface *bytestream, gboolean resume_supported);
+    gboolean resume_supported, GabbleBytestreamIface *bytestream,
+    GTalkFileCollection *gtalk_fc, const gchar *file_collection);
 
 gboolean gabble_file_transfer_channel_offer_file (
     GabbleFileTransferChannel *self, GError **error);
+
+/* The following methods are a hack, they are 'signal-like' callbacks for the
+   GTalkFileCollection. They have to be made this way because the FileCollection
+   can't send out signals since it needs its signals to be sent to a specific
+   channel only. So instead it calls these callbacks directly on the channel it
+   needs to notify. This is a known layering violation and accepted as the lesser
+   of any other evil [hack]. */
+void gabble_file_transfer_channel_gtalk_file_collection_state_changed (
+    GabbleFileTransferChannel *self, GTalkFileCollectionState gtalk_fc_state,
+    gboolean local_terminator);
+
+void gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
+    GabbleFileTransferChannel *self, gboolean blocked);
+
+void gabble_file_transfer_channel_gtalk_file_collection_data_received (
+    GabbleFileTransferChannel *self, const gchar *data, guint len);
+
+void
+gabble_file_transfer_channel_do_close (GabbleFileTransferChannel *self);
+
 
 G_END_DECLS
 

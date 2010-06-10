@@ -40,6 +40,7 @@
 #include "jingle-session.h"
 #include "namespaces.h"
 #include "util.h"
+#include "jingle-transport-google.h"
 
 G_DEFINE_TYPE (GabbleJingleMediaRtp,
     gabble_jingle_media_rtp, GABBLE_TYPE_JINGLE_CONTENT);
@@ -244,6 +245,8 @@ static void parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error);
 static void produce_description (GabbleJingleContent *obj,
     LmMessageNode *content_node);
+static void transport_created (GabbleJingleContent *obj,
+    GabbleJingleTransportIface *transport);
 
 static void
 gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
@@ -260,6 +263,7 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 
   content_class->parse_description = parse_description;
   content_class->produce_description = produce_description;
+  content_class->transport_created = transport_created;
 
   param_spec = g_param_spec_uint ("media-type", "RTP media type",
       "Media type.",
@@ -279,6 +283,34 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
         0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
         G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
+
+static void transport_created (GabbleJingleContent *content,
+    GabbleJingleTransportIface *transport)
+{
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  GabbleJingleTransportGoogle *gtrans = NULL;
+  JingleDialect dialect;
+
+  if (GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (transport))
+    {
+      gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (transport);
+      dialect = gabble_jingle_session_get_dialect (content->session);
+
+      if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO &&
+          JINGLE_IS_GOOGLE_DIALECT (dialect))
+        {
+          jingle_transport_google_set_component_name (gtrans, "video_rtp", 1);
+          jingle_transport_google_set_component_name (gtrans, "video_rtcp", 2);
+        }
+      else
+        {
+          jingle_transport_google_set_component_name (gtrans, "rtp", 1);
+          jingle_transport_google_set_component_name (gtrans, "rtcp", 2);
+        }
+    }
+}
+
 
 static JingleMediaType
 extract_media_type (LmMessageNode *desc_node,

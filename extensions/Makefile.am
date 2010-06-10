@@ -12,6 +12,7 @@ EXTRA_DIST = \
     Channel_Future.xml \
     Channel_Interface_Conference.xml \
     Channel_Type_Call.xml \
+    Channel_Type_FileTransfer_Future.xml \
     Connection_Future.xml \
     Connection_Interface_Gabble_Decloak.xml \
     Connection_Interface_Mail_Notification.xml \

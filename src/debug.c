@@ -45,6 +45,7 @@ static GDebugKey keys[] = {
   { "plugins",        GABBLE_DEBUG_PLUGINS },
   { "mail",           GABBLE_DEBUG_MAIL_NOTIF },
   { "authentication", GABBLE_DEBUG_AUTH },
+  { "share",          GABBLE_DEBUG_SHARE },
   { 0, },
 };
 

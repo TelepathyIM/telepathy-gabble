@@ -2342,7 +2342,7 @@ gabble_roster_handle_get_subscription (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       GABBLE_ROSTER_SUBSCRIPTION_NONE);
 
-  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
+  item = _gabble_roster_item_lookup (roster, handle);
 
   if (NULL == item)
     return GABBLE_ROSTER_SUBSCRIPTION_NONE;
@@ -2435,7 +2435,7 @@ gabble_roster_handle_has_entry (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
 
-  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
+  item = _gabble_roster_item_lookup (roster, handle);
 
   return (NULL != item);
 }
@@ -2454,7 +2454,7 @@ gabble_roster_handle_get_name (GabbleRoster *roster,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       NULL);
 
-  item = g_hash_table_lookup (priv->items, GUINT_TO_POINTER (handle));
+  item = _gabble_roster_item_lookup (roster, handle);
 
   if (NULL == item)
     return NULL;

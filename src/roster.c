@@ -73,6 +73,7 @@ struct _GabbleRosterPrivate
   GHashTable *list_channels;
   GHashTable *group_channels;
   GHashTable *items;
+  TpHandleSet *groups;
 
   /* borrowed TpExportableChannel * => GSList of gpointer (request tokens)
    * that will be satisfied when it's ready. The requests are in reverse
@@ -234,6 +235,7 @@ gabble_roster_dispose (GObject *object)
   g_assert (priv->group_channels == NULL);
   g_assert (priv->list_channels == NULL);
   g_assert (priv->queued_requests == NULL);
+  g_assert (priv->groups == NULL);
 
   if (G_OBJECT_CLASS (gabble_roster_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roster_parent_class)->dispose (object);
@@ -684,6 +686,19 @@ _gabble_roster_item_update (GabbleRoster *roster,
   added_to = tp_handle_set_update (item->groups, new_groups);
   removed_from2 = tp_handle_set_difference_update (item->groups, removed_from);
 
+  if (roster->priv->groups != NULL)
+    {
+      TpIntSet *created_groups = tp_handle_set_update (roster->priv->groups,
+          new_groups);
+
+      if (!tp_intset_is_empty (created_groups))
+        {
+          /* FIXME: emit GroupsCreated in new D-Bus API */
+        }
+
+      tp_clear_pointer (&created_groups, tp_intset_destroy);
+    }
+
   DEBUG ("Checking which groups contact#%u was just added to:",
       contact_handle);
   tp_intset_foreach (added_to, _update_add_to_group, &ctx);
@@ -918,6 +933,9 @@ roster_channel_closed_cb (GabbleRosterChannel *channel,
           handle);
       g_hash_table_remove (channels, GUINT_TO_POINTER (handle));
     }
+
+  if (handle_type == TP_HANDLE_TYPE_GROUP)
+    tp_handle_set_remove (self->priv->groups, handle);
 }
 
 
@@ -1983,6 +2001,12 @@ gabble_roster_close_all (GabbleRoster *self)
       g_hash_table_destroy (t);
     }
 
+  if (priv->groups != NULL)
+    {
+      tp_handle_set_destroy (priv->groups);
+      priv->groups = NULL;
+    }
+
   if (self->priv->iq_cb != NULL)
     {
       DEBUG ("removing callbacks");
@@ -2067,9 +2091,12 @@ gabble_roster_constructor (GType type, guint n_props,
   GObject *obj = G_OBJECT_CLASS (gabble_roster_parent_class)->
            constructor (type, n_props, props);
   GabbleRoster *self = GABBLE_ROSTER (obj);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
+  self->priv->groups = tp_handle_set_new (group_repo);
 
   return obj;
 }

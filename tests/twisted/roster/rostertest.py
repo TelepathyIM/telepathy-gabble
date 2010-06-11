@@ -4,16 +4,6 @@ from servicetest import (assertEquals, assertLength, EventPattern,
 
 import constants as cs
 
-def expect_list_channel(q, bus, conn, name, contacts, lp_contacts=[],
-                        rp_contacts=[]):
-    return expect_contact_list_channel(q, bus, conn, cs.HT_LIST, name,
-        contacts, lp_contacts=lp_contacts, rp_contacts=rp_contacts)
-
-def expect_group_channel(q, bus, conn, name, contacts, lp_contacts=[],
-                         rp_contacts=[]):
-    return expect_contact_list_channel(q, bus, conn, cs.HT_GROUP, name,
-        contacts, lp_contacts=lp_contacts, rp_contacts=rp_contacts)
-
 def get_contact_list_event_patterns(q, bus, conn, expected_handle_type, name):
     expected_handle = conn.RequestHandles(expected_handle_type, [name])[0]
 
@@ -81,29 +71,6 @@ def expect_contact_list_signals(q, bus, conn, lists, groups=[]):
 
     assert len(events) == 0
     return ret
-
-def expect_contact_list_channel(q, bus, conn, ht, name, contacts,
-                                lp_contacts=[], rp_contacts=[]):
-    """
-    Expects NewChannel and NewChannels signals for the
-    contact list with handle type 'ht' and ID 'name', and checks that its
-    members, lp members and rp members are exactly 'contacts', 'lp_contacts'
-    and 'rp_contacts'.
-    Returns a proxy for the channel.
-    """
-
-    # trailing comma to unpack a 1-tuple
-    if ht == cs.HT_LIST:
-        pair, = expect_contact_list_signals(q, bus, conn, [name])
-    elif ht == cs.HT_GROUP:
-        pair, = expect_contact_list_signals(q, bus, conn, [], [name])
-    else:
-        raise AssertionError("That's not a contact list handle type")
-
-    old_signal, new_signal = pair
-
-    return check_contact_list_signals(q, bus, conn, pair,
-            ht, name, contacts, lp_contacts, rp_contacts)
 
 def check_contact_list_signals(q, bus, conn, signals,
         ht, name, contacts, lp_contacts=[], rp_contacts=[]):

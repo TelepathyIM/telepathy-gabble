@@ -4,7 +4,8 @@ Test broken groups on the roster (regression test for fd.o #12791)
 
 import dbus
 
-from gabbletest import exec_test, expect_list_channel
+from gabbletest import exec_test
+from rostertest import expect_list_channel
 import constants as cs
 import ns
 

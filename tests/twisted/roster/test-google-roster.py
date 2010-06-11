@@ -7,7 +7,9 @@ import dbus
 
 from gabbletest import (
     acknowledge_iq, exec_test, sync_stream, make_result_iq, GoogleXmlStream,
-    expect_list_channel
+    )
+from rostertest import (
+    expect_list_channel,
     )
 from servicetest import (
     call_async, sync_dbus, EventPattern,

@@ -4,7 +4,8 @@ Test basic roster functionality.
 
 import dbus
 
-from gabbletest import exec_test, expect_list_channel
+from gabbletest import exec_test
+from rostertest import expect_list_channel
 import ns
 
 def test(q, bus, conn, stream):

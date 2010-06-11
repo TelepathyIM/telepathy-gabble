@@ -6,7 +6,8 @@ import dbus
 
 from twisted.words.protocols.jabber.client import IQ
 
-from gabbletest import exec_test, acknowledge_iq, expect_list_channel
+from gabbletest import exec_test, acknowledge_iq
+from rostertest import expect_list_channel
 import ns
 
 def test(q, bus, conn, stream):

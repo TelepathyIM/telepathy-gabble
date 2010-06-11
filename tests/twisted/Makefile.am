@@ -262,6 +262,7 @@ EXTRA_DIST = \
 	mucutil.py \
 	ns.py \
 	olpc/util.py \
+	roster/rostertest.py \
 	tubes/muctubeutil.py \
 	tubes/tubetestutil.py \
 	sasl/saslutil.py \

@@ -4,8 +4,8 @@ Test receiving another contact's capabilities.
 
 import dbus
 
-from servicetest import EventPattern
-from gabbletest import exec_test, make_result_iq, make_presence
+from servicetest import EventPattern, assertEquals, sync_dbus
+from gabbletest import exec_test, make_result_iq, make_presence, sync_stream
 import constants as cs
 
 icaps_attr  = cs.CONN_IFACE_CAPS + "/caps"
@@ -119,8 +119,8 @@ def test(q, bus, conn, stream):
             0)]])
 
     # Contact went offline and the handle is now invalid
-    assert conn.Contacts.GetContactAttributes(
-        [2], [cs.CONN_IFACE_CAPS], False) == {}
+    assertEquals({}, conn.Contacts.GetContactAttributes(
+        [2], [cs.CONN_IFACE_CAPS], False))
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

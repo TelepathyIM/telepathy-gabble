@@ -4,8 +4,9 @@ Regression tests for rescinding outstanding subscription requests.
 
 from twisted.words.protocols.jabber.client import IQ
 
-from servicetest import EventPattern, assertEquals
-from gabbletest import exec_test, expect_list_channel, GoogleXmlStream
+from servicetest import EventPattern, assertEquals, assertLength
+from gabbletest import exec_test, GoogleXmlStream
+from rostertest import expect_contact_list_signals, check_contact_list_signals
 import constants as cs
 import ns
 
@@ -19,9 +20,17 @@ def test(q, bus, conn, stream, remove, local):
     event.stanza['type'] = 'result'
     stream.send(event.stanza)
 
-    publish = expect_list_channel(q, bus, conn, 'publish', [])
-    subscribe = expect_list_channel(q, bus, conn, 'subscribe', [])
-    stored = expect_list_channel(q, bus, conn, 'stored', [])
+    pairs = expect_contact_list_signals(q, bus, conn,
+            ['publish', 'subscribe', 'stored'])
+
+    publish = check_contact_list_signals(q, bus, conn, pairs.pop(0),
+            cs.HT_LIST, 'publish', [])
+    subscribe = check_contact_list_signals(q, bus, conn, pairs.pop(0),
+            cs.HT_LIST, 'subscribe', [])
+    stored = check_contact_list_signals(q, bus, conn, pairs.pop(0),
+            cs.HT_LIST, 'stored', [])
+
+    assertLength(0, pairs)      # i.e. we've checked all of them
 
     h = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
 

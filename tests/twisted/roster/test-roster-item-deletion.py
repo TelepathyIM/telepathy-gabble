@@ -6,7 +6,10 @@ import dbus
 
 from twisted.words.protocols.jabber.client import IQ
 
-from gabbletest import exec_test, acknowledge_iq, expect_list_channel
+from gabbletest import exec_test, acknowledge_iq
+from rostertest import expect_contact_list_signals, check_contact_list_signals
+from servicetest import assertLength
+import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
@@ -31,12 +34,17 @@ def test(q, bus, conn, stream):
 
     stream.send(event.stanza)
 
-    # FIXME: this is somewhat fragile - it's asserting the exact order that
-    # things currently happen in roster.c. In reality the order is not
-    # significant
-    publish = expect_list_channel(q, bus, conn, 'publish', [])
-    subscribe = expect_list_channel(q, bus, conn, 'subscribe', [])
-    stored = expect_list_channel(q, bus, conn, 'stored', ['quux@foo.com'])
+    pairs = expect_contact_list_signals(q, bus, conn,
+            ['publish', 'subscribe', 'stored'])
+
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'publish', [])
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'subscribe', [])
+    stored = check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'stored', ['quux@foo.com'])
+
+    assertLength(0, pairs)      # i.e. we've checked all of them
 
     stored.Group.RemoveMembers([dbus.UInt32(2)], '')
     send_roster_iq(stream, 'quux@foo.com', 'remove')

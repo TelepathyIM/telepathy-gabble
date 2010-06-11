@@ -4,7 +4,9 @@ Test broken groups on the roster (regression test for fd.o #12791)
 
 import dbus
 
-from gabbletest import exec_test, expect_list_channel
+from gabbletest import exec_test
+from rostertest import expect_contact_list_signals, check_contact_list_signals
+from servicetest import assertLength
 import constants as cs
 import ns
 
@@ -61,18 +63,24 @@ def test(q, bus, conn, stream):
 
     stream.send(event.stanza)
 
-    # FIXME: this is somewhat fragile - it's asserting the exact order that
-    # things currently happen in roster.c. In reality the order is not
-    # significant
-    expect_list_channel(q, bus, conn, 'publish',
-        ['amy@foo.com', 'bob@foo.com'])
-    expect_list_channel(q, bus, conn, 'subscribe',
-        ['amy@foo.com', 'che@foo.com'])
-    expect_list_channel(q, bus, conn, 'stored',
-        ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
-    _expect_group_channel(q, bus, conn, 'women', ['amy@foo.com'])
-    _expect_group_channel(q, bus, conn, 'affected-by-fdo-12791', [])
-    _expect_group_channel(q, bus, conn, 'men', ['bob@foo.com', 'che@foo.com'])
+    pairs = expect_contact_list_signals(q, bus, conn,
+            ['publish', 'subscribe', 'stored'],
+            ['men', 'women', 'affected-by-fdo-12791'])
+
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'publish', ['amy@foo.com', 'bob@foo.com'])
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'subscribe', ['amy@foo.com', 'che@foo.com'])
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'stored', ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
+            'men', ['bob@foo.com', 'che@foo.com'])
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
+            'women', ['amy@foo.com'])
+    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
+            'affected-by-fdo-12791', [])
+
+    assertLength(0, pairs)      # i.e. we've checked all of them
 
 if __name__ == '__main__':
     exec_test(test)

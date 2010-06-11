@@ -7,7 +7,9 @@ import dbus
 
 from gabbletest import (
     acknowledge_iq, exec_test, sync_stream, make_result_iq, GoogleXmlStream,
-    expect_list_channel
+    )
+from rostertest import (
+    expect_contact_list_signals, check_contact_list_signals,
     )
 from servicetest import (
     call_async, sync_dbus, EventPattern,
@@ -99,7 +101,6 @@ def test_inital_roster(q, bus, conn, stream):
     # Send back the roster
     stream.send(result)
 
-    # This depends on the order in which roster.c creates the channels.
     # Since s-b-h had the "hidden" flag set, we don't expect them to be on any
     # lists. But we do want the "autosub" contact to be visible; see
     # <https://bugs.launchpad.net/ubuntu/+source/telepathy-gabble/+bug/398293>,
@@ -113,14 +114,20 @@ def test_inital_roster(q, bus, conn, stream):
         'blocked-and-no-sub@boards.ca',
         'music-is-math@boards.ca']
 
-    publish = expect_list_channel(q, bus, conn, 'publish',
-        mutually_subscribed_contacts)
-    subscribe = expect_list_channel(q, bus, conn, 'subscribe',
-        mutually_subscribed_contacts, rp_contacts=rp_contacts)
-    stored = expect_list_channel(q, bus, conn, 'stored',
-        mutually_subscribed_contacts+rp_contacts)
-    deny = expect_list_channel(q, bus, conn, 'deny',
-        blocked_contacts)
+    pairs = expect_contact_list_signals(q, bus, conn,
+            ['publish', 'subscribe', 'stored', 'deny'])
+
+    publish = check_contact_list_signals(q, bus, conn, pairs.pop(0),
+            cs.HT_LIST, 'publish', mutually_subscribed_contacts)
+    subscribe = check_contact_list_signals(q, bus, conn, pairs.pop(0),
+            cs.HT_LIST, 'subscribe', mutually_subscribed_contacts,
+            rp_contacts=rp_contacts)
+    stored = check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'stored', mutually_subscribed_contacts + rp_contacts)
+    deny = check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+            'deny', blocked_contacts)
+
+    assertLength(0, pairs)      # i.e. we've checked all of them
 
     return (publish, subscribe, stored, deny)
 

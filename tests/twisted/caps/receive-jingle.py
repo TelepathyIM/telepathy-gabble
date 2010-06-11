@@ -25,10 +25,14 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PresencesChanged',
            args=[{2L: (2, u'available', 'hello')}]))
 
+    # FIXME: throughout this test, Bob's handle is assumed to be 2.
+
     # no special capabilities
     assert conn.Capabilities.GetCapabilities([2]) == basic_caps
+
+    # holding the handle here: see below
     assert conn.Contacts.GetContactAttributes(
-        [2], [cs.CONN_IFACE_CAPS], False) == \
+        [2], [cs.CONN_IFACE_CAPS], True) == \
         { 2L: { icaps_attr: basic_caps,
                 cs.CONN + '/contact-id': 'bob@foo.com'}}
 
@@ -113,14 +117,28 @@ def test(q, bus, conn, stream):
     stream.send(presence)
 
     # can't do audio calls any more
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 0,
-            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS,
-            0)]])
+    q.expect_many(
+            EventPattern('dbus-signal', signal='CapabilitiesChanged',
+                args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 0,
+                    cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS,
+                    0)]],
+                ),
+            EventPattern('dbus-signal', signal='PresencesChanged',
+                args=[{2: (cs.PRESENCE_OFFLINE, 'offline', '')}]),
+            )
 
-    # Contact went offline and the handle is now invalid
+    # Contact went offline. Previously, this test asserted that the handle
+    # became invalid, but that's not guaranteed to happen immediately; so we
+    # now hold the handle (above), to guarantee that it does *not* become
+    # invalid.
+    assert conn.Contacts.GetContactAttributes(
+        [2], [cs.CONN_IFACE_CAPS], False) == \
+        { 2L: { icaps_attr: basic_caps,
+                cs.CONN + '/contact-id': 'bob@foo.com'}}
+
+    # What about a handle that's not valid?
     assertEquals({}, conn.Contacts.GetContactAttributes(
-        [2], [cs.CONN_IFACE_CAPS], False))
+        [31337], [cs.CONN_IFACE_CAPS], False))
 
     # regression test for fd.o #15198: getting caps of invalid handle crashed
     try:

@@ -93,9 +93,9 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
  * connection.c */
 typedef enum
 {
-  GABBLE_LIST_HANDLE_PUBLISH = 1,
+  GABBLE_LIST_HANDLE_STORED = 1,
+  GABBLE_LIST_HANDLE_PUBLISH,
   GABBLE_LIST_HANDLE_SUBSCRIBE,
-  GABBLE_LIST_HANDLE_STORED,
   GABBLE_LIST_HANDLE_DENY
 } GabbleListHandle;
 

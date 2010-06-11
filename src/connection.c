@@ -702,9 +702,9 @@ gabble_connection_get_unique_name (TpBaseConnection *self)
 /* must be in the same order as GabbleListHandle in connection.h */
 static const char *list_handle_strings[] =
 {
+    "stored",       /* GABBLE_LIST_HANDLE_STORED */
     "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */
     "subscribe",    /* GABBLE_LIST_HANDLE_SUBSCRIBE */
-    "stored",       /* GABBLE_LIST_HANDLE_STORED */
     "deny",         /* GABBLE_LIST_HANDLE_DENY */
     NULL
 };

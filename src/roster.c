@@ -1498,6 +1498,13 @@ process_roster (
         _gabble_roster_item_remove (roster, handle);
     }
 
+  chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+      GABBLE_LIST_HANDLE_STORED, NULL, NULL);
+
+  DEBUG ("calling change members on stored channel");
+  tp_group_mixin_change_members ((GObject *) chan,
+        "", stored_add, stored_rem, NULL, NULL, 0, 0);
+
   DEBUG ("calling change members on publish channel");
   tp_group_mixin_change_members ((GObject *) pub_chan,
         "", pub_add, pub_rem, NULL, NULL, 0, 0);
@@ -1505,13 +1512,6 @@ process_roster (
   DEBUG ("calling change members on subscribe channel");
   tp_group_mixin_change_members ((GObject *) sub_chan,
         "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
-
-  chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-      GABBLE_LIST_HANDLE_STORED, NULL, NULL);
-
-  DEBUG ("calling change members on stored channel");
-  tp_group_mixin_change_members ((GObject *) chan,
-        "", stored_add, stored_rem, NULL, NULL, 0, 0);
 
   DEBUG ("calling change members on any group channels");
   g_hash_table_foreach_remove (group_update_table, _update_group, roster);

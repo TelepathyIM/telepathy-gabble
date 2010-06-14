@@ -1929,8 +1929,6 @@ disconnect_callbacks (TpBaseConnection *base)
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = conn->priv;
 
-  DEBUG ("");
-
   g_assert (priv->iq_disco_cb != NULL);
   g_assert (priv->iq_unknown_cb != NULL);
   g_assert (priv->olpc_msg_cb != NULL);

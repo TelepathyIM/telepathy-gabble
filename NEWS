@@ -1,3 +1,38 @@
+telepathy-gabble 0.9.13 (UNRELEASED)
+====================================
+
+The “But today, you ARE the law!” release.
+
+Dependencies:
+
+• libnice >= 0.0.11 is now required.
+
+• telepathy-glib >= 0.11.6 is now required.
+
+Enhancements:
+
+• Gabble is now able to exchange files with the Google Talk desktop
+  client!  (KaKaRoTo)
+
+• On Maemo, when connected to Google Talk, suppress presence updates
+  while the device is idle. (wjt)
+
+• Plugins may now specify additional capabilities for Gabble to
+  advertise, and add responses to new disco#info queries. (andrunko)
+
+• From Wocky:
+  › The SCRAM-SHA-1 SASL mechanism is now supported. (sjoerd)
+
+
+Fixes:
+
+• From Wocky:
+  › Messages from JIDs at non-ASCII domains are no longer silently
+    dropped. (wjt)
+
+  › Whether or not the connection is secure is now correctly propagated
+    from Wocky up to Gabble. (eeejay)
+
 telepathy-gabble 0.9.12 (2010-06-03)
 ====================================
 

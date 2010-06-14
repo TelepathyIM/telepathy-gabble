@@ -266,6 +266,8 @@ EXTRA_DIST = \
 	constants.py \
 	gabbletest.py \
 	httptest.py \
+	jingle-share/file_transfer_helper.py \
+	jingle-share/jingleshareutils.py \
 	jingle/__init__.py \
 	jingle/callutils.py \
 	jingle/jingletest.py \

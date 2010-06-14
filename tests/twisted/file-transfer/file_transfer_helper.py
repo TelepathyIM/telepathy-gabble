@@ -179,7 +179,19 @@ class ReceiveFileTest(FileTransferTest):
         iq.send()
 
     def check_new_channel(self):
-        e = self.q.expect('dbus-signal', signal='NewChannels')
+        def is_ft_channel_event(event):
+            channels, = event.args
+
+            if len(channels) > 1:
+                return False
+
+            path, props = channels[0]
+            return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER
+
+        e = self.q.expect('dbus-signal', signal='NewChannels',
+            path=self.conn.object.object_path,
+            predicate=is_ft_channel_event)
+
         channels = e.args[0]
         assert len(channels) == 1
         path, props = channels[0]

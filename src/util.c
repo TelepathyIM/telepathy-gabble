@@ -437,9 +437,11 @@ validate_jid_node (const gchar *node)
 static gboolean
 validate_jid_domain (const gchar *domain)
 {
-  /* XXX: This doesn't do proper validation, it just checks the character
-   * range. In theory, we check that the domain is a well-formed IDN or
-   * an IPv4/IPv6 address literal.
+  /* XXX: This doesn't do proper validation: it checks the character
+   * range for ASCII characters, but lets through any non-ASCII characters. See
+   * the ifdef-d out tests in wocky-jid-validation-test.c for examples of
+   * erroneously accepted JIDs. In theory, we check that the domain is a
+   * well-formed IDN or an IPv4/IPv6 address literal.
    *
    * See RFC 3920 §3.2.
    */
@@ -447,8 +449,13 @@ validate_jid_domain (const gchar *domain)
   const gchar *c;
 
   for (c = domain; *c; c++)
-    if (!g_ascii_isalnum (*c) && !strchr (":-.", *c))
-      return FALSE;
+    {
+      if ((unsigned char) *c >= 0x7F)
+        continue;
+
+      if (!g_ascii_isalnum (*c) && !strchr (":-.", *c))
+        return FALSE;
+    }
 
   return TRUE;
 }

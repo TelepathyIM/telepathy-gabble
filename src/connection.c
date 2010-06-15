@@ -1862,8 +1862,8 @@ connector_connect_cb (GObject *source,
   GError *error = NULL;
   gchar *jid = NULL;
 
-  conn = wocky_connector_connect_finish (WOCKY_CONNECTOR (source), res, &error,
-      &jid, &(priv->stream_id));
+  conn = wocky_connector_connect_finish (WOCKY_CONNECTOR (source), res, &jid,
+      &(priv->stream_id), &error);
 
   connector_connected (self, conn, jid, error);
   g_free (jid);
@@ -1880,8 +1880,8 @@ connector_register_cb (GObject *source,
   GError *error = NULL;
   gchar *jid = NULL;
 
-  conn = wocky_connector_register_finish (WOCKY_CONNECTOR (source), res, &error,
-      &jid, &(priv->stream_id));
+  conn = wocky_connector_register_finish (WOCKY_CONNECTOR (source), res,
+      &jid, &(priv->stream_id), &error);
 
   connector_connected (self, conn, jid, error);
   g_free (jid);

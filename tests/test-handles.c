@@ -53,17 +53,10 @@ test_handles (guint handle_type)
   /* Properly return when error out argument isn't provided */
   g_assert (tp_handle_is_valid (tp_repo, 65536, NULL) == FALSE);
 
-  if (handle_type == TP_HANDLE_TYPE_LIST)
-    {
-      /* for the static repo we need a name that's actually valid */
-      jid = "deny";
-    }
-  else
-    {
-      /* It's not there to start with, unless we're using the static repo */
-      handle = tp_handle_lookup (tp_repo, jid, NULL, NULL);
-      g_assert (handle == 0);
-    }
+  /* It's not there to start with, unless we're using the static repo */
+  handle = tp_handle_lookup (tp_repo, jid, NULL, NULL);
+  g_assert (handle == 0);
+
   /* ... but when we call tp_handle_ensure we get a new ref to it */
   handle = tp_handle_ensure (tp_repo, jid, NULL, NULL);
   g_assert (handle != 0);
@@ -75,11 +68,8 @@ test_handles (guint handle_type)
   /* Now unref it */
   tp_handle_unref (tp_repo, handle);
 
-  if (handle_type != TP_HANDLE_TYPE_LIST)
-    {
-      /* Try to unref it again, should fail */
-      g_assert (tp_handle_is_valid (tp_repo, handle, NULL) == FALSE);
-    }
+  /* Try to unref it again, should fail */
+  g_assert (tp_handle_is_valid (tp_repo, handle, NULL) == FALSE);
 
   for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
@@ -94,6 +84,5 @@ int main (int argc, char **argv)
 
   test_handles (TP_HANDLE_TYPE_CONTACT);
   test_handles (TP_HANDLE_TYPE_ROOM);
-  test_handles (TP_HANDLE_TYPE_LIST);
   return 0;
 }

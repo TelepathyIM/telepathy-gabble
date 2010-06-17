@@ -1533,7 +1533,7 @@ process_roster (
 
       DEBUG ("calling change members on deny channel");
       tp_group_mixin_change_members ((GObject *) chan,
-          "", deny_add, deny_rem, NULL, NULL, 0, 0);
+          "", deny_add, deny_rem, NULL, NULL, conn->self_handle, 0);
 
       tp_intset_destroy (deny_add);
       tp_intset_destroy (deny_rem);

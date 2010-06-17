@@ -23,8 +23,9 @@
 #include "media-channel.h"
 #include "media-channel-internal.h"
 
-
 #include <dbus/dbus-glib.h>
+#include <dbus/dbus-glib-lowlevel.h>
+
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/exportable-channel.h>
@@ -953,7 +954,14 @@ gabble_media_channel_close_async (TpSvcChannel *iface,
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
 
-  DEBUG ("called");
+  if (DEBUGGING)
+    {
+      gchar *caller = dbus_g_method_get_sender (context);
+
+      DEBUG ("called by %s", caller);
+      g_free (caller);
+    }
+
   gabble_media_channel_close (self);
   tp_svc_channel_return_from_close (context);
 }

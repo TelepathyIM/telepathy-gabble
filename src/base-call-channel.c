@@ -22,6 +22,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include <dbus/dbus-glib-lowlevel.h>
+
 #include <gio/gio.h>
 
 #include <telepathy-glib/dbus.h>
@@ -759,7 +761,14 @@ gabble_base_call_channel_close_async (TpSvcChannel *iface,
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
 
-  DEBUG ("called");
+  if (DEBUGGING)
+    {
+      gchar *caller = dbus_g_method_get_sender (context);
+
+      DEBUG ("called by %s", caller);
+      g_free (caller);
+    }
+
   gabble_base_call_channel_close (self);
   tp_svc_channel_return_from_close (context);
 }

@@ -175,6 +175,7 @@ TWISTED_TESTS = \
 	file-transfer/test-send-file-wait-to-provide.py \
 	file-transfer/test-send-file-send-before-accept.py \
 	test-debug.py \
+	connect/disco-error-from-bare-jid.py \
 	connect/disco-no-reply.py \
 	connect/disconnect-timeout.py \
 	connect/test-fail.py \

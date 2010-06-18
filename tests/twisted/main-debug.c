@@ -38,7 +38,7 @@ main (int argc,
 
   gabble_init ();
 
-  /* needed for test-disco-no-reply.py */
+  /* needed for connect/disco-no-reply.py */
   gabble_connection_set_disco_reply_timeout (3);
   /* needed for test-avatar-async.py */
   gabble_vcard_manager_set_suspend_reply_timeout (3);

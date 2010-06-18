@@ -1,7 +1,6 @@
-
 """
 Test that Gabble disconnects connection if it doesn't receive a response
-to its service discovery request
+to its initial service discovery request to the server
 """
 
 from gabbletest import exec_test, XmppXmlStream
@@ -18,12 +17,11 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NETWORK_ERROR]),
 
-class JabberXmlStreamNoDiscoReply (XmppXmlStream):
-    """Subclass XmppXmlStream to don't automatically send a disco reply"""
+class JabberXmlStreamNoDiscoReply(XmppXmlStream):
+    """Subclass XmppXmlStream not to respond to disco requests to the server."""
     def _cb_disco_iq (self, iq):
         pass
 
 if __name__ == '__main__':
-    jabber_xml_stream_no_disco_reply = JabberXmlStreamNoDiscoReply
-    # telepathy-gabble-debug have been tweaked to timeout after 3 seconds
-    exec_test(test, protocol=jabber_xml_stream_no_disco_reply)
+    # telepathy-gabble-debug has been tweaked to time out after 3 seconds
+    exec_test(test, protocol=JabberXmlStreamNoDiscoReply)

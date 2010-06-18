@@ -8,6 +8,7 @@ TWISTED_TESTS = \
 	caps/caps-persistent-cache.py \
 	caps/compat-bundles.py \
 	caps/double-disco.py \
+	caps/disco-without-node.py \
 	caps/from-bare-jid.py \
 	caps/hashed-caps.py \
 	caps/initial-caps.py \
@@ -181,7 +182,6 @@ TWISTED_TESTS = \
 	connect/test-nonblocking-tls.py \
 	connect/stream-closed.py \
 	connect/network-error.py \
-	test-disco.py \
 	test-disco-no-reply.py \
 	test-fallback-socks5-proxy.py \
 	test-register.py \

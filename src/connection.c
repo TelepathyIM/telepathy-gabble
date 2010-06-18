@@ -1688,26 +1688,30 @@ bare_jid_disco_cb (GabbleDisco *disco,
   NodeIter i;
 
   if (disco_error != NULL)
-    DEBUG ("Got disco error on bare jid: %s", disco_error->message);
+    {
+      DEBUG ("Got disco error on bare jid: %s", disco_error->message);
+    }
   else
-    for (i = node_iter (result); i; i = node_iter_next (i))
-      {
-        LmMessageNode *child = node_iter_data (i);
+    {
+      for (i = node_iter (result); i; i = node_iter_next (i))
+        {
+          LmMessageNode *child = node_iter_data (i);
 
-        if (!tp_strdiff (child->name, "identity"))
-          {
-            const gchar *category = lm_message_node_get_attribute (child,
-                "category");
-            const gchar *type = lm_message_node_get_attribute (child, "type");
+          if (!tp_strdiff (child->name, "identity"))
+            {
+              const gchar *category = lm_message_node_get_attribute (child,
+                  "category");
+              const gchar *type = lm_message_node_get_attribute (child, "type");
 
-            if (!tp_strdiff (category, "pubsub") &&
-                !tp_strdiff (type, "pep"))
-              {
-                DEBUG ("Server advertises PEP support in our jid features");
-                conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
-              }
-          }
-      }
+              if (!tp_strdiff (category, "pubsub") &&
+                  !tp_strdiff (type, "pep"))
+                {
+                  DEBUG ("Server advertises PEP support in our jid features");
+                  conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
+                }
+            }
+        }
+    }
 
   decrement_waiting_connected (conn);
 }

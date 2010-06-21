@@ -19,7 +19,13 @@ def test_ancient(q, bus, conn, stream):
 def test_modern(q, bus, conn, stream):
     test(q, bus, conn, stream, True)
 
-def test(q, bus, conn, stream, modern=True):
+def test_ancient_queued(q, bus, conn, stream):
+    test(q, bus, conn, stream, False, True)
+
+def test_modern_queued(q, bus, conn, stream):
+    test(q, bus, conn, stream, True, True)
+
+def test(q, bus, conn, stream, modern=True, queued=False):
     conn.Connect()
 
     def send_roster_iq(stream, jid, subscription):
@@ -62,6 +68,13 @@ def test(q, bus, conn, stream, modern=True):
 
     assertLength(0, pairs)      # i.e. we've checked all of them
 
+    if queued:
+        conn.Aliasing.SetAliases({quux_handle: 'Quux'})
+        set_aliases = q.expect('stream-iq', query_ns=ns.ROSTER)
+        item = set_aliases.query.firstChildElement()
+        assertEquals('quux@foo.com', item['jid'])
+        assertEquals('Quux', item['name'])
+
     expectations = [
             EventPattern('stream-iq',
             iq_type='set', query_ns=ns.ROSTER),
@@ -73,6 +86,10 @@ def test(q, bus, conn, stream, modern=True):
         call_async(q, stored.Group, 'RemoveMembers', [quux_handle], '')
         expectations.append(EventPattern('dbus-return',
             method='RemoveMembers'))
+
+    if queued:
+        # finish off the previous thing we were doing, so removal can proceed
+        acknowledge_iq(stream, set_aliases.stanza)
 
     event = q.expect_many(*expectations)[0]
     item = event.query.firstChildElement()
@@ -99,3 +116,5 @@ def test(q, bus, conn, stream, modern=True):
 if __name__ == '__main__':
     exec_test(test_ancient)
     exec_test(test_modern)
+    exec_test(test_ancient_queued)
+    exec_test(test_modern_queued)

@@ -85,7 +85,7 @@ def test_inital_roster(q, bus, conn, stream):
         False)
     # This contact is remote pending, so we shouldn't suppress it.
     add_roster_item(query, 'this-is-a-jid@badger.com', 'none', True)
-    add_roster_item(query, 'lp-bug-298293@gmail.com', 'both', False,
+    add_roster_item(query, 'lp-bug-398293@gmail.com', 'both', False,
         {'gr:autosub': 'true'})
     # These contacts are blocked but we're subscribed to them, so they should
     # show up in all of the lists.
@@ -106,7 +106,7 @@ def test_inital_roster(q, bus, conn, stream):
     # <https://bugs.launchpad.net/ubuntu/+source/telepathy-gabble/+bug/398293>,
     # where Gabble was incorrectly hiding valid contacts.
 
-    mutually_subscribed_contacts = ['lp-bug-298293@gmail.com',
+    mutually_subscribed_contacts = ['lp-bug-398293@gmail.com',
         'blocked-but-subscribed@boards.ca',
         'music-is-math@boards.ca']
     rp_contacts = ['this-is-a-jid@badger.com']
@@ -389,7 +389,7 @@ def test_deny_overlap_two(q, bus, conn, stream,
     """
 
     # This contact was on our roster when we started.
-    contact = 'lp-bug-298293@gmail.com'
+    contact = 'lp-bug-398293@gmail.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
 
     assertContains(handle,

@@ -7,12 +7,19 @@ import dbus
 
 from twisted.words.xish import domish
 
-from servicetest import EventPattern, wrap_channel, assertLength, assertEquals
+from servicetest import (EventPattern, assertLength, assertEquals,
+        call_async, wrap_channel)
 from gabbletest import acknowledge_iq, exec_test
 import constants as cs
 import ns
 
-def test(q, bus, conn, stream):
+def test_ancient(q, bus, conn, stream):
+    test(q, bus, conn, stream, False)
+
+def test_modern(q, bus, conn, stream):
+    test(q, bus, conn, stream, True)
+
+def test(q, bus, conn, stream, modern=True):
     conn.Connect()
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
@@ -37,13 +44,27 @@ def test(q, bus, conn, stream):
 
     # request subscription
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
-    chan.Group.AddMembers([handle], '')
 
-    event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
+    expectations = [
+            EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
+            ]
+
+    if modern:
+        call_async(q, conn.ContactList, 'RequestSubscription', [handle], '')
+    else:
+        call_async(q, chan.Group, 'AddMembers', [handle], '')
+        expectations.append(EventPattern('dbus-return', method='AddMembers'))
+
+    event = q.expect_many(*expectations)[0]
+
     item = event.query.firstChildElement()
     assertEquals('bob@foo.com', item["jid"])
 
     acknowledge_iq(stream, event.stanza)
+
+    # FIXME: also expect RequestSubscription to finish; in principle, it should
+    # only finish after we ack that IQ, although at the moment it finishes
+    # sooner
 
     event = q.expect('stream-presence', presence_type='subscribe')
 
@@ -56,7 +77,12 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-signal', signal='MembersChanged',
                 args=['', [handle], [], [], [], 0, 0]),
             EventPattern('stream-presence'),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{handle:
+                    (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
+                    }, []]),
             )
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test_ancient)
+    exec_test(test_modern)

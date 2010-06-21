@@ -4,8 +4,8 @@ Regression tests for rescinding outstanding subscription requests.
 
 from twisted.words.protocols.jabber.client import IQ
 
-from servicetest import EventPattern, assertEquals, assertLength
-from gabbletest import exec_test, GoogleXmlStream
+from servicetest import EventPattern, assertEquals, assertLength, call_async
+from gabbletest import exec_test, GoogleXmlStream, acknowledge_iq
 from rostertest import expect_contact_list_signals, check_contact_list_signals
 import constants as cs
 import ns
@@ -95,7 +95,7 @@ def test(q, bus, conn, stream, remove, local):
         # ...removes him from the roster...
         if local:
             # ...by telling Gabble to remove him from stored.
-            stored.Group.RemoveMembers([h], '')
+            call_async(q, conn.ContactList, 'RemoveContacts', [h])
 
             event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
             item = event.query.firstChildElement()
@@ -131,13 +131,21 @@ def test(q, bus, conn, stream, remove, local):
                 args=[{}, [h]],
                 ),
             )
+
+        if local:
+            acknowledge_iq(stream, event.stanza)
+            q.expect('dbus-return', method='RemoveContacts')
     else:
         # ...rescinds the subscription request...
         if local:
             # ...by telling Gabble to remove him from 'subscribe'.
-            subscribe.Group.RemoveMembers([h], '')
+            call_async(q, conn.ContactList, 'Unsubscribe', [h])
 
-            q.expect('stream-presence', to=jid, presence_type='unsubscribe')
+            event, _ = q.expect_many(
+                    EventPattern('stream-presence', to=jid,
+                        presence_type='unsubscribe'),
+                    EventPattern('dbus-return', method='Unsubscribe'),
+                    )
         else:
             # ...in the other client.
             pass

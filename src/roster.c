@@ -99,7 +99,7 @@ struct _GabbleRosterItemEdit
   /* if these are ..._INVALID, that means don't edit */
   GabbleRosterSubscription new_subscription;
   GoogleItemType new_google_type;
-  /* owned by the item; if NULL, that means don't edit */
+  /* owned by the GabbleRosterItemEdit; if NULL, that means don't edit */
   gchar *new_name;
   TpHandleSet *add_to_groups;
   TpHandleSet *remove_from_groups;

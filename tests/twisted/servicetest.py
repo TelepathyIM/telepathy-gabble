@@ -41,7 +41,7 @@ def format_event(event):
 class EventPattern:
     def __init__(self, type, **properties):
         self.type = type
-        self.predicate = lambda x: True
+        self.predicate = None
         if 'predicate' in properties:
             self.predicate = properties['predicate']
             del properties['predicate']
@@ -50,7 +50,7 @@ class EventPattern:
     def __repr__(self):
         properties = dict(self.properties)
 
-        if self.predicate:
+        if self.predicate is not None:
             properties['predicate'] = self.predicate
 
         return '%s(%r, **%r)' % (
@@ -67,7 +67,7 @@ class EventPattern:
             except AttributeError:
                 return False
 
-        if self.predicate(event):
+        if self.predicate is None or self.predicate(event):
             return True
 
         return False

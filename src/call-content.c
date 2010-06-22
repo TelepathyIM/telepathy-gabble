@@ -218,7 +218,7 @@ gabble_call_content_get_property (GObject    *object,
                 NULL);
             }
 
-          arr = gabble_value_array_build (2,
+          arr = tp_value_array_build (2,
             DBUS_TYPE_G_OBJECT_PATH, path,
             GABBLE_HASH_TYPE_CONTACT_CODEC_MAP, map,
             G_TYPE_INVALID);
@@ -608,7 +608,7 @@ call_content_codec_list_to_array (GList *codecs)
 
       g_assert (c->params != NULL);
 
-      v = gabble_value_array_build (5,
+      v = tp_value_array_build (5,
         G_TYPE_UINT, (guint) c->id,
         G_TYPE_STRING, c->name,
         G_TYPE_UINT, c->clockrate,

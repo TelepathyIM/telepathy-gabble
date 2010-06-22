@@ -1220,42 +1220,6 @@ jingle_pick_best_content_type (GabbleConnection *conn,
     }
 }
 
-GValueArray *
-gabble_value_array_build (gsize length,
-  GType type,
-  ...)
-{
-  GValueArray *arr;
-  GType t;
-  va_list var_args;
-  char *error = NULL;
-
-  arr = g_value_array_new (length);
-
-  va_start (var_args, type);
-
-  for (t = type; t != G_TYPE_INVALID; t = va_arg (var_args, GType))
-    {
-      GValue *v = arr->values + arr->n_values;
-      g_value_array_append (arr, NULL);
-
-      g_value_init (v, t);
-
-      G_VALUE_COLLECT (v, var_args, 0, &error);
-
-      if (error != NULL)
-        {
-          g_critical ("%s", error);
-          g_free (error);
-
-          g_value_array_free (arr);
-          return NULL;
-        }
-    }
-
-  return arr;
-}
-
 GPtrArray *
 gabble_call_candidates_to_array (GList *candidates)
 {
@@ -1280,7 +1244,7 @@ gabble_call_candidates_to_array (GList *candidates)
           "Password", G_TYPE_STRING, cand->password,
           NULL);
 
-         a = gabble_value_array_build (4,
+         a = tp_value_array_build (4,
             G_TYPE_UINT, cand->component,
             G_TYPE_STRING, cand->address,
             G_TYPE_UINT, cand->port,

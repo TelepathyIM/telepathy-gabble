@@ -117,10 +117,6 @@ const gchar *jingle_pick_best_content_type (GabbleConnection *conn,
     const gchar *resource,
     JingleMediaType type);
 
-GValueArray *gabble_value_array_build (gsize length,
-  GType type,
-  ...);
-
 GPtrArray *gabble_call_candidates_to_array (GList *candidates);
 
 gchar * gabble_peer_to_jid (GabbleConnection *conn,

@@ -82,7 +82,7 @@ gabble_call_stream_endpoint_init (GabbleCallStreamEndpoint *self)
 
   self->priv = priv;
 
-  priv->selected_candidate = gabble_value_array_build (4,
+  priv->selected_candidate = tp_value_array_build (4,
       G_TYPE_UINT, 0,
       G_TYPE_STRING, "",
       G_TYPE_UINT, 0,
@@ -90,7 +90,7 @@ gabble_call_stream_endpoint_init (GabbleCallStreamEndpoint *self)
           g_hash_table_new (g_str_hash, g_str_equal),
       G_TYPE_INVALID);
 
-  priv->remote_credentials = gabble_value_array_build (2,
+  priv->remote_credentials = tp_value_array_build (2,
       G_TYPE_STRING, "",
       G_TYPE_STRING, "",
       G_TYPE_INVALID);

@@ -179,7 +179,7 @@ gabble_base_call_channel_init (GabbleBaseCallChannel *self)
 
   self->priv = priv;
 
-  priv->reason = gabble_value_array_build (3,
+  priv->reason = tp_value_array_build (3,
     G_TYPE_UINT, 0,
     G_TYPE_UINT, 0,
     G_TYPE_STRING, "",

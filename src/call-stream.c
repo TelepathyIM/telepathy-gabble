@@ -210,7 +210,7 @@ gabble_call_stream_get_property (GObject    *object,
           if (gabble_jingle_factory_get_stun_server (
                 connection->jingle_factory, &stun_server, &stun_port))
             {
-              GValueArray *va = gabble_value_array_build (2,
+              GValueArray *va = tp_value_array_build (2,
                   G_TYPE_STRING, stun_server,
                   G_TYPE_UINT, stun_port,
                   G_TYPE_INVALID);

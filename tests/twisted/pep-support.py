@@ -4,6 +4,7 @@ from gabbletest import exec_test, GoogleXmlStream, acknowledge_iq, BaseXmlStream
     sync_stream
 from servicetest import call_async, EventPattern
 
+from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import xpath
 import constants as cs
 import ns
@@ -30,9 +31,15 @@ class PepInServerDiscoXmlStream(BaseXmlStream):
         self.send(iq)
 
     def _cb_bare_jid_disco_iq(self, iq):
-        iq['type'] = 'result'
-        iq['from'] = iq['to']
-        self.send(iq)
+        # Additionally, Prosody 0.6.1 doesn't like us discoing our own bare
+        # JID, and responds with an error which doesn't have the 'from'
+        # attribute. Wocky used to discard this, but now tolerates it.
+        result = IQ(self, 'error')
+        result['id'] = iq['id']
+        error = result.addElement((None, 'error'))
+        error['type'] = 'cancel'
+        error.addElement((ns.STANZA, 'service-unavailable'))
+        self.send(result)
 
 def test_legacy(q, bus, conn, stream):
     conn.Connect()

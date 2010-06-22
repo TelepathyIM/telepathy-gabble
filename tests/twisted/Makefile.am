@@ -267,6 +267,7 @@ EXTRA_DIST = \
 	constants.py \
 	gabbletest.py \
 	httptest.py \
+	rostertest.py \
 	jingle-share/file_transfer_helper.py \
 	jingle-share/jingleshareutils.py \
 	jingle/__init__.py \
@@ -276,7 +277,6 @@ EXTRA_DIST = \
 	mucutil.py \
 	ns.py \
 	olpc/util.py \
-	roster/rostertest.py \
 	tubes/muctubeutil.py \
 	tubes/tubetestutil.py \
 	sasl/saslutil.py \

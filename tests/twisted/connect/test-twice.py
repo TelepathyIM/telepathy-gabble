@@ -1,4 +1,3 @@
-
 """
 Test connecting to a server with 2 accounts, testing XmppAuthenticator and
 JabberAuthenticator
@@ -7,10 +6,11 @@ JabberAuthenticator
 import os
 import sys
 import dbus
-import servicetest
 
-from gabbletest import exec_test
 import constants as cs
+from gabbletest import exec_test
+from rostertest import expect_contact_list_signals, check_contact_list_signals
+from servicetest import assertLength
 
 def test(q, bus, conns, streams):
 
@@ -29,14 +29,17 @@ def test(q, bus, conns, streams):
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
              path=conn1.object.object_path)
-    for target_id in ('publish', 'subscribe', 'stored'):
-        event = q.expect('dbus-signal', signal='NewChannels',
-                         path=conn1.object.object_path)
-        channels = event.args[0]
-        assert len(channels) == 1
-        path, props = channels[0]
-        assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CONTACT_LIST, props
-        assert props[cs.TARGET_ID] == target_id, props
+
+    pairs = expect_contact_list_signals(q, bus, conn1,
+            ['publish', 'subscribe', 'stored'])
+
+    check_contact_list_signals(q, bus, conn1, pairs.pop(0), cs.HT_LIST,
+            'publish', [])
+    check_contact_list_signals(q, bus, conn1, pairs.pop(0), cs.HT_LIST,
+            'subscribe', [])
+    check_contact_list_signals(q, bus, conn1, pairs.pop(0), cs.HT_LIST,
+            'stored', [])
+    assertLength(0, pairs)      # i.e. we popped and checked all of them
 
     # Connection 2
     conn2.Connect()
@@ -51,14 +54,16 @@ def test(q, bus, conns, streams):
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
              path=conn2.object.object_path)
 
-    for target_id in ('publish', 'subscribe', 'stored'):
-        event = q.expect('dbus-signal', signal='NewChannels',
-                         path=conn2.object.object_path)
-        channels = event.args[0]
-        assert len(channels) == 1
-        path, props = channels[0]
-        assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CONTACT_LIST, props
-        assert props[cs.TARGET_ID] == target_id, props
+    pairs = expect_contact_list_signals(q, bus, conn2,
+            ['publish', 'subscribe', 'stored'])
+
+    check_contact_list_signals(q, bus, conn2, pairs.pop(0), cs.HT_LIST,
+            'publish', [])
+    check_contact_list_signals(q, bus, conn2, pairs.pop(0), cs.HT_LIST,
+            'subscribe', [])
+    check_contact_list_signals(q, bus, conn2, pairs.pop(0), cs.HT_LIST,
+            'stored', [])
+    assertLength(0, pairs)      # i.e. we popped and checked all of them
 
 if __name__ == '__main__':
     exec_test(test, num_instances=2)

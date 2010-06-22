@@ -267,6 +267,7 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
     directions, at which point they will vanish from 'stored', while
     remaining on 'deny'.
     """
+    self_handle = conn.GetSelfHandle()
 
     contact = 'blocked-but-subscribed@boards.ca'
     handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
@@ -309,6 +310,7 @@ def test_deny_overlap_one(q, bus, conn, stream, subscribe, stored, deny):
     Here's a tricker case: blocking a contact, and then removing them before
     the server's responded to the block request.
     """
+    self_handle = conn.GetSelfHandle()
 
     # As we saw in test_flickering(), we have a subscription to Bob,
     # everything's peachy.
@@ -353,7 +355,7 @@ def test_deny_overlap_one(q, bus, conn, stream, subscribe, stored, deny):
 
     q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged', predicate=is_deny,
-            args=["", [handle], [], [], [], 0, 0]),
+            args=["", [handle], [], [], [], self_handle, 0]),
         EventPattern('stream-presence', to=contact,
             presence_type='unsubscribe'),
         )
@@ -442,6 +444,7 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
     Test unblocking a contact, and, while that request is pending, deleting
     them.
     """
+    self_handle = conn.GetSelfHandle()
 
     # This contact was on our roster, blocked and subscribed, when we started.
     contact = 'music-is-math@boards.ca'
@@ -482,7 +485,7 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
 
     _, roster_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
-            args=['', [], [handle], [], [], 0, cs.GC_REASON_NONE],
+            args=['', [], [handle], [], [], self_handle, cs.GC_REASON_NONE],
             predicate=is_deny),
         remove_events[0],
         )

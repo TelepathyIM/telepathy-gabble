@@ -1,5 +1,7 @@
-telepathy-gabble 0.9.14 (UNRELEASED)
+telepathy-gabble 0.9.14 (2010-06-22)
 ====================================
+
+The "missing frame" release.
 
 Enhancements:
 
@@ -15,6 +17,8 @@ Fixes:
   roster regression tests, in preparation for future ContactList API (smcv)
 
 • Update Wocky snapshot:
+  • fd.o #28643: stop applying GNUTLS_VERIFY_DO_NOT_ALLOW_SAME flag, allowing
+    connection to (for instance) jabber.ccc.de (Lars Noschinski)
   • Apply more workarounds for TLS server misbehaviour (wjt)
   • fd.o #28647: be more tolerant if servers send an IQ reply without a
     'from' attribute (smcv)

@@ -1,3 +1,26 @@
+telepathy-gabble 0.9.14 (UNRELEASED)
+====================================
+
+Enhancements:
+
+• When a call is ended, mention who ended it in the debug log (wjt)
+
+Fixes:
+
+• fd.o #28599: ignore errors from disco#info query on our own bare JID,
+  fixing connections to older versions of jabberd, jabberd2, Prosody etc.,
+  which regressed in 0.9.13 (wjt)
+
+• Use the self-handle as actor for changes to the 'deny' list, and improve
+  roster regression tests, in preparation for future ContactList API (smcv)
+
+• Update Wocky snapshot:
+  • Apply more workarounds for TLS server misbehaviour (wjt)
+  • fd.o #28647: be more tolerant if servers send an IQ reply without a
+    'from' attribute (smcv)
+  • fd.o #27488: wocky_connector_connect_finish, _register_finish parameters
+    have been re-ordered (smcv)
+
 telepathy-gabble 0.9.13 (2010-06-14)
 ====================================
 

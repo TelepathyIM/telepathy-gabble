@@ -1713,11 +1713,15 @@ connector_connected (GabbleConnection *self,
     {
       DEBUG ("couldn't get our self handle: %s", error->message);
 
-      g_error_free (error);
+      if (error->domain != TP_ERRORS)
+        {
+          error->domain = TP_ERRORS;
+          error->code = TP_ERROR_INVALID_HANDLE;
+        }
 
-      tp_base_connection_change_status ((TpBaseConnection *) self,
-          TP_CONNECTION_STATUS_DISCONNECTED,
+      gabble_connection_disconnect_with_tp_error (self, error,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      g_error_free (error);
 
       return;
     }
@@ -1727,11 +1731,15 @@ connector_connected (GabbleConnection *self,
     {
       DEBUG ("couldn't parse our own JID: %s", error->message);
 
-      g_error_free (error);
+      if (error->domain != TP_ERRORS)
+        {
+          error->domain = TP_ERRORS;
+          error->code = TP_ERROR_INVALID_ARGUMENT;
+        }
 
-      tp_base_connection_change_status ((TpBaseConnection *) self,
-          TP_CONNECTION_STATUS_DISCONNECTED,
+      gabble_connection_disconnect_with_tp_error (self, error,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      g_error_free (error);
 
       return;
     }
@@ -1751,11 +1759,15 @@ connector_connected (GabbleConnection *self,
       DEBUG ("sending disco request failed: %s",
           error->message);
 
-      g_error_free (error);
+      if (error->domain != TP_ERRORS)
+        {
+          error->domain = TP_ERRORS;
+          error->code = TP_ERROR_NETWORK_ERROR;
+        }
 
-      tp_base_connection_change_status ((TpBaseConnection *) self,
-          TP_CONNECTION_STATUS_DISCONNECTED,
+      gabble_connection_disconnect_with_tp_error (self, error,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      g_error_free (error);
     }
 
   /* Disco our own bare jid to check if PEP is supported */
@@ -1766,11 +1778,15 @@ connector_connected (GabbleConnection *self,
       DEBUG ("Sending disco request to our own bare jid failed: %s",
           error->message);
 
-      g_error_free (error);
+      if (error->domain != TP_ERRORS)
+        {
+          error->domain = TP_ERRORS;
+          error->code = TP_ERROR_NETWORK_ERROR;
+        }
 
-      tp_base_connection_change_status ((TpBaseConnection *) self,
-          TP_CONNECTION_STATUS_DISCONNECTED,
+      gabble_connection_disconnect_with_tp_error (self, error,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+      g_error_free (error);
     }
 
   self->priv->waiting_connected = 2;

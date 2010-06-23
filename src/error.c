@@ -27,8 +27,10 @@
 #include "namespaces.h"
 #include "util.h"
 
-#include "wocky/wocky-xmpp-error.h"
-#include "wocky/wocky-xmpp-error-enumtypes.h"
+#include <wocky/wocky-auth-registry.h>
+#include <wocky/wocky-auth-registry-enumtypes.h>
+#include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky-xmpp-error-enumtypes.h>
 
 #define MAX_LEGACY_ERRORS 3
 
@@ -625,6 +627,29 @@ map_wocky_xmpp_error (const GError *error,
     }
 }
 
+static TpError
+map_wocky_auth_error (const GError *error,
+    TpConnectionStatusReason *conn_reason)
+{
+  g_return_val_if_fail (error->domain == WOCKY_AUTH_ERROR,
+      TP_ERROR_NOT_AVAILABLE);
+
+  switch (error->code)
+    {
+    case WOCKY_AUTH_ERROR_CONNRESET:
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR,
+          TP_ERROR_CONNECTION_LOST);
+
+    case WOCKY_AUTH_ERROR_NETWORK:
+    case WOCKY_AUTH_ERROR_STREAM:
+      return set_easy_conn_reason (conn_reason, NETWORK_ERROR);
+
+    default:
+      return set_easy_conn_reason (conn_reason, AUTHENTICATION_FAILED);
+    }
+}
+
 static const gchar *
 get_error_prefix (GEnumClass *klass,
     gint code,
@@ -679,6 +704,16 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
 
       if (conn_reason != NULL)
         *conn_reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+    }
+  else if (wocky_error->domain == WOCKY_AUTH_ERROR)
+    {
+      klass = g_type_class_ref (WOCKY_TYPE_AUTH_ERROR);
+      name = get_error_prefix (klass, wocky_error->code,
+          "unknown WockyAuthError code");
+      g_set_error (error, TP_ERRORS,
+          map_wocky_auth_error (wocky_error, conn_reason),
+          "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
+      g_type_class_unref (klass);
     }
   else
     {

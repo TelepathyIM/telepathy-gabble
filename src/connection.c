@@ -1576,16 +1576,7 @@ connector_error_disconnect (GabbleConnection *self,
 
   if (error->domain == WOCKY_AUTH_ERROR)
     {
-      switch (error->code)
-        {
-          case WOCKY_AUTH_ERROR_NETWORK:
-          case WOCKY_AUTH_ERROR_CONNRESET:
-          case WOCKY_AUTH_ERROR_STREAM:
-            reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
-            break;
-          default:
-            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-        }
+      gabble_set_tp_conn_error_from_wocky (error, &reason, NULL);
     }
   else if (error->domain == WOCKY_CONNECTOR_ERROR)
     {

@@ -1568,39 +1568,22 @@ static void
 connector_error_disconnect (GabbleConnection *self,
     GError *error)
 {
+  GError *tp_error = NULL;
   TpBaseConnection *base = (TpBaseConnection *) self;
-  TpConnectionStatusReason reason = \
-    TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+  TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+  GHashTable *details;
 
-  DEBUG ("connection failed: %s", error->message);
+  gabble_set_tp_conn_error_from_wocky (error, &reason, &tp_error);
+  DEBUG ("connection failed: %s", tp_error->message);
+  g_assert (tp_error->domain == TP_ERRORS);
 
-  if (error->domain == WOCKY_AUTH_ERROR)
-    {
-      gabble_set_tp_conn_error_from_wocky (error, &reason, NULL);
-    }
-  else if (error->domain == WOCKY_CONNECTOR_ERROR)
-    {
-      gabble_set_tp_conn_error_from_wocky (error, &reason, NULL);
-    }
-  else if (error->domain == WOCKY_XMPP_STREAM_ERROR)
-    {
-      GError *e = NULL;
-
-      gabble_set_tp_conn_error_from_wocky (error, &reason, &e);
-      DEBUG ("%s", e->message);
-      g_clear_error (&e);
-    }
-  else if (error->domain == WOCKY_TLS_CERT_ERROR)
-    {
-      GError *e = NULL;
-
-      gabble_set_tp_conn_error_from_wocky (error, &reason, &e);
-      DEBUG ("%s", e->message);
-      g_clear_error (&e);
-    }
-
-  tp_base_connection_change_status (base,
-      TP_CONNECTION_STATUS_DISCONNECTED, reason);
+  details = tp_asv_new (
+      "debug-message", G_TYPE_STRING, tp_error->message,
+      NULL);
+  tp_base_connection_disconnect_with_dbus_error (base,
+      tp_error_get_dbus_name (tp_error->code), details, reason);
+  g_hash_table_unref (details);
+  g_error_free (tp_error);
 }
 
 static void

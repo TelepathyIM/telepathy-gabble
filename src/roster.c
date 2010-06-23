@@ -3137,6 +3137,7 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
       TpHandleSet *tmp;
       GabbleRosterItemEdit *in_flight;
       gboolean ok;
+      GError *error = NULL;
 
       DEBUG ("immediate edit to contact #%u - set %" G_GSIZE_FORMAT
           "contact groups", contact, n);
@@ -3158,18 +3159,17 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
       item->groups = tmp;
       tp_handle_set_destroy (groups_set);
 
-      /* we ignore any NetworkError that might occur */
       ok = _gabble_connection_send_with_reply (self->priv->conn,
           message, roster_edited_cb, G_OBJECT (self),
-          in_flight, NULL);
+          in_flight, &error);
       lm_message_unref (message);
 
       /* if send_with_reply failed, then roster_edited_cb will never run */
       if (!ok)
         {
-          /* FIXME: the edit failed, maybe we should somehow have another try
-           * at it later? */
           tp_clear_pointer (&item->unsent_edits, item_edit_free);
+          g_simple_async_result_set_from_error (result, error);
+          g_error_free (error);
           item_edit_free (in_flight);
         }
     }

@@ -1482,11 +1482,28 @@ static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
 static void decrement_waiting_connected (GabbleConnection *connection);
 
 static void
+gabble_connection_disconnect_with_tp_error (GabbleConnection *self,
+    const GError *tp_error,
+    TpConnectionStatusReason reason)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  GHashTable *details = tp_asv_new (
+      "debug-message", G_TYPE_STRING, tp_error->message,
+      NULL);
+
+  g_assert (tp_error->domain == TP_ERRORS);
+  tp_base_connection_disconnect_with_dbus_error (base,
+      tp_error_get_dbus_name (tp_error->code), details, reason);
+  g_hash_table_unref (details);
+}
+
+static void
 remote_closed_cb (WockyPorter *porter,
     GabbleConnection *self)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
-  GHashTable *details;
+  GError e = { TP_ERRORS, TP_ERROR_CONNECTION_LOST,
+      "server closed its XMPP stream" };
 
   if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
     /* Ignore if we are already disconnecting/disconnected */
@@ -1496,13 +1513,8 @@ remote_closed_cb (WockyPorter *porter,
 
   /* Changing the state to Disconnect will call connection_shut_down which
    * will properly close the porter. */
-  details = tp_asv_new (
-      "debug-message", G_TYPE_STRING, "server closed its XMPP stream",
-      NULL);
-  tp_base_connection_disconnect_with_dbus_error (base,
-          TP_ERROR_STR_CONNECTION_LOST, details,
+  gabble_connection_disconnect_with_tp_error (self, &e,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
-  g_hash_table_unref (details);
 }
 
 static void
@@ -1539,7 +1551,6 @@ remote_error_cb (WockyPorter *porter,
   GabbleConnectionPrivate *priv = self->priv;
   GError e = { domain, code, msg };
   GError *error = NULL;
-  GHashTable *details;
 
   if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
     /* Ignore if we are already disconnecting/disconnected */
@@ -1569,12 +1580,7 @@ remote_error_cb (WockyPorter *porter,
   wocky_porter_force_close_async (priv->porter, NULL, force_close_cb,
       self);
 
-  details = tp_asv_new (
-      "debug-message", G_TYPE_STRING, error->message,
-      NULL);
-  tp_base_connection_disconnect_with_dbus_error (base,
-          tp_error_get_dbus_name (error->code), details, reason);
-  g_hash_table_unref (details);
+  gabble_connection_disconnect_with_tp_error (self, error, reason);
   g_error_free (error);
 }
 
@@ -1583,20 +1589,13 @@ connector_error_disconnect (GabbleConnection *self,
     GError *error)
 {
   GError *tp_error = NULL;
-  TpBaseConnection *base = (TpBaseConnection *) self;
   TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
-  GHashTable *details;
 
   gabble_set_tp_conn_error_from_wocky (error, &reason, &tp_error);
   DEBUG ("connection failed: %s", tp_error->message);
   g_assert (tp_error->domain == TP_ERRORS);
 
-  details = tp_asv_new (
-      "debug-message", G_TYPE_STRING, tp_error->message,
-      NULL);
-  tp_base_connection_disconnect_with_dbus_error (base,
-      tp_error_get_dbus_name (tp_error->code), details, reason);
-  g_hash_table_unref (details);
+  gabble_connection_disconnect_with_tp_error (self, tp_error, reason);
   g_error_free (tp_error);
 }
 

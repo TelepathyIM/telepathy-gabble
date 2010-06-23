@@ -29,6 +29,8 @@
 
 #include <wocky/wocky-auth-registry.h>
 #include <wocky/wocky-auth-registry-enumtypes.h>
+#include <wocky/wocky-connector.h>
+#include <wocky/wocky-connector-enumtypes.h>
 #include <wocky/wocky-xmpp-error.h>
 #include <wocky/wocky-xmpp-error-enumtypes.h>
 
@@ -650,6 +652,40 @@ map_wocky_auth_error (const GError *error,
     }
 }
 
+static TpError
+map_wocky_connector_error (const GError *error,
+    TpConnectionStatusReason *conn_reason)
+{
+  g_return_val_if_fail (error->domain == WOCKY_CONNECTOR_ERROR,
+      TP_ERROR_NOT_AVAILABLE);
+
+  switch (error->code)
+    {
+    case WOCKY_CONNECTOR_ERROR_SESSION_DENIED:
+      return set_easy_conn_reason (conn_reason, AUTHENTICATION_FAILED);
+
+    case WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT:
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
+          TP_ERROR_REGISTRATION_EXISTS);
+
+    case WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED:
+      /* AuthenticationFailed is the closest ConnectionStatusReason to
+       * "I tried but couldn't register you an account." */
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED,
+          TP_ERROR_PERMISSION_DENIED);
+
+    case WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED:
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED,
+          TP_ERROR_NOT_AVAILABLE);
+
+    default:
+      return set_easy_conn_reason (conn_reason, NETWORK_ERROR);
+    }
+}
+
 static const gchar *
 get_error_prefix (GEnumClass *klass,
     gint code,
@@ -712,6 +748,16 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
           "unknown WockyAuthError code");
       g_set_error (error, TP_ERRORS,
           map_wocky_auth_error (wocky_error, conn_reason),
+          "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
+      g_type_class_unref (klass);
+    }
+  else if (wocky_error->domain == WOCKY_CONNECTOR_ERROR)
+    {
+      klass = g_type_class_ref (WOCKY_TYPE_CONNECTOR_ERROR);
+      name = get_error_prefix (klass, wocky_error->code,
+          "unknown WockyConnectorError code");
+      g_set_error (error, TP_ERRORS,
+          map_wocky_connector_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
     }

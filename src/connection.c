@@ -1580,31 +1580,8 @@ connector_error_disconnect (GabbleConnection *self,
     }
   else if (error->domain == WOCKY_CONNECTOR_ERROR)
     {
-      /* Connector error */
-      switch (error->code)
-        {
-          case WOCKY_CONNECTOR_ERROR_SESSION_DENIED:
-            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-            break;
-
-          case WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT:
-            DEBUG ("Registration failed; jid is already used");
-            reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
-            break;
-
-          case WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED:
-          case WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED:
-            /* AuthenticationFailed is the closest ConnectionStatusReason to
-             * "I tried but couldn't register you an account." */
-            DEBUG ("Registration rejected");
-            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-            break;
-
-          default:
-            break;
-        }
+      gabble_set_tp_conn_error_from_wocky (error, &reason, NULL);
     }
-
   else if (error->domain == WOCKY_XMPP_STREAM_ERROR)
     {
       /* Stream error */

@@ -1486,6 +1486,7 @@ remote_closed_cb (WockyPorter *porter,
     GabbleConnection *self)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
+  GHashTable *details;
 
   if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
     /* Ignore if we are already disconnecting/disconnected */
@@ -1495,9 +1496,13 @@ remote_closed_cb (WockyPorter *porter,
 
   /* Changing the state to Disconnect will call connection_shut_down which
    * will properly close the porter. */
-  tp_base_connection_change_status ((TpBaseConnection *) self,
-          TP_CONNECTION_STATUS_DISCONNECTED,
+  details = tp_asv_new (
+      "debug-message", G_TYPE_STRING, "server closed its XMPP stream",
+      NULL);
+  tp_base_connection_disconnect_with_dbus_error (base,
+          TP_ERROR_STR_CONNECTION_LOST, details,
           TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+  g_hash_table_unref (details);
 }
 
 static void

@@ -31,6 +31,8 @@
 #include <wocky/wocky-auth-registry-enumtypes.h>
 #include <wocky/wocky-connector.h>
 #include <wocky/wocky-connector-enumtypes.h>
+#include <wocky/wocky-tls.h>
+#include <wocky/wocky-tls-enumtypes.h>
 #include <wocky/wocky-xmpp-error.h>
 #include <wocky/wocky-xmpp-error-enumtypes.h>
 
@@ -707,6 +709,43 @@ map_wocky_stream_error (const GError *error,
     }
 }
 
+static TpError
+map_wocky_tls_cert_error (const GError *error,
+    TpConnectionStatusReason *conn_reason)
+{
+  g_return_val_if_fail (error->domain == WOCKY_TLS_CERT_ERROR,
+      TP_ERROR_NOT_AVAILABLE);
+
+  switch (error->code)
+    {
+    case WOCKY_TLS_CERT_NO_CERTIFICATE:
+      return set_easy_conn_reason (conn_reason, CERT_NOT_PROVIDED);
+
+    case WOCKY_TLS_CERT_INSECURE:
+    case WOCKY_TLS_CERT_SIGNER_UNKNOWN:
+    case WOCKY_TLS_CERT_SIGNER_UNAUTHORISED:
+    case WOCKY_TLS_CERT_REVOKED:
+    case WOCKY_TLS_CERT_MAYBE_DOS:
+      return set_easy_conn_reason (conn_reason, CERT_UNTRUSTED);
+
+    case WOCKY_TLS_CERT_EXPIRED:
+      return set_easy_conn_reason (conn_reason, CERT_EXPIRED);
+
+    case WOCKY_TLS_CERT_NOT_ACTIVE:
+      return set_easy_conn_reason (conn_reason, CERT_NOT_ACTIVATED);
+
+    case WOCKY_TLS_CERT_NAME_MISMATCH:
+      return set_easy_conn_reason (conn_reason, CERT_HOSTNAME_MISMATCH);
+
+    case WOCKY_TLS_CERT_INTERNAL_ERROR:
+    case WOCKY_TLS_CERT_UNKNOWN_ERROR:
+    default:
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_CERT_OTHER_ERROR,
+          TP_ERROR_ENCRYPTION_ERROR);
+    }
+}
+
 static const gchar *
 get_error_prefix (GEnumClass *klass,
     gint code,
@@ -789,6 +828,16 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
           "unknown WockyXmppStreamError code");
       g_set_error (error, TP_ERRORS,
           map_wocky_stream_error (wocky_error, conn_reason),
+          "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
+      g_type_class_unref (klass);
+    }
+  else if (wocky_error->domain == WOCKY_TLS_CERT_ERROR)
+    {
+      klass = g_type_class_ref (WOCKY_TYPE_TLS_CERT_STATUS);
+      name = get_error_prefix (klass, wocky_error->code,
+          "unknown WockyTLSCertStatus code");
+      g_set_error (error, TP_ERRORS,
+          map_wocky_tls_cert_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
     }

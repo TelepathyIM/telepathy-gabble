@@ -686,6 +686,27 @@ map_wocky_connector_error (const GError *error,
     }
 }
 
+static TpError
+map_wocky_stream_error (const GError *error,
+    TpConnectionStatusReason *conn_reason)
+{
+  g_return_val_if_fail (error->domain == WOCKY_XMPP_STREAM_ERROR,
+      TP_ERROR_NOT_AVAILABLE);
+
+  switch (error->code)
+    {
+    case WOCKY_XMPP_STREAM_ERROR_HOST_UNKNOWN:
+      /* If we get this while we're logging in, it's because we're trying
+       * to connect to foo@bar.com but the server doesn't know about
+       * bar.com, probably because the user entered a non-GTalk JID into
+       * a GTalk profile that forces the server. */
+      return set_easy_conn_reason (conn_reason, AUTHENTICATION_FAILED);
+
+    default:
+      return set_easy_conn_reason (conn_reason, NETWORK_ERROR);
+    }
+}
+
 static const gchar *
 get_error_prefix (GEnumClass *klass,
     gint code,
@@ -758,6 +779,16 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
           "unknown WockyConnectorError code");
       g_set_error (error, TP_ERRORS,
           map_wocky_connector_error (wocky_error, conn_reason),
+          "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
+      g_type_class_unref (klass);
+    }
+  else if (wocky_error->domain == WOCKY_XMPP_STREAM_ERROR)
+    {
+      klass = g_type_class_ref (WOCKY_TYPE_XMPP_STREAM_ERROR);
+      name = get_error_prefix (klass, wocky_error->code,
+          "unknown WockyXmppStreamError code");
+      g_set_error (error, TP_ERRORS,
+          map_wocky_stream_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
     }

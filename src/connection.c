@@ -1584,21 +1584,11 @@ connector_error_disconnect (GabbleConnection *self,
     }
   else if (error->domain == WOCKY_XMPP_STREAM_ERROR)
     {
-      /* Stream error */
-      switch (error->code)
-        {
-          case WOCKY_XMPP_STREAM_ERROR_HOST_UNKNOWN:
-            /* If we get this while we're logging in, it's because we're trying
-             * to connect to foo@bar.com but the server doesn't know about
-             * bar.com, probably because the user entered a non-GTalk JID into
-             * a GTalk profile that forces the server. */
-            DEBUG ("got <host-unknown> while connecting");
-            reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
-            break;
+      GError *e = NULL;
 
-          default:
-            break;
-        }
+      gabble_set_tp_conn_error_from_wocky (error, &reason, &e);
+      DEBUG ("%s", e->message);
+      g_clear_error (&e);
     }
   else if (error->domain == WOCKY_TLS_CERT_ERROR)
     {

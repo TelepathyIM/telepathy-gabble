@@ -666,6 +666,11 @@ map_wocky_connector_error (const GError *error,
     case WOCKY_CONNECTOR_ERROR_SESSION_DENIED:
       return set_easy_conn_reason (conn_reason, AUTHENTICATION_FAILED);
 
+    case WOCKY_CONNECTOR_ERROR_BIND_CONFLICT:
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
+          TP_ERROR_ALREADY_CONNECTED);
+
     case WOCKY_CONNECTOR_ERROR_REGISTRATION_CONFLICT:
       return set_conn_reason (conn_reason,
           TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
@@ -703,6 +708,13 @@ map_wocky_stream_error (const GError *error,
        * bar.com, probably because the user entered a non-GTalk JID into
        * a GTalk profile that forces the server. */
       return set_easy_conn_reason (conn_reason, AUTHENTICATION_FAILED);
+
+    case WOCKY_XMPP_STREAM_ERROR_CONFLICT:
+      /* Assume we got this while already signed-in, rather than while
+       * connecting (which would be ALREADY_CONNECTED). */
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
+          TP_ERROR_CONNECTION_REPLACED);
 
     default:
       return set_easy_conn_reason (conn_reason, NETWORK_ERROR);

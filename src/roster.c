@@ -2434,11 +2434,11 @@ gabble_roster_handle_add (GabbleRoster *roster,
   return ret;
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_add_to_group (GabbleRoster *roster,
                                    TpHandle handle,
                                    TpHandle group,
-                                   GError **error)
+                                   GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2449,6 +2449,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   LmMessage *message;
   gboolean ret;
   GabbleRosterItemEdit *in_flight;
+  GError *error = NULL;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2462,9 +2463,11 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   if (item->unsent_edits)
     {
       DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
+      /* an edit is pending - make the change afterwards */
+      gabble_simple_async_countdown_inc (result);
+      item->unsent_edits->results = g_slist_prepend (
+          item->unsent_edits->results, result);
+
       if (!item->unsent_edits->add_to_groups)
         {
           item->unsent_edits->add_to_groups = tp_handle_set_new (group_repo);
@@ -2485,6 +2488,8 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   in_flight = item_edit_new (contact_repo, handle);
   in_flight->add_to_groups = tp_handle_set_new (group_repo);
   tp_handle_set_add (in_flight->add_to_groups, group);
+  gabble_simple_async_countdown_inc (result);
+  in_flight->results = g_slist_prepend (in_flight->results, result);
 
   tp_handle_set_add (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
@@ -2492,21 +2497,25 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   tp_handle_set_remove (item->groups, group);
 
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), in_flight, error);
+      message, roster_edited_cb, G_OBJECT (roster), in_flight, &error);
   lm_message_unref (message);
 
   /* if send_with_reply failed, then roster_edited_cb will never run */
   if (!ret)
-    item_edit_free (in_flight);
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_clear_error (&error);
+      item_edit_free (in_flight);
+    }
 
   return ret;
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_remove_from_group (GabbleRoster *roster,
                                         TpHandle handle,
                                         TpHandle group,
-                                        GError **error)
+                                        GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2517,6 +2526,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   LmMessage *message;
   gboolean ret, was_in_group;
   GabbleRosterItemEdit *in_flight;
+  GError *error = NULL;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2530,9 +2540,11 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   if (item->unsent_edits)
     {
       DEBUG ("queue edit to contact#%u - remove from group#%u", handle, group);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
+      /* an edit is pending - make the change afterwards */
+      gabble_simple_async_countdown_inc (result);
+      item->unsent_edits->results = g_slist_prepend (
+          item->unsent_edits->results, result);
+
       if (!item->unsent_edits->remove_from_groups)
         {
           item->unsent_edits->remove_from_groups = tp_handle_set_new (
@@ -2555,6 +2567,8 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   in_flight = item_edit_new (contact_repo, handle);
   in_flight->remove_from_groups = tp_handle_set_new (group_repo);
   tp_handle_set_add (in_flight->remove_from_groups, group);
+  gabble_simple_async_countdown_inc (result);
+  in_flight->results = g_slist_prepend (in_flight->results, result);
 
   /* temporarily remove the handle from the set (taking a reference),
    * make the message, and put it back afterwards
@@ -2567,12 +2581,16 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   tp_handle_unref (group_repo, group);
 
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), in_flight, error);
+      message, roster_edited_cb, G_OBJECT (roster), in_flight, &error);
   lm_message_unref (message);
 
   /* if send_with_reply failed, then roster_edited_cb will never run */
   if (!ret)
-    item_edit_free (in_flight);
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_clear_error (&error);
+      item_edit_free (in_flight);
+    }
 
   return ret;
 }
@@ -3216,13 +3234,12 @@ gabble_roster_set_group_members_async (TpBaseContactList *base,
     {
       TpHandle contact = GPOINTER_TO_UINT (k);
 
-      /* FIXME: don't ignore network errors */
       if (tp_handle_set_is_member (contacts, contact))
         gabble_roster_handle_add_to_group (self, contact, group_handle,
-            NULL);
+            result);
       else
         gabble_roster_handle_remove_from_group (self, contact, group_handle,
-            NULL);
+            result);
     }
 
   tp_handle_unref (group_repo, group_handle);
@@ -3248,9 +3265,13 @@ gabble_roster_add_to_group_async (TpBaseContactList *base,
   GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
       callback, user_data, gabble_roster_add_to_group_async, 1);
 
-  /* You can't add people to an invalid group. FIXME: raise an error */
+  /* You can't add people to an invalid group. */
   if (G_UNLIKELY (group_handle == 0))
-    goto finally;
+    {
+      g_simple_async_result_set_error (result, TP_ERRORS,
+          TP_ERROR_INVALID_ARGUMENT, "Invalid group name: %s", group);
+      goto finally;
+    }
 
   /* we create the group even if @contacts is empty, as the base class
    * requires */
@@ -3265,7 +3286,7 @@ gabble_roster_add_to_group_async (TpBaseContactList *base,
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
       /* we ignore any NetworkError */
-      gabble_roster_handle_add_to_group (self, contact, group_handle, NULL);
+      gabble_roster_handle_add_to_group (self, contact, group_handle, result);
     }
 
   tp_handle_unref (group_repo, group_handle);
@@ -3298,13 +3319,43 @@ gabble_roster_remove_from_group_async (TpBaseContactList *base,
 
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
-      /* we ignore any NetworkError */
       gabble_roster_handle_remove_from_group (self, contact, group_handle,
-          NULL);
+          result);
     }
 
 finally:
   gabble_simple_async_countdown_dec (result);
+}
+
+typedef struct {
+    TpHandle group_handle;
+    GAsyncReadyCallback callback;
+    gpointer user_data;
+} RemoveGroupContext;
+
+static void
+gabble_roster_remove_group_removed_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (source);
+  RemoveGroupContext *context = user_data;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+
+  if (context->group_handle != 0)
+    {
+      const gchar *group = tp_handle_inspect (group_repo,
+          context->group_handle);
+
+      tp_handle_set_remove (self->priv->groups, context->group_handle);
+      tp_base_contact_list_groups_removed ((TpBaseContactList *) self,
+          &group, 1);
+      tp_handle_unref (group_repo, context->group_handle);
+    }
+
+  context->callback (source, result, context->user_data);
+  g_slice_free (RemoveGroupContext, context);
 }
 
 static void
@@ -3318,12 +3369,25 @@ gabble_roster_remove_group_async (TpBaseContactList *base,
   gpointer k, v;
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
-  TpHandle group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+  GSimpleAsyncResult *result;
+  RemoveGroupContext *context;
+
+  context = g_slice_new0 (RemoveGroupContext);
+  context->group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+  context->callback = callback;
+  context->user_data = user_data;
+
+  if (context->group_handle != 0)
+    tp_handle_ref (group_repo, context->group_handle);
+
+  result = gabble_simple_async_countdown_new (self,
+      gabble_roster_remove_group_removed_cb,
+      context, gabble_roster_remove_group_async, 1);
 
   /* if the group didn't exist then we have nothing to do */
-  if (group_handle == 0 ||
-      !tp_handle_set_is_member (self->priv->groups, group_handle))
-    return;
+  if (context->group_handle == 0 ||
+      !tp_handle_set_is_member (self->priv->groups, context->group_handle))
+    goto finally;
 
   g_hash_table_iter_init (&iter, self->priv->items);
 
@@ -3333,24 +3397,15 @@ gabble_roster_remove_group_async (TpBaseContactList *base,
       GabbleRosterItem *item = v;
 
       if (item->groups != NULL && tp_handle_set_is_member (item->groups,
-            group_handle))
+            context->group_handle))
         {
-          /* FIXME: we ignore any NetworkError */
-          gabble_roster_handle_remove_from_group (self, contact, group_handle,
-              NULL);
+          gabble_roster_handle_remove_from_group (self, contact,
+              context->group_handle, result);
         }
     }
 
-  /* Assume it'll work and signal the removal - the membership change(s) will
-   * happen as they come back from the server, which is the right sequence
-   * for the ContactGroups interface.
-   *
-   * FIXME: in principle, we should wait for all the users to be removed, then
-   * remove the group, with a "countdown" */
-  tp_handle_set_remove (self->priv->groups, group_handle);
-  tp_base_contact_list_groups_removed (base, &group, 1);
-  tp_simple_async_report_success_in_idle ((GObject *) self, callback,
-      user_data, gabble_roster_remove_group_async);
+finally:
+  gabble_simple_async_countdown_dec (result);
 }
 
 static void

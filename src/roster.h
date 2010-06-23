@@ -79,15 +79,6 @@ gboolean gabble_roster_handle_set_name (GabbleRoster *, TpHandle,
 gboolean gabble_roster_handle_add (GabbleRoster *, TpHandle, GError **);
 gboolean gabble_roster_handle_has_entry (GabbleRoster *, TpHandle);
 
-gboolean gabble_roster_handle_add_to_group (GabbleRoster *roster,
-                                            TpHandle handle,
-                                            TpHandle group,
-                                            GError **error);
-gboolean gabble_roster_handle_remove_from_group (GabbleRoster *roster,
-                                                 TpHandle handle,
-                                                 TpHandle group,
-                                                 GError **error);
-
 gboolean gabble_roster_handle_subscribe (
     GabbleRoster *roster,
     TpHandle handle,

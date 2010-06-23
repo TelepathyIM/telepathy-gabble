@@ -7,16 +7,19 @@ test_remap (GQuark domain,
     gint code,
     const gchar *message,
     gint exp_code,
-    const gchar *exp_message)
+    const gchar *exp_message,
+    TpConnectionStatusReason exp_reason)
 {
   GError *error = NULL;
   GError wocky_error = { domain, code, (gchar *) message };
+  TpConnectionStatusReason conn_reason;
 
-  gabble_set_tp_error_from_wocky (&wocky_error, &error);
+  gabble_set_tp_conn_error_from_wocky (&wocky_error, &conn_reason, &error);
   g_assert (error != NULL);
   g_assert_cmpstr (g_quark_to_string (error->domain), ==,
         g_quark_to_string (TP_ERRORS));
   g_assert_cmpint (error->code, ==, exp_code);
+  g_assert_cmpint (conn_reason, ==, exp_reason);
 
   if (exp_message != NULL)
     g_assert_cmpstr (error->message, ==, exp_message);
@@ -24,11 +27,12 @@ test_remap (GQuark domain,
   g_error_free (error);
 }
 
-#define TEST_XMPP(nick, n, message, exp_code) \
+#define TEST_XMPP(nick, n, message, exp_code, exp_reason) \
   test_remap (WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_ ## nick, message, \
       exp_code, \
       "WOCKY_XMPP_ERROR_" #nick " (#" #n "): " \
-      message)
+      message, \
+      exp_reason)
 
 int
 main (void)
@@ -37,29 +41,36 @@ main (void)
 
   test_remap (WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN, "computer says no",
       TP_ERROR_PERMISSION_DENIED,
-      "WOCKY_XMPP_ERROR_FORBIDDEN (#8): computer says no");
+      "WOCKY_XMPP_ERROR_FORBIDDEN (#8): computer says no",
+      TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
   /* shorthand version of the above */
-  TEST_XMPP (FORBIDDEN, 8, "computer says no", TP_ERROR_PERMISSION_DENIED);
+  TEST_XMPP (FORBIDDEN, 8, "computer says no", TP_ERROR_PERMISSION_DENIED,
+      TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED);
 
   /* more mappings */
-  TEST_XMPP (RESOURCE_CONSTRAINT, 19, "shut up!", TP_ERROR_SERVICE_BUSY);
-  TEST_XMPP (FEATURE_NOT_IMPLEMENTED, 20, "what?", TP_ERROR_NOT_AVAILABLE);
+  TEST_XMPP (RESOURCE_CONSTRAINT, 19, "shut up!", TP_ERROR_SERVICE_BUSY,
+      TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
+  TEST_XMPP (FEATURE_NOT_IMPLEMENTED, 20, "what?", TP_ERROR_NOT_AVAILABLE,
+      TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
 
   /* out-of-range is handled gracefully */
   test_remap (WOCKY_XMPP_ERROR, 12345678, "lalala I am broken",
       TP_ERROR_NOT_AVAILABLE,
-      "unknown WockyXmppError code (#12345678): lalala I am broken");
+      "unknown WockyXmppError code (#12345678): lalala I am broken",
+      TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
 
   /* GIOError is NetworkError, for now */
   test_remap (G_IO_ERROR, G_IO_ERROR_TIMED_OUT, "network fail",
       TP_ERROR_NETWORK_ERROR,
-      "G_IO_ERROR_TIMED_OUT (#24): network fail");
+      "G_IO_ERROR_TIMED_OUT (#24): network fail",
+      TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
   /* other domains do something basically sane (the message will be something
    * vaguely helpful) */
   test_remap (G_KEY_FILE_ERROR, G_KEY_FILE_ERROR_PARSE,
       "what's this doing here?",
-      TP_ERROR_NOT_AVAILABLE, NULL);
+      TP_ERROR_NOT_AVAILABLE, NULL,
+      TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
 
   return 0;
 }

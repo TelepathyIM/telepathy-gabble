@@ -1292,8 +1292,11 @@ process_roster (
             }
         }
 
-      /* Remove removed contacts from the roster. */
-      if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
+      /* Remove removed contacts from the roster, unless they have edits
+       * in flight. If there are edits in flight, we'll remove the contact
+       * when we've finished editing it, instead. */
+      if (!item->edits_in_flight &&
+          GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
         _gabble_roster_item_remove (roster, handle);
     }
 
@@ -2101,9 +2104,16 @@ roster_edited_cb (GabbleConnection *conn,
       g_clear_error (&wocky_error);
     }
 
-  item->edits_in_flight = FALSE;
-  /* if more edits have been queued since we sent this batch, do them */
-  roster_item_apply_edits (roster, edit->handle, item);
+  if (item != NULL)
+    {
+      item->edits_in_flight = FALSE;
+      /* if more edits have been queued since we sent this batch, do them */
+      roster_item_apply_edits (roster, edit->handle, item);
+
+      if (!item->edits_in_flight &&
+          item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+        _gabble_roster_item_remove (roster, edit->handle);
+    }
 
   item_edit_free (edit);
 

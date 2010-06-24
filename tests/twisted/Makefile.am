@@ -50,6 +50,7 @@ TWISTED_TESTS = \
 	presence/invisible_xep_0126.py \
 	presence/invisible_xep_0186.py \
 	presence/presence.py \
+	roster/edit-before-roster.py \
 	roster/ensure.py \
 	roster/groups.py \
 	roster/groups-12791.py \

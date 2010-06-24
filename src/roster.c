@@ -1853,7 +1853,7 @@ roster_item_apply_edits (GabbleRoster *roster,
                          TpHandle contact,
                          GabbleRosterItem *item)
 {
-  gboolean altered = FALSE, ret = TRUE;
+  gboolean altered = FALSE, ret;
   GabbleRosterItem edited_item;
   TpIntSet *intset;
   GabbleRosterPrivate *priv = roster->priv;
@@ -1861,6 +1861,7 @@ roster_item_apply_edits (GabbleRoster *roster,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItemEdit *edits = item->unsent_edits;
   LmMessage *message;
+  GError *error = NULL;
 
   DEBUG ("Applying edits to contact#%u", contact);
 
@@ -1907,7 +1908,20 @@ roster_item_apply_edits (GabbleRoster *roster,
            * subscription directions.
            */
           DEBUG ("contact is blocked; not removing");
-          ret = roster_item_cancel_subscriptions (roster, contact, item, NULL);
+
+          if (!roster_item_cancel_subscriptions (roster, contact, item,
+                &error))
+            {
+              GSList *slist;
+
+              /* in practice this error will probably be overwritten by one
+               * from the IQ-set later, but if that succeeds for some reason,
+               * we do want to signal error */
+              for (slist = edits->results; slist != NULL; slist = slist->next)
+                g_simple_async_result_set_from_error (slist->data, error);
+
+              g_clear_error (&error);
+            }
           /* deliberately not setting altered: we haven't altered the roster
            * directly.
            */
@@ -2019,16 +2033,17 @@ roster_item_apply_edits (GabbleRoster *roster,
    * them */
   item->unsent_edits = NULL;
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), edits, NULL)
-    && ret;
+      message, roster_edited_cb, G_OBJECT (roster), edits, &error);
 
   /* if send_with_reply failed, then roster_edited_cb will never run */
   if (!ret)
     {
-      /* FIXME: somehow have another try at it later? We can't just put it in
-       * unsent_edits, because that will make all future roster manipulations
-       * think we still have a request in flight, so we'll never send another
-       * request for this contact */
+      GSList *slist;
+
+      for (slist = edits->results; slist != NULL; slist = slist->next)
+        g_simple_async_result_set_from_error (slist->data, error);
+
+      g_clear_error (&error);
       item_edit_free (edits);
     }
 

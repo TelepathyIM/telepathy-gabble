@@ -64,6 +64,7 @@ struct _GabbleRosterPrivate
   GHashTable *items;
   TpHandleSet *groups;
 
+  gboolean received;
   gboolean dispose_has_run;
 };
 
@@ -1257,6 +1258,9 @@ process_roster (
   tp_handle_set_destroy (referenced_handles);
 }
 
+static void roster_item_apply_edits (GabbleRoster *roster, TpHandle contact,
+    GabbleRosterItem *item);
+
 /**
  * got_roster_iq:
  *
@@ -1323,6 +1327,7 @@ got_roster_iq (GabbleRoster *roster,
       gpointer k, v;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (guint),
           g_hash_table_size (roster->priv->items));
+      GSList *edited_items = NULL;
 
       /* If we're subscribed to somebody (subscription=to or =both),
        * and we haven't received presence from them,
@@ -1337,13 +1342,27 @@ got_roster_iq (GabbleRoster *roster,
 
           if (item->subscribe == TP_SUBSCRIPTION_STATE_YES)
             g_array_append_val (members, contact);
+
+          if (item->unsent_edits != NULL)
+            edited_items = g_slist_prepend (edited_items, item);
         }
 
       conn_presence_emit_presence_update (priv->conn, members);
       g_array_free (members, TRUE);
 
-      /* The roster is now complete and we can emit signals */
+      /* The roster is now complete and we can emit signals... */
       tp_base_contact_list_set_list_received ((TpBaseContactList *) roster);
+      priv->received = TRUE;
+
+      /* ... and carry out any pending edits */
+      for (;
+          edited_items != NULL;
+          edited_items = g_slist_delete_link (edited_items, edited_items))
+        {
+          GabbleRosterItem *item = edited_items->data;
+
+          roster_item_apply_edits (roster, item->unsent_edits->handle, item);
+        }
     }
   else /* LM_MESSAGE_SUB_TYPE_SET */
     {
@@ -1813,6 +1832,12 @@ roster_item_apply_edits (GabbleRoster *roster,
   GabbleRosterItemEdit *edits = item->unsent_edits;
   LmMessage *message;
   GError *error = NULL;
+
+  if (!priv->received)
+    {
+      DEBUG ("Initial roster has not arrived yet, not editing it");
+      return;
+    }
 
   if (item->edits_in_flight)
     {

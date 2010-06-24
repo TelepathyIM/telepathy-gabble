@@ -76,30 +76,7 @@ GabbleRosterSubscription gabble_roster_handle_get_subscription (GabbleRoster *,
 const gchar *gabble_roster_handle_get_name (GabbleRoster *, TpHandle);
 gboolean gabble_roster_handle_set_name (GabbleRoster *, TpHandle,
     const gchar *, GError **);
-gboolean gabble_roster_handle_add (GabbleRoster *, TpHandle, GError **);
 gboolean gabble_roster_handle_has_entry (GabbleRoster *, TpHandle);
-
-gboolean gabble_roster_handle_subscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
-gboolean gabble_roster_handle_unsubscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
-
-gboolean gabble_roster_handle_subscribed (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
-gboolean gabble_roster_handle_unsubscribed (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
 
 G_END_DECLS
 

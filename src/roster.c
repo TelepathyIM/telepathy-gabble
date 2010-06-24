@@ -1816,6 +1816,23 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
                                          GObject *roster_obj,
                                          gpointer user_data);
 
+static gboolean gabble_roster_handle_subscribe (GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error);
+static gboolean gabble_roster_handle_unsubscribe (GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error);
+static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error);
+static gboolean gabble_roster_handle_unsubscribed (GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error);
+
 /*
  * Cancel any subscriptions on @item by sending unsubscribe and/or
  * unsubscribed, as appropriate.
@@ -2290,7 +2307,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   roster_item_apply_edits (roster, handle, item);
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_add (GabbleRoster *roster,
                           TpHandle handle,
                           GError **error)
@@ -2423,7 +2440,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   roster_item_apply_edits (roster, handle, item);
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_subscribe (
     GabbleRoster *roster,
     TpHandle handle,
@@ -2444,7 +2461,7 @@ gabble_roster_handle_subscribe (
       LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_unsubscribe (
     GabbleRoster *roster,
     TpHandle handle,
@@ -2460,7 +2477,7 @@ gabble_roster_handle_unsubscribe (
       LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_subscribed (
     GabbleRoster *roster,
     TpHandle handle,
@@ -2476,7 +2493,7 @@ gabble_roster_handle_subscribed (
       LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_unsubscribed (
     GabbleRoster *roster,
     TpHandle handle,

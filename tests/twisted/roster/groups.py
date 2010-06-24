@@ -112,6 +112,17 @@ def test(q, bus, conn, stream):
             args=[[amy], ['ladies'], []]),
         )
 
+    # check that Amy's state is what we expected
+    attrs = conn.Contacts.GetContactAttributes([amy],
+            [cs.CONN_IFACE_CONTACT_GROUPS], False)[amy]
+    # make the group list order-independent
+    attrs[cs.CONN_IFACE_CONTACT_GROUPS + '/groups'] = \
+        set(attrs[cs.CONN_IFACE_CONTACT_GROUPS + '/groups'])
+
+    assertEquals({ cs.CONN_IFACE_CONTACT_GROUPS + '/groups':
+                set(['ladies', 'people starting with A']),
+            cs.CONN + '/contact-id': 'amy@foo.com' }, attrs)
+
     for it_worked in (False, True):
         # remove a group with a member (the old API couldn't do this)
         call_async(q, conn.ContactGroups, 'RemoveGroup',

@@ -2143,7 +2143,7 @@ gabble_roster_handle_get_subscription (GabbleRoster *roster,
   return item->subscription;
 }
 
-static gboolean
+static void
 gabble_roster_handle_set_blocked (GabbleRoster *roster,
     TpHandle handle,
     gboolean blocked,
@@ -2155,12 +2155,11 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   GabbleRosterItem *item;
   GoogleItemType orig_type;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
-  g_return_val_if_fail (priv->conn->features &
-      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER, FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
+  g_return_if_fail (priv->conn->features &
+      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER);
 
   item = _gabble_roster_item_ensure (roster, handle);
   orig_type = item->google_type;
@@ -2182,8 +2181,6 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
-
-  return TRUE;
 }
 
 gboolean
@@ -2263,7 +2260,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   return TRUE;
 }
 
-static gboolean
+static void
 gabble_roster_handle_remove (GabbleRoster *roster,
                              TpHandle handle,
                              GSimpleAsyncResult *result)
@@ -2273,10 +2270,9 @@ gabble_roster_handle_remove (GabbleRoster *roster,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
   item = _gabble_roster_item_ensure (roster, handle);
 
@@ -2292,8 +2288,6 @@ gabble_roster_handle_remove (GabbleRoster *roster,
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
-
-  return TRUE;
 }
 
 gboolean
@@ -2339,7 +2333,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
   return TRUE;
 }
 
-static gboolean
+static void
 gabble_roster_handle_add_to_group (GabbleRoster *roster,
                                    TpHandle handle,
                                    TpHandle group,
@@ -2352,12 +2346,10 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
+  g_return_if_fail (tp_handle_is_valid (group_repo, group, NULL));
 
   item = _gabble_roster_item_ensure (roster, handle);
 
@@ -2383,11 +2375,9 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
-
-  return TRUE;
 }
 
-static gboolean
+static void
 gabble_roster_handle_remove_from_group (GabbleRoster *roster,
                                         TpHandle handle,
                                         TpHandle group,
@@ -2400,12 +2390,10 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
+  g_return_if_fail (tp_handle_is_valid (group_repo, group, NULL));
 
   item = _gabble_roster_item_ensure (roster, handle);
 
@@ -2433,8 +2421,6 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
-
-  return TRUE;
 }
 
 gboolean

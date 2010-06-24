@@ -3331,6 +3331,7 @@ typedef struct {
     TpHandle group_handle;
     GAsyncReadyCallback callback;
     gpointer user_data;
+    TpHandleSet *contacts;
 } RemoveGroupContext;
 
 static void
@@ -3340,21 +3341,74 @@ gabble_roster_remove_group_removed_cb (GObject *source,
 {
   GabbleRoster *self = GABBLE_ROSTER (source);
   RemoveGroupContext *context = user_data;
-  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
 
   if (context->group_handle != 0)
     {
+      TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
       const gchar *group = tp_handle_inspect (group_repo,
           context->group_handle);
+      GHashTableIter iter;
+      gpointer k, v;
+      TpHandle remaining_member = 0;
 
-      tp_handle_set_remove (self->priv->groups, context->group_handle);
-      tp_base_contact_list_groups_removed ((TpBaseContactList *) self,
-          &group, 1);
+      /* Now that we've signalled the group being removed, to be internally
+       * consistent we should believe that the contacts are no longer there;
+       * if a subsequent roster push says they *are* there, we'll just put
+       * them back.
+       *
+       * However, if the group has members that we didn't remove (because
+       * members were added since we sent off the removal requests), we can't
+       * really remove the group.
+       *
+       * We defer the contact removal until after we've signalled group
+       * removal, so that TpBaseContactList can see who used to be in the
+       * group. */
+
+      g_hash_table_iter_init (&iter, self->priv->items);
+
+      while (g_hash_table_iter_next (&iter, &k, &v))
+        {
+          TpHandle contact = GPOINTER_TO_UINT (k);
+          GabbleRosterItem *item = v;
+
+          if (item->groups != NULL && tp_handle_set_is_member (item->groups,
+                context->group_handle))
+            {
+              if (!tp_handle_set_is_member (context->contacts, contact))
+                remaining_member = contact;
+            }
+        }
+
+      if (remaining_member == 0)
+        {
+          tp_handle_set_remove (self->priv->groups, context->group_handle);
+          tp_base_contact_list_groups_removed ((TpBaseContactList *) self,
+              &group, 1);
+
+          g_hash_table_iter_init (&iter, self->priv->items);
+
+          while (g_hash_table_iter_next (&iter, NULL, &v))
+            {
+              GabbleRosterItem *item = v;
+
+              if (item->groups != NULL &&
+                  tp_handle_set_is_member (item->groups,
+                    context->group_handle))
+                tp_handle_set_remove (item->groups, context->group_handle);
+            }
+        }
+      else
+        {
+          DEBUG ("contact #%u is still a member of group '%s', not removing",
+              remaining_member, group);
+        }
+
       tp_handle_unref (group_repo, context->group_handle);
     }
 
   context->callback (source, result, context->user_data);
+  tp_clear_pointer (&context->contacts, tp_handle_set_destroy);
   g_slice_free (RemoveGroupContext, context);
 }
 
@@ -3367,6 +3421,8 @@ gabble_roster_remove_group_async (TpBaseContactList *base,
   GabbleRoster *self = GABBLE_ROSTER (base);
   GHashTableIter iter;
   gpointer k, v;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
   GSimpleAsyncResult *result;
@@ -3376,6 +3432,7 @@ gabble_roster_remove_group_async (TpBaseContactList *base,
   context->group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
   context->callback = callback;
   context->user_data = user_data;
+  context->contacts = tp_handle_set_new (contact_repo);
 
   if (context->group_handle != 0)
     tp_handle_ref (group_repo, context->group_handle);
@@ -3399,6 +3456,7 @@ gabble_roster_remove_group_async (TpBaseContactList *base,
       if (item->groups != NULL && tp_handle_set_is_member (item->groups,
             context->group_handle))
         {
+          tp_handle_set_add (context->contacts, contact);
           gabble_roster_handle_remove_from_group (self, contact,
               context->group_handle, result);
         }

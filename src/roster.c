@@ -2035,6 +2035,9 @@ roster_item_apply_edits (GabbleRoster *roster,
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster), edits, &error);
 
+  if (edits->new_google_type == GOOGLE_ITEM_TYPE_BLOCKED)
+    gabble_presence_cache_really_remove (priv->conn->presence_cache, contact);
+
   /* if send_with_reply failed, then roster_edited_cb will never run */
   if (!ret)
     {

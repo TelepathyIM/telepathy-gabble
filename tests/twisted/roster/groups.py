@@ -111,5 +111,37 @@ def test(q, bus, conn, stream):
             args=[[amy], ['ladies'], []]),
         )
 
+    # remove a group with a member (the old API couldn't do this)
+    call_async(q, conn.ContactGroups, 'RemoveGroup', 'people starting with A')
+
+    iq = q.expect('stream-iq', iq_type='set',
+            query_name='query', query_ns=ns.ROSTER)
+
+    item = iq.query.firstChildElement()
+    assertEquals('amy@foo.com', item['jid'])
+
+    groups = set()
+
+    for gn in xpath.queryForNodes('/iq/query/item/group', iq.stanza):
+        groups.add(str(gn))
+
+    assertEquals(set(('ladies',)), groups)
+
+    acknowledge_iq(stream, iq.stanza)
+
+    iq = IQ(stream, 'set')
+    query = iq.addElement((ns.ROSTER, 'query'))
+    item = query.addElement('item')
+    item['jid'] = 'amy@foo.com'
+    item['subscription'] = 'both'
+    item.addElement('group', content='ladies')
+    stream.send(iq)
+
+    q.expect('dbus-signal', signal='GroupsRemoved',
+            args=[['people starting with A']])
+    q.expect('dbus-signal', signal='GroupsChanged',
+            args=[[amy], [], ['people starting with A']])
+    q.expect('dbus-return', method='RemoveGroup')
+
 if __name__ == '__main__':
     exec_test(test)

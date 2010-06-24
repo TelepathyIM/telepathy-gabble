@@ -4,9 +4,10 @@ Test basic roster group functionality.
 
 import dbus
 
-from gabbletest import exec_test, acknowledge_iq
+from gabbletest import exec_test, acknowledge_iq, sync_stream
 from rostertest import expect_contact_list_signals, check_contact_list_signals
-from servicetest import assertLength, EventPattern, assertEquals, call_async
+from servicetest import (assertLength, EventPattern, assertEquals, call_async,
+        sync_dbus)
 import constants as cs
 import ns
 
@@ -111,37 +112,68 @@ def test(q, bus, conn, stream):
             args=[[amy], ['ladies'], []]),
         )
 
-    # remove a group with a member (the old API couldn't do this)
-    call_async(q, conn.ContactGroups, 'RemoveGroup', 'people starting with A')
+    for it_worked in (False, True):
+        # remove a group with a member (the old API couldn't do this)
+        call_async(q, conn.ContactGroups, 'RemoveGroup',
+                'people starting with A')
 
-    iq = q.expect('stream-iq', iq_type='set',
-            query_name='query', query_ns=ns.ROSTER)
+        iq = q.expect('stream-iq', iq_type='set',
+                query_name='query', query_ns=ns.ROSTER)
 
-    item = iq.query.firstChildElement()
-    assertEquals('amy@foo.com', item['jid'])
+        item = iq.query.firstChildElement()
+        assertEquals('amy@foo.com', item['jid'])
 
-    groups = set()
+        groups = set()
 
-    for gn in xpath.queryForNodes('/iq/query/item/group', iq.stanza):
-        groups.add(str(gn))
+        for gn in xpath.queryForNodes('/iq/query/item/group', iq.stanza):
+            groups.add(str(gn))
 
-    assertEquals(set(('ladies',)), groups)
+        assertEquals(set(('ladies',)), groups)
 
-    acknowledge_iq(stream, iq.stanza)
+        acknowledge_iq(stream, iq.stanza)
 
-    iq = IQ(stream, 'set')
-    query = iq.addElement((ns.ROSTER, 'query'))
-    item = query.addElement('item')
-    item['jid'] = 'amy@foo.com'
-    item['subscription'] = 'both'
-    item.addElement('group', content='ladies')
-    stream.send(iq)
+        # we emit these as soon as the IQ is ack'd, so that we can indicate
+        # group removal...
+        q.expect('dbus-signal', signal='GroupsRemoved',
+                args=[['people starting with A']])
+        q.expect('dbus-signal', signal='GroupsChanged',
+                args=[[amy], [], ['people starting with A']])
 
-    q.expect('dbus-signal', signal='GroupsRemoved',
-            args=[['people starting with A']])
-    q.expect('dbus-signal', signal='GroupsChanged',
-            args=[[amy], [], ['people starting with A']])
-    q.expect('dbus-return', method='RemoveGroup')
+        q.expect('dbus-return', method='RemoveGroup')
+
+        if it_worked:
+            # ... although in fact this is what *actually* removes Amy from the
+            # group
+            iq = IQ(stream, 'set')
+            query = iq.addElement((ns.ROSTER, 'query'))
+            item = query.addElement('item')
+            item['jid'] = 'amy@foo.com'
+            item['subscription'] = 'both'
+            item.addElement('group', content='ladies')
+            stream.send(iq)
+        else:
+            # if the change didn't "stick", this message will revert it
+            iq = IQ(stream, 'set')
+            query = iq.addElement((ns.ROSTER, 'query'))
+            item = query.addElement('item')
+            item['jid'] = 'amy@foo.com'
+            item['subscription'] = 'both'
+            item.addElement('group', content='ladies')
+            item.addElement('group', content='people starting with A')
+            stream.send(iq)
+
+            q.expect('dbus-signal', signal='GroupsCreated',
+                    args=[['people starting with A']])
+            q.expect('dbus-signal', signal='GroupsChanged',
+                    args=[[amy], ['people starting with A'], []])
+
+    # sanity check: after all that, we expect Amy to be in group 'ladies' only
+    sync_dbus(bus, q, conn)
+    sync_stream(q, stream)
+    assertEquals({ cs.CONN_IFACE_CONTACT_GROUPS + '/groups': ['ladies'],
+            cs.CONN + '/contact-id': 'amy@foo.com' },
+        conn.Contacts.GetContactAttributes([amy],
+            [cs.CONN_IFACE_CONTACT_GROUPS], False)[amy])
 
 if __name__ == '__main__':
     exec_test(test)

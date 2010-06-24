@@ -1755,15 +1755,7 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
                                          GObject *roster_obj,
                                          gpointer user_data);
 
-static gboolean gabble_roster_handle_unsubscribe (GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
 static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
-static gboolean gabble_roster_handle_unsubscribed (GabbleRoster *roster,
     TpHandle handle,
     const gchar *message,
     GError **error);
@@ -1779,18 +1771,23 @@ roster_item_cancel_subscriptions (
     GabbleRosterItem *item,
     GError **error)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
   gboolean ret = TRUE;
 
   if (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_FROM)
     {
       DEBUG ("sending unsubscribed");
-      ret = gabble_roster_handle_unsubscribed (roster, contact, NULL, error);
+      ret = gabble_connection_send_presence (roster->priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, NULL, error);
     }
 
   if (ret && (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_TO))
     {
       DEBUG ("sending unsubscribe");
-      ret = gabble_roster_handle_unsubscribe (roster, contact, NULL, error);
+      ret = gabble_connection_send_presence (roster->priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, NULL, error);
     }
 
   return ret;

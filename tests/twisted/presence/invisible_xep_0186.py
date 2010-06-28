@@ -38,10 +38,17 @@ def test_invisible_on_connect_fails(q, bus, conn, stream):
     event = q.expect('stream-iq', query_name='invisible')
     send_error_reply(stream, event.stanza)
 
-    # Well this is upsetting. We recover by setting ourselves to DND and 
-    acknowledge_iq(stream, event.stanza)
+    # Darn! At least we should have our presence set to DND.
+    q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+                     args=[{1: (0, {'dnd': {}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     args=[{1: (6, 'dnd', '')}]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
-def test(q, bus, conn, stream):
+def test_invisible(q, bus, conn, stream):
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged',
@@ -81,7 +88,32 @@ def test(q, bus, conn, stream):
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (3, 'away', 'gone')}]))
 
+def test_invisible_fails(q, bus, conn, stream):
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged',
+             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    assertContains("hidden",
+        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+
+    conn.SimplePresence.SetPresence("hidden", "")
+
+    # First we send an <invisible/> command.
+    event = q.expect('stream-iq', query_name='invisible')
+    send_error_reply(stream, event.stanza)
+
+    # When that fails, we should expect our status to change to dnd.
+    q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+                     args=[{1: (0, {'dnd': {}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     args=[{1: (6, 'dnd', '')}]))
+
 
 if __name__ == '__main__':
     exec_test(test_invisible_on_connect, protocol=Xep0186XmlStream)
-    exec_test(test, protocol=Xep0186XmlStream)
+    exec_test(test_invisible_on_connect_fails, protocol=Xep0186XmlStream)
+    exec_test(test_invisible, protocol=Xep0186XmlStream)
+    exec_test(test_invisible_fails, protocol=Xep0186XmlStream)

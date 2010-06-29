@@ -2,14 +2,105 @@
 """
 A simple smoke-test for XEP-0126 invisibility
 """
-from gabbletest import exec_test, XmppXmlStream, acknowledge_iq
+from gabbletest import (
+    exec_test, XmppXmlStream, acknowledge_iq, send_error_reply
+)
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
+    assertDoesNotContain
 )
 import ns
 import constants as cs
 from twisted.words.xish import xpath
 from invisible_helper import PrivacyListXmlStream
+
+def test_create_invisible_list(q, bus, conn, stream):
+    conn.SimplePresence.SetPresence("away", "")
+
+    conn.Connect()
+
+    create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+
+    # Check its name
+    assertNotEquals([],
+        xpath.queryForNodes('/query/list/item/presence-out', create_list.query))
+    acknowledge_iq(stream, create_list.stanza)
+
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    assertContains("hidden",
+        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+
+def test_invisible_on_connect_fail_create_list(q, bus, conn, stream):
+    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    assertNotEquals({}, props['Statuses'])
+
+    presence_event_pattern = EventPattern('stream-presence')
+
+    q.forbid_events([presence_event_pattern])
+
+    conn.SimplePresence.SetPresence("hidden", "")
+
+    conn.Connect()
+
+    create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    # Check its name
+    assertNotEquals([],
+        xpath.queryForNodes('/query/list/item/presence-out', create_list.query))
+    send_error_reply(stream, create_list.stanza)
+
+    q.unforbid_events([presence_event_pattern])
+
+    # Darn! At least we should have our presence set to DND.
+    q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+                     args=[{1: (0, {'dnd': {}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     args=[{1: (6, 'dnd', '')}]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+
+    # 'hidden' should not be an available status.
+    assertDoesNotContain("hidden",
+        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+
+
+def test_invisible_on_connect_fail(q, bus, conn, stream):
+    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    assertNotEquals({}, props['Statuses'])
+
+    presence_event_pattern = EventPattern('stream-presence')
+
+    q.forbid_events([presence_event_pattern])
+
+    conn.SimplePresence.SetPresence("hidden", "")
+
+    conn.Connect()
+
+    create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    # Check its name
+    assertNotEquals([],
+        xpath.queryForNodes('/query/list/item/presence-out', create_list.query))
+    acknowledge_iq(stream, create_list.stanza)
+
+    set_active = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    active = xpath.queryForNodes('//active', set_active.query)[0]
+    assertEquals('invisible', active['name'])
+    send_error_reply(stream, set_active.stanza)
+
+    q.unforbid_events([presence_event_pattern])
+
+    # Darn! At least we should have our presence set to DND.
+    q.expect_many(
+        EventPattern('dbus-signal', signal='PresenceUpdate',
+                     args=[{1: (0, {'dnd': {}})}]),
+        EventPattern('dbus-signal', signal='PresencesChanged',
+                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     args=[{1: (6, 'dnd', '')}]),
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
 def test_invisible_on_connect(q, bus, conn, stream):
     props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
@@ -39,7 +130,7 @@ def test_invisible_on_connect(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-def test(q, bus, conn, stream):
+def test_invisible(q, bus, conn, stream):
     conn.Connect()
 
     create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
@@ -107,5 +198,9 @@ def test(q, bus, conn, stream):
                      args=[{1: (3, 'away', 'gone')}]))
 
 if __name__ == '__main__':
-    exec_test(test, protocol=PrivacyListXmlStream)
+    exec_test(test_invisible, protocol=PrivacyListXmlStream)
     exec_test(test_invisible_on_connect, protocol=PrivacyListXmlStream)
+    exec_test(test_create_invisible_list, protocol=PrivacyListXmlStream)
+    exec_test(test_invisible_on_connect_fail_create_list,
+              protocol=PrivacyListXmlStream)
+    exec_test(test_invisible_on_connect_fail, protocol=PrivacyListXmlStream)

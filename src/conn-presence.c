@@ -353,6 +353,7 @@ set_xep0186_invisible_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
+      DEBUG ("error!");
       g_simple_async_result_set_error (result,
           CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_SET_INVISIBLE,
           "error setting XEP-0186 (in)visiblity");
@@ -392,8 +393,16 @@ actually_set_initial_presence_cb (GObject *source,
 
   if (!toggle_presence_visibility_finish (self, res, &error))
     {
-      g_simple_async_result_set_from_error (result, error);
-      g_error_free (error);
+      DEBUG ("Failed to set failed to set invisibility: %s", error->message);
+      g_clear_error (&error);
+
+      self->self_presence->status = GABBLE_PRESENCE_DND;
+
+      if (!conn_presence_signal_own_presence (self, NULL, &error))
+        {
+          g_simple_async_result_set_from_error (result, error);
+          g_error_free (error);
+        }
     }
 
   g_simple_async_result_complete (result);
@@ -645,6 +654,7 @@ toggle_presence_visibility_cb (GObject *source_object,
   TpBaseConnection *base = (TpBaseConnection *) self;
   GError *error = NULL;
 
+  DEBUG (" ");
   if (!toggle_presence_visibility_finish (self, res, &error))
     {
       DEBUG ("Error setting visibility, falling back to dnd: %s",

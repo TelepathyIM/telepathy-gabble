@@ -1098,6 +1098,8 @@ gabble_connection_dispose (GObject *object)
 
   if (self->lmconn != NULL)
     {
+      /* ownership of our porter was transferred to the LmConnection */
+      priv->porter = NULL;
       lm_connection_unref (self->lmconn);
       self->lmconn = NULL;
     }

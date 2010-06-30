@@ -484,19 +484,6 @@ request_search_fields (GabbleSearchChannel *chan)
 
 /* Search implementation */
 
-static gchar *
-get_error_name (TpError e)
-{
-  gpointer tp_error_tc = g_type_class_ref (TP_TYPE_ERROR);
-  GEnumClass *tp_error_ec = G_ENUM_CLASS (tp_error_tc);
-  GEnumValue *e_value = g_enum_get_value (tp_error_ec, e);
-  const gchar *error_suffix = e_value->value_nick;
-  gchar *error_name = g_strdup_printf ("%s.%s", TP_ERROR_PREFIX, error_suffix);
-
-  g_type_class_unref (tp_error_tc);
-  return error_name;
-}
-
 /**
  * change_search_state:
  * @chan: a search channel
@@ -511,7 +498,7 @@ change_search_state (GabbleSearchChannel *chan,
 {
   GabbleSearchChannelPrivate *priv = chan->priv;
   GHashTable *details = g_hash_table_new (g_str_hash, g_str_equal);
-  gchar *error_name = NULL;
+  const gchar *error_name = NULL;
   GValue v = { 0, };
 
   switch (state)
@@ -533,7 +520,8 @@ change_search_state (GabbleSearchChannel *chan,
   if (state == GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED)
     {
       g_assert (reason != NULL);
-      error_name = get_error_name (reason->code);
+      g_assert (reason->domain == TP_ERRORS);
+      error_name = tp_error_get_dbus_name (reason->code);
 
       g_value_init (&v, G_TYPE_STRING);
       g_value_set_static_string (&v, reason->message);
@@ -551,7 +539,6 @@ change_search_state (GabbleSearchChannel *chan,
   gabble_svc_channel_type_contact_search_emit_search_state_changed (
       chan, state, (error_name == NULL ? "" : error_name), details);
 
-  g_free (error_name);
   g_hash_table_unref (details);
 }
 

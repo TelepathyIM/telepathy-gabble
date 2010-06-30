@@ -3,7 +3,7 @@
 A simple smoke-test for XEP-0126 invisibility
 """
 from gabbletest import (
-    exec_test, XmppXmlStream, acknowledge_iq, send_error_reply
+    exec_test, XmppXmlStream, acknowledge_iq, send_error_reply, disconnect_conn
 )
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
@@ -12,7 +12,8 @@ from servicetest import (
 import ns
 import constants as cs
 from twisted.words.xish import xpath
-from invisible_helper import PrivacyListXmlStream
+from invisible_helper import PrivacyListXmlStream, send_privacy_list_push_iq, \
+    send_privacy_list
 
 def test_create_invisible_list(q, bus, conn, stream):
     conn.SimplePresence.SetPresence("away", "")
@@ -197,6 +198,56 @@ def test_invisible(q, bus, conn, stream):
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (3, 'away', 'gone')}]))
 
+def test_privacy_list_push_conflict(q, bus, conn, stream):
+    test_invisible_on_connect(q, bus, conn, stream)
+
+    set_id = send_privacy_list_push_iq(stream, "invisible")
+
+    _, req_list = q.expect_many(
+        EventPattern('stream-iq', iq_type='result', predicate=lambda event: \
+                         event.stanza['id'] == set_id),
+        EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
+
+    send_privacy_list (stream, req_list.stanza,
+                       "<item type='jid' value='tybalt@example.com' "
+                       "action='allow' order='1'><presence-out /></item>"
+                       "<item action='deny' order='2'><presence-out /></item>")
+
+    create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    created = xpath.queryForNodes('//list', create_list.stanza)[0]
+    assertEquals(created["name"], 'invisible-gabble')
+
+    acknowledge_iq(stream, create_list.stanza)
+
+    set_active = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    active = xpath.queryForNodes('//active', set_active.query)[0]
+    assertEquals('invisible-gabble', active['name'])
+    acknowledge_iq(stream, set_active.stanza)
+
+def test_privacy_list_push_valid(q, bus, conn, stream):
+    test_invisible_on_connect(q, bus, conn, stream)
+
+    set_id = send_privacy_list_push_iq(stream, "invisible")
+
+    _, req_list = q.expect_many(
+        EventPattern('stream-iq', iq_type='result', predicate=lambda event: \
+                         event.stanza['id'] == set_id),
+        EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
+
+    send_privacy_list (stream, req_list.stanza,
+                       "<item action='deny' order='1'><presence-out /></item>"
+                       "<item type='jid' value='tybalt@example.com' "
+                       "action='deny' order='2'><message /></item>")
+
+    event_pattern = EventPattern(
+        'stream-iq', query_ns=ns.PRIVACY, iq_type="set")
+
+    q.forbid_events([event_pattern])
+
+    disconnect_conn(q, conn, stream)
+
+    q.unforbid_events([event_pattern])
+
 if __name__ == '__main__':
     exec_test(test_invisible, protocol=PrivacyListXmlStream)
     exec_test(test_invisible_on_connect, protocol=PrivacyListXmlStream)
@@ -204,3 +255,5 @@ if __name__ == '__main__':
     exec_test(test_invisible_on_connect_fail_create_list,
               protocol=PrivacyListXmlStream)
     exec_test(test_invisible_on_connect_fail, protocol=PrivacyListXmlStream)
+    exec_test(test_privacy_list_push_valid, protocol=PrivacyListXmlStream)
+    exec_test(test_privacy_list_push_conflict, protocol=PrivacyListXmlStream)

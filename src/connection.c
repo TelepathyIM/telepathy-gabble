@@ -1304,29 +1304,16 @@ WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn)
 gboolean
 _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 {
-  GError *lmerror = NULL;
-
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  if (conn->lmconn == NULL)
+  if (conn->lmconn == NULL || conn->priv->porter == NULL)
     {
       g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
       return FALSE;
     }
 
-  if (!lm_connection_send (conn->lmconn, msg, &lmerror))
-    {
-      DEBUG ("failed: %s", lmerror->message);
-
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "message send failed: %s", lmerror->message);
-
-      g_error_free (lmerror);
-
-      return FALSE;
-    }
-
+  wocky_porter_send (conn->priv->porter, msg);
   return TRUE;
 }
 
@@ -2567,10 +2554,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
       NODE_DEBUG (result_iq, "sending disco response");
 
-      if (!lm_connection_send (self->lmconn, result, NULL))
-        {
-          DEBUG ("sending disco response failed");
-        }
+      wocky_porter_send (self->priv->porter, result);
     }
 
   lm_message_unref (result);

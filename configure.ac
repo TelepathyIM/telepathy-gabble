@@ -9,8 +9,8 @@ AC_PREREQ([2.59])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [9])
-m4_define([gabble_micro_version], [14])
-m4_define([gabble_nano_version], [1])
+m4_define([gabble_micro_version], [15])
+m4_define([gabble_nano_version], [0])
 
 # Some magic
 m4_define([gabble_base_version],
@@ -20,7 +20,7 @@ m4_define([gabble_version],
               [gabble_base_version].[gabble_nano_version])])
 
 AC_INIT([Telepathy Gabble], [gabble_version],
-        [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy])
+        [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy&component=gabble])
 
 AC_CONFIG_MACRO_DIR([m4])
 

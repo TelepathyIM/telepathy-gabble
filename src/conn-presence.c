@@ -53,7 +53,7 @@ typedef enum {
 struct _GabbleConnectionPresencePrivate {
     InvisibilityMethod invisibility_method;
     LmMessageHandler *iq_list_push_cb;
-    gchar *invisible_privacy_list;
+    gchar *invisible_list_name;
 };
 
 static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
@@ -253,7 +253,7 @@ set_xep0126_invisible (GabbleConnection *self,
         WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', "query", ':', NS_PRIVACY,
           '(', "active",
-        '@', "name", self->presence_priv->invisible_privacy_list,
+        '@', "name", self->presence_priv->invisible_list_name,
           ')',
         ')',
         NULL);
@@ -462,7 +462,7 @@ presence_create_invisible_privacy_list (GabbleConnection *self,
         '(', "query",
           ':', NS_PRIVACY,
           '(', "list",
-            '@', "name", self->presence_priv->invisible_privacy_list,
+            '@', "name", self->presence_priv->invisible_list_name,
             '(', "item",
               '@', "action", "deny",
               '@', "order", "1",
@@ -472,7 +472,7 @@ presence_create_invisible_privacy_list (GabbleConnection *self,
         ')',
       NULL);
 
-  DEBUG ("Creating '%s'", self->presence_priv->invisible_privacy_list);
+  DEBUG ("Creating '%s'", self->presence_priv->invisible_list_name);
 
   if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
           create_invisible_privacy_list_cb, NULL, result, &error))
@@ -545,7 +545,7 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
 
   list_name = lm_message_node_get_attribute (list_node, "name");
 
-  if (g_strcmp0 (list_name, conn->presence_priv->invisible_privacy_list) == 0)
+  if (g_strcmp0 (list_name, conn->presence_priv->invisible_list_name) == 0)
     setup_invisible_privacy_list_async (conn, NULL, NULL);
 
   lm_message_unref (result);
@@ -588,15 +588,15 @@ setup_invisible_privacy_list_async (GabbleConnection *self,
       callback, user_data, setup_invisible_privacy_list_async);
   WockyStanza *iq;
 
-  if (priv->invisible_privacy_list == NULL)
-    priv->invisible_privacy_list = g_strdup ("invisible");
+  if (priv->invisible_list_name == NULL)
+    priv->invisible_list_name = g_strdup ("invisible");
 
   iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_GET, NULL, NULL,
         '(', "query",
           ':', NS_PRIVACY,
           '(', "list",
-            '@', "name", self->presence_priv->invisible_privacy_list,
+            '@', "name", self->presence_priv->invisible_list_name,
           ')',
         ')',
       NULL);
@@ -694,9 +694,9 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
       if (!is_valid_invisible_list (node))
         {
           gchar *new_name = g_strdup_printf ("%s-gabble",
-              priv->invisible_privacy_list);
-          g_free (priv->invisible_privacy_list);
-          priv->invisible_privacy_list = new_name;
+              priv->invisible_list_name);
+          g_free (priv->invisible_list_name);
+          priv->invisible_list_name = new_name;
 
           presence_create_invisible_privacy_list (conn, result);
         }
@@ -1139,7 +1139,7 @@ conn_presence_init (GabbleConnection *conn)
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed_cb), conn);
 
-  conn->presence_priv->invisible_privacy_list = g_strdup ("invisible");
+  conn->presence_priv->invisible_list_name = g_strdup ("invisible");
 
   tp_presence_mixin_init ((GObject *) conn,
       G_STRUCT_OFFSET (GabbleConnection, presence));
@@ -1154,7 +1154,7 @@ conn_presence_finalize (GabbleConnection *conn)
 {
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
 
-  g_free (priv->invisible_privacy_list);
+  g_free (priv->invisible_list_name);
 
   if (priv->iq_list_push_cb != NULL)
     lm_message_handler_unref (priv->iq_list_push_cb);

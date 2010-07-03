@@ -111,8 +111,6 @@ static LmHandlerResult verify_invisible_privacy_list_cb (
     GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
     GObject *obj, gpointer user_data);
 
-static const gchar *get_list_name_from_message (LmMessage *message);
-
 static void toggle_presence_visibility_async (GabbleConnection *self,
     GAsyncReadyCallback callback,
     gpointer user_data);
@@ -454,17 +452,6 @@ disable_privacy_lists (GabbleConnection *self)
     priv->invisibility_method = INVISIBILITY_METHOD_NONE;
 }
 
-static const gchar *
-get_list_name_from_message (LmMessage *message)
-{
-  LmMessageNode *node = lm_message_node_find_child (wocky_stanza_get_top_node (
-          message), "list");
-
-  g_return_val_if_fail (node != NULL, NULL);
-
-  return lm_message_node_get_attribute (node, "name");
-}
-
 static void
 presence_create_invisible_privacy_list (GabbleConnection *self,
     GSimpleAsyncResult *result)
@@ -538,25 +525,25 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   LmMessage *result;
-  LmMessageNode *iq, *query;
+  LmMessageNode *list_node, *iq;
   const gchar *list_name;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq = lm_message_get_node (message);
-  query = lm_message_node_get_child_with_namespace (iq, "query",
-      NS_PRIVACY);
+  list_node = lm_message_node_find_child (iq, "list");
 
-  if (!query)
+  if (!lm_message_node_get_child_with_namespace (iq, "query", NS_PRIVACY) ||
+      !list_node)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   result = lm_iq_message_make_result (message);
 
   if (!lm_connection_send (conn->lmconn, result, NULL))
-      DEBUG ("sending disco response failed");
+      DEBUG ("sending push privacy list response failed");
 
-  list_name = get_list_name_from_message (message);
+  list_name = lm_message_node_get_attribute (list_node, "name");
 
   if (g_strcmp0 (list_name, conn->presence_priv->invisible_privacy_list) == 0)
     setup_invisible_privacy_list_async (conn, NULL, NULL);
@@ -652,7 +639,7 @@ is_valid_invisible_list (LmMessageNode *list_node)
       guint order;
       gchar *end;
 
-      if (g_strcmp0 (child->name, "item") != 0)
+      if (g_strcmp0 (lm_message_node_get_name (child), "item") != 0)
         continue;
 
       order_str = lm_message_node_get_attribute (child, "order");
@@ -698,9 +685,6 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
   LmMessageNode *node = lm_message_node_find_child
     (wocky_stanza_get_top_node (reply_msg), "list");
   GError *error = gabble_message_get_xmpp_error (reply_msg);
-  const gchar *list_name = get_list_name_from_message (sent_msg);
-
-  g_assert (list_name != NULL);
 
   DEBUG (" ");
 

@@ -97,10 +97,6 @@ static LmHandlerResult set_xep0126_invisible_cb (GabbleConnection *conn,
     LmMessage *sent_msg, LmMessage *reply_msg, GObject *obj,
     gpointer user_data);
 
-static LmHandlerResult create_invisible_privacy_list_cb (
-    GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
-    GObject *obj, gpointer user_data);
-
 static void setup_invisible_privacy_list_async (GabbleConnection *self,
     GAsyncReadyCallback callback, gpointer user_data);
 
@@ -429,11 +425,39 @@ disable_privacy_lists (GabbleConnection *self)
     priv->invisibility_method = INVISIBILITY_METHOD_NONE;
 }
 
+static LmHandlerResult
+create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
+    LmMessage *sent_msg,
+    LmMessage *reply_msg,
+    GObject *obj,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
+
+  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+    {
+      GError *error = gabble_message_get_xmpp_error (reply_msg);
+
+      g_simple_async_result_set_from_error (result, error);
+
+      g_free (error);
+    }
+
+  g_simple_async_result_complete_in_idle (result);
+
+  g_object_unref (result);
+
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
 static void
-presence_create_invisible_privacy_list (GabbleConnection *self,
-    GSimpleAsyncResult *result)
+create_invisible_privacy_list_async (GabbleConnection *self,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
 {
   GError *error = NULL;
+  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
+      callback, user_data, create_invisible_privacy_list_async);
   WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', "query",
@@ -452,7 +476,7 @@ presence_create_invisible_privacy_list (GabbleConnection *self,
   DEBUG ("Creating '%s'", self->presence_priv->invisible_list_name);
 
   if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
-          create_invisible_privacy_list_cb, NULL, result, &error))
+          create_invisible_privacy_list_reply_cb, NULL, result, &error))
     {
       if (error != NULL)
         {
@@ -467,30 +491,32 @@ presence_create_invisible_privacy_list (GabbleConnection *self,
   g_object_unref (iq);
 }
 
-static LmHandlerResult
-create_invisible_privacy_list_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
-    GObject *obj,
+static gboolean
+create_invisible_privacy_list_finish (GabbleConnection *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  wocky_implement_finish_void (self, create_invisible_privacy_list_async);
+}
+
+static void create_invisible_privacy_list_cb (GObject *source_object,
+    GAsyncResult *result,
     gpointer user_data)
 {
-  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
+  GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (!create_invisible_privacy_list_finish (self, result, &error))
     {
-      GError *error = gabble_message_get_xmpp_error (reply_msg);
-
       DEBUG ("Error creating privacy list: %s", error->message);
 
-      disable_privacy_lists (conn);
+      disable_privacy_lists (self);
 
-      g_free (error);
+      g_error_free (error);
     }
 
-  toggle_presence_visibility_async (conn,
-      toggle_initial_presence_visibility_cb, result);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  toggle_presence_visibility_async (self,
+      toggle_initial_presence_visibility_cb, user_data);
 }
 
 static LmHandlerResult
@@ -657,7 +683,6 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
     gpointer user_data)
 {
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
-  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
   LmMessageNode *node = lm_message_node_find_child
     (wocky_stanza_get_top_node (reply_msg), "list");
   GError *error = gabble_message_get_xmpp_error (reply_msg);
@@ -674,12 +699,13 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
           g_free (priv->invisible_list_name);
           priv->invisible_list_name = new_name;
 
-          presence_create_invisible_privacy_list (conn, result);
+          create_invisible_privacy_list_async (conn,
+              create_invisible_privacy_list_cb, user_data);
         }
       else
         {
           toggle_presence_visibility_async (conn,
-              toggle_initial_presence_visibility_cb, result);
+              toggle_initial_presence_visibility_cb, user_data);
         }
 
       goto OUT;
@@ -688,7 +714,8 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
     {
       if (error->code == XMPP_ERROR_ITEM_NOT_FOUND)
         {
-          presence_create_invisible_privacy_list (conn, result);
+          create_invisible_privacy_list_async (conn,
+              create_invisible_privacy_list_cb, user_data);
           goto OUT;
         }
     }
@@ -696,7 +723,7 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
   disable_privacy_lists (conn);
 
   toggle_presence_visibility_async (conn,
-      toggle_initial_presence_visibility_cb, result);
+      toggle_initial_presence_visibility_cb, user_data);
 
  OUT:
   if (error != NULL)

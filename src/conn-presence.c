@@ -119,6 +119,10 @@ static gboolean toggle_presence_visibility_finish (GabbleConnection *self,
     GAsyncResult *result,
     GError **error);
 
+static void toggle_initial_presence_visibility_cb (GObject *source_object,
+    GAsyncResult *result,
+    gpointer user_data);
+
 /* actual code! */
 
 GQuark
@@ -413,33 +417,6 @@ set_xep0186_invisible_cb (GabbleConnection *conn,
 }
 
 static void
-set_presence_after_invisible_privacy_list_setup_cb (GObject *source,
-    GAsyncResult *res,
-    gpointer user_data)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (source);
-  GSimpleAsyncResult *result = user_data;
-  GError *error = NULL;
-
-  if (!toggle_presence_visibility_finish (self, res, &error))
-    {
-      DEBUG ("Failed to set failed to set invisibility: %s", error->message);
-      g_clear_error (&error);
-
-      self->self_presence->status = GABBLE_PRESENCE_DND;
-
-      if (!conn_presence_signal_own_presence (self, NULL, &error))
-        {
-          g_simple_async_result_set_from_error (result, error);
-          g_error_free (error);
-        }
-    }
-
-  g_simple_async_result_complete (result);
-  g_object_unref (result);
-}
-
-static void
 disable_privacy_lists (GabbleConnection *self)
 {
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
@@ -511,8 +488,7 @@ create_invisible_privacy_list_cb (GabbleConnection *conn,
     }
 
   toggle_presence_visibility_async (conn,
-      set_presence_after_invisible_privacy_list_setup_cb,
-      result);
+      toggle_initial_presence_visibility_cb, result);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -703,8 +679,7 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
       else
         {
           toggle_presence_visibility_async (conn,
-              set_presence_after_invisible_privacy_list_setup_cb,
-              result);
+              toggle_initial_presence_visibility_cb, result);
         }
 
       goto OUT;
@@ -721,8 +696,7 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
   disable_privacy_lists (conn);
 
   toggle_presence_visibility_async (conn,
-      set_presence_after_invisible_privacy_list_setup_cb,
-      result);
+      toggle_initial_presence_visibility_cb, result);
 
  OUT:
   if (error != NULL)
@@ -764,20 +738,16 @@ initial_presence_setup_cb (GObject *source_object,
 }
 
 static void
-initial_invisible_command_setup_cb (GObject *source_object,
+toggle_initial_presence_visibility_cb (GObject *source_object,
     GAsyncResult *result,
     gpointer user_data)
 {
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
-  GabbleConnectionPresencePrivate *priv = self->presence_priv;
   GSimpleAsyncResult *external_result = (GSimpleAsyncResult *) user_data;
   GError *error = NULL;
 
   if (!toggle_presence_visibility_finish (self, result, &error))
     {
-      /* TODO: It would be so easy to fallback on privacy lists! */
-      priv->invisibility_method = INVISIBILITY_METHOD_NONE;
-
       self->self_presence->status = GABBLE_PRESENCE_DND;
 
       g_clear_error (&error);
@@ -806,7 +776,7 @@ conn_presence_set_initial_presence_async (GabbleConnection *self,
     {
       priv->invisibility_method = INVISIBILITY_METHOD_INVISIBLE_COMMAND;
       toggle_presence_visibility_async (self,
-          initial_invisible_command_setup_cb, result);
+          toggle_initial_presence_visibility_cb, result);
     }
   else
     {

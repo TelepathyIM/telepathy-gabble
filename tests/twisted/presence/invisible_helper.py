@@ -5,13 +5,6 @@ from twisted.words.xish import xpath
 class Xep0186XmlStream(XmppXmlStream):
     disco_features = [ns.INVISIBLE]
 
-class PrivacyListXmlStream(XmppXmlStream):
-    disco_features = [ns.PRIVACY]
-
-class Xep0186PrivacyXmlStream(XmppXmlStream):
-    # We advertise privacy as well to test that Gabble prefers XEP-0186.
-    disco_features = [ns.INVISIBLE, ns.PRIVACY]
-
 def send_privacy_list_push_iq(stream, list_name):
     iq = IQ(stream, "set")
     iq.addUniqueId()

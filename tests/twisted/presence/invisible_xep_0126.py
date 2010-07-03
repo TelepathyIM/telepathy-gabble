@@ -1,6 +1,11 @@
 # coding=utf-8
 """
 A simple smoke-test for XEP-0126 invisibility
+
+We are deliberately not advertising support for privacy lists on
+connection disco, this is because it is not explicitly required by
+XEP-0016 or XEP-0126. Some servers silently support it, like certain
+version of Ejabberd and all released versions of Prosody (as of 7.0).
 """
 from gabbletest import (
     exec_test, XmppXmlStream, acknowledge_iq, send_error_reply, disconnect_conn
@@ -12,8 +17,7 @@ from servicetest import (
 import ns
 import constants as cs
 from twisted.words.xish import xpath, domish
-from invisible_helper import PrivacyListXmlStream, send_privacy_list_push_iq, \
-    send_privacy_list
+from invisible_helper import send_privacy_list_push_iq, send_privacy_list
 
 def test_create_invisible_list(q, bus, conn, stream):
     conn.SimplePresence.SetPresence("away", "")
@@ -220,9 +224,8 @@ def test_invisible(q, bus, conn, stream):
     # In order to appear globally invisible, the client MUST now re-send the
     # user's presence for broadcasting to all contacts, which the active rule
     # will block to all contacts:
-    q.expect('stream-presence', to=None, presence_type=None)
-
     q.expect_many(
+        EventPattern('stream-presence', to=None, presence_type=None),
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      args=[{1: (0, {'hidden': {}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
@@ -305,12 +308,10 @@ def test_privacy_list_push_valid(q, bus, conn, stream):
     acknowledge_iq (stream, activate_list.stanza)
 
 if __name__ == '__main__':
-    exec_test(test_invisible, protocol=PrivacyListXmlStream)
-    exec_test(test_invisible_on_connect, protocol=PrivacyListXmlStream)
+    exec_test(test_invisible)
+    exec_test(test_invisible_on_connect)
     exec_test(test_create_invisible_list)
-    exec_test(test_invisible_on_connect_fail_no_list,
-              protocol=PrivacyListXmlStream)
-    exec_test(test_invisible_on_connect_fail_invalid_list,
-              protocol=PrivacyListXmlStream)
-    exec_test(test_privacy_list_push_valid, protocol=PrivacyListXmlStream)
-    exec_test(test_privacy_list_push_conflict, protocol=PrivacyListXmlStream)
+    exec_test(test_invisible_on_connect_fail_no_list)
+    exec_test(test_invisible_on_connect_fail_invalid_list)
+    exec_test(test_privacy_list_push_valid)
+    exec_test(test_privacy_list_push_conflict)

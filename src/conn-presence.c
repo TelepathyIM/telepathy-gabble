@@ -566,6 +566,30 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+/**********************************************************************
+* setup_invisible_privacy_list_async
+* ↓
+* verify_invisible_privacy_list_cb─────────────────────────────────────┐
+* |        | |                                                         |
+* |success | |n/a                                               failure|
+* |        | |                                                         |
+* |        | ↓                                                         |
+* ├────────+─presence_create_invisible_privacy_list("invisible")───────|
+* |        |                                                           |
+* |        |invalid                                                    |
+* |        ↓                                                           |
+* ├────────presence_create_invisible_privacy_list("invisible-gabble")──|
+* |                                                                    |
+* |                                                                    ↓
+* |                                                disable_privacy_lists
+* |                                                         |
+* ├─────────────────────────────────────────────────────────┘
+* ↓
+* toggle_presence_visibility_async
+* ↓
+* ...
+**********************************************************************/
+
 static void
 setup_invisible_privacy_list_async (GabbleConnection *self,
     GAsyncReadyCallback callback,

@@ -414,12 +414,14 @@ disable_privacy_lists (GabbleConnection *self)
 {
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
 
-  DEBUG (" ");
-
   if (self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE)
     priv->invisibility_method = INVISIBILITY_METHOD_PRESENCE_INVISIBLE;
   else
     priv->invisibility_method = INVISIBILITY_METHOD_NONE;
+
+  DEBUG ("Set invisibility method to %s",
+      (priv->invisibility_method == INVISIBILITY_METHOD_PRESENCE_INVISIBLE) ?
+      "presence-invisible" : "none");
 }
 
 static LmHandlerResult

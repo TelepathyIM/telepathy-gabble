@@ -8,7 +8,8 @@ XEP-0016 or XEP-0126. Some servers silently support it, like certain
 version of Ejabberd and all released versions of Prosody (as of 7.0).
 """
 from gabbletest import (
-    exec_test, XmppXmlStream, acknowledge_iq, send_error_reply, disconnect_conn
+    exec_test, XmppXmlStream, acknowledge_iq, send_error_reply,
+    disconnect_conn, elem
 )
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
@@ -98,9 +99,9 @@ def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream):
 
     send_privacy_list (
         stream, get_list.stanza,
-        "<item type='jid' value='tybalt@example.com' action='allow' order='1'>"
-        "<presence-out/></item>"
-        "<item action='deny' order='2'><presence-out/></item>")
+        [elem('item', type='jid', value='tybalt@example.com', action='allow',
+             order='1')(elem('presence-out')),
+        elem('item', action='deny', order='2')(elem('presence-out'))])
 
     create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     created = xpath.queryForNodes('//list', create_list.stanza)[0]
@@ -178,8 +179,9 @@ def test_invisible_on_connect(q, bus, conn, stream):
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
     assertEquals('invisible', list_node['name'])
 
-    send_privacy_list (stream, get_list.stanza,
-                       "<item action='deny' order='1'><presence-out/></item>")
+    send_privacy_list (
+        stream, get_list.stanza,
+        [elem('item', action='deny', order='1')(elem('presence-out'))])
 
     set_active = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     active = xpath.queryForNodes('//active', set_active.query)[0]
@@ -196,8 +198,9 @@ def test_invisible(q, bus, conn, stream):
 
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
 
-    send_privacy_list (stream, get_list.stanza,
-                       "<item action='deny' order='1'><presence-out/></item>")
+    send_privacy_list (
+        stream, get_list.stanza,
+        [elem('item', action='deny', order='1')(elem('presence-out'))])
 
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
@@ -269,10 +272,11 @@ def test_privacy_list_push_conflict(q, bus, conn, stream):
                          event.stanza['id'] == set_id),
         EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
 
-    send_privacy_list (stream, req_list.stanza,
-                       "<item type='jid' value='tybalt@example.com' "
-                       "action='allow' order='1'><presence-out /></item>"
-                       "<item action='deny' order='2'><presence-out /></item>")
+    send_privacy_list(
+        stream, req_list.stanza,
+        [elem('item', type='jid', value='tybalt@example.com', action='allow',
+              order='1')(elem('presence-out')),
+         elem('item', action='deny', order='2')(elem('presence-out'))])
 
     create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     created = xpath.queryForNodes('//list', create_list.stanza)[0]
@@ -295,10 +299,11 @@ def test_privacy_list_push_valid(q, bus, conn, stream):
                          event.stanza['id'] == set_id),
         EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
 
-    send_privacy_list (stream, req_list.stanza,
-                       "<item action='deny' order='1'><presence-out /></item>"
-                       "<item type='jid' value='tybalt@example.com' "
-                       "action='deny' order='2'><message /></item>")
+    send_privacy_list (
+        stream, req_list.stanza,
+        [elem('item', action='deny', order='1')(elem(u'presence-out')),
+         elem('item', type='jid', value='tybalt@example.com', action='deny',
+              order='2')(elem(u'message'))])
 
     # We redundantly re-activate the 'invisible' list. These lines also
     # check to see that we didn't switch over to 'invisible-gabble'

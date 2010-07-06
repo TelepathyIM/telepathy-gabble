@@ -253,7 +253,7 @@ set_xep0126_invisible (GabbleConnection *self,
         WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
         '(', "query", ':', NS_PRIVACY,
           '(', "active",
-        '@', "name", self->presence_priv->invisible_list_name,
+            '@', "name", self->presence_priv->invisible_list_name,
           ')',
         ')',
         NULL);

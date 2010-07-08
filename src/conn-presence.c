@@ -903,7 +903,8 @@ toggle_presence_visibility_async (GabbleConnection *self,
         GError *error = NULL;
 
         /* If we don't even support XEP-0018, revert to DND */
-        if (priv->invisibility_method == INVISIBILITY_METHOD_NONE)
+        if (priv->invisibility_method == INVISIBILITY_METHOD_NONE &&
+            set_invisible)
           self->self_presence->status = GABBLE_PRESENCE_DND;
 
         if (!conn_presence_signal_own_presence (self, NULL, &error))

@@ -330,6 +330,9 @@ class StreamFactory(twisted.internet.protocol.Factory):
 class BaseXmlStream(xmlstream.XmlStream):
     initiating = False
     namespace = 'jabber:client'
+    pep_support = True
+    disco_features = []
+    handle_privacy_lists = True
 
     def __init__(self, event_func, authenticator):
         xmlstream.XmlStream.__init__(self, authenticator)
@@ -341,6 +344,12 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.addObserver('//presence', lambda x: event_func(
             make_presence_event(self, x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
+        if self.handle_privacy_lists:
+            self.addObserver("/iq/query[@xmlns='%s']" % ns.PRIVACY,
+                             self._cb_priv_list)
+
+    def _cb_priv_list(self, iq):
+        send_error_reply(self, iq)
 
     def _cb_authd(self, _):
         # called when stream is authenticated
@@ -357,6 +366,13 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.event_func(servicetest.Event('stream-authenticated'))
 
     def _cb_disco_iq(self, iq):
+        nodes = xpath.queryForNodes(
+            "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']", iq)
+        query = nodes[0]
+
+        for feature in self.disco_features:
+            query.addChild(elem('feature', var=feature))
+
         iq['type'] = 'result'
         iq['from'] = iq['to']
         self.send(iq)
@@ -390,22 +406,11 @@ class XmppXmlStream(BaseXmlStream):
 class GoogleXmlStream(BaseXmlStream):
     version = (1, 0)
 
-    def _cb_disco_iq(self, iq):
-        if iq.getAttribute('to') == 'localhost':
-            nodes = xpath.queryForNodes(
-                "/iq/query[@xmlns='http://jabber.org/protocol/disco#info']",
-                iq)
-            query = nodes[0]
-            feature = query.addElement('feature')
-            feature['var'] = ns.GOOGLE_ROSTER
-            feature = query.addElement('feature')
-            feature['var'] = ns.GOOGLE_JINGLE_INFO
-            feature = query.addElement('feature')
-            feature['var'] = ns.GOOGLE_MAIL_NOTIFY
-
-            iq['type'] = 'result'
-            iq['from'] = 'localhost'
-            self.send(iq)
+    pep_support = False
+    disco_features = [ns.GOOGLE_ROSTER,
+                      ns.GOOGLE_JINGLE_INFO,
+                      ns.GOOGLE_MAIL_NOTIFY,
+                     ]
 
     def _cb_bare_jid_disco_iq(self, iq):
         # Google talk doesn't support PEP :(

@@ -66,3 +66,6 @@ X_DELAY = 'jabber:x:delay'
 XML = 'http://www.w3.org/XML/1998/namespace'
 X_OOB = 'jabber:x:oob'
 GABBLE_CAPS="http://telepathy.freedesktop.org/caps"
+PRESENCE_INVISIBLE = 'presence-invisible'
+PRIVACY = 'jabber:iq:privacy'
+INVISIBLE = 'urn:xmpp:invisible:0'

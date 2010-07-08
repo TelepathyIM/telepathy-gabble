@@ -1480,6 +1480,8 @@ static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
 static void decrement_waiting_connected (GabbleConnection *connection);
+static void connection_initial_presence_cb (GObject *, GAsyncResult *,
+    gpointer);
 
 static void
 remote_closed_cb (WockyPorter *porter,
@@ -1965,8 +1967,9 @@ disconnect_callbacks (TpBaseConnection *base)
  *
  * Stage 1 is _gabble_connection_connect calling wocky_connector_connect_async
  * Stage 2 is connector_connected initiating service discovery
- * Stage 3 is set_status_to_connected advertising initial presence, requesting
- *   the roster and setting the CONNECTED state
+ * Stage 3 is connection_disco_cb processing the server's features, and setting
+ *            initial presence
+ * Stage 4 is set_status_to_connected setting the CONNECTED state.
  */
 static gboolean
 _gabble_connection_connect (TpBaseConnection *base,
@@ -2619,15 +2622,13 @@ connection_iq_unknown_cb (LmMessageHandler *handler,
 /**
  * set_status_to_connected
  *
- * Stage 3 of connecting, this function is called once all the events we were
+ * Stage 4 of connecting, this function is called once all the events we were
  * waiting for happened.
- * It sends the user's initial presence to the server, marking them as
- * available, and requests the roster.
+ *
  */
 static void
 set_status_to_connected (GabbleConnection *conn)
 {
-  GError *error = NULL;
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
@@ -2647,27 +2648,9 @@ set_status_to_connected (GabbleConnection *conn)
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
 
-  /* send presence to the server to indicate availability */
-  /* TODO: some way for the user to set this */
-  if (!conn_presence_signal_own_presence (conn, NULL, &error))
-    {
-      DEBUG ("sending initial presence failed: %s", error->message);
-      goto ERROR;
-    }
-
   /* go go gadget on-line */
   tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
-
-  return;
-
-ERROR:
-  if (error != NULL)
-    g_error_free (error);
-
-  tp_base_connection_change_status (base,
-      TP_CONNECTION_STATUS_DISCONNECTED,
-      TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 }
 
 static void
@@ -2749,6 +2732,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE;
               else if (0 == strcmp (var, NS_PRIVACY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRIVACY;
+              else if (0 == strcmp (var, NS_INVISIBLE))
+                conn->features |= GABBLE_CONNECTION_FEATURES_INVISIBLE;
               else if (0 == strcmp (var, NS_GOOGLE_MAIL_NOTIFY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY;
             }
@@ -2757,7 +2742,9 @@ connection_disco_cb (GabbleDisco *disco,
       DEBUG ("set features flags to %d", conn->features);
     }
 
-  decrement_waiting_connected (conn);
+  conn_presence_set_initial_presence_async (conn,
+      connection_initial_presence_cb, NULL);
+
   return;
 
 ERROR:
@@ -2769,6 +2756,40 @@ ERROR:
       TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
 
   return;
+}
+
+/**
+ * connection_initial_presence_cb
+ *
+ * Stage 4 of connecting, this function is called after our initial presence
+ * has been set (or has failed unrecoverably). It marks the connection as
+ * online (or failed, as appropriate); the former triggers the roster being
+ * retrieved.
+ */
+static void
+connection_initial_presence_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = (GabbleConnection *) source_object;
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  GError *error = NULL;
+
+  if (!conn_presence_set_initial_presence_finish (self, res, &error))
+    {
+      DEBUG ("error setting up initial presence: %s", error->message);
+
+      if (base->status != TP_CONNECTION_STATUS_DISCONNECTED)
+        tp_base_connection_change_status (base,
+            TP_CONNECTION_STATUS_DISCONNECTED,
+            TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+
+      g_error_free (error);
+    }
+  else
+    {
+      decrement_waiting_connected (self);
+    }
 }
 
 

@@ -1552,7 +1552,6 @@ handle_tube_channel_request (GabbleMucFactory *self,
       {
         /* We have to wait the tubes channel before announcing */
         can_announce_now = FALSE;
-        gabble_muc_factory_associate_request (self, tube, request_token);
       }
 
       tubes_channel_created = TRUE;
@@ -1592,6 +1591,11 @@ handle_tube_channel_request (GabbleMucFactory *self,
 
       l = g_slist_prepend (l, new_channel);
       g_hash_table_insert (priv->tubes_needed_for_tube, tube, l);
+
+      /* And now finally associate the new stream or dbus tube channel with
+       * the request token so that when the muc channel is ready, the request
+       * will be satisfied. */
+      gabble_muc_factory_associate_request (self, new_channel, request_token);
     }
 
   g_object_unref (tube);

@@ -5,6 +5,9 @@ from twisted.words.xish import xpath
 class Xep0186XmlStream(XmppXmlStream):
     disco_features = [ns.INVISIBLE]
 
+class Xep0126XmlStream(XmppXmlStream):
+    handle_privacy_lists = False
+
 def send_privacy_list_push_iq(stream, list_name):
     iq = elem_iq(stream, 'set')(
         elem(ns.PRIVACY, 'query')(

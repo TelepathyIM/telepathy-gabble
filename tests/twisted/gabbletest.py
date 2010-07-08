@@ -332,6 +332,7 @@ class BaseXmlStream(xmlstream.XmlStream):
     namespace = 'jabber:client'
     pep_support = True
     disco_features = []
+    handle_privacy_lists = True
 
     def __init__(self, event_func, authenticator):
         xmlstream.XmlStream.__init__(self, authenticator)
@@ -343,6 +344,12 @@ class BaseXmlStream(xmlstream.XmlStream):
         self.addObserver('//presence', lambda x: event_func(
             make_presence_event(self, x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
+        if self.handle_privacy_lists:
+            self.addObserver("/iq/query[@xmlns='%s']" % ns.PRIVACY,
+                             self._cb_priv_list)
+
+    def _cb_priv_list(self, iq):
+        send_error_reply(self, iq)
 
     def _cb_authd(self, _):
         # called when stream is authenticated

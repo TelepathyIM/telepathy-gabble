@@ -288,6 +288,29 @@ muc_ready_cb (GabbleMucChannel *text_chan,
       g_hash_table_steal (priv->queued_requests, tubes_chan);
     }
 
+  /* Announce tube channels now */
+  /* FIXME: we should probably aggregate tube announcement with tubes and text
+   * ones in some cases. */
+  tube_channels = g_hash_table_lookup (priv->tubes_needed_for_tube,
+      tubes_chan);
+
+  tube_channels = g_slist_reverse (tube_channels);
+  for (l = tube_channels; l != NULL; l = g_slist_next (l))
+    {
+      GabbleTubeIface *tube_chan = GABBLE_TUBE_IFACE (l->data);
+      GSList *requests_satisfied_tube;
+
+      requests_satisfied_tube = g_hash_table_lookup (priv->queued_requests,
+          tube_chan);
+      g_hash_table_steal (priv->queued_requests, tube_chan);
+      requests_satisfied_tube = g_slist_reverse (requests_satisfied_tube);
+
+      tp_channel_manager_emit_new_channel (fac,
+          TP_EXPORTABLE_CHANNEL (tube_chan), requests_satisfied_tube);
+
+      g_slist_free (requests_satisfied_tube);
+    }
+
   if (tubes_chan == NULL || text_requested)
     {
       /* There is no tubes channel or the text channel has been explicitely
@@ -316,29 +339,6 @@ muc_ready_cb (GabbleMucChannel *text_chan,
       tp_channel_manager_emit_new_channels (fac, channels);
 
       g_hash_table_destroy (channels);
-    }
-
-  /* Announce tube channels now */
-  /* FIXME: we should probably aggregate tube announcement with tubes and text
-   * ones in some cases. */
-  tube_channels = g_hash_table_lookup (priv->tubes_needed_for_tube,
-      tubes_chan);
-
-  tube_channels = g_slist_reverse (tube_channels);
-  for (l = tube_channels; l != NULL; l = g_slist_next (l))
-    {
-      GabbleTubeIface *tube_chan = GABBLE_TUBE_IFACE (l->data);
-      GSList *requests_satisfied_tube;
-
-      requests_satisfied_tube = g_hash_table_lookup (priv->queued_requests,
-          tube_chan);
-      g_hash_table_steal (priv->queued_requests, tube_chan);
-      requests_satisfied_tube = g_slist_reverse (requests_satisfied_tube);
-
-      tp_channel_manager_emit_new_channel (fac,
-          TP_EXPORTABLE_CHANNEL (tube_chan), requests_satisfied_tube);
-
-      g_slist_free (requests_satisfied_tube);
     }
 
   g_hash_table_remove (priv->tubes_needed_for_tube, tubes_chan);

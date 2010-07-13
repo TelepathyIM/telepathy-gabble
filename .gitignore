@@ -10,6 +10,8 @@
 *.rej
 *.sw[op]
 *~
+*#
+.#*
 .DS_Store
 .deps
 .libs

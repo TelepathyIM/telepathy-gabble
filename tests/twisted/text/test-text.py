@@ -88,10 +88,9 @@ def test(q, bus, conn, stream):
     # messages."
     assert 'message-type' not in header or header['message-type'] == 0, header
 
-    # This looks wrong, but is correct. We don't know if our contacts generate
-    # message id='' attributes which are unique enough for our requirements, so
-    # we should not use them as the message-token for incoming messages.
-    assertNotEquals(id, header['message-token'])
+    # We don't make any uniqueness guarantees about the tokens on incoming
+    # messages, so we use the id='' provided at the protocol level.
+    assertEquals(id, header['message-token'])
 
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == 'hello', body

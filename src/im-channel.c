@@ -397,12 +397,8 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
           sender);
       tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
 
-      /* We can't trust the id='' attribute set by the contact to be unique
-       * enough to be a message-token, so let's generate one locally.
-       */
-      tmp = gabble_generate_id ();
-      tp_message_set_string (msg, 0, "message-token", tmp);
-      g_free (tmp);
+      if (id != NULL)
+        tp_message_set_string (msg, 0, "message-token", id);
 
       tp_message_mixin_take_received (G_OBJECT (chan), msg);
     }

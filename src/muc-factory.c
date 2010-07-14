@@ -1790,12 +1790,12 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   if (handle_type != TP_HANDLE_TYPE_ROOM && !conference)
     return FALSE;
 
-   if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
-       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
-       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
-       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE) &&
-       tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_CALL))
-     return FALSE;
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
+      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
+      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
+      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE) &&
+      tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_CALL))
+    return FALSE;
 
   /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,

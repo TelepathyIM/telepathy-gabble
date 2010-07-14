@@ -46,7 +46,7 @@
  * may set #GabbleBaseChannel:interfaces to override the default set for the
  * class.
  *
- * Subclasse should ensure that #GabbleBaseChannel:object_path is not %NULL by
+ * Subclasses should ensure that #GabbleBaseChannel:object_path is not %NULL by
  * the time construction is finished (if it is not set by the object's creator,
  * they must fill it in themself); #GabbleBaseChannel will take care of freeing
  * it.

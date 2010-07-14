@@ -85,6 +85,7 @@ TWISTED_TESTS = \
 	tubes/accept-muc-stream-tube.py \
 	tubes/accept-private-dbus-tube.py \
 	tubes/accept-private-stream-tube.py \
+	tubes/check-create-tube-return.py \
 	tubes/close-muc-with-closed-tube.py \
 	tubes/crash-on-list-channels.py \
 	tubes/create-invalid-tube-channels.py \

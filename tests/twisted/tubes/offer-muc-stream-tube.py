@@ -217,44 +217,62 @@ def test(q, bus, conn, stream, bytestream_cls,
     _, _, new_tube_path, new_tube_props = \
         join_muc(q, bus, conn, stream, 'chat2@conf.localhost', request)
 
-    # first text and tubes channels are announced
-    event = q.expect('dbus-signal', signal='NewChannels')
-    channels = event.args[0]
-    assert len(channels) == 2
-    path1, prop1 = channels[0]
-    path2, prop2 = channels[1]
-    assert sorted([prop1[cs.CHANNEL_TYPE], prop2[cs.CHANNEL_TYPE]]) == \
-        [cs.CHANNEL_TYPE_TEXT, cs.CHANNEL_TYPE_TUBES]
+    # The order in which the NewChannels signals are fired is
+    # undefined -- it could be the (tubes, text) channels first, or it
+    # could be the tube channel first; so let's accept either order
+    # here.
 
-    got_text, got_tubes = False, False
-    for path, props in channels:
-        if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT:
-            got_text = True
-        elif props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES:
-            got_tubes = True
-        else:
-            assert False
+    first, second = q.expect_many(
+        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannels'))
 
-        assert props[cs.INITIATOR_HANDLE] == self_handle
-        assert props[cs.INITIATOR_ID] == self_name
-        assert cs.CHANNEL_IFACE_GROUP in props[cs.INTERFACES]
-        assert props[cs.TARGET_ID] == 'chat2@conf.localhost'
-        assert props[cs.REQUESTED] == False
+    # NewChannels signal with the text and tubes channels together.
+    def nc_textandtubes(event):
+        channels = event.args[0]
+        assert len(channels) == 2
+        path1, prop1 = channels[0]
+        path2, prop2 = channels[1]
+        assert sorted([prop1[cs.CHANNEL_TYPE], prop2[cs.CHANNEL_TYPE]]) == \
+            [cs.CHANNEL_TYPE_TEXT, cs.CHANNEL_TYPE_TUBES]
 
-    assert (got_text, got_tubes) == (True, True)
+        got_text, got_tubes = False, False
+        for path, props in channels:
+            if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT:
+                got_text = True
+            elif props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES:
+                got_tubes = True
+            else:
+                assert False
 
-    # now the tube channel is announced
-    # FIXME: in this case, all channels should probably be announced together
-    event = q.expect('dbus-signal', signal='NewChannels')
-    channels = event.args[0]
-    assert len(channels) == 1
-    path, prop = channels[0]
-    assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
-    assert prop[cs.INITIATOR_ID] == 'chat2@conf.localhost/test'
-    assert prop[cs.REQUESTED] == True
-    assert prop[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
-    assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
-    assert prop[cs.STREAM_TUBE_SERVICE] == 'newecho'
+            assert props[cs.INITIATOR_HANDLE] == self_handle
+            assert props[cs.INITIATOR_ID] == self_name
+            assert cs.CHANNEL_IFACE_GROUP in props[cs.INTERFACES]
+            assert props[cs.TARGET_ID] == 'chat2@conf.localhost'
+            assert props[cs.REQUESTED] == False
+
+        assert (got_text, got_tubes) == (True, True)
+
+    # NewChannels signal with the tube channel.
+    def nc_tube(event):
+        # FIXME: in this case, all channels should probably be announced together
+        channels = event.args[0]
+        assert len(channels) == 1
+        path, prop = channels[0]
+        assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
+        assert prop[cs.INITIATOR_ID] == 'chat2@conf.localhost/test'
+        assert prop[cs.REQUESTED] == True
+        assert prop[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
+        assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
+        assert prop[cs.STREAM_TUBE_SERVICE] == 'newecho'
+
+        return path, prop
+
+    if len(first.args[0]) == 1:
+        path, prop = nc_tube(first)
+        nc_textandtubes(second)
+    else:
+        nc_textandtubes(first)
+        path, prop = nc_tube(second)
 
     # check that the tube channel is in the channels list
     all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',

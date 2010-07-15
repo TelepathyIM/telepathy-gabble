@@ -758,6 +758,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
       TP_IFACE_CONNECTION_INTERFACE_LOCATION,
       GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+      GABBLE_IFACE_CONNECTION_FUTURE,
       NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
         { "GadgetAvailable", NULL, NULL },

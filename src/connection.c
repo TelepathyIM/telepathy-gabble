@@ -2675,7 +2675,6 @@ connection_disco_cb (GabbleDisco *disco,
   GabbleConnection *conn = user_data;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GabbleConnectionPrivate *priv;
-  GError *error = NULL;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
@@ -2749,9 +2748,6 @@ connection_disco_cb (GabbleDisco *disco,
   return;
 
 ERROR:
-  if (error != NULL)
-    g_error_free (error);
-
   tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_DISCONNECTED,
       TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);

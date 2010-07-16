@@ -1575,7 +1575,12 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
        * previous streams, so we just reuse that one */
         {
           GList *contents = gabble_jingle_session_get_contents (priv->session);
-          GabbleJingleContent *c = contents->data;
+          GabbleJingleContent *c;
+
+          /* If we have a session, we must have at least one content. */
+          g_assert (contents != NULL);
+
+          c = contents->data;
           g_list_free (contents);
 
           transport_ns = gabble_jingle_content_get_transport_ns (c);

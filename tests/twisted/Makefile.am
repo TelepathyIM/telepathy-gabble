@@ -47,7 +47,6 @@ TWISTED_TESTS = \
 	presence/decloak.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
-	presence/invisible_fallbacks.py \
 	presence/invisible_xep_0126.py \
 	presence/invisible_xep_0186.py \
 	presence/presence.py \

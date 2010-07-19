@@ -46,6 +46,7 @@ static GDebugKey keys[] = {
   { "mail",           GABBLE_DEBUG_MAIL_NOTIF },
   { "authentication", GABBLE_DEBUG_AUTH },
   { "share",          GABBLE_DEBUG_SHARE },
+  { "tls",            GABBLE_DEBUG_TLS },
   { 0, },
 };
 

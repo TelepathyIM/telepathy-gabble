@@ -179,6 +179,8 @@ libgabble_convenience_la_SOURCES = \
     sidecar.c \
     slacker.h \
     slacker.c \
+    tls-certificate.h \
+    tls-certificate.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \

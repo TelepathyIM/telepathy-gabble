@@ -312,7 +312,7 @@ parse_description (GabbleJingleContent *content,
 
   if (manifest_node == NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, 
+      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "description missing <manifest/> node");
       return;
     }

@@ -263,6 +263,9 @@ gboolean _gabble_connection_invisible_privacy_list_set_active (
     gboolean active,
     GError **error);
 
+const gchar **gabble_connection_get_implemented_interfaces (void);
+const gchar **gabble_connection_get_guaranteed_interfaces (void);
+
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
     TpHandleRepoIface *repos[NUM_TP_HANDLE_TYPES]);

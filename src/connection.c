@@ -739,27 +739,48 @@ base_connected_cb (TpBaseConnection *base_conn)
 
 #define TWICE(x) (x), (x)
 
+static const gchar *implemented_interfaces[] = {
+    /* conditionally present interfaces */
+    GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+    GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
+    GABBLE_IFACE_OLPC_BUDDY_INFO,
+
+    /* always present interfaces */
+    TP_IFACE_CONNECTION_INTERFACE_ALIASING,
+    TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
+    TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
+    TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
+    TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
+    TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
+    GABBLE_IFACE_OLPC_GADGET,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+    TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+    GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
+    GABBLE_IFACE_CONNECTION_FUTURE,
+    NULL
+};
+static const gchar **interfaces_always_present = implemented_interfaces + 3;
+
+const gchar **
+gabble_connection_get_implemented_interfaces (void)
+{
+    return implemented_interfaces;
+}
+
+const gchar **
+gabble_connection_get_guaranteed_interfaces (void)
+{
+    return interfaces_always_present;
+}
+
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_connection_class);
   TpBaseConnectionClass *parent_class = TP_BASE_CONNECTION_CLASS (
       gabble_connection_class);
-  static const gchar *interfaces_always_present[] = {
-      TP_IFACE_CONNECTION_INTERFACE_ALIASING,
-      TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
-      TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
-      TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
-      TP_IFACE_CONNECTION_INTERFACE_AVATARS,
-      TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
-      TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
-      TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
-      GABBLE_IFACE_OLPC_GADGET,
-      TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
-      TP_IFACE_CONNECTION_INTERFACE_LOCATION,
-      GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
-      GABBLE_IFACE_CONNECTION_FUTURE,
-      NULL };
   static TpDBusPropertiesMixinPropImpl olpc_gadget_props[] = {
         { "GadgetAvailable", NULL, NULL },
         { NULL }

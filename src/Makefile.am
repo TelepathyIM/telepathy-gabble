@@ -151,6 +151,8 @@ libgabble_convenience_la_SOURCES = \
     presence.c \
     presence-cache.h \
     presence-cache.c \
+    protocol.h \
+    protocol.c \
     private-tubes-factory.h \
     private-tubes-factory.c \
     request-pipeline.h \

@@ -16,6 +16,7 @@ TWISTED_TESTS = \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
+	cm/protocol.py \
 	device-idleness.py \
 	gateways.py \
 	muc/conference.py \

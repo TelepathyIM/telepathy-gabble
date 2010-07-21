@@ -34,6 +34,8 @@
 
 #include "extensions/extensions.h"
 
+#include "protocol.h"
+
 G_DEFINE_TYPE(GabbleConnectionManager,
     gabble_connection_manager,
     TP_TYPE_BASE_CONNECTION_MANAGER)
@@ -45,9 +47,24 @@ gabble_connection_manager_init (GabbleConnectionManager *self)
 {
 }
 
-static TpBaseConnection *_gabble_connection_manager_new_connection (
-    TpBaseConnectionManager *self, const gchar *proto,
-    TpIntSet *params_present, void *parsed_params, GError **error);
+static void
+gabble_connection_manager_constructed (GObject *object)
+{
+  GabbleConnectionManager *self = GABBLE_CONNECTION_MANAGER (object);
+  TpBaseConnectionManager *base = (TpBaseConnectionManager *) self;
+  void (*constructed) (GObject *) =
+      ((GObjectClass *) gabble_connection_manager_parent_class)->constructed;
+  TpBaseProtocol *protocol;
+
+  if (constructed != NULL)
+    constructed (object);
+
+  protocol = g_object_new (GABBLE_TYPE_JABBER_PROTOCOL,
+      "name", "jabber",
+      NULL);
+  tp_base_connection_manager_add_protocol (base, protocol);
+  g_object_unref (protocol);
+}
 
 static void
 gabble_connection_manager_finalize (GObject *object)
@@ -65,9 +82,10 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *klass)
   TpBaseConnectionManagerClass *base_class =
     (TpBaseConnectionManagerClass *) klass;
 
-  base_class->new_connection = _gabble_connection_manager_new_connection;
+  base_class->new_connection = NULL;
   base_class->cm_dbus_name = "gabble";
-  base_class->protocol_params = gabble_connection_manager_get_protocols ();
+  base_class->protocol_params = NULL;
+  object_class->constructed = gabble_connection_manager_constructed;
   object_class->finalize = gabble_connection_manager_finalize;
 }
 
@@ -276,83 +294,4 @@ gabble_connection_manager_get_protocols (void)
     default_socks5_proxies;
 
   return gabble_protocols;
-}
-
-
-#define SET_PROPERTY_IF_PARAM_SET(prop, param, member) \
-  if (tp_intset_is_member (params_present, param)) \
-    { \
-      g_object_set (conn, prop, member, NULL); \
-    }
-
-static TpBaseConnection *
-_gabble_connection_manager_new_connection (TpBaseConnectionManager *self,
-                                           const gchar *proto,
-                                           TpIntSet *params_present,
-                                           void *parsed_params,
-                                           GError **error)
-{
-  GabbleConnection *conn;
-  GabbleParams *params = (GabbleParams *) parsed_params;
-
-  g_assert (GABBLE_IS_CONNECTION_MANAGER (self));
-
-  conn = g_object_new (GABBLE_TYPE_CONNECTION,
-                       "protocol",           proto,
-                       "password",           params->password,
-                       NULL);
-
-  /* split up account into username, stream-server and resource */
-  if (!_gabble_connection_set_properties_from_account (conn, params->account,
-        error))
-    {
-      g_object_unref (G_OBJECT (conn));
-      conn = NULL;
-      goto out;
-    }
-
-  SET_PROPERTY_IF_PARAM_SET ("connect-server", JABBER_PARAM_SERVER,
-                             params->server);
-  SET_PROPERTY_IF_PARAM_SET ("resource", JABBER_PARAM_RESOURCE,
-                             params->resource);
-  SET_PROPERTY_IF_PARAM_SET ("priority", JABBER_PARAM_PRIORITY,
-                             (gint8) CLAMP (params->priority, G_MININT8, G_MAXINT8));
-  SET_PROPERTY_IF_PARAM_SET ("port", JABBER_PARAM_PORT, params->port);
-  SET_PROPERTY_IF_PARAM_SET ("old-ssl", JABBER_PARAM_OLD_SSL, params->old_ssl);
-  SET_PROPERTY_IF_PARAM_SET ("require-encryption",
-                             JABBER_PARAM_REQUIRE_ENCRYPTION,
-                             params->require_encryption);
-  SET_PROPERTY_IF_PARAM_SET ("register", JABBER_PARAM_REGISTER,
-                             params->do_register);
-  SET_PROPERTY_IF_PARAM_SET ("low-bandwidth", JABBER_PARAM_LOW_BANDWIDTH,
-                             params->low_bandwidth);
-  SET_PROPERTY_IF_PARAM_SET ("https-proxy-server",
-                             JABBER_PARAM_HTTPS_PROXY_SERVER,
-                             params->https_proxy_server);
-  SET_PROPERTY_IF_PARAM_SET ("https-proxy-port", JABBER_PARAM_HTTPS_PROXY_PORT,
-                             params->https_proxy_port);
-  SET_PROPERTY_IF_PARAM_SET ("fallback-conference-server",
-                             JABBER_PARAM_FALLBACK_CONFERENCE_SERVER,
-                             params->fallback_conference_server);
-  SET_PROPERTY_IF_PARAM_SET ("stun-server", JABBER_PARAM_STUN_SERVER,
-                             params->stun_server);
-  SET_PROPERTY_IF_PARAM_SET ("stun-port", JABBER_PARAM_STUN_PORT,
-                             params->stun_port);
-  SET_PROPERTY_IF_PARAM_SET ("fallback-stun-server", JABBER_PARAM_FALLBACK_STUN_SERVER,
-                             params->fallback_stun_server);
-  SET_PROPERTY_IF_PARAM_SET ("fallback-stun-port", JABBER_PARAM_FALLBACK_STUN_PORT,
-                             params->fallback_stun_port);
-  SET_PROPERTY_IF_PARAM_SET ("ignore-ssl-errors",
-                              JABBER_PARAM_IGNORE_SSL_ERRORS,
-                              params->ignore_ssl_errors);
-  SET_PROPERTY_IF_PARAM_SET ("alias", JABBER_PARAM_ALIAS, params->alias);
-  SET_PROPERTY_IF_PARAM_SET ("fallback-socks5-proxies",
-      JABBER_PARAM_FALLBACK_SOCKS5_PROXIES, params->fallback_socks5_proxies);
-  SET_PROPERTY_IF_PARAM_SET ("keepalive-interval",
-      JABBER_PARAM_KEEPALIVE_INTERVAL, params->keepalive_interval);
-  SET_PROPERTY_IF_PARAM_SET ("decloak-automatically",
-      JABBER_PARAM_DECLOAK_AUTOMATICALLY, params->decloak_automatically);
-
-out:
-  return (TpBaseConnection *) conn;
 }

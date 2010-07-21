@@ -221,8 +221,8 @@ static const gchar * const olpc_gadget_channel_activity_view_allowed_properties[
 };
 
 static void
-gabble_olpc_gadget_manager_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_olpc_gadget_manager_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table;
@@ -235,7 +235,7 @@ gabble_olpc_gadget_manager_foreach_channel_class (TpChannelManager *manager,
   g_value_set_static_string (value, GABBLE_IFACE_OLPC_CHANNEL_TYPE_BUDDY_VIEW);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
-  func (manager, table, olpc_gadget_channel_buddy_view_allowed_properties,
+  func (type, table, olpc_gadget_channel_buddy_view_allowed_properties,
       user_data);
 
   g_hash_table_destroy (table);
@@ -248,7 +248,7 @@ gabble_olpc_gadget_manager_foreach_channel_class (TpChannelManager *manager,
       GABBLE_IFACE_OLPC_CHANNEL_TYPE_ACTIVITY_VIEW);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
-  func (manager, table, olpc_gadget_channel_activity_view_allowed_properties,
+  func (type, table, olpc_gadget_channel_activity_view_allowed_properties,
       user_data);
 
   g_hash_table_destroy (table);
@@ -484,7 +484,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_olpc_gadget_manager_foreach_channel;
-  iface->foreach_channel_class = gabble_olpc_gadget_manager_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_olpc_gadget_manager_type_foreach_channel_class;
   iface->request_channel = gabble_olpc_gadget_manager_handle_request;
   iface->create_channel = gabble_olpc_gadget_manager_handle_request;
   iface->ensure_channel = gabble_olpc_gadget_manager_handle_request;

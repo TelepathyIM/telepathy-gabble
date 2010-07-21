@@ -611,7 +611,7 @@ static const gchar * const call_both_allowed_immutable[] = {
     NULL
 };
 
-/* not advertised in foreach_channel_class - can only be requested with
+/* not advertised in type_foreach_channel_class - can only be requested with
  * RequestChannel, not with CreateChannel/EnsureChannel */
 static const gchar * const anon_channel_allowed_properties[] = {
     NULL
@@ -654,19 +654,19 @@ gabble_media_factory_call_channel_class (void)
 }
 
 static void
-gabble_media_factory_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_media_factory_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = gabble_media_factory_streamed_media_channel_class ();
 
-  func (manager, table, named_channel_allowed_properties, user_data);
+  func (type, table, named_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 
   table = gabble_media_factory_call_channel_class ();
 
-  func (manager, table, call_channel_allowed_properties, user_data);
+  func (type, table, call_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -966,7 +966,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_media_factory_foreach_channel;
-  iface->foreach_channel_class = gabble_media_factory_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_media_factory_type_foreach_channel_class;
   iface->request_channel = gabble_media_factory_request_channel;
   iface->create_channel = gabble_media_factory_create_channel;
   iface->ensure_channel = gabble_media_factory_ensure_channel;

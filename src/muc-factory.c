@@ -1128,8 +1128,8 @@ static const gchar * const muc_tubes_channel_allowed_properties[] = {
 };
 
 static void
-gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_muc_factory_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -1148,30 +1148,30 @@ gabble_muc_factory_foreach_channel_class (TpChannelManager *manager,
 
   /* Channel.Type.Text */
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
-  func (manager, table, muc_channel_allowed_properties,
+  func (type, table, muc_channel_allowed_properties,
       user_data);
 
   /* Channel.Type.Tubes */
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TUBES);
-  func (manager, table, muc_tubes_channel_allowed_properties,
+  func (type, table, muc_tubes_channel_allowed_properties,
       user_data);
 
   /* Muc Channel.Type.StreamTube */
   g_value_set_static_string (channel_type_value,
       TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
-  func (manager, table, gabble_tube_stream_channel_get_allowed_properties (),
+  func (type, table, gabble_tube_stream_channel_get_allowed_properties (),
       user_data);
 
   /* Muc Channel.Type.DBusTube */
   g_value_set_static_string (channel_type_value,
       TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
-  func (manager, table, gabble_tube_dbus_channel_get_allowed_properties (),
+  func (type, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
   /* Muc Channel.Type.Call */
   g_value_set_static_string (channel_type_value,
       GABBLE_IFACE_CHANNEL_TYPE_CALL);
-  func (manager, table,
+  func (type, table,
       gabble_media_factory_call_channel_allowed_properties (),
       user_data);
 
@@ -1919,7 +1919,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_muc_factory_foreach_channel;
-  iface->foreach_channel_class = gabble_muc_factory_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_muc_factory_type_foreach_channel_class;
   iface->request_channel = gabble_muc_factory_request_channel;
   iface->create_channel = gabble_muc_factory_create_channel;
   iface->ensure_channel = gabble_muc_factory_ensure_channel;

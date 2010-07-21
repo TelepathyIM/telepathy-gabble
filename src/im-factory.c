@@ -540,8 +540,8 @@ static const gchar * const im_channel_allowed_properties[] = {
 
 
 static void
-gabble_im_factory_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_im_factory_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -558,7 +558,7 @@ gabble_im_factory_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_insert (table, (gchar *) im_channel_fixed_properties[1],
       value);
 
-  func (manager, table, im_channel_allowed_properties, user_data);
+  func (type, table, im_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -664,7 +664,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_im_factory_foreach_channel;
-  iface->foreach_channel_class = gabble_im_factory_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_im_factory_type_foreach_channel_class;
   iface->create_channel = gabble_im_factory_create_channel;
   iface->request_channel = gabble_im_factory_request_channel;
   iface->ensure_channel = gabble_im_factory_ensure_channel;

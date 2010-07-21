@@ -800,9 +800,8 @@ gabble_private_tubes_factory_new (GabbleConnection *conn)
 }
 
 static void
-gabble_private_tubes_factory_foreach_channel_class (
-    TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_private_tubes_factory_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table;
@@ -822,7 +821,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, old_tubes_channel_allowed_properties, user_data);
+  func (type, table, old_tubes_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 
@@ -840,7 +839,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, gabble_tube_stream_channel_get_allowed_properties (),
+  func (type, table, gabble_tube_stream_channel_get_allowed_properties (),
       user_data);
 
   g_hash_table_destroy (table);
@@ -859,7 +858,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, gabble_tube_dbus_channel_get_allowed_properties (),
+  func (type, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
   g_hash_table_destroy (table);
@@ -1085,8 +1084,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_private_tubes_factory_foreach_channel;
-  iface->foreach_channel_class =
-      gabble_private_tubes_factory_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_private_tubes_factory_type_foreach_channel_class;
   iface->create_channel = gabble_private_tubes_factory_create_channel;
   iface->request_channel = gabble_private_tubes_factory_request_channel;
   iface->ensure_channel = gabble_private_tubes_factory_ensure_channel;

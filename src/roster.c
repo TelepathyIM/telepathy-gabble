@@ -2877,9 +2877,9 @@ static const gchar * const *group_channel_allowed_properties =
 
 
 static void
-gabble_roster_foreach_channel_class (TpChannelManager *manager,
-                                     TpChannelManagerChannelClassFunc func,
-                                     gpointer user_data)
+gabble_roster_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
+    gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
@@ -2895,7 +2895,7 @@ gabble_roster_foreach_channel_class (TpChannelManager *manager,
       handle_type_value);
 
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_GROUP);
-  func (manager, table, group_channel_allowed_properties, user_data);
+  func (type, table, group_channel_allowed_properties, user_data);
 
   /* FIXME: should these actually be in RequestableChannelClasses? You can't
    * usefully call CreateChannel on them, although EnsureChannel would be
@@ -2903,7 +2903,7 @@ gabble_roster_foreach_channel_class (TpChannelManager *manager,
   /* FIXME: since we have a finite set of possible values for TargetHandle,
    * should we enumerate them all as separate channel classes? */
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_LIST);
-  func (manager, table, list_channel_allowed_properties, user_data);
+  func (type, table, list_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -3049,7 +3049,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_roster_foreach_channel;
-  iface->foreach_channel_class = gabble_roster_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_roster_type_foreach_channel_class;
   iface->request_channel = gabble_roster_request_channel;
   iface->create_channel = gabble_roster_create_channel;
   iface->ensure_channel = gabble_roster_ensure_channel;

@@ -329,8 +329,8 @@ static const gchar * const search_channel_allowed_properties[] = {
 
 
 static void
-gabble_search_manager_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_search_manager_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -342,7 +342,7 @@ gabble_search_manager_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_insert (table, (gchar *) search_channel_fixed_properties[0],
       value);
 
-  func (manager, table, search_channel_allowed_properties, user_data);
+  func (type, table, search_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -527,7 +527,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_search_manager_foreach_channel;
-  iface->foreach_channel_class = gabble_search_manager_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_search_manager_type_foreach_channel_class;
 
   iface->create_channel = gabble_search_manager_create_channel;
   iface->request_channel = gabble_search_manager_create_channel;

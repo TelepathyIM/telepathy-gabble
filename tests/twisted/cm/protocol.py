@@ -3,7 +3,7 @@ Test Gabble's o.T.Protocol implementation
 """
 
 import dbus
-from servicetest import unwrap, tp_path_prefix
+from servicetest import unwrap, tp_path_prefix, assertEquals
 from gabbletest import exec_test
 import constants as cs
 import time
@@ -15,15 +15,15 @@ def test(q, bus, conn, stream):
     cm_prop_iface = dbus.Interface(cm, cs.PROPERTIES_IFACE)
 
     protocols = unwrap(cm_prop_iface.Get(cs.CM, 'Protocols'))
-    protocol_names = unwrap(cm_iface.ListProtocols())
+    assertEquals(set(['jabber']), set(protocols.keys()))
 
-    assert len(protocols) == 1 and 'jabber' in protocols
-    assert protocol_names == ['jabber']
+    protocol_names = unwrap(cm_iface.ListProtocols())
+    assertEquals(set(['jabber']), set(protocol_names))
 
     cm_params = cm_iface.GetParameters('jabber')
     jabber_props = protocols['jabber']
     jabber_params = jabber_props[cs.PROTOCOL + '.Parameters']
-    assert jabber_params == cm_params
+    assertEquals(cm_params, jabber_params)
 
     proto = bus.get_object(cm.bus_name, cm.object_path + '/jabber')
     proto_iface = dbus.Interface(proto, cs.PROTOCOL)
@@ -34,15 +34,14 @@ def test(q, bus, conn, stream):
       'RequestableChannelClasses', u'VCardField', u'EnglishName', u'Icon']:
         a = jabber_props[cs.PROTOCOL + '.' + key]
         b = proto_props[key]
-        assert a == b
+        assertEquals(a, b)
 
-    contact = 'foo@example.com/Telepathy'
-    normalized = unwrap(proto_iface.NormalizeContact(contact))
-    assert contact == (normalized + '/Telepathy')
+    assertEquals('foo@mit.edu',
+        unwrap(proto_iface.NormalizeContact('foo@MIT.Edu/Telepathy')))
 
     test_params = { 'account': 'test@localhost' }
     acc_name = unwrap(proto_iface.IdentifyAccount(test_params))
-    assert acc_name == test_params['account']
+    assertEquals(test_params['account'], acc_name)
 
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])

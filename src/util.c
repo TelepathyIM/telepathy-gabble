@@ -484,6 +484,19 @@ gabble_encode_jid (
   return ret;
 }
 
+/*
+ * gabble_normalize_contact
+ * @repo: The %TP_HANDLE_TYPE_ROOM handle repository or NULL
+ * @jid: A JID
+ * @context: One of %GabbleNormalizeContactJIDMode casted into gpointer
+ * @error: pointer in which to return a GError in case of failure.
+ *
+ * Normalize contact JID. If @repo is provided and the context is not
+ * clear (we don't know for sure whether it's global or room JID), it's
+ * used to try and detect room JIDs.
+ *
+ * Returns: Normalized JID.
+ */
 gchar *
 gabble_normalize_contact (TpHandleRepoIface *repo,
                           const gchar *jid,

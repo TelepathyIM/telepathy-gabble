@@ -27,25 +27,29 @@
 #include <telepathy-glib/enums.h>
 
 #include "connection-manager.h"
+#include "protocol.h"
 
 static gchar *
 mgr_file_contents (const char *busname,
                    const char *objpath,
-                   const TpCMProtocolSpec protocols[],
+                   GSList *protocols,
                    GError **error)
 {
   GKeyFile *f = g_key_file_new ();
-  const TpCMProtocolSpec *protocol;
-  const TpCMParamSpec *row;
 
   g_key_file_set_string (f, "ConnectionManager", "BusName", busname);
   g_key_file_set_string (f, "ConnectionManager", "ObjectPath", objpath);
 
-  for (protocol = protocols; protocol->name; protocol++)
+  while (protocols != NULL)
     {
-      gchar *section_name = g_strdup_printf ("Protocol %s", protocol->name);
+      TpBaseProtocol *protocol = protocols->data;
+      const TpCMParamSpec *parameters =
+          tp_base_protocol_get_parameters (protocol);
+      const TpCMParamSpec *row;
+      gchar *section_name = g_strdup_printf ("Protocol %s",
+          tp_base_protocol_get_name (protocol));
 
-      for (row = protocol->parameters; row->name; row++)
+      for (row = parameters; row->name; row++)
         {
           gchar *param_name = g_strdup_printf ("param-%s", row->name);
           gchar *param_value = g_strdup_printf ("%s%s%s%s", row->dtype,
@@ -57,7 +61,7 @@ mgr_file_contents (const char *busname,
           g_free (param_name);
         }
 
-      for (row = protocol->parameters; row->name; row++)
+      for (row = parameters; row->name; row++)
         {
           if (row->flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
             {
@@ -92,6 +96,7 @@ mgr_file_contents (const char *busname,
             }
         }
       g_free (section_name);
+      protocols = protocols->next;
     }
   return g_key_file_to_data (f, NULL, error);
 }
@@ -101,13 +106,20 @@ main (void)
 {
   GError *error = NULL;
   gchar *s;
+  GSList *protocols = NULL;
 
   g_type_init ();
   dbus_g_type_specialized_init ();
 
+  protocols = g_slist_prepend (protocols,
+    gabble_jabber_protocol_new ());
+
   s = mgr_file_contents (TP_CM_BUS_NAME_BASE "gabble",
       TP_CM_OBJECT_PATH_BASE "gabble",
-      gabble_connection_manager_get_protocols (), &error);
+      protocols, &error);
+
+  g_object_unref (protocols->data);
+  g_slist_free (protocols);
 
   if (!s)
     {

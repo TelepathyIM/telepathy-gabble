@@ -34,7 +34,8 @@ typedef enum
   GABBLE_DEBUG_MAIL_NOTIF    = 1 << 22,
   GABBLE_DEBUG_AUTH          = 1 << 23,
   GABBLE_DEBUG_SLACKER       = 1 << 24,
-  GABBLE_DEBUG_SHARE         = 1 << 25
+  GABBLE_DEBUG_SHARE         = 1 << 25,
+  GABBLE_DEBUG_CLIENT_TYPE   = 1 << 26,
 } GabbleDebugFlags;
 
 void gabble_debug_set_flags_from_env (void);

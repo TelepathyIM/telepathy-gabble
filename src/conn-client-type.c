@@ -53,14 +53,12 @@ info_request_cb (GabbleDisco *disco,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
   WockyNodeIter iter;
   GPtrArray *array;
   TpHandleRepoIface *handles;
   TpHandle handle;
   GError *error = NULL;
-  const gchar *old_resource;
 
   if (disco_error != NULL)
     {
@@ -143,6 +141,8 @@ resource_has_changed (GabbleConnection *conn,
       return FALSE;
     }
 
+  /* Add this new resource to the hash table so we have something to
+   * compare to next time. */
   g_hash_table_insert (priv->handle_to_resource,
       GUINT_TO_POINTER (handle), g_strdup (new_resource));
 
@@ -156,50 +156,64 @@ dummy_caps_set_predicate (const GabbleCapabilitySet *set,
   return TRUE;
 }
 
+static gboolean
+get_full_jid (GabbleConnection *conn,
+    TpHandle handle,
+    gchar **full_jid,
+    gchar **resource)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  GabblePresence *presence;
+  const gchar *res, *jid;
+  TpHandleRepoIface *contact_repo;
+
+  presence = gabble_presence_cache_get (conn->presence_cache, handle);
+
+  if (presence == NULL)
+    return FALSE;
+
+  res = gabble_presence_pick_resource_by_caps (presence,
+      DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+
+  if (res == NULL)
+    return FALSE;
+
+  *resource = g_strdup (res);
+
+  contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+  jid = tp_handle_inspect (contact_repo, handle);
+
+  *full_jid = g_strdup_printf ("%s/%s", jid, res);
+
+  return TRUE;
+}
+
+/* NULL if we don't know, or an empty array if we know that we know nothing. */
 static GPtrArray *
 get_cached_client_types_or_query (GabbleConnection *conn,
     TpHandle handle,
     GError **error)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  const gchar *jid, *resource;
-  TpHandleRepoIface *contact_repo;
-  GabblePresence *presence;
-  gchar *full_jid;
-
-  contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
-  jid = tp_handle_inspect (contact_repo, handle);
+  gchar *full_jid, *resource;
 
   /* TODO: get cached client types */
 
-  presence = gabble_presence_cache_get (conn->presence_cache, handle);
-
-  if (presence == NULL)
+  if (!get_full_jid (conn, handle, &full_jid, &resource))
     {
       GPtrArray *arr = g_ptr_array_new ();
       g_ptr_array_add (arr, NULL);
       return arr;
     }
 
-  resource = gabble_presence_pick_resource_by_caps (presence,
-      DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
-
-  if (resource == NULL)
-    {
-      DEBUG ("Failed to determine a good resource for %s", jid);
-      return NULL;
-    }
-
   if (!resource_has_changed (conn, handle, resource))
-    return NULL;
-
-  full_jid = g_strdup_printf ("%s/%s", jid, resource);
+    goto out;
 
   /* Send a request for the type */
   disco_client_type (conn, full_jid, error);
 
+out:
+  g_free (resource);
   g_free (full_jid);
-
   return NULL;
 }
 
@@ -321,36 +335,21 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
     const GArray *contacts,
     GabbleConnection *conn)
 {
-  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_repo;
   guint i;
-
-  contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
-
-  if (contact_repo == NULL) /* odd */
-    return;
 
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
-      const gchar *jid, *resource, *old_resource;
-      GabblePresence *presence;
-      gchar *full_jid;
+      gchar *full_jid, *resource;
       GError *error = NULL;
 
-      jid = tp_handle_inspect (contact_repo, handle);
-
-      presence = gabble_presence_cache_get (conn->presence_cache, handle);
-      resource = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
-
-      if (!resource_has_changed (conn, handle, resource))
+      if (!get_full_jid (conn, handle, &full_jid, &resource))
         continue;
 
-      DEBUG ("presence changed for %s (best resource is %s)", jid, resource);
+      if (!resource_has_changed (conn, handle, resource))
+        goto next;
 
-      full_jid = g_strdup_printf ("%s/%s", jid, resource);
+      DEBUG ("presence changed for %s", full_jid);
 
       /* Send a request for the type */
       disco_client_type (conn, full_jid, &error);
@@ -361,6 +360,8 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
           g_error_free (error);
         }
 
+next:
+      g_free (resource);
       g_free (full_jid);
     }
 }

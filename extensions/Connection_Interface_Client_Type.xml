@@ -115,7 +115,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         tp:type="Contact_Client_Types">
         <tp:docstring>
           The contacts' client types, if already known. Contacts whose client
-          typess are not already known are omitted from the mapping; contacts known
+          types are not already known are omitted from the mapping; contacts known
           to have no client type information appear in the mapping with an empty
           list.
         </tp:docstring>
@@ -127,7 +127,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:possible-errors>
     </method>
 
-    <method name="RequestClientType" tp:name-for-bindings="Request_Client_Type">
+    <method name="RequestClientTypes" tp:name-for-bindings="Request_Client_Types">
       <tp:docstring>
         Return the current client types of the given contact. If necessary, make
         a request to the server for up-to-date information, and wait for a

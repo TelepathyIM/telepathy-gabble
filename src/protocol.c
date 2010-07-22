@@ -59,28 +59,28 @@ struct ParamMapping {
   const gchar *tp_param;
   const gchar *conn_prop;
 } params2props[] = {
-  MAP("server", "connect-server"),
-  SAME("resource"),
-  SAME("priority"),
-  SAME("port"),
-  SAME("old-ssl"),
-  SAME("require-encryption"),
-  SAME("register"),
-  SAME("low-bandwidth"),
-  SAME("https-proxy-server"),
-  SAME("https-proxy-port"),
-  SAME("fallback-conference-server"),
-  SAME("stun-server"),
-  SAME("stun-port"),
-  SAME("fallback-stun-server"),
-  SAME("fallback-stun-port"),
-  SAME("ignore-ssl-errors"),
-  SAME("alias"),
-  SAME("fallback-socks5-proxies"),
-  SAME("keepalive-interval"),
-  MAP(GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
-      "decloak-automatically"),
-  SAME(NULL)
+  MAP ("server", "connect-server"),
+  SAME ("resource"),
+  SAME ("priority"),
+  SAME ("port"),
+  SAME ("old-ssl"),
+  SAME ("require-encryption"),
+  SAME ("register"),
+  SAME ("low-bandwidth"),
+  SAME ("https-proxy-server"),
+  SAME ("https-proxy-port"),
+  SAME ("fallback-conference-server"),
+  SAME ("stun-server"),
+  SAME ("stun-port"),
+  SAME ("fallback-stun-server"),
+  SAME ("fallback-stun-port"),
+  SAME ("ignore-ssl-errors"),
+  SAME ("alias"),
+  SAME ("fallback-socks5-proxies"),
+  SAME ("keepalive-interval"),
+  MAP (GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
+       "decloak-automatically"),
+  SAME (NULL)
 };
 #undef SAME
 #undef MAP
@@ -110,9 +110,6 @@ new_connection (TpBaseProtocol *protocol,
   for (i = 0; params2props[i].tp_param != NULL; i++)
     {
       GValue *val = g_hash_table_lookup (params, params2props[i].tp_param);
-      g_debug ("Param: %s, prop: %s, Val: %p",
-        params2props[i].tp_param, params2props[i].conn_prop, val);
-
       if (val != NULL)
         {
           g_object_set_property (G_OBJECT (conn),

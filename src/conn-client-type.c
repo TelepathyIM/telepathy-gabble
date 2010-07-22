@@ -114,6 +114,41 @@ info_request_cb (GabbleDisco *disco,
   g_ptr_array_unref (array);
 }
 
+static void
+disco_client_type (GabbleConnection *conn,
+    const gchar *full_jid,
+    GError **error)
+{
+  gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO,
+      full_jid, NULL, info_request_cb, conn, G_OBJECT (conn), error);
+}
+
+static gboolean
+resource_has_changed (GabbleConnection *conn,
+    TpHandle handle,
+    const gchar *new_resource)
+{
+  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
+  const gchar *old_resource;
+
+  old_resource = g_hash_table_lookup (priv->handle_to_resource,
+      GUINT_TO_POINTER (handle));
+
+  if (old_resource != NULL && !tp_strdiff (old_resource, new_resource))
+    {
+      /* The resource hasn't changed. Let's assume that the client
+       * types have not changed on this resource since we last looked,
+       * because that would be odd. This assumption lets us cut down
+       * on the disco traffic, which is nice. */
+      return FALSE;
+    }
+
+  g_hash_table_insert (priv->handle_to_resource,
+      GUINT_TO_POINTER (handle), g_strdup (new_resource));
+
+  return TRUE;
+}
+
 static gboolean
 dummy_caps_set_predicate (const GabbleCapabilitySet *set,
     gconstpointer user_data)
@@ -155,27 +190,13 @@ get_cached_client_types_or_query (GabbleConnection *conn,
       return NULL;
     }
 
-  old_resource = g_hash_table_lookup (priv->handle_to_resource,
-      GUINT_TO_POINTER (handle));
-
-  if (old_resource != NULL && !tp_strdiff (old_resource, resource))
-    {
-      /* The presence has changed, but the resource hasn't. Let's
-       * assume that the client types have not changed on this
-       * resource since we last looked, because that would be
-       * odd. This assumption lets us cut down on the disco
-       * traffic, which is nice. */
-      return NULL;
-    }
-
-  g_hash_table_insert (priv->handle_to_resource,
-      GUINT_TO_POINTER (handle), g_strdup (resource));
+  if (!resource_has_changed (conn, handle, resource))
+    return NULL;
 
   full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
   /* Send a request for the type */
-  gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO,
-      full_jid, NULL, info_request_cb, conn, G_OBJECT (conn), error);
+  disco_client_type (conn, full_jid, error);
 
   g_free (full_jid);
 
@@ -324,29 +345,17 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
       resource = gabble_presence_pick_resource_by_caps (presence,
           DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
 
-      old_resource = g_hash_table_lookup (priv->handle_to_resource,
-          GUINT_TO_POINTER (handle));
-
-      if (old_resource != NULL && !tp_strdiff (old_resource, resource))
-        {
-          /* The presence has changed, but the resource hasn't. Let's
-           * assume that the client types have not changed on this
-           * resource since we last looked, because that would be
-           * odd. This assumption lets us cut down on the disco
-           * traffic, which is nice. */
-          continue;
-        }
-
-      g_hash_table_insert (priv->handle_to_resource,
-          GUINT_TO_POINTER (handle), g_strdup (resource));
+      if (!resource_has_changed (conn, handle, resource))
+        continue;
 
       DEBUG ("presence changed for %s (best resource is %s)", jid, resource);
 
       full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
       /* Send a request for the type */
-      if (!gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO,
-              full_jid, NULL, info_request_cb, conn, G_OBJECT (conn), &error))
+      disco_client_type (conn, full_jid, &error);
+
+      if (error != NULL)
         {
           DEBUG ("Failed to make disco request: %s", error->message);
           g_error_free (error);

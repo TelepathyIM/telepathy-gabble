@@ -29,6 +29,61 @@
 #include "connection-manager.h"
 #include "protocol.h"
 
+static void
+write_parameters (GKeyFile *f, gchar *section_name, TpBaseProtocol *protocol)
+{
+  const TpCMParamSpec *parameters =
+      tp_base_protocol_get_parameters (protocol);
+  const TpCMParamSpec *row;
+
+  for (row = parameters; row->name; row++)
+    {
+      gchar *param_name = g_strdup_printf ("param-%s", row->name);
+      gchar *param_value = g_strdup_printf ("%s%s%s%s", row->dtype,
+          (row->flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED ? " required" : ""),
+          (row->flags & TP_CONN_MGR_PARAM_FLAG_REGISTER ? " register" : ""),
+          (row->flags & TP_CONN_MGR_PARAM_FLAG_SECRET ? " secret" : ""));
+      g_key_file_set_string (f, section_name, param_name, param_value);
+      g_free (param_value);
+      g_free (param_name);
+    }
+
+  for (row = parameters; row->name; row++)
+    {
+      if (row->flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
+        {
+          gchar *default_name = g_strdup_printf ("default-%s", row->name);
+
+          switch (row->gtype)
+            {
+            case G_TYPE_STRING:
+              g_key_file_set_string (f, section_name, default_name,
+                                    row->def);
+              break;
+            case G_TYPE_INT:
+            case G_TYPE_UINT:
+              g_key_file_set_integer (f, section_name, default_name,
+                                     GPOINTER_TO_INT(row->def));
+              break;
+            case G_TYPE_BOOLEAN:
+              g_key_file_set_boolean (f, section_name, default_name,
+                                     GPOINTER_TO_INT(row->def) ? 1 : 0);
+              break;
+            default:
+              /* can't be in the case because G_TYPE_STRV is actually a
+               * function */
+              if (row->gtype == G_TYPE_STRV)
+                {
+                  g_key_file_set_string_list (f, section_name, default_name,
+                      (const gchar **) row->def,
+                      g_strv_length ((gchar **) row->def));
+                }
+            }
+          g_free (default_name);
+        }
+    }
+}
+
 static gchar *
 mgr_file_contents (const char *busname,
                    const char *objpath,
@@ -43,58 +98,11 @@ mgr_file_contents (const char *busname,
   while (protocols != NULL)
     {
       TpBaseProtocol *protocol = protocols->data;
-      const TpCMParamSpec *parameters =
-          tp_base_protocol_get_parameters (protocol);
-      const TpCMParamSpec *row;
       gchar *section_name = g_strdup_printf ("Protocol %s",
           tp_base_protocol_get_name (protocol));
 
-      for (row = parameters; row->name; row++)
-        {
-          gchar *param_name = g_strdup_printf ("param-%s", row->name);
-          gchar *param_value = g_strdup_printf ("%s%s%s%s", row->dtype,
-              (row->flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED ? " required" : ""),
-              (row->flags & TP_CONN_MGR_PARAM_FLAG_REGISTER ? " register" : ""),
-              (row->flags & TP_CONN_MGR_PARAM_FLAG_SECRET ? " secret" : ""));
-          g_key_file_set_string (f, section_name, param_name, param_value);
-          g_free (param_value);
-          g_free (param_name);
-        }
+      write_parameters (f, section_name, protocol);
 
-      for (row = parameters; row->name; row++)
-        {
-          if (row->flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
-            {
-              gchar *default_name = g_strdup_printf ("default-%s", row->name);
-
-              switch (row->gtype)
-                {
-                case G_TYPE_STRING:
-                  g_key_file_set_string (f, section_name, default_name,
-                                        row->def);
-                  break;
-                case G_TYPE_INT:
-                case G_TYPE_UINT:
-                  g_key_file_set_integer (f, section_name, default_name,
-                                         GPOINTER_TO_INT(row->def));
-                  break;
-                case G_TYPE_BOOLEAN:
-                  g_key_file_set_boolean (f, section_name, default_name,
-                                         GPOINTER_TO_INT(row->def) ? 1 : 0);
-                  break;
-                default:
-                  /* can't be in the case because G_TYPE_STRV is actually a
-                   * function */
-                  if (row->gtype == G_TYPE_STRV)
-                    {
-                      g_key_file_set_string_list (f, section_name, default_name,
-                          (const gchar **) row->def,
-                          g_strv_length ((gchar **) row->def));
-                    }
-                }
-              g_free (default_name);
-            }
-        }
       g_free (section_name);
       protocols = protocols->next;
     }

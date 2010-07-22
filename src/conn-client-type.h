@@ -29,6 +29,8 @@ void conn_client_type_iface_init (gpointer g_iface, gpointer iface_data);
 
 void conn_client_type_init (GabbleConnection *conn);
 
+void conn_client_type_dispose (GabbleConnection *conn);
+
 G_END_DECLS
 
 #endif /* __CONN_CLIENT_TYPE_H__ */

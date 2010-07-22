@@ -1082,6 +1082,7 @@ gabble_connection_dispose (GObject *object)
   g_hash_table_destroy (self->vcard_requests);
 
   conn_mail_notif_dispose (self);
+  conn_client_type_dispose (self);
 
   g_assert (priv->iq_disco_cb == NULL);
   g_assert (priv->iq_unknown_cb == NULL);

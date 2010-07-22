@@ -84,6 +84,7 @@ typedef enum
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 typedef struct _GabbleConnectionMailNotificationPrivate GabbleConnectionMailNotificationPrivate;
 typedef struct _GabbleConnectionPresencePrivate GabbleConnectionPresencePrivate;
+typedef struct _GabbleConnectionClientTypePrivate GabbleConnectionClientTypePrivate;
 
 typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          LmMessage *sent_msg,
@@ -202,6 +203,9 @@ struct _GabbleConnection {
 
     /* Mail Notification */
     GabbleConnectionMailNotificationPrivate *mail_priv;
+
+    /* Client type */
+    GabbleConnectionClientTypePrivate *client_type_priv;
 
     /* ContactInfo.SupportedFields, or NULL to use the generic one */
     GPtrArray *contact_info_fields;

@@ -35,6 +35,13 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CLIENT_TYPE
 #include "debug.h"
 
+struct _GabbleConnectionClientTypePrivate
+{
+  /* TpHandle => gchar *resource */
+  GHashTable *handle_to_resource;
+  guint presences_updated_id;
+};
+
 static void
 info_request_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
@@ -274,10 +281,99 @@ conn_client_type_fill_contact_attributes (GObject *obj,
     }
 }
 
+static void
+presences_updated_cb (GabblePresenceCache *presence_cache,
+    const GArray *contacts,
+    GabbleConnection *conn)
+{
+  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_repo;
+  guint i;
+
+  contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+
+  if (contact_repo == NULL) /* odd */
+    return;
+
+  for (i = 0; i < contacts->len; i++)
+    {
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
+      const gchar *jid, *resource, *old_resource;
+      GabblePresence *presence;
+      gchar *full_jid;
+      GError *error = NULL;
+
+      jid = tp_handle_inspect (contact_repo, handle);
+
+      presence = gabble_presence_cache_get (conn->presence_cache, handle);
+      resource = gabble_presence_pick_resource_by_caps (presence,
+          DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+
+      old_resource = g_hash_table_lookup (priv->handle_to_resource,
+          GUINT_TO_POINTER (handle));
+
+      if (old_resource != NULL && !tp_strdiff (old_resource, resource))
+        {
+          /* The presence has changed, but the resource hasn't. Let's
+           * assume that the client types have not changed on this
+           * resource since we last looked, because that would be
+           * odd. This assumption lets us cut down on the disco
+           * traffic, which is nice. */
+          continue;
+        }
+
+      g_hash_table_insert (priv->handle_to_resource,
+          GUINT_TO_POINTER (handle), g_strdup (resource));
+
+      DEBUG ("presence changed for %s (best resource is %s)", jid, resource);
+
+      full_jid = g_strdup_printf ("%s/%s", jid, resource);
+
+      /* Send a request for the type */
+      if (!gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO,
+              full_jid, NULL, info_request_cb, conn, G_OBJECT (conn), &error))
+        {
+          DEBUG ("Failed to make disco request: %s", error->message);
+          g_error_free (error);
+        }
+
+      g_free (full_jid);
+    }
+}
+
 void
 conn_client_type_init (GabbleConnection *conn)
 {
+  GabbleConnectionClientTypePrivate *priv;
+
+  conn->client_type_priv = g_slice_new0 (GabbleConnectionClientTypePrivate);
+  priv = conn->client_type_priv;
+
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
     GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPE,
     conn_client_type_fill_contact_attributes);
+
+  priv->presences_updated_id = g_signal_connect (
+      conn->presence_cache, "presences-updated",
+      G_CALLBACK (presences_updated_cb), conn);
+
+  priv->handle_to_resource = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, g_free);
+}
+
+void
+conn_client_type_dispose (GabbleConnection *conn)
+{
+  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
+
+  if (priv == NULL)
+    return;
+
+  g_signal_handler_disconnect (conn->presence_cache,
+      priv->presences_updated_id);
+  g_hash_table_unref (priv->handle_to_resource);
+
+  g_slice_free (GabbleConnectionClientTypePrivate, priv);
+  conn->client_type_priv = NULL;
 }

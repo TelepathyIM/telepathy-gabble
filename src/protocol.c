@@ -233,7 +233,7 @@ new_connection (TpBaseProtocol *protocol,
   guint i;
 
   conn = g_object_new (GABBLE_TYPE_CONNECTION,
-                       "protocol", "jabber",
+                       "protocol", PROTOCOL_NAME,
                        "password", tp_asv_get_string (params, "password"),
                        NULL);
 
@@ -317,12 +317,17 @@ get_connection_details (TpBaseProtocol *self,
 
   if (icon_name != NULL)
     {
-      *icon_name = g_strdup_printf ("im-%s", tp_base_protocol_get_name (self));
+      *icon_name = g_strdup (ICON_NAME);
     }
 
   if (vcard_field != NULL)
     {
-      *vcard_field = g_strdup_printf ("x-%s", tp_base_protocol_get_name (self));
+      *vcard_field = g_strdup (VCARD_FIELD_NAME);
+    }
+
+  if (english_name != NULL)
+    {
+      *english_name = g_strdup (ENGLISH_NAME);
     }
 }
 

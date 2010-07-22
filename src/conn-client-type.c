@@ -168,6 +168,7 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
   guint i;
   GError *error = NULL;
   GHashTable *client_types;
+  GPtrArray *types_arrays;
 
   if (DEBUGGING)
     {
@@ -194,6 +195,9 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
   client_types = g_hash_table_new_full (
       g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) g_array_unref);
 
+  types_arrays = g_ptr_array_new_with_free_func (
+      (GDestroyNotify) g_ptr_array_unref);
+
   for (i = 0; i < contacts->len; i++)
     {
       GPtrArray *types;
@@ -209,17 +213,23 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
           DEBUG ("Sending client type disco request failed: %s", error->message);
           g_error_free (error);
           dbus_g_method_return_error (context, &error2);
-          g_hash_table_unref (client_types);
-          return;
+          goto cleanup;
         }
 
       if (types != NULL)
-        g_hash_table_insert (client_types, GUINT_TO_POINTER (contact), types);
+        {
+          g_ptr_array_add (types_arrays, types);
+          g_hash_table_insert (client_types, GUINT_TO_POINTER (contact),
+              types->pdata);
+        }
     }
 
   gabble_svc_connection_interface_client_type_return_from_get_client_types (
       context, client_types);
+
+cleanup:
   g_hash_table_unref (client_types);
+  g_ptr_array_unref (types_arrays);
 }
 
 void

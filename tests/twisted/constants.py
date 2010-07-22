@@ -353,7 +353,7 @@ MT_NOTICE = 2
 MT_AUTO_REPLY = 3
 MT_DELIVERY_REPORT = 4
 
-PROTOCOL = 'org.freedesktop.Telepathy.Protocol.DRAFT'
+PROTOCOL = 'org.freedesktop.Telepathy.Protocol'
 PARAM_REQUIRED = 1
 PARAM_REGISTER = 2
 PARAM_HAS_DEFAULT = 4

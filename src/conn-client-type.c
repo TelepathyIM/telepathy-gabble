@@ -192,8 +192,7 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
     }
 
   /* Let's get ready to rumble^Wreturn */
-  client_types = g_hash_table_new_full (
-      g_direct_hash, g_direct_equal, NULL, (GDestroyNotify) g_array_unref);
+  client_types = g_hash_table_new (g_direct_hash, g_direct_equal);
 
   types_arrays = g_ptr_array_new_with_free_func (
       (GDestroyNotify) g_ptr_array_unref);

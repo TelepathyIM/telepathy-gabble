@@ -69,6 +69,8 @@ GType gabble_jabber_protocol_get_type (void);
 gchar *gabble_jabber_protocol_normalize_contact (const gchar *id,
     GError **error);
 
+GabbleJabberProtocol *gabble_jabber_protocol_new (void);
+
 G_END_DECLS
 
 #endif

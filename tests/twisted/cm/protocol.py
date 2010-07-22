@@ -39,6 +39,14 @@ def test(q, bus, conn, stream):
     assertEquals('foo@mit.edu',
         unwrap(proto_iface.NormalizeContact('foo@MIT.Edu/Telepathy')))
 
+    # (Only) 'account' is mandatory for IdentifyAccount()
+    try:
+        proto_iface.IdentifyAccount({})
+    except dbus.DBusException, e:
+        assertEquals(cs.INVALID_ARGUMENT, e.get_dbus_name())
+    else:
+        raise AssertionError("IdentifyAccount({}) should've returned error but didn't")
+
     test_params = { 'account': 'test@localhost' }
     acc_name = unwrap(proto_iface.IdentifyAccount(test_params))
     assertEquals(test_params['account'], acc_name)

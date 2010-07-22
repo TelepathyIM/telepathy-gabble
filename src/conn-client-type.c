@@ -323,7 +323,7 @@ conn_client_type_fill_contact_attributes (GObject *obj,
         continue;
 
       val = tp_g_value_slice_new_boxed (
-          dbus_g_type_get_collection ("u", G_TYPE_UINT), types);
+          GABBLE_HASH_TYPE_CONTACT_CLIENT_TYPES, types->pdata);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
           GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPE "/client-type", val);

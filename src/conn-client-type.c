@@ -40,6 +40,7 @@ struct _GabbleConnectionClientTypePrivate
   /* TpHandle => gchar *resource */
   GHashTable *handle_to_resource;
   guint presences_updated_id;
+  GHashTable *cache;
 };
 
 static void
@@ -53,6 +54,7 @@ info_request_cb (GabbleDisco *disco,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
   WockyNodeIter iter;
   GPtrArray *array;
@@ -66,7 +68,7 @@ info_request_cb (GabbleDisco *disco,
       return;
     }
 
-  array = g_ptr_array_new ();
+  array = g_ptr_array_new_with_free_func (g_free);
 
   /* Find all identity nodes in the return. */
   wocky_node_iter_init (&iter, query_result,
@@ -81,7 +83,7 @@ info_request_cb (GabbleDisco *disco,
 
       DEBUG ("Got type for %s: %s", jid, type);
 
-      g_ptr_array_add (array, (gpointer) type);
+      g_ptr_array_add (array, g_strdup (type));
     }
 
   if (array->len == 0)
@@ -104,6 +106,10 @@ info_request_cb (GabbleDisco *disco,
       g_ptr_array_unref (array);
       return;
     }
+
+  /* Add what we have found to the cache. */
+  g_hash_table_insert (priv->cache,
+      GUINT_TO_POINTER (handle), g_ptr_array_ref (array));
 
   gabble_svc_connection_interface_client_type_emit_client_types_updated (
       conn, handle, (const gchar **) array->pdata);
@@ -194,21 +200,27 @@ get_cached_client_types_or_query (GabbleConnection *conn,
     TpHandle handle,
     GError **error)
 {
+  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
   gchar *full_jid, *resource;
+  GPtrArray *arr;
 
-  /* TODO: get cached client types */
+  /* Look up in the cache first */
+  arr = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
+  if (arr != NULL)
+    return g_ptr_array_ref (arr);
 
+  /* Okay we're going to have to make a disco request */
   if (!get_full_jid (conn, handle, &full_jid, &resource))
     {
-      GPtrArray *arr = g_ptr_array_new ();
+      arr = g_ptr_array_new ();
       g_ptr_array_add (arr, NULL);
       return arr;
     }
 
+  /* But don't bother if the resource hasn't changed since the last time. */
   if (!resource_has_changed (conn, handle, resource))
     goto out;
 
-  /* Send a request for the type */
   disco_client_type (conn, full_jid, error);
 
 out:
@@ -303,6 +315,7 @@ conn_client_type_iface_init (gpointer g_iface,
   IMPLEMENT(get_client_types);
 #undef IMPLEMENT
 }
+
 static void
 conn_client_type_fill_contact_attributes (GObject *obj,
     const GArray *contacts,
@@ -384,6 +397,9 @@ conn_client_type_init (GabbleConnection *conn)
 
   priv->handle_to_resource = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, g_free);
+
+  priv->cache = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_ptr_array_unref);
 }
 
 void
@@ -397,6 +413,7 @@ conn_client_type_dispose (GabbleConnection *conn)
   g_signal_handler_disconnect (conn->presence_cache,
       priv->presences_updated_id);
   g_hash_table_unref (priv->handle_to_resource);
+  g_hash_table_unref (priv->cache);
 
   g_slice_free (GabbleConnectionClientTypePrivate, priv);
   conn->client_type_priv = NULL;

@@ -312,7 +312,10 @@ mgr_file_contents (const char *busname,
       g_hash_table_destroy (props);
       protocols = protocols->next;
     }
-  return g_key_file_to_data (f, NULL, error);
+
+  file_data = g_key_file_to_data (f, NULL, error);
+  g_key_file_free (f);
+  return file_data;
 }
 
 int

@@ -21,6 +21,7 @@
 
 static GabbleDebugFlags flags = 0;
 
+/* Remember to keep this array up to date with the GabbleDebugFlags enum in debug.h */
 static GDebugKey keys[] = {
   { "presence",       GABBLE_DEBUG_PRESENCE },
   { "groups",         GABBLE_DEBUG_GROUPS },

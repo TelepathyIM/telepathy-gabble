@@ -7,6 +7,7 @@
 
 G_BEGIN_DECLS
 
+/* Remember to keep this enum up to date with the keys array in debug.c */
 typedef enum
 {
   GABBLE_DEBUG_PRESENCE      = 1 << 0,

@@ -20,6 +20,8 @@
 #include "protocol.h"
 
 #include <telepathy-glib/base-connection-manager.h>
+#include <dbus/dbus-protocol.h>
+#include <dbus/dbus-glib.h>
 
 #include "connection.h"
 #include "connection-manager.h"
@@ -30,23 +32,160 @@
 #include "search-manager.h"
 #include "util.h"
 
+#define PROTOCOL_NAME "jabber"
+#define ICON_NAME "im-" PROTOCOL_NAME
+#define VCARD_FIELD_NAME "x-" PROTOCOL_NAME
+#define ENGLISH_NAME "Jabber"
+
 G_DEFINE_TYPE (GabbleJabberProtocol,
     gabble_jabber_protocol,
     TP_TYPE_BASE_PROTOCOL)
+
+static TpCMParamSpec jabber_params[] = {
+  { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
+    TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER, NULL,
+    0 /* unused */,
+    /* FIXME: validate the JID according to the RFC */
+    tp_cm_param_filter_string_nonempty, NULL },
+  { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
+    TP_CONN_MGR_PARAM_FLAG_REGISTER | TP_CONN_MGR_PARAM_FLAG_SECRET,
+    NULL, 0 /* unused */, NULL, NULL },
+
+  { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
+    0 /* unused */,
+    /* FIXME: validate the server properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+
+  { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
+    0 /* unused */,
+    /* FIXME: validate the resource according to the RFC */
+    tp_cm_param_filter_string_nonempty, NULL },
+
+  { "priority", DBUS_TYPE_INT16_AS_STRING, G_TYPE_INT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(0),
+    0 /* unused */, NULL, NULL },
+
+  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER(5222),
+    0 /* unused */,
+    tp_cm_param_filter_uint_nonzero, NULL },
+
+  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    0 /* unused */, NULL, NULL },
+
+  { "require-encryption", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    0 /* unused */, NULL, NULL },
+
+  { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    0 /* unused */, NULL, NULL },
+
+  { "low-bandwidth", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    0 /* unused */, NULL, NULL },
+
+  { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
+    0 /* unused */,
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+
+  { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT),
+    0 /* unused */,
+    tp_cm_param_filter_uint_nonzero, NULL },
+
+  { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
+    0, NULL, 0 /* unused */,
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+
+  { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
+    0 /* unused */,
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+
+  { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
+    0 /* unused */,
+    tp_cm_param_filter_uint_nonzero, NULL },
+
+  { "fallback-stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+    GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER,
+    0 /* unused */,
+    /* FIXME: validate properly */
+    tp_cm_param_filter_string_nonempty, NULL },
+
+  { "fallback-stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
+    0 /* unused */,
+    tp_cm_param_filter_uint_nonzero, NULL },
+
+  { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    0 /* unused */, NULL, NULL },
+
+  { "alias", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
+    0 /* unused */,
+    /* setting a 0-length alias makes no sense */
+    tp_cm_param_filter_string_nonempty, NULL },
+
+  { "fallback-socks5-proxies", "as", 0,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, NULL,
+    0 /* unused */,
+    NULL, NULL },
+
+  { "keepalive-interval", "u", G_TYPE_UINT,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER (30),
+    0 /* unused */, NULL, NULL },
+
+  { GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
+    DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER (FALSE),
+    0 /* unused */, NULL, NULL },
+
+  { NULL, NULL, 0, 0, NULL, 0 }
+};
+
+static const gchar *default_socks5_proxies[] = GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES;
 
 static void
 gabble_jabber_protocol_init (GabbleJabberProtocol *self)
 {
 }
 
+static gpointer
+_init_parameters (gpointer dummy G_GNUC_UNUSED)
+{
+  guint i;
+
+  for (i = 0; jabber_params[i].name != NULL; i++)
+    {
+      if (!g_strcmp0 (jabber_params[i].name,
+          "fallback-socks5-proxies"))
+        {
+          jabber_params[i].gtype = G_TYPE_STRV;
+          jabber_params[i].def = default_socks5_proxies;
+          break;
+        }
+    }
+
+  return NULL;
+}
+
 static const TpCMParamSpec *
 get_parameters (TpBaseProtocol *self G_GNUC_UNUSED)
 {
-  const TpCMProtocolSpec *protocol_spec =
-      gabble_connection_manager_get_protocols ();
+  static GOnce init = G_ONCE_INIT;
 
-  /* we know there's only one protocol, and it's jabber */
-  return protocol_spec[0].parameters;
+  g_once (&init, _init_parameters, NULL);
+
+  return jabber_params;
 }
 
 #define MAP(x,y) { x, y }

@@ -57,8 +57,6 @@ GType gabble_connection_manager_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION_MANAGER, \
                               GabbleConnectionManagerClass))
 
-const TpCMProtocolSpec * gabble_connection_manager_get_protocols (void);
-
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CONNECTION_MANAGER_H__*/

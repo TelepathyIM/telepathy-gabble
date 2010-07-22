@@ -21,13 +21,21 @@
 #include "config.h"
 
 #include <stdio.h>
+#include <string.h>
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-protocol.h>
-#include <telepathy-glib/enums.h>
+#include <telepathy-glib/telepathy-glib.h>
 
-#include "connection-manager.h"
 #include "protocol.h"
+
+
+#define MAYBE_WRITE_STR(prop, key) \
+  { \
+    const gchar *val = tp_asv_get_string (props, prop); \
+    if (val && *val) \
+        g_key_file_set_string (f, section_name, key, val); \
+  }
 
 static void
 write_parameters (GKeyFile *f, gchar *section_name, TpBaseProtocol *protocol)
@@ -84,6 +92,183 @@ write_parameters (GKeyFile *f, gchar *section_name, TpBaseProtocol *protocol)
     }
 }
 
+typedef struct {
+  GKeyFile *keyfile;
+  gchar *group_name;
+  GHashTable *fixed;
+  const gchar **allowed;
+} RccSerializeContext;
+
+static void
+write_rcc_property (gpointer k, gpointer v, gpointer user_data)
+{
+  const gchar *key = k;
+  GValue *val = v;
+  RccSerializeContext *ctx = user_data;
+
+  switch (G_VALUE_TYPE (val))
+    {
+      case G_TYPE_BOOLEAN:
+        {
+          gchar *kf_key = g_strconcat (key,
+            " " DBUS_TYPE_BOOLEAN_AS_STRING, NULL);
+          g_key_file_set_boolean (ctx->keyfile, ctx->group_name, kf_key,
+            g_value_get_boolean (val));
+          g_free (kf_key);
+          break;
+        }
+
+      case G_TYPE_STRING:
+        {
+          gchar *kf_key = g_strconcat (key,
+            " " DBUS_TYPE_STRING_AS_STRING, NULL);
+          g_key_file_set_string (ctx->keyfile, ctx->group_name, kf_key,
+            g_value_get_string (val));
+          g_free (kf_key);
+          break;
+        }
+
+      case G_TYPE_UINT:
+        {
+          gchar *kf_key = g_strconcat (key,
+            " " DBUS_TYPE_UINT32_AS_STRING, NULL);
+          gchar *kf_val = g_strdup_printf ("%u", g_value_get_uint (val));
+          g_key_file_set_value (ctx->keyfile, ctx->group_name, kf_key, kf_val);
+          g_free (kf_key);
+          g_free (kf_val);
+          break;
+        }
+
+      case G_TYPE_UINT64:
+        {
+          gchar *kf_key = g_strconcat (key,
+            " " DBUS_TYPE_UINT64_AS_STRING, NULL);
+          gchar *kf_val = g_strdup_printf ("%llu", g_value_get_uint64 (val));
+          g_key_file_set_value (ctx->keyfile, ctx->group_name, kf_key, kf_val);
+          g_free (kf_key);
+          g_free (kf_val);
+          break;
+        }
+
+      case G_TYPE_INT:
+        {
+          gchar *kf_key = g_strconcat (key,
+            " " DBUS_TYPE_INT32_AS_STRING, NULL);
+          g_key_file_set_integer (ctx->keyfile, ctx->group_name, kf_key,
+            g_value_get_int (val));
+          g_free (kf_key);
+          break;
+        }
+
+      case G_TYPE_INT64:
+        {
+          gchar *kf_key = g_strconcat (key,
+            " " DBUS_TYPE_UINT64_AS_STRING, NULL);
+          gchar *kf_val = g_strdup_printf ("%lld", g_value_get_int64 (val));
+          g_key_file_set_value (ctx->keyfile, ctx->group_name, kf_key, kf_val);
+          g_free (kf_key);
+          g_free (kf_val);
+          break;
+        }
+
+      default:
+        {
+          if (G_VALUE_TYPE (val) == G_TYPE_STRV)
+            {
+              gchar **list = g_value_get_boxed (val);
+              gchar *kf_key = g_strconcat (key, " "
+                  DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING, NULL);
+              g_key_file_set_string_list (ctx->keyfile, ctx->group_name,
+                  kf_key, (const gchar **) list, g_strv_length (list));
+              g_free (kf_key);
+              break;
+            }
+
+          /* we'd rather crash than forget to write required rcc property */
+          g_assert_not_reached ();
+        }
+    }
+}
+
+static gchar *
+generate_group_name (GHashTable *props)
+{
+  static guint counter = 0;
+  gchar *retval;
+  gchar *chan_type = g_ascii_strdown (tp_asv_get_string (props,
+      TP_PROP_CHANNEL_CHANNEL_TYPE), -1);
+  gchar *chan_type_suffix;
+  gchar *handle_type_name;
+  guint handle_type = tp_asv_get_uint32 (props,
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
+
+  g_assert (chan_type != NULL);
+  chan_type_suffix = strrchr (chan_type, '.');
+  g_assert (chan_type_suffix != NULL);
+  chan_type_suffix++;
+
+  switch (handle_type)
+    {
+    case TP_HANDLE_TYPE_CONTACT:
+      handle_type_name = "-1on1";
+      break;
+
+    case TP_HANDLE_TYPE_ROOM:
+      handle_type_name = "-multi";
+      break;
+
+    case TP_HANDLE_TYPE_GROUP:
+      handle_type_name = "-group";
+      break;
+
+    case TP_HANDLE_TYPE_LIST:
+      handle_type_name = "-list";
+      break;
+
+    default:
+      handle_type_name = "";
+    }
+
+  retval = g_strdup_printf ("%s%s-%d", chan_type_suffix, handle_type_name,
+      ++counter);
+
+  g_free (chan_type);
+  return retval;
+}
+
+static void
+write_rccs (GKeyFile *f, const gchar *section_name, GHashTable *props)
+{
+  GPtrArray *rcc_list = tp_asv_get_boxed (props,
+      TP_PROP_PROTOCOL_REQUESTABLE_CHANNEL_CLASSES,
+      TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST);
+  guint i;
+  gchar **allowed;
+  gchar **group_names = g_new0 (gchar *, rcc_list->len + 1);
+
+  for (i = 0; i < rcc_list->len; i++)
+    {
+      RccSerializeContext ctx;
+      ctx.keyfile = f;
+
+      tp_value_array_unpack (g_ptr_array_index (rcc_list, i), 2,
+        &ctx.fixed, &allowed);
+
+      ctx.group_name = generate_group_name (ctx.fixed);
+      g_hash_table_foreach (ctx.fixed, write_rcc_property, &ctx);
+
+      group_names[i] = ctx.group_name;
+
+      g_key_file_set_string_list (f, ctx.group_name, "allowed",
+        (const gchar **) allowed, g_strv_length (allowed));
+    }
+
+  g_key_file_set_string_list (f, section_name, "RequestableChannelClasses",
+      (const gchar **) group_names, rcc_list->len);
+
+  g_strfreev (group_names);
+}
+
 static gchar *
 mgr_file_contents (const char *busname,
                    const char *objpath,
@@ -91,19 +276,40 @@ mgr_file_contents (const char *busname,
                    GError **error)
 {
   GKeyFile *f = g_key_file_new ();
+  gchar *file_data;
 
   g_key_file_set_string (f, "ConnectionManager", "BusName", busname);
   g_key_file_set_string (f, "ConnectionManager", "ObjectPath", objpath);
 
+  /* there are no CM interfaces defined yet, so we cheat */
+  g_key_file_set_string (f, "ConnectionManager", "Interfaces", "");
+
   while (protocols != NULL)
     {
       TpBaseProtocol *protocol = protocols->data;
+      GHashTable *props =
+          tp_base_protocol_get_immutable_properties (protocol);
       gchar *section_name = g_strdup_printf ("Protocol %s",
           tp_base_protocol_get_name (protocol));
+      const gchar * const *ifaces = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_INTERFACES);
+      const gchar * const *c_ifaces = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_CONNECTION_INTERFACES);
 
       write_parameters (f, section_name, protocol);
+      write_rccs (f, section_name, props);
+
+      g_key_file_set_string_list (f, section_name, "Interfaces",
+          ifaces, g_strv_length ((gchar **) ifaces));
+      g_key_file_set_string_list (f, section_name, "ConnectionInterfaces",
+          c_ifaces, g_strv_length ((gchar **) c_ifaces));
+
+      MAYBE_WRITE_STR (TP_PROP_PROTOCOL_VCARD_FIELD, "VCardField");
+      MAYBE_WRITE_STR (TP_PROP_PROTOCOL_ENGLISH_NAME, "EnglishName");
+      MAYBE_WRITE_STR (TP_PROP_PROTOCOL_ICON, "Icon");
 
       g_free (section_name);
+      g_hash_table_destroy (props);
       protocols = protocols->next;
     }
   return g_key_file_to_data (f, NULL, error);

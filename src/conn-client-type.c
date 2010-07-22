@@ -53,12 +53,14 @@ info_request_cb (GabbleDisco *disco,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
   WockyNodeIter iter;
   GPtrArray *array;
   TpHandleRepoIface *handles;
   TpHandle handle;
   GError *error = NULL;
+  const gchar *old_resource;
 
   if (disco_error != NULL)
     {
@@ -152,6 +154,22 @@ get_cached_client_types_or_query (GabbleConnection *conn,
       DEBUG ("Failed to determine a good resource for %s", jid);
       return NULL;
     }
+
+  old_resource = g_hash_table_lookup (priv->handle_to_resource,
+      GUINT_TO_POINTER (handle));
+
+  if (old_resource != NULL && !tp_strdiff (old_resource, resource))
+    {
+      /* The presence has changed, but the resource hasn't. Let's
+       * assume that the client types have not changed on this
+       * resource since we last looked, because that would be
+       * odd. This assumption lets us cut down on the disco
+       * traffic, which is nice. */
+      return NULL;
+    }
+
+  g_hash_table_insert (priv->handle_to_resource,
+      GUINT_TO_POINTER (handle), g_strdup (resource));
 
   full_jid = g_strdup_printf ("%s/%s", jid, resource);
 

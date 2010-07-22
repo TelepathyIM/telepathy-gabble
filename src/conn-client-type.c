@@ -210,7 +210,8 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
           GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "Getting client type failed" };
 
-          DEBUG ("Sending client type disco request failed: %s", error->message);
+          DEBUG ("Sending client type disco request failed: %s",
+              error->message);
           g_error_free (error);
           dbus_g_method_return_error (context, &error2);
           goto cleanup;

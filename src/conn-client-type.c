@@ -29,6 +29,8 @@
 #include "conn-client-type.h"
 #include "disco.h"
 #include "namespaces.h"
+#include "presence.h"
+#include "presence-cache.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CLIENT_TYPE
 #include "debug.h"
@@ -103,29 +105,54 @@ info_request_cb (GabbleDisco *disco,
   g_ptr_array_unref (array);
 }
 
+static gboolean
+dummy_caps_set_predicate (const GabbleCapabilitySet *set,
+    gconstpointer user_data)
+{
+  return TRUE;
+}
+
 static GPtrArray *
 get_cached_client_types_or_query (GabbleConnection *conn,
     TpHandle handle,
     GError **error)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  const gchar *jid;
+  const gchar *jid, *resource;
   TpHandleRepoIface *contact_repo;
-  gchar *tmp;
+  GabblePresence *presence;
+  gchar *full_jid;
 
   contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   jid = tp_handle_inspect (contact_repo, handle);
 
   /* TODO: get cached client types */
 
-  /* TODO: be smart about resources */
-  tmp = g_strdup_printf ("%s/echo", jid);
+  presence = gabble_presence_cache_get (conn->presence_cache, handle);
+
+  if (presence == NULL)
+    {
+      GPtrArray *arr = g_ptr_array_new ();
+      g_ptr_array_add (arr, NULL);
+      return arr;
+    }
+
+  resource = gabble_presence_pick_resource_by_caps (presence,
+      DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+
+  if (resource == NULL)
+    {
+      DEBUG ("Failed to determine a good resource for %s", jid);
+      return NULL;
+    }
+
+  full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
   /* Send a request for the type */
   gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO,
-      tmp, NULL, info_request_cb, conn, G_OBJECT (conn), error);
+      full_jid, NULL, info_request_cb, conn, G_OBJECT (conn), error);
 
-  g_free (tmp);
+  g_free (full_jid);
 
   return NULL;
 }

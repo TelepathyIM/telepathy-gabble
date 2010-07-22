@@ -136,12 +136,8 @@ identify_account (TpBaseProtocol *self G_GNUC_UNUSED,
 {
   const gchar *account = tp_asv_get_string (asv, "account");
 
-  if (account != NULL)
-    return g_strdup (account);
-
-  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-      "'account' parameter not given");
-  return NULL;
+  g_assert (account != NULL);
+  return g_strdup (account);
 }
 
 static GStrv

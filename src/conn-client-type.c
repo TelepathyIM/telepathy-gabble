@@ -43,16 +43,12 @@ struct _GabbleConnectionClientTypePrivate
   GHashTable *cache;
 };
 
-static void
-info_request_cb (GabbleDisco *disco,
-    GabbleDiscoRequest *request,
+static GPtrArray *
+get_client_types_from_message (GabbleConnection *conn,
     const gchar *jid,
-    const gchar *node,
     LmMessageNode *lm_node,
-    GError *disco_error,
-    gpointer user_data)
+    TpHandle *contact_handle)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
@@ -61,12 +57,6 @@ info_request_cb (GabbleDisco *disco,
   TpHandleRepoIface *handles;
   TpHandle handle;
   GError *error = NULL;
-
-  if (disco_error != NULL)
-    {
-      DEBUG ("Disco error: %s", disco_error->message);
-      return;
-    }
 
   array = g_ptr_array_new_with_free_func (g_free);
 
@@ -90,7 +80,7 @@ info_request_cb (GabbleDisco *disco,
     {
       DEBUG ("How very odd, we didn't get any client types");
       g_ptr_array_unref (array);
-      return;
+      return NULL;
     }
 
   g_ptr_array_add (array, NULL);
@@ -104,27 +94,72 @@ info_request_cb (GabbleDisco *disco,
       DEBUG ("Failed to ensure handle: %s", error->message);
       g_error_free (error);
       g_ptr_array_unref (array);
-      return;
+      return NULL;
     }
 
   /* Add what we have found to the cache. */
   g_hash_table_insert (priv->cache,
       GUINT_TO_POINTER (handle), g_ptr_array_ref (array));
 
+  if (contact_handle != NULL)
+    *contact_handle = handle; /* already refed */
+  else
+    tp_handle_unref (handles, handle);
+
+  return array;
+}
+
+static void
+info_request_cb (GabbleDisco *disco,
+    GabbleDiscoRequest *request,
+    const gchar *jid,
+    const gchar *node,
+    LmMessageNode *lm_node,
+    GError *disco_error,
+    gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  TpBaseConnection *base = TP_BASE_CONNECTION (user_data);
+  GPtrArray *array;
+  TpHandleRepoIface *handles;
+  TpHandle handle;
+
+  if (disco_error != NULL)
+    {
+      DEBUG ("Disco error: %s", disco_error->message);
+      return;
+    }
+
+  array = get_client_types_from_message (
+      GABBLE_CONNECTION (user_data), jid, lm_node, &handle);
+
+  if (array == NULL)
+    return;
+
   gabble_svc_connection_interface_client_type_emit_client_types_updated (
       conn, handle, (const gchar **) array->pdata);
 
+  handles = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   tp_handle_unref (handles, handle);
+
   g_ptr_array_unref (array);
 }
 
 static void
 disco_client_type (GabbleConnection *conn,
     const gchar *full_jid,
+    GabbleDiscoCb callback,
+    gpointer user_data,
     GError **error)
 {
+  if (callback == NULL)
+    callback = info_request_cb;
+
+  if (user_data == NULL)
+    user_data = conn;
+
   gabble_disco_request (conn->disco, GABBLE_DISCO_TYPE_INFO,
-      full_jid, NULL, info_request_cb, conn, G_OBJECT (conn), error);
+      full_jid, NULL, callback, user_data, G_OBJECT (conn), error);
 }
 
 static gboolean
@@ -198,6 +233,8 @@ get_full_jid (GabbleConnection *conn,
 static GPtrArray *
 get_cached_client_types_or_query (GabbleConnection *conn,
     TpHandle handle,
+    GabbleDiscoCb callback,
+    gpointer user_data,
     GError **error)
 {
   GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
@@ -221,7 +258,7 @@ get_cached_client_types_or_query (GabbleConnection *conn,
   if (!resource_has_changed (conn, handle, resource))
     goto out;
 
-  disco_client_type (conn, full_jid, error);
+  disco_client_type (conn, full_jid, callback, user_data, error);
 
 out:
   g_free (resource);
@@ -274,7 +311,7 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
       GPtrArray *types;
       TpHandle contact = g_array_index (contacts, TpHandle, i);
 
-      types = get_cached_client_types_or_query (conn, contact, &error);
+      types = get_cached_client_types_or_query (conn, contact, NULL, NULL, &error);
 
       if (error != NULL)
         {
@@ -304,6 +341,107 @@ cleanup:
   g_ptr_array_unref (types_arrays);
 }
 
+typedef struct
+{
+  GabbleConnection *conn;
+  DBusGMethodInvocation *context;
+} RequestClientTypesData;
+
+static void
+request_disco_info_cb (GabbleDisco *disco,
+    GabbleDiscoRequest *request,
+    const gchar *jid,
+    const gchar *node,
+    LmMessageNode *lm_node,
+    GError *disco_error,
+    gpointer user_data)
+{
+  RequestClientTypesData *data = user_data;
+  GabbleConnection *conn = GABBLE_CONNECTION (data->conn);
+  GPtrArray *array;
+
+  if (disco_error != NULL)
+    {
+      GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Getting client type failed" };
+      DEBUG ("Disco error: %s", disco_error->message);
+      dbus_g_method_return_error (data->context, &error2);
+      g_slice_free (RequestClientTypesData, data);
+    }
+
+  array = get_client_types_from_message (conn, jid, lm_node, NULL);
+
+  if (array == NULL)
+    {
+      const gchar *out = { NULL };
+      gabble_svc_connection_interface_client_type_return_from_request_client_types (
+          data->context, &out);
+    }
+  else
+    {
+      gabble_svc_connection_interface_client_type_return_from_request_client_types (
+          data->context, (const gchar **) array->pdata);
+      g_ptr_array_unref (array);
+    }
+
+  g_slice_free (RequestClientTypesData, data);
+}
+
+static void
+client_type_request_client_types (GabbleSvcConnectionInterfaceClientType *iface,
+    TpHandle handle,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_handles;
+  GError *error = NULL;
+  GPtrArray *types;
+  RequestClientTypesData *data;
+
+  DEBUG ("RequestClientTypes called for handle %u", handle);
+
+  /* Validate handle */
+  contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  if (!tp_handle_is_valid (contact_handles, handle, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  types = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
+
+  if (types != NULL)
+    {
+      gabble_svc_connection_interface_client_type_return_from_request_client_types (
+          context, (const gchar **) types->pdata);
+      return;
+    }
+
+  data = g_slice_new0 (RequestClientTypesData);
+  data->conn = conn;
+  data->context = context;
+
+  types = get_cached_client_types_or_query (conn, handle,
+      request_disco_info_cb, data, &error);
+
+  if (error != NULL)
+    {
+      GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Getting client type failed" };
+
+      DEBUG ("Sending client type disco request failed: %s",
+          error->message);
+      g_error_free (error);
+      dbus_g_method_return_error (context, &error2);
+      g_slice_free (RequestClientTypesData, data);
+    }
+}
+
 void
 conn_client_type_iface_init (gpointer g_iface,
     gpointer iface_data)
@@ -312,7 +450,8 @@ conn_client_type_iface_init (gpointer g_iface,
 
 #define IMPLEMENT(x) gabble_svc_connection_interface_client_type_implement_##x \
   (klass, client_type_##x)
-  IMPLEMENT(get_client_types);
+  IMPLEMENT (get_client_types);
+  IMPLEMENT (request_client_types);
 #undef IMPLEMENT
 }
 
@@ -330,7 +469,7 @@ conn_client_type_fill_contact_attributes (GObject *obj,
       GPtrArray *types;
       GValue *val;
 
-      types = get_cached_client_types_or_query (self, handle, NULL);
+      types = get_cached_client_types_or_query (self, handle, NULL, NULL, NULL);
 
       if (types == NULL)
         continue;
@@ -365,7 +504,7 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
       DEBUG ("presence changed for %s", full_jid);
 
       /* Send a request for the type */
-      disco_client_type (conn, full_jid, &error);
+      disco_client_type (conn, full_jid, NULL, NULL, &error);
 
       if (error != NULL)
         {

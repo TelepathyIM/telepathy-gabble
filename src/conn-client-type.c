@@ -280,22 +280,18 @@ conn_client_type_fill_contact_attributes (GObject *obj,
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
       GPtrArray *types;
-      /*
       GValue *val;
-      */
 
       types = get_cached_client_types_or_query (self, handle, NULL);
 
       if (types == NULL)
         continue;
 
-      /* FIXME */
-      /*
-      val = tp_g_value_slice_new_boxed (TP_HASH_TYPE_STRING_VARIANT_MAP, types);
+      val = tp_g_value_slice_new_boxed (
+          dbus_g_type_get_collection ("u", G_TYPE_UINT), types);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
           GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPE "/client-type", val);
-      */
     }
 }
 

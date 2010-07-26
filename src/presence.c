@@ -41,6 +41,7 @@ typedef struct _Resource Resource;
 
 struct _Resource {
     gchar *name;
+    guint client_type;
     GabbleCapabilitySet *cap_set;
     guint caps_serial;
     GabblePresenceId status;
@@ -142,8 +143,8 @@ resource_better_than (
 
     if (preference == PREFER_PHONES)
       {
-        gboolean a_p = gabble_capability_set_has (a->cap_set, QUIRK_IS_A_PHONE);
-        gboolean b_p = gabble_capability_set_has (b->cap_set, QUIRK_IS_A_PHONE);
+        gboolean a_p = a->client_type & GABBLE_CLIENT_TYPE_PHONE;
+        gboolean b_p = b->client_type & GABBLE_CLIENT_TYPE_PHONE;
 
         if (a_p && !b_p)
           return TRUE;
@@ -721,4 +722,86 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
     }
 
   return NULL;
+}
+
+void
+gabble_presence_update_client_types (GabblePresence *presence,
+    const gchar *resource,
+    GPtrArray *client_types)
+{
+  Resource *res;
+  guint i;
+
+  res = _find_resource (presence, resource);
+
+  if (res == NULL)
+    return;
+
+  res->client_type = 0;
+
+  for (i = 0; i < client_types->len; i++)
+    {
+      const gchar *type = g_ptr_array_index (client_types, i);
+
+      if (!tp_strdiff (type, "bot"))
+        res->client_type |= GABBLE_CLIENT_TYPE_BOT;
+
+      if (!tp_strdiff (type, "console"))
+        res->client_type |= GABBLE_CLIENT_TYPE_CONSOLE;
+
+      if (!tp_strdiff (type, "handheld"))
+        res->client_type |= GABBLE_CLIENT_TYPE_HANDHELD;
+
+      if (!tp_strdiff (type, "pc"))
+        res->client_type |= GABBLE_CLIENT_TYPE_PC;
+
+      if (!tp_strdiff (type, "phone"))
+        res->client_type |= GABBLE_CLIENT_TYPE_PHONE;
+
+      if (!tp_strdiff (type, "web"))
+        res->client_type |= GABBLE_CLIENT_TYPE_WEB;
+
+      if (!tp_strdiff (type, "sms"))
+        res->client_type |= GABBLE_CLIENT_TYPE_SMS;
+    }
+}
+
+GPtrArray *
+gabble_presence_get_client_types_array (GabblePresence *presence,
+    const gchar *resource)
+{
+  Resource *res;
+  GPtrArray *array;
+
+  array = g_ptr_array_new_with_free_func (g_free);
+
+  res = _find_resource (presence, resource);
+
+  if (res == NULL)
+    return NULL;
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_BOT)
+    g_ptr_array_add (array, g_strdup ("bot"));
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_CONSOLE)
+    g_ptr_array_add (array, g_strdup ("console"));
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_HANDHELD)
+    g_ptr_array_add (array, g_strdup ("handheld"));
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_PC)
+    g_ptr_array_add (array, g_strdup ("pc"));
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_PHONE)
+    g_ptr_array_add (array, g_strdup ("phone"));
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_WEB)
+    g_ptr_array_add (array, g_strdup ("web"));
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_SMS)
+    g_ptr_array_add (array, g_strdup ("sms"));
+
+  g_ptr_array_add (array, NULL);
+
+  return array;
 }

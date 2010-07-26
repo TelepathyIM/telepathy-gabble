@@ -130,6 +130,23 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
     const GabbleFeatureFallback *table,
     GabbleCapabilitySetPredicate predicate);
 
+typedef enum
+{
+  GABBLE_CLIENT_TYPE_BOT      = 1 << 0,
+  GABBLE_CLIENT_TYPE_CONSOLE  = 1 << 1,
+  GABBLE_CLIENT_TYPE_HANDHELD = 1 << 2,
+  GABBLE_CLIENT_TYPE_PC       = 1 << 3,
+  GABBLE_CLIENT_TYPE_PHONE    = 1 << 4,
+  GABBLE_CLIENT_TYPE_WEB      = 1 << 5,
+  GABBLE_CLIENT_TYPE_SMS      = 1 << 6,
+} GabbleClientType;
+
+void gabble_presence_update_client_types (GabblePresence *presence,
+    const gchar *resource, GPtrArray *client_types);
+
+GPtrArray * gabble_presence_get_client_types_array (GabblePresence *presence,
+    const gchar *resource);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_H__ */

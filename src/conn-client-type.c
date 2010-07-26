@@ -275,19 +275,10 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles;
   guint i;
-  GError *error = NULL;
   GHashTable *client_types;
-  GPtrArray *types_arrays;
-
-  if (DEBUGGING)
-    {
-      DEBUG ("GetClientTypes called on the following handles:");
-
-      for (i = 0; i < contacts->len; i++)
-        {
-          DEBUG (" * %u", g_array_index (contacts, TpHandle, i));
-        }
-    }
+  GabblePresence *presence;
+  GError *error = NULL;
+  GPtrArray *types_list;
 
   /* Validate contacts */
   contact_handles = tp_base_connection_get_handles (base,
@@ -300,45 +291,70 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
       return;
     }
 
-  /* Let's get ready to rumble^Wreturn */
-  client_types = g_hash_table_new (g_direct_hash, g_direct_equal);
+  if (DEBUGGING)
+    {
+      DEBUG ("GetClientTypes called on the following handles:");
 
-  types_arrays = g_ptr_array_new_with_free_func (
+      for (i = 0; i < contacts->len; i++)
+        {
+          DEBUG (" * %u", g_array_index (contacts, TpHandle, i));
+        }
+    }
+
+  client_types = g_hash_table_new (g_direct_hash, g_direct_equal);
+  types_list = g_ptr_array_new_with_free_func (
       (GDestroyNotify) g_ptr_array_unref);
 
   for (i = 0; i < contacts->len; i++)
     {
+      TpHandle handle = g_array_index (contacts, TpHandle, i);
       GPtrArray *types;
-      TpHandle contact = g_array_index (contacts, TpHandle, i);
+      const gchar *res;
 
-      types = get_cached_client_types_or_query (conn, contact, NULL, NULL, &error);
+      presence = gabble_presence_cache_get (conn->presence_cache, handle);
 
-      if (error != NULL)
+      /* We know that we know nothing about this chap, so empty array it is. */
+      if (presence == NULL)
         {
-          GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-              "Getting client type failed" };
-
-          DEBUG ("Sending client type disco request failed: %s",
-              error->message);
-          g_error_free (error);
-          dbus_g_method_return_error (context, &error2);
-          goto cleanup;
+          types = g_ptr_array_new ();
+          g_ptr_array_add (types, NULL);
+          goto add_array;
         }
 
-      if (types != NULL)
+      /* Find the best resource. */
+      res = gabble_presence_pick_resource_by_caps (presence,
+          DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+
+      if (res == NULL)
+        continue;
+
+      /* Get the cached client types. */
+      types = gabble_presence_get_client_types_array (presence, res);
+
+      if (types == NULL)
         {
-          g_ptr_array_add (types_arrays, types);
-          g_hash_table_insert (client_types, GUINT_TO_POINTER (contact),
-              types->pdata);
+          /* There's a pending disco request happening, so don't give an
+           * empty array for this fellow. */
+          if (gabble_presence_cache_disco_in_progress (conn->presence_cache,
+                  handle, res))
+            continue;
+
+          /* This guy, on the other hand, can get the most empty of arrays. */
+          types = g_ptr_array_new ();
+          g_ptr_array_add (types, NULL);
         }
+
+add_array:
+      g_hash_table_insert (client_types, GUINT_TO_POINTER (handle),
+          types->pdata);
+      g_ptr_array_add (types_list, types);
     }
 
   gabble_svc_connection_interface_client_type_return_from_get_client_types (
       context, client_types);
 
-cleanup:
   g_hash_table_unref (client_types);
-  g_ptr_array_unref (types_arrays);
+  g_ptr_array_unref (types_list);
 }
 
 typedef struct

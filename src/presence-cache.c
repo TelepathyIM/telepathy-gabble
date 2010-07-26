@@ -1100,6 +1100,44 @@ emit_capabilities_discovered (GabblePresenceCache *cache,
   g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
 }
 
+static GPtrArray *
+get_client_types_from_message (TpHandle handle,
+    LmMessageNode *lm_node)
+{
+  WockyNode *identity, *query_result = (WockyNode *) lm_node;
+  WockyNodeIter iter;
+  GPtrArray *array;
+
+  array = g_ptr_array_new_with_free_func (g_free);
+
+  /* Find all identity nodes in the return. */
+  wocky_node_iter_init (&iter, query_result,
+      "identity", NS_DISCO_INFO);
+  while (wocky_node_iter_next (&iter, &identity))
+    {
+      const gchar *type;
+
+      /* Now get the client type */
+      if ((type = wocky_node_get_attribute (identity, "type")) == NULL)
+        continue;
+
+      DEBUG ("Got type for %u: %s", handle, type);
+
+      g_ptr_array_add (array, g_strdup (type));
+    }
+
+  if (array->len == 0)
+    {
+      DEBUG ("How very odd, we didn't get any client types");
+      g_ptr_array_unref (array);
+      return NULL;
+    }
+
+  /*g_ptr_array_add (array, NULL);*/
+
+  return array;
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -1122,6 +1160,8 @@ _caps_disco_cb (GabbleDisco *disco,
   gchar *resource;
   gboolean jid_is_valid;
   gpointer key;
+  GabblePresence *presence;
+  GPtrArray *client_types;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = GABBLE_PRESENCE_CACHE_PRIV (cache);
@@ -1165,6 +1205,15 @@ _caps_disco_cb (GabbleDisco *disco,
       DEBUG ("Ignoring non requested disco reply from %s", jid);
       goto OUT;
     }
+
+  /* Sort out client types */
+  presence = gabble_presence_cache_get (cache, handle);
+  client_types = get_client_types_from_message (handle, query_result);
+  gabble_presence_update_client_types (presence, waiter_self->resource,
+      client_types);
+  g_ptr_array_unref (client_types);
+
+  /* Now onto caps */
 
   cap_set = gabble_capability_set_new_from_stanza (query_result);
 
@@ -1318,8 +1367,6 @@ _process_caps_uri (GabblePresenceCache *cache,
               query_str);
           g_free (query_str);
         }
-
-      g_object_unref (cached_query_reply);
     }
 
   g_object_unref (caps_cache);
@@ -1345,8 +1392,15 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (presence)
         {
+          WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
+          GPtrArray *types;
+
           gabble_presence_set_capabilities (
               presence, resource, cap_set, serial);
+
+          types = get_client_types_from_message (handle, query);
+          gabble_presence_update_client_types (presence, resource, types);
+          g_ptr_array_unref (types);
         }
       else
         {
@@ -1384,7 +1438,7 @@ _process_caps_uri (GabblePresenceCache *cache,
           DEBUG ("updating serial for waiter (%s, %s) from %u to %u",
               from, uri, waiter->serial, serial);
           waiter->serial = serial;
-          return;
+          goto out;
         }
 
       waiter = disco_waiter_new (contact_repo, handle, resource,
@@ -1419,6 +1473,10 @@ _process_caps_uri (GabblePresenceCache *cache,
           waiter->disco_requested = TRUE;
         }
     }
+
+out:
+  if (cached_query_reply != NULL)
+    g_object_unref (cached_query_reply);
 }
 
 static void

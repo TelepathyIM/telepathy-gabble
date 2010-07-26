@@ -1101,7 +1101,7 @@ emit_capabilities_discovered (GabblePresenceCache *cache,
 }
 
 static GPtrArray *
-get_client_types_from_message (TpHandle handle,
+client_types_from_message (TpHandle handle,
     LmMessageNode *lm_node)
 {
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
@@ -1132,8 +1132,6 @@ get_client_types_from_message (TpHandle handle,
       g_ptr_array_unref (array);
       return NULL;
     }
-
-  /*g_ptr_array_add (array, NULL);*/
 
   return array;
 }
@@ -1208,10 +1206,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
   /* Sort out client types */
   presence = gabble_presence_cache_get (cache, handle);
-  client_types = get_client_types_from_message (handle, query_result);
-  gabble_presence_update_client_types (presence, waiter_self->resource,
-      client_types);
-  g_ptr_array_unref (client_types);
+  client_types = client_types_from_message (handle, query_result);
+  if (client_types != NULL)
+    {
+      gabble_presence_update_client_types (presence, waiter_self->resource,
+          client_types);
+      g_ptr_array_unref (client_types);
+    }
 
   /* Now onto caps */
 
@@ -1398,7 +1399,7 @@ _process_caps_uri (GabblePresenceCache *cache,
           gabble_presence_set_capabilities (
               presence, resource, cap_set, serial);
 
-          types = get_client_types_from_message (handle, query);
+          types = client_types_from_message (handle, query);
           gabble_presence_update_client_types (presence, resource, types);
           g_ptr_array_unref (types);
         }

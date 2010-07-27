@@ -278,7 +278,7 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
   GHashTable *client_types;
   GabblePresence *presence;
   GError *error = NULL;
-  GPtrArray *types_list;
+  GPtrArray *types_list, *empty_array;;
 
   /* Validate contacts */
   contact_handles = tp_base_connection_get_handles (base,
@@ -305,6 +305,9 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
   types_list = g_ptr_array_new_with_free_func (
       (GDestroyNotify) g_ptr_array_unref);
 
+  empty_array = g_ptr_array_new ();
+  g_ptr_array_add (empty_array, NULL);
+
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
@@ -316,8 +319,7 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
       /* We know that we know nothing about this chap, so empty array it is. */
       if (presence == NULL)
         {
-          types = g_ptr_array_new ();
-          g_ptr_array_add (types, NULL);
+          types = empty_array;
           goto add_array;
         }
 
@@ -326,7 +328,10 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
           DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
 
       if (res == NULL)
-        continue;
+        {
+          types = empty_array;
+          goto add_array;
+        }
 
       /* Get the cached client types. */
       types = gabble_presence_get_client_types_array (presence, res, TRUE);
@@ -340,14 +345,15 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
             continue;
 
           /* This guy, on the other hand, can get the most empty of arrays. */
-          types = g_ptr_array_new ();
-          g_ptr_array_add (types, NULL);
+          types = empty_array;
         }
 
 add_array:
       g_hash_table_insert (client_types, GUINT_TO_POINTER (handle),
           types->pdata);
-      g_ptr_array_add (types_list, types);
+
+      if (types != empty_array)
+        g_ptr_array_add (types_list, types);
     }
 
   gabble_svc_connection_interface_client_type_return_from_get_client_types (
@@ -355,6 +361,7 @@ add_array:
 
   g_hash_table_unref (client_types);
   g_ptr_array_unref (types_list);
+  g_ptr_array_unref (empty_array);
 }
 
 typedef struct

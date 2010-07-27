@@ -229,43 +229,6 @@ get_full_jid (GabbleConnection *conn,
   return TRUE;
 }
 
-/* NULL if we don't know, or an empty array if we know that we know nothing. */
-static GPtrArray *
-get_cached_client_types_or_query (GabbleConnection *conn,
-    TpHandle handle,
-    GabbleDiscoCb callback,
-    gpointer user_data,
-    GError **error)
-{
-  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
-  gchar *full_jid, *resource;
-  GPtrArray *arr;
-
-  /* Look up in the cache first */
-  arr = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
-  if (arr != NULL)
-    return g_ptr_array_ref (arr);
-
-  /* Okay we're going to have to make a disco request */
-  if (!get_full_jid (conn, handle, &full_jid, &resource))
-    {
-      arr = g_ptr_array_new ();
-      g_ptr_array_add (arr, NULL);
-      return arr;
-    }
-
-  /* But don't bother if the resource hasn't changed since the last time. */
-  if (!resource_has_changed (conn, handle, resource))
-    goto out;
-
-  disco_client_type (conn, full_jid, callback, user_data, error);
-
-out:
-  g_free (resource);
-  g_free (full_jid);
-  return NULL;
-}
-
 static void
 client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
     const GArray *contacts,
@@ -364,107 +327,6 @@ add_array:
   g_ptr_array_unref (empty_array);
 }
 
-typedef struct
-{
-  GabbleConnection *conn;
-  DBusGMethodInvocation *context;
-} RequestClientTypesData;
-
-static void
-request_disco_info_cb (GabbleDisco *disco,
-    GabbleDiscoRequest *request,
-    const gchar *jid,
-    const gchar *node,
-    LmMessageNode *lm_node,
-    GError *disco_error,
-    gpointer user_data)
-{
-  RequestClientTypesData *data = user_data;
-  GabbleConnection *conn = GABBLE_CONNECTION (data->conn);
-  GPtrArray *array;
-
-  if (disco_error != NULL)
-    {
-      GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "Getting client type failed" };
-      DEBUG ("Disco error: %s", disco_error->message);
-      dbus_g_method_return_error (data->context, &error2);
-      g_slice_free (RequestClientTypesData, data);
-    }
-
-  array = get_client_types_from_message (conn, jid, lm_node, NULL);
-
-  if (array == NULL)
-    {
-      const gchar *out = { NULL };
-      gabble_svc_connection_interface_client_type_return_from_request_client_types (
-          data->context, &out);
-    }
-  else
-    {
-      gabble_svc_connection_interface_client_type_return_from_request_client_types (
-          data->context, (const gchar **) array->pdata);
-      g_ptr_array_unref (array);
-    }
-
-  g_slice_free (RequestClientTypesData, data);
-}
-
-static void
-client_type_request_client_types (GabbleSvcConnectionInterfaceClientType *iface,
-    TpHandle handle,
-    DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_handles;
-  GError *error = NULL;
-  GPtrArray *types;
-  RequestClientTypesData *data;
-
-  DEBUG ("RequestClientTypes called for handle %u", handle);
-
-  /* Validate handle */
-  contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-
-  if (!tp_handle_is_valid (contact_handles, handle, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  types = g_hash_table_lookup (priv->cache, GUINT_TO_POINTER (handle));
-
-  if (types != NULL)
-    {
-      gabble_svc_connection_interface_client_type_return_from_request_client_types (
-          context, (const gchar **) types->pdata);
-      return;
-    }
-
-  data = g_slice_new0 (RequestClientTypesData);
-  data->conn = conn;
-  data->context = context;
-
-  types = get_cached_client_types_or_query (conn, handle,
-      request_disco_info_cb, data, &error);
-
-  if (error != NULL)
-    {
-      GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "Getting client type failed" };
-
-      DEBUG ("Sending client type disco request failed: %s",
-          error->message);
-      g_error_free (error);
-      dbus_g_method_return_error (context, &error2);
-      g_slice_free (RequestClientTypesData, data);
-    }
-}
-
 void
 conn_client_type_iface_init (gpointer g_iface,
     gpointer iface_data)
@@ -474,7 +336,6 @@ conn_client_type_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) gabble_svc_connection_interface_client_type_implement_##x \
   (klass, client_type_##x)
   IMPLEMENT (get_client_types);
-  IMPLEMENT (request_client_types);
 #undef IMPLEMENT
 }
 

@@ -1,5 +1,5 @@
 /*
- * conn-client-type - Gabble client type interface
+ * conn-client-types - Gabble client types interface
  * Copyright (C) 2010 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -26,13 +26,13 @@
 
 #include <extensions/extensions.h>
 
-#include "conn-client-type.h"
+#include "conn-client-types.h"
 #include "disco.h"
 #include "namespaces.h"
 #include "presence.h"
 #include "presence-cache.h"
 
-#define DEBUG_FLAG GABBLE_DEBUG_CLIENT_TYPE
+#define DEBUG_FLAG GABBLE_DEBUG_CLIENT_TYPES
 #include "debug.h"
 
 static gboolean
@@ -43,7 +43,7 @@ dummy_caps_set_predicate (const GabbleCapabilitySet *set,
 }
 
 static void
-client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
+client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
     const GArray *contacts,
     DBusGMethodInvocation *context)
 {
@@ -132,7 +132,7 @@ add_array:
         g_ptr_array_add (types_list, types);
     }
 
-  gabble_svc_connection_interface_client_type_return_from_get_client_types (
+  gabble_svc_connection_interface_client_types_return_from_get_client_types (
       context, client_types);
 
   g_hash_table_unref (client_types);
@@ -141,19 +141,19 @@ add_array:
 }
 
 void
-conn_client_type_iface_init (gpointer g_iface,
+conn_client_types_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
-  GabbleSvcConnectionInterfaceClientTypeClass *klass = g_iface;
+  GabbleSvcConnectionInterfaceClientTypesClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_connection_interface_client_type_implement_##x \
-  (klass, client_type_##x)
+#define IMPLEMENT(x) gabble_svc_connection_interface_client_types_implement_##x \
+  (klass, client_types_##x)
   IMPLEMENT (get_client_types);
 #undef IMPLEMENT
 }
 
 static void
-conn_client_type_fill_contact_attributes (GObject *obj,
+conn_client_types_fill_contact_attributes (GObject *obj,
     const GArray *contacts,
     GHashTable *attributes_hash)
 {
@@ -211,7 +211,7 @@ add_array:
           types);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
-          GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPE "/client-type", val);
+          GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES "/client-types", val);
 
       if (types != empty_array)
         g_ptr_array_unref (types);
@@ -258,7 +258,7 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
       array = gabble_presence_get_client_types_array (presence, res, TRUE);
 
 emit:
-      gabble_svc_connection_interface_client_type_emit_client_types_updated (
+      gabble_svc_connection_interface_client_types_emit_client_types_updated (
           conn, handle, (const gchar **) array->pdata);
 
       if (array != empty_array)
@@ -269,11 +269,11 @@ emit:
 }
 
 void
-conn_client_type_init (GabbleConnection *conn)
+conn_client_types_init (GabbleConnection *conn)
 {
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPE,
-    conn_client_type_fill_contact_attributes);
+    GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
+    conn_client_types_fill_contact_attributes);
 
   g_signal_connect (conn->presence_cache, "presences-updated",
       G_CALLBACK (presences_updated_cb), conn);

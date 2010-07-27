@@ -47,7 +47,7 @@ static GDebugKey keys[] = {
   { "mail",           GABBLE_DEBUG_MAIL_NOTIF },
   { "authentication", GABBLE_DEBUG_AUTH },
   { "share",          GABBLE_DEBUG_SHARE },
-  { "client-type",    GABBLE_DEBUG_CLIENT_TYPE },
+  { "client-types",   GABBLE_DEBUG_CLIENT_TYPES },
   { 0, },
 };
 

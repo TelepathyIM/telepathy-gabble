@@ -1,5 +1,5 @@
 <?xml version="1.0" ?>
-<node name="/Connection_Interface_Client_Type"
+<node name="/Connection_Interface_Client_Types"
   xmlns:tp="http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0">
   <tp:copyright>Copyright (C) 2010 Collabora Ltd.</tp:copyright>
   <tp:license xmlns="http://www.w3.org/1999/xhtml">
@@ -17,7 +17,7 @@ Lesser General Public License for more details.</p>
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
   </tp:license>
-  <interface name="org.freedesktop.Telepathy.Connection.Interface.ClientType.DRAFT"
+  <interface name="org.freedesktop.Telepathy.Connection.Interface.ClientTypes.DRAFT"
     tp:causes-havoc="experimental">
     <tp:added version="0.19.UNRELEASED">(as draft)</tp:added>
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
@@ -49,10 +49,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         <li>web</li>
         <li>sms (the client is not actually an instant messaging client
           but all messages sent to this contact will be delivered as SMSs)</li>
+        <li>game (a gaming device)</li>
       </ul>
 
       <p>If the empty list is given as the client types, this means that
-        details about the contact's client type is unknown. If there are
+        details about the contact's client types are unknown. If there are
         multiple resources of a contact online at one point in time, the
         client types of the most available resource will be returned. In
         other words, the client types are the types of the client whose
@@ -64,12 +65,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         <li>one his pc, with presence "busy",</li>
       </ul>
 
-      <p>then the methods in this interface will return the "phone" client type
-        as that is the more available resource. If some time later his phone's
-        presence moves to "away", then the
-        <tp:member-ref>ClientTypesUpdated</tp:member-ref> signal will notify
-        that his client type has changed from "phone" to "pc", because "busy"
-        is a more available presence than "away".</p>
+      <p>then the methods in this interface will return an array (with
+      one element: "phone") as the client types as that is the more
+      available resource. If some time later his phone's presence
+      moves to "away", then the
+      <tp:member-ref>ClientTypesUpdated</tp:member-ref> signal will
+      notify that his client type have changed from "phone" to "pc",
+      because "busy" is a more available presence than "away".</p>
 
     </tp:docstring>
 
@@ -82,7 +84,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           A contact.
         </tp:docstring>
       </tp:member>
-      <tp:member type="as" name="Client_Type">
+      <tp:member type="as" name="Client_Types">
         <tp:docstring>
           The contact's client types as documented earlier in this interface.
         </tp:docstring>
@@ -92,11 +94,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
     <method name="GetClientTypes" tp:name-for-bindings="Get_Client_Types">
       <tp:docstring>
         Return the client types of the given contacts, if they are
-        already known. If any of the given contacts' client types are not known,
-        request their current client types, but return immediately without waiting
-        for a reply; if a reply with a non-empty client type is later received
-        for those contacts, the <tp:member-ref>ClientTypesUpdated</tp:member-ref>
-        signal will be emitted for them.
+        already known. If any of the given contacts' client types are
+        not known, request their current client types, but return
+        immediately without waiting for a reply; if a reply with a
+        non-empty client type array is later received for those
+        contacts, the
+        <tp:member-ref>ClientTypesUpdated</tp:member-ref> signal will
+        be emitted for them.
 
         <tp:rationale>
           This method is appropriate for "lazy" client type finding, for instance
@@ -147,7 +151,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         </tp:docstring>
       </arg>
 
-      <arg direction="out" name="Client_Type" type="as">
+      <arg direction="out" name="Client_Types" type="as">
         <tp:docstring>
           The contact's client types. It MAY be empty, indicating that no client
           type information was found.
@@ -185,11 +189,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </arg>
     </signal>
 
-    <tp:contact-attribute name="client-type" type="as">
+    <tp:contact-attribute name="client-types" type="as">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>The same mapping that would be returned by
           <tp:member-ref>GetClientTypes</tp:member-ref> for this contact.
-          Omitted from the result if the contact's client type is not
+          Omitted from the result if the contact's client types are not
           known.</p>
       </tp:docstring>
     </tp:contact-attribute>

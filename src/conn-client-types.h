@@ -1,5 +1,5 @@
 /*
- * conn-client-type - Gabble client type interface
+ * conn-client-types - Gabble client types interface
  * Copyright (C) 2010 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -17,18 +17,18 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __CONN_CLIENT_TYPE_H__
-#define __CONN_CLIENT_TYPE_H__
+#ifndef __CONN_CLIENT_TYPES_H__
+#define __CONN_CLIENT_TYPES_H__
 
 #include "connection.h"
 #include <extensions/extensions.h>
 
 G_BEGIN_DECLS
 
-void conn_client_type_iface_init (gpointer g_iface, gpointer iface_data);
+void conn_client_types_iface_init (gpointer g_iface, gpointer iface_data);
 
-void conn_client_type_init (GabbleConnection *conn);
+void conn_client_types_init (GabbleConnection *conn);
 
 G_END_DECLS
 
-#endif /* __CONN_CLIENT_TYPE_H__ */
+#endif /* __CONN_CLIENT_TYPES_H__ */

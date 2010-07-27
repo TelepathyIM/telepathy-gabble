@@ -565,8 +565,6 @@ conn_client_type_dispose (GabbleConnection *conn)
   if (priv == NULL)
     return;
 
-  g_signal_handler_disconnect (conn->presence_cache,
-      priv->presences_updated_id);
   g_hash_table_unref (priv->handle_to_resource);
   g_hash_table_unref (priv->cache);
 

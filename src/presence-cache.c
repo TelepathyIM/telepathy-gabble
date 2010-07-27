@@ -1393,15 +1393,22 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (presence)
         {
-          WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
-          GPtrArray *types;
-
           gabble_presence_set_capabilities (
               presence, resource, cap_set, serial);
 
-          types = client_types_from_message (handle, query);
-          gabble_presence_update_client_types (presence, resource, types);
-          g_ptr_array_unref (types);
+          /* We can only get this information from actual disco replies,
+           * so we depend on having this information from the caps cache. */
+          if (cached_query_reply != NULL)
+            {
+              WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
+              GPtrArray *types;
+
+              if ((types = client_types_from_message (handle, query)) != NULL)
+                {
+                  gabble_presence_update_client_types (presence, resource, types);
+                  g_ptr_array_unref (types);
+                }
+            }
         }
       else
         {

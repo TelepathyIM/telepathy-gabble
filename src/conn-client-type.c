@@ -476,26 +476,68 @@ conn_client_type_fill_contact_attributes (GObject *obj,
     const GArray *contacts,
     GHashTable *attributes_hash)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (obj);
+  GabbleConnection *conn = GABBLE_CONNECTION (obj);
   guint i;
+  GPtrArray *empty_array;
+
+  empty_array = g_ptr_array_new ();
+  g_ptr_array_add (empty_array, NULL);
 
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GPtrArray *types;
+      GabblePresence *presence;
       GValue *val;
+      GPtrArray *types;
+      const gchar *res;
 
-      types = get_cached_client_types_or_query (self, handle, NULL, NULL, NULL);
+      presence = gabble_presence_cache_get (conn->presence_cache, handle);
+
+      if (presence == NULL)
+        {
+          types = empty_array;
+          goto add_array;
+        }
+
+      /* Find the best resource. */
+      res = gabble_presence_pick_resource_by_caps (presence,
+          DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+
+      if (res == NULL)
+        {
+          types = empty_array;
+          goto add_array;
+        }
+
+      /* Get the cached client types. */
+      types = gabble_presence_get_client_types_array (presence, res, FALSE);
 
       if (types == NULL)
-        continue;
+        {
+          /* There's a pending disco request happening, so don't give an
+           * empty array for his troubles. */
+          if (gabble_presence_cache_disco_in_progress (conn->presence_cache,
+                  handle, res))
+            continue;
 
+          /* This guy, on the other hand, can get the most empty of arrays. */
+          types = empty_array;
+        }
+
+add_array:
       val = tp_g_value_slice_new_boxed (
-          GABBLE_HASH_TYPE_CONTACT_CLIENT_TYPES, types->pdata);
+          dbus_g_type_get_collection ("GPtrArray", G_TYPE_STRING),
+          types);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
           GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPE "/client-type", val);
+
+      if (types != empty_array)
+        g_ptr_array_unref (types);
     }
+
+  g_ptr_array_unref (empty_array);
+
 }
 
 static void

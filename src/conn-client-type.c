@@ -255,7 +255,7 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
           goto emit;
         }
 
-      array = gabble_presence_get_client_types_array (presence, res, FALSE);
+      array = gabble_presence_get_client_types_array (presence, res, TRUE);
 
 emit:
       gabble_svc_connection_interface_client_type_emit_client_types_updated (

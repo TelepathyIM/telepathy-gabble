@@ -35,11 +35,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CLIENT_TYPE
 #include "debug.h"
 
-struct _GabbleConnectionClientTypePrivate
-{
-  guint presences_updated_id;
-};
-
 static gboolean
 dummy_caps_set_predicate (const GabbleCapabilitySet *set,
     gconstpointer user_data)
@@ -276,28 +271,10 @@ emit:
 void
 conn_client_type_init (GabbleConnection *conn)
 {
-  GabbleConnectionClientTypePrivate *priv;
-
-  conn->client_type_priv = g_slice_new0 (GabbleConnectionClientTypePrivate);
-  priv = conn->client_type_priv;
-
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
     GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPE,
     conn_client_type_fill_contact_attributes);
 
-  priv->presences_updated_id = g_signal_connect (
-      conn->presence_cache, "presences-updated",
+  g_signal_connect (conn->presence_cache, "presences-updated",
       G_CALLBACK (presences_updated_cb), conn);
-}
-
-void
-conn_client_type_dispose (GabbleConnection *conn)
-{
-  GabbleConnectionClientTypePrivate *priv = conn->client_type_priv;
-
-  if (priv == NULL)
-    return;
-
-  g_slice_free (GabbleConnectionClientTypePrivate, priv);
-  conn->client_type_priv = NULL;
 }

@@ -768,7 +768,8 @@ gabble_presence_update_client_types (GabblePresence *presence,
 
 GPtrArray *
 gabble_presence_get_client_types_array (GabblePresence *presence,
-    const gchar *resource)
+    const gchar *resource,
+    gboolean add_null)
 {
   Resource *res;
   GPtrArray *array;
@@ -801,7 +802,8 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
   if (res->client_type & GABBLE_CLIENT_TYPE_SMS)
     g_ptr_array_add (array, g_strdup ("sms"));
 
-  g_ptr_array_add (array, NULL);
+  if (add_null)
+    g_ptr_array_add (array, NULL);
 
   return array;
 }

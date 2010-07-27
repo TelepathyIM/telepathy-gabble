@@ -145,7 +145,7 @@ void gabble_presence_update_client_types (GabblePresence *presence,
     const gchar *resource, GPtrArray *client_types);
 
 GPtrArray * gabble_presence_get_client_types_array (GabblePresence *presence,
-    const gchar *resource);
+    const gchar *resource, gboolean add_null);
 
 G_END_DECLS
 

@@ -329,7 +329,7 @@ client_type_get_client_types (GabbleSvcConnectionInterfaceClientType *iface,
         continue;
 
       /* Get the cached client types. */
-      types = gabble_presence_get_client_types_array (presence, res);
+      types = gabble_presence_get_client_types_array (presence, res, TRUE);
 
       if (types == NULL)
         {

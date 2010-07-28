@@ -155,18 +155,18 @@ def test(q, bus, conn, stream):
     bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     call_async(q, conn.Location, 'GetLocations', [bob_handle])
 
-    # Gabble sends a pubsub query
-    event = q.expect('stream-iq', iq_type='get',
-        query_ns=ns.PUBSUB)
-
-    # GetLocations doesn't wait for the reply
-    e = q.expect('dbus-return', method='GetLocations')
-    locations = e.value[0]
+    # Gabble sends a pubsub query.
+    # GetLocations doesn't wait for the reply.
+    stream_iq, get_locations = q.expect_many(
+        EventPattern('stream-iq', iq_type='get', query_ns=ns.PUBSUB),
+        EventPattern('dbus-return', method='GetLocations'),
+        )
+    locations = get_locations.value[0]
     # Location isn't known yet
     assertLength(0, locations)
 
     # reply with Bob's location
-    result = make_result_iq(stream, event.stanza)
+    result = make_result_iq(stream, stream_iq.stanza)
     result['from'] = 'bob@foo.com'
     query = result.firstChildElement()
     geoloc = query.addElement((ns.GEOLOC, 'geoloc'))

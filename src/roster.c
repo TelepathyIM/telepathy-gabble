@@ -96,6 +96,9 @@ typedef enum
 typedef struct _GabbleRosterItemEdit GabbleRosterItemEdit;
 struct _GabbleRosterItemEdit
 {
+  TpHandleRepoIface *contact_repo;
+  TpHandle handle;
+
   /* if these are ..._INVALID, that means don't edit */
   GabbleRosterSubscription new_subscription;
   GoogleItemType new_google_type;
@@ -2211,9 +2214,14 @@ gabble_roster_new (GabbleConnection *conn)
 }
 
 static GabbleRosterItemEdit *
-item_edit_new (void)
+item_edit_new (TpHandleRepoIface *contact_repo,
+    TpHandle handle)
 {
   GabbleRosterItemEdit *self = g_slice_new0 (GabbleRosterItemEdit);
+
+  tp_handle_ref (contact_repo, handle);
+  self->contact_repo = g_object_ref (contact_repo);
+  self->handle = handle;
   self->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_INVALID;
   self->new_google_type = GOOGLE_ITEM_TYPE_INVALID;
   return self;
@@ -2225,10 +2233,10 @@ item_edit_free (GabbleRosterItemEdit *edits)
   if (!edits)
     return;
 
-  if (edits->add_to_groups)
-    tp_handle_set_destroy (edits->add_to_groups);
-  if (edits->remove_from_groups)
-    tp_handle_set_destroy (edits->remove_from_groups);
+  tp_handle_unref (edits->contact_repo, edits->handle);
+  g_object_unref (edits->contact_repo);
+  tp_clear_pointer (&edits->add_to_groups, tp_handle_set_destroy);
+  tp_clear_pointer (&edits->remove_from_groups, tp_handle_set_destroy);
   g_free (edits->new_name);
   g_slice_free (GabbleRosterItemEdit, edits);
 }
@@ -2551,7 +2559,7 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   if (blocked == (orig_type == GOOGLE_ITEM_TYPE_BLOCKED))
     return TRUE;
 
-  item->unsent_edits = item_edit_new ();
+  item->unsent_edits = item_edit_new (contact_repo, handle);
 
   /* temporarily set the desired block state and generate a message */
   if (blocked)
@@ -2654,7 +2662,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
     {
       DEBUG ("immediate edit to contact#%u - change name to \"%s\"",
              handle, name);
-      item->unsent_edits = item_edit_new ();
+      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
   message = _gabble_roster_item_to_message (roster, handle, &item_node, NULL);
@@ -2715,7 +2723,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
     {
       DEBUG ("immediate edit to contact#%u - change subscription to REMOVE",
              handle);
-      item->unsent_edits = item_edit_new ();
+      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
   subscription = item->subscription;
@@ -2779,7 +2787,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
              handle);
       if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
         item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-      item->unsent_edits = item_edit_new ();
+      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
   /* keep the handle valid until roster_edited_cb runs; it will do the unref */
@@ -2837,7 +2845,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   else
     {
       DEBUG ("immediate edit to contact#%u - add to group#%u", handle, group);
-      item->unsent_edits = item_edit_new ();
+      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
   tp_handle_set_add (item->groups, group);
@@ -2901,7 +2909,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
     {
       DEBUG ("immediate edit to contact#%u - remove from group#%u", handle,
           group);
-      item->unsent_edits = item_edit_new ();
+      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
   /* temporarily remove the handle from the set (taking a reference),

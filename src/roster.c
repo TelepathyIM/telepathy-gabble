@@ -1226,16 +1226,20 @@ flicker_prevention_timeout (gpointer ctx_)
   if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_NONE
       && !item->ask_subscribe)
     {
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) ctx->roster->priv->conn,
+          TP_HANDLE_TYPE_CONTACT);
       GabbleRosterChannel *sub_chan = _gabble_roster_get_channel (ctx->roster,
           TP_HANDLE_TYPE_LIST, GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
-      TpIntSet *rem = tp_intset_new_containing (ctx->handle);
+      TpHandleSet *rem = tp_handle_set_new (contact_repo);
 
+      tp_handle_set_add (rem, ctx->handle);
       DEBUG ("removing %u from subscribe", ctx->handle);
-      tp_group_mixin_change_members ((GObject *) sub_chan, "", NULL, rem, NULL,
-          NULL, 0, 0);
+      tp_group_mixin_change_members ((GObject *) sub_chan, "",
+          NULL, tp_handle_set_peek (rem), NULL, NULL, 0, 0);
       item->subscribe = TP_SUBSCRIPTION_STATE_NO;
 
-      tp_intset_destroy (rem);
+      tp_handle_set_destroy (rem);
     }
   else
     {

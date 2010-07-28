@@ -952,20 +952,41 @@ roster_item_cancel_flicker_timeout (GabbleRosterItem *item)
     }
 }
 
-static void
+static gboolean
 roster_item_set_publish (GabbleRosterItem *item,
     TpSubscriptionState publish,
     const gchar *request)
 {
+  gboolean changed;
+
   g_assert (publish == TP_SUBSCRIPTION_STATE_ASK || request == NULL);
+
+  if (item->publish != publish)
+    changed = TRUE;
 
   item->publish = publish;
 
   if (tp_strdiff (item->publish_request, request))
     {
+      changed = TRUE;
       g_free (item->publish_request);
       item->publish_request = g_strdup (request);
     }
+
+  return changed;
+}
+
+static gboolean
+roster_item_set_subscribe (GabbleRosterItem *item,
+    TpSubscriptionState subscribe)
+{
+  if (item->subscribe != subscribe)
+    {
+      item->subscribe = subscribe;
+      return TRUE;
+    }
+
+  return FALSE;
 }
 
 static gboolean
@@ -1109,13 +1130,13 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
             {
-              tp_handle_set_add (changed, handle);
-              roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+              if (roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL))
+                tp_handle_set_add (changed, handle);
             }
           else
             {
-              tp_handle_set_add (changed, handle);
-              roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_YES, NULL);
+              if (roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_YES, NULL))
+                tp_handle_set_add (changed, handle);
             }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_NONE:
@@ -1124,8 +1145,9 @@ process_roster (
           /* publish channel is a bit odd, the roster item doesn't tell us
            * if someone is awaiting our approval - we get this via presence
            * type=subscribe, so we have to not remove them if they're
-           * already local_pending in our publish channel */
-          if (item->publish != TP_SUBSCRIPTION_STATE_ASK)
+           * already local_pending in our publish channel. NO -> NO is a
+           * no-op, so YES -> NO is the only case left. */
+          if (item->publish == TP_SUBSCRIPTION_STATE_YES)
             {
               tp_handle_set_add (changed, handle);
               roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
@@ -1142,13 +1164,13 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
             {
-              tp_handle_set_add (changed, handle);
-              item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+              if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO))
+                tp_handle_set_add (changed, handle);
             }
           else
             {
-              tp_handle_set_add (changed, handle);
-              item->subscribe = TP_SUBSCRIPTION_STATE_YES;
+              if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_YES))
+                tp_handle_set_add (changed, handle);
             }
 
           roster_item_cancel_flicker_timeout (item);
@@ -1170,8 +1192,8 @@ process_roster (
                   else
                     roster_item_cancel_flicker_timeout (item);
 
-                  tp_handle_set_add (changed, handle);
-                  item->subscribe = TP_SUBSCRIPTION_STATE_ASK;
+                  if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_ASK))
+                    tp_handle_set_add (changed, handle);
                 }
             }
           else if (item->flicker_prevention_id == 0)
@@ -1179,8 +1201,8 @@ process_roster (
               /* We're not expecting this contact's ask=subscribe to
                * flicker off and on again, so let's remove them immediately.
                */
-              tp_handle_set_add (changed, handle);
-              item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+              if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO))
+                tp_handle_set_add (changed, handle);
             }
           else
             {
@@ -1188,8 +1210,9 @@ process_roster (
             }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-          tp_handle_set_add (changed, handle);
-          item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+          if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO))
+            tp_handle_set_add (changed, handle);
+
           break;
         default:
           g_assert_not_reached ();
@@ -1217,13 +1240,18 @@ process_roster (
             }
           else
             {
-              tp_handle_set_add (changed, handle);
+              if (!item->stored)
+                tp_handle_set_add (changed, handle);
+
               item->stored = TRUE;
             }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
           tp_handle_set_remove (changed, handle);
-          tp_handle_set_add (removed, handle);
+
+          if (item->stored)
+            tp_handle_set_add (removed, handle);
+
           item->stored = FALSE;
           break;
         default:
@@ -1517,6 +1545,9 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("making %s (handle %u) local pending on the publish channel",
           from, handle);
 
+      /* we re-emit ContactsChanged here, even if their state was already ASK
+       * with the same message, because the fact that they've nagged us again
+       * is significant */
       roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_ASK, status_message);
 
       tmp = tp_handle_set_new (contact_repo);

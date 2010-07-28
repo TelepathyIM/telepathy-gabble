@@ -280,7 +280,7 @@ gabble_base_channel_set_property (GObject *object,
        */
       if (g_value_get_boolean (value))
         g_warning ("%s: ignoring TRUE value for \"requested\". %s should have "
-            "overriden the property if it wanted it to be settable",
+            "overridden the property if it wanted it to be settable",
             G_STRFUNC, G_OBJECT_TYPE_NAME (object));
 
       break;

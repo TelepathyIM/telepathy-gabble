@@ -2547,13 +2547,11 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
         }
       return TRUE;
     }
-  else
-    {
-      item->unsent_edits = item_edit_new ();
-    }
 
   if (blocked == (orig_type == GOOGLE_ITEM_TYPE_BLOCKED))
     return TRUE;
+
+  item->unsent_edits = item_edit_new ();
 
   /* temporarily set the desired block state and generate a message */
   if (blocked)

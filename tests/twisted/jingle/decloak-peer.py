@@ -68,7 +68,8 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
         # RequestStreams should now happily complete
         q.expect('dbus-return', method='RequestStreams')
     else:
-        q.expect('dbus-error', method='RequestStreams')
+        q.expect('dbus-error', method='RequestStreams',
+                name=cs.OFFLINE)
 
 if __name__ == '__main__':
     exec_test(test, timeout=10)

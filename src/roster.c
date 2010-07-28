@@ -2293,8 +2293,6 @@ roster_item_apply_edits (GabbleRoster *roster,
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItemEdit *edits = item->unsent_edits;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *message;
 
   DEBUG ("Applying edits to contact#%u", contact);
@@ -2440,24 +2438,25 @@ roster_item_apply_edits (GabbleRoster *roster,
 
   DEBUG ("Contact#%u did change, sending message", contact);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, contact);
+
   message = _gabble_roster_item_to_message (roster, contact, NULL,
       &edited_item);
+
+  /* we're sending the unsent edits - on success, roster_edited_cb will own
+   * them */
+  item->unsent_edits = NULL;
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(contact), NULL) && ret;
-  if (ret)
+      message, roster_edited_cb, G_OBJECT (roster), edits, NULL)
+    && ret;
+
+  /* if send_with_reply failed, then roster_edited_cb will never run */
+  if (!ret)
     {
-      /* assume everything will be OK */
-      item_edit_free (item->unsent_edits);
-      item->unsent_edits = NULL;
-    }
-  else
-    {
-      /* FIXME: somehow have another try at it later? leave the
-       * edits in unsent_edits for this purpose, anyway
-       */
+      /* FIXME: somehow have another try at it later? We can't just put it in
+       * unsent_edits, because that will make all future roster manipulations
+       * think we still have a request in flight, so we'll never send another
+       * request for this contact */
+      item_edit_free (edits);
     }
 
   if (edited_item.groups != item->groups)
@@ -2475,18 +2474,16 @@ roster_edited_cb (GabbleConnection *conn,
                   gpointer user_data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
-  TpHandle contact = GPOINTER_TO_UINT (user_data);
-  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, contact);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItemEdit *edit = user_data;
+  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, edit->handle);
 
   if (item != NULL && item->unsent_edits != NULL)
     {
       /* more edits have been queued since we sent this batch */
-      roster_item_apply_edits (roster, contact, item);
+      roster_item_apply_edits (roster, edit->handle, item);
     }
 
-  tp_handle_unref (contact_repo, contact);
+  item_edit_free (edit);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -2527,6 +2524,7 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   GoogleItemType orig_type;
   LmMessage *message;
   gboolean ret;
+  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2560,25 +2558,29 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
     return TRUE;
 
   item->unsent_edits = item_edit_new (contact_repo, handle);
+  in_flight = item_edit_new (contact_repo, handle);
 
   /* temporarily set the desired block state and generate a message */
   if (blocked)
     item->google_type = GOOGLE_ITEM_TYPE_BLOCKED;
   else
     item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
+
+  in_flight->new_google_type = item->google_type;
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   item->google_type = orig_type;
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
+      message, roster_edited_cb, G_OBJECT (roster), in_flight, error);
 
   lm_message_unref (message);
 
   if (blocked)
       gabble_presence_cache_really_remove (priv->conn->presence_cache, handle);
+
+  /* if send_with_reply failed, then roster_edited_cb will never run */
+  if (!ret)
+    item_edit_free (in_flight);
 
   return ret;
 }
@@ -2637,6 +2639,7 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   LmMessage *message;
   LmMessageNode *item_node;
   gboolean ret;
+  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2669,13 +2672,18 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
 
   lm_message_node_set_attribute (item_node, "name", name);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
+  in_flight = item_edit_new (contact_repo, handle);
+  in_flight->new_name = g_strdup (name);
+
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
+      in_flight, error);
 
   lm_message_unref (message);
+
+  /* if send_with_reply failed, then roster_edited_cb will never run */
+  if (!ret)
+    item_edit_free (in_flight);
 
   return ret;
 }
@@ -2692,6 +2700,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   GabbleRosterSubscription subscription;
   LmMessage *message;
   gboolean ret;
+  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2729,15 +2738,21 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   subscription = item->subscription;
   item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
+
+  in_flight = item_edit_new (contact_repo, handle);
+  in_flight->new_subscription = item->subscription;
+
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
+      in_flight, error);
   lm_message_unref (message);
 
   item->subscription = subscription;
+
+  /* if send_with_reply failed, then roster_edited_cb will never run */
+  if (!ret)
+    item_edit_free (in_flight);
 
   return ret;
 }
@@ -2754,6 +2769,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
   LmMessage *message;
   gboolean do_add = FALSE;
   gboolean ret;
+  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2790,12 +2806,12 @@ gabble_roster_handle_add (GabbleRoster *roster,
       item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
+  in_flight = item_edit_new (contact_repo, handle);
+  in_flight->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
+
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
+      message, roster_edited_cb, G_OBJECT (roster), in_flight, error);
   lm_message_unref (message);
 
   return ret;
@@ -2815,6 +2831,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   GabbleRosterItem *item;
   LmMessage *message;
   gboolean ret;
+  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2848,17 +2865,22 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
       item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
+  in_flight = item_edit_new (contact_repo, handle);
+  in_flight->add_to_groups = tp_handle_set_new (group_repo);
+  tp_handle_set_add (in_flight->add_to_groups, group);
+
   tp_handle_set_add (item->groups, group);
   message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
   STANZA_DEBUG (message, "Roster item as message");
   tp_handle_set_remove (item->groups, group);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
+      message, roster_edited_cb, G_OBJECT (roster), in_flight, error);
   lm_message_unref (message);
+
+  /* if send_with_reply failed, then roster_edited_cb will never run */
+  if (!ret)
+    item_edit_free (in_flight);
 
   return ret;
 }
@@ -2877,6 +2899,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   GabbleRosterItem *item;
   LmMessage *message;
   gboolean ret, was_in_group;
+  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2912,6 +2935,10 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
       item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
+  in_flight = item_edit_new (contact_repo, handle);
+  in_flight->remove_from_groups = tp_handle_set_new (group_repo);
+  tp_handle_set_add (in_flight->remove_from_groups, group);
+
   /* temporarily remove the handle from the set (taking a reference),
    * make the message, and put it back afterwards
    */
@@ -2922,12 +2949,13 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
     tp_handle_set_add (item->groups, group);
   tp_handle_unref (group_repo, group);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
+      message, roster_edited_cb, G_OBJECT (roster), in_flight, error);
   lm_message_unref (message);
+
+  /* if send_with_reply failed, then roster_edited_cb will never run */
+  if (!ret)
+    item_edit_free (in_flight);
 
   return ret;
 }

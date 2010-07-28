@@ -27,6 +27,7 @@
 #include <string.h>
 
 #include <dbus/dbus-glib.h>
+#include <telepathy-glib/base-contact-list.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
@@ -117,6 +118,14 @@ struct _GabbleRosterItem
    * already sent is acknowledged - this prevents some race conditions
    */
   GabbleRosterItemEdit *unsent_edits;
+
+  /* Might not match @subscription and @ask_subscribe exactly, in cases where
+   * we're working around server breakage */
+  TpSubscriptionState subscribe;
+  TpSubscriptionState publish;
+  gchar *publish_request;
+  gboolean stored;
+  gboolean blocked;
 
   /* If non-zero, the GSource id for a call to flicker_prevention_timeout. */
   guint flicker_prevention_id;
@@ -506,6 +515,8 @@ _gabble_roster_item_ensure (GabbleRoster *roster,
         }
 
       item = g_slice_new0 (GabbleRosterItem);
+      item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+      item->publish = TP_SUBSCRIPTION_STATE_NO;
       item->name = alias;
       item->groups = tp_handle_set_new (group_repo);
       tp_handle_ref (contact_repo, handle);
@@ -1183,6 +1194,7 @@ flicker_prevention_timeout (gpointer ctx_)
       DEBUG ("removing %u from subscribe", ctx->handle);
       tp_group_mixin_change_members ((GObject *) sub_chan, "", NULL, rem, NULL,
           NULL, 0, 0);
+      item->subscribe = TP_SUBSCRIPTION_STATE_NO;
 
       tp_intset_destroy (rem);
     }
@@ -1221,6 +1233,22 @@ roster_item_cancel_flicker_timeout (GabbleRosterItem *item)
     {
       g_source_remove (item->flicker_prevention_id);
       item->flicker_prevention_id = 0;
+    }
+}
+
+static void
+roster_item_set_publish (GabbleRosterItem *item,
+    TpSubscriptionState publish,
+    const gchar *request)
+{
+  g_assert (publish == TP_SUBSCRIPTION_STATE_ASK || request == NULL);
+
+  item->publish = publish;
+
+  if (tp_strdiff (item->publish_request, request))
+    {
+      g_free (item->publish_request);
+      item->publish_request = g_strdup (request);
     }
 }
 
@@ -1382,9 +1410,15 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_FROM:
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
-            tp_intset_add (pub_rem, handle);
+            {
+              tp_intset_add (pub_rem, handle);
+              roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+            }
           else
-            tp_intset_add (pub_add, handle);
+            {
+              tp_intset_add (pub_add, handle);
+              roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_YES, NULL);
+            }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_NONE:
         case GABBLE_ROSTER_SUBSCRIPTION_TO:
@@ -1397,6 +1431,7 @@ process_roster (
                 handle))
             {
               tp_intset_add (pub_rem, handle);
+              roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
             }
           break;
         default:
@@ -1409,9 +1444,15 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_TO:
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
-            tp_intset_add (sub_rem, handle);
+            {
+              tp_intset_add (sub_rem, handle);
+              item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+            }
           else
-            tp_intset_add (sub_add, handle);
+            {
+              tp_intset_add (sub_add, handle);
+              item->subscribe = TP_SUBSCRIPTION_STATE_YES;
+            }
 
           roster_item_cancel_flicker_timeout (item);
 
@@ -1433,6 +1474,7 @@ process_roster (
                     roster_item_cancel_flicker_timeout (item);
 
                   tp_intset_add (sub_rp, handle);
+                  item->subscribe = TP_SUBSCRIPTION_STATE_ASK;
                 }
             }
           else if (item->flicker_prevention_id == 0)
@@ -1441,6 +1483,7 @@ process_roster (
                * flicker off and on again, so let's remove them immediately.
                */
               tp_intset_add (sub_rem, handle);
+              item->subscribe = TP_SUBSCRIPTION_STATE_NO;
             }
           else
             {
@@ -1449,6 +1492,7 @@ process_roster (
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
           tp_intset_add (sub_rem, handle);
+          item->subscribe = TP_SUBSCRIPTION_STATE_NO;
           break;
         default:
           g_assert_not_reached ();
@@ -1470,12 +1514,19 @@ process_roster (
               !tp_handle_set_is_member (sub_chan->group.remote_pending,
                   handle) &&
               !_google_roster_item_should_keep (jid, item))
-            tp_intset_add (stored_rem, handle);
+            {
+              tp_intset_add (stored_rem, handle);
+              item->stored = FALSE;
+            }
           else
-            tp_intset_add (stored_add, handle);
+            {
+              tp_intset_add (stored_add, handle);
+              item->stored = TRUE;
+            }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
           tp_intset_add (stored_rem, handle);
+          item->stored = FALSE;
           break;
         default:
           g_assert_not_reached ();
@@ -1491,12 +1542,19 @@ process_roster (
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
-                tp_intset_add (deny_add, handle);
+                {
+                  tp_intset_add (deny_add, handle);
+                  item->blocked = TRUE;
+                }
               else
-                tp_intset_add (deny_rem, handle);
+                {
+                  tp_intset_add (deny_rem, handle);
+                  item->blocked = FALSE;
+                }
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
               tp_intset_add (deny_rem, handle);
+              item->blocked = FALSE;
               break;
             default:
               g_assert_not_reached ();
@@ -1721,6 +1779,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   GabbleRosterChannel *chan = NULL;
   gboolean changed;
   LmHandlerResult ret;
+  GabbleRosterItem *item;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -1762,6 +1821,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   if (child_node)
     status_message = lm_message_node_get_value (child_node);
 
+  item = _gabble_roster_item_ensure (roster, handle);
+
   switch (sub_type)
     {
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
@@ -1776,6 +1837,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
           list_handle, NULL, NULL);
       tp_group_mixin_change_members ((GObject *) chan, status_message,
           NULL, NULL, tmp, NULL, 0, 0);
+      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_ASK, status_message);
 
       tp_intset_destroy (tmp);
 
@@ -1793,6 +1855,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
           list_handle, NULL, NULL);
       changed = tp_group_mixin_change_members ((GObject *) chan,
           status_message, NULL, tmp, NULL, NULL, 0, 0);
+      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
@@ -1812,6 +1875,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
           list_handle, NULL, NULL);
       changed = tp_group_mixin_change_members ((GObject *) chan,
           status_message, tmp, NULL, NULL, NULL, 0, 0);
+      item->subscribe = TP_SUBSCRIPTION_STATE_YES;
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
@@ -1831,6 +1895,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
           list_handle, NULL, NULL);
       changed = tp_group_mixin_change_members ((GObject *) chan,
           status_message, NULL, tmp, NULL, NULL, 0, 0);
+      item->subscribe = TP_SUBSCRIPTION_STATE_NO;
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
@@ -2836,6 +2901,7 @@ gabble_roster_handle_unsubscribed (
   GabbleRosterChannel *publish = _gabble_roster_get_channel (roster,
       TP_HANDLE_TYPE_LIST, GABBLE_LIST_HANDLE_PUBLISH, NULL, NULL);
   gboolean ret;
+  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, handle);
 
   /* send <presence type="unsubscribed"> */
   ret = gabble_connection_send_presence (roster->priv->conn,
@@ -2851,6 +2917,7 @@ gabble_roster_handle_unsubscribed (
       tp_intset_add (rem, handle);
       tp_group_mixin_change_members (G_OBJECT (publish), "", NULL, rem, NULL,
           NULL, 0, 0);
+      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
 
       tp_intset_destroy (rem);
     }

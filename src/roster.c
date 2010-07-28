@@ -1379,15 +1379,15 @@ process_roster (
 
   /* asymmetry is because we don't get locally pending subscription
    * requests via <roster>, we get it via <presence> */
-  TpIntSet *pub_add = tp_intset_new (),
-           *pub_rem = tp_intset_new (),
-           *sub_add = tp_intset_new (),
-           *sub_rem = tp_intset_new (),
-           *sub_rp = tp_intset_new (),
-           *stored_add = tp_intset_new (),
-           *stored_rem = tp_intset_new ();
+  TpHandleSet *pub_add = tp_handle_set_new (contact_repo);
+  TpHandleSet *pub_rem = tp_handle_set_new (contact_repo);
+  TpHandleSet *sub_add = tp_handle_set_new (contact_repo);
+  TpHandleSet *sub_rem = tp_handle_set_new (contact_repo);
+  TpHandleSet *sub_rp = tp_handle_set_new (contact_repo);
+  TpHandleSet *stored_add = tp_handle_set_new (contact_repo);
+  TpHandleSet *stored_rem = tp_handle_set_new (contact_repo);
   /* We may not have a deny list */
-  TpIntSet *deny_add, *deny_rem;
+  TpHandleSet *deny_add, *deny_rem;
 
   GHashTable *group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
       (GDestroyNotify) _group_mem_update_destroy);
@@ -1399,8 +1399,8 @@ process_roster (
 
   if (google_roster)
     {
-      deny_add = tp_intset_new ();
-      deny_rem = tp_intset_new ();
+      deny_add = tp_handle_set_new (contact_repo);
+      deny_rem = tp_handle_set_new (contact_repo);
     }
   else
     {
@@ -1450,12 +1450,12 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
             {
-              tp_intset_add (pub_rem, handle);
+              tp_handle_set_add (pub_rem, handle);
               roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
             }
           else
             {
-              tp_intset_add (pub_add, handle);
+              tp_handle_set_add (pub_add, handle);
               roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_YES, NULL);
             }
           break;
@@ -1468,7 +1468,7 @@ process_roster (
            * already local_pending in our publish channel */
           if (item->publish != TP_SUBSCRIPTION_STATE_ASK)
             {
-              tp_intset_add (pub_rem, handle);
+              tp_handle_set_add (pub_rem, handle);
               roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
             }
           break;
@@ -1483,12 +1483,12 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
             {
-              tp_intset_add (sub_rem, handle);
+              tp_handle_set_add (sub_rem, handle);
               item->subscribe = TP_SUBSCRIPTION_STATE_NO;
             }
           else
             {
-              tp_intset_add (sub_add, handle);
+              tp_handle_set_add (sub_add, handle);
               item->subscribe = TP_SUBSCRIPTION_STATE_YES;
             }
 
@@ -1511,7 +1511,7 @@ process_roster (
                   else
                     roster_item_cancel_flicker_timeout (item);
 
-                  tp_intset_add (sub_rp, handle);
+                  tp_handle_set_add (sub_rp, handle);
                   item->subscribe = TP_SUBSCRIPTION_STATE_ASK;
                 }
             }
@@ -1520,7 +1520,7 @@ process_roster (
               /* We're not expecting this contact's ask=subscribe to
                * flicker off and on again, so let's remove them immediately.
                */
-              tp_intset_add (sub_rem, handle);
+              tp_handle_set_add (sub_rem, handle);
               item->subscribe = TP_SUBSCRIPTION_STATE_NO;
             }
           else
@@ -1529,7 +1529,7 @@ process_roster (
             }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-          tp_intset_add (sub_rem, handle);
+          tp_handle_set_add (sub_rem, handle);
           item->subscribe = TP_SUBSCRIPTION_STATE_NO;
           break;
         default:
@@ -1552,17 +1552,17 @@ process_roster (
               item->subscribe != TP_SUBSCRIPTION_STATE_ASK &&
               !_google_roster_item_should_keep (jid, item))
             {
-              tp_intset_add (stored_rem, handle);
+              tp_handle_set_add (stored_rem, handle);
               item->stored = FALSE;
             }
           else
             {
-              tp_intset_add (stored_add, handle);
+              tp_handle_set_add (stored_add, handle);
               item->stored = TRUE;
             }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-          tp_intset_add (stored_rem, handle);
+          tp_handle_set_add (stored_rem, handle);
           item->stored = FALSE;
           break;
         default:
@@ -1580,17 +1580,17 @@ process_roster (
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
                 {
-                  tp_intset_add (deny_add, handle);
+                  tp_handle_set_add (deny_add, handle);
                   item->blocked = TRUE;
                 }
               else
                 {
-                  tp_intset_add (deny_rem, handle);
+                  tp_handle_set_add (deny_rem, handle);
                   item->blocked = FALSE;
                 }
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              tp_intset_add (deny_rem, handle);
+              tp_handle_set_add (deny_rem, handle);
               item->blocked = FALSE;
               break;
             default:
@@ -1608,15 +1608,18 @@ process_roster (
 
   DEBUG ("calling change members on stored channel");
   tp_group_mixin_change_members ((GObject *) chan,
-        "", stored_add, stored_rem, NULL, NULL, 0, 0);
+        "", tp_handle_set_peek (stored_add), tp_handle_set_peek (stored_rem),
+        NULL, NULL, 0, 0);
 
   DEBUG ("calling change members on publish channel");
   tp_group_mixin_change_members ((GObject *) pub_chan,
-        "", pub_add, pub_rem, NULL, NULL, 0, 0);
+        "", tp_handle_set_peek (pub_add),
+        tp_handle_set_peek (pub_rem), NULL, NULL, 0, 0);
 
   DEBUG ("calling change members on subscribe channel");
   tp_group_mixin_change_members ((GObject *) sub_chan,
-        "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
+        "", tp_handle_set_peek (sub_add),
+        tp_handle_set_peek (sub_rem), NULL, tp_handle_set_peek (sub_rp), 0, 0);
 
   DEBUG ("calling change members on any group channels");
   g_hash_table_foreach_remove (group_update_table, _update_group, roster);
@@ -1628,19 +1631,20 @@ process_roster (
 
       DEBUG ("calling change members on deny channel");
       tp_group_mixin_change_members ((GObject *) chan,
-          "", deny_add, deny_rem, NULL, NULL, conn->self_handle, 0);
+          "", tp_handle_set_peek (deny_add), tp_handle_set_peek (deny_rem),
+          NULL, NULL, conn->self_handle, 0);
 
-      tp_intset_destroy (deny_add);
-      tp_intset_destroy (deny_rem);
+      tp_handle_set_destroy (deny_add);
+      tp_handle_set_destroy (deny_rem);
     }
 
-  tp_intset_destroy (pub_add);
-  tp_intset_destroy (pub_rem);
-  tp_intset_destroy (sub_add);
-  tp_intset_destroy (sub_rem);
-  tp_intset_destroy (sub_rp);
-  tp_intset_destroy (stored_add);
-  tp_intset_destroy (stored_rem);
+  tp_handle_set_destroy (pub_add);
+  tp_handle_set_destroy (pub_rem);
+  tp_handle_set_destroy (sub_add);
+  tp_handle_set_destroy (sub_rem);
+  tp_handle_set_destroy (sub_rp);
+  tp_handle_set_destroy (stored_add);
+  tp_handle_set_destroy (stored_rem);
   g_hash_table_destroy (group_update_table);
   tp_handle_set_destroy (referenced_handles);
 }

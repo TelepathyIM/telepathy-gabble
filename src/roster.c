@@ -1427,8 +1427,7 @@ process_roster (
            * if someone is awaiting our approval - we get this via presence
            * type=subscribe, so we have to not remove them if they're
            * already local_pending in our publish channel */
-          if (!tp_handle_set_is_member (pub_chan->group.local_pending,
-                handle))
+          if (item->publish != TP_SUBSCRIPTION_STATE_ASK)
             {
               tp_intset_add (pub_rem, handle);
               roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
@@ -1461,7 +1460,7 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_FROM:
           if (item->ask_subscribe)
             {
-              if (tp_handle_set_is_member (sub_chan->group.members, handle))
+              if (item->subscribe == TP_SUBSCRIPTION_STATE_YES)
                 {
                   DEBUG ("not letting gtalk demote member %u to pending",
                       handle);
@@ -1511,8 +1510,7 @@ process_roster (
                * when you try to subscribe to someone; see
                * test-google-roster.py.
                */
-              !tp_handle_set_is_member (sub_chan->group.remote_pending,
-                  handle) &&
+              item->subscribe != TP_SUBSCRIPTION_STATE_ASK &&
               !_google_roster_item_should_keep (jid, item))
             {
               tp_intset_add (stored_rem, handle);
@@ -1670,16 +1668,26 @@ got_roster_iq (GabbleRoster *roster,
   if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
     {
       /* We are handling the response to our initial roster request. */
-      GabbleRosterChannel *sub_chan;
-      GArray *members;
+      GHashTableIter iter;
+      gpointer k, v;
+      GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+          g_hash_table_size (roster->priv->items));
 
       /* If we're subscribed to somebody (subscription=to or =both),
        * and we haven't received presence from them,
        * we know they're offline. Let clients know that.
        */
-      sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
-      tp_group_mixin_get_members ((GObject *) sub_chan, &members, NULL);
+      g_hash_table_iter_init (&iter, roster->priv->items);
+
+      while (g_hash_table_iter_next (&iter, &k, &v))
+        {
+          GabbleRosterItem *item = v;
+          TpHandle contact = GPOINTER_TO_UINT (k);
+
+          if (item->subscribe == TP_SUBSCRIPTION_STATE_YES)
+            g_array_append_val (members, contact);
+        }
+
       conn_presence_emit_presence_update (priv->conn, members);
       g_array_free (members, TRUE);
 
@@ -2910,7 +2918,7 @@ gabble_roster_handle_unsubscribed (
   /* remove it from publish:local_pending here, because roster callback doesn't
      know if it can (subscription='none' is used both during request and
      when it's rejected) */
-  if (tp_handle_set_is_member (publish->group.local_pending, handle))
+  if (item != NULL && item->publish == TP_SUBSCRIPTION_STATE_ASK)
     {
       TpIntSet *rem = tp_intset_new ();
 

@@ -3003,14 +3003,14 @@ gabble_roster_handle_unsubscribed (
      when it's rejected) */
   if (item != NULL && item->publish == TP_SUBSCRIPTION_STATE_ASK)
     {
-      TpIntSet *rem = tp_intset_new ();
+      TpHandleSet *rem = tp_handle_set_new (contact_repo);
 
-      tp_intset_add (rem, handle);
-      tp_group_mixin_change_members (G_OBJECT (publish), "", NULL, rem, NULL,
-          NULL, 0, 0);
+      tp_handle_set_add (rem, handle);
+      tp_group_mixin_change_members (G_OBJECT (publish), "",
+          NULL, tp_handle_set_peek (rem), NULL, NULL, 0, 0);
       roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
 
-      tp_intset_destroy (rem);
+      tp_handle_set_destroy (rem);
     }
 
   return ret;

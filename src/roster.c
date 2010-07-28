@@ -693,7 +693,25 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
       if (!tp_intset_is_empty (created_groups))
         {
+          GPtrArray *strv = g_ptr_array_sized_new (tp_intset_size (
+                created_groups));
+          TpIntSetFastIter iter;
+          TpHandle group;
+
+          tp_intset_fast_iter_init (&iter, created_groups);
+
+          while (tp_intset_fast_iter_next (&iter, &group))
+            {
+              const gchar *group_name = tp_handle_inspect (ctx.group_repo,
+                  group);
+
+              DEBUG ("Group was just created: #%u '%s'", group, group_name);
+              g_ptr_array_add (strv, (gchar *) group_name);
+            }
+
           /* FIXME: emit GroupsCreated in new D-Bus API */
+
+          g_ptr_array_free (strv, TRUE);
         }
 
       tp_clear_pointer (&created_groups, tp_intset_destroy);

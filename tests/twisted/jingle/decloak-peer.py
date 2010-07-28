@@ -51,7 +51,8 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
     call_async(q, media_iface, 'RequestStreams', handle,
         [cs.MEDIA_STREAM_TYPE_AUDIO])
 
-    e = q.expect('stream-presence', presence_type=None)
+    e = q.expect('stream-presence',
+            to=jt.remote_bare_jid, presence_type=None)
     nodes = xpath.queryForNodes('/presence/temppres[@xmlns="%s"]'
             % ns.TEMPPRES, e.stanza)
     assertLength(1, nodes)

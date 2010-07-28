@@ -1828,7 +1828,6 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   TpHandle handle, list_handle;
   const gchar *status_message = NULL;
   GabbleRosterChannel *chan = NULL;
-  gboolean changed;
   LmHandlerResult ret;
   GabbleRosterItem *item;
 
@@ -1898,19 +1897,26 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
-      tmp = tp_handle_set_new (contact_repo);
-      tp_handle_set_add (tmp, handle);
+      if (item->publish != TP_SUBSCRIPTION_STATE_NO)
+        {
+          tmp = tp_handle_set_new (contact_repo);
+          tp_handle_set_add (tmp, handle);
 
-      list_handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          list_handle, NULL, NULL);
-      changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, NULL, tp_handle_set_peek (tmp), NULL, NULL, 0, 0);
-      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+          list_handle = GABBLE_LIST_HANDLE_PUBLISH;
+          chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+              list_handle, NULL, NULL);
+          tp_group_mixin_change_members ((GObject *) chan,
+              status_message, NULL, tp_handle_set_peek (tmp), NULL, NULL, 0, 0);
+          roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
 
-      _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
+          _gabble_roster_send_presence_ack (roster, from, sub_type, TRUE);
 
-      tp_handle_set_destroy (tmp);
+          tp_handle_set_destroy (tmp);
+        }
+      else
+        {
+          _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
+        }
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
@@ -1918,19 +1924,26 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
 
-      tmp = tp_handle_set_new (contact_repo);
-      tp_handle_set_add (tmp, handle);
+      if (item->subscribe != TP_SUBSCRIPTION_STATE_YES)
+        {
+          tmp = tp_handle_set_new (contact_repo);
+          tp_handle_set_add (tmp, handle);
 
-      list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          list_handle, NULL, NULL);
-      changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, tp_handle_set_peek (tmp), NULL, NULL, NULL, 0, 0);
-      item->subscribe = TP_SUBSCRIPTION_STATE_YES;
+          list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
+          chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+              list_handle, NULL, NULL);
+          tp_group_mixin_change_members ((GObject *) chan,
+              status_message, tp_handle_set_peek (tmp), NULL, NULL, NULL, 0, 0);
+          item->subscribe = TP_SUBSCRIPTION_STATE_YES;
 
-      _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
+          _gabble_roster_send_presence_ack (roster, from, sub_type, TRUE);
 
-      tp_handle_set_destroy (tmp);
+          tp_handle_set_destroy (tmp);
+        }
+      else
+        {
+          _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
+        }
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
@@ -1938,19 +1951,26 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
-      tmp = tp_handle_set_new (contact_repo);
-      tp_handle_set_add (tmp, handle);
+      if (item->subscribe != TP_SUBSCRIPTION_STATE_NO)
+        {
+          tmp = tp_handle_set_new (contact_repo);
+          tp_handle_set_add (tmp, handle);
 
-      list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          list_handle, NULL, NULL);
-      changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, NULL, tp_handle_set_peek (tmp), NULL, NULL, 0, 0);
-      item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+          list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
+          chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
+              list_handle, NULL, NULL);
+          tp_group_mixin_change_members ((GObject *) chan,
+              status_message, NULL, tp_handle_set_peek (tmp), NULL, NULL, 0, 0);
+          item->subscribe = TP_SUBSCRIPTION_STATE_NO;
 
-      _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
+          _gabble_roster_send_presence_ack (roster, from, sub_type, TRUE);
 
-      tp_handle_set_destroy (tmp);
+          tp_handle_set_destroy (tmp);
+        }
+      else
+        {
+          _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
+        }
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;

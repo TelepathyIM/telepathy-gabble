@@ -80,6 +80,9 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
+	$(NULL)
+
+TWISTED_TUBE_TESTS = \
 	tubes/accept-muc-dbus-tube.py \
 	tubes/accept-muc-stream-tube.py \
 	tubes/accept-private-dbus-tube.py \
@@ -98,6 +101,9 @@ TWISTED_TESTS = \
 	tubes/request-invalid-dbus-tube.py \
 	tubes/test-get-available-tubes.py \
 	tubes/test-socks5-muc.py \
+	$(NULL)
+
+TWISTED_VCARD_TESTS = \
 	vcard/get-contact-info.py \
 	vcard/item-not-found.py \
 	vcard/overlapping-sets.py \
@@ -120,6 +126,9 @@ TWISTED_TESTS = \
 	vcard/test-vcard-race.py \
 	vcard/update-get-failed.py \
 	vcard/update-rejected.py \
+	$(NULL)
+
+TWISTED_JINGLE_TESTS = \
 	jingle/accept-extra-stream.py \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
@@ -152,6 +161,9 @@ TWISTED_TESTS = \
 	jingle/test-content-complex.py \
 	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \
+	$(NULL)
+
+TWISTED_FT_TESTS = \
 	jingle-share/test-caps-file-transfer.py \
 	jingle-share/test-send-file.py \
 	jingle-share/test-send-file-send-before-accept.py \
@@ -177,6 +189,9 @@ TWISTED_TESTS = \
 	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
 	file-transfer/test-send-file-send-before-accept.py \
+	$(NULL)
+
+TWISTED_TESTS += \
 	test-debug.py \
 	connect/disco-error-from-bare-jid.py \
 	connect/disco-no-reply.py \
@@ -194,7 +209,11 @@ TWISTED_TESTS = \
 	pubsub.py \
 	sidecar-own-caps.py \
 	sidecars.py \
-	mail-notification.py
+	mail-notification.py \
+	$(NULL)
+
+TWISTED_TESTS += $(TWISTED_FT_TESTS) $(TWISTED_TUBE_TESTS)
+TWISTED_TESTS += $(TWISTED_JINGLE_TESTS) $(TWISTED_VCARD_TESTS)
 
 TESTS =
 

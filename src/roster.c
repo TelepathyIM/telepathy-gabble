@@ -1824,7 +1824,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   LmMessageNode *pres_node, *child_node;
   const char *from;
   LmMessageSubType sub_type;
-  TpIntSet *tmp;
+  TpHandleSet *tmp;
   TpHandle handle, list_handle;
   const gchar *status_message = NULL;
   GabbleRosterChannel *chan = NULL;
@@ -1880,17 +1880,17 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("making %s (handle %u) local pending on the publish channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      tmp = tp_handle_set_new (contact_repo);
+      tp_handle_set_add (tmp, handle);
 
       list_handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
           list_handle, NULL, NULL);
       tp_group_mixin_change_members ((GObject *) chan, status_message,
-          NULL, NULL, tmp, NULL, 0, 0);
+          NULL, NULL, tp_handle_set_peek (tmp), NULL, 0, 0);
       roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_ASK, status_message);
 
-      tp_intset_destroy (tmp);
+      tp_handle_set_destroy (tmp);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
@@ -1898,19 +1898,19 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      tmp = tp_handle_set_new (contact_repo);
+      tp_handle_set_add (tmp, handle);
 
       list_handle = GABBLE_LIST_HANDLE_PUBLISH;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
           list_handle, NULL, NULL);
       changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, NULL, tmp, NULL, NULL, 0, 0);
+          status_message, NULL, tp_handle_set_peek (tmp), NULL, NULL, 0, 0);
       roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      tp_intset_destroy (tmp);
+      tp_handle_set_destroy (tmp);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
@@ -1918,19 +1918,19 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      tmp = tp_handle_set_new (contact_repo);
+      tp_handle_set_add (tmp, handle);
 
       list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
           list_handle, NULL, NULL);
       changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, tmp, NULL, NULL, NULL, 0, 0);
+          status_message, tp_handle_set_peek (tmp), NULL, NULL, NULL, 0, 0);
       item->subscribe = TP_SUBSCRIPTION_STATE_YES;
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      tp_intset_destroy (tmp);
+      tp_handle_set_destroy (tmp);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
@@ -1938,19 +1938,19 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      tmp = tp_handle_set_new (contact_repo);
+      tp_handle_set_add (tmp, handle);
 
       list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
       chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
           list_handle, NULL, NULL);
       changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, NULL, tmp, NULL, NULL, 0, 0);
+          status_message, NULL, tp_handle_set_peek (tmp), NULL, NULL, 0, 0);
       item->subscribe = TP_SUBSCRIPTION_STATE_NO;
 
       _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
 
-      tp_intset_destroy (tmp);
+      tp_handle_set_destroy (tmp);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;

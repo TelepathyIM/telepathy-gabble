@@ -167,6 +167,12 @@ static void _gabble_roster_item_free (GabbleRosterItem *item);
 static void item_edit_free (GabbleRosterItemEdit *edits);
 static void gabble_roster_close_all (GabbleRoster *roster);
 
+static void mutable_iface_init (TpMutableContactListInterface *iface);
+static void blockable_iface_init (TpBlockableContactListInterface *iface);
+static void contact_groups_iface_init (TpContactGroupListInterface *iface);
+static void mutable_contact_groups_iface_init (
+    TpMutableContactGroupListInterface *iface);
+
 G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init);
@@ -3287,4 +3293,760 @@ channel_manager_iface_init (gpointer g_iface,
   iface->request_channel = gabble_roster_request_channel;
   iface->create_channel = gabble_roster_create_channel;
   iface->ensure_channel = gabble_roster_ensure_channel;
+}
+
+static TpHandleSet *
+gabble_roster_get_contacts (TpBaseContactList *base)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleSet *set;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GHashTableIter iter;
+  gpointer k, v;
+
+  set = tp_handle_set_new (contact_repo);
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      GabbleRosterItem *item = v;
+
+      /* add all the interesting items */
+      if (item->stored ||
+          item->subscribe != TP_SUBSCRIPTION_STATE_NO ||
+          item->publish != TP_SUBSCRIPTION_STATE_NO)
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
+    }
+
+  return set;
+}
+
+static void
+gabble_roster_get_states (TpBaseContactList *base,
+    TpHandle contact,
+    TpSubscriptionState *subscribe,
+    TpSubscriptionState *publish,
+    gchar **publish_request)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
+  if (item == NULL)
+    {
+      *subscribe = TP_SUBSCRIPTION_STATE_NO;
+      *publish = TP_SUBSCRIPTION_STATE_NO;
+      *publish_request = NULL;
+    }
+  else
+    {
+      *subscribe = item->subscribe;
+      *publish = item->publish;
+      *publish_request = item->publish_request;
+    }
+}
+
+static void
+gabble_roster_request_subscription_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    const gchar *message,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  /* In principle we should probably not return until the
+   * <presence type='subscribe'/> takes effect, but that's hard to do because
+   * it's not an IQ, so we're not guaranteed a reply (and if we do get a reply,
+   * we can't necessarily relate it to the request). */
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* stop trying at the first NetworkError, on the assumption that it'll
+       * be fatal */
+      if (!gabble_roster_handle_subscribe (self, contact, message, &error))
+        break;
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static void
+gabble_roster_authorize_publication_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
+      if (item != NULL && item->publish == TP_SUBSCRIPTION_STATE_ASK)
+        {
+          /* stop trying at the first NetworkError, on the assumption that
+           * it'll be fatal */
+          if (!gabble_roster_handle_subscribed (self, contact, "", &error))
+            break;
+        }
+
+      /* FIXME: also implement "pre-authorization", which we didn't
+       * previously allow */
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static void
+gabble_roster_store_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* stop trying at the first NetworkError, on the assumption that
+       * it'll be fatal */
+      gabble_roster_handle_add (self, contact, &error);
+
+      /* FIXME: addition is an IQ, so we should be able to wait for the
+       * results too */
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static void
+gabble_roster_remove_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* stop trying at the first NetworkError, on the assumption that
+       * it'll be fatal */
+      gabble_roster_handle_remove (self, contact, &error);
+
+      /* FIXME: removal is an IQ, so we should be able to wait for the
+       * results too */
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static void
+gabble_roster_unsubscribe_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* stop trying at the first NetworkError, on the assumption that
+       * it'll be fatal */
+      if (!gabble_roster_handle_unsubscribe (self, contact, "", &error))
+        break;
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static void
+gabble_roster_unpublish_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* stop trying at the first NetworkError, on the assumption that
+       * it'll be fatal */
+      if (!gabble_roster_handle_unsubscribed (self, contact, "", &error))
+        break;
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static TpHandleSet *
+gabble_roster_get_blocked_contacts (TpBaseContactList *base)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleSet *set;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GHashTableIter iter;
+  gpointer k, v;
+
+  set = tp_handle_set_new (contact_repo);
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      GabbleRosterItem *item = v;
+
+      if (item->blocked)
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
+    }
+
+  return set;
+}
+
+static gboolean
+gabble_roster_can_block (TpBaseContactList *base)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+
+  return (self->priv->conn->features &
+      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) != 0;
+}
+
+static void
+gabble_roster_block_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* stop trying at the first NetworkError, on the assumption that
+       * it'll be fatal */
+      gabble_roster_handle_set_blocked (self, contact, TRUE, &error);
+
+      /* FIXME: because setting the blocking state is an IQ, we should be
+       * able to wait for them all to finish and check for errors */
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static void
+gabble_roster_unblock_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* we ignore any NetworkError that might occur */
+      gabble_roster_handle_set_blocked (self, contact, FALSE, &error);
+
+      /* FIXME: because setting the blocking state is an IQ, we should be
+       * able to wait for them all to finish and check for errors */
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static GStrv
+gabble_roster_get_groups (TpBaseContactList *base)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  GPtrArray *ret;
+
+  if (self->priv->groups != NULL)
+    {
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      ret = g_ptr_array_sized_new (
+          tp_handle_set_size (self->priv->groups) + 1);
+
+      tp_intset_fast_iter_init (&iter,
+          tp_handle_set_peek (self->priv->groups));
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          g_ptr_array_add (ret, g_strdup (tp_handle_inspect (group_repo,
+                  group)));
+        }
+    }
+  else
+    {
+      ret = g_ptr_array_sized_new (1);
+    }
+
+  g_ptr_array_add (ret, NULL);
+  return (GStrv) g_ptr_array_free (ret, FALSE);
+}
+
+static GStrv
+gabble_roster_get_contact_groups (TpBaseContactList *base,
+    TpHandle contact)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GPtrArray *ret = g_ptr_array_new ();
+  GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
+  if (item != NULL && item->groups != NULL)
+    {
+      TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      ret = g_ptr_array_sized_new (tp_handle_set_size (item->groups) + 1);
+
+      tp_intset_fast_iter_init (&iter, tp_handle_set_peek (item->groups));
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          g_ptr_array_add (ret,
+              g_strdup (tp_handle_inspect (group_repo, group)));
+        }
+    }
+  else
+    {
+      ret = g_ptr_array_sized_new (1);
+    }
+
+  g_ptr_array_add (ret, NULL);
+  return (GStrv) g_ptr_array_free (ret, FALSE);
+}
+
+static TpHandleSet *
+gabble_roster_get_group_members (TpBaseContactList *base,
+    const gchar *group)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleSet *set;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle;
+  GHashTableIter iter;
+  gpointer k, v;
+
+  set = tp_handle_set_new (contact_repo);
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+
+  if (G_UNLIKELY (group_handle == 0))
+    {
+      /* clearly it doesn't have members */
+      return set;
+    }
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      GabbleRosterItem *item = v;
+
+      if (item->groups != NULL &&
+          tp_handle_set_is_member (item->groups, group_handle))
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
+    }
+
+  return set;
+}
+
+static void
+gabble_roster_set_contact_groups_async (TpBaseContactList *base,
+    TpHandle contact,
+    const gchar * const *groups,
+    gsize n,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GabbleRosterItem *item = _gabble_roster_item_ensure (self, contact);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandleSet *groups_set = tp_handle_set_new (group_repo);
+  GPtrArray *groups_created = g_ptr_array_new ();
+  guint i;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_request_subscription_async, 1);
+
+  for (i = 0; i < n; i++)
+    {
+      TpHandle group_handle = tp_handle_ensure (group_repo, groups[i], NULL,
+          NULL);
+
+      if (G_UNLIKELY (group_handle == 0))
+        continue;
+
+      tp_handle_set_add (groups_set, group_handle);
+
+      if (!tp_handle_set_is_member (self->priv->groups, group_handle))
+        {
+          tp_handle_set_add (self->priv->groups, group_handle);
+          g_ptr_array_add (groups_created, (gchar *) groups[i]);
+        }
+
+      tp_handle_unref (group_repo, group_handle);
+    }
+
+  /* FIXME: signal group creation */
+
+  g_ptr_array_free (groups_created, TRUE);
+
+  if (item->unsent_edits)
+    {
+      DEBUG ("queue edit to contact#%u - set %" G_GSIZE_FORMAT
+          "contact groups", contact, n);
+
+      if (item->unsent_edits->add_to_groups != NULL)
+        tp_handle_set_destroy (item->unsent_edits->add_to_groups);
+
+      item->unsent_edits->add_to_groups = groups_set;
+      item->unsent_edits->remove_from_all_other_groups = TRUE;
+
+      if (item->unsent_edits->remove_from_groups != NULL)
+        {
+          tp_handle_set_destroy (item->unsent_edits->remove_from_groups);
+          item->unsent_edits->remove_from_groups = NULL;
+        }
+    }
+  else
+    {
+      LmMessage *message;
+      TpHandleSet *tmp;
+      GabbleRosterItemEdit *in_flight;
+      gboolean ok;
+
+      DEBUG ("immediate edit to contact #%u - set %" G_GSIZE_FORMAT
+          "contact groups", contact, n);
+
+      in_flight = item_edit_new (contact_repo, contact);
+      in_flight->add_to_groups = tp_handle_set_copy (groups_set);
+      in_flight->remove_from_all_other_groups = TRUE;
+
+      item->unsent_edits = item_edit_new (contact_repo, contact);
+
+      tmp = item->groups;
+      item->groups = groups_set;
+
+      message = _gabble_roster_item_to_message (self, contact, NULL, NULL);
+      STANZA_DEBUG (message, "Roster item as message");
+
+      item->groups = tmp;
+      tp_handle_set_destroy (groups_set);
+
+      /* we ignore any NetworkError that might occur */
+      ok = _gabble_connection_send_with_reply (self->priv->conn,
+          message, roster_edited_cb, G_OBJECT (self),
+          in_flight, NULL);
+      lm_message_unref (message);
+
+      /* if send_with_reply failed, then roster_edited_cb will never run */
+      if (!ok)
+        {
+          /* FIXME: the edit failed, maybe we should somehow have another try
+           * at it later? */
+          tp_clear_pointer (&item->unsent_edits, item_edit_free);
+          item_edit_free (in_flight);
+        }
+    }
+
+  gabble_simple_async_countdown_dec (result);
+}
+
+static void
+gabble_roster_set_group_members_async (TpBaseContactList *base,
+    const gchar *group,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle = tp_handle_ensure (group_repo, group, NULL,
+      NULL);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_set_group_members_async, 1);
+  GHashTableIter iter;
+  gpointer k;
+
+  /* You can't add people to an invalid group. */
+  if (G_UNLIKELY (group_handle == 0))
+    {
+      g_simple_async_result_set_error (result, TP_ERRORS,
+          TP_ERROR_INVALID_ARGUMENT, "Invalid group name: %s", group);
+      goto finally;
+    }
+
+  /* we create the group even if @contacts is empty, as the base class
+   * requires */
+  if (!tp_handle_set_is_member (self->priv->groups, group_handle))
+    {
+      tp_handle_set_add (self->priv->groups, group_handle);
+      /* FIXME: signal creation of @group */
+    }
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, NULL))
+    {
+      TpHandle contact = GPOINTER_TO_UINT (k);
+
+      /* FIXME: don't ignore network errors */
+      if (tp_handle_set_is_member (contacts, contact))
+        gabble_roster_handle_add_to_group (self, contact, group_handle,
+            NULL);
+      else
+        gabble_roster_handle_remove_from_group (self, contact, group_handle,
+            NULL);
+    }
+
+  tp_handle_unref (group_repo, group_handle);
+
+finally:
+  gabble_simple_async_countdown_dec (result);
+}
+
+static void
+gabble_roster_add_to_group_async (TpBaseContactList *base,
+    const gchar *group,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle = tp_handle_ensure (group_repo, group, NULL,
+      NULL);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_add_to_group_async, 1);
+
+  /* You can't add people to an invalid group. FIXME: raise an error */
+  if (G_UNLIKELY (group_handle == 0))
+    goto finally;
+
+  /* we create the group even if @contacts is empty, as the base class
+   * requires */
+  if (!tp_handle_set_is_member (self->priv->groups, group_handle))
+    {
+      tp_handle_set_add (self->priv->groups, group_handle);
+      /* FIXME: signal creation of @group */
+    }
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* we ignore any NetworkError */
+      gabble_roster_handle_add_to_group (self, contact, group_handle, NULL);
+    }
+
+  tp_handle_unref (group_repo, group_handle);
+
+finally:
+  gabble_simple_async_countdown_dec (result);
+}
+
+static void
+gabble_roster_remove_from_group_async (TpBaseContactList *base,
+    const gchar *group,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_remove_from_group_async, 1);
+
+  /* if the group didn't exist then we have nothing to do */
+  if (group_handle == 0)
+    goto finally;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* we ignore any NetworkError */
+      gabble_roster_handle_remove_from_group (self, contact, group_handle,
+          NULL);
+    }
+
+finally:
+  gabble_simple_async_countdown_dec (result);
+}
+
+static void
+gabble_roster_remove_group_async (TpBaseContactList *base,
+    const gchar *group,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GHashTableIter iter;
+  gpointer k, v;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+
+  /* if the group didn't exist then we have nothing to do */
+  if (group_handle == 0 ||
+      !tp_handle_set_is_member (self->priv->groups, group_handle))
+    return;
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      TpHandle contact = GPOINTER_TO_UINT (k);
+      GabbleRosterItem *item = v;
+
+      if (item->groups != NULL && tp_handle_set_is_member (item->groups,
+            group_handle))
+        {
+          /* FIXME: we ignore any NetworkError */
+          gabble_roster_handle_remove_from_group (self, contact, group_handle,
+              NULL);
+        }
+    }
+
+  /* Assume it'll work and signal the removal - the membership change(s) will
+   * happen as they come back from the server, which is the right sequence
+   * for the ContactGroups interface.
+   *
+   * FIXME: in principle, we should wait for all the users to be removed, then
+   * remove the group, with a "countdown" */
+  tp_handle_set_remove (self->priv->groups, group_handle);
+  tp_base_contact_list_groups_removed (base, &group, 1);
+  tp_simple_async_report_success_in_idle ((GObject *) self, callback,
+      user_data, gabble_roster_remove_group_async);
+}
+
+static void dummy (TpBaseContactListClass *base_class) G_GNUC_UNUSED;
+static void
+dummy (TpBaseContactListClass *base_class)
+{
+  base_class->get_states = gabble_roster_get_states;
+  base_class->get_contacts = gabble_roster_get_contacts;
+
+  (void) mutable_iface_init;
+  (void) blockable_iface_init;
+  (void) contact_groups_iface_init;
+  (void) mutable_contact_groups_iface_init;
+}
+
+static void
+mutable_iface_init (TpMutableContactListInterface *iface)
+{
+  iface->request_subscription_async = gabble_roster_request_subscription_async;
+  iface->authorize_publication_async =
+    gabble_roster_authorize_publication_async;
+  iface->store_contacts_async = gabble_roster_store_contacts_async;
+  iface->remove_contacts_async = gabble_roster_remove_contacts_async;
+  iface->unsubscribe_async = gabble_roster_unsubscribe_async;
+  iface->unpublish_async = gabble_roster_unpublish_async;
+  /* we use the default _finish functions, which assume a GSimpleAsyncResult */
+}
+
+static void
+blockable_iface_init (TpBlockableContactListInterface *iface)
+{
+  iface->can_block = gabble_roster_can_block;
+  iface->get_blocked_contacts = gabble_roster_get_blocked_contacts;
+  iface->block_contacts_async = gabble_roster_block_contacts_async;
+  iface->unblock_contacts_async = gabble_roster_unblock_contacts_async;
+  /* we use the default _finish functions, which assume a GSimpleAsyncResult */
+}
+
+static void
+contact_groups_iface_init (TpContactGroupListInterface *iface)
+{
+  iface->get_groups = gabble_roster_get_groups;
+  iface->get_contact_groups = gabble_roster_get_contact_groups;
+  iface->get_group_members = gabble_roster_get_group_members;
+}
+
+static void
+mutable_contact_groups_iface_init (TpMutableContactGroupListInterface *iface)
+{
+  iface->set_contact_groups_async = gabble_roster_set_contact_groups_async;
+  iface->set_group_members_async = gabble_roster_set_group_members_async;
+  iface->add_to_group_async = gabble_roster_add_to_group_async;
+  iface->remove_from_group_async = gabble_roster_remove_from_group_async;
+  iface->remove_group_async = gabble_roster_remove_group_async;
+  /* we use the default _finish functions, which assume a GSimpleAsyncResult */
 }

@@ -123,4 +123,12 @@ gchar * gabble_peer_to_jid (GabbleConnection *conn,
     TpHandle peer,
     const gchar *resource);
 
+GSimpleAsyncResult *gabble_simple_async_countdown_new (gpointer self,
+    GAsyncReadyCallback callback,
+    gpointer user_data,
+    gpointer source_tag,
+    gssize todo);
+void gabble_simple_async_countdown_inc (GSimpleAsyncResult *simple);
+void gabble_simple_async_countdown_dec (GSimpleAsyncResult *simple);
+
 #endif /* __GABBLE_UTIL_H__ */

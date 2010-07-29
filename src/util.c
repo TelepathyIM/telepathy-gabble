@@ -1406,3 +1406,96 @@ gabble_disco_identity_array_free (GPtrArray *arr)
 
   g_ptr_array_free (arr, TRUE);
 }
+
+/**
+ * gabble_simple_async_countdown_new:
+ * @self: the source object for an asynchronous function
+ * @callback: a callback to call when @todo things have been done
+ * @user_data: user data for the callback
+ * @source_tag: the source tag for a #GSimpleAsyncResult
+ * @todo: number of things to do before calling @callback (at least 1)
+ *
+ * Create a new #GSimpleAsyncResult that will call its callback when a number
+ * of asynchronous operations have happened.
+ *
+ * An internal counter is initialized to @todo, incremented with
+ * gabble_simple_async_countdown_inc() or decremented with
+ * gabble_simple_async_countdown_dec().
+ *
+ * When that counter reaches zero, if an error has been set with
+ * g_simple_async_result_set_from_error() or similar, the operation fails;
+ * otherwise, it succeeds.
+ *
+ * The caller must not use the operation result functions, such as
+ * g_simple_async_result_get_op_res_gssize() - this async result is only
+ * suitable for "void" async methods which return either success or a #GError,
+ * i.e. the same signature as g_async_initable_init_async().
+ */
+GSimpleAsyncResult *
+gabble_simple_async_countdown_new (gpointer self,
+    GAsyncReadyCallback callback,
+    gpointer user_data,
+    gpointer source_tag,
+    gssize todo)
+{
+  GSimpleAsyncResult *simple;
+
+  g_return_val_if_fail (todo >= 1, NULL);
+
+  simple = g_simple_async_result_new (self, callback, user_data, source_tag);
+  /* We (ab)use the op_res member as a count of things to do. When
+   * it reaches zero, the operation completes with any error that has been
+   * set, or with success. */
+  g_simple_async_result_set_op_res_gssize (simple, todo);
+
+  return simple;
+}
+
+/**
+ * gabble_simple_async_countdown_inc:
+ * @simple: a result created by gabble_simple_async_countdown_new()
+ *
+ * Increment the counter in @simple, indicating that an additional async
+ * operation has been started. An additional call to
+ * gabble_simple_async_countdown_dec() will be needed to make @simple
+ * call its callback.
+ */
+void
+gabble_simple_async_countdown_inc (GSimpleAsyncResult *simple)
+{
+  gssize todo = g_simple_async_result_get_op_res_gssize (simple);
+
+  g_return_if_fail (todo >= 1);
+  g_simple_async_result_set_op_res_gssize (simple, todo + 1);
+}
+
+/**
+ * gabble_simple_async_countdown_dec:
+ * @simple: a result created by gabble_simple_async_countdown_new()
+ *
+ * Decrement the counter in @simple. If the number of things to do has
+ * reached zero, schedule @simple to call its callback in an idle, then
+ * unref it.
+ *
+ * When one of the asynchronous operations needed for @simple succeeds,
+ * this should be signalled by a call to this function.
+ *
+ * When one of the asynchronous operations needed for @simple fails,
+ * this should be signalled by a call to g_simple_async_result_set_from_error()
+ * (or one of the similar functions), followed by a call to this function.
+ * If more than one async operation fails in this way, the #GError from the
+ * last failure will be used.
+ */
+void
+gabble_simple_async_countdown_dec (GSimpleAsyncResult *simple)
+{
+  gssize todo = g_simple_async_result_get_op_res_gssize (simple);
+
+  g_simple_async_result_set_op_res_gssize (simple, --todo);
+
+  if (todo <= 0)
+    {
+      g_simple_async_result_complete_in_idle (simple);
+      g_object_unref (simple);
+    }
+}

@@ -3096,6 +3096,10 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
           tp_handle_set_destroy (item->unsent_edits->remove_from_groups);
           item->unsent_edits->remove_from_groups = NULL;
         }
+
+      gabble_simple_async_countdown_inc (result);
+      item->unsent_edits->results = g_slist_prepend (
+          item->unsent_edits->results, result);
     }
   else
     {
@@ -3110,6 +3114,8 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
       in_flight = item_edit_new (contact_repo, contact);
       in_flight->add_to_groups = tp_handle_set_copy (groups_set);
       in_flight->remove_from_all_other_groups = TRUE;
+      gabble_simple_async_countdown_inc (result);
+      in_flight->results = g_slist_prepend (in_flight->results, result);
 
       item->unsent_edits = item_edit_new (contact_repo, contact);
 

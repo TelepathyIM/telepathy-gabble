@@ -103,6 +103,9 @@ struct _GabbleRosterItemEdit
    * don't appear to be changing anything */
   gboolean create;
 
+  /* list of GSimpleAsyncResult */
+  GSList *results;
+
   /* if these are ..._INVALID, that means don't edit */
   GabbleRosterSubscription new_subscription;
   GoogleItemType new_google_type;
@@ -2234,8 +2237,15 @@ item_edit_new (TpHandleRepoIface *contact_repo,
 static void
 item_edit_free (GabbleRosterItemEdit *edits)
 {
+  GSList *slist;
+
   if (!edits)
     return;
+
+  edits->results = g_slist_reverse (edits->results);
+
+  for (slist = edits->results; slist != NULL; slist = slist->next)
+    gabble_simple_async_countdown_dec (slist->data);
 
   tp_handle_unref (edits->contact_repo, edits->handle);
   g_object_unref (edits->contact_repo);
@@ -2486,6 +2496,27 @@ roster_edited_cb (GabbleConnection *conn,
   GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
   GabbleRosterItemEdit *edit = user_data;
   GabbleRosterItem *item = _gabble_roster_item_lookup (roster, edit->handle);
+
+  if (edit->results != NULL)
+    {
+      GError *wocky_error = NULL;
+
+      if (wocky_stanza_extract_errors (reply_msg, NULL, &wocky_error, NULL,
+            NULL))
+        {
+          GSList *slist;
+          GError *tp_error = NULL;
+
+          gabble_set_tp_error_from_wocky (wocky_error, &tp_error);
+
+          for (slist = edit->results; slist != NULL; slist = slist->next)
+            g_simple_async_result_set_from_error (slist->data, tp_error);
+
+          g_clear_error (&tp_error);
+        }
+
+      g_clear_error (&wocky_error);
+    }
 
   if (item != NULL && item->unsent_edits != NULL)
     {

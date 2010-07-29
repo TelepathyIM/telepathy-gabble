@@ -348,6 +348,7 @@ aggregate_resources (GabblePresence *presence)
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
   guint8 prio;
+  time_t activity;
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
@@ -355,6 +356,7 @@ aggregate_resources (GabblePresence *presence)
   presence->status = GABBLE_PRESENCE_OFFLINE;
 
   prio = -128;
+  activity = 0;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -365,6 +367,7 @@ aggregate_resources (GabblePresence *presence)
       /* trump existing status & message if it's more present
        * or has the same presence and a higher priority */
       if (r->status > presence->status ||
+          (r->status == presence->status && r->last_activity > activity) ||
           (r->status == presence->status && r->priority > prio))
         {
           presence->status = r->status;

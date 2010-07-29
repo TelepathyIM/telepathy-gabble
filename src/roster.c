@@ -108,10 +108,9 @@ struct _GabbleRosterItem
   gchar *name;
   gchar *alias_for;
   TpHandleSet *groups;
-  /* if not NULL, an edit attempt is already "in-flight" so instead of
-   * sending off another, store required edits here until the one we
-   * already sent is acknowledged - this prevents some race conditions
-   */
+  /* if TRUE, an edit attempt is already "in-flight" so we can't send off
+   * edits immediately - instead, store them in unsent_edits */
+  gboolean edits_in_flight;
   GabbleRosterItemEdit *unsent_edits;
 
   /* Might not match @subscription and @ask_subscribe exactly, in cases where
@@ -1863,9 +1862,20 @@ roster_item_apply_edits (GabbleRoster *roster,
   LmMessage *message;
   GError *error = NULL;
 
-  DEBUG ("Applying edits to contact#%u", contact);
+  if (item->edits_in_flight)
+    {
+      DEBUG ("Edits still in flight for contact#%u, not applying more",
+          contact);
+      return;
+    }
 
-  g_return_if_fail (item->unsent_edits);
+  if (edits == NULL)
+    {
+      DEBUG ("Nothing to do for contact#%u", contact);
+      return;
+    }
+
+  DEBUG ("Applying edits to contact#%u", contact);
 
   memcpy (&edited_item, item, sizeof (GabbleRosterItem));
 
@@ -2032,6 +2042,7 @@ roster_item_apply_edits (GabbleRoster *roster,
   /* we're sending the unsent edits - on success, roster_edited_cb will own
    * them */
   item->unsent_edits = NULL;
+  item->edits_in_flight = TRUE;
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster), edits, &error);
 
@@ -2047,6 +2058,7 @@ roster_item_apply_edits (GabbleRoster *roster,
         g_simple_async_result_set_from_error (slist->data, error);
 
       g_clear_error (&error);
+      item->edits_in_flight = FALSE;
       item_edit_free (edits);
     }
 
@@ -2089,11 +2101,9 @@ roster_edited_cb (GabbleConnection *conn,
       g_clear_error (&wocky_error);
     }
 
-  if (item != NULL && item->unsent_edits != NULL)
-    {
-      /* more edits have been queued since we sent this batch */
-      roster_item_apply_edits (roster, edit->handle, item);
-    }
+  item->edits_in_flight = FALSE;
+  /* if more edits have been queued since we sent this batch, do them */
+  roster_item_apply_edits (roster, edit->handle, item);
 
   item_edit_free (edit);
 
@@ -2134,10 +2144,6 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   GoogleItemType orig_type;
-  LmMessage *message;
-  gboolean ret;
-  GabbleRosterItemEdit *in_flight;
-  GError *error = NULL;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2149,10 +2155,11 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   item = _gabble_roster_item_ensure (roster, handle);
   orig_type = item->google_type;
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  if (1) /* FIXME: re-indent */
     {
-      /* an edit is pending - make the change afterwards, and don't complete
-       * @result until the edit has actually happened */
       DEBUG ("queue edit to contact#%u - change subscription to blocked=%d",
              handle, blocked);
 
@@ -2164,42 +2171,12 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
       gabble_simple_async_countdown_inc (result);
       item->unsent_edits->results = g_slist_prepend (
           item->unsent_edits->results, result);
-      return TRUE;
     }
 
-  if (blocked == (orig_type == GOOGLE_ITEM_TYPE_BLOCKED))
-    return TRUE;
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 
-  item->unsent_edits = item_edit_new (contact_repo, handle);
-  in_flight = item_edit_new (contact_repo, handle);
-
-  /* temporarily set the desired block state and generate a message */
-  if (blocked)
-    item->google_type = GOOGLE_ITEM_TYPE_BLOCKED;
-  else
-    item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-
-  in_flight->new_google_type = item->google_type;
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  item->google_type = orig_type;
-
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), in_flight, &error);
-
-  lm_message_unref (message);
-
-  if (blocked)
-      gabble_presence_cache_really_remove (priv->conn->presence_cache, handle);
-
-  /* if send_with_reply failed, then roster_edited_cb will never run */
-  if (!ret)
-    {
-      g_simple_async_result_set_from_error (result, error);
-      g_clear_error (&error);
-      item_edit_free (in_flight);
-    }
-
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -2253,10 +2230,6 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
-  LmMessage *message;
-  LmMessageNode *item_node;
-  gboolean ret;
-  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2267,42 +2240,23 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   item = _gabble_roster_item_ensure (roster, handle);
   g_return_val_if_fail (item != NULL, FALSE);
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  if (1) /* FIXME: re-indent */
     {
       DEBUG ("queue edit to contact#%u - change name to \"%s\"",
              handle, name);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
       g_free (item->unsent_edits->new_name);
       item->unsent_edits->new_name = g_strdup (name);
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - change name to \"%s\"",
-             handle, name);
-      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
-  message = _gabble_roster_item_to_message (roster, handle, &item_node, NULL);
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 
-  lm_message_node_set_attribute (item_node, "name", name);
-
-  in_flight = item_edit_new (contact_repo, handle);
-  in_flight->new_name = g_strdup (name);
-
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      in_flight, error);
-
-  lm_message_unref (message);
-
-  /* if send_with_reply failed, then roster_edited_cb will never run */
-  if (!ret)
-    item_edit_free (in_flight);
-
-  return ret;
+  /* FIXME: this method should be async so we don't need to assume
+   * success */
+  return TRUE;
 }
 
 static gboolean
@@ -2314,11 +2268,6 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
-  GabbleRosterSubscription subscription;
-  LmMessage *message;
-  gboolean ret;
-  GabbleRosterItemEdit *in_flight;
-  GError *error = NULL;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2327,68 +2276,23 @@ gabble_roster_handle_remove (GabbleRoster *roster,
 
   item = _gabble_roster_item_ensure (roster, handle);
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  if (1) /* FIXME: re-indent */
     {
       DEBUG ("queue edit to contact#%u - change subscription to REMOVE",
              handle);
-      /* an edit is pending - make the change afterwards, and don't complete
-       * @result until the edit has actually happened */
       item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
       gabble_simple_async_countdown_inc (result);
       item->unsent_edits->results = g_slist_prepend (
           item->unsent_edits->results, result);
-      return TRUE;
-    }
-  else if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
-    {
-      /* If they're blocked, we can't just remove them from the roster,
-       * because that would unblock them! So instead, we cancel both
-       * subscription directions.
-       */
-      DEBUG ("contact#%u is blocked; not removing", handle);
-      ret = roster_item_cancel_subscriptions (roster, handle, item, &error);
-
-      if (!ret)
-        {
-          g_simple_async_result_set_from_error (result, error);
-          g_clear_error (&error);
-        }
-
-      return ret;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - change subscription to REMOVE",
-             handle);
-      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
-  subscription = item->subscription;
-  item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-
-  in_flight = item_edit_new (contact_repo, handle);
-  in_flight->new_subscription = item->subscription;
-  gabble_simple_async_countdown_inc (result);
-  in_flight->results = g_slist_prepend (in_flight->results, result);
-
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      in_flight, &error);
-  lm_message_unref (message);
-
-  item->subscription = subscription;
-
-  /* if send_with_reply failed, then roster_edited_cb will never run */
-  if (!ret)
-    {
-      g_simple_async_result_set_from_error (result, error);
-      g_clear_error (&error);
-      item_edit_free (in_flight);
-    }
-
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -2400,10 +2304,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
-  LmMessage *message;
   gboolean do_add = FALSE;
-  gboolean ret;
-  GabbleRosterItemEdit *in_flight;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2421,35 +2322,23 @@ gabble_roster_handle_add (GabbleRoster *roster,
   if (!do_add)
       return TRUE;
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  if (1) /* FIXME: re-indent */
     {
       DEBUG ("queue edit to contact#%u - change google type to NORMAL",
              handle);
       item->unsent_edits->create = TRUE;
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK.
-       */
       item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - change google type to NORMAL",
-             handle);
-      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-        item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
-  in_flight = item_edit_new (contact_repo, handle);
-  in_flight->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), in_flight, error);
-  lm_message_unref (message);
-
-  return ret;
+  /* FIXME: this method should be async so we don't need to assume
+   * success */
+  return TRUE;
 }
 
 static gboolean
@@ -2464,10 +2353,6 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
-  LmMessage *message;
-  gboolean ret;
-  GabbleRosterItemEdit *in_flight;
-  GError *error = NULL;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2478,10 +2363,12 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
 
   item = _gabble_roster_item_ensure (roster, handle);
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  if (1) /* FIXME: re-indent */
     {
       DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
-      /* an edit is pending - make the change afterwards */
       gabble_simple_async_countdown_inc (result);
       item->unsent_edits->results = g_slist_prepend (
           item->unsent_edits->results, result);
@@ -2490,43 +2377,19 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
         {
           item->unsent_edits->add_to_groups = tp_handle_set_new (group_repo);
         }
+
       tp_handle_set_add (item->unsent_edits->add_to_groups, group);
+
       if (item->unsent_edits->remove_from_groups)
         {
           tp_handle_set_remove (item->unsent_edits->remove_from_groups, group);
         }
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - add to group#%u", handle, group);
-      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
-  in_flight = item_edit_new (contact_repo, handle);
-  in_flight->add_to_groups = tp_handle_set_new (group_repo);
-  tp_handle_set_add (in_flight->add_to_groups, group);
-  gabble_simple_async_countdown_inc (result);
-  in_flight->results = g_slist_prepend (in_flight->results, result);
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 
-  tp_handle_set_add (item->groups, group);
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  STANZA_DEBUG (message, "Roster item as message");
-  tp_handle_set_remove (item->groups, group);
-
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), in_flight, &error);
-  lm_message_unref (message);
-
-  /* if send_with_reply failed, then roster_edited_cb will never run */
-  if (!ret)
-    {
-      g_simple_async_result_set_from_error (result, error);
-      g_clear_error (&error);
-      item_edit_free (in_flight);
-    }
-
-  return ret;
+  return TRUE;
 }
 
 static gboolean
@@ -2541,10 +2404,6 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
-  LmMessage *message;
-  gboolean ret, was_in_group;
-  GabbleRosterItemEdit *in_flight;
-  GError *error = NULL;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2555,10 +2414,13 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 
   item = _gabble_roster_item_ensure (roster, handle);
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  if (1) /* FIXME: re-indent */
     {
       DEBUG ("queue edit to contact#%u - remove from group#%u", handle, group);
-      /* an edit is pending - make the change afterwards */
+
       gabble_simple_async_countdown_inc (result);
       item->unsent_edits->results = g_slist_prepend (
           item->unsent_edits->results, result);
@@ -2568,49 +2430,19 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
           item->unsent_edits->remove_from_groups = tp_handle_set_new (
               group_repo);
         }
+
       tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
+
       if (item->unsent_edits->add_to_groups)
         {
           tp_handle_set_remove (item->unsent_edits->add_to_groups, group);
         }
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - remove from group#%u", handle,
-          group);
-      item->unsent_edits = item_edit_new (contact_repo, handle);
     }
 
-  in_flight = item_edit_new (contact_repo, handle);
-  in_flight->remove_from_groups = tp_handle_set_new (group_repo);
-  tp_handle_set_add (in_flight->remove_from_groups, group);
-  gabble_simple_async_countdown_inc (result);
-  in_flight->results = g_slist_prepend (in_flight->results, result);
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 
-  /* temporarily remove the handle from the set (taking a reference),
-   * make the message, and put it back afterwards
-   */
-  tp_handle_ref (group_repo, group);
-  was_in_group = tp_handle_set_remove (item->groups, group);
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  if (was_in_group)
-    tp_handle_set_add (item->groups, group);
-  tp_handle_unref (group_repo, group);
-
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), in_flight, &error);
-  lm_message_unref (message);
-
-  /* if send_with_reply failed, then roster_edited_cb will never run */
-  if (!ret)
-    {
-      g_simple_async_result_set_from_error (result, error);
-      g_clear_error (&error);
-      item_edit_free (in_flight);
-    }
-
-  return ret;
+  return TRUE;
 }
 
 gboolean
@@ -3146,7 +2978,10 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
 
   g_ptr_array_free (groups_created, TRUE);
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, contact);
+
+  if (1) /* FIXME: re-indent */
     {
       DEBUG ("queue edit to contact#%u - set %" G_GSIZE_FORMAT
           "contact groups", contact, n);
@@ -3167,49 +3002,9 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
       item->unsent_edits->results = g_slist_prepend (
           item->unsent_edits->results, result);
     }
-  else
-    {
-      LmMessage *message;
-      TpHandleSet *tmp;
-      GabbleRosterItemEdit *in_flight;
-      gboolean ok;
-      GError *error = NULL;
 
-      DEBUG ("immediate edit to contact #%u - set %" G_GSIZE_FORMAT
-          "contact groups", contact, n);
-
-      in_flight = item_edit_new (contact_repo, contact);
-      in_flight->add_to_groups = tp_handle_set_copy (groups_set);
-      in_flight->remove_from_all_other_groups = TRUE;
-      gabble_simple_async_countdown_inc (result);
-      in_flight->results = g_slist_prepend (in_flight->results, result);
-
-      item->unsent_edits = item_edit_new (contact_repo, contact);
-
-      tmp = item->groups;
-      item->groups = groups_set;
-
-      message = _gabble_roster_item_to_message (self, contact, NULL, NULL);
-      STANZA_DEBUG (message, "Roster item as message");
-
-      item->groups = tmp;
-      tp_handle_set_destroy (groups_set);
-
-      ok = _gabble_connection_send_with_reply (self->priv->conn,
-          message, roster_edited_cb, G_OBJECT (self),
-          in_flight, &error);
-      lm_message_unref (message);
-
-      /* if send_with_reply failed, then roster_edited_cb will never run */
-      if (!ok)
-        {
-          tp_clear_pointer (&item->unsent_edits, item_edit_free);
-          g_simple_async_result_set_from_error (result, error);
-          g_error_free (error);
-          item_edit_free (in_flight);
-        }
-    }
-
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (self, contact, item);
   gabble_simple_async_countdown_dec (result);
 }
 

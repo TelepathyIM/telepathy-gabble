@@ -99,6 +99,10 @@ struct _GabbleRosterItemEdit
   TpHandleRepoIface *contact_repo;
   TpHandle handle;
 
+  /* if TRUE, we must create this roster item, so send the IQ even if we
+   * don't appear to be changing anything */
+  gboolean create;
+
   /* if these are ..._INVALID, that means don't edit */
   GabbleRosterSubscription new_subscription;
   GoogleItemType new_google_type;
@@ -2310,6 +2314,12 @@ roster_item_apply_edits (GabbleRoster *roster,
     }
 #endif
 
+  if (edits->create)
+    {
+      DEBUG ("Creating new item");
+      altered = TRUE;
+    }
+
   if (edits->new_google_type != GOOGLE_ITEM_TYPE_INVALID
       && edits->new_google_type != item->google_type)
     {
@@ -2791,6 +2801,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
     {
       DEBUG ("queue edit to contact#%u - change google type to NORMAL",
              handle);
+      item->unsent_edits->create = TRUE;
       /* an edit is pending - make the change afterwards and
        * assume it'll be OK.
        */

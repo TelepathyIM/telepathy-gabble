@@ -134,11 +134,12 @@ typedef enum
 {
   GABBLE_CLIENT_TYPE_BOT      = 1 << 0,
   GABBLE_CLIENT_TYPE_CONSOLE  = 1 << 1,
-  GABBLE_CLIENT_TYPE_HANDHELD = 1 << 2,
-  GABBLE_CLIENT_TYPE_PC       = 1 << 3,
-  GABBLE_CLIENT_TYPE_PHONE    = 1 << 4,
-  GABBLE_CLIENT_TYPE_WEB      = 1 << 5,
-  GABBLE_CLIENT_TYPE_SMS      = 1 << 6,
+  GABBLE_CLIENT_TYPE_GAME     = 1 << 2,
+  GABBLE_CLIENT_TYPE_HANDHELD = 1 << 3,
+  GABBLE_CLIENT_TYPE_PC       = 1 << 4,
+  GABBLE_CLIENT_TYPE_PHONE    = 1 << 5,
+  GABBLE_CLIENT_TYPE_WEB      = 1 << 6,
+  GABBLE_CLIENT_TYPE_SMS      = 1 << 7,
 } GabbleClientType;
 
 void gabble_presence_update_client_types (GabblePresence *presence,

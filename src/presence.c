@@ -749,6 +749,9 @@ gabble_presence_update_client_types (GabblePresence *presence,
       if (!tp_strdiff (type, "console"))
         res->client_type |= GABBLE_CLIENT_TYPE_CONSOLE;
 
+      if (!tp_strdiff (type, "game"))
+        res->client_type |= GABBLE_CLIENT_TYPE_GAME;
+
       if (!tp_strdiff (type, "handheld"))
         res->client_type |= GABBLE_CLIENT_TYPE_HANDHELD;
 
@@ -786,6 +789,9 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
 
   if (res->client_type & GABBLE_CLIENT_TYPE_CONSOLE)
     g_ptr_array_add (array, g_strdup ("console"));
+
+  if (res->client_type & GABBLE_CLIENT_TYPE_GAME)
+    g_ptr_array_add (array, g_strdup ("game"));
 
   if (res->client_type & GABBLE_CLIENT_TYPE_HANDHELD)
     g_ptr_array_add (array, g_strdup ("handheld"));

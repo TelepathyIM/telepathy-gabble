@@ -2251,10 +2251,10 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   return ret;
 }
 
-gboolean
+static gboolean
 gabble_roster_handle_remove (GabbleRoster *roster,
                              TpHandle handle,
-                             GError **error)
+                             GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2264,6 +2264,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   LmMessage *message;
   gboolean ret;
   GabbleRosterItemEdit *in_flight;
+  GError *error = NULL;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2276,10 +2277,12 @@ gabble_roster_handle_remove (GabbleRoster *roster,
     {
       DEBUG ("queue edit to contact#%u - change subscription to REMOVE",
              handle);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
+      /* an edit is pending - make the change afterwards, and don't complete
+       * @result until the edit has actually happened */
       item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+      gabble_simple_async_countdown_inc (result);
+      item->unsent_edits->results = g_slist_prepend (
+          item->unsent_edits->results, result);
       return TRUE;
     }
   else if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
@@ -2289,7 +2292,15 @@ gabble_roster_handle_remove (GabbleRoster *roster,
        * subscription directions.
        */
       DEBUG ("contact#%u is blocked; not removing", handle);
-      return roster_item_cancel_subscriptions (roster, handle, item, error);
+      ret = roster_item_cancel_subscriptions (roster, handle, item, &error);
+
+      if (!ret)
+        {
+          g_simple_async_result_set_from_error (result, error);
+          g_clear_error (&error);
+        }
+
+      return ret;
     }
   else
     {
@@ -2305,17 +2316,23 @@ gabble_roster_handle_remove (GabbleRoster *roster,
 
   in_flight = item_edit_new (contact_repo, handle);
   in_flight->new_subscription = item->subscription;
+  gabble_simple_async_countdown_inc (result);
+  in_flight->results = g_slist_prepend (in_flight->results, result);
 
   ret = _gabble_connection_send_with_reply (priv->conn,
       message, roster_edited_cb, G_OBJECT (roster),
-      in_flight, error);
+      in_flight, &error);
   lm_message_unref (message);
 
   item->subscription = subscription;
 
   /* if send_with_reply failed, then roster_edited_cb will never run */
   if (!ret)
-    item_edit_free (in_flight);
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_clear_error (&error);
+      item_edit_free (in_flight);
+    }
 
   return ret;
 }
@@ -2767,23 +2784,15 @@ gabble_roster_remove_contacts_async (TpBaseContactList *base,
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpIntSetFastIter iter;
   TpHandle contact;
-  GError *error = NULL;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_request_subscription_async, 1);
 
   tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
 
   while (tp_intset_fast_iter_next (&iter, &contact))
-    {
-      /* stop trying at the first NetworkError, on the assumption that
-       * it'll be fatal */
-      gabble_roster_handle_remove (self, contact, &error);
+    gabble_roster_handle_remove (self, contact, result);
 
-      /* FIXME: removal is an IQ, so we should be able to wait for the
-       * results too */
-    }
-
-  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
-      gabble_roster_request_subscription_async, error);
-  g_clear_error (&error);
+  gabble_simple_async_countdown_dec (result);
 }
 
 static void

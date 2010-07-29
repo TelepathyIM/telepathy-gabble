@@ -78,7 +78,6 @@ gboolean gabble_roster_handle_set_blocked (GabbleRoster *, TpHandle, gboolean,
 const gchar *gabble_roster_handle_get_name (GabbleRoster *, TpHandle);
 gboolean gabble_roster_handle_set_name (GabbleRoster *, TpHandle,
     const gchar *, GError **);
-gboolean gabble_roster_handle_remove (GabbleRoster *, TpHandle, GError **);
 gboolean gabble_roster_handle_add (GabbleRoster *, TpHandle, GError **);
 gboolean gabble_roster_handle_has_entry (GabbleRoster *, TpHandle);
 

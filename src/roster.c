@@ -2168,20 +2168,17 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  if (1) /* FIXME: re-indent */
-    {
-      DEBUG ("queue edit to contact#%u - change subscription to blocked=%d",
-             handle, blocked);
+  DEBUG ("queue edit to contact#%u - change subscription to blocked=%d",
+         handle, blocked);
 
-      if (blocked)
-        item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_BLOCKED;
-      else
-        item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
+  if (blocked)
+    item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_BLOCKED;
+  else
+    item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
 
-      gabble_simple_async_countdown_inc (result);
-      item->unsent_edits->results = g_slist_prepend (
-          item->unsent_edits->results, result);
-    }
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, result);
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
@@ -2253,13 +2250,10 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  if (1) /* FIXME: re-indent */
-    {
-      DEBUG ("queue edit to contact#%u - change name to \"%s\"",
-             handle, name);
-      g_free (item->unsent_edits->new_name);
-      item->unsent_edits->new_name = g_strdup (name);
-    }
+  DEBUG ("queue edit to contact#%u - change name to \"%s\"",
+         handle, name);
+  g_free (item->unsent_edits->new_name);
+  item->unsent_edits->new_name = g_strdup (name);
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
@@ -2289,15 +2283,12 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  if (1) /* FIXME: re-indent */
-    {
-      DEBUG ("queue edit to contact#%u - change subscription to REMOVE",
-             handle);
-      item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
-      gabble_simple_async_countdown_inc (result);
-      item->unsent_edits->results = g_slist_prepend (
-          item->unsent_edits->results, result);
-    }
+  DEBUG ("queue edit to contact#%u - change subscription to REMOVE",
+         handle);
+  item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, result);
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
@@ -2335,13 +2326,10 @@ gabble_roster_handle_add (GabbleRoster *roster,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  if (1) /* FIXME: re-indent */
-    {
-      DEBUG ("queue edit to contact#%u - change google type to NORMAL",
-             handle);
-      item->unsent_edits->create = TRUE;
-      item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
-    }
+  DEBUG ("queue edit to contact#%u - change google type to NORMAL",
+         handle);
+  item->unsent_edits->create = TRUE;
+  item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
@@ -2376,24 +2364,21 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  if (1) /* FIXME: re-indent */
+  DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, result);
+
+  if (!item->unsent_edits->add_to_groups)
     {
-      DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
-      gabble_simple_async_countdown_inc (result);
-      item->unsent_edits->results = g_slist_prepend (
-          item->unsent_edits->results, result);
+      item->unsent_edits->add_to_groups = tp_handle_set_new (group_repo);
+    }
 
-      if (!item->unsent_edits->add_to_groups)
-        {
-          item->unsent_edits->add_to_groups = tp_handle_set_new (group_repo);
-        }
+  tp_handle_set_add (item->unsent_edits->add_to_groups, group);
 
-      tp_handle_set_add (item->unsent_edits->add_to_groups, group);
-
-      if (item->unsent_edits->remove_from_groups)
-        {
-          tp_handle_set_remove (item->unsent_edits->remove_from_groups, group);
-        }
+  if (item->unsent_edits->remove_from_groups)
+    {
+      tp_handle_set_remove (item->unsent_edits->remove_from_groups, group);
     }
 
   /* maybe we can apply the edit immediately? */
@@ -2427,26 +2412,23 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  if (1) /* FIXME: re-indent */
+  DEBUG ("queue edit to contact#%u - remove from group#%u", handle, group);
+
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, result);
+
+  if (!item->unsent_edits->remove_from_groups)
     {
-      DEBUG ("queue edit to contact#%u - remove from group#%u", handle, group);
+      item->unsent_edits->remove_from_groups = tp_handle_set_new (
+          group_repo);
+    }
 
-      gabble_simple_async_countdown_inc (result);
-      item->unsent_edits->results = g_slist_prepend (
-          item->unsent_edits->results, result);
+  tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
 
-      if (!item->unsent_edits->remove_from_groups)
-        {
-          item->unsent_edits->remove_from_groups = tp_handle_set_new (
-              group_repo);
-        }
-
-      tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
-
-      if (item->unsent_edits->add_to_groups)
-        {
-          tp_handle_set_remove (item->unsent_edits->add_to_groups, group);
-        }
+  if (item->unsent_edits->add_to_groups)
+    {
+      tp_handle_set_remove (item->unsent_edits->add_to_groups, group);
     }
 
   /* maybe we can apply the edit immediately? */
@@ -2991,27 +2973,24 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, contact);
 
-  if (1) /* FIXME: re-indent */
+  DEBUG ("queue edit to contact#%u - set %" G_GSIZE_FORMAT
+      "contact groups", contact, n);
+
+  if (item->unsent_edits->add_to_groups != NULL)
+    tp_handle_set_destroy (item->unsent_edits->add_to_groups);
+
+  item->unsent_edits->add_to_groups = groups_set;
+  item->unsent_edits->remove_from_all_other_groups = TRUE;
+
+  if (item->unsent_edits->remove_from_groups != NULL)
     {
-      DEBUG ("queue edit to contact#%u - set %" G_GSIZE_FORMAT
-          "contact groups", contact, n);
-
-      if (item->unsent_edits->add_to_groups != NULL)
-        tp_handle_set_destroy (item->unsent_edits->add_to_groups);
-
-      item->unsent_edits->add_to_groups = groups_set;
-      item->unsent_edits->remove_from_all_other_groups = TRUE;
-
-      if (item->unsent_edits->remove_from_groups != NULL)
-        {
-          tp_handle_set_destroy (item->unsent_edits->remove_from_groups);
-          item->unsent_edits->remove_from_groups = NULL;
-        }
-
-      gabble_simple_async_countdown_inc (result);
-      item->unsent_edits->results = g_slist_prepend (
-          item->unsent_edits->results, result);
+      tp_handle_set_destroy (item->unsent_edits->remove_from_groups);
+      item->unsent_edits->remove_from_groups = NULL;
     }
+
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, result);
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (self, contact, item);

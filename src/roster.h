@@ -73,8 +73,6 @@ GabbleRoster *gabble_roster_new (GabbleConnection *);
 
 GabbleRosterSubscription gabble_roster_handle_get_subscription (GabbleRoster *,
     TpHandle);
-gboolean gabble_roster_handle_set_blocked (GabbleRoster *, TpHandle, gboolean,
-    GError **);
 const gchar *gabble_roster_handle_get_name (GabbleRoster *, TpHandle);
 gboolean gabble_roster_handle_set_name (GabbleRoster *, TpHandle,
     const gchar *, GError **);

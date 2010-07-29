@@ -1408,6 +1408,39 @@ gabble_disco_identity_array_free (GPtrArray *arr)
 }
 
 /**
+ * gabble_simple_async_succeed_or_fail_in_idle:
+ * @self: the source object for an asynchronous function
+ * @callback: a callback to call when @todo things have been done
+ * @user_data: user data for the callback
+ * @source_tag: the source tag for a #GSimpleAsyncResult
+ * @error: (allow-none): %NULL to indicate success, or an error on failure
+ *
+ * Create a new #GSimpleAsyncResult and schedule it to call its callback
+ * in an idle. If @error is %NULL, report success with
+ * tp_simple_async_report_success_in_idle(); if @error is non-%NULL,
+ * use g_simple_async_report_gerror_in_idle().
+ */
+void
+gabble_simple_async_succeed_or_fail_in_idle (gpointer self,
+    GAsyncReadyCallback callback,
+    gpointer user_data,
+    gpointer source_tag,
+    const GError *error)
+{
+  if (error == NULL)
+    {
+      tp_simple_async_report_success_in_idle (self, callback, user_data,
+          source_tag);
+    }
+  else
+    {
+      /* not const-correct yet: GNOME #622004 */
+      g_simple_async_report_gerror_in_idle (self, callback, user_data,
+          (GError *) error);
+    }
+}
+
+/**
  * gabble_simple_async_countdown_new:
  * @self: the source object for an asynchronous function
  * @callback: a callback to call when @todo things have been done

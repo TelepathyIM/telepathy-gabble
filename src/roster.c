@@ -593,7 +593,11 @@ _gabble_roster_item_update (GabbleRoster *roster,
       TpIntSet *created_groups = tp_handle_set_update (roster->priv->groups,
           new_groups);
 
-      if (!tp_intset_is_empty (created_groups))
+      /* we don't need to do this work if TpBaseContactList will just be
+       * ignoring it, as it will before we've received the roster */
+      if (tp_base_contact_list_get_state ((TpBaseContactList *) roster,
+            NULL) == TP_CONTACT_LIST_STATE_SUCCESS &&
+          !tp_intset_is_empty (created_groups))
         {
           GPtrArray *strv = g_ptr_array_sized_new (tp_intset_size (
                 created_groups));

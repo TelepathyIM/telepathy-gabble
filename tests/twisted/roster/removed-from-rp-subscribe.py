@@ -56,8 +56,15 @@ def test(q, bus, conn, stream, remove, local):
     stream.send(iq)
 
     # In response, Gabble should add Marco to stored:
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [h], [], [], [], 0, 0], path=stored.object_path)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=['', [h], [], [], [], 0, 0], path=stored.object_path),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{ h: (cs.SUBSCRIPTION_STATE_NO,
+                        cs.SUBSCRIPTION_STATE_NO, ''), },
+                    []],
+                ),
+            )
 
     # Gajim sends a <presence type='subscribe'/> to Marco. 'As a result, the
     # user's server MUST initiate a second roster push to all of the user's
@@ -71,9 +78,16 @@ def test(q, bus, conn, stream, remove, local):
     stream.send(iq)
 
     # In response, Gabble should add Marco to subscribe:remote-pending:
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [], [], [], [h], self_handle, 0],
-        path=subscribe.object_path)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=['', [], [], [], [h], self_handle, 0],
+                path=subscribe.object_path),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{ h: (cs.SUBSCRIPTION_STATE_ASK,
+                        cs.SUBSCRIPTION_STATE_NO, ''),
+                    }, []],
+                ),
+            )
 
     # The user decides that they don't care what Marco's baking after all
     # (maybe they read his blog instead?) and:
@@ -113,6 +127,9 @@ def test(q, bus, conn, stream, remove, local):
             EventPattern('dbus-signal', signal='MembersChanged',
                 args=['', [], [h], [], [], 0, 0],
                 path=stored.object_path),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{}, [h]],
+                ),
             )
     else:
         # ...rescinds the subscription request...
@@ -137,9 +154,17 @@ def test(q, bus, conn, stream, remove, local):
         # subscribe:remote-pending. It shouldn't wait for the <presence
         # type='unsubscribed'/> ack before doing so: empirical tests reveal
         # that it's never delivered.
-        q.expect('dbus-signal', signal='MembersChanged',
-            args=['', [], [h], [], [], 0, 0],
-            path=subscribe.object_path)
+        q.expect_many(
+                EventPattern('dbus-signal', signal='MembersChanged',
+                    args=['', [], [h], [], [], 0, 0],
+                    path=subscribe.object_path),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{ h:
+                        (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO,
+                            ''),
+                        }, []],
+                    ),
+                )
 
 def test_remove_local(q, bus, conn, stream):
     test(q, bus, conn, stream, remove=True, local=True)

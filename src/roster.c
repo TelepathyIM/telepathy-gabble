@@ -1755,10 +1755,6 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
                                          GObject *roster_obj,
                                          gpointer user_data);
 
-static gboolean gabble_roster_handle_subscribe (GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
 static gboolean gabble_roster_handle_unsubscribe (GabbleRoster *roster,
     TpHandle handle,
     const gchar *message,
@@ -2382,27 +2378,6 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 }
 
 static gboolean
-gabble_roster_handle_subscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error)
-{
-  GabbleRosterPrivate *priv = roster->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
-
-
-  /* add item to the roster (GTalk depends on this, clearing the H flag) */
-  gabble_roster_handle_add (priv->conn->roster, handle, NULL);
-
-  /* send <presence type="subscribe"> */
-  return gabble_connection_send_presence (priv->conn,
-      LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
-}
-
-static gboolean
 gabble_roster_handle_unsubscribe (
     GabbleRoster *roster,
     TpHandle handle,
@@ -2521,6 +2496,51 @@ gabble_roster_get_states (TpBaseContactList *base,
     }
 }
 
+typedef struct {
+    GAsyncReadyCallback callback;
+    gpointer user_data;
+    TpHandleSet *contacts;
+    gchar *message;
+} SubscribeContext;
+
+static void
+gabble_roster_request_subscription_added_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (source);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  SubscribeContext *context = user_data;
+  GError *error = NULL;
+  TpIntSetFastIter iter;
+  TpHandle contact;
+
+  /* Now that we've added all the contacts, send off all the subscription
+   * requests; stop if we hit an error. */
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (context->contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+
+      /* stop trying at the first NetworkError, on the assumption that it'll
+       * be fatal */
+      if (!gabble_connection_send_presence (self->priv->conn,
+            LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, context->message,
+            &error))
+        break;
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, context->callback,
+      context->user_data, NULL, error);
+  g_clear_error (&error);
+  tp_clear_pointer (&context->contacts, tp_handle_set_destroy);
+  g_free (context->message);
+  g_slice_free (SubscribeContext, context);
+}
+
 static void
 gabble_roster_request_subscription_async (TpBaseContactList *base,
     TpHandleSet *contacts,
@@ -2529,28 +2549,28 @@ gabble_roster_request_subscription_async (TpBaseContactList *base,
     gpointer user_data)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
+  SubscribeContext *context = g_slice_new0 (SubscribeContext);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      gabble_roster_request_subscription_added_cb, context,
+      gabble_roster_request_subscription_async, 1);
   TpIntSetFastIter iter;
   TpHandle contact;
-  GError *error = NULL;
 
-  /* In principle we should probably not return until the
-   * <presence type='subscribe'/> takes effect, but that's hard to do because
-   * it's not an IQ, so we're not guaranteed a reply (and if we do get a reply,
-   * we can't necessarily relate it to the request). */
+  /* Before subscribing, add items to the roster
+   * (GTalk depends on this clearing the H flag) */
+  context->contacts = tp_handle_set_copy (contacts);
+  context->callback = callback;
+  context->user_data = user_data;
+  context->message = g_strdup (message);
 
   tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
 
   while (tp_intset_fast_iter_next (&iter, &contact))
-    {
-      /* stop trying at the first NetworkError, on the assumption that it'll
-       * be fatal */
-      if (!gabble_roster_handle_subscribe (self, contact, message, &error))
-        break;
-    }
+    gabble_roster_handle_add (self, contact, result);
 
-  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
-      gabble_roster_request_subscription_async, error);
-  g_clear_error (&error);
+  /* When all of those edits have been applied, the callback will send the
+   * <presence type='subscribe'> requests. */
+  gabble_simple_async_countdown_dec (result);
 }
 
 static void

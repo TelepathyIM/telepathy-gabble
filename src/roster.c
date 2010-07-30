@@ -2307,10 +2307,10 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   roster_item_apply_edits (roster, handle, item);
 }
 
-static gboolean
+static void
 gabble_roster_handle_add (GabbleRoster *roster,
                           TpHandle handle,
-                          GError **error)
+                          GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2318,10 +2318,9 @@ gabble_roster_handle_add (GabbleRoster *roster,
   GabbleRosterItem *item;
   gboolean do_add = FALSE;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
   if (!gabble_roster_handle_has_entry (roster, handle))
       do_add = TRUE;
@@ -2332,7 +2331,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
     do_add = TRUE;
 
   if (!do_add)
-      return TRUE;
+      return;
 
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
@@ -2342,12 +2341,15 @@ gabble_roster_handle_add (GabbleRoster *roster,
   item->unsent_edits->create = TRUE;
   item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
 
+  if (result != NULL)
+    {
+      gabble_simple_async_countdown_inc (result);
+      item->unsent_edits->results = g_slist_prepend (
+          item->unsent_edits->results, result);
+    }
+
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
-
-  /* FIXME: this method should be async so we don't need to assume
-   * success */
-  return TRUE;
 }
 
 static void
@@ -2655,23 +2657,15 @@ gabble_roster_store_contacts_async (TpBaseContactList *base,
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpIntSetFastIter iter;
   TpHandle contact;
-  GError *error = NULL;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_store_contacts_async, 1);
 
   tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
 
   while (tp_intset_fast_iter_next (&iter, &contact))
-    {
-      /* stop trying at the first NetworkError, on the assumption that
-       * it'll be fatal */
-      gabble_roster_handle_add (self, contact, &error);
+    gabble_roster_handle_add (self, contact, result);
 
-      /* FIXME: addition is an IQ, so we should be able to wait for the
-       * results too */
-    }
-
-  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
-      gabble_roster_request_subscription_async, error);
-  g_clear_error (&error);
+  gabble_simple_async_countdown_dec (result);
 }
 
 static void

@@ -456,75 +456,10 @@ _gabble_roster_item_remove (GabbleRoster *roster,
   tp_handle_unref (contact_repo, handle);
 }
 
-typedef struct
-{
-  TpHandleRepoIface *contact_repo;
-  TpHandleRepoIface *group_repo;
-  /* TpHandle borrowed from GroupMembershipUpdate => GroupMembershipUpdate */
-  GHashTable *group_mem_updates;
-  /* borrowed from the GabbleRosterItem */
-  guint contact_handle;
-} GroupsUpdateContext;
-
-typedef struct
-{
-  TpHandleRepoIface *group_repo;
-  TpHandleSet *contacts_added;
-  TpHandleSet *contacts_removed;
-  /* referenced */
-  guint group_handle;
-} GroupMembershipUpdate;
-
-static GroupMembershipUpdate *
-group_mem_update_ensure (GroupsUpdateContext *ctx,
-                         TpHandle group_handle)
-{
-  GroupMembershipUpdate *update = g_hash_table_lookup (ctx->group_mem_updates,
-      GUINT_TO_POINTER (group_handle));
-
-  if (update != NULL)
-    return update;
-
-  DEBUG ("Creating new hash table entry for group#%u", group_handle);
-  update = g_slice_new0 (GroupMembershipUpdate);
-  update->group_repo = ctx->group_repo;
-  tp_handle_ref (update->group_repo, group_handle);
-  update->group_handle = group_handle;
-  update->contacts_added = tp_handle_set_new (ctx->contact_repo);
-  update->contacts_removed = tp_handle_set_new (ctx->contact_repo);
-  g_hash_table_insert (ctx->group_mem_updates,
-                       GUINT_TO_POINTER (group_handle),
-                       update);
-  return update;
-}
-
-static void
-_update_add_to_group (guint group_handle, gpointer user_data)
-{
-  GroupsUpdateContext *ctx = (GroupsUpdateContext *) user_data;
-  GroupMembershipUpdate *update = group_mem_update_ensure (ctx, group_handle);
-
-  DEBUG ("- contact#%u added to group#%u", ctx->contact_handle,
-         group_handle);
-  tp_handle_set_add (update->contacts_added, ctx->contact_handle);
-}
-
-static void
-_update_remove_from_group (guint group_handle, gpointer user_data)
-{
-  GroupsUpdateContext *ctx = (GroupsUpdateContext *) user_data;
-  GroupMembershipUpdate *update = group_mem_update_ensure (ctx, group_handle);
-
-  DEBUG ("- contact#%u removed from group#%u", ctx->contact_handle,
-         group_handle);
-  tp_handle_set_add (update->contacts_removed, ctx->contact_handle);
-}
-
 static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
                             TpHandle contact_handle,
                             LmMessageNode *node,
-                            GHashTable *group_updates,
                             gboolean google_roster_mode)
 {
   GabbleRosterPrivate *priv = roster->priv;
@@ -532,17 +467,15 @@ _gabble_roster_item_update (GabbleRoster *roster,
   const gchar *ask, *name;
   TpIntSet *new_groups, *added_to, *removed_from, *removed_from2;
   TpHandleSet *new_groups_handle_set, *old_groups;
-  GroupsUpdateContext ctx = { NULL, NULL, group_updates,
-      contact_handle };
-
-  ctx.contact_repo = tp_base_connection_get_handles (
+  TpBaseContactList *base = (TpBaseContactList *) roster;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  ctx.group_repo = tp_base_connection_get_handles (
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (ctx.contact_repo, contact_handle, NULL));
+  g_assert (tp_handle_is_valid (contact_repo, contact_handle, NULL));
   g_assert (node != NULL);
 
   item = _gabble_roster_item_ensure (roster, contact_handle);
@@ -608,7 +541,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
           while (tp_intset_fast_iter_next (&iter, &group))
             {
-              const gchar *group_name = tp_handle_inspect (ctx.group_repo,
+              const gchar *group_name = tp_handle_inspect (group_repo,
                   group);
 
               DEBUG ("Group was just created: #%u '%s'", group, group_name);
@@ -624,12 +557,54 @@ _gabble_roster_item_update (GabbleRoster *roster,
       tp_clear_pointer (&created_groups, tp_intset_destroy);
     }
 
-  DEBUG ("Checking which groups contact#%u was just added to:",
-      contact_handle);
-  tp_intset_foreach (added_to, _update_add_to_group, &ctx);
-  DEBUG ("Checking which groups contact#%u was just removed from:",
-      contact_handle);
-  tp_intset_foreach (removed_from, _update_remove_from_group, &ctx);
+  /* We emit one GroupsChanged signal per contact, because that's most natural
+   * for XMPP, where we usually get a roster push for a single contact.
+   *
+   * The exception is when we're receiving our initial roster, but until we do
+   * that we don't need to emit GroupsChanged anyway; TpBaseContactList will
+   * recover state. */
+  if (tp_base_contact_list_get_state (base, NULL) ==
+      TP_CONTACT_LIST_STATE_SUCCESS &&
+      (!tp_intset_is_empty (added_to) || !tp_intset_is_empty (removed_from)))
+    {
+      GPtrArray *added_names = g_ptr_array_sized_new (tp_intset_size (added_to));
+      GPtrArray *removed_names = g_ptr_array_sized_new (
+          tp_intset_size (removed_from));
+      TpHandleSet *the_contact = tp_handle_set_new (contact_repo);
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      tp_handle_set_add (the_contact, contact_handle);
+
+      tp_intset_fast_iter_init (&iter, added_to);
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          const gchar *group_name = tp_handle_inspect (group_repo,
+              group);
+
+          DEBUG ("Contact #%u added to group #%u '%s'", contact_handle, group,
+              group_name);
+          g_ptr_array_add (added_names, (gchar *) group_name);
+        }
+
+      tp_intset_fast_iter_init (&iter, removed_from);
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          const gchar *group_name = tp_handle_inspect (group_repo,
+              group);
+
+          DEBUG ("Contact #%u removed from group #%u '%s'", contact_handle,
+              group, group_name);
+          g_ptr_array_add (removed_names, (gchar *) group_name);
+        }
+
+      tp_base_contact_list_groups_changed ((TpBaseContactList *) roster,
+          the_contact,
+          (const gchar * const *) added_names->pdata, added_names->len,
+          (const gchar * const *) removed_names->pdata, removed_names->len);
+    }
 
   tp_intset_destroy (added_to);
   tp_intset_destroy (removed_from);
@@ -808,39 +783,6 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
 DONE:
   return message;
-}
-
-static void
-_group_mem_update_destroy (GroupMembershipUpdate *update)
-{
-  tp_handle_set_destroy (update->contacts_added);
-  tp_handle_set_destroy (update->contacts_removed);
-  tp_handle_unref (update->group_repo, update->group_handle);
-  g_slice_free (GroupMembershipUpdate, update);
-}
-
-static gboolean
-_update_group (gpointer key,
-               gpointer value,
-               gpointer user_data)
-{
-  guint group_handle = GPOINTER_TO_UINT (key);
-  GabbleRoster *roster = GABBLE_ROSTER (user_data);
-  GroupMembershipUpdate *update = value;
-  const gchar *group_name = tp_handle_inspect (update->group_repo,
-      update->group_handle);
-
-#ifdef ENABLE_DEBUG
-  g_assert (group_handle == update->group_handle);
-#endif
-
-  tp_base_contact_list_groups_changed ((TpBaseContactList *) roster,
-      update->contacts_added, &group_name, 1, NULL, 0);
-
-  tp_base_contact_list_groups_changed ((TpBaseContactList *) roster,
-      update->contacts_removed, NULL, 0, &group_name, 1);
-
-  return TRUE;
 }
 
 static FlickerPreventionCtx *
@@ -1084,9 +1026,6 @@ process_roster (
   TpHandleSet *removed = tp_handle_set_new (contact_repo);
   /* We may not have a deny list */
   TpHandleSet *blocking_changed;
-
-  GHashTable *group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
-      (GDestroyNotify) _group_mem_update_destroy);
   TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
 
   gboolean google_roster = is_google_roster_push (roster, query_node);
@@ -1115,7 +1054,6 @@ process_roster (
       tp_handle_unref (contact_repo, handle);
 
       item = _gabble_roster_item_update (roster, handle, item_node,
-                                         group_update_table,
                                          google_roster);
 #ifdef ENABLE_DEBUG
       if (DEBUGGING)
@@ -1307,8 +1245,6 @@ process_roster (
   tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
       changed, removed);
 
-  g_hash_table_foreach_remove (group_update_table, _update_group, roster);
-
   if (google_roster)
     {
       tp_base_contact_list_contact_blocking_changed (
@@ -1318,7 +1254,6 @@ process_roster (
 
   tp_handle_set_destroy (changed);
   tp_handle_set_destroy (removed);
-  g_hash_table_destroy (group_update_table);
   tp_handle_set_destroy (referenced_handles);
 }
 

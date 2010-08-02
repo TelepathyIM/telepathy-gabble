@@ -101,16 +101,11 @@ def test(q, bus, conn, stream):
     item.addElement('group', content='ladies')
     stream.send(iq)
 
-    # FIXME: ideally, this would emit a single GroupsChanged, but as a relic
-    # of the Chan.T.ContactList code, it splits up updates by group
-    q.expect_many(
-        EventPattern('dbus-signal', signal='GroupsChanged',
-            args=[[amy], [], ['women']]),
-        EventPattern('dbus-signal', signal='GroupsChanged',
-            args=[[amy], ['people starting with A'], []]),
-        EventPattern('dbus-signal', signal='GroupsChanged',
-            args=[[amy], ['ladies'], []]),
-        )
+    # We get a single signal corresponding to that roster push
+    e = q.expect('dbus-signal', signal='GroupsChanged',
+            predicate=lambda e: e.args[0] == [amy])
+    assertEquals(set(['ladies', 'people starting with A']), set(e.args[1]))
+    assertEquals(['women'], e.args[2])
 
     # check that Amy's state is what we expected
     attrs = conn.Contacts.GetContactAttributes([amy],

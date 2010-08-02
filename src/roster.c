@@ -2375,22 +2375,6 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 }
 
 static gboolean
-gabble_roster_handle_unsubscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error)
-{
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
-
-  /* send <presence type="unsubscribe"> */
-  return gabble_connection_send_presence (roster->priv->conn,
-      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
-}
-
-static gboolean
 gabble_roster_handle_subscribed (
     GabbleRoster *roster,
     TpHandle handle,
@@ -2651,6 +2635,8 @@ gabble_roster_unsubscribe_async (TpBaseContactList *base,
     gpointer user_data)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpIntSetFastIter iter;
   TpHandle contact;
   GError *error = NULL;
@@ -2659,9 +2645,12 @@ gabble_roster_unsubscribe_async (TpBaseContactList *base,
 
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+
       /* stop trying at the first NetworkError, on the assumption that
        * it'll be fatal */
-      if (!gabble_roster_handle_unsubscribe (self, contact, "", &error))
+      if (!gabble_connection_send_presence (self->priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, "", &error))
         break;
     }
 

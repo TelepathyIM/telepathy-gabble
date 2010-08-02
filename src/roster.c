@@ -1541,13 +1541,16 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
+
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
-      if (item->publish != TP_SUBSCRIPTION_STATE_NO)
+      if (item->publish == TP_SUBSCRIPTION_STATE_YES ||
+          item->publish == TP_SUBSCRIPTION_STATE_ASK)
         {
-          roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+          roster_item_set_publish (item,
+              TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY, NULL);
 
           tmp = tp_handle_set_new (contact_repo);
           tp_handle_set_add (tmp, handle);
@@ -1564,6 +1567,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
+
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
@@ -1587,13 +1591,15 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
+
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
-      if (item->subscribe != TP_SUBSCRIPTION_STATE_NO)
+      if (item->subscribe == TP_SUBSCRIPTION_STATE_YES ||
+          item->subscribe == TP_SUBSCRIPTION_STATE_ASK)
         {
-          item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+          item->subscribe = TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY;
 
           tmp = tp_handle_set_new (contact_repo);
           tp_handle_set_add (tmp, handle);
@@ -2705,6 +2711,7 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleSet *changed = tp_handle_set_new (contact_repo);
   TpIntSetFastIter iter;
   TpHandle contact;
   GError *error = NULL;
@@ -2716,27 +2723,40 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
       const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
       GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
 
-      /* stop trying at the first NetworkError, on the assumption that
-       * it'll be fatal */
-      if (!gabble_connection_send_presence (self->priv->conn,
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, "", &error))
-        break;
-
-      /* remove it from publish:local_pending here, because roster callback
-       * doesn't know if it can (subscription='none' is used both during
-       * request and when it's rejected) */
-      if (item != NULL && item->publish == TP_SUBSCRIPTION_STATE_ASK)
+      /* If moving from YES to NO, the roster callback will make the change
+       * visible to D-Bus when it actually takes effect.
+       *
+       * If moving from ASK to NO, remove it from publish:local_pending here,
+       * because the roster callback doesn't know if it can
+       * (subscription='none' is used both during request and when it's
+       * rejected).
+       *
+       * If moving from REMOVED_REMOTELY to NO, there's no real change at the
+       * XMPP level, so this is our only chance to make the change visible. */
+      if (item != NULL &&
+          (item->publish == TP_SUBSCRIPTION_STATE_ASK ||
+           item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY))
         {
-          TpHandleSet *rem = tp_handle_set_new (contact_repo);
-
-          tp_handle_set_add (rem, contact);
+          tp_handle_set_add (changed, contact);
           roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
-          tp_base_contact_list_contacts_changed ((TpBaseContactList *) self,
-              rem, NULL);
-          tp_handle_set_destroy (rem);
+        }
+
+      if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO)
+        {
+          DEBUG ("Already not publishing to '%s': not sending unsubscribed",
+              contact_id);
+        }
+      else
+        {
+          /* stop trying at the first NetworkError, on the assumption that
+           * it'll be fatal */
+          if (!gabble_connection_send_presence (self->priv->conn,
+              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, "", &error))
+            break;
         }
     }
 
+  tp_base_contact_list_contacts_changed (base, changed, NULL);
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
       gabble_roster_request_subscription_async, error);
   g_clear_error (&error);

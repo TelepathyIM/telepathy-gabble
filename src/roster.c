@@ -64,6 +64,10 @@ struct _GabbleRosterPrivate
   GHashTable *items;
   TpHandleSet *groups;
 
+  /* set of contacts whose subscription requests will automatically be
+   * accepted during this session */
+  TpHandleSet *pre_authorized;
+
   gboolean received;
   gboolean dispose_has_run;
 };
@@ -187,6 +191,7 @@ gabble_roster_dispose (GObject *object)
 
   gabble_roster_close_all (self);
   g_assert (priv->groups == NULL);
+  g_assert (priv->pre_authorized == NULL);
 
   if (G_OBJECT_CLASS (gabble_roster_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roster_parent_class)->dispose (object);
@@ -1427,6 +1432,8 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
   lm_message_unref (reply);
 }
 
+static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
+    TpHandle handle, const gchar *message, GError **error);
 
 /**
  * connection_presence_roster_cb:
@@ -1514,6 +1521,22 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       tp_handle_set_add (tmp, handle);
       tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
           tmp, NULL);
+
+      if (tp_handle_set_is_member (roster->priv->pre_authorized, handle))
+        {
+          GError *error = NULL;
+
+          DEBUG ("%s (handle %u) was pre-authorized, will accept their "
+              "request", from, handle);
+
+          if (!gabble_roster_handle_subscribed (roster, handle, "", &error))
+            {
+              DEBUG ("Authorizing pre-authorized request failed: %s",
+                  error->message);
+              g_clear_error (&error);
+            }
+        }
+
       tp_handle_set_destroy (tmp);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
@@ -1616,6 +1639,12 @@ gabble_roster_close_all (GabbleRoster *self)
       priv->groups = NULL;
     }
 
+  if (priv->pre_authorized != NULL)
+    {
+      tp_handle_set_destroy (priv->pre_authorized);
+      priv->pre_authorized = NULL;
+    }
+
   if (self->priv->iq_cb != NULL)
     {
       DEBUG ("removing callbacks");
@@ -1701,6 +1730,7 @@ gabble_roster_constructed (GObject *obj)
   void (*chain_up)(GObject *) =
     ((GObjectClass *) gabble_roster_parent_class)->constructed;
   TpHandleRepoIface *group_repo;
+  TpHandleRepoIface *contact_repo;
 
   if (chain_up != NULL)
     chain_up (obj);
@@ -1717,10 +1747,13 @@ gabble_roster_constructed (GObject *obj)
 
   group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
   self->priv->groups = tp_handle_set_new (group_repo);
+  self->priv->pre_authorized = tp_handle_set_new (contact_repo);
 }
 
 GabbleRoster *
@@ -2551,6 +2584,8 @@ gabble_roster_authorize_publication_async (TpBaseContactList *base,
     gpointer user_data)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpIntSetFastIter iter;
   TpHandle contact;
   GError *error = NULL;
@@ -2561,16 +2596,28 @@ gabble_roster_authorize_publication_async (TpBaseContactList *base,
     {
       GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
 
-      if (item != NULL && item->publish == TP_SUBSCRIPTION_STATE_ASK)
+      if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO
+          || item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
+        {
+          const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+
+          /* The contact didn't ask for our presence, so we can't usefully
+           * send out <presence type='subscribed'/> (as per RFC3921 §9.2,
+           * our server shouldn't forward it anyway). However, we can
+           * remember this "pre-authorization" and use it later in the
+           * session to auto-approve a subscription request. */
+          DEBUG ("Noting that contact #%u '%s' is pre-authorized",
+              contact, contact_id);
+          tp_handle_set_add (self->priv->pre_authorized, contact);
+        }
+      else if (item->publish == TP_SUBSCRIPTION_STATE_ASK)
         {
           /* stop trying at the first NetworkError, on the assumption that
            * it'll be fatal */
           if (!gabble_roster_handle_subscribed (self, contact, "", &error))
             break;
         }
-
-      /* FIXME: also implement "pre-authorization", which we didn't
-       * previously allow */
+      /* else publish is already YES so we have nothing to do */
     }
 
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,

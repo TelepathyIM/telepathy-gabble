@@ -2390,41 +2390,6 @@ gabble_roster_handle_subscribed (
       LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
 }
 
-static gboolean
-gabble_roster_handle_unsubscribed (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error)
-{
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
-  gboolean ret;
-  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, handle);
-
-  /* send <presence type="unsubscribed"> */
-  ret = gabble_connection_send_presence (roster->priv->conn,
-      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, message, error);
-
-  /* remove it from publish:local_pending here, because roster callback doesn't
-     know if it can (subscription='none' is used both during request and
-     when it's rejected) */
-  if (item != NULL && item->publish == TP_SUBSCRIPTION_STATE_ASK)
-    {
-      TpHandleSet *rem = tp_handle_set_new (contact_repo);
-
-      tp_handle_set_add (rem, handle);
-      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
-      tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
-          rem, NULL);
-
-      tp_handle_set_destroy (rem);
-    }
-
-  return ret;
-}
-
 static TpHandleSet *
 gabble_roster_get_contacts (TpBaseContactList *base)
 {
@@ -2666,6 +2631,8 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
     gpointer user_data)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpIntSetFastIter iter;
   TpHandle contact;
   GError *error = NULL;
@@ -2674,10 +2641,28 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
 
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
       /* stop trying at the first NetworkError, on the assumption that
        * it'll be fatal */
-      if (!gabble_roster_handle_unsubscribed (self, contact, "", &error))
+      if (!gabble_connection_send_presence (self->priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, "", &error))
         break;
+
+      /* remove it from publish:local_pending here, because roster callback
+       * doesn't know if it can (subscription='none' is used both during
+       * request and when it's rejected) */
+      if (item != NULL && item->publish == TP_SUBSCRIPTION_STATE_ASK)
+        {
+          TpHandleSet *rem = tp_handle_set_new (contact_repo);
+
+          tp_handle_set_add (rem, contact);
+          roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+          tp_base_contact_list_contacts_changed ((TpBaseContactList *) self,
+              rem, NULL);
+          tp_handle_set_destroy (rem);
+        }
     }
 
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,

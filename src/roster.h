@@ -24,6 +24,8 @@
 
 #include <glib-object.h>
 
+#include <telepathy-glib/base-contact-list.h>
+
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -48,11 +50,11 @@ GType gabble_roster_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROSTER, GabbleRosterClass))
 
 struct _GabbleRosterClass {
-    GObjectClass parent_class;
+    TpBaseContactListClass parent_class;
 };
 
 struct _GabbleRoster {
-    GObject parent;
+    TpBaseContactList parent;
     GabbleRosterPrivate *priv;
 };
 

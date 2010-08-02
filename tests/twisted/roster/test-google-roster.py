@@ -137,6 +137,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
     sometimes. Here, we test that Gabble is suppressing the flickers.
     """
 
+    self_handle = conn.GetSelfHandle()
     contact = 'bob@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
 
@@ -179,7 +180,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
             args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
             predicate=is_stored),
         EventPattern('dbus-signal', signal='MembersChanged',
-            args=['', [], [], [], [handle], 0, cs.GC_REASON_NONE],
+            args=['', [], [], [], [handle], self_handle, cs.GC_REASON_NONE],
             predicate=is_subscribe),
         )
 
@@ -229,7 +230,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
 
     # Gabble should report this update to the UI.
     q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
+        args=['', [handle], [], [], [], handle, cs.GC_REASON_NONE],
         predicate=is_subscribe)
 
     # Gabble shouldn't report any changes to subscribe or stored's members in

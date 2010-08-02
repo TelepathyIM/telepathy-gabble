@@ -32,6 +32,7 @@ def test(q, bus, conn, stream, remove, local):
 
     assertLength(0, pairs)      # i.e. we've checked all of them
 
+    self_handle = conn.GetSelfHandle()
     h = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
 
     # Another client logged into our account (Gajim, say) wants to subscribe to
@@ -71,7 +72,7 @@ def test(q, bus, conn, stream, remove, local):
 
     # In response, Gabble should add Marco to subscribe:remote-pending:
     q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [], [], [], [h], 0, 0],
+        args=['', [], [], [], [h], self_handle, 0],
         path=subscribe.object_path)
 
     # The user decides that they don't care what Marco's baking after all

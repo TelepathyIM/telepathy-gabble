@@ -39,7 +39,6 @@
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
-#include <telepathy-glib/handle-repo-static.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-generic.h>
 
@@ -106,6 +105,10 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
        tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
       tp_contacts_mixin_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST,
+      tp_base_contact_list_mixin_list_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS,
+      tp_base_contact_list_mixin_groups_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
       tp_presence_mixin_simple_presence_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
@@ -328,6 +331,7 @@ gabble_connection_constructor (GType type,
         type, n_construct_properties, construct_params));
   GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
 
   DEBUG("Post-construction: (GabbleConnection *)%p", self);
 
@@ -348,7 +352,8 @@ gabble_connection_constructor (GType type,
   tp_contacts_mixin_init (G_OBJECT (self),
       G_STRUCT_OFFSET (GabbleConnection, contacts));
 
-  tp_base_connection_register_with_contacts_mixin (TP_BASE_CONNECTION (self));
+  tp_base_connection_register_with_contacts_mixin (base);
+  tp_base_contact_list_mixin_register_with_contacts_mixin (base);
 
   conn_aliasing_init (self);
   conn_avatars_init (self);
@@ -699,16 +704,6 @@ gabble_connection_get_unique_name (TpBaseConnection *self)
   return unique_name;
 }
 
-/* must be in the same order as GabbleListHandle in connection.h */
-static const char *list_handle_strings[] =
-{
-    "stored",       /* GABBLE_LIST_HANDLE_STORED */
-    "publish",      /* GABBLE_LIST_HANDLE_PUBLISH */
-    "subscribe",    /* GABBLE_LIST_HANDLE_SUBSCRIBE */
-    "deny",         /* GABBLE_LIST_HANDLE_DENY */
-    NULL
-};
-
 /* For the benefit of the unit tests, this will allow the connection to
  * be NULL
  */
@@ -722,10 +717,6 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
   repos[TP_HANDLE_TYPE_ROOM] =
       tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_ROOM, gabble_normalize_room,
           conn);
-  repos[TP_HANDLE_TYPE_GROUP] =
-      tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_GROUP, NULL, NULL);
-  repos[TP_HANDLE_TYPE_LIST] =
-      tp_static_handle_repo_new (TP_HANDLE_TYPE_LIST, list_handle_strings);
 }
 
 static void
@@ -753,6 +744,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
       TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
       TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
+      TP_IFACE_CONNECTION_INTERFACE_CONTACT_LIST,
+      TP_IFACE_CONNECTION_INTERFACE_CONTACT_GROUPS,
       TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
       GABBLE_IFACE_OLPC_GADGET,
       TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
@@ -1024,6 +1017,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   conn_presence_class_init (gabble_connection_class);
 
   conn_contact_info_class_init (gabble_connection_class);
+
+  tp_base_contact_list_mixin_class_init (parent_class);
 }
 
 static void

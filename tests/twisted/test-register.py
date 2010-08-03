@@ -6,6 +6,7 @@ Test registration.
 from gabbletest import (
     exec_test, make_result_iq, acknowledge_iq, send_error_reply,
     )
+from servicetest import assertEquals
 
 from twisted.words.xish import domish, xpath
 
@@ -48,6 +49,8 @@ def test_conflict(q, bus, conn, stream):
     error.addElement((ns.STANZA, 'conflict'))
     send_error_reply(stream, iq, error)
 
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.REGISTRATION_EXISTS, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NAME_IN_USE])
 
@@ -66,8 +69,9 @@ def test_with_email(q, bus, conn, stream):
 
     stream.send(result)
 
-    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
-    # but couldn't register you an account."
+    # This is really WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.PERMISSION_DENIED, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
@@ -107,8 +111,9 @@ def test_data_forms(q, bus, conn, stream):
 
     stream.send(result)
 
-    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
-    # but couldn't register you an account."
+    # This is really WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.NOT_AVAILABLE, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
@@ -127,8 +132,9 @@ def test_redirection(q, bus, conn, stream):
 
     stream.send(result)
 
-    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
-    # but couldn't register you an account."
+    # This is really WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.NOT_AVAILABLE, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 

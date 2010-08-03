@@ -23,10 +23,16 @@
 #include <glib.h>
 
 #include <wocky/wocky-xmpp-error.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 G_BEGIN_DECLS
 
 void gabble_set_tp_error_from_wocky (const GError *wocky_error,
+    GError **error);
+
+void gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
+    TpConnectionStatus previous_status,
+    TpConnectionStatusReason *conn_reason,
     GError **error);
 
 G_END_DECLS

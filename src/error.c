@@ -695,6 +695,7 @@ map_wocky_connector_error (const GError *error,
 
 static TpError
 map_wocky_stream_error (const GError *error,
+    TpConnectionStatus previous_status,
     TpConnectionStatusReason *conn_reason)
 {
   g_return_val_if_fail (error->domain == WOCKY_XMPP_STREAM_ERROR,
@@ -710,11 +711,18 @@ map_wocky_stream_error (const GError *error,
       return set_easy_conn_reason (conn_reason, AUTHENTICATION_FAILED);
 
     case WOCKY_XMPP_STREAM_ERROR_CONFLICT:
-      /* Assume we got this while already signed-in, rather than while
-       * connecting (which would be ALREADY_CONNECTED). */
-      return set_conn_reason (conn_reason,
-          TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
-          TP_ERROR_CONNECTION_REPLACED);
+      if (previous_status == TP_CONNECTION_STATUS_CONNECTED)
+        {
+          return set_conn_reason (conn_reason,
+              TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
+              TP_ERROR_CONNECTION_REPLACED);
+        }
+      else
+        {
+          return set_conn_reason (conn_reason,
+              TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
+              TP_ERROR_ALREADY_CONNECTED);
+        }
 
     default:
       return set_easy_conn_reason (conn_reason, NETWORK_ERROR);
@@ -778,6 +786,7 @@ get_error_prefix (GEnumClass *klass,
 
 void
 gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
+    TpConnectionStatus previous_status,
     TpConnectionStatusReason *conn_reason,
     GError **error)
 {
@@ -839,7 +848,7 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
       name = get_error_prefix (klass, wocky_error->code,
           "unknown WockyXmppStreamError code");
       g_set_error (error, TP_ERRORS,
-          map_wocky_stream_error (wocky_error, conn_reason),
+          map_wocky_stream_error (wocky_error, previous_status, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
     }
@@ -866,5 +875,6 @@ void
 gabble_set_tp_error_from_wocky (const GError *wocky_error,
     GError **error)
 {
-  gabble_set_tp_conn_error_from_wocky (wocky_error, NULL, error);
+  gabble_set_tp_conn_error_from_wocky (wocky_error,
+      TP_CONNECTION_STATUS_CONNECTED, NULL, error);
 }

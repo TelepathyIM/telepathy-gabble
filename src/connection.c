@@ -1558,24 +1558,8 @@ remote_error_cb (WockyPorter *porter,
     /* Ignore if we are already disconnecting/disconnected */
     return;
 
-  gabble_set_tp_conn_error_from_wocky (&e, &reason, &error);
+  gabble_set_tp_conn_error_from_wocky (&e, base->status, &reason, &error);
   g_assert (error->domain == TP_ERRORS);
-
-  /* special cases for errors we might know more about */
-  if (domain == WOCKY_XMPP_STREAM_ERROR)
-    {
-      if (code == WOCKY_XMPP_STREAM_ERROR_CONFLICT)
-        {
-          /* Another client with the same resource appeared, we're going
-           * down. */
-          if (base->status == TP_CONNECTION_STATUS_CONNECTED)
-            error->code = TP_ERROR_CONNECTION_REPLACED;
-          else
-            error->code = TP_ERROR_ALREADY_CONNECTED;
-
-          reason = TP_CONNECTION_STATUS_REASON_NAME_IN_USE;
-        }
-    }
 
   DEBUG ("Force closing of the connection %p", self);
   priv->closing = TRUE;
@@ -1591,9 +1575,11 @@ connector_error_disconnect (GabbleConnection *self,
     GError *error)
 {
   GError *tp_error = NULL;
+  TpBaseConnection *base = (TpBaseConnection *) self;
   TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
 
-  gabble_set_tp_conn_error_from_wocky (error, &reason, &tp_error);
+  gabble_set_tp_conn_error_from_wocky (error, base->status, &reason,
+      &tp_error);
   DEBUG ("connection failed: %s", tp_error->message);
   g_assert (tp_error->domain == TP_ERRORS);
 

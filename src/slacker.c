@@ -128,9 +128,11 @@ slacker_message_filter (
     {
       gboolean is_inactive;
 
-      dbus_message_get_args (message, NULL, DBUS_TYPE_BOOLEAN, &is_inactive,
-          DBUS_TYPE_INVALID);
-      slacker_inactivity_changed (self, is_inactive);
+      if (dbus_message_get_args (message, NULL, DBUS_TYPE_BOOLEAN, &is_inactive,
+              DBUS_TYPE_INVALID))
+        slacker_inactivity_changed (self, is_inactive);
+      else
+        DEBUG (MCE_INACTIVITY_SIG " without a boolean argument, ignoring");
     }
 
   return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;

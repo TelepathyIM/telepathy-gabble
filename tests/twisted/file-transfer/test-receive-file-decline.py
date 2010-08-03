@@ -9,9 +9,11 @@ class ReceiveFileDeclineTest(ReceiveFileTest):
         # decline FT
         self.channel.Close()
 
-        state_event, iq_event = self.q.expect_many(
+        state_event, iq_event, _ = self.q.expect_many(
             EventPattern('dbus-signal', signal='FileTransferStateChanged'),
-            EventPattern('stream-iq', iq_type='error'))
+            EventPattern('stream-iq', iq_type='error'),
+            EventPattern('dbus-signal', signal='Closed'),
+            )
 
         error_node = xpath.queryForNodes('/iq/error', iq_event.stanza)[0]
         assert error_node['code'] == '403'
@@ -19,7 +21,6 @@ class ReceiveFileDeclineTest(ReceiveFileTest):
         state, reason = state_event.args
         assert state == cs.FT_STATE_CANCELLED
         assert reason == cs.FT_STATE_CHANGE_REASON_LOCAL_STOPPED
-        self.q.expect('dbus-signal', signal='Closed')
 
         # stop test
         return True

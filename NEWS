@@ -1,7 +1,29 @@
-telepathy-gabble 0.9.15 (UNRELEASED)
+telepathy-gabble 0.9.16 (UNRELEASED)
 ====================================
 
-…
+Fixes:
+
+• fd.o#25533: don't associate a request with tubes if a tube was
+  requested so that now if you request a tube (singular) channel
+  before opening the equivalent text chat you'll actually be given the
+  tube channel, and not the tubes channel. (jonny)
+
+telepathy-gabble 0.9.15 (2010-06-30)
+====================================
+
+The “wave forlornly through the gates” release.
+
+Enhancements:
+
+❖ in Wocky, build enum types for all error domains (smcv)
+
+Fixes:
+
+❖ Debian #586936: in Wocky, clear the parser state when resetting, fixing
+  assertion failures if the caps cache gets corrupted (sjoerd)
+
+❖ fd.o #28712: in Wocky, fix SCRAM-SHA1 authentication by initializing state
+  correctly (sjoerd)
 
 telepathy-gabble 0.9.14 (2010-06-22)
 ====================================

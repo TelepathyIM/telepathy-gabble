@@ -547,7 +547,15 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
 
       cand->transport = JINGLE_TRANSPORT_PROTOCOL_UDP;
       nice_address_init (&cand->addr);
-      nice_address_set_from_string (&cand->addr, candidate->address);
+
+      if (!nice_address_set_from_string (&cand->addr, candidate->address))
+        {
+          DEBUG ("invalid address '%s' in candidate, skipping",
+              candidate->address ? candidate->address : "<null>");
+          nice_candidate_free (cand);
+          continue;
+        }
+
       nice_address_set_port (&cand->addr, candidate->port);
       cand->priority = candidate->preference * 1000;
       cand->stream_id = share_channel->stream_id;

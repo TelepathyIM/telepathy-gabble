@@ -5,8 +5,9 @@ Test receiving and authorizing publish requests, including "pre-authorization"
 
 import dbus
 
-from gabbletest import exec_test, sync_stream
-from rostertest import expect_contact_list_signals, check_contact_list_signals
+from gabbletest import exec_test, sync_stream, acknowledge_iq
+from rostertest import (expect_contact_list_signals,
+        check_contact_list_signals, send_roster_push)
 from servicetest import (assertEquals, assertLength, call_async, EventPattern,
         sync_dbus)
 import constants as cs
@@ -113,6 +114,37 @@ def test(q, bus, conn, stream):
             EventPattern('dbus-return', method='AuthorizePublication'),
             EventPattern('stream-presence', presence_type='subscribed',
                 to='kristine@example.com'),
+            )
+
+    # Arnold gives up waiting for us, and cancels his request
+    presence['from'] = 'arnold@example.com'
+    presence['type'] = 'unsubscribe'
+    stream.send(presence)
+
+    q.expect_many(
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{arnold: (cs.SUBSCRIPTION_STATE_NO,
+                    cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY, '')}, []]),
+            EventPattern('stream-presence', presence_type='unsubscribed',
+                to='arnold@example.com'),
+            )
+
+    # We can acknowledge that with RemoveContacts or with Unpublish
+    # FIXME: test RemoveContacts here
+
+    call_async(q, conn.ContactList, 'Unpublish', [arnold])
+
+    # FIXME: strictly speaking, Arnold was never on our XMPP roster,
+    # so setting his publish state to SUBSCRIPTION_STATE_NO should result
+    # in his removal (as seen in the telepathy-glib contactlist example)
+    q.expect_many(
+            EventPattern('dbus-return', method='Unpublish'),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{
+                    arnold:
+                        (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO,
+                            ''),
+                    }, []]),
             )
 
 if __name__ == '__main__':

@@ -1098,6 +1098,8 @@ gabble_connection_dispose (GObject *object)
 
   if (self->lmconn != NULL)
     {
+      /* ownership of our porter was transferred to the LmConnection */
+      priv->porter = NULL;
       lm_connection_unref (self->lmconn);
       self->lmconn = NULL;
     }
@@ -1301,7 +1303,6 @@ WockyPorter *gabble_connection_get_porter (GabbleConnection *conn)
 gboolean
 _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 {
-  GabbleConnectionPrivate *priv;
   GError *lmerror = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
@@ -1312,8 +1313,6 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
               "connection is disconnected");
       return FALSE;
     }
-
-  priv = conn->priv;
 
   if (!lm_connection_send (conn->lmconn, msg, &lmerror))
     {

@@ -8,7 +8,8 @@ from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish
 
 from gabbletest import exec_test, acknowledge_iq
-from rostertest import expect_contact_list_signals, check_contact_list_signals
+from rostertest import (expect_contact_list_signals,
+        check_contact_list_signals, send_roster_push)
 from servicetest import (assertLength, assertEquals, EventPattern, call_async)
 import constants as cs
 import ns
@@ -27,16 +28,6 @@ def test_modern_queued(q, bus, conn, stream):
 
 def test(q, bus, conn, stream, modern=True, queued=False):
     conn.Connect()
-
-    def send_roster_iq(stream, jid, subscription):
-        iq = IQ(stream, "set")
-        iq['id'] = 'push'
-        query = iq.addElement('query')
-        query['xmlns'] = ns.ROSTER
-        item = query.addElement('item')
-        item['jid'] = jid
-        item['subscription'] = subscription
-        stream.send(iq)
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
@@ -96,7 +87,7 @@ def test(q, bus, conn, stream, modern=True, queued=False):
     assertEquals('quux@foo.com', item['jid'])
     assertEquals('remove', item['subscription'])
 
-    send_roster_iq(stream, 'quux@foo.com', 'remove')
+    send_roster_push(stream, 'quux@foo.com', 'remove')
 
     q.expect_many(
             EventPattern('dbus-signal', interface=cs.CHANNEL_IFACE_GROUP,

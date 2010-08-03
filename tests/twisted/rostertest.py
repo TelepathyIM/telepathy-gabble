@@ -1,8 +1,21 @@
+from twisted.words.protocols.jabber.client import IQ
+
 from gabbletest import (wrap_channel,)
 from servicetest import (assertEquals, assertLength, EventPattern,
         assertContains)
 
 import constants as cs
+import ns
+
+def send_roster_push(stream, jid, subscription):
+    iq = IQ(stream, "set")
+    iq['id'] = 'push'
+    query = iq.addElement('query')
+    query['xmlns'] = ns.ROSTER
+    item = query.addElement('item')
+    item['jid'] = jid
+    item['subscription'] = subscription
+    stream.send(iq)
 
 def get_contact_list_event_patterns(q, bus, conn, expected_handle_type, name):
     expected_handle = conn.RequestHandles(expected_handle_type, [name])[0]

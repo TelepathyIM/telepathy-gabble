@@ -2601,12 +2601,11 @@ gabble_roster_authorize_publication_async (TpBaseContactList *base,
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
       GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
 
       if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO
           || item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
         {
-          const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
-
           /* The contact didn't ask for our presence, so we can't usefully
            * send out <presence type='subscribed'/> (as per RFC3921 §9.2,
            * our server shouldn't forward it anyway). However, we can
@@ -2620,10 +2619,16 @@ gabble_roster_authorize_publication_async (TpBaseContactList *base,
         {
           /* stop trying at the first NetworkError, on the assumption that
            * it'll be fatal */
+          DEBUG ("Sending <presence type='subscribed'/> to contact#%u '%s'",
+              contact, contact_id);
           if (!gabble_roster_handle_subscribed (self, contact, "", &error))
             break;
         }
-      /* else publish is already YES so we have nothing to do */
+      else
+        {
+          DEBUG ("contact #%u '%s' already has publish=Y, nothing to do",
+              contact, contact_id);
+        }
     }
 
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
@@ -2737,19 +2742,29 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
           (item->publish == TP_SUBSCRIPTION_STATE_ASK ||
            item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY))
         {
+          if (item->publish == TP_SUBSCRIPTION_STATE_ASK)
+            DEBUG ("contact #%u '%s' had publish=A, moving to publish=N",
+              contact, contact_id);
+          else
+            DEBUG ("contact #%u '%s' had publish=R, moving to publish=N",
+              contact, contact_id);
+
           tp_handle_set_add (changed, contact);
           roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
         }
 
       if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO)
         {
-          DEBUG ("Already not publishing to '%s': not sending unsubscribed",
-              contact_id);
+          DEBUG ("contact #%u '%s' already has publish=N, nothing to do",
+              contact, contact_id);
         }
       else
         {
           /* stop trying at the first NetworkError, on the assumption that
            * it'll be fatal */
+          DEBUG ("Sending <presence type='unsubscribed'/> to contact#%u '%s'",
+              contact, contact_id);
+
           if (!gabble_connection_send_presence (self->priv->conn,
               LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, "", &error))
             break;

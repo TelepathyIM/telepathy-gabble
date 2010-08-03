@@ -341,6 +341,8 @@ def wrap_connection(conn):
          ('Location', cs.CONN_IFACE_LOCATION),
          ('Future', tp_name_prefix + '.Connection.FUTURE'),
          ('MailNotification', cs.CONN_IFACE_MAIL_NOTIFICATION),
+         ('ContactList', cs.CONN_IFACE_CONTACT_LIST),
+         ('ContactGroups', cs.CONN_IFACE_CONTACT_GROUPS),
         ]))
 
 def wrap_channel(chan, type_, extra=None):

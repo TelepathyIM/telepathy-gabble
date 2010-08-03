@@ -71,8 +71,10 @@ def test_plain_fail(q, bus, conn, stream):
 
     assertEquals(e.args[:2],
                  [cs.SASL_STATUS_SERVER_FAILED,
-                  'org.freedesktop.Telepathy.Error.AuthenticationFailed'])
+                  cs.AUTHENTICATION_FAILED])
 
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.AUTHENTICATION_FAILED, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 

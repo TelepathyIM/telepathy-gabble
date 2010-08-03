@@ -69,8 +69,9 @@ def test_with_email(q, bus, conn, stream):
 
     stream.send(result)
 
-    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
-    # but couldn't register you an account."
+    # This is really WOCKY_CONNECTOR_ERROR_REGISTRATION_REJECTED
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.PERMISSION_DENIED, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
@@ -110,8 +111,9 @@ def test_data_forms(q, bus, conn, stream):
 
     stream.send(result)
 
-    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
-    # but couldn't register you an account."
+    # This is really WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.NOT_AVAILABLE, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
@@ -130,8 +132,9 @@ def test_redirection(q, bus, conn, stream):
 
     stream.send(result)
 
-    # AuthenticationFailed is the closest ConnectionStatusReason to "I tried
-    # but couldn't register you an account."
+    # This is really WOCKY_CONNECTOR_ERROR_REGISTRATION_UNSUPPORTED
+    e = q.expect('dbus-signal', signal='ConnectionError')
+    assertEquals(cs.NOT_AVAILABLE, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 

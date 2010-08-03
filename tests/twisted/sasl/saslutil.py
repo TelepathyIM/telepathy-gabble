@@ -152,6 +152,8 @@ def abort_auth(q, chan, reason, message):
             args=[cs.SASL_STATUS_CLIENT_FAILED,
                   reason_err_map[reason],
                   message]),
+        EventPattern('dbus-signal', signal='ConnectionError',
+            predicate=lambda e: e.args[0] == reason_err_map[reason]),
         EventPattern(
             'dbus-signal', signal="StatusChanged",
             args=[cs.CONN_STATUS_DISCONNECTED,

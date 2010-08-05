@@ -749,6 +749,7 @@ gabble_call_stream_set_sending (GabbleCallStream *self,
         updates,
         empty);
       g_array_unref (empty);
+      g_hash_table_unref (updates);
 
       if (sending == (!exists || state_p == GABBLE_SENDING_STATE_NONE))
         gabble_jingle_content_set_sending (priv->content, sending);

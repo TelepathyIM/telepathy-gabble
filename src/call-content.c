@@ -186,11 +186,17 @@ gabble_call_content_class_init (
     GabbleCallContentClass *gabble_call_content_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_content_class);
+  GabbleBaseCallContentClass *bcc_class =
+      GABBLE_BASE_CALL_CONTENT_CLASS (gabble_call_content_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl content_media_props[] = {
     { "ContactCodecMap", "contact-codec-map", NULL },
     { "CodecOffer", "codec-offer", NULL },
     { NULL }
+  };
+  static const gchar *interfaces[] = {
+      GABBLE_IFACE_CALL_CONTENT_INTERFACE_MEDIA,
+      NULL
   };
 
   g_type_class_add_private (gabble_call_content_class,
@@ -235,9 +241,6 @@ gabble_call_content_class_init (
       NULL,
       content_media_props);
 
-  GABBLE_BASE_CALL_CONTENT_CLASS (gabble_call_content_class)->deinit
-      = call_content_deinit;
-
   signals[REMOVED] = g_signal_new ("removed",
       G_OBJECT_CLASS_TYPE (gabble_call_content_class),
       G_SIGNAL_RUN_LAST,
@@ -245,6 +248,9 @@ gabble_call_content_class_init (
       NULL, NULL,
       g_cclosure_marshal_VOID__VOID,
       G_TYPE_NONE, 0);
+
+  bcc_class->extra_interfaces = interfaces;
+  bcc_class->deinit = call_content_deinit;
 }
 
 void

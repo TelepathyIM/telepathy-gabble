@@ -420,6 +420,8 @@ static void
 gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_stream_class);
+  GabbleBaseCallStreamClass *bcs_class =
+      GABBLE_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
     { "Transport", "transport", NULL },
@@ -429,6 +431,10 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
     { "HasServerInfo", "has-server-info", NULL },
     { "Endpoints", "endpoints", NULL },
     { NULL }
+  };
+  static const gchar *interfaces[] = {
+      GABBLE_IFACE_CALL_STREAM_INTERFACE_MEDIA,
+      NULL
   };
 
   g_type_class_add_private (gabble_call_stream_class,
@@ -497,6 +503,8 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       stream_media_props);
+
+  bcs_class->extra_interfaces = interfaces;
 }
 
 void

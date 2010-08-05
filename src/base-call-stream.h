@@ -39,6 +39,8 @@ struct _GabbleBaseCallStreamClass {
     GObjectClass parent_class;
 
     TpDBusPropertiesMixinClass dbus_props_class;
+
+    const gchar * const *extra_interfaces;
 };
 
 struct _GabbleBaseCallStream {

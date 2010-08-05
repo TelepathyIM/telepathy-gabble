@@ -44,6 +44,7 @@ struct _GabbleBaseCallContentClass {
 
     TpDBusPropertiesMixinClass dbus_props_class;
 
+    const gchar * const *extra_interfaces;
     GabbleBaseCallContentFunc deinit;
 };
 

@@ -158,6 +158,10 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (cs.CALL_DISPOSITION_INITIAL,
         content_properties["Disposition"])
 
+    # Implements Content.Interface.Media
+    assertEquals([cs.CALL_CONTENT_IFACE_MEDIA],
+        content_properties["Interfaces"])
+
     #if incoming:
     #    assertEquals (remote_handle, content_properties["Creator"])
     #else:
@@ -172,6 +176,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     assertDoesNotContain (self_handle, stream_props["RemoteMembers"].keys())
     assertContains (remote_handle, stream_props["RemoteMembers"].keys())
+    assertEquals([cs.CALL_STREAM_IFACE_MEDIA], stream_props["Interfaces"])
 
     if incoming:
         assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,

@@ -35,12 +35,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallStream, gabble_base_call_stream,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM, NULL);
     )
 
-/* interfaces */
-static const gchar *gabble_call_stream_interfaces[] = {
-    GABBLE_IFACE_CALL_STREAM_INTERFACE_MEDIA,
-    NULL
-};
-
 enum
 {
   PROP_OBJECT_PATH = 1,
@@ -143,9 +137,6 @@ gabble_base_call_stream_get_property (
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
         break;
-      case PROP_INTERFACES:
-        g_value_set_boxed (value, gabble_call_stream_interfaces);
-        break;
       case PROP_REMOTE_MEMBERS:
         g_value_set_boxed (value, priv->remote_members);
         break;
@@ -156,6 +147,23 @@ gabble_base_call_stream_get_property (
         /* TODO: set to TRUE conditionally when RequestReceiving is implemented */
         g_value_set_boolean (value, FALSE);
         break;
+      case PROP_INTERFACES:
+        {
+          GabbleBaseCallStreamClass *klass =
+              GABBLE_BASE_CALL_STREAM_GET_CLASS (self);
+
+          if (klass->extra_interfaces != NULL)
+            {
+              g_value_set_boxed (value, klass->extra_interfaces);
+            }
+          else
+            {
+              gchar *empty[] = { NULL };
+
+              g_value_set_boxed (value, empty);
+            }
+          break;
+        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;

@@ -60,6 +60,7 @@ enum
   PROP_OBJECT_PATH = 1,
   PROP_CONNECTION,
 
+  PROP_INTERFACES,
   PROP_NAME,
   PROP_MEDIA_TYPE,
   PROP_CREATOR,
@@ -146,6 +147,23 @@ gabble_base_call_content_get_property (
       case PROP_CONNECTION:
         g_value_set_object (value, priv->conn);
         break;
+      case PROP_INTERFACES:
+        {
+          GabbleBaseCallContentClass *klass =
+              GABBLE_BASE_CALL_CONTENT_GET_CLASS (content);
+
+          if (klass->extra_interfaces != NULL)
+            {
+              g_value_set_boxed (value, klass->extra_interfaces);
+            }
+          else
+            {
+              static gchar *empty[] = { NULL };
+
+              g_value_set_boxed (value, empty);
+            }
+          break;
+        }
       case PROP_NAME:
         g_value_set_string (value, priv->name);
         break;
@@ -223,6 +241,7 @@ gabble_base_call_content_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (bcc_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl content_props[] = {
+    { "Interfaces", "interfaces", NULL },
     { "Name", "name", NULL },
     { "Type", "media-type", NULL },
     { "Creator", "creator", NULL },
@@ -258,6 +277,12 @@ gabble_base_call_content_class_init (
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
+      "Additional interfaces implemented by this content",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("name", "Name",
       "The name of this content, if any",

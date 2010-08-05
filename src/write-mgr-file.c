@@ -92,27 +92,19 @@ write_parameters (GKeyFile *f, gchar *section_name, TpBaseProtocol *protocol)
     }
 }
 
-typedef struct {
-  GKeyFile *keyfile;
-  gchar *group_name;
-  GHashTable *fixed;
-  const gchar **allowed;
-} RccSerializeContext;
-
 static void
-write_rcc_property (gpointer k, gpointer v, gpointer user_data)
+write_rcc_property (GKeyFile *keyfile,
+                    const gchar *group_name,
+                    const gchar *key,
+                    GValue *val)
 {
-  const gchar *key = k;
-  GValue *val = v;
-  RccSerializeContext *ctx = user_data;
-
   switch (G_VALUE_TYPE (val))
     {
       case G_TYPE_BOOLEAN:
         {
           gchar *kf_key = g_strconcat (key,
             " " DBUS_TYPE_BOOLEAN_AS_STRING, NULL);
-          g_key_file_set_boolean (ctx->keyfile, ctx->group_name, kf_key,
+          g_key_file_set_boolean (keyfile, group_name, kf_key,
             g_value_get_boolean (val));
           g_free (kf_key);
           break;
@@ -122,7 +114,7 @@ write_rcc_property (gpointer k, gpointer v, gpointer user_data)
         {
           gchar *kf_key = g_strconcat (key,
             " " DBUS_TYPE_STRING_AS_STRING, NULL);
-          g_key_file_set_string (ctx->keyfile, ctx->group_name, kf_key,
+          g_key_file_set_string (keyfile, group_name, kf_key,
             g_value_get_string (val));
           g_free (kf_key);
           break;
@@ -154,7 +146,7 @@ write_rcc_property (gpointer k, gpointer v, gpointer user_data)
         {
           gchar *kf_key = g_strconcat (key,
             " " DBUS_TYPE_INT32_AS_STRING, NULL);
-          g_key_file_set_integer (ctx->keyfile, ctx->group_name, kf_key,
+          g_key_file_set_integer (keyfile, group_name, kf_key,
             g_value_get_int (val));
           g_free (kf_key);
           break;
@@ -178,7 +170,7 @@ write_rcc_property (gpointer k, gpointer v, gpointer user_data)
               gchar **list = g_value_get_boxed (val);
               gchar *kf_key = g_strconcat (key, " "
                   DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING, NULL);
-              g_key_file_set_string_list (ctx->keyfile, ctx->group_name,
+              g_key_file_set_string_list (keyfile, group_name,
                   kf_key, (const gchar **) list, g_strv_length (list));
               g_free (kf_key);
               break;
@@ -243,23 +235,34 @@ write_rccs (GKeyFile *f, const gchar *section_name, GHashTable *props)
       TP_PROP_PROTOCOL_REQUESTABLE_CHANNEL_CLASSES,
       TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST);
   guint i;
-  gchar **allowed;
   gchar **group_names = g_new0 (gchar *, rcc_list->len + 1);
 
   for (i = 0; i < rcc_list->len; i++)
     {
-      RccSerializeContext ctx;
-      ctx.keyfile = f;
+      gchar **allowed;
+      gchar *group_name;
+      GHashTable *fixed;
+      GHashTableIter iter;
+      gpointer k, v;
 
       tp_value_array_unpack (g_ptr_array_index (rcc_list, i), 2,
-        &ctx.fixed, &allowed);
+        &fixed, &allowed);
 
-      ctx.group_name = generate_group_name (ctx.fixed);
-      g_hash_table_foreach (ctx.fixed, write_rcc_property, &ctx);
+      group_name = generate_group_name (fixed);
 
-      group_names[i] = ctx.group_name;
+      g_hash_table_iter_init (&iter, fixed);
+      while (g_hash_table_iter_next (&iter, &k, &v))
+        {
+          const gchar *key = k;
+          GValue *val = v;
 
-      g_key_file_set_string_list (f, ctx.group_name, "allowed",
+          write_rcc_property (f, group_name, key, val);
+        }
+
+      /* takes ownership */
+      group_names[i] = group_name;
+
+      g_key_file_set_string_list (f, group_name, "allowed",
         (const gchar **) allowed, g_strv_length (allowed));
     }
 

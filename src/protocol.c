@@ -159,31 +159,28 @@ gabble_jabber_protocol_init (GabbleJabberProtocol *self)
 {
 }
 
-static gpointer
-_init_parameters (gpointer dummy G_GNUC_UNUSED)
-{
-  guint i;
-
-  for (i = 0; jabber_params[i].name != NULL; i++)
-    {
-      if (!g_strcmp0 (jabber_params[i].name,
-          "fallback-socks5-proxies"))
-        {
-          jabber_params[i].gtype = G_TYPE_STRV;
-          jabber_params[i].def = default_socks5_proxies;
-          break;
-        }
-    }
-
-  return NULL;
-}
-
 static const TpCMParamSpec *
 get_parameters (TpBaseProtocol *self G_GNUC_UNUSED)
 {
-  static GOnce init = G_ONCE_INIT;
+  static gsize init_value = 0;
 
-  g_once (&init, _init_parameters, NULL);
+  if (g_once_init_enter (&init_value))
+    {
+      guint i;
+
+      for (i = 0; jabber_params[i].name != NULL; i++)
+        {
+          if (!g_strcmp0 (jabber_params[i].name,
+              "fallback-socks5-proxies"))
+            {
+              jabber_params[i].gtype = G_TYPE_STRV;
+              jabber_params[i].def = default_socks5_proxies;
+              break;
+            }
+        }
+
+      g_once_init_leave (&init_value, 1);
+    }
 
   return jabber_params;
 }

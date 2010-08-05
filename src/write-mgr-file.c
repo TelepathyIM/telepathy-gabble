@@ -30,11 +30,11 @@
 #include "protocol.h"
 
 
-#define MAYBE_WRITE_STR(prop, key) \
+#define WRITE_STR(prop, key) \
   { \
     const gchar *val = tp_asv_get_string (props, prop); \
-    if (val && *val) \
-        g_key_file_set_string (f, section_name, key, val); \
+    g_assert (!tp_str_empty (val)); \
+    g_key_file_set_string (f, section_name, key, val); \
   }
 
 static void
@@ -311,9 +311,9 @@ mgr_file_contents (const char *busname,
       g_key_file_set_string_list (f, section_name, "ConnectionInterfaces",
           c_ifaces, g_strv_length ((gchar **) c_ifaces));
 
-      MAYBE_WRITE_STR (TP_PROP_PROTOCOL_VCARD_FIELD, "VCardField");
-      MAYBE_WRITE_STR (TP_PROP_PROTOCOL_ENGLISH_NAME, "EnglishName");
-      MAYBE_WRITE_STR (TP_PROP_PROTOCOL_ICON, "Icon");
+      WRITE_STR (TP_PROP_PROTOCOL_VCARD_FIELD, "VCardField");
+      WRITE_STR (TP_PROP_PROTOCOL_ENGLISH_NAME, "EnglishName");
+      WRITE_STR (TP_PROP_PROTOCOL_ICON, "Icon");
 
       g_free (section_name);
       g_hash_table_destroy (props);

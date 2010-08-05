@@ -4,7 +4,7 @@ Test Gabble's o.T.Protocol implementation
 
 import dbus
 from servicetest import unwrap, tp_path_prefix, assertEquals
-from gabbletest import exec_test
+from gabbletest import exec_test, call_async
 import constants as cs
 import time
 
@@ -40,12 +40,8 @@ def test(q, bus, conn, stream):
         unwrap(proto_iface.NormalizeContact('foo@MIT.Edu/Telepathy')))
 
     # (Only) 'account' is mandatory for IdentifyAccount()
-    try:
-        proto_iface.IdentifyAccount({})
-    except dbus.DBusException, e:
-        assertEquals(cs.INVALID_ARGUMENT, e.get_dbus_name())
-    else:
-        raise AssertionError("IdentifyAccount({}) should've returned error but didn't")
+    call_async(q, proto_iface, 'IdentifyAccount', {})
+    q.expect('dbus-error', method='IdentifyAccount', name=cs.INVALID_ARGUMENT)
 
     test_params = { 'account': 'test@localhost' }
     acc_name = unwrap(proto_iface.IdentifyAccount(test_params))

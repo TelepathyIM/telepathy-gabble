@@ -345,7 +345,7 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   base_class->get_connection_details = get_connection_details;
 }
 
-GabbleJabberProtocol *
+TpBaseProtocol *
 gabble_jabber_protocol_new (void)
 {
   return g_object_new (GABBLE_TYPE_JABBER_PROTOCOL,

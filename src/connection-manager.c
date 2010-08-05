@@ -59,7 +59,7 @@ gabble_connection_manager_constructed (GObject *object)
   if (constructed != NULL)
     constructed (object);
 
-  protocol = (TpBaseProtocol *) gabble_jabber_protocol_new ();
+  protocol = gabble_jabber_protocol_new ();
   tp_base_connection_manager_add_protocol (base, protocol);
   g_object_unref (protocol);
 }

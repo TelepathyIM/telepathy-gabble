@@ -285,6 +285,7 @@ call_member_content_added_cb (GabbleCallMember *member,
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
   GabbleJingleContent *jingle_content;
   GabbleCallContent *c;
+  GabbleBaseCallContent *base_content;
 
   jingle_content = gabble_call_member_content_get_jingle_content (content);
 
@@ -296,11 +297,12 @@ call_member_content_added_cb (GabbleCallMember *member,
       gabble_call_member_content_get_name (content),
       gabble_call_member_content_get_media_type (content),
       GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+  base_content = GABBLE_BASE_CALL_CONTENT (c);
 
   gabble_call_content_add_member_content (c, content);
 
   gabble_svc_channel_type_call_emit_content_added (self,
-      gabble_call_content_get_object_path (c));
+      gabble_base_call_content_get_object_path (base_content));
 }
 
 static gboolean

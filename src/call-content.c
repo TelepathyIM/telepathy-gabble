@@ -52,32 +52,22 @@ static GPtrArray *call_content_codec_list_to_array (GList *codecs);
 static GHashTable *call_content_generate_codec_map (GabbleCallContent *self,
     gboolean include_local);
 
+static void call_content_deinit (GabbleBaseCallContent *base);
+
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
-  G_TYPE_OBJECT,
-   G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-    tp_dbus_properties_mixin_iface_init);
-   G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT,
-    call_content_iface_init);
-   G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT_INTERFACE_MEDIA,
-    call_content_media_iface_init);
-  );
+    GABBLE_TYPE_BASE_CALL_CONTENT,
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT,
+        call_content_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT_INTERFACE_MEDIA,
+      call_content_media_iface_init);
+    );
 
 /* properties */
 enum
 {
-  PROP_INTERFACES = 1,
-  PROP_OBJECT_PATH,
-  PROP_CONNECTION,
-  PROP_TARGET_HANDLE,
-
-  PROP_NAME,
-  PROP_DISPOSITION,
+  PROP_CONTACT_CODEC_MAP = 1,
   PROP_PACKETIZATION,
 
-  PROP_CONTACT_CODEC_MAP,
-  PROP_MEDIA_TYPE,
-  PROP_JINGLE_MEDIA_TYPE,
-  PROP_STREAMS,
   PROP_CODEC_OFFER,
 };
 
@@ -91,20 +81,9 @@ enum
 
 static guint signals[LAST_SIGNAL] = {0};
 
-/* interfaces */
-static const gchar *gabble_call_content_interfaces[] = {
-    GABBLE_IFACE_CALL_CONTENT_INTERFACE_MEDIA,
-    NULL
-};
-
 /* private structure */
 struct _GabbleCallContentPrivate
 {
-  GabbleConnection *conn;
-  TpDBusDaemon *dbus_daemon;
-
-  gchar *object_path;
-  TpHandle target;
   GList *contents;
 
   gboolean initial_offer_appeared;
@@ -113,14 +92,8 @@ struct _GabbleCallContentPrivate
   gint offers;
   guint offer_count;
 
-  GabbleCallContentDisposition disposition;
-
-  GList *streams;
   gboolean dispose_has_run;
   gboolean deinit_has_run;
-
-  gchar *name;
-  JingleMediaType mtype;
 
   GList *local_codecs;
 };
@@ -135,7 +108,6 @@ gabble_call_content_init (GabbleCallContent *self)
 }
 
 static void gabble_call_content_dispose (GObject *object);
-static void gabble_call_content_finalize (GObject *object);
 
 static void
 gabble_call_content_get_property (GObject    *object,
@@ -148,56 +120,6 @@ gabble_call_content_get_property (GObject    *object,
 
   switch (property_id)
     {
-      case PROP_INTERFACES:
-        g_value_set_boxed (value, gabble_call_content_interfaces);
-        break;
-      case PROP_OBJECT_PATH:
-        g_value_set_string (value, priv->object_path);
-        break;
-      case PROP_CONNECTION:
-        g_value_set_object (value, priv->conn);
-        break;
-      case PROP_JINGLE_MEDIA_TYPE:
-        g_value_set_uint (value, priv->mtype);
-        break;
-      case PROP_MEDIA_TYPE:
-        {
-          switch (priv->mtype)
-            {
-              case JINGLE_MEDIA_TYPE_AUDIO:
-                g_value_set_uint (value, TP_MEDIA_STREAM_TYPE_AUDIO);
-                break;
-              case JINGLE_MEDIA_TYPE_VIDEO:
-                g_value_set_uint (value, TP_MEDIA_STREAM_TYPE_VIDEO);
-                break;
-              default:
-                g_assert_not_reached ();
-            }
-          break;
-        }
-      case PROP_STREAMS:
-        {
-          GPtrArray *arr = g_ptr_array_sized_new (2);
-          GList *l;
-
-          for (l = priv->streams; l != NULL; l = g_list_next (l))
-            {
-              GabbleBaseCallStream *s = GABBLE_BASE_CALL_STREAM (l->data);
-              g_ptr_array_add (arr,
-                  g_strdup (gabble_base_call_stream_get_object_path (s)));
-            }
-
-          g_value_take_boxed (value, arr);
-          break;
-        }
-      case PROP_NAME:
-        {
-          g_value_set_string (value, priv->name);
-          break;
-        }
-      case PROP_DISPOSITION:
-        g_value_set_uint (value, priv->disposition);
-        break;
       case PROP_PACKETIZATION:
         /* TODO: actually set this to its real value */
         g_value_set_uint (value, GABBLE_CALL_CONTENT_PACKETIZATION_TYPE_RTP);
@@ -247,54 +169,16 @@ gabble_call_content_get_property (GObject    *object,
 }
 
 static void
-gabble_call_content_set_property (GObject *object,
-    guint property_id,
-    const GValue *value,
-    GParamSpec *pspec)
-{
-  GabbleCallContent *content = GABBLE_CALL_CONTENT (object);
-  GabbleCallContentPrivate *priv = content->priv;
-
-  switch (property_id)
-    {
-      case PROP_OBJECT_PATH:
-        priv->object_path = g_value_dup_string (value);
-        g_assert (priv->object_path != NULL);
-        break;
-      case PROP_CONNECTION:
-        priv->conn = g_value_get_object (value);
-        break;
-      case PROP_NAME:
-        priv->name = g_value_dup_string (value);
-        break;
-      case PROP_JINGLE_MEDIA_TYPE:
-        priv->mtype = g_value_get_uint (value);
-        break;
-      case PROP_DISPOSITION:
-        priv->disposition = g_value_get_uint (value);
-        break;
-      default:
-        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-        break;
-    }
-}
-
-static void
 gabble_call_content_constructed (GObject *obj)
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (obj);
   GabbleCallContentPrivate *priv = self->priv;
 
-  /* register object on the bus */
-  DEBUG ("Registering %s", priv->object_path);
-  priv->dbus_daemon = g_object_ref (
-      tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn));
-  tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path, obj);
-
-  priv->initial_offer_appeared = FALSE;
-
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed (obj);
+
+  /* register object on the bus */
+  priv->initial_offer_appeared = FALSE;
 }
 
 static void
@@ -303,98 +187,18 @@ gabble_call_content_class_init (
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_content_class);
   GParamSpec *param_spec;
-  static TpDBusPropertiesMixinPropImpl content_props[] = {
-    { "Interfaces", "interfaces", NULL },
-    { "Name", "name", NULL },
-    { "Type", "media-type", NULL },
-    { "Disposition", "disposition", NULL },
-    { "Streams", "streams", NULL },
-    { "Packetization", "packetization", NULL },
-    { NULL }
-  };
   static TpDBusPropertiesMixinPropImpl content_media_props[] = {
     { "ContactCodecMap", "contact-codec-map", NULL },
     { "CodecOffer", "codec-offer", NULL },
     { NULL }
   };
 
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_CALL_CONTENT,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        content_props,
-      },
-      { GABBLE_IFACE_CALL_CONTENT_INTERFACE_MEDIA,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        content_media_props,
-      },
-      { NULL }
-  };
-
   g_type_class_add_private (gabble_call_content_class,
       sizeof (GabbleCallContentPrivate));
 
   object_class->constructed = gabble_call_content_constructed;
-
   object_class->get_property = gabble_call_content_get_property;
-  object_class->set_property = gabble_call_content_set_property;
-
   object_class->dispose = gabble_call_content_dispose;
-  object_class->finalize = gabble_call_content_finalize;
-
-  param_spec = g_param_spec_boxed ("interfaces", "Interfaces",
-      "Extra Call Content interfaces",
-      G_TYPE_STRV,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
-
-  param_spec = g_param_spec_string ("object-path", "D-Bus object path",
-      "The D-Bus object path used for this "
-      "object on the bus.",
-      NULL,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this media channel object.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_string ("name", "Name",
-      "The name of this content if any",
-      "",
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_NAME, param_spec);
-
-  param_spec = g_param_spec_uint ("media-type", "Media Type",
-      "The media type of this content",
-      0, G_MAXUINT, 0,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_MEDIA_TYPE,
-      param_spec);
-
-  param_spec = g_param_spec_uint ("jingle-media-type", "Jingle Media Type",
-      "The JingleMediaType of this content",
-      0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_JINGLE_MEDIA_TYPE,
-      param_spec);
-
-  param_spec = g_param_spec_uint ("disposition", "Disposition",
-      "The disposition of this content",
-      0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_DISPOSITION,
-      param_spec);
-
-  param_spec = g_param_spec_boxed ("streams", "Stream",
-      "The streams of this content",
-      TP_ARRAY_TYPE_OBJECT_PATH_LIST,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_STREAMS,
-      param_spec);
 
   param_spec = g_param_spec_uint ("packetization", "Packetization",
       "The Packetization of this content",
@@ -425,6 +229,15 @@ gabble_call_content_class_init (
       g_cclosure_marshal_VOID__POINTER,
       G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      GABBLE_IFACE_QUARK_CALL_CONTENT_INTERFACE_MEDIA,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      content_media_props);
+
+  GABBLE_BASE_CALL_CONTENT_CLASS (gabble_call_content_class)->deinit
+      = call_content_deinit;
+
   signals[REMOVED] = g_signal_new ("removed",
       G_OBJECT_CLASS_TYPE (gabble_call_content_class),
       G_SIGNAL_RUN_LAST,
@@ -432,10 +245,6 @@ gabble_call_content_class_init (
       NULL, NULL,
       g_cclosure_marshal_VOID__VOID,
       G_TYPE_NONE, 0);
-
-  gabble_call_content_class->dbus_props_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleCallContentClass, dbus_props_class));
 }
 
 void
@@ -443,7 +252,6 @@ gabble_call_content_dispose (GObject *object)
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (object);
   GabbleCallContentPrivate *priv = self->priv;
-  GList *l;
 
   if (priv->dispose_has_run)
     return;
@@ -452,29 +260,11 @@ gabble_call_content_dispose (GObject *object)
 
   g_assert (priv->offer == NULL);
 
-  for (l = priv->streams; l != NULL; l = g_list_next (l))
-    {
-      g_object_unref (l->data);
-    }
-
-  tp_clear_pointer (&priv->streams, g_list_free);
-  tp_clear_pointer (&priv->local_codecs, jingle_media_rtp_free_codecs);
+  jingle_media_rtp_free_codecs (priv->local_codecs);
+  priv->local_codecs = NULL;
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose (object);
-}
-
-void
-gabble_call_content_finalize (GObject *object)
-{
-  GabbleCallContent *self = GABBLE_CALL_CONTENT (object);
-  GabbleCallContentPrivate *priv = self->priv;
-
-  /* free any data held directly by the object here */
-  g_free (priv->object_path);
-  g_free (priv->name);
-
-  G_OBJECT_CLASS (gabble_call_content_parent_class)->finalize (object);
 }
 
 static void
@@ -537,7 +327,7 @@ gabble_call_content_remove (GabbleSvcCallContent *content,
   /* it doesn't matter if a ::removed signal handler calls deinit as
    * there are guards around it being called again and breaking, so
    * let's just call it be sure it's done. */
-  gabble_call_content_deinit (GABBLE_CALL_CONTENT (content));
+  gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
   gabble_svc_call_content_return_from_remove (context);
 }
 
@@ -592,12 +382,6 @@ call_content_media_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
-const gchar *
-gabble_call_content_get_object_path (GabbleCallContent *content)
-{
-  return content->priv->object_path;
-}
-
 static void
 call_content_accept_stream (gpointer data, gpointer user_data)
 {
@@ -612,10 +396,12 @@ call_content_accept_stream (gpointer data, gpointer user_data)
 void
 gabble_call_content_accept (GabbleCallContent *content)
 {
-  GabbleCallContentPrivate *priv = content->priv;
+  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (content);
 
-  if (priv->disposition == GABBLE_CALL_CONTENT_DISPOSITION_INITIAL)
-    g_list_foreach (priv->streams, call_content_accept_stream, NULL);
+  if (gabble_base_call_content_get_disposition (base)
+      == GABBLE_CALL_CONTENT_DISPOSITION_INITIAL)
+    g_list_foreach (gabble_base_call_content_get_streams (base),
+        call_content_accept_stream, NULL);
 }
 
 static gboolean
@@ -632,31 +418,24 @@ maybe_finish_deinit (GabbleCallContent *self)
   return TRUE;
 }
 
-void
-gabble_call_content_deinit (GabbleCallContent *content)
+static void
+call_content_deinit (GabbleBaseCallContent *base)
 {
-  GabbleCallContentPrivate *priv = content->priv;
-  GList *l;
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (base);
+  GabbleCallContentPrivate *priv = self->priv;
 
   if (priv->deinit_has_run)
     return;
 
   priv->deinit_has_run = TRUE;
 
-  tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (content));
-  tp_clear_object (&priv->dbus_daemon);
-
-  for (l = priv->streams; l != NULL; l = g_list_next (l))
-    {
-      g_object_unref (l->data);
-    }
-
-  tp_clear_pointer (&priv->streams, g_list_free);
+  GABBLE_BASE_CALL_CONTENT_CLASS (gabble_call_content_parent_class)->deinit (
+      base);
 
   if (priv->offer_cancellable != NULL)
     g_cancellable_cancel (priv->offer_cancellable);
   else
-    maybe_finish_deinit (content);
+    maybe_finish_deinit (self);
 }
 
 static GPtrArray *
@@ -707,9 +486,11 @@ call_content_generate_codec_map (GabbleCallContent *self,
 
   if (include_local && priv->local_codecs != NULL)
     {
+      GabbleConnection *conn = gabble_base_call_content_get_connection (
+          GABBLE_BASE_CALL_CONTENT (self));
       arr = call_content_codec_list_to_array (priv->local_codecs);
       g_hash_table_insert (map,
-        GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
+        GUINT_TO_POINTER (TP_BASE_CONNECTION (conn)->self_handle),
         arr);
     }
 
@@ -780,6 +561,10 @@ void
 gabble_call_content_new_offer (GabbleCallContent *self)
 {
   GabbleCallContentPrivate *priv = self->priv;
+  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
+  GabbleConnection *conn = gabble_base_call_content_get_connection (base);
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
+      TP_BASE_CONNECTION (conn));
   GHashTable *map;
   gchar *path;
 
@@ -789,10 +574,10 @@ gabble_call_content_new_offer (GabbleCallContent *self)
     g_cancellable_cancel (priv->offer_cancellable);
 
   path = g_strdup_printf ("%s/Offer%d",
-    priv->object_path, priv->offers++);
+      gabble_base_call_content_get_object_path (base),
+      priv->offers++);
 
-  priv->offer = gabble_call_content_codec_offer_new (priv->dbus_daemon, path,
-      map);
+  priv->offer = gabble_call_content_codec_offer_new (bus, path, map);
   priv->offer_cancellable = g_cancellable_new ();
   ++priv->offer_count;
   gabble_call_content_codec_offer_offer (priv->offer, priv->offer_cancellable,
@@ -810,12 +595,6 @@ gabble_call_content_new_offer (GabbleCallContent *self)
   priv->initial_offer_appeared = TRUE;
 }
 
-const gchar *
-gabble_call_content_get_name (GabbleCallContent *self)
-{
-  return self->priv->name;
-}
-
 GList *
 gabble_call_content_get_local_codecs (GabbleCallContent *self)
 {
@@ -825,7 +604,17 @@ gabble_call_content_get_local_codecs (GabbleCallContent *self)
 JingleMediaType
 gabble_call_content_get_media_type (GabbleCallContent *self)
 {
-  return self->priv->mtype;
+  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
+
+  switch (gabble_base_call_content_get_media_type (base))
+    {
+      case TP_MEDIA_STREAM_TYPE_AUDIO:
+        return JINGLE_MEDIA_TYPE_AUDIO;
+      case TP_MEDIA_STREAM_TYPE_VIDEO:
+        return JINGLE_MEDIA_TYPE_VIDEO;
+      default:
+        g_assert_not_reached ();
+    }
 }
 
 static void
@@ -843,34 +632,31 @@ call_content_setup_jingle (GabbleCallContent *self,
     GabbleCallMemberContent *mcontent)
 {
   GabbleCallContentPrivate *priv = self->priv;
+  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
   GabbleJingleContent *jingle;
   GabbleCallStream *stream;
   gchar *path;
-  GPtrArray *paths;
 
   jingle = gabble_call_member_content_get_jingle_content (mcontent);
 
   if (jingle == NULL)
     return;
 
-  path = g_strdup_printf ("%s/Stream%p", priv->object_path, jingle);
+  path = g_strdup_printf ("%s/Stream%p",
+      gabble_base_call_content_get_object_path (base),
+      jingle);
   stream = g_object_new (GABBLE_TYPE_CALL_STREAM,
       "object-path", path,
-      "connection", priv->conn,
+      "connection", gabble_base_call_content_get_connection (base),
       "jingle-content", jingle,
       NULL);
+  g_free (path);
 
   jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle),
       jingle_media_rtp_copy_codecs (priv->local_codecs), TRUE, NULL);
 
-  priv->streams = g_list_prepend (priv->streams, stream);
-
-  paths = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
-  g_ptr_array_add (paths, path);
-
-  gabble_svc_call_content_emit_streams_added (self, paths);
-
-  g_ptr_array_unref (paths);
+  gabble_base_call_content_add_stream (base, GABBLE_BASE_CALL_STREAM (stream));
+  g_object_unref (stream);
 }
 
 static void
@@ -887,30 +673,23 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
   GabbleCallContentPrivate *priv = self->priv;
+  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
   GabbleJingleContent *content;
   GList *l;
-  GPtrArray *paths;
 
   priv->contents = g_list_remove (priv->contents, mcontent);
 
   content = gabble_call_member_content_get_jingle_content (mcontent);
 
-  for (l = priv->streams; l != NULL; l = g_list_next (l))
+  for (l = gabble_base_call_content_get_streams (base);
+       l != NULL;
+       l = l->next)
     {
       GabbleCallStream *stream = GABBLE_CALL_STREAM (l->data);
 
       if (content == gabble_call_stream_get_jingle_content (stream))
         {
-          priv->streams = g_list_delete_link (priv->streams, l);
-
-          paths = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
-          g_ptr_array_add (paths, g_strdup (
-                  gabble_base_call_stream_get_object_path (
-                    GABBLE_BASE_CALL_STREAM (stream))));
-          gabble_svc_call_content_emit_streams_removed (self, paths);
-          g_ptr_array_unref (paths);
-
-          g_object_unref (stream);
+          gabble_base_call_content_remove_stream (base, l->data);
           break;
         }
     }

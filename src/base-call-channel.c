@@ -305,9 +305,9 @@ gabble_base_call_channel_get_property (GObject    *object,
 
           for (l = priv->contents; l != NULL; l = g_list_next (l))
             {
-              GabbleCallContent *c = GABBLE_CALL_CONTENT (l->data);
+              GabbleBaseCallContent *c = GABBLE_BASE_CALL_CONTENT (l->data);
               g_ptr_array_add (arr,
-                (gpointer) gabble_call_content_get_object_path (c));
+                (gpointer) gabble_base_call_content_get_object_path (c));
             }
 
           g_value_set_boxed (value, arr);
@@ -611,7 +611,6 @@ gabble_base_call_channel_dispose (GObject *object)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (object);
   GabbleBaseCallChannelPrivate *priv = self->priv;
-  GList *l;
   TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
   TpHandleRepoIface *repo = tp_base_connection_get_handles (
               base_conn, TP_HANDLE_TYPE_CONTACT);
@@ -621,11 +620,7 @@ gabble_base_call_channel_dispose (GObject *object)
 
   self->priv->dispose_has_run = TRUE;
 
-  for (l = priv->contents; l != NULL; l = g_list_next (l))
-    {
-      gabble_call_content_deinit (l->data);
-    }
-
+  g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit, NULL);
   tp_clear_pointer (&priv->members, g_hash_table_unref);
   tp_clear_pointer (&priv->contents, g_list_free);
 
@@ -690,10 +685,11 @@ base_call_channel_remove_content (GabbleBaseCallChannel *self,
 
   priv->contents = g_list_remove (priv->contents, content);
 
-  path = gabble_call_content_get_object_path (content);
+  path = gabble_base_call_content_get_object_path (
+      GABBLE_BASE_CALL_CONTENT (content));
   gabble_svc_channel_type_call_emit_content_removed (self, path);
 
-  gabble_call_content_deinit (content);
+  gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
 }
 
 GabbleCallContent *
@@ -704,8 +700,9 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
   gchar *object_path;
-  GabbleCallContent *content;
+  GabbleBaseCallContent *content;
   gchar *escaped;
+  TpMediaStreamType media_type;
 
   /* FIXME could clash when other party in a one-to-one call creates a stream
    * with the same media type and name */
@@ -714,11 +711,23 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
     g_strdup_printf ("%s/Content_%s_%d", priv->object_path, escaped, mtype);
   g_free (escaped);
 
+  switch (mtype)
+    {
+      case JINGLE_MEDIA_TYPE_AUDIO:
+        media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
+        break;
+      case JINGLE_MEDIA_TYPE_VIDEO:
+        media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
+        break;
+      default:
+        g_assert_not_reached ();
+    }
+
   content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
     "connection", self->conn,
     "object-path", object_path,
     "disposition", disposition,
-    "jingle-media-type", mtype,
+    "media-type", media_type,
     "name", name,
     NULL);
 
@@ -730,7 +739,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   priv->contents = g_list_prepend (priv->contents, content);
 
   gabble_svc_channel_type_call_emit_content_added (self,
-      gabble_call_content_get_object_path (content));
+     gabble_base_call_content_get_object_path (content));
 
   gabble_call_content_new_offer (GABBLE_CALL_CONTENT (content));
 
@@ -761,7 +770,6 @@ gabble_base_call_channel_close (GabbleBaseCallChannel *self)
     {
       GabbleBaseCallChannelClass *base_class =
         GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self);
-      GList *l;
       GHashTableIter iter;
       gpointer value;
 
@@ -775,10 +783,8 @@ gabble_base_call_channel_close (GabbleBaseCallChannel *self)
         gabble_call_member_shutdown (value);
 
       /* shutdown all our contents */
-      for (l = priv->contents ; l != NULL; l = g_list_next (l))
-        {
-          gabble_call_content_deinit (GABBLE_CALL_CONTENT (l->data));
-        }
+      g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit,
+          NULL);
       g_list_free (priv->contents);
       priv->contents = NULL;
 
@@ -1012,7 +1018,8 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
     goto error;
 
   gabble_svc_channel_type_call_return_from_add_content (context,
-    gabble_call_content_get_object_path (content));
+      gabble_base_call_content_get_object_path (
+          GABBLE_BASE_CALL_CONTENT (content)));
   return;
 
 unicorns:

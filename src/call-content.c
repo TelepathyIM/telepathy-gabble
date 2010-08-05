@@ -34,6 +34,7 @@
 #include "call-content.h"
 #include "call-content-codec-offer.h"
 #include "call-stream.h"
+#include "base-call-stream.h"
 #include "jingle-content.h"
 #include "jingle-session.h"
 #include "jingle-media-rtp.h"
@@ -181,9 +182,9 @@ gabble_call_content_get_property (GObject    *object,
 
           for (l = priv->streams; l != NULL; l = g_list_next (l))
             {
-              GabbleCallStream *s = GABBLE_CALL_STREAM (l->data);
+              GabbleBaseCallStream *s = GABBLE_BASE_CALL_STREAM (l->data);
               g_ptr_array_add (arr,
-                  g_strdup (gabble_call_stream_get_object_path (s)));
+                  g_strdup (gabble_base_call_stream_get_object_path (s)));
             }
 
           g_value_take_boxed (value, arr);
@@ -602,7 +603,8 @@ call_content_accept_stream (gpointer data, gpointer user_data)
 {
   GabbleCallStream *stream = GABBLE_CALL_STREAM (data);
 
-  if (gabble_call_stream_get_local_sending_state (stream) ==
+  if (gabble_base_call_stream_get_local_sending_state (
+      GABBLE_BASE_CALL_STREAM (stream)) ==
       GABBLE_SENDING_STATE_PENDING_SEND)
     gabble_call_stream_set_sending (stream, TRUE);
 }
@@ -903,7 +905,8 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
 
           paths = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
           g_ptr_array_add (paths, g_strdup (
-                  gabble_call_stream_get_object_path (stream)));
+                  gabble_base_call_stream_get_object_path (
+                    GABBLE_BASE_CALL_STREAM (stream))));
           gabble_svc_call_content_emit_streams_removed (self, paths);
           g_ptr_array_unref (paths);
 

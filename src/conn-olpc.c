@@ -934,7 +934,7 @@ check_activity_properties (GabbleConnection *conn,
     {
       WockyBareContact *contact = ensure_bare_contact_from_jid (conn, from);
 
-      wocky_pep_service_get_async (conn->pep_olpc_buddy_props, contact,
+      wocky_pep_service_get_async (conn->pep_olpc_act_props, contact,
           NULL, get_activity_properties_reply_cb, conn);
 
       g_object_unref (contact);

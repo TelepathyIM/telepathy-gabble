@@ -958,7 +958,7 @@ new_connection_to_socket (GabbleTubeStream *self,
       priv->address_type == TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
       gchar *ip;
-      guint16 port;
+      guint port;
 
       dbus_g_type_struct_get (priv->address,
           0, &ip,

@@ -2558,7 +2558,7 @@ handle_errmsg (GObject *source,
 
   tp_err = gabble_tp_send_error_from_wocky_xmpp_error (error);
 
-  if (etype == XMPP_ERROR_TYPE_WAIT)
+  if (etype == WOCKY_XMPP_ERROR_TYPE_WAIT)
     ds = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
   else
     ds = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;

@@ -1402,7 +1402,6 @@ extract_current_activity (GabbleConnection *conn,
 
       activity = add_activity_info_in_set (conn, room_handle, contact,
           conn->olpc_pep_activities);
-      g_object_set (activity, "id", id, NULL);
     }
 
   tp_handle_unref (room_repo, room_handle);
@@ -1410,6 +1409,7 @@ extract_current_activity (GabbleConnection *conn,
   /* update current-activity cache */
   if (activity != NULL)
     {
+      g_object_set (activity, "id", id, NULL);
       g_hash_table_insert (conn->olpc_current_act,
           GUINT_TO_POINTER (contact_handle), g_object_ref (activity));
     }

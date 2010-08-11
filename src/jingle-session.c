@@ -112,15 +112,15 @@ typedef struct {
 
 /* NB: JINGLE_ACTION_UNKNOWN is used as a terminator here. */
 static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = {
-  /* JS_STATE_PENDING_CREATED */
+  /* JINGLE_STATE_PENDING_CREATED */
   { JINGLE_ACTION_SESSION_INITIATE, JINGLE_ACTION_UNKNOWN },
-  /* JS_STATE_PENDING_INITIATE_SENT */
+  /* JINGLE_STATE_PENDING_INITIATE_SENT */
   { JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_ACCEPT,
     JINGLE_ACTION_TRANSPORT_ACCEPT, /* required for GTalk4 */
     JINGLE_ACTION_DESCRIPTION_INFO, JINGLE_ACTION_SESSION_INFO,
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_INFO,
     JINGLE_ACTION_UNKNOWN },
-  /* JS_STATE_PENDING_INITIATED */
+  /* JINGLE_STATE_PENDING_INITIATED */
   { JINGLE_ACTION_SESSION_ACCEPT, JINGLE_ACTION_SESSION_TERMINATE,
     JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ACCEPT,
@@ -128,19 +128,19 @@ static JingleAction allowed_actions[MAX_JINGLE_STATES][MAX_ACTIONS_PER_STATE] = 
     JINGLE_ACTION_TRANSPORT_ACCEPT, JINGLE_ACTION_SESSION_INFO,
     JINGLE_ACTION_INFO,
     JINGLE_ACTION_UNKNOWN },
-  /* JS_STATE_PENDING_ACCEPT_SENT */
+  /* JINGLE_STATE_PENDING_ACCEPT_SENT */
   { JINGLE_ACTION_TRANSPORT_INFO, JINGLE_ACTION_DESCRIPTION_INFO,
     JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_SESSION_INFO,
     JINGLE_ACTION_INFO,
     JINGLE_ACTION_UNKNOWN },
-  /* JS_STATE_ACTIVE */
+  /* JINGLE_STATE_ACTIVE */
   { JINGLE_ACTION_CONTENT_MODIFY, JINGLE_ACTION_CONTENT_ADD,
     JINGLE_ACTION_CONTENT_REMOVE, JINGLE_ACTION_CONTENT_REPLACE,
     JINGLE_ACTION_CONTENT_ACCEPT, JINGLE_ACTION_CONTENT_REJECT,
     JINGLE_ACTION_SESSION_INFO, JINGLE_ACTION_TRANSPORT_INFO,
     JINGLE_ACTION_DESCRIPTION_INFO, JINGLE_ACTION_INFO,
     JINGLE_ACTION_SESSION_TERMINATE, JINGLE_ACTION_UNKNOWN },
-  /* JS_STATE_ENDED */
+  /* JINGLE_STATE_ENDED */
   { JINGLE_ACTION_UNKNOWN }
 };
 
@@ -192,7 +192,7 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
   priv->responder_contents = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_object_unref);
 
-  priv->state = JS_STATE_PENDING_CREATED;
+  priv->state = JINGLE_STATE_PENDING_CREATED;
   priv->locally_accepted = FALSE;
   priv->locally_terminated = FALSE;
   priv->dispose_has_run = FALSE;
@@ -212,8 +212,8 @@ gabble_jingle_session_dispose (GObject *object)
   DEBUG ("called");
   priv->dispose_has_run = TRUE;
 
-  g_assert ((priv->state == JS_STATE_PENDING_CREATED) ||
-      (priv->state == JS_STATE_ENDED));
+  g_assert ((priv->state == JINGLE_STATE_PENDING_CREATED) ||
+      (priv->state == JINGLE_STATE_ENDED));
 
   g_hash_table_destroy (priv->initiator_contents);
   priv->initiator_contents = NULL;
@@ -318,8 +318,8 @@ gabble_jingle_session_set_property (GObject *object,
           {
             priv->local_hold = local_hold;
 
-            if (priv->state >= JS_STATE_PENDING_INITIATED &&
-                priv->state < JS_STATE_ENDED)
+            if (priv->state >= JINGLE_STATE_PENDING_INITIATED &&
+                priv->state < JINGLE_STATE_ENDED)
               gabble_jingle_session_send_held (sess);
 
             /* else, we'll send this in set_state when we move to PENDING_INITIATED or
@@ -437,7 +437,7 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   param_spec = g_param_spec_uint ("state", "Session state",
       "The current state that the session is in.",
-      0, G_MAXUINT32, JS_STATE_PENDING_CREATED,
+      0, G_MAXUINT32, JINGLE_STATE_PENDING_CREATED,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
 
@@ -850,7 +850,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
     {
       /* if this is session-initiate, we should return error, otherwise,
        * we should respond with content-reject */
-      if (priv->state < JS_STATE_PENDING_INITIATED)
+      if (priv->state < JINGLE_STATE_PENDING_INITIATED)
         g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
             "unsupported content type with ns %s", content_ns);
       else
@@ -995,7 +995,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * disposition; resolve this as soon as the proper procedure is defined
        * in XEP-0166. */
 
-      set_state (sess, JS_STATE_PENDING_INITIATED, 0, NULL);
+      set_state (sess, JINGLE_STATE_PENDING_INITIATED, 0, NULL);
 
       gabble_jingle_session_send_rtp_info (sess, "ringing");
     }
@@ -1078,7 +1078,7 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
   if (*error != NULL)
       return;
 
-  set_state (sess, JS_STATE_ACTIVE, 0, NULL);
+  set_state (sess, JINGLE_STATE_ACTIVE, 0, NULL);
 
   if (priv->dialect != JINGLE_DIALECT_V032)
     {
@@ -1328,7 +1328,7 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
       "and text '%s'",
       (m != NULL && m->element != NULL ? m->element : "(none)"), reason,
       (text != NULL ? text : "(none)"));
-  set_state (sess, JS_STATE_ENDED, reason, text);
+  set_state (sess, JINGLE_STATE_ENDED, reason, text);
 }
 
 static void
@@ -1636,7 +1636,7 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
   g_return_val_if_fail (action != JINGLE_ACTION_UNKNOWN, NULL);
 
   g_assert ((action == JINGLE_ACTION_SESSION_INITIATE) ||
-            (priv->state > JS_STATE_PENDING_CREATED));
+            (priv->state > JINGLE_STATE_PENDING_CREATED));
   g_assert (GABBLE_IS_JINGLE_SESSION (sess));
 
   msg = lm_message_new_with_sub_type (
@@ -1803,7 +1803,7 @@ _on_initiate_reply (GObject *sess_as_obj,
 
   if (success)
     {
-      set_state (sess, JS_STATE_PENDING_INITIATED, 0, NULL);
+      set_state (sess, JINGLE_STATE_PENDING_INITIATED, 0, NULL);
 
       if (priv->dialect != JINGLE_DIALECT_V032)
         {
@@ -1816,7 +1816,7 @@ _on_initiate_reply (GObject *sess_as_obj,
     }
   else
     {
-      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+      set_state (sess, JINGLE_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
           NULL);
     }
 }
@@ -1830,12 +1830,12 @@ _on_accept_reply (GObject *sess_as_obj,
 
   if (success)
     {
-      set_state (sess, JS_STATE_ACTIVE, 0, NULL);
+      set_state (sess, JINGLE_STATE_ACTIVE, 0, NULL);
       gabble_jingle_session_send_rtp_info (sess, "active");
     }
   else
     {
-      set_state (sess, JS_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+      set_state (sess, JINGLE_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
           NULL);
     }
 }
@@ -1850,7 +1850,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   LmMessageNode *sess_node;
   gboolean contents_ready = TRUE;
   JingleAction action;
-  JingleSessionState new_state;
+  JingleState new_state;
   JingleReplyHandler handler;
 
   DEBUG ("Trying initiate or accept");
@@ -1861,7 +1861,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
   if (priv->local_initiator)
     {
-      if (priv->state != JS_STATE_PENDING_CREATED)
+      if (priv->state != JINGLE_STATE_PENDING_CREATED)
         {
           DEBUG ("session is in state %u, won't try to initiate", priv->state);
           return;
@@ -1880,12 +1880,12 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
             tp_handle_inspect (contact_repo, sess->peer), NULL);
 
       action = JINGLE_ACTION_SESSION_INITIATE;
-      new_state = JS_STATE_PENDING_INITIATE_SENT;
+      new_state = JINGLE_STATE_PENDING_INITIATE_SENT;
       handler = _on_initiate_reply;
     }
   else
     {
-      if (priv->state != JS_STATE_PENDING_INITIATED)
+      if (priv->state != JINGLE_STATE_PENDING_INITIATED)
         {
           DEBUG ("session is in state %u, won't try to accept", priv->state);
           return;
@@ -1898,7 +1898,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
         }
 
       action = JINGLE_ACTION_SESSION_ACCEPT;
-      new_state = JS_STATE_PENDING_ACCEPT_SENT;
+      new_state = JINGLE_STATE_PENDING_ACCEPT_SENT;
       handler = _on_accept_reply;
     }
 
@@ -1965,9 +1965,9 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
  * set_state:
  * @sess: a jingle session
  * @state: the new state for the session
- * @termination_reason: if @state is JS_STATE_ENDED, the reason the session
+ * @termination_reason: if @state is JINGLE_STATE_ENDED, the reason the session
  *                      ended. Otherwise, must be 0.
- * @text: if @state is JS_STATE_ENDED, the human-readable reason the session
+ * @text: if @state is JINGLE_STATE_ENDED, the human-readable reason the session
  *        ended.
  */
 static void
@@ -1984,7 +1984,7 @@ set_state (GabbleJingleSession *sess,
       return;
     }
 
-  if (state != JS_STATE_ENDED)
+  if (state != JINGLE_STATE_ENDED)
     g_assert (termination_reason == 0);
 
   DEBUG ("Setting state of JingleSession: %p (priv = %p) from %u to %u", sess, priv, priv->state, state);
@@ -1994,11 +1994,11 @@ set_state (GabbleJingleSession *sess,
 
   /* If we have an outstanding "you're on hold notification", send it */
   if (priv->local_hold &&
-      state >= JS_STATE_PENDING_INITIATED &&
-      state < JS_STATE_ENDED)
+      state >= JINGLE_STATE_PENDING_INITIATED &&
+      state < JINGLE_STATE_ENDED)
     gabble_jingle_session_send_held (sess);
 
-  if (state == JS_STATE_ENDED)
+  if (state == JINGLE_STATE_ENDED)
     g_signal_emit (sess, signals[TERMINATED], 0, priv->locally_terminated,
         termination_reason, text);
 }
@@ -2020,7 +2020,7 @@ _get_jingle_reason (GabbleJingleSession *sess,
   switch (reason)
     {
     case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
-      if (sess->priv->state == JS_STATE_ACTIVE)
+      if (sess->priv->state == JINGLE_STATE_ACTIVE)
         return "success";
       else
         return "cancel";
@@ -2046,7 +2046,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
   GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *reason_elt;
 
-  if (priv->state == JS_STATE_ENDED)
+  if (priv->state == JINGLE_STATE_ENDED)
     {
       DEBUG ("session already terminated, ignoring terminate request");
       return TRUE;
@@ -2061,7 +2061,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
       return FALSE;
     }
 
-  if (priv->state != JS_STATE_PENDING_CREATED)
+  if (priv->state != JINGLE_STATE_PENDING_CREATED)
     {
       LmMessageNode *session_node;
       LmMessage *msg = gabble_jingle_session_new_message (sess,
@@ -2087,7 +2087,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
 
   DEBUG ("we are terminating this session");
   priv->locally_terminated = TRUE;
-  set_state (sess, JS_STATE_ENDED, reason, text);
+  set_state (sess, JINGLE_STATE_ENDED, reason, text);
 
   return TRUE;
 }
@@ -2133,7 +2133,7 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
   else
     g_hash_table_remove (priv->responder_contents, name);
 
-  if (priv->state == JS_STATE_ENDED)
+  if (priv->state == JINGLE_STATE_ENDED)
     return;
 
   if (count_active_contents (sess) == 0)

@@ -880,7 +880,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
-  JingleSessionState state;
+  JingleState state;
   GList *li = NULL;
   guint i;
 
@@ -892,9 +892,9 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
   /* FIXME: maybe this should be an assertion in case the channel
    * isn't closed early enough right now? */
-  if (state > JS_STATE_ACTIVE)
+  if (state > JINGLE_STATE_ACTIVE)
     {
-      DEBUG ("state > JS_STATE_ACTIVE, doing nothing");
+      DEBUG ("state > JINGLE_STATE_ACTIVE, doing nothing");
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }

@@ -111,16 +111,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     <method name="AddActivity" tp:name-for-bindings="Add_Activity">
       <arg direction="in" name="id" type="s">
         <tp:docstring>
-          The identifier of the activity
+          An activity id
         </tp:docstring>
       </arg>
       <arg direction="in" name="handle" type="u">
         <tp:docstring>
-          The room handle of the activity channel
+          A room handle
         </tp:docstring>
       </arg>
       <tp:docstring>
-        Add a shared activity of the local user for this connection.
+        Advertise an activity associated to a muc room
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>

@@ -64,16 +64,16 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     <method name="GetActivity" tp:name-for-bindings="Get_Activity">
       <arg direction="in" name="activity_id" type="s">
         <tp:docstring>
-          An integer handle for the contact whose activities are to be returned
+          An activity id
         </tp:docstring>
       </arg>
       <arg direction="out" name="room" type="u">
         <tp:docstring>
-          Returns the room handle for this activity id.
+          A room handle
         </tp:docstring>
       </arg>
       <tp:docstring>
-        Get the properties of a particular activity, raises 
+        Returns the handle of the room associated with this activity
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>

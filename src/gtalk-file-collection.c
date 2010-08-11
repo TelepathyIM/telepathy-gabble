@@ -428,7 +428,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
                                  GParamSpec *arg1,
                                  GTalkFileCollection *self)
 {
-  JingleSessionState state;
+  JingleState state;
   GList *i;
 
   DEBUG ("called");
@@ -439,11 +439,11 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
 
   switch (state)
     {
-      case JS_STATE_INVALID:
-      case JS_STATE_PENDING_CREATED:
+      case JINGLE_STATE_INVALID:
+      case JINGLE_STATE_PENDING_CREATED:
         break;
-      case JS_STATE_PENDING_INITIATE_SENT:
-      case JS_STATE_PENDING_INITIATED:
+      case JINGLE_STATE_PENDING_INITIATE_SENT:
+      case JINGLE_STATE_PENDING_INITIATED:
         for (i = self->priv->channels; i;)
           {
             GabbleFileTransferChannel *channel = i->data;
@@ -453,8 +453,8 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
                 channel, GTALK_FILE_COLLECTION_STATE_PENDING, FALSE);
           }
         break;
-      case JS_STATE_PENDING_ACCEPT_SENT:
-      case JS_STATE_ACTIVE:
+      case JINGLE_STATE_PENDING_ACCEPT_SENT:
+      case JINGLE_STATE_ACTIVE:
         /* Do not set the channels to OPEN unless we're ready to send/receive
            data from them */
         if (self->priv->status == GTALK_FT_STATUS_INITIATED)
@@ -473,7 +473,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
                   channel, GTALK_FILE_COLLECTION_STATE_ACCEPTED, FALSE);
           }
         break;
-      case JS_STATE_ENDED:
+      case JINGLE_STATE_ENDED:
         /* Do nothing, let the terminated signal set the correct state
            depending on the termination reason */
       default:

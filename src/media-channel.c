@@ -2174,7 +2174,7 @@ session_terminated_cb (GabbleJingleSession *session,
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   guint terminator;
-  JingleSessionState state;
+  JingleState state;
   TpHandle peer;
   TpIntSet *set;
 
@@ -2243,7 +2243,7 @@ session_state_changed_cb (GabbleJingleSession *session,
   GObject *as_object = (GObject *) channel;
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
-  JingleSessionState state;
+  JingleState state;
   TpHandle peer;
   TpIntSet *set;
 
@@ -2256,8 +2256,8 @@ session_state_changed_cb (GabbleJingleSession *session,
 
   set = tp_intset_new_containing (peer);
 
-  if (state >= JS_STATE_PENDING_INITIATE_SENT &&
-      state < JS_STATE_ACTIVE &&
+  if (state >= JINGLE_STATE_PENDING_INITIATE_SENT &&
+      state < JINGLE_STATE_ACTIVE &&
       !tp_handle_set_is_member (mixin->members, peer))
     {
       /* The first time we send anything to the other user, they materialise
@@ -2272,7 +2272,7 @@ session_state_changed_cb (GabbleJingleSession *session,
       tp_group_mixin_change_flags (as_object, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
     }
 
-  if (state == JS_STATE_ACTIVE &&
+  if (state == JINGLE_STATE_ACTIVE &&
       priv->creator == mixin->self_handle)
     {
 
@@ -2746,7 +2746,7 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
   GabbleMediaChannelPrivate *priv;
   GPtrArray *tmp;
   guint i;
-  JingleSessionState state;
+  JingleState state;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (self));
 
@@ -2773,16 +2773,16 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
 
   g_object_get (priv->session, "state", &state, NULL);
 
-  if (state == JS_STATE_ENDED)
+  if (state == JINGLE_STATE_ENDED)
     {
       tp_svc_media_session_handler_return_from_error (context);
       return;
     }
-  else if (state == JS_STATE_PENDING_CREATED)
+  else if (state == JINGLE_STATE_PENDING_CREATED)
     {
       /* shortcut to prevent sending remove actions if we haven't sent an
        * initiate yet */
-      g_object_set (self, "state", JS_STATE_ENDED, NULL);
+      g_object_set (self, "state", JINGLE_STATE_ENDED, NULL);
       tp_svc_media_session_handler_return_from_error (context);
       return;
     }

@@ -495,7 +495,7 @@ tube_opened_cb (GabbleTubeIface *tube,
   update_tubes_presence (self);
 
   tp_svc_channel_type_tubes_emit_tube_state_changed (self, tube_id,
-      TP_TUBE_STATE_OPEN);
+      TP_TUBE_CHANNEL_STATE_OPEN);
 }
 
 static void
@@ -508,7 +508,7 @@ tube_offered_cb (GabbleTubeIface *tube,
   TpTubeType type;
   gchar *service;
   GHashTable *parameters;
-  TpTubeState state;
+  TpTubeChannelState state;
 
   g_object_get (tube,
       "id", &tube_id,
@@ -519,7 +519,10 @@ tube_offered_cb (GabbleTubeIface *tube,
       "state", &state,
       NULL);
 
-  /* tube has been offered and so can be announced using the old API */
+  /* tube has been offered and so can be announced using the old API;
+   * TpTubeState and TpTubeChannelState are numerically equal for
+   * values other than NOT_OFFERED */
+  g_assert (state < NUM_TP_TUBE_STATES);
   tp_svc_channel_type_tubes_emit_new_tube (self,
       tube_id,
       initiator,
@@ -547,7 +550,7 @@ create_new_tube (GabbleTubesChannel *self,
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
-  TpTubeState state;
+  TpTubeChannelState state;
 
   switch (type)
     {
@@ -572,7 +575,9 @@ create_new_tube (GabbleTubesChannel *self,
   g_object_get (tube, "state", &state, NULL);
 
   /* The old API doesn't know the "not offered" state, so we have to wait that
-   * the tube is offered before announcing it. */
+   * the tube is offered before announcing it.
+   * TpTubeState and TpTubeChannelState are numerically equal for
+   * values other than NOT_OFFERED */
   if (state != TP_TUBE_CHANNEL_STATE_NOT_OFFERED)
     {
       tp_svc_channel_type_tubes_emit_new_tube (self,
@@ -1097,7 +1102,7 @@ publish_tubes_in_node (gpointer key,
     (struct _i_hate_g_hash_table_foreach *) user_data;
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (
       data->self);
-  TpTubeState state;
+  TpTubeChannelState state;
   LmMessageNode *tube_node;
   TpTubeType type;
   TpHandle initiator;
@@ -1111,7 +1116,7 @@ publish_tubes_in_node (gpointer key,
       "initiator-handle", &initiator,
        NULL);
 
-  if (state != TP_TUBE_STATE_OPEN)
+  if (state != TP_TUBE_CHANNEL_STATE_OPEN)
     return;
 
   if (type == TP_TUBE_TYPE_STREAM && initiator != priv->self_handle)
@@ -1716,7 +1721,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   GabbleTubeIface *tube;
-  TpTubeState state;
+  TpTubeChannelState state;
   TpTubeType type;
   gchar *addr;
   GError *error = NULL;
@@ -1748,7 +1753,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (state != TP_TUBE_STATE_LOCAL_PENDING)
+  if (state != TP_TUBE_CHANNEL_STATE_LOCAL_PENDING)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the local pending state" };
@@ -1786,7 +1791,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
   GabbleTubeIface *tube;
-  TpTubeState state;
+  TpTubeChannelState state;
   TpTubeType type;
   GValue *address;
   GError *error = NULL;
@@ -1901,7 +1906,7 @@ gabble_tubes_channel_get_d_bus_tube_address (TpSvcChannelTypeTubes *iface,
   GabbleTubeIface *tube;
   gchar *addr;
   TpTubeType type;
-  TpTubeState state;
+  TpTubeChannelState state;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
@@ -1972,7 +1977,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
   GHashTable *names;
   GPtrArray *ret;
   TpTubeType type;
-  TpTubeState state;
+  TpTubeChannelState state;
   guint i;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
@@ -2002,7 +2007,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
       return;
     }
 
-  if (state != TP_TUBE_STATE_OPEN)
+  if (state != TP_TUBE_CHANNEL_STATE_OPEN)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Tube is not open" };
@@ -2040,7 +2045,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
   GabbleTubesChannelPrivate *priv  = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
   GabbleTubeIface *tube;
   TpTubeType type;
-  TpTubeState state;
+  TpTubeChannelState state;
   TpSocketAddressType address_type;
   GValue *address;
 
@@ -2067,7 +2072,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
       return;
     }
 
-  if (state != TP_TUBE_STATE_OPEN)
+  if (state != TP_TUBE_CHANNEL_STATE_OPEN)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Tube is not open" };

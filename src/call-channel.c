@@ -257,7 +257,7 @@ call_session_state_changed_cb (GabbleJingleSession *session,
   GabbleCallChannel *self)
 {
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
-  JingleSessionState state;
+  JingleState state;
   GabbleCallState cstate;
 
   cstate = gabble_base_call_channel_get_state (
@@ -265,13 +265,13 @@ call_session_state_changed_cb (GabbleJingleSession *session,
 
   g_object_get (session, "state", &state, NULL);
 
-  if (state == JS_STATE_ACTIVE && cstate != GABBLE_CALL_STATE_ACCEPTED)
+  if (state == JINGLE_STATE_ACTIVE && cstate != GABBLE_CALL_STATE_ACCEPTED)
     {
       gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ACCEPTED);
       return;
     }
 
-  if (state == JS_STATE_ENDED && cstate < GABBLE_CALL_STATE_ENDED)
+  if (state == JINGLE_STATE_ENDED && cstate < GABBLE_CALL_STATE_ENDED)
     {
       gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ENDED);
       return;

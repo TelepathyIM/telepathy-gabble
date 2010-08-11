@@ -991,7 +991,7 @@ static void
 _maybe_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
-  JingleSessionState state;
+  JingleState state;
 
   if (!gabble_jingle_content_is_ready (self))
       return;
@@ -1005,7 +1005,7 @@ _maybe_ready (GabbleJingleContent *self)
   g_object_get (self->session, "state", &state, NULL);
 
   if (!tp_strdiff (priv->disposition, "session") &&
-      (state < JS_STATE_PENDING_ACCEPT_SENT))
+      (state < JINGLE_STATE_PENDING_ACCEPT_SENT))
     {
       /* Notify the session that we're ready for
        * session-initiate/session-accept */
@@ -1013,7 +1013,7 @@ _maybe_ready (GabbleJingleContent *self)
     }
   else
     {
-      if (state >= JS_STATE_PENDING_INITIATE_SENT)
+      if (state >= JINGLE_STATE_PENDING_INITIATE_SENT)
         {
           send_content_add_or_accept (self);
 

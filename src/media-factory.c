@@ -1023,6 +1023,8 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
     }
 }
 
+/* The switch in gabble_media_factory_get_contact_caps needs to be kept in
+ * sync with the possible returns from this function. */
 TpChannelMediaCapabilities
 _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
 {
@@ -1108,7 +1110,12 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
       TP_CHANNEL_MEDIA_CAPABILITY_VIDEO |
       TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS);
 
-  switch (typeflags)
+  /* This switch is over the values of several bits from a
+   * bitfield-represented-as-an-enum, simultaneously, which upsets gcc-4.5;
+   * the guint cast reassures it that we know what we're doing.
+   * _gabble_media_factory_caps_to_typeflags shouldn't return any cases not
+   * handled here. */
+  switch ((guint) typeflags)
     {
       case 0:
         return;

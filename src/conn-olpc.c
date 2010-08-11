@@ -3876,6 +3876,54 @@ conn_olpc_activity_properties_dispose (GabbleConnection *self)
   self->olpc_activities_info = NULL;
 }
 
+static GabbleOlpcActivity *
+find_activity_by_id (GabbleConnection *self,
+                     const gchar *activity_id)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, self->olpc_activities_info);
+  while (g_hash_table_iter_next (&iter, &key, &value)) 
+    {
+      GabbleOlpcActivity *activity = GABBLE_OLPC_ACTIVITY (value);
+      if (strcmp (activity->id, activity_id) == 0)
+        return activity;
+    }
+
+  return NULL;
+}
+
+static void
+olpc_activity_properties_get_activity (GabbleSvcOLPCActivityProperties *iface,
+                                       const gchar *activity_id,
+                                       DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  GabbleOlpcActivity *activity;
+  GError *error = NULL;
+
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
+  activity = find_activity_by_id (self, activity_id);
+  if (activity == NULL)
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Activity unknown: %s", activity_id);
+      goto error;
+    }
+
+  gabble_svc_olpc_activity_properties_return_from_get_activity (context,
+      activity->room);
+
+  return;
+
+error:
+  dbus_g_method_return_error (context, error);
+  g_error_free (error);
+}
+
 void
 olpc_activity_properties_iface_init (gpointer g_iface,
                                      gpointer iface_data)
@@ -3886,6 +3934,7 @@ olpc_activity_properties_iface_init (gpointer g_iface,
     klass, olpc_activity_properties_##x)
   IMPLEMENT(get_properties);
   IMPLEMENT(set_properties);
+  IMPLEMENT(get_activity);
 #undef IMPLEMENT
 }
 

@@ -218,6 +218,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
       "connection", self->priv->connection,
       "object-path", object_path,
       "tls-session", tls_session,
+      "hostname", peername,
       NULL);
 
   g_signal_connect (self->priv->channel, "closed",

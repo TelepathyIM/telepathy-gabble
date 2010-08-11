@@ -57,6 +57,7 @@ enum {
 
   /* server TLS channel iface */
   PROP_SERVER_CERTIFICATE,
+  PROP_HOSTNAME,
 
   /* not exported */
   PROP_TLS_SESSION,
@@ -69,6 +70,7 @@ struct _GabbleServerTLSChannelPrivate {
 
   GabbleTLSCertificate *server_cert;
   gchar *server_cert_path;
+  gchar *hostname;
 
   gboolean dispose_has_run;
 };
@@ -96,6 +98,8 @@ gabble_server_tls_channel_get_property (GObject *object,
               TP_IFACE_CHANNEL, "Interfaces",
               GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
               "ServerCertificate",
+              GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
+              "Hostname",
               NULL));
       break;
     case PROP_REQUESTED:
@@ -103,6 +107,9 @@ gabble_server_tls_channel_get_property (GObject *object,
       break;
     case PROP_SERVER_CERTIFICATE:
       g_value_set_boxed (value, self->priv->server_cert_path);
+      break;
+    case PROP_HOSTNAME:
+      g_value_set_string (value, self->priv->hostname);
       break;
     case PROP_TLS_SESSION:
       g_value_set_object (value, self->priv->tls_session);
@@ -126,6 +133,9 @@ gabble_server_tls_channel_set_property (GObject *object,
     case PROP_TLS_SESSION:
       self->priv->tls_session = g_value_dup_object (value);
       break;
+    case PROP_HOSTNAME:
+      self->priv->hostname = g_value_dup_string (value);
+      break;
     case PROP_REQUESTED:
       /* no-op */
       break;
@@ -143,6 +153,7 @@ gabble_server_tls_channel_finalize (GObject *object)
   DEBUG ("Finalize TLS channel");
 
   g_free (self->priv->server_cert_path);
+  g_free (self->priv->hostname);
 
   G_OBJECT_CLASS (gabble_server_tls_channel_parent_class)->finalize (object);
 }
@@ -234,6 +245,7 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
 {
   static TpDBusPropertiesMixinPropImpl server_tls_props[] = {
     { "ServerCertificate", "server-certificate", NULL },
+    { "Hostname", "hostname", NULL },
     { NULL }
   };
 
@@ -264,6 +276,12 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
       DBUS_TYPE_G_OBJECT_PATH,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_SERVER_CERTIFICATE, pspec);
+
+  pspec = g_param_spec_string ("hostname", "The hostname to be verified",
+      "The hostname which should be certified by the server certificate.",
+      NULL,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (oclass, PROP_HOSTNAME, pspec);
 
   pspec = g_param_spec_object ("tls-session", "The WockyTLSSession",
       "The WockyTLSSession object containing the TLS information",

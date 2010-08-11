@@ -1137,6 +1137,47 @@ set_activities_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
+static gboolean
+add_activity (GabbleConnection *self,
+              const gchar *id,
+              guint channel,
+              GError **error)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
+      base, TP_HANDLE_TYPE_ROOM);
+  TpHandleSet *old_activities = g_hash_table_lookup (self->olpc_pep_activities,
+      GUINT_TO_POINTER (base->self_handle));
+  GabbleOlpcActivity *activity;
+
+  if (!tp_handle_is_valid (room_repo, channel, error))
+    {
+      DEBUG ("Invalid room handle %d", channel);
+      return FALSE;
+    }
+
+  if (old_activities != NULL && tp_handle_set_is_member (old_activities, channel))
+    {
+      *error = g_error_new (TP_ERRORS,
+          TP_ERROR_INVALID_ARGUMENT,
+          "Can't set twice the same activity: %s", id);
+
+      DEBUG ("activity already added: %s", id);
+      return FALSE;
+    }
+
+  activity = add_activity_info (self, channel);
+  g_object_ref (activity);
+
+  DEBUG ("ref: %s (%d) refcount: %d\n",
+      gabble_olpc_activity_get_room (activity),
+      activity->room, G_OBJECT (activity)->ref_count);
+
+  g_object_set (activity, "id", id, NULL);
+
+  return TRUE;
+}
+
 static void
 olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
                                 const GPtrArray *activities,
@@ -1164,8 +1205,6 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
       GValue pair = {0,};
       gchar *id;
       guint channel;
-      const gchar *room = NULL;
-      GabbleOlpcActivity *activity;
       GError *error = NULL;
 
       g_value_init (&pair, GABBLE_STRUCT_TYPE_ACTIVITY);
@@ -1175,9 +1214,8 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
           1, &channel,
           G_MAXUINT);
 
-      if (!tp_handle_is_valid (room_repo, channel, &error))
+      if (!add_activity (conn, id, channel, &error))
         {
-          DEBUG ("Invalid room handle");
           dbus_g_method_return_error (context, error);
 
           /* We have to unref information previously
@@ -1194,49 +1232,6 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
           return;
         }
 
-      room = tp_handle_inspect (room_repo, channel);
-
-      activity = g_hash_table_lookup (conn->olpc_activities_info,
-          GUINT_TO_POINTER (channel));
-
-      if (activity == NULL)
-        {
-          activity = add_activity_info (conn, channel);
-        }
-      else
-        {
-          if (tp_handle_set_is_member (activities_set, channel))
-            {
-              error = g_error_new (TP_ERRORS,
-                  TP_ERROR_INVALID_ARGUMENT,
-                  "Can't set twice the same activity: %s", room);
-
-              DEBUG ("activity already added: %s", room);
-              dbus_g_method_return_error (context, error);
-
-              /* We have to unref information previously
-               * refed in this loop */
-              tp_handle_set_foreach (activities_set,
-                  decrement_contacts_activities_set_foreach, conn);
-
-              /* set_activities failed so we don't unref old activities
-               * of the local user */
-
-              tp_handle_set_destroy (activities_set);
-              g_error_free (error);
-              g_free (activity);
-              g_free (id);
-              return;
-            }
-
-          g_object_ref (activity);
-
-          DEBUG ("ref: %s (%d) refcount: %d\n",
-              gabble_olpc_activity_get_room (activity),
-              activity->room, G_OBJECT (activity)->ref_count);
-        }
-
-      g_object_set (activity, "id", id, NULL);
       g_free (id);
 
       tp_handle_set_add (activities_set, channel);
@@ -1683,6 +1678,67 @@ out:
   tp_handle_unref (contact_repo, handle);
 }
 
+static LmHandlerResult
+add_activity_reply_cb (GabbleConnection *conn,
+                       LmMessage *sent_msg,
+                       LmMessage *reply_msg,
+                       GObject *object,
+                       gpointer user_data)
+{
+  DBusGMethodInvocation *context = user_data;
+
+  if (!check_publish_reply_msg (reply_msg, context))
+    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+
+  /* FIXME: emit ActivitiesChanged? */
+
+  gabble_svc_olpc_buddy_info_return_from_add_activity (context);
+  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+}
+
+static void
+olpc_buddy_info_add_activity (GabbleSvcOLPCBuddyInfo *iface,
+                              const gchar *id,
+                              guint channel,
+                              DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleSet *activities_set = g_hash_table_lookup (self->olpc_pep_activities,
+      GUINT_TO_POINTER (base->self_handle));
+  TpHandleRepoIface *room_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_ROOM);
+  GError *error = NULL;
+
+  gabble_connection_ensure_capabilities (self,
+      gabble_capabilities_get_olpc_notify ());
+
+  if (!check_pep (self, context))
+    return;
+
+  if (!add_activity (self, id, channel, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      return;
+    }
+
+  if (activities_set == NULL) {
+    activities_set = tp_handle_set_new (room_repo);
+    g_hash_table_insert (self->olpc_pep_activities,
+        GUINT_TO_POINTER (base->self_handle), activities_set);
+  }
+
+  tp_handle_set_add (activities_set, channel);
+
+  if (!upload_activities_pep (self, add_activity_reply_cb, context, NULL))
+    {
+      error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+        "Failed to send property request to server");
+
+      dbus_g_method_return_error (context, error);
+    }
+}
+
 void
 olpc_buddy_info_iface_init (gpointer g_iface,
                             gpointer iface_data)
@@ -1697,6 +1753,7 @@ olpc_buddy_info_iface_init (gpointer g_iface,
   IMPLEMENT(set_properties);
   IMPLEMENT(get_current_activity);
   IMPLEMENT(set_current_activity);
+  IMPLEMENT(add_activity);
 #undef IMPLEMENT
 }
 

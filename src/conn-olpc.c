@@ -220,9 +220,6 @@ check_query_reply_msg (LmMessage *reply_msg,
           LmMessageNode *error_node;
           GError *error = NULL;
 
-          if (context == NULL)
-            return FALSE;
-
           error_node = lm_message_node_get_child (
               wocky_stanza_get_top_node (reply_msg), "error");
           if (error_node != NULL)
@@ -241,7 +238,10 @@ check_query_reply_msg (LmMessage *reply_msg,
             }
 
           DEBUG ("%s", error->message);
-          dbus_g_method_return_error (context, error);
+
+          if (context != NULL)
+              dbus_g_method_return_error (context, error);
+
           g_error_free (error);
         }
     }

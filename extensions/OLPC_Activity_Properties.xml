@@ -74,6 +74,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </arg>
       <tp:docstring>
         Returns the handle of the room associated with this activity
+        <tp:rationale>
+          <p>When an activity starts up, it knows its activity_id but doesn't
+             know yet if it's shared or not, much less the room.</p>
+        </tp:rationale>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>

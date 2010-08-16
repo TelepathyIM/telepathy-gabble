@@ -121,6 +121,11 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </arg>
       <tp:docstring>
         Advertise an activity associated to a muc room
+        <tp:rationale>
+          <p>Once an activity shares itself, needs to be advertised if it's not
+             private. SetActivities could be used for this but it would mean that
+             the activity would need to call GetActivities then add itself.</p>
+        </tp:rationale>
       </tp:docstring>
       <tp:possible-errors>
         <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>

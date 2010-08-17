@@ -31,6 +31,7 @@
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
 #include <wocky/wocky-connector.h>
+#include <wocky/wocky-tls-handler.h>
 #include <wocky/wocky-ping.h>
 #include <wocky/wocky-xmpp-error.h>
 #include <telepathy-glib/channel-manager.h>
@@ -1924,6 +1925,7 @@ _gabble_connection_connect (TpBaseConnection *base,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = conn->priv;
+  WockyTLSHandler *tls_handler;
   char *jid;
   gchar *user_certs_dir;
 
@@ -1933,19 +1935,26 @@ _gabble_connection_connect (TpBaseConnection *base,
   g_assert (priv->resource != NULL);
 
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
-  priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
-      gabble_auth_manager_get_auth_registry (priv->auth_manager));
-  g_free (jid);
+
+  tls_handler = wocky_tls_handler_new (priv->ignore_ssl_errors);
 
   /* system certs */
-  wocky_connector_add_ca (priv->connector,
+  wocky_tls_handler_add_ca (tls_handler,
       "/etc/ssl/certs/ca-certificates.crt");
 
   /* user certs */
   user_certs_dir = g_build_filename (g_get_user_config_dir (),
       "telepathy", "certs", NULL);
-  wocky_connector_add_ca (priv->connector, user_certs_dir);
+  wocky_tls_handler_add_ca (tls_handler, user_certs_dir);
   g_free (user_certs_dir);
+
+  priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
+      gabble_auth_manager_get_auth_registry (priv->auth_manager),
+      tls_handler);
+
+  g_object_unref (tls_handler);
+  g_free (jid);
+
 
   /* If the UI explicitly specified a port or a server, pass them to Loudmouth
    * rather than letting it do an SRV lookup.
@@ -1985,7 +1994,6 @@ _gabble_connection_connect (TpBaseConnection *base,
     }
 
   g_object_set (priv->connector,
-      "ignore-ssl-errors", priv->ignore_ssl_errors,
       "old-ssl", priv->old_ssl,
       /* We always wants to support old servers */
       "legacy", TRUE,

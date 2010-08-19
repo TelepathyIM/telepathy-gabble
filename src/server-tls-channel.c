@@ -307,18 +307,6 @@ gabble_server_tls_channel_impl_close (TpSvcChannel *iface,
 }
 
 static void
-gabble_server_tls_channel_impl_get_interfaces (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleServerTLSChannel *self = GABBLE_SERVER_TLS_CHANNEL (iface);
-
-  g_assert (GABBLE_IS_SERVER_TLS_CHANNEL (self));
-
-  tp_svc_channel_return_from_get_interfaces (context,
-      gabble_server_tls_channel_interfaces);
-}
-
-static void
 channel_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
@@ -327,7 +315,6 @@ channel_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) tp_svc_channel_implement_##x (\
     klass, gabble_server_tls_channel_impl_##x)
   IMPLEMENT(close);
-  IMPLEMENT(get_interfaces);
 #undef IMPLEMENT
 }
 

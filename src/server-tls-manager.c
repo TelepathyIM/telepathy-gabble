@@ -280,18 +280,16 @@ static void
 gabble_server_tls_manager_constructed (GObject *object)
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (object);
+  void (*chain_up) (GObject *) =
+    G_OBJECT_CLASS (gabble_server_tls_manager_parent_class)->constructed;
+
+  if (chain_up != NULL)
+    chain_up (object);
 
   DEBUG ("Server TLS Manager constructed");
 
   gabble_signal_connect_weak (self->priv->connection, "status-changed",
       G_CALLBACK (connection_status_changed_cb), object);
-
-  if (G_OBJECT_CLASS
-      (gabble_server_tls_manager_parent_class)->constructed != NULL)
-    {
-      G_OBJECT_CLASS
-        (gabble_server_tls_manager_parent_class)->constructed (object);
-    }
 }
 
 static void

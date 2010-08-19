@@ -175,14 +175,15 @@ static void
 gabble_tls_certificate_constructed (GObject *object)
 {
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (object);
+  void (*chain_up) (GObject *) =
+    G_OBJECT_CLASS (gabble_tls_certificate_parent_class)->constructed;
+
+  if (chain_up != NULL)
+    chain_up (object);
 
   /* register the certificate on the bus */
   tp_dbus_daemon_register_object (self->priv->daemon,
       self->priv->object_path, self);
-
-  if (G_OBJECT_CLASS
-      (gabble_tls_certificate_parent_class)->constructed != NULL)
-    G_OBJECT_CLASS (gabble_tls_certificate_parent_class)->constructed (object);
 }
 
 static void

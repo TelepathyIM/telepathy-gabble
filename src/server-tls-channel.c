@@ -203,9 +203,14 @@ gabble_server_tls_channel_constructed (GObject *object)
 {
   GabbleServerTLSChannel *self = GABBLE_SERVER_TLS_CHANNEL (object);
   GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
+  void (*chain_up) (GObject *) =
+    G_OBJECT_CLASS (gabble_server_tls_channel_parent_class)->constructed;
   WockyTLSCertType cert_type;
   gchar *cert_object_path;
   GPtrArray *certificates;
+
+  if (chain_up != NULL)
+    chain_up (object);
 
   /* put the channel on the bus */
   gabble_base_channel_register (base);
@@ -225,12 +230,6 @@ gabble_server_tls_channel_constructed (GObject *object)
   self->priv->server_cert_path = cert_object_path;
 
   DEBUG ("Server TLS channel constructed at %s", base->object_path);
-
-  /* chain up to the parent impl, if it exists */
-  if (G_OBJECT_CLASS
-      (gabble_server_tls_channel_parent_class)->constructed != NULL)
-    G_OBJECT_CLASS
-      (gabble_server_tls_channel_parent_class)->constructed (object);
 }
 
 static void

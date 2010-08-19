@@ -296,8 +296,10 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
       "connection", self, NULL);
   g_ptr_array_add (channel_managers, self->priv->auth_manager);
 
-  self->priv->server_tls_manager = g_object_new (GABBLE_TYPE_SERVER_TLS_MANAGER,
-      "connection", self, NULL);
+  self->priv->server_tls_manager =
+    g_object_new (GABBLE_TYPE_SERVER_TLS_MANAGER,
+        "connection", self,
+        NULL);
   g_ptr_array_add (channel_managers, self->priv->server_tls_manager);
 
   self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
@@ -1636,7 +1638,6 @@ connector_error_disconnect (GabbleConnection *self,
 
   gabble_connection_disconnect_with_tp_error (self, tp_error, reason);
   g_error_free (tp_error);
-
 }
 
 static void

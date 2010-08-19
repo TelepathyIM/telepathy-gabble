@@ -203,14 +203,12 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   gchar *object_path;
   GabbleTLSCertificate *certificate;
 
-  if (self->priv->verify_async_called)
-    {
-      DEBUG ("verify_async() called multiple times, returning.");
-      return;
-    }
+  /* this should be called only once per-connection. */
+  g_return_if_fail (!self->priv->verify_async_called);
 
   DEBUG ("verify_async() called on the GabbleServerTLSManager.");
 
+  self->priv->verify_async_called = TRUE;
   self->priv->async_result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, wocky_tls_handler_verify_finish);
   self->priv->tls_session = g_object_ref (tls_session);

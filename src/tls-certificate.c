@@ -358,7 +358,7 @@ gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
   self->priv->reject_reason = reason;
   self->priv->reject_error = g_strdup (dbus_error);
   self->priv->reject_details = g_hash_table_new_full (g_str_hash, g_str_equal,
-      (GDestroyNotify) g_free, (GDestroyNotify) tp_g_value_slice_free);
+      g_free, (GDestroyNotify) tp_g_value_slice_free);
 
   tp_g_hash_table_update (self->priv->reject_details, details,
       (GBoxedCopyFunc) g_strdup, (GBoxedCopyFunc) tp_g_value_slice_dup);

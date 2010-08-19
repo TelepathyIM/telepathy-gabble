@@ -62,7 +62,7 @@ enum {
   /* not exported */
   PROP_TLS_SESSION,
 
-  LAST_PROPERTY
+  NUM_PROPERTIES
 };
 
 struct _GabbleServerTLSChannelPrivate {

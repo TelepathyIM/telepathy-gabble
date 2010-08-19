@@ -71,7 +71,7 @@ enum {
   /* not exported */
   PROP_DBUS_DAEMON,
 
-  LAST_PROPERTY,
+  NUM_PROPERTIES
 };
 
 static void

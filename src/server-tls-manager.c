@@ -41,7 +41,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleServerTLSManager, gabble_server_tls_manager,
 
 enum {
   PROP_CONNECTION = 1,
-  LAST_PROPERTY,
+  NUM_PROPERTIES
 };
 
 struct _GabbleServerTLSManagerPrivate {

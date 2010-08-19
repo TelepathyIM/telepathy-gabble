@@ -57,6 +57,8 @@ struct _GabbleServerTLSManagerPrivate {
 
   gboolean verify_async_called;
   gboolean tls_state_changed;
+
+  gboolean dispose_has_run;
 };
 
 static void
@@ -89,7 +91,7 @@ gabble_server_tls_manager_set_property (GObject *object,
   switch (property_id)
     {
     case PROP_CONNECTION:
-      self->priv->connection = g_value_get_object (value);
+      self->priv->connection = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -107,9 +109,13 @@ connection_status_changed_cb (GabbleConnection *conn,
 
   DEBUG ("Connection status changed, now %d", status);
 
-  if (status == TP_CONNECTION_STATUS_DISCONNECTED &&
-      self->priv->channel != NULL)
-    gabble_server_tls_channel_close (self->priv->channel);
+  if (status == TP_CONNECTION_STATUS_DISCONNECTED)
+    {
+      if (self->priv->channel != NULL)
+        gabble_server_tls_channel_close (self->priv->channel);
+
+      tp_clear_object (&self->priv->connection);
+    }
 }
 
 static void
@@ -247,6 +253,21 @@ gabble_server_tls_manager_init (GabbleServerTLSManager *self)
 }
 
 static void
+gabble_server_tls_manager_dispose (GObject *object)
+{
+  GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (object);
+
+  if (self->priv->dispose_has_run)
+    return;
+
+  self->priv->dispose_has_run = TRUE;
+
+  tp_clear_object (&self->priv->connection);
+
+  G_OBJECT_CLASS (gabble_server_tls_manager_parent_class)->dispose (object);
+}
+
+static void
 gabble_server_tls_manager_finalize (GObject *object)
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (object);
@@ -284,7 +305,8 @@ gabble_server_tls_manager_class_init (GabbleServerTLSManagerClass *klass)
 
   g_type_class_add_private (klass, sizeof (GabbleServerTLSManagerPrivate));
 
-  oclass->dispose = gabble_server_tls_manager_finalize;
+  oclass->dispose = gabble_server_tls_manager_dispose;
+  oclass->finalize = gabble_server_tls_manager_finalize;
   oclass->constructed = gabble_server_tls_manager_constructed;
   oclass->set_property = gabble_server_tls_manager_set_property;
   oclass->get_property = gabble_server_tls_manager_get_property;

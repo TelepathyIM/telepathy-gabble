@@ -1,12 +1,38 @@
-telepathy-gabble 0.9.16 (UNRELEASED)
+telepathy-gabble 0.9.16 (2010-08-19)
 ====================================
+
+The “still at it” release.
+
+Enhancements:
+
+• Implement XEP-0126: Invisibility (wjt and eeejay)
+
+• Implement XEP-0186: Invisible Command (wjt and eeejay)
+
+• implement org.freedesktop.Telepathy.Protocol (ptlo)
+
+• Add a ActivityProperties.GetActivity method for retrieving an activity's room
+  handle from its id (tomeu)
+
+• Add a BuddyInfo.AddActivity method so activities can advertise themselves
+  without having to track all the other shared activities (tomeu)
 
 Fixes:
 
-• fd.o#25533: don't associate a request with tubes if a tube was
-  requested so that now if you request a tube (singular) channel
-  before opening the equivalent text chat you'll actually be given the
-  tube channel, and not the tubes channel. (jonny)
+• fd.o #25533: muc-factory: don't associate a request with tubes if a tube was
+  requested (jonnylamb)
+
+• muc-factory: rearrange which NewChannels signals come first (jonnylamb)
+
+• Cope if Jingle sharing requests omit <manifest> (wjt)
+
+• fd.o #29113: Skip file collection candidates with invalid addresses (wjt)
+
+• several improvements to the test suite (smcv)
+
+• fixes for building under gcc-4.5 (smcv)
+
+• adapt to the new TLS API (sjoerd)
 
 telepathy-gabble 0.9.15 (2010-06-30)
 ====================================

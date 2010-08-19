@@ -23,6 +23,7 @@
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/svc-generic.h>
 #include <telepathy-glib/util.h>
 
@@ -260,7 +261,7 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
   pspec = g_param_spec_boxed ("reject-details",
       "The reject error details",
       "Additional information about the rejection of the certificate",
-      G_TYPE_HASH_TABLE,
+      TP_HASH_TYPE_STRING_VARIANT_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_REJECT_DETAILS, pspec);
 

@@ -322,7 +322,6 @@ gabble_server_tls_manager_foreach_channel (TpChannelManager *manager,
     gpointer user_data)
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (manager);
-  gboolean closed;
 
   DEBUG ("Foreach channel");
 
@@ -330,10 +329,7 @@ gabble_server_tls_manager_foreach_channel (TpChannelManager *manager,
     return;
 
   /* there's only one channel of this kind */
-  g_object_get (self->priv->channel, "channel-destroyed", &closed, NULL);
-
-  if (!closed)
-    func (TP_EXPORTABLE_CHANNEL (self->priv->channel), user_data);
+  func (TP_EXPORTABLE_CHANNEL (self->priv->channel), user_data);
 }
 
 static void

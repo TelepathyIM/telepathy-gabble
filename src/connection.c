@@ -1623,8 +1623,7 @@ connector_error_disconnect (GabbleConnection *self,
       tp_base_connection_disconnect_with_dbus_error (base, dbus_error,
           details, reason);
 
-      if (details != NULL)
-        g_hash_table_unref (details);
+      tp_clear_pointer (&details, g_hash_table_unref);
       g_free (dbus_error);
 
       return;

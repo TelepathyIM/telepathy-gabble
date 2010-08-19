@@ -145,9 +145,7 @@ gabble_tls_certificate_finalize (GObject *object)
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (object);
 
   g_free (self->priv->reject_error);
-
-  if (self->priv->reject_details != NULL)
-    g_hash_table_unref (self->priv->reject_details);
+  tp_clear_pointer (&self->priv->reject_details, g_hash_table_unref);
 
   g_free (self->priv->object_path);
   g_free (self->priv->cert_type);

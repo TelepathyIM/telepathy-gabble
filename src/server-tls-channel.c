@@ -300,8 +300,6 @@ gabble_server_tls_channel_impl_close (TpSvcChannel *iface,
 {
   GabbleServerTLSChannel *self = GABBLE_SERVER_TLS_CHANNEL (iface);
 
-  g_assert (GABBLE_IS_SERVER_TLS_CHANNEL (self));
-
   gabble_server_tls_channel_close (self);
   tp_svc_channel_return_from_close (context);
 }

@@ -27,6 +27,7 @@
 #endif
 
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/presence-mixin.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PLUGINS
 #include "debug.h"
@@ -306,4 +307,62 @@ gabble_plugin_loader_create_sidecar_finish (
   sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
       G_SIMPLE_ASYNC_RESULT (result)));
   return g_object_ref (sidecar);
+}
+
+TpPresenceStatusSpec *
+gabble_plugin_loader_append_statuses (
+    GabblePluginLoader *self,
+    const TpPresenceStatusSpec *base_statuses)
+{
+  GabblePluginLoaderPrivate *priv = self->priv;
+  GList *add = NULL;
+  GList *li;
+  TpPresenceStatusSpec *result;
+  guint len;
+  guint i;
+
+  for (i = 0; i < priv->plugins->len; i++)
+    {
+      GabblePlugin *p = g_ptr_array_index (priv->plugins, i);
+
+      add = g_list_concat (add,
+          gabble_plugin_get_custom_presence_statuses (p));
+    }
+
+  for (len = 0; base_statuses[len].name; len++);
+  result = g_new0 (TpPresenceStatusSpec, len + g_list_length (add) + 1);
+
+  for (i = 0; base_statuses[i].name; i++)
+      result[i] = base_statuses[i];
+
+  for (li = add; li; li = li->next)
+      result[i++] = *((TpPresenceStatusSpec *) li->data);
+
+  g_list_free (add);
+
+  return result;
+}
+
+const gchar *
+gabble_plugin_loader_presence_status_for_privacy_list (
+    GabblePluginLoader *loader,
+    const gchar *list_name)
+{
+  GabblePluginLoaderPrivate *priv = loader->priv;
+  guint i;
+
+  for (i = 0; i < priv->plugins->len; i++)
+    {
+      GabblePlugin *p = g_ptr_array_index (priv->plugins, i);
+      const gchar *status;
+
+      status =
+          gabble_plugin_presence_status_for_privacy_list (p, list_name);
+
+      if (status)
+          return status;
+
+    }
+
+  return NULL;
 }

@@ -1108,6 +1108,13 @@ status_available_cb (GObject *obj, guint status)
     return TRUE;
 }
 
+GabblePresenceId
+_conn_presence_get_type (GabblePresence *presence)
+{
+  return gabble_statuses[presence->status].presence_type;
+}
+
+
 /* TODO: update this when telepathy-glib supports setting
  * statuses at constructor time; until then, gabble_statuses
  * leaks.

@@ -25,6 +25,7 @@
 #include <telepathy-glib/channel-manager.h>
 
 #include "capabilities.h"
+#include "conn-presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
@@ -517,8 +518,36 @@ gabble_presence_add_status_and_vcard (GabblePresence *presence,
           JABBER_PRESENCE_SHOW_XA);
       break;
     default:
-      g_critical ("%s: Unexpected Telepathy presence type", G_STRFUNC);
-      break;
+      {
+        /* FIXME: we're almost duplicate the add_child code here,
+         * and we're calling into conn-presence which is not nice.
+         */
+        GabblePresenceId presence_type = _conn_presence_get_type (presence);
+
+        switch (presence_type)
+          {
+          case TP_CONNECTION_PRESENCE_TYPE_AVAILABLE:
+          case TP_CONNECTION_PRESENCE_TYPE_OFFLINE:
+          case TP_CONNECTION_PRESENCE_TYPE_HIDDEN:
+            break;
+          case TP_CONNECTION_PRESENCE_TYPE_AWAY:
+            wocky_node_add_child_with_content (node, "show",
+                JABBER_PRESENCE_SHOW_AWAY);
+            break;
+          case TP_CONNECTION_PRESENCE_TYPE_BUSY:
+            wocky_node_add_child_with_content (node, "show",
+                JABBER_PRESENCE_SHOW_DND);
+            break;
+          case TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY:
+            wocky_node_add_child_with_content (node, "show",
+                JABBER_PRESENCE_SHOW_XA);
+            break;
+          default:
+            g_critical ("%s: Unexpected Telepathy presence type: %d", G_STRFUNC,
+                presence_type);
+            break;
+          }
+      }
     }
 
   if (presence->status_message)

@@ -38,6 +38,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "plugin-loader.h"
 #include "presence-cache.h"
 #include "presence.h"
 #include "roster.h"
@@ -65,7 +66,7 @@ static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
 
 /* order must match PresenceId enum in connection.h */
 /* in increasing order of presence */
-static const TpPresenceStatusSpec gabble_statuses[] = {
+static const TpPresenceStatusSpec base_statuses[] = {
   { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE,
     gabble_status_arguments, NULL, NULL },
   { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE,
@@ -86,6 +87,8 @@ static const TpPresenceStatusSpec gabble_statuses[] = {
     gabble_status_arguments, NULL, NULL },
   { NULL, 0, FALSE, NULL, NULL, NULL }
 };
+
+static TpPresenceStatusSpec *gabble_statuses = NULL;
 
 /* prototypes */
 
@@ -1105,10 +1108,23 @@ status_available_cb (GObject *obj, guint status)
     return TRUE;
 }
 
-
+/* TODO: update this when telepathy-glib supports setting
+ * statuses at constructor time; until then, gabble_statuses
+ * leaks.
+ */
 void
 conn_presence_class_init (GabbleConnectionClass *klass)
 {
+  if (gabble_statuses == NULL)
+    {
+      GabblePluginLoader *loader = gabble_plugin_loader_dup ();
+
+      gabble_statuses = gabble_plugin_loader_append_statuses (
+          loader, base_statuses);
+
+      g_object_unref (loader);
+    }
+
   tp_presence_mixin_class_init ((GObjectClass *) klass,
       G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
       status_available_cb, construct_contact_statuses_cb,

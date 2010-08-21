@@ -422,7 +422,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
 static gboolean
 gabble_presence_cache_end_unsure_period (gpointer data)
 {
-  GabblePresenceCache *self = data;
+  GabblePresenceCache *self = GABBLE_PRESENCE_CACHE (data);
 
   DEBUG ("%p", data);
   self->priv->unsure_id = 0;
@@ -466,11 +466,6 @@ gabble_presence_cache_constructor (GType type, guint n_props,
   g_assert (priv->conn != NULL);
   g_assert (priv->presence_handles != NULL);
   g_assert (priv->decloak_handles != NULL);
-
-  /* After waiting UNSURE_PERIOD seconds for initial presences to trickle in,
-   * the "unsure period" ends. */
-  priv->unsure_id = g_timeout_add_seconds (UNSURE_PERIOD,
-      gabble_presence_cache_end_unsure_period, obj);
 
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
       G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
@@ -618,6 +613,10 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
+      /* After waiting UNSURE_PERIOD seconds for initial presences to trickle
+       * in, the "unsure period" ends. */
+      priv->unsure_id = g_timeout_add_seconds (UNSURE_PERIOD,
+          gabble_presence_cache_end_unsure_period, cache);
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
@@ -2140,14 +2139,17 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
     TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
 
-  /* we might not have had any presence at all - if we're still in the
-   * "unsure period", assume we might get initial presence soon.
+  /* we might not have had any presence at all - if we're not connected yet, or
+   * are still in the "unsure period", assume we might get initial presence
+   * soon.
    *
    * Presences with keep_unavailable are the result of caching someone's
    * nick from <message> stanzas, so they don't count as real presence - if
    * someone sends us a <message>, their presence might still follow. */
-  if (priv->unsure_id != 0)
+  if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED ||
+      priv->unsure_id != 0)
     {
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);
 

@@ -171,10 +171,16 @@ libgabble_convenience_la_SOURCES = \
     search-manager.c \
     server-sasl-channel.h \
     server-sasl-channel.c \
+    server-tls-channel.h \
+    server-tls-channel.c \
+    server-tls-manager.h \
+    server-tls-manager.c \
     $(top_srcdir)/gabble/sidecar.h \
     sidecar.c \
     slacker.h \
     slacker.c \
+    tls-certificate.h \
+    tls-certificate.c \
     tube-iface.h \
     tube-iface.c \
     tubes-channel.h \

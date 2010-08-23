@@ -77,6 +77,8 @@
 #include "roomlist-manager.h"
 #include "roster.h"
 #include "search-manager.h"
+#include "server-tls-channel.h"
+#include "server-tls-manager.h"
 #include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
@@ -238,6 +240,9 @@ struct _GabbleConnectionPrivate
   /* auth manager */
   GabbleAuthManager *auth_manager;
 
+  /* server TLS manager */
+  GabbleServerTLSManager *server_tls_manager;
+
   /* stream id returned by the connector */
   gchar *stream_id;
 
@@ -291,6 +296,12 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   self->priv->auth_manager = g_object_new (GABBLE_TYPE_AUTH_MANAGER,
       "connection", self, NULL);
   g_ptr_array_add (channel_managers, self->priv->auth_manager);
+
+  self->priv->server_tls_manager =
+    g_object_new (GABBLE_TYPE_SERVER_TLS_MANAGER,
+        "connection", self,
+        NULL);
+  g_ptr_array_add (channel_managers, self->priv->server_tls_manager);
 
   self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
       "connection", self,
@@ -1600,6 +1611,27 @@ connector_error_disconnect (GabbleConnection *self,
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
 
+  if (error->domain == GABBLE_SERVER_TLS_ERROR)
+    {
+      gchar *dbus_error = NULL;
+      GHashTable *details = NULL;
+
+      gabble_server_tls_manager_get_rejection_details (
+          self->priv->server_tls_manager, &dbus_error, &details, &reason);
+
+      /* new-style interactive TLS verification error */
+      DEBUG ("New-style TLS verification error, reason %u, dbus error %s",
+          reason, dbus_error);
+
+      tp_base_connection_disconnect_with_dbus_error (base, dbus_error,
+          details, reason);
+
+      tp_clear_pointer (&details, g_hash_table_unref);
+      g_free (dbus_error);
+
+      return;
+    }
+
   gabble_set_tp_conn_error_from_wocky (error, base->status, &reason,
       &tp_error);
   DEBUG ("connection failed: %s", tp_error->message);
@@ -1935,8 +1967,11 @@ _gabble_connection_connect (TpBaseConnection *base,
   g_assert (priv->resource != NULL);
 
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
-
-  tls_handler = wocky_tls_handler_new (priv->ignore_ssl_errors);
+  tls_handler = WOCKY_TLS_HANDLER (priv->server_tls_manager);
+  priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
+      gabble_auth_manager_get_auth_registry (priv->auth_manager),
+      g_object_ref (tls_handler));
+  g_free (jid);
 
   /* system certs */
   wocky_tls_handler_add_ca (tls_handler,
@@ -1947,14 +1982,6 @@ _gabble_connection_connect (TpBaseConnection *base,
       "telepathy", "certs", NULL);
   wocky_tls_handler_add_ca (tls_handler, user_certs_dir);
   g_free (user_certs_dir);
-
-  priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
-      gabble_auth_manager_get_auth_registry (priv->auth_manager),
-      tls_handler);
-
-  g_object_unref (tls_handler);
-  g_free (jid);
-
 
   /* If the UI explicitly specified a port or a server, pass them to Loudmouth
    * rather than letting it do an SRV lookup.
@@ -1998,6 +2025,9 @@ _gabble_connection_connect (TpBaseConnection *base,
       /* We always wants to support old servers */
       "legacy", TRUE,
       NULL);
+
+  g_object_set (tls_handler,
+      "ignore-ssl-errors", priv->ignore_ssl_errors, NULL);
 
   if (priv->old_ssl)
     {

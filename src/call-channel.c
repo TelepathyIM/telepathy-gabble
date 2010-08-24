@@ -447,8 +447,7 @@ call_channel_capabilities_discovered_cb (GabblePresenceCache *cache,
   gboolean wait;
 
   if (base->target != handle || gabble_base_call_channel_registered (base))
-    return;
-
+    goto out;
   if (!contact_is_media_capable (self, base->target, &wait, &error_))
     {
       if (wait)
@@ -469,6 +468,9 @@ call_channel_capabilities_discovered_cb (GabblePresenceCache *cache,
     {
       call_channel_continue_init (self, result);
     }
+
+out:
+  g_object_unref (self);
 }
 
 static void

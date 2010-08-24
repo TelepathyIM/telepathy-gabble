@@ -489,20 +489,6 @@ gabble_roomlist_channel_close (TpBaseChannel *base)
   tp_base_channel_destroyed (base);
 }
 
-/************************* D-Bus Method definitions **************************/
-
-/**
- * gabble_roomlist_channel_get_listing_rooms
- *
- * Implements D-Bus method GetListingRooms
- * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
 static void
 gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList *iface,
                                            DBusGMethodInvocation *context)
@@ -517,19 +503,6 @@ gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList *iface,
       context, priv->listing);
 }
 
-
-/**
- * gabble_roomlist_channel_list_rooms
- *
- * Implements D-Bus method ListRooms
- * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
 static void
 gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
                                     DBusGMethodInvocation *context)
@@ -555,12 +528,6 @@ gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
   tp_svc_channel_type_room_list_return_from_list_rooms (context);
 }
 
-/**
- * gabble_roomlist_channel_stop_listing
- *
- * Implements D-Bus method StopListing
- * on interface org.freedesktop.Telepathy.Channel.Type.RoomList
- */
 static void
 gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList *iface,
                                       DBusGMethodInvocation *context)

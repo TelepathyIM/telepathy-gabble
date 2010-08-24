@@ -503,7 +503,20 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
             suffix = ''
         else:
             suffix = str(i)
-        (conn, jid) = make_connection(bus, queue.append, params, suffix)
+
+        try:
+            (conn, jid) = make_connection(bus, queue.append, params, suffix)
+        except Exception, e:
+            # Crap. This is normally because the connection's still kicking
+            # around on the bus. Let's bin any connections we *did* manage to
+            # get going and then bail out unceremoniously.
+            print e
+
+            for conn in conns:
+                conn.Disconnect()
+
+            os._exit(1)
+
         conns.append(conn)
         jids.append(jid)
         streams.append(make_stream(queue.append, protocol=protocol,
@@ -573,7 +586,8 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
 
         try:
             conn.Disconnect()
-            raise AssertionError("Connection didn't disappear")
+            raise AssertionError("Connection didn't disappear; "
+                "all subsequent tests will probably fail")
         except dbus.DBusException, e:
             pass
         except Exception, e:

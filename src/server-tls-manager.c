@@ -200,7 +200,6 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
     gpointer user_data)
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (handler);
-  gchar *object_path;
   GabbleTLSCertificate *certificate;
 
   /* this should be called only once per-connection. */
@@ -216,11 +215,8 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   self->priv->async_callback = callback;
   self->priv->async_data = user_data;
 
-  object_path = g_strdup_printf ("%s/ServerTLSChannel",
-      ((TpBaseConnection *) self->priv->connection)->object_path);
   self->priv->channel = g_object_new (GABBLE_TYPE_SERVER_TLS_CHANNEL,
       "connection", self->priv->connection,
-      "object-path", object_path,
       "tls-session", tls_session,
       "hostname", peername,
       NULL);
@@ -239,8 +235,6 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   /* emit NewChannel on the ChannelManager iface */
   tp_channel_manager_emit_new_channel (self,
       (TpExportableChannel *) self->priv->channel, NULL);
-
-  g_free (object_path);
 }
 
 static void

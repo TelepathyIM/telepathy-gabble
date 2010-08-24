@@ -34,15 +34,8 @@
 #include "connection.h"
 #include "tls-certificate.h"
 
-static void channel_iface_init (gpointer, gpointer);
-
 G_DEFINE_TYPE_WITH_CODE (GabbleServerTLSChannel, gabble_server_tls_channel,
-    GABBLE_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-        tp_dbus_properties_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
+    TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
         NULL));
 
@@ -51,12 +44,8 @@ static const gchar *gabble_server_tls_channel_interfaces[] = {
 };
 
 enum {
-  /* channel iface */
-  PROP_CHANNEL_PROPERTIES = 1,
-  PROP_REQUESTED,
-
   /* server TLS channel iface */
-  PROP_SERVER_CERTIFICATE,
+  PROP_SERVER_CERTIFICATE = 1,
   PROP_HOSTNAME,
 
   /* not exported */
@@ -85,26 +74,6 @@ gabble_server_tls_channel_get_property (GObject *object,
 
   switch (property_id)
     {
-    case PROP_CHANNEL_PROPERTIES:
-      g_value_take_boxed (value,
-          tp_dbus_properties_mixin_make_properties_hash (object,
-              TP_IFACE_CHANNEL, "TargetHandle",
-              TP_IFACE_CHANNEL, "TargetHandleType",
-              TP_IFACE_CHANNEL, "ChannelType",
-              TP_IFACE_CHANNEL, "TargetID",
-              TP_IFACE_CHANNEL, "InitiatorHandle",
-              TP_IFACE_CHANNEL, "InitiatorID",
-              TP_IFACE_CHANNEL, "Requested",
-              TP_IFACE_CHANNEL, "Interfaces",
-              GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
-              "ServerCertificate",
-              GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
-              "Hostname",
-              NULL));
-      break;
-    case PROP_REQUESTED:
-      g_value_set_boolean (value, FALSE);
-      break;
     case PROP_SERVER_CERTIFICATE:
       g_value_set_boxed (value, self->priv->server_cert_path);
       break;
@@ -135,9 +104,6 @@ gabble_server_tls_channel_set_property (GObject *object,
       break;
     case PROP_HOSTNAME:
       self->priv->hostname = g_value_dup_string (value);
-      break;
-    case PROP_REQUESTED:
-      /* no-op */
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -202,34 +168,56 @@ static void
 gabble_server_tls_channel_constructed (GObject *object)
 {
   GabbleServerTLSChannel *self = GABBLE_SERVER_TLS_CHANNEL (object);
-  GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   void (*chain_up) (GObject *) =
     G_OBJECT_CLASS (gabble_server_tls_channel_parent_class)->constructed;
   WockyTLSCertType cert_type;
+  const gchar *path;
   gchar *cert_object_path;
   GPtrArray *certificates;
 
   if (chain_up != NULL)
     chain_up (object);
 
-  /* put the channel on the bus */
-  gabble_base_channel_register (base);
+  tp_base_channel_register (base);
 
   /* create the TLS certificate object */
-  cert_object_path = g_strdup_printf ("%s/TLSCertificateObject",
-      base->object_path);
-  certificates = wocky_tls_session_get_peers_certificate
-    (self->priv->tls_session, &cert_type);
+  path = tp_base_channel_get_object_path (base);
+  cert_object_path = g_strdup_printf ("%s/TLSCertificateObject", path);
+  certificates = wocky_tls_session_get_peers_certificate (
+      self->priv->tls_session, &cert_type);
 
   self->priv->server_cert = g_object_new (GABBLE_TYPE_TLS_CERTIFICATE,
       "object-path", cert_object_path,
       "certificate-chain-data", certificates,
       "certificate-type", cert_type_to_str (cert_type),
-      "dbus-daemon", base->conn->daemon,
+      "dbus-daemon", GABBLE_CONNECTION (base_conn)->daemon,
       NULL);
   self->priv->server_cert_path = cert_object_path;
 
-  DEBUG ("Server TLS channel constructed at %s", base->object_path);
+  DEBUG ("Server TLS channel constructed at %s", path);
+}
+
+static void
+gabble_server_tls_channel_fill_immutable_properties (
+    TpBaseChannel *chan,
+    GHashTable *properties)
+{
+  TP_BASE_CHANNEL_CLASS (gabble_server_tls_channel_parent_class)
+      ->fill_immutable_properties (chan, properties);
+
+  tp_dbus_properties_mixin_fill_properties_hash (
+      G_OBJECT (chan), properties,
+      GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION, "ServerCertificate",
+      GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION, "Hostname",
+      NULL);
+}
+
+static gchar *
+gabble_server_tls_channel_get_object_path_suffix (TpBaseChannel *base)
+{
+  return g_strdup ("ServerTLSChannel");
 }
 
 static void
@@ -249,7 +237,7 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
   };
 
   GObjectClass *oclass = G_OBJECT_CLASS (klass);
-  GabbleBaseChannelClass *base_class = GABBLE_BASE_CHANNEL_CLASS (klass);
+  TpBaseChannelClass *base_class = TP_BASE_CHANNEL_CLASS (klass);
   GParamSpec *pspec;
 
   g_type_class_add_private (klass, sizeof (GabbleServerTLSChannelPrivate));
@@ -262,13 +250,12 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
 
   base_class->channel_type = GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION;
   base_class->interfaces = gabble_server_tls_channel_interfaces;
-  base_class->target_type = TP_HANDLE_TYPE_NONE;
-
-  /* channel iface */
-  g_object_class_override_property (oclass, PROP_CHANNEL_PROPERTIES,
-      "channel-properties");
-  g_object_class_override_property (oclass, PROP_REQUESTED,
-      "requested");
+  base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
+  base_class->fill_immutable_properties =
+      gabble_server_tls_channel_fill_immutable_properties;
+  base_class->get_object_path_suffix =
+      gabble_server_tls_channel_get_object_path_suffix;
+  base_class->close = (TpBaseChannelCloseFunc) gabble_server_tls_channel_close;
 
   pspec = g_param_spec_boxed ("server-certificate", "Server certificate path",
       "The object path of the server certificate.",
@@ -294,40 +281,16 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
       server_tls_props);
 }
 
-static void
-gabble_server_tls_channel_impl_close (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleServerTLSChannel *self = GABBLE_SERVER_TLS_CHANNEL (iface);
-
-  gabble_server_tls_channel_close (self);
-  tp_svc_channel_return_from_close (context);
-}
-
-static void
-channel_iface_init (gpointer g_iface,
-    gpointer iface_data)
-{
-  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
-
-#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
-    klass, gabble_server_tls_channel_impl_##x)
-  IMPLEMENT(close);
-#undef IMPLEMENT
-}
-
 void
 gabble_server_tls_channel_close (GabbleServerTLSChannel *self)
 {
-  GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
 
-  if (base->closed)
+  if (tp_base_channel_is_destroyed (base))
     return;
 
-  base->closed = TRUE;
-
   DEBUG ("Close() called on the TLS channel %p", self);
-  tp_svc_channel_emit_closed (self);
+  tp_base_channel_destroyed (base);
 }
 
 GabbleTLSCertificate *

@@ -394,7 +394,7 @@ new_call_channel (GabbleMediaFactory *self,
     "initial-audio", initial_audio,
     "initial-video", initial_video,
     "requested", request_token != NULL,
-    "creator", initiator,
+    "initiator-handle", initiator,
     NULL);
 
   g_free (object_path);
@@ -428,8 +428,7 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
 
   /* Close will cause the channel to be removed from the list indirectly..*/
   while (priv->call_channels != NULL)
-    gabble_base_call_channel_close (
-        GABBLE_BASE_CALL_CHANNEL (priv->call_channels->data));
+    tp_base_channel_close (TP_BASE_CHANNEL (priv->call_channels->data));
 
   if (priv->status_changed_id != 0)
     {

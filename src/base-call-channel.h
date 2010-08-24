@@ -25,6 +25,8 @@
 
 #include <extensions/extensions.h>
 
+#include <telepathy-glib/base-channel.h>
+
 #include "jingle-content.h"
 #include "call-member.h"
 #include "call-content.h"
@@ -36,9 +38,8 @@ typedef struct _GabbleBaseCallChannelPrivate GabbleBaseCallChannelPrivate;
 typedef struct _GabbleBaseCallChannelClass GabbleBaseCallChannelClass;
 
 struct _GabbleBaseCallChannelClass {
-    GObjectClass parent_class;
+    TpBaseChannelClass parent_class;
 
-    TpHandleType handle_type;
     void (*accept) (GabbleBaseCallChannel *self);
     GabbleCallContent * (*add_content) (GabbleBaseCallChannel *self,
       const gchar *name,
@@ -49,17 +50,11 @@ struct _GabbleBaseCallChannelClass {
       guint reason,
       const gchar *detailed_reason,
       const gchar *message);
-
-    void (*close) (GabbleBaseCallChannel *self);
-
-    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleBaseCallChannel {
-    GObject parent;
+    TpBaseChannel parent;
 
-    GabbleConnection *conn;
-    TpHandle target;
     gboolean initial_audio;
     gboolean initial_video;
 
@@ -84,10 +79,6 @@ GType gabble_base_call_channel_get_type (void);
 #define GABBLE_BASE_CALL_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
    GABBLE_TYPE_BASE_CALL_CHANNEL, GabbleBaseCallChannelClass))
-
-void gabble_base_call_channel_close (GabbleBaseCallChannel *self);
-void gabble_base_call_channel_register (GabbleBaseCallChannel *self);
-gboolean gabble_base_call_channel_registered (GabbleBaseCallChannel *self);
 
 void gabble_base_call_channel_set_transport (GabbleBaseCallChannel *self,
     const gchar *transport);

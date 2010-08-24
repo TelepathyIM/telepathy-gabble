@@ -49,7 +49,7 @@ static void call_muc_channel_hangup (
     const gchar *detailed_reason,
     const gchar *message);
 
-static void call_muc_channel_close (GabbleBaseCallChannel *base);
+static void call_muc_channel_close (TpBaseChannel *base);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   gabble_call_muc_channel, GABBLE_TYPE_BASE_CALL_CHANNEL,
@@ -202,6 +202,8 @@ gabble_call_muc_channel_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_muc_channel_class);
   GabbleBaseCallChannelClass *base_call_class =
     GABBLE_BASE_CALL_CHANNEL_CLASS (gabble_call_muc_channel_class);
+  TpBaseChannelClass *base_channel_class =
+      TP_BASE_CHANNEL_CLASS (gabble_call_muc_channel_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_call_muc_channel_class,
@@ -214,11 +216,12 @@ gabble_call_muc_channel_class_init (
   object_class->dispose = gabble_call_muc_channel_dispose;
   object_class->finalize = gabble_call_muc_channel_finalize;
 
-  base_call_class->handle_type = TP_HANDLE_TYPE_ROOM;
+  base_channel_class->target_handle_type = TP_HANDLE_TYPE_ROOM;
+  base_channel_class->close = call_muc_channel_close;
+
   base_call_class->accept = call_muc_channel_accept;
   base_call_class->add_content = call_muc_channel_add_content;
   base_call_class->hangup = call_muc_channel_hangup;
-  base_call_class->close = call_muc_channel_close;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",
@@ -668,12 +671,11 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
   WockyStanza *stanza)
 {
   GabbleCallMucChannelPrivate *priv = self->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
+      TP_HANDLE_TYPE_CONTACT);
   GabbleCallMember *call_member;
   TpHandle handle;
-  TpHandleRepoIface *contact_repo =
-    tp_base_connection_get_handles (
-      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
-        TP_HANDLE_TYPE_CONTACT);
   WockyNode *muji;
 
   muji = wocky_node_get_child_ns (
@@ -758,10 +760,9 @@ call_muc_channel_left_cb (GObject *source,
   gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
-  TpHandleRepoIface *contact_repo =
-    tp_base_connection_get_handles (
-      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
-        TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
+      TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GabbleCallMember *call_member;
 
@@ -899,7 +900,7 @@ call_muc_channel_ready (GabbleCallMucChannel *self)
       G_OBJECT (self));
 
   priv->initialized = TRUE;
-  gabble_base_call_channel_register (GABBLE_BASE_CALL_CHANNEL (self));
+  tp_base_channel_register (TP_BASE_CHANNEL (self));
 }
 
 static void
@@ -1140,7 +1141,9 @@ call_muc_channel_hangup (GabbleBaseCallChannel *base,
 }
 
 static void
-call_muc_channel_close (GabbleBaseCallChannel *base)
+call_muc_channel_close (TpBaseChannel *base)
 {
   call_muc_channel_leave (GABBLE_CALL_MUC_CHANNEL (base));
+
+  TP_BASE_CHANNEL_CLASS (gabble_call_muc_channel_parent_class)->close (base);
 }

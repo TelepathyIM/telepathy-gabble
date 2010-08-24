@@ -244,7 +244,6 @@ gabble_base_call_content_class_init (
     { "Interfaces", "interfaces", NULL },
     { "Name", "name", NULL },
     { "Type", "media-type", NULL },
-    { "Creator", "creator", NULL },
     { "Disposition", "disposition", NULL },
     { "Streams", "streams", NULL },
     { NULL }

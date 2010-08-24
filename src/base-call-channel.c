@@ -22,8 +22,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <dbus/dbus-glib-lowlevel.h>
-
 #include <gio/gio.h>
 
 #include <telepathy-glib/dbus.h>
@@ -48,20 +46,15 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 #include "debug.h"
 
-static void channel_iface_init (gpointer, gpointer);
 static void call_iface_init (gpointer, gpointer);
+static void gabble_base_call_channel_close (TpBaseChannel *base);
 
 static GHashTable *members_to_hash (GabbleBaseCallChannel *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallChannel, gabble_base_call_channel,
-  G_TYPE_OBJECT,
-  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+  TP_TYPE_BASE_CHANNEL,
   G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_CALL,
-        call_iface_init);
-  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-    tp_dbus_properties_mixin_iface_init);
-  G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
-  G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL)
+        call_iface_init)
 );
 
 static const gchar *gabble_base_call_channel_interfaces[] = {
@@ -71,21 +64,8 @@ static const gchar *gabble_base_call_channel_interfaces[] = {
 /* properties */
 enum
 {
-  PROP_OBJECT_PATH = 1,
-  PROP_OBJECT_PATH_PREFIX,
-  PROP_CHANNEL_TYPE,
-  PROP_HANDLE_TYPE,
-  PROP_TARGET_HANDLE,
-  PROP_TARGET_ID,
+  PROP_OBJECT_PATH_PREFIX = 1,
 
-  PROP_REQUESTED,
-  PROP_CONNECTION,
-  PROP_CREATOR,
-  PROP_CREATOR_ID,
-
-  PROP_INTERFACES,
-  PROP_CHANNEL_DESTROYED,
-  PROP_CHANNEL_PROPERTIES,
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
   PROP_INITIAL_AUDIO_NAME,
@@ -116,14 +96,7 @@ static guint signals[LAST_SIGNAL] = { 0, };
 /* private structure */
 struct _GabbleBaseCallChannelPrivate
 {
-  gchar *object_path;
   gchar *object_path_prefix;
-  TpHandle creator;
-
-  gboolean closed;
-
-  gboolean registered;
-  gboolean requested;
 
   gboolean dispose_has_run;
 
@@ -145,35 +118,18 @@ static void
 gabble_base_call_channel_constructed (GObject *obj)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (obj);
-  GabbleBaseCallChannelPrivate *priv = self->priv;
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
-  TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              base_conn, TP_HANDLE_TYPE_CONTACT);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
 
-  if (priv->object_path == NULL)
-    {
-      g_assert (priv->object_path_prefix != NULL);
-      priv->object_path = g_strdup_printf ("%s/CallChannel%p",
-        priv->object_path_prefix, obj);
-    }
+  if (G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->constructed
+      != NULL)
+    G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->constructed (obj);
 
-  if (priv->requested)
+  if (tp_base_channel_is_requested (base))
     gabble_base_call_channel_set_state (self,
       GABBLE_CALL_STATE_PENDING_INITIATOR);
   else
     gabble_base_call_channel_set_state (self,
       GABBLE_CALL_STATE_PENDING_RECEIVER);
-
-  /* ref target and creator handles if we got them */
-  if (priv->creator != 0)
-    tp_handle_ref (repo, priv->creator);
-
-  if (self->target != 0)
-    tp_handle_ref (repo, self->target);
-
-  if (G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->constructed
-      != NULL)
-    G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->constructed (obj);
 }
 
 static void
@@ -207,75 +163,11 @@ gabble_base_call_channel_get_property (GObject    *object,
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (object);
   GabbleBaseCallChannelPrivate *priv = self->priv;
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
 
   switch (property_id)
     {
-      case PROP_OBJECT_PATH:
-        g_value_set_string (value, priv->object_path);
-        break;
       case PROP_OBJECT_PATH_PREFIX:
         g_value_set_string (value, priv->object_path_prefix);
-        break;
-      case PROP_CHANNEL_TYPE:
-        g_value_set_static_string (value, GABBLE_IFACE_CHANNEL_TYPE_CALL);
-        break;
-      case PROP_HANDLE_TYPE:
-        g_value_set_uint (value,
-            GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self)->handle_type);
-        break;
-      case PROP_TARGET_HANDLE:
-        g_value_set_uint (value, self->target);
-        break;
-      case PROP_TARGET_ID:
-        {
-          TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              base_conn, TP_HANDLE_TYPE_CONTACT);
-          const gchar *target_id = tp_handle_inspect (repo, self->target);
-
-          g_value_set_string (value, target_id);
-        }
-        break;
-      case PROP_CONNECTION:
-        g_value_set_object (value, self->conn);
-        break;
-      case PROP_CREATOR:
-        g_value_set_uint (value, priv->creator);
-        break;
-      case PROP_CREATOR_ID:
-        {
-          TpHandleRepoIface *repo = tp_base_connection_get_handles (
-               base_conn, TP_HANDLE_TYPE_CONTACT);
-
-          g_value_set_string (value, tp_handle_inspect (repo, priv->creator));
-        }
-        break;
-      case PROP_REQUESTED:
-        g_value_set_boolean (value, priv->requested);
-        break;
-      case PROP_INTERFACES:
-        g_value_set_boxed (value, gabble_base_call_channel_interfaces);
-        break;
-      case PROP_CHANNEL_DESTROYED:
-        g_value_set_boolean (value, priv->closed);
-        break;
-      case PROP_CHANNEL_PROPERTIES:
-        g_value_take_boxed (value,
-            tp_dbus_properties_mixin_make_properties_hash (object,
-                TP_IFACE_CHANNEL, "TargetHandle",
-                TP_IFACE_CHANNEL, "TargetHandleType",
-                TP_IFACE_CHANNEL, "ChannelType",
-                TP_IFACE_CHANNEL, "TargetID",
-                TP_IFACE_CHANNEL, "InitiatorHandle",
-                TP_IFACE_CHANNEL, "InitiatorID",
-                TP_IFACE_CHANNEL, "Requested",
-                TP_IFACE_CHANNEL, "Interfaces",
-                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
-                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
-                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudioName",
-                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideoName",
-                GABBLE_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
-                NULL));
         break;
       case PROP_INITIAL_AUDIO:
         g_value_set_boolean (value, self->initial_audio);
@@ -349,30 +241,8 @@ gabble_base_call_channel_set_property (GObject *object,
 
   switch (property_id)
     {
-      case PROP_OBJECT_PATH:
-        priv->object_path = g_value_dup_string (value);
-        break;
       case PROP_OBJECT_PATH_PREFIX:
         priv->object_path_prefix = g_value_dup_string (value);
-        break;
-      case PROP_REQUESTED:
-        priv->requested = g_value_get_boolean (value);
-        break;
-      case PROP_HANDLE_TYPE:
-      case PROP_CHANNEL_TYPE:
-        /* these properties are writable in the interface, but not actually
-        * meaningfully changable on this channel, so we do nothing */
-        break;
-      case PROP_TARGET_HANDLE:
-        self->target = g_value_get_uint (value);
-        g_assert (self->target != 0);
-        break;
-      case PROP_CONNECTION:
-        self->conn = g_value_get_object (value);
-        g_assert (self->conn != NULL);
-        break;
-      case PROP_CREATOR:
-        priv->creator = g_value_get_uint (value);
         break;
       case PROP_INITIAL_AUDIO:
         self->initial_audio = g_value_get_boolean (value);
@@ -392,24 +262,41 @@ gabble_base_call_channel_set_property (GObject *object,
   }
 }
 
+static gchar *
+gabble_base_call_channel_get_object_path_suffix (TpBaseChannel *base)
+{
+  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (base);
+  GabbleBaseCallChannelPrivate *priv = self->priv;
+
+  g_assert (priv->object_path_prefix != NULL);
+
+  return g_strdup_printf ("%s/CallChannel%p", priv->object_path_prefix, self);
+}
+
+static void
+gabble_base_call_channel_fill_immutable_properties (
+    TpBaseChannel *chan,
+    GHashTable *properties)
+{
+  TP_BASE_CHANNEL_CLASS (gabble_base_call_channel_parent_class)
+      ->fill_immutable_properties (chan, properties);
+
+  tp_dbus_properties_mixin_fill_properties_hash (
+      G_OBJECT (chan), properties,
+      GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
+      GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
+      GABBLE_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
+      NULL);
+}
 
 static void
 gabble_base_call_channel_class_init (
     GabbleBaseCallChannelClass *gabble_base_call_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_base_call_channel_class);
+  TpBaseChannelClass *base_channel_class =
+      TP_BASE_CHANNEL_CLASS (gabble_base_call_channel_class);
   GParamSpec *param_spec;
-  static TpDBusPropertiesMixinPropImpl channel_props[] = {
-      { "TargetHandleType", "handle-type", NULL },
-      { "TargetHandle", "handle", NULL },
-      { "TargetID", "target-id", NULL },
-      { "ChannelType", "channel-type", NULL },
-      { "Interfaces", "interfaces", NULL },
-      { "Requested", "requested", NULL },
-      { "InitiatorHandle", "creator", NULL },
-      { "InitiatorID", "creator-id", NULL },
-      { NULL }
-  };
   static TpDBusPropertiesMixinPropImpl call_props[] = {
       { "CallMembers", "call-members", NULL },
       { "MutableContents", "mutable-contents", NULL },
@@ -426,20 +313,6 @@ gabble_base_call_channel_class_init (
       { NULL }
   };
 
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { TP_IFACE_CHANNEL,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        channel_props,
-      },
-      { GABBLE_IFACE_CHANNEL_TYPE_CALL,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        call_props,
-      },
-      { NULL }
-  };
-
   g_type_class_add_private (gabble_base_call_channel_class,
       sizeof (GabbleBaseCallChannelPrivate));
 
@@ -451,19 +324,13 @@ gabble_base_call_channel_class_init (
   object_class->dispose = gabble_base_call_channel_dispose;
   object_class->finalize = gabble_base_call_channel_finalize;
 
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
-      "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
-      "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
-      "handle-type");
-  g_object_class_override_property (object_class, PROP_TARGET_HANDLE,
-      "handle");
-
-  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
-      "channel-destroyed");
-  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
-      "channel-properties");
+  base_channel_class->channel_type = GABBLE_IFACE_CHANNEL_TYPE_CALL;
+  base_channel_class->interfaces = gabble_base_call_channel_interfaces;
+  base_channel_class->get_object_path_suffix =
+      gabble_base_call_channel_get_object_path_suffix;
+  base_channel_class->fill_immutable_properties =
+      gabble_base_call_channel_fill_immutable_properties;
+  base_channel_class->close = gabble_base_call_channel_close;
 
   signals[ENDED] = g_signal_new ("ended",
       G_OBJECT_CLASS_TYPE (object_class),
@@ -479,42 +346,6 @@ gabble_base_call_channel_class_init (
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH_PREFIX,
       param_spec);
-
-  param_spec = g_param_spec_string ("target-id", "Target JID",
-      "Target JID of the call" ,
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this media channel object.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_uint ("creator", "Channel creator",
-      "The TpHandle representing the contact who created the channel.",
-      0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CREATOR, param_spec);
-
-  param_spec = g_param_spec_string ("creator-id", "Creator bare JID",
-      "The bare JID obtained by inspecting the creator handle.",
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CREATOR_ID, param_spec);
-
-  param_spec = g_param_spec_boolean ("requested", "Requested?",
-      "True if this channel was requested by the local user",
-      FALSE,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
-
-  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
-      "Additional Channel.Interface.* interfaces",
-      G_TYPE_STRV,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_boolean ("initial-audio", "InitialAudio",
       "Whether the channel initially contained an audio stream",
@@ -601,9 +432,11 @@ gabble_base_call_channel_class_init (
   g_object_class_install_property (object_class, PROP_CALL_MEMBERS,
       param_spec);
 
-  gabble_base_call_channel_class->dbus_props_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleBaseCallChannelClass, dbus_props_class));
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      GABBLE_IFACE_QUARK_CHANNEL_TYPE_CALL,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      call_props);
 }
 
 void
@@ -611,9 +444,8 @@ gabble_base_call_channel_dispose (GObject *object)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (object);
   GabbleBaseCallChannelPrivate *priv = self->priv;
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->conn;
-  TpHandleRepoIface *repo = tp_base_connection_get_handles (
-              base_conn, TP_HANDLE_TYPE_CONTACT);
+
+  DEBUG ("hello thar");
 
   if (priv->dispose_has_run)
     return;
@@ -623,12 +455,6 @@ gabble_base_call_channel_dispose (GObject *object)
   g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit, NULL);
   tp_clear_pointer (&priv->members, g_hash_table_unref);
   tp_clear_pointer (&priv->contents, g_list_free);
-
-  if (priv->creator != 0)
-    tp_handle_unref (repo, priv->creator);
-
-  if (self->target != 0)
-    tp_handle_unref (repo, self->target);
 
   if (G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->dispose (object);
@@ -642,7 +468,6 @@ gabble_base_call_channel_finalize (GObject *object)
 
   g_hash_table_unref (priv->details);
   g_value_array_free (priv->reason);
-  g_free (self->priv->object_path);
   g_free (self->priv->object_path_prefix);
   g_free (self->priv->initial_audio_name);
   g_free (self->priv->initial_video_name);
@@ -665,7 +490,7 @@ gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
   if (priv->state != GABBLE_CALL_STATE_PENDING_RECEIVER)
     priv->flags &= ~GABBLE_CALL_FLAG_LOCALLY_RINGING;
 
-  if (priv->registered)
+  if (tp_base_channel_is_registered (TP_BASE_CHANNEL (self)))
     gabble_svc_channel_type_call_emit_call_state_changed (self, priv->state,
       priv->flags, priv->reason, priv->details);
 }
@@ -699,6 +524,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
     GabbleCallContentDisposition disposition)
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
   gchar *object_path;
   GabbleBaseCallContent *content;
   gchar *escaped;
@@ -707,8 +533,9 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   /* FIXME could clash when other party in a one-to-one call creates a stream
    * with the same media type and name */
   escaped = tp_escape_as_identifier (name);
-  object_path =
-    g_strdup_printf ("%s/Content_%s_%d", priv->object_path, escaped, mtype);
+  object_path = g_strdup_printf ("%s/Content_%s_%d",
+      tp_base_channel_get_object_path (base),
+      escaped, mtype);
   g_free (escaped);
 
   switch (mtype)
@@ -724,7 +551,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
     }
 
   content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
-    "connection", self->conn,
+    "connection", tp_base_channel_get_connection (base),
     "object-path", object_path,
     "disposition", disposition,
     "media-type", media_type,
@@ -746,130 +573,28 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   return GABBLE_CALL_CONTENT (content);
 }
 
-void
-gabble_base_call_channel_register (GabbleBaseCallChannel *self)
+static void
+gabble_base_call_channel_close (TpBaseChannel *base)
 {
+  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (base);
   GabbleBaseCallChannelPrivate *priv = self->priv;
-  TpDBusDaemon *bus;
+  GHashTableIter iter;
+  gpointer value;
 
-  /* register object on the bus */
-  DEBUG ("Registering %s", priv->object_path);
-  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) self->conn);
-  tp_dbus_daemon_register_object (bus, priv->object_path, G_OBJECT (self));
+  DEBUG ("Closing media channel %s", tp_base_channel_get_object_path (base));
 
-  priv->registered = TRUE;
-}
+  g_hash_table_iter_init (&iter, priv->members);
 
-void
-gabble_base_call_channel_close (GabbleBaseCallChannel *self)
-{
-  GabbleBaseCallChannelPrivate *priv = self->priv;
-  DEBUG ("Closing media channel %s", self->priv->object_path);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    gabble_call_member_shutdown (value);
 
-  if (!priv->closed)
-    {
-      GabbleBaseCallChannelClass *base_class =
-        GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self);
-      GHashTableIter iter;
-      gpointer value;
+  /* shutdown all our contents */
+  g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit,
+      NULL);
+  g_list_free (priv->contents);
+  priv->contents = NULL;
 
-      priv->closed = TRUE;
-
-      if (base_class->close != NULL)
-        base_class->close (self);
-
-      g_hash_table_iter_init (&iter, priv->members);
-      while (g_hash_table_iter_next (&iter, NULL, &value))
-        gabble_call_member_shutdown (value);
-
-      /* shutdown all our contents */
-      g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit,
-          NULL);
-      g_list_free (priv->contents);
-      priv->contents = NULL;
-
-      tp_svc_channel_emit_closed (self);
-    }
-}
-
-/**
- * gabble_base_call_channel_close_async:
- *
- * Implements D-Bus method Close
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_base_call_channel_close_async (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
-
-  if (DEBUGGING)
-    {
-      gchar *caller = dbus_g_method_get_sender (context);
-
-      DEBUG ("called by %s", caller);
-      g_free (caller);
-    }
-
-  gabble_base_call_channel_close (self);
-  tp_svc_channel_return_from_close (context);
-}
-
-/**
- * gabble_base_call_channel_get_channel_type
- *
- * Implements D-Bus method GetChannelType
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_base_call_channel_get_channel_type (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_channel_type (context,
-      GABBLE_IFACE_CHANNEL_TYPE_CALL);
-}
-
-/**
- * gabble_base_call_channel_get_handle
- *
- * Implements D-Bus method GetHandle
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_base_call_channel_get_handle (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_CONTACT,
-    GABBLE_BASE_CALL_CHANNEL (iface)->target);
-}
-
-/**
- * gabble_base_call_channel_get_interfaces
- *
- * Implements D-Bus method GetInterfaces
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_base_call_channel_get_interfaces (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_interfaces (context,
-      gabble_base_call_channel_interfaces);
-}
-
-static void
-channel_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
-
-#define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
-    klass, gabble_base_call_channel_##x##suffix)
-    IMPLEMENT(close,_async);
-    IMPLEMENT(get_channel_type,);
-    IMPLEMENT(get_handle,);
-    IMPLEMENT(get_interfaces,);
-#undef IMPLEMENT
+  tp_base_channel_destroyed (base);
 }
 
 static void
@@ -878,8 +603,9 @@ gabble_base_call_channel_set_ringing (GabbleSvcChannelTypeCall *iface,
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
   GabbleBaseCallChannelPrivate *priv = self->priv;
+  TpBaseChannel *tp_base = TP_BASE_CHANNEL (self);
 
-  if (priv->requested)
+  if (tp_base_channel_is_requested (tp_base))
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Call was requested. Ringing doesn't make sense." };
@@ -912,10 +638,11 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
   GabbleBaseCallChannelPrivate *priv = self->priv;
   GabbleBaseCallChannelClass *base_class =
       GABBLE_BASE_CALL_CHANNEL_GET_CLASS (self);
+  TpBaseChannel *tp_base = TP_BASE_CHANNEL (self);
 
   DEBUG ("Client accepted the call");
 
-  if (priv->requested)
+  if (tp_base_channel_is_requested (tp_base))
     {
       if (priv->state == GABBLE_CALL_STATE_PENDING_INITIATOR)
         {
@@ -1048,12 +775,6 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(hangup,);
   IMPLEMENT(add_content, _dbus);
 #undef IMPLEMENT
-}
-
-gboolean
-gabble_base_call_channel_registered (GabbleBaseCallChannel *self)
-{
-  return self->priv->registered;
 }
 
 static void

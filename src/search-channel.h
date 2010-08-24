@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "base-channel.h"
+#include <telepathy-glib/base-channel.h>
 
 G_BEGIN_DECLS
 
@@ -32,11 +32,11 @@ typedef struct _GabbleSearchChannelClass GabbleSearchChannelClass;
 typedef struct _GabbleSearchChannelPrivate GabbleSearchChannelPrivate;
 
 struct _GabbleSearchChannelClass {
-    GabbleBaseChannelClass base_class;
+    TpBaseChannelClass base_class;
 };
 
 struct _GabbleSearchChannel {
-    GabbleBaseChannel base;
+    TpBaseChannel base;
     GabbleSearchChannelPrivate *priv;
 };
 

@@ -141,24 +141,13 @@ gabble_plugin_create_sidecar_finish (
   return g_object_ref (sidecar);
 }
 
-GList *
+const TpPresenceStatusSpec *
 gabble_plugin_get_custom_presence_statuses (
     GabblePlugin *plugin)
 {
   GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
-  GList *ret = NULL;
 
-  if (iface->presence_statuses != NULL)
-    {
-      gint i;
-      for (i = 0; iface->presence_statuses[i].name; i++)
-        {
-          ret = g_list_prepend (ret, &(iface->presence_statuses[i]));
-        }
-      ret = g_list_reverse (ret);
-    }
-
-  return ret;
+  return iface->presence_statuses;
 }
 
 gboolean

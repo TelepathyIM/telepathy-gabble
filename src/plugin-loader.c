@@ -315,32 +315,28 @@ gabble_plugin_loader_append_statuses (
     const TpPresenceStatusSpec *base_statuses)
 {
   GabblePluginLoaderPrivate *priv = self->priv;
-  GList *add = NULL;
-  GList *li;
-  TpPresenceStatusSpec *result;
-  guint len;
+  GArray *result = g_array_new (TRUE, TRUE, sizeof (TpPresenceStatusSpec));
   guint i;
+
+  for (i = 0; base_statuses[i].name != NULL; i++)
+    g_array_append_val (result, base_statuses[i]);
 
   for (i = 0; i < priv->plugins->len; i++)
     {
       GabblePlugin *p = g_ptr_array_index (priv->plugins, i);
+      const TpPresenceStatusSpec *statuses =
+          gabble_plugin_get_custom_presence_statuses (p);
 
-      add = g_list_concat (add,
-          gabble_plugin_get_custom_presence_statuses (p));
+      if (statuses != NULL)
+        {
+          guint j;
+
+          for (j = 0; statuses[j].name != NULL; j++)
+            g_array_append_val (result, statuses[j]);
+        }
     }
 
-  for (len = 0; base_statuses[len].name; len++);
-  result = g_new0 (TpPresenceStatusSpec, len + g_list_length (add) + 1);
-
-  for (i = 0; base_statuses[i].name; i++)
-      result[i] = base_statuses[i];
-
-  for (li = add; li; li = li->next)
-      result[i++] = *((TpPresenceStatusSpec *) li->data);
-
-  g_list_free (add);
-
-  return result;
+  return (TpPresenceStatusSpec *) g_array_free (result, FALSE);
 }
 
 const gchar *

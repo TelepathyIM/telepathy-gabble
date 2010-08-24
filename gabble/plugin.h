@@ -121,7 +121,7 @@ GabbleSidecar *gabble_plugin_create_sidecar_finish (
     GAsyncResult *result,
     GError **error);
 
-GList *gabble_plugin_get_custom_presence_statuses (
+const TpPresenceStatusSpec *gabble_plugin_get_custom_presence_statuses (
     GabblePlugin *plugin);
 
 gboolean gabble_plugin_implements_presence_status (

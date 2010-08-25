@@ -56,7 +56,10 @@ struct _GabbleConnectionPresencePrivate {
     LmMessageHandler *iq_list_push_cb;
     gchar *invisible_list_name;
 
-    /* Map of presence statuses backed by privacy lists
+    /* Map of presence statuses backed by privacy lists. This
+     * will be NULL until we receive a (possibly empty) list of
+     * all lists in get_existing_privacy_lists_cb().
+     *
      * gchar *presence_status_name → gchar *privacy_list
      */
     GHashTable *privacy_statuses;
@@ -335,7 +338,7 @@ activate_current_privacy_list (GabbleConnection *self,
   GError *error = NULL;
   LmMessageNode *active_node;
 
-  g_return_if_fail (priv->privacy_statuses);
+  g_assert (priv->privacy_statuses != NULL);
 
   list_name = g_hash_table_lookup (priv->privacy_statuses,
     gabble_statuses[presence->status].name);
@@ -534,7 +537,7 @@ static void create_invisible_privacy_list_cb (GObject *source_object,
       g_error_free (error);
     }
 
-  g_assert (priv->privacy_statuses);
+  g_assert (priv->privacy_statuses != NULL);
 
   /* "hidden" presence status will be backed by the invisible list */
   g_hash_table_insert (priv->privacy_statuses,
@@ -637,6 +640,8 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
       iq = lm_message_get_node (reply_msg);
       iq = lm_message_node_get_child_with_namespace (iq, "query", NS_PRIVACY);
 
+      /* As we're called only once, privacy_statuses couldn't have been
+       * already initialised. */
       g_assert (priv->privacy_statuses == NULL);
 
       priv->privacy_statuses = g_hash_table_new_full (
@@ -931,6 +936,8 @@ privacy_lists_loaded_cb (GObject *source_object,
 
   if (get_existing_privacy_lists_finish (self, result, &error))
     {
+      /* if the above call succeeded, the server supports privacy
+       * lists, so this should be initialised. */
       g_assert (priv->privacy_statuses != NULL);
 
       /* If anyone/plugins already set up "hidden" status backing
@@ -1215,7 +1222,7 @@ set_own_status_cb (GObject *obj,
         }
       /* if privacy lists are supported, make sure we update the current
        * list as needed, before signalling own presence */
-      else if (priv->privacy_statuses)
+      else if (priv->privacy_statuses != NULL)
         {
           activate_current_privacy_list_async (conn, NULL, NULL);
         }
@@ -1276,11 +1283,12 @@ status_available_cb (GObject *obj, guint status)
     {
       /* At the moment, plugins can only implement statuses via privacy
        * lists, so any extra status should be backed by one. If it's not
+       * (or if privacy lists are not supported by the server at all)
        * by the time we're connected, it's not available. */
 
       if (base->status == TP_CONNECTION_STATUS_CONNECTED)
         {
-          if (priv->privacy_statuses &&
+          if (priv->privacy_statuses != NULL &&
               g_hash_table_lookup (priv->privacy_statuses,
                   gabble_statuses[status].name))
             {

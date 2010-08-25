@@ -63,8 +63,6 @@ GType gabble_server_tls_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_SERVER_TLS_CHANNEL,\
       GabbleServerTLSChannelClass))
 
-void gabble_server_tls_channel_close (GabbleServerTLSChannel *self);
-
 GabbleTLSCertificate * gabble_server_tls_channel_get_certificate (
     GabbleServerTLSChannel *self);
 

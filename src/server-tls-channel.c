@@ -39,6 +39,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleServerTLSChannel, gabble_server_tls_channel,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
         NULL));
 
+static void gabble_server_tls_channel_close (TpBaseChannel *base);
+
 static const gchar *gabble_server_tls_channel_interfaces[] = {
   NULL
 };
@@ -135,8 +137,6 @@ gabble_server_tls_channel_dispose (GObject *object)
   DEBUG ("Dispose TLS channel");
 
   self->priv->dispose_has_run = TRUE;
-
-  gabble_server_tls_channel_close (self);
 
   tp_clear_object (&self->priv->server_cert);
   tp_clear_object (&self->priv->tls_session);
@@ -255,7 +255,7 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
       gabble_server_tls_channel_fill_immutable_properties;
   base_class->get_object_path_suffix =
       gabble_server_tls_channel_get_object_path_suffix;
-  base_class->close = (TpBaseChannelCloseFunc) gabble_server_tls_channel_close;
+  base_class->close = gabble_server_tls_channel_close;
 
   pspec = g_param_spec_boxed ("server-certificate", "Server certificate path",
       "The object path of the server certificate.",
@@ -281,15 +281,10 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
       server_tls_props);
 }
 
-void
-gabble_server_tls_channel_close (GabbleServerTLSChannel *self)
+static void
+gabble_server_tls_channel_close (TpBaseChannel *base)
 {
-  TpBaseChannel *base = TP_BASE_CHANNEL (self);
-
-  if (tp_base_channel_is_destroyed (base))
-    return;
-
-  DEBUG ("Close() called on the TLS channel %p", self);
+  DEBUG ("Close() called on the TLS channel %p", base);
   tp_base_channel_destroyed (base);
 }
 

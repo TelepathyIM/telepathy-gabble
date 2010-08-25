@@ -1234,7 +1234,10 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
       gabble_search_channel_fill_immutable_properties;
   base_class->get_object_path_suffix =
       gabble_search_channel_get_object_path_suffix;
-  base_class->close = (TpBaseChannelCloseFunc) gabble_search_channel_close;
+  /* We don't have to do any special clean-up when told to close, so we can
+   * just roll over and die immediately.
+   */
+  base_class->close = tp_base_channel_destroyed;
 
   param_spec = g_param_spec_uint ("search-state", "Search state",
       "The current state of the search represented by this channel",
@@ -1348,22 +1351,6 @@ gabble_search_channel_stop (GabbleSvcChannelTypeContactSearch *self,
         }
       case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
         g_assert_not_reached ();
-    }
-}
-
-void
-gabble_search_channel_close (GabbleSearchChannel *self)
-{
-  TpBaseChannel *base = TP_BASE_CHANNEL (self);
-
-  if (tp_base_channel_is_destroyed (base))
-    {
-      DEBUG ("Already closed, doing nothing");
-    }
-  else
-    {
-      DEBUG ("Closing");
-      tp_base_channel_destroyed (base);
     }
 }
 

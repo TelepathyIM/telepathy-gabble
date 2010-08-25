@@ -112,7 +112,7 @@ connection_status_changed_cb (GabbleConnection *conn,
   if (status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       if (self->priv->channel != NULL)
-        gabble_server_tls_channel_close (self->priv->channel);
+        tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
 
       tp_clear_object (&self->priv->connection);
     }
@@ -265,7 +265,7 @@ gabble_server_tls_manager_finalize (GObject *object)
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (object);
 
   if (self->priv->channel != NULL)
-    gabble_server_tls_channel_close (self->priv->channel);
+    tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
 
   G_OBJECT_CLASS (gabble_server_tls_manager_parent_class)->finalize (object);
 }

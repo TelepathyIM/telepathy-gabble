@@ -63,7 +63,7 @@ media_channel_request_new (GabbleMediaFactory *self,
   MediaChannelRequest *mcr = g_slice_new0 (MediaChannelRequest);
 
   mcr->self = self;
-  mcr->channel = channel;
+  mcr->channel = g_object_ref (channel);
   if (request_token != NULL)
     mcr->request_tokens = g_slist_prepend (mcr->request_tokens, request_token);
 
@@ -73,6 +73,7 @@ media_channel_request_new (GabbleMediaFactory *self,
 static void
 media_channel_request_free (MediaChannelRequest *mcr)
 {
+  g_object_unref (mcr->channel);
   g_slist_free (mcr->request_tokens);
   g_slice_free (MediaChannelRequest, mcr);
 }
@@ -338,7 +339,7 @@ call_channel_initialized (GObject *source,
       res, &error))
     {
       priv->call_channels = g_list_prepend (priv->call_channels,
-        mcr->channel);
+          g_object_ref (mcr->channel));
 
       tp_channel_manager_emit_new_channel (mcr->self,
         mcr->channel, mcr->request_tokens);
@@ -409,6 +410,8 @@ new_call_channel (GabbleMediaFactory *self,
 
   self->priv->pending_call_channels
     = g_list_prepend (self->priv->pending_call_channels, mcr);
+
+  g_object_unref (channel);
 }
 
 static void

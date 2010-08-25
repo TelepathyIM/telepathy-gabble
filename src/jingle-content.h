@@ -153,5 +153,8 @@ void gabble_jingle_content_set_sending (GabbleJingleContent *self,
 
 void gabble_jingle_content_send_complete (GabbleJingleContent *self);
 
+JingleMediaType jingle_media_type_from_tp (TpMediaStreamType type);
+TpMediaStreamType jingle_media_type_to_tp (JingleMediaType type);
+
 #endif /* __JINGLE_CONTENT_H__ */
 

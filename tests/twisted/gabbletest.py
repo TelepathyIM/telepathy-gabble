@@ -21,7 +21,7 @@ import twisted
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.protocols.jabber import xmlstream
-from twisted.internet import reactor
+from twisted.internet import reactor, ssl
 
 import dbus
 
@@ -155,7 +155,6 @@ class JabberAuthenticator(GabbleAuthenticator):
         result["id"] = iq["id"]
         self.xmlstream.send(result)
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
-
 
 class XmppAuthenticator(GabbleAuthenticator):
     def __init__(self, username, password, resource=None):

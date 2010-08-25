@@ -83,6 +83,7 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
+	tls/test-server-tls-channel.py \
 	tubes/accept-muc-dbus-tube.py \
 	tubes/accept-muc-stream-tube.py \
 	tubes/accept-private-dbus-tube.py \
@@ -268,6 +269,8 @@ BUILT_SOURCES = config.py
 
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
+	ca-0-cert.pem \
+	ca-0-key.pem \
 	bytestream.py \
 	constants.py \
 	gabbletest.py \

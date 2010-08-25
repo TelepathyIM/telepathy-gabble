@@ -522,7 +522,8 @@ gabble_presence_add_status_and_vcard (GabblePresence *presence,
         /* FIXME: we're almost duplicate the add_child code here,
          * and we're calling into conn-presence which is not nice.
          */
-        GabblePresenceId presence_type = _conn_presence_get_type (presence);
+        TpConnectionPresenceType presence_type =
+            conn_presence_get_type (presence);
 
         switch (presence_type)
           {

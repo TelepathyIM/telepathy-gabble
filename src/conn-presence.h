@@ -58,7 +58,7 @@ void conn_decloak_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_decloak_emit_requested (GabbleConnection *conn,
     TpHandle contact, const gchar *reason, gboolean decloaked);
 
-GabblePresenceId _conn_presence_get_type (GabblePresence *presence);
+GabblePresenceId conn_presence_get_type (GabblePresence *presence);
 
 G_END_DECLS
 

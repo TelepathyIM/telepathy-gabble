@@ -1,6 +1,6 @@
 /*
- * gabble-call-channel.h - Header for GabbleBaseBaseCallChannel
- * Copyright (C) 2009 Collabora Ltd.
+ * base-call-channel.h - Header for GabbleBaseCallChannel
+ * Copyright © 2009–2010 Collabora Ltd.
  * @author Sjoerd Simons <sjoerd.simons@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or

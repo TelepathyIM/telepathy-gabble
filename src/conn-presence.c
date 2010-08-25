@@ -333,6 +333,7 @@ activate_current_privacy_list (GabbleConnection *self,
   gboolean invisible;
   GabblePresence *presence = self->self_presence;
   GError *error = NULL;
+  LmMessageNode *active_node;
 
   g_return_if_fail (priv->privacy_statuses);
 
@@ -342,24 +343,20 @@ activate_current_privacy_list (GabbleConnection *self,
       TP_CONNECTION_PRESENCE_TYPE_HIDDEN);
 
   DEBUG ("Privacy status %s, backed by %s",
-    gabble_statuses[presence->status].name, list_name);
+      gabble_statuses[presence->status].name,
+      list_name ? list_name : "(no list)");
 
-  if (list_name)
-    iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
-        WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', "query", ':', NS_PRIVACY,
-          '(', "active",
-            '@', "name", list_name,
-          ')',
+  iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+      '(', "query", ':', NS_PRIVACY,
+        '(', "active",
+          '*', &active_node,
         ')',
-        NULL);
-  else
-    iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
-        WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
-        '(', "query", ':', NS_PRIVACY,
-          '(', "active", ')',
-        ')',
-        NULL);
+      ')',
+      NULL);
+
+  if (list_name != NULL)
+    wocky_node_set_attribute (active_node, "name", list_name);
 
   g_object_ref (result);
 

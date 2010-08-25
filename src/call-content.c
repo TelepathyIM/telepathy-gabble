@@ -612,15 +612,8 @@ gabble_call_content_get_media_type (GabbleCallContent *self)
 {
   GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
 
-  switch (gabble_base_call_content_get_media_type (base))
-    {
-      case TP_MEDIA_STREAM_TYPE_AUDIO:
-        return JINGLE_MEDIA_TYPE_AUDIO;
-      case TP_MEDIA_STREAM_TYPE_VIDEO:
-        return JINGLE_MEDIA_TYPE_VIDEO;
-      default:
-        g_assert_not_reached ();
-    }
+  return jingle_media_type_from_tp (
+      gabble_base_call_content_get_media_type (base));
 }
 
 static void

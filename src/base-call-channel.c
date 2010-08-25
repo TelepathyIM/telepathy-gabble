@@ -528,7 +528,6 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   gchar *object_path;
   GabbleBaseCallContent *content;
   gchar *escaped;
-  TpMediaStreamType media_type;
 
   /* FIXME could clash when other party in a one-to-one call creates a stream
    * with the same media type and name */
@@ -538,23 +537,11 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
       escaped, mtype);
   g_free (escaped);
 
-  switch (mtype)
-    {
-      case JINGLE_MEDIA_TYPE_AUDIO:
-        media_type = TP_MEDIA_STREAM_TYPE_AUDIO;
-        break;
-      case JINGLE_MEDIA_TYPE_VIDEO:
-        media_type = TP_MEDIA_STREAM_TYPE_VIDEO;
-        break;
-      default:
-        g_assert_not_reached ();
-    }
-
   content = g_object_new (GABBLE_TYPE_CALL_CONTENT,
     "connection", tp_base_channel_get_connection (base),
     "object-path", object_path,
     "disposition", disposition,
-    "media-type", media_type,
+    "media-type", jingle_media_type_to_tp (mtype),
     "name", name,
     NULL);
 

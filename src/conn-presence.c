@@ -375,7 +375,9 @@ activate_current_privacy_list (GabbleConnection *self,
   else if (list_name == NULL &&
       base->status != TP_CONNECTION_STATUS_CONNECTED)
     {
-      conn_presence_signal_own_presence (self, NULL, &error);
+      if (!conn_presence_signal_own_presence (self, NULL, &error))
+        goto ERROR;
+
       g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
 

@@ -500,7 +500,7 @@ gabble_base_call_channel_get_state (GabbleBaseCallChannel *self)
 }
 
 void
-base_call_channel_remove_content (GabbleBaseCallChannel *self,
+gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
     GabbleCallContent *content)
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
@@ -546,7 +546,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   g_free (object_path);
 
   g_signal_connect_swapped (content, "removed",
-      G_CALLBACK (base_call_channel_remove_content), self);
+      G_CALLBACK (gabble_base_call_channel_remove_content), self);
 
   priv->contents = g_list_prepend (priv->contents, content);
 

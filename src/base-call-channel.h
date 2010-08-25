@@ -109,7 +109,7 @@ GabbleCallContent * gabble_base_call_channel_add_content (
     JingleMediaType mtype,
     GabbleCallContentDisposition disposition);
 
-void base_call_channel_remove_content (GabbleBaseCallChannel *self,
+void gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
     GabbleCallContent *content);
 
 GHashTable *gabble_base_call_channel_get_members (GabbleBaseCallChannel *self);

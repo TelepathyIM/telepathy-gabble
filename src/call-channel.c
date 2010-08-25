@@ -374,7 +374,7 @@ call_member_content_removed_cb (GabbleCallMember *member,
 
       if (contents != NULL && contents->data == mcontent)
         {
-          base_call_channel_remove_content (cbase, content);
+          gabble_base_call_channel_remove_content (cbase, content);
           break;
         }
     }

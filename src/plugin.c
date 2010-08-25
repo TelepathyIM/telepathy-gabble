@@ -179,7 +179,7 @@ gabble_plugin_presence_status_for_privacy_list (
   int i;
 
   if (iface->privacy_list_map == NULL)
-      return NULL;
+    return NULL;
 
   for (i = 0; iface->privacy_list_map[i].privacy_list_name; i++)
     {

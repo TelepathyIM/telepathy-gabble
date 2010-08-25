@@ -22,9 +22,7 @@ from invisible_helper import send_privacy_list_push_iq, send_privacy_list, \
     Xep0126XmlStream
 
 def handle_get_all_privacy_lists(q, bus, conn, stream, lists=[]):
-    elem_list=[]
-    for li in lists:
-        elem_list.append(elem('list', name=li))
+    elem_list=[elem('list', name=l) for l in lists]
 
     e = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     iq = elem_iq(stream, "result", id=e.stanza["id"])(

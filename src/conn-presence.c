@@ -372,7 +372,8 @@ activate_current_privacy_list (GabbleConnection *self,
   /* If we're still connecting and there's no list to be set, we don't
    * need to bother with removing the active list; just shortcut to
    * signalling our presence. */
-  else if (!list_name && base->status != TP_CONNECTION_STATUS_CONNECTED)
+  else if (list_name == NULL &&
+      base->status != TP_CONNECTION_STATUS_CONNECTED)
     {
       conn_presence_signal_own_presence (self, NULL, &error);
       g_simple_async_result_complete_in_idle (result);
@@ -1274,7 +1275,7 @@ status_available_cb (GObject *obj, guint status)
   /* This relies on the fact the first entries in the statuses table
    * are from base_statuses. If index to the statuses table is outside
    * the base_statuses table, the status is provided by a plugin. */
-  if (status >= (sizeof (base_statuses) / sizeof (TpPresenceStatusSpec)))
+  if (status >= G_N_ELEMENTS (base_statuses))
     {
       /* At the moment, plugins can only implement statuses via privacy
        * lists, so any extra status should be backed by one. If it's not
@@ -1318,9 +1319,10 @@ _conn_presence_get_type (GabblePresence *presence)
 }
 
 
-/* TODO: update this when telepathy-glib supports setting
- * statuses at constructor time; until then, gabble_statuses
- * leaks.
+/* We should update this when telepathy-glib supports setting
+ * statuses at constructor time (see
+ *   https://bugs.freedesktop.org/show_bug.cgi?id=12896 ).
+ * Until then, gabble_statuses is leaked.
  */
 void
 conn_presence_class_init (GabbleConnectionClass *klass)

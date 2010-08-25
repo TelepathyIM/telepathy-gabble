@@ -350,13 +350,11 @@ gabble_plugin_loader_presence_status_for_privacy_list (
   for (i = 0; i < priv->plugins->len; i++)
     {
       GabblePlugin *p = g_ptr_array_index (priv->plugins, i);
-      const gchar *status;
+      const gchar *status =
+        gabble_plugin_presence_status_for_privacy_list (p, list_name);
 
-      status =
-          gabble_plugin_presence_status_for_privacy_list (p, list_name);
-
-      if (status)
-          return status;
+      if (status != NULL)
+        return status;
 
     }
 

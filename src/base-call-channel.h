@@ -80,15 +80,6 @@ GType gabble_base_call_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
    GABBLE_TYPE_BASE_CALL_CHANNEL, GabbleBaseCallChannelClass))
 
-void gabble_base_call_channel_set_transport (GabbleBaseCallChannel *self,
-    const gchar *transport);
-const gchar* gabble_base_call_channel_create_content (
-    GabbleBaseCallChannel *self,
-    const gchar *name,
-    JingleMediaType type,
-    GabbleCallContentDisposition disposition,
-    GError **error);
-
 GabbleCallMember *gabble_base_call_channel_ensure_member (
     GabbleBaseCallChannel *self,
     const gchar *jid);

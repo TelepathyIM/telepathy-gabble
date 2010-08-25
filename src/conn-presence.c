@@ -291,7 +291,7 @@ set_xep0186_invisible_cb (GabbleConnection *conn,
     GObject *obj,
     gpointer user_data)
 {
-  GSimpleAsyncResult *result = user_data;
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   GError *error = NULL;
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
@@ -407,7 +407,7 @@ activate_current_privacy_list_cb (GabbleConnection *conn,
     GObject *obj,
     gpointer user_data)
 {
-  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   GError *error = NULL;
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
@@ -458,7 +458,7 @@ create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
     GObject *obj,
     gpointer user_data)
 {
-  GSimpleAsyncResult *result = (GSimpleAsyncResult *) user_data;
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
@@ -875,7 +875,7 @@ initial_presence_setup_cb (GObject *source_object,
 {
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
-  GSimpleAsyncResult *external_result = (GSimpleAsyncResult *) user_data;
+  GSimpleAsyncResult *external_result = G_SIMPLE_ASYNC_RESULT (user_data);
   GError *error = NULL;
 
   if (!setup_invisible_privacy_list_finish (self, result, &error))
@@ -906,7 +906,7 @@ toggle_initial_presence_visibility_cb (GObject *source_object,
     gpointer user_data)
 {
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
-  GSimpleAsyncResult *external_result = (GSimpleAsyncResult *) user_data;
+  GSimpleAsyncResult *external_result = G_SIMPLE_ASYNC_RESULT (user_data);
   GError *error = NULL;
 
   if (!toggle_presence_visibility_finish (self, result, &error))

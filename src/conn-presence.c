@@ -633,8 +633,8 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
   else
     {
       GabbleConnectionPresencePrivate *priv = conn->presence_priv;
-      LmMessageNode *iq;
-      NodeIter i;
+      LmMessageNode *iq, *list_node;
+      WockyNodeIter iter;
       GabblePluginLoader *loader = gabble_plugin_loader_dup ();
 
       iq = lm_message_get_node (reply_msg);
@@ -647,9 +647,9 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
       priv->privacy_statuses = g_hash_table_new_full (
           g_str_hash, g_str_equal, g_free, g_free);
 
-      for (i = node_iter (iq); i; i = node_iter_next (i))
+      wocky_node_iter_init (&iter, iq, "list", NULL);
+      while (wocky_node_iter_next (&iter, &list_node))
         {
-          LmMessageNode *list_node = node_iter_data (i);
           const gchar *list_name = lm_message_node_get_attribute (list_node,
               "name");
           const gchar *status_name;

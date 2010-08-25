@@ -102,12 +102,9 @@ gabble_search_manager_close_all (GabbleSearchManager *self)
   /* We can't use a GHashTableIter as closing the channel while remove it from
    * the hash table and we can't modify a hash table while iterating on it. */
   chans = g_hash_table_get_keys (self->priv->channels);
-  for (l = chans; l != NULL; l = g_list_next (l))
-    {
-      GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (l->data);
 
-      gabble_search_channel_close (chan);
-    }
+  for (l = chans; l != NULL; l = g_list_next (l))
+    tp_base_channel_close (TP_BASE_CHANNEL (l->data));
 
   g_list_free (chans);
 
@@ -451,6 +448,7 @@ new_search_channel (GabbleSearchManager *self,
   chan = g_object_new (GABBLE_TYPE_SEARCH_CHANNEL,
       "connection", priv->conn,
       "server", server,
+      "initiator-handle", priv->conn->parent.self_handle,
       NULL);
   g_hash_table_insert (priv->channels, chan, priv->channels);
   g_signal_connect (chan, "closed", (GCallback) search_channel_closed_cb, self);

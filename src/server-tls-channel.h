@@ -23,11 +23,10 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/base-channel.h>
 
 #include <extensions/extensions.h>
 
-#include "base-channel.h"
 #include "tls-certificate.h"
 
 G_BEGIN_DECLS
@@ -37,11 +36,11 @@ typedef struct _GabbleServerTLSChannelClass GabbleServerTLSChannelClass;
 typedef struct _GabbleServerTLSChannel GabbleServerTLSChannel;
 
 struct _GabbleServerTLSChannelClass {
-  GabbleBaseChannelClass base_class;
+  TpBaseChannelClass base_class;
 };
 
 struct _GabbleServerTLSChannel {
-  GabbleBaseChannel parent;
+  TpBaseChannel parent;
 
   GabbleServerTLSChannelPrivate *priv;
 };
@@ -63,8 +62,6 @@ GType gabble_server_tls_channel_get_type (void);
 #define GABBLE_SERVER_TLS_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_SERVER_TLS_CHANNEL,\
       GabbleServerTLSChannelClass))
-
-void gabble_server_tls_channel_close (GabbleServerTLSChannel *self);
 
 GabbleTLSCertificate * gabble_server_tls_channel_get_certificate (
     GabbleServerTLSChannel *self);

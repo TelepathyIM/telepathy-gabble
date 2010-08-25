@@ -45,13 +45,11 @@
 #include "roster.h"
 #include "util.h"
 
-static void channel_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
 static void destroyable_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel,
-    GABBLE_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
       tp_message_mixin_text_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
@@ -63,6 +61,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel,
 
 static void _gabble_im_channel_send_message (GObject *object,
     TpMessage *message, TpMessageSendingFlags flags);
+static void gabble_im_channel_close (TpBaseChannel *base_chan);
 
 static const gchar *gabble_im_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
@@ -111,11 +110,14 @@ static void
 gabble_im_channel_constructed (GObject *obj)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (obj);
-  GabbleBaseChannel *base = GABBLE_BASE_CHANNEL (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleIMChannelPrivate *priv = self->priv;
-  TpBaseConnection *conn = (TpBaseConnection *) base->conn;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
+  TpHandleRepoIface *contact_handles =
+      tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle target = tp_base_channel_get_target_handle (base);
+
   TpChannelTextMessageType types[NUM_SUPPORTED_MESSAGE_TYPES] = {
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
@@ -131,9 +133,9 @@ gabble_im_channel_constructed (GObject *obj)
   if (chain_up != NULL)
     chain_up (obj);
 
-  priv->peer_jid = g_strdup (tp_handle_inspect (contact_handles, base->target));
+  priv->peer_jid = g_strdup (tp_handle_inspect (contact_handles, target));
 
-  if (gabble_roster_handle_get_subscription (base->conn->roster, base->target)
+  if (gabble_roster_handle_get_subscription (conn->roster, target)
         & GABBLE_ROSTER_SUBSCRIPTION_FROM)
     priv->send_nick = FALSE;
   else
@@ -142,7 +144,7 @@ gabble_im_channel_constructed (GObject *obj)
   priv->chat_states_supported = CHAT_STATES_UNKNOWN;
 
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, message_mixin),
-      conn);
+      base_conn);
 
   tp_message_mixin_implement_sending (obj, _gabble_im_channel_send_message,
       NUM_SUPPORTED_MESSAGE_TYPES, types, 0,
@@ -157,8 +159,8 @@ static void
 gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_im_channel_class);
-  GabbleBaseChannelClass *base_class =
-      GABBLE_BASE_CHANNEL_CLASS (gabble_im_channel_class);
+  TpBaseChannelClass *base_class =
+      TP_BASE_CHANNEL_CLASS (gabble_im_channel_class);
 
   g_type_class_add_private (gabble_im_channel_class,
       sizeof (GabbleIMChannelPrivate));
@@ -169,7 +171,8 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_TEXT;
   base_class->interfaces = gabble_im_channel_interfaces;
-  base_class->target_type = TP_HANDLE_TYPE_CONTACT;
+  base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_class->close = gabble_im_channel_close;
 
   tp_message_mixin_init_dbus_properties (object_class);
 }
@@ -179,11 +182,13 @@ chat_states_supported (GabbleIMChannel *self,
                        gboolean include_unknown)
 {
   GabbleIMChannelPrivate *priv = self->priv;
-  GabbleBaseChannel *base = (GabbleBaseChannel *) self;
+  TpBaseChannel *base = (TpBaseChannel *) self;
+  GabbleConnection *conn =
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
   GabblePresence *presence;
 
-  presence = gabble_presence_cache_get (base->conn->presence_cache,
-      base->target);
+  presence = gabble_presence_cache_get (conn->presence_cache,
+      tp_base_channel_get_target_handle (base));
 
   if (presence != NULL && gabble_presence_has_cap (presence, NS_CHAT_STATES))
     return TRUE;
@@ -203,31 +208,32 @@ chat_states_supported (GabbleIMChannel *self,
 }
 
 static void
-emit_closed_and_send_gone (GabbleIMChannel *self)
+im_channel_send_gone (GabbleIMChannel *self)
 {
   GabbleIMChannelPrivate *priv = self->priv;
-  GabbleBaseChannel *base = (GabbleBaseChannel *) self;
+  TpBaseChannel *base = (TpBaseChannel *) self;
 
   if (priv->send_gone)
     {
       if (chat_states_supported (self, FALSE))
-        gabble_message_util_send_chat_state (G_OBJECT (self), base->conn,
+        gabble_message_util_send_chat_state (G_OBJECT (self),
+            GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
             LM_MESSAGE_SUB_TYPE_CHAT, TP_CHANNEL_CHAT_STATE_GONE,
             priv->peer_jid, NULL);
 
       priv->send_gone = FALSE;
     }
-
-  DEBUG ("Emitting Closed");
-  tp_svc_channel_emit_closed (self);
 }
 
 static void
 gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
-  GabbleBaseChannel *base = (GabbleBaseChannel *) self;
+  TpBaseChannel *base = (TpBaseChannel *) self;
   GabbleIMChannelPrivate *priv = self->priv;
+  GabbleConnection *conn =
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
+  TpHandle target = tp_base_channel_get_target_handle (base);
   GabblePresence *presence;
   GabbleRosterSubscription subscription;
 
@@ -236,24 +242,20 @@ gabble_im_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  subscription = gabble_roster_handle_get_subscription (
-      base->conn->roster, base->target);
+  subscription = gabble_roster_handle_get_subscription (conn->roster, target);
 
-  presence = gabble_presence_cache_get (base->conn->presence_cache,
-      base->target);
+  presence = gabble_presence_cache_get (conn->presence_cache, target);
 
   if ((GABBLE_ROSTER_SUBSCRIPTION_TO & subscription) == 0)
     {
       if (NULL != presence)
         {
           presence->keep_unavailable = FALSE;
-          gabble_presence_cache_maybe_remove (base->conn->presence_cache,
-              base->target);
+          gabble_presence_cache_maybe_remove (conn->presence_cache, target);
         }
     }
 
-  if (!base->closed)
-    emit_closed_and_send_gone (self);
+  im_channel_send_gone (self);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
@@ -283,7 +285,7 @@ _gabble_im_channel_send_message (GObject *object,
                                  TpMessageSendingFlags flags)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
-  GabbleBaseChannel *base = (GabbleBaseChannel *) self;
+  TpBaseChannel *base = (TpBaseChannel *) self;
   GabbleIMChannelPrivate *priv;
   gint state = -1;
 
@@ -299,8 +301,9 @@ _gabble_im_channel_send_message (GObject *object,
   /* We don't support providing successful delivery reports. */
   flags = 0;
 
-  gabble_message_util_send_message (object, base->conn, message, flags,
-      0, state, priv->peer_jid, priv->send_nick);
+  gabble_message_util_send_message (object,
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
+      message, flags, 0, state, priv->peer_jid, priv->send_nick);
 
   if (priv->send_nick)
     priv->send_nick = FALSE;
@@ -323,15 +326,15 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
                             gint state)
 {
   GabbleIMChannelPrivate *priv;
-  GabbleBaseChannel *base_chan;
+  TpBaseChannel *base_chan;
   TpBaseConnection *base_conn;
   TpMessage *msg;
   gchar *tmp;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = chan->priv;
-  base_chan = (GabbleBaseChannel *) chan;
-  base_conn = (TpBaseConnection *) base_chan->conn;
+  base_chan = (TpBaseChannel *) chan;
+  base_conn = tp_base_channel_get_connection (base_chan);
 
   if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
@@ -352,7 +355,8 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
           tp_svc_channel_interface_chat_state_emit_chat_state_changed (
               (TpSvcChannelInterfaceChatState *) chan,
-              base_chan->target, (TpChannelChatState) state);
+              tp_base_channel_get_target_handle (base_chan),
+              (TpChannelChatState) state);
         }
     }
   else
@@ -443,78 +447,42 @@ _gabble_im_channel_state_receive (GabbleIMChannel *chan,
                                   TpChannelChatState state)
 {
   GabbleIMChannelPrivate *priv;
-  GabbleBaseChannel *base_chan;
+  TpBaseChannel *base_chan;
 
   g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
-  base_chan = (GabbleBaseChannel *) chan;
+  base_chan = (TpBaseChannel *) chan;
   priv = chan->priv;
 
   priv->chat_states_supported = CHAT_STATES_SUPPORTED;
 
   tp_svc_channel_interface_chat_state_emit_chat_state_changed (
       (TpSvcChannelInterfaceChatState *) chan,
-      base_chan->target, state);
+      tp_base_channel_get_target_handle (base_chan), state);
 }
 
-/**
- * gabble_im_channel_close
- *
- * Implements D-Bus method Close
- * on interface org.freedesktop.Telepathy.Channel
- */
 static void
-gabble_im_channel_close (TpSvcChannel *iface,
-                         DBusGMethodInvocation *context)
+gabble_im_channel_close (TpBaseChannel *base_chan)
 {
-  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
-  GabbleBaseChannel *base_chan = GABBLE_BASE_CHANNEL (self);
-  GabbleIMChannelPrivate *priv;
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (base_chan);
 
-  g_assert (GABBLE_IS_IM_CHANNEL (self));
+  im_channel_send_gone (self);
 
-  DEBUG ("called on %p", self);
-
-  priv = self->priv;
-
-  if (base_chan->closed)
+  /* The IM factory will resurrect the channel if we have pending
+   * messages. When we're resurrected, we want the initiator
+   * to be the contact who sent us those messages, if it isn't already */
+  if (tp_message_mixin_has_pending_messages ((GObject *) self, NULL))
     {
-      DEBUG ("Already closed, doing nothing");
+      DEBUG ("Not really closing, I still have pending messages");
+      tp_message_mixin_set_rescued ((GObject *) self);
+      tp_base_channel_reopened (base_chan,
+          tp_base_channel_get_target_handle (base_chan));
     }
   else
     {
-      /* The IM factory will resurrect the channel if we have pending
-       * messages. When we're resurrected, we want the initiator
-       * to be the contact who sent us those messages, if it isn't already */
-      if (tp_message_mixin_has_pending_messages ((GObject *) self, NULL))
-        {
-          DEBUG ("Not really closing, I still have pending messages");
-
-          if (base_chan->initiator != base_chan->target)
-            {
-              TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-                  (TpBaseConnection *) base_chan->conn, TP_HANDLE_TYPE_CONTACT);
-
-              g_assert (base_chan->initiator != 0);
-              g_assert (base_chan->target != 0);
-
-              tp_handle_unref (contact_repo, base_chan->initiator);
-              base_chan->initiator = base_chan->target;
-              tp_handle_ref (contact_repo, base_chan->initiator);
-            }
-
-          tp_message_mixin_set_rescued ((GObject *) self);
-        }
-      else
-        {
-          DEBUG ("Actually closing, I have no pending messages");
-          base_chan->closed = TRUE;
-        }
-
-      emit_closed_and_send_gone (self);
+      DEBUG ("Actually closing, I have no pending messages");
+      tp_base_channel_destroyed (base_chan);
     }
-
-  tp_svc_channel_return_from_close (context);
 }
 
 /**
@@ -527,18 +495,13 @@ static void
 gabble_im_channel_destroy (TpSvcChannelInterfaceDestroyable *iface,
                            DBusGMethodInvocation *context)
 {
-  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
+  g_assert (GABBLE_IS_IM_CHANNEL (iface));
 
-  g_assert (GABBLE_IS_IM_CHANNEL (self));
+  DEBUG ("called on %p, clearing pending messages", iface);
+  tp_message_mixin_clear ((GObject *) iface);
+  gabble_im_channel_close (TP_BASE_CHANNEL (iface));
 
-  DEBUG ("called on %p", self);
-
-  /* Clear out any pending messages */
-  tp_message_mixin_clear ((GObject *) self);
-
-  /* Close() and Destroy() have the same signature, so we can safely
-   * chain to the other function now */
-  gabble_im_channel_close ((TpSvcChannel *) self, context);
+  tp_svc_channel_interface_destroyable_return_from_destroy (context);
 }
 
 
@@ -554,7 +517,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
                                   DBusGMethodInvocation *context)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
-  GabbleBaseChannel *base = (GabbleBaseChannel *) self;
+  TpBaseChannel *base = (TpBaseChannel *) self;
   GabbleIMChannelPrivate *priv;
   GError *error = NULL;
 
@@ -576,14 +539,17 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
    */
   else if (chat_states_supported (self, FALSE))
     {
-      if (gabble_message_util_send_chat_state (G_OBJECT (self), base->conn,
+      TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+
+      if (gabble_message_util_send_chat_state (G_OBJECT (self),
+              GABBLE_CONNECTION (base_conn),
               LM_MESSAGE_SUB_TYPE_CHAT, state, priv->peer_jid, &error))
         {
           priv->send_gone = TRUE;
 
           /* Send the ChatStateChanged signal for the local user */
           tp_svc_channel_interface_chat_state_emit_chat_state_changed (iface,
-              base->conn->parent.self_handle, state);
+              base_conn->self_handle, state);
         }
     }
 
@@ -597,17 +563,6 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
     {
       tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
     }
-}
-
-static void
-channel_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
-
-#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
-    klass, gabble_im_channel_##x)
-  IMPLEMENT(close);
-#undef IMPLEMENT
 }
 
 static void

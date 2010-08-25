@@ -104,7 +104,7 @@ struct _GabbleBaseCallChannelPrivate
   gchar *initial_video_name;
 
   GabbleCallState state;
-  guint flags;
+  GabbleCallFlags flags;
   GHashTable *details;
   GValueArray *reason;
 

@@ -1,8 +1,23 @@
-telepathy-gabble 0.9.17 (UNRELEASED)
+telepathy-gabble 0.9.17 (2010-08-26)
 ====================================
 
-This section about the news for an unreleased version of telepathy-gabble is a
-stub. You can help Telepathy by expanding it.
+The "Mona Lisa overdrive" release.
+
+Enhancements:
+
+• Implement TLS certificate support (cosimoc)
+
+• Use TpBaseChannel instead of GabbleBaseChannel (wjt)
+
+• Plugin-provided, privacy-list based presence statuses (ptlo)
+
+Fixes:
+
+• fd.o #29721: start the presence unsure timeout once we connect (wjt)
+
+• fd.o #29000: make CA certificates path configurable (stormer)
+
+• Fix several leaks, improve tests in case of connection leaks (wjt)
 
 telepathy-gabble 0.9.16 (2010-08-19)
 ====================================

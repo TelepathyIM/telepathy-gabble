@@ -717,19 +717,18 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
   lm_message_node_add_child (ctx->item_node, "group", name);
 }
 
-/* Return a message representing the current state of the item for contact
- * @handle on the roster @roster.
+/*
+ * _gabble_roster_item_to_message:
+ * @roster: the roster
+ * @item: the state we would like the contact's roster item to have (*not*
+ *  the state it currently has!)
+ * @handle: a contact
  *
- * If item_return is not NULL, populate it with the <item/> node.
- *
- * If item is not NULL, it represents the state we would like the contact's
- * roster item to have - use it instead of the contact's actual roster item
- * when composing the message.
+ * Returns: the necessary IQ to change @handle's state to match that of @item
  */
 static LmMessage *
 _gabble_roster_item_to_message (GabbleRoster *roster,
                                 TpHandle handle,
-                                LmMessageNode **item_return,
                                 GabbleRosterItem *item)
 {
   GabbleRosterPrivate *priv = roster->priv;
@@ -745,18 +744,13 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
-
-  if (!item)
-    item = _gabble_roster_item_ensure (roster, handle);
+  g_assert (item != NULL);
 
   message = _gabble_roster_message_new (roster, LM_MESSAGE_SUB_TYPE_SET,
       &query_node);
 
   item_node = lm_message_node_add_child (query_node, "item", NULL);
   ctx.item_node = item_node;
-
-  if (NULL != item_return)
-    *item_return = item_node;
 
   jid = tp_handle_inspect (contact_repo, handle);
   lm_message_node_set_attribute (item_node, "jid", jid);
@@ -2049,8 +2043,7 @@ roster_item_apply_edits (GabbleRoster *roster,
   DEBUG ("Contact#%u did change, sending message", contact);
 
 
-  message = _gabble_roster_item_to_message (roster, contact, NULL,
-      &edited_item);
+  message = _gabble_roster_item_to_message (roster, contact, &edited_item);
 
   /* we're sending the unsent edits - on success, roster_edited_cb will own
    * them */

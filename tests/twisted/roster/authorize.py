@@ -12,7 +12,7 @@ import ns
 
 from twisted.words.xish import domish
 
-def test(q, bus, conn, stream):
+def test(q, bus, conn, stream, modern=True):
 
     call_async(q, conn.ContactList, 'GetContactListAttributes', [], False)
     q.expect('dbus-error', method='GetContactListAttributes',
@@ -61,7 +61,7 @@ def test(q, bus, conn, stream):
         },), r.value)
 
     # check that the channels were as we expected too
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+    publish = check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
             'publish', ['holly@example.com'])
     check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
             'subscribe', ['holly@example.com'])
@@ -71,8 +71,12 @@ def test(q, bus, conn, stream):
 
     # publication authorized for Dave, Holly (the former is pre-authorization,
     # the latter is a no-op)
-    call_async(q, conn.ContactList, 'AuthorizePublication', [dave, holly])
-    event = q.expect('dbus-return', method='AuthorizePublication')
+    if modern:
+        call_async(q, conn.ContactList, 'AuthorizePublication', [dave, holly])
+        event = q.expect('dbus-return', method='AuthorizePublication')
+    else:
+        call_async(q, publish.Group, 'AddMembers', [dave, holly], '')
+        event = q.expect('dbus-return', method='AddMembers')
 
     # Receive authorization requests from the contacts
 
@@ -105,10 +109,16 @@ def test(q, bus, conn, stream):
             args=[{arnold: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_ASK, '')}, []])
 
-    call_async(q, conn.ContactList, 'AuthorizePublication', [kristine, holly])
+    if modern:
+        returning_method = 'AuthorizePublication'
+        call_async(q, conn.ContactList, 'AuthorizePublication',
+                [kristine, holly])
+    else:
+        returning_method = 'AddMembers'
+        call_async(q, publish.Group, 'AddMembers', [kristine, holly], '')
 
     q.expect_many(
-            EventPattern('dbus-return', method='AuthorizePublication'),
+            EventPattern('dbus-return', method=returning_method),
             EventPattern('stream-presence', presence_type='subscribed',
                 to='kristine@example.com'),
             )
@@ -126,8 +136,12 @@ def test(q, bus, conn, stream):
                 to='arnold@example.com'),
             )
 
-    # We can acknowledge that with RemoveContacts or with Unpublish
-    # FIXME: test RemoveContacts here
+    # We can acknowledge that with RemoveContacts or with Unpublish.
+    # The old Chan.T.ContactList API can't acknowledge RemovedRemotely,
+    # because it sees it as "not there at all" and the group logic drops
+    # the "redundant" request.
+    #
+    # FIXME: test RemoveContacts here too
 
     call_async(q, conn.ContactList, 'Unpublish', [arnold])
 
@@ -144,5 +158,12 @@ def test(q, bus, conn, stream):
                     }, []]),
             )
 
+def test_ancient(q, bus, conn, stream):
+    test(q, bus, conn, stream, modern=False)
+
+def test_modern(q, bus, conn, stream):
+    test(q, bus, conn, stream, modern=True)
+
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test_ancient)
+    exec_test(test_modern)

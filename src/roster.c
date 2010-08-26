@@ -2502,7 +2502,7 @@ gabble_roster_dup_states (TpBaseContactList *base,
     {
       *subscribe = item->subscribe;
       *publish = item->publish;
-      *publish_request = item->publish_request;
+      *publish_request = g_strdup (item->publish_request);
     }
 }
 

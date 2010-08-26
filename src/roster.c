@@ -231,6 +231,7 @@ _gabble_roster_item_free (GabbleRosterItem *item)
   item_edit_free (item->unsent_edits);
   g_free (item->name);
   g_free (item->alias_for);
+  g_free (item->publish_request);
 
   roster_item_cancel_flicker_timeout (item);
 

@@ -1463,6 +1463,8 @@ gabble_simple_async_succeed_or_fail_in_idle (gpointer self,
  * g_simple_async_result_get_op_res_gssize() - this async result is only
  * suitable for "void" async methods which return either success or a #GError,
  * i.e. the same signature as g_async_initable_init_async().
+ *
+ * Returns: (transfer full): a counter
  */
 GSimpleAsyncResult *
 gabble_simple_async_countdown_new (gpointer self,
@@ -1480,6 +1482,9 @@ gabble_simple_async_countdown_new (gpointer self,
    * it reaches zero, the operation completes with any error that has been
    * set, or with success. */
   g_simple_async_result_set_op_res_gssize (simple, todo);
+
+  /* we keep one extra reference as long as the counter is nonzero */
+  g_object_ref (simple);
 
   return simple;
 }

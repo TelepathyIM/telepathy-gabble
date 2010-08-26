@@ -91,7 +91,7 @@ struct _GabbleRosterItemEdit
    * don't appear to be changing anything */
   gboolean create;
 
-  /* list of GSimpleAsyncResult */
+  /* list of reffed GSimpleAsyncResult */
   GSList *results;
 
   /* if these are ..._INVALID, that means don't edit */
@@ -1798,7 +1798,10 @@ item_edit_free (GabbleRosterItemEdit *edits)
   edits->results = g_slist_reverse (edits->results);
 
   for (slist = edits->results; slist != NULL; slist = slist->next)
-    gabble_simple_async_countdown_dec (slist->data);
+    {
+      gabble_simple_async_countdown_dec (slist->data);
+      g_object_unref (slist->data);
+    }
 
   tp_handle_unref (edits->contact_repo, edits->handle);
   g_object_unref (edits->contact_repo);
@@ -2191,7 +2194,7 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
 
   gabble_simple_async_countdown_inc (result);
   item->unsent_edits->results = g_slist_prepend (
-      item->unsent_edits->results, result);
+      item->unsent_edits->results, g_object_ref (result));
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
@@ -2298,7 +2301,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
   gabble_simple_async_countdown_inc (result);
   item->unsent_edits->results = g_slist_prepend (
-      item->unsent_edits->results, result);
+      item->unsent_edits->results, g_object_ref (result));
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);
@@ -2342,7 +2345,7 @@ gabble_roster_handle_add (GabbleRoster *roster,
     {
       gabble_simple_async_countdown_inc (result);
       item->unsent_edits->results = g_slist_prepend (
-          item->unsent_edits->results, result);
+          item->unsent_edits->results, g_object_ref (result));
     }
 
   /* maybe we can apply the edit immediately? */
@@ -2375,7 +2378,7 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
   gabble_simple_async_countdown_inc (result);
   item->unsent_edits->results = g_slist_prepend (
-      item->unsent_edits->results, result);
+      item->unsent_edits->results, g_object_ref (result));
 
   if (!item->unsent_edits->add_to_groups)
     {
@@ -2420,7 +2423,7 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
 
   gabble_simple_async_countdown_inc (result);
   item->unsent_edits->results = g_slist_prepend (
-      item->unsent_edits->results, result);
+      item->unsent_edits->results, g_object_ref (result));
 
   if (!item->unsent_edits->remove_from_groups)
     {
@@ -2592,6 +2595,7 @@ gabble_roster_request_subscription_async (TpBaseContactList *base,
   /* When all of those edits have been applied, the callback will send the
    * <presence type='subscribe'> requests. */
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void
@@ -2665,6 +2669,7 @@ gabble_roster_store_contacts_async (TpBaseContactList *base,
     gabble_roster_handle_add (self, contact, result);
 
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void
@@ -2685,6 +2690,7 @@ gabble_roster_remove_contacts_async (TpBaseContactList *base,
     gabble_roster_handle_remove (self, contact, result);
 
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void
@@ -2840,6 +2846,7 @@ gabble_roster_block_contacts_async (TpBaseContactList *base,
     gabble_roster_handle_set_blocked (self, contact, TRUE, result);
 
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void
@@ -2860,6 +2867,7 @@ gabble_roster_unblock_contacts_async (TpBaseContactList *base,
     gabble_roster_handle_set_blocked (self, contact, FALSE, result);
 
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static GStrv
@@ -3035,11 +3043,12 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
 
   gabble_simple_async_countdown_inc (result);
   item->unsent_edits->results = g_slist_prepend (
-      item->unsent_edits->results, result);
+      item->unsent_edits->results, g_object_ref (result));
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (self, contact, item);
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void
@@ -3093,6 +3102,7 @@ gabble_roster_set_group_members_async (TpBaseContactList *base,
 
 finally:
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void
@@ -3140,6 +3150,7 @@ gabble_roster_add_to_group_async (TpBaseContactList *base,
 
 finally:
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void
@@ -3172,6 +3183,7 @@ gabble_roster_remove_from_group_async (TpBaseContactList *base,
 
 finally:
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 typedef struct {
@@ -3311,6 +3323,7 @@ gabble_roster_remove_group_async (TpBaseContactList *base,
 
 finally:
   gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
 }
 
 static void

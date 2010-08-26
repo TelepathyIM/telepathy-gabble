@@ -2,11 +2,9 @@
 Test basic roster functionality.
 """
 
-import dbus
-
 from gabbletest import exec_test
 from rostertest import expect_contact_list_signals, check_contact_list_signals
-from servicetest import (assertEquals, assertLength, call_async, EventPattern)
+from servicetest import (assertEquals, assertLength, call_async)
 import constants as cs
 import ns
 

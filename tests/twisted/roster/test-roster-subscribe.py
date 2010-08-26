@@ -3,8 +3,6 @@
 Test subscribing to a contact's presence.
 """
 
-import dbus
-
 from twisted.words.xish import domish
 
 from servicetest import (EventPattern, assertLength, assertEquals,

@@ -2,8 +2,6 @@
 Test basic roster group functionality.
 """
 
-import dbus
-
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 from rostertest import expect_contact_list_signals, check_contact_list_signals
 from servicetest import (assertLength, EventPattern, assertEquals, call_async,

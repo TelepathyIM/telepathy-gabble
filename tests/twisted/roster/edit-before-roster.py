@@ -2,12 +2,8 @@
 Test editing the roster before we've received it.
 """
 
-import dbus
-
 from gabbletest import exec_test, acknowledge_iq, sync_stream
-from rostertest import expect_contact_list_signals, check_contact_list_signals
-from servicetest import (assertLength, EventPattern, assertEquals, call_async,
-        sync_dbus)
+from servicetest import (EventPattern, assertEquals, call_async, sync_dbus)
 import constants as cs
 import ns
 

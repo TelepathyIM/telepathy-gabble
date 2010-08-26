@@ -5,7 +5,7 @@ Regression tests for rescinding outstanding subscription requests.
 from twisted.words.protocols.jabber.client import IQ
 
 from servicetest import EventPattern, assertEquals, assertLength, call_async
-from gabbletest import exec_test, GoogleXmlStream, acknowledge_iq
+from gabbletest import exec_test, acknowledge_iq
 from rostertest import expect_contact_list_signals, check_contact_list_signals
 import constants as cs
 import ns

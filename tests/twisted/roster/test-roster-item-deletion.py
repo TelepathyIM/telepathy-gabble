@@ -2,11 +2,6 @@
 Regression test for http://bugs.freedesktop.org/show_bug.cgi?id=19524
 """
 
-import dbus
-
-from twisted.words.protocols.jabber.client import IQ
-from twisted.words.xish import domish
-
 from gabbletest import exec_test, acknowledge_iq
 from rostertest import (expect_contact_list_signals,
         check_contact_list_signals, send_roster_push)

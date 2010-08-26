@@ -3,8 +3,6 @@
 Test workarounds for gtalk
 """
 
-import dbus
-
 from gabbletest import (
     acknowledge_iq, exec_test, sync_stream, make_result_iq, GoogleXmlStream,
     )

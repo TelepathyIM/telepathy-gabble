@@ -2495,15 +2495,25 @@ gabble_roster_dup_states (TpBaseContactList *base,
 
   if (item == NULL)
     {
-      *subscribe = TP_SUBSCRIPTION_STATE_NO;
-      *publish = TP_SUBSCRIPTION_STATE_NO;
-      *publish_request = NULL;
+      if (subscribe != NULL)
+        *subscribe = TP_SUBSCRIPTION_STATE_NO;
+
+      if (publish != NULL)
+        *publish = TP_SUBSCRIPTION_STATE_NO;
+
+      if (publish_request != NULL)
+        *publish_request = NULL;
     }
   else
     {
-      *subscribe = item->subscribe;
-      *publish = item->publish;
-      *publish_request = g_strdup (item->publish_request);
+      if (subscribe != NULL)
+        *subscribe = item->subscribe;
+
+      if (publish != NULL)
+        *publish = item->publish;
+
+      if (publish_request != NULL)
+        *publish_request = g_strdup (item->publish_request);
     }
 }
 

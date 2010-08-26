@@ -171,6 +171,16 @@ def test(q, bus, conn, stream):
             q.expect('dbus-signal', signal='GroupsChanged',
                     args=[[amy], ['people starting with A'], []])
 
+            sync_dbus(bus, q, conn)
+            sync_stream(q, stream)
+            assertEquals({
+                    cs.CONN_IFACE_CONTACT_GROUPS + '/groups':
+                        ['ladies', 'people starting with A'],
+                    cs.CONN + '/contact-id':
+                        'amy@foo.com' },
+                conn.Contacts.GetContactAttributes([amy],
+                    [cs.CONN_IFACE_CONTACT_GROUPS], False)[amy])
+
     # sanity check: after all that, we expect Amy to be in group 'ladies' only
     sync_dbus(bus, q, conn)
     sync_stream(q, stream)

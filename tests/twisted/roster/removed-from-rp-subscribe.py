@@ -12,7 +12,7 @@ import ns
 
 jid = 'marco@barisione.lit'
 
-def test(q, bus, conn, stream, remove, local):
+def test(q, bus, conn, stream, remove, local, modern):
     conn.Connect()
 
     # Gabble asks for the roster; the server sends back an empty roster.
@@ -95,7 +95,10 @@ def test(q, bus, conn, stream, remove, local):
         # ...removes him from the roster...
         if local:
             # ...by telling Gabble to remove him from stored.
-            call_async(q, conn.ContactList, 'RemoveContacts', [h])
+            if modern:
+                call_async(q, conn.ContactList, 'RemoveContacts', [h])
+            else:
+                stored.Group.RemoveMembers([h], '')
 
             event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
             item = event.query.firstChildElement()
@@ -132,20 +135,26 @@ def test(q, bus, conn, stream, remove, local):
                 ),
             )
 
-        if local:
+        if local and modern:
             acknowledge_iq(stream, event.stanza)
             q.expect('dbus-return', method='RemoveContacts')
     else:
         # ...rescinds the subscription request...
         if local:
             # ...by telling Gabble to remove him from 'subscribe'.
-            call_async(q, conn.ContactList, 'Unsubscribe', [h])
+            if modern:
+                call_async(q, conn.ContactList, 'Unsubscribe', [h])
+            else:
+                subscribe.Group.RemoveMembers([h], '')
 
-            event, _ = q.expect_many(
-                    EventPattern('stream-presence', to=jid,
-                        presence_type='unsubscribe'),
-                    EventPattern('dbus-return', method='Unsubscribe'),
-                    )
+            events = [EventPattern('stream-presence', to=jid,
+                presence_type='unsubscribe')]
+
+            if modern:
+                events.append(EventPattern('dbus-return',
+                    method='Unsubscribe'))
+
+            event = q.expect_many(*events)[0]
         else:
             # ...in the other client.
             pass
@@ -175,19 +184,35 @@ def test(q, bus, conn, stream, remove, local):
                 )
 
 def test_remove_local(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=True, local=True)
+    test(q, bus, conn, stream, remove=True, local=True, modern=True)
 
 def test_unsubscribe_local(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=False, local=True)
+    test(q, bus, conn, stream, remove=False, local=True, modern=True)
 
 def test_remove_remote(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=True, local=False)
+    test(q, bus, conn, stream, remove=True, local=False, modern=True)
 
 def test_unsubscribe_remote(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=False, local=False)
+    test(q, bus, conn, stream, remove=False, local=False, modern=True)
+
+def test_remove_local_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=True, local=True, modern=False)
+
+def test_unsubscribe_local_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=False, local=True, modern=False)
+
+def test_remove_remote_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=True, local=False, modern=False)
+
+def test_unsubscribe_remote_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=False, local=False, modern=False)
 
 if __name__ == '__main__':
     exec_test(test_remove_local)
     exec_test(test_unsubscribe_local)
     exec_test(test_remove_remote)
     exec_test(test_unsubscribe_remote)
+    exec_test(test_remove_local_old)
+    exec_test(test_unsubscribe_local_old)
+    exec_test(test_remove_remote_old)
+    exec_test(test_unsubscribe_remote_old)

@@ -124,6 +124,17 @@ test_plugin_create_sidecar (
   g_object_unref (result);
 }
 
+static TpPresenceStatusSpec test_presences[] = {
+  { "testbusy", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, NULL, NULL, NULL },
+  { "testaway", TP_CONNECTION_PRESENCE_TYPE_AWAY, FALSE, NULL, NULL, NULL },
+  { NULL, 0, FALSE, NULL, NULL, NULL }
+};
+
+static GabblePluginPrivacyListMap privacy_list_map[] = {
+  { "testbusy", "test-busy-list" },
+  { NULL, NULL },
+};
+
 static void
 plugin_iface_init (
     gpointer g_iface,
@@ -134,6 +145,9 @@ plugin_iface_init (
   iface->name = "Sidecar test plugin";
   iface->sidecar_interfaces = sidecar_interfaces;
   iface->create_sidecar = test_plugin_create_sidecar;
+
+  iface->presence_statuses = test_presences;
+  iface->privacy_list_map = privacy_list_map;
 }
 
 GabblePlugin *

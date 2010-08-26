@@ -9,7 +9,7 @@ version of Ejabberd and all released versions of Prosody (as of 7.0).
 """
 from gabbletest import (
     exec_test, XmppXmlStream, acknowledge_iq, send_error_reply,
-    disconnect_conn, elem
+    disconnect_conn, elem, elem_iq
 )
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
@@ -21,10 +21,24 @@ from twisted.words.xish import xpath, domish
 from invisible_helper import send_privacy_list_push_iq, send_privacy_list, \
     Xep0126XmlStream
 
+def handle_get_all_privacy_lists(q, bus, conn, stream, lists=[]):
+    elem_list=[elem('list', name=l) for l in lists]
+
+    e = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
+    iq = elem_iq(stream, "result", id=e.stanza["id"])(
+        elem(ns.PRIVACY, 'query')(*elem_list))
+    stream.send(iq)
+
+def handle_set_active_list(q, bus, conn, stream):
+    e = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    acknowledge_iq(stream, e.stanza)
+
 def test_create_invisible_list(q, bus, conn, stream):
     conn.SimplePresence.SetPresence("away", "")
 
     conn.Connect()
+
+    handle_get_all_privacy_lists(q, bus, conn, stream)
 
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
@@ -60,6 +74,8 @@ def test_invisible_on_connect_fail_no_list(q, bus, conn, stream):
 
     conn.Connect()
 
+    handle_get_all_privacy_lists(q, bus, conn, stream)
+
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
     assertEquals('invisible', list_node['name'])
@@ -93,6 +109,8 @@ def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream):
     conn.SimplePresence.SetPresence("hidden", "")
 
     conn.Connect()
+
+    handle_get_all_privacy_lists(q, bus, conn, stream, ['invisible'])
 
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
@@ -141,6 +159,8 @@ def test_invisible_on_connect_fail(q, bus, conn, stream):
 
     conn.Connect()
 
+    handle_get_all_privacy_lists(q, bus, conn, stream)
+
     create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     # Check its name
     assertNotEquals([],
@@ -176,6 +196,8 @@ def test_invisible_on_connect(q, bus, conn, stream):
 
     conn.Connect()
 
+    handle_get_all_privacy_lists(q, bus, conn, stream, ['invisible'])
+
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
     assertEquals('invisible', list_node['name'])
@@ -196,6 +218,8 @@ def test_invisible_on_connect(q, bus, conn, stream):
 
 def test_invisible(q, bus, conn, stream):
     conn.Connect()
+
+    handle_get_all_privacy_lists(q, bus, conn, stream, ['invisible'])
 
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
 

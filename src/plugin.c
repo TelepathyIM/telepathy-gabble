@@ -21,7 +21,11 @@
 #include "gabble/plugin.h"
 
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/util.h>
+
+#define DEBUG_FLAG GABBLE_DEBUG_PLUGINS
+#include "debug.h"
 
 GType
 gabble_plugin_get_type (void)
@@ -135,4 +139,64 @@ gabble_plugin_create_sidecar_finish (
   sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
       G_SIMPLE_ASYNC_RESULT (result)));
   return g_object_ref (sidecar);
+}
+
+const TpPresenceStatusSpec *
+gabble_plugin_get_custom_presence_statuses (
+    GabblePlugin *plugin)
+{
+  GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
+
+  return iface->presence_statuses;
+}
+
+gboolean
+gabble_plugin_implements_presence_status (
+    GabblePlugin *plugin,
+    const gchar *status)
+{
+  GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
+  gint i;
+
+  if (iface->presence_statuses == NULL)
+    return FALSE;
+
+  for (i = 0; iface->presence_statuses[i].name; i++)
+    {
+      if (!tp_strdiff (status, iface->presence_statuses[i].name))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+const gchar *
+gabble_plugin_presence_status_for_privacy_list (
+    GabblePlugin *plugin,
+    const gchar *list_name)
+{
+  GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
+  int i;
+
+  if (iface->privacy_list_map == NULL)
+    return NULL;
+
+  for (i = 0; iface->privacy_list_map[i].privacy_list_name; i++)
+    {
+      if (!tp_strdiff (list_name,
+              iface->privacy_list_map[i].privacy_list_name))
+        {
+          DEBUG ("Plugin %s links presence %s with privacy list %s",
+            iface->name,
+            iface->privacy_list_map[i].privacy_list_name,
+            iface->privacy_list_map[i].presence_status_name);
+
+          return iface->privacy_list_map[i].presence_status_name;
+        }
+    }
+
+  DEBUG ("No plugins link presence to privacy list %s",
+      list_name);
+
+  return NULL;
 }

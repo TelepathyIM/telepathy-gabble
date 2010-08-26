@@ -2,6 +2,7 @@ tools_dir = $(top_srcdir)/tools
 
 EXTRA_DIST = \
     all.xml \
+    Authentication_TLS_Certificate.xml \
     Call_Content_Codec_Offer.xml \
     Call_Content_Interface_Media.xml \
     Call_Content.xml \
@@ -13,6 +14,7 @@ EXTRA_DIST = \
     Channel_Interface_Conference.xml \
     Channel_Type_Call.xml \
     Channel_Type_FileTransfer_Future.xml \
+    Channel_Type_Server_TLS_Connection.xml \
     Connection_Future.xml \
     Connection_Interface_Gabble_Decloak.xml \
     Connection_Interface_Mail_Notification.xml \

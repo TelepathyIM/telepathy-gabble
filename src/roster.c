@@ -1640,17 +1640,8 @@ gabble_roster_close_all (GabbleRoster *self)
       self->priv->status_changed_id = 0;
     }
 
-  if (priv->groups != NULL)
-    {
-      tp_handle_set_destroy (priv->groups);
-      priv->groups = NULL;
-    }
-
-  if (priv->pre_authorized != NULL)
-    {
-      tp_handle_set_destroy (priv->pre_authorized);
-      priv->pre_authorized = NULL;
-    }
+  tp_clear_pointer (&priv->groups, tp_handle_set_destroy);
+  tp_clear_pointer (&priv->pre_authorized, tp_handle_set_destroy);
 
   if (self->priv->iq_cb != NULL)
     {
@@ -3031,17 +3022,13 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
   DEBUG ("queue edit to contact#%u - set %" G_GSIZE_FORMAT
       "contact groups", contact, n);
 
-  if (item->unsent_edits->add_to_groups != NULL)
-    tp_handle_set_destroy (item->unsent_edits->add_to_groups);
-
+  tp_clear_pointer (&item->unsent_edits->add_to_groups, tp_handle_set_destroy);
   item->unsent_edits->add_to_groups = groups_set;
+
   item->unsent_edits->remove_from_all_other_groups = TRUE;
 
-  if (item->unsent_edits->remove_from_groups != NULL)
-    {
-      tp_handle_set_destroy (item->unsent_edits->remove_from_groups);
-      item->unsent_edits->remove_from_groups = NULL;
-    }
+  tp_clear_pointer (&item->unsent_edits->remove_from_groups,
+      tp_handle_set_destroy);
 
   gabble_simple_async_countdown_inc (result);
   item->unsent_edits->results = g_slist_prepend (

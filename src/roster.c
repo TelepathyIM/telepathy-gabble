@@ -1803,6 +1803,8 @@ item_edit_free (GabbleRosterItemEdit *edits)
       g_object_unref (slist->data);
     }
 
+  g_slist_free (edits->results);
+
   tp_handle_unref (edits->contact_repo, edits->handle);
   g_object_unref (edits->contact_repo);
   tp_clear_pointer (&edits->add_to_groups, tp_handle_set_destroy);

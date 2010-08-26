@@ -2455,7 +2455,7 @@ gabble_roster_handle_subscribed (
 }
 
 static TpHandleSet *
-gabble_roster_get_contacts (TpBaseContactList *base)
+gabble_roster_dup_contacts (TpBaseContactList *base)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpHandleSet *set;
@@ -2483,7 +2483,7 @@ gabble_roster_get_contacts (TpBaseContactList *base)
 }
 
 static void
-gabble_roster_get_states (TpBaseContactList *base,
+gabble_roster_dup_states (TpBaseContactList *base,
     TpHandle contact,
     TpSubscriptionState *subscribe,
     TpSubscriptionState *publish,
@@ -2778,7 +2778,7 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
 }
 
 static TpHandleSet *
-gabble_roster_get_blocked_contacts (TpBaseContactList *base)
+gabble_roster_dup_blocked_contacts (TpBaseContactList *base)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpHandleSet *set;
@@ -2852,7 +2852,7 @@ gabble_roster_unblock_contacts_async (TpBaseContactList *base,
 }
 
 static GStrv
-gabble_roster_get_groups (TpBaseContactList *base)
+gabble_roster_dup_groups (TpBaseContactList *base)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
@@ -2886,7 +2886,7 @@ gabble_roster_get_groups (TpBaseContactList *base)
 }
 
 static GStrv
-gabble_roster_get_contact_groups (TpBaseContactList *base,
+gabble_roster_dup_contact_groups (TpBaseContactList *base,
     TpHandle contact)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
@@ -2920,7 +2920,7 @@ gabble_roster_get_contact_groups (TpBaseContactList *base,
 }
 
 static TpHandleSet *
-gabble_roster_get_group_members (TpBaseContactList *base,
+gabble_roster_dup_group_members (TpBaseContactList *base,
     const gchar *group)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
@@ -3319,7 +3319,7 @@ static void
 blockable_iface_init (TpBlockableContactListInterface *iface)
 {
   iface->can_block = gabble_roster_can_block;
-  iface->get_blocked_contacts = gabble_roster_get_blocked_contacts;
+  iface->dup_blocked_contacts = gabble_roster_dup_blocked_contacts;
   iface->block_contacts_async = gabble_roster_block_contacts_async;
   iface->unblock_contacts_async = gabble_roster_unblock_contacts_async;
   /* we use the default _finish functions, which assume a GSimpleAsyncResult */
@@ -3328,9 +3328,9 @@ blockable_iface_init (TpBlockableContactListInterface *iface)
 static void
 contact_groups_iface_init (TpContactGroupListInterface *iface)
 {
-  iface->get_groups = gabble_roster_get_groups;
-  iface->get_contact_groups = gabble_roster_get_contact_groups;
-  iface->get_group_members = gabble_roster_get_group_members;
+  iface->dup_groups = gabble_roster_dup_groups;
+  iface->dup_contact_groups = gabble_roster_dup_contact_groups;
+  iface->dup_group_members = gabble_roster_dup_group_members;
 }
 
 static void
@@ -3356,8 +3356,8 @@ gabble_roster_class_init (GabbleRosterClass *cls)
   object_class->dispose = gabble_roster_dispose;
   object_class->finalize = gabble_roster_finalize;
 
-  base_class->get_states = gabble_roster_get_states;
-  base_class->get_contacts = gabble_roster_get_contacts;
+  base_class->dup_states = gabble_roster_dup_states;
+  base_class->dup_contacts = gabble_roster_dup_contacts;
 
   signals[NICKNAME_UPDATE] = g_signal_new (
     "nickname-update",

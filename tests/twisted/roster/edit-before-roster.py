@@ -19,17 +19,17 @@ def test(q, bus, conn, stream):
     item = event.query.addElement('item')
     item['jid'] = 'amy@foo.com'
     item['subscription'] = 'both'
-    group = item.addElement('group', content='women')
+    item.addElement('group', content='women')
 
     item = event.query.addElement('item')
     item['jid'] = 'bob@foo.com'
     item['subscription'] = 'from'
-    group = item.addElement('group', content='men')
+    item.addElement('group', content='men')
 
     item = event.query.addElement('item')
     item['jid'] = 'che@foo.com'
     item['subscription'] = 'to'
-    group = item.addElement('group', content='men')
+    item.addElement('group', content='men')
 
     # Before we get the roster, try to change something. It won't work.
     amy, bob, che = conn.RequestHandles(cs.HT_CONTACT,

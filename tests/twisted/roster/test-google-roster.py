@@ -277,8 +277,6 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
     directions, at which point they will vanish from 'stored', while
     remaining on 'deny'.
     """
-    self_handle = conn.GetSelfHandle()
-
     contact = 'blocked-but-subscribed@boards.ca'
     handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     assertContains(handle,

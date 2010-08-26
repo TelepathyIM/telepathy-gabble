@@ -23,7 +23,7 @@ def test(q, bus, conn, stream, remove, local, modern):
     pairs = expect_contact_list_signals(q, bus, conn,
             ['publish', 'subscribe', 'stored'])
 
-    publish = check_contact_list_signals(q, bus, conn, pairs.pop(0),
+    check_contact_list_signals(q, bus, conn, pairs.pop(0),
             cs.HT_LIST, 'publish', [])
     subscribe = check_contact_list_signals(q, bus, conn, pairs.pop(0),
             cs.HT_LIST, 'subscribe', [])

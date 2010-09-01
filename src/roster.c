@@ -2858,6 +2858,8 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
       gabble_roster_request_subscription_async, error);
   g_clear_error (&error);
+  tp_handle_set_destroy (changed);
+  tp_handle_set_destroy (removed);
 }
 
 static TpHandleSet *

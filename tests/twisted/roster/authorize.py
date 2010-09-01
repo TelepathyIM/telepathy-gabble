@@ -3,10 +3,11 @@ Test receiving and authorizing publish requests, including "pre-authorization"
 (authorizing publication before someone asks for it).
 """
 
-from gabbletest import exec_test
+from gabbletest import (exec_test, sync_stream)
 from rostertest import (expect_contact_list_signals,
-        check_contact_list_signals)
-from servicetest import (assertEquals, assertLength, call_async, EventPattern)
+        check_contact_list_signals, send_roster_push)
+from servicetest import (assertEquals, assertLength, call_async, EventPattern,
+        sync_dbus)
 import constants as cs
 import ns
 
@@ -95,6 +96,16 @@ def test(q, bus, conn, stream, modern=True, remove=False):
                 to='dave@example.com'),
             )
 
+    # Our server responds to Dave being authorized
+    send_roster_push(stream, 'dave@example.com', 'from')
+    q.expect_many(
+            EventPattern('stream-iq', iq_type='result', iq_id='push'),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{dave: (cs.SUBSCRIPTION_STATE_NO,
+                    cs.SUBSCRIPTION_STATE_YES, '')}, []]),
+            )
+
+    # The request from Kristine needs authorization (below)
     presence['from'] = 'kristine@example.com'
     stream.send(presence)
 
@@ -102,6 +113,7 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             args=[{kristine: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_ASK, '')}, []])
 
+    # This request from Arnold is dealt with below
     presence['from'] = 'arnold@example.com'
     stream.send(presence)
 
@@ -121,6 +133,17 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             EventPattern('dbus-return', method=returning_method),
             EventPattern('stream-presence', presence_type='subscribed',
                 to='kristine@example.com'),
+            )
+
+    # Our server acknowledges that we authorized Kristine. Holly's state
+    # does not change.
+    send_roster_push(stream, 'kristine@example.com', 'from')
+    q.expect_many(
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{kristine: (cs.SUBSCRIPTION_STATE_NO,
+                    cs.SUBSCRIPTION_STATE_YES,
+                    '')}, []]),
+            EventPattern('stream-iq', iq_type='result', iq_id='push'),
             )
 
     # Arnold gives up waiting for us, and cancels his request
@@ -156,6 +179,28 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{}, [arnold]]),
             )
+
+    # Redundant API calls (removing an absent contact, etc.) cause no network
+    # traffic, and succeed.
+    forbidden = [EventPattern('stream-iq', query_ns=ns.ROSTER),
+            EventPattern('stream-presence')]
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.forbid_events(forbidden)
+
+    call_async(q, conn.ContactList, 'AuthorizePublication',
+            [kristine, holly, dave])
+    call_async(q, conn.ContactList, 'Unpublish', [arnold])
+    call_async(q, conn.ContactList, 'RemoveContacts', [arnold])
+    q.expect_many(
+            EventPattern('dbus-return', method='AuthorizePublication'),
+            EventPattern('dbus-return', method='Unpublish'),
+            EventPattern('dbus-return', method='RemoveContacts'),
+            )
+
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(forbidden)
 
 def test_ancient(q, bus, conn, stream):
     test(q, bus, conn, stream, modern=False)

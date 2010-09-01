@@ -158,6 +158,7 @@ enum
     PROP_FALLBACK_SOCKS5_PROXIES,
     PROP_KEEPALIVE_INTERVAL,
     PROP_DECLOAK_AUTOMATICALLY,
+    PROP_FALLBACK_SERVERS,
 
     LAST_PROPERTY
 };
@@ -204,6 +205,9 @@ struct _GabbleConnectionPrivate
   GStrv fallback_socks5_proxies;
 
   gboolean decloak_automatically;
+
+  GStrv fallback_servers;
+  guint fallback_server_index;
 
   /* authentication properties */
   gchar *stream_server;
@@ -563,6 +567,10 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_boolean (value, priv->decloak_automatically);
       break;
 
+    case PROP_FALLBACK_SERVERS:
+      g_value_set_boxed (value, priv->fallback_servers);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -678,6 +686,13 @@ gabble_connection_set_property (GObject      *object,
 
     case PROP_DECLOAK_AUTOMATICALLY:
       priv->decloak_automatically = g_value_get_boolean (value);
+      break;
+
+    case PROP_FALLBACK_SERVERS:
+      if (priv->fallback_servers != NULL)
+        g_strfreev (priv->fallback_servers);
+      priv->fallback_servers = g_value_dup_boxed (value);
+      priv->fallback_server_index = 0;
       break;
 
     default:
@@ -1047,6 +1062,13 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  g_object_class_install_property (object_class, PROP_FALLBACK_SERVERS,
+      g_param_spec_boxed (
+        "fallback-servers", "Fallback servers",
+        "List of servers to fallback to (syntax server[:port][,oldssl]",
+        G_TYPE_STRV,
+        G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
@@ -1217,6 +1239,7 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->fallback_stun_server);
   g_free (priv->fallback_conference_server);
   g_strfreev (priv->fallback_socks5_proxies);
+  g_strfreev (priv->fallback_servers);
 
   g_free (priv->alias);
   g_free (priv->stream_id);
@@ -1683,6 +1706,71 @@ bare_jid_disco_cb (GabbleDisco *disco,
 }
 
 /**
+ * next_fallback_server
+ *
+ * Launch connection using next fallback server if any, return
+ * FALSE if they all have been tried or the error is not
+ * network related (e.g. login failed).
+ */
+static gboolean
+next_fallback_server (GabbleConnection *self,
+    const GError *error)
+{
+  GabbleConnectionPrivate *priv = self->priv;
+  const gchar *server;
+  gchar **split;
+  guint port = 5222;
+  gboolean old_ssl = FALSE;
+  GNetworkAddress *addr;
+  GError *tmp_error = NULL;
+
+  /* Only retry on connection failures */
+  if (error->domain != G_IO_ERROR)
+    return FALSE;
+
+  if (priv->fallback_servers == NULL
+      || priv->fallback_servers[priv->fallback_server_index] == NULL)
+    return FALSE;
+
+  server = priv->fallback_servers[priv->fallback_server_index++];
+  split = g_strsplit (server, ",", 2);
+
+  if (split[0] == NULL)
+    {
+      g_strfreev (split);
+      return FALSE;
+    }
+  else if (split[1] != NULL && !tp_strdiff (split[1], "oldssl"))
+    {
+      old_ssl = TRUE;
+      port = 5223;
+    }
+
+  addr = G_NETWORK_ADDRESS (
+      g_network_address_parse (split[0], port, &tmp_error));
+
+  if (!addr)
+    {
+      g_warning ("%s", tmp_error->message);
+      g_error_free (tmp_error);
+      return FALSE;
+    }
+
+  g_object_set (self,
+      "connect-server", g_network_address_get_hostname (addr),
+      "port", g_network_address_get_port (addr),
+      "old-ssl", old_ssl,
+      NULL);
+
+  g_object_unref (addr);
+
+  _gabble_connection_connect (TP_BASE_CONNECTION (self), NULL);
+
+  g_strfreev (split);
+  return TRUE;
+}
+
+/**
  * connector_connected
  *
  * Stage 2 of connecting, this function is called once the connect operation
@@ -1720,7 +1808,8 @@ connector_connected (GabbleConnection *self,
 
   if (conn == NULL)
     {
-      connector_error_disconnect (self, error);
+      if (!next_fallback_server (self, error))
+        connector_error_disconnect (self, error);
       g_error_free (error);
       return;
     }
@@ -2042,7 +2131,6 @@ _gabble_connection_connect (TpBaseConnection *base,
           NULL);
     }
 
-  /* FIXME: support proxy server */
   /* FIXME: support keep alive */
 
   if (priv->do_register)

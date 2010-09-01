@@ -149,6 +149,9 @@ static TpCMParamSpec jabber_params[] = {
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER (FALSE),
     0 /* unused */, NULL, NULL },
 
+  { "fallback-servers", "as", 0,
+    0, NULL, 0 /* unused */, NULL, NULL },
+
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -175,7 +178,11 @@ get_parameters (TpBaseProtocol *self G_GNUC_UNUSED)
             {
               jabber_params[i].gtype = G_TYPE_STRV;
               jabber_params[i].def = default_socks5_proxies;
-              break;
+            }
+          else if (!g_strcmp0 (jabber_params[i].name,
+                "fallback-servers"))
+            {
+              jabber_params[i].gtype = G_TYPE_STRV;
             }
         }
 
@@ -216,6 +223,7 @@ struct ParamMapping {
   SAME ("keepalive-interval"),
   MAP (GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
        "decloak-automatically"),
+  SAME ("fallback-servers"),
   SAME (NULL)
 };
 #undef SAME

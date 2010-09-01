@@ -60,11 +60,15 @@ def test(q, bus, conn, stream, modern=True):
 
     acknowledge_iq(stream, event.stanza)
 
-    # FIXME: also expect RequestSubscription to finish; in principle, it should
-    # only finish after we ack that IQ, although at the moment it finishes
-    # sooner
+    expectations = [
+            EventPattern('stream-presence', presence_type='subscribe'),
+            ]
 
-    event = q.expect('stream-presence', presence_type='subscribe')
+    if modern:
+        expectations.append(EventPattern('dbus-return',
+            method='RequestSubscription'))
+
+    event = q.expect_many(*expectations)[0]
 
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@foo.com'

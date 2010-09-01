@@ -2331,7 +2331,10 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   g_return_if_fail (GABBLE_IS_ROSTER (roster));
   g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  item = _gabble_roster_item_ensure (roster, handle);
+  item = _gabble_roster_item_lookup (roster, handle);
+
+  if (item == NULL)
+    return;
 
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);

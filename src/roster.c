@@ -454,7 +454,7 @@ _gabble_roster_item_ensure (GabbleRoster *roster,
   return item;
 }
 
-static void
+static gboolean
 _gabble_roster_item_maybe_remove (GabbleRoster *roster,
     TpHandle handle)
 {
@@ -471,22 +471,36 @@ _gabble_roster_item_maybe_remove (GabbleRoster *roster,
 
   /* don't remove items that are really on our server-side roster */
   if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
-    return;
+    {
+      DEBUG ("contact#%u is still on the roster", handle);
+      return FALSE;
+    }
 
   /* don't remove items that have edits in flight */
   if (item->edits_in_flight)
-    return;
+    {
+      DEBUG ("contact#%u has edits in flight", handle);
+      return FALSE;
+    }
 
   /* don't remove transient items that represent publish/subscribe state */
   if (item->publish != TP_SUBSCRIPTION_STATE_NO)
-    return;
+    {
+      DEBUG ("contact#%u has publish=%u", handle, item->publish);
+      return FALSE;
+    }
 
   if (item->subscribe != TP_SUBSCRIPTION_STATE_NO)
-    return;
+    {
+      DEBUG ("contact#%u has subscribe=%u", handle, item->subscribe);
+      return FALSE;
+    }
 
+  DEBUG ("removing contact#%u", handle);
   item = NULL;
   g_hash_table_remove (priv->items, GUINT_TO_POINTER (handle));
   tp_handle_unref (contact_repo, handle);
+  return TRUE;
 }
 
 static GabbleRosterItem *
@@ -2760,6 +2774,7 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleSet *changed = tp_handle_set_new (contact_repo);
+  TpHandleSet *removed = tp_handle_set_new (contact_repo);
   TpIntSetFastIter iter;
   TpHandle contact;
   GError *error = NULL;
@@ -2792,8 +2807,12 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
             DEBUG ("contact #%u '%s' had publish=R, moving to publish=N",
               contact, contact_id);
 
-          tp_handle_set_add (changed, contact);
           roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+
+          if (_gabble_roster_item_maybe_remove (self, contact))
+            tp_handle_set_add (removed, contact);
+          else
+            tp_handle_set_add (changed, contact);
         }
 
       if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO)
@@ -2814,7 +2833,7 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
         }
     }
 
-  tp_base_contact_list_contacts_changed (base, changed, NULL);
+  tp_base_contact_list_contacts_changed (base, changed, removed);
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
       gabble_roster_request_subscription_async, error);
   g_clear_error (&error);

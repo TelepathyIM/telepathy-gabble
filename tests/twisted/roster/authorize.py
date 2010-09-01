@@ -145,17 +145,13 @@ def test(q, bus, conn, stream, modern=True):
 
     call_async(q, conn.ContactList, 'Unpublish', [arnold])
 
-    # FIXME: strictly speaking, Arnold was never on our XMPP roster,
+    # Even if we Unpublish() here, Arnold was never on our XMPP roster,
     # so setting his publish state to SUBSCRIPTION_STATE_NO should result
-    # in his removal (as seen in the telepathy-glib contactlist example)
+    # in his removal.
     q.expect_many(
             EventPattern('dbus-return', method='Unpublish'),
             EventPattern('dbus-signal', signal='ContactsChanged',
-                args=[{
-                    arnold:
-                        (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO,
-                            ''),
-                    }, []]),
+                args=[{}, [arnold]]),
             )
 
 def test_ancient(q, bus, conn, stream):

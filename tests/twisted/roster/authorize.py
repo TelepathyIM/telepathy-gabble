@@ -12,7 +12,7 @@ import ns
 
 from twisted.words.xish import domish
 
-def test(q, bus, conn, stream, modern=True):
+def test(q, bus, conn, stream, modern=True, remove=False):
 
     call_async(q, conn.ContactList, 'GetContactListAttributes', [], False)
     q.expect('dbus-error', method='GetContactListAttributes',
@@ -140,16 +140,19 @@ def test(q, bus, conn, stream, modern=True):
     # The old Chan.T.ContactList API can't acknowledge RemovedRemotely,
     # because it sees it as "not there at all" and the group logic drops
     # the "redundant" request.
-    #
-    # FIXME: test RemoveContacts here too
 
-    call_async(q, conn.ContactList, 'Unpublish', [arnold])
+    if remove:
+        returning_method = 'RemoveContacts'
+        call_async(q, conn.ContactList, 'RemoveContacts', [arnold])
+    else:
+        returning_method = 'Unpublish'
+        call_async(q, conn.ContactList, 'Unpublish', [arnold])
 
     # Even if we Unpublish() here, Arnold was never on our XMPP roster,
     # so setting his publish state to SUBSCRIPTION_STATE_NO should result
     # in his removal.
     q.expect_many(
-            EventPattern('dbus-return', method='Unpublish'),
+            EventPattern('dbus-return', method=returning_method),
             EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{}, [arnold]]),
             )
@@ -160,6 +163,10 @@ def test_ancient(q, bus, conn, stream):
 def test_modern(q, bus, conn, stream):
     test(q, bus, conn, stream, modern=True)
 
+def test_modern_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, modern=True, remove=True)
+
 if __name__ == '__main__':
     exec_test(test_ancient)
     exec_test(test_modern)
+    exec_test(test_modern_remove)

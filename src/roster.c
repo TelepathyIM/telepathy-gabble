@@ -2323,6 +2323,7 @@ gabble_roster_handle_remove (GabbleRoster *roster,
                              GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
+  TpBaseContactList *base = (TpBaseContactList *) roster;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
@@ -2335,6 +2336,23 @@ gabble_roster_handle_remove (GabbleRoster *roster,
 
   if (item == NULL)
     return;
+
+  /* Acknowledge any remote removal */
+  if (item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
+    roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+
+  if (item->subscribe == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
+    roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO);
+
+  if (_gabble_roster_item_maybe_remove (roster, handle))
+    {
+      TpHandleSet *removed = tp_handle_set_new (contact_repo);
+
+      tp_handle_set_add (removed, handle);
+      tp_base_contact_list_contacts_changed (base, NULL, removed);
+      tp_handle_set_destroy (removed);
+      return;
+    }
 
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);

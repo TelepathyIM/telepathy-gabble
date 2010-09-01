@@ -385,7 +385,8 @@ _google_roster_item_should_keep (const gchar *jid,
   if (item->ask_subscribe)
     return TRUE;
 
-  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE)
+  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE &&
+      item->subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     return TRUE;
 
   /* discard anything else */
@@ -436,6 +437,12 @@ _gabble_roster_item_ensure (GabbleRoster *roster,
         }
 
       item = g_slice_new0 (GabbleRosterItem);
+      /* We may want it to be on the roster, but it's not there yet, so the
+       * most accurate description of how to reach this state is "remove".
+       * We'll keep this transient roster item for as long as it has edits
+       * pending, or some other reason to stay around (a pending publish
+       * request, for instance). */
+      item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
       item->subscribe = TP_SUBSCRIPTION_STATE_NO;
       item->publish = TP_SUBSCRIPTION_STATE_NO;
       item->name = alias;
@@ -448,17 +455,36 @@ _gabble_roster_item_ensure (GabbleRoster *roster,
 }
 
 static void
-_gabble_roster_item_remove (GabbleRoster *roster,
-                            TpHandle handle)
+_gabble_roster_item_maybe_remove (GabbleRoster *roster,
+    TpHandle handle)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItem *item;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
+  item = _gabble_roster_item_lookup (roster, handle);
+
+  /* don't remove items that are really on our server-side roster */
+  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+    return;
+
+  /* don't remove items that have edits in flight */
+  if (item->edits_in_flight)
+    return;
+
+  /* don't remove transient items that represent publish/subscribe state */
+  if (item->publish != TP_SUBSCRIPTION_STATE_NO)
+    return;
+
+  if (item->subscribe != TP_SUBSCRIPTION_STATE_NO)
+    return;
+
+  item = NULL;
   g_hash_table_remove (priv->items, GUINT_TO_POINTER (handle));
   tp_handle_unref (contact_repo, handle);
 }
@@ -845,7 +871,8 @@ flicker_prevention_timeout (gpointer ctx_)
 
   DEBUG ("called for %u", ctx->handle);
 
-  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_NONE
+  if ((item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE ||
+        item->subscription == GABBLE_ROSTER_SUBSCRIPTION_NONE)
       && !item->ask_subscribe)
     {
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -1235,12 +1262,7 @@ process_roster (
             }
         }
 
-      /* Remove removed contacts from the roster, unless they have edits
-       * in flight. If there are edits in flight, we'll remove the contact
-       * when we've finished editing it, instead. */
-      if (!item->edits_in_flight &&
-          GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
-        _gabble_roster_item_remove (roster, handle);
+      _gabble_roster_item_maybe_remove (roster, handle);
     }
 
   tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
@@ -1939,9 +1961,8 @@ roster_item_apply_edits (GabbleRoster *roster,
 
               g_clear_error (&error);
             }
-          /* deliberately not setting altered: we haven't altered the roster
-           * directly.
-           */
+          /* deliberately not setting altered: we haven't altered the roster,
+           * as such. */
         }
       else
         {
@@ -2021,6 +2042,17 @@ roster_item_apply_edits (GabbleRoster *roster,
       if (!tp_intset_is_equal (tp_handle_set_peek (edited_item.groups),
             tp_handle_set_peek (item->groups)))
           altered = TRUE;
+    }
+
+  /* If we changed something about a transient GabbleRosterItem that
+   * wasn't actually on our server-side roster yet, and we weren't actually
+   * trying to delete it, then we need to create it as a side-effect. */
+  if (altered &&
+      edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE &&
+      edited_item.subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+    {
+      edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
+      edited_item.subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
     }
 
 #ifdef ENABLE_DEBUG
@@ -2113,9 +2145,17 @@ roster_edited_cb (GabbleConnection *conn,
       /* if more edits have been queued since we sent this batch, do them */
       roster_item_apply_edits (roster, edit->handle, item);
 
-      if (!item->edits_in_flight &&
-          item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
-        _gabble_roster_item_remove (roster, edit->handle);
+      if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE &&
+          edit->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+        {
+          /* The server claims to have created the item, so we should believe
+           * that the item exists, even though we haven't yet had the roster
+           * push that should confirm it. This will result in
+           * _gabble_roster_item_maybe_remove not removing it. */
+          item->subscription = edit->new_subscription;
+        }
+
+      _gabble_roster_item_maybe_remove (roster, edit->handle);
     }
 
   item_edit_free (edit);

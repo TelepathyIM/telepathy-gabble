@@ -29,9 +29,9 @@ def test(q, bus, conn, stream, modern=True, remove=False):
     event.stanza['type'] = 'result'
     stream.send(event.stanza)
 
-    holly, dave, arnold, kristine = conn.RequestHandles(cs.HT_CONTACT,
+    holly, dave, arnold, kristine, cat = conn.RequestHandles(cs.HT_CONTACT,
             ['holly@example.com', 'dave@example.com', 'arnold@example.com',
-                'kristine@example.com'])
+                'kristine@example.com', 'cat@example.com'])
 
     # slight implementation detail: TpBaseContactList emits ContactsChanged
     # before it announces its channels
@@ -66,7 +66,7 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             'publish', ['holly@example.com'])
     check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
             'subscribe', ['holly@example.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
+    stored = check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
             'stored', ['holly@example.com'])
     assertLength(0, pairs)      # i.e. we've checked all of them
 
@@ -180,6 +180,40 @@ def test(q, bus, conn, stream, modern=True, remove=False):
                 args=[{}, [arnold]]),
             )
 
+    # Rejecting an authorization request also works
+    presence = domish.Element(('jabber:client', 'presence'))
+    presence['type'] = 'subscribe'
+    presence['from'] = 'cat@example.com'
+    stream.send(presence)
+
+    q.expect('dbus-signal', signal='ContactsChanged',
+            args=[{cat: (cs.SUBSCRIPTION_STATE_NO,
+                cs.SUBSCRIPTION_STATE_ASK,
+                '')}, []])
+
+    if modern:
+        if remove:
+            returning_method = 'RemoveContacts'
+            call_async(q, conn.ContactList, 'RemoveContacts', [cat])
+        else:
+            returning_method = 'Unpublish'
+            call_async(q, conn.ContactList, 'Unpublish', [cat])
+    else:
+        returning_method = 'RemoveMembers'
+
+        if remove:
+            call_async(q, stored.Group, 'RemoveMembers', [cat], '')
+        else:
+            call_async(q, publish.Group, 'RemoveMembers', [cat], '')
+
+    # As above, the only reason the Cat is on our contact list is the pending
+    # publish request, so Unpublish really results in removal.
+    q.expect_many(
+            EventPattern('dbus-return', method=returning_method),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{}, [cat]]),
+            )
+
     # Redundant API calls (removing an absent contact, etc.) cause no network
     # traffic, and succeed.
     forbidden = [EventPattern('stream-iq', query_ns=ns.ROSTER),
@@ -190,8 +224,8 @@ def test(q, bus, conn, stream, modern=True, remove=False):
 
     call_async(q, conn.ContactList, 'AuthorizePublication',
             [kristine, holly, dave])
-    call_async(q, conn.ContactList, 'Unpublish', [arnold])
-    call_async(q, conn.ContactList, 'RemoveContacts', [arnold])
+    call_async(q, conn.ContactList, 'Unpublish', [arnold, cat])
+    call_async(q, conn.ContactList, 'RemoveContacts', [arnold, cat])
     q.expect_many(
             EventPattern('dbus-return', method='AuthorizePublication'),
             EventPattern('dbus-return', method='Unpublish'),
@@ -205,6 +239,9 @@ def test(q, bus, conn, stream, modern=True, remove=False):
 def test_ancient(q, bus, conn, stream):
     test(q, bus, conn, stream, modern=False)
 
+def test_ancient_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, modern=False, remove=True)
+
 def test_modern(q, bus, conn, stream):
     test(q, bus, conn, stream, modern=True)
 
@@ -213,5 +250,6 @@ def test_modern_remove(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test_ancient)
+    exec_test(test_ancient_remove)
     exec_test(test_modern)
     exec_test(test_modern_remove)

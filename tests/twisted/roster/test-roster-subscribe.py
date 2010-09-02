@@ -88,6 +88,23 @@ def test(q, bus, conn, stream, modern=True):
                     }, []]),
             )
 
+    send_roster_push(stream, 'bob@foo.com', 'to')
+    q.expect('stream-iq', iq_type='result', iq_id='push')
+
+    # Doing the same again is a successful no-op
+    forbidden = [EventPattern('stream-iq', query_ns=ns.ROSTER),
+            EventPattern('stream-presence')]
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.forbid_events(forbidden)
+
+    call_async(q, conn.ContactList, 'RequestSubscription', [bob], 'moo')
+    q.expect('dbus-return', method='RequestSubscription')
+
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.unforbid_events(forbidden)
+
 if __name__ == '__main__':
     exec_test(test_ancient)
     exec_test(test_modern)

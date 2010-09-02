@@ -2617,7 +2617,20 @@ gabble_roster_request_subscription_added_cb (GObject *source,
 
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
       const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+
+      /* Note that we *do* send redundant requests if the contact is in
+       * ask=subscribe state, since those have semantic value - nagging the
+       * contact again. There's no point in requesting subscription if the
+       * contact has already said yes, though. */
+      if (item != NULL &&
+          (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_TO) != 0)
+        {
+          DEBUG ("Already subscribed to contact#%u '%s', not re-requesting",
+              contact, contact_id);
+          continue;
+        }
 
       /* stop trying at the first NetworkError, on the assumption that it'll
        * be fatal */

@@ -2785,6 +2785,8 @@ gabble_roster_unsubscribe_async (TpBaseContactList *base,
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleSet *changed = tp_handle_set_new (contact_repo);
+  TpHandleSet *removed = tp_handle_set_new (contact_repo);
   TpIntSetFastIter iter;
   TpHandle contact;
   GError *error = NULL;
@@ -2794,17 +2796,45 @@ gabble_roster_unsubscribe_async (TpBaseContactList *base,
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
       const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
 
-      /* stop trying at the first NetworkError, on the assumption that
-       * it'll be fatal */
-      if (!gabble_connection_send_presence (self->priv->conn,
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, "", &error))
-        break;
+      if (item == NULL || item->subscribe == TP_SUBSCRIPTION_STATE_NO)
+        {
+          DEBUG ("contact #%u '%s' absent or has subscribe=N, nothing to do",
+              contact, contact_id);
+        }
+      else if (item->subscribe == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
+        {
+          /* just acknowledge remote removal */
+          DEBUG ("contact #%u '%s' had subscribe=R, moving to publish=N",
+            contact, contact_id);
+          roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO);
+
+          if (_gabble_roster_item_maybe_remove (self, contact))
+            tp_handle_set_add (removed, contact);
+          else
+            tp_handle_set_add (changed, contact);
+        }
+      else
+        {
+          /* Deny a request (if ASK) or revoke previously-granted permission
+           * (if YES). Stop trying at the first NetworkError, on the
+           * assumption that it'll be fatal. Any changes will be signalled when
+           * confirmed by a roster push. */
+          DEBUG ("Sending <presence type='unsubscribe'/> to contact#%u '%s'",
+              contact, contact_id);
+          if (!gabble_connection_send_presence (self->priv->conn,
+              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, "", &error))
+            break;
+        }
     }
 
+  tp_base_contact_list_contacts_changed (base, changed, removed);
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
       gabble_roster_unsubscribe_async, error);
   g_clear_error (&error);
+  tp_handle_set_destroy (changed);
+  tp_handle_set_destroy (removed);
 }
 
 static void

@@ -2337,21 +2337,29 @@ gabble_roster_handle_remove (GabbleRoster *roster,
   if (item == NULL)
     return;
 
-  /* Acknowledge any remote removal */
-  if (item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
-    roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
-
-  if (item->subscribe == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
-    roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO);
-
-  if (_gabble_roster_item_maybe_remove (roster, handle))
+  /* If the contact is really stored on the server, deleting their roster item
+   * is sufficient. If they're not, we might have some state resulting from
+   * a publish request or remote removal or something. */
+  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     {
-      TpHandleSet *removed = tp_handle_set_new (contact_repo);
+      /* These will clear a status of REMOVED_REMOTELY or ASK */
+      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+      roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO);
 
-      tp_handle_set_add (removed, handle);
-      tp_base_contact_list_contacts_changed (base, NULL, removed);
-      tp_handle_set_destroy (removed);
-      return;
+      /* If there are no edits in-flight, we may just be able to delete the
+       * contact list entry and return early. If there are edits in flight,
+       * we should not return early: the in-flight edit might be
+       * creating the roster item, so we need to queue up a second edit
+       * that will delete it again. */
+      if (_gabble_roster_item_maybe_remove (roster, handle))
+        {
+          TpHandleSet *removed = tp_handle_set_new (contact_repo);
+
+          tp_handle_set_add (removed, handle);
+          tp_base_contact_list_contacts_changed (base, NULL, removed);
+          tp_handle_set_destroy (removed);
+          return;
+        }
     }
 
   if (item->unsent_edits == NULL)

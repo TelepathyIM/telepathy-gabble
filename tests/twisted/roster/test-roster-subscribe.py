@@ -6,8 +6,9 @@ Test subscribing to a contact's presence.
 from twisted.words.xish import domish
 
 from servicetest import (EventPattern, assertLength, assertEquals,
-        call_async, wrap_channel)
-from gabbletest import acknowledge_iq, exec_test
+        call_async, wrap_channel, sync_dbus)
+from gabbletest import (acknowledge_iq, exec_test, sync_stream)
+from rostertest import send_roster_push
 import constants as cs
 import ns
 
@@ -41,35 +42,37 @@ def test(q, bus, conn, stream, modern=True):
     assertLength(0, chan.Group.GetMembers())
 
     # request subscription
-    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
+    alice, bob = conn.RequestHandles(cs.HT_CONTACT,
+            ['alice@foo.com', 'bob@foo.com'])
 
-    expectations = [
-            EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
-            ]
+    # Repeated subscription requests are *not* idempotent: the second request
+    # should nag the contact again.
+    for first_time in True, False, False:
+        if modern:
+            call_async(q, conn.ContactList, 'RequestSubscription', [bob],
+                    'plz add kthx')
+        else:
+            call_async(q, chan.Group, 'AddMembers', [bob],
+                    'plz add kthx')
 
-    if modern:
-        call_async(q, conn.ContactList, 'RequestSubscription', [handle], '')
-    else:
-        call_async(q, chan.Group, 'AddMembers', [handle], '')
-        expectations.append(EventPattern('dbus-return', method='AddMembers'))
+        if first_time:
+            event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
+            item = event.query.firstChildElement()
+            assertEquals('bob@foo.com', item["jid"])
+            acknowledge_iq(stream, event.stanza)
 
-    event = q.expect_many(*expectations)[0]
+        expectations = [
+                EventPattern('stream-presence', presence_type='subscribe'),
+                ]
 
-    item = event.query.firstChildElement()
-    assertEquals('bob@foo.com', item["jid"])
+        if modern:
+            expectations.append(EventPattern('dbus-return',
+                method='RequestSubscription'))
 
-    acknowledge_iq(stream, event.stanza)
+        event = q.expect_many(*expectations)[0]
+        assertEquals('plz add kthx', event.presence_status)
 
-    expectations = [
-            EventPattern('stream-presence', presence_type='subscribe'),
-            ]
-
-    if modern:
-        expectations.append(EventPattern('dbus-return',
-            method='RequestSubscription'))
-
-    event = q.expect_many(*expectations)[0]
-
+    # Bob accepts
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@foo.com'
     presence['type'] = 'subscribed'
@@ -77,10 +80,10 @@ def test(q, bus, conn, stream, modern=True):
 
     q.expect_many(
             EventPattern('dbus-signal', signal='MembersChanged',
-                args=['', [handle], [], [], [], 0, 0]),
+                args=['', [bob], [], [], [], 0, 0]),
             EventPattern('stream-presence'),
             EventPattern('dbus-signal', signal='ContactsChanged',
-                args=[{handle:
+                args=[{bob:
                     (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
                     }, []]),
             )

@@ -101,6 +101,12 @@ def test(q, bus, conn, stream, modern=True):
     call_async(q, conn.ContactList, 'RequestSubscription', [bob], 'moo')
     q.expect('dbus-return', method='RequestSubscription')
 
+    # Alice is not on the list
+    call_async(q, conn.ContactList, 'Unsubscribe', [alice])
+    q.expect('dbus-return', method='Unsubscribe')
+    call_async(q, conn.ContactList, 'RemoveContacts', [alice])
+    q.expect('dbus-return', method='RemoveContacts')
+
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
     q.unforbid_events(forbidden)

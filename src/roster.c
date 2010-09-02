@@ -2396,7 +2396,8 @@ gabble_roster_handle_add (GabbleRoster *roster,
 
   item = _gabble_roster_item_ensure (roster, handle);
 
-  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     do_add = TRUE;
 
   if (!do_add)

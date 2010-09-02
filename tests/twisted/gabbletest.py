@@ -238,6 +238,12 @@ def make_iq_event(stream, iq):
 def make_presence_event(stream, stanza):
     event = make_stream_event('stream-presence', stanza, stream)
     event.presence_type = stanza.getAttribute('type')
+
+    statuses = xpath.queryForNodes('/presence/status', stanza)
+
+    if statuses:
+        event.presence_status = str(statuses[0])
+
     return event
 
 def make_message_event(stream, stanza):

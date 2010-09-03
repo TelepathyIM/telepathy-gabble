@@ -3,7 +3,7 @@ Test receiving and authorizing publish requests, including "pre-authorization"
 (authorizing publication before someone asks for it).
 """
 
-from gabbletest import (exec_test, sync_stream)
+from gabbletest import (exec_test, sync_stream, acknowledge_iq)
 from rostertest import (expect_contact_list_signals,
         check_contact_list_signals, send_roster_push)
 from servicetest import (assertEquals, assertLength, call_async, EventPattern,
@@ -235,6 +235,60 @@ def test(q, bus, conn, stream, modern=True, remove=False):
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
     q.unforbid_events(forbidden)
+
+    # There's one more case: revoking the publish permission of someone who is
+    # genuinely on the roster.
+
+    if modern:
+        if remove:
+            returning_method = 'RemoveContacts'
+            call_async(q, conn.ContactList, 'RemoveContacts', [holly])
+        else:
+            returning_method = 'Unpublish'
+            call_async(q, conn.ContactList, 'Unpublish', [holly])
+    else:
+        returning_method = 'RemoveMembers'
+
+        if remove:
+            call_async(q, stored.Group, 'RemoveMembers', [holly], '')
+        else:
+            call_async(q, publish.Group, 'RemoveMembers', [holly], '')
+
+    if remove:
+        patterns = [EventPattern('stream-iq', iq_type='set',
+            query_ns=ns.ROSTER, query_name='query')]
+
+        if not modern:
+            patterns.append(EventPattern('dbus-return', method='RemoveMembers'))
+
+        iq = q.expect_many(*patterns)[0]
+
+        acknowledge_iq(stream, iq.stanza)
+
+        if modern:
+            q.expect('dbus-return', method='RemoveContacts')
+
+        send_roster_push(stream, 'holly@example.com', 'remove')
+        q.expect_many(
+                EventPattern('stream-iq', iq_type='result', iq_id='push'),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{}, [holly]]),
+                )
+    else:
+        q.expect_many(
+                EventPattern('dbus-return', method=returning_method),
+                EventPattern('stream-presence', presence_type='unsubscribed',
+                    to='holly@example.com'),
+                )
+
+        send_roster_push(stream, 'holly@example.com', 'to')
+        q.expect_many(
+                EventPattern('stream-iq', iq_type='result', iq_id='push'),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{holly:
+                        (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
+                        }, []]),
+                )
 
 def test_ancient(q, bus, conn, stream):
     test(q, bus, conn, stream, modern=False)

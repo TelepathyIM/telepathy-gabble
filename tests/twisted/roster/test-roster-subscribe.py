@@ -1,4 +1,3 @@
-
 """
 Test subscribing to a contact's presence.
 """
@@ -18,7 +17,13 @@ def test_ancient(q, bus, conn, stream):
 def test_modern(q, bus, conn, stream):
     test(q, bus, conn, stream, True)
 
-def test(q, bus, conn, stream, modern=True):
+def test_ancient_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, False, True)
+
+def test_modern_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, True, True)
+
+def test(q, bus, conn, stream, modern=True, remove=False):
     conn.Connect()
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
@@ -40,6 +45,14 @@ def test(q, bus, conn, stream, modern=True):
 
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'ContactList')
     assertLength(0, chan.Group.GetMembers())
+
+    stored_path = conn.Requests.EnsureChannel({
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_LIST,
+        cs.TARGET_HANDLE_TYPE: cs.HT_LIST,
+        cs.TARGET_ID: 'stored',
+        })[1]
+    stored = wrap_channel(bus.get_object(conn.bus_name, stored_path),
+            'ContactList')
 
     # request subscription
     alice, bob = conn.RequestHandles(cs.HT_CONTACT,
@@ -111,6 +124,64 @@ def test(q, bus, conn, stream, modern=True):
     sync_dbus(bus, q, conn)
     q.unforbid_events(forbidden)
 
+    # Bob isn't actually as interesting as we thought. Never mind, we can
+    # unsubscribe.
+    # (Unsubscribing from pending-subscribe is tested in
+    # roster/removed-from-rp-subscribe.py.)
+
+    if modern:
+        if remove:
+            returning_method = 'RemoveContacts'
+            call_async(q, conn.ContactList, 'RemoveContacts', [bob])
+        else:
+            returning_method = 'Unsubscribe'
+            call_async(q, conn.ContactList, 'Unsubscribe', [bob])
+    else:
+        returning_method = 'RemoveMembers'
+
+        if remove:
+            call_async(q, stored.Group, 'RemoveMembers', [bob], '')
+        else:
+            call_async(q, chan.Group, 'RemoveMembers', [bob], '')
+
+    if remove:
+        patterns = [EventPattern('stream-iq', iq_type='set',
+            query_ns=ns.ROSTER, query_name='query')]
+
+        if not modern:
+            patterns.append(EventPattern('dbus-return', method='RemoveMembers'))
+
+        iq = q.expect_many(*patterns)[0]
+
+        acknowledge_iq(stream, iq.stanza)
+
+        if modern:
+            q.expect('dbus-return', method='RemoveContacts')
+
+        send_roster_push(stream, 'bob@foo.com', 'remove')
+        q.expect_many(
+                EventPattern('stream-iq', iq_type='result', iq_id='push'),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{}, [bob]]),
+                )
+    else:
+        q.expect_many(
+                EventPattern('dbus-return', method=returning_method),
+                EventPattern('stream-presence', presence_type='unsubscribe',
+                    to='bob@foo.com'),
+                )
+
+        send_roster_push(stream, 'bob@foo.com', 'none')
+        q.expect_many(
+                EventPattern('stream-iq', iq_type='result', iq_id='push'),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{bob:
+                        (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO, ''),
+                        }, []]),
+                )
+
 if __name__ == '__main__':
     exec_test(test_ancient)
     exec_test(test_modern)
+    exec_test(test_ancient_remove)
+    exec_test(test_modern_remove)

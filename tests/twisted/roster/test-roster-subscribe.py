@@ -24,7 +24,31 @@ def test_ancient_remove(q, bus, conn, stream):
 def test_modern_remove(q, bus, conn, stream):
     test(q, bus, conn, stream, True, True)
 
-def test(q, bus, conn, stream, modern=True, remove=False):
+def test_ancient_reject(q, bus, conn, stream):
+    test(q, bus, conn, stream, False, 'reject')
+
+def test_modern_reject(q, bus, conn, stream):
+    test(q, bus, conn, stream, True, 'reject')
+
+def test_ancient_reject_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, False, True, 'reject')
+
+def test_modern_reject_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, True, True, 'reject')
+
+def test_ancient_revoke(q, bus, conn, stream):
+    test(q, bus, conn, stream, False, 'revoke')
+
+def test_modern_revoke(q, bus, conn, stream):
+    test(q, bus, conn, stream, True, 'revoke')
+
+def test_ancient_revoke_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, False, True, 'revoke')
+
+def test_modern_revoke_remove(q, bus, conn, stream):
+    test(q, bus, conn, stream, True, True, 'revoke')
+
+def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
     conn.Connect()
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
@@ -97,49 +121,98 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             send_roster_push(stream, 'bob@foo.com', 'none', True)
             q.expect('stream-iq', iq_type='result', iq_id='push')
 
-    # Bob accepts
-    presence = domish.Element(('jabber:client', 'presence'))
-    presence['from'] = 'bob@foo.com'
-    presence['type'] = 'subscribed'
-    stream.send(presence)
+    if remote == 'reject':
+        # Bob rejects our request.
+        presence = domish.Element(('jabber:client', 'presence'))
+        presence['from'] = 'bob@foo.com'
+        presence['type'] = 'unsubscribed'
+        stream.send(presence)
 
-    q.expect_many(
-            EventPattern('dbus-signal', signal='MembersChanged',
-                args=['', [bob], [], [], [], bob, 0]),
-            EventPattern('stream-presence'),
-            EventPattern('dbus-signal', signal='ContactsChanged',
-                args=[{bob:
-                    (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
-                    }, []]),
-            )
+        q.expect_many(
+                EventPattern('dbus-signal', signal='MembersChanged',
+                    args=['', [], [bob], [], [], bob,
+                        cs.GC_REASON_PERMISSION_DENIED]),
+                #EventPattern('stream-presence'),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{bob:
+                        (cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY,
+                            cs.SUBSCRIPTION_STATE_NO, ''),
+                        }, []]),
+                )
 
-    send_roster_push(stream, 'bob@foo.com', 'to')
-    q.expect('stream-iq', iq_type='result', iq_id='push')
+        send_roster_push(stream, 'bob@foo.com', 'to')
+        q.expect('stream-iq', iq_type='result', iq_id='push')
+    else:
+        # Bob accepts
+        presence = domish.Element(('jabber:client', 'presence'))
+        presence['from'] = 'bob@foo.com'
+        presence['type'] = 'subscribed'
+        stream.send(presence)
 
-    # Doing the same again is a successful no-op
-    forbidden = [EventPattern('stream-iq', query_ns=ns.ROSTER),
-            EventPattern('stream-presence')]
-    sync_stream(q, stream)
-    sync_dbus(bus, q, conn)
-    q.forbid_events(forbidden)
+        q.expect_many(
+                EventPattern('dbus-signal', signal='MembersChanged',
+                    args=['', [bob], [], [], [], bob, 0]),
+                EventPattern('stream-presence'),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{bob:
+                        (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
+                        }, []]),
+                )
 
-    call_async(q, conn.ContactList, 'RequestSubscription', [bob], 'moo')
-    q.expect('dbus-return', method='RequestSubscription')
+        send_roster_push(stream, 'bob@foo.com', 'to')
+        q.expect('stream-iq', iq_type='result', iq_id='push')
 
-    # Alice is not on the list
-    call_async(q, conn.ContactList, 'Unsubscribe', [alice])
-    q.expect('dbus-return', method='Unsubscribe')
-    call_async(q, conn.ContactList, 'RemoveContacts', [alice])
-    q.expect('dbus-return', method='RemoveContacts')
+        # Doing the same again is a successful no-op
+        forbidden = [EventPattern('stream-iq', query_ns=ns.ROSTER),
+                EventPattern('stream-presence')]
+        sync_stream(q, stream)
+        sync_dbus(bus, q, conn)
+        q.forbid_events(forbidden)
 
-    sync_stream(q, stream)
-    sync_dbus(bus, q, conn)
-    q.unforbid_events(forbidden)
+        call_async(q, conn.ContactList, 'RequestSubscription', [bob], 'moo')
+        q.expect('dbus-return', method='RequestSubscription')
 
-    # Bob isn't actually as interesting as we thought. Never mind, we can
-    # unsubscribe.
-    # (Unsubscribing from pending-subscribe is tested in
-    # roster/removed-from-rp-subscribe.py.)
+        # Alice is not on the list
+        call_async(q, conn.ContactList, 'Unsubscribe', [alice])
+        q.expect('dbus-return', method='Unsubscribe')
+        call_async(q, conn.ContactList, 'RemoveContacts', [alice])
+        q.expect('dbus-return', method='RemoveContacts')
+
+        sync_stream(q, stream)
+        sync_dbus(bus, q, conn)
+        q.unforbid_events(forbidden)
+
+        if remote == 'revoke':
+            # After accepting us, Bob then removes us.
+            presence = domish.Element(('jabber:client', 'presence'))
+            presence['from'] = 'bob@foo.com'
+            presence['type'] = 'unsubscribed'
+            stream.send(presence)
+
+            q.expect_many(
+                    EventPattern('dbus-signal', signal='MembersChanged',
+                        args=['', [], [bob], [], [], bob,
+                            cs.GC_REASON_PERMISSION_DENIED]),
+                    EventPattern('stream-presence'),
+                    EventPattern('dbus-signal', signal='ContactsChanged',
+                        args=[{bob:
+                            (cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY,
+                                cs.SUBSCRIPTION_STATE_NO, ''),
+                            }, []]),
+                    )
+
+        # Else, Bob isn't actually as interesting as we thought. Never mind,
+        # we can unsubscribe or remove him (below), with the same APIs we'd
+        # use to acknowledge remote removal.
+
+        # (Unsubscribing from pending-subscribe is tested in
+        # roster/removed-from-rp-subscribe.py so we don't test it here.)
+
+    # If Bob removed us, we have to use modern APIs from now on, because from
+    # the point of view of the old Group interface, removed remotely and
+    # removed locally are synonymous.
+    if remote in ('reject', 'revoke'):
+        modern = True
 
     if modern:
         if remove:
@@ -197,3 +270,11 @@ if __name__ == '__main__':
     exec_test(test_modern)
     exec_test(test_ancient_remove)
     exec_test(test_modern_remove)
+    exec_test(test_ancient_revoke)
+    exec_test(test_modern_revoke)
+    exec_test(test_ancient_revoke_remove)
+    exec_test(test_modern_revoke_remove)
+    exec_test(test_ancient_reject)
+    exec_test(test_modern_reject)
+    exec_test(test_ancient_reject_remove)
+    exec_test(test_modern_reject_remove)

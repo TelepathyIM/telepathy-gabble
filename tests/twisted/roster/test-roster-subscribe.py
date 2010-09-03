@@ -1,3 +1,4 @@
+# -*- encoding:utf-8 -*-
 """
 Test subscribing to a contact's presence.
 """
@@ -85,6 +86,17 @@ def test(q, bus, conn, stream, modern=True, remove=False):
         event = q.expect_many(*expectations)[0]
         assertEquals('plz add kthx', event.presence_status)
 
+        if first_time:
+            # Our server sends a roster push indicating that yes, we added him
+            send_roster_push(stream, 'bob@foo.com', 'none')
+            q.expect('stream-iq', iq_type='result', iq_id='push')
+
+            # Our server will also send a roster push with the ask=subscribe
+            # sub-state, in response to our <presence type=subscribe>.
+            # (RFC 3921 §8.2.4)
+            send_roster_push(stream, 'bob@foo.com', 'none', True)
+            q.expect('stream-iq', iq_type='result', iq_id='push')
+
     # Bob accepts
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = 'bob@foo.com'
@@ -93,7 +105,7 @@ def test(q, bus, conn, stream, modern=True, remove=False):
 
     q.expect_many(
             EventPattern('dbus-signal', signal='MembersChanged',
-                args=['', [bob], [], [], [], 0, 0]),
+                args=['', [bob], [], [], [], bob, 0]),
             EventPattern('stream-presence'),
             EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{bob:

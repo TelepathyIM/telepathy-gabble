@@ -4,6 +4,10 @@ telepathy-gabble 0.9.18 (UNRELEASED)
 This section about the news for an unreleased version of telepathy-gabble is a
 stub. You can help Telepathy by expanding it.
 
+Fixes:
+
+• fd.o#28051: with 0.9.x, some SRV errors break facebook login (wjt)
+
 telepathy-gabble 0.9.17 (2010-08-26)
 ====================================
 

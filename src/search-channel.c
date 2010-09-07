@@ -29,6 +29,7 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/util.h>
 
+#include <wocky/wocky-utils.h>
 #include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
@@ -38,8 +39,6 @@
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
-
-#include "extensions/extensions.h"
 
 static const gchar *gabble_search_channel_interfaces[] = {
     NULL
@@ -67,7 +66,7 @@ static guint signals[LAST_SIGNAL] = {0};
 /* private structure */
 struct _GabbleSearchChannelPrivate
 {
-  GabbleChannelContactSearchState state;
+  TpChannelContactSearchState state;
   gchar **available_search_keys;
   gchar *server;
 
@@ -92,7 +91,7 @@ struct _GabbleSearchChannelPrivate
   TpHandleSet *result_handles;
 };
 
-/* Human-readable values of GabbleChannelContactSearchState. */
+/* Human-readable values of TpChannelContactSearchState. */
 static const gchar *states[] = {
     "not started",
     "in progress",
@@ -105,7 +104,7 @@ static void contact_search_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleSearchChannel, gabble_search_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_CONTACT_SEARCH,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_SEARCH,
         contact_search_iface_init);
     )
 
@@ -471,7 +470,7 @@ request_search_fields (GabbleSearchChannel *chan)
  */
 static void
 change_search_state (GabbleSearchChannel *chan,
-                     GabbleChannelContactSearchState state,
+                     TpChannelContactSearchState state,
                      const GError *reason)
 {
   GabbleSearchChannelPrivate *priv = chan->priv;
@@ -481,21 +480,21 @@ change_search_state (GabbleSearchChannel *chan,
 
   switch (state)
     {
-    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
+    case TP_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
     /* Gabble shouldn't ever get into state More_Available */
-    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
+    case TP_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
       g_assert_not_reached ();
       return;
-    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS:
-      g_assert (priv->state == GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED);
+    case TP_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS:
+      g_assert (priv->state == TP_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED);
       break;
-    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
-    case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
-      g_assert (priv->state == GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS);
+    case TP_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
+    case TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
+      g_assert (priv->state == TP_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS);
       break;
     }
 
-  if (state == GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED)
+  if (state == TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED)
     {
       g_assert (reason != NULL);
       g_assert (reason->domain == TP_ERRORS);
@@ -514,7 +513,7 @@ change_search_state (GabbleSearchChannel *chan,
       states[state], error_name == NULL ? "" : error_name);
   priv->state = state;
 
-  gabble_svc_channel_type_contact_search_emit_search_state_changed (
+  tp_svc_channel_type_contact_search_emit_search_state_changed (
       chan, state, (error_name == NULL ? "" : error_name), details);
 
   g_hash_table_unref (details);
@@ -566,13 +565,10 @@ ht_lookup_and_remove (GHashTable *info_map,
 
 static void
 add_search_result (GabbleSearchChannel *chan,
-    TpHandleRepoIface *handles,
     GHashTable *info_map)
 {
   GPtrArray *info = g_ptr_array_new ();
   gchar *jid, *first = NULL, *last = NULL;
-  TpHandle h;
-  GError *e = NULL;
   gpointer key, value;
   GHashTableIter iter;
 
@@ -583,22 +579,11 @@ add_search_result (GabbleSearchChannel *chan,
       return;
     }
 
-  h = tp_handle_ensure (handles, jid, NULL, &e);
-
-  if (h == 0)
+  if (!wocky_decode_jid (jid, NULL, NULL, NULL))
     {
-      DEBUG ("invalid jid: %s", e->message);
-      g_error_free (e);
+      DEBUG ("'%s' is not a valid jid; ignoring this result", jid);
       return;
     }
-
-  tp_handle_set_add (chan->priv->result_handles, h);
-  tp_handle_unref (handles, h);
-
-  {
-    gchar *components[] = { jid, NULL };
-    g_ptr_array_add (info, make_field ("x-telepathy-identifier", components));
-  }
 
   g_hash_table_iter_init (&iter, info_map);
   while (g_hash_table_iter_next (&iter, &key, &value))
@@ -650,12 +635,11 @@ add_search_result (GabbleSearchChannel *chan,
       g_ptr_array_add (info, make_field ("n", components));
     }
 
-  g_hash_table_insert (chan->priv->results, GUINT_TO_POINTER (h), info);
+  g_hash_table_insert (chan->priv->results, g_strdup (jid), info);
 }
 
 static void
 parse_result_item (GabbleSearchChannel *chan,
-                   TpHandleRepoIface *handles,
                    LmMessageNode *item)
 {
   const gchar *jid = lm_message_node_get_attribute (item, "jid");
@@ -679,13 +663,12 @@ parse_result_item (GabbleSearchChannel *chan,
       g_hash_table_insert (info, n->name, value);
     }
 
-  add_search_result (chan, handles, info);
+  add_search_result (chan, info);
   g_hash_table_destroy (info);
 }
 
 static void
 parse_extended_result_item (GabbleSearchChannel *chan,
-    TpHandleRepoIface *handles,
     LmMessageNode *item)
 {
   GHashTable *info;
@@ -731,7 +714,7 @@ parse_extended_result_item (GabbleSearchChannel *chan,
     }
   else
     {
-      add_search_result (chan, handles, info);
+      add_search_result (chan, info);
     }
 
   g_hash_table_destroy (info);
@@ -742,9 +725,6 @@ parse_unextended_search_results (GabbleSearchChannel *chan,
     LmMessageNode *query_node,
     GError **error)
 {
-  TpBaseChannel *base = TP_BASE_CHANNEL (chan);
-  TpHandleRepoIface *handles = tp_base_connection_get_handles (
-      tp_base_channel_get_connection (base), TP_HANDLE_TYPE_CONTACT);
   NodeIter i;
 
   for (i = node_iter (query_node); i; i = node_iter_next (i))
@@ -752,7 +732,7 @@ parse_unextended_search_results (GabbleSearchChannel *chan,
       LmMessageNode *item = node_iter_data (i);
 
       if (!strcmp (item->name, "item"))
-        parse_result_item (chan, handles, item);
+        parse_result_item (chan, item);
       else
         DEBUG ("found <%s/> in <query/> rather than <item/>, skipping",
             item->name);
@@ -766,9 +746,6 @@ parse_extended_search_results (GabbleSearchChannel *chan,
     LmMessageNode *query_node,
     GError **error)
 {
-  TpBaseChannel *base = TP_BASE_CHANNEL (chan);
-  TpHandleRepoIface *handles = tp_base_connection_get_handles (
-      tp_base_channel_get_connection (base), TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *x;
   NodeIter i;
 
@@ -785,7 +762,7 @@ parse_extended_search_results (GabbleSearchChannel *chan,
       LmMessageNode *item = node_iter_data (i);
 
       if (!tp_strdiff (item->name, "item"))
-        parse_extended_result_item (chan, handles, item);
+        parse_extended_result_item (chan, item);
       else if (!tp_strdiff (item->name, "reported"))
         /* Ignore <reported> node */
         continue;
@@ -823,7 +800,7 @@ search_reply_cb (GabbleConnection *conn,
 
   DEBUG ("called");
 
-  if (chan->priv->state != GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS)
+  if (chan->priv->state != TP_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS)
     {
       DEBUG ("state is %s, not in progress; ignoring results",
           states[chan->priv->state]);
@@ -879,16 +856,16 @@ search_reply_cb (GabbleConnection *conn,
   if (err == NULL)
     {
       /* fire SearchStateChanged */
-      gabble_svc_channel_type_contact_search_emit_search_result_received (chan,
+      tp_svc_channel_type_contact_search_emit_search_result_received (chan,
           chan->priv->results);
 
-      change_search_state (chan, GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
+      change_search_state (chan, TP_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
           NULL);
     }
   else
     {
       DEBUG ("Searching failed: %s", err->message);
-      change_search_state (chan, GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED,
+      change_search_state (chan, TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED,
           err);
       g_error_free (err);
     }
@@ -1040,7 +1017,7 @@ do_search (GabbleSearchChannel *chan,
     {
       ret = TRUE;
       change_search_state (chan,
-          GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS, NULL);
+          TP_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS, NULL);
     }
   else
     {
@@ -1092,8 +1069,8 @@ gabble_search_channel_constructor (GType type,
 
   chan->priv->boolean_keys = g_ptr_array_new ();
 
-  chan->priv->results = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) free_info);
+  chan->priv->results = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, (GDestroyNotify) free_info);
 
   request_search_fields (chan);
 
@@ -1186,9 +1163,9 @@ gabble_search_channel_fill_immutable_properties (
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "AvailableSearchKeys",
-      GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Server",
-      GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Limit",
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "AvailableSearchKeys",
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Server",
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Limit",
       NULL);
 }
 
@@ -1227,7 +1204,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
   object_class->get_property = gabble_search_channel_get_property;
   object_class->set_property = gabble_search_channel_set_property;
 
-  base_class->channel_type = GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH;
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH;
   base_class->interfaces = gabble_search_channel_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   base_class->fill_immutable_properties =
@@ -1241,9 +1218,9 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
 
   param_spec = g_param_spec_uint ("search-state", "Search state",
       "The current state of the search represented by this channel",
-      GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED,
-      GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED,
-      GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED,
+      TP_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED,
+      TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED,
+      TP_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SEARCH_STATE,
       param_spec);
@@ -1286,7 +1263,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
                   G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_INT, G_TYPE_STRING);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
-      GABBLE_IFACE_QUARK_CHANNEL_TYPE_CONTACT_SEARCH,
+      TP_IFACE_QUARK_CHANNEL_TYPE_CONTACT_SEARCH,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,
       search_channel_props);
 
@@ -1294,7 +1271,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
 }
 
 static void
-gabble_search_channel_search (GabbleSvcChannelTypeContactSearch *self,
+gabble_search_channel_search (TpSvcChannelTypeContactSearch *self,
                               GHashTable *terms,
                               DBusGMethodInvocation *context)
 {
@@ -1302,7 +1279,7 @@ gabble_search_channel_search (GabbleSvcChannelTypeContactSearch *self,
   GabbleSearchChannelPrivate *priv = chan->priv;
   GError *error = NULL;
 
-  if (priv->state != GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED)
+  if (priv->state != TP_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED)
     {
       error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "SearchState is %s", states[priv->state]);
@@ -1311,7 +1288,7 @@ gabble_search_channel_search (GabbleSvcChannelTypeContactSearch *self,
 
   if (do_search (chan, terms, &error))
     {
-      gabble_svc_channel_type_contact_search_return_from_search (context);
+      tp_svc_channel_type_contact_search_return_from_search (context);
       return;
     }
 
@@ -1321,7 +1298,7 @@ err:
 }
 
 static void
-gabble_search_channel_stop (GabbleSvcChannelTypeContactSearch *self,
+gabble_search_channel_stop (TpSvcChannelTypeContactSearch *self,
                             DBusGMethodInvocation *context)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (self);
@@ -1329,19 +1306,19 @@ gabble_search_channel_stop (GabbleSvcChannelTypeContactSearch *self,
 
   switch (priv->state)
     {
-      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS:
+      case TP_CHANNEL_CONTACT_SEARCH_STATE_IN_PROGRESS:
         {
           GError e = { TP_ERRORS, TP_ERROR_CANCELLED, "Stop() called" };
 
           change_search_state (chan,
-              GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED, &e);
+              TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED, &e);
           /* Deliberately falling through to return from the method: */
         }
-      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
-      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
-        gabble_svc_channel_type_contact_search_return_from_stop (context);
+      case TP_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
+      case TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
+        tp_svc_channel_type_contact_search_return_from_stop (context);
         break;
-      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
+      case TP_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
         {
           GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "Search() hasn't been called yet" };
@@ -1349,7 +1326,7 @@ gabble_search_channel_stop (GabbleSvcChannelTypeContactSearch *self,
           dbus_g_method_return_error (context, &e);
           break;
         }
-      case GABBLE_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
+      case TP_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:
         g_assert_not_reached ();
     }
 }
@@ -1364,9 +1341,9 @@ static void
 contact_search_iface_init (gpointer g_iface,
                            gpointer iface_data)
 {
-  GabbleSvcChannelTypeContactSearchClass *klass = g_iface;
+  TpSvcChannelTypeContactSearchClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_channel_type_contact_search_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_type_contact_search_implement_##x (\
     klass, gabble_search_channel_##x)
   IMPLEMENT(search);
   IMPLEMENT(stop);

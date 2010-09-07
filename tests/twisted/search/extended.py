@@ -126,15 +126,12 @@ def complete_search(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = e.args[0]
 
-    handles = infos.keys()
-    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
-    assert set(jids) == set(results.keys())
+    assertEquals(results.keys(), infos.keys())
 
-    for handle, id in zip(handles, jids):
-        i = infos[handle]
+    for id in results.keys():
+        i = infos[id]
         r = results[id]
         i_ = pformat(unwrap(i))
-        assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
         assert ("n", [], [r['last'], r['first'], "", "", ""])    in i, i_
         assert ("nickname", [], [r['nick']]) in i, i_
         assert ("email", [], [r['email']]) in i, i_
@@ -142,14 +139,9 @@ def complete_search(q, bus, conn, stream):
         assert ("x-n-family", [], [r['last']]) in i, i_
         assert ("x-n-given", [], [r['first']]) in i, i_
 
-        assert len(i) == 7, i_
+        assert len(i) == 6, i_
 
     search_done(q, chan, c_search, c_props)
-
-    # Check that now the channel has gone away the handles have become invalid.
-    for h in handles:
-        call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
-        q.expect('dbus-error', method='InspectHandles')
 
 def complete_search2(q, bus, conn, stream):
     # uses other, dataform specific, fields
@@ -177,22 +169,19 @@ def complete_search2(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = e.args[0]
 
-    handles = infos.keys()
-    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
-    assert set(jids) == set(results.keys())
+    assertEquals(results.keys(), infos.keys())
 
-    for handle, id in zip(handles, jids):
-        i = infos[handle]
+    for id in results.keys():
+        i = infos[id]
         r = results[id]
         i_ = pformat(unwrap(i))
-        assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
         assert ("n", [], [r['family'], r['given'], "", "", ""])    in i, i_
         assert ("nickname", [], [r['nickname']]) in i, i_
         assert ("email", [], [r['email']]) in i, i_
         assert ("x-n-family", [], [r['family']]) in i, i_
         assert ("x-n-given", [], [r['given']]) in i, i_
 
-        assert len(i) == 6, i_
+        assert len(i) == 5, i_
 
     search_done(q, chan, c_search, c_props)
 
@@ -222,19 +211,16 @@ def openfire_search(q, bus, conn, stream):
     r = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = r.args[0]
 
-    handles = infos.keys()
-    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
-    assert set(jids) == set(results.keys())
+    assertEquals(results.keys(), infos.keys())
 
-    for handle, id in zip(handles, jids):
-        i = infos[handle]
+    for id in results.keys():
+        i = infos[id]
         r = results[id]
         i_ = pformat(unwrap(i))
-        assert ("x-telepathy-identifier", [], [r['jid']]) in i, i_
         assert ("fn", [], [r['Name']]) in i, i_
         assert ("email", [], [r['Email']]) in i, i_
 
-        assert len(i) == 3
+        assert len(i) == 2
 
 # Server supports 'nickname' and 'nick' which are both mapped to the
 # "nickname" in Telepathy

@@ -65,6 +65,9 @@ void gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
     GFunc func, gpointer user_data);
 gchar *gabble_capability_set_dump (const GabbleCapabilitySet *caps,
     const gchar *indent);
+gchar *gabble_capability_set_dump_diff (const GabbleCapabilitySet *old_caps,
+    const GabbleCapabilitySet *new_caps,
+    const gchar *indent);
 
 typedef gboolean (*GabbleCapabilitySetPredicate) (
     const GabbleCapabilitySet *set, gconstpointer user_data);

@@ -1051,8 +1051,24 @@ emit_capabilities_update (GabblePresenceCache *cache,
     const GabbleCapabilitySet *old_cap_set,
     const GabbleCapabilitySet *new_cap_set)
 {
-  g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
-      handle, old_cap_set, new_cap_set);
+  if (gabble_capability_set_equals (old_cap_set, new_cap_set))
+    {
+      DEBUG ("no change in caps for handle %u", handle);
+    }
+  else
+    {
+      if (DEBUGGING)
+        {
+          gchar *diff = gabble_capability_set_dump_diff (old_cap_set,
+              new_cap_set, "  ");
+
+          DEBUG ("Emitting caps update for handle %u\n%s", handle, diff);
+          g_free (diff);
+        }
+
+      g_signal_emit (cache, signals[CAPABILITIES_UPDATE], 0,
+          handle, old_cap_set, new_cap_set);
+    }
 }
 
 /**
@@ -1216,6 +1232,14 @@ _caps_disco_cb (GabbleDisco *disco,
       WockyNodeTree *query_node = wocky_node_tree_new_from_node (query_result);
       GabbleCapsCache *caps_cache = gabble_caps_cache_dup_shared ();
 
+      if (DEBUGGING)
+        {
+          gchar *tmp = gabble_capability_set_dump (cap_set, "  ");
+
+          DEBUG ("trusting %s to mean:\n%s", node, tmp);
+          g_free (tmp);
+        }
+
       /* Update external cache. */
       gabble_caps_cache_insert (caps_cache, node, query_node);
       g_object_unref (caps_cache);
@@ -1245,7 +1269,17 @@ _caps_disco_cb (GabbleDisco *disco,
        *       for the jid that answered the query.
        */
       if (!bad_hash)
-        set_caps_for (waiter_self, cache, cap_set, handle, jid);
+        {
+          if (DEBUGGING)
+            {
+              gchar *tmp = gabble_capability_set_dump (cap_set, "  ");
+
+              DEBUG ("%s not yet fully trusted to mean:\n%s", node, tmp);
+              g_free (tmp);
+            }
+
+          set_caps_for (waiter_self, cache, cap_set, handle, jid);
+        }
 
       waiters = g_slist_remove (waiters, waiter_self);
       g_hash_table_insert (priv->disco_pending, key, waiters);
@@ -1330,30 +1364,16 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       /* we already have enough trust for this node; apply the cached value to
        * the (handle, resource) */
-
-      if (DEBUGGING)
-        {
-          gchar *tmp = gabble_capability_set_dump (cap_set, "  ");
-
-          DEBUG ("enough trust for URI %s, setting caps for %u (%s) to:\n%s",
-              uri, handle, from, tmp);
-          g_free (tmp);
-        }
+      DEBUG ("enough trust for URI %s, setting caps for %u (%s)", uri, handle,
+          from);
 
       if (presence)
-        {
-          gabble_presence_set_capabilities (
-              presence, resource, cap_set, serial);
-        }
+        gabble_presence_set_capabilities (presence, resource, cap_set, serial);
       else
-        {
-          DEBUG ("presence not found");
-        }
+        DEBUG ("presence not found");
 
       if (cached_caps != NULL)
-        {
-          gabble_capability_set_free (cached_caps);
-        }
+        gabble_capability_set_free (cached_caps);
     }
   else
     {
@@ -1472,22 +1492,11 @@ _process_caps (GabblePresenceCache *cache,
       const GabbleCapabilitySet *new_cap_set =
           gabble_presence_peek_caps (presence);
 
-      if (DEBUGGING)
-        {
-          gchar *old_dump = gabble_capability_set_dump (old_cap_set, "  ");
-          gchar *new_dump = gabble_capability_set_dump (new_cap_set, "  ");
-
-          DEBUG ("Emitting caps update for handle %u, from:\n%sto:\n%s",
-              handle, old_dump, new_dump);
-          g_free (old_dump);
-          g_free (new_dump);
-        }
-
       emit_capabilities_update (cache, handle, old_cap_set, new_cap_set);
     }
   else
     {
-      DEBUG ("No change in caps for handle %u, not updating", handle);
+      DEBUG ("No presence for handle %u, not updating caps", handle);
     }
 
   if (old_cap_set != NULL)

@@ -433,6 +433,15 @@ def assertEquals(expected, value):
         raise AssertionError(
             "expected:\n%s\ngot:\n%s" % (pretty(expected), pretty(value)))
 
+def assertSameSets(expected, value):
+    exp_set = set(expected)
+    val_set = set(value)
+
+    if exp_set != val_set:
+        raise AssertionError(
+            "expected contents:\n%s\ngot:\n%s" % (
+                pretty(exp_set), pretty(val_set)))
+
 def assertNotEquals(expected, value):
     if expected == value:
         raise AssertionError(

@@ -9,7 +9,8 @@ from twisted.words.xish import xpath
 
 from gabbletest import exec_test, acknowledge_iq
 from servicetest import (
-    call_async, unwrap, make_channel_proxy, EventPattern, assertEquals,
+    call_async, unwrap, make_channel_proxy, EventPattern,
+    assertEquals, assertSameSets,
 )
 from search_helper import call_create, answer_extended_field_query, make_search, send_results_extended
 
@@ -126,7 +127,7 @@ def complete_search(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = e.args[0]
 
-    assertEquals(results.keys(), infos.keys())
+    assertSameSets(results.keys(), infos.keys())
 
     for id in results.keys():
         i = infos[id]
@@ -169,7 +170,7 @@ def complete_search2(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = e.args[0]
 
-    assertEquals(results.keys(), infos.keys())
+    assertSameSets(results.keys(), infos.keys())
 
     for id in results.keys():
         i = infos[id]
@@ -211,7 +212,7 @@ def openfire_search(q, bus, conn, stream):
     r = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = r.args[0]
 
-    assertEquals(results.keys(), infos.keys())
+    assertSameSets(results.keys(), infos.keys())
 
     for id in results.keys():
         i = infos[id]

@@ -9,7 +9,7 @@ from twisted.words.protocols.jabber.client import IQ
 
 from gabbletest import exec_test, sync_stream
 from servicetest import (
-    call_async, unwrap, make_channel_proxy, EventPattern, assertEquals,
+    call_async, unwrap, make_channel_proxy, EventPattern, assertSameSets,
     )
 from search_helper import call_create, answer_field_query, make_search, send_results
 
@@ -81,7 +81,7 @@ def complete_search(q, bus, conn, stream, server):
     r = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = r.args[0]
 
-    assertEquals(results.keys(), infos.keys())
+    assertSameSets(results.keys(), infos.keys())
 
     for id in results.keys():
         i = infos[id]

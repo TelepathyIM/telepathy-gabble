@@ -111,7 +111,7 @@ toggle_queueing_cb (GObject *source_object,
 static void
 conn_power_saving_set_power_saving (
     GabbleSvcConnectionInterfacePowerSaving *conn,
-    gboolean in_Active,
+    gboolean enable,
     DBusGMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
@@ -119,27 +119,27 @@ conn_power_saving_set_power_saving (
   ToggleQueueingContext *queueing_context;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTED ||
-      in_Active == self->power_saving)
+      enable == self->power_saving)
     {
       gabble_svc_connection_interface_power_saving_return_from_set_power_saving (
           context);
 
-      if (in_Active != self->power_saving)
+      if (enable != self->power_saving)
         gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
-            self, in_Active);
+            self, enable);
 
-      self->power_saving = in_Active;
+      self->power_saving = enable;
 
       return;
     }
 
   queueing_context = g_slice_new0 (ToggleQueueingContext);
-  queueing_context->enabling = in_Active;
+  queueing_context->enabling = enable;
   queueing_context->dbus_context = context;
 
-  DEBUG ("%sabling presence queueing", in_Active ? "en" : "dis");
+  DEBUG ("%sabling presence queueing", enable ? "en" : "dis");
 
-  conn_power_saving_send_command (self, in_Active ? "enable" : "disable",
+  conn_power_saving_send_command (self, enable ? "enable" : "disable",
       toggle_queueing_cb, queueing_context);
 }
 

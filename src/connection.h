@@ -187,8 +187,6 @@ struct _GabbleConnection {
     /* ContactInfo.SupportedFields, or NULL to use the generic one */
     GPtrArray *contact_info_fields;
 
-    gboolean power_saving;
-
     GabbleConnectionPrivate *priv;
 };
 

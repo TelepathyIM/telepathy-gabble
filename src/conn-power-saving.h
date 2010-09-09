@@ -29,12 +29,6 @@ G_BEGIN_DECLS
 
 void conn_power_saving_iface_init (gpointer g_iface, gpointer iface_data);
 
-void conn_power_saving_properties_getter (GObject *object,
-    GQuark interface,
-    GQuark name,
-    GValue *value,
-    gpointer getter_data);
-
 void conn_power_saving_init (GabbleConnection *self);
 
 G_END_DECLS

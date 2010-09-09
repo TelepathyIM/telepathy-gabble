@@ -68,7 +68,10 @@ toggle_queueing_cb (GObject *source_object,
   ToggleQueueingContext *queueing_context = (ToggleQueueingContext *) user_data;
   GError *error = NULL;
   gboolean enabling;
+  gboolean enabled;
   WockyStanza *reply;
+
+  g_object_get (source_object, "power-saving", &enabled, NULL);
 
   reply = conn_util_send_iq_finish_harder (self, res, &error);
 
@@ -98,9 +101,9 @@ toggle_queueing_cb (GObject *source_object,
       g_object_unref (reply);
     }
 
-  if (enabling != self->power_saving)
+  if (enabling != enabled)
     {
-      self->power_saving = enabling;
+      g_object_set (source_object, "power-saving", enabling, NULL);
       gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
           self, enabling);
     }
@@ -117,18 +120,23 @@ conn_power_saving_set_power_saving (
   GabbleConnection *self = GABBLE_CONNECTION (conn);
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
   ToggleQueueingContext *queueing_context;
+  gboolean enabled;
+
+  g_object_get (G_OBJECT (self), "power-saving", &enabled, NULL);
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTED ||
-      enable == self->power_saving)
+      enable == enabled)
     {
       gabble_svc_connection_interface_power_saving_return_from_set_power_saving (
           context);
 
-      if (enable != self->power_saving)
-        gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
-            self, enable);
+      if (enable != enabled)
+        {
+          gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
+              self, enable);
 
-      self->power_saving = enable;
+          g_object_set (G_OBJECT (self), "power-saving", enable, NULL);
+        }
 
       return;
     }
@@ -154,34 +162,6 @@ conn_power_saving_iface_init (gpointer g_iface,
 #undef IMPLEMENT
 }
 
-void
-conn_power_saving_properties_getter (GObject *object,
-    GQuark interface,
-    GQuark name,
-    GValue *value,
-    gpointer getter_data)
-{
-  static GQuark prop_quarks[NUM_OF_PROP] = {0};
-  GabbleConnection *conn = GABBLE_CONNECTION (object);
-
-  if (G_UNLIKELY (prop_quarks[0] == 0))
-    {
-      prop_quarks[PROP_POWER_SAVING_ACTIVE] =
-        g_quark_from_static_string ("PowerSavingActive");
-    }
-
-  DEBUG ("PowerSaving get property %s", g_quark_to_string (name));
-
-  if (name == prop_quarks[PROP_POWER_SAVING_ACTIVE])
-    {
-      g_value_set_boolean (value, conn->power_saving);
-    }
-  else
-    {
-      g_assert_not_reached ();
-    }
-}
-
 static void
 conn_power_saving_enable_on_connect_cb (GObject *source_object,
     GAsyncResult *res,
@@ -199,7 +179,7 @@ conn_power_saving_enable_on_connect_cb (GObject *source_object,
     {
       DEBUG ("Failed to enter power saving mode when connected: %s",
              error->message);
-      self->power_saving = FALSE;
+      g_object_set (source_object, "power-saving", FALSE, NULL);
       g_error_free (error);
       gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
           self, FALSE);
@@ -216,7 +196,11 @@ conn_power_saving_status_changed_cb (GabbleConnection *self,
     guint reason,
     gpointer user_data)
 {
-  if (self->power_saving && status == TP_CONNECTION_STATUS_CONNECTED)
+  gboolean enabled;
+
+  g_object_get (G_OBJECT (self), "power-saving", &enabled, NULL);
+
+  if (enabled && status == TP_CONNECTION_STATUS_CONNECTED)
     conn_power_saving_send_command (self, "enable",
         conn_power_saving_enable_on_connect_cb, NULL);
 }

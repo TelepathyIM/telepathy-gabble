@@ -166,6 +166,7 @@ enum
     PROP_KEEPALIVE_INTERVAL,
     PROP_DECLOAK_AUTOMATICALLY,
     PROP_FALLBACK_SERVERS,
+    PROP_POWER_SAVING,
 
     LAST_PROPERTY
 };
@@ -215,6 +216,8 @@ struct _GabbleConnectionPrivate
 
   GStrv fallback_servers;
   guint fallback_server_index;
+
+  gboolean power_saving;
 
   /* authentication properties */
   gchar *stream_server;
@@ -578,6 +581,10 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_boxed (value, priv->fallback_servers);
       break;
 
+    case PROP_POWER_SAVING:
+      g_value_set_boolean (value, priv->power_saving);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -702,6 +709,10 @@ gabble_connection_set_property (GObject      *object,
       priv->fallback_server_index = 0;
       break;
 
+    case PROP_POWER_SAVING:
+      priv->power_saving = g_value_get_boolean (value);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -820,7 +831,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { NULL }
   };
   static TpDBusPropertiesMixinPropImpl power_saving_props[] = {
-        { "PowerSavingActive", NULL, NULL },
+        { "PowerSavingActive", "power-saving", NULL },
         { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -850,7 +861,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           mail_notif_props,
         },
         { GABBLE_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
-          conn_power_saving_properties_getter,
+          tp_dbus_properties_mixin_getter_gobject_properties,
           NULL,
           power_saving_props,
         },
@@ -1062,6 +1073,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         "List of servers to fallback to (syntax server[:port][,oldssl]",
         G_TYPE_STRV,
         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+  
+  g_object_class_install_property (
+      object_class, PROP_DECLOAK_AUTOMATICALLY,
+      g_param_spec_boolean (
+          "power-saving", "Power saving active?",
+          "Queue remote presence updates server-side for less network chatter",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,

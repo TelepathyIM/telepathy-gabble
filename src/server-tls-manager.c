@@ -201,6 +201,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (handler);
   GabbleTLSCertificate *certificate;
+  gboolean ignore_ssl_errors;
 
   /* this should be called only once per-connection. */
   g_return_if_fail (!self->priv->verify_async_called);
@@ -208,6 +209,24 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   DEBUG ("verify_async() called on the GabbleServerTLSManager.");
 
   self->priv->verify_async_called = TRUE;
+
+  g_object_get (self,
+      "ignore-ssl-errors", &ignore_ssl_errors,
+      NULL);
+
+  if (ignore_ssl_errors)
+    {
+      DEBUG ("ignore-ssl-errors is set, fallback to non-interactive "
+          "verification.");
+
+      WOCKY_TLS_HANDLER_CLASS
+        (gabble_server_tls_manager_parent_class)->verify_async_func (
+            WOCKY_TLS_HANDLER (self), tls_session, peername,
+            callback, user_data);
+
+      return;
+    }
+
   self->priv->async_result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, wocky_tls_handler_verify_finish);
   self->priv->tls_session = g_object_ref (tls_session);

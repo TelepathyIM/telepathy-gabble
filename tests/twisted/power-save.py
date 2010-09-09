@@ -7,7 +7,7 @@ import config
 import constants as cs
 
 from gabbletest import exec_test, GoogleXmlStream, make_result_iq, \
-    send_error_reply
+    send_error_reply, disconnect_conn
 from servicetest import call_async, Event, assertEquals, EventPattern
 import ns
 
@@ -161,8 +161,25 @@ def test_on_connect_error(q, bus, conn, stream):
     # Server does not support it, power saving is disabled.
     q.expect('dbus-signal', signal='PowerSavingChanged', args=[False])
 
+def test_disconnect(q, bus, conn, stream):
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    assertEquals (False, conn.Get(cs.CONN_IFACE_POWER_SAVING,
+                                  "PowerSavingActive",
+                                  dbus_interface=cs.PROPERTIES_IFACE))
+
+    call_async(q, conn.PowerSaving, 'SetPowerSaving', True)
+
+    stanza = expect_command(q, 'enable')
+
+    disconnect_conn(q, conn, stream)
+
 if __name__ == '__main__':
     exec_test(test)
     exec_test(test_error)
     exec_test(test_on_connect)
     exec_test(test_on_connect_error)
+    exec_test(test_disconnect)

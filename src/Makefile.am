@@ -173,8 +173,6 @@ libgabble_convenience_la_SOURCES = \
     server-tls-manager.c \
     $(top_srcdir)/gabble/sidecar.h \
     sidecar.c \
-    slacker.h \
-    slacker.c \
     tls-certificate.h \
     tls-certificate.c \
     tube-iface.h \

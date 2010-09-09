@@ -70,16 +70,14 @@ toggle_queueing_cb (GObject *source_object,
   gboolean enabling;
   WockyStanza *reply;
 
-  DEBUG (" ");
-
   reply = conn_util_send_iq_finish_harder (self, res, &error);
 
   enabling = queueing_context->enabling;
 
-  if (error)
+  if (reply == NULL)
     {
       DEBUG ("Failed to %sable queueing: %s",
-          queueing_context->enabling ? "en" : "dis", error->message);
+          enabling ? "en" : "dis", error->message);
 
       enabling = FALSE;
 
@@ -89,11 +87,15 @@ toggle_queueing_cb (GObject *source_object,
     }
   else
     {
+      DEBUG ("%sabled queueing", enabling ? "en" : "dis");
+
       gabble_svc_connection_interface_power_saving_return_from_set_power_saving (
           queueing_context->dbus_context);
 
       if (!enabling)
         conn_power_saving_send_command (self, "flush", NULL, NULL);
+
+      g_object_unref (reply);
     }
 
   if (enabling != self->power_saving)
@@ -102,9 +104,6 @@ toggle_queueing_cb (GObject *source_object,
       gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
           self, enabling);
     }
-
-  if (reply != NULL)
-      g_object_unref (reply);
 
   g_slice_free (ToggleQueueingContext, queueing_context);
 }
@@ -196,7 +195,7 @@ conn_power_saving_enable_on_connect_cb (GObject *source_object,
 
   reply = conn_util_send_iq_finish_harder (self, res, &error);
 
-  if (error != NULL)
+  if (reply == NULL)
     {
       DEBUG ("Failed to enter power saving mode when connected: %s",
              error->message);
@@ -205,9 +204,10 @@ conn_power_saving_enable_on_connect_cb (GObject *source_object,
       gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
           self, FALSE);
     }
-
-  if (reply != NULL)
-    g_object_unref (reply);
+  else
+    {
+      g_object_unref (reply);
+    }
 }
 
 static void

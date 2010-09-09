@@ -192,21 +192,6 @@ gabble_tls_certificate_init (GabbleTLSCertificate *self)
       GABBLE_TYPE_TLS_CERTIFICATE, GabbleTLSCertificatePrivate);
 }
 
-static GType
-array_of_ay_get_type (void)
-{
-  static GType t = 0;
-
-  if (G_UNLIKELY (t == 0))
-    {
-      t = dbus_g_type_get_collection ("GPtrArray",
-          dbus_g_type_get_collection ("GArray",
-              G_TYPE_UCHAR));
-    }
-
-  return t;
-}
-
 static void
 gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
 {
@@ -283,8 +268,7 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
   pspec = g_param_spec_boxed ("certificate-chain-data",
       "The certificate chain data",
       "The raw PEM-encoded trust chain of this certificate.",
-      /* FIXME: this should be generated for us. */
-      array_of_ay_get_type (),
+      TP_ARRAY_TYPE_UCHAR_ARRAY_LIST,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_CERTIFICATE_CHAIN_DATA, pspec);
 

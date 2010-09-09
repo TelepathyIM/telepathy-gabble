@@ -61,7 +61,7 @@
 #include "conn-sidecars.h"
 #include "conn-mail-notif.h"
 #include "conn-olpc.h"
-#include "conn-slacker.h"
+#include "conn-power-saving.h"
 #include "debug.h"
 #include "disco.h"
 #include "media-channel.h"
@@ -135,6 +135,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_mail_notif_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES,
       conn_client_types_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_POWER_SAVING,
+      conn_power_saving_iface_init);
     )
 
 /* properties */
@@ -378,6 +380,7 @@ gabble_connection_constructor (GType type,
   conn_sidecars_init (self);
   conn_mail_notif_init (self);
   conn_client_types_init (self);
+  conn_power_saving_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -751,7 +754,6 @@ base_connected_cb (TpBaseConnection *base_conn)
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
 
   gabble_connection_connected_olpc (conn);
-  gabble_connection_slacker_start (conn);
 }
 
 #define TWICE(x) (x), (x)
@@ -817,6 +819,10 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "MailAddress", NULL, NULL },
         { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl power_saving_props[] = {
+        { "PowerSavingActive", NULL, NULL },
+        { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
         /* 0 */ { TP_IFACE_CONNECTION_INTERFACE_LOCATION,
           conn_location_properties_getter,
@@ -842,6 +848,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           conn_mail_notif_properties_getter,
           NULL,
           mail_notif_props,
+        },
+        { GABBLE_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
+          conn_power_saving_properties_getter,
+          NULL,
+          power_saving_props,
         },
         { NULL }
   };
@@ -2110,10 +2121,6 @@ connection_shut_down (TpBaseConnection *base)
   GabbleConnection *self = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = self->priv;
 
-  /* Regardless of whether disconnection is already in progress, we still want
-   * to stop listening to the slacker and pinging the remote server.
-   */
-  gabble_connection_slacker_stop (self);
   tp_clear_object (&priv->pinger);
 
   if (priv->closing)

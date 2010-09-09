@@ -69,12 +69,12 @@ libgabble_convenience_la_SOURCES = \
     conn-location.c \
     conn-olpc.h \
     conn-olpc.c \
+    conn-power-saving.h \
+    conn-power-saving.c \
     conn-presence.h \
     conn-presence.c \
     conn-sidecars.h \
     conn-sidecars.c \
-    conn-slacker.h \
-    conn-slacker.c \
     conn-util.h \
     conn-util.c \
     conn-mail-notif.h \

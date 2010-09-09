@@ -1,5 +1,5 @@
 /*
- * conn-slacker.h - Header for Gabble connection code handling device idleness
+ * conn-power-saving.h - Header for Gabble connection code handling power saving
  * Copyright (C) 2010 Collabora Ltd.
  * Copyright (C) 2010 Nokia Corporation
  *
@@ -27,10 +27,16 @@
 
 G_BEGIN_DECLS
 
-void gabble_connection_slacker_start (GabbleConnection *conn);
-void gabble_connection_slacker_stop (GabbleConnection *conn);
+void conn_power_saving_iface_init (gpointer g_iface, gpointer iface_data);
+
+void conn_power_saving_properties_getter (GObject *object,
+    GQuark interface,
+    GQuark name,
+    GValue *value,
+    gpointer getter_data);
+
+void conn_power_saving_init (GabbleConnection *self);
 
 G_END_DECLS
 
 #endif /* GABBLE_CONN_SLACKER_H */
-

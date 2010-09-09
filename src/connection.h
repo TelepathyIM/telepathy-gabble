@@ -39,7 +39,6 @@
 #include "ft-manager.h"
 #include "jingle-factory.h"
 #include "muc-factory.h"
-#include "slacker.h"
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -188,8 +187,7 @@ struct _GabbleConnection {
     /* ContactInfo.SupportedFields, or NULL to use the generic one */
     GPtrArray *contact_info_fields;
 
-    GabbleSlacker *slacker;
-    guint slacker_inactivity_changed_id;
+    gboolean power_saving;
 
     GabbleConnectionPrivate *priv;
 };

@@ -89,5 +89,17 @@ def test(q, bus, conn, stream):
 
     q.expect('dbus-return', method='SetProperties', value=())
 
+    call_async(q, text_chan.TpProperties, 'SetProperties',
+        [(31337, 'foo'), (props['password-required'], True)])
+    q.expect('dbus-error', name=cs.INVALID_ARGUMENT)
+
+    call_async(q, text_chan.TpProperties, 'SetProperties',
+        [(props['password'], True), (props['password-required'], 'foo')])
+    q.expect('dbus-error', name=cs.NOT_AVAILABLE)
+
+    call_async(q, text_chan.TpProperties, 'SetProperties',
+        [(props['subject-contact'], 42)])
+    q.expect('dbus-error', name=cs.PERMISSION_DENIED)
+
 if __name__ == '__main__':
     exec_test(test)

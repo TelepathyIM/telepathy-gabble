@@ -171,20 +171,18 @@ tls_certificate_accepted_cb (GabbleTLSCertificate *certificate,
 
 static void
 tls_certificate_rejected_cb (GabbleTLSCertificate *certificate,
-    GabbleTLSCertificateRejectReason reason,
-    const gchar *dbus_error,
-    GHashTable *details,
+    GPtrArray *rejections,
     gpointer user_data)
 {
   GError *error = NULL;
   GabbleServerTLSManager *self = user_data;
 
-  DEBUG ("TLS certificate rejected with reason %u, dbus error %s "
-      "and details map %p.", reason, dbus_error, details);
+  DEBUG ("TLS certificate rejected with rejections %p, long %u.",
+      rejections, rejections->len);
 
   self->priv->tls_state_changed = TRUE;
-  g_set_error (&error, GABBLE_SERVER_TLS_ERROR, reason,
-      "TLS certificate rejected with reason %u", reason);
+  g_set_error (&error, GABBLE_SERVER_TLS_ERROR, 0,
+      "TLS certificate rejected");
   g_simple_async_result_set_from_error (self->priv->async_result, error);
 
   g_simple_async_result_complete_in_idle (self->priv->async_result);
@@ -394,16 +392,24 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
     TpConnectionStatusReason *reason)
 {
   GabbleTLSCertificate *certificate;
+  GPtrArray *rejections;
+  GValueArray *rejection;
   GabbleTLSCertificateRejectReason tls_reason;
 
   certificate = gabble_server_tls_channel_get_certificate
     (self->priv->channel);
 
   g_object_get (certificate,
-      "reject-reason", &tls_reason,
-      "reject-error", dbus_error,
-      "reject-details", details,
+      "rejections", &rejections,
       NULL);
 
+  rejection = g_ptr_array_index (rejections, 0);
+
+  tls_reason = g_value_get_uint (g_value_array_get_nth (rejection, 0));
+  *dbus_error = g_value_dup_string (g_value_array_get_nth (rejection, 1));
+  *details = g_value_dup_boxed (g_value_array_get_nth (rejection, 2));
+
   *reason = cert_reject_reason_to_conn_reason (tls_reason);
+
+  g_ptr_array_unref (rejections);
 }

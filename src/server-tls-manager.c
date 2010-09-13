@@ -177,7 +177,7 @@ tls_certificate_rejected_cb (GabbleTLSCertificate *certificate,
   GError *error = NULL;
   GabbleServerTLSManager *self = user_data;
 
-  DEBUG ("TLS certificate rejected with rejections %p, long %u.",
+  DEBUG ("TLS certificate rejected with rejections %p, length %u.",
       rejections, rejections->len);
 
   self->priv->tls_state_changed = TRUE;

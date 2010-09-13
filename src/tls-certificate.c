@@ -295,7 +295,7 @@ gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (cert);
 
   DEBUG ("Reject() called on the TLS certificate with rejections %p, "
-      "long %u; current state %u", rejections, rejections->len,
+      "length %u; current state %u", rejections, rejections->len,
       self->priv->cert_state);
 
   if (rejections->len < 1)

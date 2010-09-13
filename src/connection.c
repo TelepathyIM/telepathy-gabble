@@ -2048,6 +2048,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   GabbleConnectionPrivate *priv = conn->priv;
   WockyTLSHandler *tls_handler;
   char *jid;
+  gboolean interactive_tls;
   gchar *user_certs_dir;
 
   g_assert (priv->connector == NULL);
@@ -2102,6 +2103,11 @@ _gabble_connection_connect (TpBaseConnection *base,
       DEBUG ("letting SRV lookup decide server and port");
     }
 
+  /* We want to enable interactive TLS verification also in
+   * case encryption is not required, and we don't ignore SSL errors.
+   */
+  interactive_tls = !conn->priv->ignore_ssl_errors;
+
   if (!conn->priv->require_encryption && !conn->priv->ignore_ssl_errors)
     {
       DEBUG ("require-encryption is False; flipping ignore_ssl_errors to True");
@@ -2115,7 +2121,9 @@ _gabble_connection_connect (TpBaseConnection *base,
       NULL);
 
   g_object_set (tls_handler,
-      "ignore-ssl-errors", priv->ignore_ssl_errors, NULL);
+      "interactive-tls", interactive_tls,
+      "ignore-ssl-errors", priv->ignore_ssl_errors,
+      NULL);
 
   if (priv->old_ssl)
     {

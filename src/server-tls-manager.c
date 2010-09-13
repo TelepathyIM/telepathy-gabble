@@ -41,6 +41,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleServerTLSManager, gabble_server_tls_manager,
 
 enum {
   PROP_CONNECTION = 1,
+  PROP_INTERACTIVE_TLS,
   NUM_PROPERTIES
 };
 
@@ -57,6 +58,7 @@ struct _GabbleServerTLSManagerPrivate {
 
   gboolean verify_async_called;
   gboolean tls_state_changed;
+  gboolean interactive_tls;
 
   gboolean dispose_has_run;
 };
@@ -73,6 +75,9 @@ gabble_server_tls_manager_get_property (GObject *object,
     {
     case PROP_CONNECTION:
       g_value_set_object (value, self->priv->connection);
+      break;
+    case PROP_INTERACTIVE_TLS:
+      g_value_set_boolean (value, self->priv->interactive_tls);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -92,6 +97,9 @@ gabble_server_tls_manager_set_property (GObject *object,
     {
     case PROP_CONNECTION:
       self->priv->connection = g_value_dup_object (value);
+      break;
+    case PROP_INTERACTIVE_TLS:
+      self->priv->interactive_tls = g_value_get_boolean (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -199,7 +207,6 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (handler);
   GabbleTLSCertificate *certificate;
-  gboolean ignore_ssl_errors;
 
   /* this should be called only once per-connection. */
   g_return_if_fail (!self->priv->verify_async_called);
@@ -208,11 +215,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
 
   self->priv->verify_async_called = TRUE;
 
-  g_object_get (self,
-      "ignore-ssl-errors", &ignore_ssl_errors,
-      NULL);
-
-  if (ignore_ssl_errors)
+  if (!self->priv->interactive_tls)
     {
       DEBUG ("ignore-ssl-errors is set, fallback to non-interactive "
           "verification.");
@@ -325,6 +328,12 @@ gabble_server_tls_manager_class_init (GabbleServerTLSManagerClass *klass)
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_CONNECTION, pspec);
+
+  pspec = g_param_spec_boolean ("interactive-tls", "Interactive TLS setting",
+      "Whether interactive TLS certificate verification is enabled.",
+      FALSE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (oclass, PROP_INTERACTIVE_TLS, pspec);
 }
 
 static void

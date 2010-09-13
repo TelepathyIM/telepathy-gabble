@@ -300,11 +300,8 @@ gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
 
   if (rejections->len < 1)
     {
-      GError error =
-	{ TP_ERRORS,
-	  TP_ERROR_INVALID_ARGUMENT,
-	  "Calling Reject() with a zero-length rejection list."
-	};
+      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Calling Reject() with a zero-length rejection list." };
 
       dbus_g_method_return_error (context, &error);
       return;

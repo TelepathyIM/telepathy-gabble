@@ -4,9 +4,32 @@ telepathy-gabble 0.9.18 (UNRELEASED)
 This section about the news for an unreleased version of telepathy-gabble is a
 stub. You can help Telepathy by expanding it.
 
+Enhancements:
+
+• fd.o #30065: implement the stable API for ContactSearch (wjt)
+
+• Implement the stable API for interactive TLS certificate checking (cosimoc)
+
+• Implement the stable API for Conference channels (smcv)
+
+• Add the fallback-servers parameter, which can be used to make connections to
+  Google Talk on some networks more reliable (stormer)
+
+• Prompt the user about unknown TLS certificates if neither require-encryption
+  nor ignore-ssl-errors is set (cosimoc)
+
 Fixes:
 
-• fd.o#28051: with 0.9.x, some SRV errors break facebook login (wjt)
+• Make the --with-ca-certificates configure option work (Vincent Untz)
+
+• fd.o #30117: always emit PresencesChanged when we change our own presence,
+  and fix a related memory leak (wjt)
+
+• update our copy of Wocky:
+  › fd.o#28051: SRV errors on some networks no longer break Facebook
+    logins (wjt)
+  › don't fail on missing CRLs if not in strict TLS verification mode
+    (fledermaus)
 
 telepathy-gabble 0.9.17 (2010-08-26)
 ====================================

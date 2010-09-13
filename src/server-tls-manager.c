@@ -403,6 +403,11 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
       "rejections", &rejections,
       NULL);
 
+  /* we return 'Invalid_Argument' if Reject() is called with zero
+   * reasons, so if this fails something bad happened.
+   */
+  g_assert (rejections->len >= 1);
+
   rejection = g_ptr_array_index (rejections, 0);
 
   tls_reason = g_value_get_uint (g_value_array_get_nth (rejection, 0));

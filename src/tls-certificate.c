@@ -298,6 +298,18 @@ gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
       "long %u; current state %u", rejections, rejections->len,
       self->priv->cert_state);
 
+  if (rejections->len < 1)
+    {
+      GError error =
+	{ TP_ERRORS,
+	  TP_ERROR_INVALID_ARGUMENT,
+	  "Calling Reject() with a zero-length rejection list."
+	};
+
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
   if (self->priv->cert_state != GABBLE_TLS_CERTIFICATE_STATE_PENDING)
     {
       GError error =

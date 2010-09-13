@@ -1054,6 +1054,7 @@ activate_current_privacy_list_async (GabbleConnection *self,
       callback, user_data, activate_current_privacy_list_async);
 
   activate_current_privacy_list (self, result);
+  g_object_unref (result);
 }
 
 static void

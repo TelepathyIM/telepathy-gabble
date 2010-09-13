@@ -1,8 +1,6 @@
-
 """
-A simple smoke-test for C.I.SimplePresence
-
-FIXME: test C.I.Presence too
+Tests setting your own presence before calling Connect(), allowing the user to
+sign in as Busy/Invisible/whatever rather than available.
 """
 
 from twisted.words.xish import domish
@@ -11,6 +9,7 @@ from gabbletest import exec_test
 from servicetest import EventPattern, assertEquals, assertNotEquals
 import ns
 import constants as cs
+from invisible_helper import ValidInvisibleListStream, Xep0186XmlStream
 
 def test(q, bus, conn, stream):
     props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
@@ -32,3 +31,5 @@ def test(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test)
+    exec_test(test, protocol=ValidInvisibleListStream)
+    exec_test(test, protocol=Xep0186XmlStream)

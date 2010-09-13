@@ -52,6 +52,7 @@ TWISTED_TESTS = \
 	presence/invisible_xep_0186.py \
 	presence/presence.py \
 	presence/plugins.py \
+	presence/set-idempotence.py \
 	roster/ensure.py \
 	roster/groups.py \
 	roster/groups-12791.py \
@@ -191,7 +192,6 @@ TWISTED_TESTS = \
 	connect/network-error.py \
 	test-fallback-socks5-proxy.py \
 	test-register.py \
-	test-set-status-idempotence.py \
 	test-location.py \
 	pubsub.py \
 	sidecar-own-caps.py \

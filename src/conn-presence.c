@@ -233,19 +233,20 @@ conn_presence_emit_presence_update (
 }
 
 
-/**
- * emit_one_presence_update:
- * Convenience function for calling conn_presence_emit_presence_update with
- * one handle.
+/*
+ * emit_presences_changed_for_self:
+ * @self: A #GabbleConnection
+ *
+ * Convenience function for emitting presence update signals on D-Bus for our
+ * self handle.
  */
-
 static void
-emit_one_presence_update (GabbleConnection *self,
-                          TpHandle handle)
+emit_presences_changed_for_self (GabbleConnection *self)
 {
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
   GArray *handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
 
-  g_array_insert_val (handles, 0, handle);
+  g_array_insert_val (handles, 0, base->self_handle);
   conn_presence_emit_presence_update (self, handles);
   g_array_free (handles, TRUE);
 }
@@ -422,6 +423,7 @@ activate_current_privacy_list_cb (GabbleConnection *conn,
        * re-broadcast our presence.
        */
       conn_presence_signal_own_presence (conn, NULL, &error);
+      emit_presences_changed_for_self (conn);
     }
 
   if (error != NULL)
@@ -1052,6 +1054,7 @@ activate_current_privacy_list_async (GabbleConnection *self,
       callback, user_data, activate_current_privacy_list_async);
 
   activate_current_privacy_list (self, result);
+  g_object_unref (result);
 }
 
 static void
@@ -1113,7 +1116,6 @@ toggle_presence_visibility_cb (GObject *source_object,
     gpointer user_data)
 {
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
-  TpBaseConnection *base = (TpBaseConnection *) self;
   GError *error = NULL;
 
   DEBUG (" ");
@@ -1134,7 +1136,7 @@ toggle_presence_visibility_cb (GObject *source_object,
         }
     }
 
-  emit_one_presence_update (self, base->self_handle);
+  emit_presences_changed_for_self (self);
 }
 
 static gboolean
@@ -1231,7 +1233,7 @@ set_own_status_cb (GObject *obj,
       else
         {
           retval = conn_presence_signal_own_presence (conn, NULL, error);
-          emit_one_presence_update (conn, base->self_handle);
+          emit_presences_changed_for_self (conn);
         }
 
     }
@@ -1262,10 +1264,8 @@ connection_status_changed_cb (
     TpConnectionStatusReason reason,
     gpointer user_data)
 {
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-
   if (status == TP_CONNECTION_STATUS_CONNECTED)
-    emit_one_presence_update (conn, base->self_handle);
+    emit_presences_changed_for_self (conn);
 }
 
 

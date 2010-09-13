@@ -14,8 +14,7 @@ import constants as cs
 
 from twisted.words.xish import xpath, domish
 
-class ManualPlStream(XmppXmlStream):
-    handle_privacy_lists = False
+from invisible_helper import ManualPrivacyListStream
 
 def test(q, bus, conn, stream):
     statuses = conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE,
@@ -33,13 +32,8 @@ def test(q, bus, conn, stream):
     conn.Connect()
 
     # ... gabble asks for all the available lists on the server ...
-    get_all_lists = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
-    iq = elem_iq(stream, "result", id=get_all_lists.stanza["id"])(
-        elem(ns.PRIVACY, 'query')(
-            elem('list', name="foo-list"),
-            elem('list', name="test-busy-list"),
-            elem('list', name="bar-list")))
-    stream.send(iq)
+    stream.handle_get_all_privacy_lists(q, bus, conn,
+        lists=["foo-list", "test-busy-list", "bar-list"])
 
     # ... gabble checks whether there's usable invisible list on the server ...
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
@@ -83,5 +77,5 @@ def test(q, bus, conn, stream):
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
 if __name__ == '__main__':
-    exec_test(test, protocol=ManualPlStream)
+    exec_test(test, protocol=ManualPrivacyListStream)
 

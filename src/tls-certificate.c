@@ -134,7 +134,8 @@ gabble_tls_certificate_finalize (GObject *object)
 {
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (object);
 
-  tp_clear_pointer (&self->priv->rejections, g_ptr_array_unref);
+  tp_clear_boxed (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+      &self->priv->rejections);
 
   g_free (self->priv->object_path);
   g_free (self->priv->cert_type);
@@ -310,7 +311,8 @@ gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
       return;
     }
 
-  tp_clear_pointer (&self->priv->rejections, g_ptr_array_unref);
+  tp_clear_boxed (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+      &self->priv->rejections);
 
   self->priv->rejections =
     g_boxed_copy (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,

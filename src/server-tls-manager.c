@@ -411,5 +411,6 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
 
   *reason = cert_reject_reason_to_conn_reason (tls_reason);
 
-  g_ptr_array_unref (rejections);
+  tp_clear_boxed (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+      &rejections);
 }

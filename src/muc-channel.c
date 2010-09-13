@@ -128,7 +128,7 @@ enum
   PROP_INITIAL_CHANNELS,
   PROP_INITIAL_INVITEE_HANDLES,
   PROP_INITIAL_INVITEE_IDS,
-  PROP_SUPPORTS_NON_MERGES,
+  PROP_ORIGINAL_CHANNELS,
   LAST_PROPERTY
 };
 
@@ -887,8 +887,12 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_INITIAL_INVITEE_IDS:
       g_value_set_boxed (value, priv->initial_ids);
       break;
-    case PROP_SUPPORTS_NON_MERGES:
-      g_value_set_boolean (value, TRUE); /* always supports non-merges */
+    case PROP_ORIGINAL_CHANNELS:
+      /* We don't have a useful value for this - we don't necessarily know
+       * which chatroom member is which global handle, and the main purpose
+       * of OriginalChannels is to be able to split off merged channels,
+       * which we can't do anyway in XMPP. */
+      g_value_take_boxed (value, g_hash_table_new (NULL, NULL));
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -966,7 +970,6 @@ gabble_muc_channel_fill_immutable_properties (
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
       GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "SupportsNonMerges",
       NULL);
 }
 
@@ -979,7 +982,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { "InitialInviteeHandles", "initial-invitee-handles", NULL },
       { "InitialInviteeIDs", "initial-invitee-ids", NULL },
       { "InvitationMessage", "invitation-message", NULL },
-      { "SupportsNonMerges", "supports-non-merges", NULL },
+      { "OriginalChannels", "original-channels", NULL },
       { NULL }
   };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
@@ -1061,11 +1064,11 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_install_property (object_class, PROP_INITIAL_INVITEE_IDS,
       param_spec);
 
-  param_spec = g_param_spec_boolean ("supports-non-merges",
-      "Supports Non Merges",
-      "If true, this Conference can be created from less than two Channels",
-      TRUE, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_SUPPORTS_NON_MERGES,
+  param_spec = g_param_spec_boxed ("original-channels", "OriginalChannels",
+      "Map from channel-specific handles to originally-offered channels",
+      GABBLE_HASH_TYPE_CHANNEL_ORIGINATOR_MAP,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ORIGINAL_CHANNELS,
       param_spec);
 
   signals[READY] =

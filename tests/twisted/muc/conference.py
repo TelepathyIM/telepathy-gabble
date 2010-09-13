@@ -3,14 +3,13 @@ Test the different ways to request a channel using the Conference interface
 """
 
 from gabbletest import exec_test, make_muc_presence
-from servicetest import call_async, EventPattern
+from servicetest import (call_async, EventPattern, assertEquals,
+        assertContains)
 import constants as cs
 
 import dbus
 
 import re
-
-CONFERENCE = 'org.freedesktop.Telepathy.Channel.Interface.Conference.DRAFT'
 
 def test(q, bus, conn, stream):
     conn.Connect()
@@ -28,7 +27,7 @@ def create_pmuc(q, conn, stream, extra_props=None):
     props = {
         cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
         cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
-        CONFERENCE + '.InitialChannels': dbus.Array([], signature='o'),
+        cs.CONFERENCE_INITIAL_CHANNELS: dbus.Array([], signature='o'),
     }
 
     if extra_props: props.update(extra_props)
@@ -55,10 +54,9 @@ def create_pmuc(q, conn, stream, extra_props=None):
     assert out_props[cs.TARGET_HANDLE_TYPE] == cs.HT_ROOM
     assert out_props[cs.TARGET_ID] == pmuc_name
 
-    assert CONFERENCE in out_props[cs.INTERFACES]
-    assert out_props[CONFERENCE + '.InitialChannels'] == \
-            props[CONFERENCE + '.InitialChannels']
-    assert out_props[CONFERENCE + '.SupportsNonMerges'] == True
+    assertContains(cs.CHANNEL_IFACE_CONFERENCE, out_props[cs.INTERFACES])
+    assertEquals(props[cs.CONFERENCE_INITIAL_CHANNELS],
+            out_props[cs.CONFERENCE_INITIAL_CHANNELS])
 
     return pmuc_name, path, out_props
 
@@ -66,8 +64,8 @@ def test_create_pmuc(q, conn, stream):
 
     pmuc_name, path, props = create_pmuc(q, conn, stream)
 
-    assert props[CONFERENCE + '.InitialInviteeIDs'] == []
-    assert props[CONFERENCE + '.InitialInviteeHandles'] == []
+    assertEquals([], props[cs.CONFERENCE_INITIAL_INVITEE_IDS])
+    assertEquals([], props[cs.CONFERENCE_INITIAL_INVITEE_HANDLES])
 
 def test_create_pmuc_with_invitee(q, conn, stream):
 
@@ -85,13 +83,12 @@ def test_create_pmuc_with_invitee(q, conn, stream):
     yours, path, props = r.value
 
     pmuc_name, path, props = create_pmuc(q, conn, stream, {
-        CONFERENCE + '.InitialChannels': dbus.Array([path], signature='o'),
+        cs.CONFERENCE_INITIAL_CHANNELS: dbus.Array([path], signature='o'),
     })
 
     # FIXME: check for stream-message containing invite for Bob
 
-    assert props[CONFERENCE + '.InitialInviteeIDs'] == \
-            ['bob@localhost']
+    assertEquals(['bob@localhost'], props[cs.CONFERENCE_INITIAL_INVITEE_IDS])
 
 if __name__ == '__main__':
     exec_test(test, params={ 'fallback-conference-server': 'conf.localhost' } )

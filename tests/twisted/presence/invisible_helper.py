@@ -7,7 +7,12 @@ from twisted.words.xish import xpath
 class Xep0186XmlStream(XmppXmlStream):
     disco_features = [ns.INVISIBLE]
 
-class Xep0126XmlStream(XmppXmlStream):
+class ManualPrivacyListStream(XmppXmlStream):
+    """Unlike the base class, which automatically responds to privacy list
+    requests in the negative, this stream class does not automatically respond.
+    Instead it provides helper methods to let your test expect requests and
+    respond to them manually."""
+
     handle_privacy_lists = False
 
     def send_privacy_list_list(self, iq_id, lists=[]):
@@ -40,7 +45,7 @@ class Xep0126XmlStream(XmppXmlStream):
             )
         self.send(iq)
 
-class ValidInvisibleListStream(Xep0126XmlStream):
+class ValidInvisibleListStream(ManualPrivacyListStream):
     """This stream class pretends to be a server which supports privacy lists.
     It has exactly one stored list, named 'invisible', which satisfies Gabble's
     idea of what an invisible list should look like. Activating that list, or the  Any attempts to modify the
@@ -50,7 +55,7 @@ class ValidInvisibleListStream(Xep0126XmlStream):
     unrelated to invisibility against a server which supports invisibility."""
 
     def __init__(self, event_func, authenticator):
-        Xep0126XmlStream.__init__(self, event_func, authenticator)
+        ManualPrivacyListStream.__init__(self, event_func, authenticator)
 
         self.addObserver("/iq/query[@xmlns='%s']" % ns.PRIVACY,
             self.privacy_list_iq_cb)

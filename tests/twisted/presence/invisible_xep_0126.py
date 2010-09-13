@@ -18,7 +18,7 @@ from servicetest import (
 import ns
 import constants as cs
 from twisted.words.xish import xpath, domish
-from invisible_helper import Xep0126XmlStream
+from invisible_helper import ManualPrivacyListStream
 
 def test_create_invisible_list(q, bus, conn, stream):
     conn.SimplePresence.SetPresence("away", "")
@@ -320,12 +320,12 @@ def test_privacy_list_push_valid(q, bus, conn, stream):
     acknowledge_iq (stream, activate_list.stanza)
 
 if __name__ == '__main__':
-    exec_test(test_invisible, protocol=Xep0126XmlStream)
-    exec_test(test_invisible_on_connect, protocol=Xep0126XmlStream)
-    exec_test(test_create_invisible_list, protocol=Xep0126XmlStream)
+    exec_test(test_invisible, protocol=ManualPrivacyListStream)
+    exec_test(test_invisible_on_connect, protocol=ManualPrivacyListStream)
+    exec_test(test_create_invisible_list, protocol=ManualPrivacyListStream)
     exec_test(test_invisible_on_connect_fail_no_list,
-              protocol=Xep0126XmlStream)
+              protocol=ManualPrivacyListStream)
     exec_test(test_invisible_on_connect_fail_invalid_list,
-              protocol=Xep0126XmlStream)
-    exec_test(test_privacy_list_push_valid, protocol=Xep0126XmlStream)
-    exec_test(test_privacy_list_push_conflict, protocol=Xep0126XmlStream)
+              protocol=ManualPrivacyListStream)
+    exec_test(test_privacy_list_push_valid, protocol=ManualPrivacyListStream)
+    exec_test(test_privacy_list_push_conflict, protocol=ManualPrivacyListStream)

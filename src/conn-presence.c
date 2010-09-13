@@ -423,6 +423,7 @@ activate_current_privacy_list_cb (GabbleConnection *conn,
        * re-broadcast our presence.
        */
       conn_presence_signal_own_presence (conn, NULL, &error);
+      emit_presences_changed_for_self (conn);
     }
 
   if (error != NULL)

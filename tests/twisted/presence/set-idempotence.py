@@ -8,6 +8,7 @@ import dbus
 from servicetest import EventPattern
 from gabbletest import exec_test
 import constants as cs
+from invisible_helper import Xep0186XmlStream, ValidInvisibleListStream
 
 def test_presence(q, bus, conn, stream):
     conn.Connect()
@@ -107,4 +108,12 @@ def run_test(q, bus, conn, stream, set_status_func):
 if __name__ == '__main__':
     exec_test(test_simple_presence)
     exec_test(test_presence)
+    # Run this test against some invisibility-capable servers, even though we
+    # don't use invisibility, to check that invisibility support doesn't break
+    # us. This is a regression test for
+    # <https://bugs.freedesktop.org/show_bug.cgi?id=30117>. It turned out that
+    # XEP-0126 support meant that our own presence changes were never
+    # signalled.
+    exec_test(test_simple_presence, protocol=ValidInvisibleListStream)
+    exec_test(test_simple_presence, protocol=Xep0186XmlStream)
 

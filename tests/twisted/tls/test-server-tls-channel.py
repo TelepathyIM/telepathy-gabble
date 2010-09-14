@@ -22,7 +22,7 @@ from twisted.internet import ssl
 
 import ns
 from gabbletest import exec_test, XmppAuthenticator
-from servicetest import ProxyWrapper, EventPattern, assertEquals
+from servicetest import ProxyWrapper, EventPattern, assertEquals, assertLength
 import constants as cs
 
 JID = "test@example.org"
@@ -169,7 +169,7 @@ def test_connect_success(q, bus, conn, stream):
     state = cert_props.Get(cs.AUTH_TLS_CERT, 'State')
     rejections = cert_props.Get(cs.AUTH_TLS_CERT, 'Rejections')
 
-    assertEquals (len(rejections), 0)
+    assertLength(0, rejections)
 
     chan.Close()
 

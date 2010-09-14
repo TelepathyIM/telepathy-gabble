@@ -269,8 +269,6 @@ BUILT_SOURCES = config.py
 
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
-	ca-0-cert.pem \
-	ca-0-key.pem \
 	bytestream.py \
 	constants.py \
 	gabbletest.py \
@@ -290,7 +288,9 @@ EXTRA_DIST = \
 	sasl/saslutil.py \
 	search/search_helper.py \
 	file-transfer/file_transfer_helper.py \
-	presence/invisible_helper.py
+	presence/invisible_helper.py \
+	tls-cert.pem \
+	tls-key.pem
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

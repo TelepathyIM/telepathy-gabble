@@ -27,8 +27,11 @@ import constants as cs
 
 JID = "test@example.org"
 
-CA_CERT = 'ca-0-cert.pem'
-CA_KEY  = 'ca-0-key.pem'
+CA_CERT = 'tls-cert.pem'
+CA_KEY  = 'tls-key.pem'
+
+# the certificate is for the domain name 'weasel-juice.org'.
+# the files are copied from wocky/tests/certs/tls-[cert,key].pem
 
 class TlsAuthenticator(XmppAuthenticator):
     def __init__(self, username, password, resource=None):
@@ -121,7 +124,7 @@ def test_connect_early_close_success(q, bus, conn, stream):
     chan.Close()
 
     # we expect the fallback verification process to connect successfully,
-    # as encryption-required is not set
+    # even if the certificate doesn't match the hostname, as encryption-required is not set
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'),
@@ -135,8 +138,8 @@ def test_connect_early_close_fail(q, bus, conn, stream):
     # close the channel early
     chan.Close()
 
-    # we expect the fallback verification process to fail,
-    # as encryption-required is set and ignore-ssl-errors is not
+    # we expect the fallback verification process to fail, as there's a hostname mismatch,
+    # encryption-required is set and ignore-ssl-errors is not
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'),

@@ -171,6 +171,8 @@ struct _GabbleConnectionPrivate
   WockyPorter *porter;
   WockyPing *pinger;
 
+  GCancellable *cancellable;
+
   LmMessageHandler *iq_disco_cb;
   LmMessageHandler *iq_unknown_cb;
   LmMessageHandler *olpc_msg_cb;
@@ -1789,6 +1791,9 @@ connector_connected (GabbleConnection *self,
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
+  /* cleanup the cancellable */
+  tp_clear_object (&priv->cancellable);
+
   /* We went to closing while we were connecting... drop the connection and
    * finish the shutdown */
   if (priv->closing)
@@ -2140,19 +2145,20 @@ _gabble_connection_connect (TpBaseConnection *base,
     }
 
   /* FIXME: support keep alive */
+  priv->cancellable = g_cancellable_new ();
 
   if (priv->do_register)
     {
       DEBUG ("Start registering");
 
-      wocky_connector_register_async (priv->connector,
+      wocky_connector_register_async (priv->connector, priv->cancellable,
           connector_register_cb, conn);
     }
   else
     {
       DEBUG ("Start connecting");
 
-      wocky_connector_connect_async (priv->connector,
+      wocky_connector_connect_async (priv->connector, priv->cancellable,
           connector_connect_cb, conn);
     }
 
@@ -2247,10 +2253,11 @@ connection_shut_down (TpBaseConnection *base)
     }
   else if (priv->connector != NULL)
     {
-      /* FIXME: cancel connecting if we are connecting, for now we wait *
-       * until the connection is finished and then drop it directly     *
-       * wocky connector does not support gcancellables yet             */
-      DEBUG ("wait for connector to finish before closing: %p", base);
+      DEBUG ("Cancelling the porter connection");
+
+      if (priv->cancellable != NULL)
+        g_cancellable_cancel (priv->cancellable);
+
       return;
     }
 

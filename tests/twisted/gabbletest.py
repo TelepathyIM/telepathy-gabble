@@ -161,28 +161,36 @@ class XmppAuthenticator(GabbleAuthenticator):
         GabbleAuthenticator.__init__(self, username, password, resource)
         self.authenticated = False
 
-    def streamStarted(self, root=None):
+    def streamInitialize(self, root):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
 
         self.xmlstream.sendHeader()
 
+    def streamIQ(self):
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        bind = features.addElement((NS_XMPP_BIND, 'bind'))
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver(
+            "/iq/bind[@xmlns='%s']" % NS_XMPP_BIND, self.bindIq)
+
+    def streamSASL(self):
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
+        mechanism = mechanisms.addElement('mechanism', content='PLAIN')
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver("/auth", self.auth)
+
+    def streamStarted(self, root=None):
+        self.streamInitialize(root)
+
         if self.authenticated:
             # Initiator authenticated itself, and has started a new stream.
-
-            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-            bind = features.addElement((NS_XMPP_BIND, 'bind'))
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver(
-                "/iq/bind[@xmlns='%s']" % NS_XMPP_BIND, self.bindIq)
+            self.streamIQ()
         else:
-            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-            mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
-            mechanism = mechanisms.addElement('mechanism', content='PLAIN')
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver("/auth", self.auth)
+            self.streamSASL()
 
     def auth(self, auth):
         assert (base64.b64decode(str(auth)) ==

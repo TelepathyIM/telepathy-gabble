@@ -206,15 +206,16 @@ gabble_presence_pick_resource_by_caps (
   Resource *chosen = NULL;
 
   g_return_val_if_fail (presence != NULL, NULL);
-  g_return_val_if_fail (predicate != NULL, NULL);
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;
 
-      if (predicate (res->cap_set, user_data) &&
-          (resource_better_than (res, chosen, any_special_requests)))
-              chosen = res;
+      if (predicate != NULL && !predicate (res->cap_set, user_data))
+        continue;
+
+      if (resource_better_than (res, chosen, any_special_requests))
+        chosen = res;
     }
 
   if (chosen)

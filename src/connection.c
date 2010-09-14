@@ -2060,7 +2060,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   tls_handler = WOCKY_TLS_HANDLER (priv->server_tls_manager);
   priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
       gabble_auth_manager_get_auth_registry (priv->auth_manager),
-      g_object_ref (tls_handler));
+      tls_handler);
   g_free (jid);
 
   /* system certs */

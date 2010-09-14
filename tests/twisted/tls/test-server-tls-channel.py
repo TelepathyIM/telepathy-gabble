@@ -142,16 +142,20 @@ def test_connect_fail(q, bus, conn, stream):
     certificate = TlsCertificateWrapper(bus.get_object(conn.bus_name, certificate_path))
     certificate.TLSCertificate.Reject([(cs.TLS_REJECT_REASON_UNTRUSTED, cs.CERT_UNTRUSTED, {})])
 
+    # we first expect the certificate to be rejected
+    q.expect('dbus-signal', signal='Rejected', predicate=rejection_list_match)
+
+    # this should trigger a ConnectionError
+    q.expect('dbus-signal', signal='ConnectionError', args=[cs.CERT_UNTRUSTED, {}])
+
+    # at this point the channel should be closed
     q.expect_many(
-        EventPattern('dbus-signal', signal='Rejected',
-                     predicate=rejection_list_match),
         EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-signal', signal='ChannelClosed'),
-        EventPattern('dbus-signal', signal='ConnectionError',
-                     args=[cs.CERT_UNTRUSTED, {}]),
-        EventPattern('dbus-signal', signal='StatusChanged',
-                     args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_CERT_UNTRUSTED])
+        EventPattern('dbus-signal', signal='ChannelClosed')
         )
+
+    # finally, we should receive a StatusChanged signal on the connection
+    q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_CERT_UNTRUSTED])
 
 def test_connect_success(q, bus, conn, stream):
     chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn)

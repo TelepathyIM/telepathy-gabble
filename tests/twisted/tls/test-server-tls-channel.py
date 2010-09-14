@@ -144,18 +144,41 @@ def connect_and_get_tls_objects(q, bus, conn):
     hostname = props[cs.TLS_HOSTNAME]
     certificate_path = props[cs.TLS_CERT_PATH]
 
+    assertEquals(hostname, 'example.org')
+
     return chan, hostname, certificate_path
+
+def test_connect_early_close(q, bus, conn, stream):
+    chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn)
+
+    # close the channel early
+    chan.Close()
+
+    # we expect the fallback verification process to connect successfully
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'),
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+        )
+
+def rejection_list_match(event):
+    rejections = event.args[0];
+
+    if len(rejections) != 1:
+        return False
+
+    return rejections == [(cs.TLS_REJECT_REASON_UNTRUSTED, cs.CERT_UNTRUSTED, {})]
 
 def test_connect_fail(q, bus, conn, stream):
     chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn)
 
-    assertEquals(hostname, 'example.org')
-
     certificate = TlsCertificateWrapper(bus.get_object(conn.bus_name, certificate_path))
-    certificate.TLSCertificate.Reject(cs.TLS_REJECT_REASON_UNTRUSTED, cs.CERT_UNTRUSTED, {})
+    certificate.TLSCertificate.Reject([(cs.TLS_REJECT_REASON_UNTRUSTED, cs.CERT_UNTRUSTED, {})])
 
     q.expect_many(
-        EventPattern('dbus-signal', signal='Rejected'),
+        EventPattern('dbus-signal', signal='Rejected',
+                     predicate=rejection_list_match),
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'),
         EventPattern('dbus-signal', signal='ConnectionError',
@@ -167,8 +190,6 @@ def test_connect_fail(q, bus, conn, stream):
 def test_connect_success(q, bus, conn, stream):
     chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn)
 
-    assertEquals(hostname, 'example.org')
-
     certificate = TlsCertificateWrapper(bus.get_object(conn.bus_name, certificate_path))
     certificate.TLSCertificate.Accept()
 
@@ -176,10 +197,9 @@ def test_connect_success(q, bus, conn, stream):
 
     cert_props = dbus.Interface(certificate, cs.PROPERTIES_IFACE)
     state = cert_props.Get(cs.AUTH_TLS_CERT, 'State')
-    reason = cert_props.Get(cs.AUTH_TLS_CERT, 'RejectReason')
+    rejections = cert_props.Get(cs.AUTH_TLS_CERT, 'Rejections')
 
-    assertEquals (state, cs.TLS_CERT_STATE_ACCEPTED)
-    assertEquals (reason, cs.TLS_REJECT_REASON_UNKNOWN)
+    assertEquals (len(rejections), 0)
 
     chan.Close()
 
@@ -194,4 +214,6 @@ if __name__ == '__main__':
     exec_test(test_connect_success, { 'account' : JID },
               authenticator=TlsAuthenticator(username='test', password='pass'))
     exec_test(test_connect_fail, { 'account' : JID },
+              authenticator=TlsAuthenticator(username='test', password='pass'))
+    exec_test(test_connect_early_close, { 'account' : JID },
               authenticator=TlsAuthenticator(username='test', password='pass'))

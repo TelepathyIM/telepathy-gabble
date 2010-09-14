@@ -35,13 +35,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CLIENT_TYPES
 #include "debug.h"
 
-static gboolean
-dummy_caps_set_predicate (const GabbleCapabilitySet *set,
-    gconstpointer user_data)
-{
-  return TRUE;
-}
-
 static void
 client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
     const GArray *contacts,
@@ -101,7 +94,7 @@ client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
 
       /* Find the best resource. */
       res = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+          DEVICE_AGNOSTIC, NULL, NULL);
 
       if (res == NULL)
         {
@@ -182,7 +175,7 @@ conn_client_types_fill_contact_attributes (GObject *obj,
 
       /* Find the best resource. */
       res = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+          DEVICE_AGNOSTIC, NULL, NULL);
 
       if (res == NULL)
         {
@@ -247,7 +240,7 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
         }
 
       res = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, dummy_caps_set_predicate, NULL);
+          DEVICE_AGNOSTIC, NULL, NULL);
 
       if (res == NULL)
         {

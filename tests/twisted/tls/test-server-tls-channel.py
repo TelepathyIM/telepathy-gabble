@@ -114,18 +114,34 @@ def connect_and_get_tls_objects(q, bus, conn):
 
     return chan, hostname, certificate_path
 
-def test_connect_early_close(q, bus, conn, stream):
+def test_connect_early_close_success(q, bus, conn, stream):
     chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn)
 
     # close the channel early
     chan.Close()
 
-    # we expect the fallback verification process to connect successfully
+    # we expect the fallback verification process to connect successfully,
+    # as encryption-required is not set
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+        )
+
+def test_connect_early_close_fail(q, bus, conn, stream):
+    chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn)
+
+    # close the channel early
+    chan.Close()
+
+    # we expect the fallback verification process to fail,
+    # as encryption-required is set and ignore-ssl-errors is not
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'),
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_CERT_HOSTNAME_MISMATCH])
         )
 
 def rejection_list_match(event):
@@ -185,5 +201,13 @@ if __name__ == '__main__':
               authenticator=TlsAuthenticator(username='test', password='pass'))
     exec_test(test_connect_fail, { 'account' : JID },
               authenticator=TlsAuthenticator(username='test', password='pass'))
-    exec_test(test_connect_early_close, { 'account' : JID },
+    exec_test(test_connect_early_close_success,
+              { 'account' : JID,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : False },
+              authenticator=TlsAuthenticator(username='test', password='pass'))
+    exec_test(test_connect_early_close_fail,
+              { 'account' : JID,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True },
               authenticator=TlsAuthenticator(username='test', password='pass'))

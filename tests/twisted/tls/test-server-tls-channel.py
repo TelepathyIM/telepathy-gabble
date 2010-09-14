@@ -21,7 +21,7 @@ from twisted.words.xish import domish, xpath
 from twisted.internet import ssl
 
 import ns
-from gabbletest import exec_test, GabbleAuthenticator
+from gabbletest import exec_test, XmppAuthenticator
 from servicetest import ProxyWrapper, EventPattern, assertEquals
 import constants as cs
 
@@ -30,47 +30,31 @@ JID = "test@example.org"
 CA_CERT = 'ca-0-cert.pem'
 CA_KEY  = 'ca-0-key.pem'
 
-class TlsAuthenticator(GabbleAuthenticator):
+class TlsAuthenticator(XmppAuthenticator):
     def __init__(self, username, password, resource=None):
-        GabbleAuthenticator.__init__(self, username, password, resource)
+        XmppAuthenticator.__init__(self, username, password, resource)
         self.tls_encrypted = False
-        self.sasl_authenticated = False
+
+    def streamTLS(self):
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        starttls = features.addElement((ns.NS_XMPP_TLS, 'starttls'))
+        starttls.addElement('required')
+
+        mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
+        mechanism = mechanisms.addElement('mechanism', content='PLAIN')
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver("/starttls", self.tlsAuth)
 
     def streamStarted(self, root=None):
-        if root:
-            self.xmlstream.sid = root.getAttribute('id')
+        self.streamInitialize(root)
 
-        self.xmlstream.sendHeader()
-
-        if self.sasl_authenticated and self.tls_encrypted:
-            # Initiator authenticated and encrypted itself, and has started
-            # a new stream.
-
-            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-            bind = features.addElement((ns.NS_XMPP_BIND, 'bind'))
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver(
-                "/iq/bind[@xmlns='%s']" % ns.NS_XMPP_BIND, self.bindIq)
+        if self.authenticated and self.tls_encrypted:
+            self.streamIQ()
         elif self.tls_encrypted:
-            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-            mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
-            mechanism = mechanisms.addElement('mechanism', content='PLAIN')
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver("/auth", self.auth)
-            
+            self.streamSASL()
         else:
-            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-            starttls = features.addElement((ns.NS_XMPP_TLS, 'starttls'))
-            starttls.addElement('required')
-
-            mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
-            mechanism = mechanisms.addElement('mechanism', content='PLAIN')
-
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver("/starttls", self.tlsAuth)
+            self.streamTLS()
 
     def tlsAuth(self, auth):
         file = open(CA_KEY, 'rb')
@@ -89,32 +73,6 @@ class TlsAuthenticator(GabbleAuthenticator):
         self.xmlstream.transport.startTLS(tls_ctx)
         self.xmlstream.reset()
         self.tls_encrypted = True
-
-    def auth(self, auth):
-        assert (base64.b64decode(str(auth)) ==
-            '\x00%s\x00%s' % (self.username, self.password))
-
-        success = domish.Element((ns.NS_XMPP_SASL, 'success'))
-        self.xmlstream.send(success)
-        self.xmlstream.reset()
-        self.sasl_authenticated = True
-
-    def bindIq(self, iq):
-        resource = xpath.queryForString('/iq/bind/resource', iq)
-        if self.resource is not None:
-            assertEquals(self.resource, resource)
-        else:
-            assert resource is not None
-
-        result = IQ(self.xmlstream, "result")
-        result["id"] = iq["id"]
-        bind = result.addElement((ns.NS_XMPP_BIND, 'bind'))
-        self.bare_jid = '%s@localhost' % self.username
-        self.full_jid = '%s/%s' % (self.bare_jid, resource)
-        jid = bind.addElement('jid', content=self.full_jid)
-        self.xmlstream.send(result)
-
-        self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
 class ServerTlsChanWrapper(ProxyWrapper):
     def __init__(self, object, default=cs.CHANNEL, interfaces={

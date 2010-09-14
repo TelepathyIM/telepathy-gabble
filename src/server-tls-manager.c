@@ -207,6 +207,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (handler);
   GabbleTLSCertificate *certificate;
+  GSimpleAsyncResult *result;
 
   /* this should be called only once per-connection. */
   g_return_if_fail (!self->priv->verify_async_called);
@@ -228,8 +229,20 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
       return;
     }
 
-  self->priv->async_result = g_simple_async_result_new (G_OBJECT (self),
+  result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, wocky_tls_handler_verify_finish);
+
+  if (self->priv->connection == NULL)
+    {
+      DEBUG ("connection already went away; failing immediately");
+      g_simple_async_result_set_error (result, TP_ERRORS, TP_ERROR_CANCELLED,
+          "The Telepathy connection has already been disconnected");
+      g_simple_async_result_complete_in_idle (result);
+      g_object_unref (result);
+      return;
+    }
+
+  self->priv->async_result = result;
   self->priv->tls_session = g_object_ref (tls_session);
   self->priv->peername = g_strdup (peername);
   self->priv->async_callback = callback;

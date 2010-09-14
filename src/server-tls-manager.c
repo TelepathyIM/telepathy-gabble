@@ -146,6 +146,8 @@ server_tls_channel_closed_cb (GabbleServerTLSChannel *channel,
             self->priv->async_data);
     }
 
+  tp_clear_object (&self->priv->async_result);
+
   tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (channel));
 

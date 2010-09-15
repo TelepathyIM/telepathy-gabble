@@ -69,15 +69,12 @@ toggle_queueing_cb (GObject *source_object,
   GError *error = NULL;
   gboolean enabling;
   gboolean enabled;
-  WockyStanza *reply;
 
   g_object_get (source_object, "power-saving", &enabled, NULL);
 
-  reply = conn_util_send_iq_finish_harder (self, res, &error);
-
   enabling = queueing_context->enabling;
 
-  if (reply == NULL)
+  if (!conn_util_send_iq_finish (self, res, NULL, NULL, &error))
     {
       DEBUG ("Failed to %sable queueing: %s",
           enabling ? "en" : "dis", error->message);
@@ -97,8 +94,6 @@ toggle_queueing_cb (GObject *source_object,
 
       if (!enabling)
         conn_power_saving_send_command (self, "flush", NULL, NULL);
-
-      g_object_unref (reply);
     }
 
   if (enabling != enabled)
@@ -169,13 +164,10 @@ conn_power_saving_enable_on_connect_cb (GObject *source_object,
 {
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
   GError *error = NULL;
-  WockyStanza *reply;
 
   DEBUG (" ");
 
-  reply = conn_util_send_iq_finish_harder (self, res, &error);
-
-  if (reply == NULL)
+  if (!conn_util_send_iq_finish (self, res, NULL, NULL, &error))
     {
       DEBUG ("Failed to enter power saving mode when connected: %s",
              error->message);
@@ -183,10 +175,6 @@ conn_power_saving_enable_on_connect_cb (GObject *source_object,
       g_error_free (error);
       gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
           self, FALSE);
-    }
-  else
-    {
-      g_object_unref (reply);
     }
 }
 

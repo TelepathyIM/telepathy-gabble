@@ -83,7 +83,7 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
-	tls/test-server-tls-channel.py \
+	tls/server-tls-channel.py \
 	tubes/accept-muc-dbus-tube.py \
 	tubes/accept-muc-stream-tube.py \
 	tubes/accept-private-dbus-tube.py \

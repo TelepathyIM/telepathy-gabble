@@ -83,6 +83,7 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
+	tls/server-tls-channel.py \
 	tubes/accept-muc-dbus-tube.py \
 	tubes/accept-muc-stream-tube.py \
 	tubes/accept-private-dbus-tube.py \
@@ -287,7 +288,9 @@ EXTRA_DIST = \
 	sasl/saslutil.py \
 	search/search_helper.py \
 	file-transfer/file_transfer_helper.py \
-	presence/invisible_helper.py
+	presence/invisible_helper.py \
+	tls-cert.pem \
+	tls-key.pem
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

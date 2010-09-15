@@ -146,6 +146,8 @@ server_tls_channel_closed_cb (GabbleServerTLSChannel *channel,
             self->priv->async_data);
     }
 
+  tp_clear_object (&self->priv->async_result);
+
   tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (channel));
 
@@ -282,6 +284,8 @@ gabble_server_tls_manager_dispose (GObject *object)
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (object);
 
+  DEBUG ("%p", self);
+
   if (self->priv->dispose_has_run)
     return;
 
@@ -296,6 +300,8 @@ static void
 gabble_server_tls_manager_finalize (GObject *object)
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (object);
+
+  DEBUG ("%p", self);
 
   if (self->priv->channel != NULL)
     tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));

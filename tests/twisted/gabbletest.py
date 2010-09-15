@@ -21,7 +21,7 @@ import twisted
 from twisted.words.xish import domish, xpath
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.protocols.jabber import xmlstream
-from twisted.internet import reactor
+from twisted.internet import reactor, ssl
 
 import dbus
 
@@ -156,34 +156,41 @@ class JabberAuthenticator(GabbleAuthenticator):
         self.xmlstream.send(result)
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
 
-
 class XmppAuthenticator(GabbleAuthenticator):
     def __init__(self, username, password, resource=None):
         GabbleAuthenticator.__init__(self, username, password, resource)
         self.authenticated = False
 
-    def streamStarted(self, root=None):
+    def streamInitialize(self, root):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
 
         self.xmlstream.sendHeader()
 
+    def streamIQ(self):
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        bind = features.addElement((NS_XMPP_BIND, 'bind'))
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver(
+            "/iq/bind[@xmlns='%s']" % NS_XMPP_BIND, self.bindIq)
+
+    def streamSASL(self):
+        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
+        mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
+        mechanism = mechanisms.addElement('mechanism', content='PLAIN')
+        self.xmlstream.send(features)
+
+        self.xmlstream.addOnetimeObserver("/auth", self.auth)
+
+    def streamStarted(self, root=None):
+        self.streamInitialize(root)
+
         if self.authenticated:
             # Initiator authenticated itself, and has started a new stream.
-
-            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-            bind = features.addElement((NS_XMPP_BIND, 'bind'))
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver(
-                "/iq/bind[@xmlns='%s']" % NS_XMPP_BIND, self.bindIq)
+            self.streamIQ()
         else:
-            features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-            mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
-            mechanism = mechanisms.addElement('mechanism', content='PLAIN')
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver("/auth", self.auth)
+            self.streamSASL()
 
     def auth(self, auth):
         assert (base64.b64decode(str(auth)) ==

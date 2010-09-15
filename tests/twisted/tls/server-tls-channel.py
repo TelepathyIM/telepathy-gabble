@@ -86,6 +86,19 @@ class TlsCertificateWrapper(ProxyWrapper):
             "TLSCertificate" : cs.AUTH_TLS_CERT}):
         ProxyWrapper.__init__(self, object, default, interfaces)
 
+def test_disconnect_inbetween(q, bus, conn, stream):
+    # we don't expect a channel at all in this case,
+    # as we lose the connection before the TLS channel is created
+    conn.Connect()
+
+    q.expect('dbus-signal', signal='StatusChanged',
+             args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
+
+    conn.Disconnect()
+
+    q.expect('dbus-signal', signal='StatusChanged',
+             args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
+
 def is_server_tls_chan_event(event):
     channels = event.args[0];
 
@@ -212,4 +225,6 @@ if __name__ == '__main__':
               { 'account' : JID,
                 'ignore-ssl-errors' : False,
                 'require-encryption' : True },
+              authenticator=TlsAuthenticator(username='test', password='pass'))
+    exec_test(test_disconnect_inbetween, { 'account' : JID },
               authenticator=TlsAuthenticator(username='test', password='pass'))

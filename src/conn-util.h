@@ -32,13 +32,11 @@ void conn_util_send_iq_async (GabbleConnection *self,
     GAsyncReadyCallback callback,
     gpointer user_data);
 
-WockyStanza * conn_util_send_iq_finish (GabbleConnection *self,
+gboolean conn_util_send_iq_finish (GabbleConnection *self,
     GAsyncResult *result,
-    GError **error);
-
-WockyStanza * conn_util_send_iq_finish_harder (GabbleConnection *self,
-    GAsyncResult *result,
-    GError **error);
+    WockyStanza **response,
+    GError **wocky_error,
+    GError **tp_error);
 
 G_END_DECLS
 

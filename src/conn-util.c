@@ -64,51 +64,34 @@ conn_util_send_iq_async (GabbleConnection *self,
       conn_util_send_iq_cb, result);
 }
 
-WockyStanza *
+gboolean
 conn_util_send_iq_finish (GabbleConnection *self,
     GAsyncResult *result,
-    GError **error)
+    WockyStanza **response,
+    GError **wocky_error,
+    GError **tp_error)
 {
-  wocky_implement_finish_return_copy_pointer (self, conn_util_send_iq_async,
-      g_object_ref);
-}
+  GSimpleAsyncResult *res;
+  WockyStanza *resp;
+  GError *error = NULL;
 
-/**
- * conn_util_send_iq_finish_harder:
- * @self: a #GabbleConnection
- * @result: the #GSimpleAsyncResult passed to a conn_util_send_iq_async()
- *  callback
- * @error: location at which to store a Telepathy D-Bus error, if any
- *
- * Throughout Gabble, we want to finish conn_util_send_iq_async() calls, and
- * transform an iq type='error' into a correspondingish Telepathy error, and
- * only process the reply further if it was a huge success. So this function
- * does that. It's only suitable for use if you don't care about non-XMPP Core
- * stanza errors. If you do, you should use conn_util_send_iq_finish() and
- * faff around with wocky_stanza_extract_errors() directly.
- *
- * Returns: an IQ of WOCKY_STANZA_SUB_TYPE_RESULT, or NULL if sending the IQ
- *          failed or the reply was WOCKY_STANZA_SUB_TYPE_ERROR.
- */
-WockyStanza *
-conn_util_send_iq_finish_harder (GabbleConnection *self,
-    GAsyncResult *result,
-    GError **error)
-{
-  WockyStanza *reply;
-  GError *error_ = NULL;
+  g_return_val_if_fail (g_simple_async_result_is_valid (result,
+          G_OBJECT (self), conn_util_send_iq_async), FALSE);
 
-  reply = conn_util_send_iq_finish (self, result, &error_);
+  res = (GSimpleAsyncResult *) result;
 
-  if (reply != NULL)
+  resp = g_simple_async_result_get_op_res_gpointer (res);
+
+  if (resp != NULL && response != NULL)
+    *response = g_object_ref (resp);
+
+  if (g_simple_async_result_propagate_error (res, &error) ||
+      wocky_stanza_extract_errors (resp, NULL, &error, NULL, NULL))
     {
-      if (!wocky_stanza_extract_errors (reply, NULL, &error_, NULL, NULL))
-        return reply;
-
-      g_object_unref (reply);
+      gabble_set_tp_error_from_wocky (error, tp_error);
+      g_propagate_error (wocky_error, error);
+      return FALSE;
     }
 
-  gabble_set_tp_error_from_wocky (error_, error);
-  g_clear_error (&error_);
-  return NULL;
+  return TRUE;
 }

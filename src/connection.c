@@ -2165,14 +2165,16 @@ connection_shut_down (TpBaseConnection *base)
   GabbleConnection *self = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = self->priv;
 
+  /* Regardless of whether disconnection is already in progress, we still want
+   * to stop listening to the slacker and pinging the remote server.
+   */
+  gabble_connection_slacker_stop (self);
+  tp_clear_object (&priv->pinger);
+
   if (priv->closing)
     return;
 
   priv->closing = TRUE;
-
-  gabble_connection_slacker_stop (self);
-
-  tp_clear_object (&priv->pinger);
 
   if (priv->porter != NULL)
     {

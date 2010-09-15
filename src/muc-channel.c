@@ -83,7 +83,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       tp_message_mixin_messages_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init)
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
     )
 
 static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
@@ -96,7 +96,7 @@ static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_PROPERTIES_INTERFACE,
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
-    GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE,
+    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
     NULL
 };
 
@@ -966,10 +966,10 @@ gabble_muc_channel_fill_immutable_properties (
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialChannels",
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialChannels",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
       NULL);
 }
 
@@ -1066,7 +1066,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 
   param_spec = g_param_spec_boxed ("original-channels", "OriginalChannels",
       "Map from channel-specific handles to originally-offered channels",
-      GABBLE_HASH_TYPE_CHANNEL_ORIGINATOR_MAP,
+      TP_HASH_TYPE_CHANNEL_ORIGINATOR_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ORIGINAL_CHANNELS,
       param_spec);
@@ -1142,7 +1142,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 
 
   tp_dbus_properties_mixin_implement_interface (object_class,
-      GABBLE_IFACE_QUARK_CHANNEL_INTERFACE_CONFERENCE,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_CONFERENCE,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,
       conference_props);
 

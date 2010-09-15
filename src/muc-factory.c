@@ -1114,10 +1114,10 @@ static const gchar * const * muc_tubes_channel_fixed_properties =
 static const gchar * const muc_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
-    GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
-    GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
-    GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
-    GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage",
+    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
+    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
+    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
+    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage",
     NULL
 };
 
@@ -1237,16 +1237,16 @@ handle_text_channel_request (GabbleMucFactory *self,
     return FALSE;
 
   initial_channels = tp_asv_get_boxed (request_properties,
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
       TP_ARRAY_TYPE_OBJECT_PATH_LIST);
   initial_handles = tp_asv_get_boxed (request_properties,
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
       DBUS_TYPE_G_UINT_ARRAY);
   initial_ids = tp_asv_get_boxed (request_properties,
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
       G_TYPE_STRV);
   invite_msg = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
 
   handles = tp_handle_set_new (contact_handles);
   continue_handles = tp_intset_new ();
@@ -1784,11 +1784,11 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   conference = (handle_type == TP_HANDLE_TYPE_NONE &&
       !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
       (g_hash_table_lookup (request_properties,
-         GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels") ||
+         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels") ||
        g_hash_table_lookup (request_properties,
-         GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles") ||
+         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles") ||
        g_hash_table_lookup (request_properties,
-         GABBLE_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs")));
+         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs")));
 
   /* the channel must either be a room, or a new conference */
   if (handle_type != TP_HANDLE_TYPE_ROOM && !conference)

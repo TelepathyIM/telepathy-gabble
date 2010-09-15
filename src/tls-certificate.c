@@ -21,16 +21,11 @@
 #include "config.h"
 #include "tls-certificate.h"
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/errors.h>
-#include <telepathy-glib/gtypes.h>
-#include <telepathy-glib/svc-generic.h>
-#include <telepathy-glib/util.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/svc-tls.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_TLS
 #include "debug.h"
-
-#include "extensions/extensions.h"
 
 static void
 tls_certificate_iface_init (gpointer g_iface, gpointer iface_data);
@@ -38,7 +33,7 @@ tls_certificate_iface_init (gpointer g_iface, gpointer iface_data);
 G_DEFINE_TYPE_WITH_CODE (GabbleTLSCertificate,
     gabble_tls_certificate,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_AUTHENTICATION_TLS_CERTIFICATE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_AUTHENTICATION_TLS_CERTIFICATE,
         tls_certificate_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
         tp_dbus_properties_mixin_iface_init);)
@@ -47,7 +42,7 @@ struct _GabbleTLSCertificatePrivate {
   gchar *object_path;
 
   gchar *cert_type;
-  GabbleTLSCertificateState cert_state;
+  TpTLSCertificateState cert_state;
 
   GPtrArray *rejections;
   GPtrArray *cert_data;
@@ -134,7 +129,7 @@ gabble_tls_certificate_finalize (GObject *object)
 {
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (object);
 
-  tp_clear_boxed (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+  tp_clear_boxed (TP_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
       &self->priv->rejections);
 
   g_free (self->priv->object_path);
@@ -193,7 +188,7 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-    { GABBLE_IFACE_AUTHENTICATION_TLS_CERTIFICATE,
+    { TP_IFACE_AUTHENTICATION_TLS_CERTIFICATE,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       object_props,
@@ -221,15 +216,15 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
   pspec = g_param_spec_uint ("state",
       "State of this certificate",
       "The state of this TLS certificate.",
-      0, NUM_GABBLE_TLS_CERTIFICATE_STATES - 1,
-      GABBLE_TLS_CERTIFICATE_STATE_PENDING,
+      0, NUM_TP_TLS_CERTIFICATE_STATES - 1,
+      TP_TLS_CERTIFICATE_STATE_PENDING,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_STATE, pspec);
 
   pspec = g_param_spec_boxed ("rejections",
       "The reject reasons",
       "The reasons why this TLS certificate has been rejected",
-      GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+      TP_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_REJECTIONS, pspec);
 
@@ -260,7 +255,7 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
 }
 
 static void
-gabble_tls_certificate_accept (GabbleSvcAuthenticationTLSCertificate *cert,
+gabble_tls_certificate_accept (TpSvcAuthenticationTLSCertificate *cert,
     DBusGMethodInvocation *context)
 {
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (cert);
@@ -268,7 +263,7 @@ gabble_tls_certificate_accept (GabbleSvcAuthenticationTLSCertificate *cert,
   DEBUG ("Accept() called on the TLS certificate; current state %u",
       self->priv->cert_state);
 
-  if (self->priv->cert_state != GABBLE_TLS_CERTIFICATE_STATE_PENDING)
+  if (self->priv->cert_state != TP_TLS_CERTIFICATE_STATE_PENDING)
     {
       GError error =
         { TP_ERRORS,
@@ -281,14 +276,14 @@ gabble_tls_certificate_accept (GabbleSvcAuthenticationTLSCertificate *cert,
       return;
     }
 
-  self->priv->cert_state = GABBLE_TLS_CERTIFICATE_STATE_ACCEPTED;
-  gabble_svc_authentication_tls_certificate_emit_accepted (self);
+  self->priv->cert_state = TP_TLS_CERTIFICATE_STATE_ACCEPTED;
+  tp_svc_authentication_tls_certificate_emit_accepted (self);
 
-  gabble_svc_authentication_tls_certificate_return_from_accept (context);
+  tp_svc_authentication_tls_certificate_return_from_accept (context);
 }
 
 static void
-gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
+gabble_tls_certificate_reject (TpSvcAuthenticationTLSCertificate *cert,
     const GPtrArray *rejections,
     DBusGMethodInvocation *context)
 {
@@ -307,7 +302,7 @@ gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
       return;
     }
 
-  if (self->priv->cert_state != GABBLE_TLS_CERTIFICATE_STATE_PENDING)
+  if (self->priv->cert_state != TP_TLS_CERTIFICATE_STATE_PENDING)
     {
       GError error =
         { TP_ERRORS,
@@ -320,29 +315,28 @@ gabble_tls_certificate_reject (GabbleSvcAuthenticationTLSCertificate *cert,
       return;
     }
 
-  tp_clear_boxed (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+  tp_clear_boxed (TP_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
       &self->priv->rejections);
 
   self->priv->rejections =
-    g_boxed_copy (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+    g_boxed_copy (TP_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
         rejections);
-  self->priv->cert_state = GABBLE_TLS_CERTIFICATE_STATE_REJECTED;
+  self->priv->cert_state = TP_TLS_CERTIFICATE_STATE_REJECTED;
 
-  gabble_svc_authentication_tls_certificate_emit_rejected (
+  tp_svc_authentication_tls_certificate_emit_rejected (
       self, self->priv->rejections);
 
-  gabble_svc_authentication_tls_certificate_return_from_reject (context);
+  tp_svc_authentication_tls_certificate_return_from_reject (context);
 }
 
 static void
 tls_certificate_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
-  GabbleSvcAuthenticationTLSCertificateClass *klass =
-    (GabbleSvcAuthenticationTLSCertificateClass *) (g_iface);
+  TpSvcAuthenticationTLSCertificateClass *klass = g_iface;
 
 #define IMPLEMENT(x) \
-  gabble_svc_authentication_tls_certificate_implement_##x ( \
+  tp_svc_authentication_tls_certificate_implement_##x ( \
       klass, gabble_tls_certificate_##x)
   IMPLEMENT (accept);
   IMPLEMENT (reject);

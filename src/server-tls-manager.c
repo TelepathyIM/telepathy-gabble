@@ -387,10 +387,10 @@ channel_manager_iface_init (gpointer g_iface,
 }
 
 static TpConnectionStatusReason
-cert_reject_reason_to_conn_reason (GabbleTLSCertificateRejectReason tls_reason)
+cert_reject_reason_to_conn_reason (TpTLSCertificateRejectReason tls_reason)
 {
   #define EASY_CASE(x) \
-    case GABBLE_TLS_CERTIFICATE_REJECT_REASON_ ## x: \
+    case TP_TLS_CERTIFICATE_REJECT_REASON_ ## x: \
       return TP_CONNECTION_STATUS_REASON_CERT_ ## x;
 
   switch (tls_reason)
@@ -405,7 +405,7 @@ cert_reject_reason_to_conn_reason (GabbleTLSCertificateRejectReason tls_reason)
       EASY_CASE (INSECURE);
       EASY_CASE (LIMIT_EXCEEDED);
 
-      case GABBLE_TLS_CERTIFICATE_REJECT_REASON_UNKNOWN:
+      case TP_TLS_CERTIFICATE_REJECT_REASON_UNKNOWN:
       default:
         return TP_CONNECTION_STATUS_REASON_CERT_OTHER_ERROR;
     }
@@ -422,7 +422,7 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
   GabbleTLSCertificate *certificate;
   GPtrArray *rejections;
   GValueArray *rejection;
-  GabbleTLSCertificateRejectReason tls_reason;
+  TpTLSCertificateRejectReason tls_reason;
 
   certificate = gabble_server_tls_channel_get_certificate
     (self->priv->channel);
@@ -444,6 +444,6 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
 
   *reason = cert_reject_reason_to_conn_reason (tls_reason);
 
-  tp_clear_boxed (GABBLE_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
+  tp_clear_boxed (TP_ARRAY_TYPE_TLS_CERTIFICATE_REJECTION_LIST,
       &rejections);
 }

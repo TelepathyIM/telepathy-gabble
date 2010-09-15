@@ -36,7 +36,7 @@
 
 G_DEFINE_TYPE_WITH_CODE (GabbleServerTLSChannel, gabble_server_tls_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
         NULL));
 
 static void gabble_server_tls_channel_close (TpBaseChannel *base);
@@ -209,8 +209,8 @@ gabble_server_tls_channel_fill_immutable_properties (
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION, "ServerCertificate",
-      GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION, "Hostname",
+      TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION, "ServerCertificate",
+      TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION, "Hostname",
       NULL);
 }
 
@@ -248,7 +248,7 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
   oclass->finalize = gabble_server_tls_channel_finalize;
   oclass->constructed = gabble_server_tls_channel_constructed;
 
-  base_class->channel_type = GABBLE_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION;
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION;
   base_class->interfaces = gabble_server_tls_channel_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   base_class->fill_immutable_properties =
@@ -276,7 +276,7 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
   g_object_class_install_property (oclass, PROP_TLS_SESSION, pspec);
 
   tp_dbus_properties_mixin_implement_interface (oclass,
-      GABBLE_IFACE_QUARK_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
+      TP_IFACE_QUARK_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,
       server_tls_props);
 }

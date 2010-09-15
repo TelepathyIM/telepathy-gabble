@@ -2253,9 +2253,7 @@ connection_shut_down (TpBaseConnection *base)
   else if (priv->connector != NULL)
     {
       DEBUG ("Cancelling the porter connection");
-
-      if (priv->cancellable != NULL)
-        g_cancellable_cancel (priv->cancellable);
+      g_cancellable_cancel (priv->cancellable);
 
       return;
     }

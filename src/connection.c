@@ -2144,7 +2144,6 @@ _gabble_connection_connect (TpBaseConnection *base,
           NULL);
     }
 
-  /* FIXME: support keep alive */
   priv->cancellable = g_cancellable_new ();
 
   if (priv->do_register)

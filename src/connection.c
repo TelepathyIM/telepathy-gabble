@@ -1098,20 +1098,11 @@ gabble_connection_dispose (GObject *object)
   g_assert ((base->status == TP_CONNECTION_STATUS_DISCONNECTED) ||
             (base->status == TP_INTERNAL_CONNECTION_STATUS_NEW));
 
-  g_object_unref (self->bytestream_factory);
-  self->bytestream_factory = NULL;
-
-  g_object_unref (self->disco);
-  self->disco = NULL;
-
-  g_object_unref (self->req_pipeline);
-  self->req_pipeline = NULL;
-
-  g_object_unref (self->vcard_manager);
-  self->vcard_manager = NULL;
-
-  g_object_unref (self->jingle_factory);
-  self->jingle_factory = NULL;
+  tp_clear_object (&self->bytestream_factory);
+  tp_clear_object (&self->disco);
+  tp_clear_object (&self->req_pipeline);
+  tp_clear_object (&self->vcard_manager);
+  tp_clear_object (&self->jingle_factory);
 
   /* remove borrowed references before TpBaseConnection unrefs the channel
    * factories */
@@ -1120,12 +1111,8 @@ gabble_connection_dispose (GObject *object)
   self->private_tubes_factory = NULL;
   priv->auth_manager = NULL;
 
-  if (self->self_presence != NULL)
-    g_object_unref (self->self_presence);
-  self->self_presence = NULL;
-
-  g_object_unref (self->presence_cache);
-  self->presence_cache = NULL;
+  tp_clear_object (&self->self_presence);
+  tp_clear_object (&self->presence_cache);
 
   conn_olpc_activity_properties_dispose (self);
 
@@ -1139,17 +1126,8 @@ gabble_connection_dispose (GObject *object)
   g_assert (priv->olpc_msg_cb == NULL);
   g_assert (priv->olpc_presence_cb == NULL);
 
-  if (priv->connector != NULL)
-    {
-      g_object_unref (priv->connector);
-      priv->connector = NULL;
-    }
-
-  if (self->session != NULL)
-    {
-      g_object_unref (self->session);
-      self->session = NULL;
-    }
+  tp_clear_object (&priv->connector);
+  tp_clear_object (&self->session);
 
   if (self->lmconn != NULL)
     {
@@ -1172,49 +1150,16 @@ gabble_connection_dispose (GObject *object)
       priv->disconnect_timer = 0;
     }
 
-  if (self->pep_location != NULL)
-    {
-      g_object_unref (self->pep_location);
-      self->pep_location = NULL;
-    }
-
-  if (self->pep_nick != NULL)
-    {
-      g_object_unref (self->pep_nick);
-      self->pep_nick = NULL;
-    }
-
-  if (self->pep_olpc_buddy_props != NULL)
-    {
-      g_object_unref (self->pep_olpc_buddy_props);
-      self->pep_olpc_buddy_props = NULL;
-    }
-
-  if (self->pep_olpc_activities != NULL)
-    {
-      g_object_unref (self->pep_olpc_activities);
-      self->pep_olpc_activities = NULL;
-    }
-
-  if (self->pep_olpc_current_act != NULL)
-    {
-      g_object_unref (self->pep_olpc_current_act);
-      self->pep_olpc_current_act = NULL;
-    }
-
-  if (self->pep_olpc_act_props != NULL)
-    {
-      g_object_unref (self->pep_olpc_act_props);
-      self->pep_olpc_act_props = NULL;
-    }
+  tp_clear_object (&self->pep_location);
+  tp_clear_object (&self->pep_nick);
+  tp_clear_object (&self->pep_olpc_buddy_props);
+  tp_clear_object (&self->pep_olpc_activities);
+  tp_clear_object (&self->pep_olpc_current_act);
+  tp_clear_object (&self->pep_olpc_act_props);
 
   conn_sidecars_dispose (self);
 
-  if (self->daemon != NULL)
-    {
-      g_object_unref (self->daemon);
-      self->daemon = NULL;
-    }
+  tp_clear_object (&self->daemon);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);
@@ -1803,8 +1748,7 @@ connector_connected (GabbleConnection *self,
     }
 
   /* We don't need the connector any more */
-  g_object_unref (priv->connector);
-  priv->connector = NULL;
+  tp_clear_object (&priv->connector);
 
   if (conn == NULL)
     {
@@ -2221,18 +2165,16 @@ connection_shut_down (TpBaseConnection *base)
   GabbleConnection *self = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = self->priv;
 
+  /* Regardless of whether disconnection is already in progress, we still want
+   * to stop listening to the slacker and pinging the remote server.
+   */
+  gabble_connection_slacker_stop (self);
+  tp_clear_object (&priv->pinger);
+
   if (priv->closing)
     return;
 
   priv->closing = TRUE;
-
-  gabble_connection_slacker_stop (self);
-
-  if (priv->pinger != NULL)
-    {
-      g_object_unref (priv->pinger);
-      priv->pinger = NULL;
-    }
 
   if (priv->porter != NULL)
     {

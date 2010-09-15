@@ -397,6 +397,15 @@ class BaseXmlStream(xmlstream.XmlStream):
         # disconnect the TCP connection making tests as
         # connect/disconnect-timeout.py not working
 
+    def send_stream_error(self, error='system-shutdown'):
+        # Yes, there are meant to be two different STREAMS namespaces.
+        go_away = \
+            elem(xmlstream.NS_STREAMS, 'error')(
+                elem(ns.STREAMS, error)
+            )
+
+        self.send(go_away)
+
 class JabberXmlStream(BaseXmlStream):
     version = (0, 9)
 

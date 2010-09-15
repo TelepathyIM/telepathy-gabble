@@ -19,11 +19,15 @@
 
 #include "protocol.h"
 
+#include <string.h>
 #include <telepathy-glib/base-connection-manager.h>
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>
 
 #include "conn-presence.h"
+
+#define DEBUG_FLAG GABBLE_DEBUG_PROTOCOL
+
 #include "connection.h"
 #include "connection-manager.h"
 #include "im-factory.h"
@@ -32,6 +36,7 @@
 #include "roomlist-manager.h"
 #include "search-manager.h"
 #include "util.h"
+#include "debug.h"
 
 #define PROTOCOL_NAME "jabber"
 #define ICON_NAME "im-" PROTOCOL_NAME
@@ -41,6 +46,9 @@
 G_DEFINE_TYPE (GabbleJabberProtocol,
     gabble_jabber_protocol,
     TP_TYPE_BASE_PROTOCOL)
+
+static const gchar *addressing_vcard_fields[] = {"x-jabber", NULL};
+static const gchar *addressing_uri_schemes[] = {"xmpp", NULL};
 
 static TpCMParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
@@ -303,6 +311,7 @@ get_interfaces (TpBaseProtocol *self)
 {
   const gchar * const interfaces[] = {
     TP_IFACE_PROTOCOL_INTERFACE_PRESENCE,
+    TP_IFACE_PROTOCOL_INTERFACE_ADDRESSING,
     NULL };
 
   return g_strdupv ((GStrv) interfaces);
@@ -371,6 +380,111 @@ dup_authentication_types (TpBaseProtocol *self)
 }
 
 static void
+addressing_get_details (TpBaseProtocol *self,
+    GStrv *addressable_vcard_fields,
+    GStrv *addressable_uri_schemes)
+{
+  if (addressable_vcard_fields != NULL)
+    *addressable_vcard_fields = g_strdupv ((gchar **) addressing_vcard_fields);
+
+  if (addressable_uri_schemes != NULL)
+    *addressable_uri_schemes = g_strdupv ((gchar **) addressing_uri_schemes);
+}
+
+static gboolean
+valid_field_or_scheme (const gchar *field,
+    const gchar * const *supported)
+{
+  gchar *normalized_field = g_ascii_strdown (field, -1);
+  gboolean is_supported = tp_strv_contains (supported, normalized_field);
+
+  g_free (normalized_field);
+  return is_supported;
+}
+
+static gchar *
+addressing_normalize_vcard_address (TpBaseProtocol *self,
+    const gchar *vcard_field,
+    const gchar *vcard_address,
+    GError **error)
+{
+  gchar *normalized_address = NULL;
+
+  if (!valid_field_or_scheme (vcard_field, addressing_vcard_fields))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'%s' vCard field is not supported by this protocol", vcard_field);
+    }
+  else
+    {
+      GError *gabble_error = NULL;
+      normalized_address = gabble_normalize_contact (NULL,
+          vcard_address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL),
+          &gabble_error);
+
+      if (gabble_error != NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid address: %s", vcard_address,
+              gabble_error->message);
+          g_error_free (gabble_error);
+        }
+    }
+
+  return normalized_address;
+}
+
+static gchar *
+addressing_normalize_uri (TpBaseProtocol *self,
+    const gchar *uri,
+    GError **error)
+{
+  /* excuse the poor man's URI parsing, couldn't find a GLib helper */
+  gchar *scheme = g_uri_parse_scheme (uri);
+  gchar *normalized_uri = NULL;
+
+  if (scheme == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid URI", uri);
+    }
+  else if (!valid_field_or_scheme (scheme, addressing_uri_schemes))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'%s' URI scheme is not supported by this protocol",
+          scheme);
+    }
+  else
+    {
+      GError *gabble_error = NULL;
+      const gchar *address = uri + strlen (scheme) + 1; /* Strip the scheme */
+      gchar *normalized_address = gabble_normalize_contact (NULL,
+          address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL), &gabble_error);
+
+      if (gabble_error != NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid address: %s", address,
+              gabble_error->message);
+          g_error_free (gabble_error);
+        }
+      else
+        {
+          gchar *normalized_scheme = g_ascii_strdown (scheme, -1);
+          normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme,
+              normalized_address);
+
+          g_free (normalized_scheme);
+          g_free (normalized_address);
+        }
+    }
+
+  g_free (scheme);
+
+  return normalized_uri;
+}
+
+static void
 gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
 {
   TpBaseProtocolClass *base_class =
@@ -384,6 +498,9 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   base_class->get_connection_details = get_connection_details;
   base_class->get_statuses = get_presence_statuses;
   base_class->dup_authentication_types = dup_authentication_types;
+  base_class->get_addressing_details = addressing_get_details;
+  base_class->normalize_vcard_address = addressing_normalize_vcard_address;
+  base_class->normalize_uri = addressing_normalize_uri;
 }
 
 TpBaseProtocol *

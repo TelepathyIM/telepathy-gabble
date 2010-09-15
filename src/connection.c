@@ -383,7 +383,6 @@ gabble_connection_constructor (GType type,
   conn_sidecars_init (self);
   conn_mail_notif_init (self);
   conn_client_types_init (self);
-  conn_power_saving_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -774,6 +773,7 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
     GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
     GABBLE_IFACE_OLPC_BUDDY_INFO,
+    GABBLE_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
 
     /* always present interfaces */
     TP_IFACE_CONNECTION_INTERFACE_ALIASING,
@@ -793,7 +793,7 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
     NULL
 };
-static const gchar **interfaces_always_present = implemented_interfaces + 3;
+static const gchar **interfaces_always_present = implemented_interfaces + 4;
 
 const gchar **
 gabble_connection_get_implemented_interfaces (void)
@@ -2640,6 +2640,20 @@ set_status_to_connected (GabbleConnection *conn)
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
 
+  /* We can only cork presence updates on Google Talk. Of course, the Google
+   * Talk server doesn't advertise support for google:queue. So we use
+   * google:roster. We still support the hypothetically advertised google:queue
+   * just in case google starts using it, or another server implementation
+   * adopts it. */
+  if (conn->features & (GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE |
+          GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
+    {
+       const gchar *ifaces[] =
+         { GABBLE_IFACE_CONNECTION_INTERFACE_POWER_SAVING, NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
   /* go go gadget on-line */
   tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);
@@ -2729,6 +2743,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY;
               else if (0 == strcmp (var, NS_GOOGLE_SHARED_STATUS))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS;
+              else if (0 == strcmp (var, NS_GOOGLE_QUEUE))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE;
             }
         }
 

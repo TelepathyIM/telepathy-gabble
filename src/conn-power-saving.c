@@ -119,20 +119,20 @@ conn_power_saving_set_power_saving (
 
   g_object_get (G_OBJECT (self), "power-saving", &enabled, NULL);
 
-  if (base->status != TP_CONNECTION_STATUS_CONNECTED ||
-      enable == enabled)
+  if (enable == enabled)
     {
+      /* no-op */
       gabble_svc_connection_interface_power_saving_return_from_set_power_saving (
           context);
+      return;
+    }
 
-      if (enable != enabled)
-        {
-          gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
-              self, enable);
-
-          g_object_set (G_OBJECT (self), "power-saving", enable, NULL);
-        }
-
+  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Cannot enter power saving mode when not connected.");
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
       return;
     }
 
@@ -155,48 +155,4 @@ conn_power_saving_iface_init (gpointer g_iface,
   g_iface, conn_power_saving_##x)
   IMPLEMENT (set_power_saving);
 #undef IMPLEMENT
-}
-
-static void
-conn_power_saving_enable_on_connect_cb (GObject *source_object,
-    GAsyncResult *res,
-    gpointer user_data)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (source_object);
-  GError *error = NULL;
-
-  DEBUG (" ");
-
-  if (!conn_util_send_iq_finish (self, res, NULL, NULL, &error))
-    {
-      DEBUG ("Failed to enter power saving mode when connected: %s",
-             error->message);
-      g_object_set (source_object, "power-saving", FALSE, NULL);
-      g_error_free (error);
-      gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
-          self, FALSE);
-    }
-}
-
-static void
-conn_power_saving_status_changed_cb (GabbleConnection *self,
-    guint status,
-    guint reason,
-    gpointer user_data)
-{
-  gboolean enabled;
-
-  g_object_get (G_OBJECT (self), "power-saving", &enabled, NULL);
-
-  if (enabled && status == TP_CONNECTION_STATUS_CONNECTED)
-    conn_power_saving_send_command (self, "enable",
-        conn_power_saving_enable_on_connect_cb, NULL);
-}
-
-void
-conn_power_saving_init (GabbleConnection *self)
-{
-  g_signal_connect (self, "status-changed",
-      G_CALLBACK (conn_power_saving_status_changed_cb), NULL);
-
 }

@@ -29,8 +29,6 @@ G_BEGIN_DECLS
 
 void conn_power_saving_iface_init (gpointer g_iface, gpointer iface_data);
 
-void conn_power_saving_init (GabbleConnection *self);
-
 G_END_DECLS
 
 #endif /* GABBLE_CONN_SLACKER_H */

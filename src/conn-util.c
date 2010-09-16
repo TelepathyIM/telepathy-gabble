@@ -85,6 +85,8 @@ conn_util_send_iq_finish (GabbleConnection *self,
       wocky_stanza_extract_errors (resp, NULL, &err, NULL, NULL))
     {
       gabble_set_tp_error_from_wocky (err, error);
+      g_error_free (err);
+
       return FALSE;
     }
 

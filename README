@@ -8,7 +8,7 @@ currently supporting:
 * single-user chats
 * multi-user chats
 * voice/video calling
-* file tranfer
+* file transfer
 
 with Jabber/XMPP and Google Talk interoperability.
 
@@ -25,6 +25,16 @@ telepathy-gabble requires:
   GLib, GObject <http://ftp.gnome.org/pub/GNOME/sources/glib/>
   libdbus <http://dbus.freedesktop.org/releases/dbus/>
   The D-Bus GLib bindings <http://dbus.freedesktop.org/releases/dbus-glib/>
+  libxml2 <http://xmlsoft.org/>
+  libuuid <http://e2fsprogs.sourceforge.net/>
+  libnice <http://nice.freedesktop.org/releases/>
+  SQLite <http://www.sqlite.org/>
+  libsoup <http://ftp.gnome.org/pub/GNOME/sources/libsoup/>
+
+and either:
+  GNUTLS <http://www.gnu.org/software/gnutls/>
+or
+  OpenSSL <http://www.openssl.org/>
 
 At build time, it also requires:
   GNU make <http://www.gnu.org/software/make/>

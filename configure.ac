@@ -20,7 +20,7 @@ m4_define([gabble_version],
               [gabble_base_version].[gabble_nano_version])])
 
 AC_INIT([Telepathy Gabble], [gabble_version],
-        [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy&component=gabble&version=0.10])
+        [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy&component=gabble])
 
 AC_CONFIG_MACRO_DIR([m4])
 

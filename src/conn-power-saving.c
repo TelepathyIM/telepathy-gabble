@@ -74,7 +74,7 @@ toggle_queueing_cb (GObject *source_object,
 
   enabling = queueing_context->enabling;
 
-  if (!conn_util_send_iq_finish (self, res, NULL, NULL, &error))
+  if (!conn_util_send_iq_finish (self, res, NULL, &error))
     {
       DEBUG ("Failed to %sable queueing: %s",
           enabling ? "en" : "dis", error->message);

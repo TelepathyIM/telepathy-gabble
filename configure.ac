@@ -153,7 +153,7 @@ fi
 AC_SUBST(CLIENT_TYPE)
 
 dnl Check for Glib
-PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gthread-2.0 >= 2.16])
+PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)

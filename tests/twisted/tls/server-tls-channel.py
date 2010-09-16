@@ -13,6 +13,7 @@ Test the server TLS channel
 
 import base64
 import dbus
+import os
 
 from OpenSSL import crypto
 
@@ -28,8 +29,8 @@ import constants as cs
 
 JID = "test@example.org"
 
-CA_CERT = 'tls-cert.pem'
-CA_KEY  = 'tls-key.pem'
+CA_CERT = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-cert.pem'
+CA_KEY  = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-key.pem'
 
 # the certificate is for the domain name 'weasel-juice.org'.
 # the files are copied from wocky/tests/certs/tls-[cert,key].pem

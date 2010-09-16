@@ -2644,7 +2644,8 @@ set_status_to_connected (GabbleConnection *conn)
    * Talk server doesn't advertise support for google:queue. So we use
    * google:roster. We still support the hypothetically advertised google:queue
    * just in case google starts using it, or another server implementation
-   * adopts it. */
+   * adopts it. google:queue is described here:
+   * http://mail.jabber.org/pipermail/summit/2010-February/000528.html */
   if (conn->features & (GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE |
           GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
     {

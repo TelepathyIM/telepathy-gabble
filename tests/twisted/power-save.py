@@ -140,7 +140,7 @@ def test_on_connect_error(q, bus, conn, stream):
 
     call_async(q, conn.PowerSaving, 'SetPowerSaving', True)
 
-    q.expect('dbus-error', method='SetPowerSaving', name=cs.NOT_AVAILABLE)
+    q.expect('dbus-error', method='SetPowerSaving', name=cs.DISCONNECTED)
 
     q.unforbid_events(pattern)
 

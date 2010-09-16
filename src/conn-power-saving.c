@@ -117,6 +117,8 @@ conn_power_saving_set_power_saving (
   ToggleQueueingContext *queueing_context;
   gboolean enabled;
 
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
   g_object_get (G_OBJECT (self), "power-saving", &enabled, NULL);
 
   if (enable == enabled)
@@ -124,15 +126,6 @@ conn_power_saving_set_power_saving (
       /* no-op */
       gabble_svc_connection_interface_power_saving_return_from_set_power_saving (
           context);
-      return;
-    }
-
-  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
-    {
-      GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "Cannot enter power saving mode when not connected.");
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
       return;
     }
 

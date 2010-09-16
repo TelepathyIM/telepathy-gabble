@@ -1,7 +1,57 @@
-telepathy-gabble 0.9.19 (UNRELEASED)
+telepathy-gabble 0.10.0 (2010-09-16)
 ====================================
 
-…
+The "we demand additional lumber" release, starting the 0.10.x stable branch.
+
+Highlights since 0.8.x
+----------------------
+
+Gabble no longer uses Loudmouth for XMPP; instead, it contains a snapshot of
+Wocky, a new XMPP library based on GIO. Wocky will be split into a fully
+independent project when it reaches API stability.
+
+New features and significant bugfixes include:
+
+• Jingle calls now interoperate with Pidgin, Gajim, and XEP-0100 SIP gateways
+• file transfers now interoperate with the Google Talk desktop client
+• support for Google Talk PMUC chatrooms
+• contact information (vCards) on servers supporting XEP-0054
+• searching for contacts on servers supporting XEP-0055
+• improved capability-discovery support (ContactCapabilities)
+• compile-time selection of GNUTLS or OpenSSL for SSL support
+• support for JIDs with non-ASCII domains
+• experimental support for plugins
+• experimental support for multi-user Jingle calls (Muji)
+• compilation on Unix platforms other than Linux should now work
+
+Compatibility notes
+-------------------
+
+• telepathy-glib 0.11.16, GLib 2.24, libxml 2, SQLite 3, libnice 0.0.11,
+  libsoup and libuuid are required.
+
+• libsasl 2 is optional.
+
+• Either GNUTLS >= 2.8.2 or OpenSSL >= 0.9.8g is also required.
+
+• At the time of release, GNUTLS 2.8 is recommended. For versions 2.10.0 and
+  2.10.1, some fixes need to be backported from 2.11.1 to fix connection
+  failures with "-59: GNUTLS_E_INTERNAL_ERROR" in the debug log; we're
+  tracking this as <https://bugs.freedesktop.org/show_bug.cgi?id=29364>.
+
+• If you use telepathy-mission-control, version 5.5.0 or later is required.
+  A 5.6.x stable branch suitable for this will be released soon. Packagers,
+  please make Gabble conflict with Mission Control < 5.5.0 (e.g. the
+  Breaks or Conflicts relationships in dpkg), or if that's not possible in your
+  packaging system, depend on Mission Control >= 5.5.0.
+
+Changes since 0.9.18
+--------------------
+
+• Fix a crash if the connection closes while verifying a TLS certificate (wjt)
+• Allow an in-progress connection to the server to be cancelled with
+  Disconnect (cosimoc)
+• Add regression tests for TLS certificate verification (cosimoc)
 
 telepathy-gabble 0.9.18 (2010-09-13)
 ====================================

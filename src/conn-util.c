@@ -68,12 +68,11 @@ gboolean
 conn_util_send_iq_finish (GabbleConnection *self,
     GAsyncResult *result,
     WockyStanza **response,
-    GError **wocky_error,
-    GError **tp_error)
+    GError **error)
 {
   GSimpleAsyncResult *res;
   WockyStanza *resp;
-  GError *error = NULL;
+  GError *err = NULL;
 
   g_return_val_if_fail (g_simple_async_result_is_valid (result,
           G_OBJECT (self), conn_util_send_iq_async), FALSE);
@@ -82,16 +81,15 @@ conn_util_send_iq_finish (GabbleConnection *self,
 
   resp = g_simple_async_result_get_op_res_gpointer (res);
 
-  if (resp != NULL && response != NULL)
-    *response = g_object_ref (resp);
-
-  if (g_simple_async_result_propagate_error (res, &error) ||
-      wocky_stanza_extract_errors (resp, NULL, &error, NULL, NULL))
+  if (g_simple_async_result_propagate_error (res, &err) ||
+      wocky_stanza_extract_errors (resp, NULL, &err, NULL, NULL))
     {
-      gabble_set_tp_error_from_wocky (error, tp_error);
-      g_propagate_error (wocky_error, error);
+      gabble_set_tp_error_from_wocky (err, error);
       return FALSE;
     }
+
+  if (response != NULL)
+    *response = g_object_ref (resp);
 
   return TRUE;
 }

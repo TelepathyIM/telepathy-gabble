@@ -35,8 +35,7 @@ void conn_util_send_iq_async (GabbleConnection *self,
 gboolean conn_util_send_iq_finish (GabbleConnection *self,
     GAsyncResult *result,
     WockyStanza **response,
-    GError **wocky_error,
-    GError **tp_error);
+    GError **error);
 
 G_END_DECLS
 

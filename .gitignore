@@ -64,6 +64,8 @@ lib/loudmouth/loudmouth-signals-marshal.list
 /src/gabble-signals-marshal.list
 /src/gabble-signals-marshal.c
 /src/gabble-signals-marshal.h
+/src/gabble-enumtypes.h
+/src/gabble-enumtypes.c
 /src/media-session-enumtypes.c
 /src/media-session-enumtypes.h
 /src/telepathy-gabble

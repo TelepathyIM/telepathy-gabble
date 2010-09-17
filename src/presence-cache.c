@@ -1118,7 +1118,9 @@ client_types_from_message (TpHandle handle,
       const gchar *type;
 
       /* Now get the client type */
-      if ((type = wocky_node_get_attribute (identity, "type")) == NULL)
+      type = wocky_node_get_attribute (identity, "type");
+
+      if(type == NULL)
         continue;
 
       DEBUG ("Got type for %u: %s", handle, type);
@@ -1401,9 +1403,9 @@ _process_caps_uri (GabblePresenceCache *cache,
           if (cached_query_reply != NULL)
             {
               WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
-              GPtrArray *types;
+              GPtrArray *types = client_types_from_message (handle, query);
 
-              if ((types = client_types_from_message (handle, query)) != NULL)
+              if (types != NULL)
                 {
                   gabble_presence_update_client_types (presence, resource, types);
                   g_ptr_array_unref (types);

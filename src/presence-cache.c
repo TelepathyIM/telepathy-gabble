@@ -1110,7 +1110,7 @@ client_types_from_message (TpHandle handle,
 
   array = g_ptr_array_new_with_free_func (g_free);
 
-  /* Find all identity nodes in the return. */
+  /* Find all identity nodes in the result. */
   wocky_node_iter_init (&iter, query_result,
       "identity", NS_DISCO_INFO);
   while (wocky_node_iter_next (&iter, &identity))

@@ -366,6 +366,7 @@ aggregate_resources (GabblePresence *presence)
       gabble_capability_set_update (priv->cap_set, r->cap_set);
 
       /* trump existing status & message if it's more present
+       * or has the same presence and a more recent last activity
        * or has the same presence and a higher priority */
       if (r->status > presence->status ||
           (r->status == presence->status && r->last_activity > activity) ||

@@ -28,6 +28,7 @@
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
+#include "gabble-enumtypes.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -735,7 +736,7 @@ gabble_presence_update_client_types (GabblePresence *presence,
     GPtrArray *client_types)
 {
   Resource *res;
-  guint i;
+  guint i, value;
 
   res = _find_resource (presence, resource);
 
@@ -748,29 +749,8 @@ gabble_presence_update_client_types (GabblePresence *presence,
     {
       const gchar *type = g_ptr_array_index (client_types, i);
 
-      if (!tp_strdiff (type, "bot"))
-        res->client_type |= GABBLE_CLIENT_TYPE_BOT;
-
-      if (!tp_strdiff (type, "console"))
-        res->client_type |= GABBLE_CLIENT_TYPE_CONSOLE;
-
-      if (!tp_strdiff (type, "game"))
-        res->client_type |= GABBLE_CLIENT_TYPE_GAME;
-
-      if (!tp_strdiff (type, "handheld"))
-        res->client_type |= GABBLE_CLIENT_TYPE_HANDHELD;
-
-      if (!tp_strdiff (type, "pc"))
-        res->client_type |= GABBLE_CLIENT_TYPE_PC;
-
-      if (!tp_strdiff (type, "phone"))
-        res->client_type |= GABBLE_CLIENT_TYPE_PHONE;
-
-      if (!tp_strdiff (type, "web"))
-        res->client_type |= GABBLE_CLIENT_TYPE_WEB;
-
-      if (!tp_strdiff (type, "sms"))
-        res->client_type |= GABBLE_CLIENT_TYPE_SMS;
+      if (gabble_flag_from_nick (GABBLE_TYPE_CLIENT_TYPE, type, &value))
+        res->client_type |= value;
     }
 }
 
@@ -781,6 +761,9 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
 {
   Resource *res;
   GPtrArray *array;
+  GFlagsClass *klass;
+  GFlagsValue *value;
+  guint i;
 
   array = g_ptr_array_new_with_free_func (g_free);
 
@@ -789,29 +772,20 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
   if (res == NULL)
     return NULL;
 
-  if (res->client_type & GABBLE_CLIENT_TYPE_BOT)
-    g_ptr_array_add (array, g_strdup ("bot"));
+  klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);
 
-  if (res->client_type & GABBLE_CLIENT_TYPE_CONSOLE)
-    g_ptr_array_add (array, g_strdup ("console"));
+  if (klass != NULL)
+    {
+      for (i = 0; i < klass->n_values; i++)
+        {
+          value = &klass->values[i];
 
-  if (res->client_type & GABBLE_CLIENT_TYPE_GAME)
-    g_ptr_array_add (array, g_strdup ("game"));
+          if (res->client_type & value->value)
+            g_ptr_array_add (array, g_strdup (value->value_nick));
+        }
 
-  if (res->client_type & GABBLE_CLIENT_TYPE_HANDHELD)
-    g_ptr_array_add (array, g_strdup ("handheld"));
-
-  if (res->client_type & GABBLE_CLIENT_TYPE_PC)
-    g_ptr_array_add (array, g_strdup ("pc"));
-
-  if (res->client_type & GABBLE_CLIENT_TYPE_PHONE)
-    g_ptr_array_add (array, g_strdup ("phone"));
-
-  if (res->client_type & GABBLE_CLIENT_TYPE_WEB)
-    g_ptr_array_add (array, g_strdup ("web"));
-
-  if (res->client_type & GABBLE_CLIENT_TYPE_SMS)
-    g_ptr_array_add (array, g_strdup ("sms"));
+      g_type_class_unref (klass);
+    }
 
   if (add_null)
     g_ptr_array_add (array, NULL);

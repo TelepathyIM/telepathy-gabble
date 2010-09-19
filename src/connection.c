@@ -86,6 +86,7 @@
 #include "util.h"
 #include "vcard-manager.h"
 #include "conn-util.h"
+#include "conn-addressing.h"
 
 static guint disco_reply_timeout = 5;
 
@@ -140,6 +141,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_client_types_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_POWER_SAVING,
       conn_power_saving_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_ADDRESSING,
+      conn_addressing_iface_init);
     )
 
 /* properties */
@@ -420,6 +423,7 @@ gabble_connection_constructor (GType type,
   conn_sidecars_init (self);
   conn_mail_notif_init (self);
   conn_client_types_init (self);
+  conn_addressing_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
@@ -838,6 +842,7 @@ static const gchar *implemented_interfaces[] = {
     GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
     GABBLE_IFACE_CONNECTION_FUTURE,
     TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
+    GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING,
     NULL
 };
 static const gchar **interfaces_always_present = implemented_interfaces + 3;

@@ -51,6 +51,8 @@ libgabble_convenience_la_SOURCES = \
     caps-hash.c \
     $(top_srcdir)/gabble/caps-channel-manager.h \
     caps-channel-manager.c \
+    conn-addressing.h \
+    conn-addressing.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \

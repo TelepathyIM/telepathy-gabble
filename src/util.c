@@ -1461,3 +1461,33 @@ gabble_simple_async_countdown_dec (GSimpleAsyncResult *simple)
       g_object_unref (simple);
     }
 }
+
+gchar *
+gabble_uri_to_jid (const gchar *uri, GError **error)
+{
+  /* excuse the poor man's URI parsing, couldn't find a GLib helper */
+  gchar **tokenized_uri = g_strsplit(uri, ":", 2);
+  gchar *jid = NULL;
+
+  if (g_strv_length (tokenized_uri) != 2)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid URI", uri);
+      goto OUT;
+    }
+
+  if (g_ascii_strcasecmp ("xmpp", tokenized_uri[0]) != 0)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'%s' URI scheme is not supported by this protocol",
+          tokenized_uri[0]);
+      goto OUT;
+    }
+
+  jid = gabble_normalize_contact (NULL, tokenized_uri[1],
+      GUINT_TO_POINTER (GABBLE_JID_GLOBAL), error);
+
+ OUT:
+  g_strfreev (tokenized_uri);
+  return jid;
+}

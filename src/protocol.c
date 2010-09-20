@@ -428,45 +428,17 @@ addressing_normalize_contact_uri (TpBaseProtocol *self,
     const gchar *uri,
     GError **error)
 {
-  gchar *scheme = g_uri_parse_scheme (uri);
-  gchar *normalized_uri = NULL;
+  gchar *normalized_uri;
+  gchar *jid = gabble_uri_to_jid (uri, error);
 
-  if (scheme == NULL)
+  if (jid == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "'%s' is not a valid URI", uri);
-    }
-  else if (g_ascii_strcasecmp (scheme, "xmpp") == 0)
-    {
-      GError *gabble_error = NULL;
-      const gchar *address = uri + strlen (scheme) + 1; /* Strip the scheme */
-      gchar *normalized_address = gabble_normalize_contact (NULL,
-          address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL), &gabble_error);
-
-      if (gabble_error != NULL)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "'%s' is an invalid address: %s", address,
-              gabble_error->message);
-          g_error_free (gabble_error);
-        }
-      else
-        {
-          gchar *normalized_scheme = g_ascii_strdown (scheme, -1);
-          normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme,
-              normalized_address);
-
-          g_free (normalized_scheme);
-          g_free (normalized_address);
-        }
-    }
-  else
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "'xmpp' is the only URI scheme supported by this protocol");
+      /* InvalidHandle is not relevant when not on a connection */
+      if ((*error)->code == TP_ERROR_INVALID_HANDLE)
+        (*error)->code = TP_ERROR_INVALID_ARGUMENT;
     }
 
-  g_free (scheme);
+  normalized_uri = g_strdup_printf ("xmpp:%s", jid);
 
   return normalized_uri;
 }

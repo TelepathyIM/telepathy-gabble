@@ -1102,7 +1102,8 @@ emit_capabilities_discovered (GabblePresenceCache *cache,
 
 static GPtrArray *
 client_types_from_message (TpHandle handle,
-    LmMessageNode *lm_node)
+    LmMessageNode *lm_node,
+    const gchar *resource)
 {
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
   WockyNodeIter iter;
@@ -1115,13 +1116,33 @@ client_types_from_message (TpHandle handle,
       "identity", NS_DISCO_INFO);
   while (wocky_node_iter_next (&iter, &identity))
     {
-      const gchar *type;
+      const gchar *category, *type;
+
+      category = wocky_node_get_attribute (identity, "category");
+      if (category == NULL)
+        continue;
 
       /* Now get the client type */
       type = wocky_node_get_attribute (identity, "type");
-
-      if(type == NULL)
+      if (type == NULL)
         continue;
+
+      /* So, turns out if you disco a specific resource of a gtalk
+      contact, the Google servers will reply with the identity node as
+      if you disco'd the bare jid, so will get something like:
+
+          <identity category='account' type='registered' name='Google Talk User Account'/>
+
+      which is just great. So, let's special case android phones as
+      their resources will start with "android" and let's just say
+      they're phones. */
+
+      if (!tp_strdiff (category, "account")
+          && g_str_has_prefix (resource, "android")
+          && !tp_strdiff (type, "registered"))
+        {
+          type = "phone";
+        }
 
       DEBUG ("Got type for %u: %s", handle, type);
 
@@ -1220,7 +1241,8 @@ _caps_disco_cb (GabbleDisco *disco,
 
   /* Sort out client types */
   presence = gabble_presence_cache_get (cache, handle);
-  client_types = client_types_from_message (handle, query_result);
+  client_types = client_types_from_message (handle, query_result,
+      waiter_self->resource);
   if (client_types != NULL)
     {
       gabble_presence_update_client_types (presence, waiter_self->resource,
@@ -1417,7 +1439,7 @@ _process_caps_uri (GabblePresenceCache *cache,
           if (cached_query_reply != NULL)
             {
               WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
-              GPtrArray *types = client_types_from_message (handle, query);
+              GPtrArray *types = client_types_from_message (handle, query, resource);
 
               if (types != NULL)
                 {

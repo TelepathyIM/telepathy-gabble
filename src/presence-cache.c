@@ -1139,6 +1139,18 @@ client_types_from_message (TpHandle handle,
 }
 
 static void
+_signal_presences_updated (GabblePresenceCache *cache,
+    TpHandle handle)
+{
+  GArray *handles;
+
+  handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
+  g_array_append_val (handles, handle);
+  g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, handles);
+  g_array_free (handles, TRUE);
+}
+
+static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
                 const gchar *jid,
@@ -1214,6 +1226,8 @@ _caps_disco_cb (GabbleDisco *disco,
       gabble_presence_update_client_types (presence, waiter_self->resource,
           client_types);
       g_ptr_array_unref (client_types);
+
+      _signal_presences_updated (cache, handle);
     }
 
   /* Now onto caps */
@@ -1409,6 +1423,8 @@ _process_caps_uri (GabblePresenceCache *cache,
                 {
                   gabble_presence_update_client_types (presence, resource, types);
                   g_ptr_array_unref (types);
+
+                  _signal_presences_updated (cache, handle);
                 }
             }
         }
@@ -1920,13 +1936,7 @@ gabble_presence_cache_update (
   if (gabble_presence_cache_do_update (cache, handle, resource, presence_id,
       status_message, priority))
     {
-      GArray *handles;
-
-      handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
-
-      g_array_append_val (handles, handle);
-      g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, handles);
-      g_array_free (handles, TRUE);
+      _signal_presences_updated (cache, handle);
     }
 
   gabble_presence_cache_maybe_remove (cache, handle);

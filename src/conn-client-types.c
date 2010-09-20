@@ -35,6 +35,59 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CLIENT_TYPES
 #include "debug.h"
 
+static gboolean
+get_client_types_from_handle (GabbleConnection *conn,
+    TpHandle handle,
+    GPtrArray **types,
+    gboolean add_null)
+{
+  GabblePresence *presence;
+  GPtrArray *empty_array;
+  const gchar *res;
+
+  empty_array = g_ptr_array_new ();
+  g_ptr_array_add (empty_array, NULL);
+
+  presence = gabble_presence_cache_get (conn->presence_cache, handle);
+
+  /* We know that we know nothing about this chap, so empty array it is. */
+  if (presence == NULL)
+    {
+      *types = empty_array;
+      return TRUE;
+    }
+
+  /* Find the best resource. */
+  res = gabble_presence_pick_resource_by_caps (presence,
+      DEVICE_AGNOSTIC, NULL, NULL);
+
+  if (res == NULL)
+    {
+      *types = empty_array;
+      return TRUE;
+    }
+
+  /* Get the cached client types. */
+  *types = gabble_presence_get_client_types_array (presence, res, add_null);
+
+  if (*types == NULL)
+    {
+      /* There's a pending disco request happening, so don't give an
+       * empty array for this fellow. */
+      if (gabble_presence_cache_disco_in_progress (conn->presence_cache,
+              handle, res))
+        {
+          g_ptr_array_unref (empty_array);
+          return FALSE;
+        }
+
+      /* This guy, on the other hand, can get the most empty of arrays. */
+      *types = empty_array;
+    }
+
+  return TRUE;
+}
+
 static void
 client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
     const GArray *contacts,
@@ -45,9 +98,8 @@ client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
   TpHandleRepoIface *contact_handles;
   guint i;
   GHashTable *client_types;
-  GabblePresence *presence;
   GError *error = NULL;
-  GPtrArray *types_list, *empty_array;;
+  GPtrArray *types_list;
 
   /* Validate contacts */
   contact_handles = tp_base_connection_get_handles (base,
@@ -74,54 +126,18 @@ client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
   types_list = g_ptr_array_new_with_free_func (
       (GDestroyNotify) g_ptr_array_unref);
 
-  empty_array = g_ptr_array_new ();
-  g_ptr_array_add (empty_array, NULL);
-
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
       GPtrArray *types;
-      const gchar *res;
 
-      presence = gabble_presence_cache_get (conn->presence_cache, handle);
+      if (!get_client_types_from_handle (conn, handle, &types, TRUE))
+        continue;
 
-      /* We know that we know nothing about this chap, so empty array it is. */
-      if (presence == NULL)
-        {
-          types = empty_array;
-          goto add_array;
-        }
-
-      /* Find the best resource. */
-      res = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, NULL, NULL);
-
-      if (res == NULL)
-        {
-          types = empty_array;
-          goto add_array;
-        }
-
-      /* Get the cached client types. */
-      types = gabble_presence_get_client_types_array (presence, res, TRUE);
-
-      if (types == NULL)
-        {
-          /* There's a pending disco request happening, so don't give an
-           * empty array for this fellow. */
-          if (gabble_presence_cache_disco_in_progress (conn->presence_cache,
-                  handle, res))
-            continue;
-
-          /* This guy, on the other hand, can get the most empty of arrays. */
-          types = empty_array;
-        }
-
-add_array:
       g_hash_table_insert (client_types, GUINT_TO_POINTER (handle),
           types->pdata);
 
-      if (types != empty_array)
+      if (g_ptr_array_index (types, 0) != NULL)
         g_ptr_array_add (types_list, types);
     }
 
@@ -130,7 +146,6 @@ add_array:
 
   g_hash_table_unref (client_types);
   g_ptr_array_unref (types_list);
-  g_ptr_array_unref (empty_array);
 }
 
 void
@@ -152,53 +167,16 @@ conn_client_types_fill_contact_attributes (GObject *obj,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (obj);
   guint i;
-  GPtrArray *empty_array;
-
-  empty_array = g_ptr_array_new ();
-  g_ptr_array_add (empty_array, NULL);
 
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GabblePresence *presence;
       GValue *val;
       GPtrArray *types;
-      const gchar *res;
 
-      presence = gabble_presence_cache_get (conn->presence_cache, handle);
+      if (!get_client_types_from_handle (conn, handle, &types, FALSE))
+        continue;
 
-      if (presence == NULL)
-        {
-          types = empty_array;
-          goto add_array;
-        }
-
-      /* Find the best resource. */
-      res = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, NULL, NULL);
-
-      if (res == NULL)
-        {
-          types = empty_array;
-          goto add_array;
-        }
-
-      /* Get the cached client types. */
-      types = gabble_presence_get_client_types_array (presence, res, FALSE);
-
-      if (types == NULL)
-        {
-          /* There's a pending disco request happening, so don't give an
-           * empty array for his troubles. */
-          if (gabble_presence_cache_disco_in_progress (conn->presence_cache,
-                  handle, res))
-            continue;
-
-          /* This guy, on the other hand, can get the most empty of arrays. */
-          types = empty_array;
-        }
-
-add_array:
       val = tp_g_value_slice_new_boxed (
           dbus_g_type_get_collection ("GPtrArray", G_TYPE_STRING),
           types);
@@ -206,12 +184,8 @@ add_array:
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
           GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES "/client-types", val);
 
-      if (types != empty_array)
-        g_ptr_array_unref (types);
+      g_ptr_array_unref (types);
     }
-
-  g_ptr_array_unref (empty_array);
-
 }
 
 static void

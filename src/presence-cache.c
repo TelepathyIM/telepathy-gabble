@@ -1113,6 +1113,77 @@ emit_capabilities_discovered (GabblePresenceCache *cache,
   g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
 }
 
+static GPtrArray *
+client_types_from_message (TpHandle handle,
+    LmMessageNode *lm_node,
+    const gchar *resource)
+{
+  WockyNode *identity, *query_result = (WockyNode *) lm_node;
+  WockyNodeIter iter;
+  GPtrArray *array;
+
+  array = g_ptr_array_new_with_free_func (g_free);
+
+  /* Find all identity nodes in the result. */
+  wocky_node_iter_init (&iter, query_result,
+      "identity", NS_DISCO_INFO);
+  while (wocky_node_iter_next (&iter, &identity))
+    {
+      const gchar *category, *type;
+
+      category = wocky_node_get_attribute (identity, "category");
+      if (category == NULL)
+        continue;
+
+      /* Now get the client type */
+      type = wocky_node_get_attribute (identity, "type");
+      if (type == NULL)
+        continue;
+
+      /* So, turns out if you disco a specific resource of a gtalk
+      contact, the Google servers will reply with the identity node as
+      if you disco'd the bare jid, so will get something like:
+
+          <identity category='account' type='registered' name='Google Talk User Account'/>
+
+      which is just great. So, let's special case android phones as
+      their resources will start with "android" and let's just say
+      they're phones. */
+
+      if (!tp_strdiff (category, "account")
+          && g_str_has_prefix (resource, "android")
+          && !tp_strdiff (type, "registered"))
+        {
+          type = "phone";
+        }
+
+      DEBUG ("Got type for %u: %s", handle, type);
+
+      g_ptr_array_add (array, g_strdup (type));
+    }
+
+  if (array->len == 0)
+    {
+      DEBUG ("How very odd, we didn't get any client types");
+      g_ptr_array_unref (array);
+      return NULL;
+    }
+
+  return array;
+}
+
+static void
+_signal_presences_updated (GabblePresenceCache *cache,
+    TpHandle handle)
+{
+  GArray *handles;
+
+  handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
+  g_array_append_val (handles, handle);
+  g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, handles);
+  g_array_free (handles, TRUE);
+}
+
 static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
@@ -1135,6 +1206,8 @@ _caps_disco_cb (GabbleDisco *disco,
   gchar *resource;
   gboolean jid_is_valid;
   gpointer key;
+  GabblePresence *presence;
+  GPtrArray *client_types;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = cache->priv;
@@ -1178,6 +1251,21 @@ _caps_disco_cb (GabbleDisco *disco,
       DEBUG ("Ignoring non requested disco reply from %s", jid);
       goto OUT;
     }
+
+  /* Sort out client types */
+  presence = gabble_presence_cache_get (cache, handle);
+  client_types = client_types_from_message (handle, query_result,
+      waiter_self->resource);
+  if (client_types != NULL)
+    {
+      gabble_presence_update_client_types (presence, waiter_self->resource,
+          client_types);
+      g_ptr_array_unref (client_types);
+
+      _signal_presences_updated (cache, handle);
+    }
+
+  /* Now onto caps */
 
   cap_set = gabble_capability_set_new_from_stanza (query_result);
 
@@ -1349,8 +1437,6 @@ _process_caps_uri (GabblePresenceCache *cache,
               query_str);
           g_free (query_str);
         }
-
-      g_object_unref (cached_query_reply);
     }
 
   g_object_unref (caps_cache);
@@ -1368,7 +1454,26 @@ _process_caps_uri (GabblePresenceCache *cache,
           from);
 
       if (presence)
-        gabble_presence_set_capabilities (presence, resource, cap_set, serial);
+        {
+          gabble_presence_set_capabilities (
+              presence, resource, cap_set, serial);
+
+          /* We can only get this information from actual disco replies,
+           * so we depend on having this information from the caps cache. */
+          if (cached_query_reply != NULL)
+            {
+              WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
+              GPtrArray *types = client_types_from_message (handle, query, resource);
+
+              if (types != NULL)
+                {
+                  gabble_presence_update_client_types (presence, resource, types);
+                  g_ptr_array_unref (types);
+
+                  _signal_presences_updated (cache, handle);
+                }
+            }
+        }
       else
         DEBUG ("presence not found");
 
@@ -1401,7 +1506,7 @@ _process_caps_uri (GabblePresenceCache *cache,
           DEBUG ("updating serial for waiter (%s, %s) from %u to %u",
               from, uri, waiter->serial, serial);
           waiter->serial = serial;
-          return;
+          goto out;
         }
 
       waiter = disco_waiter_new (contact_repo, handle, resource,
@@ -1436,6 +1541,10 @@ _process_caps_uri (GabblePresenceCache *cache,
           waiter->disco_requested = TRUE;
         }
     }
+
+out:
+  if (cached_query_reply != NULL)
+    g_object_unref (cached_query_reply);
 }
 
 static void
@@ -1858,13 +1967,7 @@ gabble_presence_cache_update (
   if (gabble_presence_cache_do_update (cache, handle, resource, presence_id,
       status_message, priority))
     {
-      GArray *handles;
-
-      handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
-
-      g_array_append_val (handles, handle);
-      g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, handles);
-      g_array_free (handles, TRUE);
+      _signal_presences_updated (cache, handle);
     }
 
   gabble_presence_cache_maybe_remove (cache, handle);
@@ -2297,4 +2400,31 @@ gabble_presence_cache_get_location (GabblePresenceCache *cache,
     }
 
   return NULL;
+}
+
+gboolean
+gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
+    TpHandle handle,
+    const gchar *resource)
+{
+  GabblePresenceCachePrivate *priv = cache->priv;
+  GList *l, *waiters;
+  gboolean out = FALSE;
+
+  waiters = g_hash_table_get_values (priv->disco_pending);
+
+  for (l = waiters; l != NULL; l = l->next)
+    {
+      DiscoWaiter *w = l->data;
+
+      if (w->handle == handle && !tp_strdiff (w->resource, resource))
+        {
+          out = TRUE;
+          break;
+        }
+    }
+
+  g_list_free (waiters);
+
+  return out;
 }

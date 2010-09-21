@@ -123,4 +123,8 @@ gchar * gabble_peer_to_jid (GabbleConnection *conn,
     TpHandle peer,
     const gchar *resource);
 
+gboolean
+gabble_flag_from_nick (GType flag_type, const gchar *nick,
+    guint *value);
+
 #endif /* __GABBLE_UTIL_H__ */

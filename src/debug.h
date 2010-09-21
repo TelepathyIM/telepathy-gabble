@@ -7,6 +7,7 @@
 
 G_BEGIN_DECLS
 
+/* Remember to keep this enum up to date with the keys array in debug.c */
 typedef enum
 {
   GABBLE_DEBUG_PRESENCE      = 1 << 0,
@@ -35,6 +36,7 @@ typedef enum
   GABBLE_DEBUG_SLACKER       = 1 << 24,
   GABBLE_DEBUG_SHARE         = 1 << 25,
   GABBLE_DEBUG_TLS           = 1 << 26,
+  GABBLE_DEBUG_CLIENT_TYPES  = 1 << 27,
 } GabbleDebugFlags;
 
 void gabble_debug_set_flags_from_env (void);

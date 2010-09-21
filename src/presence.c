@@ -29,6 +29,7 @@
 #include "presence-cache.h"
 #include "namespaces.h"
 #include "util.h"
+#include "gabble-enumtypes.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -42,6 +43,7 @@ typedef struct _Resource Resource;
 
 struct _Resource {
     gchar *name;
+    guint client_type;
     GabbleCapabilitySet *cap_set;
     guint caps_serial;
     GabblePresenceId status;
@@ -143,8 +145,8 @@ resource_better_than (
 
     if (preference == PREFER_PHONES)
       {
-        gboolean a_p = gabble_capability_set_has (a->cap_set, QUIRK_IS_A_PHONE);
-        gboolean b_p = gabble_capability_set_has (b->cap_set, QUIRK_IS_A_PHONE);
+        gboolean a_p = a->client_type & GABBLE_CLIENT_TYPE_PHONE;
+        gboolean b_p = b->client_type & GABBLE_CLIENT_TYPE_PHONE;
 
         if (a_p && !b_p)
           return TRUE;
@@ -206,15 +208,16 @@ gabble_presence_pick_resource_by_caps (
   Resource *chosen = NULL;
 
   g_return_val_if_fail (presence != NULL, NULL);
-  g_return_val_if_fail (predicate != NULL, NULL);
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;
 
-      if (predicate (res->cap_set, user_data) &&
-          (resource_better_than (res, chosen, any_special_requests)))
-              chosen = res;
+      if (predicate != NULL && !predicate (res->cap_set, user_data))
+        continue;
+
+      if (resource_better_than (res, chosen, any_special_requests))
+        chosen = res;
     }
 
   if (chosen)
@@ -326,6 +329,7 @@ aggregate_resources (GabblePresence *presence)
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
   GSList *i;
   guint8 prio;
+  time_t activity;
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
@@ -333,6 +337,7 @@ aggregate_resources (GabblePresence *presence)
   presence->status = GABBLE_PRESENCE_OFFLINE;
 
   prio = -128;
+  activity = 0;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -341,8 +346,10 @@ aggregate_resources (GabblePresence *presence)
       gabble_capability_set_update (priv->cap_set, r->cap_set);
 
       /* trump existing status & message if it's more present
+       * or has the same presence and a more recent last activity
        * or has the same presence and a higher priority */
       if (r->status > presence->status ||
+          (r->status == presence->status && r->last_activity > activity) ||
           (r->status == presence->status && r->priority > prio))
         {
           presence->status = r->status;
@@ -729,4 +736,67 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
     }
 
   return NULL;
+}
+
+void
+gabble_presence_update_client_types (GabblePresence *presence,
+    const gchar *resource,
+    GPtrArray *client_types)
+{
+  Resource *res;
+  guint i, value;
+
+  res = _find_resource (presence, resource);
+
+  if (res == NULL)
+    return;
+
+  res->client_type = 0;
+
+  for (i = 0; i < client_types->len; i++)
+    {
+      const gchar *type = g_ptr_array_index (client_types, i);
+
+      if (gabble_flag_from_nick (GABBLE_TYPE_CLIENT_TYPE, type, &value))
+        res->client_type |= value;
+    }
+}
+
+GPtrArray *
+gabble_presence_get_client_types_array (GabblePresence *presence,
+    const gchar *resource,
+    gboolean add_null)
+{
+  Resource *res;
+  GPtrArray *array;
+  GFlagsClass *klass;
+  GFlagsValue *value;
+  guint i;
+
+  array = g_ptr_array_new_with_free_func (g_free);
+
+  res = _find_resource (presence, resource);
+
+  if (res == NULL)
+    return NULL;
+
+  klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);
+
+  if (klass != NULL)
+    {
+      for (i = 0; i < klass->n_values; i++)
+        {
+          value = &klass->values[i];
+
+          if (res->client_type & value->value)
+            g_ptr_array_add (array, g_strdup (value->value_nick));
+        }
+
+      g_type_class_unref (klass);
+    }
+
+  if (add_null)
+    g_ptr_array_add (array, NULL);
+
+  return array;
 }

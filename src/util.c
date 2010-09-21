@@ -1419,3 +1419,29 @@ gabble_disco_identity_array_free (GPtrArray *arr)
 
   g_ptr_array_free (arr, TRUE);
 }
+
+/* Like wocky_enum_from_nick, but for GFlagsValues instead. */
+gboolean
+gabble_flag_from_nick (GType flag_type,
+    const gchar *nick,
+    guint *value)
+{
+  GFlagsClass *klass = g_type_class_ref (flag_type);
+  GFlagsValue *flag_value;
+
+  g_return_val_if_fail (klass != NULL, FALSE);
+  g_return_val_if_fail (value != NULL, FALSE);
+
+  flag_value = g_flags_get_value_by_nick (klass, nick);
+  g_type_class_unref (klass);
+
+  if (flag_value != NULL)
+    {
+      *value = flag_value->value;
+      return TRUE;
+    }
+  else
+    {
+      return FALSE;
+    }
+}

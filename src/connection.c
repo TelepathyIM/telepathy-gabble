@@ -55,6 +55,7 @@
 #include "auth-manager.h"
 #include "conn-aliasing.h"
 #include "conn-avatars.h"
+#include "conn-client-types.h"
 #include "conn-contact-info.h"
 #include "conn-location.h"
 #include "conn-presence.h"
@@ -130,6 +131,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_future_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
       conn_mail_notif_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES,
+      conn_client_types_iface_init);
     )
 
 /* properties */
@@ -376,6 +379,7 @@ gabble_connection_constructor (GType type,
   conn_location_init (self);
   conn_sidecars_init (self);
   conn_mail_notif_init (self);
+  conn_client_types_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,

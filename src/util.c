@@ -1233,6 +1233,12 @@ jingle_pick_best_content_type (GabbleConnection *conn,
     }
 }
 
+/**
+ * @candidates: (element-type JingleCandidate): candidates
+ *
+ * Returns: (transfer full): a GABBLE_ARRAY_TYPE_CANDIDATE_LIST, i.e.
+ *  a(usqa{sv})
+ */
 GPtrArray *
 gabble_call_candidates_to_array (GList *candidates)
 {

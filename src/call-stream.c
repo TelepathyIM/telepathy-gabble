@@ -220,8 +220,7 @@ gabble_call_stream_get_property (GObject    *object,
 
           g_object_unref (connection);
 
-          g_value_set_boxed (value, arr);
-          g_ptr_array_unref (arr);
+          g_value_take_boxed (value, arr);
           break;
         }
       case PROP_RELAY_INFO:

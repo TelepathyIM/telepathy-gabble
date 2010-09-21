@@ -1212,18 +1212,17 @@ handle_text_channel_request (GabbleMucFactory *self,
                             GError **error)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  TpBaseConnection *conn = TP_BASE_CONNECTION (priv->conn);
   GabbleMucChannel *text_chan;
-
-  DBusGConnection *bus = tp_get_bus ();
   TpHandleSet *handles;
   TpIntSet *continue_handles;
   guint i;
   gboolean ret = TRUE;
 
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
-      TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
-      TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_ROOM);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_ROOM);
 
   GPtrArray *initial_channels;
   GHashTable *final_channels; /* used as a set: (char *) -> NULL */
@@ -1255,6 +1254,9 @@ handle_text_channel_request (GabbleMucFactory *self,
   /* look at the list of initial channels, build a set of handles to invite */
   if (initial_channels != NULL)
     {
+      TpDBusDaemon *dbus_daemon = tp_base_connection_get_dbus_daemon (conn);
+      DBusGConnection *bus = tp_proxy_get_dbus_connection (dbus_daemon);
+
       for (i = 0; i < initial_channels->len; i++)
         {
           const char *object_path = g_ptr_array_index (initial_channels, i);

@@ -84,6 +84,10 @@ get_client_types_from_handle (GabbleConnection *conn,
       /* This guy, on the other hand, can get the most empty of arrays. */
       *types = empty_array;
     }
+  else
+    {
+      g_ptr_array_unref (empty_array);
+    }
 
   return TRUE;
 }
@@ -137,8 +141,7 @@ client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
       g_hash_table_insert (client_types, GUINT_TO_POINTER (handle),
           types->pdata);
 
-      if (g_ptr_array_index (types, 0) != NULL)
-        g_ptr_array_add (types_list, types);
+      g_ptr_array_add (types_list, types);
     }
 
   gabble_svc_connection_interface_client_types_return_from_get_client_types (

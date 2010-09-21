@@ -71,6 +71,8 @@ libgabble_convenience_la_SOURCES = \
     conn-sidecars.c \
     conn-slacker.h \
     conn-slacker.c \
+    conn-util.h \
+    conn-util.c \
     conn-mail-notif.h \
     conn-mail-notif.c \
     $(top_srcdir)/gabble/connection.h \

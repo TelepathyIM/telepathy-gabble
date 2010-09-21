@@ -327,10 +327,7 @@ gabble_call_stream_endpoint_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->content != NULL)
-    g_object_unref (priv->content);
-
-  priv->content = NULL;
+  tp_clear_object (&priv->content);
 
   if (G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->dispose (

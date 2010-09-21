@@ -246,16 +246,15 @@ gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
   if (priv->cancellable != NULL)
     {
       g_cancellable_disconnect (priv->cancellable, priv->handler_id);
-      g_object_unref (priv->cancellable);
-      priv->cancellable = NULL;
       priv->handler_id = 0;
     }
+
+  tp_clear_object (&priv->cancellable);
 
   g_simple_async_result_set_op_res_gpointer (priv->result,
     (gpointer) codecs, NULL);
   g_simple_async_result_complete (priv->result);
-  g_object_unref (priv->result);
-  priv->result = NULL;
+  tp_clear_object (&priv->result);
 
   gabble_svc_call_content_codec_offer_return_from_accept (context);
 
@@ -274,16 +273,15 @@ gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
   if (priv->cancellable != NULL)
     {
       g_cancellable_disconnect (priv->cancellable, priv->handler_id);
-      g_object_unref (priv->cancellable);
-      priv->cancellable = NULL;
       priv->handler_id = 0;
     }
+
+  tp_clear_object (&priv->cancellable);
 
   g_simple_async_result_set_error (priv->result,
       G_IO_ERROR, G_IO_ERROR_FAILED, "Codec offer was rejected");
   g_simple_async_result_complete (priv->result);
-  g_object_unref (priv->result);
-  priv->result = NULL;
+  tp_clear_object (&priv->result);
 
   gabble_svc_call_content_codec_offer_return_from_reject (context);
 
@@ -327,10 +325,8 @@ cancelled_cb (GCancellable *cancellable, gpointer user_data)
       G_IO_ERROR, G_IO_ERROR_CANCELLED, "Offer cancelled");
   g_simple_async_result_complete_in_idle (priv->result);
 
-  g_object_unref (priv->cancellable);
-  g_object_unref (priv->result);
-  priv->result = NULL;
-  priv->cancellable = NULL;
+  tp_clear_object (&priv->cancellable);
+  tp_clear_object (&priv->result);
   priv->handler_id = 0;
 }
 

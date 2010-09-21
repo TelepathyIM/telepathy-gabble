@@ -432,11 +432,8 @@ gabble_call_content_dispose (GObject *object)
       g_object_unref (l->data);
     }
 
-  g_list_free (priv->streams);
-  priv->streams = NULL;
-
-  jingle_media_rtp_free_codecs (priv->local_codecs);
-  priv->local_codecs = NULL;
+  tp_clear_pointer (&priv->streams, g_list_free);
+  tp_clear_pointer (&priv->local_codecs, jingle_media_rtp_free_codecs);
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose (object);
@@ -584,8 +581,7 @@ gabble_call_content_deinit (GabbleCallContent *content)
       g_object_unref (l->data);
     }
 
-  g_list_free (priv->streams);
-  priv->streams = NULL;
+  tp_clear_pointer (&priv->streams, g_list_free);
 
   if (priv->offer_cancellable != NULL)
     g_cancellable_cancel (priv->offer_cancellable);

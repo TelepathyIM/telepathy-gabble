@@ -125,8 +125,7 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
             gabble_jingle_content_get_remote_candidates (priv->content);
 
           arr = gabble_call_candidates_to_array (candidates);
-          g_value_set_boxed (value, arr);
-          g_ptr_array_unref (arr);
+          g_value_take_boxed (value, arr);
           break;
         }
       case PROP_REMOTE_CREDENTIALS:

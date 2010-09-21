@@ -1508,7 +1508,7 @@ gabble_tube_stream_constructor (GType type,
 {
   GObject *obj;
   GabbleTubeStreamPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   TpHandleRepoIface *contact_repo;
 
   obj = G_OBJECT_CLASS (gabble_tube_stream_parent_class)->
@@ -1548,8 +1548,8 @@ gabble_tube_stream_constructor (GType type,
       tp_external_group_mixin_init (obj, (GObject *) priv->muc);
     }
 
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   DEBUG ("Registering at '%s'", priv->object_path);
 

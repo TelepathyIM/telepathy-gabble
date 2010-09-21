@@ -880,7 +880,7 @@ gabble_tube_dbus_constructor (GType type,
   GObject *obj;
   GabbleTubeDBus *self;
   GabbleTubeDBusPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   TpHandleRepoIface *contact_repo;
   TpBaseConnection *base;
   guint access_control;
@@ -890,20 +890,18 @@ gabble_tube_dbus_constructor (GType type,
   self = GABBLE_TUBE_DBUS (obj);
 
   priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  base = (TpBaseConnection *) priv->conn;
 
   /* Ref the initiator handle */
-  g_assert (priv->conn != NULL);
+  g_assert (base != NULL);
   g_assert (priv->initiator != 0);
-  contact_repo = tp_base_connection_get_handles
-      ((TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   tp_handle_ref (contact_repo, priv->initiator);
-
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
 
   DEBUG ("Registering at '%s'", priv->object_path);
 
-  base = (TpBaseConnection *) priv->conn;
+  bus = tp_base_connection_get_dbus_daemon (base);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_free);

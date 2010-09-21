@@ -346,8 +346,7 @@ gabble_server_sasl_channel_dispose (GObject *object)
 
   g_array_free (priv->challenge, TRUE);
 
-  if (priv->auth_info != NULL)
-    g_hash_table_unref (priv->auth_info);
+  tp_clear_pointer (&priv->auth_info, g_hash_table_unref);
 
   if (G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->dispose (object);

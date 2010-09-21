@@ -358,8 +358,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       geoloc_caps = NULL;
       olpc_caps = NULL;
 
-      g_object_unref (feature_handles);
-      feature_handles = NULL;
+      tp_clear_object (&feature_handles);
     }
 }
 

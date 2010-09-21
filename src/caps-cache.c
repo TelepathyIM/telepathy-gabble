@@ -12,6 +12,8 @@
 #include <wocky/wocky-xmpp-reader.h>
 #include <wocky/wocky-xmpp-writer.h>
 
+#include <telepathy-glib/telepathy-glib.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"
 
@@ -89,23 +91,9 @@ gabble_caps_cache_finalize (GObject *object)
   g_free (self->priv->path);
   self->priv->path = NULL;
 
-  if (self->priv->db != NULL)
-    {
-      sqlite3_close (self->priv->db);
-      self->priv->db = NULL;
-    }
-
-  if (self->priv->reader != NULL)
-    {
-      g_object_unref (self->priv->reader);
-      self->priv->reader = NULL;
-    }
-
-  if (self->priv->writer != NULL)
-    {
-      g_object_unref (self->priv->writer);
-      self->priv->writer = NULL;
-    }
+  tp_clear_pointer (&self->priv->db, sqlite3_close);
+  tp_clear_object (&self->priv->reader);
+  tp_clear_object (&self->priv->writer);
 
   G_OBJECT_CLASS (gabble_caps_cache_parent_class)->finalize (object);
 }
@@ -334,11 +322,7 @@ gabble_caps_cache_dup_shared (void)
 void
 gabble_caps_cache_free_shared (void)
 {
-  if (shared_cache != NULL)
-    {
-      g_object_unref (shared_cache);
-      shared_cache = NULL;
-    }
+  tp_clear_object (&shared_cache);
 }
 
 static gboolean

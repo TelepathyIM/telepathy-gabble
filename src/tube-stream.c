@@ -1210,31 +1210,13 @@ gabble_tube_stream_dispose (GObject *object)
       g_string_free (path, TRUE);
     }
 
-  if (priv->transport_to_bytestream != NULL)
-    {
-      g_hash_table_destroy (priv->transport_to_bytestream);
-      priv->transport_to_bytestream = NULL;
-    }
-
-  if (priv->bytestream_to_transport != NULL)
-    {
-      g_hash_table_destroy (priv->bytestream_to_transport);
-      priv->bytestream_to_transport = NULL;
-    }
-
-  if (priv->transport_to_id != NULL)
-    {
-      g_hash_table_destroy (priv->transport_to_id);
-      priv->transport_to_id = NULL;
-    }
+  tp_clear_pointer (&priv->transport_to_bytestream, g_hash_table_destroy);
+  tp_clear_pointer (&priv->bytestream_to_transport, g_hash_table_destroy);
+  tp_clear_pointer (&priv->transport_to_id, g_hash_table_destroy);
 
   tp_handle_unref (contact_repo, priv->initiator);
 
-  if (priv->local_listener != NULL)
-    {
-      g_object_unref (priv->local_listener);
-      priv->local_listener = NULL;
-    }
+  tp_clear_object (&priv->local_listener);
 
   if (priv->muc != NULL)
     {

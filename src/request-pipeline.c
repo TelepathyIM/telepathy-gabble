@@ -187,8 +187,7 @@ delete_item (GabbleRequestPipelineItem *item)
   if (item->timer_id)
       g_source_remove (item->timer_id);
 
-  if (item->message)
-      lm_message_unref (item->message);
+  tp_clear_pointer (&item->message, lm_message_unref);
 
   g_slice_free (GabbleRequestPipelineItem, item);
 }

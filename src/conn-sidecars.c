@@ -52,12 +52,10 @@ void
 conn_sidecars_dispose (GabbleConnection *conn)
 {
   g_warn_if_fail (g_hash_table_size (conn->sidecars) == 0);
-  g_hash_table_unref (conn->sidecars);
-  conn->sidecars = NULL;
+  tp_clear_pointer (&conn->sidecars, g_hash_table_unref);
 
   g_warn_if_fail (g_hash_table_size (conn->pending_sidecars) == 0);
-  g_hash_table_unref (conn->pending_sidecars);
-  conn->pending_sidecars = NULL;
+  tp_clear_pointer (&conn->pending_sidecars, g_hash_table_unref);
 }
 
 static gchar *
@@ -190,11 +188,8 @@ create_sidecar_cb (
   g_hash_table_remove (ctx->conn->pending_sidecars, ctx->sidecar_iface);
 
 out:
-  if (sidecar != NULL)
-    g_object_unref (sidecar);
-
-  if (error != NULL)
-    g_clear_error (&error);
+  tp_clear_object (&sidecar);
+  g_clear_error (&error);
 
   grr_free (ctx);
 }

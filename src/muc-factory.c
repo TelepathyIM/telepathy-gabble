@@ -884,24 +884,12 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
     }
 
   if (priv->queued_requests != NULL)
-    {
-      g_hash_table_foreach_steal (priv->queued_requests,
-          cancel_queued_requests, self);
-      g_hash_table_destroy (priv->queued_requests);
-      priv->queued_requests = NULL;
-    }
+    g_hash_table_foreach_steal (priv->queued_requests,
+        cancel_queued_requests, self);
 
-  if (priv->text_needed_for_tubes != NULL)
-    {
-      g_hash_table_destroy (priv->text_needed_for_tubes);
-      priv->text_needed_for_tubes = NULL;
-    }
-
-  if (priv->tubes_needed_for_tube != NULL)
-    {
-      g_hash_table_destroy (priv->tubes_needed_for_tube);
-      priv->tubes_needed_for_tube = NULL;
-    }
+  tp_clear_pointer (&priv->queued_requests, g_hash_table_destroy);
+  tp_clear_pointer (&priv->text_needed_for_tubes, g_hash_table_destroy);
+  tp_clear_pointer (&priv->tubes_needed_for_tube, g_hash_table_destroy);
 
   /* Use a temporary variable because we don't want
    * muc_channel_closed_cb or tubes_channel_closed_cb to remove the channel
@@ -927,9 +915,9 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
 
       lm_connection_unregister_message_handler (priv->conn->lmconn,
           priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->message_cb);
-      priv->message_cb = NULL;
     }
+
+  tp_clear_pointer (&priv->message_cb, lm_message_handler_unref);
 }
 
 

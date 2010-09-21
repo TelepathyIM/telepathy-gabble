@@ -393,17 +393,10 @@ new_im_channel (GabbleImFactory *fac,
 static void
 gabble_im_factory_close_all (GabbleImFactory *self)
 {
-  /* Use a temporary variable because we don't want
+  /* Use a temporary variable (the macro does this) because we don't want
    * im_channel_closed_cb to remove the channel from the hash table a
    * second time */
-  if (self->priv->channels != NULL)
-    {
-      GHashTable *tmp = self->priv->channels;
-
-      DEBUG ("closing channels");
-      self->priv->channels = NULL;
-      g_hash_table_destroy (tmp);
-    }
+  tp_clear_pointer (&self->priv->channels, g_hash_table_destroy);
 
   if (self->priv->status_changed_id != 0)
     {
@@ -417,9 +410,9 @@ gabble_im_factory_close_all (GabbleImFactory *self)
       DEBUG ("removing callbacks");
       lm_connection_unregister_message_handler (self->priv->conn->lmconn,
           self->priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (self->priv->message_cb);
-      self->priv->message_cb = NULL;
     }
+
+  tp_clear_pointer (&self->priv->message_cb, lm_message_handler_unref);
 }
 
 

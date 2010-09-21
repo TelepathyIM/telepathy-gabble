@@ -141,8 +141,7 @@ gabble_auth_manager_dispose (GObject *object)
 
   gabble_auth_manager_close_all (self);
 
-  if (priv->server_sasl_channel)
-    g_object_unref (priv->server_sasl_channel);
+  tp_clear_object (&priv->server_sasl_channel);
 
   if (G_OBJECT_CLASS (gabble_auth_manager_parent_class)->dispose)
     G_OBJECT_CLASS (

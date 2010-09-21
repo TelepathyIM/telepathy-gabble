@@ -238,8 +238,7 @@ filter_cb (DBusConnection *conn,
       /* connection was disconnected */
       DEBUG ("connection was disconnected");
       dbus_connection_close (priv->dbus_conn);
-      dbus_connection_unref (priv->dbus_conn);
-      priv->dbus_conn = NULL;
+      tp_clear_pointer (&priv->dbus_conn, dbus_connection_unref);
       goto out;
     }
 
@@ -519,12 +518,7 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 
   if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
-      if (priv->bytestream != NULL)
-        {
-          g_object_unref (priv->bytestream);
-          priv->bytestream = NULL;
-        }
-
+      tp_clear_object (&priv->bytestream);
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
     }
   else if (state == GABBLE_BYTESTREAM_STATE_OPEN)
@@ -557,17 +551,14 @@ gabble_tube_dbus_dispose (GObject *object)
     }
 
   if (priv->dbus_conn != NULL)
-    {
-      dbus_connection_close (priv->dbus_conn);
-      dbus_connection_unref (priv->dbus_conn);
-    }
+    dbus_connection_close (priv->dbus_conn);
+
+  tp_clear_pointer (&priv->dbus_conn, dbus_connection_unref);
 
   if (priv->dbus_srv != NULL)
-    {
-      dbus_server_disconnect (priv->dbus_srv);
-      dbus_server_unref (priv->dbus_srv);
-      priv->dbus_srv = NULL;
-    }
+    dbus_server_disconnect (priv->dbus_srv);
+
+  tp_clear_pointer (&priv->dbus_srv, dbus_server_unref);
 
   if (priv->socket_path != NULL)
     {
@@ -590,25 +581,18 @@ gabble_tube_dbus_dispose (GObject *object)
       priv->dbus_msg_queue_size = 0;
     }
 
-  g_free (priv->dbus_srv_addr);
-  priv->dbus_srv_addr = NULL;
-  g_free (priv->socket_path);
-  priv->socket_path = NULL;
-  g_free (priv->dbus_local_name);
-  priv->dbus_local_name = NULL;
+  tp_clear_pointer (&priv->dbus_srv_addr, g_free);
+  tp_clear_pointer (&priv->socket_path, g_free);
+  tp_clear_pointer (&priv->dbus_local_name, g_free);
 
-  if (priv->dbus_names)
+  if (priv->dbus_names != NULL)
     {
       g_hash_table_foreach (priv->dbus_names, unref_handle_foreach,
           contact_repo);
-      g_hash_table_destroy (priv->dbus_names);
     }
 
-  if (priv->dbus_name_to_handle)
-     {
-       g_hash_table_destroy (priv->dbus_name_to_handle);
-       priv->dbus_name_to_handle = NULL;
-     }
+  tp_clear_pointer (&priv->dbus_names, g_hash_table_destroy);
+  tp_clear_pointer (&priv->dbus_name_to_handle, g_hash_table_destroy);
 
   if (priv->reassembly_buffer)
     g_string_free (priv->reassembly_buffer, TRUE);

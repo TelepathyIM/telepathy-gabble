@@ -2223,8 +2223,7 @@ session_terminated_cb (GabbleJingleSession *session,
   }
 
   /* remove the session */
-  g_object_unref (priv->session);
-  priv->session = NULL;
+  tp_clear_object (&priv->session);
 
   /* close us if we aren't already closed */
   if (!priv->closed)
@@ -2504,11 +2503,7 @@ stream_creation_data_cancel (gpointer p,
 {
   StreamCreationData *d = p;
 
-  if (d->content != NULL)
-    {
-      g_object_unref (d->content);
-      d->content = NULL;
-    }
+  tp_clear_object (&d->content);
 }
 
 static void

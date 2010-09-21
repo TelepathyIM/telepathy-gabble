@@ -480,25 +480,14 @@ gabble_jingle_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  if (priv->soup != NULL)
-    {
-      g_object_unref (priv->soup);
-      priv->soup = NULL;
-    }
-
-  g_hash_table_destroy (priv->sessions);
-  priv->sessions = NULL;
-
-  g_hash_table_destroy (priv->content_types);
-  priv->content_types = NULL;
-
-  g_hash_table_destroy (priv->transports);
-  priv->transports = NULL;
-
-  g_free (fac->priv->stun_server);
-  g_free (fac->priv->fallback_stun_server);
-  g_free (fac->priv->relay_token);
-  g_free (fac->priv->relay_server);
+  tp_clear_object (&priv->soup);
+  tp_clear_pointer (&priv->sessions, g_hash_table_destroy);
+  tp_clear_pointer (&priv->content_types, g_hash_table_destroy);
+  tp_clear_pointer (&priv->transports, g_hash_table_destroy);
+  tp_clear_pointer (&priv->stun_server, g_free);
+  tp_clear_pointer (&priv->fallback_stun_server, g_free);
+  tp_clear_pointer (&priv->relay_token, g_free);
+  tp_clear_pointer (&priv->relay_server, g_free);
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);
@@ -672,13 +661,10 @@ connection_status_changed_cb (GabbleConnection *conn,
               priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
           lm_connection_unregister_message_handler (priv->conn->lmconn,
               priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
-
-          lm_message_handler_unref (priv->jingle_cb);
-          priv->jingle_cb = NULL;
-
-          lm_message_handler_unref (priv->jingle_info_cb);
-          priv->jingle_info_cb = NULL;
         }
+
+      tp_clear_pointer (&priv->jingle_cb, lm_message_handler_unref);
+      tp_clear_pointer (&priv->jingle_info_cb, lm_message_handler_unref);
       break;
     }
 }

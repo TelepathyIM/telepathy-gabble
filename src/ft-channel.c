@@ -893,35 +893,18 @@ close_session_and_transport (GabbleFileTransferChannel *self)
 {
 
   DEBUG ("Closing session and transport");
+
   if (self->priv->gtalk_file_collection != NULL)
-    {
-      gtalk_file_collection_terminate (self->priv->gtalk_file_collection, self);
-      /* the terminate could synchronously unref it and set it to NULL */
-      if (self->priv->gtalk_file_collection != NULL)
-        {
-          g_object_unref (self->priv->gtalk_file_collection);
-          self->priv->gtalk_file_collection = NULL;
-        }
-    }
+    gtalk_file_collection_terminate (self->priv->gtalk_file_collection, self);
+
+  tp_clear_object (&self->priv->gtalk_file_collection);
 
   if (self->priv->bytestream != NULL)
-    {
-      gabble_bytestream_iface_close (self->priv->bytestream, NULL);
-      g_object_unref (self->priv->bytestream);
-      self->priv->bytestream = NULL;
-    }
+    gabble_bytestream_iface_close (self->priv->bytestream, NULL);
 
-  if (self->priv->listener != NULL)
-    {
-      g_object_unref (self->priv->listener);
-      self->priv->listener = NULL;
-    }
-
-  if (self->priv->transport != NULL)
-    {
-      g_object_unref (self->priv->transport);
-      self->priv->transport = NULL;
-    }
+  tp_clear_object (&self->priv->bytestream);
+  tp_clear_object (&self->priv->listener);
+  tp_clear_object (&self->priv->transport);
 }
 
 /**
@@ -2054,8 +2037,7 @@ new_connection_cb (GibberListener *listener,
     file_transfer_send (self);
 
   /* stop listening on local socket */
-  g_object_unref (self->priv->listener);
-  self->priv->listener = NULL;
+  tp_clear_object (&self->priv->listener);
 }
 
 static gboolean
@@ -2087,8 +2069,7 @@ setup_local_socket (GabbleFileTransferChannel *self,
         {
           DEBUG ("listen_socket failed: %s", error->message);
           g_error_free (error);
-          g_object_unref (self->priv->listener);
-          self->priv->listener = NULL;
+          tp_clear_object (&self->priv->listener);
           return FALSE;
         }
 

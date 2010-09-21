@@ -365,23 +365,15 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
     }
 
   if (priv->msg_tube_cb != NULL)
-    {
-      lm_connection_unregister_message_handler (priv->conn->lmconn,
+    lm_connection_unregister_message_handler (priv->conn->lmconn,
         priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->msg_tube_cb);
-      priv->msg_tube_cb = NULL;
-    }
 
-  /* Use a temporary variable because we don't want
+  tp_clear_pointer (&priv->msg_tube_cb, lm_message_handler_unref);
+
+  /* Use a temporary variable (the macro does this) because we don't want
    * tubes_channel_closed_cb to remove the channel from the hash table a
    * second time */
-  if (priv->tubes_channels != NULL)
-    {
-      GHashTable *tmp = priv->tubes_channels;
-
-      priv->tubes_channels = NULL;
-      g_hash_table_destroy (tmp);
-    }
+  tp_clear_pointer (&priv->tubes_channels, g_hash_table_destroy);
 }
 
 static void

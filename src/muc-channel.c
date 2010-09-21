@@ -1175,12 +1175,8 @@ gabble_muc_channel_dispose (GObject *object)
   clear_join_timer (self);
   clear_poll_timer (self);
 
-  if (priv->wmuc != NULL)
-    g_object_unref (priv->wmuc);
-
-  priv->wmuc = NULL;
-
-  g_object_unref (priv->requests_cancellable);
+  tp_clear_object (&priv->wmuc);
+  tp_clear_object (&priv->requests_cancellable);
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);

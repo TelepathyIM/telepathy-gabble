@@ -64,8 +64,9 @@ GType gabble_call_content_codecoffer_get_type (void);
   GabbleCallContentCodecofferClass))
 
 GabbleCallContentCodecoffer *gabble_call_content_codecoffer_new (
-  const gchar *object_path,
-  GHashTable *codecs);
+    TpDBusDaemon *dbus_daemon,
+    const gchar *object_path,
+    GHashTable *codecs);
 
 void gabble_call_content_codecoffer_offer (GabbleCallContentCodecoffer *offer,
   GCancellable *cancellable,

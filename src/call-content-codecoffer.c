@@ -22,9 +22,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/dbus-properties-mixin.h>
-#include <telepathy-glib/svc-properties-interface.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "call-content-codecoffer.h"
 #include <extensions/extensions.h>
@@ -47,6 +45,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleCallContentCodecoffer,
 enum
 {
   PROP_OBJECT_PATH = 1,
+  PROP_DBUS_DAEMON,
   PROP_REMOTE_CONTACT_CODEC_MAP,
 };
 
@@ -55,6 +54,7 @@ struct _GabbleCallContentCodecofferPrivate
 {
   gboolean dispose_has_run;
 
+  TpDBusDaemon *dbus_daemon;
   gchar *object_path;
   GHashTable *codec_map;
   GSimpleAsyncResult *result;
@@ -122,6 +122,10 @@ gabble_call_content_codecoffer_set_property (GObject *object,
       case PROP_REMOTE_CONTACT_CODEC_MAP:
         priv->codec_map = g_value_dup_boxed (value);
         break;
+      case PROP_DBUS_DAEMON:
+        g_assert (priv->dbus_daemon == NULL);   /* construct-only */
+        priv->dbus_daemon = g_value_dup_object (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -175,6 +179,13 @@ gabble_call_content_codecoffer_class_init (
   g_object_class_install_property (object_class, PROP_REMOTE_CONTACT_CODEC_MAP,
       spec);
 
+  spec = g_param_spec_object ("dbus-daemon",
+      "The DBus daemon connection",
+      "The connection to the DBus daemon owning the CM",
+      TP_TYPE_DBUS_DAEMON,
+      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DBUS_DAEMON, spec);
+
   gabble_call_content_codecoffer_class->dbus_props_class.interfaces
     = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -193,6 +204,8 @@ gabble_call_content_codecoffer_dispose (GObject *object)
     return;
 
   priv->dispose_has_run = TRUE;
+
+  tp_clear_object (&priv->dbus_daemon);
 
   if (priv->codec_map != NULL)
     {
@@ -227,7 +240,6 @@ gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
 {
   GabbleCallContentCodecoffer *self = GABBLE_CALL_CONTENT_CODECOFFER (iface);
   GabbleCallContentCodecofferPrivate *priv = self->priv;
-  DBusGConnection *bus = tp_get_bus ();
 
   DEBUG ("%s was accepted", priv->object_path);
 
@@ -247,7 +259,7 @@ gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
 
   gabble_svc_call_content_codec_offer_return_from_accept (context);
 
-  dbus_g_connection_unregister_g_object (bus, G_OBJECT (self));
+  tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (self));
 }
 
 static void
@@ -256,7 +268,6 @@ gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
 {
   GabbleCallContentCodecoffer *self = GABBLE_CALL_CONTENT_CODECOFFER (iface);
   GabbleCallContentCodecofferPrivate *priv = self->priv;
-  DBusGConnection *bus = tp_get_bus ();
 
   DEBUG ("%s was rejected", priv->object_path);
 
@@ -276,7 +287,7 @@ gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
 
   gabble_svc_call_content_codec_offer_return_from_reject (context);
 
-  dbus_g_connection_unregister_g_object (bus, G_OBJECT (self));
+  tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (self));
 }
 
 static void
@@ -293,13 +304,15 @@ call_content_codecoffer_iface_init (gpointer iface, gpointer data)
 }
 
 GabbleCallContentCodecoffer *
-gabble_call_content_codecoffer_new (const gchar *object_path,
-  GHashTable *codecs)
+gabble_call_content_codecoffer_new (TpDBusDaemon *dbus_daemon,
+    const gchar *object_path,
+    GHashTable *codecs)
 {
   return g_object_new (GABBLE_TYPE_CALL_CONTENT_CODECOFFER,
-    "object-path", object_path,
-    "remote-contact-codec-map", codecs,
-    NULL);
+      "dbus-daemon", dbus_daemon,
+      "object-path", object_path,
+      "remote-contact-codec-map", codecs,
+      NULL);
 }
 
 static void
@@ -307,9 +320,8 @@ cancelled_cb (GCancellable *cancellable, gpointer user_data)
 {
   GabbleCallContentCodecoffer *offer = user_data;
   GabbleCallContentCodecofferPrivate *priv = offer->priv;
-  DBusGConnection *bus = tp_get_bus ();
 
-  dbus_g_connection_unregister_g_object (bus, G_OBJECT (offer));
+  tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (offer));
 
   g_simple_async_result_set_error (priv->result,
       G_IO_ERROR, G_IO_ERROR_CANCELLED, "Offer cancelled");
@@ -329,7 +341,6 @@ gabble_call_content_codecoffer_offer (GabbleCallContentCodecoffer *offer,
   gpointer user_data)
 {
   GabbleCallContentCodecofferPrivate *priv = offer->priv;
-  DBusGConnection *bus;
 
   /* FIXME implement cancellable support */
   if (G_UNLIKELY (priv->result != NULL))
@@ -339,10 +350,9 @@ gabble_call_content_codecoffer_offer (GabbleCallContentCodecoffer *offer,
     callback, user_data, gabble_call_content_codecoffer_offer_finish);
 
   /* register object on the bus */
-  bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path,
-    G_OBJECT (offer));
+  tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path,
+      G_OBJECT (offer));
 
   if (cancellable != NULL)
     {

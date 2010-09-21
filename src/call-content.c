@@ -725,7 +725,8 @@ call_content_new_offer (GabbleCallContent *self)
   path = g_strdup_printf ("%s/Offer%d",
     priv->object_path, priv->offers++);
 
-  priv->offer = gabble_call_content_codecoffer_new (path, map);
+  priv->offer = gabble_call_content_codecoffer_new (priv->dbus_daemon, path,
+      map);
   priv->offer_cancellable = g_cancellable_new ();
   ++priv->offer_count;
   gabble_call_content_codecoffer_offer (priv->offer, priv->offer_cancellable,

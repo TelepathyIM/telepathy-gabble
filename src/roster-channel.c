@@ -104,7 +104,7 @@ gabble_roster_channel_constructor (GType type, guint n_props,
 {
   GObject *obj;
   GabbleRosterChannelPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   TpBaseConnection *conn;
   TpHandle self_handle;
   guint handle_type;
@@ -120,8 +120,8 @@ gabble_roster_channel_constructor (GType type, guint n_props,
   self_handle = conn->self_handle;
 
   /* register object on the bus */
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon (conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   g_assert (handle_type == TP_HANDLE_TYPE_GROUP
       || handle_type == TP_HANDLE_TYPE_LIST);

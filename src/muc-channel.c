@@ -2358,14 +2358,6 @@ handle_presence (GObject *source,
   /* is the 'real' jid field of the presence set? If so, use it: */
   if (who->jid != NULL)
     {
-      /* OLPC Hack:
-       * We drop OLPC Gadget's inspector presence as activities
-       * doesn't have to see it as a member of the room and the
-       * presence cache should ignore it as well.
-       */
-      if (!tp_strdiff (who->jid, conn->olpc_gadget_activity))
-        goto out;
-
       owner = tp_handle_ensure (contact_repo, who->jid,
           GUINT_TO_POINTER (GABBLE_JID_GLOBAL), NULL);
       if (owner == 0)

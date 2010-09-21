@@ -39,7 +39,6 @@
 #include "ft-manager.h"
 #include "jingle-factory.h"
 #include "muc-factory.h"
-#include "olpc-gadget-manager.h"
 #include "slacker.h"
 #include "types.h"
 
@@ -161,14 +160,6 @@ struct _GabbleConnection {
     GHashTable *olpc_pep_activities;
     GHashTable *olpc_invited_activities;
     GHashTable *olpc_current_act;
-
-    /* OLPC services */
-    const gchar *olpc_gadget_buddy;
-    const gchar *olpc_gadget_activity;
-    gboolean olpc_gadget_publish;
-
-    /* OLPC Gadget manager */
-    GabbleOlpcGadgetManager *olpc_gadget_manager;
 
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;

@@ -883,8 +883,8 @@ gabble_server_sasl_channel_start_auth_async_func (
       GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (
           auth_registry);
       GabbleServerSaslChannelPrivate *priv = self->priv;
-      DBusGConnection *bus = tp_get_bus ();
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+      TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (conn);
       const GSList *i;
 
       DEBUG ("");
@@ -916,8 +916,7 @@ gabble_server_sasl_channel_start_auth_async_func (
 
       priv->secure = is_secure_channel;
 
-      dbus_g_connection_register_g_object (bus, priv->object_path,
-          G_OBJECT (self));
+      tp_dbus_daemon_register_object (bus, priv->object_path, G_OBJECT (self));
 
       priv->closed = FALSE;
 

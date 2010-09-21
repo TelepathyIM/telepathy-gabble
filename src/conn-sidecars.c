@@ -83,9 +83,11 @@ connection_install_sidecar (
     GabbleSidecar *sidecar,
     const gchar *sidecar_iface)
 {
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
+      (TpBaseConnection *) conn);
   gchar *path = make_sidecar_path (conn, sidecar_iface);
 
-  dbus_g_connection_register_g_object (tp_get_bus (), path, G_OBJECT (sidecar));
+  tp_dbus_daemon_register_object (bus, path, G_OBJECT (sidecar));
   g_hash_table_insert (conn->sidecars, g_strdup (sidecar_iface),
       g_object_ref (sidecar));
 
@@ -285,7 +287,8 @@ sidecars_conn_status_changed_cb (
     guint reason,
     gpointer unused)
 {
-  DBusGConnection *bus = tp_get_bus ();
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
+      (TpBaseConnection *) conn);
   GHashTableIter iter;
   gpointer key, value;
 
@@ -296,7 +299,7 @@ sidecars_conn_status_changed_cb (
       while (g_hash_table_iter_next (&iter, NULL, &value))
         {
           DEBUG ("removing %s from the bus", gabble_sidecar_get_interface (value));
-          dbus_g_connection_unregister_g_object (bus, G_OBJECT (value));
+          tp_dbus_daemon_unregister_object (bus, G_OBJECT (value));
         }
 
       g_hash_table_iter_init (&iter, conn->pending_sidecars);

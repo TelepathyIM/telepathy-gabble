@@ -210,7 +210,7 @@ gabble_olpc_activity_view_constructor (GType type,
   GObject *obj;
   GabbleOlpcView *view;
   GabbleOlpcActivityViewPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   TpBaseConnection *conn;
 
   obj = G_OBJECT_CLASS (gabble_olpc_activity_view_parent_class)->
@@ -221,8 +221,8 @@ gabble_olpc_activity_view_constructor (GType type,
   priv = GABBLE_OLPC_ACTIVITY_VIEW (obj)->priv;
   conn = (TpBaseConnection *) view->conn;
 
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, view->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon (conn);
+  tp_dbus_daemon_register_object (bus, view->object_path, obj);
 
   if (priv->properties == NULL)
     {

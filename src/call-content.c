@@ -93,6 +93,7 @@ static guint signals[LAST_SIGNAL] = {0};
 struct _GabbleCallContentPrivate
 {
   GabbleConnection *conn;
+  TpDBusDaemon *dbus_daemon;
 
   gchar *object_path;
   TpHandle target;
@@ -275,12 +276,12 @@ gabble_call_content_constructed (GObject *obj)
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (obj);
   GabbleCallContentPrivate *priv = self->priv;
-  DBusGConnection *bus;
 
   /* register object on the bus */
-  bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  priv->dbus_daemon = g_object_ref (
+      tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn));
+  tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path, obj);
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed (obj);
@@ -575,7 +576,8 @@ gabble_call_content_deinit (GabbleCallContent *content)
 
   priv->deinit_has_run = TRUE;
 
-  dbus_g_connection_unregister_g_object (tp_get_bus (), G_OBJECT (content));
+  tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (content));
+  tp_clear_object (&priv->dbus_daemon);
 
   for (l = priv->streams; l != NULL; l = g_list_next (l))
     {

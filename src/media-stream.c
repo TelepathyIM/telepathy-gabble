@@ -252,7 +252,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   GabbleConnection *connection;
   gchar *stun_server;
   guint stun_port;
@@ -287,11 +287,11 @@ gabble_media_stream_constructor (GType type, guint n_props,
       g_ptr_array_add (priv->stun_servers, va);
     }
 
-  g_object_unref (connection);
-
   /* go for the bus */
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) connection);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
+
+  g_object_unref (connection);
 
   update_direction (stream, priv->content);
 

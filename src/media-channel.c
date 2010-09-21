@@ -293,7 +293,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaChannelPrivate *priv;
   TpBaseConnection *conn;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   TpIntSet *set;
   TpHandleRepoIface *contact_handles;
   GabbleJingleFactory *jf;
@@ -310,8 +310,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
       TP_HANDLE_TYPE_CONTACT);
 
   /* register object on the bus */
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon (conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
       contact_handles, conn->self_handle);

@@ -324,7 +324,7 @@ static void
 gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStreamPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   GabbleCallStreamEndpoint *endpoint;
   gchar *path;
   JingleTransportType transport;
@@ -332,9 +332,9 @@ gabble_call_stream_constructed (GObject *obj)
   priv = GABBLE_CALL_STREAM (obj)->priv;
 
   /* register object on the bus */
-  bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   /* Currently we'll only have one endpoint we know right away */
   path = g_strdup_printf ("%s/Endpoint", priv->object_path);

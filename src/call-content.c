@@ -173,11 +173,10 @@ gabble_call_content_get_property (GObject    *object,
             {
               GabbleCallStream *s = GABBLE_CALL_STREAM (l->data);
               g_ptr_array_add (arr,
-                  (gpointer) gabble_call_stream_get_object_path (s));
+                  g_strdup (gabble_call_stream_get_object_path (s)));
             }
 
-          g_value_set_boxed (value, arr);
-          g_ptr_array_free (arr, TRUE);
+          g_value_take_boxed (value, arr);
           break;
         }
       case PROP_NAME:

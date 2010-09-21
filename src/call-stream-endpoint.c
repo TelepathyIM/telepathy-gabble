@@ -54,6 +54,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleCallStreamEndpoint,
 enum
 {
   PROP_OBJECT_PATH = 1,
+  PROP_DBUS_DAEMON,
   PROP_JINGLE_CONTENT,
   PROP_REMOTE_CANDIDATES,
   PROP_REMOTE_CREDENTIALS,
@@ -66,6 +67,7 @@ struct _GabbleCallStreamEndpointPrivate
 {
   gboolean dispose_has_run;
 
+  TpDBusDaemon *dbus_daemon;
   gchar *object_path;
   GabbleJingleContent *content;
   GValueArray *remote_credentials;
@@ -185,6 +187,10 @@ gabble_call_stream_endpoint_set_property (GObject *object,
       case PROP_JINGLE_CONTENT:
         priv->content = g_value_dup_object (value);
         break;
+      case PROP_DBUS_DAEMON:
+        g_assert (priv->dbus_daemon == NULL);   /* construct-only */
+        priv->dbus_daemon = g_value_dup_object (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -195,14 +201,12 @@ static void
 gabble_call_stream_endpoint_constructed (GObject *obj)
 {
   GabbleCallStreamEndpointPrivate *priv;
-  DBusGConnection *bus;
 
   priv = GABBLE_CALL_STREAM_ENDPOINT (obj)->priv;
 
   /* register object on the bus */
-  bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path, obj);
 
   gabble_signal_connect_weak (priv->content, "new-candidates",
     G_CALLBACK (call_stream_endpoint_new_candidates_cb), obj);
@@ -299,6 +303,13 @@ gabble_call_stream_endpoint_class_init (
       0, NUM_GABBLE_STREAM_TRANSPORT_TYPES, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TRANSPORT, param_spec);
+
+  param_spec = g_param_spec_object ("dbus-daemon",
+      "The DBus daemon connection",
+      "The connection to the DBus daemon owning the CM",
+      TP_TYPE_DBUS_DAEMON,
+      G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DBUS_DAEMON, param_spec);
 
   gabble_call_stream_endpoint_class->dbus_props_class.interfaces =
       prop_interfaces;
@@ -457,12 +468,14 @@ call_stream_endpoint_iface_init (gpointer iface, gpointer data)
 }
 
 GabbleCallStreamEndpoint *
-gabble_call_stream_endpoint_new (const gchar *object_path,
-  GabbleJingleContent *content)
+gabble_call_stream_endpoint_new (TpDBusDaemon *dbus_daemon,
+    const gchar *object_path,
+    GabbleJingleContent *content)
 {
   return g_object_new (GABBLE_TYPE_CALL_STREAM_ENDPOINT,
-    "object-path", object_path,
-    "jingle-content", content,
+      "dbus-daemon", dbus_daemon,
+      "object-path", object_path,
+      "jingle-content", content,
     NULL);
 }
 

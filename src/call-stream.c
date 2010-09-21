@@ -338,7 +338,7 @@ gabble_call_stream_constructed (GObject *obj)
 
   /* Currently we'll only have one endpoint we know right away */
   path = g_strdup_printf ("%s/Endpoint", priv->object_path);
-  endpoint = gabble_call_stream_endpoint_new (path, priv->content);
+  endpoint = gabble_call_stream_endpoint_new (bus, path, priv->content);
   priv->endpoints = g_list_append (priv->endpoints, endpoint);
   g_free (path);
 

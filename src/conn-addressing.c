@@ -34,26 +34,16 @@ _fill_contact_attributes (TpHandleRepoIface *contact_repo,
     TpHandle contact,
     GHashTable *attributes_hash)
 {
-  const gchar *identifier = tp_handle_inspect (contact_repo, contact);
-  gchar **uris = g_new0 (gchar *, 2);
-  GHashTable *addresses = g_hash_table_new (g_str_hash, g_str_equal);
-  GValue *uris_val;
-  GValue *addr_val;
-
-  *uris = g_strdup_printf ("xmpp:%s", identifier);
-  uris_val = tp_g_value_slice_new_take_boxed (G_TYPE_STRV, uris);
+  gchar **uris = gabble_uris_for_handle (contact_repo, contact);
+  GHashTable *addresses = gabble_vcard_addresses_for_handle (contact_repo, contact);
 
   tp_contacts_mixin_set_contact_attribute (attributes_hash,
       contact, GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING"/uris",
-      uris_val);
-
-  g_hash_table_insert (addresses, "x-jabber", (gpointer) identifier);
-  addr_val = tp_g_value_slice_new_take_boxed (
-      TP_HASH_TYPE_STRING_STRING_MAP, addresses);
+      tp_g_value_slice_new_take_boxed (G_TYPE_STRV, uris));
 
   tp_contacts_mixin_set_contact_attribute (attributes_hash,
       contact, GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING"/addresses",
-      addr_val);
+      tp_g_value_slice_new_take_boxed (TP_HASH_TYPE_STRING_STRING_MAP, addresses));
 }
 
 static void

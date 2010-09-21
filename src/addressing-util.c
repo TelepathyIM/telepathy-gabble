@@ -23,7 +23,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#define DEBUG_FLAG GABBLE_DEBUG_JID
 
+#include "debug.h"
 #include "util.h"
 #include "connection.h"
 
@@ -151,4 +153,50 @@ gabble_ensure_handle_from_vcard_address (TpHandleRepoIface *repo,
   g_free (jid);
 
   return handle;
+}
+
+gchar **
+gabble_uris_for_handle (TpHandleRepoIface *contact_repo,
+    TpHandle contact)
+{
+  guint len = g_strv_length ((gchar **) addressable_uri_schemes);
+  guint i;
+  gchar **uris = g_new0 (gchar *, len + 1);
+
+  for (i=0;i<len;i++)
+    uris[i] = gabble_uri_for_handle (contact_repo, addressable_uri_schemes[i], contact);
+
+  return uris;
+}
+
+GHashTable *
+gabble_vcard_addresses_for_handle (TpHandleRepoIface *contact_repo,
+    TpHandle contact)
+{
+  const gchar **field;
+  GHashTable *addresses = g_hash_table_new_full (g_str_hash, g_str_equal,
+      NULL, (GDestroyNotify) g_free);
+
+  for (field=addressable_vcard_fields;*field!=NULL;field++)
+    g_hash_table_insert (addresses, (gpointer) *field,
+        gabble_vcard_address_for_handle (contact_repo, *field, contact));
+
+  return addresses;
+}
+
+gchar *
+gabble_vcard_address_for_handle (TpHandleRepoIface *contact_repo,
+    const gchar *vcard_field,
+    TpHandle contact)
+{
+  return g_strdup (tp_handle_inspect (contact_repo, contact));
+}
+
+gchar *
+gabble_uri_for_handle (TpHandleRepoIface *contact_repo,
+    const gchar *uri_scheme,
+    TpHandle contact)
+{
+  const gchar *identifier = tp_handle_inspect (contact_repo, contact);
+  return g_strdup_printf ("%s:%s", uri_scheme, identifier);
 }

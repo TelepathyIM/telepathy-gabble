@@ -45,5 +45,18 @@ TpHandle gabble_ensure_handle_from_vcard_address (TpHandleRepoIface *repo,
     const gchar *vcard_address,
     GError **error);
 
+gchar **gabble_uris_for_handle (TpHandleRepoIface *contact_repo,
+    TpHandle contact);
+
+GHashTable *gabble_vcard_addresses_for_handle (TpHandleRepoIface *contact_repo,
+    TpHandle contact);
+
+gchar *gabble_uri_for_handle (TpHandleRepoIface *contact_repo,
+    const gchar *uri_scheme,
+    TpHandle contact);
+
+gchar *gabble_vcard_address_for_handle (TpHandleRepoIface *contact_repo,
+    const gchar *vcard_field,
+    TpHandle contact);
 
 #endif /* __GABBLE_UTIL_ADDRESSING_H__ */

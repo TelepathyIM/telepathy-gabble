@@ -40,8 +40,6 @@ typedef struct _GabbleVCardManager GabbleVCardManager;
 typedef struct _GabbleBytestreamFactory GabbleBytestreamFactory;
 typedef struct _GabblePrivateTubesFactory GabblePrivateTubesFactory;
 typedef struct _GabbleRequestPipeline GabbleRequestPipeline;
-typedef struct _GabbleOlpcView GabbleOlpcView;
-typedef struct _GabbleOlpcGadgetManager GabbleOlpcGadgetManager;
 
 typedef struct _GabbleTubesChannel GabbleTubesChannel;
 

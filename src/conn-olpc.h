@@ -23,7 +23,6 @@
 #include <extensions/extensions.h>
 
 #include "connection.h"
-#include "olpc-buddy-view.h"
 
 void
 olpc_buddy_info_iface_init (gpointer g_iface, gpointer iface_data);
@@ -45,21 +44,6 @@ gboolean conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
 
 LmHandlerResult conn_olpc_msg_cb (LmMessageHandler *handler,
     LmConnection *connection, LmMessage *message, gpointer user_data);
-
-LmHandlerResult conn_olpc_presence_cb (LmMessageHandler *handler,
-    LmConnection *connection, LmMessage *presence, gpointer user_data);
-
-void conn_olpc_gadget_properties_getter (GObject *object, GQuark interface,
-    GQuark name, GValue *value, gpointer getter_data);
-
-gboolean add_buddies_to_view_from_node (GabbleConnection *conn,
-    GabbleOlpcView *view, LmMessageNode *node, const gchar *node_name,
-    TpHandle activity);
-
-gboolean add_activities_to_view_from_node (GabbleConnection *conn,
-    GabbleOlpcView *view, LmMessageNode *node);
-
-void olpc_gadget_iface_init (gpointer g_iface, gpointer iface_data);
 
 #endif /* __CONN_OLPC_H__ */
 

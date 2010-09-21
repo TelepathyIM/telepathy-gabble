@@ -120,8 +120,6 @@ gchar * gabble_peer_to_jid (GabbleConnection *conn,
     TpHandle peer,
     const gchar *resource);
 
-gchar *gabble_uri_to_jid (const gchar *uri, GError **error);
-
 gboolean
 gabble_flag_from_nick (GType flag_type, const gchar *nick,
     guint *value);

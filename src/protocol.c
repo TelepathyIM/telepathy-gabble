@@ -34,6 +34,7 @@
 #include "roomlist-manager.h"
 #include "search-manager.h"
 #include "util.h"
+#include "addressing-util.h"
 
 #define PROTOCOL_NAME "jabber"
 #define ICON_NAME "im-" PROTOCOL_NAME
@@ -44,7 +45,8 @@ static void addressing_iface_init (TpProtocolAddressingInterface *iface);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleJabberProtocol, gabble_jabber_protocol,
     TP_TYPE_BASE_PROTOCOL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_PROTOCOL_ADDRESSING, addressing_iface_init))
+    G_IMPLEMENT_INTERFACE (TP_TYPE_PROTOCOL_ADDRESSING, addressing_iface_init);
+    )
 
 static TpCMParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
@@ -397,30 +399,22 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
     const gchar *vcard_address,
     GError **error)
 {
-  gchar *normalized_address = NULL;
+  gchar *jid;
 
-  if (g_ascii_strcasecmp (vcard_field, "x-jabber") == 0)
+  jid = gabble_parse_vcard_address (vcard_field, vcard_address, NULL, error);
+
+  if (jid == NULL)
     {
-      GError *gabble_error = NULL;
-      normalized_address = gabble_normalize_contact (NULL,
-          vcard_address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL),
-          &gabble_error);
-
-      if (gabble_error != NULL)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "'%s' is an invalid address: %s", vcard_address,
-              gabble_error->message);
-          g_error_free (gabble_error);
-        }
+      /* InvalidHandle makes no sense in Protocol */
+      if ((*error)->code == TP_ERROR_INVALID_HANDLE)
+        (*error)->code = TP_ERROR_INVALID_ARGUMENT;
     }
   else
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "'x-jabber' is the only vCard field supported by this protocol");
+      g_assert (jid != NULL);
     }
 
-  return normalized_address;
+  return jid;
 }
 
 static gchar *
@@ -428,19 +422,25 @@ addressing_normalize_contact_uri (TpBaseProtocol *self,
     const gchar *uri,
     GError **error)
 {
-  gchar *normalized_uri;
-  gchar *jid = gabble_uri_to_jid (uri, error);
+  gchar *normalized_address = NULL;
+  gchar *jid;
+
+  jid = gabble_parse_uri (uri, &normalized_address, error);
 
   if (jid == NULL)
     {
-      /* InvalidHandle is not relevant when not on a connection */
+      /* InvalidHandle makes no sense in Protocol */
       if ((*error)->code == TP_ERROR_INVALID_HANDLE)
         (*error)->code = TP_ERROR_INVALID_ARGUMENT;
     }
+  else
+    {
+      g_assert (normalized_address != NULL);
+    }
 
-  normalized_uri = g_strdup_printf ("xmpp:%s", jid);
+  g_free (jid);
 
-  return normalized_uri;
+  return normalized_address;
 }
 
 static void

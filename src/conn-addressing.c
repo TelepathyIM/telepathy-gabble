@@ -23,6 +23,7 @@
 #include "debug.h"
 #include "namespaces.h"
 #include "util.h"
+#include "addressing-util.h"
 
 #include "extensions/extensions.h"
 
@@ -90,13 +91,7 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
 
   for (uri = in_URIs; *uri != NULL; uri++)
     {
-      TpHandle h = 0;
-      gchar *jid = gabble_uri_to_jid (*uri, NULL);
-
-      if (jid != NULL)
-        h = tp_handle_ensure (contact_repo, jid, NULL, NULL);
-
-      g_free (jid);
+      TpHandle h = gabble_ensure_handle_from_uri (contact_repo, *uri, NULL);
 
       if (h == 0)
         continue;
@@ -150,21 +145,27 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
   GList *contacts;
   GList *contact;
 
-  if (g_ascii_strcasecmp (in_Field, "x-jabber") != 0)
-    {
-      GError *error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "'%s' vCard field is not supported.", in_Field);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
   for (address = in_Addresses; *address != NULL; address++)
     {
-      TpHandle h = tp_handle_ensure (contact_repo, *address, NULL, NULL);
+      GError *error = NULL;
+      TpHandle h = gabble_ensure_handle_from_vcard_address (contact_repo, in_Field,
+          *address, &error);
 
       if (h == 0)
-        continue;
+        {
+          if (error->code == TP_ERROR_NOT_IMPLEMENTED)
+            {
+              error->code = TP_ERROR_INVALID_ARGUMENT;
+              dbus_g_method_return_error (context, error);
+              g_error_free (error);
+              return;
+            }
+          else
+            {
+              g_error_free (error);
+              continue;
+            }
+        }
 
       g_hash_table_insert (requested, GUINT_TO_POINTER (h), (gpointer) *address);
       g_array_append_val (handles, h);

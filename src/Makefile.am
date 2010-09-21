@@ -13,6 +13,8 @@ libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
+    addressing-util.h \
+    addressing-util.c \
     auth-manager.h \
     auth-manager.c \
     base64.h \

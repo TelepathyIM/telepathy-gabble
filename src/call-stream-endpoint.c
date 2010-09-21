@@ -356,7 +356,7 @@ call_stream_endpoint_new_candidates_cb (GabbleJingleContent *content,
   arr = gabble_call_candidates_to_array (candidates);
   gabble_svc_call_stream_endpoint_emit_remote_candidates_added (self,
     arr);
-  g_ptr_array_unref (arr);
+  g_boxed_free (GABBLE_ARRAY_TYPE_CANDIDATE_LIST, arr);
 }
 
 static void

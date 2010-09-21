@@ -23,9 +23,7 @@
 
 #include <string.h>
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/util.h>
-#include <telepathy-glib/errors.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include <wocky/wocky-namespaces.h>
 #include <wocky/wocky-xmpp-error.h>
@@ -214,11 +212,7 @@ gabble_gateway_sidecar_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_gateway_sidecar_parent_class)->dispose;
   GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (object);
 
-  if (self->priv->connection != NULL)
-    {
-      g_object_unref (self->priv->connection);
-      self->priv->connection = NULL;
-    }
+  tp_clear_object (&self->priv->connection);
 
   if (self->priv->session != NULL)
     {
@@ -226,9 +220,9 @@ gabble_gateway_sidecar_dispose (GObject *object)
 
       wocky_porter_unregister_handler (porter, self->priv->subscribe_id);
       wocky_porter_unregister_handler (porter, self->priv->subscribed_id);
-      g_object_unref (self->priv->session);
-      self->priv->session = NULL;
     }
+
+  tp_clear_object (&self->priv->session);
 
   if (chain_up != NULL)
     chain_up (object);
@@ -456,9 +450,7 @@ register_cb (GObject *source,
       pr->context = NULL;
     }
 
-  if (reply != NULL)
-    g_object_unref (reply);
-
+  tp_clear_object (&reply);
   pending_registration_free (pr);
 }
 

@@ -153,11 +153,10 @@ gabble_call_stream_get_property (GObject    *object,
               GabbleCallStreamEndpoint *e =
                 GABBLE_CALL_STREAM_ENDPOINT (l->data);
               g_ptr_array_add (arr,
-                (gpointer) gabble_call_stream_endpoint_get_object_path (e));
+                g_strdup (gabble_call_stream_endpoint_get_object_path (e)));
             }
 
-          g_value_set_boxed (value, arr);
-          g_ptr_array_free (arr, TRUE);
+          g_value_take_boxed (value, arr);
           break;
         }
       case PROP_TRANSPORT:

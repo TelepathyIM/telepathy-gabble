@@ -328,6 +328,7 @@ gabble_call_stream_endpoint_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   tp_clear_object (&priv->content);
+  tp_clear_object (&priv->dbus_daemon);
 
   if (G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->dispose (

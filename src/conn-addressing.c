@@ -29,6 +29,13 @@
 
 #include <dbus/dbus-glib-lowlevel.h>
 
+static const char *assumed_interfaces[] = {
+    TP_IFACE_CONNECTION,
+    GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING,
+    NULL
+  };
+
+
 static void
 _fill_contact_attributes (TpHandleRepoIface *contact_repo,
     TpHandle contact,
@@ -90,8 +97,8 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
       g_array_append_val (handles, h);
     }
 
-  result = tp_contacts_mixin_get_contacts_attributes (G_OBJECT (iface), handles,
-      in_Interfaces, sender);
+  result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
+      in_Interfaces, assumed_interfaces, sender);
 
   contacts = g_hash_table_get_keys (result);
 
@@ -100,8 +107,6 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
       GValue *val = tp_g_value_slice_new_string (g_hash_table_lookup (requested,
               contact->data));
       TpHandle h = GPOINTER_TO_UINT (contact->data);
-
-      _fill_contact_attributes (contact_repo, h, result);
 
       tp_contacts_mixin_set_contact_attribute (result, h,
           GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING"/requested-uri", val);
@@ -161,8 +166,8 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
       g_array_append_val (handles, h);
     }
 
-  result = tp_contacts_mixin_get_contacts_attributes (G_OBJECT (iface), handles,
-      in_Interfaces, sender);
+  result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
+      in_Interfaces, assumed_interfaces, sender);
 
   contacts = g_hash_table_get_keys (result);
 
@@ -175,8 +180,6 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
           G_TYPE_INVALID);
       GValue *val = tp_g_value_slice_new_take_boxed (
           GABBLE_STRUCT_TYPE_REQUESTED_ADDRESS, req_address);
-
-      _fill_contact_attributes (contact_repo, h, result);
 
       tp_contacts_mixin_set_contact_attribute (result, h,
           GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING"/requested-address", val);

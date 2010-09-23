@@ -2395,7 +2395,6 @@ handle_presence (GObject *source,
     }
 
   /* zap the handle refs we created */
- out:
   tp_handle_unref (contact_repo, handle);
   if (owner != 0)
     tp_handle_unref (contact_repo, owner);

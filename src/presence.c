@@ -355,6 +355,7 @@ aggregate_resources (GabblePresence *presence)
           presence->status = r->status;
           presence->status_message = r->status_message;
           prio = r->priority;
+          activity = r->last_activity;
         }
     }
 

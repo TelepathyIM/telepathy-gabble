@@ -2687,6 +2687,8 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   TpHandleSet *invitees;
   /* send them the properties */
   LmMessage *msg;
+  TpHandle handle;
+  GError *error = NULL;
 
   g_object_get (activity, "connection", &conn, NULL);
   contact_repo = tp_base_connection_get_handles
@@ -2705,9 +2707,6 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
         }
     }
   lm_message_unref (msg);
-
-  TpHandle handle;
-  GError *error = NULL;
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, &error);
   if (handle == 0)

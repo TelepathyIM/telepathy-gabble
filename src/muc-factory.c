@@ -884,24 +884,12 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
     }
 
   if (priv->queued_requests != NULL)
-    {
-      g_hash_table_foreach_steal (priv->queued_requests,
-          cancel_queued_requests, self);
-      g_hash_table_destroy (priv->queued_requests);
-      priv->queued_requests = NULL;
-    }
+    g_hash_table_foreach_steal (priv->queued_requests,
+        cancel_queued_requests, self);
 
-  if (priv->text_needed_for_tubes != NULL)
-    {
-      g_hash_table_destroy (priv->text_needed_for_tubes);
-      priv->text_needed_for_tubes = NULL;
-    }
-
-  if (priv->tubes_needed_for_tube != NULL)
-    {
-      g_hash_table_destroy (priv->tubes_needed_for_tube);
-      priv->tubes_needed_for_tube = NULL;
-    }
+  tp_clear_pointer (&priv->queued_requests, g_hash_table_destroy);
+  tp_clear_pointer (&priv->text_needed_for_tubes, g_hash_table_destroy);
+  tp_clear_pointer (&priv->tubes_needed_for_tube, g_hash_table_destroy);
 
   /* Use a temporary variable because we don't want
    * muc_channel_closed_cb or tubes_channel_closed_cb to remove the channel
@@ -927,9 +915,9 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
 
       lm_connection_unregister_message_handler (priv->conn->lmconn,
           priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->message_cb);
-      priv->message_cb = NULL;
     }
+
+  tp_clear_pointer (&priv->message_cb, lm_message_handler_unref);
 }
 
 
@@ -1212,18 +1200,17 @@ handle_text_channel_request (GabbleMucFactory *self,
                             GError **error)
 {
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  TpBaseConnection *conn = TP_BASE_CONNECTION (priv->conn);
   GabbleMucChannel *text_chan;
-
-  DBusGConnection *bus = tp_get_bus ();
   TpHandleSet *handles;
   TpIntSet *continue_handles;
   guint i;
   gboolean ret = TRUE;
 
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
-      TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_CONTACT);
-  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (
-      TP_BASE_CONNECTION (priv->conn), TP_HANDLE_TYPE_ROOM);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *room_handles = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_ROOM);
 
   GPtrArray *initial_channels;
   GHashTable *final_channels; /* used as a set: (char *) -> NULL */
@@ -1255,6 +1242,9 @@ handle_text_channel_request (GabbleMucFactory *self,
   /* look at the list of initial channels, build a set of handles to invite */
   if (initial_channels != NULL)
     {
+      TpDBusDaemon *dbus_daemon = tp_base_connection_get_dbus_daemon (conn);
+      DBusGConnection *bus = tp_proxy_get_dbus_connection (dbus_daemon);
+
       for (i = 0; i < initial_channels->len; i++)
         {
           const char *object_path = g_ptr_array_index (initial_channels, i);

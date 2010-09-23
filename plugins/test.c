@@ -2,9 +2,7 @@
 
 #include <stdio.h>
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/util.h>
-#include <telepathy-glib/errors.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "extensions/extensions.h"
 
@@ -339,17 +337,8 @@ test_sidecar_iq_dispose (GObject *object)
 
   DEBUG ("called for %p", object);
 
-  if (self->session != NULL)
-    {
-      g_object_unref (self->session);
-      self->session = NULL;
-    }
-
-  if (self->connection != NULL)
-    {
-      g_object_unref (self->connection);
-      self->connection = NULL;
-    }
+  tp_clear_object (&self->session);
+  tp_clear_object (&self->connection);
 }
 
 static void

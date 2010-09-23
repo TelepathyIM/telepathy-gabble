@@ -531,8 +531,7 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
 out:
   jingle_media_rtp_free_codecs (new_codecs);
 
-  if (rc != NULL)
-    g_hash_table_unref (rc);
+  tp_clear_pointer (&rc, g_hash_table_unref);
 
   if (e != NULL)
     {

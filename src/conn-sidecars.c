@@ -52,12 +52,10 @@ void
 conn_sidecars_dispose (GabbleConnection *conn)
 {
   g_warn_if_fail (g_hash_table_size (conn->sidecars) == 0);
-  g_hash_table_unref (conn->sidecars);
-  conn->sidecars = NULL;
+  tp_clear_pointer (&conn->sidecars, g_hash_table_unref);
 
   g_warn_if_fail (g_hash_table_size (conn->pending_sidecars) == 0);
-  g_hash_table_unref (conn->pending_sidecars);
-  conn->pending_sidecars = NULL;
+  tp_clear_pointer (&conn->pending_sidecars, g_hash_table_unref);
 }
 
 static gchar *
@@ -83,9 +81,11 @@ connection_install_sidecar (
     GabbleSidecar *sidecar,
     const gchar *sidecar_iface)
 {
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
+      (TpBaseConnection *) conn);
   gchar *path = make_sidecar_path (conn, sidecar_iface);
 
-  dbus_g_connection_register_g_object (tp_get_bus (), path, G_OBJECT (sidecar));
+  tp_dbus_daemon_register_object (bus, path, G_OBJECT (sidecar));
   g_hash_table_insert (conn->sidecars, g_strdup (sidecar_iface),
       g_object_ref (sidecar));
 
@@ -188,11 +188,8 @@ create_sidecar_cb (
   g_hash_table_remove (ctx->conn->pending_sidecars, ctx->sidecar_iface);
 
 out:
-  if (sidecar != NULL)
-    g_object_unref (sidecar);
-
-  if (error != NULL)
-    g_clear_error (&error);
+  tp_clear_object (&sidecar);
+  g_clear_error (&error);
 
   grr_free (ctx);
 }
@@ -285,7 +282,8 @@ sidecars_conn_status_changed_cb (
     guint reason,
     gpointer unused)
 {
-  DBusGConnection *bus = tp_get_bus ();
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
+      (TpBaseConnection *) conn);
   GHashTableIter iter;
   gpointer key, value;
 
@@ -296,7 +294,7 @@ sidecars_conn_status_changed_cb (
       while (g_hash_table_iter_next (&iter, NULL, &value))
         {
           DEBUG ("removing %s from the bus", gabble_sidecar_get_interface (value));
-          dbus_g_connection_unregister_g_object (bus, G_OBJECT (value));
+          tp_dbus_daemon_unregister_object (bus, G_OBJECT (value));
         }
 
       g_hash_table_iter_init (&iter, conn->pending_sidecars);

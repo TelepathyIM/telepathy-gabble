@@ -293,7 +293,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaChannelPrivate *priv;
   TpBaseConnection *conn;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   TpIntSet *set;
   TpHandleRepoIface *contact_handles;
   GabbleJingleFactory *jf;
@@ -310,8 +310,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
       TP_HANDLE_TYPE_CONTACT);
 
   /* register object on the bus */
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon (conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
       contact_handles, conn->self_handle);
@@ -2223,8 +2223,7 @@ session_terminated_cb (GabbleJingleSession *session,
   }
 
   /* remove the session */
-  g_object_unref (priv->session);
-  priv->session = NULL;
+  tp_clear_object (&priv->session);
 
   /* close us if we aren't already closed */
   if (!priv->closed)
@@ -2504,11 +2503,7 @@ stream_creation_data_cancel (gpointer p,
 {
   StreamCreationData *d = p;
 
-  if (d->content != NULL)
-    {
-      g_object_unref (d->content);
-      d->content = NULL;
-    }
+  tp_clear_object (&d->content);
 }
 
 static void

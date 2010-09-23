@@ -145,7 +145,7 @@ gabble_tubes_channel_constructor (GType type,
   GObject *obj;
   GabbleTubesChannel *self;
   GabbleTubesChannelPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   TpHandleRepoIface *handle_repo, *contact_repo;
 
   DEBUG ("Called");
@@ -185,8 +185,8 @@ gabble_tubes_channel_constructor (GType type,
       g_return_val_if_reached (NULL);
     }
 
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   DEBUG ("Registering at '%s'", priv->object_path);
 

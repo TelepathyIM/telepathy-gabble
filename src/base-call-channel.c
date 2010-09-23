@@ -591,10 +591,8 @@ gabble_base_call_channel_dispose (GObject *object)
       gabble_call_content_deinit (l->data);
     }
 
-  g_hash_table_unref (self->priv->members);
-
-  g_list_free (priv->contents);
-  priv->contents = NULL;
+  tp_clear_pointer (&priv->members, g_hash_table_unref);
+  tp_clear_pointer (&priv->contents, g_list_free);
 
   if (priv->creator != 0)
     tp_handle_unref (repo, priv->creator);
@@ -703,13 +701,12 @@ void
 gabble_base_call_channel_register (GabbleBaseCallChannel *self)
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
 
   /* register object on the bus */
-  bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path,
-    G_OBJECT (self));
+  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) self->conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, G_OBJECT (self));
 
   priv->registered = TRUE;
 }

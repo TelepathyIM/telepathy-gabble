@@ -116,8 +116,7 @@ channel_init_free (ChannelInitialisation *ci)
 {
   g_cancellable_disconnect (ci->cancellable, ci->cancel_id);
 
-  if (ci->cancellable != NULL)
-    g_object_unref (ci->cancellable);
+  tp_clear_object (&ci->cancellable);
 
   g_signal_handler_disconnect (ci->self->priv->muc, ci->ready_id);
   g_object_unref (ci->result);
@@ -241,13 +240,8 @@ gabble_call_muc_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->wmuc != NULL)
-    g_object_unref (priv->wmuc);
-  priv->wmuc = NULL;
-
-  if (priv->muji != NULL)
-    g_object_unref (priv->muji);
-  priv->muji = NULL;
+  tp_clear_object (&priv->wmuc);
+  tp_clear_object (&priv->muji);
 
   tp_external_group_mixin_finalize (object);
 
@@ -1119,9 +1113,7 @@ call_muc_channel_leave (GabbleCallMucChannel *self)
   if (priv->state == STATE_LEFT)
     return;
 
-  if (priv->muji != NULL)
-    g_object_unref (priv->muji);
-  priv->muji = NULL;
+  tp_clear_object (&priv->muji);
 
   priv->state = STATE_LEFT;
   gabble_muc_channel_send_presence (priv->muc, NULL);

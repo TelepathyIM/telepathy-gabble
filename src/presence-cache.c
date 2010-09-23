@@ -492,30 +492,19 @@ gabble_presence_cache_dispose (GObject *object)
       priv->unsure_id = 0;
     }
 
-  g_hash_table_destroy (priv->decloak_requests);
-  priv->decloak_requests = NULL;
-  tp_handle_set_destroy (priv->decloak_handles);
-  priv->decloak_handles = NULL;
+  tp_clear_pointer (&priv->decloak_requests, g_hash_table_destroy);
+  tp_clear_pointer (&priv->decloak_handles, tp_handle_set_destroy);
 
   g_assert (priv->lm_message_cb == NULL);
   g_assert (priv->lm_presence_cb == NULL);
 
   g_signal_handler_disconnect (priv->conn, priv->status_changed_cb);
 
-  g_hash_table_destroy (priv->presence);
-  priv->presence = NULL;
-
-  g_hash_table_destroy (priv->capabilities);
-  priv->capabilities = NULL;
-
-  g_hash_table_destroy (priv->disco_pending);
-  priv->disco_pending = NULL;
-
-  tp_handle_set_destroy (priv->presence_handles);
-  priv->presence_handles = NULL;
-
-  g_hash_table_destroy (priv->location);
-  priv->location = NULL;
+  tp_clear_pointer (&priv->presence, g_hash_table_destroy);
+  tp_clear_pointer (&priv->capabilities, g_hash_table_destroy);
+  tp_clear_pointer (&priv->disco_pending, g_hash_table_destroy);
+  tp_clear_pointer (&priv->presence_handles, tp_handle_set_destroy);
+  tp_clear_pointer (&priv->location, g_hash_table_destroy);
 
   if (G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose (object);
@@ -621,22 +610,15 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       if (priv->lm_message_cb != NULL)
-        {
-          lm_connection_unregister_message_handler (conn->lmconn,
-                                                    priv->lm_message_cb,
-                                                    LM_MESSAGE_TYPE_MESSAGE);
-          lm_message_handler_unref (priv->lm_message_cb);
-          priv->lm_message_cb = NULL;
-        }
+        lm_connection_unregister_message_handler (conn->lmconn,
+            priv->lm_message_cb, LM_MESSAGE_TYPE_MESSAGE);
 
       if (priv->lm_presence_cb != NULL)
-        {
-          lm_connection_unregister_message_handler (conn->lmconn,
-                                                    priv->lm_presence_cb,
-                                                    LM_MESSAGE_TYPE_PRESENCE);
-          lm_message_handler_unref (priv->lm_presence_cb);
-          priv->lm_presence_cb = NULL;
-        }
+        lm_connection_unregister_message_handler (conn->lmconn,
+            priv->lm_presence_cb, LM_MESSAGE_TYPE_PRESENCE);
+
+      tp_clear_pointer (&priv->lm_message_cb, lm_message_handler_unref);
+      tp_clear_pointer (&priv->lm_presence_cb, lm_message_handler_unref);
       break;
 
     default:

@@ -1113,13 +1113,9 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&priv->connector);
   tp_clear_object (&self->session);
 
-  if (self->lmconn != NULL)
-    {
-      /* ownership of our porter was transferred to the LmConnection */
-      priv->porter = NULL;
-      lm_connection_unref (self->lmconn);
-      self->lmconn = NULL;
-    }
+  /* ownership of our porter was transferred to the LmConnection */
+  priv->porter = NULL;
+  tp_clear_pointer (&self->lmconn, lm_connection_unref);
 
   g_hash_table_destroy (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
@@ -1923,13 +1919,11 @@ disconnect_callbacks (TpBaseConnection *base)
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
                                             LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_disco_cb);
-  priv->iq_disco_cb = NULL;
+  tp_clear_pointer (&priv->iq_disco_cb, lm_message_handler_unref);
 
   lm_connection_unregister_message_handler (conn->lmconn, priv->iq_unknown_cb,
                                             LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_unknown_cb);
-  priv->iq_unknown_cb = NULL;
+  tp_clear_pointer (&priv->iq_unknown_cb, lm_message_handler_unref);
 }
 
 /**

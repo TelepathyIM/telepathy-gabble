@@ -204,8 +204,7 @@ gabble_plugin_loader_finalize (GObject *object)
   void (*chain_up) (GObject *) =
       G_OBJECT_CLASS (gabble_plugin_loader_parent_class)->finalize;
 
-  g_ptr_array_free (self->priv->plugins, TRUE);
-  self->priv->plugins = NULL;
+  tp_clear_pointer (&self->priv->plugins, g_ptr_array_unref);
 
   if (chain_up != NULL)
     chain_up (object);

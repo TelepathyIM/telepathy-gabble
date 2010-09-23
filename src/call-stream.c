@@ -153,11 +153,10 @@ gabble_call_stream_get_property (GObject    *object,
               GabbleCallStreamEndpoint *e =
                 GABBLE_CALL_STREAM_ENDPOINT (l->data);
               g_ptr_array_add (arr,
-                (gpointer) gabble_call_stream_endpoint_get_object_path (e));
+                g_strdup (gabble_call_stream_endpoint_get_object_path (e)));
             }
 
-          g_value_set_boxed (value, arr);
-          g_ptr_array_free (arr, TRUE);
+          g_value_take_boxed (value, arr);
           break;
         }
       case PROP_TRANSPORT:
@@ -322,7 +321,7 @@ static void
 gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStreamPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   GabbleCallStreamEndpoint *endpoint;
   gchar *path;
   JingleTransportType transport;
@@ -330,13 +329,13 @@ gabble_call_stream_constructed (GObject *obj)
   priv = GABBLE_CALL_STREAM (obj)->priv;
 
   /* register object on the bus */
-  bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   /* Currently we'll only have one endpoint we know right away */
   path = g_strdup_printf ("%s/Endpoint", priv->object_path);
-  endpoint = gabble_call_stream_endpoint_new (path, priv->content);
+  endpoint = gabble_call_stream_endpoint_new (bus, path, priv->content);
   priv->endpoints = g_list_append (priv->endpoints, endpoint);
   g_free (path);
 
@@ -596,13 +595,10 @@ gabble_call_stream_dispose (GObject *object)
       g_object_unref (l->data);
     }
 
-  g_list_free (priv->endpoints);
-  priv->endpoints = NULL;
+  tp_clear_pointer (&priv->endpoints, g_list_free);
 
-  if (priv->content != NULL)
-    g_object_unref (priv->content);
+  tp_clear_object (&priv->content);
 
-  priv->content = NULL;
   priv->conn = NULL;
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose)

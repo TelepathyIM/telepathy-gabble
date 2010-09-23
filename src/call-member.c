@@ -218,15 +218,12 @@ gabble_call_member_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->session != NULL)
-    g_object_unref (priv->session);
-  priv->session = NULL;
+  tp_clear_object (&priv->session);
 
   for (l = priv->contents ; l != NULL; l = g_list_next (l))
     g_object_unref (l->data);
 
-  g_list_free (priv->contents);
-  priv->contents = NULL;
+  tp_clear_pointer (&priv->contents, g_list_free);
 
   /* release any references held by the object here */
 

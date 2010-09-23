@@ -119,8 +119,7 @@ gabble_connection_slacker_stop (GabbleConnection *conn)
       g_signal_handler_disconnect (conn->slacker,
           conn->slacker_inactivity_changed_id);
       conn->slacker_inactivity_changed_id = 0;
-
-      g_object_unref (conn->slacker);
-      conn->slacker = NULL;
     }
+
+  tp_clear_object (&conn->slacker);
 }

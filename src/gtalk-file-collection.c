@@ -241,43 +241,23 @@ gtalk_file_collection_dispose (GObject *object)
   self->priv->dispose_has_run = TRUE;
 
   if (self->priv->jingle != NULL)
-    {
-      gabble_jingle_session_terminate (self->priv->jingle,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+    gabble_jingle_session_terminate (self->priv->jingle,
+        TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
 
-      /* the terminate could synchronously unref it and set it to NULL */
-      if (self->priv->jingle != NULL)
-        {
-          g_object_unref (self->priv->jingle);
-          self->priv->jingle = NULL;
-        }
-    }
+  tp_clear_object (&self->priv->jingle);
 
   set_current_channel (self, NULL);
 
-  if (self->priv->channels_reading != NULL)
-    {
-      g_hash_table_destroy (self->priv->channels_reading);
-      self->priv->channels_reading = NULL;
-    }
-
-  if (self->priv->channels_usable != NULL)
-    {
-      g_hash_table_destroy (self->priv->channels_usable);
-      self->priv->channels_usable = NULL;
-    }
-
-  if (self->priv->share_channels != NULL)
-    {
-      g_hash_table_destroy (self->priv->share_channels);
-      self->priv->share_channels = NULL;
-    }
+  tp_clear_pointer (&self->priv->channels_reading, g_hash_table_destroy);
+  tp_clear_pointer (&self->priv->channels_usable, g_hash_table_destroy);
+  tp_clear_pointer (&self->priv->share_channels, g_hash_table_destroy);
 
   for (i = self->priv->channels; i; i = i->next)
     {
       GabbleFileTransferChannel *channel = i->data;
       g_object_weak_unref (G_OBJECT (channel), channel_disposed, self);
     }
+
   g_list_free (self->priv->channels);
 
   g_free (self->priv->token);
@@ -1037,16 +1017,8 @@ free_share_channel (gpointer data)
 
   DEBUG ("Freeing jingle Share channel");
 
-  if (share_channel->write_buffer != NULL)
-    {
-      g_free (share_channel->write_buffer);
-      share_channel->write_buffer = NULL;
-    }
-  if (share_channel->read_buffer != NULL)
-    {
-      g_free (share_channel->read_buffer);
-      share_channel->read_buffer = NULL;
-    }
+  tp_clear_pointer (&share_channel->write_buffer, g_free);
+  tp_clear_pointer (&share_channel->read_buffer, g_free);
   g_object_unref (share_channel->agent);
   g_slice_free (ShareChannel, share_channel);
 }

@@ -62,9 +62,10 @@ int main (int argc, char **argv)
   /* sleep a while so the next resource will have different timestamp */
   sleep (1);
 
-  /* presence from different resource, but equal present-ness; unchanged */
+  /* presence from different resource, but equal present-ness and equal
+   * status message; unchanged */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "dingoes", 0));
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0));
 
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));
@@ -74,6 +75,17 @@ int main (int argc, char **argv)
         gabble_presence_pick_resource_by_caps (presence,
             DEVICE_AGNOSTIC,
             predicate_true, NULL)));
+
+  /* sleep a while so the next resource will have different timestamp */
+  sleep (1);
+
+  /* presence from different resource, but equal present-ness and different
+   * status message; changed */
+  g_assert (TRUE == gabble_presence_update (presence, "baz",
+    GABBLE_PRESENCE_AVAILABLE, "dingbats", 0));
+
+  g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
+  g_assert (0 == strcmp ("dingbats", presence->status_message));
 
   /* sleep a while so the next resource will have different timestamp */
   sleep (1);

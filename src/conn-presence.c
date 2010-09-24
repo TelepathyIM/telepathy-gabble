@@ -625,24 +625,30 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
     GObject *obj,
     gpointer user_data)
 {
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+  WockyNode *query_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (reply_msg), "query", NS_PRIVACY);
   GError *error = gabble_message_get_xmpp_error (reply_msg);
 
-  if (error)
+  if (error != NULL)
     {
       DEBUG ("Error getting privacy lists: %s", error->message);
 
-      g_simple_async_result_set_from_error (user_data, error);
+      g_simple_async_result_set_from_error (result, error);
       g_error_free (error);
+    }
+  else if (query_node == NULL)
+    {
+      g_simple_async_result_set_error (result,
+          TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "no <query/> node in 'list privacy lists' reply");
     }
   else
     {
       GabbleConnectionPresencePrivate *priv = conn->presence_priv;
-      LmMessageNode *iq, *list_node;
+      LmMessageNode *list_node;
       WockyNodeIter iter;
       GabblePluginLoader *loader = gabble_plugin_loader_dup ();
-
-      iq = lm_message_get_node (reply_msg);
-      iq = lm_message_node_get_child_with_namespace (iq, "query", NS_PRIVACY);
 
       /* As we're called only once, privacy_statuses couldn't have been
        * already initialised. */
@@ -651,7 +657,7 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
       priv->privacy_statuses = g_hash_table_new_full (
           g_str_hash, g_str_equal, g_free, g_free);
 
-      wocky_node_iter_init (&iter, iq, "list", NULL);
+      wocky_node_iter_init (&iter, query_node, "list", NULL);
       while (wocky_node_iter_next (&iter, &list_node))
         {
           const gchar *list_name = lm_message_node_get_attribute (list_node,
@@ -673,8 +679,8 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
         }
     }
 
-  g_simple_async_result_complete_in_idle (user_data);
-  g_object_unref (user_data);
+  g_simple_async_result_complete_in_idle (result);
+  g_object_unref (result);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

@@ -451,8 +451,10 @@ gabble_base_call_channel_dispose (GObject *object)
   self->priv->dispose_has_run = TRUE;
 
   g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit, NULL);
-  tp_clear_pointer (&priv->members, g_hash_table_unref);
+  g_list_foreach (priv->contents, (GFunc) g_object_unref, NULL);
   tp_clear_pointer (&priv->contents, g_list_free);
+
+  tp_clear_pointer (&priv->members, g_hash_table_unref);
 
   if (G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->dispose (object);
@@ -513,6 +515,7 @@ gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
   gabble_svc_channel_type_call_emit_content_removed (self, path);
 
   gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
+  g_object_unref (content);
 }
 
 GabbleCallContent *
@@ -576,8 +579,8 @@ gabble_base_call_channel_close (TpBaseChannel *base)
   /* shutdown all our contents */
   g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit,
       NULL);
-  g_list_free (priv->contents);
-  priv->contents = NULL;
+  g_list_foreach (priv->contents, (GFunc) g_object_unref, NULL);
+  tp_clear_pointer (&priv->contents, g_list_free);
 
   tp_base_channel_destroyed (base);
 }

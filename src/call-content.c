@@ -438,6 +438,11 @@ call_content_deinit (GabbleBaseCallContent *base)
   GABBLE_BASE_CALL_CONTENT_CLASS (gabble_call_content_parent_class)->deinit (
       base);
 
+  /* Keep ourself alive until we've finished deinitializing;
+   * maybe_finish_deinit() will drop this reference to ourself.
+   */
+  g_object_ref (base);
+
   if (priv->offer_cancellable != NULL)
     g_cancellable_cancel (priv->offer_cancellable);
   else

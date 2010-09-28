@@ -1624,8 +1624,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
       break;
 
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
-      /* FIXME: this should probably check for 'to', not 'from' */
-      if (gabble_roster_handle_gets_presence_from_us (priv->conn->roster,
+      if (gabble_roster_handle_sends_presence_to_us (priv->conn->roster,
             handle))
         presence_id = GABBLE_PRESENCE_OFFLINE;
       else

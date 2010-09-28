@@ -181,8 +181,7 @@ construct_contact_statuses_cb (GObject *obj,
         }
       else
         {
-         if (gabble_roster_handle_get_subscription (self->roster, handle)
-             & GABBLE_ROSTER_SUBSCRIPTION_TO)
+         if (gabble_roster_handle_sends_presence_to_us (self->roster, handle))
            status = GABBLE_PRESENCE_OFFLINE;
          else
            status = GABBLE_PRESENCE_UNKNOWN;
@@ -1042,8 +1041,7 @@ conn_presence_visible_to (GabbleConnection *self,
   if (self->self_presence->status == GABBLE_PRESENCE_HIDDEN)
     return FALSE;
 
-  if ((gabble_roster_handle_get_subscription (self->roster, recipient)
-      & GABBLE_ROSTER_SUBSCRIPTION_FROM) == 0)
+  if (!gabble_roster_handle_gets_presence_from_us (self->roster, recipient))
     return FALSE;
 
   /* FIXME: other reasons they might not be able to see our presence? */

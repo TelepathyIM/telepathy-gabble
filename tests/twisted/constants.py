@@ -119,8 +119,8 @@ CONN_IFACE_REQUESTS = CONN + '.Interface.Requests'
 CONN_IFACE_LOCATION = CONN + '.Interface.Location'
 CONN_IFACE_GABBLE_DECLOAK = CONN + '.Interface.Gabble.Decloak'
 CONN_IFACE_MAIL_NOTIFICATION = CONN + '.Interface.MailNotification.DRAFT'
-CONN_IFACE_CONTACT_LIST = CONN + '.Interface.ContactList.DRAFT3'
-CONN_IFACE_CONTACT_GROUPS = CONN + '.Interface.ContactGroups.DRAFT'
+CONN_IFACE_CONTACT_LIST = CONN + '.Interface.ContactList'
+CONN_IFACE_CONTACT_GROUPS = CONN + '.Interface.ContactGroups'
 
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 

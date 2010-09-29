@@ -1,7 +1,22 @@
-telepathy-gabble 0.10.1 (UNRELEASED)
+telepathy-gabble 0.10.1 (2010-09-29)
 ====================================
 
-…
+The “That command worked with no errors!!!!!!!!!!! but i don't know if
+it works for real!!!!!!!!!!!” release.
+
+Fixes:
+
+• From updated Wocky snapshot:
+  · Check the return value of wocky_xmpp_connection_send_stanza_finish()
+    in starttls_sent_cb() (wjt; found by Coverity)
+  · Don't retry indefinitely on failed OpenSSL writes (fledermaus)
+• Don't leak local candidates, stun servers, and remote candidates when
+  getting Stream/Endpoint properties (smcv)
+• Don't assume privacy list lists are well-formed (wjt; found by
+  Coverity)
+• When a contact becomes unavailable, check the correct roster
+  subscription attribute to decide whether their status should be
+  Offline or Unknown (smcv)
 
 telepathy-gabble 0.10.0 (2010-09-16)
 ====================================

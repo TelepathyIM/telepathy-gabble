@@ -2871,7 +2871,7 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 dtmf_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfaceDTMFClass *klass = (TpSvcChannelInterfaceDTMFClass *)g_iface;
+  TpSvcChannelInterfaceDTMFClass *klass = g_iface;
 
 #define IMPLEMENT(x) tp_svc_channel_interface_dtmf_implement_##x (\
     klass, gabble_media_channel_##x)

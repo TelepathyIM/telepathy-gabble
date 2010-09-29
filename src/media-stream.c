@@ -1846,12 +1846,13 @@ gabble_media_stream_get_content (GabbleMediaStream *self)
 }
 
 void
-gabble_media_stream_start_telephony_event (GabbleMediaStream *self, guchar event)
+gabble_media_stream_start_telephony_event (GabbleMediaStream *self,
+    guchar event)
 {
   DEBUG ("called");
 
   tp_svc_media_stream_handler_emit_start_telephony_event (
-      (TpSvcMediaStreamHandler *)self, event);
+      (TpSvcMediaStreamHandler *) self, event);
 }
 
 void
@@ -1860,5 +1861,5 @@ gabble_media_stream_stop_telephony_event (GabbleMediaStream *self)
   DEBUG ("called");
 
   tp_svc_media_stream_handler_emit_stop_telephony_event (
-      (TpSvcMediaStreamHandler *)self);
+      (TpSvcMediaStreamHandler *) self);
 }

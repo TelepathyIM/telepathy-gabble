@@ -69,6 +69,11 @@ typedef enum
 
 GabbleRoster *gabble_roster_new (GabbleConnection *);
 
+gboolean gabble_roster_handle_sends_presence_to_us (GabbleRoster *,
+    TpHandle);
+gboolean gabble_roster_handle_gets_presence_from_us (GabbleRoster *,
+    TpHandle);
+
 GabbleRosterSubscription gabble_roster_handle_get_subscription (GabbleRoster *,
     TpHandle);
 gboolean gabble_roster_handle_set_blocked (GabbleRoster *, TpHandle, gboolean,

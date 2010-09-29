@@ -135,8 +135,7 @@ gabble_im_channel_constructed (GObject *obj)
 
   priv->peer_jid = g_strdup (tp_handle_inspect (contact_handles, target));
 
-  if (gabble_roster_handle_get_subscription (conn->roster, target)
-        & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+  if (gabble_roster_handle_gets_presence_from_us (conn->roster, target))
     priv->send_nick = FALSE;
   else
     priv->send_nick = TRUE;
@@ -234,20 +233,17 @@ gabble_im_channel_dispose (GObject *object)
   GabbleConnection *conn =
       GABBLE_CONNECTION (tp_base_channel_get_connection (base));
   TpHandle target = tp_base_channel_get_target_handle (base);
-  GabblePresence *presence;
-  GabbleRosterSubscription subscription;
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
 
-  subscription = gabble_roster_handle_get_subscription (conn->roster, target);
-
-  presence = gabble_presence_cache_get (conn->presence_cache, target);
-
-  if ((GABBLE_ROSTER_SUBSCRIPTION_TO & subscription) == 0)
+  if (!gabble_roster_handle_sends_presence_to_us (conn->roster, target))
     {
+      GabblePresence *presence = gabble_presence_cache_get (
+          conn->presence_cache, target);
+
       if (NULL != presence)
         {
           presence->keep_unavailable = FALSE;

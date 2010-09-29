@@ -3055,3 +3055,19 @@ channel_manager_iface_init (gpointer g_iface,
   iface->create_channel = gabble_roster_create_channel;
   iface->ensure_channel = gabble_roster_ensure_channel;
 }
+
+gboolean
+gabble_roster_handle_sends_presence_to_us (GabbleRoster *self,
+    TpHandle handle)
+{
+  return ((gabble_roster_handle_get_subscription (self, handle)
+      & GABBLE_ROSTER_SUBSCRIPTION_TO) != 0);
+}
+
+gboolean
+gabble_roster_handle_gets_presence_from_us (GabbleRoster *self,
+    TpHandle handle)
+{
+  return ((gabble_roster_handle_get_subscription (self, handle)
+      & GABBLE_ROSTER_SUBSCRIPTION_FROM) != 0);
+}

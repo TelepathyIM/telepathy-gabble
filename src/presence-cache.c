@@ -1715,8 +1715,8 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
       break;
 
     case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
-      if (gabble_roster_handle_get_subscription (priv->conn->roster, handle)
-        & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+      if (gabble_roster_handle_sends_presence_to_us (priv->conn->roster,
+            handle))
         presence_id = GABBLE_PRESENCE_OFFLINE;
       else
         presence_id = GABBLE_PRESENCE_UNKNOWN;

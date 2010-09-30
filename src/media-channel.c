@@ -2808,24 +2808,34 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
 
 static void
 gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
-                                 guint stream_id,
+                                 guint stream_id G_GNUC_UNUSED,
                                  guchar event,
                                  DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
-  GabbleMediaStream *stream;
-  GError *error = NULL;
+  guint i;
+  gboolean found_one = FALSE;
 
-  stream = _find_stream_by_id (self, stream_id, &error);
-
-  if (stream == NULL)
+  for (i = 0; i < self->priv->streams->len; i++)
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
+      GabbleMediaStream *stream = g_ptr_array_index (self->priv->streams, i);
+
+      if (gabble_media_stream_get_media_type (stream) ==
+          TP_MEDIA_STREAM_TYPE_AUDIO)
+        {
+          gabble_media_stream_start_telephony_event (stream, event);
+          found_one = TRUE;
+        }
     }
 
-  gabble_media_stream_start_telephony_event (stream, event);
+  if (!found_one)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
 
   tp_svc_channel_interface_dtmf_return_from_start_tone (context);
 }

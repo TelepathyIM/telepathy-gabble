@@ -252,7 +252,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
-  DBusGConnection *bus;
+  TpDBusDaemon *bus;
   GabbleConnection *connection;
   gchar *stun_server;
   guint stun_port;
@@ -287,11 +287,11 @@ gabble_media_stream_constructor (GType type, guint n_props,
       g_ptr_array_add (priv->stun_servers, va);
     }
 
-  g_object_unref (connection);
-
   /* go for the bus */
-  bus = tp_get_bus ();
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) connection);
+  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
+
+  g_object_unref (connection);
 
   update_direction (stream, priv->content);
 
@@ -658,11 +658,8 @@ gabble_media_stream_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_object_unref (priv->content);
-  priv->content = NULL;
-
-  g_free (self->name);
-  self->name = NULL;
+  tp_clear_object (&priv->content);
+  tp_clear_pointer (&self->name, g_free);
 
   if (G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose (object);
@@ -880,7 +877,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GabbleMediaStreamPrivate *priv;
-  JingleSessionState state;
+  JingleState state;
   GList *li = NULL;
   guint i;
 
@@ -892,9 +889,9 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
 
   /* FIXME: maybe this should be an assertion in case the channel
    * isn't closed early enough right now? */
-  if (state > JS_STATE_ACTIVE)
+  if (state > JINGLE_STATE_ACTIVE)
     {
-      DEBUG ("state > JS_STATE_ACTIVE, doing nothing");
+      DEBUG ("state > JINGLE_STATE_ACTIVE, doing nothing");
       tp_svc_media_stream_handler_return_from_new_native_candidate (context);
       return;
     }

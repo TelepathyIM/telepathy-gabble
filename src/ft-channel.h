@@ -22,10 +22,7 @@
 #define __GABBLE_FILE_TRANSFER_CHANNEL_H__
 
 #include <glib-object.h>
-
-#include <extensions/_gen/svc.h>
-#include <extensions/_gen/interfaces.h>
-#include <extensions/_gen/enums.h>
+#include <extensions/extensions.h>
 
 typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 

@@ -27,6 +27,8 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
+#include <telepathy-glib/telepathy-glib.h>
+
 #ifdef HAVE_MCE
 #include <mce/dbus-names.h>
 #else /* HAVE_MCE */
@@ -152,8 +154,7 @@ get_inactivity_status_cb (
           G_TYPE_INVALID))
     slacker_inactivity_changed (self, is_inactive);
 
-  g_object_unref (self->priv->mce_request_proxy);
-  self->priv->mce_request_proxy = NULL;
+  tp_clear_object (&self->priv->mce_request_proxy);
 }
 
 static void
@@ -243,18 +244,12 @@ gabble_slacker_dispose (GObject *object)
   GabbleSlacker *self = GABBLE_SLACKER (object);
   GabbleSlackerPrivate *priv = self->priv;
 
-  if (priv->mce_request_proxy != NULL)
-    {
-      g_object_unref (priv->mce_request_proxy); /* this cancels pending calls */
-      priv->mce_request_proxy = NULL;
-    }
+  tp_clear_object (&priv->mce_request_proxy); /* this cancels pending calls */
 
   if (priv->bus != NULL)
-    {
-      slacker_remove_filter (self);
-      dbus_g_connection_unref (priv->bus);
-      priv->bus = NULL;
-    }
+    slacker_remove_filter (self);
+
+  tp_clear_pointer (&priv->bus, dbus_g_connection_unref);
 
   ((GObjectClass *) gabble_slacker_parent_class)->dispose (object);
 }

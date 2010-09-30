@@ -32,9 +32,7 @@ def test_conflict_after_connect(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    go_away = domish.Element((xmlstream.NS_STREAMS, 'error'))
-    go_away.addElement((ns.STREAMS, 'conflict'))
-    stream.send(go_away)
+    stream.send_stream_error('conflict')
 
     new = q.expect('dbus-signal', signal='ConnectionError')
     assertEquals(cs.CONNECTION_REPLACED, new.args[0])

@@ -64,9 +64,10 @@ GType gabble_call_stream_endpoint_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
     GABBLE_TYPE_CALL_STREAM_ENDPOINT, GabbleCallStreamEndpointClass))
 
-GabbleCallStreamEndpoint *
-gabble_call_stream_endpoint_new (const gchar *object_path,
-  GabbleJingleContent *content);
+GabbleCallStreamEndpoint *gabble_call_stream_endpoint_new (
+    TpDBusDaemon *dbus_daemon,
+    const gchar *object_path,
+    GabbleJingleContent *content);
 
 const gchar *gabble_call_stream_endpoint_get_object_path (
     GabbleCallStreamEndpoint *endpoint);

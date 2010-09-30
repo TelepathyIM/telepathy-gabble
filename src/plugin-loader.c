@@ -27,6 +27,7 @@
 #endif
 
 #include <telepathy-glib/errors.h>
+#include <telepathy-glib/presence-mixin.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PLUGINS
 #include "debug.h"
@@ -203,8 +204,7 @@ gabble_plugin_loader_finalize (GObject *object)
   void (*chain_up) (GObject *) =
       G_OBJECT_CLASS (gabble_plugin_loader_parent_class)->finalize;
 
-  g_ptr_array_free (self->priv->plugins, TRUE);
-  self->priv->plugins = NULL;
+  tp_clear_pointer (&self->priv->plugins, g_ptr_array_unref);
 
   if (chain_up != NULL)
     chain_up (object);
@@ -306,4 +306,56 @@ gabble_plugin_loader_create_sidecar_finish (
   sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
       G_SIMPLE_ASYNC_RESULT (result)));
   return g_object_ref (sidecar);
+}
+
+TpPresenceStatusSpec *
+gabble_plugin_loader_append_statuses (
+    GabblePluginLoader *self,
+    const TpPresenceStatusSpec *base_statuses)
+{
+  GabblePluginLoaderPrivate *priv = self->priv;
+  GArray *result = g_array_new (TRUE, TRUE, sizeof (TpPresenceStatusSpec));
+  guint i;
+
+  for (i = 0; base_statuses[i].name != NULL; i++)
+    g_array_append_val (result, base_statuses[i]);
+
+  for (i = 0; i < priv->plugins->len; i++)
+    {
+      GabblePlugin *p = g_ptr_array_index (priv->plugins, i);
+      const TpPresenceStatusSpec *statuses =
+          gabble_plugin_get_custom_presence_statuses (p);
+
+      if (statuses != NULL)
+        {
+          guint j;
+
+          for (j = 0; statuses[j].name != NULL; j++)
+            g_array_append_val (result, statuses[j]);
+        }
+    }
+
+  return (TpPresenceStatusSpec *) g_array_free (result, FALSE);
+}
+
+const gchar *
+gabble_plugin_loader_presence_status_for_privacy_list (
+    GabblePluginLoader *loader,
+    const gchar *list_name)
+{
+  GabblePluginLoaderPrivate *priv = loader->priv;
+  guint i;
+
+  for (i = 0; i < priv->plugins->len; i++)
+    {
+      GabblePlugin *p = g_ptr_array_index (priv->plugins, i);
+      const gchar *status =
+        gabble_plugin_presence_status_for_privacy_list (p, list_name);
+
+      if (status != NULL)
+        return status;
+
+    }
+
+  return NULL;
 }

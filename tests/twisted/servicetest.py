@@ -127,6 +127,12 @@ class BaseEventQueue:
                 assert False
 
     def expect(self, type, **kw):
+        """
+        Waits for an event matching the supplied pattern to occur, and returns
+        it. For example, to await a D-Bus signal with particular arguments:
+
+            e = q.expect('dbus-signal', signal='Badgers', args=["foo", 42])
+        """
         pattern = EventPattern(type, **kw)
 
         while True:
@@ -143,6 +149,34 @@ class BaseEventQueue:
             self.log('')
 
     def expect_many(self, *patterns):
+        """
+        Waits for events matching all of the supplied EventPattern instances to
+        return, and returns a list of events in the same order as the patterns
+        they matched. After a pattern is successfully matched, it is not
+        considered for future events; if more than one unsatisfied pattern
+        matches an event, the first "wins".
+
+        Note that the expected events may occur in any order. If you're
+        expecting a series of events in a particular order, use repeated calls
+        to expect() instead.
+
+        This method is useful when you're awaiting a number of events which may
+        happen in any order. For instance, in telepathy-gabble, calling a D-Bus
+        method often causes a value to be returned immediately, as well as a
+        query to be sent to the server. Since these events may reach the test
+        in either order, the following is incorrect and will fail if the IQ
+        happens to reach the test first:
+
+            ret = q.expect('dbus-return', method='Foo')
+            query = q.expect('stream-iq', query_ns=ns.FOO)
+
+        The following would be correct:
+
+            ret, query = q.expect_many(
+                EventPattern('dbus-return', method='Foo'),
+                EventPattern('stream-iq', query_ns=ns.FOO),
+            )
+        """
         ret = [None] * len(patterns)
 
         while None in ret:
@@ -434,6 +468,15 @@ def assertEquals(expected, value):
     if expected != value:
         raise AssertionError(
             "expected:\n%s\ngot:\n%s" % (pretty(expected), pretty(value)))
+
+def assertSameSets(expected, value):
+    exp_set = set(expected)
+    val_set = set(value)
+
+    if exp_set != val_set:
+        raise AssertionError(
+            "expected contents:\n%s\ngot:\n%s" % (
+                pretty(exp_set), pretty(val_set)))
 
 def assertNotEquals(expected, value):
     if expected == value:

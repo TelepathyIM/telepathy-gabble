@@ -1,12 +1,151 @@
-telepathy-gabble 0.9.16 (UNRELEASED)
+telepathy-gabble 0.11.0 (UNRELEASED)
 ====================================
+
+…
+
+telepathy-gabble 0.10.0 (2010-09-16)
+====================================
+
+The "we demand additional lumber" release, starting the 0.10.x stable branch.
+
+Highlights since 0.8.x
+----------------------
+
+Gabble no longer uses Loudmouth for XMPP; instead, it contains a snapshot of
+Wocky, a new XMPP library based on GIO. Wocky will be split into a fully
+independent project when it reaches API stability.
+
+New features and significant bugfixes include:
+
+• Jingle calls now interoperate with Pidgin, Gajim, and XEP-0100 SIP gateways
+• file transfers now interoperate with the Google Talk desktop client
+• support for Google Talk PMUC chatrooms
+• contact information (vCards) on servers supporting XEP-0054
+• searching for contacts on servers supporting XEP-0055
+• improved capability-discovery support (ContactCapabilities)
+• compile-time selection of GNUTLS or OpenSSL for SSL support
+• support for JIDs with non-ASCII domains
+• experimental support for plugins
+• experimental support for multi-user Jingle calls (Muji)
+• compilation on Unix platforms other than Linux should now work
+
+Compatibility notes
+-------------------
+
+• telepathy-glib 0.11.16, GLib 2.24, libxml 2, SQLite 3, libnice 0.0.11,
+  libsoup and libuuid are required.
+
+• libsasl 2 is optional.
+
+• Either GNUTLS >= 2.8.2 or OpenSSL >= 0.9.8g is also required.
+
+• At the time of release, GNUTLS 2.8 is recommended. For versions 2.10.0 and
+  2.10.1, some fixes need to be backported from 2.11.1 to fix connection
+  failures with "-59: GNUTLS_E_INTERNAL_ERROR" in the debug log; we're
+  tracking this as <https://bugs.freedesktop.org/show_bug.cgi?id=29364>.
+
+• If you use telepathy-mission-control, version 5.5.0 or later is required.
+  A 5.6.x stable branch suitable for this will be released soon. Packagers,
+  please make Gabble conflict with Mission Control < 5.5.0 (e.g. the
+  Breaks or Conflicts relationships in dpkg), or if that's not possible in your
+  packaging system, depend on Mission Control >= 5.5.0.
+
+Changes since 0.9.18
+--------------------
+
+• Fix a crash if the connection closes while verifying a TLS certificate (wjt)
+• Allow an in-progress connection to the server to be cancelled with
+  Disconnect (cosimoc)
+• Add regression tests for TLS certificate verification (cosimoc)
+
+telepathy-gabble 0.9.18 (2010-09-13)
+====================================
+
+The “What, more work? Off I go then” release.
+
+Enhancements:
+
+• fd.o #30065: implement the stable API for ContactSearch (wjt)
+
+• Implement the stable API for interactive TLS certificate checking (cosimoc)
+
+• Implement the stable API for Conference channels (smcv)
+
+• Add the fallback-servers parameter, which can be used to make connections to
+  Google Talk on some networks more reliable (stormer)
+
+• Prompt the user about unknown TLS certificates if neither require-encryption
+  nor ignore-ssl-errors is set (cosimoc)
 
 Fixes:
 
-• fd.o#25533: don't associate a request with tubes if a tube was
-  requested so that now if you request a tube (singular) channel
-  before opening the equivalent text chat you'll actually be given the
-  tube channel, and not the tubes channel. (jonny)
+• Make the --with-ca-certificates configure option work (Vincent Untz)
+
+• fd.o #30117: always emit PresencesChanged when we change our own presence,
+  and fix a related memory leak (wjt)
+
+• update our copy of Wocky:
+  › fd.o#28051: SRV errors on some networks no longer break Facebook
+    logins (wjt)
+  › don't fail on missing CRLs if not in strict TLS verification mode
+    (fledermaus)
+
+telepathy-gabble 0.9.17 (2010-08-26)
+====================================
+
+The "Mona Lisa overdrive" release.
+
+Enhancements:
+
+• Implement TLS certificate support (cosimoc)
+
+• Use TpBaseChannel instead of GabbleBaseChannel (wjt)
+
+• Plugin-provided, privacy-list based presence statuses (ptlo)
+
+Fixes:
+
+• fd.o #29721: start the presence unsure timeout once we connect (wjt)
+
+• fd.o #29000: make CA certificates path configurable (stormer)
+
+• Fix several leaks, improve tests in case of connection leaks (wjt)
+
+telepathy-gabble 0.9.16 (2010-08-19)
+====================================
+
+The “still at it” release.
+
+Enhancements:
+
+• Implement XEP-0126: Invisibility (wjt and eeejay)
+
+• Implement XEP-0186: Invisible Command (wjt and eeejay)
+
+• implement org.freedesktop.Telepathy.Protocol (ptlo)
+
+• Add a ActivityProperties.GetActivity method for retrieving an activity's room
+  handle from its id (tomeu)
+
+• Add a BuddyInfo.AddActivity method so activities can advertise themselves
+  without having to track all the other shared activities (tomeu)
+
+Fixes:
+
+• fd.o #25533: muc-factory: don't associate a request with tubes if a tube was
+  requested (jonnylamb)
+
+• muc-factory: rearrange which NewChannels signals come first (jonnylamb)
+
+• Cope if Jingle sharing requests omit <manifest> (wjt)
+
+• fd.o #29113: Skip file collection candidates with invalid addresses (wjt)
+
+• several improvements to the test suite (smcv)
+
+• fixes for building under gcc-4.5 (smcv)
+
+• adapt to the new TLS API (sjoerd)
 
 telepathy-gabble 0.9.15 (2010-06-30)
 ====================================

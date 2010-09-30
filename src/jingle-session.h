@@ -35,16 +35,6 @@ typedef enum
   MODE_JINGLE
 } GabbleMediaSessionMode;
 
-typedef enum {
-    JS_STATE_INVALID = -1,
-    JS_STATE_PENDING_CREATED = 0,
-    JS_STATE_PENDING_INITIATE_SENT,
-    JS_STATE_PENDING_INITIATED,
-    JS_STATE_PENDING_ACCEPT_SENT,
-    JS_STATE_ACTIVE,
-    JS_STATE_ENDED
-} JingleSessionState;
-
 typedef struct _GabbleJingleSessionClass GabbleJingleSessionClass;
 
 GType gabble_jingle_session_get_type (void);

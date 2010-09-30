@@ -249,17 +249,8 @@ gabble_bytestream_socks5_dispose (GObject *object)
       gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
     }
 
-  if (priv->transport != NULL)
-    {
-      g_object_unref (priv->transport);
-      priv->transport = NULL;
-    }
-
-  if (priv->listener != NULL)
-    {
-      g_object_unref (priv->listener);
-      priv->listener = NULL;
-    }
+  tp_clear_object (&priv->transport);
+  tp_clear_object (&priv->listener);
 
   G_OBJECT_CLASS (gabble_bytestream_socks5_parent_class)->dispose (object);
 }
@@ -575,8 +566,7 @@ socks5_close_transport (GabbleBytestreamSocks5 *self)
   g_signal_handlers_disconnect_matched (priv->transport,
       G_SIGNAL_MATCH_DATA, 0, 0, NULL, NULL, self);
 
-  g_object_unref (priv->transport);
-  priv->transport = NULL;
+  tp_clear_object (&priv->transport);
 }
 
 static void
@@ -1138,8 +1128,7 @@ socks5_handle_received_data (GabbleBytestreamSocks5 *self,
 
         DEBUG ("sock5 stream connected. Stop to listen for connections");
         g_assert (priv->listener != NULL);
-        g_object_unref (priv->listener);
-        priv->listener = NULL;
+        tp_clear_object (&priv->listener);
 
         return SOCKS5_MIN_LENGTH + addr_len;
 

@@ -237,9 +237,7 @@ gabble_call_channel_dispose (GObject *object)
 
   self->priv->dispose_has_run = TRUE;
 
-  if (priv->session != NULL)
-    g_object_unref (priv->session);
-  priv->session = NULL;
+  tp_clear_object (&priv->session);
 
   if (G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_channel_parent_class)->dispose (object);
@@ -257,7 +255,7 @@ call_session_state_changed_cb (GabbleJingleSession *session,
   GabbleCallChannel *self)
 {
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
-  JingleSessionState state;
+  JingleState state;
   GabbleCallState cstate;
 
   cstate = gabble_base_call_channel_get_state (
@@ -265,13 +263,13 @@ call_session_state_changed_cb (GabbleJingleSession *session,
 
   g_object_get (session, "state", &state, NULL);
 
-  if (state == JS_STATE_ACTIVE && cstate != GABBLE_CALL_STATE_ACCEPTED)
+  if (state == JINGLE_STATE_ACTIVE && cstate != GABBLE_CALL_STATE_ACCEPTED)
     {
       gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ACCEPTED);
       return;
     }
 
-  if (state == JS_STATE_ENDED && cstate < GABBLE_CALL_STATE_ENDED)
+  if (state == JINGLE_STATE_ENDED && cstate < GABBLE_CALL_STATE_ENDED)
     {
       gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ENDED);
       return;
@@ -447,8 +445,7 @@ call_channel_capabilities_discovered_cb (GabblePresenceCache *cache,
   gboolean wait;
 
   if (base->target != handle || gabble_base_call_channel_registered (base))
-    return;
-
+    goto out;
   if (!contact_is_media_capable (self, base->target, &wait, &error_))
     {
       if (wait)
@@ -469,6 +466,9 @@ call_channel_capabilities_discovered_cb (GabblePresenceCache *cache,
     {
       call_channel_continue_init (self, result);
     }
+
+out:
+  g_object_unref (self);
 }
 
 static void

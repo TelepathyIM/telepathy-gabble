@@ -221,15 +221,6 @@ omits_content_creators (LmMessageNode *identity)
     }
 }
 
-static gboolean
-is_a_phone (LmMessageNode *identity)
-{
-  const gchar *category = lm_message_node_get_attribute (identity, "category");
-  const gchar *type = lm_message_node_get_attribute (identity, "type");
-
-  return !tp_strdiff (category, "client") && !tp_strdiff (type, "phone");
-}
-
 static gsize feature_handles_refcount = 0;
 /* The handles in this repository are not really handles in the tp-spec sense
  * of the word; we're just using it as a convenient implementation of a
@@ -358,8 +349,7 @@ gabble_capabilities_finalize (GabbleConnection *conn)
       geoloc_caps = NULL;
       olpc_caps = NULL;
 
-      g_object_unref (feature_handles);
-      feature_handles = NULL;
+      tp_clear_object (&feature_handles);
     }
 }
 
@@ -452,9 +442,6 @@ gabble_capability_set_new_from_stanza (WockyNode *query_result)
         {
           if (omits_content_creators (child))
             gabble_capability_set_add (ret, QUIRK_OMITS_CONTENT_CREATORS);
-
-          if (is_a_phone (child))
-            gabble_capability_set_add (ret, QUIRK_IS_A_PHONE);
 
           continue;
         }
@@ -733,28 +720,21 @@ gabble_capability_set_foreach (const GabbleCapabilitySet *caps,
     }
 }
 
-gchar *
-gabble_capability_set_dump (const GabbleCapabilitySet *caps,
+static void
+append_intset (GString *ret,
+    const TpIntSet *cap_ints,
     const gchar *indent)
 {
-  GString *ret;
-  TpIntSetIter iter;
+  TpIntSetFastIter iter;
+  guint element;
 
-  g_return_val_if_fail (caps != NULL, NULL);
+  tp_intset_fast_iter_init (&iter, cap_ints);
 
-  if (indent == NULL)
-    indent = "";
-
-  ret = g_string_new (indent);
-  g_string_append (ret, "--begin--\n");
-
-  tp_intset_iter_init (&iter, tp_handle_set_peek (caps->handles));
-
-  while (tp_intset_iter_next (&iter))
+  while (tp_intset_fast_iter_next (&iter, &element))
     {
-      const gchar *var = tp_handle_inspect (feature_handles, iter.element);
+      const gchar *var = tp_handle_inspect (feature_handles, element);
 
-      g_return_val_if_fail (var != NULL, NULL);
+      g_return_if_fail (var != NULL);
 
       if (var[0] == QUIRK_PREFIX_CHAR)
         {
@@ -765,8 +745,68 @@ gabble_capability_set_dump (const GabbleCapabilitySet *caps,
           g_string_append_printf (ret, "%sFeature: %s\n", indent, var);
         }
     }
+}
 
+gchar *
+gabble_capability_set_dump (const GabbleCapabilitySet *caps,
+    const gchar *indent)
+{
+  GString *ret;
+
+  g_return_val_if_fail (caps != NULL, NULL);
+
+  if (indent == NULL)
+    indent = "";
+
+  ret = g_string_new (indent);
+  g_string_append (ret, "--begin--\n");
+  append_intset (ret, tp_handle_set_peek (caps->handles), indent);
   g_string_append (ret, indent);
   g_string_append (ret, "--end--\n");
+  return g_string_free (ret, FALSE);
+}
+
+gchar *
+gabble_capability_set_dump_diff (const GabbleCapabilitySet *old_caps,
+    const GabbleCapabilitySet *new_caps,
+    const gchar *indent)
+{
+  TpIntSet *old_ints, *new_ints, *rem, *add;
+  GString *ret;
+
+  g_return_val_if_fail (old_caps != NULL, NULL);
+  g_return_val_if_fail (new_caps != NULL, NULL);
+
+  old_ints = tp_handle_set_peek (old_caps->handles);
+  new_ints = tp_handle_set_peek (new_caps->handles);
+
+  if (tp_intset_is_equal (old_ints, new_ints))
+    return g_strdup_printf ("%s--no change--", indent);
+
+  rem = tp_intset_difference (old_ints, new_ints);
+  add = tp_intset_difference (new_ints, old_ints);
+
+  ret = g_string_new ("");
+
+  if (!tp_intset_is_empty (rem))
+    {
+      g_string_append (ret, indent);
+      g_string_append (ret, "--removed--\n");
+      append_intset (ret, rem, indent);
+    }
+
+  if (!tp_intset_is_empty (add))
+    {
+      g_string_append (ret, indent);
+      g_string_append (ret, "--added--\n");
+      append_intset (ret, add, indent);
+    }
+
+  g_string_append (ret, indent);
+  g_string_append (ret, "--end--");
+
+  tp_intset_destroy (add);
+  tp_intset_destroy (rem);
+
   return g_string_free (ret, FALSE);
 }

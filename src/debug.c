@@ -21,6 +21,7 @@
 
 static GabbleDebugFlags flags = 0;
 
+/* Remember to keep this array up to date with the GabbleDebugFlags enum in debug.h */
 static GDebugKey keys[] = {
   { "presence",       GABBLE_DEBUG_PRESENCE },
   { "groups",         GABBLE_DEBUG_GROUPS },
@@ -46,6 +47,8 @@ static GDebugKey keys[] = {
   { "mail",           GABBLE_DEBUG_MAIL_NOTIF },
   { "authentication", GABBLE_DEBUG_AUTH },
   { "share",          GABBLE_DEBUG_SHARE },
+  { "tls",            GABBLE_DEBUG_TLS },
+  { "client-types",   GABBLE_DEBUG_CLIENT_TYPES },
   { 0, },
 };
 

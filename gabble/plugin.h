@@ -25,6 +25,7 @@
 #include <gio/gio.h>
 
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/presence-mixin.h>
 #include <wocky/wocky-session.h>
 
 #include <gabble/connection.h>
@@ -52,6 +53,12 @@ typedef void (*GabblePluginCreateSidecarImpl) (
     GAsyncReadyCallback callback,
     gpointer user_data);
 
+struct _GabblePluginPrivacyListMap {
+    const gchar *presence_status_name;
+    const gchar *privacy_list_name;
+};
+typedef struct _GabblePluginPrivacyListMap GabblePluginPrivacyListMap;
+
 struct _GabblePluginInterface {
     GTypeInterface parent;
 
@@ -76,6 +83,16 @@ struct _GabblePluginInterface {
      * numbers.
      */
     const gchar *version;
+
+    /**
+     * Additional custom statuses supported by the plugin.
+     */
+    TpPresenceStatusSpec *presence_statuses;
+
+    /**
+     * Privacy lists implementing specific statuses
+     */
+    GabblePluginPrivacyListMap *privacy_list_map;
 };
 
 GType gabble_plugin_get_type (void);
@@ -103,6 +120,17 @@ GabbleSidecar *gabble_plugin_create_sidecar_finish (
     GabblePlugin *plugin,
     GAsyncResult *result,
     GError **error);
+
+const TpPresenceStatusSpec *gabble_plugin_get_custom_presence_statuses (
+    GabblePlugin *plugin);
+
+gboolean gabble_plugin_implements_presence_status (
+    GabblePlugin *plugin,
+    const gchar *status);
+
+const gchar *gabble_plugin_presence_status_for_privacy_list (
+    GabblePlugin *plugin,
+    const gchar *list_name);
 
 /**
  * gabble_plugin_create:

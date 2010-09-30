@@ -382,8 +382,7 @@ cache_entry_free (gpointer data)
       gabble_request_pipeline_item_cancel (entry->pipeline_item);
     }
 
-  if (entry->vcard_node)
-      lm_message_node_unref (entry->vcard_node);
+  tp_clear_pointer (&entry->vcard_node, lm_message_node_unref);
 
   tp_handle_unref (contact_repo, entry->handle);
 
@@ -504,11 +503,7 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager,
 
   tp_heap_remove (priv->timed_cache, entry);
 
-  if (entry->vcard_node)
-    {
-      lm_message_node_unref (entry->vcard_node);
-      entry->vcard_node = NULL;
-    }
+  tp_clear_pointer (&entry->vcard_node, lm_message_node_unref);
 
   cache_entry_attempt_to_free (entry);
 }
@@ -916,10 +911,7 @@ replace_reply_cb (GabbleConnection *conn,
   if (error)
     {
       /* We won't need our patched vcard after all */
-      if (priv->patched_vcard != NULL)
-          lm_message_node_unref (priv->patched_vcard);
-
-      priv->patched_vcard = NULL;
+      tp_clear_pointer (&priv->patched_vcard, lm_message_node_unref);
     }
   else
     {
@@ -929,8 +921,7 @@ replace_reply_cb (GabbleConnection *conn,
       g_assert (priv->patched_vcard != NULL);
 
       /* Finally we may put the new vcard in the cache. */
-      if (entry->vcard_node)
-          lm_message_node_unref (entry->vcard_node);
+      tp_clear_pointer (&entry->vcard_node, lm_message_node_unref);
 
       entry->vcard_node = priv->patched_vcard;
       priv->patched_vcard = NULL;
@@ -1270,8 +1261,7 @@ manager_patch_vcard (GabbleVCardManager *self,
       if (new_msg == NULL)
         continue;
 
-      if (msg != NULL)
-        lm_message_unref (msg);
+      tp_clear_pointer (&msg, lm_message_unref);
 
       msg = new_msg;
       /* gabble_vcard_manager_edit_info_apply always returns an IQ message

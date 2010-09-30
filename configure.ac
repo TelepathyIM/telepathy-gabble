@@ -8,8 +8,8 @@ AC_PREREQ([2.59])
 #   set gabble_nano_version to 0.
 
 m4_define([gabble_major_version], [0])
-m4_define([gabble_minor_version], [9])
-m4_define([gabble_micro_version], [15])
+m4_define([gabble_minor_version], [10])
+m4_define([gabble_micro_version], [999])
 m4_define([gabble_nano_version], [1])
 
 # Some magic
@@ -93,6 +93,11 @@ TP_COMPILER_WARNINGS([ERROR_CFLAGS], [test "x$official_release" = xno],
    unused-parameter])
 AC_SUBST([ERROR_CFLAGS])
 
+AC_ARG_WITH(ca-certificates,
+    AC_HELP_STRING([--with-ca-certificates],[path to CA certificates @<:@default=/etc/ssl/certs/ca-certificates.crt@:>@]),
+    ca_certificates_path="$withval", ca_certificates_path="/etc/ssl/certs/ca-certificates.crt")
+AC_DEFINE_UNQUOTED(CA_CERTIFICATES_PATH, ["${ca_certificates_path}"], [Path to CA certificates])
+
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )
@@ -147,7 +152,7 @@ fi
 AC_SUBST(CLIENT_TYPE)
 
 dnl Check for Glib
-PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gthread-2.0 >= 2.16])
+PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
@@ -199,7 +204,7 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.11.6])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.11.16])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)

@@ -123,6 +123,10 @@ gchar * gabble_peer_to_jid (GabbleConnection *conn,
     TpHandle peer,
     const gchar *resource);
 
+gboolean
+gabble_flag_from_nick (GType flag_type, const gchar *nick,
+    guint *value);
+
 void gabble_simple_async_succeed_or_fail_in_idle (gpointer self,
     GAsyncReadyCallback callback,
     gpointer user_data,

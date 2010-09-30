@@ -571,7 +571,8 @@ error:
   return TRUE;
 }
 
-/* Keep in sync with values set in gabble_ft_manager_foreach_channel_class */
+/* Keep in sync with values set in gabble_ft_manager_type_foreach_channel_class
+ */
 static const gchar * const file_transfer_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
     TP_IFACE_CHANNEL ".TargetHandleType",
@@ -594,9 +595,9 @@ static const gchar * const file_transfer_channel_allowed_properties[] =
 };
 
 static void
-gabble_ft_manager_foreach_channel_class (TpChannelManager *manager,
-                                         TpChannelManagerChannelClassFunc func,
-                                         gpointer user_data)
+gabble_ft_manager_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
+    gpointer user_data)
 {
   GHashTable *table;
 
@@ -610,7 +611,7 @@ gabble_ft_manager_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       tp_g_value_slice_new_uint (TP_HANDLE_TYPE_CONTACT));
 
-  func (manager, table, file_transfer_channel_allowed_properties,
+  func (type, table, file_transfer_channel_allowed_properties,
       user_data);
 
   /* MD5 HashType class */
@@ -619,7 +620,7 @@ gabble_ft_manager_foreach_channel_class (TpChannelManager *manager,
       tp_g_value_slice_new_uint (TP_FILE_HASH_TYPE_MD5));
 
   /* skip ContentHashType in allowed properties */
-  func (manager, table, file_transfer_channel_allowed_properties + 1,
+  func (type, table, file_transfer_channel_allowed_properties + 1,
       user_data);
 
   g_hash_table_destroy (table);
@@ -728,7 +729,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_ft_manager_foreach_channel;
-  iface->foreach_channel_class = gabble_ft_manager_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_ft_manager_type_foreach_channel_class;
   iface->create_channel = gabble_ft_manager_handle_request;
   iface->ensure_channel = gabble_ft_manager_handle_request;
 }

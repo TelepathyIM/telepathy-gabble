@@ -367,9 +367,10 @@ new_im_channel (GabbleImFactory *fac,
                        "object-path", object_path,
                        "handle", handle,
                        "initiator-handle", initiator,
+                       "requested", (handle != initiator),
                        NULL);
   DEBUG ("object path %s", object_path);
-  gabble_base_channel_register ((GabbleBaseChannel *) chan);
+  tp_base_channel_register ((TpBaseChannel *) chan);
   g_free (object_path);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
@@ -392,17 +393,10 @@ new_im_channel (GabbleImFactory *fac,
 static void
 gabble_im_factory_close_all (GabbleImFactory *self)
 {
-  /* Use a temporary variable because we don't want
+  /* Use a temporary variable (the macro does this) because we don't want
    * im_channel_closed_cb to remove the channel from the hash table a
    * second time */
-  if (self->priv->channels != NULL)
-    {
-      GHashTable *tmp = self->priv->channels;
-
-      DEBUG ("closing channels");
-      self->priv->channels = NULL;
-      g_hash_table_destroy (tmp);
-    }
+  tp_clear_pointer (&self->priv->channels, g_hash_table_destroy);
 
   if (self->priv->status_changed_id != 0)
     {
@@ -416,9 +410,9 @@ gabble_im_factory_close_all (GabbleImFactory *self)
       DEBUG ("removing callbacks");
       lm_connection_unregister_message_handler (self->priv->conn->lmconn,
           self->priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (self->priv->message_cb);
-      self->priv->message_cb = NULL;
     }
+
+  tp_clear_pointer (&self->priv->message_cb, lm_message_handler_unref);
 }
 
 
@@ -540,8 +534,8 @@ static const gchar * const im_channel_allowed_properties[] = {
 
 
 static void
-gabble_im_factory_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_im_factory_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -558,7 +552,7 @@ gabble_im_factory_foreach_channel_class (TpChannelManager *manager,
   g_hash_table_insert (table, (gchar *) im_channel_fixed_properties[1],
       value);
 
-  func (manager, table, im_channel_allowed_properties, user_data);
+  func (type, table, im_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -664,7 +658,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_im_factory_foreach_channel;
-  iface->foreach_channel_class = gabble_im_factory_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_im_factory_type_foreach_channel_class;
   iface->create_channel = gabble_im_factory_create_channel;
   iface->request_channel = gabble_im_factory_request_channel;
   iface->ensure_channel = gabble_im_factory_ensure_channel;

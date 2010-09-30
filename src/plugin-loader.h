@@ -24,6 +24,7 @@
 #include <gio/gio.h>
 
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/presence-mixin.h>
 #include <wocky/wocky-session.h>
 
 #include "gabble/sidecar.h"
@@ -75,5 +76,13 @@ GabbleSidecar *gabble_plugin_loader_create_sidecar_finish (
     GabblePluginLoader *self,
     GAsyncResult *result,
     GError **error);
+
+TpPresenceStatusSpec *gabble_plugin_loader_append_statuses (
+    GabblePluginLoader *self,
+    const TpPresenceStatusSpec *base_statuses);
+
+const gchar *gabble_plugin_loader_presence_status_for_privacy_list (
+    GabblePluginLoader *loader,
+    const gchar *list_name);
 
 #endif /* #ifndef __PLUGIN_LOADER_H__ */

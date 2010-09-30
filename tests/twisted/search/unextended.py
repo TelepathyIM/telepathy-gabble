@@ -8,7 +8,9 @@ import dbus
 from twisted.words.protocols.jabber.client import IQ
 
 from gabbletest import exec_test, sync_stream
-from servicetest import call_async, unwrap, make_channel_proxy, EventPattern
+from servicetest import (
+    call_async, unwrap, make_channel_proxy, EventPattern, assertSameSets,
+    )
 from search_helper import call_create, answer_field_query, make_search, send_results
 
 from pprint import pformat
@@ -79,22 +81,19 @@ def complete_search(q, bus, conn, stream, server):
     r = q.expect('dbus-signal', signal='SearchResultReceived')
     infos = r.args[0]
 
-    handles = infos.keys()
-    jids = conn.InspectHandles(cs.HT_CONTACT, handles)
-    assert set(jids) == set(results.keys())
+    assertSameSets(results.keys(), infos.keys())
 
-    for handle, id in zip(handles, jids):
-        i = infos[handle]
+    for id in results.keys():
+        i = infos[id]
         r = results[id]
         i_ = pformat(unwrap(i))
-        assert ("x-telepathy-identifier", [], [r[0]]) in i, i_
         assert ("n", [], [r[2], r[1], "", "", ""])    in i, i_
         assert ("nickname", [], [r[3]])               in i, i_
         assert ("email", [], [r[0]])                  in i, i_
         assert ("x-n-family", [], [r[2]]) in i, i_
         assert ("x-n-given", [], [r[1]]) in i, i_
 
-        assert len(i) == 6, i_
+        assert len(i) == 5, i_
 
     ssc = q.expect('dbus-signal', signal='SearchStateChanged')
     assert ssc.args[0] == cs.SEARCH_COMPLETED, ssc.args
@@ -113,11 +112,6 @@ def complete_search(q, bus, conn, stream, server):
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'),
         )
-
-    # Check that now the channel has gone away the handles have become invalid.
-    for h in handles:
-        call_async(q, conn, 'InspectHandles', cs.HT_CONTACT, [h])
-        q.expect('dbus-error', method='InspectHandles')
 
 def cancelled_while_in_progress(q, bus, conn, stream, server):
     call_create(q, conn, server)

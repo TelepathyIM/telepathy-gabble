@@ -108,6 +108,31 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
       </tp:possible-errors>
     </method>
 
+    <method name="AddActivity" tp:name-for-bindings="Add_Activity">
+      <arg direction="in" name="id" type="s">
+        <tp:docstring>
+          An activity id
+        </tp:docstring>
+      </arg>
+      <arg direction="in" name="handle" type="u">
+        <tp:docstring>
+          A room handle
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Advertise an activity associated to a muc room
+        <tp:rationale>
+          <p>Once an activity shares itself, needs to be advertised if it's not
+             private. SetActivities could be used for this but it would mean that
+             the activity would need to call GetActivities then add itself.</p>
+        </tp:rationale>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.Disconnected"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+      </tp:possible-errors>
+    </method>
+
     <method name="GetActivities" tp:name-for-bindings="Get_Activities">
       <arg direction="in" name="contact" type="u">
         <tp:docstring>

@@ -26,12 +26,12 @@
 #include <gio/gio.h>
 
 #include <loudmouth/loudmouth.h>
+#include <telepathy-glib/base-channel.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/message-mixin.h>
 #include <telepathy-glib/properties-mixin.h>
 
-#include "base-channel.h"
 #include "types.h"
 #include "tubes-channel.h"
 #include "call-muc-channel.h"
@@ -50,14 +50,14 @@ typedef struct _GabbleMucChannelClass GabbleMucChannelClass;
 typedef struct _GabbleMucChannelPrivate GabbleMucChannelPrivate;
 
 struct _GabbleMucChannelClass {
-    GabbleBaseChannelClass parent_class;
+    TpBaseChannelClass parent_class;
 
     TpGroupMixinClass group_class;
     TpPropertiesMixinClass properties_class;
 };
 
 struct _GabbleMucChannel {
-    GabbleBaseChannel parent;
+    TpBaseChannel parent;
 
     TpGroupMixin group;
     TpPropertiesMixin properties;

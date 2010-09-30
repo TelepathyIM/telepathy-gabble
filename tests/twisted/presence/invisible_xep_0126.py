@@ -9,7 +9,7 @@ version of Ejabberd and all released versions of Prosody (as of 7.0).
 """
 from gabbletest import (
     exec_test, XmppXmlStream, acknowledge_iq, send_error_reply,
-    disconnect_conn, elem
+    disconnect_conn, elem, elem_iq
 )
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
@@ -18,13 +18,14 @@ from servicetest import (
 import ns
 import constants as cs
 from twisted.words.xish import xpath, domish
-from invisible_helper import send_privacy_list_push_iq, send_privacy_list, \
-    Xep0126XmlStream
+from invisible_helper import ManualPrivacyListStream
 
 def test_create_invisible_list(q, bus, conn, stream):
     conn.SimplePresence.SetPresence("away", "")
 
     conn.Connect()
+
+    stream.handle_get_all_privacy_lists(q, bus, conn)
 
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
@@ -60,6 +61,8 @@ def test_invisible_on_connect_fail_no_list(q, bus, conn, stream):
 
     conn.Connect()
 
+    stream.handle_get_all_privacy_lists(q, bus, conn)
+
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
     assertEquals('invisible', list_node['name'])
@@ -94,12 +97,13 @@ def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream):
 
     conn.Connect()
 
+    stream.handle_get_all_privacy_lists(q, bus, conn, ['invisible'])
+
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
     assertEquals('invisible', list_node['name'])
 
-    send_privacy_list (
-        stream, get_list.stanza,
+    stream.send_privacy_list(get_list.stanza,
         [elem('item', type='jid', value='tybalt@example.com', action='allow',
              order='1')(elem('presence-out')),
         elem('item', action='deny', order='2')(elem('presence-out'))])
@@ -141,6 +145,8 @@ def test_invisible_on_connect_fail(q, bus, conn, stream):
 
     conn.Connect()
 
+    stream.handle_get_all_privacy_lists(q, bus, conn)
+
     create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     # Check its name
     assertNotEquals([],
@@ -176,12 +182,13 @@ def test_invisible_on_connect(q, bus, conn, stream):
 
     conn.Connect()
 
+    stream.handle_get_all_privacy_lists(q, bus, conn, ['invisible'])
+
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
     assertEquals('invisible', list_node['name'])
 
-    send_privacy_list (
-        stream, get_list.stanza,
+    stream.send_privacy_list(get_list.stanza,
         [elem('item', action='deny', order='1')(elem('presence-out'))])
 
     set_active = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
@@ -197,10 +204,11 @@ def test_invisible_on_connect(q, bus, conn, stream):
 def test_invisible(q, bus, conn, stream):
     conn.Connect()
 
+    stream.handle_get_all_privacy_lists(q, bus, conn, ['invisible'])
+
     get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
 
-    send_privacy_list (
-        stream, get_list.stanza,
+    stream.send_privacy_list(get_list.stanza,
         [elem('item', action='deny', order='1')(elem('presence-out'))])
 
     q.expect('dbus-signal', signal='StatusChanged',
@@ -266,15 +274,14 @@ def test_invisible(q, bus, conn, stream):
 def test_privacy_list_push_conflict(q, bus, conn, stream):
     test_invisible_on_connect(q, bus, conn, stream)
 
-    set_id = send_privacy_list_push_iq(stream, "invisible")
+    set_id = stream.send_privacy_list_push_iq("invisible")
 
     _, req_list = q.expect_many(
         EventPattern('stream-iq', iq_type='result', predicate=lambda event: \
                          event.stanza['id'] == set_id),
         EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
 
-    send_privacy_list(
-        stream, req_list.stanza,
+    stream.send_privacy_list(req_list.stanza,
         [elem('item', type='jid', value='tybalt@example.com', action='allow',
               order='1')(elem('presence-out')),
          elem('item', action='deny', order='2')(elem('presence-out'))])
@@ -293,15 +300,14 @@ def test_privacy_list_push_conflict(q, bus, conn, stream):
 def test_privacy_list_push_valid(q, bus, conn, stream):
     test_invisible_on_connect(q, bus, conn, stream)
 
-    set_id = send_privacy_list_push_iq(stream, "invisible")
+    set_id = stream.send_privacy_list_push_iq("invisible")
 
     _, req_list = q.expect_many(
         EventPattern('stream-iq', iq_type='result', predicate=lambda event: \
                          event.stanza['id'] == set_id),
         EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
 
-    send_privacy_list (
-        stream, req_list.stanza,
+    stream.send_privacy_list(req_list.stanza,
         [elem('item', action='deny', order='1')(elem(u'presence-out')),
          elem('item', type='jid', value='tybalt@example.com', action='deny',
               order='2')(elem(u'message'))])
@@ -314,12 +320,12 @@ def test_privacy_list_push_valid(q, bus, conn, stream):
     acknowledge_iq (stream, activate_list.stanza)
 
 if __name__ == '__main__':
-    exec_test(test_invisible, protocol=Xep0126XmlStream)
-    exec_test(test_invisible_on_connect, protocol=Xep0126XmlStream)
-    exec_test(test_create_invisible_list, protocol=Xep0126XmlStream)
+    exec_test(test_invisible, protocol=ManualPrivacyListStream)
+    exec_test(test_invisible_on_connect, protocol=ManualPrivacyListStream)
+    exec_test(test_create_invisible_list, protocol=ManualPrivacyListStream)
     exec_test(test_invisible_on_connect_fail_no_list,
-              protocol=Xep0126XmlStream)
+              protocol=ManualPrivacyListStream)
     exec_test(test_invisible_on_connect_fail_invalid_list,
-              protocol=Xep0126XmlStream)
-    exec_test(test_privacy_list_push_valid, protocol=Xep0126XmlStream)
-    exec_test(test_privacy_list_push_conflict, protocol=Xep0126XmlStream)
+              protocol=ManualPrivacyListStream)
+    exec_test(test_privacy_list_push_valid, protocol=ManualPrivacyListStream)
+    exec_test(test_privacy_list_push_conflict, protocol=ManualPrivacyListStream)

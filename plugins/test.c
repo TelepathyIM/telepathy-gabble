@@ -2,9 +2,7 @@
 
 #include <stdio.h>
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/util.h>
-#include <telepathy-glib/errors.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "extensions/extensions.h"
 
@@ -124,6 +122,17 @@ test_plugin_create_sidecar (
   g_object_unref (result);
 }
 
+static TpPresenceStatusSpec test_presences[] = {
+  { "testbusy", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, NULL, NULL, NULL },
+  { "testaway", TP_CONNECTION_PRESENCE_TYPE_AWAY, FALSE, NULL, NULL, NULL },
+  { NULL, 0, FALSE, NULL, NULL, NULL }
+};
+
+static GabblePluginPrivacyListMap privacy_list_map[] = {
+  { "testbusy", "test-busy-list" },
+  { NULL, NULL },
+};
+
 static void
 plugin_iface_init (
     gpointer g_iface,
@@ -134,6 +143,9 @@ plugin_iface_init (
   iface->name = "Sidecar test plugin";
   iface->sidecar_interfaces = sidecar_interfaces;
   iface->create_sidecar = test_plugin_create_sidecar;
+
+  iface->presence_statuses = test_presences;
+  iface->privacy_list_map = privacy_list_map;
 }
 
 GabblePlugin *
@@ -325,17 +337,8 @@ test_sidecar_iq_dispose (GObject *object)
 
   DEBUG ("called for %p", object);
 
-  if (self->session != NULL)
-    {
-      g_object_unref (self->session);
-      self->session = NULL;
-    }
-
-  if (self->connection != NULL)
-    {
-      g_object_unref (self->connection);
-      self->connection = NULL;
-    }
+  tp_clear_object (&self->session);
+  tp_clear_object (&self->connection);
 }
 
 static void

@@ -15,7 +15,7 @@ if config.HAVE_MCE:
 from functools import partial
 
 from gabbletest import exec_test, GoogleXmlStream
-from servicetest import call_async, Event, assertEquals
+from servicetest import call_async, Event, assertEquals, sync_dbus
 import ns
 
 import dbus
@@ -82,10 +82,35 @@ def test(q, bus, conn, stream, initially_inactive=False):
 
     mce.remove_from_connection()
 
+def crash_after_stream_error(q, bus, conn, stream):
+    """Regression test for a bug where Gabble didn't stop listening to MCE
+    properly if the stream ended abnormally, and thus would crash at the next
+    device state change."""
+
+    # Initially, the device is active.
+    mce = FakeMCE(q, bus, False)
+
+    call_async(q, conn, 'Connect')
+    q.expect('get-inactivity-called')
+
+    # The server sends us a stream error, which kills the connection.
+    stream.send_stream_error()
+
+    q.expect('dbus-signal', signal='ConnectionError')
+    q.expect('dbus-signal', signal='StatusChanged')
+
+    # Now the device becomes inactive.
+    mce.InactivityChanged(True)
+    # Ping Gabble to ensure it's still alive after the signal from MCE
+    sync_dbus(bus, q, conn)
+
+    mce.remove_from_connection()
+
 if __name__ == '__main__':
     dbus.SessionBus().request_name(MCE_SERVICE, 0)
     try:
         exec_test(partial(test, initially_inactive=False), protocol=GoogleXmlStream)
         exec_test(partial(test, initially_inactive=True), protocol=GoogleXmlStream)
+        exec_test(crash_after_stream_error, protocol=GoogleXmlStream)
     finally:
         dbus.SessionBus().release_name(MCE_SERVICE)

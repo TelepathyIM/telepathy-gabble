@@ -3507,3 +3507,19 @@ gabble_roster_class_init (GabbleRosterClass *cls)
     NULL, NULL,
     g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
+
+gboolean
+gabble_roster_handle_sends_presence_to_us (GabbleRoster *self,
+    TpHandle handle)
+{
+  return ((gabble_roster_handle_get_subscription (self, handle)
+      & GABBLE_ROSTER_SUBSCRIPTION_TO) != 0);
+}
+
+gboolean
+gabble_roster_handle_gets_presence_from_us (GabbleRoster *self,
+    TpHandle handle)
+{
+  return ((gabble_roster_handle_get_subscription (self, handle)
+      & GABBLE_ROSTER_SUBSCRIPTION_FROM) != 0);
+}

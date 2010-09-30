@@ -93,6 +93,7 @@ static guint signals[LAST_SIGNAL] = {0};
 struct _GabbleCallContentPrivate
 {
   GabbleConnection *conn;
+  TpDBusDaemon *dbus_daemon;
 
   gchar *object_path;
   TpHandle target;
@@ -172,11 +173,10 @@ gabble_call_content_get_property (GObject    *object,
             {
               GabbleCallStream *s = GABBLE_CALL_STREAM (l->data);
               g_ptr_array_add (arr,
-                  (gpointer) gabble_call_stream_get_object_path (s));
+                  g_strdup (gabble_call_stream_get_object_path (s)));
             }
 
-          g_value_set_boxed (value, arr);
-          g_ptr_array_free (arr, TRUE);
+          g_value_take_boxed (value, arr);
           break;
         }
       case PROP_NAME:
@@ -275,12 +275,12 @@ gabble_call_content_constructed (GObject *obj)
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (obj);
   GabbleCallContentPrivate *priv = self->priv;
-  DBusGConnection *bus;
 
   /* register object on the bus */
-  bus = tp_get_bus ();
   DEBUG ("Registering %s", priv->object_path);
-  dbus_g_connection_register_g_object (bus, priv->object_path, obj);
+  priv->dbus_daemon = g_object_ref (
+      tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn));
+  tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path, obj);
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed (obj);
@@ -431,11 +431,8 @@ gabble_call_content_dispose (GObject *object)
       g_object_unref (l->data);
     }
 
-  g_list_free (priv->streams);
-  priv->streams = NULL;
-
-  jingle_media_rtp_free_codecs (priv->local_codecs);
-  priv->local_codecs = NULL;
+  tp_clear_pointer (&priv->streams, g_list_free);
+  tp_clear_pointer (&priv->local_codecs, jingle_media_rtp_free_codecs);
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->dispose (object);
@@ -575,15 +572,15 @@ gabble_call_content_deinit (GabbleCallContent *content)
 
   priv->deinit_has_run = TRUE;
 
-  dbus_g_connection_unregister_g_object (tp_get_bus (), G_OBJECT (content));
+  tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (content));
+  tp_clear_object (&priv->dbus_daemon);
 
   for (l = priv->streams; l != NULL; l = g_list_next (l))
     {
       g_object_unref (l->data);
     }
 
-  g_list_free (priv->streams);
-  priv->streams = NULL;
+  tp_clear_pointer (&priv->streams, g_list_free);
 
   if (priv->offer_cancellable != NULL)
     g_cancellable_cancel (priv->offer_cancellable);
@@ -723,7 +720,8 @@ call_content_new_offer (GabbleCallContent *self)
   path = g_strdup_printf ("%s/Offer%d",
     priv->object_path, priv->offers++);
 
-  priv->offer = gabble_call_content_codecoffer_new (path, map);
+  priv->offer = gabble_call_content_codecoffer_new (priv->dbus_daemon, path,
+      map);
   priv->offer_cancellable = g_cancellable_new ();
   ++priv->offer_count;
   gabble_call_content_codecoffer_offer (priv->offer, priv->offer_cancellable,

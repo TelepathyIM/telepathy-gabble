@@ -292,11 +292,7 @@ gabble_call_member_content_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  if (priv->jingle_content != NULL)
-    g_object_unref (priv->jingle_content);
-  priv->jingle_content = NULL;
-
-  /* release any references held by the object here */
+  tp_clear_object (&priv->jingle_content);
 
   if (G_OBJECT_CLASS (gabble_call_member_content_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_member_content_parent_class)->dispose (object);

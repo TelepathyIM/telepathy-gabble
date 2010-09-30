@@ -16,6 +16,7 @@ TWISTED_TESTS = \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
+	cm/protocol.py \
 	device-idleness.py \
 	gateways.py \
 	muc/conference.py \
@@ -31,18 +32,12 @@ TWISTED_TESTS = \
 	muc/test-muc-ownership.py \
 	muc/test-muc-properties.py \
 	muc/test-muc.py \
-	olpc/olpc-activity-search.py \
 	olpc/current-activity.py \
 	olpc/olpc-muc-invitation.py \
 	olpc/olpc-muc-prop-change.py \
 	olpc/test-olpc-bundle.py \
 	olpc/test-olpc-set-props-preload.py \
 	olpc/change-notifications.py \
-	olpc/olpc-buddy-search.py \
-	olpc/gadget-invite.py \
-	olpc/gadget-publish.py \
-	olpc/gadget-restarted.py \
-	olpc/view-presence.py \
 	pep-support.py \
 	presence/decloak.py \
 	presence/initial-contact-presence.py \
@@ -50,6 +45,8 @@ TWISTED_TESTS = \
 	presence/invisible_xep_0126.py \
 	presence/invisible_xep_0186.py \
 	presence/presence.py \
+	presence/plugins.py \
+	presence/set-idempotence.py \
 	roster/authorize.py \
 	roster/edit-before-roster.py \
 	roster/ensure.py \
@@ -82,6 +79,7 @@ TWISTED_TESTS = \
 	text/test-text-delayed.py \
 	text/test-text-no-body.py \
 	text/test-text.py \
+	tls/server-tls-channel.py \
 	$(NULL)
 
 TWISTED_TUBE_TESTS = \
@@ -206,7 +204,6 @@ TWISTED_TESTS += \
 	connect/network-error.py \
 	test-fallback-socks5-proxy.py \
 	test-register.py \
-	test-set-status-idempotence.py \
 	test-location.py \
 	pubsub.py \
 	sidecar-own-caps.py \
@@ -220,7 +217,8 @@ TWISTED_TESTS += $(TWISTED_JINGLE_TESTS) $(TWISTED_VCARD_TESTS)
 TESTS =
 
 TESTS_ENVIRONMENT = \
-	PYTHONPATH=@abs_top_srcdir@/tests/twisted:@abs_top_builddir@/tests/twisted
+	PYTHONPATH=@abs_top_srcdir@/tests/twisted:@abs_top_builddir@/tests/twisted \
+	GABBLE_TWISTED_SRCDIR=@srcdir@
 
 check-local: check-coding-style check-twisted
 
@@ -306,7 +304,9 @@ EXTRA_DIST = \
 	sasl/saslutil.py \
 	search/search_helper.py \
 	file-transfer/file_transfer_helper.py \
-	presence/invisible_helper.py
+	presence/invisible_helper.py \
+	tls-cert.pem \
+	tls-key.pem
 
 noinst_PROGRAMS = \
 	telepathy-gabble-debug

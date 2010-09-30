@@ -27,8 +27,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 
-#include "extensions/extensions.h"
-
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
@@ -102,12 +100,9 @@ gabble_search_manager_close_all (GabbleSearchManager *self)
   /* We can't use a GHashTableIter as closing the channel while remove it from
    * the hash table and we can't modify a hash table while iterating on it. */
   chans = g_hash_table_get_keys (self->priv->channels);
-  for (l = chans; l != NULL; l = g_list_next (l))
-    {
-      GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (l->data);
 
-      gabble_search_channel_close (chan);
-    }
+  for (l = chans; l != NULL; l = g_list_next (l))
+    tp_base_channel_close (TP_BASE_CHANNEL (l->data));
 
   g_list_free (chans);
 
@@ -323,14 +318,14 @@ static const gchar * const search_channel_fixed_properties[] = {
 };
 
 static const gchar * const search_channel_allowed_properties[] = {
-    GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server",
+    TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server",
     NULL
 };
 
 
 static void
-gabble_search_manager_foreach_channel_class (TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_search_manager_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -338,11 +333,11 @@ gabble_search_manager_foreach_channel_class (TpChannelManager *manager,
   GValue *value;
 
   value = tp_g_value_slice_new_string (
-      GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH);
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH);
   g_hash_table_insert (table, (gchar *) search_channel_fixed_properties[0],
       value);
 
-  func (manager, table, search_channel_allowed_properties, user_data);
+  func (type, table, search_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 }
@@ -451,6 +446,7 @@ new_search_channel (GabbleSearchManager *self,
   chan = g_object_new (GABBLE_TYPE_SEARCH_CHANNEL,
       "connection", priv->conn,
       "server", server,
+      "initiator-handle", priv->conn->parent.self_handle,
       NULL);
   g_hash_table_insert (priv->channels, chan, priv->channels);
   g_signal_connect (chan, "closed", (GCallback) search_channel_closed_cb, self);
@@ -473,7 +469,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   channel_type = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL ".ChannelType");
 
-  if (tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH))
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH))
     return FALSE;
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
@@ -482,7 +478,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
     goto error;
 
   server = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server");
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server");
 
   if (server == NULL)
     {
@@ -527,7 +523,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_search_manager_foreach_channel;
-  iface->foreach_channel_class = gabble_search_manager_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_search_manager_type_foreach_channel_class;
 
   iface->create_channel = gabble_search_manager_create_channel;
   iface->request_channel = gabble_search_manager_create_channel;

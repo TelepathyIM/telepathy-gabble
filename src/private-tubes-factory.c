@@ -365,23 +365,15 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
     }
 
   if (priv->msg_tube_cb != NULL)
-    {
-      lm_connection_unregister_message_handler (priv->conn->lmconn,
+    lm_connection_unregister_message_handler (priv->conn->lmconn,
         priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE);
-      lm_message_handler_unref (priv->msg_tube_cb);
-      priv->msg_tube_cb = NULL;
-    }
 
-  /* Use a temporary variable because we don't want
+  tp_clear_pointer (&priv->msg_tube_cb, lm_message_handler_unref);
+
+  /* Use a temporary variable (the macro does this) because we don't want
    * tubes_channel_closed_cb to remove the channel from the hash table a
    * second time */
-  if (priv->tubes_channels != NULL)
-    {
-      GHashTable *tmp = priv->tubes_channels;
-
-      priv->tubes_channels = NULL;
-      g_hash_table_destroy (tmp);
-    }
+  tp_clear_pointer (&priv->tubes_channels, g_hash_table_destroy);
 }
 
 static void
@@ -800,9 +792,8 @@ gabble_private_tubes_factory_new (GabbleConnection *conn)
 }
 
 static void
-gabble_private_tubes_factory_foreach_channel_class (
-    TpChannelManager *manager,
-    TpChannelManagerChannelClassFunc func,
+gabble_private_tubes_factory_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
     gpointer user_data)
 {
   GHashTable *table;
@@ -822,7 +813,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, old_tubes_channel_allowed_properties, user_data);
+  func (type, table, old_tubes_channel_allowed_properties, user_data);
 
   g_hash_table_destroy (table);
 
@@ -840,7 +831,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, gabble_tube_stream_channel_get_allowed_properties (),
+  func (type, table, gabble_tube_stream_channel_get_allowed_properties (),
       user_data);
 
   g_hash_table_destroy (table);
@@ -859,7 +850,7 @@ gabble_private_tubes_factory_foreach_channel_class (
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       value);
 
-  func (manager, table, gabble_tube_dbus_channel_get_allowed_properties (),
+  func (type, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
   g_hash_table_destroy (table);
@@ -1085,8 +1076,8 @@ channel_manager_iface_init (gpointer g_iface,
   TpChannelManagerIface *iface = g_iface;
 
   iface->foreach_channel = gabble_private_tubes_factory_foreach_channel;
-  iface->foreach_channel_class =
-      gabble_private_tubes_factory_foreach_channel_class;
+  iface->type_foreach_channel_class =
+      gabble_private_tubes_factory_type_foreach_channel_class;
   iface->create_channel = gabble_private_tubes_factory_create_channel;
   iface->request_channel = gabble_private_tubes_factory_request_channel;
   iface->ensure_channel = gabble_private_tubes_factory_ensure_channel;

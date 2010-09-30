@@ -172,11 +172,7 @@ unsubscribe (GabbleConnection *conn,
 
           return_from_request_inbox_url (conn);
 
-          if (priv->unread_mails != NULL)
-            {
-              g_hash_table_unref (priv->unread_mails);
-              priv->unread_mails = NULL;
-            }
+          tp_clear_pointer (&priv->unread_mails, g_hash_table_unref);
         }
     }
   else
@@ -615,8 +611,7 @@ query_unread_mails_cb (GObject *source_object,
         store_unread_mails (conn, node);
     }
 
-  if (reply != NULL)
-    g_object_unref (reply);
+  tp_clear_object (&reply);
 
   return_from_request_inbox_url (conn);
 }
@@ -721,23 +716,17 @@ conn_mail_notif_dispose (GabbleConnection *conn)
   if (priv == NULL)
     return;
 
-  if (priv->subscribers)
-    {
-      g_hash_table_foreach_remove (priv->subscribers,
-          foreach_cancel_watch, conn);
-      g_hash_table_unref (priv->subscribers);
-      priv->subscribers = NULL;
-    }
+  if (priv->subscribers != NULL)
+    g_hash_table_foreach_remove (priv->subscribers,
+        foreach_cancel_watch, conn);
 
-  g_free (priv->inbox_url);
-  priv->inbox_url = NULL;
+  tp_clear_pointer (&priv->subscribers, g_hash_table_unref);
+  tp_clear_pointer (&priv->inbox_url, g_free);
 
   return_from_request_inbox_url (conn);
 
-  if (priv->unread_mails != NULL)
-    g_hash_table_unref (priv->unread_mails);
+  tp_clear_pointer (&priv->unread_mails, g_hash_table_unref);
 
-  priv->unread_mails = NULL;
   priv->unread_count = 0;
 
   if (priv->new_mail_handler_id != 0)

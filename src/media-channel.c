@@ -2915,6 +2915,18 @@ gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
   tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
 }
 
+static void
+gabble_media_channel_multiple_tones (
+    TpSvcChannelInterfaceDTMF *iface G_GNUC_UNUSED,
+    const gchar *dialstring G_GNUC_UNUSED,
+    DBusGMethodInvocation *context)
+{
+  /* FIXME: stub */
+  GError ni = { TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
+      PACKAGE_STRING " does not yet implement MultipleTones" };
+
+  dbus_g_method_return_error (context, &ni);
+}
 
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
@@ -2939,6 +2951,7 @@ dtmf_iface_init (gpointer g_iface, gpointer iface_data)
     klass, gabble_media_channel_##x)
   IMPLEMENT(start_tone);
   IMPLEMENT(stop_tone);
+  IMPLEMENT(multiple_tones);
 #undef IMPLEMENT
 }
 

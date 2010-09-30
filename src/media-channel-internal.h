@@ -26,6 +26,7 @@
 
 #include <glib.h>
 
+#include "dtmf.h"
 #include "media-stream.h"
 #include "jingle-session.h"
 #include "jingle-media-rtp.h"
@@ -59,6 +60,8 @@ struct _GabbleMediaChannelPrivate
 
   GPtrArray *delayed_request_streams;
 
+  GabbleDTMFPlayer *dtmf_player;
+
   gboolean initial_audio;
   gboolean initial_video;
   gboolean immutable_streams;
@@ -66,7 +69,6 @@ struct _GabbleMediaChannelPrivate
   gboolean closed;
   gboolean dispose_has_run;
   gboolean tried_decloaking;
-  gboolean currently_sending_tones;
 };
 
 void gabble_media_channel_hold_latch_to_session (GabbleMediaChannel *chan);

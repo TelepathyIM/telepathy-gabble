@@ -185,6 +185,12 @@ gabble_media_channel_init (GabbleMediaChannel *self)
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
         GabbleMediaChannel, properties));
+
+  priv->dtmf_player = gabble_dtmf_player_new ();
+
+  tp_g_signal_connect_object (priv->dtmf_player, "finished",
+      G_CALLBACK (tp_svc_channel_interface_dtmf_emit_stopped_tones), self,
+      G_CONNECT_SWAPPED);
 }
 
 static void session_state_changed_cb (GabbleJingleSession *session,
@@ -572,7 +578,8 @@ gabble_media_channel_get_property (GObject    *object,
       g_value_set_boolean (value, priv->immutable_streams);
       break;
     case PROP_CURRENTLY_SENDING_TONES:
-      g_value_set_boolean (value, priv->currently_sending_tones);
+      g_value_set_boolean (value,
+          gabble_dtmf_player_is_active (priv->dtmf_player));
       break;
     case PROP_INITIAL_TONES:
       /* FIXME: stub */
@@ -2456,6 +2463,10 @@ construct_stream (GabbleMediaChannel *chan,
 
   stream = gabble_media_stream_new (object_path, c, name, id,
       nat_traversal, relays, local_hold);
+  mtype = gabble_media_stream_get_media_type (stream);
+
+  if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
+    gabble_media_stream_add_dtmf_player (stream, priv->dtmf_player);
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
@@ -2505,9 +2516,6 @@ construct_stream (GabbleMediaChannel *chan,
           gabble_media_stream_accept_pending_local_send (stream);
         }
     }
-
-  /* emit StreamAdded */
-  mtype = gabble_media_stream_get_media_type (stream);
 
   DEBUG ("emitting StreamAdded with type '%s'",
     mtype == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video");
@@ -2840,6 +2848,12 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
   tp_svc_media_session_handler_return_from_error (context);
 }
 
+/* FIXME: these are pretty arbitrary */
+#define TONE_MS 200
+#define GAP_MS 100
+/* arbitrary limit on the length of a tone started with StartTone */
+#define MAX_TONE_SECONDS 10
+
 static void
 gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
                                  guint stream_id G_GNUC_UNUSED,
@@ -2850,15 +2864,7 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
   guint i;
   gboolean found_one = FALSE;
   gchar tones[2] = { '\0', '\0' };
-
-  if (self->priv->currently_sending_tones)
-    {
-      GError e = { TP_ERROR, TP_ERROR_SERVICE_BUSY,
-          "A DTMF tone is already being played" };
-
-      dbus_g_method_return_error (context, &e);
-      return;
-    }
+  GError *error = NULL;
 
   for (i = 0; i < self->priv->streams->len; i++)
     {
@@ -2867,7 +2873,6 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
       if (gabble_media_stream_get_media_type (stream) ==
           TP_MEDIA_STREAM_TYPE_AUDIO)
         {
-          gabble_media_stream_start_telephony_event (stream, event);
           found_one = TRUE;
         }
     }
@@ -2882,9 +2887,18 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
     }
 
   tones[0] = gabble_dtmf_event_to_char (event);
-  self->priv->currently_sending_tones = TRUE;
-  tp_svc_channel_interface_dtmf_emit_sending_tones (self, tones);
-  tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+
+  if (gabble_dtmf_player_play (self->priv->dtmf_player,
+      tones, MAX_TONE_SECONDS * 1000, GAP_MS, &error))
+    {
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, tones);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
 }
 
 static void
@@ -2893,25 +2907,8 @@ gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
-  guint i;
 
-  if (self->priv->currently_sending_tones)
-    {
-      for (i = 0; i < self->priv->streams->len; i++)
-        {
-          GabbleMediaStream *stream = g_ptr_array_index (self->priv->streams,
-              i);
-
-          if (gabble_media_stream_get_media_type (stream) ==
-              TP_MEDIA_STREAM_TYPE_AUDIO)
-            {
-              gabble_media_stream_stop_telephony_event (stream);
-            }
-        }
-
-      tp_svc_channel_interface_dtmf_emit_stopped_tones (self, TRUE);
-    }
-
+  gabble_dtmf_player_cancel (self->priv->dtmf_player);
   tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
 }
 

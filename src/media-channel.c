@@ -2816,6 +2816,15 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
   guint i;
   gboolean found_one = FALSE;
 
+  if (self->priv->currently_sending_tones)
+    {
+      GError e = { TP_ERROR, TP_ERROR_SERVICE_BUSY,
+          "A DTMF tone is already being played" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
   for (i = 0; i < self->priv->streams->len; i++)
     {
       GabbleMediaStream *stream = g_ptr_array_index (self->priv->streams, i);

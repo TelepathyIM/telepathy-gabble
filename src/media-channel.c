@@ -2837,6 +2837,7 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
       return;
     }
 
+  self->priv->currently_sending_tones = TRUE;
   tp_svc_channel_interface_dtmf_return_from_start_tone (context);
 }
 
@@ -2846,19 +2847,23 @@ gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
-  GabbleMediaStream *stream;
-  GError *error = NULL;
+  guint i;
 
-  stream = _find_stream_by_id (self, stream_id, &error);
-
-  if (stream == NULL)
+  if (self->priv->currently_sending_tones)
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
+      for (i = 0; i < self->priv->streams->len; i++)
+        {
+          GabbleMediaStream *stream = g_ptr_array_index (self->priv->streams,
+              i);
 
-  gabble_media_stream_stop_telephony_event (stream);
+          if (gabble_media_stream_get_media_type (stream) ==
+              TP_MEDIA_STREAM_TYPE_AUDIO)
+            {
+              gabble_media_stream_stop_telephony_event (stream);
+            }
+        }
+
+    }
 
   tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
 }

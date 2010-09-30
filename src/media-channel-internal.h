@@ -66,6 +66,7 @@ struct _GabbleMediaChannelPrivate
   gboolean closed;
   gboolean dispose_has_run;
   gboolean tried_decloaking;
+  gboolean currently_sending_tones;
 };
 
 void gabble_media_channel_hold_latch_to_session (GabbleMediaChannel *chan);

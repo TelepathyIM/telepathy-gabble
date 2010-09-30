@@ -118,6 +118,8 @@ enum
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
   PROP_IMMUTABLE_STREAMS,
+  PROP_CURRENTLY_SENDING_TONES,
+  PROP_INITIAL_TONES,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -569,6 +571,13 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_IMMUTABLE_STREAMS:
       g_value_set_boolean (value, priv->immutable_streams);
       break;
+    case PROP_CURRENTLY_SENDING_TONES:
+      g_value_set_boolean (value, priv->currently_sending_tones);
+      break;
+    case PROP_INITIAL_TONES:
+      /* FIXME: stub */
+      g_value_set_static_string (value, "");
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -696,6 +705,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { "InitialVideo", "initial-video", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl dtmf_props[] = {
+      { "CurrentlySendingTones", "currently-sending-tones", NULL },
+      { "InitialTones", "initial-tones", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
@@ -706,6 +720,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         streamed_media_props,
+      },
+      { TP_IFACE_CHANNEL_INTERFACE_DTMF,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        dtmf_props,
       },
       { NULL }
   };
@@ -850,6 +869,20 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       FALSE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_IMMUTABLE_STREAMS,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("currently-sending-tones",
+      "CurrentlySendingTones",
+      "True if a DTMF tone is being sent",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CURRENTLY_SENDING_TONES,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initial-tones", "InitialTones",
+      "Initial DTMF tones to be sent in the first audio stream",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_TONES,
       param_spec);
 
   tp_properties_mixin_class_init (object_class,

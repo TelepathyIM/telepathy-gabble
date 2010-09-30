@@ -93,7 +93,7 @@ get_client_types_from_handle (GabbleConnection *conn,
 }
 
 static void
-client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
+client_types_get_client_types (TpSvcConnectionInterfaceClientTypes *iface,
     const GArray *contacts,
     DBusGMethodInvocation *context)
 {
@@ -144,7 +144,7 @@ client_types_get_client_types (GabbleSvcConnectionInterfaceClientTypes *iface,
       g_ptr_array_add (types_list, types);
     }
 
-  gabble_svc_connection_interface_client_types_return_from_get_client_types (
+  tp_svc_connection_interface_client_types_return_from_get_client_types (
       context, client_types);
 
   g_hash_table_unref (client_types);
@@ -155,9 +155,9 @@ void
 conn_client_types_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
-  GabbleSvcConnectionInterfaceClientTypesClass *klass = g_iface;
+  TpSvcConnectionInterfaceClientTypesClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_connection_interface_client_types_implement_##x \
+#define IMPLEMENT(x) tp_svc_connection_interface_client_types_implement_##x \
   (klass, client_types_##x)
   IMPLEMENT (get_client_types);
 #undef IMPLEMENT
@@ -185,7 +185,7 @@ conn_client_types_fill_contact_attributes (GObject *obj,
           types);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
-          GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES "/client-types", val);
+          TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES "/client-types", val);
 
       g_ptr_array_unref (types);
     }
@@ -228,7 +228,7 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
       array = gabble_presence_get_client_types_array (presence, res, TRUE);
 
 emit:
-      gabble_svc_connection_interface_client_types_emit_client_types_updated (
+      tp_svc_connection_interface_client_types_emit_client_types_updated (
           conn, handle, (const gchar **) array->pdata);
 
       if (array != empty_array)
@@ -242,7 +242,7 @@ void
 conn_client_types_init (GabbleConnection *conn)
 {
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    GABBLE_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
+    TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
     conn_client_types_fill_contact_attributes);
 
   g_signal_connect (conn->presence_cache, "presences-updated",

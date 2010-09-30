@@ -182,7 +182,7 @@ class JingleProtocol:
         return True
 
     def can_do_video_only(self):
-        return True
+        return self.can_do_video()
 
     def separate_contents(self):
         return True

@@ -1012,7 +1012,14 @@ add_activity (GabbleConnection *self,
       return FALSE;
     }
 
-  activity = add_activity_info (self, channel);
+  activity = g_hash_table_lookup (self->olpc_activities_info,
+      GUINT_TO_POINTER (channel));
+
+  if (activity == NULL)
+    {
+      activity = add_activity_info (self, channel);
+    }
+
   g_object_ref (activity);
 
   DEBUG ("ref: %s (%d) refcount: %d\n",

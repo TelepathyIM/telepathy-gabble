@@ -153,8 +153,6 @@ static void roster_item_cancel_flicker_timeout (GabbleRosterItem *item);
 static void _gabble_roster_item_free (GabbleRosterItem *item);
 static void item_edit_free (GabbleRosterItemEdit *edits);
 static void gabble_roster_close_all (GabbleRoster *roster);
-static GabbleRosterSubscription gabble_roster_handle_get_subscription (
-    GabbleRoster *, TpHandle);
 
 static void mutable_iface_init (TpMutableContactListInterface *iface);
 static void blockable_iface_init (TpBlockableContactListInterface *iface);
@@ -2190,29 +2188,6 @@ roster_edited_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static GabbleRosterSubscription
-gabble_roster_handle_get_subscription (GabbleRoster *roster,
-                                       TpHandle handle)
-{
-  GabbleRosterPrivate *priv = roster->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  GabbleRosterItem *item;
-
-  g_return_val_if_fail (roster != NULL, GABBLE_ROSTER_SUBSCRIPTION_NONE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster),
-      GABBLE_ROSTER_SUBSCRIPTION_NONE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      GABBLE_ROSTER_SUBSCRIPTION_NONE);
-
-  item = _gabble_roster_item_lookup (roster, handle);
-
-  if (NULL == item)
-    return GABBLE_ROSTER_SUBSCRIPTION_NONE;
-
-  return item->subscription;
-}
-
 static void
 gabble_roster_handle_set_blocked (GabbleRoster *roster,
     TpHandle handle,
@@ -3525,14 +3500,40 @@ gboolean
 gabble_roster_handle_sends_presence_to_us (GabbleRoster *self,
     TpHandle handle)
 {
-  return ((gabble_roster_handle_get_subscription (self, handle)
-      & GABBLE_ROSTER_SUBSCRIPTION_TO) != 0);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItem *item;
+
+  g_return_val_if_fail (GABBLE_IS_ROSTER (self), FALSE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
+
+  item = _gabble_roster_item_lookup (self, handle);
+
+  if (item == NULL)
+    return FALSE;
+
+  return (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_TO ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH);
 }
 
 gboolean
 gabble_roster_handle_gets_presence_from_us (GabbleRoster *self,
     TpHandle handle)
 {
-  return ((gabble_roster_handle_get_subscription (self, handle)
-      & GABBLE_ROSTER_SUBSCRIPTION_FROM) != 0);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItem *item;
+
+  g_return_val_if_fail (GABBLE_IS_ROSTER (self), FALSE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
+
+  item = _gabble_roster_item_lookup (self, handle);
+
+  if (item == NULL)
+    return FALSE;
+
+  return (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_FROM ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH);
 }

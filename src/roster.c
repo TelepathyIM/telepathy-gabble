@@ -1872,14 +1872,16 @@ roster_item_cancel_subscriptions (
   const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
   gboolean ret = TRUE;
 
-  if (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_FROM ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH)
     {
       DEBUG ("sending unsubscribed");
       ret = gabble_connection_send_presence (roster->priv->conn,
           LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, NULL, error);
     }
 
-  if (ret && (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_TO))
+  if (ret && (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_TO ||
+        item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH))
     {
       DEBUG ("sending unsubscribe");
       ret = gabble_connection_send_presence (roster->priv->conn,
@@ -2613,7 +2615,8 @@ gabble_roster_request_subscription_added_cb (GObject *source,
        * contact again. There's no point in requesting subscription if the
        * contact has already said yes, though. */
       if (item != NULL &&
-          (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_TO) != 0)
+          (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_TO ||
+           item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH))
         {
           DEBUG ("Already subscribed to contact#%u '%s', not re-requesting",
               contact, contact_id);

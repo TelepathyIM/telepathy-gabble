@@ -41,6 +41,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "dtmf.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
 #include "jingle-media-rtp.h"
@@ -2815,6 +2816,7 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   guint i;
   gboolean found_one = FALSE;
+  gchar tones[2] = { '\0', '\0' };
 
   if (self->priv->currently_sending_tones)
     {
@@ -2846,7 +2848,9 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
       return;
     }
 
+  tones[0] = gabble_dtmf_event_to_char (event);
   self->priv->currently_sending_tones = TRUE;
+  tp_svc_channel_interface_dtmf_emit_sending_tones (self, tones);
   tp_svc_channel_interface_dtmf_return_from_start_tone (context);
 }
 
@@ -2872,6 +2876,7 @@ gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
             }
         }
 
+      tp_svc_channel_interface_dtmf_emit_stopped_tones (self, TRUE);
     }
 
   tp_svc_channel_interface_dtmf_return_from_stop_tone (context);

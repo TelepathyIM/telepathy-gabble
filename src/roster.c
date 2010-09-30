@@ -81,6 +81,17 @@ typedef enum
   GOOGLE_ITEM_TYPE_PINNED,
 } GoogleItemType;
 
+typedef enum
+{
+  GABBLE_ROSTER_SUBSCRIPTION_NONE = 0,
+  GABBLE_ROSTER_SUBSCRIPTION_FROM = 1 << 0,
+  GABBLE_ROSTER_SUBSCRIPTION_TO = 1 << 1,
+  GABBLE_ROSTER_SUBSCRIPTION_BOTH = GABBLE_ROSTER_SUBSCRIPTION_FROM |
+      GABBLE_ROSTER_SUBSCRIPTION_TO,
+  GABBLE_ROSTER_SUBSCRIPTION_REMOVE = 1 << 2,
+  GABBLE_ROSTER_SUBSCRIPTION_INVALID = 1 << 3,
+} GabbleRosterSubscription;
+
 typedef struct _GabbleRosterItemEdit GabbleRosterItemEdit;
 struct _GabbleRosterItemEdit
 {
@@ -142,6 +153,8 @@ static void roster_item_cancel_flicker_timeout (GabbleRosterItem *item);
 static void _gabble_roster_item_free (GabbleRosterItem *item);
 static void item_edit_free (GabbleRosterItemEdit *edits);
 static void gabble_roster_close_all (GabbleRoster *roster);
+static GabbleRosterSubscription gabble_roster_handle_get_subscription (
+    GabbleRoster *, TpHandle);
 
 static void mutable_iface_init (TpMutableContactListInterface *iface);
 static void blockable_iface_init (TpBlockableContactListInterface *iface);
@@ -2177,7 +2190,7 @@ roster_edited_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-GabbleRosterSubscription
+static GabbleRosterSubscription
 gabble_roster_handle_get_subscription (GabbleRoster *roster,
                                        TpHandle handle)
 {

@@ -58,17 +58,6 @@ struct _GabbleRoster {
     GabbleRosterPrivate *priv;
 };
 
-typedef enum
-{
-  GABBLE_ROSTER_SUBSCRIPTION_NONE = 0,
-  GABBLE_ROSTER_SUBSCRIPTION_FROM = 1 << 0,
-  GABBLE_ROSTER_SUBSCRIPTION_TO = 1 << 1,
-  GABBLE_ROSTER_SUBSCRIPTION_BOTH = GABBLE_ROSTER_SUBSCRIPTION_FROM |
-      GABBLE_ROSTER_SUBSCRIPTION_TO,
-  GABBLE_ROSTER_SUBSCRIPTION_REMOVE = 1 << 2,
-  GABBLE_ROSTER_SUBSCRIPTION_INVALID = 1 << 3,
-} GabbleRosterSubscription;
-
 GabbleRoster *gabble_roster_new (GabbleConnection *);
 
 gboolean gabble_roster_handle_sends_presence_to_us (GabbleRoster *,
@@ -76,8 +65,6 @@ gboolean gabble_roster_handle_sends_presence_to_us (GabbleRoster *,
 gboolean gabble_roster_handle_gets_presence_from_us (GabbleRoster *,
     TpHandle);
 
-GabbleRosterSubscription gabble_roster_handle_get_subscription (GabbleRoster *,
-    TpHandle);
 const gchar *gabble_roster_handle_get_name (GabbleRoster *, TpHandle);
 gboolean gabble_roster_handle_set_name (GabbleRoster *, TpHandle,
     const gchar *, GError **);

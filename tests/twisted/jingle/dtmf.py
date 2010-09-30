@@ -144,7 +144,7 @@ def test(jp, q, bus, conn, stream):
     q.expect('dbus-error', method='MultipleTones',
             name=cs.SERVICE_BUSY)
     call_async(q, chan.DTMF, 'StartTone', 666, 9)
-    q.expect('dbus-error', method='StartTone')
+    q.expect('dbus-error', method='StartTone', name=cs.SERVICE_BUSY)
     call_async(q, chan.DTMF, 'StopTone', 666)
     q.expect_many(
             EventPattern('dbus-signal', signal='StopTelephonyEvent',

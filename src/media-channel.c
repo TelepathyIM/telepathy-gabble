@@ -2914,15 +2914,46 @@ gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
 
 static void
 gabble_media_channel_multiple_tones (
-    TpSvcChannelInterfaceDTMF *iface G_GNUC_UNUSED,
-    const gchar *dialstring G_GNUC_UNUSED,
+    TpSvcChannelInterfaceDTMF *iface,
+    const gchar *dialstring,
     DBusGMethodInvocation *context)
 {
-  /* FIXME: stub */
-  GError ni = { TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
-      PACKAGE_STRING " does not yet implement MultipleTones" };
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GError *error = NULL;
+  guint i;
+  gboolean found_one;
 
-  dbus_g_method_return_error (context, &ni);
+  for (i = 0; i < self->priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (self->priv->streams, i);
+
+      if (gabble_media_stream_get_media_type (stream) ==
+          TP_MEDIA_STREAM_TYPE_AUDIO)
+        {
+          found_one = TRUE;
+        }
+    }
+
+  if (!found_one)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (gabble_dtmf_player_play (self->priv->dtmf_player,
+      dialstring, TONE_MS, GAP_MS, &error))
+    {
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, dialstring);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
 }
 
 static void

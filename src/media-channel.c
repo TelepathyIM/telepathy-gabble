@@ -2336,7 +2336,8 @@ stream_close_cb (GabbleMediaStream *stream,
                  GabbleMediaChannel *chan)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
-  guint id;
+  guint id, i;
+  gboolean still_have_audio = FALSE;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
 
@@ -2353,6 +2354,25 @@ stream_close_cb (GabbleMediaStream *stream,
         stream, stream->name);
 
   gabble_media_channel_hold_stream_closed (chan, stream);
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *other = g_ptr_array_index (priv->streams, i);
+
+      if (gabble_media_stream_get_media_type (other) ==
+          TP_MEDIA_STREAM_TYPE_AUDIO)
+        {
+          still_have_audio = TRUE;
+        }
+    }
+
+  if (priv->have_some_audio && !still_have_audio)
+    {
+      /* the last audio stream just closed */
+      gabble_dtmf_player_cancel (priv->dtmf_player);
+    }
+
+  priv->have_some_audio = still_have_audio;
 }
 
 static void
@@ -2466,7 +2486,10 @@ construct_stream (GabbleMediaChannel *chan,
   mtype = gabble_media_stream_get_media_type (stream);
 
   if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
-    gabble_media_stream_add_dtmf_player (stream, priv->dtmf_player);
+    {
+      gabble_media_stream_add_dtmf_player (stream, priv->dtmf_player);
+      priv->have_some_audio = TRUE;
+    }
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
@@ -2861,23 +2884,10 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
                                  DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
-  guint i;
-  gboolean found_one = FALSE;
   gchar tones[2] = { '\0', '\0' };
   GError *error = NULL;
 
-  for (i = 0; i < self->priv->streams->len; i++)
-    {
-      GabbleMediaStream *stream = g_ptr_array_index (self->priv->streams, i);
-
-      if (gabble_media_stream_get_media_type (stream) ==
-          TP_MEDIA_STREAM_TYPE_AUDIO)
-        {
-          found_one = TRUE;
-        }
-    }
-
-  if (!found_one)
+  if (!self->priv->have_some_audio)
     {
       GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "There are no audio streams" };
@@ -2920,21 +2930,8 @@ gabble_media_channel_multiple_tones (
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GError *error = NULL;
-  guint i;
-  gboolean found_one;
 
-  for (i = 0; i < self->priv->streams->len; i++)
-    {
-      GabbleMediaStream *stream = g_ptr_array_index (self->priv->streams, i);
-
-      if (gabble_media_stream_get_media_type (stream) ==
-          TP_MEDIA_STREAM_TYPE_AUDIO)
-        {
-          found_one = TRUE;
-        }
-    }
-
-  if (!found_one)
+  if (!self->priv->have_some_audio)
     {
       GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "There are no audio streams" };

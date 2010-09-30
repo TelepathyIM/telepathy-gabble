@@ -1,7 +1,18 @@
-telepathy-gabble 0.10.2 (UNRELEASED)
+telepathy-gabble 0.10.2 (2010-09-30)
 ====================================
 
-Moo.
+The “I guess that you don't want to have a shared library!! because you
+fear to have a shared library!!!!!!!! yeah!!!” release.
+
+Fixes:
+
+• Updated Wocky snapshot:
+  · Made it compile when built with OpenSSL (wjt)
+  · Handle the connection being disconnected by the remote side more gracefully
+    (sjoerd)
+• Fixed a memory allocation error which could cause corruption when using
+  plugins which deal with capabilities (wjt)
+• Ensure only one OLPC activity is created for a given channel (tomeu)
 
 telepathy-gabble 0.10.1 (2010-09-29)
 ====================================

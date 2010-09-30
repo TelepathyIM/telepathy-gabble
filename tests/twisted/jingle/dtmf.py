@@ -12,6 +12,10 @@ import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
 def test(jp, q, bus, conn, stream):
+    # this test uses multiple streams
+    if not jp.is_modern_jingle():
+        return
+
     remote_jid = 'foo@bar.com/Foo'
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
     jt.prepare()
@@ -55,9 +59,16 @@ def test(jp, q, bus, conn, stream):
     q.expect('dbus-signal', signal='SetStreamSending', args=[True],
             path=audio_path)
 
+    chan.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
+
+    e = q.expect('dbus-signal', signal='NewStreamHandler')
+    audio2_path = e.args[0]
+
     # The Stream_ID is specified to be ignored; we use 666 here.
     call_async(q, chan.DTMF, 'StartTone', 666, 3)
     q.expect_many(
+            EventPattern('dbus-signal', signal='StartTelephonyEvent',
+                path=audio2_path),
             EventPattern('dbus-signal', signal='StartTelephonyEvent',
                 path=audio_path),
             EventPattern('dbus-signal', signal='SendingTones', args=['3'],
@@ -69,6 +80,8 @@ def test(jp, q, bus, conn, stream):
     q.expect_many(
             EventPattern('dbus-signal', signal='StopTelephonyEvent',
                 path=audio_path),
+            EventPattern('dbus-signal', signal='StopTelephonyEvent',
+                path=audio2_path),
             EventPattern('dbus-signal', signal='StoppedTones', args=[True],
                 path=chan_path),
             EventPattern('dbus-return', method='StopTone'),
@@ -78,19 +91,41 @@ def test(jp, q, bus, conn, stream):
     q.expect_many(
             EventPattern('dbus-signal', signal='StartTelephonyEvent',
                 path=audio_path, args=[1]),
+            EventPattern('dbus-signal', signal='StartTelephonyEvent',
+                path=audio2_path, args=[1]),
             EventPattern('dbus-signal', signal='SendingTones', args=['123'],
                 path=chan_path),
             EventPattern('dbus-return', method='MultipleTones'),
             )
-    q.expect('dbus-signal', signal='StopTelephonyEvent', path=audio_path)
-    q.expect('dbus-signal', signal='StartTelephonyEvent', path=audio_path,
-            args=[2])
-    q.expect('dbus-signal', signal='StopTelephonyEvent', path=audio_path)
-    q.expect('dbus-signal', signal='StartTelephonyEvent', path=audio_path,
-            args=[3])
     q.expect_many(
             EventPattern('dbus-signal', signal='StopTelephonyEvent',
                 path=audio_path),
+            EventPattern('dbus-signal', signal='StopTelephonyEvent',
+                path=audio2_path),
+            )
+    q.expect_many(
+            EventPattern('dbus-signal', signal='StartTelephonyEvent',
+                path=audio_path, args=[2]),
+            EventPattern('dbus-signal', signal='StartTelephonyEvent',
+                path=audio2_path, args=[2]),
+            )
+    q.expect_many(
+            EventPattern('dbus-signal', signal='StopTelephonyEvent',
+                path=audio_path),
+            EventPattern('dbus-signal', signal='StopTelephonyEvent',
+                path=audio2_path),
+            )
+    q.expect_many(
+            EventPattern('dbus-signal', signal='StartTelephonyEvent',
+                path=audio_path, args=[3]),
+            EventPattern('dbus-signal', signal='StartTelephonyEvent',
+                path=audio2_path, args=[3]),
+            )
+    q.expect_many(
+            EventPattern('dbus-signal', signal='StopTelephonyEvent',
+                path=audio_path),
+            EventPattern('dbus-signal', signal='StopTelephonyEvent',
+                path=audio2_path),
             EventPattern('dbus-signal', signal='StoppedTones', args=[False],
                 path=chan_path),
             )
@@ -114,6 +149,8 @@ def test(jp, q, bus, conn, stream):
     q.expect_many(
             EventPattern('dbus-signal', signal='StopTelephonyEvent',
                 path=audio_path),
+            EventPattern('dbus-signal', signal='StopTelephonyEvent',
+                path=audio2_path),
             EventPattern('dbus-signal', signal='StoppedTones', args=[True],
                 path=chan_path),
             EventPattern('dbus-return', method='StopTone'),

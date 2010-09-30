@@ -126,6 +126,7 @@ TWISTED_TESTS = \
 	jingle/call-muc-re-re-request.py \
 	jingle/call-state.py \
 	jingle/decloak-peer.py \
+	jingle/dtmf.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \

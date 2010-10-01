@@ -1367,8 +1367,6 @@ handle_text_channel_request (GabbleMucFactory *self,
             }
         }
 
-      /* N.B. gabble_generate_id() requires libuuid to generate valid UUIDs
-       * for Google PMUCs */
       uuid = gabble_generate_id ();
       id = g_strdup_printf ("private-chat-%s%s", uuid, server);
 

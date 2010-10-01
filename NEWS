@@ -129,6 +129,8 @@ Fixes:
   › don't fail on missing CRLs if not in strict TLS verification mode
     (fledermaus)
 
+• fd.o#28990: removed dependency to libuuid (stormer)
+
 telepathy-gabble 0.9.17 (2010-08-26)
 ====================================
 

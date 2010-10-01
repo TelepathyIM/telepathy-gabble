@@ -1313,13 +1313,10 @@ gabble_disco_identity_new (const gchar *category,
 GabbleDiscoIdentity *
 gabble_disco_identity_copy (const GabbleDiscoIdentity *source)
 {
-  GabbleDiscoIdentity *ret = g_new (GabbleDiscoIdentity, 1);
+  g_return_val_if_fail (source != NULL, NULL);
 
-  ret->category = g_strdup (source->category);
-  ret->type = g_strdup (source->type);
-  ret->lang = g_strdup (source->lang);
-  ret->name = g_strdup (source->name);
-  return ret;
+  return gabble_disco_identity_new (source->category, source->type,
+      source->lang, source->name);
 }
 
 const gchar *

@@ -76,6 +76,8 @@ ifelse(gabble_nano_version, 0,
     [ official_release=yes ],
     [ official_release=no ])
 
+AM_CONDITIONAL([OFFICIAL_RELEASE], [test "x$official_release" = xyes])
+
 TP_COMPILER_WARNINGS([ERROR_CFLAGS], [test "x$official_release" = xno],
   [all \
    extra \

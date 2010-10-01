@@ -12,6 +12,7 @@ EXTRA_DIST = \
     lcov.am \
     libglibcodegen.py \
     libtpcodegen.py \
+    make-release-mail.py \
     telepathy.am \
     xincludator.py
 

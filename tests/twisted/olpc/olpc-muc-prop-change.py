@@ -137,13 +137,12 @@ def test(q, bus, conn, stream):
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
         EventPattern('dbus-signal', signal='MembersChanged',
             args=['', [], [bob_handle], [], [room_self_handle],
-                0, cs.GC_REASON_INVITED])
-            )
+                0, cs.GC_REASON_INVITED]),
+        EventPattern('dbus-return', method='AddMembers'),
+        )
 
     # Send presence for own membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
-
-    q.expect('dbus-return', method='AddMembers')
 
     event = q.expect('dbus-signal', signal='MembersChanged')
     assert event.args == ['', [room_self_handle], [], [], [], 0, 0]

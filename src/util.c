@@ -36,8 +36,6 @@
 
 #include <extensions/extensions.h>
 
-#include <uuid.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 
 #include "base64.h"
@@ -80,18 +78,63 @@ sha1_bin (const gchar *bytes,
   g_checksum_free (checksum);
 }
 
+
+/** gabble_generate_id:
+ *
+ * RFC4122 version 4 compliant random UUIDs generator.
+ *
+ * Returns: A string with RFC41122 version 4 random UUID, must be freed with
+ *          g_free().
+ */
 gchar *
 gabble_generate_id (void)
 {
-  /* generate random UUIDs */
-  uuid_t uu;
+  GRand *grand;
   gchar *str;
+  struct {
+      guint32 time_low;
+      guint16 time_mid;
+      guint16 time_hi_and_version;
+      guint8 clock_seq_hi_and_rsv;
+      guint8 clock_seq_low;
+      guint16 node_hi;
+      guint32 node_low;
+  } uuid;
 
-  str = g_new0 (gchar, 37);
-  uuid_generate_random (uu);
-  uuid_unparse_lower (uu, str);
+  /* Fill with random. Every new GRand are seede with 128 bit read from
+   * /dev/urandom (or the current time on non-unix systems). This makes the
+   * random source good enough for our usage, but may not be suitable for all
+   * situation outside Gabble. */
+  grand = g_rand_new ();
+  uuid.time_low = g_rand_int (grand);
+  uuid.time_mid = (guint16) g_rand_int_range (grand, 0, G_MAXUINT16);
+  uuid.time_hi_and_version = (guint16) g_rand_int_range (grand, 0, G_MAXUINT16);
+  uuid.clock_seq_hi_and_rsv = (guint8) g_rand_int_range (grand, 0, G_MAXUINT8);
+  uuid.clock_seq_low = (guint8) g_rand_int_range (grand, 0, G_MAXUINT8);
+  uuid.node_hi = (guint16) g_rand_int_range (grand, 0, G_MAXUINT16);
+  uuid.node_low = g_rand_int (grand);
+  g_rand_free (grand);
+
+  /* Set the two most significant bits (bits 6 and 7) of the
+   * clock_seq_hi_and_rsv to zero and one, respectively. */
+  uuid.clock_seq_hi_and_rsv = (uuid.clock_seq_hi_and_rsv & 0x3F) | 0x80;
+
+  /* Set the four most significant bits (bits 12 through 15) of the
+   * time_hi_and_version field to 4 */
+  uuid.time_hi_and_version = (uuid.time_hi_and_version & 0x0fff) | 0x4000;
+
+  str = g_strdup_printf ("%08x-%04x-%04x-%02x%02x-%04x%08x",
+    uuid.time_low,
+    uuid.time_mid,
+    uuid.time_hi_and_version,
+    uuid.clock_seq_hi_and_rsv,
+    uuid.clock_seq_low,
+    uuid.node_hi,
+    uuid.node_low);
+
   return str;
 }
+
 
 static void
 lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
@@ -118,6 +161,7 @@ lm_message_node_add_own_nick (LmMessageNode *node,
 
   g_free (nick);
 }
+
 
 void
 lm_message_node_steal_children (LmMessageNode *snatcher,

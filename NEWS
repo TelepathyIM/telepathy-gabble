@@ -10,6 +10,9 @@ Fixes:
   · Made it compile when built with OpenSSL (wjt)
   · Handle the connection being disconnected by the remote side more gracefully
     (sjoerd)
+  · Make the XML parser more tolerant of recoverable errors in the incoming
+    stream. In particular, this fixes an issue with illegal namespaces in some
+    contacts' PEP nodes (sjoerd)
 • Fixed a memory allocation error which could cause corruption when using
   plugins which deal with capabilities (wjt)
 • Ensure only one OLPC activity is created for a given channel (tomeu)

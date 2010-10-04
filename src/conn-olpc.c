@@ -1186,17 +1186,13 @@ olpc_activities_pep_node_changed (WockyPepService *pep,
       return;
     }
 
-  if (handle == base->self_handle)
-    /* Ignore echoed pubsub notifications */
-    goto out;
+  if (handle != base->self_handle)
+    extract_activities (conn, stanza, handle);
 
-  extract_activities (conn, stanza, handle);
   activities = get_buddy_activities (conn, handle);
   gabble_svc_olpc_buddy_info_emit_activities_changed (conn, handle,
       activities);
   free_activities (activities);
-out:
-  tp_handle_unref (contact_repo, handle);
 }
 
 static GabbleOlpcActivity *

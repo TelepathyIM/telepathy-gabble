@@ -151,6 +151,12 @@ def test(q, bus, conn, stream):
 
     # Now send the reply.
     stream.send(iq)
+
+    # Which results in an AvatarUpdated signal
+    event = q.expect('dbus-signal', signal='AvatarUpdated')
+    assertEquals(self_handle, event.args[0])
+    assertEquals(hashlib.sha1(':-D').hexdigest(), event.args[1])
+
     # So Gabble has the right hash, and no need to ask the vCard again
     stream.send(presence_stanza)
     sync_stream(q, stream)

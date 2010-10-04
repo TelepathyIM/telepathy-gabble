@@ -18,6 +18,8 @@ def test(q, bus, conn, stream):
             query_name='vCard'))
 
     acknowledge_iq(stream, event.stanza)
+    # returning an empty vcard will cause ContactInfoChanged to fire
+    q.expect('dbus-signal', signal='ContactInfoChanged')
 
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     call_async(q, conn.ContactInfo, 'RefreshContactInfo', [handle])

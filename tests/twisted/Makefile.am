@@ -303,16 +303,7 @@ EXTRA_DIST = \
 	tls-cert.pem \
 	tls-key.pem
 
-# FIXME: These tests are known to fail sporadically: see
-# <https://bugs.freedesktop.org/show_bug.cgi?id=20635> and
-# <https://bugs.freedesktop.org/show_bug.cgi?id=22022>. To avoid driving people
-# making releases crazy, let's not run them for official releases.
-if OFFICIAL_RELEASE
-EXTRA_DIST += $(TWISTED_FT_TESTS) $(TWISTED_TUBE_TESTS)
-else
 TWISTED_TESTS += $(TWISTED_FT_TESTS) $(TWISTED_TUBE_TESTS)
-endif
-
 TWISTED_TESTS += $(TWISTED_JINGLE_TESTS) $(TWISTED_VCARD_TESTS)
 
 noinst_PROGRAMS = \

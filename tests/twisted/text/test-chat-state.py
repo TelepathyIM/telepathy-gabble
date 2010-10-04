@@ -6,7 +6,8 @@ channels.
 
 from twisted.words.xish import domish
 
-from servicetest import assertEquals, assertLength, wrap_channel, EventPattern
+from servicetest import assertEquals, assertNotEquals, \
+    assertLength, wrap_channel, EventPattern
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 import ns
@@ -184,6 +185,11 @@ def test(q, bus, conn, stream):
     stream_message = q.expect('stream-message', to=full_jid)
     check_state_notification(stream_message.stanza, 'composing')
 
+    changed = q.expect('dbus-signal', signal='ChatStateChanged')
+    handle, state = changed.args
+    assertEquals(cs.CHAT_STATE_COMPOSING, state)
+    assertEquals(self_handle, handle)
+
     chan.Text.Send(0, 'very convincing')
     stream_message = q.expect('stream-message', to=full_jid)
     check_state_notification(stream_message.stanza, 'active', allow_body=True)
@@ -218,9 +224,12 @@ def test(q, bus, conn, stream):
     # We get a notification back from our contact.
     stream.send(make_message(full_jid, state='composing'))
 
+    # Wait until gabble tells us the chat-state of the remote party has
+    # changed so we know gabble knows chat state notification are supported
     changed = q.expect('dbus-signal', signal='ChatStateChanged')
-    _, state = changed.args
+    handle, state = changed.args
     assertEquals(cs.CHAT_STATE_COMPOSING, state)
+    assertNotEquals(self_handle, handle)
 
     # So now we know they support notification, so should send notifications.
     chan.ChatState.SetChatState(cs.CHAT_STATE_COMPOSING)

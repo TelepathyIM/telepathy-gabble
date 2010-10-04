@@ -66,6 +66,7 @@ def test2(q, bus, connections, streams):
         conn.Connect()
         q.expect('dbus-signal', signal='StatusChanged', path=path,
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+        q.expect ('stream-presence')
 
     conn1, conn2 = connections
     stream1, stream2 = streams

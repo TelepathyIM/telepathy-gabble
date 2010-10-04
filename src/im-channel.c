@@ -347,12 +347,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
         }
       else
         {
-          priv->chat_states_supported = CHAT_STATES_SUPPORTED;
-
-          tp_svc_channel_interface_chat_state_emit_chat_state_changed (
-              (TpSvcChannelInterfaceChatState *) chan,
-              tp_base_channel_get_target_handle (base_chan),
-              (TpChannelChatState) state);
+          _gabble_im_channel_state_receive (chan, state);
         }
     }
   else

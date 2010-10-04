@@ -7,7 +7,7 @@ from dbus.exceptions import DBusException
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test, make_presence
+from gabbletest import exec_test, make_presence, sync_stream
 from servicetest import (
     make_channel_proxy, wrap_channel,
     EventPattern, call_async,
@@ -292,7 +292,11 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
     stream.send(jp.xml(node))
 
     # We get a new stream
-    e = q.expect('dbus-signal', signal = 'StreamAdded')
+    q.expect('dbus-signal', signal = 'StreamAdded')
+
+    # Sync up the stream to ensure we sent out all the xmpp traffic that was
+    # the result of a stream being added
+    sync_stream (q, stream)
 
     # happiness.. Now let's hang up
     if close_channel:

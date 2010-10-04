@@ -398,25 +398,33 @@ def test(q, bus, conn, stream, access_control):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', muc, 'test'))
 
-    # tubes channel is created
-    e = q.expect('dbus-signal', signal='NewChannels')
-    path, props = e.args[0][0]
-    assertEquals(cs.CHANNEL_TYPE_TUBES, props[cs.CHANNEL_TYPE])
-
-    tubes_iface = dbus.Interface(bus.get_object(conn.bus_name, path),
-        cs.CHANNEL_TYPE_TUBES)
 
     # tube is created as well
     e = q.expect('dbus-signal', signal='NewChannels')
-    path, props = e.args[0][0]
+    tube_path, props = e.args[0][0]
     assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
     assertEquals('chat2@conf.localhost/test', props[cs.INITIATOR_ID])
     assertEquals(False, props[cs.REQUESTED])
     assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
     assertEquals('com.example.TestCase', props[cs.DBUS_TUBE_SERVICE_NAME])
 
+    # text channel is created
+    e = q.expect('dbus-signal', signal='NewChannels')
+    path, props = e.args[0][0]
+    assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
+    assertEquals(True, props[cs.REQUESTED])
+
+    # tubes channel is created
+    e = q.expect('dbus-signal', signal='NewChannels')
+    path, props = e.args[0][0]
+    assertEquals(cs.CHANNEL_TYPE_TUBES, props[cs.CHANNEL_TYPE])
+    assertEquals(False, props[cs.REQUESTED])
+
+    tubes_iface = dbus.Interface(bus.get_object(conn.bus_name, path),
+        cs.CHANNEL_TYPE_TUBES)
+
     # tube is local-pending
-    tube_chan = bus.get_object(conn.bus_name, path)
+    tube_chan = bus.get_object(conn.bus_name, tube_path)
     state = tube_chan.Get(cs.CHANNEL_IFACE_TUBE, 'State',
             dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals(cs.TUBE_STATE_LOCAL_PENDING, state)

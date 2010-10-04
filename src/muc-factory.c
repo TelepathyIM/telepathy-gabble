@@ -424,9 +424,15 @@ muc_channel_new_tube (GabbleMucChannel *channel,
     gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
-  tp_channel_manager_emit_new_channel (fac,
+  /* If the muc channel is ready announce the tubes channel right away
+   * otherwise wait for the text channel to be ready */
+  if (_gabble_muc_channel_is_ready (channel))
+    tp_channel_manager_emit_new_channel (fac,
       TP_EXPORTABLE_CHANNEL (tube), NULL);
+  else
+    g_hash_table_insert (priv->text_needed_for_tubes, channel, tube);
 
   g_signal_connect (tube, "closed",
     G_CALLBACK (muc_sub_channel_closed_cb), fac);

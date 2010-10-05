@@ -23,6 +23,7 @@
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>
 
+#include "conn-presence.h"
 #include "connection.h"
 #include "connection-manager.h"
 #include "im-factory.h"
@@ -287,7 +288,13 @@ identify_account (TpBaseProtocol *self G_GNUC_UNUSED,
 static GStrv
 get_interfaces (TpBaseProtocol *self)
 {
-  return g_new0 (gchar *, 1);
+  return g_strsplit (TP_IFACE_PROTOCOL_INTERFACE_PRESENCE, ";", -1);
+}
+
+static const TpPresenceStatusSpec *
+get_presence_statuses (TpBaseProtocol *self)
+{
+  return gabble_base_statuses;
 }
 
 static void
@@ -347,6 +354,7 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   base_class->identify_account = identify_account;
   base_class->get_interfaces = get_interfaces;
   base_class->get_connection_details = get_connection_details;
+  base_class->get_statuses = get_presence_statuses;
 }
 
 TpBaseProtocol *

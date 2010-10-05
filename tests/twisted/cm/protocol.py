@@ -48,6 +48,8 @@ def test(q, bus, conn, stream):
                        'chat'     : (cs.PRESENCE_AVAILABLE,     True,  True),
                        'error'    : (cs.PRESENCE_ERROR,         False, False),
                        'offline'  : (cs.PRESENCE_OFFLINE,       False, False),
+                       'testaway' : (cs.PRESENCE_AWAY,          False, False),
+                       'testbusy' : (cs.PRESENCE_BUSY,          True,  False),
                        'hidden'   : (cs.PRESENCE_HIDDEN,        True,  True)}
 
     presences = proto_prop_iface.Get(cs.PROTOCOL_IFACE_PRESENCES, 'Statuses');

@@ -74,7 +74,7 @@ static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
 
 /* order must match PresenceId enum in connection.h */
 /* in increasing order of presence */
-static const TpPresenceStatusSpec base_statuses[] = {
+const TpPresenceStatusSpec gabble_base_statuses[] = {
   { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE,
     gabble_status_arguments, NULL, NULL },
   { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE,
@@ -1283,9 +1283,9 @@ status_available_cb (GObject *obj, guint status)
     gabble_statuses[status].presence_type;
 
   /* This relies on the fact the first entries in the statuses table
-   * are from base_statuses. If index to the statuses table is outside
-   * the base_statuses table, the status is provided by a plugin. */
-  if (status >= G_N_ELEMENTS (base_statuses))
+   * are from gabble_base_statuses. If index to the statuses table is outside
+   * the gabble_base_statuses table, the status is provided by a plugin. */
+  if (status >= G_N_ELEMENTS (gabble_base_statuses))
     {
       /* At the moment, plugins can only implement statuses via privacy
        * lists, so any extra status should be backed by one. If it's not
@@ -1343,7 +1343,7 @@ conn_presence_class_init (GabbleConnectionClass *klass)
       GabblePluginLoader *loader = gabble_plugin_loader_dup ();
 
       gabble_statuses = gabble_plugin_loader_append_statuses (
-          loader, base_statuses);
+          loader, gabble_base_statuses);
 
       g_object_unref (loader);
     }

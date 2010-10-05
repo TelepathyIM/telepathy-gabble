@@ -230,7 +230,7 @@ static gsize feature_handles_refcount = 0;
 static TpHandleRepoIface *feature_handles = NULL;
 
 void
-gabble_capabilities_init (GabbleConnection *conn)
+gabble_capabilities_init (gpointer conn)
 {
   DEBUG ("%p", conn);
 
@@ -313,7 +313,7 @@ gabble_capabilities_init (GabbleConnection *conn)
 }
 
 void
-gabble_capabilities_finalize (GabbleConnection *conn)
+gabble_capabilities_finalize (gpointer conn)
 {
   DEBUG ("%p", conn);
 

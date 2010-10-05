@@ -74,7 +74,7 @@ static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
 
 /* order must match PresenceId enum in connection.h */
 /* in increasing order of presence */
-const TpPresenceStatusSpec gabble_base_statuses[] = {
+static const TpPresenceStatusSpec gabble_base_statuses[] = {
   { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE,
     gabble_status_arguments, NULL, NULL },
   { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE,
@@ -989,6 +989,33 @@ conn_presence_set_initial_presence_finish (GabbleConnection *self,
 }
 
 /**
+ * conn_presence_statuses:
+ *
+ * Used to retrieve the list of presence statuses supported by connections
+ * consisting of the basic statuses followed by any statuses defined by
+ * plugins.
+ *
+ * Returns: an array of #TpPresenceStatusSpec terminated by a 0 filled member
+ * The array is owned by te connection presence implementation and must not
+ * be altered or freed by anyone else.
+ **/
+const TpPresenceStatusSpec *
+conn_presence_statuses (void)
+{
+  if (gabble_statuses == NULL)
+    {
+      GabblePluginLoader *loader = gabble_plugin_loader_dup ();
+
+      gabble_statuses = gabble_plugin_loader_append_statuses (
+          loader, gabble_base_statuses);
+
+      g_object_unref (loader);
+    }
+
+  return gabble_statuses;
+}
+
+/**
  * conn_presence_signal_own_presence:
  * @self: A #GabbleConnection
  * @to: bare or full JID for directed presence, or NULL
@@ -1329,7 +1356,6 @@ conn_presence_get_type (GabblePresence *presence)
   return gabble_statuses[presence->status].presence_type;
 }
 
-
 /* We should update this when telepathy-glib supports setting
  * statuses at constructor time (see
  *   https://bugs.freedesktop.org/show_bug.cgi?id=12896 ).
@@ -1338,25 +1364,14 @@ conn_presence_get_type (GabblePresence *presence)
 void
 conn_presence_class_init (GabbleConnectionClass *klass)
 {
-  if (gabble_statuses == NULL)
-    {
-      GabblePluginLoader *loader = gabble_plugin_loader_dup ();
-
-      gabble_statuses = gabble_plugin_loader_append_statuses (
-          loader, gabble_base_statuses);
-
-      g_object_unref (loader);
-    }
-
   tp_presence_mixin_class_init ((GObjectClass *) klass,
       G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
       status_available_cb, construct_contact_statuses_cb,
-      set_own_status_cb, gabble_statuses);
+      set_own_status_cb, conn_presence_statuses ());
 
   tp_presence_mixin_simple_presence_init_dbus_properties (
     (GObjectClass *) klass);
 }
-
 
 void
 conn_presence_init (GabbleConnection *conn)

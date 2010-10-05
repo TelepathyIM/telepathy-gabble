@@ -36,8 +36,6 @@ typedef enum {
     CONN_PRESENCE_ERROR_SET_INVISIBLE_PRESENCE
 } GabbleConnPresenceErrorType;
 
-extern const TpPresenceStatusSpec gabble_base_statuses[];
-
 GQuark conn_presence_error_quark (void);
 #define CONN_PRESENCE_ERROR (conn_presence_error_quark ())
 
@@ -61,6 +59,8 @@ void conn_decloak_emit_requested (GabbleConnection *conn,
     TpHandle contact, const gchar *reason, gboolean decloaked);
 
 GabblePresenceId conn_presence_get_type (GabblePresence *presence);
+
+const TpPresenceStatusSpec *conn_presence_statuses (void);
 
 G_END_DECLS
 

@@ -298,7 +298,7 @@ get_interfaces (TpBaseProtocol *self)
 static const TpPresenceStatusSpec *
 get_presence_statuses (TpBaseProtocol *self)
 {
-  return gabble_base_statuses;
+  return conn_presence_statuses ();
 }
 
 static void

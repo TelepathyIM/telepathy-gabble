@@ -452,6 +452,54 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
       (GDestroyNotify) g_hash_table_destroy);
 }
 
+void
+capabilities_fill_cache (GabblePresenceCache *cache)
+{
+#define GOOGLE_BUNDLE(cap, features) \
+  gabble_presence_cache_add_bundle_caps (cache, \
+      "http://www.google.com/xmpp/client/caps#" cap, features); \
+  gabble_presence_cache_add_bundle_caps (cache, \
+      "http://talk.google.com/xmpp/client/caps#" cap, features);
+
+  /* Cache various bundle from the Google Talk clients as trusted.  Some old
+   * versions of Google Talk do not reply correctly to discovery requests.
+   * Plus, we know what Google's bundles mean, so it's a waste of time to disco
+   * them, particularly the ones for features we don't support. The desktop
+   * client doesn't currently have all of these, but it doesn't hurt to cache
+   * them anyway.
+   */
+  GOOGLE_BUNDLE ("voice-v1", NS_GOOGLE_FEAT_VOICE);
+  GOOGLE_BUNDLE ("video-v1", NS_GOOGLE_FEAT_VIDEO);
+
+  /* File transfer support */
+  GOOGLE_BUNDLE ("share-v1", NS_GOOGLE_FEAT_SHARE);
+
+  /* Not really sure what this ones is. */
+  GOOGLE_BUNDLE ("sms-v1", NULL);
+
+  /* TODO: remove this when we fix fd.o#22768. */
+  GOOGLE_BUNDLE ("pmuc-v1", NULL);
+
+  /* The camera-v1 bundle seems to mean "I have a camera plugged in". Not
+   * having it doesn't seem to affect anything, and we have no way of exposing
+   * that information anyway.
+   */
+  GOOGLE_BUNDLE ("camera-v1", NULL);
+
+#undef GOOGLE_BUNDLE
+
+  /* We should also cache the ext='' bundles Gabble advertises: older Gabbles
+   * advertise these and don't support hashed caps, and we shouldn't need to
+   * disco them.
+   */
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE);
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_VIDEO_V1, NS_GOOGLE_FEAT_VIDEO);
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_SHARE_V1, NS_GOOGLE_FEAT_SHARE);
+}
+
 static GObject *
 gabble_presence_cache_constructor (GType type, guint n_props,
                                    GObjectConstructParam *props)

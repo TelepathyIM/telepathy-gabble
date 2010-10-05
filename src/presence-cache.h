@@ -139,6 +139,13 @@ GHashTable* gabble_presence_cache_get_location (GabblePresenceCache *cache,
 gboolean gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
     TpHandle handle, const gchar *resource);
 
+/*
+ * capabilities_fill_cache
+ *
+ * Fill up the given GabblePresenceCache with known feature nodes
+ */
+void capabilities_fill_cache (GabblePresenceCache *cache);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_CACHE_H__ */

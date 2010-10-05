@@ -118,14 +118,24 @@ slacker_message_filter (
 {
   GabbleSlacker *self = GABBLE_SLACKER (user_data);
   GQuark interface, member;
-  int message_type;
+  const gchar *interface_name = NULL;
+  const gchar *member_name = NULL;
 
-  interface = g_quark_try_string (dbus_message_get_interface (message));
-  member = g_quark_try_string (dbus_message_get_member (message));
-  message_type = dbus_message_get_type (message);
+  if (dbus_message_get_type (message) != DBUS_MESSAGE_TYPE_SIGNAL)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  interface_name = dbus_message_get_interface (message);
+  if (interface_name == NULL)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  member_name = dbus_message_get_member (message);
+  if (member_name == NULL)
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+  interface = g_quark_try_string (interface_name);
+  member = g_quark_try_string (member_name);
 
   if (interface == mce_signal_interface_quark &&
-      message_type == DBUS_MESSAGE_TYPE_SIGNAL &&
       member == mce_inactivity_signal_quark)
     {
       gboolean is_inactive;

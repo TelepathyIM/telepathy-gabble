@@ -3,8 +3,6 @@
 Test workarounds for gtalk
 """
 
-import dbus
-
 from gabbletest import (
     acknowledge_iq, exec_test, sync_stream, make_result_iq, GoogleXmlStream,
     )
@@ -137,6 +135,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
     sometimes. Here, we test that Gabble is suppressing the flickers.
     """
 
+    self_handle = conn.GetSelfHandle()
     contact = 'bob@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
 
@@ -179,8 +178,12 @@ def test_flickering(q, bus, conn, stream, subscribe):
             args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
             predicate=is_stored),
         EventPattern('dbus-signal', signal='MembersChanged',
-            args=['', [], [], [], [handle], 0, cs.GC_REASON_NONE],
+            args=['', [], [], [], [handle], self_handle, cs.GC_REASON_NONE],
             predicate=is_subscribe),
+        EventPattern('dbus-signal', signal='ContactsChanged',
+            args=[{handle:
+                (cs.SUBSCRIPTION_STATE_ASK, cs.SUBSCRIPTION_STATE_NO, ''),
+                }, []]),
         )
 
     # Gabble shouldn't report any changes to subscribe or stored's members in
@@ -190,6 +193,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
             predicate=is_subscribe),
         EventPattern('dbus-signal', signal='MembersChanged',
             predicate=is_stored),
+        EventPattern('dbus-signal', signal='ContactsChanged'),
         ]
     q.forbid_events(change_events)
 
@@ -228,9 +232,15 @@ def test_flickering(q, bus, conn, stream, subscribe):
     stream.send(presence)
 
     # Gabble should report this update to the UI.
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [handle], [], [], [], 0, cs.GC_REASON_NONE],
-        predicate=is_subscribe)
+    q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [handle], [], [], [], handle, cs.GC_REASON_NONE],
+            predicate=is_subscribe),
+        EventPattern('dbus-signal', signal='ContactsChanged',
+            args=[{handle:
+                (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
+                }, []]),
+        )
 
     # Gabble shouldn't report any changes to subscribe or stored's members in
     # response to the next two roster updates.
@@ -267,8 +277,6 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
     directions, at which point they will vanish from 'stored', while
     remaining on 'deny'.
     """
-    self_handle = conn.GetSelfHandle()
-
     contact = 'blocked-but-subscribed@boards.ca'
     handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     assertContains(handle,
@@ -294,6 +302,8 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
     # As a result they should drop off all three non-deny lists, but not fall
     # off deny:
     q.expect_many(
+        EventPattern('dbus-signal', signal='ContactsChanged',
+            args=[{}, [handle]]),
         *[ EventPattern('dbus-signal', signal='MembersChanged',
                         args=['', [], [handle], [], [], 0, cs.GC_REASON_NONE],
                         predicate=p)
@@ -372,6 +382,8 @@ def test_deny_overlap_one(q, bus, conn, stream, subscribe, stored, deny):
         EventPattern('dbus-signal', signal='MembersChanged',
             predicate=is_stored,
             args=["", [], [handle], [], [], 0, 0]),
+        EventPattern('dbus-signal', signal='ContactsChanged',
+            args=[{}, [handle]]),
         )
 
     # And he should definitely still be on deny. That rascal.

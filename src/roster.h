@@ -24,6 +24,8 @@
 
 #include <glib-object.h>
 
+#include <telepathy-glib/base-contact-list.h>
+
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -48,24 +50,13 @@ GType gabble_roster_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_ROSTER, GabbleRosterClass))
 
 struct _GabbleRosterClass {
-    GObjectClass parent_class;
+    TpBaseContactListClass parent_class;
 };
 
 struct _GabbleRoster {
-    GObject parent;
+    TpBaseContactList parent;
     GabbleRosterPrivate *priv;
 };
-
-typedef enum
-{
-  GABBLE_ROSTER_SUBSCRIPTION_NONE = 0,
-  GABBLE_ROSTER_SUBSCRIPTION_FROM = 1 << 0,
-  GABBLE_ROSTER_SUBSCRIPTION_TO = 1 << 1,
-  GABBLE_ROSTER_SUBSCRIPTION_BOTH = GABBLE_ROSTER_SUBSCRIPTION_FROM |
-      GABBLE_ROSTER_SUBSCRIPTION_TO,
-  GABBLE_ROSTER_SUBSCRIPTION_REMOVE = 1 << 2,
-  GABBLE_ROSTER_SUBSCRIPTION_INVALID = 1 << 3,
-} GabbleRosterSubscription;
 
 GabbleRoster *gabble_roster_new (GabbleConnection *);
 
@@ -74,47 +65,10 @@ gboolean gabble_roster_handle_sends_presence_to_us (GabbleRoster *,
 gboolean gabble_roster_handle_gets_presence_from_us (GabbleRoster *,
     TpHandle);
 
-GabbleRosterSubscription gabble_roster_handle_get_subscription (GabbleRoster *,
-    TpHandle);
-gboolean gabble_roster_handle_set_blocked (GabbleRoster *, TpHandle, gboolean,
-    GError **);
 const gchar *gabble_roster_handle_get_name (GabbleRoster *, TpHandle);
 gboolean gabble_roster_handle_set_name (GabbleRoster *, TpHandle,
     const gchar *, GError **);
-gboolean gabble_roster_handle_remove (GabbleRoster *, TpHandle, GError **);
-gboolean gabble_roster_handle_add (GabbleRoster *, TpHandle, GError **);
 gboolean gabble_roster_handle_has_entry (GabbleRoster *, TpHandle);
-
-gboolean gabble_roster_handle_add_to_group (GabbleRoster *roster,
-                                            TpHandle handle,
-                                            TpHandle group,
-                                            GError **error);
-gboolean gabble_roster_handle_remove_from_group (GabbleRoster *roster,
-                                                 TpHandle handle,
-                                                 TpHandle group,
-                                                 GError **error);
-
-gboolean gabble_roster_handle_subscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
-gboolean gabble_roster_handle_unsubscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
-
-gboolean gabble_roster_handle_subscribed (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
-gboolean gabble_roster_handle_unsubscribed (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error);
 
 G_END_DECLS
 

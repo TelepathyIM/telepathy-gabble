@@ -4,15 +4,15 @@ Regression tests for rescinding outstanding subscription requests.
 
 from twisted.words.protocols.jabber.client import IQ
 
-from servicetest import EventPattern, assertEquals, assertLength
-from gabbletest import exec_test, GoogleXmlStream
+from servicetest import EventPattern, assertEquals, assertLength, call_async
+from gabbletest import exec_test, acknowledge_iq
 from rostertest import expect_contact_list_signals, check_contact_list_signals
 import constants as cs
 import ns
 
 jid = 'marco@barisione.lit'
 
-def test(q, bus, conn, stream, remove, local):
+def test(q, bus, conn, stream, remove, local, modern):
     conn.Connect()
 
     # Gabble asks for the roster; the server sends back an empty roster.
@@ -23,7 +23,7 @@ def test(q, bus, conn, stream, remove, local):
     pairs = expect_contact_list_signals(q, bus, conn,
             ['publish', 'subscribe', 'stored'])
 
-    publish = check_contact_list_signals(q, bus, conn, pairs.pop(0),
+    check_contact_list_signals(q, bus, conn, pairs.pop(0),
             cs.HT_LIST, 'publish', [])
     subscribe = check_contact_list_signals(q, bus, conn, pairs.pop(0),
             cs.HT_LIST, 'subscribe', [])
@@ -32,6 +32,7 @@ def test(q, bus, conn, stream, remove, local):
 
     assertLength(0, pairs)      # i.e. we've checked all of them
 
+    self_handle = conn.GetSelfHandle()
     h = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
 
     # Another client logged into our account (Gajim, say) wants to subscribe to
@@ -55,8 +56,15 @@ def test(q, bus, conn, stream, remove, local):
     stream.send(iq)
 
     # In response, Gabble should add Marco to stored:
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [h], [], [], [], 0, 0], path=stored.object_path)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=['', [h], [], [], [], 0, 0], path=stored.object_path),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{ h: (cs.SUBSCRIPTION_STATE_NO,
+                        cs.SUBSCRIPTION_STATE_NO, ''), },
+                    []],
+                ),
+            )
 
     # Gajim sends a <presence type='subscribe'/> to Marco. 'As a result, the
     # user's server MUST initiate a second roster push to all of the user's
@@ -70,9 +78,16 @@ def test(q, bus, conn, stream, remove, local):
     stream.send(iq)
 
     # In response, Gabble should add Marco to subscribe:remote-pending:
-    q.expect('dbus-signal', signal='MembersChanged',
-        args=['', [], [], [], [h], 0, 0],
-        path=subscribe.object_path)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='MembersChanged',
+                args=['', [], [], [], [h], self_handle, 0],
+                path=subscribe.object_path),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{ h: (cs.SUBSCRIPTION_STATE_ASK,
+                        cs.SUBSCRIPTION_STATE_NO, ''),
+                    }, []],
+                ),
+            )
 
     # The user decides that they don't care what Marco's baking after all
     # (maybe they read his blog instead?) and:
@@ -80,7 +95,10 @@ def test(q, bus, conn, stream, remove, local):
         # ...removes him from the roster...
         if local:
             # ...by telling Gabble to remove him from stored.
-            stored.Group.RemoveMembers([h], '')
+            if modern:
+                call_async(q, conn.ContactList, 'RemoveContacts', [h])
+            else:
+                stored.Group.RemoveMembers([h], '')
 
             event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
             item = event.query.firstChildElement()
@@ -112,14 +130,31 @@ def test(q, bus, conn, stream, remove, local):
             EventPattern('dbus-signal', signal='MembersChanged',
                 args=['', [], [h], [], [], 0, 0],
                 path=stored.object_path),
+            EventPattern('dbus-signal', signal='ContactsChanged',
+                args=[{}, [h]],
+                ),
             )
+
+        if local and modern:
+            acknowledge_iq(stream, event.stanza)
+            q.expect('dbus-return', method='RemoveContacts')
     else:
         # ...rescinds the subscription request...
         if local:
             # ...by telling Gabble to remove him from 'subscribe'.
-            subscribe.Group.RemoveMembers([h], '')
+            if modern:
+                call_async(q, conn.ContactList, 'Unsubscribe', [h])
+            else:
+                subscribe.Group.RemoveMembers([h], '')
 
-            q.expect('stream-presence', to=jid, presence_type='unsubscribe')
+            events = [EventPattern('stream-presence', to=jid,
+                presence_type='unsubscribe')]
+
+            if modern:
+                events.append(EventPattern('dbus-return',
+                    method='Unsubscribe'))
+
+            event = q.expect_many(*events)[0]
         else:
             # ...in the other client.
             pass
@@ -136,24 +171,48 @@ def test(q, bus, conn, stream, remove, local):
         # subscribe:remote-pending. It shouldn't wait for the <presence
         # type='unsubscribed'/> ack before doing so: empirical tests reveal
         # that it's never delivered.
-        q.expect('dbus-signal', signal='MembersChanged',
-            args=['', [], [h], [], [], 0, 0],
-            path=subscribe.object_path)
+        q.expect_many(
+                EventPattern('dbus-signal', signal='MembersChanged',
+                    args=['', [], [h], [], [], 0, 0],
+                    path=subscribe.object_path),
+                EventPattern('dbus-signal', signal='ContactsChanged',
+                    args=[{ h:
+                        (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO,
+                            ''),
+                        }, []],
+                    ),
+                )
 
 def test_remove_local(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=True, local=True)
+    test(q, bus, conn, stream, remove=True, local=True, modern=True)
 
 def test_unsubscribe_local(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=False, local=True)
+    test(q, bus, conn, stream, remove=False, local=True, modern=True)
 
 def test_remove_remote(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=True, local=False)
+    test(q, bus, conn, stream, remove=True, local=False, modern=True)
 
 def test_unsubscribe_remote(q, bus, conn, stream):
-    test(q, bus, conn, stream, remove=False, local=False)
+    test(q, bus, conn, stream, remove=False, local=False, modern=True)
+
+def test_remove_local_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=True, local=True, modern=False)
+
+def test_unsubscribe_local_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=False, local=True, modern=False)
+
+def test_remove_remote_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=True, local=False, modern=False)
+
+def test_unsubscribe_remote_old(q, bus, conn, stream):
+    test(q, bus, conn, stream, remove=False, local=False, modern=False)
 
 if __name__ == '__main__':
     exec_test(test_remove_local)
     exec_test(test_unsubscribe_local)
     exec_test(test_remove_remote)
     exec_test(test_unsubscribe_remote)
+    exec_test(test_remove_local_old)
+    exec_test(test_unsubscribe_local_old)
+    exec_test(test_remove_remote_old)
+    exec_test(test_unsubscribe_remote_old)

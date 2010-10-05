@@ -127,4 +127,18 @@ gboolean
 gabble_flag_from_nick (GType flag_type, const gchar *nick,
     guint *value);
 
+void gabble_simple_async_succeed_or_fail_in_idle (gpointer self,
+    GAsyncReadyCallback callback,
+    gpointer user_data,
+    gpointer source_tag,
+    const GError *error);
+
+GSimpleAsyncResult *gabble_simple_async_countdown_new (gpointer self,
+    GAsyncReadyCallback callback,
+    gpointer user_data,
+    gpointer source_tag,
+    gssize todo);
+void gabble_simple_async_countdown_inc (GSimpleAsyncResult *simple);
+void gabble_simple_async_countdown_dec (GSimpleAsyncResult *simple);
+
 #endif /* __GABBLE_UTIL_H__ */

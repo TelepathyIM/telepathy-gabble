@@ -40,17 +40,9 @@
 #include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "roster-channel.h"
 #include "util.h"
 
 #define GOOGLE_ROSTER_VERSION "2"
-
-/* Properties */
-enum
-{
-  PROP_CONNECTION = 1,
-  LAST_PROPERTY
-};
 
 /* signal enum */
 enum
@@ -69,16 +61,14 @@ struct _GabbleRosterPrivate
   LmMessageHandler *iq_cb;
   LmMessageHandler *presence_cb;
 
-  GHashTable *list_channels;
-  GHashTable *group_channels;
   GHashTable *items;
+  TpHandleSet *groups;
 
-  /* borrowed TpExportableChannel * => GSList of gpointer (request tokens)
-   * that will be satisfied when it's ready. The requests are in reverse
-   * chronological order */
-  GHashTable *queued_requests;
+  /* set of contacts whose subscription requests will automatically be
+   * accepted during this session */
+  TpHandleSet *pre_authorized;
 
-  gboolean roster_received;
+  gboolean received;
   gboolean dispose_has_run;
 };
 
@@ -91,16 +81,37 @@ typedef enum
   GOOGLE_ITEM_TYPE_PINNED,
 } GoogleItemType;
 
+typedef enum
+{
+  GABBLE_ROSTER_SUBSCRIPTION_NONE = 0,
+  GABBLE_ROSTER_SUBSCRIPTION_FROM,
+  GABBLE_ROSTER_SUBSCRIPTION_TO,
+  GABBLE_ROSTER_SUBSCRIPTION_BOTH,
+  GABBLE_ROSTER_SUBSCRIPTION_REMOVE,
+  GABBLE_ROSTER_SUBSCRIPTION_INVALID,
+} GabbleRosterSubscription;
+
 typedef struct _GabbleRosterItemEdit GabbleRosterItemEdit;
 struct _GabbleRosterItemEdit
 {
+  TpHandleRepoIface *contact_repo;
+  TpHandle handle;
+
+  /* if TRUE, we must create this roster item, so send the IQ even if we
+   * don't appear to be changing anything */
+  gboolean create;
+
+  /* list of reffed GSimpleAsyncResult */
+  GSList *results;
+
   /* if these are ..._INVALID, that means don't edit */
   GabbleRosterSubscription new_subscription;
   GoogleItemType new_google_type;
-  /* owned by the item; if NULL, that means don't edit */
+  /* owned by the GabbleRosterItemEdit; if NULL, that means don't edit */
   gchar *new_name;
   TpHandleSet *add_to_groups;
   TpHandleSet *remove_from_groups;
+  gboolean remove_from_all_other_groups;
 };
 
 typedef struct _GabbleRosterItem GabbleRosterItem;
@@ -112,11 +123,18 @@ struct _GabbleRosterItem
   gchar *name;
   gchar *alias_for;
   TpHandleSet *groups;
-  /* if not NULL, an edit attempt is already "in-flight" so instead of
-   * sending off another, store required edits here until the one we
-   * already sent is acknowledged - this prevents some race conditions
-   */
+  /* if TRUE, an edit attempt is already "in-flight" so we can't send off
+   * edits immediately - instead, store them in unsent_edits */
+  gboolean edits_in_flight;
   GabbleRosterItemEdit *unsent_edits;
+
+  /* Might not match @subscription and @ask_subscribe exactly, in cases where
+   * we're working around server breakage */
+  TpSubscriptionState subscribe;
+  TpSubscriptionState publish;
+  gchar *publish_request;
+  gboolean stored;
+  gboolean blocked;
 
   /* If non-zero, the GSource id for a call to flicker_prevention_timeout. */
   guint flicker_prevention_id;
@@ -130,59 +148,28 @@ struct _FlickerPreventionCtx
   GabbleRosterItem *item;
 };
 
-static void channel_manager_iface_init (gpointer, gpointer);
-static void gabble_roster_init (GabbleRoster *roster);
-static GObject * gabble_roster_constructor (GType type, guint n_props,
-    GObjectConstructParam *props);
-static void gabble_roster_dispose (GObject *object);
-static void gabble_roster_finalize (GObject *object);
-static void gabble_roster_set_property (GObject *object, guint property_id,
-    const GValue *value, GParamSpec *pspec);
-static void gabble_roster_get_property (GObject *object, guint property_id,
-    GValue *value, GParamSpec *pspec);
-
 static void roster_item_cancel_flicker_timeout (GabbleRosterItem *item);
 static void _gabble_roster_item_free (GabbleRosterItem *item);
 static void item_edit_free (GabbleRosterItemEdit *edits);
 static void gabble_roster_close_all (GabbleRoster *roster);
 
-G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-      channel_manager_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL));
+static void mutable_iface_init (TpMutableContactListInterface *iface);
+static void blockable_iface_init (TpBlockableContactListInterface *iface);
+static void contact_groups_iface_init (TpContactGroupListInterface *iface);
+static void mutable_contact_groups_iface_init (
+    TpMutableContactGroupListInterface *iface);
 
-static void
-gabble_roster_class_init (GabbleRosterClass *gabble_roster_class)
-{
-  GObjectClass *object_class = G_OBJECT_CLASS (gabble_roster_class);
-  GParamSpec *param_spec;
-
-  g_type_class_add_private (gabble_roster_class, sizeof (GabbleRosterPrivate));
-
-  object_class->constructor = gabble_roster_constructor;
-
-  object_class->dispose = gabble_roster_dispose;
-  object_class->finalize = gabble_roster_finalize;
-
-  object_class->get_property = gabble_roster_get_property;
-  object_class->set_property = gabble_roster_set_property;
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this XMPP roster object.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class,
-                                   PROP_CONNECTION,
-                                   param_spec);
-
-  signals[NICKNAME_UPDATE] = g_signal_new (
-    "nickname-update",
-    G_TYPE_FROM_CLASS (gabble_roster_class),
-    G_SIGNAL_RUN_LAST,
-    0,
-    NULL, NULL,
-    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
-}
+G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster,
+    TP_TYPE_BASE_CONTACT_LIST,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_MUTABLE_CONTACT_LIST,
+      mutable_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CONTACT_GROUP_LIST,
+      contact_groups_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_MUTABLE_CONTACT_GROUP_LIST,
+      mutable_contact_groups_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_BLOCKABLE_CONTACT_LIST,
+      blockable_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL))
 
 static void
 gabble_roster_init (GabbleRoster *obj)
@@ -192,20 +179,11 @@ gabble_roster_init (GabbleRoster *obj)
 
   obj->priv = priv;
 
-  priv->list_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, g_object_unref);
-
-  priv->group_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, g_object_unref);
-
   priv->items = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) _gabble_roster_item_free);
-
-  priv->queued_requests = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, NULL);
 }
 
-void
+static void
 gabble_roster_dispose (GObject *object)
 {
   GabbleRoster *self = GABBLE_ROSTER (object);
@@ -222,9 +200,8 @@ gabble_roster_dispose (GObject *object)
   g_assert (priv->presence_cb == NULL);
 
   gabble_roster_close_all (self);
-  g_assert (priv->group_channels == NULL);
-  g_assert (priv->list_channels == NULL);
-  g_assert (priv->queued_requests == NULL);
+  g_assert (priv->groups == NULL);
+  g_assert (priv->pre_authorized == NULL);
 
   if (G_OBJECT_CLASS (gabble_roster_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_roster_parent_class)->dispose (object);
@@ -241,7 +218,7 @@ item_handle_unref_foreach (gpointer key, gpointer data, gpointer user_data)
   tp_handle_unref (contact_repo, handle);
 }
 
-void
+static void
 gabble_roster_finalize (GObject *object)
 {
   GabbleRoster *self = GABBLE_ROSTER (object);
@@ -256,44 +233,6 @@ gabble_roster_finalize (GObject *object)
 }
 
 static void
-gabble_roster_get_property (GObject    *object,
-                            guint       property_id,
-                            GValue     *value,
-                            GParamSpec *pspec)
-{
-  GabbleRoster *roster = GABBLE_ROSTER (object);
-  GabbleRosterPrivate *priv = roster->priv;
-
-  switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-      break;
-  }
-}
-
-static void
-gabble_roster_set_property (GObject     *object,
-                            guint        property_id,
-                            const GValue *value,
-                            GParamSpec   *pspec)
-{
-  GabbleRoster *roster = GABBLE_ROSTER (object);
-  GabbleRosterPrivate *priv = roster->priv;
-
-  switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      break;
-    default:
-      G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
-      break;
-  }
-}
-
-static void
 _gabble_roster_item_free (GabbleRosterItem *item)
 {
   g_assert (item != NULL);
@@ -302,6 +241,7 @@ _gabble_roster_item_free (GabbleRosterItem *item)
   item_edit_free (item->unsent_edits);
   g_free (item->name);
   g_free (item->alias_for);
+  g_free (item->publish_request);
 
   roster_item_cancel_flicker_timeout (item);
 
@@ -455,7 +395,8 @@ _google_roster_item_should_keep (const gchar *jid,
   if (item->ask_subscribe)
     return TRUE;
 
-  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE)
+  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE &&
+      item->subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     return TRUE;
 
   /* discard anything else */
@@ -506,6 +447,14 @@ _gabble_roster_item_ensure (GabbleRoster *roster,
         }
 
       item = g_slice_new0 (GabbleRosterItem);
+      /* We may want it to be on the roster, but it's not there yet, so the
+       * most accurate description of how to reach this state is "remove".
+       * We'll keep this transient roster item for as long as it has edits
+       * pending, or some other reason to stay around (a pending publish
+       * request, for instance). */
+      item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+      item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+      item->publish = TP_SUBSCRIPTION_STATE_NO;
       item->name = alias;
       item->groups = tp_handle_set_new (group_repo);
       tp_handle_ref (contact_repo, handle);
@@ -515,120 +464,75 @@ _gabble_roster_item_ensure (GabbleRoster *roster,
   return item;
 }
 
-static void
-_gabble_roster_item_remove (GabbleRoster *roster,
-                            TpHandle handle)
+static gboolean
+_gabble_roster_item_maybe_remove (GabbleRoster *roster,
+    TpHandle handle)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItem *item;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
+  item = _gabble_roster_item_lookup (roster, handle);
+
+  /* don't remove items that are really on our server-side roster */
+  if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+    {
+      DEBUG ("contact#%u is still on the roster", handle);
+      return FALSE;
+    }
+
+  /* don't remove items that have edits in flight */
+  if (item->edits_in_flight)
+    {
+      DEBUG ("contact#%u has edits in flight", handle);
+      return FALSE;
+    }
+
+  /* don't remove transient items that represent publish/subscribe state */
+  if (item->publish != TP_SUBSCRIPTION_STATE_NO)
+    {
+      DEBUG ("contact#%u has publish=%u", handle, item->publish);
+      return FALSE;
+    }
+
+  if (item->subscribe != TP_SUBSCRIPTION_STATE_NO)
+    {
+      DEBUG ("contact#%u has subscribe=%u", handle, item->subscribe);
+      return FALSE;
+    }
+
+  DEBUG ("removing contact#%u", handle);
+  item = NULL;
   g_hash_table_remove (priv->items, GUINT_TO_POINTER (handle));
   tp_handle_unref (contact_repo, handle);
-}
-
-/* FIXME: we have _get_channel, _create_channel, request_channel and
- * create_channel - this is confusing, and surely we ought to be able to
- * simplify the non-API code? */
-
-/* the TpHandleType must be GROUP or LIST */
-static GabbleRosterChannel *_gabble_roster_get_channel (GabbleRoster *,
-    TpHandleType, TpHandle, gboolean *created, gpointer request_token);
-
-static void gabble_roster_associate_request (GabbleRoster *self,
-    GabbleRosterChannel *channel, gpointer request);
-
-typedef struct
-{
-  TpHandleRepoIface *contact_repo;
-  TpHandleRepoIface *group_repo;
-  /* TpHandle borrowed from GroupMembershipUpdate => GroupMembershipUpdate */
-  GHashTable *group_mem_updates;
-  /* borrowed from the GabbleRosterItem */
-  guint contact_handle;
-} GroupsUpdateContext;
-
-typedef struct
-{
-  TpHandleRepoIface *group_repo;
-  TpHandleSet *contacts_added;
-  TpHandleSet *contacts_removed;
-  /* referenced */
-  guint group_handle;
-} GroupMembershipUpdate;
-
-static GroupMembershipUpdate *
-group_mem_update_ensure (GroupsUpdateContext *ctx,
-                         TpHandle group_handle)
-{
-  GroupMembershipUpdate *update = g_hash_table_lookup (ctx->group_mem_updates,
-      GUINT_TO_POINTER (group_handle));
-
-  if (update != NULL)
-    return update;
-
-  DEBUG ("Creating new hash table entry for group#%u", group_handle);
-  update = g_slice_new0 (GroupMembershipUpdate);
-  update->group_repo = ctx->group_repo;
-  tp_handle_ref (update->group_repo, group_handle);
-  update->group_handle = group_handle;
-  update->contacts_added = tp_handle_set_new (ctx->contact_repo);
-  update->contacts_removed = tp_handle_set_new (ctx->contact_repo);
-  g_hash_table_insert (ctx->group_mem_updates,
-                       GUINT_TO_POINTER (group_handle),
-                       update);
-  return update;
-}
-
-static void
-_update_add_to_group (guint group_handle, gpointer user_data)
-{
-  GroupsUpdateContext *ctx = (GroupsUpdateContext *) user_data;
-  GroupMembershipUpdate *update = group_mem_update_ensure (ctx, group_handle);
-
-  DEBUG ("- contact#%u added to group#%u", ctx->contact_handle,
-         group_handle);
-  tp_handle_set_add (update->contacts_added, ctx->contact_handle);
-}
-
-static void
-_update_remove_from_group (guint group_handle, gpointer user_data)
-{
-  GroupsUpdateContext *ctx = (GroupsUpdateContext *) user_data;
-  GroupMembershipUpdate *update = group_mem_update_ensure (ctx, group_handle);
-
-  DEBUG ("- contact#%u removed from group#%u", ctx->contact_handle,
-         group_handle);
-  tp_handle_set_add (update->contacts_removed, ctx->contact_handle);
+  return TRUE;
 }
 
 static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
                             TpHandle contact_handle,
                             LmMessageNode *node,
-                            GHashTable *group_updates,
                             gboolean google_roster_mode)
 {
   GabbleRosterPrivate *priv = roster->priv;
   GabbleRosterItem *item;
   const gchar *ask, *name;
   TpIntSet *new_groups, *added_to, *removed_from, *removed_from2;
-  TpHandleSet *new_groups_handle_set;
-  GroupsUpdateContext ctx = { NULL, NULL, group_updates,
-      contact_handle };
-
-  ctx.contact_repo = tp_base_connection_get_handles (
+  TpHandleSet *new_groups_handle_set, *old_groups;
+  TpBaseContactList *base = (TpBaseContactList *) roster;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  ctx.group_repo = tp_base_connection_get_handles (
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
-  g_assert (tp_handle_is_valid (ctx.contact_repo, contact_handle, NULL));
+  g_assert (tp_handle_is_valid (contact_repo, contact_handle, NULL));
   g_assert (node != NULL);
 
   item = _gabble_roster_item_ensure (roster, contact_handle);
@@ -667,24 +571,104 @@ _gabble_roster_item_update (GabbleRoster *roster,
   new_groups_handle_set = _parse_item_groups (node,
       (TpBaseConnection *) priv->conn);
   new_groups = tp_handle_set_peek (new_groups_handle_set);
+  old_groups = tp_handle_set_copy (item->groups);
 
   removed_from = tp_intset_difference (tp_handle_set_peek (item->groups),
       new_groups);
   added_to = tp_handle_set_update (item->groups, new_groups);
   removed_from2 = tp_handle_set_difference_update (item->groups, removed_from);
 
-  DEBUG ("Checking which groups contact#%u was just added to:",
-      contact_handle);
-  tp_intset_foreach (added_to, _update_add_to_group, &ctx);
-  DEBUG ("Checking which groups contact#%u was just removed from:",
-      contact_handle);
-  tp_intset_foreach (removed_from, _update_remove_from_group, &ctx);
+  if (roster->priv->groups != NULL)
+    {
+      TpIntSet *created_groups = tp_handle_set_update (roster->priv->groups,
+          new_groups);
+
+      /* we don't need to do this work if TpBaseContactList will just be
+       * ignoring it, as it will before we've received the roster */
+      if (tp_base_contact_list_get_state ((TpBaseContactList *) roster,
+            NULL) == TP_CONTACT_LIST_STATE_SUCCESS &&
+          !tp_intset_is_empty (created_groups))
+        {
+          GPtrArray *strv = g_ptr_array_sized_new (tp_intset_size (
+                created_groups));
+          TpIntSetFastIter iter;
+          TpHandle group;
+
+          tp_intset_fast_iter_init (&iter, created_groups);
+
+          while (tp_intset_fast_iter_next (&iter, &group))
+            {
+              const gchar *group_name = tp_handle_inspect (group_repo,
+                  group);
+
+              DEBUG ("Group was just created: #%u '%s'", group, group_name);
+              g_ptr_array_add (strv, (gchar *) group_name);
+            }
+
+          tp_base_contact_list_groups_created ((TpBaseContactList *) roster,
+              (const gchar * const *) strv->pdata, strv->len);
+
+          g_ptr_array_free (strv, TRUE);
+        }
+
+      tp_clear_pointer (&created_groups, tp_intset_destroy);
+    }
+
+  /* We emit one GroupsChanged signal per contact, because that's most natural
+   * for XMPP, where we usually get a roster push for a single contact.
+   *
+   * The exception is when we're receiving our initial roster, but until we do
+   * that we don't need to emit GroupsChanged anyway; TpBaseContactList will
+   * recover state. */
+  if (tp_base_contact_list_get_state (base, NULL) ==
+      TP_CONTACT_LIST_STATE_SUCCESS &&
+      (!tp_intset_is_empty (added_to) || !tp_intset_is_empty (removed_from)))
+    {
+      GPtrArray *added_names = g_ptr_array_sized_new (tp_intset_size (added_to));
+      GPtrArray *removed_names = g_ptr_array_sized_new (
+          tp_intset_size (removed_from));
+      TpHandleSet *the_contact = tp_handle_set_new (contact_repo);
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      tp_handle_set_add (the_contact, contact_handle);
+
+      tp_intset_fast_iter_init (&iter, added_to);
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          const gchar *group_name = tp_handle_inspect (group_repo,
+              group);
+
+          DEBUG ("Contact #%u added to group #%u '%s'", contact_handle, group,
+              group_name);
+          g_ptr_array_add (added_names, (gchar *) group_name);
+        }
+
+      tp_intset_fast_iter_init (&iter, removed_from);
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          const gchar *group_name = tp_handle_inspect (group_repo,
+              group);
+
+          DEBUG ("Contact #%u removed from group #%u '%s'", contact_handle,
+              group, group_name);
+          g_ptr_array_add (removed_names, (gchar *) group_name);
+        }
+
+      tp_base_contact_list_groups_changed ((TpBaseContactList *) roster,
+          the_contact,
+          (const gchar * const *) added_names->pdata, added_names->len,
+          (const gchar * const *) removed_names->pdata, removed_names->len);
+    }
 
   tp_intset_destroy (added_to);
   tp_intset_destroy (removed_from);
   tp_intset_destroy (removed_from2);
   new_groups = NULL;
   tp_handle_set_destroy (new_groups_handle_set);
+  tp_handle_set_destroy (old_groups);
 
   return item;
 }
@@ -783,19 +767,18 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
   lm_message_node_add_child (ctx->item_node, "group", name);
 }
 
-/* Return a message representing the current state of the item for contact
- * @handle on the roster @roster.
+/*
+ * _gabble_roster_item_to_message:
+ * @roster: the roster
+ * @item: the state we would like the contact's roster item to have (*not*
+ *  the state it currently has!)
+ * @handle: a contact
  *
- * If item_return is not NULL, populate it with the <item/> node.
- *
- * If item is not NULL, it represents the state we would like the contact's
- * roster item to have - use it instead of the contact's actual roster item
- * when composing the message.
+ * Returns: the necessary IQ to change @handle's state to match that of @item
  */
 static LmMessage *
 _gabble_roster_item_to_message (GabbleRoster *roster,
                                 TpHandle handle,
-                                LmMessageNode **item_return,
                                 GabbleRosterItem *item)
 {
   GabbleRosterPrivate *priv = roster->priv;
@@ -811,18 +794,13 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
-
-  if (!item)
-    item = _gabble_roster_item_ensure (roster, handle);
+  g_assert (item != NULL);
 
   message = _gabble_roster_message_new (roster, LM_MESSAGE_SUB_TYPE_SET,
       &query_node);
 
   item_node = lm_message_node_add_child (query_node, "item", NULL);
   ctx.item_node = item_node;
-
-  if (NULL != item_return)
-    *item_return = item_node;
 
   jid = tp_handle_inspect (contact_repo, handle);
   lm_message_node_set_attribute (item_node, "jid", jid);
@@ -856,262 +834,6 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
 DONE:
   return message;
-}
-
-
-static void
-gabble_roster_emit_new_channel (GabbleRoster *self,
-                                GabbleRosterChannel *channel)
-{
-  GabbleRosterPrivate *priv = self->priv;
-  GSList *requests_satisfied;
-
-  requests_satisfied = g_hash_table_lookup (priv->queued_requests, channel);
-  g_hash_table_steal (priv->queued_requests, channel);
-  requests_satisfied = g_slist_reverse (requests_satisfied);
-
-  tp_channel_manager_emit_new_channel (self,
-      TP_EXPORTABLE_CHANNEL (channel), requests_satisfied);
-  g_slist_free (requests_satisfied);
-}
-
-
-static void
-roster_channel_closed_cb (GabbleRosterChannel *channel,
-                          gpointer user_data)
-{
-  GabbleRoster *self = GABBLE_ROSTER (user_data);
-  guint handle_type, handle;
-  GHashTable *channels;
-
-  DEBUG ("%p, channel %p", self, channel);
-
-  g_object_get (channel,
-      "handle-type", &handle_type,
-      "handle", &handle,
-      NULL);
-
-  g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
-            handle_type == TP_HANDLE_TYPE_GROUP);
-
-  tp_channel_manager_emit_channel_closed_for_object (self,
-      TP_EXPORTABLE_CHANNEL (channel));
-
-  channels = (handle_type == TP_HANDLE_TYPE_LIST
-                          ? self->priv->list_channels
-                          : self->priv->group_channels);
-
-  if (channels != NULL)
-    {
-      DEBUG ("removing channel with handle (type %u) #%u", handle_type,
-          handle);
-      g_hash_table_remove (channels, GUINT_TO_POINTER (handle));
-    }
-}
-
-
-static GabbleRosterChannel *
-_gabble_roster_create_channel (GabbleRoster *roster,
-                               guint handle_type,
-                               TpHandle handle,
-                               gpointer request_token)
-{
-  GabbleRosterPrivate *priv = roster->priv;
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (conn,
-      handle_type);
-  GabbleRosterChannel *chan;
-  const char *name;
-  char *mangled_name;
-  char *object_path;
-  GHashTable *channels = (handle_type == TP_HANDLE_TYPE_LIST
-                          ? priv->list_channels
-                          : priv->group_channels);
-
-  /* if this assertion succeeds, we know we have the right handle repo */
-  g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
-            handle_type == TP_HANDLE_TYPE_GROUP);
-  g_assert (channels != NULL);
-  g_assert (g_hash_table_lookup (channels, GUINT_TO_POINTER (handle)) == NULL);
-
-  name = tp_handle_inspect (handle_repo, handle);
-  DEBUG ("Instantiating channel %u:%u \"%s\"", handle_type, handle, name);
-  mangled_name = tp_escape_as_identifier (name);
-  object_path = g_strdup_printf ("%s/RosterChannel/%s/%s",
-                                 conn->object_path,
-                                 handle_type == TP_HANDLE_TYPE_LIST ? "List"
-                                                                    : "Group",
-                                 mangled_name);
-  g_free (mangled_name);
-  mangled_name = NULL;
-
-  chan = g_object_new (GABBLE_TYPE_ROSTER_CHANNEL,
-                       "connection", priv->conn,
-                       "object-path", object_path,
-                       "handle", handle,
-                       "handle-type", handle_type,
-                       NULL);
-
-  DEBUG ("created %s", object_path);
-
-  g_signal_connect (chan, "closed", (GCallback) roster_channel_closed_cb,
-      roster);
-
-  g_hash_table_insert (channels, GUINT_TO_POINTER (handle), chan);
-
-  if (priv->roster_received)
-    {
-      DEBUG ("roster already received, emitting signal for %s",
-             object_path);
-
-      if (request_token != NULL)
-        gabble_roster_associate_request (roster, chan, request_token);
-
-      gabble_roster_emit_new_channel (roster, chan);
-    }
-  else
-    {
-      /* Not associating the request with the channel; gabble_roster_request
-       * does that for all requests except (channel newly created && roster
-       * already received).
-       */
-      DEBUG ("roster not yet received, not emitting signal for %s list "
-          "channel", name);
-    }
-  g_free (object_path);
-
-  return chan;
-}
-
-static GabbleRosterChannel *
-_gabble_roster_get_channel (GabbleRoster *roster,
-                            guint handle_type,
-                            TpHandle handle,
-                            gboolean *created,
-                            gpointer request_token)
-{
-  GabbleRosterPrivate *priv = roster->priv;
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, handle_type);
-  GabbleRosterChannel *chan;
-  GHashTable *channels = (handle_type == TP_HANDLE_TYPE_LIST
-                          ? priv->list_channels
-                          : priv->group_channels);
-
-  /* if this assertion succeeds, we know we have the right handle repos */
-  g_assert (handle_type == TP_HANDLE_TYPE_LIST ||
-            handle_type == TP_HANDLE_TYPE_GROUP);
-  g_assert (channels != NULL);
-  g_assert (tp_handle_is_valid (handle_repo, handle, NULL));
-
-  DEBUG ("Looking up channel %u:%u \"%s\"", handle_type, handle,
-         tp_handle_inspect (handle_repo, handle));
-  chan = g_hash_table_lookup (channels, GUINT_TO_POINTER (handle));
-
-  if (chan == NULL)
-    {
-      if (created)
-        *created = TRUE;
-      chan = _gabble_roster_create_channel (roster, handle_type, handle,
-          request_token);
-    }
-  else
-    {
-      if (created)
-        *created = FALSE;
-    }
-
-  return chan;
-}
-
-struct _EmitOneData {
-    GabbleRoster *roster;
-    guint handle_type;    /* must be GROUP or LIST */
-};
-
-
-static void
-_gabble_roster_emit_one (gpointer key,
-                         gpointer value,
-                         gpointer data)
-{
-  struct _EmitOneData *data_struct = (struct _EmitOneData *)data;
-  GabbleRoster *roster = data_struct->roster;
-  GabbleRosterChannel *chan = GABBLE_ROSTER_CHANNEL (value);
-#ifdef ENABLE_DEBUG
-  GabbleRosterPrivate *priv = roster->priv;
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, data_struct->handle_type);
-  TpHandle handle = GPOINTER_TO_UINT (key);
-  const gchar *name;
-
-  g_assert (data_struct->handle_type == TP_HANDLE_TYPE_GROUP ||
-      data_struct->handle_type == TP_HANDLE_TYPE_LIST);
-  g_assert (handle_repo != NULL);
-  name = tp_handle_inspect (handle_repo, handle);
-
-  DEBUG ("roster now received, emitting signal for %s list channel", name);
-#endif
-
-  gabble_roster_emit_new_channel (roster, chan);
-}
-
-static void
-_gabble_roster_received (GabbleRoster *roster)
-{
-  GabbleRosterPrivate *priv = roster->priv;
-
-  g_assert (priv->list_channels != NULL);
-
-  if (!priv->roster_received)
-    {
-      struct _EmitOneData data = { roster, TP_HANDLE_TYPE_LIST };
-
-      priv->roster_received = TRUE;
-
-      g_hash_table_foreach (priv->list_channels, _gabble_roster_emit_one,
-          &data);
-      data.handle_type = TP_HANDLE_TYPE_GROUP;
-      g_hash_table_foreach (priv->group_channels, _gabble_roster_emit_one,
-          &data);
-    }
-}
-
-static void
-_group_mem_update_destroy (GroupMembershipUpdate *update)
-{
-  tp_handle_set_destroy (update->contacts_added);
-  tp_handle_set_destroy (update->contacts_removed);
-  tp_handle_unref (update->group_repo, update->group_handle);
-  g_slice_free (GroupMembershipUpdate, update);
-}
-
-static gboolean
-_update_group (gpointer key,
-               gpointer value,
-               gpointer user_data)
-{
-  guint group_handle = GPOINTER_TO_UINT (key);
-  GabbleRoster *roster = GABBLE_ROSTER (user_data);
-  GroupMembershipUpdate *update = value;
-  GabbleRosterChannel *group_channel = _gabble_roster_get_channel (
-      roster, TP_HANDLE_TYPE_GROUP, group_handle, NULL, NULL);
-  TpIntSet *empty = tp_intset_new ();
-
-#ifdef ENABLE_DEBUG
-  g_assert (group_handle == update->group_handle);
-#endif
-
-  DEBUG ("Updating group channel %u now message has been received",
-      group_handle);
-  tp_group_mixin_change_members ((GObject *) group_channel,
-      "", tp_handle_set_peek (update->contacts_added),
-      tp_handle_set_peek (update->contacts_removed), empty, empty,
-      0, 0);
-
-  tp_intset_destroy (empty);
-
-  return TRUE;
 }
 
 static FlickerPreventionCtx *
@@ -1173,18 +895,21 @@ flicker_prevention_timeout (gpointer ctx_)
 
   DEBUG ("called for %u", ctx->handle);
 
-  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_NONE
+  if ((item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE ||
+        item->subscription == GABBLE_ROSTER_SUBSCRIPTION_NONE)
       && !item->ask_subscribe)
     {
-      GabbleRosterChannel *sub_chan = _gabble_roster_get_channel (ctx->roster,
-          TP_HANDLE_TYPE_LIST, GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
-      TpIntSet *rem = tp_intset_new_containing (ctx->handle);
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) ctx->roster->priv->conn,
+          TP_HANDLE_TYPE_CONTACT);
+      TpHandleSet *rem = tp_handle_set_new (contact_repo);
 
       DEBUG ("removing %u from subscribe", ctx->handle);
-      tp_group_mixin_change_members ((GObject *) sub_chan, "", NULL, rem, NULL,
-          NULL, 0, 0);
-
-      tp_intset_destroy (rem);
+      item->subscribe = TP_SUBSCRIPTION_STATE_NO;
+      tp_handle_set_add (rem, ctx->handle);
+      tp_base_contact_list_contacts_changed ((TpBaseContactList *) ctx->roster,
+          rem, NULL);
+      tp_handle_set_destroy (rem);
     }
   else
     {
@@ -1222,6 +947,43 @@ roster_item_cancel_flicker_timeout (GabbleRosterItem *item)
       g_source_remove (item->flicker_prevention_id);
       item->flicker_prevention_id = 0;
     }
+}
+
+static gboolean
+roster_item_set_publish (GabbleRosterItem *item,
+    TpSubscriptionState publish,
+    const gchar *request)
+{
+  gboolean changed;
+
+  g_assert (publish == TP_SUBSCRIPTION_STATE_ASK || request == NULL);
+
+  if (item->publish != publish)
+    changed = TRUE;
+
+  item->publish = publish;
+
+  if (tp_strdiff (item->publish_request, request))
+    {
+      changed = TRUE;
+      g_free (item->publish_request);
+      item->publish_request = g_strdup (request);
+    }
+
+  return changed;
+}
+
+static gboolean
+roster_item_set_subscribe (GabbleRosterItem *item,
+    TpSubscriptionState subscribe)
+{
+  if (item->subscribe != subscribe)
+    {
+      item->subscribe = subscribe;
+      return TRUE;
+    }
+
+  return FALSE;
 }
 
 static gboolean
@@ -1312,40 +1074,19 @@ process_roster (
 
   /* asymmetry is because we don't get locally pending subscription
    * requests via <roster>, we get it via <presence> */
-  TpIntSet *pub_add = tp_intset_new (),
-           *pub_rem = tp_intset_new (),
-           *sub_add = tp_intset_new (),
-           *sub_rem = tp_intset_new (),
-           *sub_rp = tp_intset_new (),
-           *stored_add = tp_intset_new (),
-           *stored_rem = tp_intset_new ();
+  TpHandleSet *changed = tp_handle_set_new (contact_repo);
+  TpHandleSet *removed = tp_handle_set_new (contact_repo);
   /* We may not have a deny list */
-  TpIntSet *deny_add, *deny_rem;
-
-  GHashTable *group_update_table = g_hash_table_new_full (NULL, NULL, NULL,
-      (GDestroyNotify) _group_mem_update_destroy);
+  TpHandleSet *blocking_changed;
   TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
 
-  GabbleRosterChannel *pub_chan, *sub_chan, *chan;
   gboolean google_roster = is_google_roster_push (roster, query_node);
   NodeIter j;
 
   if (google_roster)
-    {
-      deny_add = tp_intset_new ();
-      deny_rem = tp_intset_new ();
-    }
+    blocking_changed = tp_handle_set_new (contact_repo);
   else
-    {
-      deny_add = NULL;
-      deny_rem = NULL;
-    }
-
-  /* we need these for preserving "fragile" local/remote pending states */
-  pub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-      GABBLE_LIST_HANDLE_PUBLISH, NULL, NULL);
-  sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-      GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
+    blocking_changed = NULL;
 
   /* iterate every sub-node, which we expect to be <item>s */
   for (j = node_iter (query_node); j; j = node_iter_next (j))
@@ -1365,7 +1106,6 @@ process_roster (
       tp_handle_unref (contact_repo, handle);
 
       item = _gabble_roster_item_update (roster, handle, item_node,
-                                         group_update_table,
                                          google_roster);
 #ifdef ENABLE_DEBUG
       if (DEBUGGING)
@@ -1382,9 +1122,15 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_FROM:
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
-            tp_intset_add (pub_rem, handle);
+            {
+              if (roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL))
+                tp_handle_set_add (changed, handle);
+            }
           else
-            tp_intset_add (pub_add, handle);
+            {
+              if (roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_YES, NULL))
+                tp_handle_set_add (changed, handle);
+            }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_NONE:
         case GABBLE_ROSTER_SUBSCRIPTION_TO:
@@ -1392,11 +1138,12 @@ process_roster (
           /* publish channel is a bit odd, the roster item doesn't tell us
            * if someone is awaiting our approval - we get this via presence
            * type=subscribe, so we have to not remove them if they're
-           * already local_pending in our publish channel */
-          if (!tp_handle_set_is_member (pub_chan->group.local_pending,
-                handle))
+           * already local_pending in our publish channel. NO -> NO is a
+           * no-op, so YES -> NO is the only case left. */
+          if (item->publish == TP_SUBSCRIPTION_STATE_YES)
             {
-              tp_intset_add (pub_rem, handle);
+              tp_handle_set_add (changed, handle);
+              roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
             }
           break;
         default:
@@ -1409,9 +1156,15 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_TO:
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster && !_google_roster_item_should_keep (jid, item))
-            tp_intset_add (sub_rem, handle);
+            {
+              if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO))
+                tp_handle_set_add (changed, handle);
+            }
           else
-            tp_intset_add (sub_add, handle);
+            {
+              if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_YES))
+                tp_handle_set_add (changed, handle);
+            }
 
           roster_item_cancel_flicker_timeout (item);
 
@@ -1420,7 +1173,7 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_FROM:
           if (item->ask_subscribe)
             {
-              if (tp_handle_set_is_member (sub_chan->group.members, handle))
+              if (item->subscribe == TP_SUBSCRIPTION_STATE_YES)
                 {
                   DEBUG ("not letting gtalk demote member %u to pending",
                       handle);
@@ -1432,7 +1185,8 @@ process_roster (
                   else
                     roster_item_cancel_flicker_timeout (item);
 
-                  tp_intset_add (sub_rp, handle);
+                  if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_ASK))
+                    tp_handle_set_add (changed, handle);
                 }
             }
           else if (item->flicker_prevention_id == 0)
@@ -1440,7 +1194,8 @@ process_roster (
               /* We're not expecting this contact's ask=subscribe to
                * flicker off and on again, so let's remove them immediately.
                */
-              tp_intset_add (sub_rem, handle);
+              if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO))
+                tp_handle_set_add (changed, handle);
             }
           else
             {
@@ -1448,7 +1203,9 @@ process_roster (
             }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-          tp_intset_add (sub_rem, handle);
+          if (roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO))
+            tp_handle_set_add (changed, handle);
+
           break;
         default:
           g_assert_not_reached ();
@@ -1467,15 +1224,28 @@ process_roster (
                * when you try to subscribe to someone; see
                * test-google-roster.py.
                */
-              !tp_handle_set_is_member (sub_chan->group.remote_pending,
-                  handle) &&
+              item->subscribe != TP_SUBSCRIPTION_STATE_ASK &&
               !_google_roster_item_should_keep (jid, item))
-            tp_intset_add (stored_rem, handle);
+            {
+              tp_handle_set_remove (changed, handle);
+              tp_handle_set_add (removed, handle);
+              item->stored = FALSE;
+            }
           else
-            tp_intset_add (stored_add, handle);
+            {
+              if (!item->stored)
+                tp_handle_set_add (changed, handle);
+
+              item->stored = TRUE;
+            }
           break;
         case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-          tp_intset_add (stored_rem, handle);
+          tp_handle_set_remove (changed, handle);
+
+          if (item->stored)
+            tp_handle_set_add (removed, handle);
+
+          item->stored = FALSE;
           break;
         default:
           g_assert_not_reached ();
@@ -1491,64 +1261,51 @@ process_roster (
             case GABBLE_ROSTER_SUBSCRIPTION_FROM:
             case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
               if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
-                tp_intset_add (deny_add, handle);
+                {
+                  if (!item->blocked)
+                    tp_handle_set_add (blocking_changed, handle);
+
+                  item->blocked = TRUE;
+                }
               else
-                tp_intset_add (deny_rem, handle);
+                {
+                  if (item->blocked)
+                    tp_handle_set_add (blocking_changed, handle);
+
+                  item->blocked = FALSE;
+                }
               break;
             case GABBLE_ROSTER_SUBSCRIPTION_REMOVE:
-              tp_intset_add (deny_rem, handle);
+              if (item->blocked)
+                tp_handle_set_add (blocking_changed, handle);
+
+              item->blocked = FALSE;
               break;
             default:
               g_assert_not_reached ();
             }
         }
 
-      /* Remove removed contacts from the roster. */
-      if (GABBLE_ROSTER_SUBSCRIPTION_REMOVE == item->subscription)
-        _gabble_roster_item_remove (roster, handle);
+      _gabble_roster_item_maybe_remove (roster, handle);
     }
 
-  chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-      GABBLE_LIST_HANDLE_STORED, NULL, NULL);
-
-  DEBUG ("calling change members on stored channel");
-  tp_group_mixin_change_members ((GObject *) chan,
-        "", stored_add, stored_rem, NULL, NULL, 0, 0);
-
-  DEBUG ("calling change members on publish channel");
-  tp_group_mixin_change_members ((GObject *) pub_chan,
-        "", pub_add, pub_rem, NULL, NULL, 0, 0);
-
-  DEBUG ("calling change members on subscribe channel");
-  tp_group_mixin_change_members ((GObject *) sub_chan,
-        "", sub_add, sub_rem, NULL, sub_rp, 0, 0);
-
-  DEBUG ("calling change members on any group channels");
-  g_hash_table_foreach_remove (group_update_table, _update_group, roster);
+  tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
+      changed, removed);
 
   if (google_roster)
     {
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          GABBLE_LIST_HANDLE_DENY, NULL, NULL);
-
-      DEBUG ("calling change members on deny channel");
-      tp_group_mixin_change_members ((GObject *) chan,
-          "", deny_add, deny_rem, NULL, NULL, conn->self_handle, 0);
-
-      tp_intset_destroy (deny_add);
-      tp_intset_destroy (deny_rem);
+      tp_base_contact_list_contact_blocking_changed (
+          (TpBaseContactList *) roster, blocking_changed);
+      tp_handle_set_destroy (blocking_changed);
     }
 
-  tp_intset_destroy (pub_add);
-  tp_intset_destroy (pub_rem);
-  tp_intset_destroy (sub_add);
-  tp_intset_destroy (sub_rem);
-  tp_intset_destroy (sub_rp);
-  tp_intset_destroy (stored_add);
-  tp_intset_destroy (stored_rem);
-  g_hash_table_destroy (group_update_table);
+  tp_handle_set_destroy (changed);
+  tp_handle_set_destroy (removed);
   tp_handle_set_destroy (referenced_handles);
 }
+
+static void roster_item_apply_edits (GabbleRoster *roster, TpHandle contact,
+    GabbleRosterItem *item);
 
 /**
  * got_roster_iq:
@@ -1569,7 +1326,7 @@ got_roster_iq (GabbleRoster *roster,
   LmMessageSubType sub_type;
   const gchar *from;
 
-  if (priv->list_channels == NULL)
+  if (priv->conn == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq_node = lm_message_get_node (message);
@@ -1612,21 +1369,46 @@ got_roster_iq (GabbleRoster *roster,
   if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
     {
       /* We are handling the response to our initial roster request. */
-      GabbleRosterChannel *sub_chan;
-      GArray *members;
+      GHashTableIter iter;
+      gpointer k, v;
+      GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (guint),
+          g_hash_table_size (roster->priv->items));
+      GSList *edited_items = NULL;
 
       /* If we're subscribed to somebody (subscription=to or =both),
        * and we haven't received presence from them,
        * we know they're offline. Let clients know that.
        */
-      sub_chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          GABBLE_LIST_HANDLE_SUBSCRIBE, NULL, NULL);
-      tp_group_mixin_get_members ((GObject *) sub_chan, &members, NULL);
+      g_hash_table_iter_init (&iter, roster->priv->items);
+
+      while (g_hash_table_iter_next (&iter, &k, &v))
+        {
+          GabbleRosterItem *item = v;
+          TpHandle contact = GPOINTER_TO_UINT (k);
+
+          if (item->subscribe == TP_SUBSCRIPTION_STATE_YES)
+            g_array_append_val (members, contact);
+
+          if (item->unsent_edits != NULL)
+            edited_items = g_slist_prepend (edited_items, item);
+        }
+
       conn_presence_emit_presence_update (priv->conn, members);
       g_array_free (members, TRUE);
 
-      /* The roster is now complete and we can emit signals */
-      _gabble_roster_received (roster);
+      /* The roster is now complete and we can emit signals... */
+      tp_base_contact_list_set_list_received ((TpBaseContactList *) roster);
+      priv->received = TRUE;
+
+      /* ... and carry out any pending edits */
+      for (;
+          edited_items != NULL;
+          edited_items = g_slist_delete_link (edited_items, edited_items))
+        {
+          GabbleRosterItem *item = edited_items->data;
+
+          roster_item_apply_edits (roster, item->unsent_edits->handle, item);
+        }
     }
   else /* LM_MESSAGE_SUB_TYPE_SET */
     {
@@ -1691,6 +1473,8 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
   lm_message_unref (reply);
 }
 
+static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
+    TpHandle handle, const gchar *message, GError **error);
 
 /**
  * connection_presence_roster_cb:
@@ -1715,16 +1499,15 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   LmMessageNode *pres_node, *child_node;
   const char *from;
   LmMessageSubType sub_type;
-  TpIntSet *tmp;
-  TpHandle handle, list_handle;
+  TpHandleSet *tmp;
+  TpHandle handle;
   const gchar *status_message = NULL;
-  GabbleRosterChannel *chan = NULL;
-  gboolean changed;
   LmHandlerResult ret;
+  GabbleRosterItem *item;
 
   g_assert (lmconn == priv->conn->lmconn);
 
-  if (priv->list_channels == NULL)
+  if (priv->conn == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   pres_node = lm_message_get_node (message);
@@ -1762,79 +1545,115 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   if (child_node)
     status_message = lm_message_node_get_value (child_node);
 
+  item = _gabble_roster_item_ensure (roster, handle);
+
   switch (sub_type)
     {
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
       DEBUG ("making %s (handle %u) local pending on the publish channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      /* we re-emit ContactsChanged here, even if their state was already ASK
+       * with the same message, because the fact that they've nagged us again
+       * is significant */
+      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_ASK, status_message);
 
-      list_handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          list_handle, NULL, NULL);
-      tp_group_mixin_change_members ((GObject *) chan, status_message,
-          NULL, NULL, tmp, NULL, 0, 0);
+      tmp = tp_handle_set_new (contact_repo);
+      tp_handle_set_add (tmp, handle);
+      tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
+          tmp, NULL);
 
-      tp_intset_destroy (tmp);
+      if (tp_handle_set_is_member (roster->priv->pre_authorized, handle))
+        {
+          GError *error = NULL;
+
+          DEBUG ("%s (handle %u) was pre-authorized, will accept their "
+              "request", from, handle);
+
+          if (!gabble_roster_handle_subscribed (roster, handle, "", &error))
+            {
+              DEBUG ("Authorizing pre-authorized request failed: %s",
+                  error->message);
+              g_clear_error (&error);
+            }
+        }
+
+      tp_handle_set_destroy (tmp);
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
+
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      if (item->publish == TP_SUBSCRIPTION_STATE_YES ||
+          item->publish == TP_SUBSCRIPTION_STATE_ASK)
+        {
+          roster_item_set_publish (item,
+              TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY, NULL);
 
-      list_handle = GABBLE_LIST_HANDLE_PUBLISH;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          list_handle, NULL, NULL);
-      changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, NULL, tmp, NULL, NULL, 0, 0);
+          tmp = tp_handle_set_new (contact_repo);
+          tp_handle_set_add (tmp, handle);
+          tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
+              tmp, NULL);
+          tp_handle_set_destroy (tmp);
 
-      _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
-
-      tp_intset_destroy (tmp);
+          _gabble_roster_send_presence_ack (roster, from, sub_type, TRUE);
+        }
+      else
+        {
+          _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
+        }
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
+
     case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      if (item->subscribe != TP_SUBSCRIPTION_STATE_YES)
+        {
+          item->subscribe = TP_SUBSCRIPTION_STATE_YES;
 
-      list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          list_handle, NULL, NULL);
-      changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, tmp, NULL, NULL, NULL, 0, 0);
+          tmp = tp_handle_set_new (contact_repo);
+          tp_handle_set_add (tmp, handle);
+          tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
+              tmp, NULL);
+          tp_handle_set_destroy (tmp);
 
-      _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
-
-      tp_intset_destroy (tmp);
+          _gabble_roster_send_presence_ack (roster, from, sub_type, TRUE);
+        }
+      else
+        {
+          _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
+        }
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
+
     case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
-      tmp = tp_intset_new ();
-      tp_intset_add (tmp, handle);
+      if (item->subscribe == TP_SUBSCRIPTION_STATE_YES ||
+          item->subscribe == TP_SUBSCRIPTION_STATE_ASK)
+        {
+          item->subscribe = TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY;
 
-      list_handle = GABBLE_LIST_HANDLE_SUBSCRIBE;
-      chan = _gabble_roster_get_channel (roster, TP_HANDLE_TYPE_LIST,
-          list_handle, NULL, NULL);
-      changed = tp_group_mixin_change_members ((GObject *) chan,
-          status_message, NULL, tmp, NULL, NULL, 0, 0);
+          tmp = tp_handle_set_new (contact_repo);
+          tp_handle_set_add (tmp, handle);
+          tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
+              tmp, NULL);
+          tp_handle_set_destroy (tmp);
 
-      _gabble_roster_send_presence_ack (roster, from, sub_type, changed);
-
-      tp_intset_destroy (tmp);
+          _gabble_roster_send_presence_ack (roster, from, sub_type, TRUE);
+        }
+      else
+        {
+          _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
+        }
 
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
@@ -1847,44 +1666,12 @@ OUT:
   return ret;
 }
 
-static gboolean
-cancel_queued_requests (gpointer k,
-                        gpointer v,
-                        gpointer d)
-{
-  GabbleRoster *self = GABBLE_ROSTER (d);
-  GSList *requests_satisfied = v;
-  GSList *iter;
-
-  requests_satisfied = g_slist_reverse (requests_satisfied);
-
-  for (iter = requests_satisfied; iter != NULL; iter = iter->next)
-    {
-      tp_channel_manager_emit_request_failed (self,
-          iter->data, TP_ERRORS, TP_ERROR_DISCONNECTED,
-          "Unable to complete this channel request, we're disconnecting!");
-    }
-
-  g_slist_free (requests_satisfied);
-
-  return TRUE;
-}
-
-
 static void
 gabble_roster_close_all (GabbleRoster *self)
 {
   GabbleRosterPrivate *priv = self->priv;
 
   DEBUG ("closing channels");
-
-  if (priv->queued_requests != NULL)
-    {
-      g_hash_table_foreach_steal (priv->queued_requests,
-          cancel_queued_requests, self);
-      g_hash_table_destroy (priv->queued_requests);
-      priv->queued_requests = NULL;
-    }
 
   if (self->priv->status_changed_id != 0)
     {
@@ -1893,22 +1680,8 @@ gabble_roster_close_all (GabbleRoster *self)
       self->priv->status_changed_id = 0;
     }
 
-  /* Use a temporary variable because we don't want
-   * roster_channel_closed_cb to remove the channel from the hash table a
-   * second time */
-  if (priv->group_channels != NULL)
-    {
-      GHashTable *t = priv->group_channels;
-      priv->group_channels = NULL;
-      g_hash_table_destroy (t);
-    }
-
-  if (priv->list_channels != NULL)
-    {
-      GHashTable *t = priv->list_channels;
-      priv->list_channels = NULL;
-      g_hash_table_destroy (t);
-    }
+  tp_clear_pointer (&priv->groups, tp_handle_set_destroy);
+  tp_clear_pointer (&priv->pre_authorized, tp_handle_set_destroy);
 
   if (self->priv->iq_cb != NULL)
     {
@@ -1987,69 +1760,39 @@ connection_status_changed_cb (GabbleConnection *conn,
 }
 
 
-static GObject *
-gabble_roster_constructor (GType type, guint n_props,
-                           GObjectConstructParam *props)
+static void
+gabble_roster_constructed (GObject *obj)
 {
-  GObject *obj = G_OBJECT_CLASS (gabble_roster_parent_class)->
-           constructor (type, n_props, props);
   GabbleRoster *self = GABBLE_ROSTER (obj);
+  TpBaseContactList *base = TP_BASE_CONTACT_LIST (obj);
+  void (*chain_up)(GObject *) =
+    ((GObjectClass *) gabble_roster_parent_class)->constructed;
+  TpHandleRepoIface *group_repo;
+  TpHandleRepoIface *contact_repo;
+
+  if (chain_up != NULL)
+    chain_up (obj);
+
+  /* FIXME: This is not a strong reference because that would create a cycle.
+   * I'd like to have a cyclic reference and break it at disconnect time,
+   * like the contact list example in telepathy-glib does, but we can't do
+   * that because the rest of Gabble assumes that the roster remains useful
+   * until the bitter end (for instance, gabble_im_channel_dispose looks
+   * at the contact's subscription). */
+  self->priv->conn = GABBLE_CONNECTION (tp_base_contact_list_get_connection (
+        base, NULL));
+  g_assert (GABBLE_IS_CONNECTION (self->priv->conn));
+
+  group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
-
-  return obj;
+  self->priv->groups = tp_handle_set_new (group_repo);
+  self->priv->pre_authorized = tp_handle_set_new (contact_repo);
 }
-
-
-struct foreach_data {
-    TpExportableChannelFunc func;
-    gpointer data;
-};
-
-static void
-_gabble_roster_foreach_channel_helper (gpointer key,
-                                       gpointer value,
-                                       gpointer data)
-{
-  TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
-  struct foreach_data *foreach = (struct foreach_data *) data;
-
-  foreach->func (chan, foreach->data);
-}
-
-static void
-gabble_roster_foreach_channel (TpChannelManager *manager,
-                               TpExportableChannelFunc func,
-                               gpointer data)
-{
-  GabbleRoster *roster = GABBLE_ROSTER (manager);
-  GabbleRosterPrivate *priv = roster->priv;
-  struct foreach_data foreach;
-
-  foreach.func = func;
-  foreach.data = data;
-
-  g_hash_table_foreach (priv->group_channels,
-      _gabble_roster_foreach_channel_helper, &foreach);
-  g_hash_table_foreach (priv->list_channels,
-      _gabble_roster_foreach_channel_helper, &foreach);
-}
-
-
-static void
-gabble_roster_associate_request (GabbleRoster *self,
-                                 GabbleRosterChannel *channel,
-                                 gpointer request)
-{
-  GabbleRosterPrivate *priv = self->priv;
-  GSList *list = g_hash_table_lookup (priv->queued_requests, channel);
-
-  g_hash_table_steal (priv->queued_requests, channel);
-  list = g_slist_prepend (list, request);
-  g_hash_table_insert (priv->queued_requests, channel, list);
-}
-
 
 GabbleRoster *
 gabble_roster_new (GabbleConnection *conn)
@@ -2062,9 +1805,14 @@ gabble_roster_new (GabbleConnection *conn)
 }
 
 static GabbleRosterItemEdit *
-item_edit_new (void)
+item_edit_new (TpHandleRepoIface *contact_repo,
+    TpHandle handle)
 {
   GabbleRosterItemEdit *self = g_slice_new0 (GabbleRosterItemEdit);
+
+  tp_handle_ref (contact_repo, handle);
+  self->contact_repo = g_object_ref (contact_repo);
+  self->handle = handle;
   self->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_INVALID;
   self->new_google_type = GOOGLE_ITEM_TYPE_INVALID;
   return self;
@@ -2073,13 +1821,25 @@ item_edit_new (void)
 static void
 item_edit_free (GabbleRosterItemEdit *edits)
 {
+  GSList *slist;
+
   if (!edits)
     return;
 
-  if (edits->add_to_groups)
-    tp_handle_set_destroy (edits->add_to_groups);
-  if (edits->remove_from_groups)
-    tp_handle_set_destroy (edits->remove_from_groups);
+  edits->results = g_slist_reverse (edits->results);
+
+  for (slist = edits->results; slist != NULL; slist = slist->next)
+    {
+      gabble_simple_async_countdown_dec (slist->data);
+      g_object_unref (slist->data);
+    }
+
+  g_slist_free (edits->results);
+
+  tp_handle_unref (edits->contact_repo, edits->handle);
+  g_object_unref (edits->contact_repo);
+  tp_clear_pointer (&edits->add_to_groups, tp_handle_set_destroy);
+  tp_clear_pointer (&edits->remove_from_groups, tp_handle_set_destroy);
   g_free (edits->new_name);
   g_slice_free (GabbleRosterItemEdit, edits);
 }
@@ -2089,6 +1849,11 @@ static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
                                          LmMessage *reply_msg,
                                          GObject *roster_obj,
                                          gpointer user_data);
+
+static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
+    TpHandle handle,
+    const gchar *message,
+    GError **error);
 
 /*
  * Cancel any subscriptions on @item by sending unsubscribe and/or
@@ -2101,18 +1866,25 @@ roster_item_cancel_subscriptions (
     GabbleRosterItem *item,
     GError **error)
 {
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
   gboolean ret = TRUE;
 
-  if (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_FROM)
+  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_FROM ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH)
     {
       DEBUG ("sending unsubscribed");
-      ret = gabble_roster_handle_unsubscribed (roster, contact, NULL, error);
+      ret = gabble_connection_send_presence (roster->priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, NULL, error);
     }
 
-  if (ret && (item->subscription & GABBLE_ROSTER_SUBSCRIPTION_TO))
+  if (ret && (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_TO ||
+        item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH))
     {
       DEBUG ("sending unsubscribe");
-      ret = gabble_roster_handle_unsubscribe (roster, contact, NULL, error);
+      ret = gabble_connection_send_presence (roster->priv->conn,
+          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, NULL, error);
     }
 
   return ret;
@@ -2129,20 +1901,36 @@ roster_item_apply_edits (GabbleRoster *roster,
                          TpHandle contact,
                          GabbleRosterItem *item)
 {
-  gboolean altered = FALSE, ret = TRUE;
+  gboolean altered = FALSE, ret;
   GabbleRosterItem edited_item;
   TpIntSet *intset;
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItemEdit *edits = item->unsent_edits;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *message;
+  GError *error = NULL;
+
+  if (!priv->received)
+    {
+      DEBUG ("Initial roster has not arrived yet, not editing it");
+      return;
+    }
+
+  if (item->edits_in_flight)
+    {
+      DEBUG ("Edits still in flight for contact#%u, not applying more",
+          contact);
+      return;
+    }
+
+  if (edits == NULL)
+    {
+      DEBUG ("Nothing to do for contact#%u", contact);
+      return;
+    }
 
   DEBUG ("Applying edits to contact#%u", contact);
-
-  g_return_if_fail (item->unsent_edits);
 
   memcpy (&edited_item, item, sizeof (GabbleRosterItem));
 
@@ -2154,6 +1942,12 @@ roster_item_apply_edits (GabbleRoster *roster,
       g_free (dump);
     }
 #endif
+
+  if (edits->create)
+    {
+      DEBUG ("Creating new item");
+      altered = TRUE;
+    }
 
   if (edits->new_google_type != GOOGLE_ITEM_TYPE_INVALID
       && edits->new_google_type != item->google_type)
@@ -2179,10 +1973,22 @@ roster_item_apply_edits (GabbleRoster *roster,
            * subscription directions.
            */
           DEBUG ("contact is blocked; not removing");
-          ret = roster_item_cancel_subscriptions (roster, contact, item, NULL);
-          /* deliberately not setting altered: we haven't altered the roster
-           * directly.
-           */
+
+          if (!roster_item_cancel_subscriptions (roster, contact, item,
+                &error))
+            {
+              GSList *slist;
+
+              /* in practice this error will probably be overwritten by one
+               * from the IQ-set later, but if that succeeds for some reason,
+               * we do want to signal error */
+              for (slist = edits->results; slist != NULL; slist = slist->next)
+                g_simple_async_result_set_from_error (slist->data, error);
+
+              g_clear_error (&error);
+            }
+          /* deliberately not setting altered: we haven't altered the roster,
+           * as such. */
         }
       else
         {
@@ -2200,12 +2006,13 @@ roster_item_apply_edits (GabbleRoster *roster,
       edited_item.name = edits->new_name;
     }
 
-  if (edits->add_to_groups || edits->remove_from_groups)
+  if (edits->add_to_groups != NULL || edits->remove_from_groups != NULL ||
+      edits->remove_from_all_other_groups)
     {
 #ifdef ENABLE_DEBUG
       if (DEBUGGING)
         {
-          if (edits->add_to_groups)
+          if (edits->add_to_groups != NULL)
             {
               GString *str = g_string_new ("Adding to groups: ");
               tp_intset_foreach (tp_handle_set_peek (edits->add_to_groups),
@@ -2216,7 +2023,13 @@ roster_item_apply_edits (GabbleRoster *roster,
             {
               DEBUG ("Not adding to any groups");
             }
-          if (edits->remove_from_groups)
+
+          if (edits->remove_from_all_other_groups)
+            {
+              DEBUG ("Removing from all other groups");
+            }
+
+          if (edits->remove_from_groups != NULL)
             {
               GString *str = g_string_new ("Removing from groups: ");
               tp_intset_foreach (tp_handle_set_peek (edits->remove_from_groups),
@@ -2230,18 +2043,18 @@ roster_item_apply_edits (GabbleRoster *roster,
         }
 #endif
       edited_item.groups = tp_handle_set_new (group_repo);
-      intset = tp_handle_set_update (edited_item.groups,
-          tp_handle_set_peek (item->groups));
-      tp_intset_destroy (intset);
+
+      if (!edits->remove_from_all_other_groups)
+        {
+          intset = tp_handle_set_update (edited_item.groups,
+              tp_handle_set_peek (item->groups));
+          tp_intset_destroy (intset);
+        }
 
       if (edits->add_to_groups)
         {
           intset = tp_handle_set_update (edited_item.groups,
               tp_handle_set_peek (edits->add_to_groups));
-          if (tp_intset_size (intset) > 0)
-            {
-              altered = TRUE;
-            }
           tp_intset_destroy (intset);
         }
 
@@ -2249,12 +2062,23 @@ roster_item_apply_edits (GabbleRoster *roster,
         {
           intset = tp_handle_set_difference_update (edited_item.groups,
               tp_handle_set_peek (edits->remove_from_groups));
-          if (tp_intset_size (intset) > 0)
-            {
-              altered = TRUE;
-            }
           tp_intset_destroy (intset);
         }
+
+      if (!tp_intset_is_equal (tp_handle_set_peek (edited_item.groups),
+            tp_handle_set_peek (item->groups)))
+          altered = TRUE;
+    }
+
+  /* If we changed something about a transient GabbleRosterItem that
+   * wasn't actually on our server-side roster yet, and we weren't actually
+   * trying to delete it, then we need to create it as a side-effect. */
+  if (altered &&
+      edits->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE &&
+      edited_item.subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+    {
+      edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
+      edited_item.subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
     }
 
 #ifdef ENABLE_DEBUG
@@ -2276,24 +2100,30 @@ roster_item_apply_edits (GabbleRoster *roster,
 
   DEBUG ("Contact#%u did change, sending message", contact);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, contact);
-  message = _gabble_roster_item_to_message (roster, contact, NULL,
-      &edited_item);
+
+  message = _gabble_roster_item_to_message (roster, contact, &edited_item);
+
+  /* we're sending the unsent edits - on success, roster_edited_cb will own
+   * them */
+  item->unsent_edits = NULL;
+  item->edits_in_flight = TRUE;
   ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(contact), NULL) && ret;
-  if (ret)
+      message, roster_edited_cb, G_OBJECT (roster), edits, &error);
+
+  if (edits->new_google_type == GOOGLE_ITEM_TYPE_BLOCKED)
+    gabble_presence_cache_really_remove (priv->conn->presence_cache, contact);
+
+  /* if send_with_reply failed, then roster_edited_cb will never run */
+  if (!ret)
     {
-      /* assume everything will be OK */
-      item_edit_free (item->unsent_edits);
-      item->unsent_edits = NULL;
-    }
-  else
-    {
-      /* FIXME: somehow have another try at it later? leave the
-       * edits in unsent_edits for this purpose, anyway
-       */
+      GSList *slist;
+
+      for (slist = edits->results; slist != NULL; slist = slist->next)
+        g_simple_async_result_set_from_error (slist->data, error);
+
+      g_clear_error (&error);
+      item->edits_in_flight = FALSE;
+      item_edit_free (edits);
     }
 
   if (edited_item.groups != item->groups)
@@ -2311,114 +2141,92 @@ roster_edited_cb (GabbleConnection *conn,
                   gpointer user_data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
-  TpHandle contact = GPOINTER_TO_UINT (user_data);
-  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, contact);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItemEdit *edit = user_data;
+  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, edit->handle);
 
-  if (item != NULL && item->unsent_edits != NULL)
+  if (edit->results != NULL)
     {
-      /* more edits have been queued since we sent this batch */
-      roster_item_apply_edits (roster, contact, item);
+      GError *wocky_error = NULL;
+
+      if (wocky_stanza_extract_errors (reply_msg, NULL, &wocky_error, NULL,
+            NULL))
+        {
+          GSList *slist;
+          GError *tp_error = NULL;
+
+          gabble_set_tp_error_from_wocky (wocky_error, &tp_error);
+
+          for (slist = edit->results; slist != NULL; slist = slist->next)
+            g_simple_async_result_set_from_error (slist->data, tp_error);
+
+          g_clear_error (&tp_error);
+        }
+
+      g_clear_error (&wocky_error);
     }
 
-  tp_handle_unref (contact_repo, contact);
+  if (item != NULL)
+    {
+      item->edits_in_flight = FALSE;
+      /* if more edits have been queued since we sent this batch, do them */
+      roster_item_apply_edits (roster, edit->handle, item);
+
+      if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE &&
+          edit->new_subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
+        {
+          /* The server claims to have created the item, so we should believe
+           * that the item exists, even though we haven't yet had the roster
+           * push that should confirm it. This will result in
+           * _gabble_roster_item_maybe_remove not removing it. */
+          item->subscription = edit->new_subscription;
+        }
+
+      _gabble_roster_item_maybe_remove (roster, edit->handle);
+    }
+
+  item_edit_free (edit);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-GabbleRosterSubscription
-gabble_roster_handle_get_subscription (GabbleRoster *roster,
-                                       TpHandle handle)
-{
-  GabbleRosterPrivate *priv = roster->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  GabbleRosterItem *item;
-
-  g_return_val_if_fail (roster != NULL, GABBLE_ROSTER_SUBSCRIPTION_NONE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster),
-      GABBLE_ROSTER_SUBSCRIPTION_NONE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      GABBLE_ROSTER_SUBSCRIPTION_NONE);
-
-  item = _gabble_roster_item_lookup (roster, handle);
-
-  if (NULL == item)
-    return GABBLE_ROSTER_SUBSCRIPTION_NONE;
-
-  return item->subscription;
-}
-
-gboolean
+static void
 gabble_roster_handle_set_blocked (GabbleRoster *roster,
-                                  TpHandle handle,
-                                  gboolean blocked,
-                                  GError **error)
+    TpHandle handle,
+    gboolean blocked,
+    GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
   GoogleItemType orig_type;
-  LmMessage *message;
-  gboolean ret;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
-  g_return_val_if_fail (priv->conn->features &
-      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER, FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
+  g_return_if_fail (priv->conn->features &
+      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER);
 
   item = _gabble_roster_item_ensure (roster, handle);
   orig_type = item->google_type;
 
-  if (item->unsent_edits)
-    {
-      DEBUG ("queue edit to contact#%u - change subscription to blocked=%d",
-             handle, blocked);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
-      if (blocked)
-        {
-          item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_BLOCKED;
-        }
-      else
-        {
-          item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
-        }
-      return TRUE;
-    }
-  else
-    {
-      item->unsent_edits = item_edit_new ();
-    }
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  if (blocked == (orig_type == GOOGLE_ITEM_TYPE_BLOCKED))
-    return TRUE;
-
-  /* temporarily set the desired block state and generate a message */
-  if (blocked)
-    item->google_type = GOOGLE_ITEM_TYPE_BLOCKED;
-  else
-    item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  item->google_type = orig_type;
-
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
-
-  lm_message_unref (message);
+  DEBUG ("queue edit to contact#%u - change subscription to blocked=%d",
+         handle, blocked);
 
   if (blocked)
-      gabble_presence_cache_really_remove (priv->conn->presence_cache, handle);
+    item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_BLOCKED;
+  else
+    item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
 
-  return ret;
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, g_object_ref (result));
+
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 }
 
 gboolean
@@ -2472,9 +2280,6 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
-  LmMessage *message;
-  LmMessageNode *item_node;
-  gboolean ret;
 
   g_return_val_if_fail (roster != NULL, FALSE);
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
@@ -2485,165 +2290,132 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   item = _gabble_roster_item_ensure (roster, handle);
   g_return_val_if_fail (item != NULL, FALSE);
 
-  if (item->unsent_edits)
-    {
-      DEBUG ("queue edit to contact#%u - change name to \"%s\"",
-             handle, name);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
-      g_free (item->unsent_edits->new_name);
-      item->unsent_edits->new_name = g_strdup (name);
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - change name to \"%s\"",
-             handle, name);
-      item->unsent_edits = item_edit_new ();
-    }
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  message = _gabble_roster_item_to_message (roster, handle, &item_node, NULL);
+  DEBUG ("queue edit to contact#%u - change name to \"%s\"",
+         handle, name);
+  g_free (item->unsent_edits->new_name);
+  item->unsent_edits->new_name = g_strdup (name);
 
-  lm_message_node_set_attribute (item_node, "name", name);
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
-
-  lm_message_unref (message);
-
-  return ret;
+  /* FIXME: this method should be async so we don't need to assume
+   * success */
+  return TRUE;
 }
 
-gboolean
+static void
 gabble_roster_handle_remove (GabbleRoster *roster,
                              TpHandle handle,
-                             GError **error)
+                             GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
+  TpBaseContactList *base = (TpBaseContactList *) roster;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
-  GabbleRosterSubscription subscription;
-  LmMessage *message;
-  gboolean ret;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  item = _gabble_roster_item_ensure (roster, handle);
+  item = _gabble_roster_item_lookup (roster, handle);
 
-  if (item->unsent_edits)
+  if (item == NULL)
+    return;
+
+  /* If the contact is really stored on the server, deleting their roster item
+   * is sufficient. If they're not, we might have some state resulting from
+   * a publish request or remote removal or something. */
+  if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     {
-      DEBUG ("queue edit to contact#%u - change subscription to REMOVE",
-             handle);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
-      item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
-      return TRUE;
-    }
-  else if (item->google_type == GOOGLE_ITEM_TYPE_BLOCKED)
-    {
-      /* If they're blocked, we can't just remove them from the roster,
-       * because that would unblock them! So instead, we cancel both
-       * subscription directions.
-       */
-      DEBUG ("contact#%u is blocked; not removing", handle);
-      return roster_item_cancel_subscriptions (roster, handle, item, error);
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - change subscription to REMOVE",
-             handle);
-      item->unsent_edits = item_edit_new ();
+      /* These will clear a status of REMOVED_REMOTELY or ASK */
+      roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+      roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO);
+
+      /* If there are no edits in-flight, we may just be able to delete the
+       * contact list entry and return early. If there are edits in flight,
+       * we should not return early: the in-flight edit might be
+       * creating the roster item, so we need to queue up a second edit
+       * that will delete it again. */
+      if (_gabble_roster_item_maybe_remove (roster, handle))
+        {
+          TpHandleSet *removed = tp_handle_set_new (contact_repo);
+
+          tp_handle_set_add (removed, handle);
+          tp_base_contact_list_contacts_changed (base, NULL, removed);
+          tp_handle_set_destroy (removed);
+          return;
+        }
     }
 
-  subscription = item->subscription;
-  item->subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
-  lm_message_unref (message);
+  DEBUG ("queue edit to contact#%u - change subscription to REMOVE",
+         handle);
+  item->unsent_edits->new_subscription = GABBLE_ROSTER_SUBSCRIPTION_REMOVE;
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, g_object_ref (result));
 
-  item->subscription = subscription;
-
-  return ret;
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 }
 
-gboolean
+static void
 gabble_roster_handle_add (GabbleRoster *roster,
                           TpHandle handle,
-                          GError **error)
+                          GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
-  LmMessage *message;
   gboolean do_add = FALSE;
-  gboolean ret;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
   if (!gabble_roster_handle_has_entry (roster, handle))
       do_add = TRUE;
 
   item = _gabble_roster_item_ensure (roster, handle);
 
-  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
+  if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     do_add = TRUE;
 
   if (!do_add)
-      return TRUE;
+      return;
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  DEBUG ("queue edit to contact#%u - change google type to NORMAL",
+         handle);
+  item->unsent_edits->create = TRUE;
+  item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
+
+  if (result != NULL)
     {
-      DEBUG ("queue edit to contact#%u - change google type to NORMAL",
-             handle);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK.
-       */
-      item->unsent_edits->new_google_type = GOOGLE_ITEM_TYPE_NORMAL;
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - change google type to NORMAL",
-             handle);
-      if (item->google_type == GOOGLE_ITEM_TYPE_HIDDEN)
-        item->google_type = GOOGLE_ITEM_TYPE_NORMAL;
-      item->unsent_edits = item_edit_new ();
+      gabble_simple_async_countdown_inc (result);
+      item->unsent_edits->results = g_slist_prepend (
+          item->unsent_edits->results, g_object_ref (result));
     }
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
-  lm_message_unref (message);
-
-  return ret;
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 }
 
-gboolean
+static void
 gabble_roster_handle_add_to_group (GabbleRoster *roster,
                                    TpHandle handle,
                                    TpHandle group,
-                                   GError **error)
+                                   GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2651,61 +2423,43 @@ gabble_roster_handle_add_to_group (GabbleRoster *roster,
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
-  LmMessage *message;
-  gboolean ret;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
+  g_return_if_fail (tp_handle_is_valid (group_repo, group, NULL));
 
   item = _gabble_roster_item_ensure (roster, handle);
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, g_object_ref (result));
+
+  if (!item->unsent_edits->add_to_groups)
     {
-      DEBUG ("queue edit to contact#%u - add to group#%u", handle, group);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
-      if (!item->unsent_edits->add_to_groups)
-        {
-          item->unsent_edits->add_to_groups = tp_handle_set_new (group_repo);
-        }
-      tp_handle_set_add (item->unsent_edits->add_to_groups, group);
-      if (item->unsent_edits->remove_from_groups)
-        {
-          tp_handle_set_remove (item->unsent_edits->remove_from_groups, group);
-        }
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - add to group#%u", handle, group);
-      item->unsent_edits = item_edit_new ();
+      item->unsent_edits->add_to_groups = tp_handle_set_new (group_repo);
     }
 
-  tp_handle_set_add (item->groups, group);
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  STANZA_DEBUG (message, "Roster item as message");
-  tp_handle_set_remove (item->groups, group);
+  tp_handle_set_add (item->unsent_edits->add_to_groups, group);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
-  lm_message_unref (message);
+  if (item->unsent_edits->remove_from_groups)
+    {
+      tp_handle_set_remove (item->unsent_edits->remove_from_groups, group);
+    }
 
-  return ret;
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 }
 
-gboolean
+static void
 gabble_roster_handle_remove_from_group (GabbleRoster *roster,
                                         TpHandle handle,
                                         TpHandle group,
-                                        GError **error)
+                                        GSimpleAsyncResult *result)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2713,101 +2467,41 @@ gabble_roster_handle_remove_from_group (GabbleRoster *roster,
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItem *item;
-  LmMessage *message;
-  gboolean ret, was_in_group;
 
-  g_return_val_if_fail (roster != NULL, FALSE);
-  g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
-      FALSE);
-  g_return_val_if_fail (tp_handle_is_valid (group_repo, group, NULL),
-      FALSE);
+  g_return_if_fail (roster != NULL);
+  g_return_if_fail (GABBLE_IS_ROSTER (roster));
+  g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
+  g_return_if_fail (tp_handle_is_valid (group_repo, group, NULL));
 
   item = _gabble_roster_item_ensure (roster, handle);
 
-  if (item->unsent_edits)
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, handle);
+
+  DEBUG ("queue edit to contact#%u - remove from group#%u", handle, group);
+
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, g_object_ref (result));
+
+  if (!item->unsent_edits->remove_from_groups)
     {
-      DEBUG ("queue edit to contact#%u - remove from group#%u", handle, group);
-      /* an edit is pending - make the change afterwards and
-       * assume it'll be OK
-       */
-      if (!item->unsent_edits->remove_from_groups)
-        {
-          item->unsent_edits->remove_from_groups = tp_handle_set_new (
-              group_repo);
-        }
-      tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
-      if (item->unsent_edits->add_to_groups)
-        {
-          tp_handle_set_remove (item->unsent_edits->add_to_groups, group);
-        }
-      return TRUE;
-    }
-  else
-    {
-      DEBUG ("immediate edit to contact#%u - remove from group#%u", handle,
-          group);
-      item->unsent_edits = item_edit_new ();
+      item->unsent_edits->remove_from_groups = tp_handle_set_new (
+          group_repo);
     }
 
-  /* temporarily remove the handle from the set (taking a reference),
-   * make the message, and put it back afterwards
-   */
-  tp_handle_ref (group_repo, group);
-  was_in_group = tp_handle_set_remove (item->groups, group);
-  message = _gabble_roster_item_to_message (roster, handle, NULL, NULL);
-  if (was_in_group)
-    tp_handle_set_add (item->groups, group);
-  tp_handle_unref (group_repo, group);
+  tp_handle_set_add (item->unsent_edits->remove_from_groups, group);
 
-  /* keep the handle valid until roster_edited_cb runs; it will do the unref */
-  tp_handle_ref (contact_repo, handle);
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster),
-      GUINT_TO_POINTER(handle), error);
-  lm_message_unref (message);
+  if (item->unsent_edits->add_to_groups)
+    {
+      tp_handle_set_remove (item->unsent_edits->add_to_groups, group);
+    }
 
-  return ret;
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (roster, handle, item);
 }
 
-gboolean
-gabble_roster_handle_subscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error)
-{
-  GabbleRosterPrivate *priv = roster->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
-
-
-  /* add item to the roster (GTalk depends on this, clearing the H flag) */
-  gabble_roster_handle_add (priv->conn->roster, handle, NULL);
-
-  /* send <presence type="subscribe"> */
-  return gabble_connection_send_presence (priv->conn,
-      LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, message, error);
-}
-
-gboolean
-gabble_roster_handle_unsubscribe (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error)
-{
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
-
-  /* send <presence type="unsubscribe"> */
-  return gabble_connection_send_presence (roster->priv->conn,
-      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, message, error);
-}
-
-gboolean
+static gboolean
 gabble_roster_handle_subscribed (
     GabbleRoster *roster,
     TpHandle handle,
@@ -2823,251 +2517,1025 @@ gabble_roster_handle_subscribed (
       LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
 }
 
-gboolean
-gabble_roster_handle_unsubscribed (
-    GabbleRoster *roster,
-    TpHandle handle,
-    const gchar *message,
-    GError **error)
+static TpHandleSet *
+gabble_roster_dup_contacts (TpBaseContactList *base)
 {
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleSet *set;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) roster->priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *contact_id = tp_handle_inspect (contact_repo, handle);
-  GabbleRosterChannel *publish = _gabble_roster_get_channel (roster,
-      TP_HANDLE_TYPE_LIST, GABBLE_LIST_HANDLE_PUBLISH, NULL, NULL);
-  gboolean ret;
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GHashTableIter iter;
+  gpointer k, v;
 
-  /* send <presence type="unsubscribed"> */
-  ret = gabble_connection_send_presence (roster->priv->conn,
-      LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, message, error);
+  set = tp_handle_set_new (contact_repo);
 
-  /* remove it from publish:local_pending here, because roster callback doesn't
-     know if it can (subscription='none' is used both during request and
-     when it's rejected) */
-  if (tp_handle_set_is_member (publish->group.local_pending, handle))
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
     {
-      TpIntSet *rem = tp_intset_new ();
+      GabbleRosterItem *item = v;
 
-      tp_intset_add (rem, handle);
-      tp_group_mixin_change_members (G_OBJECT (publish), "", NULL, rem, NULL,
-          NULL, 0, 0);
-
-      tp_intset_destroy (rem);
+      /* add all the interesting items */
+      if (item->stored ||
+          item->subscribe != TP_SUBSCRIPTION_STATE_NO ||
+          item->publish != TP_SUBSCRIPTION_STATE_NO)
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
     }
 
-  return ret;
+  return set;
 }
-
-static const gchar * const list_channel_fixed_properties[] = {
-    TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
-    NULL
-};
-static const gchar * const *group_channel_fixed_properties =
-    list_channel_fixed_properties;
-
-static const gchar * const list_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    NULL
-};
-static const gchar * const *group_channel_allowed_properties =
-    list_channel_allowed_properties;
-
-
 
 static void
-gabble_roster_type_foreach_channel_class (GType type,
-    TpChannelManagerTypeChannelClassFunc func,
-    gpointer user_data)
+gabble_roster_dup_states (TpBaseContactList *base,
+    TpHandle contact,
+    TpSubscriptionState *subscribe,
+    TpSubscriptionState *publish,
+    gchar **publish_request)
 {
-  GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
-  GValue *value, *handle_type_value;
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
 
-  value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_CONTACT_LIST);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
-
-  handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  /* no uint value yet - we'll change it for each channel class */
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
-      handle_type_value);
-
-  g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_GROUP);
-  func (type, table, group_channel_allowed_properties, user_data);
-
-  /* FIXME: should these actually be in RequestableChannelClasses? You can't
-   * usefully call CreateChannel on them, although EnsureChannel would be
-   * OK. */
-  /* FIXME: since we have a finite set of possible values for TargetHandle,
-   * should we enumerate them all as separate channel classes? */
-  g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_LIST);
-  func (type, table, list_channel_allowed_properties, user_data);
-
-  g_hash_table_destroy (table);
-}
-
-
-static gboolean
-gabble_roster_request (GabbleRoster *self,
-                       gpointer request_token,
-                       GHashTable *request_properties,
-                       gboolean require_new)
-{
-  gboolean created;
-  GabbleRosterChannel *channel;
-  TpHandleType handle_type;
-  TpHandle handle;
-  GError *error = NULL;
-  TpHandleRepoIface *handle_repo;
-  const gchar * const *fixed;
-  const gchar * const *allowed;
-
-  if (tp_strdiff (tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL ".ChannelType"),
-        TP_IFACE_CHANNEL_TYPE_CONTACT_LIST))
-    return FALSE;
-
-  handle_type = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandleType", NULL);
-
-  if (handle_type != TP_HANDLE_TYPE_LIST &&
-      handle_type != TP_HANDLE_TYPE_GROUP)
-    return FALSE;
-
-  handle_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) self->priv->conn, handle_type);
-
-  handle = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL);
-
-  if (!tp_handle_is_valid (handle_repo, handle, &error))
-    goto error;
-
-  if (handle_type == TP_HANDLE_TYPE_LIST)
+  if (item == NULL)
     {
-      fixed = list_channel_fixed_properties;
-      allowed = list_channel_allowed_properties;
-    }
-  else /* handle_type == TP_HANDLE_TYPE_GROUP */
-    {
-      fixed = group_channel_fixed_properties;
-      allowed = group_channel_allowed_properties;
-    }
+      if (subscribe != NULL)
+        *subscribe = TP_SUBSCRIPTION_STATE_NO;
 
-  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
-          fixed, allowed, &error))
-    goto error;
+      if (publish != NULL)
+        *publish = TP_SUBSCRIPTION_STATE_NO;
 
-  /* disallow "deny" channels if we don't have google:roster support */
-  if (handle_type == TP_HANDLE_TYPE_LIST &&
-      handle == GABBLE_LIST_HANDLE_DENY &&
-      !(self->priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "This server does not have Google roster extensions, so there's "
-          "no deny list");
-      goto error;
-    }
-
-  channel = _gabble_roster_get_channel (self, handle_type, handle,
-      &created, request_token);
-
-  if (require_new && !created)
-    {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "That contact list has already been created (or requested)");
-      goto error;
-    }
-
-  if (self->priv->roster_received)
-    {
-      if (!created)
-        tp_channel_manager_emit_request_already_satisfied (self,
-            request_token, TP_EXPORTABLE_CHANNEL (channel));
+      if (publish_request != NULL)
+        *publish_request = NULL;
     }
   else
     {
-      gabble_roster_associate_request (self, channel, request_token);
+      if (subscribe != NULL)
+        *subscribe = item->subscribe;
+
+      if (publish != NULL)
+        *publish = item->publish;
+
+      if (publish_request != NULL)
+        *publish_request = g_strdup (item->publish_request);
     }
-
-  return TRUE;
-
-error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
-  g_error_free (error);
-  return TRUE;
 }
 
-
-static gboolean
-gabble_roster_create_channel (TpChannelManager *manager,
-                              gpointer request_token,
-                              GHashTable *request_properties)
-{
-  GabbleRoster *self = GABBLE_ROSTER (manager);
-
-  /* FIXME: the channel will come out with Requested=FALSE... is this
-   * reasonable? Or should we just deny all attempts to CreateChannel() on this
-   * factory? */
-
-  return gabble_roster_request (self, request_token, request_properties,
-      TRUE);
-}
-
-
-static gboolean
-gabble_roster_request_channel (TpChannelManager *manager,
-                               gpointer request_token,
-                               GHashTable *request_properties)
-{
-  GabbleRoster *self = GABBLE_ROSTER (manager);
-
-  return gabble_roster_request (self, request_token, request_properties,
-      FALSE);
-}
-
-
-static gboolean
-gabble_roster_ensure_channel (TpChannelManager *manager,
-                              gpointer request_token,
-                              GHashTable *request_properties)
-{
-  GabbleRoster *self = GABBLE_ROSTER (manager);
-
-  return gabble_roster_request (self, request_token, request_properties,
-      FALSE);
-}
-
+typedef struct {
+    GAsyncReadyCallback callback;
+    gpointer user_data;
+    TpHandleSet *contacts;
+    gchar *message;
+} SubscribeContext;
 
 static void
-channel_manager_iface_init (gpointer g_iface,
-                            gpointer iface_data)
+gabble_roster_request_subscription_added_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  TpChannelManagerIface *iface = g_iface;
+  GabbleRoster *self = GABBLE_ROSTER (source);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  SubscribeContext *context = user_data;
+  GError *error = NULL;
+  TpIntSetFastIter iter;
+  TpHandle contact;
 
-  iface->foreach_channel = gabble_roster_foreach_channel;
-  iface->type_foreach_channel_class =
-      gabble_roster_type_foreach_channel_class;
-  iface->request_channel = gabble_roster_request_channel;
-  iface->create_channel = gabble_roster_create_channel;
-  iface->ensure_channel = gabble_roster_ensure_channel;
+  /* Now that we've added all the contacts, send off all the subscription
+   * requests; stop if we hit an error. */
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (context->contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+
+      /* Note that we *do* send redundant requests if the contact is in
+       * ask=subscribe state, since those have semantic value - nagging the
+       * contact again. There's no point in requesting subscription if the
+       * contact has already said yes, though. */
+      if (item != NULL &&
+          (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_TO ||
+           item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH))
+        {
+          DEBUG ("Already subscribed to contact#%u '%s', not re-requesting",
+              contact, contact_id);
+          continue;
+        }
+
+      /* stop trying at the first NetworkError, on the assumption that it'll
+       * be fatal */
+      if (!gabble_connection_send_presence (self->priv->conn,
+            LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, context->message,
+            &error))
+        break;
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, context->callback,
+      context->user_data, NULL, error);
+  g_clear_error (&error);
+  tp_clear_pointer (&context->contacts, tp_handle_set_destroy);
+  g_free (context->message);
+  g_slice_free (SubscribeContext, context);
+}
+
+static void
+gabble_roster_request_subscription_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    const gchar *message,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  SubscribeContext *context = g_slice_new0 (SubscribeContext);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      gabble_roster_request_subscription_added_cb, context,
+      gabble_roster_request_subscription_async, 1);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+
+  /* Before subscribing, add items to the roster
+   * (GTalk depends on this clearing the H flag) */
+  context->contacts = tp_handle_set_copy (contacts);
+  context->callback = callback;
+  context->user_data = user_data;
+  context->message = g_strdup (message);
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    gabble_roster_handle_add (self, contact, result);
+
+  /* When all of those edits have been applied, the callback will send the
+   * <presence type='subscribe'> requests. */
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+gabble_roster_authorize_publication_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+
+      if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO
+          || item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
+        {
+          /* The contact didn't ask for our presence, so we can't usefully
+           * send out <presence type='subscribed'/> (as per RFC3921 §9.2,
+           * our server shouldn't forward it anyway). However, we can
+           * remember this "pre-authorization" and use it later in the
+           * session to auto-approve a subscription request. */
+          DEBUG ("Noting that contact #%u '%s' is pre-authorized",
+              contact, contact_id);
+          tp_handle_set_add (self->priv->pre_authorized, contact);
+        }
+      else if (item->publish == TP_SUBSCRIPTION_STATE_ASK)
+        {
+          /* stop trying at the first NetworkError, on the assumption that
+           * it'll be fatal */
+          DEBUG ("Sending <presence type='subscribed'/> to contact#%u '%s'",
+              contact, contact_id);
+          if (!gabble_roster_handle_subscribed (self, contact, "", &error))
+            break;
+        }
+      else
+        {
+          DEBUG ("contact #%u '%s' already has publish=Y, nothing to do",
+              contact, contact_id);
+        }
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+}
+
+static void
+gabble_roster_store_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_store_contacts_async, 1);
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    gabble_roster_handle_add (self, contact, result);
+
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+gabble_roster_remove_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_request_subscription_async, 1);
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    gabble_roster_handle_remove (self, contact, result);
+
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+gabble_roster_unsubscribe_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleSet *changed = tp_handle_set_new (contact_repo);
+  TpHandleSet *removed = tp_handle_set_new (contact_repo);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
+      if (item == NULL || item->subscribe == TP_SUBSCRIPTION_STATE_NO)
+        {
+          DEBUG ("contact #%u '%s' absent or has subscribe=N, nothing to do",
+              contact, contact_id);
+        }
+      else if (item->subscribe == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)
+        {
+          /* just acknowledge remote removal */
+          DEBUG ("contact #%u '%s' had subscribe=R, moving to publish=N",
+            contact, contact_id);
+          roster_item_set_subscribe (item, TP_SUBSCRIPTION_STATE_NO);
+
+          if (_gabble_roster_item_maybe_remove (self, contact))
+            tp_handle_set_add (removed, contact);
+          else
+            tp_handle_set_add (changed, contact);
+        }
+      else
+        {
+          /* Deny a request (if ASK) or revoke previously-granted permission
+           * (if YES). Stop trying at the first NetworkError, on the
+           * assumption that it'll be fatal. Any changes will be signalled when
+           * confirmed by a roster push. */
+          DEBUG ("Sending <presence type='unsubscribe'/> to contact#%u '%s'",
+              contact, contact_id);
+          if (!gabble_connection_send_presence (self->priv->conn,
+              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, "", &error))
+            break;
+        }
+    }
+
+  tp_base_contact_list_contacts_changed (base, changed, removed);
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_unsubscribe_async, error);
+  g_clear_error (&error);
+  tp_handle_set_destroy (changed);
+  tp_handle_set_destroy (removed);
+}
+
+static void
+gabble_roster_unpublish_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleSet *changed = tp_handle_set_new (contact_repo);
+  TpHandleSet *removed = tp_handle_set_new (contact_repo);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GError *error = NULL;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
+      GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
+      /* If moving from YES to NO, the roster callback will make the change
+       * visible to D-Bus when it actually takes effect.
+       *
+       * If moving from ASK to NO, remove it from publish:local_pending here,
+       * because the roster callback doesn't know if it can
+       * (subscription='none' is used both during request and when it's
+       * rejected).
+       *
+       * If moving from REMOVED_REMOTELY to NO, there's no real change at the
+       * XMPP level, so this is our only chance to make the change visible. */
+      if (item != NULL &&
+          (item->publish == TP_SUBSCRIPTION_STATE_ASK ||
+           item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY))
+        {
+          if (item->publish == TP_SUBSCRIPTION_STATE_ASK)
+            DEBUG ("contact #%u '%s' had publish=A, moving to publish=N",
+              contact, contact_id);
+          else
+            DEBUG ("contact #%u '%s' had publish=R, moving to publish=N",
+              contact, contact_id);
+
+          roster_item_set_publish (item, TP_SUBSCRIPTION_STATE_NO, NULL);
+
+          if (_gabble_roster_item_maybe_remove (self, contact))
+            tp_handle_set_add (removed, contact);
+          else
+            tp_handle_set_add (changed, contact);
+        }
+
+      if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO)
+        {
+          DEBUG ("contact #%u '%s' already has publish=N, nothing to do",
+              contact, contact_id);
+        }
+      else
+        {
+          /* stop trying at the first NetworkError, on the assumption that
+           * it'll be fatal */
+          DEBUG ("Sending <presence type='unsubscribed'/> to contact#%u '%s'",
+              contact, contact_id);
+
+          if (!gabble_connection_send_presence (self->priv->conn,
+              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, "", &error))
+            break;
+        }
+    }
+
+  tp_base_contact_list_contacts_changed (base, changed, removed);
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_request_subscription_async, error);
+  g_clear_error (&error);
+  tp_handle_set_destroy (changed);
+  tp_handle_set_destroy (removed);
+}
+
+static TpHandleSet *
+gabble_roster_dup_blocked_contacts (TpBaseContactList *base)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleSet *set;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GHashTableIter iter;
+  gpointer k, v;
+
+  set = tp_handle_set_new (contact_repo);
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      GabbleRosterItem *item = v;
+
+      if (item->blocked)
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
+    }
+
+  return set;
+}
+
+static gboolean
+gabble_roster_can_block (TpBaseContactList *base)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+
+  return (self->priv->conn->features &
+      GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) != 0;
+}
+
+static void
+gabble_roster_block_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_request_subscription_async, 1);
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    gabble_roster_handle_set_blocked (self, contact, TRUE, result);
+
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+gabble_roster_unblock_contacts_async (TpBaseContactList *base,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_request_subscription_async, 1);
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    gabble_roster_handle_set_blocked (self, contact, FALSE, result);
+
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static GStrv
+gabble_roster_dup_groups (TpBaseContactList *base)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  GPtrArray *ret;
+
+  if (self->priv->groups != NULL)
+    {
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      ret = g_ptr_array_sized_new (
+          tp_handle_set_size (self->priv->groups) + 1);
+
+      tp_intset_fast_iter_init (&iter,
+          tp_handle_set_peek (self->priv->groups));
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          g_ptr_array_add (ret, g_strdup (tp_handle_inspect (group_repo,
+                  group)));
+        }
+    }
+  else
+    {
+      ret = g_ptr_array_sized_new (1);
+    }
+
+  g_ptr_array_add (ret, NULL);
+  return (GStrv) g_ptr_array_free (ret, FALSE);
+}
+
+static GStrv
+gabble_roster_dup_contact_groups (TpBaseContactList *base,
+    TpHandle contact)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GPtrArray *ret = g_ptr_array_new ();
+  GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
+  if (item != NULL && item->groups != NULL)
+    {
+      TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+      TpIntSetFastIter iter;
+      TpHandle group;
+
+      ret = g_ptr_array_sized_new (tp_handle_set_size (item->groups) + 1);
+
+      tp_intset_fast_iter_init (&iter, tp_handle_set_peek (item->groups));
+
+      while (tp_intset_fast_iter_next (&iter, &group))
+        {
+          g_ptr_array_add (ret,
+              g_strdup (tp_handle_inspect (group_repo, group)));
+        }
+    }
+  else
+    {
+      ret = g_ptr_array_sized_new (1);
+    }
+
+  g_ptr_array_add (ret, NULL);
+  return (GStrv) g_ptr_array_free (ret, FALSE);
+}
+
+static TpHandleSet *
+gabble_roster_dup_group_members (TpBaseContactList *base,
+    const gchar *group)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleSet *set;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle;
+  GHashTableIter iter;
+  gpointer k, v;
+
+  set = tp_handle_set_new (contact_repo);
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+
+  if (G_UNLIKELY (group_handle == 0))
+    {
+      /* clearly it doesn't have members */
+      return set;
+    }
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      GabbleRosterItem *item = v;
+
+      if (item->groups != NULL &&
+          tp_handle_set_is_member (item->groups, group_handle))
+        tp_handle_set_add (set, GPOINTER_TO_UINT (k));
+    }
+
+  return set;
+}
+
+static void
+gabble_roster_set_contact_groups_async (TpBaseContactList *base,
+    TpHandle contact,
+    const gchar * const *groups,
+    gsize n,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GabbleRosterItem *item = _gabble_roster_item_ensure (self, contact);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandleSet *groups_set = tp_handle_set_new (group_repo);
+  GPtrArray *groups_created = g_ptr_array_new ();
+  guint i;
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_request_subscription_async, 1);
+
+  for (i = 0; i < n; i++)
+    {
+      TpHandle group_handle = tp_handle_ensure (group_repo, groups[i], NULL,
+          NULL);
+
+      if (G_UNLIKELY (group_handle == 0))
+        continue;
+
+      tp_handle_set_add (groups_set, group_handle);
+
+      if (!tp_handle_set_is_member (self->priv->groups, group_handle))
+        {
+          tp_handle_set_add (self->priv->groups, group_handle);
+          g_ptr_array_add (groups_created, (gchar *) groups[i]);
+        }
+
+      tp_handle_unref (group_repo, group_handle);
+    }
+
+  if (groups_created->len > 0)
+    {
+      tp_base_contact_list_groups_created (base,
+          (const gchar * const *) groups_created->pdata, groups_created->len);
+    }
+
+  g_ptr_array_free (groups_created, TRUE);
+
+  if (item->unsent_edits == NULL)
+    item->unsent_edits = item_edit_new (contact_repo, contact);
+
+  DEBUG ("queue edit to contact#%u - set %" G_GSIZE_FORMAT
+      "contact groups", contact, n);
+
+  tp_clear_pointer (&item->unsent_edits->add_to_groups, tp_handle_set_destroy);
+  item->unsent_edits->add_to_groups = groups_set;
+
+  item->unsent_edits->remove_from_all_other_groups = TRUE;
+
+  tp_clear_pointer (&item->unsent_edits->remove_from_groups,
+      tp_handle_set_destroy);
+
+  gabble_simple_async_countdown_inc (result);
+  item->unsent_edits->results = g_slist_prepend (
+      item->unsent_edits->results, g_object_ref (result));
+
+  /* maybe we can apply the edit immediately? */
+  roster_item_apply_edits (self, contact, item);
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+gabble_roster_set_group_members_async (TpBaseContactList *base,
+    const gchar *group,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle = tp_handle_ensure (group_repo, group, NULL,
+      NULL);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_set_group_members_async, 1);
+  GHashTableIter iter;
+  gpointer k;
+
+  /* You can't add people to an invalid group. */
+  if (G_UNLIKELY (group_handle == 0))
+    {
+      g_simple_async_result_set_error (result, TP_ERRORS,
+          TP_ERROR_INVALID_ARGUMENT, "Invalid group name: %s", group);
+      goto finally;
+    }
+
+  /* we create the group even if @contacts is empty, as the base class
+   * requires */
+  if (!tp_handle_set_is_member (self->priv->groups, group_handle))
+    {
+      tp_handle_set_add (self->priv->groups, group_handle);
+      tp_base_contact_list_groups_created (base, &group, 1);
+    }
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, NULL))
+    {
+      TpHandle contact = GPOINTER_TO_UINT (k);
+
+      if (tp_handle_set_is_member (contacts, contact))
+        gabble_roster_handle_add_to_group (self, contact, group_handle,
+            result);
+      else
+        gabble_roster_handle_remove_from_group (self, contact, group_handle,
+            result);
+    }
+
+  tp_handle_unref (group_repo, group_handle);
+
+finally:
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+gabble_roster_add_to_group_async (TpBaseContactList *base,
+    const gchar *group,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle = tp_handle_ensure (group_repo, group, NULL,
+      NULL);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_add_to_group_async, 1);
+
+  /* You can't add people to an invalid group. */
+  if (G_UNLIKELY (group_handle == 0))
+    {
+      g_simple_async_result_set_error (result, TP_ERRORS,
+          TP_ERROR_INVALID_ARGUMENT, "Invalid group name: %s", group);
+      goto finally;
+    }
+
+  /* we create the group even if @contacts is empty, as the base class
+   * requires */
+  if (!tp_handle_set_is_member (self->priv->groups, group_handle))
+    {
+      tp_handle_set_add (self->priv->groups, group_handle);
+      tp_base_contact_list_groups_created (base, &group, 1);
+    }
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      /* we ignore any NetworkError */
+      gabble_roster_handle_add_to_group (self, contact, group_handle, result);
+    }
+
+  tp_handle_unref (group_repo, group_handle);
+
+finally:
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+gabble_roster_remove_from_group_async (TpBaseContactList *base,
+    const gchar *group,
+    TpHandleSet *contacts,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  TpIntSetFastIter iter;
+  TpHandle contact;
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  TpHandle group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+  GSimpleAsyncResult *result = gabble_simple_async_countdown_new (self,
+      callback, user_data, gabble_roster_remove_from_group_async, 1);
+
+  /* if the group didn't exist then we have nothing to do */
+  if (group_handle == 0)
+    goto finally;
+
+  tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
+
+  while (tp_intset_fast_iter_next (&iter, &contact))
+    {
+      gabble_roster_handle_remove_from_group (self, contact, group_handle,
+          result);
+    }
+
+finally:
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+typedef struct {
+    TpHandle group_handle;
+    GAsyncReadyCallback callback;
+    gpointer user_data;
+    TpHandleSet *contacts;
+} RemoveGroupContext;
+
+static void
+gabble_roster_remove_group_removed_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (source);
+  RemoveGroupContext *context = user_data;
+
+  if (context->group_handle != 0)
+    {
+      TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+      const gchar *group = tp_handle_inspect (group_repo,
+          context->group_handle);
+      GHashTableIter iter;
+      gpointer k, v;
+      TpHandle remaining_member = 0;
+
+      /* Now that we've signalled the group being removed, to be internally
+       * consistent we should believe that the contacts are no longer there;
+       * if a subsequent roster push says they *are* there, we'll just put
+       * them back.
+       *
+       * However, if the group has members that we didn't remove (because
+       * members were added since we sent off the removal requests), we can't
+       * really remove the group.
+       *
+       * We defer the contact removal until after we've signalled group
+       * removal, so that TpBaseContactList can see who used to be in the
+       * group. */
+
+      g_hash_table_iter_init (&iter, self->priv->items);
+
+      while (g_hash_table_iter_next (&iter, &k, &v))
+        {
+          TpHandle contact = GPOINTER_TO_UINT (k);
+          GabbleRosterItem *item = v;
+
+          if (item->groups != NULL && tp_handle_set_is_member (item->groups,
+                context->group_handle))
+            {
+              if (!tp_handle_set_is_member (context->contacts, contact))
+                remaining_member = contact;
+            }
+        }
+
+      if (remaining_member == 0)
+        {
+          tp_handle_set_remove (self->priv->groups, context->group_handle);
+          tp_base_contact_list_groups_removed ((TpBaseContactList *) self,
+              &group, 1);
+
+          g_hash_table_iter_init (&iter, self->priv->items);
+
+          while (g_hash_table_iter_next (&iter, NULL, &v))
+            {
+              GabbleRosterItem *item = v;
+
+              if (item->groups != NULL &&
+                  tp_handle_set_is_member (item->groups,
+                    context->group_handle))
+                tp_handle_set_remove (item->groups, context->group_handle);
+            }
+        }
+      else
+        {
+          DEBUG ("contact #%u is still a member of group '%s', not removing",
+              remaining_member, group);
+        }
+
+      tp_handle_unref (group_repo, context->group_handle);
+    }
+
+  context->callback (source, result, context->user_data);
+  tp_clear_pointer (&context->contacts, tp_handle_set_destroy);
+  g_slice_free (RemoveGroupContext, context);
+}
+
+static void
+gabble_roster_remove_group_async (TpBaseContactList *base,
+    const gchar *group,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GHashTableIter iter;
+  gpointer k, v;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_GROUP);
+  GSimpleAsyncResult *result;
+  RemoveGroupContext *context;
+
+  context = g_slice_new0 (RemoveGroupContext);
+  context->group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+  context->callback = callback;
+  context->user_data = user_data;
+  context->contacts = tp_handle_set_new (contact_repo);
+
+  if (context->group_handle != 0)
+    tp_handle_ref (group_repo, context->group_handle);
+
+  result = gabble_simple_async_countdown_new (self,
+      gabble_roster_remove_group_removed_cb,
+      context, gabble_roster_remove_group_async, 1);
+
+  /* if the group didn't exist then we have nothing to do */
+  if (context->group_handle == 0 ||
+      !tp_handle_set_is_member (self->priv->groups, context->group_handle))
+    goto finally;
+
+  g_hash_table_iter_init (&iter, self->priv->items);
+
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      TpHandle contact = GPOINTER_TO_UINT (k);
+      GabbleRosterItem *item = v;
+
+      if (item->groups != NULL && tp_handle_set_is_member (item->groups,
+            context->group_handle))
+        {
+          tp_handle_set_add (context->contacts, contact);
+          gabble_roster_handle_remove_from_group (self, contact,
+              context->group_handle, result);
+        }
+    }
+
+finally:
+  gabble_simple_async_countdown_dec (result);
+  g_object_unref (result);
+}
+
+static void
+mutable_iface_init (TpMutableContactListInterface *iface)
+{
+  iface->request_subscription_async = gabble_roster_request_subscription_async;
+  iface->authorize_publication_async =
+    gabble_roster_authorize_publication_async;
+  iface->store_contacts_async = gabble_roster_store_contacts_async;
+  iface->remove_contacts_async = gabble_roster_remove_contacts_async;
+  iface->unsubscribe_async = gabble_roster_unsubscribe_async;
+  iface->unpublish_async = gabble_roster_unpublish_async;
+  /* we use the default _finish functions, which assume a GSimpleAsyncResult */
+}
+
+static void
+blockable_iface_init (TpBlockableContactListInterface *iface)
+{
+  iface->can_block = gabble_roster_can_block;
+  iface->dup_blocked_contacts = gabble_roster_dup_blocked_contacts;
+  iface->block_contacts_async = gabble_roster_block_contacts_async;
+  iface->unblock_contacts_async = gabble_roster_unblock_contacts_async;
+  /* we use the default _finish functions, which assume a GSimpleAsyncResult */
+}
+
+static void
+contact_groups_iface_init (TpContactGroupListInterface *iface)
+{
+  iface->dup_groups = gabble_roster_dup_groups;
+  iface->dup_contact_groups = gabble_roster_dup_contact_groups;
+  iface->dup_group_members = gabble_roster_dup_group_members;
+}
+
+static void
+mutable_contact_groups_iface_init (TpMutableContactGroupListInterface *iface)
+{
+  iface->set_contact_groups_async = gabble_roster_set_contact_groups_async;
+  iface->set_group_members_async = gabble_roster_set_group_members_async;
+  iface->add_to_group_async = gabble_roster_add_to_group_async;
+  iface->remove_from_group_async = gabble_roster_remove_from_group_async;
+  iface->remove_group_async = gabble_roster_remove_group_async;
+  /* we use the default _finish functions, which assume a GSimpleAsyncResult */
+}
+
+static void
+gabble_roster_class_init (GabbleRosterClass *cls)
+{
+  GObjectClass *object_class = G_OBJECT_CLASS (cls);
+  TpBaseContactListClass *base_class = TP_BASE_CONTACT_LIST_CLASS (cls);
+
+  g_type_class_add_private (cls, sizeof (GabbleRosterPrivate));
+
+  object_class->constructed = gabble_roster_constructed;
+  object_class->dispose = gabble_roster_dispose;
+  object_class->finalize = gabble_roster_finalize;
+
+  base_class->dup_states = gabble_roster_dup_states;
+  base_class->dup_contacts = gabble_roster_dup_contacts;
+
+  signals[NICKNAME_UPDATE] = g_signal_new (
+    "nickname-update",
+    G_TYPE_FROM_CLASS (cls),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 gboolean
 gabble_roster_handle_sends_presence_to_us (GabbleRoster *self,
     TpHandle handle)
 {
-  return ((gabble_roster_handle_get_subscription (self, handle)
-      & GABBLE_ROSTER_SUBSCRIPTION_TO) != 0);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItem *item;
+
+  g_return_val_if_fail (GABBLE_IS_ROSTER (self), FALSE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
+
+  item = _gabble_roster_item_lookup (self, handle);
+
+  if (item == NULL)
+    return FALSE;
+
+  return (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_TO ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH);
 }
 
 gboolean
 gabble_roster_handle_gets_presence_from_us (GabbleRoster *self,
     TpHandle handle)
 {
-  return ((gabble_roster_handle_get_subscription (self, handle)
-      & GABBLE_ROSTER_SUBSCRIPTION_FROM) != 0);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+  GabbleRosterItem *item;
+
+  g_return_val_if_fail (GABBLE_IS_ROSTER (self), FALSE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
+      FALSE);
+
+  item = _gabble_roster_item_lookup (self, handle);
+
+  if (item == NULL)
+    return FALSE;
+
+  return (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_FROM ||
+      item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH);
 }

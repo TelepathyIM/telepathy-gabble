@@ -90,16 +90,6 @@ typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
                                                          GObject *object,
                                                          gpointer user_data);
 
-/* must be in the same order as the list_handle_strings in
- * connection.c */
-typedef enum
-{
-  GABBLE_LIST_HANDLE_STORED = 1,
-  GABBLE_LIST_HANDLE_PUBLISH,
-  GABBLE_LIST_HANDLE_SUBSCRIBE,
-  GABBLE_LIST_HANDLE_DENY
-} GabbleListHandle;
-
 typedef enum {
     /* The JID could be a "global" JID, or a MUC room member. We'll assume
      * that it's a global JID (and remove the resource) unless we've seen

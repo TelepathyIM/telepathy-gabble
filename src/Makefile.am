@@ -121,6 +121,8 @@ libgabble_convenience_la_SOURCES = \
     jingle-transport-iceudp.c \
     jingle-transport-iface.h \
     jingle-transport-iface.c \
+    legacy-caps.h \
+    legacy-caps.c \
     media-channel.h \
     media-channel-internal.h \
     media-channel.c \

@@ -28,15 +28,11 @@
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
+#include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
-
-#include "caps-channel-manager.h"
 #include "debug.h"
 #include "namespaces.h"
-#include "presence-cache.h"
-#include "media-factory.h"
-#include "util.h"
 
 typedef struct _Feature Feature;
 
@@ -355,14 +351,6 @@ gabble_capabilities_finalize (gpointer conn)
 
 struct _GabbleCapabilitySet {
     TpHandleSet *handles;
-};
-
-const CapabilityConversionData capabilities_conversions[] =
-{
-  { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
-    _gabble_media_factory_typeflags_to_caps,
-    _gabble_media_factory_caps_to_typeflags },
-  { NULL, NULL, NULL}
 };
 
 GabbleCapabilitySet *

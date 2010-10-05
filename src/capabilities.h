@@ -66,20 +66,6 @@ const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
 /* Return the capabilities we always have */
 const GabbleCapabilitySet *gabble_capabilities_get_fixed_caps (void);
 
-typedef void (*TypeFlagsToCapsFunc) (guint typeflags, GabbleCapabilitySet *caps);
-typedef guint (*CapsToTypeFlagsFunc) (const GabbleCapabilitySet *caps);
-
-typedef struct _CapabilityConversionData CapabilityConversionData;
-
-struct _CapabilityConversionData
-{
-  const gchar *iface;
-  TypeFlagsToCapsFunc tf2c_fn;
-  CapsToTypeFlagsFunc c2tf_fn;
-};
-
-extern const CapabilityConversionData capabilities_conversions[];
-
 void gabble_capabilities_init (gpointer conn);
 void gabble_capabilities_finalize (gpointer conn);
 

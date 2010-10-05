@@ -67,6 +67,7 @@
 #include "media-channel.h"
 #include "im-factory.h"
 #include "jingle-factory.h"
+#include "legacy-caps.h"
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"

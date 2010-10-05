@@ -288,7 +288,11 @@ identify_account (TpBaseProtocol *self G_GNUC_UNUSED,
 static GStrv
 get_interfaces (TpBaseProtocol *self)
 {
-  return g_strsplit (TP_IFACE_PROTOCOL_INTERFACE_PRESENCE, ";", -1);
+  const gchar * const interfaces[] = {
+    TP_IFACE_PROTOCOL_INTERFACE_PRESENCE,
+    NULL };
+
+  return g_strdupv ((GStrv) interfaces);
 }
 
 static const TpPresenceStatusSpec *

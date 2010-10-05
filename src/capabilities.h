@@ -23,9 +23,6 @@
 
 #include <glib-object.h>
 
-#include <loudmouth/loudmouth.h>
-
-#include "types.h"
 #include "gabble/capabilities-set.h"
 
 /* Pseudo-capabilities for buggy or strange implementations, represented as

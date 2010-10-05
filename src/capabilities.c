@@ -185,13 +185,13 @@ gabble_capabilities_get_olpc_notify (void)
 }
 
 static gboolean
-omits_content_creators (LmMessageNode *identity)
+omits_content_creators (WockyNode *identity)
 {
   const gchar *name, *suffix;
   gchar *end;
   int ver;
 
-  name = lm_message_node_get_attribute (identity, "name");
+  name = wocky_node_get_attribute (identity, "name");
 
   if (name == NULL)
     return FALSE;
@@ -380,15 +380,15 @@ gabble_capability_set_new_from_stanza (WockyNode *query_result)
 {
   GabbleCapabilitySet *ret;
   const gchar *var;
-  NodeIter ni;
+  GSList *ni;
 
   g_return_val_if_fail (query_result != NULL, NULL);
 
   ret = gabble_capability_set_new ();
 
-  for (ni = node_iter (query_result); ni != NULL; ni = node_iter_next (ni))
+  for (ni = query_result->children; ni != NULL; ni = g_slist_next (ni))
     {
-      WockyNode *child = node_iter_data (ni);
+      WockyNode *child = ni->data;
 
       if (!tp_strdiff (child->name, "identity"))
         {
@@ -401,7 +401,7 @@ gabble_capability_set_new_from_stanza (WockyNode *query_result)
       if (tp_strdiff (child->name, "feature"))
         continue;
 
-      var = lm_message_node_get_attribute (child, "var");
+      var = wocky_node_get_attribute (child, "var");
 
       if (NULL == var)
         continue;

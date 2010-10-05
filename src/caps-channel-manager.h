@@ -24,12 +24,10 @@
 #define GABBLE_CAPS_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/handle.h>
 
 #include "capabilities.h"
-#include "types.h"
 
 G_BEGIN_DECLS
 

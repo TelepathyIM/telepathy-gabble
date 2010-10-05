@@ -358,8 +358,6 @@ gabble_connection_constructor (GType type,
   g_signal_connect (self->presence_cache, "capabilities-update", G_CALLBACK
       (connection_capabilities_update_cb), self);
 
-  capabilities_fill_cache (self->presence_cache);
-
   tp_contacts_mixin_init (G_OBJECT (self),
       G_STRUCT_OFFSET (GabbleConnection, contacts));
 

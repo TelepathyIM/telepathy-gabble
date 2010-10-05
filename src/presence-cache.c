@@ -452,8 +452,11 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
       (GDestroyNotify) g_hash_table_destroy);
 }
 
-void
-capabilities_fill_cache (GabblePresenceCache *cache)
+static void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
+    const gchar *node, const gchar *ns);
+
+static void
+gabble_presence_cache_add_bundles (GabblePresenceCache *cache)
 {
 #define GOOGLE_BUNDLE(cap, features) \
   gabble_presence_cache_add_bundle_caps (cache, \
@@ -514,6 +517,8 @@ gabble_presence_cache_constructor (GType type, guint n_props,
   g_assert (priv->conn != NULL);
   g_assert (priv->presence_handles != NULL);
   g_assert (priv->decloak_handles != NULL);
+
+  gabble_presence_cache_add_bundles ((GabblePresenceCache *) obj);
 
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
       G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
@@ -2046,7 +2051,8 @@ gabble_presence_cache_update_many (
 
 }
 
-void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
+static void
+gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
     const gchar *node,
     const gchar *namespace)
 {

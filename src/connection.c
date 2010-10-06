@@ -131,7 +131,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_future_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
       conn_mail_notif_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES,
       conn_client_types_iface_init);
     )
 
@@ -774,6 +774,7 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_LOCATION,
     GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
     GABBLE_IFACE_CONNECTION_FUTURE,
+    TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
     NULL
 };
 static const gchar **interfaces_always_present = implemented_interfaces + 3;

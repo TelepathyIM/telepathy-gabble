@@ -20,8 +20,7 @@ EXTRA_DIST = \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
     Channel_Interface_Sasl_Authentication.xml \
-    Channel_Type_Server_Authentication.xml \
-    Connection_Interface_Client_Types.xml
+    Channel_Type_Server_Authentication.xml
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 

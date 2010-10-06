@@ -20,7 +20,7 @@
 
   <interface name="org.freedesktop.Telepathy.Connection.Interface.Gabble.Decloak"
     tp:causes-havoc="experimental">
-    <tp:added version="Gabble 0.9.UNRELEASED">(Gabble-specific)</tp:added>
+    <tp:added version="Gabble 0.9.4">(Gabble-specific)</tp:added>
     <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">

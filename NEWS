@@ -1,11 +1,15 @@
-telepathy-gabble 0.10.3 (UNRELEASED)
+telepathy-gabble 0.10.3 (2010-10-06)
 ====================================
 
-Hi!!!!!!!!!!
+The "we ran out of bangs" release.
 
 Fixes:
 
+• Emit ActivitiesChanged when the server aknowledges our own update (tomeu)
 • Removed dependency to libuuid (stormer)
+• Slacker_message_filter can survive invalid/non-signal/unexpected messages
+  (fledermaus)
+• Remove support for gadget (tomeu)
 
 telepathy-gabble 0.10.2 (2010-09-30)
 ====================================

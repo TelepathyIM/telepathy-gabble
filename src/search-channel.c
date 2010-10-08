@@ -363,6 +363,8 @@ parse_search_field_response (GabbleSearchChannel *chan,
   GPtrArray *search_keys = NULL;
   GError *e = NULL;
 
+  g_return_if_fail (query_node != NULL);
+
   x_node = lm_message_node_get_child_with_namespace (query_node, "x",
       NS_X_DATA);
 
@@ -420,15 +422,15 @@ query_reply_cb (GabbleConnection *conn,
           "%s is broken: it replied to our <query> with an empty IQ",
           chan->priv->server);
     }
+  else
+    {
+      parse_search_field_response (chan, query_node);
+    }
 
   if (err != NULL)
     {
       supported_field_discovery_failed (chan, err);
       g_error_free (err);
-    }
-  else
-    {
-      parse_search_field_response (chan, query_node);
     }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;

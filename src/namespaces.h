@@ -114,6 +114,6 @@
 #define NS_GOOGLE_MAIL_NOTIFY   "google:mail:notify"
 
 #define NS_TEMPPRES "urn:xmpp:temppres:0"
-
+#define NS_GOOGLE_SHARED_STATUS "google:shared-status"
 
 #endif /* __GABBLE_NAMESPACES__H__ */

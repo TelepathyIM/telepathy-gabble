@@ -2696,6 +2696,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_INVISIBLE;
               else if (0 == strcmp (var, NS_GOOGLE_MAIL_NOTIFY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY;
+              else if (0 == strcmp (var, NS_GOOGLE_SHARED_STATUS))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS;
             }
         }
 

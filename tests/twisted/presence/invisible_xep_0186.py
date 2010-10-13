@@ -9,7 +9,7 @@ from servicetest import (
 )
 import ns
 import constants as cs
-from invisible_helper import Xep0186XmlStream
+from invisible_helper import Xep0186AndValidInvisibleListStream, Xep0186Stream
 
 def test_invisible_on_connect(q, bus, conn, stream):
     props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
@@ -113,7 +113,8 @@ def test_invisible_fails(q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    exec_test(test_invisible_on_connect, protocol=Xep0186XmlStream)
-    exec_test(test_invisible_on_connect_fails, protocol=Xep0186XmlStream)
-    exec_test(test_invisible, protocol=Xep0186XmlStream)
-    exec_test(test_invisible_fails, protocol=Xep0186XmlStream)
+    for protocol in [Xep0186Stream, Xep0186AndValidInvisibleListStream]:
+        exec_test(test_invisible_on_connect, protocol=protocol)
+        exec_test(test_invisible_on_connect_fails, protocol=protocol)
+        exec_test(test_invisible, protocol=protocol)
+        exec_test(test_invisible_fails, protocol=protocol)

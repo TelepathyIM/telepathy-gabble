@@ -61,6 +61,7 @@ struct _GabbleMediaChannelPrivate
   GPtrArray *delayed_request_streams;
 
   GabbleDTMFPlayer *dtmf_player;
+  gchar *deferred_tones;
 
   gboolean initial_audio;
   gboolean initial_video;

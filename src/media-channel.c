@@ -120,6 +120,7 @@ enum
   PROP_IMMUTABLE_STREAMS,
   PROP_CURRENTLY_SENDING_TONES,
   PROP_INITIAL_TONES,
+  PROP_DEFERRED_TONES,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -171,6 +172,20 @@ static void destroy_request (struct _delayed_request_streams_ctx *ctx,
     gpointer user_data);
 
 static void
+tones_deferred_cb (GabbleMediaChannel *self,
+    const gchar *tones,
+    GabbleDTMFPlayer *dtmf_player)
+{
+  DEBUG ("waiting for user to continue sending '%s'", tones);
+
+  g_free (self->priv->deferred_tones);
+  self->priv->deferred_tones = g_strdup (tones);
+  /* FIXME: when available in telepathy-spec:
+  tp_svc_channel_interface_dtmf_emit_tones_deferred (self, tones);
+  */
+}
+
+static void
 gabble_media_channel_init (GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
@@ -190,6 +205,10 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 
   tp_g_signal_connect_object (priv->dtmf_player, "finished",
       G_CALLBACK (tp_svc_channel_interface_dtmf_emit_stopped_tones), self,
+      G_CONNECT_SWAPPED);
+
+  tp_g_signal_connect_object (priv->dtmf_player, "tones-deferred",
+      G_CALLBACK (tones_deferred_cb), self,
       G_CONNECT_SWAPPED);
 }
 
@@ -585,6 +604,12 @@ gabble_media_channel_get_property (GObject    *object,
       /* FIXME: stub */
       g_value_set_static_string (value, "");
       break;
+    case PROP_DEFERRED_TONES:
+      if (priv->deferred_tones != NULL)
+        g_value_set_string (value, priv->deferred_tones);
+      else
+        g_value_set_static_string (value, "");
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -715,6 +740,8 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   static TpDBusPropertiesMixinPropImpl dtmf_props[] = {
       { "CurrentlySendingTones", "currently-sending-tones", NULL },
       { "InitialTones", "initial-tones", NULL },
+      /* FIXME:
+       * { "DeferredTones", "deferred-tones", NULL }, */
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -892,6 +919,12 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   g_object_class_install_property (object_class, PROP_INITIAL_TONES,
       param_spec);
 
+  param_spec = g_param_spec_string ("deferred-tones", "DeferredTones",
+      "DTMF tones that followed a 'w' or 'W', to be resumed on user request",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DEFERRED_TONES,
+      param_spec);
+
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
       channel_property_signatures, NUM_CHAN_PROPS, NULL);
@@ -980,6 +1013,7 @@ gabble_media_channel_finalize (GObject *object)
   GabbleMediaChannelPrivate *priv = self->priv;
 
   g_free (priv->object_path);
+  tp_clear_pointer (&self->priv->deferred_tones, g_free);
 
   tp_group_mixin_finalize (object);
   tp_properties_mixin_finalize (object);

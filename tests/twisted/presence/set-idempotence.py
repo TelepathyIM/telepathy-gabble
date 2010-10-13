@@ -8,7 +8,8 @@ import dbus
 from servicetest import EventPattern
 from gabbletest import exec_test
 import constants as cs
-from invisible_helper import Xep0186XmlStream, ValidInvisibleListStream
+from invisible_helper import Xep0186Stream, ValidInvisibleListStream, \
+    Xep0186AndValidInvisibleListStream
 
 def test_presence(q, bus, conn, stream):
     conn.Connect()
@@ -114,6 +115,8 @@ if __name__ == '__main__':
     # <https://bugs.freedesktop.org/show_bug.cgi?id=30117>. It turned out that
     # XEP-0126 support meant that our own presence changes were never
     # signalled.
-    exec_test(test_simple_presence, protocol=ValidInvisibleListStream)
-    exec_test(test_simple_presence, protocol=Xep0186XmlStream)
+    for protocol in [Xep0186AndValidInvisibleListStream, Xep0186Stream,
+                     ValidInvisibleListStream]:
+        exec_test(test_simple_presence, protocol=protocol)
+        exec_test(test_simple_presence, protocol=protocol)
 

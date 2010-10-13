@@ -14,7 +14,8 @@ import constants as cs
 
 from twisted.words.xish import xpath, domish
 
-from invisible_helper import ManualPrivacyListStream
+from invisible_helper import Xep0186AndManualPrivacyListStream, \
+    ManualPrivacyListStream
 
 def test(q, bus, conn, stream):
     statuses = conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE,
@@ -71,11 +72,44 @@ def test(q, bus, conn, stream):
     call_async(q, conn.SimplePresence, 'SetPresence', 'testaway', '')
     q.expect('dbus-error', method='SetPresence', name=cs.INVALID_ARGUMENT)
 
-    conn.Disconnect()
+def test_with_xep0186(q, bus, conn, stream):
+    statuses = conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE,
+        'Statuses')
 
+    # testbusy and testaway are provided by test plugin
+    assertContains('testbusy', statuses)
+    assertContains('testaway', statuses)
+
+    assertEquals(statuses['testbusy'][0], cs.PRESENCE_BUSY)
+    assertEquals(statuses['testaway'][0], cs.PRESENCE_AWAY)
+
+    conn.SimplePresence.SetPresence('testbusy', '')
+
+    conn.Connect()
+
+    # ... gabble asks for all the available lists on the server ...
+    stream.handle_get_all_privacy_lists(q, bus, conn,
+        lists=["foo-list", "test-busy-list", "bar-list"])
+
+    get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    list_node = xpath.queryForNodes('//active', get_list.query)[0]
+
+    # ... and then activates the one linked with the requested status
+    # Note: testbusy status is linked to test-busy-list by test plugin
+    assertEquals('test-busy-list', list_node['name'])
+    acknowledge_iq(stream, get_list.stanza)
+
+    q.expect('dbus-signal', signal='PresenceUpdate',
+        args=[{1L: (0L, {u'testbusy': {}})}])
     q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    # ... testaway is not supposed to be settable on us
+    call_async(q, conn.SimplePresence, 'SetPresence', 'testaway', '')
+    q.expect('dbus-error', method='SetPresence', name=cs.INVALID_ARGUMENT)
+
 
 if __name__ == '__main__':
     exec_test(test, protocol=ManualPrivacyListStream)
+    exec_test(test_with_xep0186, protocol=Xep0186AndManualPrivacyListStream)
 

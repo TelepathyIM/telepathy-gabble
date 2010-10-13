@@ -30,6 +30,8 @@
 
 #include "extensions/extensions.h"
 
+#include <wocky/wocky-utils.h>
+
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleServerTLSManager, gabble_server_tls_manager,
@@ -232,7 +234,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
     }
 
   result = g_simple_async_result_new (G_OBJECT (self),
-      callback, user_data, wocky_tls_handler_verify_finish);
+      callback, user_data, gabble_server_tls_manager_verify_async);
 
   if (self->priv->connection == NULL)
     {
@@ -270,6 +272,26 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   /* emit NewChannel on the ChannelManager iface */
   tp_channel_manager_emit_new_channel (self,
       (TpExportableChannel *) self->priv->channel, NULL);
+}
+
+static gboolean
+gabble_server_tls_manager_verify_finish (WockyTLSHandler *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  if (G_IS_SIMPLE_ASYNC_RESULT (result) &&
+      g_simple_async_result_get_source_tag ((GSimpleAsyncResult *) result) ==
+        gabble_server_tls_manager_verify_async)
+    {
+      wocky_implement_finish_void (self,
+          gabble_server_tls_manager_verify_async);
+    }
+  else
+    {
+      return WOCKY_TLS_HANDLER_CLASS
+        (gabble_server_tls_manager_parent_class)->verify_finish_func (self,
+            result, error);
+    }
 }
 
 static void
@@ -341,6 +363,7 @@ gabble_server_tls_manager_class_init (GabbleServerTLSManagerClass *klass)
   oclass->get_property = gabble_server_tls_manager_get_property;
 
   hclass->verify_async_func = gabble_server_tls_manager_verify_async;
+  hclass->verify_finish_func = gabble_server_tls_manager_verify_finish;
 
   pspec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this manager.",

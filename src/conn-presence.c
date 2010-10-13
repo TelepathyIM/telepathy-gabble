@@ -130,6 +130,9 @@ static void toggle_initial_presence_visibility_cb (GObject *source_object,
     GAsyncResult *result,
     gpointer user_data);
 
+static void activate_current_privacy_list (GabbleConnection *self,
+    GSimpleAsyncResult *result);
+
 /* actual code! */
 
 GQuark
@@ -256,6 +259,7 @@ set_xep0186_invisible (GabbleConnection *self,
     GSimpleAsyncResult *result)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
   GError *error = NULL;
   const gchar *element = invisible ? "invisible" : "visible";
   WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
@@ -267,9 +271,18 @@ set_xep0186_invisible (GabbleConnection *self,
 
   if (!invisible && base->status != TP_CONNECTION_STATUS_CONNECTED)
     {
-      conn_presence_signal_own_presence (self, NULL, &error);
-      g_simple_async_result_complete_in_idle (result);
-      g_object_unref (result);
+      if (priv->privacy_statuses != NULL)
+        {
+          /* A plugin might need to activate a privacy list */
+          activate_current_privacy_list (self, result);
+          g_object_unref (result);
+        }
+      else
+        {
+          conn_presence_signal_own_presence (self, NULL, &error);
+          g_simple_async_result_complete_in_idle (result);
+          g_object_unref (result);
+        }
     }
   else if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
           set_xep0186_invisible_cb, NULL, result, &error))
@@ -442,14 +455,17 @@ disable_invisible_privacy_list (GabbleConnection *self)
 {
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
 
-  if (self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE)
-    priv->invisibility_method = INVISIBILITY_METHOD_PRESENCE_INVISIBLE;
-  else
-    priv->invisibility_method = INVISIBILITY_METHOD_NONE;
+  if (priv->invisibility_method == INVISIBILITY_METHOD_PRIVACY)
+    {
+      if (self->features & GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE)
+        priv->invisibility_method = INVISIBILITY_METHOD_PRESENCE_INVISIBLE;
+      else
+        priv->invisibility_method = INVISIBILITY_METHOD_NONE;
 
-  DEBUG ("Set invisibility method to %s",
-      (priv->invisibility_method == INVISIBILITY_METHOD_PRESENCE_INVISIBLE) ?
-      "presence-invisible" : "none");
+      DEBUG ("Set invisibility method to %s",
+          (priv->invisibility_method == INVISIBILITY_METHOD_PRESENCE_INVISIBLE)
+          ? "presence-invisible" : "none");
+    }
 }
 
 static LmHandlerResult
@@ -955,27 +971,28 @@ privacy_lists_loaded_cb (GObject *source_object,
       priv->invisible_list_name =
           g_strdup (g_hash_table_lookup (priv->privacy_statuses, "hidden"));
 
-      priv->invisibility_method = INVISIBILITY_METHOD_PRIVACY;
-
-      setup_invisible_privacy_list_async (self, initial_presence_setup_cb,
-          user_data);
+      if (priv->invisibility_method == INVISIBILITY_METHOD_NONE)
+        priv->invisibility_method = INVISIBILITY_METHOD_PRIVACY;
     }
+
+  if (priv->invisibility_method == INVISIBILITY_METHOD_PRIVACY)
+    setup_invisible_privacy_list_async (self, initial_presence_setup_cb,
+        user_data);
   else
-    {
-      if (self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
-          priv->invisibility_method = INVISIBILITY_METHOD_INVISIBLE_COMMAND;
-
-      toggle_presence_visibility_async (self,
-          toggle_initial_presence_visibility_cb, user_data);
-    }
+    toggle_presence_visibility_async (self,
+        toggle_initial_presence_visibility_cb, user_data);
 }
 
 void
 conn_presence_set_initial_presence_async (GabbleConnection *self,
     GAsyncReadyCallback callback, gpointer user_data)
 {
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
   GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, conn_presence_set_initial_presence_async);
+
+  if (self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
+    priv->invisibility_method = INVISIBILITY_METHOD_INVISIBLE_COMMAND;
 
   get_existing_privacy_lists_async (self, privacy_lists_loaded_cb, result);
 }

@@ -28,15 +28,11 @@
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
+#include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
-
-#include "caps-channel-manager.h"
 #include "debug.h"
 #include "namespaces.h"
-#include "presence-cache.h"
-#include "media-factory.h"
-#include "util.h"
 
 typedef struct _Feature Feature;
 
@@ -185,13 +181,13 @@ gabble_capabilities_get_olpc_notify (void)
 }
 
 static gboolean
-omits_content_creators (LmMessageNode *identity)
+omits_content_creators (WockyNode *identity)
 {
   const gchar *name, *suffix;
   gchar *end;
   int ver;
 
-  name = lm_message_node_get_attribute (identity, "name");
+  name = wocky_node_get_attribute (identity, "name");
 
   if (name == NULL)
     return FALSE;
@@ -230,7 +226,7 @@ static gsize feature_handles_refcount = 0;
 static TpHandleRepoIface *feature_handles = NULL;
 
 void
-gabble_capabilities_init (GabbleConnection *conn)
+gabble_capabilities_init (gpointer conn)
 {
   DEBUG ("%p", conn);
 
@@ -313,7 +309,7 @@ gabble_capabilities_init (GabbleConnection *conn)
 }
 
 void
-gabble_capabilities_finalize (GabbleConnection *conn)
+gabble_capabilities_finalize (gpointer conn)
 {
   DEBUG ("%p", conn);
 
@@ -357,62 +353,6 @@ struct _GabbleCapabilitySet {
     TpHandleSet *handles;
 };
 
-void
-capabilities_fill_cache (GabblePresenceCache *cache)
-{
-#define GOOGLE_BUNDLE(cap, features) \
-  gabble_presence_cache_add_bundle_caps (cache, \
-      "http://www.google.com/xmpp/client/caps#" cap, features); \
-  gabble_presence_cache_add_bundle_caps (cache, \
-      "http://talk.google.com/xmpp/client/caps#" cap, features);
-
-  /* Cache various bundle from the Google Talk clients as trusted.  Some old
-   * versions of Google Talk do not reply correctly to discovery requests.
-   * Plus, we know what Google's bundles mean, so it's a waste of time to disco
-   * them, particularly the ones for features we don't support. The desktop
-   * client doesn't currently have all of these, but it doesn't hurt to cache
-   * them anyway.
-   */
-  GOOGLE_BUNDLE ("voice-v1", NS_GOOGLE_FEAT_VOICE);
-  GOOGLE_BUNDLE ("video-v1", NS_GOOGLE_FEAT_VIDEO);
-
-  /* File transfer support */
-  GOOGLE_BUNDLE ("share-v1", NS_GOOGLE_FEAT_SHARE);
-
-  /* Not really sure what this ones is. */
-  GOOGLE_BUNDLE ("sms-v1", NULL);
-
-  /* TODO: remove this when we fix fd.o#22768. */
-  GOOGLE_BUNDLE ("pmuc-v1", NULL);
-
-  /* The camera-v1 bundle seems to mean "I have a camera plugged in". Not
-   * having it doesn't seem to affect anything, and we have no way of exposing
-   * that information anyway.
-   */
-  GOOGLE_BUNDLE ("camera-v1", NULL);
-
-#undef GOOGLE_BUNDLE
-
-  /* We should also cache the ext='' bundles Gabble advertises: older Gabbles
-   * advertise these and don't support hashed caps, and we shouldn't need to
-   * disco them.
-   */
-  gabble_presence_cache_add_bundle_caps (cache,
-      NS_GABBLE_CAPS "#" BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE);
-  gabble_presence_cache_add_bundle_caps (cache,
-      NS_GABBLE_CAPS "#" BUNDLE_VIDEO_V1, NS_GOOGLE_FEAT_VIDEO);
-  gabble_presence_cache_add_bundle_caps (cache,
-      NS_GABBLE_CAPS "#" BUNDLE_SHARE_V1, NS_GOOGLE_FEAT_SHARE);
-}
-
-const CapabilityConversionData capabilities_conversions[] =
-{
-  { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
-    _gabble_media_factory_typeflags_to_caps,
-    _gabble_media_factory_caps_to_typeflags },
-  { NULL, NULL, NULL}
-};
-
 GabbleCapabilitySet *
 gabble_capability_set_new (void)
 {
@@ -428,15 +368,15 @@ gabble_capability_set_new_from_stanza (WockyNode *query_result)
 {
   GabbleCapabilitySet *ret;
   const gchar *var;
-  NodeIter ni;
+  GSList *ni;
 
   g_return_val_if_fail (query_result != NULL, NULL);
 
   ret = gabble_capability_set_new ();
 
-  for (ni = node_iter (query_result); ni != NULL; ni = node_iter_next (ni))
+  for (ni = query_result->children; ni != NULL; ni = g_slist_next (ni))
     {
-      WockyNode *child = node_iter_data (ni);
+      WockyNode *child = ni->data;
 
       if (!tp_strdiff (child->name, "identity"))
         {
@@ -449,7 +389,7 @@ gabble_capability_set_new_from_stanza (WockyNode *query_result)
       if (tp_strdiff (child->name, "feature"))
         continue;
 
-      var = lm_message_node_get_attribute (child, "var");
+      var = wocky_node_get_attribute (child, "var");
 
       if (NULL == var)
         continue;

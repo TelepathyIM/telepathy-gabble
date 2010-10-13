@@ -67,6 +67,7 @@
 #include "media-channel.h"
 #include "im-factory.h"
 #include "jingle-factory.h"
+#include "legacy-caps.h"
 #include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
@@ -357,8 +358,6 @@ gabble_connection_constructor (GType type,
       (gabble_conn_aliasing_nickname_updated), self);
   g_signal_connect (self->presence_cache, "capabilities-update", G_CALLBACK
       (connection_capabilities_update_cb), self);
-
-  capabilities_fill_cache (self->presence_cache);
 
   tp_contacts_mixin_init (G_OBJECT (self),
       G_STRUCT_OFFSET (GabbleConnection, contacts));

@@ -1,7 +1,7 @@
 /*
- * types.h - type definitions available to telepathy-gabble plugins
- * Copyright © 2010 Collabora Ltd.
- * Copyright © 2010 Nokia Corporation
+ * legacy-caps.c - Connection.Interface.Capabilities constants and utilities
+ * Copyright (C) 2005 Collabora Ltd.
+ * Copyright (C) 2005 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -18,18 +18,17 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef GABBLE_PLUGINS_TYPES_H
-#define GABBLE_PLUGINS_TYPES_H
+#include "config.h"
+#include "legacy-caps.h"
 
-#include <glib.h>
+#define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
+#include "debug.h"
+#include "media-factory.h"
 
-G_BEGIN_DECLS
-
-typedef struct _GabbleConnection GabbleConnection;
-typedef struct _GabbleDiscoIdentity GabbleDiscoIdentity;
-typedef struct _GabblePlugin GabblePlugin;
-typedef struct _GabbleSidecar GabbleSidecar;
-
-G_END_DECLS
-
-#endif
+const CapabilityConversionData capabilities_conversions[] =
+{
+  { TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA,
+    _gabble_media_factory_typeflags_to_caps,
+    _gabble_media_factory_caps_to_typeflags },
+  { NULL, NULL, NULL}
+};

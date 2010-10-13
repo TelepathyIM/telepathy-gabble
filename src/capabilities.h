@@ -23,9 +23,6 @@
 
 #include <glib-object.h>
 
-#include <loudmouth/loudmouth.h>
-
-#include "types.h"
 #include "gabble/capabilities-set.h"
 
 /* Pseudo-capabilities for buggy or strange implementations, represented as
@@ -66,32 +63,11 @@ const GabbleCapabilitySet *gabble_capabilities_get_bundle_share_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_voice_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
 
-/*
- * capabilities_fill_cache
- *
- * Fill up the given GabblePresenceCache with known feature nodes
- */
-void capabilities_fill_cache (GabblePresenceCache *cache);
-
 /* Return the capabilities we always have */
 const GabbleCapabilitySet *gabble_capabilities_get_fixed_caps (void);
 
-typedef void (*TypeFlagsToCapsFunc) (guint typeflags, GabbleCapabilitySet *caps);
-typedef guint (*CapsToTypeFlagsFunc) (const GabbleCapabilitySet *caps);
-
-typedef struct _CapabilityConversionData CapabilityConversionData;
-
-struct _CapabilityConversionData
-{
-  const gchar *iface;
-  TypeFlagsToCapsFunc tf2c_fn;
-  CapsToTypeFlagsFunc c2tf_fn;
-};
-
-extern const CapabilityConversionData capabilities_conversions[];
-
-void gabble_capabilities_init (GabbleConnection *conn);
-void gabble_capabilities_finalize (GabbleConnection *conn);
+void gabble_capabilities_init (gpointer conn);
+void gabble_capabilities_finalize (gpointer conn);
 
 #endif  /* __GABBLE_CAPABILITIES__H__ */
 

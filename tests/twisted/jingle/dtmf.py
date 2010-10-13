@@ -138,7 +138,7 @@ def test(jp, q, bus, conn, stream):
     # certainly long enough that the Python script will win the race, i.e.
     # cancel before Gabble processes the whole dialstring.
     call_async(q, chan.DTMF, 'MultipleTones',
-            '11111111111111111111111111111111111111111111111111111111111111')
+            '1,1' * 100)
     q.expect('dbus-return', method='MultipleTones')
     call_async(q, chan.DTMF, 'MultipleTones', '9')
     q.expect('dbus-error', method='MultipleTones',

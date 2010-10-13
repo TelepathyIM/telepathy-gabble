@@ -45,6 +45,12 @@
 #include "namespaces.h"
 #include "util.h"
 
+/* The Google server stops pushing <new-mail> updates for the periode of
+ * POLL_DURATION seconds. To ensure that MailNotification remains accurate,
+ * we manually update every POLL_DELAY second the mail information.
+ */
+#define POLL_DELAY 5
+#define POLL_DURATION 60
 
 enum
 {
@@ -62,6 +68,8 @@ struct _GabbleConnectionMailNotificationPrivate
   GHashTable *unread_mails;
   guint unread_count;
   guint new_mail_handler_id;
+  guint poll_timeout_id;
+  guint poll_count;
   GList *inbox_url_requests; /* list of DBusGMethodInvocation */
 };
 
@@ -636,6 +644,35 @@ update_unread_mails (GabbleConnection *conn)
   g_object_unref (query);
 }
 
+static gboolean
+poll_unread_mails_cb (gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
+
+  if (priv->poll_count * POLL_DELAY >= POLL_DURATION)
+    {
+      DEBUG ("%i seconds since <new-mail>, stopping polling",
+          priv->poll_count * POLL_DELAY);
+      priv->poll_timeout_id = 0;
+      priv->poll_count = 0;
+      return FALSE;
+    }
+
+  priv->poll_count++;
+
+  /* When no subscriber, keep counting time, but don't actually update the
+   * data since nobody would care about it */
+  if (g_hash_table_size (priv->subscribers) > 0)
+    {
+      update_unread_mails (conn);
+      DEBUG ("%i seconds since <new-mail>, still polling",
+          priv->poll_count * POLL_DELAY);
+    }
+
+  return TRUE;
+}
+
 
 static gboolean
 new_mail_handler (WockyPorter *porter,
@@ -648,6 +685,15 @@ new_mail_handler (WockyPorter *porter,
     {
       DEBUG ("Got Google <new-mail> notification");
       update_unread_mails (conn);
+
+      conn->mail_priv->poll_count = 0;
+      if (conn->mail_priv->poll_timeout_id == 0)
+        {
+          DEBUG ("Starting to poll mail for next %i seconds", POLL_DURATION);
+          conn->mail_priv->poll_timeout_id = g_timeout_add_seconds (
+              POLL_DELAY,
+              (GSourceFunc) poll_unread_mails_cb, conn);
+        }
     }
 
   return TRUE;
@@ -735,6 +781,9 @@ conn_mail_notif_dispose (GabbleConnection *conn)
       wocky_porter_unregister_handler (porter, priv->new_mail_handler_id);
       priv->new_mail_handler_id = 0;
     }
+
+  if (priv->poll_timeout_id != 0)
+    g_source_remove (priv->poll_timeout_id);
 
   g_slice_free (GabbleConnectionMailNotificationPrivate, priv);
   conn->mail_priv = NULL;

@@ -657,7 +657,8 @@ poll_unread_mails_cb (gpointer user_data)
 
   if (priv->poll_count * POLL_DELAY >= POLL_DURATION)
     {
-      DEBUG ("Stop polling mail after %i seconds", priv->poll_count * POLL_DELAY);
+      DEBUG ("%i seconds since <new-mail>, stopping polling",
+          priv->poll_count * POLL_DELAY);
       priv->poll_timeout_id = 0;
       priv->poll_count = 0;
       return FALSE;
@@ -670,7 +671,8 @@ poll_unread_mails_cb (gpointer user_data)
   if (g_hash_table_size (priv->subscribers) > 0)
     {
       update_unread_mails (conn);
-      DEBUG ("Polling mail since %i seconds", priv->poll_count * POLL_DELAY);
+      DEBUG ("%i seconds since <new-mail>, still polling",
+          priv->poll_count * POLL_DELAY);
     }
 
   return TRUE;
@@ -692,7 +694,7 @@ new_mail_handler (WockyPorter *porter,
       conn->mail_priv->poll_count = 0;
       if (conn->mail_priv->poll_timeout_id == 0)
         {
-          DEBUG ("Start polling mail for next %i seconds", POLL_DURATION);
+          DEBUG ("Starting to poll mail for next %i seconds", POLL_DURATION);
           conn->mail_priv->poll_timeout_id = g_timeout_add_seconds (
               POLL_DELAY,
               (GSourceFunc) poll_unread_mails_cb, conn);

@@ -2871,9 +2871,9 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
   tp_svc_media_session_handler_return_from_error (context);
 }
 
-/* FIXME: these are pretty arbitrary */
 #define TONE_MS 200
 #define GAP_MS 100
+#define PAUSE_MS 3000
 /* arbitrary limit on the length of a tone started with StartTone */
 #define MAX_TONE_SECONDS 10
 
@@ -2899,8 +2899,9 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
   tones[0] = gabble_dtmf_event_to_char (event);
 
   if (gabble_dtmf_player_play (self->priv->dtmf_player,
-      tones, MAX_TONE_SECONDS * 1000, GAP_MS, &error))
+      tones, MAX_TONE_SECONDS * 1000, GAP_MS, PAUSE_MS, &error))
     {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
       tp_svc_channel_interface_dtmf_emit_sending_tones (self, tones);
       tp_svc_channel_interface_dtmf_return_from_start_tone (context);
     }
@@ -2941,8 +2942,9 @@ gabble_media_channel_multiple_tones (
     }
 
   if (gabble_dtmf_player_play (self->priv->dtmf_player,
-      dialstring, TONE_MS, GAP_MS, &error))
+      dialstring, TONE_MS, GAP_MS, PAUSE_MS, &error))
     {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
       tp_svc_channel_interface_dtmf_emit_sending_tones (self, dialstring);
       tp_svc_channel_interface_dtmf_return_from_start_tone (context);
     }

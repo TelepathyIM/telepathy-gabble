@@ -62,7 +62,8 @@ struct _GabbleDTMFPlayerClass
 GabbleDTMFPlayer *gabble_dtmf_player_new (void);
 
 gboolean gabble_dtmf_player_play (GabbleDTMFPlayer *self,
-    const gchar *tones, guint tone_ms, guint gap_ms, GError **error);
+    const gchar *tones, guint tone_ms, guint gap_ms, guint pause_ms,
+    GError **error);
 
 gboolean gabble_dtmf_player_is_active (GabbleDTMFPlayer *self);
 

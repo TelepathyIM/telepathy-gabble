@@ -124,7 +124,7 @@ test_empty (Fixture *f,
 {
   gboolean ok;
 
-  ok = gabble_dtmf_player_play (f->dtmf_player, "", 1, 1, &f->error);
+  ok = gabble_dtmf_player_play (f->dtmf_player, "", 1, 1, 1, &f->error);
   g_assert_no_error (f->error);
   g_assert (ok);
   g_assert (!gabble_dtmf_player_is_active (f->dtmf_player));
@@ -138,7 +138,7 @@ test_cancel (Fixture *f,
 {
   gboolean ok;
 
-  ok = gabble_dtmf_player_play (f->dtmf_player, "#", 10000, 1, &f->error);
+  ok = gabble_dtmf_player_play (f->dtmf_player, "#", 10000, 1, 1, &f->error);
   g_assert_no_error (f->error);
   g_assert (ok);
   g_assert (gabble_dtmf_player_is_active (f->dtmf_player));
@@ -158,7 +158,7 @@ test_cancel_in_gap (Fixture *f,
 {
   gboolean ok;
 
-  ok = gabble_dtmf_player_play (f->dtmf_player, "#*", 1, 10000, &f->error);
+  ok = gabble_dtmf_player_play (f->dtmf_player, "#*", 1, 10000, 1, &f->error);
   g_assert_no_error (f->error);
   g_assert (ok);
   g_assert (gabble_dtmf_player_is_active (f->dtmf_player));
@@ -179,7 +179,7 @@ test_sequence (Fixture *f,
 {
   gboolean ok;
 
-  ok = gabble_dtmf_player_play (f->dtmf_player, "*123#", 1, 1,
+  ok = gabble_dtmf_player_play (f->dtmf_player, "*12,3#", 1, 1, 1,
       &f->error);
   g_assert_no_error (f->error);
   g_assert (ok);
@@ -196,6 +196,9 @@ test_sequence (Fixture *f,
       "stopped\n"
       "started '2'\n"
       "stopped\n"
+      /* at this point we'd wait longer than usual - you can't tell here,
+       * because we have 1ms as the gap time and also as the pause time,
+       * and we're not keeping track anyway */
       "started '3'\n"
       "stopped\n"
       "started '#'\n"

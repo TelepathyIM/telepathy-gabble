@@ -4,9 +4,6 @@ from gabbletest import (
 import ns
 from twisted.words.xish import xpath
 
-class Xep0186XmlStream(XmppXmlStream):
-    disco_features = [ns.INVISIBLE]
-
 class ManualPrivacyListStream(XmppXmlStream):
     """Unlike the base class, which automatically responds to privacy list
     requests in the negative, this stream class does not automatically respond.
@@ -84,3 +81,12 @@ class ValidInvisibleListStream(ManualPrivacyListStream):
                     ])
             else:
                 send_error_reply(self, iq, elem(ns.STANZA, 'item-not-found'))
+
+class Xep0186Stream(XmppXmlStream):
+    disco_features = [ns.INVISIBLE]
+
+class Xep0186AndValidInvisibleListStream(ValidInvisibleListStream):
+    disco_features = [ns.INVISIBLE]
+
+class Xep0186AndManualPrivacyListStream(ManualPrivacyListStream):
+    disco_features = [ns.INVISIBLE]

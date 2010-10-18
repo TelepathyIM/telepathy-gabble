@@ -104,8 +104,6 @@ gabble_im_channel_init (GabbleIMChannel *self)
   self->priv = priv;
 }
 
-#define NUM_SUPPORTED_MESSAGE_TYPES 3
-
 static void
 gabble_im_channel_constructed (GObject *obj)
 {
@@ -118,7 +116,7 @@ gabble_im_channel_constructed (GObject *obj)
       tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle target = tp_base_channel_get_target_handle (base);
 
-  TpChannelTextMessageType types[NUM_SUPPORTED_MESSAGE_TYPES] = {
+  TpChannelTextMessageType types[] = {
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
@@ -146,7 +144,7 @@ gabble_im_channel_constructed (GObject *obj)
       base_conn);
 
   tp_message_mixin_implement_sending (obj, _gabble_im_channel_send_message,
-      NUM_SUPPORTED_MESSAGE_TYPES, types, 0,
+      G_N_ELEMENTS (types), types, 0,
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_FAILURES,
       supported_content_types);
 }

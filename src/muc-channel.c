@@ -282,8 +282,6 @@ gabble_muc_channel_init (GabbleMucChannel *self)
 static TpHandle create_room_identity (GabbleMucChannel *)
   G_GNUC_WARN_UNUSED_RESULT;
 
-#define NUM_SUPPORTED_MESSAGE_TYPES 3
-
 /*  signatures for presence handlers */
 
 static void handle_fill_presence (WockyMuc *muc,
@@ -368,7 +366,7 @@ gabble_muc_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle target, initiator, self_handle;
-  TpChannelTextMessageType types[NUM_SUPPORTED_MESSAGE_TYPES] = {
+  TpChannelTextMessageType types[] = {
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
@@ -466,7 +464,7 @@ gabble_muc_channel_constructed (GObject *obj)
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, message_mixin),
       base_conn);
   tp_message_mixin_implement_sending (obj, gabble_muc_channel_send,
-      NUM_SUPPORTED_MESSAGE_TYPES, types, 0,
+      G_N_ELEMENTS (types), types, 0,
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_FAILURES |
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_SUCCESSES,
       supported_content_types);

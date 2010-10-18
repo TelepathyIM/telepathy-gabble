@@ -153,6 +153,23 @@ static void gabble_im_channel_dispose (GObject *object);
 static void gabble_im_channel_finalize (GObject *object);
 
 static void
+gabble_im_channel_fill_immutable_properties (TpBaseChannel *chan,
+    GHashTable *properties)
+{
+  TpBaseChannelClass *cls = TP_BASE_CHANNEL_CLASS (
+      gabble_im_channel_parent_class);
+
+  cls->fill_immutable_properties (chan, properties);
+
+  tp_dbus_properties_mixin_fill_properties_hash (
+      G_OBJECT (chan), properties,
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessagePartSupportFlags",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
+      NULL);
+}
+
+static void
 gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_im_channel_class);
@@ -170,6 +187,8 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   base_class->interfaces = gabble_im_channel_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
   base_class->close = gabble_im_channel_close;
+  base_class->fill_immutable_properties =
+    gabble_im_channel_fill_immutable_properties;
 
   tp_message_mixin_init_dbus_properties (object_class);
 }

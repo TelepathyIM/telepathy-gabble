@@ -968,6 +968,9 @@ gabble_muc_channel_fill_immutable_properties (
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessagePartSupportFlags",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
       NULL);
 }
 

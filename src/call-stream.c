@@ -53,6 +53,12 @@ G_DEFINE_TYPE_WITH_CODE(GabbleCallStream, gabble_call_stream,
     call_stream_media_iface_init);
   );
 
+/* interfaces */
+static const gchar *gabble_call_stream_interfaces[] = {
+    GABBLE_IFACE_CALL_STREAM_INTERFACE_MEDIA,
+    NULL
+};
+
 /* properties */
 enum
 {
@@ -61,6 +67,7 @@ enum
   PROP_CONNECTION,
 
   /* Call interface properties */
+  PROP_INTERFACES,
   PROP_REMOTE_MEMBERS,
 
   /* Media interface properties */
@@ -190,6 +197,9 @@ gabble_call_stream_get_property (GObject    *object,
 
           break;
         }
+      case PROP_INTERFACES:
+        g_value_set_boxed (value, gabble_call_stream_interfaces);
+        break;
       case PROP_REMOTE_MEMBERS:
         g_value_set_boxed (value, priv->remote_members);
         break;
@@ -468,6 +478,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl stream_props[] = {
+    { "Interfaces", "interfaces", NULL },
     { "RemoteMembers", "remote-members", NULL },
     { NULL }
   };
@@ -510,6 +521,13 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
+
+  param_spec = g_param_spec_boxed ("interfaces", "Interfaces",
+      "Stream interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INTERFACES,
+      param_spec);
 
   param_spec = g_param_spec_boxed ("remote-members", "Remote members",
       "Remote member map",

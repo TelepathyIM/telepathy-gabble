@@ -806,6 +806,7 @@ call_content_setup_jingle (GabbleCallContent *self,
   GabbleJingleContent *jingle;
   GabbleCallStream *stream;
   gchar *path;
+  GPtrArray *paths;
 
   jingle = gabble_call_member_content_get_jingle_content (mcontent);
 
@@ -819,13 +820,17 @@ call_content_setup_jingle (GabbleCallContent *self,
       "jingle-content", jingle,
       NULL);
 
-
   jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle),
       jingle_media_rtp_copy_codecs (priv->local_codecs), TRUE, NULL);
 
   priv->streams = g_list_prepend (priv->streams, stream);
-  gabble_svc_call_content_emit_stream_added (self, path);
-  g_free (path);
+
+  paths = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
+  g_ptr_array_add (paths, path);
+
+  gabble_svc_call_content_emit_streams_added (self, paths);
+
+  g_ptr_array_unref (paths);
 }
 
 static void
@@ -844,6 +849,7 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
   GabbleCallContentPrivate *priv = self->priv;
   GabbleJingleContent *content;
   GList *l;
+  GPtrArray *paths;
 
   priv->contents = g_list_remove (priv->contents, mcontent);
 
@@ -856,8 +862,12 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
       if (content == gabble_call_stream_get_jingle_content (stream))
         {
           priv->streams = g_list_delete_link (priv->streams, l);
-          gabble_svc_call_content_emit_stream_removed (self,
-            gabble_call_stream_get_object_path (stream));
+
+          paths = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
+          g_ptr_array_add (paths, g_strdup (
+                  gabble_call_stream_get_object_path (stream)));
+          gabble_svc_call_content_emit_streams_removed (self, paths);
+          g_ptr_array_unref (paths);
 
           g_object_unref (stream);
           break;

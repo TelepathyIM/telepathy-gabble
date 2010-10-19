@@ -69,6 +69,7 @@ enum
   /* Call interface properties */
   PROP_INTERFACES,
   PROP_REMOTE_MEMBERS,
+  PROP_CAN_REQUEST_RECEIVING,
 
   /* Media interface properties */
   PROP_LOCAL_CANDIDATES,
@@ -202,6 +203,10 @@ gabble_call_stream_get_property (GObject    *object,
         break;
       case PROP_REMOTE_MEMBERS:
         g_value_set_boxed (value, priv->remote_members);
+        break;
+      case PROP_CAN_REQUEST_RECEIVING:
+        /* TODO: set to TRUE conditionally when RequestReceiving is implemented */
+        g_value_set_boolean (value, FALSE);
         break;
       case PROP_STUN_SERVERS:
         {
@@ -480,6 +485,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   static TpDBusPropertiesMixinPropImpl stream_props[] = {
     { "Interfaces", "interfaces", NULL },
     { "RemoteMembers", "remote-members", NULL },
+    { "CanRequestReceiving", "can-request-receiving", NULL },
     { NULL }
   };
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
@@ -534,6 +540,14 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       GABBLE_HASH_TYPE_CONTACT_SENDING_STATE_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_MEMBERS,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("can-request-receiving", "CanRequestReceiving",
+      "If true, the user can request that a remote contact starts sending on"
+      "this stream.",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CAN_REQUEST_RECEIVING,
       param_spec);
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",

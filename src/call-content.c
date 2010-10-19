@@ -71,7 +71,6 @@ enum
   PROP_TARGET_HANDLE,
 
   PROP_NAME,
-  PROP_CREATOR,
   PROP_DISPOSITION,
 
   PROP_CONTACT_CODEC_MAP,
@@ -113,7 +112,6 @@ struct _GabbleCallContentPrivate
   guint offer_count;
 
   GabbleCallContentDisposition disposition;
-  TpHandle creator;
 
   GList *streams;
   gboolean dispose_has_run;
@@ -195,9 +193,6 @@ gabble_call_content_get_property (GObject    *object,
           g_value_set_string (value, priv->name);
           break;
         }
-      case PROP_CREATOR:
-        g_value_set_uint (value, priv->creator);
-        break;
       case PROP_DISPOSITION:
         g_value_set_uint (value, priv->disposition);
         break;
@@ -269,9 +264,6 @@ gabble_call_content_set_property (GObject *object,
       case PROP_JINGLE_MEDIA_TYPE:
         priv->mtype = g_value_get_uint (value);
         break;
-      case PROP_CREATOR:
-        priv->creator = g_value_get_uint (value);
-        break;
       case PROP_DISPOSITION:
         priv->disposition = g_value_get_uint (value);
         break;
@@ -307,7 +299,6 @@ gabble_call_content_class_init (
     { "Interfaces", "interfaces", NULL },
     { "Name", "name", NULL },
     { "Type", "media-type", NULL },
-    { "Creator", "creator", NULL },
     { "Disposition", "disposition", NULL },
     { "Streams", "streams", NULL },
     { NULL }
@@ -380,13 +371,6 @@ gabble_call_content_class_init (
       0, G_MAXUINT, 0,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_JINGLE_MEDIA_TYPE,
-      param_spec);
-
-  param_spec = g_param_spec_uint ("creator", "Creator",
-      "The creator of this content",
-      0, G_MAXUINT, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CREATOR,
       param_spec);
 
   param_spec = g_param_spec_uint ("disposition", "Disposition",

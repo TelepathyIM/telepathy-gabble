@@ -65,7 +65,8 @@ G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
 /* properties */
 enum
 {
-  PROP_OBJECT_PATH = 1,
+  PROP_INTERFACES = 1,
+  PROP_OBJECT_PATH,
   PROP_CONNECTION,
   PROP_TARGET_HANDLE,
 
@@ -89,6 +90,12 @@ enum
 };
 
 static guint signals[LAST_SIGNAL] = {0};
+
+/* interfaces */
+static const gchar *gabble_call_content_interfaces[] = {
+    GABBLE_IFACE_CALL_CONTENT_INTERFACE_MEDIA,
+    NULL
+};
 
 /* private structure */
 struct _GabbleCallContentPrivate
@@ -141,6 +148,9 @@ gabble_call_content_get_property (GObject    *object,
 
   switch (property_id)
     {
+      case PROP_INTERFACES:
+        g_value_set_boxed (value, gabble_call_content_interfaces);
+        break;
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
         break;
@@ -294,6 +304,7 @@ gabble_call_content_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_content_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl content_props[] = {
+    { "Interfaces", "interfaces", NULL },
     { "Name", "name", NULL },
     { "Type", "media-type", NULL },
     { "Creator", "creator", NULL },
@@ -331,6 +342,12 @@ gabble_call_content_class_init (
 
   object_class->dispose = gabble_call_content_dispose;
   object_class->finalize = gabble_call_content_finalize;
+
+  param_spec = g_param_spec_boxed ("interfaces", "Interfaces",
+      "Extra Call Content interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
       "The D-Bus object path used for this "

@@ -69,6 +69,7 @@ enum
   /* Call interface properties */
   PROP_INTERFACES,
   PROP_REMOTE_MEMBERS,
+  PROP_LOCAL_SENDING_STATE,
   PROP_CAN_REQUEST_RECEIVING,
 
   /* Media interface properties */
@@ -243,6 +244,9 @@ gabble_call_stream_get_property (GObject    *object,
         break;
       case PROP_REMOTE_MEMBERS:
         g_value_set_boxed (value, priv->remote_members);
+        break;
+      case PROP_LOCAL_SENDING_STATE:
+        g_value_set_uint (value, priv->local_sending_state);
         break;
       case PROP_CAN_REQUEST_RECEIVING:
         /* TODO: set to TRUE conditionally when RequestReceiving is implemented */
@@ -518,6 +522,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   static TpDBusPropertiesMixinPropImpl stream_props[] = {
     { "Interfaces", "interfaces", NULL },
     { "RemoteMembers", "remote-members", NULL },
+    { "LocalSendingState", "local-sending-state", NULL },
     { "CanRequestReceiving", "can-request-receiving", NULL },
     { NULL }
   };
@@ -573,6 +578,13 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       GABBLE_HASH_TYPE_CONTACT_SENDING_STATE_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_MEMBERS,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("local-sending-state", "LocalSendingState",
+      "Local sending state",
+      0, G_MAXUINT, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_LOCAL_SENDING_STATE,
       param_spec);
 
   param_spec = g_param_spec_boolean ("can-request-receiving", "CanRequestReceiving",

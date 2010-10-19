@@ -687,6 +687,9 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
 
   g_free (object_path);
 
+  g_signal_connect_swapped (content, "removed",
+      G_CALLBACK (base_call_channel_remove_content), self);
+
   priv->contents = g_list_prepend (priv->contents, content);
 
   gabble_svc_channel_type_call_emit_content_added (self,
@@ -827,7 +830,7 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 static void
-gabble_base_call_channel_ringing (GabbleSvcChannelTypeCall *iface,
+gabble_base_call_channel_set_ringing (GabbleSvcChannelTypeCall *iface,
     DBusGMethodInvocation *context)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
@@ -854,7 +857,7 @@ gabble_base_call_channel_ringing (GabbleSvcChannelTypeCall *iface,
           gabble_base_call_channel_set_state (self, priv->state);
         }
 
-      gabble_svc_channel_type_call_return_from_ringing (context);
+      gabble_svc_channel_type_call_return_from_set_ringing (context);
     }
 }
 
@@ -996,7 +999,7 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x, suffix) gabble_svc_channel_type_call_implement_##x (\
     klass, gabble_base_call_channel_##x##suffix)
-  IMPLEMENT(ringing,);
+  IMPLEMENT(set_ringing,);
   IMPLEMENT(accept,);
   IMPLEMENT(hangup,);
   IMPLEMENT(add_content, _dbus);

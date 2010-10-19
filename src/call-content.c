@@ -84,6 +84,7 @@ enum
 enum
 {
     LOCAL_CODECS_UPDATED,
+    REMOVED,
     LAST_SIGNAL
 };
 
@@ -407,6 +408,14 @@ gabble_call_content_class_init (
       g_cclosure_marshal_VOID__POINTER,
       G_TYPE_NONE, 1, G_TYPE_POINTER);
 
+  signals[REMOVED] = g_signal_new ("removed",
+      G_OBJECT_CLASS_TYPE (gabble_call_content_class),
+      G_SIGNAL_RUN_LAST,
+      0,
+      NULL, NULL,
+      g_cclosure_marshal_VOID__VOID,
+      G_TYPE_NONE, 0);
+
   gabble_call_content_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleCallContentClass, dbus_props_class));
@@ -497,17 +506,43 @@ call_content_set_local_codecs (GabbleCallContent *self,
 }
 
 static void
+gabble_call_content_remove (GabbleSvcCallContent *content,
+    GabbleContentRemovalReason reason,
+    const gchar *detailed_removal_reason,
+    const gchar *message,
+    DBusGMethodInvocation *context)
+{
+  /* TODO: actually do something with this reason and message. */
+  DEBUG ("removing content for reason %u, dbus error: %s, message: %s",
+      reason, detailed_removal_reason, message);
+
+  g_signal_emit (content, signals[REMOVED], 0, NULL);
+  /* it doesn't matter if a ::removed signal handler calls deinit as
+   * there are guards around it being called again and breaking, so
+   * let's just call it be sure it's done. */
+  gabble_call_content_deinit (GABBLE_CALL_CONTENT (content));
+  gabble_svc_call_content_return_from_remove (context);
+}
+
+static void
+call_content_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  GabbleSvcCallContentClass *klass =
+    (GabbleSvcCallContentClass *) g_iface;
+
+#define IMPLEMENT(x) gabble_svc_call_content_implement_##x (\
+    klass, gabble_call_content_##x)
+  IMPLEMENT(remove);
+#undef IMPLEMENT
+}
+
+static void
 gabble_call_content_set_codecs (GabbleSvcCallContentInterfaceMedia *iface,
     const GPtrArray *codecs,
     DBusGMethodInvocation *context)
 {
   call_content_set_local_codecs (GABBLE_CALL_CONTENT (iface), codecs);
   gabble_svc_call_content_interface_media_return_from_set_codecs (context);
-}
-
-static void
-call_content_iface_init (gpointer g_iface, gpointer iface_data)
-{
 }
 
 static void

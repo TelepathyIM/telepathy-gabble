@@ -72,6 +72,7 @@ enum
 
   PROP_NAME,
   PROP_DISPOSITION,
+  PROP_PACKETIZATION,
 
   PROP_CONTACT_CODEC_MAP,
   PROP_MEDIA_TYPE,
@@ -196,6 +197,10 @@ gabble_call_content_get_property (GObject    *object,
       case PROP_DISPOSITION:
         g_value_set_uint (value, priv->disposition);
         break;
+      case PROP_PACKETIZATION:
+        /* TODO: actually set this to its real value */
+        g_value_set_uint (value, GABBLE_CALL_CONTENT_PACKETIZATION_TYPE_RTP);
+        break;
       case PROP_CONTACT_CODEC_MAP:
         {
           GHashTable *map;
@@ -301,6 +306,7 @@ gabble_call_content_class_init (
     { "Type", "media-type", NULL },
     { "Disposition", "disposition", NULL },
     { "Streams", "streams", NULL },
+    { "Packetization", "packetization", NULL },
     { NULL }
   };
   static TpDBusPropertiesMixinPropImpl content_media_props[] = {
@@ -385,6 +391,13 @@ gabble_call_content_class_init (
       TP_ARRAY_TYPE_OBJECT_PATH_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STREAMS,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("packetization", "Packetization",
+      "The Packetization of this content",
+      0, G_MAXUINT, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_PACKETIZATION,
       param_spec);
 
   param_spec = g_param_spec_boxed ("contact-codec-map", "ContactCodecMap",

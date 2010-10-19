@@ -379,6 +379,7 @@ call_channel_continue_init (GabbleCallChannel *self,
   GabbleCallChannelPrivate *priv = self->priv;
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
   GError *error = NULL;
+  gchar *initial_audio_name = NULL, *initial_video_name = NULL;
 
   if (priv->session == NULL)
     {
@@ -388,9 +389,14 @@ call_channel_continue_init (GabbleCallChannel *self,
       member = gabble_base_call_channel_ensure_member_from_handle (base,
         base->target);
 
+      g_object_get (self,
+          "initial-audio-name", &initial_audio_name,
+          "initial-video-name", &initial_video_name,
+          NULL);
+
       if (!gabble_call_member_start_session (member,
-          base->initial_audio ? "Audio" : NULL,
-          base->initial_video ? "Video" : NULL,
+          base->initial_audio ? initial_audio_name : NULL,
+          base->initial_video ? initial_video_name : NULL,
           &error))
        {
          g_simple_async_result_set_from_error (result, error);
@@ -429,6 +435,8 @@ call_channel_continue_init (GabbleCallChannel *self,
 out:
   g_simple_async_result_complete_in_idle (result);
   g_object_unref (result);
+  g_free (initial_audio_name);
+  g_free (initial_video_name);
 }
 
 static void

@@ -88,6 +88,8 @@ enum
   PROP_CHANNEL_PROPERTIES,
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
+  PROP_INITIAL_AUDIO_NAME,
+  PROP_INITIAL_VIDEO_NAME,
   PROP_MUTABLE_CONTENTS,
   PROP_HARDWARE_STREAMING,
   PROP_CONTENTS,
@@ -126,6 +128,9 @@ struct _GabbleBaseCallChannelPrivate
   gboolean dispose_has_run;
 
   GList *contents;
+
+  gchar *initial_audio_name;
+  gchar *initial_video_name;
 
   GabbleCallState state;
   guint flags;
@@ -267,6 +272,8 @@ gabble_base_call_channel_get_property (GObject    *object,
                 TP_IFACE_CHANNEL, "Interfaces",
                 GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
                 GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
+                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudioName",
+                GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideoName",
                 GABBLE_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
                 NULL));
         break;
@@ -275,6 +282,12 @@ gabble_base_call_channel_get_property (GObject    *object,
         break;
       case PROP_INITIAL_VIDEO:
         g_value_set_boolean (value, self->initial_video);
+        break;
+      case PROP_INITIAL_AUDIO_NAME:
+        g_value_set_string (value, priv->initial_audio_name);
+        break;
+      case PROP_INITIAL_VIDEO_NAME:
+        g_value_set_string (value, priv->initial_video_name);
         break;
       case PROP_MUTABLE_CONTENTS:
       /* FIXME: this should probably move to the implementation class
@@ -367,6 +380,12 @@ gabble_base_call_channel_set_property (GObject *object,
       case PROP_INITIAL_VIDEO:
         self->initial_video = g_value_get_boolean (value);
         break;
+      case PROP_INITIAL_AUDIO_NAME:
+        priv->initial_audio_name = g_value_dup_string (value);
+        break;
+      case PROP_INITIAL_VIDEO_NAME:
+        priv->initial_video_name = g_value_dup_string (value);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -396,6 +415,8 @@ gabble_base_call_channel_class_init (
       { "MutableContents", "mutable-contents", NULL },
       { "InitialAudio", "initial-audio", NULL },
       { "InitialVideo", "initial-video", NULL },
+      { "InitialAudioName", "initial-audio-name", NULL },
+      { "InitialVideoName", "initial-video-name", NULL },
       { "Contents", "contents", NULL },
       { "HardwareStreaming", "hardware-streaming", NULL },
       { "CallState", "call-state", NULL },
@@ -509,6 +530,20 @@ gabble_base_call_channel_class_init (
   g_object_class_install_property (object_class, PROP_INITIAL_VIDEO,
       param_spec);
 
+  param_spec = g_param_spec_string ("initial-audio-name", "InitialAudioName",
+      "Name for the initial audio content",
+      "audio",
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_AUDIO_NAME,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initial-video-name", "InitialVideoName",
+      "Name for the initial video content",
+      "video",
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_VIDEO_NAME,
+      param_spec);
+
   param_spec = g_param_spec_boolean ("mutable-contents", "MutableContents",
       "Whether the set of streams on this channel are mutable once requested",
       FALSE,
@@ -614,6 +649,8 @@ gabble_base_call_channel_finalize (GObject *object)
   g_value_array_free (priv->reason);
   g_free (self->priv->object_path);
   g_free (self->priv->object_path_prefix);
+  g_free (self->priv->initial_audio_name);
+  g_free (self->priv->initial_video_name);
 
   G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->finalize (object);
 }

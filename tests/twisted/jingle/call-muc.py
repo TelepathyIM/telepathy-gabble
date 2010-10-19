@@ -83,8 +83,8 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     # Gabble shouldn't send new presences for a while
     q.forbid_events(forbidden)
 
-    e = q.expect ('dbus-signal', signal = 'StreamAdded')
-    cstream = bus.get_object (conn.bus_name, e.args[0])
+    e = q.expect ('dbus-signal', signal = 'StreamsAdded')
+    cstream = bus.get_object (conn.bus_name, e.args[0][0])
 
     candidates = jt.get_call_remote_transports_dbus ()
     cstream.AddCandidates (candidates,
@@ -115,7 +115,6 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
 
     # Gabble noticed bob added a content
     e = q.expect('dbus-signal', signal = 'ContentAdded')
-    assertEquals (e.args[1], cs.MEDIA_STREAM_TYPE_VIDEO)
 
     q.unforbid_events (forbidden)
     content = bus.get_object (conn.bus_name, e.args[0])
@@ -132,8 +131,8 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     echo_muc_presence (q, stream, e.stanza, 'none', 'participant')
 
     # Gabble adds a content to the jingle session and thus a stream is added
-    e = q.expect ('dbus-signal', signal = 'StreamAdded')
-    cstream = bus.get_object (conn.bus_name, e.args[0])
+    e = q.expect ('dbus-signal', signal = 'StreamsAdded')
+    cstream = bus.get_object (conn.bus_name, e.args[0][0])
 
     candidates = jt.get_call_remote_transports_dbus ()
     cstream.AddCandidates (candidates,
@@ -155,8 +154,8 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     (cmembers, _, _) = q.expect_many(
         EventPattern ('dbus-signal', signal = 'CallMembersChanged'),
         # Audio and video stream
-        EventPattern ('dbus-signal', signal = 'StreamRemoved'),
-        EventPattern ('dbus-signal', signal = 'StreamRemoved'))
+        EventPattern ('dbus-signal', signal = 'StreamsRemoved'),
+        EventPattern ('dbus-signal', signal = 'StreamsRemoved'))
 
 
     # Just bob left
@@ -184,7 +183,7 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
 
     content = bus.get_object (conn.bus_name, props['Contents'][0])
     codecs = jt.get_call_audio_codecs_dbus()
-    content.SetCodecs(codecs)
+    content.UpdateCodecs(codecs)
 
     # Accept the channel, which means we can get muji presences
     q.unforbid_events (forbidden)
@@ -221,8 +220,8 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
 
     jt.incoming_call(audio = "Audio")
 
-    e = q.expect ('dbus-signal', signal = 'StreamAdded')
-    cstream = bus.get_object (conn.bus_name, e.args[0])
+    e = q.expect ('dbus-signal', signal = 'StreamsAdded')
+    cstream = bus.get_object (conn.bus_name, e.args[0][0])
 
     candidates = jt.get_call_remote_transports_dbus ()
     cstream.AddCandidates (candidates,
@@ -246,12 +245,11 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
     c = channel.AddContent ("Camera!", cs.MEDIA_STREAM_TYPE_VIDEO,
         dbus_interface=cs.CHANNEL_TYPE_CALL)
 
-    e = q.expect('dbus-signal', signal = 'ContentAdded')
-    assertEquals (e.args[1], cs.MEDIA_STREAM_TYPE_VIDEO)
+    q.expect('dbus-signal', signal = 'ContentAdded')
 
     content = bus.get_object (conn.bus_name, c)
     codecs = jt.get_call_video_codecs_dbus()
-    content.SetCodecs(codecs)
+    content.UpdateCodecs(codecs)
 
     q.unforbid_events(forbidden)
 
@@ -292,7 +290,7 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
     stream.send(jp.xml(node))
 
     # We get a new stream
-    q.expect('dbus-signal', signal = 'StreamAdded')
+    q.expect('dbus-signal', signal = 'StreamsAdded')
 
     # Sync up the stream to ensure we sent out all the xmpp traffic that was
     # the result of a stream being added

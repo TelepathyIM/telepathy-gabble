@@ -11,7 +11,7 @@ from gabbletest import exec_test
 from servicetest import (
     make_channel_proxy, wrap_channel,
     EventPattern, call_async,
-    assertEquals, assertContains, assertLength, assertNotEquals
+    assertEquals, assertDoesNotContain, assertContains, assertLength, assertNotEquals
     )
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
@@ -130,8 +130,9 @@ def run_test(jp, q, bus, conn, stream, incoming):
     # Check if all the properties are there
     assertEquals (sorted([ "Contents", "CallMembers",
         "CallState", "CallFlags", "CallStateReason", "CallStateDetails",
-        "HardwareStreaming", "InitialAudio", "InitialVideo",
-        "MutableContents" ]), sorted(properties.keys()))
+        "HardwareStreaming", "InitialAudio", "InitialAudioName",
+        "InitialVideo", "InitialVideoName", "MutableContents" ]),
+        sorted(properties.keys()))
 
     # Remote member is the target
     assertEquals ([remote_handle], properties["CallMembers"].keys())
@@ -165,19 +166,19 @@ def run_test(jp, q, bus, conn, stream, incoming):
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
 
-    assertContains (self_handle, stream_props["Senders"].keys())
-    assertContains (remote_handle, stream_props["Senders"].keys())
+    assertDoesNotContain (self_handle, stream_props["RemoteMembers"].keys())
+    assertContains (remote_handle, stream_props["RemoteMembers"].keys())
 
     if incoming:
         assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
-            stream_props["Senders"][self_handle])
+            stream_props["LocalSendingState"])
         assertEquals (cs.CALL_SENDING_STATE_SENDING,
-            stream_props["Senders"][remote_handle])
+            stream_props["RemoteMembers"][remote_handle])
     else:
         assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
-            stream_props["Senders"][remote_handle])
+            stream_props["RemoteMembers"][remote_handle])
         assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
-            stream_props["Senders"][self_handle])
+            stream_props["LocalSendingState"])
 
 
     # Media type should audio
@@ -195,7 +196,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     codecs = jt2.get_call_audio_codecs_dbus()
     if incoming:
         # Act as if we're ringing
-        chan.Ringing (dbus_interface=cs.CHANNEL_TYPE_CALL)
+        chan.SetRinging (dbus_interface=cs.CHANNEL_TYPE_CALL)
         signal = q.expect('dbus-signal', signal='CallStateChanged')
         assertEquals(cs.CALL_STATE_RINGING,
             signal.args[1] & cs.CALL_STATE_RINGING)
@@ -204,7 +205,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
             content, codecs)
     else:
-        content.SetCodecs(codecs, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
+        content.UpdateCodecs(codecs, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
 
     current_codecs = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "ContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
@@ -326,39 +327,36 @@ def run_test(jp, q, bus, conn, stream, incoming):
     # All Direction should be both now
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
-    assertEquals (
-        {
-            self_handle : cs.CALL_SENDING_STATE_SENDING,
-            remote_handle: cs.CALL_SENDING_STATE_SENDING
-        },
-        stream_props["Senders"])
+    assertEquals ({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+        stream_props["RemoteMembers"])
+    assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
 
     # Turn sending off and on again
     cstream.SetSending (False,
         dbus_interface = cs.CALL_STREAM)
 
-    q.expect ('dbus-signal', signal='SendersChanged',
+    q.expect ('dbus-signal', signal='LocalSendingStateChanged',
         interface = cs.CALL_STREAM,
-        args = [{ self_handle: cs.CALL_SENDING_STATE_NONE }, []])
+        args = [cs.CALL_SENDING_STATE_NONE])
 
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
-    assertEquals ({ self_handle : cs.CALL_SENDING_STATE_NONE,
-                    remote_handle: cs.CALL_SENDING_STATE_SENDING },
-                  stream_props["Senders"])
+    assertEquals({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+                 stream_props["RemoteMembers"])
+    assertEquals(cs.CALL_SENDING_STATE_NONE, stream_props["LocalSendingState"])
 
     cstream.SetSending (True,
         dbus_interface = cs.CALL_STREAM)
 
-    q.expect ('dbus-signal', signal='SendersChanged',
+    q.expect ('dbus-signal', signal='LocalSendingStateChanged',
         interface = cs.CALL_STREAM,
-        args = [{ self_handle: cs.CALL_SENDING_STATE_SENDING }, []])
+        args = [cs.CALL_SENDING_STATE_SENDING])
 
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
-    assertEquals ({ self_handle : cs.CALL_SENDING_STATE_SENDING,
-                    remote_handle: cs.CALL_SENDING_STATE_SENDING },
-                  stream_props["Senders"])
+    assertEquals ({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+                  stream_props["RemoteMembers"])
+    assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
 
     try:
         path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,

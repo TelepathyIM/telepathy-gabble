@@ -551,12 +551,12 @@ call_content_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 static void
-gabble_call_content_set_codecs (GabbleSvcCallContentInterfaceMedia *iface,
+gabble_call_content_update_codecs (GabbleSvcCallContentInterfaceMedia *iface,
     const GPtrArray *codecs,
     DBusGMethodInvocation *context)
 {
   call_content_set_local_codecs (GABBLE_CALL_CONTENT (iface), codecs);
-  gabble_svc_call_content_interface_media_return_from_set_codecs (context);
+  gabble_svc_call_content_interface_media_return_from_update_codecs (context);
 }
 
 static void
@@ -567,7 +567,7 @@ call_content_media_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) gabble_svc_call_content_interface_media_implement_##x (\
     klass, gabble_call_content_##x)
-  IMPLEMENT(set_codecs);
+  IMPLEMENT(update_codecs);
 #undef IMPLEMENT
 }
 

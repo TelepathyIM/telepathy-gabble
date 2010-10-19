@@ -130,6 +130,38 @@ has_server_info (GabbleCallStream *self)
   return self->priv->got_relay_info;
 }
 
+static GPtrArray *
+get_stun_servers (GabbleCallStream *self)
+{
+  GPtrArray *arr;
+  GabbleConnection *connection;
+  gchar *stun_server;
+  guint stun_port;
+
+  arr = g_ptr_array_sized_new (1);
+
+  g_object_get (self->priv->content,
+      "connection", &connection,
+      NULL);
+
+  /* maybe one day we'll support multiple STUN servers */
+  if (gabble_jingle_factory_get_stun_server (
+          connection->jingle_factory, &stun_server, &stun_port))
+    {
+      GValueArray *va = tp_value_array_build (2,
+          G_TYPE_STRING, stun_server,
+          G_TYPE_UINT, stun_port,
+          G_TYPE_INVALID);
+
+      g_free (stun_server);
+      g_ptr_array_add (arr, va);
+    }
+
+  g_object_unref (connection);
+
+  return arr;
+}
+
 static void
 gabble_call_stream_get_property (GObject    *object,
     guint       property_id,
@@ -218,33 +250,7 @@ gabble_call_stream_get_property (GObject    *object,
         break;
       case PROP_STUN_SERVERS:
         {
-          GPtrArray *arr;
-          GabbleConnection *connection;
-          gchar *stun_server;
-          guint stun_port;
-
-          arr = g_ptr_array_sized_new (1);
-
-          g_object_get (priv->content,
-              "connection", &connection,
-              NULL);
-
-          /* maybe one day we'll support multiple STUN servers */
-          if (gabble_jingle_factory_get_stun_server (
-                connection->jingle_factory, &stun_server, &stun_port))
-            {
-              GValueArray *va = tp_value_array_build (2,
-                  G_TYPE_STRING, stun_server,
-                  G_TYPE_UINT, stun_port,
-                  G_TYPE_INVALID);
-
-              g_free (stun_server);
-              g_ptr_array_add (arr, va);
-            }
-
-          g_object_unref (connection);
-
-          g_value_take_boxed (value, arr);
+          g_value_take_boxed (value, get_stun_servers (stream));
           break;
         }
       case PROP_RELAY_INFO:
@@ -310,7 +316,8 @@ static void
 google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
-  GabbleCallStreamPrivate *priv = GABBLE_CALL_STREAM (user_data)->priv;
+  GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
+  GabbleCallStreamPrivate *priv = self->priv;
 
   priv->relay_info =
       g_boxed_copy (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, relays);
@@ -320,6 +327,9 @@ google_relay_session_cb (GPtrArray *relays,
       priv->got_relay_info = TRUE;
       maybe_emit_server_info_retrieved (user_data);
     }
+
+  gabble_svc_call_stream_interface_media_emit_relay_info_changed (
+      self, priv->relay_info);
 }
 
 static void
@@ -340,6 +350,19 @@ content_remote_members_changed_cb (GabbleJingleContent *content,
   GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
 
   call_stream_update_member_states (self);
+}
+
+static void
+jingle_factory_stun_server_changed_cb (GabbleJingleFactory *factory,
+    const gchar *stun_server,
+    guint stun_port,
+    GabbleCallStream *self)
+{
+  GPtrArray *stun_servers = get_stun_servers (self);
+
+  gabble_svc_call_stream_interface_media_emit_stun_servers_changed (
+      self, stun_servers);
+  g_ptr_array_unref (stun_servers);
 }
 
 static void
@@ -388,6 +411,8 @@ gabble_call_stream_constructed (GObject *obj)
     G_CALLBACK (content_state_changed_cb), obj);
   gabble_signal_connect_weak (priv->content, "notify::senders",
     G_CALLBACK (content_remote_members_changed_cb), obj);
+  gabble_signal_connect_weak (priv->conn->jingle_factory, "stun-server-changed",
+    G_CALLBACK (jingle_factory_stun_server_changed_cb), obj);
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);

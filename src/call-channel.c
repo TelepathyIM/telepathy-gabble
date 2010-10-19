@@ -300,8 +300,7 @@ call_member_content_added_cb (GabbleCallMember *member,
   gabble_call_content_add_member_content (c, content);
 
   gabble_svc_channel_type_call_emit_content_added (self,
-      gabble_call_content_get_object_path (c),
-      gabble_call_content_get_media_type (c));
+      gabble_call_content_get_object_path (c));
 }
 
 static gboolean

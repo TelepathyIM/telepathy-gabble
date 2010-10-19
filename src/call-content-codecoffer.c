@@ -46,7 +46,13 @@ enum
 {
   PROP_OBJECT_PATH = 1,
   PROP_DBUS_DAEMON,
+  PROP_INTERFACES,
   PROP_REMOTE_CONTACT_CODEC_MAP,
+};
+
+/* interfaces */
+static const gchar *gabble_call_content_codecoffer_interfaces[] = {
+    NULL
 };
 
 /* private structure */
@@ -93,6 +99,9 @@ gabble_call_content_codecoffer_get_property (GObject    *object,
     {
       case PROP_OBJECT_PATH:
         g_value_set_string (value, priv->object_path);
+        break;
+      case PROP_INTERFACES:
+        g_value_set_boxed (value, gabble_call_content_codecoffer_interfaces);
         break;
       case PROP_REMOTE_CONTACT_CODEC_MAP:
         g_value_set_boxed (value, priv->codec_map);
@@ -141,6 +150,7 @@ gabble_call_content_codecoffer_class_init (
   GParamSpec *spec;
 
   static TpDBusPropertiesMixinPropImpl codecoffer_props[] = {
+    { "Interfaces", "interfaces", NULL },
     { "RemoteContactCodecMap", "remote-contact-codec-map", NULL },
     { NULL }
   };
@@ -170,6 +180,13 @@ gabble_call_content_codecoffer_class_init (
       NULL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_OBJECT_PATH, spec);
+
+  spec = g_param_spec_boxed ("interfaces",
+      "Interfaces",
+      "Extra codec offer interfaces",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INTERFACES, spec);
 
   spec = g_param_spec_boxed ("remote-contact-codec-map",
       "RemoteContactCodecMap",

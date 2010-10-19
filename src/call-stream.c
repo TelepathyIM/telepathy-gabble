@@ -77,7 +77,7 @@ enum
   PROP_TRANSPORT,
   PROP_STUN_SERVERS,
   PROP_RELAY_INFO,
-  PROP_RETRIEVED_SERVER_INFO,
+  PROP_HAS_SERVER_INFO,
 };
 
 #if 0
@@ -121,6 +121,14 @@ gabble_call_stream_init (GabbleCallStream *self)
 
 static void gabble_call_stream_dispose (GObject *object);
 static void gabble_call_stream_finalize (GObject *object);
+
+static gboolean
+has_server_info (GabbleCallStream *self)
+{
+  /* extend this function when HasServerInfo gains more info to
+   * retrieve than just relay info */
+  return self->priv->got_relay_info;
+}
 
 static void
 gabble_call_stream_get_property (GObject    *object,
@@ -252,9 +260,9 @@ gabble_call_stream_get_property (GObject    *object,
 
           break;
         }
-      case PROP_RETRIEVED_SERVER_INFO:
+      case PROP_HAS_SERVER_INFO:
         {
-          g_value_set_boolean (value, priv->got_relay_info);
+          g_value_set_boolean (value, has_server_info (stream));
           break;
         }
       default:
@@ -294,7 +302,7 @@ gabble_call_stream_set_property (GObject *object,
 static void
 maybe_emit_server_info_retrieved (GabbleCallStream *self)
 {
-  if (self->priv->got_relay_info)
+  if (has_server_info (self))
     gabble_svc_call_stream_interface_media_emit_server_info_retrieved (self);
 }
 
@@ -493,7 +501,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
     { "LocalCandidates", "local-candidates", NULL },
     { "STUNServers", "stun-servers", NULL },
     { "RelayInfo", "relay-info", NULL },
-    { "RetrievedServerInfo", "retrieved-server-info", NULL },
+    { "HasServerInfo", "has-server-info", NULL },
     { "Endpoints", "endpoints", NULL },
     { NULL }
   };
@@ -598,13 +606,13 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   g_object_class_install_property (object_class, PROP_RELAY_INFO,
       param_spec);
 
-  param_spec = g_param_spec_boolean ("retrieved-server-info",
-      "RetrievedServerInfo",
+  param_spec = g_param_spec_boolean ("has-server-info",
+      "HasServerInfo",
       "True if the server information about STUN and "
       "relay servers has been retrieved",
       FALSE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_RETRIEVED_SERVER_INFO,
+  g_object_class_install_property (object_class, PROP_HAS_SERVER_INFO,
       param_spec);
 
   gabble_call_stream_class->dbus_props_class.interfaces = prop_interfaces;

@@ -32,7 +32,7 @@
 
 #include "call-member.h"
 #include "call-content.h"
-#include "call-content-codecoffer.h"
+#include "call-content-codec-offer.h"
 #include "call-stream.h"
 #include "jingle-content.h"
 #include "jingle-session.h"
@@ -107,7 +107,7 @@ struct _GabbleCallContentPrivate
   TpHandle target;
   GList *contents;
 
-  GabbleCallContentCodecoffer *offer;
+  GabbleCallContentCodecOffer *offer;
   GCancellable *offer_cancellable;
   gint offers;
   guint offer_count;
@@ -722,11 +722,11 @@ codec_offer_finished_cb (GObject *source,
   GHashTable *codec_map;
   GArray *empty;
 
-  local_codecs = gabble_call_content_codecoffer_offer_finish (
-    GABBLE_CALL_CONTENT_CODECOFFER (source), result, &error);
+  local_codecs = gabble_call_content_codec_offer_offer_finish (
+    GABBLE_CALL_CONTENT_CODEC_OFFER (source), result, &error);
 
   if (error != NULL || priv->deinit_has_run ||
-      priv->offer != GABBLE_CALL_CONTENT_CODECOFFER (source))
+      priv->offer != GABBLE_CALL_CONTENT_CODEC_OFFER (source))
     goto out;
 
   call_content_set_local_codecs (self, local_codecs);
@@ -741,7 +741,7 @@ codec_offer_finished_cb (GObject *source,
   g_array_free (empty, TRUE);
 
 out:
-  if (priv->offer == GABBLE_CALL_CONTENT_CODECOFFER (source))
+  if (priv->offer == GABBLE_CALL_CONTENT_CODEC_OFFER (source))
     {
       priv->offer = NULL;
       priv->offer_cancellable = NULL;
@@ -769,11 +769,11 @@ call_content_new_offer (GabbleCallContent *self)
   path = g_strdup_printf ("%s/Offer%d",
     priv->object_path, priv->offers++);
 
-  priv->offer = gabble_call_content_codecoffer_new (priv->dbus_daemon, path,
+  priv->offer = gabble_call_content_codec_offer_new (priv->dbus_daemon, path,
       map);
   priv->offer_cancellable = g_cancellable_new ();
   ++priv->offer_count;
-  gabble_call_content_codecoffer_offer (priv->offer, priv->offer_cancellable,
+  gabble_call_content_codec_offer_offer (priv->offer, priv->offer_cancellable,
     codec_offer_finished_cb, self);
 
   gabble_svc_call_content_interface_media_emit_new_codec_offer (

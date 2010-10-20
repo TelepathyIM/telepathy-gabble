@@ -1,3 +1,18 @@
+telepathy-gabble 0.10.4 (UNRELEASED)
+====================================
+
+The “Well, this super analysis i made!!!!! could be useful for
+you!!!!!!!!!!!!” release. There are plenty more bangs where these come
+from, I assure you.
+
+Fixes:
+
+• Updated Wocky snapshot:
+  · Added HTTP proxy support. This is not technically a fix, but it's
+    nice to have. ;-) (stormer)
+  · Miscellaneous leak fixes. (stormer)
+  · Miscellaneous other fixes. (wjt)
+
 telepathy-gabble 0.10.3 (2010-10-06)
 ====================================
 

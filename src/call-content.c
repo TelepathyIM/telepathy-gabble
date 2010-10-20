@@ -107,6 +107,7 @@ struct _GabbleCallContentPrivate
   TpHandle target;
   GList *contents;
 
+  gboolean initial_offer_appeared;
   GabbleCallContentCodecOffer *offer;
   GCancellable *offer_cancellable;
   gint offers;
@@ -289,6 +290,8 @@ gabble_call_content_constructed (GObject *obj)
   priv->dbus_daemon = g_object_ref (
       tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn));
   tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path, obj);
+
+  priv->initial_offer_appeared = FALSE;
 
   if (G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_content_parent_class)->constructed (obj);
@@ -565,6 +568,14 @@ gabble_call_content_update_codecs (GabbleSvcCallContentInterfaceMedia *iface,
       return;
     }
 
+  if (!self->priv->initial_offer_appeared)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "The initial CodecOffer object has not yet appeared; keep waiting." };
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
   call_content_set_local_codecs (GABBLE_CALL_CONTENT (iface), codecs);
   gabble_svc_call_content_interface_media_return_from_update_codecs (context);
 }
@@ -791,6 +802,10 @@ call_content_new_offer (GabbleCallContent *self)
 
   g_hash_table_unref (map);
   g_free (path);
+
+  /* set this to TRUE so that after the initial offer disappears,
+   * UpdateCodecs is allowed to be called. */
+  priv->initial_offer_appeared = TRUE;
 }
 
 const gchar *

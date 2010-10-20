@@ -944,6 +944,12 @@ call_muc_channel_init_async (GAsyncInitable *initable,
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
   GabbleCallContent *content;
   GSimpleAsyncResult *result;
+  gchar *initial_audio_name, *initial_video_name;
+
+  g_object_get (self,
+      "initial-audio-name", &initial_audio_name,
+      "initial-video-name", &initial_video_name,
+      NULL);
 
   result = g_simple_async_result_new (G_OBJECT (initable),
       callback, user_data, NULL);
@@ -951,7 +957,7 @@ call_muc_channel_init_async (GAsyncInitable *initable,
   if (base->initial_audio)
     {
       content = gabble_base_call_channel_add_content (base,
-        "Audio", JINGLE_MEDIA_TYPE_AUDIO,
+        initial_audio_name, JINGLE_MEDIA_TYPE_AUDIO,
         GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
       call_muc_channel_setup_content (self, content);
     }
@@ -959,10 +965,13 @@ call_muc_channel_init_async (GAsyncInitable *initable,
   if (base->initial_video)
     {
       content = gabble_base_call_channel_add_content (base,
-        "Video", JINGLE_MEDIA_TYPE_VIDEO,
+        initial_video_name, JINGLE_MEDIA_TYPE_VIDEO,
         GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
       call_muc_channel_setup_content (self, content);
     }
+
+  g_free (initial_audio_name);
+  g_free (initial_video_name);
 
   if (_gabble_muc_channel_is_ready (priv->muc))
     {

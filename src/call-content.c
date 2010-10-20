@@ -555,6 +555,16 @@ gabble_call_content_update_codecs (GabbleSvcCallContentInterfaceMedia *iface,
     const GPtrArray *codecs,
     DBusGMethodInvocation *context)
 {
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (iface);
+
+  if (self->priv->offer != NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "There is a codec offer around so UpdateCodecs shouldn't be called." };
+      dbus_g_method_return_error (context, &error);
+      return;
+    }
+
   call_content_set_local_codecs (GABBLE_CALL_CONTENT (iface), codecs);
   gabble_svc_call_content_interface_media_return_from_update_codecs (context);
 }
@@ -904,10 +914,7 @@ gabble_call_content_add_member_content (GabbleCallContent *self,
   gabble_signal_connect_weak (content, "removed",
     G_CALLBACK (member_content_removed_cb), G_OBJECT (self));
 
-  if (gabble_call_member_content_get_remote_codecs (content) != NULL)
-    {
-      call_content_new_offer (self);
-    }
+  call_content_new_offer (self);
 }
 
 GList *

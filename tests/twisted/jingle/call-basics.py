@@ -34,8 +34,8 @@ def check_state (q, chan, state, wait = False):
     assertEquals (state,
         properties["CallState"])
 
-def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
-        content, codecs, offer_path = None):
+def check_and_accept_offer (q, bus, conn, self_handle,
+        content, codecs, remote_handle = None, offer_path = None):
 
     [path, codecmap] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
@@ -60,8 +60,12 @@ def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
 
     o = q.expect ('dbus-signal', signal='CodecsChanged')
 
-    assertEquals ([{ self_handle: codecs, remote_handle: codecs}, []],
-        o.args)
+    codecs_should_be = { self_handle: codecs }
+
+    if remote_handle is not None:
+        codecs_should_be[remote_handle] = codecs
+
+    assertEquals ([codecs_should_be, []], o.args)
 
 def run_test(jp, q, bus, conn, stream, incoming):
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -201,11 +205,22 @@ def run_test(jp, q, bus, conn, stream, incoming):
         assertEquals(cs.CALL_STATE_RINGING,
             signal.args[1] & cs.CALL_STATE_RINGING)
 
-        # We should have a codec offer
-        check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
-            content, codecs)
-    else:
+    # make sure this fails with NotAvailable
+    try:
         content.UpdateCodecs(codecs, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
+    except DBusException, e:
+        if e.get_dbus_name() != cs.NOT_AVAILABLE:
+            raise e
+    else:
+        assert false
+
+    # We should have a codec offer
+    if incoming:
+        check_and_accept_offer (q, bus, conn, self_handle,
+            content, codecs, remote_handle)
+    else:
+        check_and_accept_offer (q, bus, conn, self_handle,
+            content, codecs)
 
     current_codecs = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "ContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
@@ -319,8 +334,8 @@ def run_test(jp, q, bus, conn, stream, incoming):
         [path, _ ] = o.args
         codecs = jt2.get_call_audio_codecs_dbus()
 
-        check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
-            content, codecs, path)
+        check_and_accept_offer (q, bus, conn, self_handle,
+            content, codecs, remote_handle, path)
 
     check_state (q, chan, cs.CALL_STATE_ACCEPTED)
 

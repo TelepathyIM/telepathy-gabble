@@ -37,6 +37,8 @@ gboolean conn_util_send_iq_finish (GabbleConnection *self,
     WockyStanza **response,
     GError **error);
 
+const gchar *conn_util_get_bare_self_jid (GabbleConnection *conn);
+
 G_END_DECLS
 
 #endif /* GABBLE_CONN_UTIL_H */

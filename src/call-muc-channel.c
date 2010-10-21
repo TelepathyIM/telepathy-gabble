@@ -839,7 +839,7 @@ call_muc_channel_own_presence_cb (WockyMuc *wmuc,
 
   /* If our presence didn't have a muji stanza or had an older version we don't
    * care about it */
-  if (muji == NULL ||
+  if (muji == NULL || priv->muji == NULL ||
       !wocky_node_equal (muji, wocky_node_tree_get_top_node (priv->muji)))
     return;
 

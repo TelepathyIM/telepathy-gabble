@@ -732,6 +732,8 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   gabble_svc_channel_type_call_emit_content_added (self,
       gabble_call_content_get_object_path (content));
 
+  gabble_call_content_new_offer (GABBLE_CALL_CONTENT (content));
+
   return GABBLE_CALL_CONTENT (content);
 }
 

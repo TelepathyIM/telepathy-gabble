@@ -46,7 +46,6 @@
 
 static void call_content_iface_init (gpointer, gpointer);
 static void call_content_media_iface_init (gpointer, gpointer);
-static void call_content_new_offer (GabbleCallContent *self);
 
 static GPtrArray *call_content_codec_list_to_array (GList *codecs);
 static GHashTable *call_content_generate_codec_map (GabbleCallContent *self,
@@ -775,8 +774,8 @@ out:
     maybe_finish_deinit (self);
 }
 
-static void
-call_content_new_offer (GabbleCallContent *self)
+void
+gabble_call_content_new_offer (GabbleCallContent *self)
 {
   GabbleCallContentPrivate *priv = self->priv;
   GHashTable *map;
@@ -797,6 +796,7 @@ call_content_new_offer (GabbleCallContent *self)
   gabble_call_content_codec_offer_offer (priv->offer, priv->offer_cancellable,
     codec_offer_finished_cb, self);
 
+  DEBUG ("emitting NewCodecOffer: %s", path);
   gabble_svc_call_content_interface_media_emit_new_codec_offer (
     self, path, map);
 
@@ -833,7 +833,7 @@ member_content_codecs_changed (GabbleCallMemberContent *mcontent,
   GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
 
   DEBUG ("Popping up new codec offer");
-  call_content_new_offer (self);
+  gabble_call_content_new_offer (self);
 }
 
 static void
@@ -928,8 +928,6 @@ gabble_call_content_add_member_content (GabbleCallContent *self,
 
   gabble_signal_connect_weak (content, "removed",
     G_CALLBACK (member_content_removed_cb), G_OBJECT (self));
-
-  call_content_new_offer (self);
 }
 
 GList *

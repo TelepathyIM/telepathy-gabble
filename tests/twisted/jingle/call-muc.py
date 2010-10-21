@@ -183,7 +183,12 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
 
     content = bus.get_object (conn.bus_name, props['Contents'][0])
     codecs = jt.get_call_audio_codecs_dbus()
-    content.UpdateCodecs(codecs)
+
+    # Accept codec offer
+    props = content.GetAll(cs.CALL_CONTENT_IFACE_MEDIA,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    offer = bus.get_object (conn.bus_name, props["CodecOffer"][0])
+    offer.Accept(codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
 
     # Accept the channel, which means we can get muji presences
     q.unforbid_events (forbidden)
@@ -249,7 +254,13 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
 
     content = bus.get_object (conn.bus_name, c)
     codecs = jt.get_call_video_codecs_dbus()
-    content.UpdateCodecs(codecs)
+
+    # wait for the CodecOffer and Accept it
+    q.expect('dbus-signal', signal = 'NewCodecOffer')
+    props = content.GetAll(cs.CALL_CONTENT_IFACE_MEDIA,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    offer = bus.get_object (conn.bus_name, props["CodecOffer"][0])
+    offer.Accept(codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
 
     q.unforbid_events(forbidden)
 

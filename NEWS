@@ -12,6 +12,8 @@ Fixes:
     nice to have. ;-) (stormer)
   · Miscellaneous leak fixes. (stormer)
   · Miscellaneous other fixes. (wjt)
+• Prefer XEP-0186 invisibility over privacy list-based invisibility when
+  both are available (eeejay)
 
 telepathy-gabble 0.10.3 (2010-10-06)
 ====================================

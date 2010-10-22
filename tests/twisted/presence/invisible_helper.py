@@ -3,6 +3,7 @@ from gabbletest import (
 )
 import ns
 from twisted.words.xish import xpath
+from time import time
 
 class ManualPrivacyListStream(XmppXmlStream):
     """Unlike the base class, which automatically responds to privacy list
@@ -90,3 +91,72 @@ class Xep0186AndValidInvisibleListStream(ValidInvisibleListStream):
 
 class Xep0186AndManualPrivacyListStream(ManualPrivacyListStream):
     disco_features = [ns.INVISIBLE]
+
+class SharedStatusStream(XmppXmlStream):
+    disco_features = [ns.GOOGLE_SHARED_STATUS]
+    def __init__(self, event_func, authenticator):
+        XmppXmlStream.__init__(self, event_func, authenticator)
+        self.addObserver("/iq/query[@xmlns='%s']" % ns.GOOGLE_SHARED_STATUS,
+           self.shared_status_iq_cb)
+
+        self.shared_status_lists = {u'default' : [u'Pining away',
+                                                  u'Wherefore indeed',
+                                                  u'Thinking about the sun'],
+                                     u'dnd' : [u'Chilling with Mercutio',
+                                              u'Visiting the monk']}
+
+        self.shared_status = (u'Pining away', u'default', u'false')
+
+        self.min_version = '2'
+
+    def set_shared_status_lists(self, shared_status_lists=None, status=None,
+                                show=None, invisible=None, min_version=None):
+        self.shared_status_lists = shared_status_lists or \
+            self.shared_status_lists
+        _status, _show, _invisible = self.shared_status
+        self.shared_status = (status or _status,
+                              show or _show,
+                              invisible or _invisible)
+
+        self.min_version = min_version or self.min_version
+
+        self._send_status_list()
+
+    def _send_status_list(self, iq_id=None):
+        if iq_id is None:
+            iq_id = str(int(time()))
+            iq_type = "set"
+        else:
+            iq_type = "result"
+        status, show, invisible = self.shared_status
+        elems = []
+        elems.append(elem('status')(unicode(status)))
+        elems.append(elem('show')(unicode(show)))
+        for show, statuses in self.shared_status_lists.items():
+            lst = []
+            for _status in statuses:
+                lst.append(elem('status')(unicode(_status)))
+            elems.append(elem('status-list', show=show)(*lst))
+        elems.append(elem('invisible', value=invisible)())
+
+        attribs = {'status-max' : '512',
+                   'status-list-max' : '3',
+                   'status-list-contents-max' : '5',
+                   'status-min-ver' : self.min_version}
+
+        iq = elem_iq(self, iq_type, id=iq_id)(
+            elem(ns.GOOGLE_SHARED_STATUS, 'query', **attribs)(*elems))
+
+        self.send(iq)
+
+    def shared_status_iq_cb(self, req_iq):
+        if req_iq.getAttribute("type") == 'get':
+            self._send_status_list(req_iq['id'])
+        if req_iq.getAttribute("type") == 'set':
+            _status = xpath.queryForNodes('//status', req_iq)[0]
+            _show = xpath.queryForNodes('//show', req_iq)[0]
+            _invisible = xpath.queryForNodes('//invisible', req_iq)[0]
+            self.shared_status = (str(_status),
+                                  str(_show),
+                                  _invisible.getAttribute('value'))
+            self.send(elem_iq(self, "result", id=req_iq['id'])())

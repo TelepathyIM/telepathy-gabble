@@ -48,6 +48,7 @@ TWISTED_TESTS = \
 	presence/presence.py \
 	presence/plugins.py \
 	presence/set-idempotence.py \
+	presence/shared-status.py \
 	roster/authorize.py \
 	roster/edit-before-roster.py \
 	roster/ensure.py \

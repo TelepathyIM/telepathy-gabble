@@ -121,6 +121,7 @@ TWISTED_TESTS = \
 	jingle/accept-extra-stream.py \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
+	jingle/call-dtmf.py \
 	jingle/call-muc.py \
 	jingle/call-muc-cancel.py \
 	jingle/call-muc-re-re-request.py \

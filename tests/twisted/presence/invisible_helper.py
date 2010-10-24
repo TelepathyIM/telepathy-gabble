@@ -109,6 +109,8 @@ class SharedStatusStream(XmppXmlStream):
 
         self.min_version = '2'
 
+        self.max_statuses = '5'
+
     def set_shared_status_lists(self, shared_status_lists=None, status=None,
                                 show=None, invisible=None, min_version=None):
         self.shared_status_lists = shared_status_lists or \
@@ -141,7 +143,7 @@ class SharedStatusStream(XmppXmlStream):
 
         attribs = {'status-max' : '512',
                    'status-list-max' : '3',
-                   'status-list-contents-max' : '5',
+                   'status-list-contents-max' : self.max_statuses,
                    'status-min-ver' : self.min_version}
 
         iq = elem_iq(self, iq_type, id=iq_id)(
@@ -149,14 +151,23 @@ class SharedStatusStream(XmppXmlStream):
 
         self.send(iq)
 
+    def _store_shared_statuses(self, iq):
+        _status = xpath.queryForNodes('//status', iq)[0]
+        _show = xpath.queryForNodes('//show', iq)[0]
+        _invisible = xpath.queryForNodes('//invisible', iq)[0]
+        self.shared_status = (str(_status),
+                              str(_show),
+                              _invisible.getAttribute('value'))
+
+        _status_lists = xpath.queryForNodes('//status-list', iq)
+        self.shared_status_lists = {}
+        for s in _status_lists:
+            self.shared_status_lists[s.getAttribute('show')] = \
+                [str(e) for e in xpath.queryForNodes('//status', s)]
+
     def shared_status_iq_cb(self, req_iq):
         if req_iq.getAttribute("type") == 'get':
             self._send_status_list(req_iq['id'])
         if req_iq.getAttribute("type") == 'set':
-            _status = xpath.queryForNodes('//status', req_iq)[0]
-            _show = xpath.queryForNodes('//show', req_iq)[0]
-            _invisible = xpath.queryForNodes('//invisible', req_iq)[0]
-            self.shared_status = (str(_status),
-                                  str(_show),
-                                  _invisible.getAttribute('value'))
+            self._store_shared_statuses(req_iq)
             self.send(elem_iq(self, "result", id=req_iq['id'])())

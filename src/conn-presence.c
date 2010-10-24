@@ -74,6 +74,9 @@ struct _GabbleConnectionPresencePrivate {
     /* Are all of the connected resources complying to version 2 */
     gboolean shared_status_compat;
 
+    /* Max statuses in a shared status list */
+    gint max_shared_statuses;
+
     /* The shared status IQ handler */
     LmMessageHandler *iq_shared_status_cb;
 };
@@ -334,6 +337,39 @@ set_shared_status_cb (GObject *source_object,
 }
 
 static void
+insert_presence_to_shared_statuses (GabbleConnection *self)
+{
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  GabblePresence *presence = self->self_presence;
+  const gchar *show = presence->status == GABBLE_PRESENCE_DND ? "dnd" : "default";
+  gchar **statuses = g_hash_table_lookup (priv->shared_statuses, show);
+
+  if (presence->status_message == NULL)
+    return;
+
+  if (statuses == NULL)
+    {
+      statuses = g_new0 (gchar *, 2);
+      statuses[0] = g_strdup (presence->status_message);
+      g_hash_table_insert (priv->shared_statuses, g_strdup (show), statuses);
+    }
+  else
+    {
+      guint i;
+      guint list_len = MIN (priv->max_shared_statuses,
+          (gint) g_strv_length (statuses) + 1);
+      gchar **new_statuses = g_new0 (gchar *, list_len + 1);
+
+      new_statuses[0] = g_strdup (presence->status_message);
+
+      for (i = 1; i < list_len; i++)
+        new_statuses[i] = g_strdup (statuses[i - 1]);
+
+      g_hash_table_insert (priv->shared_statuses, g_strdup (show), new_statuses);
+    }
+}
+
+static void
 set_shared_status (GabbleConnection *self,
     GSimpleAsyncResult *result)
 {
@@ -347,6 +383,8 @@ set_shared_status (GabbleConnection *self,
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN && !priv->shared_status_compat)
     presence->status = GABBLE_PRESENCE_DND;
+
+  insert_presence_to_shared_statuses (self);
 
   iq = build_shared_status_stanza (self);
 
@@ -895,6 +933,7 @@ get_shared_status_cb  (GObject *source_object,
     gpointer user_data)
 {
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   WockyStanza *iq = NULL;
   GError *error = NULL;
@@ -912,6 +951,13 @@ get_shared_status_cb  (GObject *source_object,
     {
       WockyNode *query_node = wocky_node_get_child_ns (wocky_stanza_get_top_node (iq),
           "query", NS_GOOGLE_SHARED_STATUS);
+      const gchar *max_shared = wocky_node_get_attribute (query_node,
+          "status-list-contents-max");
+
+      if (max_shared != NULL)
+        priv->max_shared_statuses = (gint) g_ascii_strtoll (max_shared, NULL, 10);
+      else
+        priv->max_shared_statuses = 5; /* Safe bet */
 
       store_shared_statuses (self, query_node);
 
@@ -1792,8 +1838,14 @@ conn_presence_finalize (GabbleConnection *conn)
   if (priv->privacy_statuses != NULL)
       g_hash_table_destroy (priv->privacy_statuses);
 
+  if (priv->shared_statuses != NULL)
+      g_hash_table_destroy (priv->shared_statuses);
+
   if (priv->iq_list_push_cb != NULL)
     lm_message_handler_unref (priv->iq_list_push_cb);
+
+  if (priv->iq_shared_status_cb != NULL)
+    lm_message_handler_unref (priv->iq_shared_status_cb);
 
   tp_presence_mixin_finalize ((GObject *) conn);
 }

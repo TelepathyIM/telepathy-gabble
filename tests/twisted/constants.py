@@ -126,6 +126,7 @@ CONN_IFACE_GABBLE_DECLOAK = CONN + '.Interface.Gabble.Decloak'
 CONN_IFACE_MAIL_NOTIFICATION = CONN + '.Interface.MailNotification.DRAFT'
 CONN_IFACE_CONTACT_LIST = CONN + '.Interface.ContactList'
 CONN_IFACE_CONTACT_GROUPS = CONN + '.Interface.ContactGroups'
+CONN_IFACE_CLIENT_TYPES = CONN + '.Interface.ClientTypes'
 
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 

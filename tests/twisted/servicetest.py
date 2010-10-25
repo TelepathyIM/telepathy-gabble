@@ -585,8 +585,12 @@ def install_colourer():
             self.patterns = patterns
 
         def write(self, s):
-            f = self.patterns.get(s, lambda x: x)
-            self.fh.write(f(s))
+            for p, f in self.patterns.items():
+                if s.startswith(p):
+                    self.fh.write(f(p) + s[len(p):])
+                    return
+
+            self.fh.write(s)
 
     sys.stdout = Colourer(sys.stdout, patterns)
     return sys.stdout

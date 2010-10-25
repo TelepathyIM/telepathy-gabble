@@ -2454,7 +2454,7 @@ gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
     {
       DiscoWaiter *w = l->data;
 
-      if (w->handle == handle && !tp_strdiff (w->resource, resource))
+      if (w != NULL && w->handle == handle && !tp_strdiff (w->resource, resource))
         {
           out = TRUE;
           break;

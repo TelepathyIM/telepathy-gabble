@@ -66,6 +66,7 @@ _resource_new (gchar *name)
 {
   Resource *new = g_slice_new0 (Resource);
   new->name = name;
+  new->client_type = G_MAXUINT;
   new->cap_set = gabble_capability_set_new ();
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
@@ -752,7 +753,13 @@ gabble_presence_update_client_types (GabblePresence *presence,
   if (res == NULL)
     return;
 
+  /* since this method has been called, the client types have been
+   * discovered to be something, or discovered to be nothing, so set
+   * the client_type member to something other than G_MAXUINT */
   res->client_type = 0;
+
+  if (client_types == NULL)
+    return;
 
   for (i = 0; i < client_types->len; i++)
     {
@@ -778,7 +785,7 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
 
   res = _find_resource (presence, resource);
 
-  if (res == NULL)
+  if (res == NULL || res->client_type == G_MAXUINT)
     return NULL;
 
   klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);

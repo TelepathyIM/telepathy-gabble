@@ -1291,12 +1291,12 @@ _caps_disco_cb (GabbleDisco *disco,
   presence = gabble_presence_cache_get (cache, handle);
   client_types = client_types_from_message (handle, query_result,
       waiter_self->resource);
+  gabble_presence_update_client_types (presence, waiter_self->resource,
+      client_types);
+
   if (client_types != NULL)
     {
-      gabble_presence_update_client_types (presence, waiter_self->resource,
-          client_types);
       g_ptr_array_unref (client_types);
-
       _signal_presences_updated (cache, handle);
     }
 
@@ -1500,9 +1500,10 @@ _process_caps_uri (GabblePresenceCache *cache,
               WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
               GPtrArray *types = client_types_from_message (handle, query, resource);
 
+              gabble_presence_update_client_types (presence, resource, types);
+
               if (types != NULL)
                 {
-                  gabble_presence_update_client_types (presence, resource, types);
                   g_ptr_array_unref (types);
 
                   _signal_presences_updated (cache, handle);

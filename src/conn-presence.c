@@ -288,20 +288,22 @@ build_shared_status_stanza (GabbleConnection *self)
   GabblePresence *presence = self->self_presence;
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
   const gchar *bare_jid = conn_util_get_bare_self_jid (self);
+  WockyNode *query_node = NULL;
   WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET, NULL, bare_jid,
         '(', "query",
           ':', NS_GOOGLE_SHARED_STATUS,
+          '*', &query_node,
           '@', "version", GOOGLE_SHARED_STATUS_VERSION,
+          '(', "status",
+            '$', presence->status_message,
+          ')',
+          '(', "show",
+            '$', presence->status == GABBLE_PRESENCE_DND ? "dnd" : "default",
+          ')',
         ')',
       NULL);
-  WockyNode *query_node = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (iq), "query",
-      NS_GOOGLE_SHARED_STATUS);
 
-  wocky_node_add_child_with_content (query_node, "status", presence->status_message);
-  wocky_node_add_child_with_content (query_node, "show",
-      presence->status == GABBLE_PRESENCE_DND ? "dnd" : "default");
 
   g_hash_table_foreach (priv->shared_statuses, (GHFunc) add_shared_status_list,
       query_node);

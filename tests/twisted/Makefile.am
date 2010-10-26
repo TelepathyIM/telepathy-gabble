@@ -234,16 +234,21 @@ check-twisted:
         else \
 	  sleep=$(CHECK_TWISTED_SLEEP); \
 	fi; \
+	failed=0; \
 	sh $(srcdir)/tools/with-session-bus.sh \
 		--sleep=$$sleep \
 		--config-file=tools/tmp-session-bus.conf \
 		-- $(MAKE) check-TESTS \
 		TESTS="$(TWISTED_TESTS)" \
-		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) $(TEST_PYTHON) -u"
-	@if test -e tools/core; then\
-		echo "Core dump exists: tools/core";\
+		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) $(TEST_PYTHON) -u" || \
+		failed=1; \
+	if test -e tools/core; then\
+		echo -e "\033[0;31;1mCore dump exists: tools/core\033[0m";\
 		exit 1;\
-	fi
+	fi; \
+	if test $$failed = 1; then\
+		exit 1;\
+	fi;
 
 if ENABLE_DEBUG
 DEBUGGING_PYBOOL = True

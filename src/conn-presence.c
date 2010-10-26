@@ -769,7 +769,7 @@ store_shared_statuses (GabbleConnection *self,
           WockyNodeIter list_iter;
           WockyNode *list_item;
           GPtrArray *statuses;
-          const gchar *show = wocky_node_get_attribute(node, "show");
+          const gchar *show = wocky_node_get_attribute (node, "show");
 
           if (show == NULL)
             continue;
@@ -778,10 +778,7 @@ store_shared_statuses (GabbleConnection *self,
 
           wocky_node_iter_init (&list_iter, node, "status", NULL);
           while (wocky_node_iter_next (&list_iter, &list_item))
-            {
-              g_ptr_array_add (statuses,
-                  (gpointer) g_strdup (list_item->content));
-            }
+            g_ptr_array_add (statuses, g_strdup (list_item->content));
 
           g_ptr_array_add (statuses, NULL);
 

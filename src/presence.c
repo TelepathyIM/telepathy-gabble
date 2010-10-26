@@ -313,6 +313,9 @@ _find_resource (GabblePresence *presence, const gchar *resource)
   GSList *i;
   GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
+  /* you've been warned! */
+  g_return_val_if_fail (resource != NULL, NULL);
+
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *res = (Resource *) i->data;

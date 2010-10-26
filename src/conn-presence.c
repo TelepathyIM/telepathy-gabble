@@ -269,25 +269,14 @@ emit_presences_changed_for_self (GabbleConnection *self)
   g_array_free (handles, TRUE);
 }
 
-static void
-add_shared_status_list (const gchar *show,
-    gchar **statuses,
-    WockyNode *query_node)
-{
-  gchar **status;
-  WockyNode *list_node = wocky_node_add_child (query_node, "status-list");
-  wocky_node_set_attribute (list_node, "show", show);
-
-  for (status = statuses; *status != NULL; status++)
-    wocky_node_add_child_with_content (list_node, "status", *status);
-}
-
 static WockyStanza *
 build_shared_status_stanza (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
   const gchar *bare_jid = conn_util_get_bare_self_jid (self);
+  gpointer key, value;
+  GHashTableIter iter;
   WockyNode *query_node = NULL;
   WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
       WOCKY_STANZA_SUB_TYPE_SET, NULL, bare_jid,
@@ -304,9 +293,19 @@ build_shared_status_stanza (GabbleConnection *self)
         ')',
       NULL);
 
+  g_hash_table_iter_init (&iter, priv->shared_statuses);
 
-  g_hash_table_foreach (priv->shared_statuses, (GHFunc) add_shared_status_list,
-      query_node);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      gchar **status_iter;
+      gchar **statuses = (gchar **) value;
+      WockyNode *list_node = wocky_node_add_child (query_node, "status-list");
+
+      wocky_node_set_attribute (list_node, "show", (const gchar *) key);
+
+      for (status_iter = statuses; *status_iter != NULL; status_iter++)
+        wocky_node_add_child_with_content (list_node, "status", *status_iter);
+    }
 
   wocky_node_set_attribute (wocky_node_add_child (query_node, "invisible"), "value",
       presence->status == GABBLE_PRESENCE_HIDDEN ? "true" : "false");

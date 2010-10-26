@@ -317,7 +317,7 @@ _find_resource (GabblePresence *presence, const gchar *resource)
     {
       Resource *res = (Resource *) i->data;
 
-      if (0 == strcmp (res->name, resource))
+      if (!tp_strdiff (res->name, resource))
         return res;
     }
 

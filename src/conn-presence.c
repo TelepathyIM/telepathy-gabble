@@ -78,7 +78,7 @@ struct _GabbleConnectionPresencePrivate {
     gint max_shared_statuses;
 
     /* The shared status IQ handler */
-    LmMessageHandler *iq_shared_status_cb;
+    guint iq_shared_status_cb;
 };
 
 static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
@@ -832,33 +832,27 @@ store_shared_statuses (GabbleConnection *self,
   return rv;
 }
 
-static LmHandlerResult
-iq_shared_status_changed_cb (LmMessageHandler *handler,
-    LmConnection *connection,
-    LmMessage *message,
+static gboolean
+iq_shared_status_changed_cb (WockyPorter *porter,
+    WockyStanza *stanza,
     gpointer user_data)
 {
   GabbleConnection *self = GABBLE_CONNECTION (user_data);
   WockyNode *query_node = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (message), "query",
+      wocky_stanza_get_top_node (stanza), "query",
       NS_GOOGLE_SHARED_STATUS);
-  LmMessage *result;
-
-  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET ||
-      query_node == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  WockyStanza *result;
 
   if (store_shared_statuses (self, query_node))
     emit_presences_changed_for_self (self);
 
-  result = lm_iq_message_make_result (message);
+  result = wocky_stanza_build_iq_result (stanza, NULL);
 
-  if (!lm_connection_send (self->lmconn, result, NULL))
-      DEBUG ("sending shared status response failed.");
+  wocky_porter_send (porter, result);
 
-  lm_message_unref (result);
+  g_object_unref (result);
 
-  return  LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 static LmHandlerResult
@@ -1360,14 +1354,16 @@ shared_status_setup_cb (GObject *source_object,
 
   if (get_shared_status_finish (self, result, &error))
     {
-      priv->iq_shared_status_cb = lm_message_handler_new (
-          iq_shared_status_changed_cb, self, NULL);
+      WockyPorter *porter = wocky_session_get_porter (self->session);
 
       priv->invisibility_method = INVISIBILITY_METHOD_SHARED_STATUS;
 
-      lm_connection_register_message_handler (self->lmconn,
-          priv->iq_shared_status_cb, LM_MESSAGE_TYPE_IQ,
-          LM_HANDLER_PRIORITY_NORMAL);
+      priv->iq_shared_status_cb = wocky_porter_register_handler (porter,
+          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET, NULL,
+          WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, iq_shared_status_changed_cb, self,
+          '(', "query",
+            ':', NS_GOOGLE_SHARED_STATUS,
+          ')', NULL);
     }
   else
     {
@@ -1832,6 +1828,7 @@ void
 conn_presence_finalize (GabbleConnection *conn)
 {
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
+  WockyPorter *porter = wocky_session_get_porter (conn->session);
 
   g_free (priv->invisible_list_name);
 
@@ -1844,8 +1841,11 @@ conn_presence_finalize (GabbleConnection *conn)
   if (priv->iq_list_push_cb != NULL)
     lm_message_handler_unref (priv->iq_list_push_cb);
 
-  if (priv->iq_shared_status_cb != NULL)
-    lm_message_handler_unref (priv->iq_shared_status_cb);
+  if (priv->iq_shared_status_cb != 0)
+    {
+      wocky_porter_unregister_handler (porter, priv->iq_shared_status_cb);
+      priv->iq_shared_status_cb = 0;
+    }
 
   tp_presence_mixin_finalize ((GObject *) conn);
 }

@@ -39,7 +39,7 @@ def contact_online(q, conn, stream, contact, identities,
 
     # add something to the end of the client string so that the caps
     # hashes aren't all the same and so stop discoing
-    client = client_base + types[0]
+    client = client_base + ''.join(types)
     caps = caps_base
     caps['node'] = client
 
@@ -70,6 +70,7 @@ def test(q, bus, conn, stream):
 
     meredith_one = 'meredith@foo.com/One'
     meredith_two = 'meredith@foo.com/Two'
+    meredith_three = 'meredith@foo.com/Three'
     meredith_handle = conn.RequestHandles(cs.HT_CONTACT, [meredith_one])[0]
 
     # Meredith signs in from one resource
@@ -114,6 +115,33 @@ def test(q, bus, conn, stream):
     # now wait for the change in client type
     event = q.expect('dbus-signal', signal='ClientTypesUpdated')
     assertEquals([meredith_handle, ['pc']], event.args)
+
+    # both One and Two go away
+    stream.send(make_presence(meredith_one, show='away'))
+    stream.send(make_presence(meredith_two, show='away'))
+
+    # wait for the presence change
+    q.expect('dbus-signal', signal='PresencesChanged',
+             args=[{meredith_handle: (cs.PRESENCE_AWAY, 'away', '')}])
+
+    # check it still thinks we're a PC
+    types = conn.GetClientTypes([meredith_handle],
+                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
+    assertEquals('pc', types[meredith_handle][0])
+
+    # Three, with multiple identities, signs in
+    identities = [PHONE[0], CONSOLE[0], HANDHELD[0], BOT[0]]
+    contact_online(q, conn, stream, meredith_three, identities,
+                   show='chat', initial=False)
+
+    # wait for the presence change
+    q.expect('dbus-signal', signal='PresencesChanged',
+             args=[{meredith_handle: (cs.PRESENCE_AVAILABLE, 'chat', 'hello')}])
+
+    # now wait for the change in client type
+    event = q.expect('dbus-signal', signal='ClientTypesUpdated')
+    assertEquals(meredith_handle, event.args[0])
+    assertEquals(['bot', 'console', 'handheld', 'phone'], sorted(event.args[1]))
 
     # that'll do
 

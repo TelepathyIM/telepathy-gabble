@@ -944,8 +944,11 @@ get_shared_status_cb  (GObject *source_object,
     {
       WockyNode *query_node = wocky_node_get_child_ns (wocky_stanza_get_top_node (iq),
           "query", NS_GOOGLE_SHARED_STATUS);
-      const gchar *max_shared = wocky_node_get_attribute (query_node,
-          "status-list-contents-max");
+      const gchar *max_shared;
+
+      g_assert (query_node != NULL);
+
+      max_shared = wocky_node_get_attribute (query_node, "status-list-contents-max");
 
       if (max_shared != NULL)
         priv->max_shared_statuses = (gint) g_ascii_strtoll (max_shared, NULL, 10);

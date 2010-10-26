@@ -380,7 +380,8 @@ set_shared_status (GabbleConnection *self,
 
   g_object_ref (result);
 
-  DEBUG ("%d", priv->shared_status_compat);
+  DEBUG ("shared status invisibility is %savailable",
+      priv->shared_status_compat ? "" : "un");
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN && !priv->shared_status_compat)
     presence->status = GABBLE_PRESENCE_DND;
@@ -1382,9 +1383,6 @@ conn_presence_set_initial_presence_async (GabbleConnection *self,
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
   GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, conn_presence_set_initial_presence_async);
-
-  DEBUG ("%d",
-      self->features & GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS);
 
   if (self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
     priv->invisibility_method = INVISIBILITY_METHOD_INVISIBLE_COMMAND;

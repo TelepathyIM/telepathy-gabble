@@ -1,6 +1,7 @@
 # coding=utf-8
 """
-A simple smoke-test for Google Shared Status
+A simple smoke-test for Google Shared Status.
+See: http://code.google.com/apis/talk/jep_extensions/shared_status.html
 """
 from gabbletest import (
     exec_test, XmppXmlStream, acknowledge_iq, send_error_reply,
@@ -15,10 +16,10 @@ import constants as cs
 from twisted.words.xish import xpath, domish
 from invisible_helper import SharedStatusStream
 
-presence_types = {'available' : 2,
-                  'away'      : 3,
-                  'hidden'    : 5,
-                  'dnd'       : 6}
+presence_types = {'available' : cs.PRESENCE_AVAILABLE,
+                  'away'      : cs.PRESENCE_AWAY,
+                  'hidden'    : cs.PRESENCE_HIDDEN,
+                  'dnd'       : cs.PRESENCE_BUSY}
 
 def _show_to_shared_status_show(show):
     shared_show = 'default'
@@ -118,7 +119,7 @@ def test(q, bus, conn, stream):
                      args=[{1: (0, {'dnd': {'message': "Peekabo"}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (6, 'dnd', "Peekabo")}]))
+                     args=[{1: (cs.PRESENCE_BUSY, 'dnd', "Peekabo")}]))
 
 def _test_on_connect(q, bus, conn, stream, shared_status, show, msg):
     _status, _show, _invisible = shared_status
@@ -204,7 +205,7 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
                      args=[{1: (0, {"dnd": {'message': msg}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (presence_types["dnd"], "dnd", msg)}]),
+                     args=[{1: (cs.PRESENCE_BUSY, "dnd", msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 

@@ -43,6 +43,7 @@ GQuark conn_presence_error_quark (void);
 void conn_presence_class_init (GabbleConnectionClass *klass);
 void conn_presence_init (GabbleConnection *conn);
 void conn_presence_finalize (GabbleConnection *conn);
+void conn_presence_dispose (GabbleConnection *self);
 void conn_presence_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_presence_emit_presence_update (
     GabbleConnection *, const GArray *contact_handles);

@@ -1829,12 +1829,28 @@ conn_presence_init (GabbleConnection *conn)
       G_OBJECT (conn));
 }
 
+void
+conn_presence_dispose (GabbleConnection *self)
+{
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  WockyPorter *porter;
+
+  if (self->session == NULL)
+    return;
+
+  porter = wocky_session_get_porter (self->session);
+
+  if (priv->iq_shared_status_cb != 0)
+    {
+      wocky_porter_unregister_handler (porter, priv->iq_shared_status_cb);
+      priv->iq_shared_status_cb = 0;
+    }
+}
 
 void
 conn_presence_finalize (GabbleConnection *conn)
 {
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
-  WockyPorter *porter = wocky_session_get_porter (conn->session);
 
   g_free (priv->invisible_list_name);
 
@@ -1846,12 +1862,6 @@ conn_presence_finalize (GabbleConnection *conn)
 
   if (priv->iq_list_push_cb != NULL)
     lm_message_handler_unref (priv->iq_list_push_cb);
-
-  if (priv->iq_shared_status_cb != 0)
-    {
-      wocky_porter_unregister_handler (porter, priv->iq_shared_status_cb);
-      priv->iq_shared_status_cb = 0;
-    }
 
   tp_presence_mixin_finalize ((GObject *) conn);
 }

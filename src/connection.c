@@ -1101,6 +1101,8 @@ gabble_connection_dispose (GObject *object)
   g_hash_table_destroy (self->avatar_requests);
   g_hash_table_destroy (self->vcard_requests);
 
+  conn_presence_dispose (self);
+
   conn_mail_notif_dispose (self);
 
   g_assert (priv->iq_disco_cb == NULL);

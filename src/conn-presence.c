@@ -944,18 +944,25 @@ get_shared_status_cb  (GObject *source_object,
     {
       WockyNode *query_node = wocky_node_get_child_ns (wocky_stanza_get_top_node (iq),
           "query", NS_GOOGLE_SHARED_STATUS);
-      const gchar *max_shared;
 
-      g_assert (query_node != NULL);
+      if (query_node != NULL)
+        {
+          const gchar *max_shared = wocky_node_get_attribute (query_node,
+              "status-list-contents-max");
 
-      max_shared = wocky_node_get_attribute (query_node, "status-list-contents-max");
+          if (max_shared != NULL)
+            priv->max_shared_statuses = (gint) g_ascii_strtoll (max_shared, NULL, 10);
+          else
+            priv->max_shared_statuses = 5; /* Safe bet */
 
-      if (max_shared != NULL)
-        priv->max_shared_statuses = (gint) g_ascii_strtoll (max_shared, NULL, 10);
+          store_shared_statuses (self, query_node);
+        }
       else
-        priv->max_shared_statuses = 5; /* Safe bet */
-
-      store_shared_statuses (self, query_node);
+        {
+          g_simple_async_result_set_error (result, CONN_PRESENCE_ERROR,
+              CONN_PRESENCE_ERROR_SET_SHARED_STATUS,
+              "Error retrieving shared status, received empty reply");
+        }
 
       g_object_unref (iq);
     }

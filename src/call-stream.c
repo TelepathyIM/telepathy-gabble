@@ -26,7 +26,11 @@
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
-#include <extensions/extensions.h>
+
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/svc-call.h>
 
 #include "call-stream.h"
 #include "call-stream-endpoint.h"
@@ -45,9 +49,9 @@ static void call_stream_update_member_states (GabbleCallStream *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallStream, gabble_call_stream,
     GABBLE_TYPE_BASE_CALL_STREAM,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM,
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM,
         call_stream_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM_INTERFACE_MEDIA,
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM_INTERFACE_MEDIA,
         call_stream_media_iface_init);
     );
 
@@ -86,7 +90,7 @@ struct _GabbleCallStreamPrivate
   GList *endpoints;
   GPtrArray *relay_info;
 
-  GabbleSendingState local_sending_state;
+  TpySendingState local_sending_state;
 
   gboolean got_relay_info;
 };
@@ -191,11 +195,11 @@ gabble_call_stream_get_property (GObject    *object,
           guint tptransport = G_MAXUINT;
           guint transport_mapping[][2] = {
               { JINGLE_TRANSPORT_GOOGLE_P2P,
-                GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P },
+                TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P },
               { JINGLE_TRANSPORT_RAW_UDP,
-                GABBLE_STREAM_TRANSPORT_TYPE_RAW_UDP },
+                TPY_STREAM_TRANSPORT_TYPE_RAW_UDP },
               { JINGLE_TRANSPORT_ICE_UDP,
-                 GABBLE_STREAM_TRANSPORT_TYPE_ICE },
+                 TPY_STREAM_TRANSPORT_TYPE_ICE },
           };
 
           transport = gabble_jingle_content_get_transport_type (priv->content);
@@ -266,7 +270,7 @@ static void
 maybe_emit_server_info_retrieved (GabbleCallStream *self)
 {
   if (has_server_info (self))
-    gabble_svc_call_stream_interface_media_emit_server_info_retrieved (self);
+    tpy_svc_call_stream_interface_media_emit_server_info_retrieved (self);
 }
 
 static void
@@ -285,7 +289,7 @@ google_relay_session_cb (GPtrArray *relays,
       maybe_emit_server_info_retrieved (user_data);
     }
 
-  gabble_svc_call_stream_interface_media_emit_relay_info_changed (
+  tpy_svc_call_stream_interface_media_emit_relay_info_changed (
       self, priv->relay_info);
 }
 
@@ -317,7 +321,7 @@ jingle_factory_stun_server_changed_cb (GabbleJingleFactory *factory,
 {
   GPtrArray *stun_servers = get_stun_servers (self);
 
-  gabble_svc_call_stream_interface_media_emit_stun_servers_changed (
+  tpy_svc_call_stream_interface_media_emit_stun_servers_changed (
       self, stun_servers);
   g_ptr_array_unref (stun_servers);
 }
@@ -381,8 +385,8 @@ call_stream_update_member_states (GabbleCallStream *self)
   GabbleCallStreamPrivate *priv = self->priv;
   gboolean created_by_us;
   JingleContentState state;
-  GabbleSendingState local_state = 0;
-  GabbleSendingState remote_state = 0;
+  TpySendingState local_state = 0;
+  TpySendingState remote_state = 0;
 
   g_object_get (priv->content, "state", &state, NULL);
 
@@ -396,21 +400,20 @@ call_stream_update_member_states (GabbleCallStream *self)
   if (gabble_jingle_content_sending (priv->content))
     {
       if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        local_state = GABBLE_SENDING_STATE_SENDING;
+        local_state = TPY_SENDING_STATE_SENDING;
       else
-        local_state = GABBLE_SENDING_STATE_PENDING_SEND;
+        local_state = TPY_SENDING_STATE_PENDING_SEND;
     }
 
   if (gabble_jingle_content_receiving (priv->content))
     {
       if (created_by_us && state != JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        remote_state = GABBLE_SENDING_STATE_PENDING_SEND;
+        remote_state = TPY_SENDING_STATE_PENDING_SEND;
       else
-        remote_state = GABBLE_SENDING_STATE_SENDING;
+        remote_state = TPY_SENDING_STATE_SENDING;
     }
 
   gabble_base_call_stream_update_local_sending_state (base, local_state);
-
   gabble_base_call_stream_remote_member_update_state (base,
         priv->content->session->peer, remote_state);
 }
@@ -433,7 +436,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
     { NULL }
   };
   static const gchar *interfaces[] = {
-      GABBLE_IFACE_CALL_STREAM_INTERFACE_MEDIA,
+      TPY_IFACE_CALL_STREAM_INTERFACE_MEDIA,
       NULL
   };
 
@@ -456,7 +459,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 
   param_spec = g_param_spec_boxed ("local-candidates", "LocalCandidates",
       "List of local candidates",
-      GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
+      TPY_ARRAY_TYPE_CANDIDATE_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_LOCAL_CANDIDATES,
       param_spec);
@@ -477,7 +480,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 
   param_spec = g_param_spec_boxed ("stun-servers", "STUNServers",
       "List of STUN servers",
-      GABBLE_ARRAY_TYPE_SOCKET_ADDRESS_IP_LIST,
+      TP_ARRAY_TYPE_SOCKET_ADDRESS_IP_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STUN_SERVERS,
       param_spec);
@@ -545,7 +548,7 @@ gabble_call_stream_finalize (GObject *object)
 }
 
 static void
-gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
+gabble_call_stream_add_candidates (TpySvcCallStreamInterfaceMedia *iface,
     const GPtrArray *candidates,
     DBusGMethodInvocation *context)
 {
@@ -613,18 +616,18 @@ gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
 
   gabble_jingle_content_add_candidates (priv->content, l);
 
-  gabble_svc_call_stream_interface_media_emit_local_candidates_added (self,
+  tpy_svc_call_stream_interface_media_emit_local_candidates_added (self,
       candidates);
 
-  gabble_svc_call_stream_interface_media_return_from_add_candidates (context);
+  tpy_svc_call_stream_interface_media_return_from_add_candidates (context);
 }
 
 static void
 gabble_call_stream_candidates_prepared (
-    GabbleSvcCallStreamInterfaceMedia *iface,
+    TpySvcCallStreamInterfaceMedia *iface,
     DBusGMethodInvocation *context)
 {
-  gabble_svc_call_stream_interface_media_return_from_candidates_prepared (
+  tpy_svc_call_stream_interface_media_return_from_candidates_prepared (
     context);
 }
 
@@ -635,7 +638,7 @@ gabble_call_stream_set_sending (GabbleCallStream *self,
   GabbleCallStreamPrivate *priv = self->priv;
   GabbleBaseCallStream *base = GABBLE_BASE_CALL_STREAM (self);
   GabbleSendingState state =
-      sending ? GABBLE_SENDING_STATE_SENDING : GABBLE_SENDING_STATE_NONE;
+      sending ? TPY_SENDING_STATE_SENDING : TPY_SENDING_STATE_NONE;
 
   /* If this changes the state, update the content. */
   if (gabble_base_call_stream_update_local_sending_state (base, state))
@@ -643,7 +646,7 @@ gabble_call_stream_set_sending (GabbleCallStream *self,
 }
 
 static void
-gabble_call_stream_set_sending_async (GabbleSvcCallStream *iface,
+gabble_call_stream_set_sending_async (TpySvcCallStream *iface,
     gboolean sending,
     DBusGMethodInvocation *context)
 {
@@ -651,16 +654,16 @@ gabble_call_stream_set_sending_async (GabbleSvcCallStream *iface,
 
   gabble_call_stream_set_sending (self, sending);
 
-  gabble_svc_call_stream_return_from_set_sending (context);
+  tpy_svc_call_stream_return_from_set_sending (context);
 }
 
 static void
 call_stream_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcCallStreamClass *klass =
-    (GabbleSvcCallStreamClass *) g_iface;
+  TpySvcCallStreamClass *klass =
+    (TpySvcCallStreamClass *) g_iface;
 
-#define IMPLEMENT(x, suffix) gabble_svc_call_stream_implement_##x (\
+#define IMPLEMENT(x, suffix) tpy_svc_call_stream_implement_##x (\
     klass, gabble_call_stream_##x##suffix)
   IMPLEMENT(set_sending, _async);
 #undef IMPLEMENT
@@ -669,10 +672,10 @@ call_stream_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 call_stream_media_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcCallStreamInterfaceMediaClass *klass =
-    (GabbleSvcCallStreamInterfaceMediaClass *) g_iface;
+  TpySvcCallStreamInterfaceMediaClass *klass =
+    (TpySvcCallStreamInterfaceMediaClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_call_stream_interface_media_implement_##x (\
+#define IMPLEMENT(x) tpy_svc_call_stream_interface_media_implement_##x (\
     klass, gabble_call_stream_##x)
   IMPLEMENT(add_candidates);
   IMPLEMENT(candidates_prepared);

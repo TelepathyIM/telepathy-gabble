@@ -24,6 +24,10 @@
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
+
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/interfaces.h>
+
 #include <wocky/wocky-muc.h>
 
 #include "muc-channel.h"
@@ -353,7 +357,7 @@ call_muc_channel_open_new_streams (GabbleCallMucChannel *self)
       /* At the point where we opened the sessions we're accepted
          in the call */
       gabble_base_call_channel_set_state ( GABBLE_BASE_CALL_CHANNEL (self),
-          GABBLE_CALL_STATE_ACCEPTED);
+          TPY_CALL_STATE_ACCEPTED);
     }
 
   priv->sessions_opened = TRUE;
@@ -425,7 +429,7 @@ call_muc_channel_member_content_added_cb (GabbleCallMember *member,
 
   ccontent = gabble_base_call_channel_add_content (
       GABBLE_BASE_CALL_CHANNEL (self), name, mtype,
-      self->priv->initialized ? GABBLE_CALL_CONTENT_DISPOSITION_INITIAL : 0);
+      self->priv->initialized ? TPY_CALL_CONTENT_DISPOSITION_INITIAL : 0);
   call_muc_channel_setup_content (self, ccontent);
 
 have_content:
@@ -961,7 +965,7 @@ call_muc_channel_init_async (GAsyncInitable *initable,
     {
       content = gabble_base_call_channel_add_content (base,
         initial_audio_name, JINGLE_MEDIA_TYPE_AUDIO,
-        GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+        TPY_CALL_CONTENT_DISPOSITION_INITIAL);
       call_muc_channel_setup_content (self, content);
     }
 
@@ -969,7 +973,7 @@ call_muc_channel_init_async (GAsyncInitable *initable,
     {
       content = gabble_base_call_channel_add_content (base,
         initial_video_name, JINGLE_MEDIA_TYPE_VIDEO,
-        GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+        TPY_CALL_CONTENT_DISPOSITION_INITIAL);
       call_muc_channel_setup_content (self, content);
     }
 
@@ -1028,9 +1032,9 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
   if (request != NULL)
     {
       initial_audio = tp_asv_get_boolean (request,
-        GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
+          TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
       initial_video = tp_asv_get_boolean (request,
-        GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
+          TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
     }
 
   g_async_initable_new_async (GABBLE_TYPE_CALL_MUC_CHANNEL,
@@ -1110,7 +1114,7 @@ call_muc_channel_add_content (GabbleBaseCallChannel *base,
 
   content = gabble_base_call_channel_add_content (base,
         name, type,
-        GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+        TPY_CALL_CONTENT_DISPOSITION_NONE);
 
   call_muc_channel_setup_content (self, content);
 

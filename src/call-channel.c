@@ -33,7 +33,8 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
 
-#include <extensions/extensions.h>
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/svc-call.h>
 
 #include "util.h"
 #include "call-channel.h"
@@ -118,7 +119,7 @@ gabble_call_channel_constructed (GObject *obj)
           c = gabble_base_call_channel_add_content (cbase,
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
-                GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+                TPY_CALL_CONTENT_DISPOSITION_INITIAL);
 
           gabble_call_content_add_member_content (c, content);
 
@@ -259,22 +260,22 @@ call_session_state_changed_cb (GabbleJingleSession *session,
 {
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
   JingleState state;
-  GabbleCallState cstate;
+  TpyCallState cstate;
 
   cstate = gabble_base_call_channel_get_state (
     GABBLE_BASE_CALL_CHANNEL (self));
 
   g_object_get (session, "state", &state, NULL);
 
-  if (state == JINGLE_STATE_ACTIVE && cstate != GABBLE_CALL_STATE_ACCEPTED)
+  if (state == JINGLE_STATE_ACTIVE && cstate != TPY_CALL_STATE_ACCEPTED)
     {
-      gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ACCEPTED);
+      gabble_base_call_channel_set_state (cbase, TPY_CALL_STATE_ACCEPTED);
       return;
     }
 
-  if (state == JINGLE_STATE_ENDED && cstate < GABBLE_CALL_STATE_ENDED)
+  if (state == JINGLE_STATE_ENDED && cstate < TPY_CALL_STATE_ENDED)
     {
-      gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ENDED);
+      gabble_base_call_channel_set_state (cbase, TPY_CALL_STATE_ENDED);
       return;
     }
 }
@@ -299,12 +300,12 @@ call_member_content_added_cb (GabbleCallMember *member,
   c = gabble_base_call_channel_add_content (cbase,
       gabble_call_member_content_get_name (content),
       gabble_call_member_content_get_media_type (content),
-      GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+      TPY_CALL_CONTENT_DISPOSITION_NONE);
   base_content = GABBLE_BASE_CALL_CONTENT (c);
 
   gabble_call_content_add_member_content (c, content);
 
-  gabble_svc_channel_type_call_emit_content_added (self,
+  tpy_svc_channel_type_call_emit_content_added (self,
       gabble_base_call_content_get_object_path (base_content));
 }
 
@@ -428,7 +429,7 @@ call_channel_continue_init (GabbleCallChannel *self,
           c = gabble_base_call_channel_add_content (base,
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
-                GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+                TPY_CALL_CONTENT_DISPOSITION_INITIAL);
 
           gabble_call_content_add_member_content (c, content);
         }
@@ -575,7 +576,7 @@ call_channel_add_content (GabbleBaseCallChannel *base,
   if (mcontent != NULL)
     {
       content = gabble_base_call_channel_add_content (base,
-        name, type, GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+        name, type, TPY_CALL_CONTENT_DISPOSITION_NONE);
       gabble_call_content_add_member_content (content, mcontent);
     }
 

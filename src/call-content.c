@@ -28,7 +28,9 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
 
-#include <extensions/extensions.h>
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/svc-call.h>
 
 #include "call-member.h"
 #include "call-content.h"
@@ -56,9 +58,9 @@ static void call_content_deinit (GabbleBaseCallContent *base);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
     GABBLE_TYPE_BASE_CALL_CONTENT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT,
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT,
         call_content_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT_INTERFACE_MEDIA,
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT_INTERFACE_MEDIA,
       call_content_media_iface_init);
     );
 
@@ -122,7 +124,7 @@ gabble_call_content_get_property (GObject    *object,
     {
       case PROP_PACKETIZATION:
         /* TODO: actually set this to its real value */
-        g_value_set_uint (value, GABBLE_CALL_CONTENT_PACKETIZATION_TYPE_RTP);
+        g_value_set_uint (value, TPY_CALL_CONTENT_PACKETIZATION_TYPE_RTP);
         break;
       case PROP_CONTACT_CODEC_MAP:
         {
@@ -154,12 +156,12 @@ gabble_call_content_get_property (GObject    *object,
 
           arr = tp_value_array_build (2,
             DBUS_TYPE_G_OBJECT_PATH, path,
-            GABBLE_HASH_TYPE_CONTACT_CODEC_MAP, map,
+            TPY_HASH_TYPE_CONTACT_CODEC_MAP, map,
             G_TYPE_INVALID);
 
           g_value_take_boxed (value, arr);
           g_free (path);
-          g_boxed_free (GABBLE_HASH_TYPE_CONTACT_CODEC_MAP, map);
+          g_boxed_free (TPY_HASH_TYPE_CONTACT_CODEC_MAP, map);
           break;
         }
       default:
@@ -195,7 +197,7 @@ gabble_call_content_class_init (
     { NULL }
   };
   static const gchar *interfaces[] = {
-      GABBLE_IFACE_CALL_CONTENT_INTERFACE_MEDIA,
+      TPY_IFACE_CALL_CONTENT_INTERFACE_MEDIA,
       NULL
   };
 
@@ -215,14 +217,14 @@ gabble_call_content_class_init (
 
   param_spec = g_param_spec_boxed ("contact-codec-map", "ContactCodecMap",
       "The map of contacts to codecs",
-      GABBLE_HASH_TYPE_CONTACT_CODEC_MAP,
+      TPY_HASH_TYPE_CONTACT_CODEC_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONTACT_CODEC_MAP,
       param_spec);
 
   param_spec = g_param_spec_boxed ("codec-offer", "CodecOffer",
       "The current codec offer if any",
-      GABBLE_STRUCT_TYPE_CODEC_OFFERING,
+      TPY_STRUCT_TYPE_CODEC_OFFERING,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CODEC_OFFER,
       param_spec);
@@ -319,8 +321,8 @@ call_content_set_local_codecs (GabbleCallContent *self,
 }
 
 static void
-gabble_call_content_remove (GabbleSvcCallContent *content,
-    GabbleContentRemovalReason reason,
+gabble_call_content_remove (TpySvcCallContent *content,
+    TpyContentRemovalReason reason,
     const gchar *detailed_removal_reason,
     const gchar *message,
     DBusGMethodInvocation *context)
@@ -334,23 +336,23 @@ gabble_call_content_remove (GabbleSvcCallContent *content,
    * there are guards around it being called again and breaking, so
    * let's just call it be sure it's done. */
   gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
-  gabble_svc_call_content_return_from_remove (context);
+  tpy_svc_call_content_return_from_remove (context);
 }
 
 static void
 call_content_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcCallContentClass *klass =
-    (GabbleSvcCallContentClass *) g_iface;
+  TpySvcCallContentClass *klass =
+    (TpySvcCallContentClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_call_content_implement_##x (\
+#define IMPLEMENT(x) tpy_svc_call_content_implement_##x (\
     klass, gabble_call_content_##x)
   IMPLEMENT(remove);
 #undef IMPLEMENT
 }
 
 static void
-gabble_call_content_update_codecs (GabbleSvcCallContentInterfaceMedia *iface,
+gabble_call_content_update_codecs (TpySvcCallContentInterfaceMedia *iface,
     const GPtrArray *codecs,
     DBusGMethodInvocation *context)
 {
@@ -373,16 +375,16 @@ gabble_call_content_update_codecs (GabbleSvcCallContentInterfaceMedia *iface,
     }
 
   call_content_set_local_codecs (GABBLE_CALL_CONTENT (iface), codecs);
-  gabble_svc_call_content_interface_media_return_from_update_codecs (context);
+  tpy_svc_call_content_interface_media_return_from_update_codecs (context);
 }
 
 static void
 call_content_media_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcCallContentInterfaceMediaClass *klass =
-    (GabbleSvcCallContentInterfaceMediaClass *) g_iface;
+  TpySvcCallContentInterfaceMediaClass *klass =
+    (TpySvcCallContentInterfaceMediaClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_call_content_interface_media_implement_##x (\
+#define IMPLEMENT(x) tpy_svc_call_content_interface_media_implement_##x (\
     klass, gabble_call_content_##x)
   IMPLEMENT(update_codecs);
 #undef IMPLEMENT
@@ -395,7 +397,7 @@ call_content_accept_stream (gpointer data, gpointer user_data)
 
   if (gabble_base_call_stream_get_local_sending_state (
       GABBLE_BASE_CALL_STREAM (stream)) ==
-      GABBLE_SENDING_STATE_PENDING_SEND)
+      TPY_SENDING_STATE_PENDING_SEND)
     gabble_call_stream_set_sending (stream, TRUE);
 }
 
@@ -405,7 +407,7 @@ gabble_call_content_accept (GabbleCallContent *content)
   GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (content);
 
   if (gabble_base_call_content_get_disposition (base)
-      == GABBLE_CALL_CONTENT_DISPOSITION_INITIAL)
+      == TPY_CALL_CONTENT_DISPOSITION_INITIAL)
     g_list_foreach (gabble_base_call_content_get_streams (base),
         call_content_accept_stream, NULL);
 }
@@ -548,7 +550,7 @@ codec_offer_finished_cb (GObject *source,
   codec_map = call_content_generate_codec_map (self, TRUE);
   empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
-  gabble_svc_call_content_interface_media_emit_codecs_changed (self,
+  tpy_svc_call_content_interface_media_emit_codecs_changed (self,
     codec_map, empty);
 
   g_hash_table_unref (codec_map);
@@ -595,7 +597,7 @@ gabble_call_content_new_offer (GabbleCallContent *self)
     codec_offer_finished_cb, self);
 
   DEBUG ("emitting NewCodecOffer: %s", path);
-  gabble_svc_call_content_interface_media_emit_new_codec_offer (
+  tpy_svc_call_content_interface_media_emit_new_codec_offer (
     self, path, map);
 
   g_hash_table_unref (map);

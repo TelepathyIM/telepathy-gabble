@@ -24,8 +24,11 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/svc-call.h>
+
 #include "call-content-codec-offer.h"
-#include <extensions/extensions.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 #include "debug.h"
@@ -35,7 +38,7 @@ static void call_content_codec_offer_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContentCodecOffer,
   gabble_call_content_codec_offer,
   G_TYPE_OBJECT,
-  G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT_CODEC_OFFER,
+  G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT_CODEC_OFFER,
         call_content_codec_offer_iface_init);
    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
     tp_dbus_properties_mixin_iface_init);
@@ -156,7 +159,7 @@ gabble_call_content_codec_offer_class_init (
   };
 
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_CALL_CONTENT_CODEC_OFFER,
+      { TPY_IFACE_CALL_CONTENT_CODEC_OFFER,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         codec_offer_props,
@@ -191,7 +194,7 @@ gabble_call_content_codec_offer_class_init (
   spec = g_param_spec_boxed ("remote-contact-codec-map",
       "RemoteContactCodecMap",
       "The map of contacts to codecs",
-      GABBLE_HASH_TYPE_CONTACT_CODEC_MAP,
+      TPY_HASH_TYPE_CONTACT_CODEC_MAP,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_CONTACT_CODEC_MAP,
       spec);
@@ -227,7 +230,7 @@ gabble_call_content_codec_offer_dispose (GObject *object)
   if (priv->codec_map != NULL)
     {
       /* dbus-glib :( */
-      g_boxed_free (GABBLE_HASH_TYPE_CONTACT_CODEC_MAP, priv->codec_map);
+      g_boxed_free (TPY_HASH_TYPE_CONTACT_CODEC_MAP, priv->codec_map);
     }
   priv->codec_map = NULL;
 
@@ -251,7 +254,7 @@ gabble_call_content_codec_offer_finalize (GObject *object)
 }
 
 static void
-gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
+gabble_call_content_codec_offer_accept (TpySvcCallContentCodecOffer *iface,
     const GPtrArray *codecs,
     DBusGMethodInvocation *context)
 {
@@ -273,13 +276,13 @@ gabble_call_content_codec_offer_accept (GabbleSvcCallContentCodecOffer *iface,
   g_simple_async_result_complete (priv->result);
   tp_clear_object (&priv->result);
 
-  gabble_svc_call_content_codec_offer_return_from_accept (context);
+  tpy_svc_call_content_codec_offer_return_from_accept (context);
 
   tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (self));
 }
 
 static void
-gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
+gabble_call_content_codec_offer_reject (TpySvcCallContentCodecOffer *iface,
     DBusGMethodInvocation *context)
 {
   GabbleCallContentCodecOffer *self = GABBLE_CALL_CONTENT_CODEC_OFFER (iface);
@@ -300,7 +303,7 @@ gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
   g_simple_async_result_complete (priv->result);
   tp_clear_object (&priv->result);
 
-  gabble_svc_call_content_codec_offer_return_from_reject (context);
+  tpy_svc_call_content_codec_offer_return_from_reject (context);
 
   tp_dbus_daemon_unregister_object (priv->dbus_daemon, G_OBJECT (self));
 }
@@ -308,10 +311,10 @@ gabble_call_content_codec_offer_reject (GabbleSvcCallContentCodecOffer *iface,
 static void
 call_content_codec_offer_iface_init (gpointer iface, gpointer data)
 {
-  GabbleSvcCallContentCodecOfferClass *klass =
-    (GabbleSvcCallContentCodecOfferClass *) iface;
+  TpySvcCallContentCodecOfferClass *klass =
+    (TpySvcCallContentCodecOfferClass *) iface;
 
-#define IMPLEMENT(x) gabble_svc_call_content_codec_offer_implement_##x (\
+#define IMPLEMENT(x) tpy_svc_call_content_codec_offer_implement_##x (\
     klass, gabble_call_content_codec_offer_##x)
   IMPLEMENT(accept);
   IMPLEMENT(reject);

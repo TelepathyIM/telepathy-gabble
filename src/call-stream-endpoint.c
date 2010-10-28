@@ -28,8 +28,12 @@
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/svc-properties-interface.h>
 
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/svc-call.h>
+
 #include "call-stream-endpoint.h"
-#include <extensions/extensions.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 #include "debug.h"
@@ -44,7 +48,7 @@ static void call_stream_endpoint_new_candidates_cb (
 G_DEFINE_TYPE_WITH_CODE(GabbleCallStreamEndpoint,
   gabble_call_stream_endpoint,
   G_TYPE_OBJECT,
-  G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM_ENDPOINT,
+  G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM_ENDPOINT,
       call_stream_endpoint_iface_init);
    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
@@ -88,7 +92,7 @@ gabble_call_stream_endpoint_init (GabbleCallStreamEndpoint *self)
       G_TYPE_UINT, 0,
       G_TYPE_STRING, "",
       G_TYPE_UINT, 0,
-      GABBLE_HASH_TYPE_CANDIDATE_INFO,
+      TPY_HASH_TYPE_CANDIDATE_INFO,
           g_hash_table_new (g_str_hash, g_str_equal),
       G_TYPE_INVALID);
 
@@ -141,18 +145,18 @@ gabble_call_stream_endpoint_get_property (GObject    *object,
         break;
       case PROP_TRANSPORT:
         {
-          GabbleStreamTransportType type = 0;
+          TpyStreamTransportType type = 0;
 
           switch (gabble_jingle_content_get_transport_type (priv->content))
             {
             case JINGLE_TRANSPORT_GOOGLE_P2P:
-                type = GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P;
+                type = TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P;
                 break;
             case JINGLE_TRANSPORT_RAW_UDP:
-                type = GABBLE_STREAM_TRANSPORT_TYPE_RAW_UDP;
+                type = TPY_STREAM_TRANSPORT_TYPE_RAW_UDP;
                 break;
             case JINGLE_TRANSPORT_ICE_UDP:
-                type = GABBLE_STREAM_TRANSPORT_TYPE_ICE;
+                type = TPY_STREAM_TRANSPORT_TYPE_ICE;
                 break;
             case JINGLE_TRANSPORT_UNKNOWN:
             default:
@@ -232,7 +236,7 @@ gabble_call_stream_endpoint_class_init (
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_CALL_STREAM_ENDPOINT,
+      { TPY_IFACE_CALL_STREAM_ENDPOINT,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         endpoint_props,
@@ -267,7 +271,7 @@ gabble_call_stream_endpoint_class_init (
   param_spec = g_param_spec_boxed ("remote-candidates",
       "RemoteCandidates",
       "The remote candidates of this endpoint",
-      GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
+      TPY_ARRAY_TYPE_CANDIDATE_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_CANDIDATES,
       param_spec);
@@ -275,7 +279,7 @@ gabble_call_stream_endpoint_class_init (
   param_spec = g_param_spec_boxed ("remote-credentials",
       "RemoteCredentials",
       "The remote credentials of this endpoint",
-      GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
+      TPY_STRUCT_TYPE_STREAM_CREDENTIALS,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_CREDENTIALS,
       param_spec);
@@ -283,7 +287,7 @@ gabble_call_stream_endpoint_class_init (
   param_spec = g_param_spec_boxed ("selected-candidate",
       "SelectedCandidate",
       "The candidate selected for this endpoint",
-      GABBLE_STRUCT_TYPE_CANDIDATE,
+      TPY_STRUCT_TYPE_CANDIDATE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SELECTED_CANDIDATE,
       param_spec);
@@ -299,7 +303,7 @@ gabble_call_stream_endpoint_class_init (
   param_spec = g_param_spec_uint ("transport",
       "Transport",
       "The transport type for the content of this endpoint.",
-      0, NUM_GABBLE_STREAM_TRANSPORT_TYPES, 0,
+      0, NUM_TPY_STREAM_TRANSPORT_TYPES, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_TRANSPORT, param_spec);
 
@@ -344,8 +348,8 @@ gabble_call_stream_endpoint_finalize (GObject *object)
   /* free any data held directly by the object here */
   g_free (priv->object_path);
 
-  g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE, priv->selected_candidate);
-  g_boxed_free (GABBLE_STRUCT_TYPE_STREAM_CREDENTIALS,
+  g_boxed_free (TPY_STRUCT_TYPE_CANDIDATE, priv->selected_candidate);
+  g_boxed_free (TPY_STRUCT_TYPE_STREAM_CREDENTIALS,
       priv->remote_credentials);
 
   G_OBJECT_CLASS (gabble_call_stream_endpoint_parent_class)->finalize (object);
@@ -363,13 +367,13 @@ call_stream_endpoint_new_candidates_cb (GabbleJingleContent *content,
     return;
 
   arr = gabble_call_candidates_to_array (candidates);
-  gabble_svc_call_stream_endpoint_emit_remote_candidates_added (self,
+  tpy_svc_call_stream_endpoint_emit_remote_candidates_added (self,
     arr);
-  g_boxed_free (GABBLE_ARRAY_TYPE_CANDIDATE_LIST, arr);
+  g_boxed_free (TPY_ARRAY_TYPE_CANDIDATE_LIST, arr);
 }
 
 static void
-call_stream_endpoint_set_stream_state (GabbleSvcCallStreamEndpoint *iface,
+call_stream_endpoint_set_stream_state (TpySvcCallStreamEndpoint *iface,
     TpMediaStreamState state,
     DBusGMethodInvocation *context)
 {
@@ -389,13 +393,13 @@ call_stream_endpoint_set_stream_state (GabbleSvcCallStreamEndpoint *iface,
   gabble_jingle_content_set_transport_state (self->priv->content,
     state);
 
-  gabble_svc_call_stream_endpoint_emit_stream_state_changed (self, state);
-  gabble_svc_call_stream_endpoint_return_from_set_stream_state (context);
+  tpy_svc_call_stream_endpoint_emit_stream_state_changed (self, state);
+  tpy_svc_call_stream_endpoint_return_from_set_stream_state (context);
 }
 
 static void
 call_stream_endpoint_set_selected_candidate (
-    GabbleSvcCallStreamEndpoint *iface,
+    TpySvcCallStreamEndpoint *iface,
     const GValueArray *candidate,
     DBusGMethodInvocation *context)
 {
@@ -436,14 +440,14 @@ call_stream_endpoint_set_selected_candidate (
       goto error;
     }
 
-  g_boxed_free (GABBLE_STRUCT_TYPE_CANDIDATE,
+  g_boxed_free (TPY_STRUCT_TYPE_CANDIDATE,
       self->priv->selected_candidate);
 
   self->priv->selected_candidate =
-      g_boxed_copy (GABBLE_STRUCT_TYPE_CANDIDATE, candidate);
+      g_boxed_copy (TPY_STRUCT_TYPE_CANDIDATE, candidate);
 
-  gabble_svc_call_stream_endpoint_emit_candidate_selected (self, candidate);
-  gabble_svc_call_stream_endpoint_return_from_set_selected_candidate (context);
+  tpy_svc_call_stream_endpoint_emit_candidate_selected (self, candidate);
+  tpy_svc_call_stream_endpoint_return_from_set_selected_candidate (context);
   return;
 
 error:
@@ -454,10 +458,10 @@ error:
 static void
 call_stream_endpoint_iface_init (gpointer iface, gpointer data)
 {
-  GabbleSvcCallStreamEndpointClass *klass =
-    (GabbleSvcCallStreamEndpointClass *) iface;
+  TpySvcCallStreamEndpointClass *klass =
+    (TpySvcCallStreamEndpointClass *) iface;
 
-#define IMPLEMENT(x) gabble_svc_call_stream_endpoint_implement_##x (\
+#define IMPLEMENT(x) tpy_svc_call_stream_endpoint_implement_##x (\
     klass, call_stream_endpoint_##x)
   IMPLEMENT(set_stream_state);
   IMPLEMENT(set_selected_candidate);

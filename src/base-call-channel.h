@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include <extensions/extensions.h>
+#include <telepathy-yell/enums.h>
 
 #include <telepathy-glib/base-channel.h>
 
@@ -91,11 +91,11 @@ GabbleCallMember *gabble_base_call_channel_ensure_member_from_handle (
     GabbleBaseCallChannel *self,
     TpHandle handle);
 
-GabbleCallState gabble_base_call_channel_get_state (
+TpyCallState gabble_base_call_channel_get_state (
   GabbleBaseCallChannel *self);
 
 void gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
-  GabbleCallState state);
+  TpyCallState state);
 
 GabbleCallMember * gabble_base_call_channel_get_member_from_handle (
     GabbleBaseCallChannel *self,
@@ -107,7 +107,7 @@ GabbleCallContent * gabble_base_call_channel_add_content (
     GabbleBaseCallChannel *self,
     const gchar *name,
     JingleMediaType mtype,
-    GabbleCallContentDisposition disposition);
+    TpyCallContentDisposition disposition);
 
 void gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
     GabbleCallContent *content);

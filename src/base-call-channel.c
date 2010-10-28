@@ -34,6 +34,11 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
 
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/svc-call.h>
+
 #include "util.h"
 #include "base-call-channel.h"
 #include "call-content.h"
@@ -51,7 +56,7 @@ static GHashTable *members_to_hash (GabbleBaseCallChannel *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallChannel, gabble_base_call_channel,
   TP_TYPE_BASE_CHANNEL,
-  G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_CALL,
+  G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CHANNEL_TYPE_CALL,
         call_iface_init)
 );
 
@@ -103,8 +108,8 @@ struct _GabbleBaseCallChannelPrivate
   gchar *initial_audio_name;
   gchar *initial_video_name;
 
-  GabbleCallState state;
-  GabbleCallFlags flags;
+  TpyCallState state;
+  TpyCallFlags flags;
   GHashTable *details;
   GValueArray *reason;
 
@@ -124,10 +129,10 @@ gabble_base_call_channel_constructed (GObject *obj)
 
   if (tp_base_channel_is_requested (base))
     gabble_base_call_channel_set_state (self,
-      GABBLE_CALL_STATE_PENDING_INITIATOR);
+      TPY_CALL_STATE_PENDING_INITIATOR);
   else
     gabble_base_call_channel_set_state (self,
-      GABBLE_CALL_STATE_PENDING_RECEIVER);
+      TPY_CALL_STATE_PENDING_RECEIVER);
 }
 
 static void
@@ -396,9 +401,9 @@ gabble_base_call_channel_class_init (
 
   param_spec = g_param_spec_uint ("call-state", "CallState",
       "The status of the call",
-      GABBLE_CALL_STATE_UNKNOWN,
-      NUM_GABBLE_CALL_STATES,
-      GABBLE_CALL_STATE_UNKNOWN,
+      TPY_CALL_STATE_UNKNOWN,
+      NUM_TPY_CALL_STATES,
+      TPY_CALL_STATE_UNKNOWN,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CALL_STATE, param_spec);
 
@@ -411,7 +416,7 @@ gabble_base_call_channel_class_init (
 
   param_spec = g_param_spec_boxed ("call-state-reason", "CallStateReason",
       "The reason why the call is in the current state",
-      GABBLE_STRUCT_TYPE_CALL_STATE_REASON,
+      TPY_STRUCT_TYPE_CALL_STATE_REASON,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CALL_STATE_REASON,
       param_spec);
@@ -425,7 +430,7 @@ gabble_base_call_channel_class_init (
 
   param_spec = g_param_spec_boxed ("call-members", "CallMembers",
       "The members",
-      GABBLE_HASH_TYPE_CALL_MEMBER_MAP,
+      TPY_HASH_TYPE_CALL_MEMBER_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CALL_MEMBERS,
       param_spec);
@@ -477,25 +482,25 @@ gabble_base_call_channel_finalize (GObject *object)
 
 void
 gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
-  GabbleCallState state)
+  TpyCallState state)
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
 
   /* signal when going to the ended state */
-  if (state != priv->state && state == GABBLE_CALL_STATE_ENDED)
+  if (state != priv->state && state == TPY_CALL_STATE_ENDED)
     g_signal_emit (self, signals[ENDED], 0);
 
   priv->state = state;
 
-  if (priv->state != GABBLE_CALL_STATE_PENDING_RECEIVER)
-    priv->flags &= ~GABBLE_CALL_FLAG_LOCALLY_RINGING;
+  if (priv->state != TPY_CALL_STATE_PENDING_RECEIVER)
+    priv->flags &= ~TPY_CALL_FLAG_LOCALLY_RINGING;
 
   if (tp_base_channel_is_registered (TP_BASE_CHANNEL (self)))
-    gabble_svc_channel_type_call_emit_call_state_changed (self, priv->state,
+    tpy_svc_channel_type_call_emit_call_state_changed (self, priv->state,
       priv->flags, priv->reason, priv->details);
 }
 
-GabbleCallState
+TpyCallState
 gabble_base_call_channel_get_state (GabbleBaseCallChannel *self)
 {
   return self->priv->state;
@@ -512,7 +517,7 @@ gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
 
   path = gabble_base_call_content_get_object_path (
       GABBLE_BASE_CALL_CONTENT (content));
-  gabble_svc_channel_type_call_emit_content_removed (self, path);
+  tpy_svc_channel_type_call_emit_content_removed (self, path);
 
   gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
   g_object_unref (content);
@@ -522,7 +527,7 @@ GabbleCallContent *
 gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
     const gchar *name,
     JingleMediaType mtype,
-    GabbleCallContentDisposition disposition)
+    TpyCallContentDisposition disposition)
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
@@ -553,7 +558,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
 
   priv->contents = g_list_prepend (priv->contents, content);
 
-  gabble_svc_channel_type_call_emit_content_added (self,
+  tpy_svc_channel_type_call_emit_content_added (self,
      gabble_base_call_content_get_object_path (content));
 
   gabble_call_content_new_offer (GABBLE_CALL_CONTENT (content));
@@ -586,7 +591,7 @@ gabble_base_call_channel_close (TpBaseChannel *base)
 }
 
 static void
-gabble_base_call_channel_set_ringing (GabbleSvcChannelTypeCall *iface,
+gabble_base_call_channel_set_ringing (TpySvcChannelTypeCall *iface,
     DBusGMethodInvocation *context)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
@@ -599,7 +604,7 @@ gabble_base_call_channel_set_ringing (GabbleSvcChannelTypeCall *iface,
           "Call was requested. Ringing doesn't make sense." };
       dbus_g_method_return_error (context, &e);
     }
-  else if (priv->state != GABBLE_CALL_STATE_PENDING_RECEIVER)
+  else if (priv->state != TPY_CALL_STATE_PENDING_RECEIVER)
     {
       GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Call is not in the right state for Ringing." };
@@ -607,19 +612,19 @@ gabble_base_call_channel_set_ringing (GabbleSvcChannelTypeCall *iface,
     }
   else
     {
-      if ((priv->flags & GABBLE_CALL_FLAG_LOCALLY_RINGING) == 0)
+      if ((priv->flags & TPY_CALL_FLAG_LOCALLY_RINGING) == 0)
         {
           DEBUG ("Client is ringing");
-          priv->flags |= GABBLE_CALL_FLAG_LOCALLY_RINGING;
+          priv->flags |= TPY_CALL_FLAG_LOCALLY_RINGING;
           gabble_base_call_channel_set_state (self, priv->state);
         }
 
-      gabble_svc_channel_type_call_return_from_set_ringing (context);
+      tpy_svc_channel_type_call_return_from_set_ringing (context);
     }
 }
 
 static void
-gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
+gabble_base_call_channel_accept (TpySvcChannelTypeCall *iface,
         DBusGMethodInvocation *context)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
@@ -632,10 +637,10 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
 
   if (tp_base_channel_is_requested (tp_base))
     {
-      if (priv->state == GABBLE_CALL_STATE_PENDING_INITIATOR)
+      if (priv->state == TPY_CALL_STATE_PENDING_INITIATOR)
         {
           gabble_base_call_channel_set_state (self,
-              GABBLE_CALL_STATE_PENDING_RECEIVER);
+              TPY_CALL_STATE_PENDING_RECEIVER);
         }
       else
         {
@@ -644,10 +649,10 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
           goto err;
         }
     }
-  else if (priv->state < GABBLE_CALL_STATE_ACCEPTED)
+  else if (priv->state < TPY_CALL_STATE_ACCEPTED)
     {
       gabble_base_call_channel_set_state (self,
-        GABBLE_CALL_STATE_ACCEPTED);
+        TPY_CALL_STATE_ACCEPTED);
     }
   else
     {
@@ -661,7 +666,7 @@ gabble_base_call_channel_accept (GabbleSvcChannelTypeCall *iface,
   g_list_foreach (self->priv->contents,
       (GFunc)gabble_call_content_accept, NULL);
 
-  gabble_svc_channel_type_call_return_from_accept (context);
+  tpy_svc_channel_type_call_return_from_accept (context);
   return;
 
 err:
@@ -673,7 +678,7 @@ err:
 }
 
 static void
-gabble_base_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
+gabble_base_call_channel_hangup (TpySvcChannelTypeCall *iface,
   guint reason,
   const gchar *detailed_reason,
   const gchar *message,
@@ -694,13 +699,13 @@ gabble_base_call_channel_hangup (GabbleSvcChannelTypeCall *iface,
     base_class->hangup (self, reason, detailed_reason, message);
 
   gabble_base_call_channel_set_state ( GABBLE_BASE_CALL_CHANNEL (self),
-          GABBLE_CALL_STATE_ENDED);
+          TPY_CALL_STATE_ENDED);
 
-  gabble_svc_channel_type_call_return_from_hangup (context);
+  tpy_svc_channel_type_call_return_from_hangup (context);
 }
 
 static void
-gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
+gabble_base_call_channel_add_content_dbus (TpySvcChannelTypeCall *iface,
   const gchar *name,
   TpMediaStreamType mtype,
   DBusGMethodInvocation *context)
@@ -713,7 +718,7 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
   GError *error = NULL;
   GabbleCallContent *content;
 
-  if (priv->state == GABBLE_CALL_STATE_ENDED)
+  if (priv->state == TPY_CALL_STATE_ENDED)
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
         "No contents can be added. The call has already ended.");
@@ -732,7 +737,7 @@ gabble_base_call_channel_add_content_dbus (GabbleSvcChannelTypeCall *iface,
   if (content == NULL)
     goto error;
 
-  gabble_svc_channel_type_call_return_from_add_content (context,
+  tpy_svc_channel_type_call_return_from_add_content (context,
       gabble_base_call_content_get_object_path (
           GABBLE_BASE_CALL_CONTENT (content)));
   return;
@@ -753,10 +758,10 @@ error:
 static void
 call_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcChannelTypeCallClass *klass =
-    (GabbleSvcChannelTypeCallClass *) g_iface;
+  TpySvcChannelTypeCallClass *klass =
+    (TpySvcChannelTypeCallClass *) g_iface;
 
-#define IMPLEMENT(x, suffix) gabble_svc_channel_type_call_implement_##x (\
+#define IMPLEMENT(x, suffix) tpy_svc_channel_type_call_implement_##x (\
     klass, gabble_base_call_channel_##x##suffix)
   IMPLEMENT(set_ringing,);
   IMPLEMENT(accept,);
@@ -777,7 +782,7 @@ base_call_channel_signal_call_members (GabbleBaseCallChannel *self,
   if (removed_handle != 0)
     g_array_append_val (removals, removed_handle);
 
-  gabble_svc_channel_type_call_emit_call_members_changed (self,
+  tpy_svc_channel_type_call_emit_call_members_changed (self,
       members, removals);
 
   g_array_unref (removals);
@@ -786,7 +791,7 @@ base_call_channel_signal_call_members (GabbleBaseCallChannel *self,
 
 static void
 call_member_flags_changed_cb (GabbleCallMember *member,
-  GabbleCallMemberFlags flags,
+  TpyCallMemberFlags flags,
   gpointer user_data)
 {
   GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (user_data);

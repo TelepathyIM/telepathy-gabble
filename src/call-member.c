@@ -58,7 +58,7 @@ struct _GabbleCallMemberPrivate
   TpHandle target;
 
   GabbleBaseCallChannel *call;
-  GabbleCallMemberFlags flags;
+  TpyCallMemberFlags flags;
   GabbleJingleSession *session;
 
   GList *contents;
@@ -246,13 +246,13 @@ remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
 {
   GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
   GabbleCallMemberPrivate *priv = self->priv;
-  GabbleCallMemberFlags newflags = 0;
+  TpyCallMemberFlags newflags = 0;
 
   if (gabble_jingle_session_get_remote_ringing (session))
-    newflags |= GABBLE_CALL_MEMBER_FLAG_RINGING;
+    newflags |= TPY_CALL_MEMBER_FLAG_RINGING;
 
   if (gabble_jingle_session_get_remote_hold (session))
-    newflags |= GABBLE_CALL_MEMBER_FLAG_HELD;
+    newflags |= TPY_CALL_MEMBER_FLAG_HELD;
 
   if (priv->flags == newflags)
     return;
@@ -385,7 +385,7 @@ gabble_call_member_get_session (GabbleCallMember *self)
   return self->priv->session;
 }
 
-GabbleCallMemberFlags
+TpyCallMemberFlags
 gabble_call_member_get_flags (GabbleCallMember *self)
 {
   return self->priv->flags;

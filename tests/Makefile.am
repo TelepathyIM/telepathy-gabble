@@ -17,7 +17,7 @@ noinst_PROGRAMS = \
 LDADD = $(top_builddir)/src/libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
-    @TP_GLIB_CFLAGS@ \
+    @TP_GLIB_CFLAGS@ @TP_YELL_CFLAGS@ \
     -I $(top_srcdir) -I $(top_builddir) \
     -I $(top_srcdir)/lib -I $(top_builddir)/lib
 

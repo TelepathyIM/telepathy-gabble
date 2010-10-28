@@ -92,7 +92,7 @@ debug_flag_to_domain (GabbleDebugFlags flag)
 
       for (i = 0; keys[i].value; i++)
         {
-          GDebugKey key = (GDebugKey) keys[i];
+          GDebugKey key = keys[i];
           gchar *val;
 
           val = g_strdup_printf ("%s/%s", G_LOG_DOMAIN, key.key);

@@ -40,7 +40,6 @@
 
 #include "connection.h"
 #include "debug.h"
-#include "dtmf.h"
 #include "gabble-signals-marshal.h"
 #include "jingle-content.h"
 #include "jingle-session.h"
@@ -1850,7 +1849,7 @@ void
 gabble_media_stream_start_telephony_event (GabbleMediaStream *self,
     guchar event)
 {
-  DEBUG ("stream %s: %c", self->name, gabble_dtmf_event_to_char (event));
+  DEBUG ("stream %s: %c", self->name, tp_dtmf_event_to_char (event));
 
   tp_svc_media_stream_handler_emit_start_telephony_event (
       (TpSvcMediaStreamHandler *) self, event);
@@ -1867,7 +1866,7 @@ gabble_media_stream_stop_telephony_event (GabbleMediaStream *self)
 
 void
 gabble_media_stream_add_dtmf_player (GabbleMediaStream *self,
-    GabbleDTMFPlayer *dtmf_player)
+    TpDTMFPlayer *dtmf_player)
 {
   tp_g_signal_connect_object (dtmf_player, "started-tone",
       G_CALLBACK (gabble_media_stream_start_telephony_event), self,

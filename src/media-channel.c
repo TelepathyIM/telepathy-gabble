@@ -41,7 +41,6 @@
 
 #include "connection.h"
 #include "debug.h"
-#include "dtmf.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
 #include "jingle-media-rtp.h"
@@ -174,15 +173,13 @@ static void destroy_request (struct _delayed_request_streams_ctx *ctx,
 static void
 tones_deferred_cb (GabbleMediaChannel *self,
     const gchar *tones,
-    GabbleDTMFPlayer *dtmf_player)
+    TpDTMFPlayer *dtmf_player)
 {
   DEBUG ("waiting for user to continue sending '%s'", tones);
 
   g_free (self->priv->deferred_tones);
   self->priv->deferred_tones = g_strdup (tones);
-  /* FIXME: when available in telepathy-spec:
   tp_svc_channel_interface_dtmf_emit_tones_deferred (self, tones);
-  */
 }
 
 static void
@@ -201,7 +198,7 @@ gabble_media_channel_init (GabbleMediaChannel *self)
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
         GabbleMediaChannel, properties));
 
-  priv->dtmf_player = gabble_dtmf_player_new ();
+  priv->dtmf_player = tp_dtmf_player_new ();
 
   tp_g_signal_connect_object (priv->dtmf_player, "finished",
       G_CALLBACK (tp_svc_channel_interface_dtmf_emit_stopped_tones), self,
@@ -598,7 +595,7 @@ gabble_media_channel_get_property (GObject    *object,
       break;
     case PROP_CURRENTLY_SENDING_TONES:
       g_value_set_boolean (value,
-          gabble_dtmf_player_is_active (priv->dtmf_player));
+          tp_dtmf_player_is_active (priv->dtmf_player));
       break;
     case PROP_INITIAL_TONES:
       /* FIXME: stub */
@@ -740,8 +737,7 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   static TpDBusPropertiesMixinPropImpl dtmf_props[] = {
       { "CurrentlySendingTones", "currently-sending-tones", NULL },
       { "InitialTones", "initial-tones", NULL },
-      /* FIXME:
-       * { "DeferredTones", "deferred-tones", NULL }, */
+      { "DeferredTones", "deferred-tones", NULL },
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
@@ -2403,7 +2399,7 @@ stream_close_cb (GabbleMediaStream *stream,
   if (priv->have_some_audio && !still_have_audio)
     {
       /* the last audio stream just closed */
-      gabble_dtmf_player_cancel (priv->dtmf_player);
+      tp_dtmf_player_cancel (priv->dtmf_player);
     }
 
   priv->have_some_audio = still_have_audio;
@@ -2930,9 +2926,9 @@ gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
       return;
     }
 
-  tones[0] = gabble_dtmf_event_to_char (event);
+  tones[0] = tp_dtmf_event_to_char (event);
 
-  if (gabble_dtmf_player_play (self->priv->dtmf_player,
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
       tones, MAX_TONE_SECONDS * 1000, GAP_MS, PAUSE_MS, &error))
     {
       tp_clear_pointer (&self->priv->deferred_tones, g_free);
@@ -2953,7 +2949,7 @@ gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
 
-  gabble_dtmf_player_cancel (self->priv->dtmf_player);
+  tp_dtmf_player_cancel (self->priv->dtmf_player);
   tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
 }
 
@@ -2975,7 +2971,7 @@ gabble_media_channel_multiple_tones (
       return;
     }
 
-  if (gabble_dtmf_player_play (self->priv->dtmf_player,
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
       dialstring, TONE_MS, GAP_MS, PAUSE_MS, &error))
     {
       tp_clear_pointer (&self->priv->deferred_tones, g_free);

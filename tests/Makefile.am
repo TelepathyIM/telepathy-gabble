@@ -6,7 +6,6 @@ SUBDIRS = $(CHECKTWISTED) suppressions
 noinst_PROGRAMS = \
 	test-base64 \
 	test-caps-hash \
-	test-dtmf-player \
 	test-dtube-unique-names \
 	test-gabble-idle-weak \
 	test-handles \
@@ -55,10 +54,8 @@ check_c_sources = \
 	test-jid-decode.c \
 	test-handles.c \
 	test-parse-message.c \
-	tp-error-from-wocky.c \
-	dtmf-player.c
+	tp-error-from-wocky.c
 
-test_dtmf_player_SOURCES = dtmf-player.c
 test_tp_error_from_wocky_SOURCES = tp-error-from-wocky.c
 
 include $(top_srcdir)/tools/check-coding-style.mk

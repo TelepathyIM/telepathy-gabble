@@ -89,8 +89,6 @@ libgabble_convenience_la_SOURCES = \
     disco.h \
     disco.c \
     $(top_srcdir)/gabble/disco-identity.h \
-    dtmf.c \
-    dtmf.h \
     error.c \
     error.h \
     ft-channel.c \

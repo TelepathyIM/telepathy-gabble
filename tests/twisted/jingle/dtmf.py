@@ -6,7 +6,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import make_result_iq
 from servicetest import (call_async,
-    wrap_channel, make_channel_proxy, EventPattern, sync_dbus)
+    wrap_channel, make_channel_proxy, EventPattern, sync_dbus, assertEquals)
 import constants as cs
 
 from jingletest2 import JingleTest2, test_all_dialects
@@ -30,6 +30,11 @@ def test(jp, q, bus, conn, stream):
     chan_props = chan.Properties.GetAll(cs.CHANNEL)
     assert cs.CHANNEL_IFACE_DTMF in chan_props['Interfaces'], \
         chan_props['Interfaces']
+
+    assertEquals('',
+            chan.Properties.Get(cs.CHANNEL_IFACE_DTMF, 'InitialTones'))
+    assertEquals('',
+            chan.Properties.Get(cs.CHANNEL_IFACE_DTMF, 'DeferredTones'))
 
     chan.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
@@ -87,13 +92,13 @@ def test(jp, q, bus, conn, stream):
             EventPattern('dbus-return', method='StopTone'),
             )
 
-    call_async(q, chan.DTMF, 'MultipleTones', '123')
+    call_async(q, chan.DTMF, 'MultipleTones', '123w*#')
     q.expect_many(
             EventPattern('dbus-signal', signal='StartTelephonyEvent',
                 path=audio_path, args=[1]),
             EventPattern('dbus-signal', signal='StartTelephonyEvent',
                 path=audio2_path, args=[1]),
-            EventPattern('dbus-signal', signal='SendingTones', args=['123'],
+            EventPattern('dbus-signal', signal='SendingTones', args=['123w*#'],
                 path=chan_path),
             EventPattern('dbus-return', method='MultipleTones'),
             )
@@ -128,7 +133,12 @@ def test(jp, q, bus, conn, stream):
                 path=audio2_path),
             EventPattern('dbus-signal', signal='StoppedTones', args=[False],
                 path=chan_path),
+            EventPattern('dbus-signal', signal='TonesDeferred',
+                args=['*#']),
             )
+
+    assertEquals('*#',
+            chan.Properties.Get(cs.CHANNEL_IFACE_DTMF, 'DeferredTones'))
 
     forbidden = [EventPattern('dbus-signal', signal='StartTelephonyEvent',
         args=[9])]
@@ -140,6 +150,7 @@ def test(jp, q, bus, conn, stream):
     call_async(q, chan.DTMF, 'MultipleTones',
             '1,1' * 100)
     q.expect('dbus-return', method='MultipleTones')
+
     call_async(q, chan.DTMF, 'MultipleTones', '9')
     q.expect('dbus-error', method='MultipleTones',
             name=cs.SERVICE_BUSY)
@@ -155,6 +166,10 @@ def test(jp, q, bus, conn, stream):
                 path=chan_path),
             EventPattern('dbus-return', method='StopTone'),
             )
+
+    # emitting any sound resets TonesDeferred
+    assertEquals('',
+            chan.Properties.Get(cs.CHANNEL_IFACE_DTMF, 'DeferredTones'))
 
     q.unforbid_events(forbidden)
 

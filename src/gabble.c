@@ -77,18 +77,17 @@ log_handler (const gchar *log_domain,
       if (stamp_logs)
         {
           GTimeVal now;
-          gchar now_str[32];
+          gchar *now_str = NULL;
           gchar *tmp;
-          struct tm tm;
 
           g_get_current_time (&now);
-          localtime_r (&(now.tv_sec), &tm);
-          strftime (now_str, 32, "%Y-%m-%d %H:%M:%S", &tm);
+          now_str = g_time_val_to_iso8601 (&now);
           tmp = g_strdup_printf ("%s.%06ld: %s",
             now_str, now.tv_usec, message);
 
           g_log_default_handler (log_domain, log_level, tmp, NULL);
 
+          g_free (now_str);
           g_free (tmp);
         }
       else

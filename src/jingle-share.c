@@ -351,7 +351,7 @@ parse_description (GabbleJingleContent *content,
 
       size = lm_message_node_get_attribute (node, "size");
       if (size)
-        m->size = strtoull (size, NULL, 10);
+        m->size = g_ascii_strtoull (size, NULL, 10);
 
       image = lm_message_node_get_child (node, "image");
       if (image)

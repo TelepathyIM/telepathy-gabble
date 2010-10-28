@@ -83,13 +83,10 @@ def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
 
     assertContains('text/plain', c_props[cs.SUPPORTED_CONTENT_TYPES])
     assertEquals(0, c_props[cs.MESSAGE_PART_SUPPORT_FLAGS])
-    # FIXME: fd.o #30949 in telepathy-glib breaks this property. Reinstate
-    # the value check instead when 0.13.3 is available
-    assertContains(cs.DELIVERY_REPORTING_SUPPORT, c_props)
-    #assertEquals(
-    #        cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_FAILURES |
-    #        cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_SUCCESSES,
-    #        c_props[cs.DELIVERY_REPORTING_SUPPORT])
+    assertEquals(
+            cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_FAILURES |
+            cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_SUCCESSES,
+            c_props[cs.DELIVERY_REPORTING_SUPPORT])
 
 
 def test_ensure_ensure(q, conn, bus, stream, room_jid, room_handle):

@@ -52,11 +52,8 @@ def test(q, bus, conn, stream):
     assert emitted_props[cs.INITIATOR_ID] == 'test@localhost'
     assertContains('text/plain', emitted_props[cs.SUPPORTED_CONTENT_TYPES])
     assertEquals(0, emitted_props[cs.MESSAGE_PART_SUPPORT_FLAGS])
-    # FIXME: fd.o #30949 in telepathy-glib breaks this property. Reinstate
-    # the value check instead when 0.13.3 is available
-    assertContains(cs.DELIVERY_REPORTING_SUPPORT, emitted_props)
-    #assertEquals(cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_FAILURES,
-    #        emitted_props[cs.DELIVERY_REPORTING_SUPPORT])
+    assertEquals(cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_FAILURES,
+            emitted_props[cs.DELIVERY_REPORTING_SUPPORT])
 
     assert old_sig.args[0] == ret.value[0]
     assert old_sig.args[1] == cs.CHANNEL_TYPE_TEXT

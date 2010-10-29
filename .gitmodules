@@ -3,4 +3,4 @@
 	url = git://git.collabora.co.uk/git/wocky.git
 [submodule "lib/ext/telepathy-yell"]
 	path = lib/ext/telepathy-yell
-	url = git://git.collabora.co.uk/git/user/jonny/telepathy-yell.git
+	url = git://git.collabora.co.uk/git/telepathy-yell.git

@@ -63,7 +63,7 @@ enum
 
 struct _GabbleConnectionMailNotificationPrivate
 {
-  GHashTable *subscribers;
+  gboolean interested;
   gchar *inbox_url;
   GHashTable *unread_mails;
   guint unread_count;
@@ -74,8 +74,6 @@ struct _GabbleConnectionMailNotificationPrivate
 };
 
 
-static void unsubscribe (GabbleConnection *conn, const gchar *name,
-    gboolean remove_all);
 static void update_unread_mails (GabbleConnection *conn);
 
 static void
@@ -136,61 +134,6 @@ return_from_request_inbox_url (GabbleConnection *conn)
   priv->inbox_url_requests = NULL;
 }
 
-static void
-subscriber_name_owner_changed (TpDBusDaemon *dbus_daemon,
-                           const gchar *name,
-                           const gchar *new_owner,
-                           gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-
-  if (CHECK_STR_EMPTY (new_owner))
-    {
-      DEBUG ("Sender removed: %s", name);
-      unsubscribe (conn, name, TRUE);
-    }
-}
-
-
-static void
-unsubscribe (GabbleConnection *conn,
-    const gchar *name, gboolean remove_all)
-{
-  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
-  guint count;
-
-  g_return_if_fail (g_hash_table_size (priv->subscribers) > 0);
-
-  count = GPOINTER_TO_UINT (
-          g_hash_table_lookup (priv->subscribers, name));
-
-  if (count == 1 || remove_all)
-    {
-      tp_dbus_daemon_cancel_name_owner_watch (conn->daemon, name,
-          subscriber_name_owner_changed, conn);
-
-      g_hash_table_remove (priv->subscribers, name);
-
-      if (g_hash_table_size (priv->subscribers) == 0)
-        {
-          DEBUG ("Last subscriber unsubscribed, cleaning up!");
-          priv->unread_count = 0;
-          g_free (priv->inbox_url);
-          priv->inbox_url = NULL;
-
-          return_from_request_inbox_url (conn);
-
-          tp_clear_pointer (&priv->unread_mails, g_hash_table_unref);
-        }
-    }
-  else
-    {
-      g_hash_table_insert (priv->subscribers, g_strdup (name),
-          GUINT_TO_POINTER (--count));
-    }
-}
-
-
 static inline gboolean
 check_supported_or_dbus_return (GabbleConnection *conn,
     DBusGMethodInvocation *context)
@@ -210,78 +153,6 @@ check_supported_or_dbus_return (GabbleConnection *conn,
 
   return FALSE;
 }
-
-
-static void
-gabble_mail_notification_subscribe (GabbleSvcConnectionInterfaceMailNotification *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
-  gchar *subscriber;
-  guint count;
-
-  if (check_supported_or_dbus_return (conn, context))
-      return;
-
-  subscriber = dbus_g_method_get_sender (context);
-
-  DEBUG ("Subscribe called by: %s", subscriber);
-
-  count = GPOINTER_TO_UINT (
-      g_hash_table_lookup (priv->subscribers, subscriber));
-
-  /* Gives subscriber ownership to subscribers hash table */
-  g_hash_table_insert (priv->subscribers, subscriber,
-      GUINT_TO_POINTER (++count));
-
-  if (count == 1)
-    {
-      if (g_hash_table_size (priv->subscribers) == 1)
-        update_unread_mails (conn);
-
-      tp_dbus_daemon_watch_name_owner (conn->daemon, subscriber,
-          subscriber_name_owner_changed, conn, NULL);
-    }
-
-  gabble_svc_connection_interface_mail_notification_return_from_subscribe (
-      context);
-}
-
-
-static void
-gabble_mail_notification_unsubscribe (GabbleSvcConnectionInterfaceMailNotification *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
-  gchar *subscriber;
-
-  if (check_supported_or_dbus_return (conn, context))
-      return;
-
-  subscriber = dbus_g_method_get_sender (context);
-
-  DEBUG ("Unsubscribe called by: %s", subscriber);
-
-  if (!g_hash_table_lookup_extended (priv->subscribers, subscriber,
-                                    NULL, NULL))
-    {
-      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "Not subscribed" };
-
-      DEBUG ("Subscriber '%s' is not subscribed!", subscriber);
-
-      dbus_g_method_return_error (context, &e);
-      g_free (subscriber);
-      return;
-    }
-
-  unsubscribe (conn, subscriber, FALSE);
-
-  g_free (subscriber);
-  gabble_svc_connection_interface_mail_notification_return_from_unsubscribe (context);
-}
-
 
 static void
 gabble_mail_notification_request_inbox_url (
@@ -608,7 +479,7 @@ query_unread_mails_cb (GObject *source_object,
       DEBUG ("Failed retreive unread emails information: %s", error->message);
       g_error_free (error);
     }
-  else if (g_hash_table_size (conn->mail_priv->subscribers) > 0)
+  else if (conn->mail_priv->interested)
     {
       WockyNode *node = wocky_node_get_child (
           wocky_stanza_get_top_node (reply), "mailbox");
@@ -617,6 +488,10 @@ query_unread_mails_cb (GObject *source_object,
 
       if (node != NULL)
         store_unread_mails (conn, node);
+    }
+  else
+    {
+      DEBUG ("We no longer care about unread mail");
     }
 
   tp_clear_object (&reply);
@@ -628,8 +503,21 @@ query_unread_mails_cb (GObject *source_object,
 static void
 update_unread_mails (GabbleConnection *conn)
 {
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (conn);
   WockyStanza *query;
   WockyPorter *porter = wocky_session_get_porter (conn->session);
+
+  if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      DEBUG ("Not Connected - delaying MailNotification until we are");
+      return;
+    }
+
+  if (!(conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY))
+    {
+      DEBUG ("Not a Google server - no MailNotification here");
+      return;
+    }
 
   DEBUG ("Updating unread mails information");
 
@@ -663,7 +551,7 @@ poll_unread_mails_cb (gpointer user_data)
 
   /* When no subscriber, keep counting time, but don't actually update the
    * data since nobody would care about it */
-  if (g_hash_table_size (priv->subscribers) > 0)
+  if (priv->interested)
     {
       update_unread_mails (conn);
       DEBUG ("%i seconds since <new-mail>, still polling",
@@ -681,7 +569,7 @@ new_mail_handler (WockyPorter *porter,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
-  if (g_hash_table_size (conn->mail_priv->subscribers) > 0)
+  if (conn->mail_priv->interested)
     {
       DEBUG ("Got Google <new-mail> notification");
       update_unread_mails (conn);
@@ -707,7 +595,7 @@ connection_status_changed (GabbleConnection *conn,
     gpointer user_data)
 {
   if (status == TP_CONNECTION_STATUS_CONNECTED
-      && conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
+      && (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY))
     {
       DEBUG ("Connected, registering Google 'new-mail' notification");
 
@@ -720,9 +608,42 @@ connection_status_changed (GabbleConnection *conn,
               ':', NS_GOOGLE_MAIL_NOTIFY,
             ')',
             NULL);
+
+      if (conn->mail_priv->interested)
+        {
+          DEBUG ("Someone is already interested in MailNotification");
+          update_unread_mails (conn);
+        }
     }
 }
 
+/* called on transition from 0 to 1 interested clients */
+static void
+mail_clients_interested_cb (GabbleConnection *self,
+    const gchar *token G_GNUC_UNUSED,
+    gpointer nil G_GNUC_UNUSED)
+{
+  DEBUG ("The first client is interested");
+  self->mail_priv->interested = TRUE;
+
+  update_unread_mails (self);
+}
+
+/* called on transition from 1 to 0 interested clients */
+static void
+mail_clients_uninterested_cb (GabbleConnection *self,
+    const gchar *token G_GNUC_UNUSED,
+    gpointer nil G_GNUC_UNUSED)
+{
+  DEBUG ("All clients lost interest, cleaning up");
+  self->mail_priv->interested = FALSE;
+  self->mail_priv->unread_count = 0;
+
+  tp_clear_pointer (&self->mail_priv->inbox_url, g_free);
+  return_from_request_inbox_url (self);
+
+  tp_clear_pointer (&self->mail_priv->unread_mails, g_hash_table_unref);
+}
 
 void
 conn_mail_notif_init (GabbleConnection *conn)
@@ -732,27 +653,15 @@ conn_mail_notif_init (GabbleConnection *conn)
   conn->mail_priv = g_slice_new0(GabbleConnectionMailNotificationPrivate);
   priv = conn->mail_priv;
 
-  priv->subscribers = g_hash_table_new_full (g_str_hash, g_str_equal,
-                                             g_free, NULL);
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed), conn);
+
+#define MY_INTERFACE GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION
+  g_signal_connect (conn, "clients-interested::" MY_INTERFACE,
+      G_CALLBACK (mail_clients_interested_cb), NULL);
+  g_signal_connect (conn, "clients-uninterested::" MY_INTERFACE,
+      G_CALLBACK (mail_clients_uninterested_cb), NULL);
 }
-
-
-static gboolean
-foreach_cancel_watch (gpointer key,
-    gpointer value,
-    gpointer user_data)
-{
-  const gchar *subscriber = key;
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-
-  tp_dbus_daemon_cancel_name_owner_watch (conn->daemon,
-      subscriber, subscriber_name_owner_changed, conn);
-
-  return TRUE;
-}
-
 
 void
 conn_mail_notif_dispose (GabbleConnection *conn)
@@ -762,11 +671,6 @@ conn_mail_notif_dispose (GabbleConnection *conn)
   if (priv == NULL)
     return;
 
-  if (priv->subscribers != NULL)
-    g_hash_table_foreach_remove (priv->subscribers,
-        foreach_cancel_watch, conn);
-
-  tp_clear_pointer (&priv->subscribers, g_hash_table_unref);
   tp_clear_pointer (&priv->inbox_url, g_free);
 
   return_from_request_inbox_url (conn);
@@ -798,8 +702,6 @@ conn_mail_notif_iface_init (gpointer g_iface,
 
 #define IMPLEMENT(x) gabble_svc_connection_interface_mail_notification_implement_##x (\
     klass, gabble_mail_notification_##x)
-  IMPLEMENT (subscribe);
-  IMPLEMENT (unsubscribe);
   IMPLEMENT (request_inbox_url);
   IMPLEMENT (request_mail_url);
 #undef IMPLEMENT

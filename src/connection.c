@@ -347,6 +347,9 @@ gabble_connection_constructor (GType type,
 
   DEBUG("Post-construction: (GabbleConnection *)%p", self);
 
+  tp_base_connection_add_possible_client_interest (base,
+      GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_MAIL_NOTIFICATION);
+
   self->req_pipeline = gabble_request_pipeline_new (self);
   self->disco = gabble_disco_new (self);
   self->vcard_manager = gabble_vcard_manager_new (self);

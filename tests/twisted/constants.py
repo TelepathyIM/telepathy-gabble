@@ -17,6 +17,7 @@ CHANNEL = "org.freedesktop.Telepathy.Channel"
 CHANNEL_IFACE_CALL_STATE = CHANNEL + ".Interface.CallState"
 CHANNEL_IFACE_CHAT_STATE = CHANNEL + '.Interface.ChatState'
 CHANNEL_IFACE_DESTROYABLE = CHANNEL + ".Interface.Destroyable"
+CHANNEL_IFACE_DTMF = CHANNEL + ".Interface.DTMF"
 CHANNEL_IFACE_GROUP = CHANNEL + ".Interface.Group"
 CHANNEL_IFACE_HOLD = CHANNEL + ".Interface.Hold"
 CHANNEL_IFACE_MEDIA_SIGNALLING = CHANNEL + ".Interface.MediaSignalling"
@@ -152,6 +153,7 @@ NETWORK_ERROR = ERROR + '.NetworkError'
 NOT_YET = ERROR + '.NotYet'
 INVALID_HANDLE = ERROR + '.InvalidHandle'
 CERT_UNTRUSTED = ERROR + '.Cert.Untrusted'
+SERVICE_BUSY = ERROR + '.ServiceBusy'
 
 UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 

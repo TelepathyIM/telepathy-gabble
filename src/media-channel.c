@@ -55,15 +55,19 @@
 #define MAX_STREAMS 99
 
 static void channel_iface_init (gpointer, gpointer);
+static void dtmf_iface_init (gpointer, gpointer);
 static void media_signalling_iface_init (gpointer, gpointer);
 static void streamed_media_iface_init (gpointer, gpointer);
 static void session_handler_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL,
+      channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE,
       gabble_media_channel_call_state_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DTMF,
+      dtmf_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
@@ -83,6 +87,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
 
 static const gchar *gabble_media_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
+    TP_IFACE_CHANNEL_INTERFACE_DTMF,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
@@ -112,6 +117,9 @@ enum
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
   PROP_IMMUTABLE_STREAMS,
+  PROP_CURRENTLY_SENDING_TONES,
+  PROP_INITIAL_TONES,
+  PROP_DEFERRED_TONES,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -163,6 +171,18 @@ static void destroy_request (struct _delayed_request_streams_ctx *ctx,
     gpointer user_data);
 
 static void
+tones_deferred_cb (GabbleMediaChannel *self,
+    const gchar *tones,
+    TpDTMFPlayer *dtmf_player)
+{
+  DEBUG ("waiting for user to continue sending '%s'", tones);
+
+  g_free (self->priv->deferred_tones);
+  self->priv->deferred_tones = g_strdup (tones);
+  tp_svc_channel_interface_dtmf_emit_tones_deferred (self, tones);
+}
+
+static void
 gabble_media_channel_init (GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
@@ -177,6 +197,16 @@ gabble_media_channel_init (GabbleMediaChannel *self)
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
         GabbleMediaChannel, properties));
+
+  priv->dtmf_player = tp_dtmf_player_new ();
+
+  tp_g_signal_connect_object (priv->dtmf_player, "finished",
+      G_CALLBACK (tp_svc_channel_interface_dtmf_emit_stopped_tones), self,
+      G_CONNECT_SWAPPED);
+
+  tp_g_signal_connect_object (priv->dtmf_player, "tones-deferred",
+      G_CALLBACK (tones_deferred_cb), self,
+      G_CONNECT_SWAPPED);
 }
 
 static void session_state_changed_cb (GabbleJingleSession *session,
@@ -563,6 +593,20 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_IMMUTABLE_STREAMS:
       g_value_set_boolean (value, priv->immutable_streams);
       break;
+    case PROP_CURRENTLY_SENDING_TONES:
+      g_value_set_boolean (value,
+          tp_dtmf_player_is_active (priv->dtmf_player));
+      break;
+    case PROP_INITIAL_TONES:
+      /* FIXME: stub */
+      g_value_set_static_string (value, "");
+      break;
+    case PROP_DEFERRED_TONES:
+      if (priv->deferred_tones != NULL)
+        g_value_set_string (value, priv->deferred_tones);
+      else
+        g_value_set_static_string (value, "");
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -690,6 +734,12 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { "InitialVideo", "initial-video", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl dtmf_props[] = {
+      { "CurrentlySendingTones", "currently-sending-tones", NULL },
+      { "InitialTones", "initial-tones", NULL },
+      { "DeferredTones", "deferred-tones", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
@@ -700,6 +750,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         streamed_media_props,
+      },
+      { TP_IFACE_CHANNEL_INTERFACE_DTMF,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        dtmf_props,
       },
       { NULL }
   };
@@ -846,6 +901,26 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   g_object_class_install_property (object_class, PROP_IMMUTABLE_STREAMS,
       param_spec);
 
+  param_spec = g_param_spec_boolean ("currently-sending-tones",
+      "CurrentlySendingTones",
+      "True if a DTMF tone is being sent",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CURRENTLY_SENDING_TONES,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initial-tones", "InitialTones",
+      "Initial DTMF tones to be sent in the first audio stream",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_TONES,
+      param_spec);
+
+  param_spec = g_param_spec_string ("deferred-tones", "DeferredTones",
+      "DTMF tones that followed a 'w' or 'W', to be resumed on user request",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DEFERRED_TONES,
+      param_spec);
+
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
       channel_property_signatures, NUM_CHAN_PROPS, NULL);
@@ -934,6 +1009,7 @@ gabble_media_channel_finalize (GObject *object)
   GabbleMediaChannelPrivate *priv = self->priv;
 
   g_free (priv->object_path);
+  tp_clear_pointer (&self->priv->deferred_tones, g_free);
 
   tp_group_mixin_finalize (object);
   tp_properties_mixin_finalize (object);
@@ -2290,7 +2366,8 @@ stream_close_cb (GabbleMediaStream *stream,
                  GabbleMediaChannel *chan)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
-  guint id;
+  guint id, i;
+  gboolean still_have_audio = FALSE;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
 
@@ -2307,6 +2384,25 @@ stream_close_cb (GabbleMediaStream *stream,
         stream, stream->name);
 
   gabble_media_channel_hold_stream_closed (chan, stream);
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *other = g_ptr_array_index (priv->streams, i);
+
+      if (gabble_media_stream_get_media_type (other) ==
+          TP_MEDIA_STREAM_TYPE_AUDIO)
+        {
+          still_have_audio = TRUE;
+        }
+    }
+
+  if (priv->have_some_audio && !still_have_audio)
+    {
+      /* the last audio stream just closed */
+      tp_dtmf_player_cancel (priv->dtmf_player);
+    }
+
+  priv->have_some_audio = still_have_audio;
 }
 
 static void
@@ -2417,6 +2513,13 @@ construct_stream (GabbleMediaChannel *chan,
 
   stream = gabble_media_stream_new (object_path, c, name, id,
       nat_traversal, relays, local_hold);
+  mtype = gabble_media_stream_get_media_type (stream);
+
+  if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
+    {
+      gabble_media_stream_add_dtmf_player (stream, priv->dtmf_player);
+      priv->have_some_audio = TRUE;
+    }
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
@@ -2466,9 +2569,6 @@ construct_stream (GabbleMediaChannel *chan,
           gabble_media_stream_accept_pending_local_send (stream);
         }
     }
-
-  /* emit StreamAdded */
-  mtype = gabble_media_stream_get_media_type (stream);
 
   DEBUG ("emitting StreamAdded with type '%s'",
     mtype == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video");
@@ -2801,6 +2901,89 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
   tp_svc_media_session_handler_return_from_error (context);
 }
 
+#define TONE_MS 200
+#define GAP_MS 100
+#define PAUSE_MS 3000
+/* arbitrary limit on the length of a tone started with StartTone */
+#define MAX_TONE_SECONDS 10
+
+static void
+gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
+                                 guint stream_id G_GNUC_UNUSED,
+                                 guchar event,
+                                 DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  gchar tones[2] = { '\0', '\0' };
+  GError *error = NULL;
+
+  if (!self->priv->have_some_audio)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  tones[0] = tp_dtmf_event_to_char (event);
+
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
+      tones, MAX_TONE_SECONDS * 1000, GAP_MS, PAUSE_MS, &error))
+    {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, tones);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
+}
+
+static void
+gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
+                                guint stream_id,
+                                DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+
+  tp_dtmf_player_cancel (self->priv->dtmf_player);
+  tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
+}
+
+static void
+gabble_media_channel_multiple_tones (
+    TpSvcChannelInterfaceDTMF *iface,
+    const gchar *dialstring,
+    DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GError *error = NULL;
+
+  if (!self->priv->have_some_audio)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
+      dialstring, TONE_MS, GAP_MS, PAUSE_MS, &error))
+    {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, dialstring);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
+}
 
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
@@ -2813,6 +2996,19 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_channel_type,);
   IMPLEMENT(get_handle,);
   IMPLEMENT(get_interfaces,);
+#undef IMPLEMENT
+}
+
+static void
+dtmf_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceDTMFClass *klass = g_iface;
+
+#define IMPLEMENT(x) tp_svc_channel_interface_dtmf_implement_##x (\
+    klass, gabble_media_channel_##x)
+  IMPLEMENT(start_tone);
+  IMPLEMENT(stop_tone);
+  IMPLEMENT(multiple_tones);
 #undef IMPLEMENT
 }
 

@@ -82,6 +82,7 @@
 #include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
+#include "conn-util.h"
 
 static guint disco_reply_timeout = 5;
 
@@ -1100,6 +1101,8 @@ gabble_connection_dispose (GObject *object)
   g_hash_table_destroy (self->avatar_requests);
   g_hash_table_destroy (self->vcard_requests);
 
+  conn_presence_dispose (self);
+
   conn_mail_notif_dispose (self);
 
   g_assert (priv->iq_disco_cb == NULL);
@@ -1226,17 +1229,6 @@ OUT:
   return result;
 }
 
-static const gchar *
-get_bare_jid (GabbleConnection *conn)
-{
-  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  TpHandle self = tp_base_connection_get_self_handle (base);
-
-  return tp_handle_inspect (contact_handles, self);
-}
-
 /**
  * gabble_connection_get_full_jid:
  *
@@ -1246,7 +1238,7 @@ get_bare_jid (GabbleConnection *conn)
 gchar *
 gabble_connection_get_full_jid (GabbleConnection *conn)
 {
-  const gchar *bare_jid = get_bare_jid (conn);
+  const gchar *bare_jid = conn_util_get_bare_self_jid (conn);
 
   return g_strconcat (bare_jid, "/", conn->priv->resource, NULL);
 }
@@ -1825,8 +1817,8 @@ connector_connected (GabbleConnection *self,
 
   /* Disco our own bare jid to check if PEP is supported */
   if (!gabble_disco_request_with_timeout (self->disco, GABBLE_DISCO_TYPE_INFO,
-      get_bare_jid (self), NULL, disco_reply_timeout, bare_jid_disco_cb, self,
-      G_OBJECT (self), &error))
+          conn_util_get_bare_self_jid (self), NULL, disco_reply_timeout,
+          bare_jid_disco_cb, self, G_OBJECT (self), &error))
     {
       DEBUG ("Sending disco request to our own bare jid failed: %s",
           error->message);
@@ -2706,6 +2698,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_INVISIBLE;
               else if (0 == strcmp (var, NS_GOOGLE_MAIL_NOTIFY))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY;
+              else if (0 == strcmp (var, NS_GOOGLE_SHARED_STATUS))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS;
             }
         }
 

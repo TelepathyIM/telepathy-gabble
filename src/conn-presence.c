@@ -42,19 +42,26 @@
 #include "presence-cache.h"
 #include "presence.h"
 #include "roster.h"
+#include "conn-util.h"
 #include "util.h"
+
+#define GOOGLE_SHARED_STATUS_VERSION "2"
 
 typedef enum {
     INVISIBILITY_METHOD_NONE = 0,
     INVISIBILITY_METHOD_PRESENCE_INVISIBLE, /* presence type=invisible */
     INVISIBILITY_METHOD_PRIVACY,
-    INVISIBILITY_METHOD_INVISIBLE_COMMAND
+    INVISIBILITY_METHOD_INVISIBLE_COMMAND,
+    INVISIBILITY_METHOD_SHARED_STATUS
 } InvisibilityMethod;
 
 struct _GabbleConnectionPresencePrivate {
     InvisibilityMethod invisibility_method;
     LmMessageHandler *iq_list_push_cb;
     gchar *invisible_list_name;
+
+    /* Mapping between status "show" strings, and shared statuses */
+    GHashTable *shared_statuses;
 
     /* Map of presence statuses backed by privacy lists. This
      * will be NULL until we receive a (possibly empty) list of
@@ -63,6 +70,15 @@ struct _GabbleConnectionPresencePrivate {
      * gchar *presence_status_name → gchar *privacy_list
      */
     GHashTable *privacy_statuses;
+
+    /* Are all of the connected resources complying to version 2 */
+    gboolean shared_status_compat;
+
+    /* Max statuses in a shared status list */
+    gint max_shared_statuses;
+
+    /* The shared status IQ handler */
+    guint iq_shared_status_cb;
 };
 
 static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
@@ -251,6 +267,153 @@ emit_presences_changed_for_self (GabbleConnection *self)
   g_array_insert_val (handles, 0, base->self_handle);
   conn_presence_emit_presence_update (self, handles);
   g_array_free (handles, TRUE);
+}
+
+static WockyStanza *
+build_shared_status_stanza (GabbleConnection *self)
+{
+  GabblePresence *presence = self->self_presence;
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  const gchar *bare_jid = conn_util_get_bare_self_jid (self);
+  gpointer key, value;
+  GHashTableIter iter;
+  WockyNode *query_node = NULL;
+  WockyStanza *iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, bare_jid,
+        '(', "query",
+          ':', NS_GOOGLE_SHARED_STATUS,
+          '*', &query_node,
+          '@', "version", GOOGLE_SHARED_STATUS_VERSION,
+          '(', "status",
+            '$', presence->status_message,
+          ')',
+          '(', "show",
+            '$', presence->status == GABBLE_PRESENCE_DND ? "dnd" : "default",
+          ')',
+        ')',
+      NULL);
+
+  g_hash_table_iter_init (&iter, priv->shared_statuses);
+
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      gchar **status_iter;
+      gchar **statuses = (gchar **) value;
+      WockyNode *list_node = wocky_node_add_child (query_node, "status-list");
+
+      wocky_node_set_attribute (list_node, "show", (const gchar *) key);
+
+      for (status_iter = statuses; *status_iter != NULL; status_iter++)
+        wocky_node_add_child_with_content (list_node, "status", *status_iter);
+    }
+
+  wocky_node_set_attribute (wocky_node_add_child (query_node, "invisible"), "value",
+      presence->status == GABBLE_PRESENCE_HIDDEN ? "true" : "false");
+
+  return iq;
+}
+
+static void
+set_shared_status_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GError *error = NULL;
+
+  if (!conn_util_send_iq_finish (self, res, NULL, &error) ||
+      !conn_presence_signal_own_presence (self, NULL, &error))
+    {
+      g_simple_async_result_set_error (result,
+          CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_SET_SHARED_STATUS,
+          "error setting Google shared status: %s", error->message);
+    }
+
+      g_simple_async_result_complete (result);
+      g_object_unref (result);
+
+  if (error != NULL)
+    g_error_free (error);
+}
+
+static void
+insert_presence_to_shared_statuses (GabbleConnection *self)
+{
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  GabblePresence *presence = self->self_presence;
+  const gchar *show = presence->status == GABBLE_PRESENCE_DND ? "dnd" : "default";
+  gchar **statuses = g_hash_table_lookup (priv->shared_statuses, show);
+
+  if (presence->status_message == NULL)
+    return;
+
+  if (statuses == NULL)
+    {
+      statuses = g_new0 (gchar *, 2);
+      statuses[0] = g_strdup (presence->status_message);
+      g_hash_table_insert (priv->shared_statuses, g_strdup (show), statuses);
+    }
+  else
+    {
+      guint i;
+      guint list_len = MIN (priv->max_shared_statuses,
+          (gint) g_strv_length (statuses) + 1);
+      gchar **new_statuses = g_new0 (gchar *, list_len + 1);
+
+      new_statuses[0] = g_strdup (presence->status_message);
+
+      for (i = 1; i < list_len; i++)
+        new_statuses[i] = g_strdup (statuses[i - 1]);
+
+      g_hash_table_insert (priv->shared_statuses, g_strdup (show), new_statuses);
+    }
+}
+
+static void
+set_shared_status (GabbleConnection *self,
+    GSimpleAsyncResult *result)
+{
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  GabblePresence *presence = self->self_presence;
+  WockyStanza *iq;
+
+  g_object_ref (result);
+
+  DEBUG ("shared status invisibility is %savailable",
+      priv->shared_status_compat ? "" : "un");
+
+  if (presence->status == GABBLE_PRESENCE_HIDDEN && !priv->shared_status_compat)
+    presence->status = GABBLE_PRESENCE_DND;
+
+  insert_presence_to_shared_statuses (self);
+
+  iq = build_shared_status_stanza (self);
+
+  conn_util_send_iq_async (self, iq, NULL, set_shared_status_cb, result);
+
+  g_object_unref (iq);
+}
+
+static void
+set_shared_status_async (GabbleConnection *self,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
+      callback, user_data, set_shared_status_async);
+
+  set_shared_status (self, result);
+
+  g_object_unref (result);
+}
+
+static gboolean
+set_shared_status_finish (GabbleConnection *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  wocky_implement_finish_void (self, set_shared_status_async);
 }
 
 static void
@@ -539,7 +702,8 @@ create_invisible_privacy_list_finish (GabbleConnection *self,
   wocky_implement_finish_void (self, create_invisible_privacy_list_async);
 }
 
-static void create_invisible_privacy_list_cb (GObject *source_object,
+static void
+create_invisible_privacy_list_cb (GObject *source_object,
     GAsyncResult *result,
     gpointer user_data)
 {
@@ -565,6 +729,129 @@ static void create_invisible_privacy_list_cb (GObject *source_object,
 
   toggle_presence_visibility_async (self,
       toggle_initial_presence_visibility_cb, user_data);
+}
+
+static gboolean
+store_shared_statuses (GabbleConnection *self,
+    WockyNode *query_node)
+{
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
+  GabblePresenceId presence_id = self->self_presence->status;
+  const gchar *status_message = NULL;
+  const gchar *min_version = wocky_node_get_attribute (query_node, "status-min-ver");
+  WockyNodeIter iter;
+  gchar *resource;
+  guint8 prio;
+  gboolean rv;
+  WockyNode *node;
+  gboolean dnd = FALSE;
+  gboolean invisible = FALSE;
+
+  DEBUG ("status-min-ver %s", min_version);
+
+  g_object_get (self,
+        "resource", &resource,
+        "priority", &prio,
+        NULL);
+
+  if (priv->shared_statuses != NULL)
+    g_hash_table_destroy (priv->shared_statuses);
+
+  priv->shared_statuses = g_hash_table_new_full (
+      g_str_hash, g_str_equal, g_free, (GDestroyNotify) g_strfreev);
+
+  wocky_node_iter_init (&iter, query_node, NULL, NULL);
+  while (wocky_node_iter_next (&iter, &node))
+    {
+      if (g_strcmp0 (node->name, "status-list") == 0)
+        {
+          WockyNodeIter list_iter;
+          WockyNode *list_item;
+          GPtrArray *statuses;
+          const gchar *show = wocky_node_get_attribute (node, "show");
+
+          if (show == NULL)
+            continue;
+
+          statuses = g_ptr_array_new ();
+
+          wocky_node_iter_init (&list_iter, node, "status", NULL);
+          while (wocky_node_iter_next (&list_iter, &list_item))
+            g_ptr_array_add (statuses, g_strdup (list_item->content));
+
+          g_ptr_array_add (statuses, NULL);
+
+          g_hash_table_insert (priv->shared_statuses, g_strdup (show),
+              g_ptr_array_free (statuses, FALSE));
+        }
+      else if (g_strcmp0 (node->name, "status") == 0)
+        {
+          status_message = node->content;
+        }
+      else if (g_strcmp0 (node->name, "show") == 0)
+        {
+          dnd = g_strcmp0 (node->content, "dnd") == 0;
+        }
+      else if (g_strcmp0 (node->name, "invisible") == 0)
+        {
+          invisible = g_strcmp0 (wocky_node_get_attribute (node, "value"), "true") == 0;
+        }
+    }
+
+  priv->shared_status_compat =
+    g_strcmp0 (min_version, GOOGLE_SHARED_STATUS_VERSION) == 0;
+
+  if (invisible)
+    {
+      if (priv->shared_status_compat)
+        presence_id = GABBLE_PRESENCE_HIDDEN;
+      else
+        presence_id = GABBLE_PRESENCE_DND;
+    }
+  else if (dnd)
+    {
+      presence_id = GABBLE_PRESENCE_DND;
+    }
+  else
+    {
+      if (presence_id == GABBLE_PRESENCE_DND || presence_id == GABBLE_PRESENCE_HIDDEN)
+        presence_id = GABBLE_PRESENCE_AVAILABLE;
+    }
+
+  /* If we are connected, use the new shared status. If not, override with local */
+  if (base->status == TP_CONNECTION_STATUS_CONNECTED)
+    rv = gabble_presence_update (self->self_presence, resource, presence_id,
+        status_message, prio);
+  else
+    rv = TRUE;
+
+  g_free (resource);
+
+  return rv;
+}
+
+static gboolean
+iq_shared_status_changed_cb (WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  WockyNode *query_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (stanza), "query",
+      NS_GOOGLE_SHARED_STATUS);
+  WockyStanza *result;
+
+  if (store_shared_statuses (self, query_node))
+    emit_presences_changed_for_self (self);
+
+  result = wocky_stanza_build_iq_result (stanza, NULL);
+
+  wocky_porter_send (porter, result);
+
+  g_object_unref (result);
+
+  return TRUE;
 }
 
 static LmHandlerResult
@@ -633,6 +920,89 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
 * ...
 **********************************************************************/
 
+static void
+get_shared_status_cb  (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+  WockyStanza *iq = NULL;
+  GError *error = NULL;
+
+  DEBUG (" ");
+
+  if (!conn_util_send_iq_finish (self, res, &iq, &error))
+    {
+      DEBUG ("Error getting shared status: %s", error->message);
+
+      g_simple_async_result_set_from_error (result, error);
+      g_error_free (error);
+    }
+  else
+    {
+      WockyNode *query_node = wocky_node_get_child_ns (wocky_stanza_get_top_node (iq),
+          "query", NS_GOOGLE_SHARED_STATUS);
+
+      if (query_node != NULL)
+        {
+          const gchar *max_shared = wocky_node_get_attribute (query_node,
+              "status-list-contents-max");
+
+          if (max_shared != NULL)
+            priv->max_shared_statuses = (gint) g_ascii_strtoll (max_shared, NULL, 10);
+          else
+            priv->max_shared_statuses = 5; /* Safe bet */
+
+          store_shared_statuses (self, query_node);
+        }
+      else
+        {
+          g_simple_async_result_set_error (result, CONN_PRESENCE_ERROR,
+              CONN_PRESENCE_ERROR_SET_SHARED_STATUS,
+              "Error retrieving shared status, received empty reply");
+        }
+
+      g_object_unref (iq);
+    }
+
+  g_simple_async_result_complete_in_idle (result);
+  g_object_unref (result);
+}
+
+static void
+get_shared_status_async (GabbleConnection *self,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
+      callback, user_data, get_shared_status_async);
+  WockyStanza *iq;
+
+  DEBUG (" ");
+
+  iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_GET, NULL, conn_util_get_bare_self_jid (self),
+        '(', "query",
+          ':', NS_GOOGLE_SHARED_STATUS,
+          '@', "version", GOOGLE_SHARED_STATUS_VERSION,
+        ')',
+      NULL);
+
+  conn_util_send_iq_async (self, iq, NULL, get_shared_status_cb, result);
+
+  g_object_unref (iq);
+}
+
+static gboolean
+get_shared_status_finish (GabbleConnection *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  wocky_implement_finish_void (self, get_shared_status_async);
+}
+
 static LmHandlerResult
 get_existing_privacy_lists_cb (GabbleConnection *conn,
     LmMessage *sent_msg,
@@ -699,7 +1069,6 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
-
 
 static void
 get_existing_privacy_lists_async (GabbleConnection *self,
@@ -983,6 +1352,37 @@ privacy_lists_loaded_cb (GObject *source_object,
         toggle_initial_presence_visibility_cb, user_data);
 }
 
+static void
+shared_status_setup_cb (GObject *source_object,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GError *error = NULL;
+  GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+
+  if (get_shared_status_finish (self, result, &error))
+    {
+      WockyPorter *porter = wocky_session_get_porter (self->session);
+
+      priv->invisibility_method = INVISIBILITY_METHOD_SHARED_STATUS;
+
+      priv->iq_shared_status_cb = wocky_porter_register_handler (porter,
+          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET, NULL,
+          WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, iq_shared_status_changed_cb, self,
+          '(', "query",
+            ':', NS_GOOGLE_SHARED_STATUS,
+          ')', NULL);
+    }
+  else
+    {
+      DEBUG ("failed: %s", error->message);
+      g_error_free (error);
+    }
+
+  get_existing_privacy_lists_async (self, privacy_lists_loaded_cb, user_data);
+}
+
 void
 conn_presence_set_initial_presence_async (GabbleConnection *self,
     GAsyncReadyCallback callback, gpointer user_data)
@@ -994,7 +1394,10 @@ conn_presence_set_initial_presence_async (GabbleConnection *self,
   if (self->features & GABBLE_CONNECTION_FEATURES_INVISIBLE)
     priv->invisibility_method = INVISIBILITY_METHOD_INVISIBLE_COMMAND;
 
-  get_existing_privacy_lists_async (self, privacy_lists_loaded_cb, result);
+  if (self->features & GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS)
+    get_shared_status_async (self, shared_status_setup_cb, result);
+  else
+    get_existing_privacy_lists_async (self, privacy_lists_loaded_cb, result);
 }
 
 gboolean
@@ -1091,6 +1494,10 @@ toggle_presence_visibility_async (GabbleConnection *self,
 
   switch (priv->invisibility_method)
     {
+      case INVISIBILITY_METHOD_SHARED_STATUS:
+        set_shared_status (self, result);
+        break;
+
       case INVISIBILITY_METHOD_INVISIBLE_COMMAND:
         set_xep0186_invisible (self, set_invisible, result);
         break;
@@ -1129,6 +1536,27 @@ toggle_presence_visibility_finish (
     GError **error)
 {
   wocky_implement_finish_void (self, toggle_presence_visibility_async)
+}
+
+static void
+set_shared_status_presence_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GError *error = NULL;
+
+  DEBUG (" ");
+  if (!set_shared_status_finish (self, res, &error))
+    {
+      DEBUG ("Error setting shared status %s",
+          error->message);
+
+      g_error_free (error);
+      error = NULL;
+    }
+
+  emit_presences_changed_for_self (self);
 }
 
 static void
@@ -1250,6 +1678,10 @@ set_own_status_cb (GObject *obj,
       else if (priv->privacy_statuses != NULL)
         {
           activate_current_privacy_list_async (conn, NULL, NULL);
+        }
+      else if (priv->shared_statuses != NULL)
+        {
+          set_shared_status_async (conn, set_shared_status_presence_cb, NULL);
         }
       else
         {
@@ -1397,6 +1829,23 @@ conn_presence_init (GabbleConnection *conn)
       G_OBJECT (conn));
 }
 
+void
+conn_presence_dispose (GabbleConnection *self)
+{
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  WockyPorter *porter;
+
+  if (self->session == NULL)
+    return;
+
+  porter = wocky_session_get_porter (self->session);
+
+  if (priv->iq_shared_status_cb != 0)
+    {
+      wocky_porter_unregister_handler (porter, priv->iq_shared_status_cb);
+      priv->iq_shared_status_cb = 0;
+    }
+}
 
 void
 conn_presence_finalize (GabbleConnection *conn)
@@ -1407,6 +1856,9 @@ conn_presence_finalize (GabbleConnection *conn)
 
   if (priv->privacy_statuses != NULL)
       g_hash_table_destroy (priv->privacy_statuses);
+
+  if (priv->shared_statuses != NULL)
+      g_hash_table_destroy (priv->shared_statuses);
 
   if (priv->iq_list_push_cb != NULL)
     lm_message_handler_unref (priv->iq_list_push_cb);

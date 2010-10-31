@@ -72,3 +72,4 @@ GABBLE_CAPS="http://telepathy.freedesktop.org/caps"
 PRESENCE_INVISIBLE = 'presence-invisible'
 PRIVACY = 'jabber:iq:privacy'
 INVISIBLE = 'urn:xmpp:invisible:0'
+GOOGLE_SHARED_STATUS = 'google:shared-status'

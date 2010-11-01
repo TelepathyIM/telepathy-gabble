@@ -10,6 +10,11 @@ The “Well, this super analysis i made!!!!! could be useful for
 you!!!!!!!!!!!!” release. There are plenty more bangs where these come
 from, I assure you.
 
+Enhancements:
+
+• fd.o #24775: implement local IPv4 address discovery on Windows, allowing
+  out-of-band SOCKS5 bytestreams to work there (Thomas Flueeli)
+
 Fixes:
 
 • Updated Wocky snapshot:
@@ -17,8 +22,11 @@ Fixes:
     nice to have. ;-) (stormer)
   · Miscellaneous leak fixes. (stormer)
   · Miscellaneous other fixes. (wjt)
+
 • Prefer XEP-0186 invisibility over privacy list-based invisibility when
   both are available (eeejay)
+
+• fd.o #31197: improve portability to Windows (Thomas Flueeli)
 
 telepathy-gabble 0.10.3 (2010-10-06)
 ====================================

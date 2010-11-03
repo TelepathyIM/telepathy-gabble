@@ -101,7 +101,10 @@ def test(q, bus, conn, stream):
         )
 
     call_async(q, conn.Future, 'EnsureSidecar', 'zomg.what')
-    q.expect('dbus-error', name=cs.DISCONNECTED)
+    # With older telepathy-glib this would be DISCONNECTED;
+    # with newer telepathy-glib the Connection disappears from the bus
+    # sooner, and you get UnknownMethod or something from dbus-glib.
+    q.expect('dbus-error')
 
     stream.sendFooter()
     q.expect('dbus-return', method='Disconnect')

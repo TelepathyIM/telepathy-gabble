@@ -489,10 +489,7 @@ query_unread_mails_cb (GObject *source_object,
       if (node != NULL)
         store_unread_mails (conn, node);
     }
-  else
-    {
-      DEBUG ("We no longer care about unread mail");
-    }
+  /* else we no longer care about unread mail, so ignore it */
 
   tp_clear_object (&reply);
 
@@ -508,16 +505,10 @@ update_unread_mails (GabbleConnection *conn)
   WockyPorter *porter = wocky_session_get_porter (conn->session);
 
   if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED)
-    {
-      DEBUG ("Not Connected - delaying MailNotification until we are");
-      return;
-    }
+    return;
 
   if (!(conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY))
-    {
-      DEBUG ("Not a Google server - no MailNotification here");
-      return;
-    }
+    return;
 
   DEBUG ("Updating unread mails information");
 

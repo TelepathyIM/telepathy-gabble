@@ -647,10 +647,11 @@ conn_mail_notif_init (GabbleConnection *conn)
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed), conn);
 
-#define MY_INTERFACE GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION
-  g_signal_connect (conn, "clients-interested::" MY_INTERFACE,
+  g_signal_connect (conn,
+      "clients-interested::" GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
       G_CALLBACK (mail_clients_interested_cb), NULL);
-  g_signal_connect (conn, "clients-uninterested::" MY_INTERFACE,
+  g_signal_connect (conn,
+      "clients-uninterested::" GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
       G_CALLBACK (mail_clients_uninterested_cb), NULL);
 }
 

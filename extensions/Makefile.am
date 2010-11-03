@@ -14,7 +14,6 @@ EXTRA_DIST = \
     Channel_Type_FileTransfer_Future.xml \
     Connection_Future.xml \
     Connection_Interface_Gabble_Decloak.xml \
-    Connection_Interface_Mail_Notification.xml \
     Gabble_Plugin_Gateways.xml \
     Gabble_Plugin_Test.xml \
     OLPC_Activity_Properties.xml \

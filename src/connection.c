@@ -130,7 +130,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       gabble_conn_contact_caps_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_FUTURE,
       conn_future_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
       conn_mail_notif_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES,
       conn_client_types_iface_init);
@@ -348,7 +348,7 @@ gabble_connection_constructor (GType type,
   DEBUG("Post-construction: (GabbleConnection *)%p", self);
 
   tp_base_connection_add_possible_client_interest (base,
-      GABBLE_IFACE_QUARK_CONNECTION_INTERFACE_MAIL_NOTIFICATION);
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_MAIL_NOTIFICATION);
 
   self->req_pipeline = gabble_request_pipeline_new (self);
   self->disco = gabble_disco_new (self);
@@ -757,7 +757,7 @@ base_connected_cb (TpBaseConnection *base_conn)
 
 static const gchar *implemented_interfaces[] = {
     /* conditionally present interfaces */
-    GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+    TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
     GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
     GABBLE_IFACE_OLPC_BUDDY_INFO,
 
@@ -837,7 +837,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           tp_dbus_properties_mixin_setter_gobject_properties,
           decloak_props,
         },
-        { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+        { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
           conn_mail_notif_properties_getter,
           NULL,
           mail_notif_props,
@@ -2617,7 +2617,7 @@ set_status_to_connected (GabbleConnection *conn)
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
     {
        const gchar *ifaces[] =
-         { GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
+         { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

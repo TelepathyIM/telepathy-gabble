@@ -41,7 +41,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MAIL_NOTIF
 #include "connection.h"
 #include "debug.h"
-#include "extensions/extensions.h"
 #include "namespaces.h"
 #include "util.h"
 
@@ -100,8 +99,8 @@ return_from_request_inbox_url (GabbleConnection *conn)
       empty_array = g_ptr_array_new ();
       result = tp_value_array_build (3,
           G_TYPE_STRING, priv->inbox_url,
-          G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
-          GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
+          G_TYPE_UINT, TP_HTTP_METHOD_GET,
+          TP_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
           G_TYPE_INVALID);
     }
 
@@ -114,7 +113,7 @@ return_from_request_inbox_url (GabbleConnection *conn)
     if (error != NULL)
       dbus_g_method_return_error (context, error);
     else
-      gabble_svc_connection_interface_mail_notification_return_from_request_inbox_url (
+      tp_svc_connection_interface_mail_notification_return_from_request_inbox_url (
           context, result);
 
     it = g_list_next (it);
@@ -156,7 +155,7 @@ check_supported_or_dbus_return (GabbleConnection *conn,
 
 static void
 gabble_mail_notification_request_inbox_url (
-    GabbleSvcConnectionInterfaceMailNotification *iface,
+    TpSvcConnectionInterfaceMailNotification *iface,
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
@@ -176,7 +175,7 @@ gabble_mail_notification_request_inbox_url (
 
 static void
 gabble_mail_notification_request_mail_url (
-    GabbleSvcConnectionInterfaceMailNotification *iface,
+    TpSvcConnectionInterfaceMailNotification *iface,
     const gchar *in_id,
     const GValue *in_url_data,
     DBusGMethodInvocation *context)
@@ -204,11 +203,11 @@ gabble_mail_notification_request_mail_url (
 
       result = tp_value_array_build (3,
           G_TYPE_STRING, url ? url : "",
-          G_TYPE_UINT, GABBLE_HTTP_METHOD_GET,
-          GABBLE_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
+          G_TYPE_UINT, TP_HTTP_METHOD_GET,
+          TP_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
           G_TYPE_INVALID);
 
-      gabble_svc_connection_interface_mail_notification_return_from_request_mail_url (
+      tp_svc_connection_interface_mail_notification_return_from_request_mail_url (
           context, result);
 
       g_value_array_free (result);
@@ -260,7 +259,7 @@ handle_senders (WockyNode *parent_node,
   node = wocky_node_get_child (parent_node, "senders");
   if (node != NULL)
     {
-      GType addr_list_type = GABBLE_ARRAY_TYPE_MAIL_ADDRESS_LIST;
+      GType addr_list_type = TP_ARRAY_TYPE_MAIL_ADDRESS_LIST;
       GPtrArray *senders, *old_senders;
 
       senders = g_ptr_array_new ();
@@ -454,7 +453,7 @@ store_unread_mails (GabbleConnection *conn,
   else
     priv->unread_count = g_hash_table_size (priv->unread_mails);
 
-  gabble_svc_connection_interface_mail_notification_emit_unread_mails_changed (
+  tp_svc_connection_interface_mail_notification_emit_unread_mails_changed (
       conn, priv->unread_count, collector.mails_added,
       (const char **)mails_removed->pdata);
 
@@ -648,10 +647,10 @@ conn_mail_notif_init (GabbleConnection *conn)
       G_CALLBACK (connection_status_changed), conn);
 
   g_signal_connect (conn,
-      "clients-interested::" GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+      "clients-interested::" TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
       G_CALLBACK (mail_clients_interested_cb), NULL);
   g_signal_connect (conn,
-      "clients-uninterested::" GABBLE_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+      "clients-uninterested::" TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
       G_CALLBACK (mail_clients_uninterested_cb), NULL);
 }
 
@@ -690,9 +689,9 @@ void
 conn_mail_notif_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
-  GabbleSvcConnectionInterfaceMailNotificationClass *klass = g_iface;
+  TpSvcConnectionInterfaceMailNotificationClass *klass = g_iface;
 
-#define IMPLEMENT(x) gabble_svc_connection_interface_mail_notification_implement_##x (\
+#define IMPLEMENT(x) tp_svc_connection_interface_mail_notification_implement_##x (\
     klass, gabble_mail_notification_##x)
   IMPLEMENT (request_inbox_url);
   IMPLEMENT (request_mail_url);
@@ -752,11 +751,11 @@ conn_mail_notif_properties_getter (GObject *object,
     {
       if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
         g_value_set_uint (value,
-            GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_UNREAD_MAIL_COUNT
-            | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_UNREAD_MAILS
-            | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_INBOX_URL
-            | GABBLE_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_MAIL_URL
-            | GABBLE_MAIL_NOTIFICATION_FLAG_THREAD_BASED
+            TP_MAIL_NOTIFICATION_FLAG_SUPPORTS_UNREAD_MAIL_COUNT
+            | TP_MAIL_NOTIFICATION_FLAG_SUPPORTS_UNREAD_MAILS
+            | TP_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_INBOX_URL
+            | TP_MAIL_NOTIFICATION_FLAG_SUPPORTS_REQUEST_MAIL_URL
+            | TP_MAIL_NOTIFICATION_FLAG_THREAD_BASED
             );
       else
         g_value_set_uint (value, 0);

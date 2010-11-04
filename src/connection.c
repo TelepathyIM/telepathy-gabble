@@ -1073,7 +1073,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         "List of servers to fallback to (syntax server[:port][,oldssl]",
         G_TYPE_STRV,
         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-  
+
   g_object_class_install_property (
       object_class, PROP_DECLOAK_AUTOMATICALLY,
       g_param_spec_boolean (
@@ -1277,12 +1277,12 @@ gabble_connection_get_full_jid (GabbleConnection *conn)
 }
 
 /**
- * gabble_connection_get_porter:
+ * gabble_connection_dup_porter:
  *
- * Returns: the #WockyPorter instance driving this connection.
+ * Returns: (transfer full): the #WockyPorter instance driving this connection.
  */
 
-WockyPorter *gabble_connection_get_porter (GabbleConnection *conn)
+WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv;
 

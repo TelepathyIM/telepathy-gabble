@@ -409,7 +409,7 @@ gabble_muc_channel_constructed (GObject *obj)
   /* initialise the wocky muc object */
   {
     GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
-    WockyPorter *porter = gabble_connection_get_porter (conn);
+    WockyPorter *porter = gabble_connection_dup_porter (conn);
     const gchar *room_jid = tp_handle_inspect (contact_handles, self_handle);
     gchar *user_jid = gabble_connection_get_full_jid (conn);
     WockyMuc *wmuc = g_object_new (WOCKY_TYPE_MUC,

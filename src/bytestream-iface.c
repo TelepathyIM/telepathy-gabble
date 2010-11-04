@@ -146,7 +146,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
           0,
           NULL, NULL,
-          gabble_marshal_VOID__UINT,
+          g_cclosure_marshal_VOID__UINT,
           G_TYPE_NONE, 1, G_TYPE_UINT);
 
       g_signal_new ("write-blocked",
@@ -162,7 +162,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
           G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
           0,
           NULL, NULL,
-          gabble_marshal_VOID__VOID,
+          g_cclosure_marshal_VOID__VOID,
           G_TYPE_NONE, 0);
 
       initialized = TRUE;

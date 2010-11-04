@@ -1890,11 +1890,7 @@ item_edit_free (GabbleRosterItemEdit *edits)
   g_slice_free (GabbleRosterItemEdit, edits);
 }
 
-static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
-                                         WockyStanza *sent_msg,
-                                         WockyStanza *reply_msg,
-                                         GObject *roster_obj,
-                                         gpointer user_data);
+static void roster_edited_cb (GObject *, GAsyncResult *, gpointer);
 
 static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
     TpHandle handle,
@@ -1947,7 +1943,7 @@ roster_item_apply_edits (GabbleRoster *roster,
                          TpHandle contact,
                          GabbleRosterItem *item)
 {
-  gboolean altered = FALSE, ret;
+  gboolean altered = FALSE;
   GabbleRosterItem edited_item;
   TpIntSet *intset;
   GabbleRosterPrivate *priv = roster->priv;
@@ -1955,7 +1951,6 @@ roster_item_apply_edits (GabbleRoster *roster,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItemEdit *edits = item->unsent_edits;
   WockyStanza *message;
-  GError *error = NULL;
 
   if (!priv->received)
     {
@@ -2014,6 +2009,8 @@ roster_item_apply_edits (GabbleRoster *roster,
       if (edits->new_subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE &&
           edited_item.google_type == GOOGLE_ITEM_TYPE_BLOCKED)
         {
+          GError *error = NULL;
+
           /* If they're blocked, we can't just remove them from the roster,
            * because that would unblock them! So instead, we cancel both
            * subscription directions.
@@ -2153,24 +2150,13 @@ roster_item_apply_edits (GabbleRoster *roster,
    * them */
   item->unsent_edits = NULL;
   item->edits_in_flight = TRUE;
-  ret = _gabble_connection_send_with_reply (priv->conn,
-      message, roster_edited_cb, G_OBJECT (roster), edits, &error);
+
+  conn_util_send_iq_async (priv->conn, message,
+      priv->cancel_on_disconnect, roster_edited_cb,
+      edits);
 
   if (edits->new_google_type == GOOGLE_ITEM_TYPE_BLOCKED)
     gabble_presence_cache_really_remove (priv->conn->presence_cache, contact);
-
-  /* if send_with_reply failed, then roster_edited_cb will never run */
-  if (!ret)
-    {
-      GSList *slist;
-
-      for (slist = edits->results; slist != NULL; slist = slist->next)
-        g_simple_async_result_set_from_error (slist->data, error);
-
-      g_clear_error (&error);
-      item->edits_in_flight = FALSE;
-      item_edit_free (edits);
-    }
 
   if (edited_item.groups != item->groups)
     {
@@ -2179,37 +2165,33 @@ roster_item_apply_edits (GabbleRoster *roster,
 }
 
 /* Called when an edit to the roster item has either succeeded or failed. */
-static LmHandlerResult
-roster_edited_cb (GabbleConnection *conn,
-                  WockyStanza *sent_msg,
-                  WockyStanza *reply_msg,
-                  GObject *roster_obj,
-                  gpointer user_data)
+static void
+roster_edited_cb (GObject *source_object,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleRoster *roster = GABBLE_ROSTER (roster_obj);
+  GabbleConnection *conn = GABBLE_CONNECTION (source_object);
+  GabbleRoster *roster = conn->roster;
   GabbleRosterItemEdit *edit = user_data;
-  GabbleRosterItem *item = _gabble_roster_item_lookup (roster, edit->handle);
+  GabbleRosterItem *item = NULL;
 
   if (edit->results != NULL)
     {
-      GError *wocky_error = NULL;
+      GError *tp_error = NULL;
 
-      if (wocky_stanza_extract_errors (reply_msg, NULL, &wocky_error, NULL,
-            NULL))
+      if (!conn_util_send_iq_finish (conn, result, NULL, &tp_error))
         {
           GSList *slist;
-          GError *tp_error = NULL;
-
-          gabble_set_tp_error_from_wocky (wocky_error, &tp_error);
 
           for (slist = edit->results; slist != NULL; slist = slist->next)
             g_simple_async_result_set_from_error (slist->data, tp_error);
 
           g_clear_error (&tp_error);
         }
-
-      g_clear_error (&wocky_error);
     }
+
+  if (roster != NULL)
+    item = _gabble_roster_item_lookup (roster, edit->handle);
 
   if (item != NULL)
     {
@@ -2231,8 +2213,6 @@ roster_edited_cb (GabbleConnection *conn,
     }
 
   item_edit_free (edit);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void

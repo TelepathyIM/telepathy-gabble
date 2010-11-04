@@ -1485,15 +1485,6 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
 static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
     TpHandle handle, const gchar *message, GError **error);
 
-/**
- * connection_presence_roster_cb:
- * @handler: #LmMessageHandler for this message
- * @connection: #LmConnection that originated the message
- * @message: the presence message
- * @user_data: callback data
- *
- * Called by loudmouth when we get an incoming <presence>.
- */
 static gboolean
 gabble_roster_presence_cb (WockyPorter *porter,
                            WockyStanza *message,

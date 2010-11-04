@@ -1322,8 +1322,10 @@ static void roster_item_apply_edits (GabbleRoster *roster, TpHandle contact,
  * Called by loudmouth when we get an incoming <iq>. This handler
  * is concerned only with roster queries, and allows other handlers
  * if queries other than rosters are received.
+ *
+ * Returns: %TRUE if handled, %FALSE to allow more handlers
  */
-static LmHandlerResult
+static gboolean
 got_roster_iq (GabbleRoster *roster,
     WockyStanza *message)
 {
@@ -1336,14 +1338,14 @@ got_roster_iq (GabbleRoster *roster,
   const gchar *from;
 
   if (priv->conn == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return FALSE;
 
   iq_node = wocky_stanza_get_top_node (message);
   query_node = wocky_node_get_child_ns (iq_node, "query",
       WOCKY_XMPP_NS_ROSTER);
 
   if (query_node == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return FALSE;
 
   from = wocky_stanza_get_from (message);
 
@@ -1357,7 +1359,7 @@ got_roster_iq (GabbleRoster *roster,
         {
            NODE_DEBUG (iq_node, "discarding roster IQ which is not from "
               "ourselves or the server");
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+          return TRUE;
         }
     }
 
@@ -1369,7 +1371,7 @@ got_roster_iq (GabbleRoster *roster,
       sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     {
       NODE_DEBUG (iq_node, "unhandled roster IQ");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   process_roster (roster, query_node);
@@ -1424,7 +1426,7 @@ got_roster_iq (GabbleRoster *roster,
       _gabble_connection_acknowledge_set_iq (priv->conn, message);
     }
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 static LmHandlerResult
@@ -1438,7 +1440,8 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 
   g_assert (lmconn == priv->conn->lmconn);
 
-  return got_roster_iq (roster, message);
+  return (got_roster_iq (roster, message) ? LM_HANDLER_RESULT_REMOVE_MESSAGE
+      : LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS);
 }
 
 static void
@@ -1717,7 +1720,8 @@ roster_received_cb (GabbleConnection *conn,
 {
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
 
-  return got_roster_iq (roster, reply_msg);
+  return (got_roster_iq (roster, reply_msg) ? LM_HANDLER_RESULT_REMOVE_MESSAGE
+      : LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS);
 }
 
 static void

@@ -39,7 +39,6 @@
 #include "ft-manager.h"
 #include "jingle-factory.h"
 #include "muc-factory.h"
-#include "slacker.h"
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -79,6 +78,7 @@ typedef enum
   GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY = 1 << 5,
   GABBLE_CONNECTION_FEATURES_INVISIBLE = 1 << 6,
   GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS = 1 << 7,
+  GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE = 1 << 8,
 } GabbleConnectionFeatures;
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
@@ -187,9 +187,6 @@ struct _GabbleConnection {
 
     /* ContactInfo.SupportedFields, or NULL to use the generic one */
     GPtrArray *contact_info_fields;
-
-    GabbleSlacker *slacker;
-    guint slacker_inactivity_changed_id;
 
     GabbleConnectionPrivate *priv;
 };

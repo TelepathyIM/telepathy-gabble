@@ -280,13 +280,9 @@ PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
 AC_SUBST(NICE_CFLAGS)
 AC_SUBST(NICE_LIBS)
 
-dnl Check for MCE, a Maemo service used by Gabble to determine when the device
-dnl is idle.
-PKG_CHECK_MODULES([MCE], mce >= 1.5, [HAVE_MCE=yes], [HAVE_MCE=no])
-AM_CONDITIONAL([HAVE_MCE], [test x"$HAVE_MCE" = xyes])
-if test x"$HAVE_MCE" = xyes; then
-  AC_DEFINE([HAVE_MCE], [1], [Define if mce is available])
-fi
+PKG_CHECK_MODULES([UUID], [uuid])
+AC_SUBST([UUID_CFLAGS])
+AC_SUBST([UUID_LIBS])
 
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 

@@ -138,7 +138,7 @@ gabble_disco_class_init (GabbleDiscoClass *gabble_disco_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_marshal_VOID__POINTER,
+                  g_cclosure_marshal_VOID__POINTER,
                   G_TYPE_NONE, 1, G_TYPE_POINTER);
 
   signals[DONE] =
@@ -147,7 +147,7 @@ gabble_disco_class_init (GabbleDiscoClass *gabble_disco_class)
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
                   0,
                   NULL, NULL,
-                  gabble_marshal_VOID__VOID,
+                  g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
 }

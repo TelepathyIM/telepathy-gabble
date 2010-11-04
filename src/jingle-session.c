@@ -477,7 +477,7 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   signals[REMOTE_STATE_CHANGED] = g_signal_new ("remote-state-changed",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, gabble_marshal_VOID__VOID,
+        0, NULL, NULL, g_cclosure_marshal_VOID__VOID,
         G_TYPE_NONE, 0);
 }
 

@@ -1277,12 +1277,12 @@ gabble_connection_get_full_jid (GabbleConnection *conn)
 }
 
 /**
- * gabble_connection_get_porter:
+ * gabble_connection_dup_porter:
  *
- * Returns: the #WockyPorter instance driving this connection.
+ * Returns: (transfer full): the #WockyPorter instance driving this connection.
  */
 
-WockyPorter *gabble_connection_get_porter (GabbleConnection *conn)
+WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv;
 

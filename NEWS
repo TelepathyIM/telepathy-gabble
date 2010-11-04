@@ -1,7 +1,37 @@
-telepathy-gabble 0.11.0 (UNRELEASED)
+telepathy-gabble 0.11.0 (2010-11-04)
 ====================================
 
-…
+The "your gmail theme is horrible and offensive" release.
+
+Enhancements:
+
+• Implement the ContactList, ContactGroups interfaces, refactoring
+  GabbleRoster considerably in the process (smcv)
+
+• fd.o #28413: implement DTMF on StreamedMedia and Call channels, up-to-date
+  for spec 0.21.3 (Jack Bates, smcv, jonny)
+
+• Implement the ClientTypes interface (jonny)
+
+• Make the tests considerably less prone to race conditions (sjoerd)
+
+• Adapt GabbleCapsChannelManager to be useful in Salut too (smcv)
+
+• fd.o #31216: implement the stable version of MailNotification (smcv)
+
+• fd.o #28726: use Google's Shared Status extension to support being
+  invisible/hidden on Google Talk (eeejay)
+
+• Add a summary of how Tubes capabilities work (wjt)
+
+Fixes:
+
+• Poll GMail servers periodically for a short time after each mail
+  notification, to work around the server throttling notifications (stormer)
+
+• fd.o #30950: advertise the immutable properties of Messages channels (smcv)
+
+• fd.o #28279: don't announce new Tubes channels until ready (sjoerd)
 
 telepathy-gabble 0.10.4 (2010-11-02)
 ====================================

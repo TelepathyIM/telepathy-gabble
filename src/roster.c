@@ -30,6 +30,9 @@
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
+#include <wocky/wocky-namespaces.h>
+#include <wocky/wocky-node.h>
+#include <wocky/wocky-stanza.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 

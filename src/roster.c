@@ -273,7 +273,7 @@ _subscription_to_string (GabbleRosterSubscription subscription)
 }
 
 static GabbleRosterSubscription
-_parse_item_subscription (LmMessageNode *item_node)
+_parse_item_subscription (WockyNode *item_node)
 {
   const gchar *subscription;
 
@@ -299,7 +299,7 @@ _parse_item_subscription (LmMessageNode *item_node)
 }
 
 static TpHandleSet *
-_parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
+_parse_item_groups (WockyNode *item_node, TpBaseConnection *conn)
 {
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       conn, TP_HANDLE_TYPE_GROUP);
@@ -309,7 +309,7 @@ _parse_item_groups (LmMessageNode *item_node, TpBaseConnection *conn)
 
   for (i = node_iter (item_node); i; i = node_iter_next (i))
     {
-      LmMessageNode *group_node = node_iter_data (i);
+      WockyNode *group_node = node_iter_data (i);
       const gchar *value;
 
       if (0 != strcmp (group_node->name, "group"))
@@ -353,7 +353,7 @@ _google_item_type_to_string (GoogleItemType google_type)
 }
 
 static GoogleItemType
-_parse_google_item_type (LmMessageNode *item_node)
+_parse_google_item_type (WockyNode *item_node)
 {
   const gchar *google_type;
 
@@ -377,7 +377,7 @@ _parse_google_item_type (LmMessageNode *item_node)
 }
 
 static gchar *
-_extract_google_alias_for (LmMessageNode *item_node)
+_extract_google_alias_for (WockyNode *item_node)
 {
   return g_strdup (lm_message_node_get_attribute_with_namespace (item_node,
         "alias-for", NS_GOOGLE_ROSTER));
@@ -519,7 +519,7 @@ _gabble_roster_item_maybe_remove (GabbleRoster *roster,
 static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
                             TpHandle contact_handle,
-                            LmMessageNode *node,
+                            WockyNode *node,
                             gboolean google_roster_mode)
 {
   GabbleRosterPrivate *priv = roster->priv;
@@ -716,14 +716,14 @@ _gabble_roster_item_dump (GabbleRosterItem *item)
 #endif /* ENABLE_DEBUG */
 
 
-static LmMessage *
+static WockyStanza *
 _gabble_roster_message_new (GabbleRoster *roster,
-                            LmMessageSubType sub_type,
-                            LmMessageNode **query_return)
+                            WockyStanzaSubType sub_type,
+                            WockyNode **query_return)
 {
   GabbleRosterPrivate *priv = roster->priv;
-  LmMessage *message;
-  LmMessageNode *query_node;
+  WockyStanza *message;
+  WockyNode *query_node;
 
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
@@ -755,7 +755,7 @@ _gabble_roster_message_new (GabbleRoster *roster,
 
 struct _ItemToMessageContext {
     TpBaseConnection *conn;
-    LmMessageNode *item_node;
+    WockyNode *item_node;
 };
 
 static void
@@ -779,7 +779,7 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
  *
  * Returns: the necessary IQ to change @handle's state to match that of @item
  */
-static LmMessage *
+static WockyStanza *
 _gabble_roster_item_to_message (GabbleRoster *roster,
                                 TpHandle handle,
                                 GabbleRosterItem *item)
@@ -787,8 +787,8 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   GabbleRosterPrivate *priv = roster->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessage *message;
-  LmMessageNode *query_node, *item_node;
+  WockyStanza *message;
+  WockyNode *query_node, *item_node;
   const gchar *jid;
   struct _ItemToMessageContext ctx = {
       (TpBaseConnection *) priv->conn,
@@ -799,7 +799,7 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
   g_assert (item != NULL);
 
-  message = _gabble_roster_message_new (roster, LM_MESSAGE_SUB_TYPE_SET,
+  message = _gabble_roster_message_new (roster, WOCKY_STANZA_SUB_TYPE_SET,
       &query_node);
 
   item_node = lm_message_node_add_child (query_node, "item", NULL);
@@ -992,7 +992,7 @@ roster_item_set_subscribe (GabbleRosterItem *item,
 static gboolean
 is_google_roster_push (
     GabbleRoster *roster,
-    LmMessageNode *query_node)
+    WockyNode *query_node)
 {
   if (roster->priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
@@ -1020,7 +1020,7 @@ is_google_roster_push (
 static TpHandle
 validate_roster_item (
     TpHandleRepoIface *contact_repo,
-    LmMessageNode *item_node,
+    WockyNode *item_node,
     const gchar **jid_out)
 {
   const gchar *jid;
@@ -1068,7 +1068,7 @@ validate_roster_item (
 static void
 process_roster (
     GabbleRoster *roster,
-    LmMessageNode *query_node)
+    WockyNode *query_node)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
@@ -1094,7 +1094,7 @@ process_roster (
   /* iterate every sub-node, which we expect to be <item>s */
   for (j = node_iter (query_node); j; j = node_iter_next (j))
     {
-      LmMessageNode *item_node = node_iter_data (j);
+      WockyNode *item_node = node_iter_data (j);
       const char *jid;
       TpHandle handle;
       GabbleRosterItem *item;
@@ -1319,13 +1319,13 @@ static void roster_item_apply_edits (GabbleRoster *roster, TpHandle contact,
  */
 static LmHandlerResult
 got_roster_iq (GabbleRoster *roster,
-    LmMessage *message)
+    WockyStanza *message)
 {
   GabbleRosterPrivate *priv = roster->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *iq_node, *query_node;
+  WockyNode *iq_node, *query_node;
   LmMessageSubType sub_type;
   const gchar *from;
 
@@ -1360,8 +1360,8 @@ got_roster_iq (GabbleRoster *roster,
 
   /* if this is a result, it's from our initial query. if it's a set,
    * it's a roster push. otherwise, it's not for us. */
-  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
-      sub_type != LM_MESSAGE_SUB_TYPE_SET)
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_RESULT &&
+      sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     {
       NODE_DEBUG (iq_node, "unhandled roster IQ");
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1369,7 +1369,7 @@ got_roster_iq (GabbleRoster *roster,
 
   process_roster (roster, query_node);
 
-  if (sub_type == LM_MESSAGE_SUB_TYPE_RESULT)
+  if (sub_type == WOCKY_STANZA_SUB_TYPE_RESULT)
     {
       /* We are handling the response to our initial roster request. */
       GHashTableIter iter;
@@ -1413,7 +1413,7 @@ got_roster_iq (GabbleRoster *roster,
           roster_item_apply_edits (roster, item->unsent_edits->handle, item);
         }
     }
-  else /* LM_MESSAGE_SUB_TYPE_SET */
+  else /* WOCKY_STANZA_SUB_TYPE_SET */
     {
       /* acknowledge roster */
       _gabble_connection_acknowledge_set_iq (priv->conn, message);
@@ -1425,7 +1425,7 @@ got_roster_iq (GabbleRoster *roster,
 static LmHandlerResult
 gabble_roster_iq_cb (LmMessageHandler *handler,
                      LmConnection *lmconn,
-                     LmMessage *message,
+                     WockyStanza *message,
                      gpointer user_data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
@@ -1439,11 +1439,11 @@ gabble_roster_iq_cb (LmMessageHandler *handler,
 static void
 _gabble_roster_send_presence_ack (GabbleRoster *roster,
                                   const gchar *from,
-                                  LmMessageSubType sub_type,
+                                  WockyStanzaSubType sub_type,
                                   gboolean changed)
 {
   GabbleRosterPrivate *priv = roster->priv;
-  LmMessage *reply;
+  WockyStanza *reply;
 
   if (!changed)
     {
@@ -1453,14 +1453,14 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
 
   switch (sub_type)
     {
-    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
-      sub_type = LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED;
+    case WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBE:
+      sub_type = WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBED;
       break;
-    case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
-      sub_type = LM_MESSAGE_SUB_TYPE_SUBSCRIBE;
+    case WOCKY_STANZA_SUB_TYPE_SUBSCRIBED:
+      sub_type = WOCKY_STANZA_SUB_TYPE_SUBSCRIBE;
       break;
-    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
-      sub_type = LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE;
+    case WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBED:
+      sub_type = WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBE;
       break;
     default:
       g_assert_not_reached ();
@@ -1491,7 +1491,7 @@ static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
 static LmHandlerResult
 gabble_roster_presence_cb (LmMessageHandler *handler,
                            LmConnection *lmconn,
-                           LmMessage *message,
+                           WockyStanza *message,
                            gpointer user_data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
@@ -1499,7 +1499,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *pres_node, *child_node;
+  WockyNode *pres_node, *child_node;
   const char *from;
   LmMessageSubType sub_type;
   TpHandleSet *tmp;
@@ -1552,7 +1552,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   switch (sub_type)
     {
-    case LM_MESSAGE_SUB_TYPE_SUBSCRIBE:
+    case WOCKY_STANZA_SUB_TYPE_SUBSCRIBE:
       DEBUG ("making %s (handle %u) local pending on the publish channel",
           from, handle);
 
@@ -1586,7 +1586,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
 
-    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE:
+    case WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBE:
       DEBUG ("removing %s (handle %u) from the publish channel",
           from, handle);
 
@@ -1612,7 +1612,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
 
-    case LM_MESSAGE_SUB_TYPE_SUBSCRIBED:
+    case WOCKY_STANZA_SUB_TYPE_SUBSCRIBED:
       DEBUG ("adding %s (handle %u) to the subscribe channel",
           from, handle);
 
@@ -1636,7 +1636,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
 
-    case LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED:
+    case WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBED:
       DEBUG ("removing %s (handle %u) from the subscribe channel",
           from, handle);
 
@@ -1692,12 +1692,12 @@ gabble_roster_close_all (GabbleRoster *self)
       g_assert (self->priv->presence_cb != NULL);
 
       lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-          self->priv->iq_cb, LM_MESSAGE_TYPE_IQ);
+          self->priv->iq_cb, WOCKY_STANZA_TYPE_IQ);
       lm_message_handler_unref (self->priv->iq_cb);
       self->priv->iq_cb = NULL;
 
       lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-          self->priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE);
+          self->priv->presence_cb, WOCKY_STANZA_TYPE_PRESENCE);
       lm_message_handler_unref (self->priv->presence_cb);
       self->priv->presence_cb = NULL;
     }
@@ -1705,8 +1705,8 @@ gabble_roster_close_all (GabbleRoster *self)
 
 static LmHandlerResult
 roster_received_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
     GObject *roster_obj,
     gpointer user_data)
 {
@@ -1731,28 +1731,28 @@ connection_status_changed_cb (GabbleConnection *conn,
       self->priv->iq_cb = lm_message_handler_new (gabble_roster_iq_cb,
           self, NULL);
       lm_connection_register_message_handler (self->priv->conn->lmconn,
-          self->priv->iq_cb, LM_MESSAGE_TYPE_IQ,
+          self->priv->iq_cb, WOCKY_STANZA_TYPE_IQ,
           LM_HANDLER_PRIORITY_NORMAL);
 
       self->priv->presence_cb = lm_message_handler_new (
           gabble_roster_presence_cb, self, NULL);
       lm_connection_register_message_handler (self->priv->conn->lmconn,
-          self->priv->presence_cb, LM_MESSAGE_TYPE_PRESENCE,
+          self->priv->presence_cb, WOCKY_STANZA_TYPE_PRESENCE,
           LM_HANDLER_PRIORITY_LAST);
 
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
         {
-          LmMessage *message;
+          WockyStanza *stanza;
 
           DEBUG ("requesting roster");
 
-          message = _gabble_roster_message_new (self, LM_MESSAGE_SUB_TYPE_GET,
+          stanza = _gabble_roster_message_new (self, WOCKY_STANZA_SUB_TYPE_GET,
               NULL);
-          _gabble_connection_send_with_reply (self->priv->conn, message,
+          _gabble_connection_send_with_reply (self->priv->conn, stanza,
               roster_received_cb, G_OBJECT (self), self, NULL);
-          lm_message_unref (message);
+          g_object_unref (stanza);
         }
       break;
 
@@ -1848,8 +1848,8 @@ item_edit_free (GabbleRosterItemEdit *edits)
 }
 
 static LmHandlerResult roster_edited_cb (GabbleConnection *conn,
-                                         LmMessage *sent_msg,
-                                         LmMessage *reply_msg,
+                                         WockyStanza *sent_msg,
+                                         WockyStanza *reply_msg,
                                          GObject *roster_obj,
                                          gpointer user_data);
 
@@ -1879,7 +1879,7 @@ roster_item_cancel_subscriptions (
     {
       DEBUG ("sending unsubscribed");
       ret = gabble_connection_send_presence (roster->priv->conn,
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, NULL, error);
+          WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBED, contact_id, NULL, error);
     }
 
   if (ret && (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_TO ||
@@ -1887,7 +1887,7 @@ roster_item_cancel_subscriptions (
     {
       DEBUG ("sending unsubscribe");
       ret = gabble_connection_send_presence (roster->priv->conn,
-          LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, NULL, error);
+          WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBE, contact_id, NULL, error);
     }
 
   return ret;
@@ -1911,7 +1911,7 @@ roster_item_apply_edits (GabbleRoster *roster,
   TpHandleRepoIface *group_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_GROUP);
   GabbleRosterItemEdit *edits = item->unsent_edits;
-  LmMessage *message;
+  WockyStanza *message;
   GError *error = NULL;
 
   if (!priv->received)
@@ -2138,8 +2138,8 @@ roster_item_apply_edits (GabbleRoster *roster,
 /* Called when an edit to the roster item has either succeeded or failed. */
 static LmHandlerResult
 roster_edited_cb (GabbleConnection *conn,
-                  LmMessage *sent_msg,
-                  LmMessage *reply_msg,
+                  WockyStanza *sent_msg,
+                  WockyStanza *reply_msg,
                   GObject *roster_obj,
                   gpointer user_data)
 {
@@ -2517,7 +2517,7 @@ gabble_roster_handle_subscribed (
 
   /* send <presence type="subscribed"> */
   return gabble_connection_send_presence (roster->priv->conn,
-      LM_MESSAGE_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
+      WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, contact_id, message, error);
 }
 
 static TpHandleSet *
@@ -2628,7 +2628,7 @@ gabble_roster_request_subscription_added_cb (GObject *source,
       /* stop trying at the first NetworkError, on the assumption that it'll
        * be fatal */
       if (!gabble_connection_send_presence (self->priv->conn,
-            LM_MESSAGE_SUB_TYPE_SUBSCRIBE, contact_id, context->message,
+            WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, contact_id, context->message,
             &error))
         break;
     }
@@ -2821,7 +2821,7 @@ gabble_roster_unsubscribe_async (TpBaseContactList *base,
           DEBUG ("Sending <presence type='unsubscribe'/> to contact#%u '%s'",
               contact, contact_id);
           if (!gabble_connection_send_presence (self->priv->conn,
-              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBE, contact_id, "", &error))
+              WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBE, contact_id, "", &error))
             break;
         }
     }
@@ -2898,7 +2898,7 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
               contact, contact_id);
 
           if (!gabble_connection_send_presence (self->priv->conn,
-              LM_MESSAGE_SUB_TYPE_UNSUBSCRIBED, contact_id, "", &error))
+              WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBED, contact_id, "", &error))
             break;
         }
     }

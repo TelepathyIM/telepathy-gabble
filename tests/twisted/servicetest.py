@@ -432,6 +432,7 @@ def wrap_connection(conn):
          ('MailNotification', cs.CONN_IFACE_MAIL_NOTIFICATION),
          ('ContactList', cs.CONN_IFACE_CONTACT_LIST),
          ('ContactGroups', cs.CONN_IFACE_CONTACT_GROUPS),
+         ('PowerSaving', cs.CONN_IFACE_POWER_SAVING),
         ]))
 
 def wrap_channel(chan, type_, extra=None):

@@ -128,6 +128,7 @@ CONN_IFACE_MAIL_NOTIFICATION = CONN + '.Interface.MailNotification'
 CONN_IFACE_CONTACT_LIST = CONN + '.Interface.ContactList'
 CONN_IFACE_CONTACT_GROUPS = CONN + '.Interface.ContactGroups'
 CONN_IFACE_CLIENT_TYPES = CONN + '.Interface.ClientTypes'
+CONN_IFACE_POWER_SAVING = CONN + '.Interface.PowerSaving.DRAFT'
 
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 

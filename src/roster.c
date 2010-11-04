@@ -59,10 +59,11 @@ static guint signals[LAST_SIGNAL] = { 0 };
 struct _GabbleRosterPrivate
 {
   GabbleConnection *conn;
+  gulong porter_available_id;
   gulong status_changed_id;
 
-  LmMessageHandler *iq_cb;
-  LmMessageHandler *presence_cb;
+  guint iq_cb;
+  guint presence_cb;
 
   GHashTable *items;
   TpHandleSet *groups;
@@ -199,8 +200,8 @@ gabble_roster_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_assert (priv->iq_cb == NULL);
-  g_assert (priv->presence_cb == NULL);
+  g_assert (priv->iq_cb == 0);
+  g_assert (priv->presence_cb == 0);
 
   gabble_roster_close_all (self);
   g_assert (priv->groups == NULL);
@@ -1429,19 +1430,14 @@ got_roster_iq (GabbleRoster *roster,
   return TRUE;
 }
 
-static LmHandlerResult
-gabble_roster_iq_cb (LmMessageHandler *handler,
-                     LmConnection *lmconn,
+static gboolean
+gabble_roster_iq_cb (WockyPorter *porter,
                      WockyStanza *message,
                      gpointer user_data)
 {
   GabbleRoster *roster = GABBLE_ROSTER (user_data);
-  GabbleRosterPrivate *priv = roster->priv;
 
-  g_assert (lmconn == priv->conn->lmconn);
-
-  return (got_roster_iq (roster, message) ? LM_HANDLER_RESULT_REMOVE_MESSAGE
-      : LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS);
+  return got_roster_iq (roster, message);
 }
 
 static void
@@ -1496,9 +1492,8 @@ static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
  *
  * Called by loudmouth when we get an incoming <presence>.
  */
-static LmHandlerResult
-gabble_roster_presence_cb (LmMessageHandler *handler,
-                           LmConnection *lmconn,
+static gboolean
+gabble_roster_presence_cb (WockyPorter *porter,
                            WockyStanza *message,
                            gpointer user_data)
 {
@@ -1513,13 +1508,11 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   TpHandleSet *tmp;
   TpHandle handle;
   const gchar *status_message = NULL;
-  LmHandlerResult ret;
+  gboolean ret;
   GabbleRosterItem *item;
 
-  g_assert (lmconn == priv->conn->lmconn);
-
   if (priv->conn == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return FALSE;
 
   from = wocky_stanza_get_from (message);
   pres_node = wocky_stanza_get_top_node (message);
@@ -1528,7 +1521,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
     {
        NODE_DEBUG (pres_node, "presence stanza without from attribute, "
            "ignoring");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   wocky_stanza_get_type_info (message, NULL, &sub_type);
@@ -1538,14 +1531,14 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   if (handle == 0)
     {
        NODE_DEBUG (pres_node, "ignoring presence from malformed jid");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   if (handle == conn->self_handle)
     {
       NODE_DEBUG (pres_node, "ignoring presence from ourselves on another "
           "resource");
-      ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      ret = FALSE;
       goto OUT;
     }
 
@@ -1591,7 +1584,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
       tp_handle_set_destroy (tmp);
 
-      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = TRUE;
       break;
 
     case WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBE:
@@ -1617,7 +1610,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
           _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
         }
 
-      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = TRUE;
       break;
 
     case WOCKY_STANZA_SUB_TYPE_SUBSCRIBED:
@@ -1641,7 +1634,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
           _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
         }
 
-      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = TRUE;
       break;
 
     case WOCKY_STANZA_SUB_TYPE_UNSUBSCRIBED:
@@ -1666,10 +1659,11 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
           _gabble_roster_send_presence_ack (roster, from, sub_type, FALSE);
         }
 
-      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      ret = TRUE;
       break;
+
     default:
-      ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      ret = FALSE;
     }
 
 OUT:
@@ -1691,23 +1685,30 @@ gabble_roster_close_all (GabbleRoster *self)
       self->priv->status_changed_id = 0;
     }
 
+  if (self->priv->porter_available_id != 0)
+    {
+      g_signal_handler_disconnect (self->priv->conn,
+          self->priv->porter_available_id);
+      self->priv->porter_available_id = 0;
+    }
+
   tp_clear_pointer (&priv->groups, tp_handle_set_destroy);
   tp_clear_pointer (&priv->pre_authorized, tp_handle_set_destroy);
 
-  if (self->priv->iq_cb != NULL)
+  if (self->priv->iq_cb != 0)
     {
+      WockyPorter *porter = gabble_connection_dup_porter (self->priv->conn);
+
       DEBUG ("removing callbacks");
-      g_assert (self->priv->presence_cb != NULL);
+      g_assert (self->priv->presence_cb != 0);
 
-      lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-          self->priv->iq_cb, WOCKY_STANZA_TYPE_IQ);
-      lm_message_handler_unref (self->priv->iq_cb);
-      self->priv->iq_cb = NULL;
+      wocky_porter_unregister_handler (porter, self->priv->iq_cb);
+      self->priv->iq_cb = 0;
 
-      lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-          self->priv->presence_cb, WOCKY_STANZA_TYPE_PRESENCE);
-      lm_message_handler_unref (self->priv->presence_cb);
-      self->priv->presence_cb = NULL;
+      wocky_porter_unregister_handler (porter, self->priv->presence_cb);
+      self->priv->presence_cb = 0;
+
+      g_object_unref (porter);
     }
 }
 
@@ -1725,6 +1726,29 @@ roster_received_cb (GabbleConnection *conn,
 }
 
 static void
+gabble_roster_porter_available_cb (GabbleConnection *conn,
+    WockyPorter *porter,
+    GabbleRoster *self)
+{
+  DEBUG ("adding callbacks");
+  g_assert (self->priv->iq_cb == 0);
+  g_assert (self->priv->presence_cb == 0);
+
+  self->priv->iq_cb = wocky_porter_register_handler (porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_NONE, NULL,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, gabble_roster_iq_cb, self,
+      '(', "query",
+        ':', WOCKY_XMPP_NS_ROSTER,
+      ')',
+      NULL);
+
+  self->priv->presence_cb = wocky_porter_register_handler (porter,
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_NONE, NULL,
+      WOCKY_PORTER_HANDLER_PRIORITY_MIN, gabble_roster_presence_cb, self,
+      NULL);
+}
+
+static void
 connection_status_changed_cb (GabbleConnection *conn,
                               guint status,
                               guint reason,
@@ -1732,25 +1756,6 @@ connection_status_changed_cb (GabbleConnection *conn,
 {
   switch (status)
     {
-    case TP_CONNECTION_STATUS_CONNECTING:
-      DEBUG ("adding callbacks");
-      g_assert (self->priv->iq_cb == NULL);
-      g_assert (self->priv->presence_cb == NULL);
-
-      self->priv->iq_cb = lm_message_handler_new (gabble_roster_iq_cb,
-          self, NULL);
-      lm_connection_register_message_handler (self->priv->conn->lmconn,
-          self->priv->iq_cb, WOCKY_STANZA_TYPE_IQ,
-          LM_HANDLER_PRIORITY_NORMAL);
-
-      self->priv->presence_cb = lm_message_handler_new (
-          gabble_roster_presence_cb, self, NULL);
-      lm_connection_register_message_handler (self->priv->conn->lmconn,
-          self->priv->presence_cb, WOCKY_STANZA_TYPE_PRESENCE,
-          LM_HANDLER_PRIORITY_LAST);
-
-      break;
-
     case TP_CONNECTION_STATUS_CONNECTED:
         {
           WockyStanza *stanza;
@@ -1802,6 +1807,9 @@ gabble_roster_constructed (GObject *obj)
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
+  self->priv->porter_available_id = g_signal_connect (self->priv->conn,
+      "porter-available", G_CALLBACK (gabble_roster_porter_available_cb), obj);
+
   self->priv->groups = tp_handle_set_new (group_repo);
   self->priv->pre_authorized = tp_handle_set_new (contact_repo);
 }

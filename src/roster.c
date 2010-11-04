@@ -279,7 +279,7 @@ _parse_item_subscription (WockyNode *item_node)
 
   g_assert (item_node != NULL);
 
-  subscription = lm_message_node_get_attribute (item_node, "subscription");
+  subscription = wocky_node_get_attribute (item_node, "subscription");
 
   if (NULL == subscription || 0 == strcmp (subscription, "none"))
     return GABBLE_ROSTER_SUBSCRIPTION_NONE;
@@ -315,7 +315,8 @@ _parse_item_groups (WockyNode *item_node, TpBaseConnection *conn)
       if (0 != strcmp (group_node->name, "group"))
         continue;
 
-      value = lm_message_node_get_value (group_node);
+      value = group_node->content;
+
       if (NULL == value)
         continue;
 
@@ -359,8 +360,7 @@ _parse_google_item_type (WockyNode *item_node)
 
   g_assert (item_node != NULL);
 
-  google_type = lm_message_node_get_attribute_with_namespace (item_node, "t",
-      NS_GOOGLE_ROSTER);
+  google_type = wocky_node_get_attribute_ns (item_node, "t", NS_GOOGLE_ROSTER);
 
   if (NULL == google_type)
     return GOOGLE_ITEM_TYPE_NORMAL;
@@ -379,7 +379,7 @@ _parse_google_item_type (WockyNode *item_node)
 static gchar *
 _extract_google_alias_for (WockyNode *item_node)
 {
-  return g_strdup (lm_message_node_get_attribute_with_namespace (item_node,
+  return g_strdup (wocky_node_get_attribute_ns (item_node,
         "alias-for", NS_GOOGLE_ROSTER));
 }
 
@@ -542,7 +542,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
   item->subscription = _parse_item_subscription (node);
 
-  ask = lm_message_node_get_attribute (node, "ask");
+  ask = wocky_node_get_attribute (node, "ask");
   if (NULL != ask && 0 == strcmp (ask, "subscribe"))
     item->ask_subscribe = TRUE;
   else
@@ -558,7 +558,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
   if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
     name = NULL;
   else
-    name = lm_message_node_get_attribute (node, "name");
+    name = wocky_node_get_attribute (node, "name");
 
   if (tp_strdiff (item->name, name))
     {
@@ -768,7 +768,7 @@ _gabble_roster_item_put_group_in_message (guint handle, gpointer user_data)
       ctx->conn, TP_HANDLE_TYPE_GROUP);
   const char *name = tp_handle_inspect (group_repo, handle);
 
-  lm_message_node_add_child (ctx->item_node, "group", name);
+  wocky_node_add_child_with_content (ctx->item_node, "group", name);
 }
 
 /*
@@ -803,16 +803,16 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
   message = _gabble_roster_message_new (roster, WOCKY_STANZA_SUB_TYPE_SET,
       &query_node);
 
-  item_node = lm_message_node_add_child (query_node, "item", NULL);
+  item_node = wocky_node_add_child (query_node, "item");
   ctx.item_node = item_node;
 
   jid = tp_handle_inspect (contact_repo, handle);
-  lm_message_node_set_attribute (item_node, "jid", jid);
+  wocky_node_set_attribute (item_node, "jid", jid);
 
   if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_NONE)
     {
       const gchar *subscription =  _subscription_to_string (item->subscription);
-      lm_message_node_set_attribute (item_node, "subscription", subscription);
+      wocky_node_set_attribute (item_node, "subscription", subscription);
     }
 
   if (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_REMOVE)
@@ -820,14 +820,19 @@ _gabble_roster_item_to_message (GabbleRoster *roster,
 
   if ((priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER) &&
       item->google_type != GOOGLE_ITEM_TYPE_NORMAL)
-    lm_message_node_set_attribute (item_node, "gr:t",
-        _google_item_type_to_string (item->google_type));
+    {
+      GQuark gr = g_quark_from_static_string (NS_GOOGLE_ROSTER);
+
+      wocky_node_attribute_ns_set_prefix (gr, "gr");
+      wocky_node_set_attribute_ns (item_node, "t",
+          _google_item_type_to_string (item->google_type), NS_GOOGLE_ROSTER);
+    }
 
   if (item->ask_subscribe)
-    lm_message_node_set_attribute (item_node, "ask", "subscribe");
+    wocky_node_set_attribute (item_node, "ask", "subscribe");
 
   if (item->name)
-    lm_message_node_set_attribute (item_node, "name", item->name);
+    wocky_node_set_attribute (item_node, "name", item->name);
 
   if (item->groups)
     {
@@ -997,7 +1002,7 @@ is_google_roster_push (
 {
   if (roster->priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
-      const char *gr_ext = lm_message_node_get_attribute_with_namespace (
+      const char *gr_ext = wocky_node_get_attribute_ns (
           query_node, "ext", NS_GOOGLE_ROSTER);
 
       if (!tp_strdiff (gr_ext, GOOGLE_ROSTER_VERSION))
@@ -1033,7 +1038,7 @@ validate_roster_item (
       return 0;
     }
 
-  jid = lm_message_node_get_attribute (item_node, "jid");
+  jid = wocky_node_get_attribute (item_node, "jid");
   if (!jid)
     {
       NODE_DEBUG (item_node, "item node has no jid, skipping");
@@ -1327,21 +1332,20 @@ got_roster_iq (GabbleRoster *roster,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
   WockyNode *iq_node, *query_node;
-  LmMessageSubType sub_type;
+  WockyStanzaSubType sub_type;
   const gchar *from;
 
   if (priv->conn == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  iq_node = lm_message_get_node (message);
-  query_node = lm_message_node_get_child_with_namespace (iq_node, "query",
-      NS_ROSTER);
+  iq_node = wocky_stanza_get_top_node (message);
+  query_node = wocky_node_get_child_ns (iq_node, "query",
+      WOCKY_XMPP_NS_ROSTER);
 
   if (query_node == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  from = lm_message_node_get_attribute (
-      wocky_stanza_get_top_node (message), "from");
+  from = wocky_stanza_get_from (message);
 
   if (from != NULL)
     {
@@ -1357,7 +1361,7 @@ got_roster_iq (GabbleRoster *roster,
         }
     }
 
-  sub_type = lm_message_get_sub_type (message);
+  wocky_stanza_get_type_info (message, NULL, &sub_type);
 
   /* if this is a result, it's from our initial query. if it's a set,
    * it's a roster push. otherwise, it's not for us. */
@@ -1474,7 +1478,7 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
 
   _gabble_connection_send (priv->conn, reply, NULL);
 
-  lm_message_unref (reply);
+  g_object_unref (reply);
 }
 
 static gboolean gabble_roster_handle_subscribed (GabbleRoster *roster,
@@ -1502,7 +1506,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       TP_HANDLE_TYPE_CONTACT);
   WockyNode *pres_node, *child_node;
   const char *from;
-  LmMessageSubType sub_type;
+  WockyStanzaSubType sub_type;
   TpHandleSet *tmp;
   TpHandle handle;
   const gchar *status_message = NULL;
@@ -1514,9 +1518,8 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
   if (priv->conn == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  pres_node = lm_message_get_node (message);
-
-  from = lm_message_node_get_attribute (pres_node, "from");
+  from = wocky_stanza_get_from (message);
+  pres_node = wocky_stanza_get_top_node (message);
 
   if (from == NULL)
     {
@@ -1525,7 +1528,7 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  sub_type = lm_message_get_sub_type (message);
+  wocky_stanza_get_type_info (message, NULL, &sub_type);
 
   handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
@@ -1545,9 +1548,10 @@ gabble_roster_presence_cb (LmMessageHandler *handler,
 
   g_assert (handle != 0);
 
-  child_node = lm_message_node_get_child (pres_node, "status");
-  if (child_node)
-    status_message = lm_message_node_get_value (child_node);
+  child_node = wocky_node_get_child (pres_node, "status");
+
+  if (child_node != NULL)
+    status_message = child_node->content;
 
   item = _gabble_roster_item_ensure (roster, handle);
 

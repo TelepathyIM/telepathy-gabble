@@ -1,3 +1,10 @@
+telepathy-gabble 0.11.1 (UNRELEASED)
+====================================
+
+Enhancements:
+
+• Implement draft 1 of Conn.I.PowerSaving (eeejay)
+
 telepathy-gabble 0.11.0 (2010-11-04)
 ====================================
 

@@ -728,25 +728,26 @@ _gabble_roster_message_new (GabbleRoster *roster,
   g_assert (roster != NULL);
   g_assert (GABBLE_IS_ROSTER (roster));
 
-  message = lm_message_new_with_sub_type (NULL,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          sub_type);
+  message = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      sub_type, NULL, NULL,
+        '(', "query",
+          ':', WOCKY_XMPP_NS_ROSTER,
+          '*', &query_node,
+        ')',
+      NULL);
 
-  query_node = lm_message_node_add_child (
-      wocky_stanza_get_top_node (message), "query", NULL);
-
-  if (NULL != query_return)
+  if (query_return != NULL)
     *query_return = query_node;
-
-  lm_message_node_set_attribute (query_node, "xmlns", NS_ROSTER);
 
   if (priv->conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
-      lm_message_node_set_attributes (query_node,
-          "xmlns:gr", NS_GOOGLE_ROSTER,
-          "gr:ext", GOOGLE_ROSTER_VERSION,
-          "gr:include", "all",
-          NULL);
+      GQuark gr = g_quark_from_static_string (NS_GOOGLE_ROSTER);
+
+      wocky_node_attribute_ns_set_prefix (gr, "gr");
+      wocky_node_set_attribute_ns (query_node, "ext", GOOGLE_ROSTER_VERSION,
+          NS_GOOGLE_ROSTER);
+      wocky_node_set_attribute_ns (query_node, "include", "all",
+          NS_GOOGLE_ROSTER);
     }
 
   return message;
@@ -1467,9 +1468,9 @@ _gabble_roster_send_presence_ack (GabbleRoster *roster,
       return;
     }
 
-  reply = lm_message_new_with_sub_type (from,
-      LM_MESSAGE_TYPE_PRESENCE,
-      sub_type);
+  reply = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE, sub_type,
+      NULL, from,
+      NULL); /* no content */
 
   _gabble_connection_send (priv->conn, reply, NULL);
 

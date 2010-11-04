@@ -39,6 +39,7 @@
 #include "caps-channel-manager.h"
 #include "conn-aliasing.h"
 #include "conn-presence.h"
+#include "conn-util.h"
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"
@@ -61,6 +62,7 @@ struct _GabbleRosterPrivate
   GabbleConnection *conn;
   gulong porter_available_id;
   gulong status_changed_id;
+  GCancellable *cancel_on_disconnect;
 
   guint iq_cb;
   guint presence_cb;
@@ -1695,6 +1697,11 @@ gabble_roster_close_all (GabbleRoster *self)
   tp_clear_pointer (&priv->groups, tp_handle_set_destroy);
   tp_clear_pointer (&priv->pre_authorized, tp_handle_set_destroy);
 
+  if (self->priv->cancel_on_disconnect != NULL)
+    g_cancellable_cancel (self->priv->cancel_on_disconnect);
+
+  tp_clear_object (&self->priv->cancel_on_disconnect);
+
   if (self->priv->iq_cb != 0)
     {
       WockyPorter *porter = gabble_connection_dup_porter (self->priv->conn);
@@ -1712,17 +1719,31 @@ gabble_roster_close_all (GabbleRoster *self)
     }
 }
 
-static LmHandlerResult
-roster_received_cb (GabbleConnection *conn,
-    WockyStanza *sent_msg,
-    WockyStanza *reply_msg,
-    GObject *roster_obj,
-    gpointer user_data)
+static void
+roster_received_cb (GObject *source_object,
+    GAsyncResult *result,
+    gpointer weak_ref)
 {
-  GabbleRoster *roster = GABBLE_ROSTER (user_data);
+  GabbleRoster *self = tp_weak_ref_dup_object (weak_ref);
 
-  return (got_roster_iq (roster, reply_msg) ? LM_HANDLER_RESULT_REMOVE_MESSAGE
-      : LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS);
+  if (self != NULL)
+    {
+      WockyStanza *response;
+      GError *error = NULL;
+
+      if (conn_util_send_iq_finish ((GabbleConnection *) source_object,
+            result, &response, &error))
+        {
+          got_roster_iq (self, response);
+        }
+      else
+        {
+          DEBUG ("%s", error->message);
+          g_clear_error (&error);
+        }
+    }
+
+  tp_weak_ref_destroy (weak_ref);
 }
 
 static void
@@ -1760,12 +1781,17 @@ connection_status_changed_cb (GabbleConnection *conn,
         {
           WockyStanza *stanza;
 
+          self->priv->cancel_on_disconnect = g_cancellable_new ();
+
           DEBUG ("requesting roster");
 
           stanza = _gabble_roster_message_new (self, WOCKY_STANZA_SUB_TYPE_GET,
               NULL);
-          _gabble_connection_send_with_reply (self->priv->conn, stanza,
-              roster_received_cb, G_OBJECT (self), self, NULL);
+
+          conn_util_send_iq_async (conn, stanza,
+              self->priv->cancel_on_disconnect,
+              roster_received_cb, tp_weak_ref_new (self, NULL, NULL));
+
           g_object_unref (stanza);
         }
       break;

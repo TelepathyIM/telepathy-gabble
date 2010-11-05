@@ -1539,6 +1539,8 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
  *
  * FIXME: the timeout is not always obeyed when there is already a request
  *        on the same handle. It should perhaps be removed.
+ *
+ * The connection must be connected.
  */
 GabbleVCardManagerRequest *
 gabble_vcard_manager_request (GabbleVCardManager *self,
@@ -1555,6 +1557,8 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   GabbleVCardManagerRequest *request;
   GabbleVCardCacheEntry *entry = cache_entry_get (self, handle);
 
+  g_return_val_if_fail (connection->status == TP_CONNECTION_STATUS_CONNECTED,
+      NULL);
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
   g_assert (entry->vcard_node == NULL);
 

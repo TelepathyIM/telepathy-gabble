@@ -932,13 +932,15 @@ static void
 maybe_request_vcard (GabbleConnection *self, TpHandle handle,
   GabbleConnectionAliasSource source)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
+
   /* If the source wasn't good enough then do a request */
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
-      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
+      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle) &&
+      base->status == TP_CONNECTION_STATUS_CONNECTED)
     {
       if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
         {
-          TpBaseConnection *base = (TpBaseConnection *) self;
           TpHandleRepoIface *contact_handles =
             tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
 

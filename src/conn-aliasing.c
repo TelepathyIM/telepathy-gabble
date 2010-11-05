@@ -512,6 +512,8 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
+  g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
+
   if (!tp_handle_is_valid (contact_handles, handle, &error))
     {
       data->retval = FALSE;

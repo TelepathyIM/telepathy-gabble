@@ -1585,6 +1585,8 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
  *
  * The method takes over the ownership of the callers reference to \a edits and
  * its contents.
+ *
+ * The connection must be connected to call this method.
  */
 GabbleVCardManagerEditRequest *
 gabble_vcard_manager_edit (GabbleVCardManager *self,
@@ -1598,6 +1600,8 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
   GabbleVCardManagerEditRequest *req;
   GabbleVCardCacheEntry *entry;
+
+  g_return_val_if_fail (base->status == TP_CONNECTION_STATUS_CONNECTED, NULL);
 
   /* Invalidate our current vCard and ensure that we're going to get
    * it in the near future */

@@ -1580,33 +1580,6 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   return request;
 }
 
-GabbleVCardManagerEditRequest *
-gabble_vcard_manager_edit_one (GabbleVCardManager *self,
-                               guint timeout,
-                               GabbleVCardManagerEditCb callback,
-                               gpointer user_data,
-                               GObject *object,
-                               const gchar *element_name,
-                               const gchar *element_value)
-{
-  GList *edits = NULL;
-  GabbleVCardManagerEditInfo *info;
-
-  info = gabble_vcard_manager_edit_info_new (
-      element_name, element_value, GABBLE_VCARD_EDIT_REPLACE, NULL);
-
-  if (info->element_value)
-    DEBUG ("%s => value of length %ld starting %.30s", info->element_name,
-        (long) strlen (info->element_value), info->element_value);
-  else
-    DEBUG ("%s => null value", info->element_name);
-
-  edits = g_list_append (edits, info);
-
-  return gabble_vcard_manager_edit (self, timeout, callback,
-      user_data, object, edits);
-}
-
 /* Add a pending request to edit the vCard. When it finishes, call the given
  * callback. The callback may be NULL.
  *

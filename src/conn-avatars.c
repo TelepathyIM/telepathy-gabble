@@ -686,6 +686,8 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
   GError *error = NULL;
   guint i;
 
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
   if (!tp_handles_are_valid (contacts_repo, contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);

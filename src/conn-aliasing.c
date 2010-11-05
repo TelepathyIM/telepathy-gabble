@@ -245,6 +245,7 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
                               gpointer user_data,
                               GError *error)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
   GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_NONE;
   TpHandle handle = GPOINTER_TO_UINT (user_data);
 
@@ -253,7 +254,8 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
   source = _gabble_connection_get_cached_alias (self, handle, NULL);
 
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
-      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
+      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle) &&
+      base->status == TP_CONNECTION_STATUS_CONNECTED)
     {
       /* no alias in PEP, get the vcard */
       gabble_vcard_manager_request (self->vcard_manager, handle, 0,
@@ -267,6 +269,7 @@ aliases_request_pep_cb (GabbleConnection *self,
                         gpointer user_data,
                         GError *error)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
   AliasRequest *alias_request = (AliasRequest *) user_data;
   AliasesRequest *aliases_request = alias_request->aliases_request;
   guint index = alias_request->index;
@@ -290,6 +293,11 @@ aliases_request_pep_cb (GabbleConnection *self,
       gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       aliases_request->aliases[index] = alias;
+    }
+  else if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      DEBUG ("no longer connected, not chaining up to vCard");
+      g_free (alias);
     }
   else
     {

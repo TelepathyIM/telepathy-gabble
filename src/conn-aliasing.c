@@ -126,6 +126,7 @@ aliases_request_free (AliasesRequest *request)
 
   for (i = 0; i < request->contacts->len; i++)
     {
+      /* FIXME: what if vcard_manager is NULL? */
       if (request->vcard_requests[i] != NULL)
         gabble_vcard_manager_cancel_request (request->conn->vcard_manager,
             request->vcard_requests[i]);
@@ -254,8 +255,8 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
   source = _gabble_connection_get_cached_alias (self, handle, NULL);
 
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
-      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle) &&
-      base->status == TP_CONNECTION_STATUS_CONNECTED)
+      base->status == TP_CONNECTION_STATUS_CONNECTED &&
+      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       /* no alias in PEP, get the vcard */
       gabble_vcard_manager_request (self->vcard_manager, handle, 0,
@@ -290,7 +291,8 @@ aliases_request_pep_cb (GabbleConnection *self,
   DEBUG ("Got cached alias %s with priority %u", alias, source);
 
   if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD ||
-      gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
+      (self->vcard_manager != NULL &&
+       gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle)))
     {
       aliases_request->aliases[index] = alias;
     }
@@ -935,12 +937,16 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       return GABBLE_CONNECTION_ALIAS_FROM_MUC_RESOURCE;
     }
 
-  /* if we've seen a nickname in their vCard, use that */
-  tmp = gabble_vcard_manager_get_cached_alias (conn->vcard_manager, handle);
-  if (NULL != tmp)
+  if (conn->vcard_manager != NULL)
     {
-      maybe_set (alias, tmp);
-      return GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+      /* if we've seen a nickname in their vCard, use that */
+      tmp = gabble_vcard_manager_get_cached_alias (conn->vcard_manager,
+          handle);
+      if (NULL != tmp)
+        {
+          maybe_set (alias, tmp);
+          return GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+        }
     }
 
   /* otherwise just take their jid */
@@ -956,8 +962,8 @@ maybe_request_vcard (GabbleConnection *self, TpHandle handle,
 
   /* If the source wasn't good enough then do a request */
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
-      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle) &&
-      base->status == TP_CONNECTION_STATUS_CONNECTED)
+      base->status == TP_CONNECTION_STATUS_CONNECTED &&
+      !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
         {

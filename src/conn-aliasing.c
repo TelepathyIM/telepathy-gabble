@@ -328,6 +328,9 @@ pep_request_cb (
   g_slice_free (pep_request_ctx, ctx);
 }
 
+/**
+ * @self must have %TP_CONNECTION_STATUS_CONNECTED.
+ */
 static GabbleRequestPipelineItem *
 gabble_do_pep_request (GabbleConnection *self,
                        TpHandle handle,
@@ -335,10 +338,17 @@ gabble_do_pep_request (GabbleConnection *self,
                        GabbleRequestPipelineCb callback,
                        gpointer user_data)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
   LmMessage *msg;
   GabbleRequestPipelineItem *pep_request;
-  pep_request_ctx *ctx = g_slice_new0 (pep_request_ctx);
+  pep_request_ctx *ctx;
 
+  /* callers must check this... */
+  g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
+  /* ... which implies this */
+  g_assert (self->req_pipeline != NULL);
+
+  ctx = g_slice_new0 (pep_request_ctx);
   ctx->callback = callback;
   ctx->user_data = user_data;
   ctx->contact_handles = contact_handles;

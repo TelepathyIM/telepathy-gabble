@@ -756,6 +756,12 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
   GabblePresence *presence = priv->conn->self_presence;
   GError *error = NULL;
 
+  if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      DEBUG ("no longer connected");
+      return;
+    }
+
   /* We don't want recursive image resetting
    *
    * FIXME: There is a race here: if the other resource sends us first the

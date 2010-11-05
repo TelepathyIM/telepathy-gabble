@@ -159,10 +159,6 @@ gboolean gabble_vcard_manager_has_limited_vcard_fields (
 gboolean gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
     const gchar *field_name);
 
-GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_alias (
-    GabbleVCardManager *self, guint timeout, GabbleVCardManagerEditCb callback,
-    gpointer user_data, GObject *object, const gchar *new_alias);
-
 /* For unit tests only */
 void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);
 void gabble_vcard_manager_set_default_request_timeout (guint timeout);

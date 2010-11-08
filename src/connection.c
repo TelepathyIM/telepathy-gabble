@@ -1983,7 +1983,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   g_free (jid);
 
   /* system certs */
-  wocky_tls_handler_add_ca (tls_handler, CA_CERTIFICATES_PATH);
+  wocky_tls_handler_add_ca (tls_handler, GTLS_SYSTEM_CA_FILE);
 
   /* user certs */
   user_certs_dir = g_build_filename (g_get_user_config_dir (),

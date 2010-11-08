@@ -1734,6 +1734,7 @@ roster_received_cb (GObject *source_object,
         }
     }
 
+  tp_clear_object (&self);
   tp_weak_ref_destroy (weak_ref);
 }
 

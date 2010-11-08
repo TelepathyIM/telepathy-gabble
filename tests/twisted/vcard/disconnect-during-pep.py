@@ -4,8 +4,9 @@ Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=31412
 
 import dbus
 
-from servicetest import call_async, EventPattern
-from gabbletest import exec_test, make_result_iq, acknowledge_iq
+from servicetest import call_async, EventPattern, sync_dbus
+from gabbletest import (exec_test, make_result_iq, acknowledge_iq,
+        disconnect_conn)
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -27,14 +28,7 @@ def test(q, bus, conn, stream):
         query_ns='http://jabber.org/protocol/pubsub', query_name='pubsub')
 
     # We disconnect too soon to get a reply
-    call_async(q, conn, 'Disconnect')
-    q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-closed'),
-        )
-    stream.sendFooter()
-    q.expect('dbus-return', method='Disconnect')
+    disconnect_conn(q, conn, stream)
 
     # fd.o #31412 was that while the request pipeline was shutting down,
     # it would give the PEP query an error; the aliasing code would
@@ -42,10 +36,7 @@ def test(q, bus, conn, stream):
     # was no longer there, *crash*.
 
     # check that Gabble hasn't crashed
-    cm = bus.get_object(cs.CM + '.gabble',
-            '/' + cs.CM.replace('.', '/') + '/gabble')
-    call_async(q, dbus.Interface(cm, cs.CM), 'ListProtocols')
-    q.expect('dbus-return', method='ListProtocols')
+    sync_dbus(bus, q, conn)
 
 if __name__ == '__main__':
     exec_test(test)

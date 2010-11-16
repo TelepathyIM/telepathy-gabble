@@ -307,10 +307,6 @@ PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
 AC_SUBST(NICE_CFLAGS)
 AC_SUBST(NICE_LIBS)
 
-PKG_CHECK_MODULES([UUID], [uuid])
-AC_SUBST([UUID_CFLAGS])
-AC_SUBST([UUID_LIBS])
-
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
 AC_OUTPUT( Makefile \

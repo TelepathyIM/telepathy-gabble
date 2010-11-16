@@ -3,7 +3,18 @@ telepathy-gabble 0.11.1 (UNRELEASED)
 
 Enhancements:
 
-• Implement draft 1 of Conn.I.PowerSaving (eeejay)
+• Implement Conn.I.PowerSaving (eeejay)
+
+• fd.o #31474: replace --with-ca-certificates configure option with
+  --with-ca-file. The default is to use the normal location for either Red Hat
+  or Debian, or fail if neither exists. Use --with-ca-file to force a
+  particular location (e.g. if your build system doesn't guarantee to have
+  the CA certificate bundle installed), or use --without-ca-file if your system
+  doesn't have a standard CA certificate store. (Brian Pepple)
+
+Fixes:
+
+• Don't generate unused bindings for channel bundles (wjt)
 
 telepathy-gabble 0.11.0 (2010-11-04)
 ====================================

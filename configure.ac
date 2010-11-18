@@ -119,9 +119,6 @@ else
     fi
 
     AC_MSG_RESULT($with_ca_file)
-    if ! test -f "$with_ca_file"; then
-        AC_MSG_ERROR([No such file '$with_ca_file'. Use --with-ca-file=path to set, or --without-ca-file to disable])
-    fi
     GTLS_SYSTEM_CA_FILE="$with_ca_file"
 
     AC_DEFINE_UNQUOTED([GTLS_SYSTEM_CA_FILE], ["$GTLS_SYSTEM_CA_FILE"], [path to system Certificate Authority list])

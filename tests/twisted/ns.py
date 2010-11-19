@@ -40,6 +40,7 @@ NICK = "http://jabber.org/protocol/nick"
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 NS_XMPP_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
 NS_XMPP_TLS  = 'urn:ietf:params:xml:ns:xmpp-tls'
+NS_XMPP_SESSION = 'urn:ietf:params:xml:ns:xmpp-session'
 OLPC_ACTIVITIES = "http://laptop.org/xmpp/activities"
 OLPC_ACTIVITIES_NOTIFY = "%s+notify" % OLPC_ACTIVITIES
 OLPC_ACTIVITY = "http://laptop.org/xmpp/activity"

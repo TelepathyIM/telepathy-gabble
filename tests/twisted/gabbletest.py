@@ -170,11 +170,14 @@ class XmppAuthenticator(GabbleAuthenticator):
     def streamIQ(self):
         features = elem(xmlstream.NS_STREAMS, 'features')(
             elem(ns.NS_XMPP_BIND, 'bind'),
+            elem(ns.NS_XMPP_SESSION, 'session'),
         )
         self.xmlstream.send(features)
 
         self.xmlstream.addOnetimeObserver(
             "/iq/bind[@xmlns='%s']" % ns.NS_XMPP_BIND, self.bindIq)
+        self.xmlstream.addOnetimeObserver(
+            "/iq/session[@xmlns='%s']" % ns.NS_XMPP_SESSION, self.sessionIq)
 
     def streamSASL(self):
         features = domish.Element((xmlstream.NS_STREAMS, 'features'))
@@ -218,6 +221,9 @@ class XmppAuthenticator(GabbleAuthenticator):
         self.xmlstream.send(result)
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
+
+    def sessionIq(self, iq):
+        self.xmlstream.send(make_result_iq(self.xmlstream, iq))
 
 def make_stream_event(type, stanza, stream):
     event = servicetest.Event(type, stanza=stanza)

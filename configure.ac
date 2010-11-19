@@ -122,6 +122,12 @@ else
     AC_DEFINE_UNQUOTED([GTLS_SYSTEM_CA_FILE], ["$with_ca_file"], [path to system Certificate Authority list])
 fi
 
+if test -n "$with_ca_file"; then
+    if ! test -f "$with_ca_file"; then
+        AC_MSG_WARN([Specified certificate authority file '$with_ca_file' does not exist])
+    fi
+fi
+
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )

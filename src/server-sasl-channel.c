@@ -1005,10 +1005,8 @@ gabble_server_sasl_channel_start_auth_async_func (
     }
   else
     {
-      WOCKY_AUTH_REGISTRY_CLASS (
-          gabble_server_sasl_channel_parent_class)->start_auth_async_func (
-              auth_registry, mechanisms, allow_plain, is_secure_channel,
-              username, password, server, session_id, callback, user_data);
+      ERROR ("GabbleAuthManager is meant to do this bit now");
+      g_assert_not_reached ();
     }
 }
 
@@ -1018,20 +1016,9 @@ gabble_server_sasl_channel_start_auth_finish_func (WockyAuthRegistry *self,
     WockyAuthRegistryStartData **start_data,
     GError **error)
 {
-  if (G_IS_SIMPLE_ASYNC_RESULT (result) &&
-      g_simple_async_result_get_source_tag ((GSimpleAsyncResult *) result) ==
-        gabble_server_sasl_channel_start_auth_async_func)
-    {
-      wocky_implement_finish_copy_pointer (self,
-          gabble_server_sasl_channel_start_auth_async_func,
-          wocky_auth_registry_start_data_dup, start_data);
-    }
-  else
-    {
-      return WOCKY_AUTH_REGISTRY_CLASS
-        (gabble_server_sasl_channel_parent_class)->start_auth_finish_func (
-            self, result, start_data, error);
-    }
+  wocky_implement_finish_copy_pointer (self,
+      gabble_server_sasl_channel_start_auth_async_func,
+      wocky_auth_registry_start_data_dup, start_data);
 }
 
 static void
@@ -1065,9 +1052,8 @@ gabble_server_sasl_channel_challenge_async_func (
     }
   else
     {
-      WOCKY_AUTH_REGISTRY_CLASS (
-          gabble_server_sasl_channel_parent_class)->challenge_async_func (
-              auth_registry, challenge_data, callback, user_data);
+      ERROR ("GabbleAuthManager is meant to do this bit now");
+      g_assert_not_reached ();
     }
 }
 
@@ -1077,20 +1063,9 @@ gabble_server_sasl_channel_challenge_finish_func (WockyAuthRegistry *self,
     GString **response,
     GError **error)
 {
-  if (G_IS_SIMPLE_ASYNC_RESULT (result) &&
-      g_simple_async_result_get_source_tag ((GSimpleAsyncResult *) result) ==
-        gabble_server_sasl_channel_challenge_async_func)
-    {
-      wocky_implement_finish_copy_pointer (self,
-          gabble_server_sasl_channel_challenge_async_func,
-          wocky_g_string_dup, response);
-    }
-  else
-    {
-      return WOCKY_AUTH_REGISTRY_CLASS
-        (gabble_server_sasl_channel_parent_class)->challenge_finish_func (
-            self, result, response, error);
-    }
+  wocky_implement_finish_copy_pointer (self,
+      gabble_server_sasl_channel_challenge_async_func,
+      wocky_g_string_dup, response);
 }
 
 static void
@@ -1128,9 +1103,8 @@ gabble_server_sasl_channel_success_async_func (
     }
   else
     {
-      WOCKY_AUTH_REGISTRY_CLASS (
-          gabble_server_sasl_channel_parent_class)->success_async_func (
-              auth_registry, callback, user_data);
+      ERROR ("GabbleAuthManager is meant to do this bit now");
+      g_assert_not_reached ();
     }
 }
 
@@ -1139,19 +1113,8 @@ static gboolean gabble_server_sasl_channel_success_finish_func (
     GAsyncResult *result,
     GError **error)
 {
-  if (G_IS_SIMPLE_ASYNC_RESULT (result) &&
-      g_simple_async_result_get_source_tag ((GSimpleAsyncResult *) result) ==
-        gabble_server_sasl_channel_success_async_func)
-    {
-      wocky_implement_finish_void (self,
-          gabble_server_sasl_channel_success_async_func);
-    }
-  else
-    {
-      return WOCKY_AUTH_REGISTRY_CLASS
-        (gabble_server_sasl_channel_parent_class)->success_finish_func (
-            self, result, error);
-    }
+  wocky_implement_finish_void (self,
+      gabble_server_sasl_channel_success_async_func);
 }
 
 static void

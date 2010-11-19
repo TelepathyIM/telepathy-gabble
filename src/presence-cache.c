@@ -1233,7 +1233,15 @@ process_client_types (
     DiscoWaiter *waiter_self)
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, handle);
-  GPtrArray *client_types = client_types_from_message (handle, query_result,
+  GPtrArray *client_types;
+
+  /* If the contact's gone offline since we sent the disco request, we have no
+   * presence to attach their freshly-discovered client types to.
+   */
+  if (presence == NULL)
+    return;
+
+  client_types = client_types_from_message (handle, query_result,
       waiter_self->resource);
 
   if (waiter_self->resource != NULL)

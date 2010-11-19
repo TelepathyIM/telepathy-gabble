@@ -162,6 +162,9 @@ class XmppAuthenticator(GabbleAuthenticator):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
 
+        if self.xmlstream.sid is None:
+            self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
+
         self.xmlstream.sendHeader()
 
     def streamIQ(self):

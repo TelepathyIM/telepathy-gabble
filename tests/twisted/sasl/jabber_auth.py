@@ -9,7 +9,7 @@ import hashlib
 
 import dbus
 
-from servicetest import EventPattern, assertEquals
+from servicetest import EventPattern, assertEquals, assertSameSets
 from gabbletest import exec_test, JabberXmlStream, JabberAuthenticator
 import constants as cs
 from saslutil import SaslPlainAuthenticator, connect_and_get_sasl_channel, \
@@ -19,26 +19,29 @@ JID = "test@localhost"
 PASSWORD = "pass"
 
 def test_jabber_pass_success(q, bus, conn, stream):
-    chan, auth_info, avail_mechs = connect_and_get_sasl_channel(q, bus, conn)
+    chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    assertEquals (
-        avail_mechs, ['X-WOCKY-JABBER-PASSWORD', 'X-WOCKY-JABBER-DIGEST'])
+    assertSameSets(['X-WOCKY-JABBER-PASSWORD', 'X-WOCKY-JABBER-DIGEST'],
+            props.get(cs.SASL_AVAILABLE_MECHANISMS))
 
-    assert auth_info.has_key('session-id')
+    context = props.get(cs.SASL_CONTEXT)
 
-    digest = hashlib.sha1(auth_info['session-id'] + PASSWORD).hexdigest()
+    assert context.has_key('jabber-stream-id')
 
-    chan.SaslAuthentication.StartMechanism('X-WOCKY-JABBER-DIGEST', digest)
+    digest = hashlib.sha1(context['jabber-stream-id'] + PASSWORD).hexdigest()
 
-    q.expect('dbus-signal', signal='StateChanged',
+    chan.SASLAuthentication.StartMechanismWithData('X-WOCKY-JABBER-DIGEST',
+            digest)
+
+    q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
-             args=[cs.SASL_STATUS_SERVER_SUCCEEDED, '', ''])
+             args=[cs.SASL_STATUS_SERVER_SUCCEEDED, '', {}])
 
-    chan.SaslAuthentication.Accept()
+    chan.SASLAuthentication.AcceptSASL()
 
-    q.expect('dbus-signal', signal='StateChanged',
+    q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
-             args=[cs.SASL_STATUS_SUCCEEDED, '', ''])
+             args=[cs.SASL_STATUS_SUCCEEDED, '', {}])
 
     e = q.expect('dbus-signal', signal='StatusChanged',
                  args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])

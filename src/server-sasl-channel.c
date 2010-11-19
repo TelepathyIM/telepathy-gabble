@@ -145,15 +145,19 @@ enum
   PROP_CHANNEL_PROPERTIES,
 
   /* server authentication channel */
-  PROP_AUTH_INFO,
   PROP_AUTH_METHOD,
 
   /* sasl authentication channel */
-  PROP_CURRENT_STATE,
-  PROP_MECHANISM,
-  PROP_CHALLENGE,
   PROP_AVAILABLE_MECHANISMS,
+  PROP_HAS_INITIAL_DATA,
+  PROP_CAN_TRY_AGAIN,
   PROP_SECURE,
+  PROP_SASL_STATUS,
+  PROP_SASL_ERROR,
+  PROP_SASL_ERROR_DETAILS,
+  PROP_AUTHORIZATION_IDENTITY,
+  PROP_DEFAULT_REALM,
+  PROP_SASL_CONTEXT,
 
   LAST_PROPERTY,
 };
@@ -169,15 +173,17 @@ struct _GabbleServerSaslChannelPrivate
   GabbleConnection *conn;
   gboolean closed;
 
-  /* Server Authentication Iface*/
-  GHashTable *auth_info;
-
-  /* SASL Auth Iface */
+  /* Immutable SASL properties */
+  gchar *authorization_identity;
+  gchar *default_realm;
   GPtrArray *available_mechanisms;
-  GValueArray *current_state;
-  GArray *challenge;
-  gchar *mechanism;
   gboolean secure;
+  GHashTable *sasl_context;
+
+  /* Mutable SASL properties */
+  GabbleSASLStatus sasl_status;
+  gchar *sasl_error;
+  GHashTable *sasl_error_details;
 
   GSimpleAsyncResult *result;
 };
@@ -185,39 +191,20 @@ struct _GabbleServerSaslChannelPrivate
 static void
 gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+  GabbleServerSaslChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_SERVER_SASL_CHANNEL, GabbleServerSaslChannelPrivate);
-}
 
-static GObject *
-gabble_server_sasl_channel_constructor (GType type,
-                                  guint n_props,
-                                  GObjectConstructParam *props)
-{
-  GObject *obj;
-  GabbleServerSaslChannel *self;
-  GabbleServerSaslChannelPrivate *priv;
-
-  obj = G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->
-           constructor (type, n_props, props);
-
-  self = GABBLE_SERVER_SASL_CHANNEL (obj);
-  priv = self->priv;
+  self->priv = priv;
 
   priv->closed = TRUE;
 
-  priv->challenge = g_array_new (FALSE, FALSE, sizeof (gchar));
-
   priv->available_mechanisms = g_ptr_array_new_with_free_func (
       (GDestroyNotify) g_free);
+  priv->sasl_context = tp_asv_new (NULL, NULL);
 
-  priv->current_state = tp_value_array_build (3,
-      G_TYPE_UINT, GABBLE_SASL_STATUS_NOT_STARTED,
-      G_TYPE_STRING, "",
-      G_TYPE_STRING, "",
-      G_TYPE_INVALID);
-
-  return obj;
+  priv->sasl_status = GABBLE_SASL_STATUS_NOT_STARTED;
+  priv->sasl_error = NULL;
+  priv->sasl_error_details = tp_asv_new (NULL, NULL);
 }
 
 static void
@@ -278,26 +265,40 @@ gabble_server_sasl_channel_get_property (GObject *object,
               TP_IFACE_CHANNEL, "Requested",
               TP_IFACE_CHANNEL, "Interfaces",
               GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION,
-              "AuthenticationInformation",
-              GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION,
-              "AuthenticationMethod",
+                  "AuthenticationMethod",
               GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-              "AvailableMechanisms",
+                  "AvailableMechanisms",
               GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-              "Secure",
+                  "HasInitialData",
+              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+                  "CanTryAgain",
+              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+                  "Encrypted",
+              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+                  "Verified",
+              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+                  "AuthorizationIdentity",
+              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+                  "DefaultRealm",
+              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+                  "SASLContext",
               NULL));
       break;
-    case PROP_CURRENT_STATE:
-      g_value_set_boxed (value, priv->current_state);
+    case PROP_SASL_STATUS:
+      g_value_set_uint (value, priv->sasl_status);
       break;
-    case PROP_AUTH_INFO:
-      g_value_set_boxed (value, priv->auth_info);
+    case PROP_SASL_ERROR:
+      g_value_set_string (value, priv->sasl_error);
+      break;
+    case PROP_SASL_ERROR_DETAILS:
+      g_value_set_boxed (value, priv->sasl_error_details);
+      break;
+    case PROP_SASL_CONTEXT:
+      g_value_set_boxed (value, priv->sasl_context);
       break;
     case PROP_AUTH_METHOD:
-      g_value_set_uint (value, GABBLE_AUTHENTICATION_TYPE_SASL);
-      break;
-    case PROP_MECHANISM:
-      g_value_set_string (value, priv->mechanism);
+      g_value_set_static_string (value,
+          GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION);
       break;
     case PROP_AVAILABLE_MECHANISMS:
       g_value_set_boxed (value,
@@ -306,8 +307,19 @@ gabble_server_sasl_channel_get_property (GObject *object,
     case PROP_SECURE:
       g_value_set_boolean (value, chan->priv->secure);
       break;
-    case PROP_CHALLENGE:
-      g_value_set_boxed (value, chan->priv->challenge);
+    case PROP_CAN_TRY_AGAIN:
+      /* Wocky can't retry SASL authentication (although XMPP can) */
+      g_value_set_boolean (value, FALSE);
+      break;
+    case PROP_HAS_INITIAL_DATA:
+      /* Yes, XMPP has "initial data" in its SASL */
+      g_value_set_boolean (value, TRUE);
+      break;
+    case PROP_AUTHORIZATION_IDENTITY:
+      g_value_set_string (value, priv->authorization_identity);
+      break;
+    case PROP_DEFAULT_REALM:
+      g_value_set_string (value, priv->default_realm);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -355,18 +367,18 @@ gabble_server_sasl_channel_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   gabble_server_sasl_channel_close (self);
+  g_assert (priv->result == NULL);
 
-  g_free (priv->mechanism);
-
+  /* FIXME: from here down should really be in finalize since no object refs
+   * are involved */
   g_free (priv->object_path);
+  g_free (priv->authorization_identity);
+  g_free (priv->default_realm);
+  g_ptr_array_unref (priv->available_mechanisms);
+  g_hash_table_unref (priv->sasl_context);
 
-  g_ptr_array_free (priv->available_mechanisms, TRUE);
-
-  g_value_array_free (priv->current_state);
-
-  g_array_free (priv->challenge, TRUE);
-
-  tp_clear_pointer (&priv->auth_info, g_hash_table_unref);
+  g_free (priv->sasl_error);
+  g_hash_table_unref (priv->sasl_error_details);
 
   if (G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->dispose (object);
@@ -388,16 +400,24 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   };
 
   static TpDBusPropertiesMixinPropImpl server_auth_props[] = {
-    { "AuthenticationInformation", "auth-info", NULL },
     { "AuthenticationMethod", "auth-method", NULL },
     { NULL }
   };
 
   static TpDBusPropertiesMixinPropImpl sasl_auth_props[] = {
-    { "CurrentState", "current-state", NULL },
     { "AvailableMechanisms", "available-mechanisms", NULL },
-    { "Secure", "secure", NULL },
-    { "CurrentChallenge", "challenge", NULL },
+    { "HasInitialData", "has-initial-data", NULL },
+    { "CanTryAgain", "can-try-again", NULL },
+    { "SASLStatus", "sasl-status", NULL },
+    { "SASLError", "sasl-error", NULL },
+    { "SASLErrorDetails", "sasl-error-details", NULL },
+    { "AuthorizationIdentity", "authorization-identity", NULL },
+    { "DefaultRealm", "default-realm", NULL },
+    { "SASLContext", "sasl-context", NULL },
+    /* For the moment we only have a unified "secure" property, which
+     * implies we're both encrypted and verified */
+    { "Encrypted", "secure", NULL },
+    { "Verified", "secure", NULL },
     { NULL }
   };
 
@@ -427,7 +447,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 
   g_type_class_add_private (klass, sizeof (GabbleServerSaslChannelPrivate));
 
-  object_class->constructor = gabble_server_sasl_channel_constructor;
   object_class->get_property = gabble_server_sasl_channel_get_property;
   object_class->set_property = gabble_server_sasl_channel_set_property;
   object_class->dispose = gabble_server_sasl_channel_dispose;
@@ -501,34 +520,55 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   g_object_class_install_property (object_class, PROP_INITIATOR_ID,
       param_spec);
 
-  param_spec = g_param_spec_boxed ("auth-info",
-      "Authentication information",
-      "Details used for authentication purposes.",
-      GABBLE_HASH_TYPE_AUTHDETAILS,
+  param_spec = g_param_spec_boxed ("sasl-context", "SASLContext",
+      "Extra context for doing SASL",
+      TP_HASH_TYPE_STRING_VARIANT_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_AUTH_INFO,
+  g_object_class_install_property (object_class, PROP_SASL_CONTEXT,
       param_spec);
 
-  param_spec = g_param_spec_uint ("auth-method",
+  param_spec = g_param_spec_string ("auth-method",
       "Authentication method",
-      "Method of authentication like SASL or Captcha.",
-      0, NUM_GABBLE_AUTHENTICATION_TYPES, GABBLE_AUTHENTICATION_TYPE_SASL,
+      "Method of authentication (D-Bus interface)",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_AUTH_METHOD,
       param_spec);
 
-  param_spec = g_param_spec_boxed ("current-state",
-      "Current state",
-      "The state of the current SASL authentication.",
-      GABBLE_STRUCT_TYPE_SASL_STATE,
-      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CURRENT_STATE, param_spec);
+  param_spec = g_param_spec_string ("authorization-identity",
+      "AuthorizationIdentity",
+      "Identity for which we wish to be authorized",
+      NULL, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_AUTHORIZATION_IDENTITY,
+      param_spec);
 
-  param_spec = g_param_spec_string ("mechanism", "Mechanism",
-      "Mechanism used for this negotiation.",
-      NULL,
+  param_spec = g_param_spec_string ("default-realm",
+      "DefaultRealm",
+      "Default realm if the server does not supply one",
+      NULL, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DEFAULT_REALM,
+      param_spec);
+
+  param_spec = g_param_spec_uint ("sasl-status", "SASLStatus",
+      "Status of this channel",
+      /* FIXME: fix the pluralization in the spec */
+      0, NUM_GABBLE_SASL_STATUSS, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_MECHANISM, param_spec);
+  g_object_class_install_property (object_class, PROP_SASL_STATUS,
+      param_spec);
+
+  param_spec = g_param_spec_string ("sasl-error", "SASLError",
+      "D-Bus error name",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SASL_ERROR,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("sasl-error-details", "SASLErrorDetails",
+      "Extra details of a SASL error",
+      TP_HASH_TYPE_STRING_VARIANT_MAP,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SASL_ERROR_DETAILS,
+      param_spec);
 
   param_spec = g_param_spec_boxed ("available-mechanisms",
       "Available authentication mechanisms",
@@ -538,20 +578,24 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   g_object_class_install_property (object_class, PROP_AVAILABLE_MECHANISMS,
       param_spec);
 
+  param_spec = g_param_spec_boolean ("can-try-again", "CanTryAgain",
+      "True if failed SASL can be retried without reconnecting",
+      FALSE, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CAN_TRY_AGAIN,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("has-initial-data", "HasInitialData",
+      "True if SASL has initial data",
+      TRUE, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_HAS_INITIAL_DATA,
+      param_spec);
+
   param_spec = g_param_spec_boolean ("secure",
       "Is secure",
-      "Is this channel secure (encrypted)?",
+      "Is this channel secure (encrypted and verified)?",
       FALSE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SECURE,
-      param_spec);
-
-  param_spec = g_param_spec_boxed ("challenge",
-      "Challenge",
-      "The latest challenge",
-      DBUS_TYPE_G_UCHAR_ARRAY,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CHALLENGE,
       param_spec);
 
   klass->dbus_props_class.interfaces = prop_interfaces;
@@ -561,42 +605,24 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 
 static void
 change_current_state (GabbleServerSaslChannel *self,
-    GabbleSaslStatus status,
+    GabbleSASLStatus status,
     const gchar *dbus_error,
-    const gchar *message)
+    const gchar *debug_message)
 {
-  GabbleServerSaslChannelPrivate *priv = self->priv;
-  GValue *value;
-  gboolean status_changed;
+  self->priv->sasl_status = status;
 
-  value = g_value_array_get_nth (priv->current_state, 0);
-  status_changed = (status != g_value_get_uint (value));
-  g_value_set_uint (value, status);
+  g_free (self->priv->sasl_error);
+  self->priv->sasl_error = g_strdup (dbus_error);
 
-  if (dbus_error != NULL)
-    {
-      value = g_value_array_get_nth (priv->current_state, 1);
-      g_value_set_string (value, dbus_error);
-    }
+  g_hash_table_remove_all (self->priv->sasl_error_details);
+  if (debug_message != NULL)
+    tp_asv_set_string (self->priv->sasl_error_details, "debug-message",
+        debug_message);
 
-  if (message != NULL)
-    {
-      value = g_value_array_get_nth (priv->current_state, 2);
-      g_value_set_string (value, message);
-    }
-
-  if (status_changed)
-    {
-      const gchar *current_message;
-      const gchar *current_dbus_error;
-      GabbleSaslStatus current_status;
-
-      tp_value_array_unpack (priv->current_state, 3, &current_status,
-          &current_dbus_error, &current_message);
-
-      gabble_svc_channel_interface_sasl_authentication_emit_state_changed (
-          self, current_status, current_dbus_error, current_message);
-    }
+  gabble_svc_channel_interface_sasl_authentication_emit_sasl_status_changed (
+      self, self->priv->sasl_status,
+      self->priv->sasl_error,
+      self->priv->sasl_error_details);
 }
 
 /**
@@ -641,7 +667,7 @@ channel_iface_init (gpointer g_iface,
 }
 
 /**
- * Sasl Authentication Channel Interface
+ * SASL Authentication Channel Interface
  */
 
 static void
@@ -656,19 +682,20 @@ gabble_server_sasl_channel_raise_not_available (DBusGMethodInvocation *context,
   g_error_free (error);
 }
 
+/* When called from start_mechanism, initial_data can be NULL. When called
+ * from D-Bus as StartMechanismWithData, it can't. */
 static void
-gabble_server_sasl_channel_start_mechanism (
-    GabbleSvcChannelInterfaceSaslAuthentication *mechanisms_chooser,
+gabble_server_sasl_channel_start_mechanism_with_data (
+    GabbleSvcChannelInterfaceSASLAuthentication *iface,
     const gchar *in_Mechanism,
     const GArray *in_InitialData,
     DBusGMethodInvocation *context)
 {
-  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (
-      mechanisms_chooser);
+  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (iface);
   GabbleServerSaslChannelPrivate *priv = self->priv;
   WockyAuthRegistryStartData *start_data;
   GSimpleAsyncResult *r = priv->result;
-  GString *initial_data;
+  GString *initial_data = NULL;
   guint i;
   gboolean mechanism_available = FALSE;
   DEBUG ("");
@@ -697,8 +724,17 @@ gabble_server_sasl_channel_start_mechanism (
     {
       priv->result = NULL;
 
-      initial_data = g_string_new_len (in_InitialData->data,
-          in_InitialData->len);
+      if (in_InitialData != NULL)
+        {
+          initial_data = g_string_new_len (in_InitialData->data,
+              in_InitialData->len);
+        }
+      else if (g_str_has_prefix (in_Mechanism, "X-WOCKY-JABBER-"))
+        {
+          /* FIXME: wocky-jabber-auth asserts there is an initial response,
+           * and will crash otherwise */
+          initial_data = g_string_sized_new (0);
+        }
 
       start_data =
         wocky_auth_registry_start_data_new (in_Mechanism, initial_data);
@@ -720,8 +756,18 @@ gabble_server_sasl_channel_start_mechanism (
 }
 
 static void
+gabble_server_sasl_channel_start_mechanism (
+    GabbleSvcChannelInterfaceSASLAuthentication *iface,
+    const gchar *mech,
+    DBusGMethodInvocation *context)
+{
+  gabble_server_sasl_channel_start_mechanism_with_data (iface, mech, NULL,
+      context);
+}
+
+static void
 gabble_server_sasl_channel_respond (
-    GabbleSvcChannelInterfaceSaslAuthentication *channel,
+    GabbleSvcChannelInterfaceSASLAuthentication *channel,
     const GArray *in_Response_Data,
     DBusGMethodInvocation *context)
 {
@@ -758,18 +804,16 @@ gabble_server_sasl_channel_respond (
 }
 
 static void
-gabble_server_sasl_channel_accept (
-    GabbleSvcChannelInterfaceSaslAuthentication *channel,
+gabble_server_sasl_channel_accept_sasl (
+    GabbleSvcChannelInterfaceSASLAuthentication *channel,
     DBusGMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
-  GabbleSaslStatus current_status = g_value_get_uint (g_value_array_get_nth (
-          self->priv->current_state, 0));
   GSimpleAsyncResult *r = self->priv->result;
   const gchar *message = NULL;
 
 
-  switch (current_status)
+  switch (self->priv->sasl_status)
     {
     case GABBLE_SASL_STATUS_NOT_STARTED:
       message = "Authentication has not yet begun.";
@@ -815,64 +859,71 @@ gabble_server_sasl_channel_accept (
       g_object_unref (r);
     }
 
-  gabble_svc_channel_interface_sasl_authentication_return_from_accept (
+  gabble_svc_channel_interface_sasl_authentication_return_from_accept_sasl (
       context);
 }
 
 static void
-gabble_server_sasl_channel_abort (
-    GabbleSvcChannelInterfaceSaslAuthentication *channel,
+gabble_server_sasl_channel_abort_sasl (
+    GabbleSvcChannelInterfaceSASLAuthentication *channel,
     guint in_Reason,
     const gchar *in_Debug_Message,
     DBusGMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
   GSimpleAsyncResult *r = self->priv->result;
-  GabbleSaslStatus current_status = g_value_get_uint (g_value_array_get_nth (
-          self->priv->current_state, 0));
   guint code;
   const gchar *dbus_error;
 
-  if (current_status == GABBLE_SASL_STATUS_SUCCEEDED ||
-      current_status == GABBLE_SASL_STATUS_CLIENT_ACCEPTED)
+  switch (self->priv->sasl_status)
     {
-      gabble_server_sasl_channel_raise_not_available (context,
-          "Authentication has already succeeded.");
-
-      return;
-    }
-
-  switch (in_Reason)
-    {
-      case GABBLE_ABORT_REASON_INVALID_CHALLENGE:
-        code = WOCKY_AUTH_ERROR_INVALID_REPLY;
-        dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
+      case GABBLE_SASL_STATUS_SERVER_FAILED:
+      case GABBLE_SASL_STATUS_CLIENT_FAILED:
+        /* no effect */
         break;
 
-      case GABBLE_ABORT_REASON_USER_ABORT:
-        code = WOCKY_AUTH_ERROR_FAILURE;
-        dbus_error = TP_ERROR_STR_CANCELLED;
-        break;
+      case GABBLE_SASL_STATUS_SUCCEEDED:
+      case GABBLE_SASL_STATUS_CLIENT_ACCEPTED:
+        gabble_server_sasl_channel_raise_not_available (context,
+            "Authentication has already succeeded.");
+        return;
 
       default:
-        g_assert_not_reached ();
+        switch (in_Reason)
+          {
+            case GABBLE_SASL_ABORT_REASON_INVALID_CHALLENGE:
+              code = WOCKY_AUTH_ERROR_INVALID_REPLY;
+              /* FIXME: should be ServiceConfused, when it lands in tp-glib */
+              dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
+              break;
+
+            case GABBLE_SASL_ABORT_REASON_USER_ABORT:
+              code = WOCKY_AUTH_ERROR_FAILURE;
+              dbus_error = TP_ERROR_STR_CANCELLED;
+              break;
+
+            default:
+              /* FIXME: should not abort on D-Bus input! */
+              g_assert_not_reached ();
+          }
+
+        if (r != NULL)
+          {
+            self->priv->result = NULL;
+
+            g_simple_async_result_set_error (r, WOCKY_AUTH_ERROR, code,
+                "Authentication aborted: %s", in_Debug_Message);
+
+            g_simple_async_result_complete_in_idle (r);
+            g_object_unref (r);
+          }
+
+        change_current_state (self, GABBLE_SASL_STATUS_CLIENT_FAILED,
+            dbus_error, in_Debug_Message);
     }
 
-  if (r != NULL)
-    {
-      self->priv->result = NULL;
-
-      g_simple_async_result_set_error (r, WOCKY_AUTH_ERROR, code,
-          "Authentication aborted: %s", in_Debug_Message);
-
-      g_simple_async_result_complete_in_idle (r);
-      g_object_unref (r);
-    }
-
-  change_current_state (self, GABBLE_SASL_STATUS_CLIENT_FAILED, dbus_error,
-      in_Debug_Message);
-
-  gabble_svc_channel_interface_sasl_authentication_return_from_abort (context);
+  gabble_svc_channel_interface_sasl_authentication_return_from_abort_sasl (
+      context);
 }
 
 static void
@@ -883,9 +934,10 @@ sasl_auth_iface_init (gpointer klass,
   gabble_svc_channel_interface_sasl_authentication_implement_##x (   \
       klass, gabble_server_sasl_channel_##x)
   IMPLEMENT (start_mechanism);
+  IMPLEMENT (start_mechanism_with_data);
   IMPLEMENT (respond);
-  IMPLEMENT (accept);
-  IMPLEMENT (abort);
+  IMPLEMENT (accept_sasl);
+  IMPLEMENT (abort_sasl);
 #undef IMPLEMENT
 }
 
@@ -922,14 +974,15 @@ gabble_server_sasl_channel_start_auth_async_func (
 
       g_ptr_array_set_size (priv->available_mechanisms, 0);
 
-      if (priv->auth_info != NULL)
-        g_hash_table_unref (priv->auth_info);
+      g_free (priv->authorization_identity);
+      priv->authorization_identity = g_strdup (username);
 
-      priv->auth_info = tp_asv_new (
-          "username", G_TYPE_STRING, username,
-          "realm", G_TYPE_STRING, server,
-          "session-id", G_TYPE_STRING, session_id,
-          NULL);
+      g_free (priv->default_realm);
+      priv->default_realm = g_strdup (server);
+
+      g_hash_table_remove_all (priv->sasl_context);
+      g_hash_table_insert (priv->sasl_context, "jabber-stream-id",
+          tp_g_value_slice_new_string (session_id));
 
       priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
           user_data, gabble_server_sasl_channel_start_auth_async_func);
@@ -939,7 +992,7 @@ gabble_server_sasl_channel_start_auth_async_func (
 
       g_ptr_array_add (priv->available_mechanisms, NULL);
 
-      priv->object_path = g_strdup_printf ("%s/SaslChannel",
+      priv->object_path = g_strdup_printf ("%s/SASLChannel",
           conn->object_path);
 
       priv->secure = is_secure_channel;
@@ -993,23 +1046,22 @@ gabble_server_sasl_channel_challenge_async_func (
 
   if (!priv->closed)
     {
+      GArray *challenge_ay;
+
       g_assert (priv->result == NULL);
 
       priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
           user_data, gabble_server_sasl_channel_challenge_async_func);
 
-      g_array_free (priv->challenge, TRUE);
-
-      priv->challenge = g_array_sized_new (FALSE, FALSE, sizeof (gchar),
+      challenge_ay = g_array_sized_new (FALSE, FALSE, sizeof (gchar),
           challenge_data->len);
-
-      g_array_append_vals (priv->challenge, challenge_data->str,
+      g_array_append_vals (challenge_ay, challenge_data->str,
           challenge_data->len);
 
       change_current_state (self, GABBLE_SASL_STATUS_IN_PROGRESS, NULL, NULL);
 
       gabble_svc_channel_interface_sasl_authentication_emit_new_challenge (
-          self, priv->challenge);
+          self, challenge_ay);
     }
   else
     {
@@ -1052,8 +1104,6 @@ gabble_server_sasl_channel_success_async_func (
 
   if (!priv->closed)
     {
-      GabbleSaslStatus current_status = g_value_get_uint (
-          g_value_array_get_nth (priv->current_state, 0));
       GSimpleAsyncResult *r = g_simple_async_result_new (G_OBJECT (self),
           callback, user_data,
           gabble_server_sasl_channel_success_async_func);
@@ -1062,7 +1112,7 @@ gabble_server_sasl_channel_success_async_func (
 
       g_assert (priv->result == NULL);
 
-      if (current_status != GABBLE_SASL_STATUS_CLIENT_ACCEPTED)
+      if (self->priv->sasl_status != GABBLE_SASL_STATUS_CLIENT_ACCEPTED)
         {
           priv->result = r;
           change_current_state (self, GABBLE_SASL_STATUS_SERVER_SUCCEEDED,

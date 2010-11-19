@@ -3,7 +3,7 @@ Test the server sasl channel with the PLAIN mechanism
 """
 import dbus
 
-from servicetest import EventPattern, assertEquals
+from servicetest import EventPattern, assertEquals, assertSameSets
 from gabbletest import exec_test
 import constants as cs
 from saslutil import SaslComplexAuthenticator, connect_and_get_sasl_channel
@@ -17,12 +17,12 @@ EXCHANGE = [("", "Hi dear"),
 MECHANISMS = ["PLAIN", "DIGEST-MD5", "POLITE-TEST"]
 
 def test_complex_success(q, bus, conn, stream):
-    chan, auth_info, avail_mechs = connect_and_get_sasl_channel(q, bus, conn)
+    chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    assertEquals(MECHANISMS, avail_mechs)
+    assertSameSets(MECHANISMS, props.get(cs.SASL_AVAILABLE_MECHANISMS))
 
     try:
-        chan.SaslAuthentication.StartMechanism("FOO", "")
+        chan.SASLAuthentication.StartMechanismWithData("FOO", "")
     except dbus.DBusException:
         pass
     else:
@@ -34,11 +34,11 @@ def test_complex_success(q, bus, conn, stream):
     else:
         initial_data = ""
 
-    chan.SaslAuthentication.StartMechanism("POLITE-TEST", initial_data)
+    chan.SASLAuthentication.StartMechanismWithData("POLITE-TEST", initial_data)
 
-    q.expect('dbus-signal', signal='StateChanged',
+    q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
-             args=[cs.SASL_STATUS_IN_PROGRESS, '', ''])
+             args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
 
     for i, pair in enumerate(EXCHANGE[1:]):
         challenge, response = pair
@@ -46,23 +46,17 @@ def test_complex_success(q, bus, conn, stream):
                      interface=cs.CHANNEL_IFACE_SASL_AUTH,
                      args=[challenge or 'None'])
 
-        challenge_prop = ''.join(
-            map(chr, chan.Properties.Get(
-                    cs.CHANNEL_IFACE_SASL_AUTH, "CurrentChallenge")))
-
-        assertEquals(challenge, challenge_prop)
-
         if i == len(EXCHANGE) - 2:
-            chan.SaslAuthentication.Accept()
-            q.expect('dbus-signal', signal='StateChanged',
+            chan.SASLAuthentication.AcceptSASL()
+            q.expect('dbus-signal', signal='SASLStatusChanged',
                      interface=cs.CHANNEL_IFACE_SASL_AUTH,
-                     args=[cs.SASL_STATUS_CLIENT_ACCEPTED, '', ''])
+                     args=[cs.SASL_STATUS_CLIENT_ACCEPTED, '', {}])
         else:
-            chan.SaslAuthentication.Respond(response)
+            chan.SASLAuthentication.Respond(response)
 
-    q.expect('dbus-signal', signal='StateChanged',
+    q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
-             args=[cs.SASL_STATUS_SUCCEEDED, '', ''])
+             args=[cs.SASL_STATUS_SUCCEEDED, '', {}])
 
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])

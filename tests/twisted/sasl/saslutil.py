@@ -4,12 +4,12 @@ from base64 import b64decode, b64encode
 from twisted.words.xish import domish
 import constants as cs
 import ns
-from servicetest import ProxyWrapper, EventPattern, assertEquals
+from servicetest import ProxyWrapper, EventPattern, assertEquals, assertLength
 
 class SaslChannelWrapper(ProxyWrapper):
     def __init__(self, object, default=cs.CHANNEL, interfaces={
             "ServerAuthentication" : cs.CHANNEL_TYPE_SERVER_AUTHENTICATION,
-            "SaslAuthentication" : cs.CHANNEL_IFACE_SASL_AUTH}):
+            "SASLAuthentication" : cs.CHANNEL_IFACE_SASL_AUTH}):
         ProxyWrapper.__init__(self, object, default, interfaces)
 
 class SaslComplexAuthenticator(XmppAuthenticator):
@@ -121,41 +121,44 @@ def connect_and_get_sasl_channel(q, bus, conn):
              args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
     old_signal, new_signal = q.expect_many(
-            EventPattern('dbus-signal', signal='NewChannel'),
-            EventPattern('dbus-signal', signal='NewChannels'))
+            EventPattern('dbus-signal', signal='NewChannel',
+                predicate=lambda e:
+                    e.args[1] == cs.CHANNEL_TYPE_SERVER_AUTHENTICATION),
+            EventPattern('dbus-signal', signal='NewChannels',
+                predicate=lambda e:
+                    e.args[0][0][1].get(cs.CHANNEL_TYPE) ==
+                        cs.CHANNEL_TYPE_SERVER_AUTHENTICATION),
+                )
 
     path, type, handle_type, handle, suppress_handler = old_signal.args
 
     chan = SaslChannelWrapper(bus.get_object(conn.bus_name, path))
+    assertLength(1, new_signal.args[0])
+    assertEquals(path, new_signal.args[0][0][0])
+    props = new_signal.args[0][0][1]
 
-    auth_info = {}
-    avail_mechs = []
-    for obj_path, props in new_signal.args[0]:
-        if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_SERVER_AUTHENTICATION:
-            assertEquals (props[cs.AUTH_METHOD], cs.AUTH_TYPE_SASL)
-            info = props[cs.AUTH_INFO]
-            mechs = props[cs.SASL_AVAILABLE_MECHANISMS]
-            return chan, info, mechs
-
-    raise AssertionError, "SASL channel not created."
+    assertEquals(cs.CHANNEL_IFACE_SASL_AUTH, props.get(cs.AUTH_METHOD))
+    return chan, props
 
 def abort_auth(q, chan, reason, message):
     reason_err_map = {
         cs.SASL_ABORT_REASON_USER_ABORT : cs.CANCELLED,
         cs.SASL_ABORT_REASON_INVALID_CHALLENGE : cs.AUTHENTICATION_FAILED}
 
-    chan.SaslAuthentication.Abort(reason, message)
+    chan.SASLAuthentication.AbortSASL(reason, message)
 
-    q.expect_many(
+    ssc, _, _ = q.expect_many(
         EventPattern(
-            'dbus-signal', signal='StateChanged',
+            'dbus-signal', signal='SASLStatusChanged',
             interface=cs.CHANNEL_IFACE_SASL_AUTH,
-            args=[cs.SASL_STATUS_CLIENT_FAILED,
-                  reason_err_map[reason],
-                  message]),
+            predicate=lambda e:e.args[0] == cs.SASL_STATUS_CLIENT_FAILED),
         EventPattern('dbus-signal', signal='ConnectionError',
             predicate=lambda e: e.args[0] == reason_err_map[reason]),
         EventPattern(
             'dbus-signal', signal="StatusChanged",
             args=[cs.CONN_STATUS_DISCONNECTED,
                   cs.CSR_AUTHENTICATION_FAILED]))
+
+    assertEquals(cs.SASL_STATUS_CLIENT_FAILED, ssc.args[0])
+    assertEquals(reason_err_map[reason], ssc.args[1])
+    assertEquals(message, ssc.args[2].get('debug-message')),

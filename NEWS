@@ -1,7 +1,13 @@
 telepathy-gabble 0.10.5 (UNRELEASED)
 ====================================
 
-…
+Fixes:
+
+• fd.o #31412: fix crashes during disconnection if a PEP alias request is
+  in-flight (smcv)
+
+• Loosen an assertion to fix test failure with telepathy-glib >= 0.13.5,
+  which releases connections' object paths sooner (smcv)
 
 telepathy-gabble 0.10.4 (2010-11-02)
 ====================================

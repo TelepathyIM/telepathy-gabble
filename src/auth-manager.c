@@ -56,8 +56,6 @@ struct _GabbleAuthManagerPrivate
 
   GabbleServerSaslChannel *server_sasl_channel;
 
-  GSimpleAsyncResult *result;
-
   gboolean dispose_has_run;
 };
 

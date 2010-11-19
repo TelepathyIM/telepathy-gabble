@@ -119,9 +119,7 @@ else
     fi
 
     AC_MSG_RESULT($with_ca_file)
-    GTLS_SYSTEM_CA_FILE="$with_ca_file"
-
-    AC_DEFINE_UNQUOTED([GTLS_SYSTEM_CA_FILE], ["$GTLS_SYSTEM_CA_FILE"], [path to system Certificate Authority list])
+    AC_DEFINE_UNQUOTED([GTLS_SYSTEM_CA_FILE], ["$with_ca_file"], [path to system Certificate Authority list])
 fi
 
 AC_ARG_ENABLE(debug,

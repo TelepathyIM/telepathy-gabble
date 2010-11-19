@@ -877,8 +877,7 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
 
   result = lm_iq_message_make_result (message);
 
-  if (!lm_connection_send (conn->lmconn, result, NULL))
-      DEBUG ("sending push privacy list response failed");
+  wocky_porter_send (wocky_session_get_porter (conn->session), result);
 
   list_name = lm_message_node_get_attribute (list_node, "name");
 

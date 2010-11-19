@@ -272,6 +272,8 @@ struct _GabbleConnectionPrivate
   gboolean dispose_has_run;
 };
 
+static guint sig_id_porter_available = 0;
+
 static void connection_capabilities_update_cb (GabblePresenceCache *cache,
     TpHandle handle,
     const GabbleCapabilitySet *old_cap_set,
@@ -1082,6 +1084,17 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  /**
+   * @self: a connection
+   * @porter: a porter
+   *
+   * Emitted when the WockyPorter becomes available.
+   */
+  sig_id_porter_available = g_signal_new ("porter-available",
+      G_OBJECT_CLASS_TYPE (gabble_connection_class),
+      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED, 0, NULL, NULL,
+      g_cclosure_marshal_VOID__OBJECT, G_TYPE_NONE, 1, WOCKY_TYPE_PORTER);
+
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
@@ -1304,29 +1317,16 @@ WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn)
 gboolean
 _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 {
-  GError *lmerror = NULL;
-
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  if (conn->lmconn == NULL)
+  if (conn->lmconn == NULL || conn->priv->porter == NULL)
     {
       g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
       return FALSE;
     }
 
-  if (!lm_connection_send (conn->lmconn, msg, &lmerror))
-    {
-      DEBUG ("failed: %s", lmerror->message);
-
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "message send failed: %s", lmerror->message);
-
-      g_error_free (lmerror);
-
-      return FALSE;
-    }
-
+  wocky_porter_send (conn->priv->porter, msg);
   return TRUE;
 }
 
@@ -1773,6 +1773,7 @@ connector_connected (GabbleConnection *self,
       G_CALLBACK (remote_error_cb), self);
 
   lm_connection_set_porter (self->lmconn, priv->porter);
+  g_signal_emit (self, sig_id_porter_available, 0, priv->porter);
 
   wocky_pep_service_start (self->pep_location, self->session);
   wocky_pep_service_start (self->pep_nick, self->session);
@@ -2567,10 +2568,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
       NODE_DEBUG (result_iq, "sending disco response");
 
-      if (!lm_connection_send (self->lmconn, result, NULL))
-        {
-          DEBUG ("sending disco response failed");
-        }
+      wocky_porter_send (self->priv->porter, result);
     }
 
   lm_message_unref (result);

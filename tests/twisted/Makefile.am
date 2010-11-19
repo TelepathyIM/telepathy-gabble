@@ -106,6 +106,7 @@ TWISTED_TUBE_TESTS = \
 	$(NULL)
 
 TWISTED_VCARD_TESTS = \
+	vcard/disconnect-during-pep.py \
 	vcard/get-contact-info.py \
 	vcard/item-not-found.py \
 	vcard/overlapping-sets.py \

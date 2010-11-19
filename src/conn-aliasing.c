@@ -126,6 +126,7 @@ aliases_request_free (AliasesRequest *request)
 
   for (i = 0; i < request->contacts->len; i++)
     {
+      /* FIXME: what if vcard_manager is NULL? */
       if (request->vcard_requests[i] != NULL)
         gabble_vcard_manager_cancel_request (request->conn->vcard_manager,
             request->vcard_requests[i]);
@@ -245,6 +246,7 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
                               gpointer user_data,
                               GError *error)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
   GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_NONE;
   TpHandle handle = GPOINTER_TO_UINT (user_data);
 
@@ -253,6 +255,7 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
   source = _gabble_connection_get_cached_alias (self, handle, NULL);
 
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
+      base->status == TP_CONNECTION_STATUS_CONNECTED &&
       !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       /* no alias in PEP, get the vcard */
@@ -267,6 +270,7 @@ aliases_request_pep_cb (GabbleConnection *self,
                         gpointer user_data,
                         GError *error)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
   AliasRequest *alias_request = (AliasRequest *) user_data;
   AliasesRequest *aliases_request = alias_request->aliases_request;
   guint index = alias_request->index;
@@ -287,9 +291,15 @@ aliases_request_pep_cb (GabbleConnection *self,
   DEBUG ("Got cached alias %s with priority %u", alias, source);
 
   if (source >= GABBLE_CONNECTION_ALIAS_FROM_VCARD ||
-      gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
+      (self->vcard_manager != NULL &&
+       gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle)))
     {
       aliases_request->aliases[index] = alias;
+    }
+  else if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      DEBUG ("no longer connected, not chaining up to vCard");
+      g_free (alias);
     }
   else
     {
@@ -328,6 +338,9 @@ pep_request_cb (
   g_slice_free (pep_request_ctx, ctx);
 }
 
+/**
+ * @self must have %TP_CONNECTION_STATUS_CONNECTED.
+ */
 static GabbleRequestPipelineItem *
 gabble_do_pep_request (GabbleConnection *self,
                        TpHandle handle,
@@ -335,10 +348,17 @@ gabble_do_pep_request (GabbleConnection *self,
                        GabbleRequestPipelineCb callback,
                        gpointer user_data)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
   LmMessage *msg;
   GabbleRequestPipelineItem *pep_request;
-  pep_request_ctx *ctx = g_slice_new0 (pep_request_ctx);
+  pep_request_ctx *ctx;
 
+  /* callers must check this... */
+  g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
+  /* ... which implies this */
+  g_assert (self->req_pipeline != NULL);
+
+  ctx = g_slice_new0 (pep_request_ctx);
   ctx->callback = callback;
   ctx->user_data = user_data;
   ctx->contact_handles = contact_handles;
@@ -501,6 +521,8 @@ setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
   TpBaseConnection *base = (TpBaseConnection *) data->conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
+
+  g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
 
   if (!tp_handle_is_valid (contact_handles, handle, &error))
     {
@@ -915,12 +937,16 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       return GABBLE_CONNECTION_ALIAS_FROM_MUC_RESOURCE;
     }
 
-  /* if we've seen a nickname in their vCard, use that */
-  tmp = gabble_vcard_manager_get_cached_alias (conn->vcard_manager, handle);
-  if (NULL != tmp)
+  if (conn->vcard_manager != NULL)
     {
-      maybe_set (alias, tmp);
-      return GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+      /* if we've seen a nickname in their vCard, use that */
+      tmp = gabble_vcard_manager_get_cached_alias (conn->vcard_manager,
+          handle);
+      if (NULL != tmp)
+        {
+          maybe_set (alias, tmp);
+          return GABBLE_CONNECTION_ALIAS_FROM_VCARD;
+        }
     }
 
   /* otherwise just take their jid */
@@ -932,13 +958,15 @@ static void
 maybe_request_vcard (GabbleConnection *self, TpHandle handle,
   GabbleConnectionAliasSource source)
 {
+  TpBaseConnection *base = (TpBaseConnection *) self;
+
   /* If the source wasn't good enough then do a request */
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
+      base->status == TP_CONNECTION_STATUS_CONNECTED &&
       !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
         {
-          TpBaseConnection *base = (TpBaseConnection *) self;
           TpHandleRepoIface *contact_handles =
             tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
 

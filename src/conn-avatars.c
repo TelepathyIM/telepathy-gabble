@@ -686,6 +686,8 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
   GError *error = NULL;
   guint i;
 
+  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
+
   if (!tp_handles_are_valid (contacts_repo, contacts, FALSE, &error))
     {
       dbus_g_method_return_error (context, error);
@@ -914,6 +916,8 @@ conn_avatars_fill_contact_attributes (GObject *obj,
 void
 conn_avatars_init (GabbleConnection *conn)
 {
+  g_assert (conn->vcard_manager != NULL);
+
   g_signal_connect (conn->vcard_manager, "got-self-initial-avatar", G_CALLBACK
       (connection_got_self_initial_avatar_cb), conn);
   g_signal_connect (conn->presence_cache, "avatar-update", G_CALLBACK

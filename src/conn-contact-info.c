@@ -950,8 +950,9 @@ _vcard_updated (GObject *object,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   WockyNode *vcard_node;
 
-  if (gabble_vcard_manager_get_cached (conn->vcard_manager,
-                                       contact, &vcard_node))
+  if (conn->vcard_manager != NULL &&
+      gabble_vcard_manager_get_cached (conn->vcard_manager,
+        contact, &vcard_node))
     {
       _emit_contact_info_changed (
           TP_SVC_CONNECTION_INTERFACE_CONTACT_INFO (conn),
@@ -1089,6 +1090,8 @@ conn_contact_info_fill_contact_attributes (GObject *obj,
   guint i;
   GabbleConnection *self = GABBLE_CONNECTION (obj);
 
+  g_assert (self->vcard_manager != NULL);
+
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle contact = g_array_index (contacts, TpHandle, i);
@@ -1114,6 +1117,8 @@ conn_contact_info_fill_contact_attributes (GObject *obj,
 void
 conn_contact_info_init (GabbleConnection *conn)
 {
+  g_assert (conn->vcard_manager != NULL);
+
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
     TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
     conn_contact_info_fill_contact_attributes);

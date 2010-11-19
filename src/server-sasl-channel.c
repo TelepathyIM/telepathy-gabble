@@ -1000,8 +1000,6 @@ gabble_server_sasl_channel_start_auth_async_func (
       tp_dbus_daemon_register_object (bus, priv->object_path, G_OBJECT (self));
 
       priv->closed = FALSE;
-
-      g_object_notify (G_OBJECT (self), "channel-destroyed");
     }
   else
     {
@@ -1186,10 +1184,6 @@ gabble_server_sasl_channel_close (GabbleServerSaslChannel *self)
 
   DEBUG ("called on %p", self);
 
-  tp_svc_channel_emit_closed (self);
-
-  g_object_notify (G_OBJECT (self), "channel-destroyed");
-
   if (priv->result != NULL)
     {
       GSimpleAsyncResult *r = priv->result;
@@ -1203,6 +1197,8 @@ gabble_server_sasl_channel_close (GabbleServerSaslChannel *self)
       g_simple_async_result_complete_in_idle (r);
       g_object_unref (r);
     }
+
+  tp_svc_channel_emit_closed (self);
 }
 
 gboolean

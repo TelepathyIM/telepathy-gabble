@@ -196,10 +196,31 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  wocky_auth_registry_start_auth_async (
-      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
-      mechanisms, allow_plain, is_secure_channel, username, password, server,
-      session_id, callback, user_data);
+  /* assumption: Wocky's API guarantees that we never have more than one
+   * auth request outstanding */
+  g_assert (!gabble_server_sasl_channel_is_open (
+        self->priv->server_sasl_channel));
+
+  if (password == NULL || username == NULL)
+    {
+      wocky_auth_registry_start_auth_async (
+          WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+          mechanisms, allow_plain, is_secure_channel, username, password,
+          server, session_id, callback, user_data);
+
+      g_assert (gabble_server_sasl_channel_is_open (
+            self->priv->server_sasl_channel));
+    }
+  else
+    {
+      WOCKY_AUTH_REGISTRY_CLASS (
+          gabble_auth_manager_parent_class)->start_auth_async_func (
+              registry, mechanisms, allow_plain, is_secure_channel,
+              username, password, server, session_id, callback, user_data);
+
+      g_assert (!gabble_server_sasl_channel_is_open (
+            self->priv->server_sasl_channel));
+    }
 }
 
 static gboolean
@@ -210,9 +231,19 @@ gabble_auth_manager_start_auth_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  return wocky_auth_registry_start_auth_finish (
-      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
-      result, start_data, error);
+  if (gabble_server_sasl_channel_is_open (self->priv->server_sasl_channel))
+    {
+      return wocky_auth_registry_start_auth_finish (
+          WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+          result, start_data, error);
+    }
+  else
+    {
+      return WOCKY_AUTH_REGISTRY_CLASS
+        (gabble_auth_manager_parent_class)->start_auth_finish_func (
+            registry, result, start_data, error);
+    }
+
 }
 
 static void
@@ -223,9 +254,18 @@ gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  wocky_auth_registry_challenge_async (
-      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
-      challenge_data, callback, user_data);
+  if (gabble_server_sasl_channel_is_open (self->priv->server_sasl_channel))
+    {
+      wocky_auth_registry_challenge_async (
+          WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+          challenge_data, callback, user_data);
+    }
+  else
+    {
+      WOCKY_AUTH_REGISTRY_CLASS (
+          gabble_auth_manager_parent_class)->challenge_async_func (
+              registry, challenge_data, callback, user_data);
+    }
 }
 
 static gboolean
@@ -236,9 +276,18 @@ gabble_auth_manager_challenge_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  return wocky_auth_registry_challenge_finish (
-      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
-      result, response, error);
+  if (gabble_server_sasl_channel_is_open (self->priv->server_sasl_channel))
+    {
+      return wocky_auth_registry_challenge_finish (
+          WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+          result, response, error);
+    }
+  else
+    {
+      return WOCKY_AUTH_REGISTRY_CLASS
+        (gabble_auth_manager_parent_class)->challenge_finish_func (
+            registry, result, response, error);
+    }
 }
 
 static void
@@ -248,9 +297,18 @@ gabble_auth_manager_success_async (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  wocky_auth_registry_success_async (
-      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
-      callback, user_data);
+  if (gabble_server_sasl_channel_is_open (self->priv->server_sasl_channel))
+    {
+      wocky_auth_registry_success_async (
+          WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+          callback, user_data);
+    }
+  else
+    {
+      WOCKY_AUTH_REGISTRY_CLASS (
+          gabble_auth_manager_parent_class)->success_async_func (
+              registry, callback, user_data);
+    }
 }
 
 static gboolean
@@ -260,9 +318,18 @@ gabble_auth_manager_success_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  return wocky_auth_registry_success_finish (
-      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
-      result, error);
+  if (gabble_server_sasl_channel_is_open (self->priv->server_sasl_channel))
+    {
+      return wocky_auth_registry_success_finish (
+          WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+          result, error);
+    }
+  else
+    {
+      return WOCKY_AUTH_REGISTRY_CLASS
+        (gabble_auth_manager_parent_class)->success_finish_func (
+            registry, result, error);
+    }
 }
 
 static void
@@ -271,8 +338,20 @@ gabble_auth_manager_failure (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  wocky_auth_registry_failure (
-      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel), error);
+  if (gabble_server_sasl_channel_is_open (self->priv->server_sasl_channel))
+    {
+      wocky_auth_registry_failure (
+          WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel), error);
+    }
+  else
+    {
+      void (*chain_up)(WockyAuthRegistry *, GError *) =
+        WOCKY_AUTH_REGISTRY_CLASS (gabble_auth_manager_parent_class)->
+        failure_func;
+
+      if (chain_up != NULL)
+        chain_up (registry, error);
+    }
 }
 
 static void

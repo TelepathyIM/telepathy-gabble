@@ -309,14 +309,14 @@ static Resource *
 _find_resource (GabblePresence *presence, const gchar *resource)
 {
   GSList *i;
-  GabblePresencePrivate *priv = presence->priv;
 
   /* you've been warned! */
+  g_return_val_if_fail (presence != NULL, NULL);
   g_return_val_if_fail (resource != NULL, NULL);
 
-  for (i = priv->resources; NULL != i; i = i->next)
+  for (i = presence->priv->resources; NULL != i; i = i->next)
     {
-      Resource *res = (Resource *) i->data;
+      Resource *res = i->data;
 
       if (!tp_strdiff (res->name, resource))
         return res;

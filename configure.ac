@@ -100,31 +100,31 @@ AC_SUBST([ERROR_CFLAGS])
 # Stolen from GIO's TLS
 # -----------------------------------------------------------
 AC_MSG_CHECKING([location of system Certificate Authority list])
-AC_ARG_WITH(ca-file,
-            [AC_HELP_STRING([--with-ca-file=@<:@path@:>@],
+AC_ARG_WITH(ca-certificates,
+            [AC_HELP_STRING([--with-ca-certificates=@<:@path@:>@],
                             [path to system Certificate Authority list])])
-if test "$with_ca_file" = "no"; then
+if test "$with_ca_certificates" = "no"; then
     AC_MSG_RESULT([disabled])
 else
-    if test -z "$with_ca_file"; then
+    if test -z "$with_ca_certificates"; then
         for f in /etc/pki/tls/certs/ca-bundle.crt \
                  /etc/ssl/certs/ca-certificates.crt; do
             if test -f "$f"; then
-                with_ca_file="$f"
+                with_ca_certificates="$f"
             fi
         done
-        if test -z "$with_ca_file"; then
-            AC_MSG_ERROR([could not find. Use --with-ca-file=path to set, or --without-ca-file to disable])
+        if test -z "$with_ca_certificates"; then
+            AC_MSG_ERROR([could not find. Use --with-ca-certificates=path to set, or --without-ca-certificates to disable])
         fi
     fi
 
-    AC_MSG_RESULT($with_ca_file)
-    AC_DEFINE_UNQUOTED([GTLS_SYSTEM_CA_FILE], ["$with_ca_file"], [path to system Certificate Authority list])
+    AC_MSG_RESULT($with_ca_certificates)
+    AC_DEFINE_UNQUOTED([GTLS_SYSTEM_CA_CERTIFICATES], ["$with_ca_certificates"], [path to system Certificate Authority list])
 fi
 
-if test -n "$with_ca_file"; then
-    if ! test -f "$with_ca_file"; then
-        AC_MSG_WARN([Specified certificate authority file '$with_ca_file' does not exist])
+if test -n "$with_ca_certificates"; then
+    if ! test -f "$with_ca_certificates"; then
+        AC_MSG_WARN([Specified certificate authority file '$with_ca_certificates' does not exist])
     fi
 fi
 

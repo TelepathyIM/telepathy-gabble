@@ -1226,6 +1226,28 @@ _signal_presences_updated (GabblePresenceCache *cache,
 }
 
 static void
+process_client_types (
+    GabblePresenceCache *cache,
+    LmMessageNode *query_result,
+    TpHandle handle,
+    DiscoWaiter *waiter_self)
+{
+  GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+  GPtrArray *client_types = client_types_from_message (handle, query_result,
+      waiter_self->resource);
+
+  if (waiter_self->resource != NULL)
+    gabble_presence_update_client_types (presence, waiter_self->resource,
+        client_types);
+
+  if (client_types != NULL)
+    {
+      g_ptr_array_unref (client_types);
+      _signal_presences_updated (cache, handle);
+    }
+}
+
+static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
                 const gchar *jid,
@@ -1247,8 +1269,6 @@ _caps_disco_cb (GabbleDisco *disco,
   gchar *resource;
   gboolean jid_is_valid;
   gpointer key;
-  GabblePresence *presence;
-  GPtrArray *client_types;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = cache->priv;
@@ -1293,23 +1313,9 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  /* Sort out client types */
-  presence = gabble_presence_cache_get (cache, handle);
-  client_types = client_types_from_message (handle, query_result,
-      waiter_self->resource);
-
-  if (waiter_self->resource != NULL)
-    gabble_presence_update_client_types (presence, waiter_self->resource,
-        client_types);
-
-  if (client_types != NULL)
-    {
-      g_ptr_array_unref (client_types);
-      _signal_presences_updated (cache, handle);
-    }
+  process_client_types (cache, query_result, handle, waiter_self);
 
   /* Now onto caps */
-
   cap_set = gabble_capability_set_new_from_stanza (query_result);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact

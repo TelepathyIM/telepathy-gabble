@@ -1979,7 +1979,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
   tls_handler = WOCKY_TLS_HANDLER (priv->server_tls_manager);
   priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
-      gabble_auth_manager_get_auth_registry (priv->auth_manager),
+      WOCKY_AUTH_REGISTRY (priv->auth_manager),
       tls_handler);
   g_free (jid);
 

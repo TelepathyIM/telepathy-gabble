@@ -37,7 +37,7 @@
 static void channel_manager_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleAuthManager, gabble_auth_manager,
-    G_TYPE_OBJECT,
+    WOCKY_TYPE_AUTH_REGISTRY,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
       channel_manager_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
@@ -185,9 +185,103 @@ gabble_auth_manager_set_property (GObject *object,
 }
 
 static void
+gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
+    const GSList *mechanisms,
+    gboolean allow_plain,
+    gboolean is_secure_channel,
+    const gchar *username,
+    const gchar *password,
+    const gchar *server,
+    const gchar *session_id,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+
+  wocky_auth_registry_start_auth_async (
+      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+      mechanisms, allow_plain, is_secure_channel, username, password, server,
+      session_id, callback, user_data);
+}
+
+static gboolean
+gabble_auth_manager_start_auth_finish (WockyAuthRegistry *registry,
+    GAsyncResult *result,
+    WockyAuthRegistryStartData **start_data,
+    GError **error)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+
+  return wocky_auth_registry_start_auth_finish (
+      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+      result, start_data, error);
+}
+
+static void
+gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
+    const GString *challenge_data,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+
+  wocky_auth_registry_challenge_async (
+      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+      challenge_data, callback, user_data);
+}
+
+static gboolean
+gabble_auth_manager_challenge_finish (WockyAuthRegistry *registry,
+    GAsyncResult *result,
+    GString **response,
+    GError **error)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+
+  return wocky_auth_registry_challenge_finish (
+      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+      result, response, error);
+}
+
+static void
+gabble_auth_manager_success_async (WockyAuthRegistry *registry,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+
+  wocky_auth_registry_success_async (
+      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+      callback, user_data);
+}
+
+static gboolean
+gabble_auth_manager_success_finish (WockyAuthRegistry *registry,
+    GAsyncResult *result,
+    GError **error)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+
+  return wocky_auth_registry_success_finish (
+      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel),
+      result, error);
+}
+
+static void
+gabble_auth_manager_failure (WockyAuthRegistry *registry,
+    GError *error)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+
+  wocky_auth_registry_failure (
+      WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel), error);
+}
+
+static void
 gabble_auth_manager_class_init (GabbleAuthManagerClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  WockyAuthRegistryClass *registry_class = WOCKY_AUTH_REGISTRY_CLASS (klass);
 
   GParamSpec *param_spec;
 
@@ -199,6 +293,18 @@ gabble_auth_manager_class_init (GabbleAuthManagerClass *klass)
 
   object_class->get_property = gabble_auth_manager_get_property;
   object_class->set_property = gabble_auth_manager_set_property;
+
+  registry_class->start_auth_async_func = gabble_auth_manager_start_auth_async;
+  registry_class->start_auth_finish_func =
+    gabble_auth_manager_start_auth_finish;
+
+  registry_class->challenge_async_func = gabble_auth_manager_challenge_async;
+  registry_class->challenge_finish_func = gabble_auth_manager_challenge_finish;
+
+  registry_class->success_async_func = gabble_auth_manager_success_async;
+  registry_class->success_finish_func = gabble_auth_manager_success_finish;
+
+  registry_class->failure_func = gabble_auth_manager_failure;
 
   param_spec = g_param_spec_object ("connection", "GabbleConnection object",
       "Gabble connection object that owns this manager.",
@@ -231,13 +337,4 @@ channel_manager_iface_init (gpointer g_iface,
   iface->create_channel = NULL;
   iface->request_channel = NULL;
   iface->foreach_channel_class = NULL;
-}
-
-WockyAuthRegistry *
-gabble_auth_manager_get_auth_registry (GabbleAuthManager *self)
-{
-  g_return_val_if_fail (
-      WOCKY_IS_AUTH_REGISTRY (self->priv->server_sasl_channel), NULL);
-
-  return WOCKY_AUTH_REGISTRY (self->priv->server_sasl_channel);
 }

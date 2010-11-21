@@ -11,6 +11,9 @@ Fixes:
 • Loosen an assertion to fix test failure with telepathy-glib >= 0.13.5,
   which releases connections' object paths sooner (smcv)
 
+• fd.o #31772: fix a crash if a contact goes invisible while we're discovering
+  their capabilities (wjt)
+
 telepathy-gabble 0.11.1 (2010-11-16)
 ====================================
 

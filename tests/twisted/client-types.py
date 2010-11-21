@@ -7,7 +7,9 @@ from servicetest import EventPattern, assertEquals, assertLength, assertContains
 from gabbletest import exec_test, make_presence, sync_stream
 import constants as cs
 import ns
-from caps_helper import presence_and_disco
+from caps_helper import (
+    presence_and_disco, send_presence, expect_disco, send_disco_reply,
+)
 
 client_base = 'http://telepathy.freedesktop.org/fake-client/client-types-'
 caps_base = {
@@ -29,19 +31,23 @@ PC = ['client/pc/en/Lolclient 0.L0L']
 PHONE = ['client/phone/en/gr8phone 101']
 WEB = ['client/web/en/webcat']
 SMS = ['client/phone/en/tlk 2 u l8r']
+TRANSIENT_PHONE = ['client/phone/en/fleeting visit']
 
-def contact_online(q, conn, stream, contact, identities,
-    disco = True, dataforms = {}, initial = True, show = None):
-
+def build_stuff(identities):
     types = map(lambda x: x.split('/')[1], identities)
-
-    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
 
     # add something to the end of the client string so that the caps
     # hashes aren't all the same and so stop discoing
     client = client_base + ''.join(types)
     caps = caps_base
     caps['node'] = client
+
+    return (caps, client, types)
+
+def contact_online(q, conn, stream, contact, identities,
+                  disco=True, dataforms={}, initial=True, show=None):
+    (caps, client, types) = build_stuff(identities)
+    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
 
     # make contact come online
     presence_and_disco (q, conn, stream, contact,
@@ -144,6 +150,21 @@ def test(q, bus, conn, stream):
     assertEquals(['bot', 'console', 'handheld', 'phone'], sorted(event.args[1]))
 
     # that'll do
+    #
+    # ...
+    #
+    # wait wait! no it won't! Here's a regression test for
+    # <https://bugs.freedesktop.org/show_bug.cgi?id=31772>.
+    (caps, client, types) = build_stuff(TRANSIENT_PHONE)
+    contact = 'mini9@meegoconf.ie/hai'
+    send_presence(q, conn, stream, contact, caps)
+    stanza = expect_disco(q, contact, client, caps)
+    stream.send(make_presence(contact, type='unavailable'))
+    send_disco_reply(stream, stanza, TRANSIENT_PHONE, [])
+
+    # Gabble used to crash upon receiving a disco reply from a contact who's no
+    # longer in the presence cache. So we sync here to check if it's died.
+    sync_stream(q, stream)
 
 if __name__ == '__main__':
     exec_test(test)

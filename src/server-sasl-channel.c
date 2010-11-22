@@ -57,10 +57,6 @@
 static void channel_iface_init (gpointer, gpointer);
 static void sasl_auth_iface_init (gpointer, gpointer);
 
-static void gabble_server_sasl_channel_failure_func (
-    WockyAuthRegistry *auth_registry,
-    GError *error);
-
 G_DEFINE_TYPE_WITH_CODE (GabbleServerSaslChannel, gabble_server_sasl_channel,
     WOCKY_TYPE_AUTH_REGISTRY,
     G_IMPLEMENT_INTERFACE (
@@ -444,7 +440,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   };
 
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
-  WockyAuthRegistryClass *auth_reg_class = WOCKY_AUTH_REGISTRY_CLASS (klass);
 
   GParamSpec *param_spec;
 
@@ -453,9 +448,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   object_class->get_property = gabble_server_sasl_channel_get_property;
   object_class->set_property = gabble_server_sasl_channel_set_property;
   object_class->dispose = gabble_server_sasl_channel_dispose;
-
-  auth_reg_class->failure_func = gabble_server_sasl_channel_failure_func;
-  auth_reg_class->failure_func = gabble_server_sasl_channel_failure_func;
 
   /* channel iface */
   g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
@@ -1060,11 +1052,10 @@ gabble_server_sasl_channel_success_finish (GabbleServerSaslChannel *self,
       gabble_server_sasl_channel_success_async);
 }
 
-static void
-gabble_server_sasl_channel_failure_func (WockyAuthRegistry *auth_registry,
-    GError *error)
+void
+gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
+    const GError *error)
 {
-  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (auth_registry);
   const gchar *dbus_error = TP_ERROR_STR_NETWORK_ERROR;
 
   if (error->domain == WOCKY_AUTH_ERROR)

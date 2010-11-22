@@ -91,6 +91,9 @@ void gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
 gboolean gabble_server_sasl_channel_success_finish (
     GabbleServerSaslChannel *self, GAsyncResult *result, GError **error);
 
+void gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
+    const GError *error);
+
 gboolean gabble_server_sasl_channel_is_open (GabbleServerSaslChannel *self);
 
 G_END_DECLS

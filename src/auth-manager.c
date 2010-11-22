@@ -334,8 +334,7 @@ gabble_auth_manager_failure (WockyAuthRegistry *registry,
 
   if (self->priv->channel != NULL)
     {
-      wocky_auth_registry_failure (
-          WOCKY_AUTH_REGISTRY (self->priv->channel), error);
+      gabble_server_sasl_channel_fail (self->priv->channel, error);
     }
   else
     {

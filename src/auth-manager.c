@@ -295,8 +295,7 @@ gabble_auth_manager_success_async (WockyAuthRegistry *registry,
 
   if (self->priv->channel != NULL)
     {
-      wocky_auth_registry_success_async (
-          WOCKY_AUTH_REGISTRY (self->priv->channel),
+      gabble_server_sasl_channel_success_async (self->priv->channel,
           callback, user_data);
     }
   else
@@ -316,8 +315,7 @@ gabble_auth_manager_success_finish (WockyAuthRegistry *registry,
 
   if (self->priv->channel != NULL)
     {
-      return wocky_auth_registry_success_finish (
-          WOCKY_AUTH_REGISTRY (self->priv->channel),
+      return gabble_server_sasl_channel_success_finish (self->priv->channel,
           result, error);
     }
   else

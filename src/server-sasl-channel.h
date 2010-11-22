@@ -86,6 +86,11 @@ gboolean gabble_server_sasl_channel_challenge_finish (
     GabbleServerSaslChannel *self, GAsyncResult *result, GString **response,
     GError **error);
 
+void gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
+    GAsyncReadyCallback callback, gpointer user_data);
+gboolean gabble_server_sasl_channel_success_finish (
+    GabbleServerSaslChannel *self, GAsyncResult *result, GError **error);
+
 gboolean gabble_server_sasl_channel_is_open (GabbleServerSaslChannel *self);
 
 G_END_DECLS

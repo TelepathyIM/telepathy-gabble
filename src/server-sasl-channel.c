@@ -158,6 +158,7 @@ enum
   PROP_SASL_ERROR,
   PROP_SASL_ERROR_DETAILS,
   PROP_AUTHORIZATION_IDENTITY,
+  PROP_DEFAULT_USERNAME,
   PROP_DEFAULT_REALM,
   PROP_SASL_CONTEXT,
 
@@ -278,6 +279,8 @@ gabble_server_sasl_channel_get_property (GObject *object,
                   "AuthorizationIdentity",
               GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
                   "DefaultRealm",
+              /* FIXME: GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+                  "DefaultUsername", */
               GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
                   "SASLContext",
               NULL));
@@ -337,6 +340,11 @@ gabble_server_sasl_channel_get_property (GObject *object,
        * realm but expect us to have this default. */
       g_object_get_property (G_OBJECT (chan->priv->conn), "stream-server",
           value);
+      break;
+    case PROP_DEFAULT_USERNAME:
+      /* In practice, XMPP servers normally want us to authenticate as the
+       * local-part of the JID. */
+      g_object_get_property (G_OBJECT (chan->priv->conn), "username", value);
       break;
     case PROP_SESSION_ID:
       g_value_set_string (value,
@@ -447,6 +455,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
     { "SASLErrorDetails", "sasl-error-details", NULL },
     { "AuthorizationIdentity", "authorization-identity", NULL },
     { "DefaultRealm", "default-realm", NULL },
+    /* FIXME: { "DefaultUsername", "default-username", NULL }, */
     { "SASLContext", "sasl-context", NULL },
     /* For the moment we only have a unified "secure" property, which
      * implies we're both encrypted and verified */
@@ -591,6 +600,14 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
       NULL,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DEFAULT_REALM,
+      param_spec);
+
+  param_spec = g_param_spec_string ("default-username",
+      "DefaultUsername",
+      "Default simple username if the user does not supply one",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DEFAULT_USERNAME,
       param_spec);
 
   param_spec = g_param_spec_uint ("sasl-status", "SASLStatus",

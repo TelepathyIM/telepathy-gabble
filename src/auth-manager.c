@@ -254,8 +254,7 @@ gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
 
   if (self->priv->channel != NULL)
     {
-      wocky_auth_registry_challenge_async (
-          WOCKY_AUTH_REGISTRY (self->priv->channel),
+      gabble_server_sasl_channel_challenge_async (self->priv->channel,
           challenge_data, callback, user_data);
     }
   else
@@ -276,8 +275,7 @@ gabble_auth_manager_challenge_finish (WockyAuthRegistry *registry,
 
   if (self->priv->channel != NULL)
     {
-      return wocky_auth_registry_challenge_finish (
-          WOCKY_AUTH_REGISTRY (self->priv->channel),
+      return gabble_server_sasl_channel_challenge_finish (self->priv->channel,
           result, response, error);
     }
   else

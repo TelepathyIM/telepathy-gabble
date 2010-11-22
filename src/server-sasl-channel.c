@@ -57,18 +57,6 @@
 static void channel_iface_init (gpointer, gpointer);
 static void sasl_auth_iface_init (gpointer, gpointer);
 
-static void  gabble_server_sasl_channel_challenge_async_func (
-    WockyAuthRegistry *auth_registry,
-    const GString *challenge_data,
-    GAsyncReadyCallback callback,
-    gpointer user_data);
-
-static gboolean gabble_server_sasl_channel_challenge_finish_func (
-    WockyAuthRegistry *self,
-    GAsyncResult *result,
-    GString **response,
-    GError **error);
-
 static void gabble_server_sasl_channel_success_async_func (
     WockyAuthRegistry *auth_registry,
     GAsyncReadyCallback callback,
@@ -476,11 +464,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   object_class->set_property = gabble_server_sasl_channel_set_property;
   object_class->dispose = gabble_server_sasl_channel_dispose;
 
-  auth_reg_class->challenge_async_func =
-    gabble_server_sasl_channel_challenge_async_func;
-  auth_reg_class->challenge_finish_func =
-    gabble_server_sasl_channel_challenge_finish_func;
-
   auth_reg_class->success_async_func =
     gabble_server_sasl_channel_success_async_func;
   auth_reg_class->success_finish_func =
@@ -814,7 +797,7 @@ gabble_server_sasl_channel_respond (
   GSimpleAsyncResult *r = self->priv->result;
 
   if (r == NULL || !g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
-          G_OBJECT (self), gabble_server_sasl_channel_challenge_async_func))
+          G_OBJECT (self), gabble_server_sasl_channel_challenge_async))
     {
       gabble_server_sasl_channel_raise_not_available (context,
           "Authentication waiting for response.");
@@ -1014,50 +997,40 @@ gabble_server_sasl_channel_start_auth_finish (GabbleServerSaslChannel *self,
       wocky_auth_registry_start_data_dup, start_data);
 }
 
-static void
-gabble_server_sasl_channel_challenge_async_func (
-    WockyAuthRegistry *auth_registry,
+void
+gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
     const GString *challenge_data,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
-  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (auth_registry);
   GabbleServerSaslChannelPrivate *priv = self->priv;
+  GArray *challenge_ay;
 
-  if (!priv->closed)
-    {
-      GArray *challenge_ay;
+  g_assert (!priv->closed);
+  g_assert (priv->result == NULL);
 
-      g_assert (priv->result == NULL);
+  priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
+      user_data, gabble_server_sasl_channel_challenge_async);
 
-      priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
-          user_data, gabble_server_sasl_channel_challenge_async_func);
+  challenge_ay = g_array_sized_new (FALSE, FALSE, sizeof (gchar),
+      challenge_data->len);
+  g_array_append_vals (challenge_ay, challenge_data->str,
+      challenge_data->len);
 
-      challenge_ay = g_array_sized_new (FALSE, FALSE, sizeof (gchar),
-          challenge_data->len);
-      g_array_append_vals (challenge_ay, challenge_data->str,
-          challenge_data->len);
+  change_current_state (self, GABBLE_SASL_STATUS_IN_PROGRESS, NULL, NULL);
 
-      change_current_state (self, GABBLE_SASL_STATUS_IN_PROGRESS, NULL, NULL);
-
-      gabble_svc_channel_interface_sasl_authentication_emit_new_challenge (
-          self, challenge_ay);
-    }
-  else
-    {
-      ERROR ("GabbleAuthManager is meant to do this bit now");
-      g_assert_not_reached ();
-    }
+  gabble_svc_channel_interface_sasl_authentication_emit_new_challenge (
+      self, challenge_ay);
 }
 
-static gboolean
-gabble_server_sasl_channel_challenge_finish_func (WockyAuthRegistry *self,
+gboolean
+gabble_server_sasl_channel_challenge_finish (GabbleServerSaslChannel *self,
     GAsyncResult *result,
     GString **response,
     GError **error)
 {
   wocky_implement_finish_copy_pointer (self,
-      gabble_server_sasl_channel_challenge_async_func,
+      gabble_server_sasl_channel_challenge_async,
       wocky_g_string_dup, response);
 }
 

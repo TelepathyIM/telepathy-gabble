@@ -36,13 +36,13 @@ typedef struct _GabbleServerSaslChannelClass GabbleServerSaslChannelClass;
 typedef struct _GabbleServerSaslChannel GabbleServerSaslChannel;
 
 struct _GabbleServerSaslChannelClass {
-    WockyAuthRegistryClass parent_class;
+    GObjectClass parent_class;
 
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleServerSaslChannel {
-    WockyAuthRegistry parent;
+    GObject parent;
 
     GabbleServerSaslChannelPrivate *priv;
 };

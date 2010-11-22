@@ -58,7 +58,7 @@ static void channel_iface_init (gpointer, gpointer);
 static void sasl_auth_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleServerSaslChannel, gabble_server_sasl_channel,
-    WOCKY_TYPE_AUTH_REGISTRY,
+    G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (
         TP_TYPE_SVC_CHANNEL,
         channel_iface_init);

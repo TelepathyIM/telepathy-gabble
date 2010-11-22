@@ -73,7 +73,7 @@ gabble_auth_manager_close_all (GabbleAuthManager *self)
   DEBUG ("called");
 
   if (self->priv->channel != NULL)
-    gabble_server_sasl_channel_close (self->priv->channel);
+    tp_base_channel_close ((TpBaseChannel *) self->priv->channel);
 
   /* that results in the signal-driven-object-clearing dance */
   g_assert (self->priv->channel == NULL);
@@ -208,8 +208,10 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
       gabble_server_sasl_channel_start_auth_async (self->priv->channel,
           callback, user_data);
 
-      g_assert (gabble_server_sasl_channel_is_open (
-            self->priv->channel));
+      g_assert (!tp_base_channel_is_destroyed (
+            (TpBaseChannel *) self->priv->channel));
+      g_assert (tp_base_channel_is_registered (
+            (TpBaseChannel *) self->priv->channel));
       tp_channel_manager_emit_new_channel (self,
           TP_EXPORTABLE_CHANNEL (self->priv->channel), NULL);
     }

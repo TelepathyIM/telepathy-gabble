@@ -54,23 +54,10 @@
 #include "namespaces.h"
 #include "util.h"
 
-static void channel_iface_init (gpointer, gpointer);
 static void sasl_auth_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleServerSaslChannel, gabble_server_sasl_channel,
-    G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (
-        TP_TYPE_SVC_CHANNEL,
-        channel_iface_init);
-    G_IMPLEMENT_INTERFACE (
-        TP_TYPE_SVC_DBUS_PROPERTIES,
-        tp_dbus_properties_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (
-        TP_TYPE_CHANNEL_IFACE,
-        NULL);
-    G_IMPLEMENT_INTERFACE (
-        TP_TYPE_EXPORTABLE_CHANNEL,
-        NULL);
+    TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (
         GABBLE_TYPE_SVC_CHANNEL_TYPE_SERVER_AUTHENTICATION,
         NULL);
@@ -79,28 +66,13 @@ G_DEFINE_TYPE_WITH_CODE (GabbleServerSaslChannel, gabble_server_sasl_channel,
         sasl_auth_iface_init));
 
 static const gchar *gabble_server_sasl_channel_interfaces[] = {
-  GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION,
   GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
   NULL
 };
 
 enum
 {
-  /* channel iface */
-  PROP_OBJECT_PATH = 1,
-  PROP_CHANNEL_TYPE,
-  PROP_HANDLE_TYPE,
-  PROP_HANDLE,
-  PROP_INITIATOR_HANDLE,
-  PROP_INITIATOR_ID,
-  PROP_TARGET_ID,
-  PROP_REQUESTED,
-  PROP_CONNECTION,
-  PROP_INTERFACES,
-  PROP_CHANNEL_DESTROYED,
-  PROP_CHANNEL_PROPERTIES,
-
-  PROP_SESSION_ID,
+  PROP_SESSION_ID = 1,
 
   /* server authentication channel */
   PROP_AUTH_METHOD,
@@ -127,11 +99,6 @@ struct _GabbleServerSaslChannelPrivate
 {
   gboolean dispose_has_run;
 
-  /* Channel Iface */
-  gchar *object_path;
-  GabbleConnection *conn;
-  gboolean closed;
-
   /* Immutable SASL properties */
   GStrv available_mechanisms;
   gboolean secure;
@@ -153,8 +120,6 @@ gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
 
   self->priv = priv;
 
-  priv->closed = TRUE;
-
   priv->sasl_context = tp_asv_new (NULL, NULL);
 
   priv->sasl_status = GABBLE_SASL_STATUS_NOT_STARTED;
@@ -163,84 +128,49 @@ gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
 }
 
 static void
+gabble_server_sasl_channel_fill_immutable_properties (TpBaseChannel *channel,
+    GHashTable *properties)
+{
+  TP_BASE_CHANNEL_CLASS (gabble_server_sasl_channel_parent_class)
+    ->fill_immutable_properties (channel, properties);
+
+  tp_dbus_properties_mixin_fill_properties_hash (G_OBJECT (channel),
+      properties,
+      GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION, "AuthenticationMethod",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+          "AvailableMechanisms",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "HasInitialData",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "CanTryAgain",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "Encrypted",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "Verified",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+          "AuthorizationIdentity",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "DefaultRealm",
+      /* FIXME: GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+          "DefaultUsername", */
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "SASLContext",
+      NULL);
+}
+
+static gchar *
+gabble_server_sasl_channel_get_object_path_suffix (TpBaseChannel *channel)
+{
+  return g_strdup ("ServerSASLChannel");
+}
+
+static void
 gabble_server_sasl_channel_get_property (GObject *object,
     guint property_id,
     GValue *value,
     GParamSpec *pspec)
 {
-  GabbleServerSaslChannel *chan =
+  TpBaseChannel *channel = TP_BASE_CHANNEL (object);
+  GabbleServerSaslChannel *self =
     GABBLE_SERVER_SASL_CHANNEL (object);
-  GabbleServerSaslChannelPrivate *priv = chan->priv;
+  GabbleServerSaslChannelPrivate *priv = self->priv;
 
   switch (property_id)
     {
-    case PROP_OBJECT_PATH:
-      g_value_set_string (value, priv->object_path);
-      break;
-    case PROP_CHANNEL_TYPE:
-      g_value_set_static_string (value,
-          GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION);
-      break;
-    case PROP_HANDLE_TYPE:
-      g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
-      break;
-    case PROP_HANDLE:
-      g_value_set_uint (value, 0);
-      break;
-    case PROP_TARGET_ID:
-      g_value_set_static_string (value, "");
-      break;
-    case PROP_INITIATOR_HANDLE:
-      g_value_set_uint (value, 0);
-      break;
-    case PROP_INITIATOR_ID:
-      g_value_set_static_string (value, "");
-      break;
-    case PROP_REQUESTED:
-      g_value_set_boolean (value, FALSE);
-      break;
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
-    case PROP_INTERFACES:
-      g_value_set_boxed (value, gabble_server_sasl_channel_interfaces);
-      break;
-    case PROP_CHANNEL_DESTROYED:
-      g_value_set_boolean (value, priv->closed);
-      break;
-    case PROP_CHANNEL_PROPERTIES:
-      g_value_take_boxed (value,
-          tp_dbus_properties_mixin_make_properties_hash (object,
-              TP_IFACE_CHANNEL, "TargetHandle",
-              TP_IFACE_CHANNEL, "TargetHandleType",
-              TP_IFACE_CHANNEL, "ChannelType",
-              TP_IFACE_CHANNEL, "TargetID",
-              TP_IFACE_CHANNEL, "InitiatorHandle",
-              TP_IFACE_CHANNEL, "InitiatorID",
-              TP_IFACE_CHANNEL, "Requested",
-              TP_IFACE_CHANNEL, "Interfaces",
-              GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION,
-                  "AuthenticationMethod",
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "AvailableMechanisms",
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "HasInitialData",
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "CanTryAgain",
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "Encrypted",
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "Verified",
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "AuthorizationIdentity",
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "DefaultRealm",
-              /* FIXME: GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "DefaultUsername", */
-              GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-                  "SASLContext",
-              NULL));
-      break;
     case PROP_SASL_STATUS:
       g_value_set_uint (value, priv->sasl_status);
       break;
@@ -258,10 +188,10 @@ gabble_server_sasl_channel_get_property (GObject *object,
           GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION);
       break;
     case PROP_AVAILABLE_MECHANISMS:
-      g_value_set_boxed (value, chan->priv->available_mechanisms);
+      g_value_set_boxed (value, priv->available_mechanisms);
       break;
     case PROP_SECURE:
-      g_value_set_boolean (value, chan->priv->secure);
+      g_value_set_boolean (value, priv->secure);
       break;
     case PROP_CAN_TRY_AGAIN:
       /* Wocky can't retry SASL authentication (although XMPP can) */
@@ -279,7 +209,7 @@ gabble_server_sasl_channel_get_property (GObject *object,
         {
           gchar *jid, *username, *stream_server;
 
-          g_object_get (chan->priv->conn,
+          g_object_get (tp_base_channel_get_connection (channel),
               "username", &username,
               "stream-server", &stream_server,
               NULL);
@@ -294,13 +224,16 @@ gabble_server_sasl_channel_get_property (GObject *object,
       /* Like WockySaslDigestMd5, we use the stream server as the default
        * realm, for interoperability with servers that fail to supply a
        * realm but expect us to have this default. */
-      g_object_get_property (G_OBJECT (chan->priv->conn), "stream-server",
+      g_object_get_property (
+          G_OBJECT (tp_base_channel_get_connection (channel)), "stream-server",
           value);
       break;
     case PROP_DEFAULT_USERNAME:
       /* In practice, XMPP servers normally want us to authenticate as the
        * local-part of the JID. */
-      g_object_get_property (G_OBJECT (chan->priv->conn), "username", value);
+      g_object_get_property (
+          G_OBJECT (tp_base_channel_get_connection (channel)), "username",
+          value);
       break;
     case PROP_SESSION_ID:
       g_value_set_string (value,
@@ -323,17 +256,6 @@ gabble_server_sasl_channel_set_property (GObject *object,
 
   switch (property_id)
     {
-      case PROP_CONNECTION:
-        priv->conn = g_value_get_object (value);
-        break;
-
-      case PROP_OBJECT_PATH:
-      case PROP_CHANNEL_TYPE:
-      case PROP_HANDLE_TYPE:
-      case PROP_HANDLE:
-        /* no-op */
-        break;
-
       case PROP_SECURE:
         priv->secure = g_value_get_boolean (value);
         break;
@@ -366,12 +288,12 @@ gabble_server_sasl_channel_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  gabble_server_sasl_channel_close (self);
+  /* a ref is held for the channel's lifetime */
+  g_assert (tp_base_channel_is_destroyed ((TpBaseChannel *) self));
   g_assert (priv->result == NULL);
 
   /* FIXME: from here down should really be in finalize since no object refs
    * are involved */
-  g_free (priv->object_path);
   g_strfreev (priv->available_mechanisms);
   g_hash_table_unref (priv->sasl_context);
 
@@ -382,26 +304,15 @@ gabble_server_sasl_channel_dispose (GObject *object)
     G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->dispose (object);
 }
 
+static void gabble_server_sasl_channel_close (TpBaseChannel *channel);
+
 static void
 gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 {
-  static TpDBusPropertiesMixinPropImpl channel_props[] = {
-    { "TargetHandleType", "handle-type", NULL },
-    { "TargetHandle", "handle", NULL },
-    { "TargetID", "target-id", NULL },
-    { "ChannelType", "channel-type", NULL },
-    { "Interfaces", "interfaces", NULL },
-    { "Requested", "requested", NULL },
-    { "InitiatorHandle", "initiator-handle", NULL },
-    { "InitiatorID", "initiator-id", NULL },
-    { NULL }
-  };
-
   static TpDBusPropertiesMixinPropImpl server_auth_props[] = {
     { "AuthenticationMethod", "auth-method", NULL },
     { NULL }
   };
-
   static TpDBusPropertiesMixinPropImpl sasl_auth_props[] = {
     { "AvailableMechanisms", "available-mechanisms", NULL },
     { "HasInitialData", "has-initial-data", NULL },
@@ -419,13 +330,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
     { "Verified", "secure", NULL },
     { NULL }
   };
-
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { TP_IFACE_CHANNEL,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        channel_props,
-      },
       { GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
@@ -438,9 +343,8 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
       },
       { NULL }
   };
-
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
-
+  TpBaseChannelClass *channel_class = TP_BASE_CHANNEL_CLASS (klass);
   GParamSpec *param_spec;
 
   g_type_class_add_private (klass, sizeof (GabbleServerSaslChannelPrivate));
@@ -449,56 +353,15 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   object_class->set_property = gabble_server_sasl_channel_set_property;
   object_class->dispose = gabble_server_sasl_channel_dispose;
 
-  /* channel iface */
-  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
-      "channel-properties");
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
-      "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
-      "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
-      "handle-type");
-  g_object_class_override_property (object_class, PROP_HANDLE, "handle");
-  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
-      "channel-destroyed");
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this channel.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
-      "Additional Channel.Interface.* interfaces",
-      G_TYPE_STRV,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
-
-  param_spec = g_param_spec_string ("target-id", "Target's identifier",
-      "The string obtained by inspecting the target handle",
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
-
-  param_spec = g_param_spec_boolean ("requested", "Requested?",
-      "True if this channel was requested by the local user",
-      FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
-
-  param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
-      "The contact who initiated the channel",
-      0, G_MAXUINT32, 0,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
-      param_spec);
-
-  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
-      "The string obtained by inspecting the initiator-handle",
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
-      param_spec);
+  channel_class->channel_type =
+    GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION;
+  channel_class->interfaces = gabble_server_sasl_channel_interfaces;
+  channel_class->target_handle_type = TP_HANDLE_TYPE_NONE;
+  channel_class->fill_immutable_properties =
+    gabble_server_sasl_channel_fill_immutable_properties;
+  channel_class->get_object_path_suffix =
+    gabble_server_sasl_channel_get_object_path_suffix;
+  channel_class->close = gabble_server_sasl_channel_close;
 
   param_spec = g_param_spec_boxed ("sasl-context", "SASLContext",
       "Extra context for doing SASL",
@@ -621,47 +484,6 @@ change_current_state (GabbleServerSaslChannel *self,
       self, self->priv->sasl_status,
       self->priv->sasl_error,
       self->priv->sasl_error_details);
-}
-
-/**
- * Channel Interface
- */
-
-static void
-gabble_server_sasl_channel_close_async (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (iface);
-
-  g_assert (GABBLE_IS_SERVER_SASL_CHANNEL (self));
-
-  gabble_server_sasl_channel_close (self);
-  tp_svc_channel_return_from_close (context);
-}
-
-static void
-gabble_server_sasl_channel_get_interfaces_async (TpSvcChannel *iface,
-    DBusGMethodInvocation *context)
-{
-  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (iface);
-
-  g_assert (GABBLE_IS_SERVER_SASL_CHANNEL (self));
-
-  tp_svc_channel_return_from_get_interfaces (context,
-      gabble_server_sasl_channel_interfaces);
-}
-
-static void
-channel_iface_init (gpointer g_iface,
-    gpointer iface_data)
-{
-  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
-
-#define IMPLEMENT(x, suffix) tp_svc_channel_implement_##x (\
-    klass, gabble_server_sasl_channel_##x##suffix)
-  IMPLEMENT(close,_async);
-  IMPLEMENT(get_interfaces,_async);
-#undef IMPLEMENT
 }
 
 /**
@@ -944,23 +766,12 @@ gabble_server_sasl_channel_start_auth_async (GabbleServerSaslChannel *self,
     gpointer user_data)
 {
   GabbleServerSaslChannelPrivate *priv = self->priv;
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (conn);
-
-  DEBUG ("");
 
   g_assert (priv->result == NULL);
-  g_assert (conn->object_path != NULL);
 
   priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
       user_data, gabble_server_sasl_channel_start_auth_async);
-
-  priv->object_path = g_strdup_printf ("%s/SASLChannel",
-      conn->object_path);
-
-  tp_dbus_daemon_register_object (bus, priv->object_path, G_OBJECT (self));
-
-  priv->closed = FALSE;
+  tp_base_channel_register (TP_BASE_CHANNEL (self));
 }
 
 gboolean
@@ -983,7 +794,7 @@ gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
   GabbleServerSaslChannelPrivate *priv = self->priv;
   GArray *challenge_ay;
 
-  g_assert (!priv->closed);
+  g_assert (!tp_base_channel_is_destroyed ((TpBaseChannel *) self));
   g_assert (priv->result == NULL);
 
   priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
@@ -1019,7 +830,7 @@ gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
   GabbleServerSaslChannelPrivate *priv = self->priv;
   GSimpleAsyncResult *r;
 
-  g_assert (!priv->closed);
+  g_assert (!tp_base_channel_is_destroyed ((TpBaseChannel *) self));
   g_assert (priv->result == NULL);
 
   r = g_simple_async_result_new (G_OBJECT (self),
@@ -1113,17 +924,11 @@ gabble_server_sasl_channel_new (GabbleConnection *conn,
   return obj;
 }
 
-void
-gabble_server_sasl_channel_close (GabbleServerSaslChannel *self)
+static void
+gabble_server_sasl_channel_close (TpBaseChannel *channel)
 {
+  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
   GabbleServerSaslChannelPrivate *priv = self->priv;
-
-  g_assert (GABBLE_IS_SERVER_SASL_CHANNEL (self));
-
-  if (priv->closed)
-    return;
-
-  priv->closed = TRUE;
 
   DEBUG ("called on %p", self);
 
@@ -1141,11 +946,5 @@ gabble_server_sasl_channel_close (GabbleServerSaslChannel *self)
       g_object_unref (r);
     }
 
-  tp_svc_channel_emit_closed (self);
-}
-
-gboolean
-gabble_server_sasl_channel_is_open (GabbleServerSaslChannel *self)
-{
-  return !self->priv->closed;
+  tp_base_channel_destroyed (channel);
 }

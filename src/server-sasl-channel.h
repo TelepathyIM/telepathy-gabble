@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/base-channel.h>
 #include <wocky/wocky-auth-registry.h>
 
 #include <extensions/extensions.h>
@@ -36,13 +36,13 @@ typedef struct _GabbleServerSaslChannelClass GabbleServerSaslChannelClass;
 typedef struct _GabbleServerSaslChannel GabbleServerSaslChannel;
 
 struct _GabbleServerSaslChannelClass {
-    GObjectClass parent_class;
+    TpBaseChannelClass parent_class;
 
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleServerSaslChannel {
-    GObject parent;
+    TpBaseChannel parent;
 
     GabbleServerSaslChannelPrivate *priv;
 };
@@ -65,8 +65,6 @@ GType gabble_server_sasl_channel_get_type (void);
 #define GABBLE_SERVER_SASL_CHANNEL_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_SERVER_SASL_CHANNEL,\
                               GabbleServerSaslChannelClass))
-
-void gabble_server_sasl_channel_close (GabbleServerSaslChannel *self);
 
 GabbleServerSaslChannel *gabble_server_sasl_channel_new (
     GabbleConnection *conn, GStrv available_mechanisms,
@@ -93,8 +91,6 @@ gboolean gabble_server_sasl_channel_success_finish (
 
 void gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
     const GError *error);
-
-gboolean gabble_server_sasl_channel_is_open (GabbleServerSaslChannel *self);
 
 G_END_DECLS
 

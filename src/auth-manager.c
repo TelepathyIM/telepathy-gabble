@@ -190,7 +190,19 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
 
   if (password == NULL || username == NULL)
     {
-      self->priv->channel = gabble_server_sasl_channel_new (self->priv->conn);
+      GPtrArray *mech_array = g_ptr_array_new ();
+      const GSList *iter;
+
+      for (iter = mechanisms; iter != NULL; iter = iter->next)
+        g_ptr_array_add (mech_array, iter->data);
+
+      g_ptr_array_add (mech_array, NULL);
+
+      self->priv->channel = gabble_server_sasl_channel_new (self->priv->conn,
+          (GStrv) mech_array->pdata, is_secure_channel, username, server,
+          session_id);
+      g_ptr_array_unref (mech_array);
+
       self->priv->closed_id = tp_g_signal_connect_object (self->priv->channel,
           "closed", G_CALLBACK (auth_channel_closed_cb), self, 0);
 

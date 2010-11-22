@@ -21,8 +21,7 @@ PASSWORD = "pass"
 def test_plain_success(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    # FIXME: is this realistic? I'd expect this to be the JID
-    assertEquals('test', props.get(cs.SASL_AUTHORIZATION_IDENTITY))
+    assertEquals(JID, props.get(cs.SASL_AUTHORIZATION_IDENTITY))
 
     # On some servers we can't do DIGEST auth without this information.
     assertEquals('example.org', props.get(cs.SASL_DEFAULT_REALM))

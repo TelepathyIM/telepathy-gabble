@@ -176,8 +176,6 @@ struct _GabbleServerSaslChannelPrivate
   gboolean closed;
 
   /* Immutable SASL properties */
-  gchar *authorization_identity;
-  gchar *default_realm;
   GStrv available_mechanisms;
   gboolean secure;
   GHashTable *sasl_context;
@@ -315,10 +313,30 @@ gabble_server_sasl_channel_get_property (GObject *object,
       g_value_set_boolean (value, TRUE);
       break;
     case PROP_AUTHORIZATION_IDENTITY:
-      g_value_set_string (value, priv->authorization_identity);
+      /* As per RFC 3920, the authorization identity for c2s connections
+       * is the desired JID. We can't use conn_util_get_bare_self_jid at
+       * this stage of the connection process, because it hasn't been
+       * initialized yet. */
+        {
+          gchar *jid, *username, *stream_server;
+
+          g_object_get (chan->priv->conn,
+              "username", &username,
+              "stream-server", &stream_server,
+              NULL);
+          jid = g_strconcat (username, "@", stream_server, NULL);
+          g_free (username);
+          g_free (stream_server);
+
+          g_value_take_string (value, jid);
+        }
       break;
     case PROP_DEFAULT_REALM:
-      g_value_set_string (value, priv->default_realm);
+      /* Like WockySaslDigestMd5, we use the stream server as the default
+       * realm, for interoperability with servers that fail to supply a
+       * realm but expect us to have this default. */
+      g_object_get_property (G_OBJECT (chan->priv->conn), "stream-server",
+          value);
       break;
     case PROP_SESSION_ID:
       g_value_set_string (value,
@@ -352,20 +370,12 @@ gabble_server_sasl_channel_set_property (GObject *object,
         /* no-op */
         break;
 
-      case PROP_AUTHORIZATION_IDENTITY:
-        priv->authorization_identity = g_value_dup_string (value);
-        break;
-
       case PROP_SECURE:
         priv->secure = g_value_get_boolean (value);
         break;
 
       case PROP_AVAILABLE_MECHANISMS:
         priv->available_mechanisms = g_value_dup_boxed (value);
-        break;
-
-      case PROP_DEFAULT_REALM:
-        priv->default_realm = g_value_dup_string (value);
         break;
 
       case PROP_SESSION_ID:
@@ -398,8 +408,6 @@ gabble_server_sasl_channel_dispose (GObject *object)
   /* FIXME: from here down should really be in finalize since no object refs
    * are involved */
   g_free (priv->object_path);
-  g_free (priv->authorization_identity);
-  g_free (priv->default_realm);
   g_strfreev (priv->available_mechanisms);
   g_hash_table_unref (priv->sasl_context);
 
@@ -573,7 +581,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
       "AuthorizationIdentity",
       "Identity for which we wish to be authorized",
       NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_AUTHORIZATION_IDENTITY,
       param_spec);
 
@@ -581,7 +589,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
       "DefaultRealm",
       "Default realm if the server does not supply one",
       NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_DEFAULT_REALM,
       param_spec);
 
@@ -1000,19 +1008,6 @@ gabble_server_sasl_channel_start_auth_async_func (
   /* these were supplied at construct-time */
   g_assert (priv->available_mechanisms != NULL);
 
-  if (priv->default_realm == NULL)
-    {
-      DEBUG ("no default realm - this had better be legacy Jabber auth");
-      priv->default_realm = g_strdup ("");
-    }
-
-  /* FIXME: if this is NULL, something is a bit weird */
-  if (priv->authorization_identity == NULL)
-    {
-      DEBUG ("A NULL authorization identity was supplied");
-      priv->authorization_identity = g_strdup ("");
-    }
-
   if (password == NULL || username == NULL)
     {
       TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
@@ -1192,8 +1187,6 @@ GabbleServerSaslChannel *
 gabble_server_sasl_channel_new (GabbleConnection *conn,
     GStrv available_mechanisms,
     gboolean secure,
-    const gchar *username,
-    const gchar *server,
     const gchar *session_id)
 {
   GabbleServerSaslChannel *obj;
@@ -1205,8 +1198,6 @@ gabble_server_sasl_channel_new (GabbleConnection *conn,
         "connection", conn,
         "available-mechanisms", available_mechanisms,
         "secure", secure,
-        "authorization-identity", username,
-        "default-realm", server,
         "session-id", session_id,
         NULL));
 

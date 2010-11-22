@@ -70,8 +70,7 @@ void gabble_server_sasl_channel_close (GabbleServerSaslChannel *self);
 
 GabbleServerSaslChannel *gabble_server_sasl_channel_new (
     GabbleConnection *conn, GStrv available_mechanisms,
-    gboolean secure, const gchar *username,
-    const gchar *server, const gchar *session_id);
+    gboolean secure, const gchar *session_id);
 
 gboolean gabble_server_sasl_channel_is_open (GabbleServerSaslChannel *self);
 

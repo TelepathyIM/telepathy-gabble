@@ -1,7 +1,7 @@
-telepathy-gabble 0.11.2 (UNRELEASED)
+telepathy-gabble 0.11.2 (2010-11-22)
 ====================================
 
-Enhancements:
+The “Please enjoy this refreshing beverage” release.
 
 Fixes:
 
@@ -13,6 +13,12 @@ Fixes:
 
 • fd.o #31772: fix a crash if a contact goes invisible while we're discovering
   their capabilities (wjt)
+
+• Remove accidentally re-added libuuid dependency (jonnylamb)
+
+• --with-ca-certificates, formerly known as --with-ca-file, now warns—rather
+  than making configure fail—if the specified path does not exist. This is
+  kinder to buildds which may not actually have the CAs installed.
 
 telepathy-gabble 0.11.1 (2010-11-16)
 ====================================

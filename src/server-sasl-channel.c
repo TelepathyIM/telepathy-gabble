@@ -57,24 +57,6 @@
 static void channel_iface_init (gpointer, gpointer);
 static void sasl_auth_iface_init (gpointer, gpointer);
 
-static void gabble_server_sasl_channel_start_auth_async_func (
-    WockyAuthRegistry *auth_registry,
-    const GSList *mechanisms,
-    gboolean allow_plain,
-    gboolean is_secure_channel,
-    const gchar *username,
-    const gchar *password,
-    const gchar *server,
-    const gchar *session_id,
-    GAsyncReadyCallback callback,
-    gpointer user_data);
-
-static gboolean gabble_server_sasl_channel_start_auth_finish_func (
-    WockyAuthRegistry *self,
-    GAsyncResult *result,
-    WockyAuthRegistryStartData **start_data,
-    GError **error);
-
 static void  gabble_server_sasl_channel_challenge_async_func (
     WockyAuthRegistry *auth_registry,
     const GString *challenge_data,
@@ -494,11 +476,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   object_class->set_property = gabble_server_sasl_channel_set_property;
   object_class->dispose = gabble_server_sasl_channel_dispose;
 
-  auth_reg_class->start_auth_async_func =
-    gabble_server_sasl_channel_start_auth_async_func;
-  auth_reg_class->start_auth_finish_func =
-    gabble_server_sasl_channel_start_auth_finish_func;
-
   auth_reg_class->challenge_async_func =
     gabble_server_sasl_channel_challenge_async_func;
   auth_reg_class->challenge_finish_func =
@@ -763,7 +740,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
 
   if (r == NULL || !g_simple_async_result_is_valid (
           G_ASYNC_RESULT (priv->result), G_OBJECT (self),
-          gabble_server_sasl_channel_start_auth_async_func))
+          gabble_server_sasl_channel_start_auth_async))
     {
       gabble_server_sasl_channel_raise_not_available (context,
           "Authentication not in pre-start state.");
@@ -1001,65 +978,39 @@ sasl_auth_iface_init (gpointer klass,
 #undef IMPLEMENT
 }
 
-/**
- * Auth Registry Interface
- */
-
-static void
-gabble_server_sasl_channel_start_auth_async_func (
-    WockyAuthRegistry *auth_registry,
-    const GSList *mechanisms,
-    gboolean allow_plain,
-    gboolean is_secure_channel,
-    const gchar *username,
-    const gchar *password,
-    const gchar *server,
-    const gchar *session_id,
+void
+gabble_server_sasl_channel_start_auth_async (GabbleServerSaslChannel *self,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
-  GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (
-      auth_registry);
   GabbleServerSaslChannelPrivate *priv = self->priv;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (conn);
 
-  /* these were supplied at construct-time */
-  g_assert (priv->available_mechanisms != NULL);
+  DEBUG ("");
 
-  if (password == NULL || username == NULL)
-    {
-      TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-      TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (conn);
+  g_assert (priv->result == NULL);
+  g_assert (conn->object_path != NULL);
 
-      DEBUG ("");
+  priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
+      user_data, gabble_server_sasl_channel_start_auth_async);
 
-      g_assert (priv->result == NULL);
-      g_assert (conn->object_path != NULL);
+  priv->object_path = g_strdup_printf ("%s/SASLChannel",
+      conn->object_path);
 
-      priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
-          user_data, gabble_server_sasl_channel_start_auth_async_func);
+  tp_dbus_daemon_register_object (bus, priv->object_path, G_OBJECT (self));
 
-      priv->object_path = g_strdup_printf ("%s/SASLChannel",
-          conn->object_path);
-
-      tp_dbus_daemon_register_object (bus, priv->object_path, G_OBJECT (self));
-
-      priv->closed = FALSE;
-    }
-  else
-    {
-      ERROR ("GabbleAuthManager is meant to do this bit now");
-      g_assert_not_reached ();
-    }
+  priv->closed = FALSE;
 }
 
-static gboolean
-gabble_server_sasl_channel_start_auth_finish_func (WockyAuthRegistry *self,
+gboolean
+gabble_server_sasl_channel_start_auth_finish (GabbleServerSaslChannel *self,
     GAsyncResult *result,
     WockyAuthRegistryStartData **start_data,
     GError **error)
 {
   wocky_implement_finish_copy_pointer (self,
-      gabble_server_sasl_channel_start_auth_async_func,
+      gabble_server_sasl_channel_start_auth_async,
       wocky_auth_registry_start_data_dup, start_data);
 }
 

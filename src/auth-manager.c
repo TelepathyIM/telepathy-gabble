@@ -205,10 +205,8 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
       self->priv->closed_id = tp_g_signal_connect_object (self->priv->channel,
           "closed", G_CALLBACK (auth_channel_closed_cb), self, 0);
 
-      wocky_auth_registry_start_auth_async (
-          WOCKY_AUTH_REGISTRY (self->priv->channel),
-          mechanisms, allow_plain, is_secure_channel, username, password,
-          server, session_id, callback, user_data);
+      gabble_server_sasl_channel_start_auth_async (self->priv->channel,
+          callback, user_data);
 
       g_assert (gabble_server_sasl_channel_is_open (
             self->priv->channel));
@@ -234,8 +232,7 @@ gabble_auth_manager_start_auth_finish (WockyAuthRegistry *registry,
 
   if (self->priv->channel != NULL)
     {
-      return wocky_auth_registry_start_auth_finish (
-          WOCKY_AUTH_REGISTRY (self->priv->channel),
+      return gabble_server_sasl_channel_start_auth_finish (self->priv->channel,
           result, start_data, error);
     }
   else

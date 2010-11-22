@@ -72,6 +72,13 @@ GabbleServerSaslChannel *gabble_server_sasl_channel_new (
     GabbleConnection *conn, GStrv available_mechanisms,
     gboolean secure, const gchar *session_id);
 
+void gabble_server_sasl_channel_start_auth_async (
+    GabbleServerSaslChannel *self, GAsyncReadyCallback callback,
+    gpointer user_data);
+gboolean gabble_server_sasl_channel_start_auth_finish (
+    GabbleServerSaslChannel *self, GAsyncResult *result,
+    WockyAuthRegistryStartData **start_data, GError **error);
+
 gboolean gabble_server_sasl_channel_is_open (GabbleServerSaslChannel *self);
 
 G_END_DECLS

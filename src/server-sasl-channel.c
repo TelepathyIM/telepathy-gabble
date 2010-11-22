@@ -97,8 +97,6 @@ enum
 
 struct _GabbleServerSaslChannelPrivate
 {
-  gboolean dispose_has_run;
-
   /* Immutable SASL properties */
   GStrv available_mechanisms;
   gboolean secure;
@@ -276,32 +274,23 @@ gabble_server_sasl_channel_set_property (GObject *object,
 }
 
 static void
-gabble_server_sasl_channel_dispose (GObject *object)
+gabble_server_sasl_channel_finalize (GObject *object)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (object);
   GabbleServerSaslChannelPrivate *priv = self->priv;
-
-  DEBUG ("disposed");
-
-  if (priv->dispose_has_run)
-    return;
-
-  priv->dispose_has_run = TRUE;
 
   /* a ref is held for the channel's lifetime */
   g_assert (tp_base_channel_is_destroyed ((TpBaseChannel *) self));
   g_assert (priv->result == NULL);
 
-  /* FIXME: from here down should really be in finalize since no object refs
-   * are involved */
   g_strfreev (priv->available_mechanisms);
   g_hash_table_unref (priv->sasl_context);
 
   g_free (priv->sasl_error);
   g_hash_table_unref (priv->sasl_error_details);
 
-  if (G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->finalize)
+    G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->finalize (object);
 }
 
 static void gabble_server_sasl_channel_close (TpBaseChannel *channel);
@@ -351,7 +340,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 
   object_class->get_property = gabble_server_sasl_channel_get_property;
   object_class->set_property = gabble_server_sasl_channel_set_property;
-  object_class->dispose = gabble_server_sasl_channel_dispose;
+  object_class->finalize = gabble_server_sasl_channel_finalize;
 
   channel_class->channel_type =
     GABBLE_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION;

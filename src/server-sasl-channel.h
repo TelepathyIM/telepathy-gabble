@@ -31,6 +31,8 @@
 
 G_BEGIN_DECLS
 
+#define X_TELEPATHY_PASSWORD "X-TELEPATHY-PASSWORD"
+
 typedef struct _GabbleServerSaslChannelPrivate GabbleServerSaslChannelPrivate;
 typedef struct _GabbleServerSaslChannelClass GabbleServerSaslChannelClass;
 typedef struct _GabbleServerSaslChannel GabbleServerSaslChannel;

@@ -21,7 +21,8 @@ def test_complex_success(q, bus, conn, stream, with_extra_data=True,
         accept_early=False):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    assertSameSets(MECHANISMS, props.get(cs.SASL_AVAILABLE_MECHANISMS))
+    assertSameSets(MECHANISMS + ['X-TELEPATHY-PASSWORD'],
+            props.get(cs.SASL_AVAILABLE_MECHANISMS))
 
     try:
         chan.SASLAuthentication.StartMechanismWithData("FOO", "")

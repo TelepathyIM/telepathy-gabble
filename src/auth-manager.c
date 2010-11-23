@@ -58,6 +58,14 @@ struct _GabbleAuthManagerPrivate
 
   GabbleServerSaslChannel *channel;
   gulong closed_id;
+  gboolean falling_back;
+
+  GSList *mechanisms;
+  gchar *server;
+  gchar *session_id;
+  gchar *username;
+  gboolean allow_plain;
+  gboolean is_secure_channel;
 
   gboolean dispose_has_run;
 };
@@ -101,6 +109,13 @@ auth_channel_closed_cb (GabbleServerSaslChannel *channel,
   g_assert (self->priv->channel == channel);
   g_signal_handler_disconnect (self->priv->channel, self->priv->closed_id);
   tp_clear_object (&self->priv->channel);
+
+  /* discard info we were holding in case we wanted to fall back */
+  g_slist_foreach (self->priv->mechanisms, (GFunc) g_free, NULL);
+  tp_clear_pointer (&self->priv->mechanisms, g_slist_free);
+  tp_clear_pointer (&self->priv->server, g_free);
+  tp_clear_pointer (&self->priv->session_id, g_free);
+  tp_clear_pointer (&self->priv->username, g_free);
 }
 
 static void
@@ -173,16 +188,17 @@ gabble_auth_manager_set_property (GObject *object,
 }
 
 static void
-gabble_auth_manager_start_auth_cb (GObject *channel,
+gabble_auth_manager_start_fallback_cb (GObject *self_object,
     GAsyncResult *result,
     gpointer user_data)
 {
-  GObject *self_object = g_async_result_get_source_object (user_data);
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (self_object);
   WockyAuthRegistryStartData *start_data = NULL;
   GError *error = NULL;
 
-  if (gabble_server_sasl_channel_start_auth_finish (
-        GABBLE_SERVER_SASL_CHANNEL (channel), result, &start_data, &error))
+  if (WOCKY_AUTH_REGISTRY_CLASS (gabble_auth_manager_parent_class)->
+      start_auth_finish_func (WOCKY_AUTH_REGISTRY (self), result, &start_data,
+        &error))
     {
       g_simple_async_result_set_op_res_gpointer (user_data, start_data,
           (GDestroyNotify) wocky_auth_registry_start_data_free);
@@ -194,6 +210,53 @@ gabble_auth_manager_start_auth_cb (GObject *channel,
 
   g_simple_async_result_complete (user_data);
   g_object_unref (user_data);
+}
+
+static void
+gabble_auth_manager_start_auth_cb (GObject *channel,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GObject *self_object = g_async_result_get_source_object (user_data);
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (self_object);
+  WockyAuthRegistryStartData *start_data = NULL;
+  GError *error = NULL;
+
+  if (gabble_server_sasl_channel_start_auth_finish (
+        GABBLE_SERVER_SASL_CHANNEL (channel), result, &start_data, &error))
+    {
+      if (!tp_strdiff (start_data->mechanism, X_TELEPATHY_PASSWORD))
+        {
+          /* restart authentication using our own base class */
+          g_assert (start_data->initial_response != NULL);
+
+          self->priv->falling_back = TRUE;
+          WOCKY_AUTH_REGISTRY_CLASS (
+              gabble_auth_manager_parent_class)->start_auth_async_func (
+                  WOCKY_AUTH_REGISTRY (self), self->priv->mechanisms,
+                  self->priv->allow_plain, self->priv->is_secure_channel,
+                  self->priv->username,
+                  start_data->initial_response->str,
+                  self->priv->server,
+                  self->priv->session_id,
+                  gabble_auth_manager_start_fallback_cb, user_data);
+          /* we've transferred ownership of the result */
+          goto finally;
+        }
+      else
+        {
+          g_simple_async_result_set_op_res_gpointer (user_data, start_data,
+              (GDestroyNotify) wocky_auth_registry_start_data_free);
+        }
+    }
+  else
+    {
+      g_simple_async_result_take_error (user_data, error);
+    }
+
+  g_simple_async_result_complete (user_data);
+  g_object_unref (user_data);
+finally:
   g_object_unref (self_object);
 }
 
@@ -221,9 +284,33 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
       const GSList *iter;
 
       for (iter = mechanisms; iter != NULL; iter = iter->next)
-        g_ptr_array_add (mech_array, iter->data);
+        {
+          self->priv->mechanisms = g_slist_prepend (self->priv->mechanisms,
+              g_strdup (iter->data));
+          g_ptr_array_add (mech_array, iter->data);
+        }
 
+      g_ptr_array_add (mech_array, X_TELEPATHY_PASSWORD);
       g_ptr_array_add (mech_array, NULL);
+
+      /* we'll use these if we fall back to the base class to use
+       * X-TELEPATHY-PASSWORD */
+      self->priv->mechanisms = g_slist_reverse (self->priv->mechanisms);
+      self->priv->allow_plain = allow_plain;
+      self->priv->is_secure_channel = is_secure_channel;
+      self->priv->server = g_strdup (server);
+      self->priv->session_id = g_strdup (session_id);
+
+      if (username == NULL)
+        {
+          g_object_get (self->priv->conn,
+              "username", &self->priv->username,
+              NULL);
+        }
+      else
+        {
+          self->priv->username = g_strdup (username);
+        }
 
       self->priv->channel = gabble_server_sasl_channel_new (self->priv->conn,
           (GStrv) mech_array->pdata, is_secure_channel, session_id);
@@ -284,7 +371,7 @@ gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL)
+  if (self->priv->channel != NULL && !self->priv->falling_back)
     {
       gabble_server_sasl_channel_challenge_async (self->priv->channel,
           challenge_data, callback, user_data);
@@ -305,7 +392,7 @@ gabble_auth_manager_challenge_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL)
+  if (self->priv->channel != NULL && !self->priv->falling_back)
     {
       return gabble_server_sasl_channel_challenge_finish (self->priv->channel,
           result, response, error);

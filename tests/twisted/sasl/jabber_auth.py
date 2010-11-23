@@ -21,17 +21,14 @@ PASSWORD = "pass"
 def test_jabber_pass_success(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    assertSameSets(['X-WOCKY-JABBER-PASSWORD', 'X-WOCKY-JABBER-DIGEST'],
+    assertSameSets(['X-WOCKY-JABBER-PASSWORD', 'X-WOCKY-JABBER-DIGEST',
+        'X-TELEPATHY-PASSWORD'],
             props.get(cs.SASL_AVAILABLE_MECHANISMS))
 
     context = props.get(cs.SASL_CONTEXT)
 
-    assert context.has_key('jabber-stream-id')
-
-    digest = hashlib.sha1(context['jabber-stream-id'] + PASSWORD).hexdigest()
-
-    chan.SASLAuthentication.StartMechanismWithData('X-WOCKY-JABBER-DIGEST',
-            digest)
+    chan.SASLAuthentication.StartMechanismWithData('X-TELEPATHY-PASSWORD',
+            PASSWORD)
 
     q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,

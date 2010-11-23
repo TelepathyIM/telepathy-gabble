@@ -91,7 +91,11 @@ class GabbleAuthenticator(xmlstream.Authenticator):
         self.resource = resource
         self.bare_jid = None
         self.full_jid = None
+        self._event_func = lambda e: None
         xmlstream.Authenticator.__init__(self)
+
+    def set_event_func(self, event_func):
+        self._event_func = event_func
 
 class JabberAuthenticator(GabbleAuthenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
@@ -484,6 +488,8 @@ def make_stream(event_func, authenticator=None, protocol=None,
     # set up Jabber server
     if authenticator is None:
         authenticator = XmppAuthenticator('test%s' % suffix, 'pass', resource=resource)
+
+    authenticator.set_event_func(event_func)
 
     if protocol is None:
         protocol = XmppXmlStream

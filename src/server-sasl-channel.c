@@ -835,6 +835,8 @@ gabble_server_sasl_channel_start_auth_async (GabbleServerSaslChannel *self,
   GabbleServerSaslChannelPrivate *priv = self->priv;
 
   g_assert (priv->result == NULL);
+  g_assert (priv->sasl_status == GABBLE_SASL_STATUS_NOT_STARTED);
+  DEBUG ("Starting authentication");
 
   priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
       user_data, gabble_server_sasl_channel_start_auth_async);
@@ -863,6 +865,10 @@ gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
 
   g_assert (!tp_base_channel_is_destroyed ((TpBaseChannel *) self));
   g_assert (priv->result == NULL);
+  g_assert (priv->sasl_status == GABBLE_SASL_STATUS_IN_PROGRESS);
+  /* it might be sensitive, and also might not be UTF-8 text, so just print
+   * the length */
+  DEBUG ("New challenge, %" G_GSIZE_FORMAT " bytes", challenge_data->len);
 
   priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
       user_data, gabble_server_sasl_channel_challenge_async);

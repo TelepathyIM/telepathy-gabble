@@ -25,6 +25,8 @@ def test_plain_success(q, bus, conn, stream):
 
     # On some servers we can't do DIGEST auth without this information.
     assertEquals('example.org', props.get(cs.SASL_DEFAULT_REALM))
+    # We can't necessarily do PLAIN auth without this information.
+    assertEquals('test', props.get(cs.SASL_DEFAULT_USERNAME))
 
     chan.SASLAuthentication.StartMechanismWithData(
         'PLAIN', '\0' + JID.split('@')[0] + '\0' + PASSWORD)

@@ -25,10 +25,9 @@ def test_abort_mid(q, bus, conn, stream):
 
     chan.SASLAuthentication.StartMechanismWithData("ABORT-TEST", EXCHANGE[0][1])
 
-    # FIXME: should be emitted at this point, I think
-    #q.expect('dbus-signal', signal='SASLStatusChanged',
-    #         interface=cs.CHANNEL_IFACE_SASL_AUTH,
-    #         args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
+    q.expect('dbus-signal', signal='SASLStatusChanged',
+             interface=cs.CHANNEL_IFACE_SASL_AUTH,
+             args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
 
     e = q.expect('sasl-auth', initial_response=EXCHANGE[0][1])
     authenticator = e.authenticator
@@ -46,10 +45,9 @@ def test_disconnect_mid(q, bus, conn, stream):
 
     chan.SASLAuthentication.StartMechanismWithData("ABORT-TEST", EXCHANGE[0][1])
 
-    # FIXME: should be emitted at this point, I think
-    #q.expect('dbus-signal', signal='SASLStatusChanged',
-    #         interface=cs.CHANNEL_IFACE_SASL_AUTH,
-    #         args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
+    q.expect('dbus-signal', signal='SASLStatusChanged',
+             interface=cs.CHANNEL_IFACE_SASL_AUTH,
+             args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
 
     e = q.expect('sasl-auth', initial_response=EXCHANGE[0][1])
     authenticator = e.authenticator
@@ -70,6 +68,10 @@ def test_abort_connected(q, bus, conn, stream):
 
     chan.SASLAuthentication.StartMechanismWithData(
         'PLAIN', '\0' + JID.split('@')[0] + '\0' + PASSWORD)
+
+    q.expect('dbus-signal', signal='SASLStatusChanged',
+             interface=cs.CHANNEL_IFACE_SASL_AUTH,
+             args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
 
     q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,

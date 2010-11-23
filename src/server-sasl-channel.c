@@ -517,16 +517,19 @@ gabble_server_sasl_channel_start_mechanism_with_data (
   gboolean mechanism_available = FALSE;
   DEBUG ("");
 
-  if (r == NULL || !g_simple_async_result_is_valid (
-          G_ASYNC_RESULT (priv->result), G_OBJECT (self),
-          gabble_server_sasl_channel_start_auth_async))
+  if (self->priv->sasl_status != GABBLE_SASL_STATUS_NOT_STARTED)
     {
       gabble_server_sasl_channel_raise_not_available (context,
-          "Authentication not in pre-start state.");
-
+          "Mechanisms can only be started in state Not_Started, not %u",
+          self->priv->sasl_status);
       return;
     }
 
+  /* NotStarted state is entered by creating the channel: the caller must
+   * call start_auth_async immediately */
+  g_assert (r != NULL);
+  g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+        G_OBJECT (self), gabble_server_sasl_channel_start_auth_async));
 
   for (i = 0; priv->available_mechanisms[i] != NULL; i++)
     {
@@ -552,14 +555,14 @@ gabble_server_sasl_channel_start_mechanism_with_data (
           initial_data = g_string_sized_new (0);
         }
 
+      change_current_state (self, GABBLE_SASL_STATUS_IN_PROGRESS, NULL, NULL);
+      dbus_g_method_return (context);
+
       start_data =
         wocky_auth_registry_start_data_new (in_Mechanism, initial_data);
 
       g_simple_async_result_set_op_res_gpointer (r,
           start_data, (GDestroyNotify) wocky_auth_registry_start_data_free);
-
-      dbus_g_method_return (context);
-
       g_simple_async_result_complete_in_idle (r);
       g_object_unref (r);
 
@@ -803,8 +806,6 @@ gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
       challenge_data->len);
   g_array_append_vals (challenge_ay, challenge_data->str,
       challenge_data->len);
-
-  change_current_state (self, GABBLE_SASL_STATUS_IN_PROGRESS, NULL, NULL);
 
   gabble_svc_channel_interface_sasl_authentication_emit_new_challenge (
       self, challenge_ay);

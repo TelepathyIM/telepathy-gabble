@@ -68,8 +68,11 @@ def test_plain_fail(q, bus, conn, stream):
         'PLAIN', '\0' + JID.split('@')[0] + '\0' + 'wrong')
 
     e = q.expect('dbus-signal', signal='SASLStatusChanged',
-                 interface=cs.CHANNEL_IFACE_SASL_AUTH)
+                 interface=cs.CHANNEL_IFACE_SASL_AUTH,
+                 args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
 
+    e = q.expect('dbus-signal', signal='SASLStatusChanged',
+                 interface=cs.CHANNEL_IFACE_SASL_AUTH)
     assertEquals(e.args[:2],
                  [cs.SASL_STATUS_SERVER_FAILED,
                   cs.AUTHENTICATION_FAILED])

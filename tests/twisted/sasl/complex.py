@@ -41,10 +41,9 @@ def test_complex_success(q, bus, conn, stream, with_extra_data=True,
 
     authenticator = e.authenticator
 
-    # FIXME: should be emitted at this point, I think
-    #q.expect('dbus-signal', signal='SASLStatusChanged',
-    #         interface=cs.CHANNEL_IFACE_SASL_AUTH,
-    #         args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
+    q.expect('dbus-signal', signal='SASLStatusChanged',
+             interface=cs.CHANNEL_IFACE_SASL_AUTH,
+             args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
 
     if not with_extra_data:
         # send the stage directions in-band instead

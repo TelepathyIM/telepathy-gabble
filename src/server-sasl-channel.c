@@ -554,7 +554,9 @@ gabble_server_sasl_channel_start_mechanism_with_data (
 
       g_simple_async_result_complete_in_idle (r);
       g_object_unref (r);
-      g_string_free (initial_data, TRUE);
+
+      if (initial_data != NULL)
+        g_string_free (initial_data, TRUE);
     }
   else
     {

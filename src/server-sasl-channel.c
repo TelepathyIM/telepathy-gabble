@@ -747,37 +747,51 @@ gabble_server_sasl_channel_abort_sasl (
     {
       case GABBLE_SASL_STATUS_SERVER_FAILED:
       case GABBLE_SASL_STATUS_CLIENT_FAILED:
-        /* no effect */
+        DEBUG ("ignoring attempt to abort: we already failed");
         break;
 
       case GABBLE_SASL_STATUS_SUCCEEDED:
       case GABBLE_SASL_STATUS_CLIENT_ACCEPTED:
+        DEBUG ("cannot abort: client already called AcceptSASL");
         gabble_server_sasl_channel_raise_not_available (context,
-            "Authentication has already succeeded.");
+            "Authentication has already succeeded - too late to abort");
         return;
 
-      default:
+      case GABBLE_SASL_STATUS_NOT_STARTED:
+      case GABBLE_SASL_STATUS_IN_PROGRESS:
+      case GABBLE_SASL_STATUS_SERVER_SUCCEEDED:
         switch (in_Reason)
           {
             case GABBLE_SASL_ABORT_REASON_INVALID_CHALLENGE:
+              DEBUG ("invalid challenge (%s)", in_Debug_Message);
               code = WOCKY_AUTH_ERROR_INVALID_REPLY;
               /* FIXME: should be ServiceConfused, when it lands in tp-glib */
               dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
               break;
 
             case GABBLE_SASL_ABORT_REASON_USER_ABORT:
+              DEBUG ("user aborted auth (%s)", in_Debug_Message);
               code = WOCKY_AUTH_ERROR_FAILURE;
               dbus_error = TP_ERROR_STR_CANCELLED;
               break;
 
             default:
-              /* FIXME: should not abort on D-Bus input! */
-              g_assert_not_reached ();
+              DEBUG ("unknown reason code %u, treating as User_Abort (%s)",
+                  in_Reason, in_Debug_Message);
+              code = WOCKY_AUTH_ERROR_FAILURE;
+              dbus_error = TP_ERROR_STR_CANCELLED;
+              break;
           }
 
         if (r != NULL)
           {
             self->priv->result = NULL;
+
+            /* If Not_Started, we're returning failure from start_auth_async.
+             * If In_Progress, we might be returning failure from
+             *  challenge_async, if one is outstanding.
+             * If Server_Succeeded, we're returning failure from success_async.
+             */
 
             g_simple_async_result_set_error (r, WOCKY_AUTH_ERROR, code,
                 "Authentication aborted: %s", in_Debug_Message);
@@ -788,6 +802,10 @@ gabble_server_sasl_channel_abort_sasl (
 
         change_current_state (self, GABBLE_SASL_STATUS_CLIENT_FAILED,
             dbus_error, in_Debug_Message);
+        break;
+
+      default:
+        g_assert_not_reached ();
     }
 
   gabble_svc_channel_interface_sasl_authentication_return_from_abort_sasl (

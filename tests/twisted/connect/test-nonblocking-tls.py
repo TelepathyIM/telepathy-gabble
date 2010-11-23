@@ -18,19 +18,19 @@ from servicetest import (Event, unwrap)
 
 from gabbletest import (
     make_connection, make_stream, XmppAuthenticator, XmppXmlStream,
-    disconnect_conn)
+    disconnect_conn, GabbleAuthenticator)
 import constants as cs
 
 NS_XMPP_TLS = 'urn:ietf:params:xml:ns:xmpp-tls'
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
 
-class BlockForeverTlsAuthenticator(xmlstream.Authenticator):
+class BlockForeverTlsAuthenticator(GabbleAuthenticator):
     """A TLS stream authenticator that is deliberately broken. It sends
     <proceed/> to the client but then do nothing, so the TLS handshake will
     not work. Useful for testing regression of bug #14341."""
 
     def __init__(self, username, password):
-        xmlstream.Authenticator.__init__(self)
+        GabbleAuthenticator.__init__(self, username, password)
         self.username = username
         self.password = password
         self.authenticated = False

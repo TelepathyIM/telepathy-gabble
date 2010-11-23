@@ -513,13 +513,13 @@ gabble_server_sasl_channel_start_mechanism_with_data (
   WockyAuthRegistryStartData *start_data;
   GSimpleAsyncResult *r = priv->result;
   GString *initial_data = NULL;
-  DEBUG ("");
 
   if (self->priv->sasl_status != GABBLE_SASL_STATUS_NOT_STARTED)
     {
       gabble_server_sasl_channel_raise_not_available (context,
           "Mechanisms can only be started in state Not_Started, not %u",
           self->priv->sasl_status);
+      DEBUG ("cannot start: state %u != Not_Started", self->priv->sasl_status);
       return;
     }
 
@@ -536,14 +536,24 @@ gabble_server_sasl_channel_start_mechanism_with_data (
 
       if (in_InitialData != NULL)
         {
+          /* The initial data might be secret (for PLAIN etc.), and also might
+           * not be UTF-8 or even text, so we just output the length */
+          DEBUG ("Starting %s authentication with %u bytes of initial data",
+              in_Mechanism, in_InitialData->len);
           initial_data = g_string_new_len (in_InitialData->data,
               in_InitialData->len);
         }
-      else if (g_str_has_prefix (in_Mechanism, "X-WOCKY-JABBER-"))
+      else
         {
-          /* FIXME: wocky-jabber-auth asserts there is an initial response,
-           * and will crash otherwise */
-          initial_data = g_string_sized_new (0);
+          DEBUG ("Starting %s authentication without initial data",
+              in_Mechanism);
+
+          if (g_str_has_prefix (in_Mechanism, "X-WOCKY-JABBER-"))
+            {
+              /* FIXME: wocky-jabber-auth asserts there is an initial response,
+               * and will crash otherwise */
+              initial_data = g_string_sized_new (0);
+            }
         }
 
       change_current_state (self, GABBLE_SASL_STATUS_IN_PROGRESS, NULL, NULL);
@@ -562,6 +572,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
     }
   else
     {
+      DEBUG ("cannot start: %s is not a supported mechanism", in_Mechanism);
       gabble_server_sasl_channel_raise_not_available (context,
           "Selected mechanism is not available.");
     }

@@ -24,6 +24,8 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 
+#include <wocky/wocky-utils.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_AUTH
 
 #include "extensions/extensions.h"
@@ -171,6 +173,31 @@ gabble_auth_manager_set_property (GObject *object,
 }
 
 static void
+gabble_auth_manager_start_auth_cb (GObject *channel,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GObject *self_object = g_async_result_get_source_object (user_data);
+  WockyAuthRegistryStartData *start_data = NULL;
+  GError *error = NULL;
+
+  if (gabble_server_sasl_channel_start_auth_finish (
+        GABBLE_SERVER_SASL_CHANNEL (channel), result, &start_data, &error))
+    {
+      g_simple_async_result_set_op_res_gpointer (user_data, start_data,
+          (GDestroyNotify) wocky_auth_registry_start_data_free);
+    }
+  else
+    {
+      g_simple_async_result_take_error (user_data, error);
+    }
+
+  g_simple_async_result_complete (user_data);
+  g_object_unref (user_data);
+  g_object_unref (self_object);
+}
+
+static void
 gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
     const GSList *mechanisms,
     gboolean allow_plain,
@@ -206,7 +233,9 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
           "closed", G_CALLBACK (auth_channel_closed_cb), self, 0);
 
       gabble_server_sasl_channel_start_auth_async (self->priv->channel,
-          callback, user_data);
+          gabble_auth_manager_start_auth_cb,
+          g_simple_async_result_new ((GObject *) self,
+            callback, user_data, gabble_auth_manager_start_auth_async));
 
       g_assert (!tp_base_channel_is_destroyed (
             (TpBaseChannel *) self->priv->channel));
@@ -234,8 +263,9 @@ gabble_auth_manager_start_auth_finish (WockyAuthRegistry *registry,
 
   if (self->priv->channel != NULL)
     {
-      return gabble_server_sasl_channel_start_auth_finish (self->priv->channel,
-          result, start_data, error);
+      wocky_implement_finish_copy_pointer (self,
+          gabble_auth_manager_start_auth_async,
+          wocky_auth_registry_start_data_dup, start_data);
     }
   else
     {

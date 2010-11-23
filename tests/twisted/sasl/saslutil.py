@@ -1,10 +1,12 @@
+# hey, Python: encoding: utf-8
 from twisted.words.protocols.jabber.xmlstream import NS_STREAMS
 from gabbletest import XmppAuthenticator
 from base64 import b64decode, b64encode
 from twisted.words.xish import domish
 import constants as cs
 import ns
-from servicetest import ProxyWrapper, EventPattern, assertEquals, assertLength
+from servicetest import (ProxyWrapper, EventPattern, assertEquals,
+        assertLength, Event)
 
 class SaslChannelWrapper(ProxyWrapper):
     def __init__(self, object, default=cs.CHANNEL, interfaces={
@@ -13,12 +15,9 @@ class SaslChannelWrapper(ProxyWrapper):
         ProxyWrapper.__init__(self, object, default, interfaces)
 
 class SaslComplexAuthenticator(XmppAuthenticator):
-    def __init__(self, jid, exchange, mechanisms, data_on_success=True):
+    def __init__(self, jid, mechanisms):
         XmppAuthenticator.__init__(self, jid, '')
-        self._exchange = exchange
-        self._data_on_success = data_on_success
         self._mechanisms = mechanisms
-        self._stage = 0
 
     def streamStarted(self, root=None):
         if root:
@@ -42,53 +41,65 @@ class SaslComplexAuthenticator(XmppAuthenticator):
                 mechanisms.addElement('mechanism', content=mechanism)
             self.xmlstream.send(features)
 
-            self.xmlstream.addOnetimeObserver("/auth", self.auth)
-            self.xmlstream.addObserver("/response", self.response)
-            self.xmlstream.addObserver("/abort", self.abort)
+            self.xmlstream.addOnetimeObserver("/auth", self._auth)
+            self.xmlstream.addObserver("/response", self._response)
+            self.xmlstream.addObserver("/abort", self._abort)
 
-    def _failure(self, fail_str):
+    def failure(self, fail_str):
         reply = domish.Element((ns.NS_XMPP_SASL, 'failure'))
         reply.addElement(fail_str)
-
         self.xmlstream.send(reply)
         self.xmlstream.reset()
 
-    def abort(self, elem):
-        self._failure('aborted')
+    def abort(self):
+        self.failure('abort')
 
-    def _send_challenge(self):
-        challenge_str = self._exchange[self._stage][0]
-        if self._data_on_success and self._stage == len(self._exchange) - 1:
-            reply = domish.Element((ns.NS_XMPP_SASL, 'success'))
-            if challenge_str:
-                reply.addContent(b64encode(challenge_str))
-            self.xmlstream.send(reply)
-            self.authenticated = True
-            self.xmlstream.reset()
+    def not_authorized(self):
+        self.failure('not-authorized')
+
+    def success(self, data=None):
+        reply = domish.Element((ns.NS_XMPP_SASL, 'success'))
+
+        if data is not None:
+            reply.addContent(b64encode(data))
+
+        self.xmlstream.send(reply)
+        self.authenticated=True
+        self.xmlstream.reset()
+
+    def challenge(self, data):
+        reply = domish.Element((ns.NS_XMPP_SASL, 'challenge'))
+        reply.addContent(b64encode(data))
+        self.xmlstream.send(reply)
+
+    def _auth(self, auth):
+        # Special case in XMPP: '=' means a zero-byte blob, whereas an empty
+        # or self-terminating XML element means no initial response.
+        # (RFC 3920 §6.2 (3))
+        if str(auth) == '':
+            self._event_func(Event('sasl-auth', authenticator=self,
+                has_initial_response=False,
+                initial_response=None,
+                xml=auth))
+        elif str(auth) == '=':
+            self._event_func(Event('sasl-auth', authenticator=self,
+                has_initial_response=False,
+                initial_response=None,
+                xml=auth))
         else:
-            reply = domish.Element((ns.NS_XMPP_SASL, 'challenge'))
-            reply.addContent(b64encode(challenge_str))
-            self.xmlstream.send(reply)
+            self._event_func(Event('sasl-auth', authenticator=self,
+                has_initial_response=True,
+                initial_response=b64decode(str(auth)),
+                xml=auth))
 
-    def _challenge(self, elem):
-        if b64decode(str(elem)) != self._exchange[self._stage][1]:
-            self._failure('not-authorized')
-        elif not self._data_on_success and \
-                self._stage == len(self._exchange) - 1:
-            reply = domish.Element((ns.NS_XMPP_SASL, 'success'))
-            self.xmlstream.send(reply)
-            self.authenticated = True
-            self.xmlstream.reset()
-        else:
-            self._stage += 1
-            self._send_challenge()
+    def _response(self, response):
+        self._event_func(Event('sasl-response', authenticator=self,
+            response=b64decode(str(response)),
+            xml=response))
 
-
-    def auth(self, auth):
-        self._challenge(auth)
-
-    def response(self, response):
-        self._challenge(response)
+    def _abort(self, abort):
+        self._event_func(Event('sasl-abort', authenticator=self,
+            xml=abort))
 
 class SaslPlainAuthenticator(XmppAuthenticator):
     def __init__(self, username, password):

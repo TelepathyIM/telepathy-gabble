@@ -21,8 +21,7 @@ PASSWORD = "pass"
 def test_jabber_pass_success(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    assertSameSets(['X-WOCKY-JABBER-PASSWORD', 'X-WOCKY-JABBER-DIGEST',
-        'X-TELEPATHY-PASSWORD'],
+    assertSameSets(['X-TELEPATHY-PASSWORD'],
             props.get(cs.SASL_AVAILABLE_MECHANISMS))
 
     context = props.get(cs.SASL_CONTEXT)

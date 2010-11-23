@@ -287,7 +287,10 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
         {
           self->priv->mechanisms = g_slist_prepend (self->priv->mechanisms,
               g_strdup (iter->data));
-          g_ptr_array_add (mech_array, iter->data);
+
+          /* skip Wocky-specific pseudo-mechanisms for the D-Bus API */
+          if (!g_str_has_prefix (iter->data, "X-WOCKY-JABBER-"))
+            g_ptr_array_add (mech_array, iter->data);
         }
 
       g_ptr_array_add (mech_array, X_TELEPATHY_PASSWORD);

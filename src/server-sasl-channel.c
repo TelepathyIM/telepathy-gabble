@@ -547,13 +547,6 @@ gabble_server_sasl_channel_start_mechanism_with_data (
         {
           DEBUG ("Starting %s authentication without initial data",
               in_Mechanism);
-
-          if (g_str_has_prefix (in_Mechanism, "X-WOCKY-JABBER-"))
-            {
-              /* FIXME: wocky-jabber-auth asserts there is an initial response,
-               * and will crash otherwise */
-              initial_data = g_string_sized_new (0);
-            }
         }
 
       change_current_state (self, GABBLE_SASL_STATUS_IN_PROGRESS, NULL, NULL);

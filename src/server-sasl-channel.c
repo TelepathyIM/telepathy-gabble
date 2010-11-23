@@ -597,14 +597,30 @@ gabble_server_sasl_channel_respond (
   GString *response_data;
   GSimpleAsyncResult *r = self->priv->result;
 
-  if (r == NULL || !g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
-          G_OBJECT (self), gabble_server_sasl_channel_challenge_async))
+  if (self->priv->sasl_status != GABBLE_SASL_STATUS_IN_PROGRESS)
     {
       gabble_server_sasl_channel_raise_not_available (context,
-          "Authentication waiting for response.");
-
+          "You can only respond to challenges in state In_Progress, not %u",
+          self->priv->sasl_status);
+      DEBUG ("cannot respond: state %u != In_Progress",
+          self->priv->sasl_status);
       return;
     }
+
+  if (r == NULL)
+    {
+      gabble_server_sasl_channel_raise_not_available (context,
+          "You already responded to the most recent challenge");
+      DEBUG ("cannot respond: already responded");
+      return;
+    }
+
+  g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+        G_OBJECT (self), gabble_server_sasl_channel_challenge_async));
+
+  /* The response might be secret (for PLAIN etc.), and also might
+   * not be UTF-8 or even text, so we just output the length */
+  DEBUG ("responding with %u bytes", in_Response_Data->len);
 
   self->priv->result = NULL;
 

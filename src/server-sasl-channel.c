@@ -938,7 +938,8 @@ void
 gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
     const GError *error)
 {
-  const gchar *dbus_error = TP_ERROR_STR_NETWORK_ERROR;
+  GError *tp_error = NULL;
+  TpConnectionStatusReason conn_reason;
 
   if (self->priv->sasl_error != NULL)
     {
@@ -946,34 +947,16 @@ gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
       return;
     }
 
-  if (error->domain == WOCKY_AUTH_ERROR)
-    {
-      switch (error->code)
-        {
-        case WOCKY_AUTH_ERROR_INIT_FAILED:
-        case WOCKY_AUTH_ERROR_NOT_SUPPORTED:
-        case WOCKY_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
-          dbus_error = TP_ERROR_STR_NOT_AVAILABLE;
-          break;
-        case WOCKY_AUTH_ERROR_STREAM:
-        case WOCKY_AUTH_ERROR_NETWORK:
-          dbus_error = TP_ERROR_STR_NETWORK_ERROR;
-          break;
-        case WOCKY_AUTH_ERROR_RESOURCE_CONFLICT:
-          dbus_error = TP_ERROR_STR_ALREADY_CONNECTED;
-          break;
-        case WOCKY_AUTH_ERROR_CONNRESET:
-          dbus_error = TP_ERROR_STR_CONNECTION_LOST;
-          break;
-        default:
-          dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
-        }
-    }
+  gabble_set_tp_conn_error_from_wocky (error, TP_CONNECTION_STATUS_CONNECTING,
+      &conn_reason, &tp_error);
+  g_assert (tp_error->domain == TP_ERRORS);
 
-  DEBUG ("auth failed: %s", error->message);
+  /* FIXME: feed back conn_reason to the Connection for when we disconnect,
+   * rather than having it reverse-engineer from our D-Bus error name */
 
+  DEBUG ("auth failed: %s", tp_error->message);
   change_current_state (self, GABBLE_SASL_STATUS_SERVER_FAILED,
-      dbus_error, error->message);
+      tp_error_get_dbus_name (tp_error->code), tp_error->message);
 }
 
 /*

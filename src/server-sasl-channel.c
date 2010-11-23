@@ -513,8 +513,6 @@ gabble_server_sasl_channel_start_mechanism_with_data (
   WockyAuthRegistryStartData *start_data;
   GSimpleAsyncResult *r = priv->result;
   GString *initial_data = NULL;
-  guint i;
-  gboolean mechanism_available = FALSE;
   DEBUG ("");
 
   if (self->priv->sasl_status != GABBLE_SASL_STATUS_NOT_STARTED)
@@ -531,15 +529,8 @@ gabble_server_sasl_channel_start_mechanism_with_data (
   g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
         G_OBJECT (self), gabble_server_sasl_channel_start_auth_async));
 
-  for (i = 0; priv->available_mechanisms[i] != NULL; i++)
-    {
-      gchar *mech = priv->available_mechanisms[i];
-
-      if (g_strcmp0 (mech, in_Mechanism) == 0)
-        mechanism_available = TRUE;
-    }
-
-  if (mechanism_available)
+  if (tp_strv_contains ((const gchar * const *) priv->available_mechanisms,
+        in_Mechanism))
     {
       priv->result = NULL;
 

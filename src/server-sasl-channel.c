@@ -940,6 +940,12 @@ gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
 {
   const gchar *dbus_error = TP_ERROR_STR_NETWORK_ERROR;
 
+  if (self->priv->sasl_error != NULL)
+    {
+      DEBUG ("already failed, ignoring further error: %s", error->message);
+      return;
+    }
+
   if (error->domain == WOCKY_AUTH_ERROR)
     {
       switch (error->code)

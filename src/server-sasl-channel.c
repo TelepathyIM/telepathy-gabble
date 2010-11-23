@@ -479,15 +479,23 @@ change_current_state (GabbleServerSaslChannel *self,
  * SASL Authentication Channel Interface
  */
 
+static void gabble_server_sasl_channel_raise_not_available (
+    DBusGMethodInvocation *context, const gchar *message,
+    ...) G_GNUC_PRINTF (2, 3);
+
 static void
 gabble_server_sasl_channel_raise_not_available (DBusGMethodInvocation *context,
-    const gchar *message)
+    const gchar *message,
+    ...)
 {
-  GError *error = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-      message);
+  va_list ap;
+  GError *error = NULL;
+
+  va_start (ap, message);
+  error = g_error_new_valist (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, message, ap);
+  va_end (ap);
 
   dbus_g_method_return_error (context, error);
-
   g_error_free (error);
 }
 
@@ -657,7 +665,7 @@ gabble_server_sasl_channel_accept_sasl (
 
   if (message != NULL)
     {
-      gabble_server_sasl_channel_raise_not_available (context, message);
+      gabble_server_sasl_channel_raise_not_available (context, "%s", message);
 
       return;
     }

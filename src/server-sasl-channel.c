@@ -655,29 +655,53 @@ gabble_server_sasl_channel_accept_sasl (
   switch (self->priv->sasl_status)
     {
     case GABBLE_SASL_STATUS_NOT_STARTED:
-      message = "Authentication has not yet begun.";
+      message = "Authentication has not yet begun (Not_Started)";
       break;
 
     case GABBLE_SASL_STATUS_IN_PROGRESS:
-      change_current_state (self, GABBLE_SASL_STATUS_CLIENT_ACCEPTED, NULL,
-          NULL);
+      /* In this state, the only valid time to call this method is in response
+       * to a challenge, to indicate that, actually, that challenge was
+       * additional data for a successful authentication. */
+      if (r == NULL)
+        {
+          message = "In_Progress, but you already responded to the last "
+            "challenge";
+        }
+      else
+        {
+          DEBUG ("client says the last challenge was actually final data "
+              "and has accepted it");
+          g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+                G_OBJECT (self), gabble_server_sasl_channel_challenge_async));
+          change_current_state (self, GABBLE_SASL_STATUS_CLIENT_ACCEPTED, NULL,
+              NULL);
+        }
       break;
 
     case GABBLE_SASL_STATUS_SERVER_SUCCEEDED:
+      /* The server has already said yes, and the caller is waiting for
+       * success_async(), i.e. waiting for the UI to check whether it's
+       * happy too. AcceptSASL means that it is. */
+      DEBUG ("client has accepted server's success");
+      g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+            G_OBJECT (self), gabble_server_sasl_channel_success_async));
       change_current_state (self, GABBLE_SASL_STATUS_SUCCEEDED, NULL, NULL);
       break;
 
     case GABBLE_SASL_STATUS_CLIENT_ACCEPTED:
-      message = "Client already accepted authentication.";
+      message = "Client already accepted authentication (Client_Accepted)";
       break;
 
     case GABBLE_SASL_STATUS_SUCCEEDED:
-      message = "Authentication already succeeded.";
+      message = "Authentication already succeeded (Succeeded)";
       break;
 
     case GABBLE_SASL_STATUS_SERVER_FAILED:
+      message = "Authentication has already failed (Server_Failed)";
+      break;
+
     case GABBLE_SASL_STATUS_CLIENT_FAILED:
-      message = "Authentication has already failed.";
+      message = "Authentication has already been aborted (Client_Failed)";
       break;
 
     default:
@@ -686,14 +710,19 @@ gabble_server_sasl_channel_accept_sasl (
 
   if (message != NULL)
     {
+      DEBUG ("cannot accept SASL: %s", message);
       gabble_server_sasl_channel_raise_not_available (context, "%s", message);
-
       return;
     }
-  else if (r != NULL)
-    {
-      self->priv->result = NULL;
 
+  if (r != NULL)
+    {
+      /* This is a bit weird - this code is run for two different async
+       * results. In the In_Progress case, this code results in
+       * success with the GSimpleAsyncResult's op_res left as NULL, which
+       * is what Wocky wants for an empty response. In the Server_Succeeded
+       * response, the async result is just success or error - we succeed. */
+      self->priv->result = NULL;
       g_simple_async_result_complete_in_idle (r);
       g_object_unref (r);
     }

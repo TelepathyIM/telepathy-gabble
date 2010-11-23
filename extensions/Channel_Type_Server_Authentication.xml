@@ -91,6 +91,11 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
             namespace="ofdT">ChannelDispatcher</tp:dbus-ref> will close the
           channel if it cannot find a handler.</p>
       </tp:rationale>
+
+      <p>When the connection is done with the channel and it is no
+        longer needed, it is left open until either the connection state
+        turns to DISCONNECTED or the handler closes the channel. The
+        channel SHOULD NOT close itself once finished with.</p>
     </tp:docstring>
 
     <property name="AuthenticationMethod"

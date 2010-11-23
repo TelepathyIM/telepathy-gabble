@@ -29,7 +29,10 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           namespace="ofdT.Channel.Type">ServerAuthentication.DRAFT2</tp:dbus-ref>
         channel, it represents authentication with the server. In future,
         it could also be used to authenticate with secondary services,
-        or even to authenticate end-to-end connections with contacts.</p>
+        or even to authenticate end-to-end connections with contacts. As a result,
+        this interface does not REQUIRE <tp:dbus-ref namespace="ofdT.Channel.Type"
+        >ServerAuthentication.DRAFT2</tp:dbus-ref> to allow for a potential future
+        Channel.Type.PeerAuthentication interface.</p>
 
       <p>In any protocol that requires a password, the connection manager can
         use this channel to let a user interface carry out a simple SASL-like
@@ -153,46 +156,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
-    <property name="Encrypted"
-      tp:name-for-bindings="Encrypted" type="b"
-      access="read" tp:immutable="yes">
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>True if this authentication process occurs over an encrypted
-          connection. This <strong>does not</strong> imply that steps have
-          been taken to avoid man-in-the-middle attacks.</p>
-
-        <tp:rationale>
-          <p>For future support for <a
-              href="http://tools.ietf.org/html/rfc5056">RFC 5056 Channel
-              Binding</a> it is desirable to be able to use some SASL
-            mechanisms over an encrypted connection to an unverified peer,
-            which can prove that it is the desired destination during
-            the SASL negotiation.</p>
-        </tp:rationale>
-
-        <p>Clients MAY use the combination of this property and
-          <tp:member-ref>Verified</tp:member-ref> to decide whether the
-          <code>PLAIN</code> mechanism is acceptable, for instance.</p>
-      </tp:docstring>
-    </property>
-
-    <property name="Verified"
-      tp:name-for-bindings="Verified" type="b"
-      access="read" tp:immutable="yes">
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>True if this authentication process occurs over a connection
-          that is protected against tampering, and has been verified to
-          be with the desired destination: for instance, one where TLS
-          was previously negotiated, and the TLS certificate has been
-          verified against a configured certificate authority or
-          accepted by the user.</p>
-
-        <p>Clients MAY use the combination of this property and
-          <tp:member-ref>Encrypted</tp:member-ref> to decide whether the
-        <code>PLAIN</code> mechanism is acceptable, for instance.</p>
-      </tp:docstring>
-    </property>
-
     <property type="u" tp:type="SASL_Status" access="read"
       name="SASLStatus" tp:name-for-bindings="SASL_Status">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -311,6 +274,69 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
+    <property name="DefaultUsername"
+      tp:name-for-bindings="Default_Username"
+      type="s" access="read" tp:immutable="yes">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>The default username for use with SASL mechanisms that deal
+          with a "simple username" (as defined in <a
+          href="http://tools.ietf.org/html/rfc4422">RFC 4422</a>). If
+          such a SASL mechanism is in use, clients SHOULD default to
+          using the DefaultUsername; also, if the client uses
+          the DefaultUsername, it SHOULD assume that the authorization
+          identity <tp:member-ref>AuthorizationIdentity</tp:member-ref>
+          will be derived from it by the server.</p>
+
+        <tp:rationale>
+          <p>In XMPP, <a href="http://trac.tools.ietf.org/wg/xmpp/trac/ticket/49">
+            servers typically expect</a> "user@example.com" to
+            authenticate with username "user"; this was a SHOULD in <a
+            href="http://tools.ietf.org/html/rfc3920">RFC 3920</a>.</p>
+
+          <p><a
+            href="http://tools.ietf.org/html/draft-ietf-xmpp-3920bis-19">3920bis</a>
+            weakens that SHOULD to "in the absence of local information
+            provided by the server, an XMPP client SHOULD assume that
+            the authentication identity for such a SASL mechanism is the
+            combination of a user name and password, where the simple
+            user name is the localpart of the user's JID".</p>
+        </tp:rationale>
+
+        <p>For example, in the simple case, if the user connects with
+        <tp:dbus-ref
+        namespace="ofdT.ConnectionManager">RequestConnection</tp:dbus-ref>({
+        account: "<tt>user@example.com</tt>" }) and use PLAIN with
+        password "password", he or she should authenticate like so:
+        "<tt>\0user\0password</tt>" and the channel will look like
+        this:</p>
+
+<blockquote><pre>{ "...<tp:member-ref>DefaultUsername</tp:member-ref>": "user",
+  "...<tp:member-ref>AuthorizationIdentity</tp:member-ref>": "user@example.com }
+</pre></blockquote>
+
+        <p>In the complex case, if the same user is using his or her
+          sysadmin powers to log in as the "announcements" role address,
+          he or she would connect with <tp:dbus-ref
+            namespace="ofdT.ConnectionManager">RequestConnection</tp:dbus-ref>({
+          account: "<tt>announcements@example.com</tt>" }) and the SASL
+          channel would look like this:</p>
+
+<blockquote><pre>{ "...<tp:member-ref>DefaultUsername</tp:member-ref>": "announcements",
+  "...<tp:member-ref>AuthorizationIdentity</tp:member-ref>": "announcements@example.com }
+</pre></blockquote>
+
+        <p>A sufficiently elaborate UI could give the opportunity
+          to override the username from "announcements" to "user".
+          The user's simple username is still "user", and the password is
+          still "password", but this time he or she is trying to authorize
+          to act as <tt>announcements@example.com</tt>, so the UI would
+          have to perform SASL PLAIN with this string:
+          "<tt>announcements@example.com\0user\0password</tt>", where
+          "announcements@example.com" is the
+          <tp:member-ref>AuthorizationIdentity</tp:member-ref>.</p>
+      </tp:docstring>
+    </property>
+
     <property name="DefaultRealm" tp:name-for-bindings="Default_Realm"
       type="s" access="read" tp:immutable="yes">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -331,23 +357,6 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
             to work around these implementations than a generic client
             would be.</p>
         </tp:rationale>
-      </tp:docstring>
-    </property>
-
-    <property name="SASLContext" tp:name-for-bindings="SASL_Context"
-      type="a{sv}" tp:type="String_Variant_Map" access="read"
-      tp:immutable="yes">
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Additional protocol- or mechanism-specific context for the
-          authentication. Only one well-known key is currently defined:</p>
-
-        <dl>
-          <dt>jabber-stream-id (string)</dt>
-          <dd>The <code>id</code> attribute of the XMPP <code>stream</code>
-            element, as used in <a
-              href="http://xmpp.org/extensions/xep-0078.html">the digest
-              mechanism historically used in Jabber</a>.</dd>
-        </dl>
       </tp:docstring>
     </property>
 
@@ -527,10 +536,19 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
         <p>If the current status is SASL_Status_Server_Failed or
           SASL_Status_Client_Failed, this method returns successfully, but has
-          no further effect. Otherwise, it changes the channel's state to
+          no further effect. If the current status is SASL_Status_Succeeded
+          or SASL_Status_Client_Accepted then NotAvailable is raised.
+          Otherwise, it changes the channel's state to
           SASL_Status_Client_Failed, with an appropriate error name and
           reason code.</p>
       </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotAvailable">
+          <tp:docstring>
+            The current state is either Succeeded or Client_Accepted.
+          </tp:docstring>
+        </tp:error>
+      </tp:possible-errors>
     </method>
 
     <signal name="SASLStatusChanged" tp:name-for-bindings="SASL_Status_Changed">
@@ -590,7 +608,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:enumvalue>
     </tp:enum>
 
-    <tp:enum name="SASL_Status" type="u">
+    <tp:enum name="SASL_Status" type="u" plural="SASL_Statuses">
       <tp:enumvalue suffix="Not_Started" value="0">
         <tp:docstring>
           The initial state. The Handler SHOULD either

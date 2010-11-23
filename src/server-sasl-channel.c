@@ -61,21 +61,21 @@ G_DEFINE_TYPE_WITH_CODE (GabbleServerSaslChannel, gabble_server_sasl_channel,
     G_IMPLEMENT_INTERFACE (
         GABBLE_TYPE_SVC_CHANNEL_TYPE_SERVER_AUTHENTICATION,
         NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_SECURABLE, NULL);
     G_IMPLEMENT_INTERFACE (
         GABBLE_TYPE_SVC_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
         sasl_auth_iface_init));
 
 static const gchar *gabble_server_sasl_channel_interfaces[] = {
   GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+  GABBLE_IFACE_CHANNEL_INTERFACE_SECURABLE,
   NULL
 };
 
 enum
 {
-  PROP_SESSION_ID = 1,
-
   /* server authentication channel */
-  PROP_AUTH_METHOD,
+  PROP_AUTH_METHOD = 1,
 
   /* sasl authentication channel */
   PROP_AVAILABLE_MECHANISMS,
@@ -88,7 +88,6 @@ enum
   PROP_AUTHORIZATION_IDENTITY,
   PROP_DEFAULT_USERNAME,
   PROP_DEFAULT_REALM,
-  PROP_SASL_CONTEXT,
 
   LAST_PROPERTY,
 };
@@ -100,7 +99,6 @@ struct _GabbleServerSaslChannelPrivate
   /* Immutable SASL properties */
   GStrv available_mechanisms;
   gboolean secure;
-  GHashTable *sasl_context;
 
   /* Mutable SASL properties */
   GabbleSASLStatus sasl_status;
@@ -117,8 +115,6 @@ gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
       GABBLE_TYPE_SERVER_SASL_CHANNEL, GabbleServerSaslChannelPrivate);
 
   self->priv = priv;
-
-  priv->sasl_context = tp_asv_new (NULL, NULL);
 
   priv->sasl_status = GABBLE_SASL_STATUS_NOT_STARTED;
   priv->sasl_error = NULL;
@@ -139,14 +135,13 @@ gabble_server_sasl_channel_fill_immutable_properties (TpBaseChannel *channel,
           "AvailableMechanisms",
       GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "HasInitialData",
       GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "CanTryAgain",
-      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "Encrypted",
-      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "Verified",
       GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
           "AuthorizationIdentity",
       GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "DefaultRealm",
-      /* FIXME: GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-          "DefaultUsername", */
-      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "SASLContext",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+          "DefaultUsername",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SECURABLE, "Encrypted",
+      GABBLE_IFACE_CHANNEL_INTERFACE_SECURABLE, "Verified",
       NULL);
 }
 
@@ -177,9 +172,6 @@ gabble_server_sasl_channel_get_property (GObject *object,
       break;
     case PROP_SASL_ERROR_DETAILS:
       g_value_set_boxed (value, priv->sasl_error_details);
-      break;
-    case PROP_SASL_CONTEXT:
-      g_value_set_boxed (value, priv->sasl_context);
       break;
     case PROP_AUTH_METHOD:
       g_value_set_static_string (value,
@@ -233,10 +225,6 @@ gabble_server_sasl_channel_get_property (GObject *object,
           G_OBJECT (tp_base_channel_get_connection (channel)), "username",
           value);
       break;
-    case PROP_SESSION_ID:
-      g_value_set_string (value,
-          tp_asv_get_string (priv->sasl_context, "jabber-stream-id"));
-      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -262,11 +250,6 @@ gabble_server_sasl_channel_set_property (GObject *object,
         priv->available_mechanisms = g_value_dup_boxed (value);
         break;
 
-      case PROP_SESSION_ID:
-        g_hash_table_insert (priv->sasl_context, "jabber-stream-id",
-            tp_g_value_slice_dup (value));
-        break;
-
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -284,7 +267,6 @@ gabble_server_sasl_channel_finalize (GObject *object)
   g_assert (priv->result == NULL);
 
   g_strfreev (priv->available_mechanisms);
-  g_hash_table_unref (priv->sasl_context);
 
   g_free (priv->sasl_error);
   g_hash_table_unref (priv->sasl_error_details);
@@ -311,8 +293,10 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
     { "SASLErrorDetails", "sasl-error-details", NULL },
     { "AuthorizationIdentity", "authorization-identity", NULL },
     { "DefaultRealm", "default-realm", NULL },
-    /* FIXME: { "DefaultUsername", "default-username", NULL }, */
-    { "SASLContext", "sasl-context", NULL },
+    { "DefaultUsername", "default-username", NULL },
+    { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl securable_props[] = {
     /* For the moment we only have a unified "secure" property, which
      * implies we're both encrypted and verified */
     { "Encrypted", "secure", NULL },
@@ -329,6 +313,11 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         sasl_auth_props,
+      },
+      { GABBLE_IFACE_CHANNEL_INTERFACE_SECURABLE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        securable_props,
       },
       { NULL }
   };
@@ -352,27 +341,12 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
     gabble_server_sasl_channel_get_object_path_suffix;
   channel_class->close = gabble_server_sasl_channel_close;
 
-  param_spec = g_param_spec_boxed ("sasl-context", "SASLContext",
-      "Extra context for doing SASL",
-      TP_HASH_TYPE_STRING_VARIANT_MAP,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_SASL_CONTEXT,
-      param_spec);
-
   param_spec = g_param_spec_string ("auth-method",
       "Authentication method",
       "Method of authentication (D-Bus interface)",
       GABBLE_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_AUTH_METHOD,
-      param_spec);
-
-  param_spec = g_param_spec_string ("session-id",
-      "Session ID",
-      "Jabber <stream> id attribute",
-      NULL,
-      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_SESSION_ID,
       param_spec);
 
   param_spec = g_param_spec_string ("authorization-identity",
@@ -401,8 +375,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 
   param_spec = g_param_spec_uint ("sasl-status", "SASLStatus",
       "Status of this channel",
-      /* FIXME: fix the pluralization in the spec */
-      0, NUM_GABBLE_SASL_STATUSS, 0,
+      0, NUM_GABBLE_SASL_STATUSES, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SASL_STATUS,
       param_spec);
@@ -971,7 +944,6 @@ gabble_server_sasl_channel_new (GabbleConnection *conn,
         "connection", conn,
         "available-mechanisms", available_mechanisms,
         "secure", secure,
-        "session-id", session_id,
         NULL));
 
   return obj;

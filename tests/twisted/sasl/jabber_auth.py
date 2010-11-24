@@ -24,8 +24,6 @@ def test_jabber_pass_success(q, bus, conn, stream):
     assertSameSets(['X-TELEPATHY-PASSWORD'],
             props.get(cs.SASL_AVAILABLE_MECHANISMS))
 
-    context = props.get(cs.SASL_CONTEXT)
-
     chan.SASLAuthentication.StartMechanismWithData('X-TELEPATHY-PASSWORD',
             PASSWORD)
 

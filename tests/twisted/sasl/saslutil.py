@@ -135,20 +135,22 @@ def abort_auth(q, chan, reason, message):
         cs.SASL_ABORT_REASON_USER_ABORT : cs.CANCELLED,
         cs.SASL_ABORT_REASON_INVALID_CHALLENGE : cs.AUTHENTICATION_FAILED}
 
+    mapped_error = reason_err_map.get(reason, cs.CANCELLED)
+
     chan.SASLAuthentication.AbortSASL(reason, message)
 
-    ssc, _, _ = q.expect_many(
+    ssc, ce, _ = q.expect_many(
         EventPattern(
             'dbus-signal', signal='SASLStatusChanged',
             interface=cs.CHANNEL_IFACE_SASL_AUTH,
-            predicate=lambda e:e.args[0] == cs.SASL_STATUS_CLIENT_FAILED),
-        EventPattern('dbus-signal', signal='ConnectionError',
-            predicate=lambda e: e.args[0] == reason_err_map[reason]),
+            predicate=lambda e: e.args[0] == cs.SASL_STATUS_CLIENT_FAILED),
+        EventPattern('dbus-signal', signal='ConnectionError'),
         EventPattern(
             'dbus-signal', signal="StatusChanged",
             args=[cs.CONN_STATUS_DISCONNECTED,
                   cs.CSR_AUTHENTICATION_FAILED]))
 
     assertEquals(cs.SASL_STATUS_CLIENT_FAILED, ssc.args[0])
-    assertEquals(reason_err_map[reason], ssc.args[1])
+    assertEquals(mapped_error, ssc.args[1])
     assertEquals(message, ssc.args[2].get('debug-message')),
+    assertEquals(mapped_error, ce.args[0])

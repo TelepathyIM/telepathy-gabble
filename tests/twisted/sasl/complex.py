@@ -6,7 +6,7 @@ import dbus
 from servicetest import EventPattern, assertEquals, assertSameSets, call_async
 from gabbletest import exec_test
 import constants as cs
-from saslutil import SaslComplexAuthenticator, connect_and_get_sasl_channel
+from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel
 
 JID = "test@example.org"
 INITIAL_RESPONSE = 'Thunder and lightning. Enter three Witches.'
@@ -125,13 +125,13 @@ def test_complex_success_no_data_accept(q, bus, conn, stream):
 if __name__ == '__main__':
     exec_test(
         test_complex_success_data, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))
     exec_test(
         test_complex_success_no_data, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))
     exec_test(
         test_complex_success_data_accept, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))
     exec_test(
         test_complex_success_no_data_accept, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))

@@ -7,7 +7,7 @@ import dbus
 from servicetest import EventPattern, assertEquals
 from gabbletest import exec_test, call_async
 import constants as cs
-from saslutil import SaslComplexAuthenticator, connect_and_get_sasl_channel, \
+from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel, \
     abort_auth
 
 JID = "test@example.org"
@@ -100,13 +100,13 @@ if __name__ == '__main__':
 
     exec_test(test_abort_mid,
               {'password': None,'account' : JID},
-              authenticator=SaslComplexAuthenticator(JID.split('@')[0],
+              authenticator=SaslEventAuthenticator(JID.split('@')[0],
                                                      MECHANISMS))
     exec_test(test_disconnect_mid,
               {'password': None,'account' : JID},
-             authenticator=SaslComplexAuthenticator(JID.split('@')[0],
+             authenticator=SaslEventAuthenticator(JID.split('@')[0],
                                                     MECHANISMS))
 
     exec_test(
         test_abort_connected, {'password': None,'account' : JID},
-        authenticator=SaslComplexAuthenticator(JID.split('@')[0], ['PLAIN']))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], ['PLAIN']))

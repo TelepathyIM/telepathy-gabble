@@ -14,7 +14,7 @@ class SaslChannelWrapper(ProxyWrapper):
             "SASLAuthentication" : cs.CHANNEL_IFACE_SASL_AUTH}):
         ProxyWrapper.__init__(self, object, default, interfaces)
 
-class SaslComplexAuthenticator(XmppAuthenticator):
+class SaslEventAuthenticator(XmppAuthenticator):
     def __init__(self, jid, mechanisms):
         XmppAuthenticator.__init__(self, jid, '')
         self._mechanisms = mechanisms
@@ -100,30 +100,6 @@ class SaslComplexAuthenticator(XmppAuthenticator):
     def _abort(self, abort):
         self._event_func(Event('sasl-abort', authenticator=self,
             xml=abort))
-
-class SaslPlainAuthenticator(XmppAuthenticator):
-    def __init__(self, username, password):
-        XmppAuthenticator.__init__(self, username, password)
-
-    def auth(self, auth):
-        reset = True # In PLAIN we always reset.
-        try:
-            user, passwd = b64decode(str(auth)).strip('\0').split('\0')
-        except ValueError:
-            reply = domish.Element((ns.NS_XMPP_SASL, 'failure'))
-            reply.addElement('incorrect-encoding')
-        else:
-            if (user, passwd) != (self.username, self.password):
-                reply = domish.Element((ns.NS_XMPP_SASL, 'failure'))
-                reply.addElement('not-authorized')
-            else:
-                reply = domish.Element((ns.NS_XMPP_SASL, 'success'))
-                self.authenticated = True
-
-        self.xmlstream.send(reply)
-
-        if reset:
-            self.xmlstream.reset()
 
 def connect_and_get_sasl_channel(q, bus, conn):
     conn.Connect()

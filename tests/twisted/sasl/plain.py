@@ -12,7 +12,7 @@ import dbus
 from servicetest import EventPattern, assertEquals, assertContains, call_async
 from gabbletest import exec_test
 import constants as cs
-from saslutil import SaslComplexAuthenticator, connect_and_get_sasl_channel, \
+from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel, \
     abort_auth
 
 JID = "test@example.org"
@@ -181,41 +181,41 @@ def test_bad_usage(q, bus, conn, stream):
 if __name__ == '__main__':
     exec_test(
         test_plain_success, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_no_account,
         {'password': None, 'account' : 'example.com'},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_fail, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_bad_encoding, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_weak, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_bad_authzid, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_bad_mech, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_tempfail, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_plain_abort, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
 
     exec_test(
         test_bad_usage, {'password': None, 'account' : JID},
-        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']))

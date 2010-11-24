@@ -107,6 +107,9 @@ def connect_and_get_sasl_channel(q, bus, conn):
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
+    return expect_sasl_channel(q, bus, conn)
+
+def expect_sasl_channel(q, bus, conn):
     old_signal, new_signal = q.expect_many(
             EventPattern('dbus-signal', signal='NewChannel',
                 predicate=lambda e:

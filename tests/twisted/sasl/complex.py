@@ -3,7 +3,7 @@ Test the server sasl channel with the PLAIN mechanism
 """
 import dbus
 
-from servicetest import EventPattern, assertEquals, assertSameSets
+from servicetest import EventPattern, assertEquals, assertSameSets, call_async
 from gabbletest import exec_test
 import constants as cs
 from saslutil import SaslComplexAuthenticator, connect_and_get_sasl_channel
@@ -24,13 +24,10 @@ def test_complex_success(q, bus, conn, stream, with_extra_data=True,
     assertSameSets(MECHANISMS + ['X-TELEPATHY-PASSWORD'],
             props.get(cs.SASL_AVAILABLE_MECHANISMS))
 
-    try:
-        chan.SASLAuthentication.StartMechanismWithData("FOO", "")
-    except dbus.DBusException:
-        pass
-    else:
-        raise AssertionError, \
-           "Expected DBusException when choosing unavailable mechanism"
+    call_async(q, chan.SASLAuthentication, 'StartMechanismWithData',
+            "FOO", "")
+    q.expect('dbus-error', method='StartMechanismWithData',
+            name=cs.NOT_IMPLEMENTED)
 
     if with_extra_data:
         chan.SASLAuthentication.StartMechanismWithData("SCOTTISH-PLAY",

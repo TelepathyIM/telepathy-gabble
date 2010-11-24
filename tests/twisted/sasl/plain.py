@@ -9,7 +9,7 @@ from base64 import b64decode
 
 import dbus
 
-from servicetest import EventPattern, assertEquals, assertContains
+from servicetest import EventPattern, assertEquals, assertContains, call_async
 from gabbletest import exec_test
 import constants as cs
 from saslutil import SaslPlainAuthenticator, connect_and_get_sasl_channel, \
@@ -101,36 +101,25 @@ def test_plain_abort(q, bus, conn, stream):
 def test_bad_usage(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    try:
-        chan.SASLAuthentication.Respond("This is uncalled for");
-    except dbus.DBusException, e:
-        assertEquals (e.get_dbus_name(), cs.NOT_AVAILABLE)
-    else:
-        raise AssertionError, \
-            "Calling Respond() before StartMechanism() should raise an error."
+    call_async(q, chan.SASLAuthentication, 'Respond',
+            'This is uncalled for')
+    q.expect('dbus-error', method='Respond', name=cs.NOT_AVAILABLE)
 
     chan.SASLAuthentication.StartMechanismWithData(
         'PLAIN', '\0' + JID.split('@')[0] + '\0' + PASSWORD)
 
-    try:
-        chan.SASLAuthentication.StartMechanismWithData('PLAIN', "foo")
-    except dbus.DBusException, e:
-        assertEquals (e.get_dbus_name(), cs.NOT_AVAILABLE)
-    else:
-        raise AssertionError, \
-            "Calling StartMechanismWithData() twice should raise an error."
+    call_async(q, chan.SASLAuthentication, 'StartMechanismWithData',
+            'PLAIN', 'foo')
+    q.expect('dbus-error', method='StartMechanismWithData',
+            name=cs.NOT_AVAILABLE)
 
     q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
              args=[cs.SASL_STATUS_SERVER_SUCCEEDED, '', {}])
 
-    try:
-        chan.SASLAuthentication.Respond("Responding after success");
-    except dbus.DBusException, e:
-        assertEquals (e.get_dbus_name(), cs.NOT_AVAILABLE)
-    else:
-        raise AssertionError, \
-            "Calling Respond() after success should raise an error."
+    call_async(q, chan.SASLAuthentication, 'Respond',
+            'Responding after success')
+    q.expect('dbus-error', method='Respond', name=cs.NOT_AVAILABLE)
 
 if __name__ == '__main__':
     exec_test(

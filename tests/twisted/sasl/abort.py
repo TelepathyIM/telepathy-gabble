@@ -86,14 +86,9 @@ def test_abort_connected(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='StatusChanged',
                  args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-    try:
-        chan.SASLAuthentication.AbortSASL(cs.SASL_ABORT_REASON_USER_ABORT,
-                                      "aborting too late")
-    except dbus.DBusException:
-        pass
-    else:
-        raise AssertionError, \
-            "Aborting after success should raise an exception"
+    call_async(q, chan.SASLAuthentication, 'AbortSASL',
+            cs.SASL_ABORT_REASON_USER_ABORT, "aborting too late")
+    q.expect('dbus-error', method='AbortSASL', name=cs.NOT_AVAILABLE)
 
 if __name__ == '__main__':
     exec_test(test_abort_early,

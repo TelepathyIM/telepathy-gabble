@@ -94,6 +94,10 @@ gboolean gabble_server_sasl_channel_success_finish (
 void gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
     const GError *error);
 
+gboolean gabble_server_sasl_channel_get_failure_details (
+    GabbleServerSaslChannel *self, gchar **dbus_error, GHashTable **details,
+    TpConnectionStatusReason *reason);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_SERVER_SASL_CHANNEL_H__*/

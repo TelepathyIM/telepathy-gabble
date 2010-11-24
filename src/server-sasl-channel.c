@@ -104,6 +104,8 @@ struct _GabbleServerSaslChannelPrivate
   GabbleSASLStatus sasl_status;
   gchar *sasl_error;
   GHashTable *sasl_error_details;
+  /* Given to the Connection on request */
+  TpConnectionStatusReason disconnect_reason;
 
   GSimpleAsyncResult *result;
 };
@@ -119,6 +121,8 @@ gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
   priv->sasl_status = GABBLE_SASL_STATUS_NOT_STARTED;
   priv->sasl_error = NULL;
   priv->sasl_error_details = tp_asv_new (NULL, NULL);
+  /* a safe assumption if we don't set anything else */
+  priv->disconnect_reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
 }
 
 static void
@@ -919,12 +923,10 @@ gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
       &conn_reason, &tp_error);
   g_assert (tp_error->domain == TP_ERRORS);
 
-  /* FIXME: feed back conn_reason to the Connection for when we disconnect,
-   * rather than having it reverse-engineer from our D-Bus error name */
-
   DEBUG ("auth failed: %s", tp_error->message);
   change_current_state (self, GABBLE_SASL_STATUS_SERVER_FAILED,
       tp_error_get_dbus_name (tp_error->code), tp_error->message);
+  self->priv->disconnect_reason = conn_reason;
 }
 
 /*
@@ -974,4 +976,38 @@ gabble_server_sasl_channel_close (TpBaseChannel *channel)
     }
 
   tp_base_channel_destroyed (channel);
+}
+
+/**
+ * @dbus_error: (out) (transfer full): the D-Bus error name
+ * @details: (out) (transfer full) (element-type utf8 GObject.Value): the
+ *  error details
+ * @reason: (out): the reason with which to disconnect
+ *
+ * Returns: %TRUE if an error was copied; %FALSE leaving the 'out' parameters
+ *  untouched if there is no error
+ */
+gboolean
+gabble_server_sasl_channel_get_failure_details (GabbleServerSaslChannel *self,
+    gchar **dbus_error,
+    GHashTable **details,
+    TpConnectionStatusReason *reason)
+{
+  if (self->priv->sasl_error != NULL)
+    {
+      if (dbus_error != NULL)
+        *dbus_error = g_strdup (self->priv->sasl_error);
+
+      if (details != NULL)
+        *details = g_hash_table_ref (self->priv->sasl_error_details);
+
+      if (reason != NULL)
+        *reason = self->priv->disconnect_reason;
+
+      return TRUE;
+    }
+  else
+    {
+      return FALSE;
+    }
 }

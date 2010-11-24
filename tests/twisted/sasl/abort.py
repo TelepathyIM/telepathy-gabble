@@ -66,19 +66,22 @@ def test_disconnect_mid(q, bus, conn, stream):
 def test_abort_connected(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
-    chan.SASLAuthentication.StartMechanismWithData(
-        'PLAIN', '\0' + JID.split('@')[0] + '\0' + PASSWORD)
+    chan.SASLAuthentication.StartMechanismWithData('PLAIN',
+        '\0' + JID.split('@')[0] + '\0' + PASSWORD)
+    e, _ = q.expect_many(
+            EventPattern('sasl-auth'),
+            EventPattern('dbus-signal', signal='SASLStatusChanged',
+                interface=cs.CHANNEL_IFACE_SASL_AUTH,
+                args=[cs.SASL_STATUS_IN_PROGRESS, '', {}]),
+            )
+    authenticator = e.authenticator
 
-    q.expect('dbus-signal', signal='SASLStatusChanged',
-             interface=cs.CHANNEL_IFACE_SASL_AUTH,
-             args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
-
+    authenticator.success(None)
     q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
              args=[cs.SASL_STATUS_SERVER_SUCCEEDED, '', {}])
 
     chan.SASLAuthentication.AcceptSASL()
-
     q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
              args=[cs.SASL_STATUS_SUCCEEDED, '', {}])
@@ -89,6 +92,7 @@ def test_abort_connected(q, bus, conn, stream):
     call_async(q, chan.SASLAuthentication, 'AbortSASL',
             cs.SASL_ABORT_REASON_USER_ABORT, "aborting too late")
     q.expect('dbus-error', method='AbortSASL', name=cs.NOT_AVAILABLE)
+    chan.Close()
 
 if __name__ == '__main__':
     exec_test(test_abort_early,
@@ -105,4 +109,4 @@ if __name__ == '__main__':
 
     exec_test(
         test_abort_connected, {'password': None,'account' : JID},
-        authenticator=SaslPlainAuthenticator(JID.split('@')[0], PASSWORD))
+        authenticator=SaslComplexAuthenticator(JID.split('@')[0], ['PLAIN']))

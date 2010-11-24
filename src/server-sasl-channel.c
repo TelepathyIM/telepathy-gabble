@@ -452,12 +452,13 @@ change_current_state (GabbleServerSaslChannel *self,
  * SASL Authentication Channel Interface
  */
 
-static void gabble_server_sasl_channel_raise_not_available (
-    DBusGMethodInvocation *context, const gchar *message,
-    ...) G_GNUC_PRINTF (2, 3);
+static void gabble_server_sasl_channel_raise (
+    DBusGMethodInvocation *context, TpError code, const gchar *message,
+    ...) G_GNUC_PRINTF (3, 4);
 
 static void
-gabble_server_sasl_channel_raise_not_available (DBusGMethodInvocation *context,
+gabble_server_sasl_channel_raise (DBusGMethodInvocation *context,
+    TpError code,
     const gchar *message,
     ...)
 {
@@ -465,7 +466,7 @@ gabble_server_sasl_channel_raise_not_available (DBusGMethodInvocation *context,
   GError *error = NULL;
 
   va_start (ap, message);
-  error = g_error_new_valist (TP_ERRORS, TP_ERROR_NOT_AVAILABLE, message, ap);
+  error = g_error_new_valist (TP_ERRORS, code, message, ap);
   va_end (ap);
 
   dbus_g_method_return_error (context, error);
@@ -489,7 +490,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
 
   if (self->priv->sasl_status != GABBLE_SASL_STATUS_NOT_STARTED)
     {
-      gabble_server_sasl_channel_raise_not_available (context,
+      gabble_server_sasl_channel_raise (context, TP_ERROR_NOT_AVAILABLE,
           "Mechanisms can only be started in state Not_Started, not %u",
           self->priv->sasl_status);
       DEBUG ("cannot start: state %u != Not_Started", self->priv->sasl_status);
@@ -539,7 +540,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
   else
     {
       DEBUG ("cannot start: %s is not a supported mechanism", in_Mechanism);
-      gabble_server_sasl_channel_raise_not_available (context,
+      gabble_server_sasl_channel_raise (context, TP_ERROR_NOT_IMPLEMENTED,
           "Selected mechanism is not available.");
     }
 }
@@ -567,7 +568,7 @@ gabble_server_sasl_channel_respond (
 
   if (self->priv->sasl_status != GABBLE_SASL_STATUS_IN_PROGRESS)
     {
-      gabble_server_sasl_channel_raise_not_available (context,
+      gabble_server_sasl_channel_raise (context, TP_ERROR_NOT_AVAILABLE,
           "You can only respond to challenges in state In_Progress, not %u",
           self->priv->sasl_status);
       DEBUG ("cannot respond: state %u != In_Progress",
@@ -577,7 +578,7 @@ gabble_server_sasl_channel_respond (
 
   if (r == NULL)
     {
-      gabble_server_sasl_channel_raise_not_available (context,
+      gabble_server_sasl_channel_raise (context, TP_ERROR_NOT_AVAILABLE,
           "You already responded to the most recent challenge");
       DEBUG ("cannot respond: already responded");
       return;
@@ -677,7 +678,8 @@ gabble_server_sasl_channel_accept_sasl (
   if (message != NULL)
     {
       DEBUG ("cannot accept SASL: %s", message);
-      gabble_server_sasl_channel_raise_not_available (context, "%s", message);
+      gabble_server_sasl_channel_raise (context, TP_ERROR_NOT_AVAILABLE,
+          "%s", message);
       return;
     }
 
@@ -719,7 +721,7 @@ gabble_server_sasl_channel_abort_sasl (
       case GABBLE_SASL_STATUS_SUCCEEDED:
       case GABBLE_SASL_STATUS_CLIENT_ACCEPTED:
         DEBUG ("cannot abort: client already called AcceptSASL");
-        gabble_server_sasl_channel_raise_not_available (context,
+        gabble_server_sasl_channel_raise (context, TP_ERROR_NOT_AVAILABLE,
             "Authentication has already succeeded - too late to abort");
         return;
 

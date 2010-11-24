@@ -18,7 +18,8 @@ EXCHANGE = [("", "remote challenge"),
 MECHANISMS = ["PLAIN", "DIGEST-MD5", "ABORT-TEST"]
 
 def test_abort_early(q, bus, conn, stream):
-    pass
+    chan, props = connect_and_get_sasl_channel(q, bus, conn)
+    abort_auth(q, chan, 31337, "maybe if I use an undefined code you'll crash")
 
 def test_abort_mid(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)

@@ -81,7 +81,7 @@ def test_plain_no_account(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='StatusChanged',
                  args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
-def test_plain_fail(q, bus, conn, stream):
+def test_plain_fail_helper(q, bus, conn, stream, element, error, csr):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
 
     chan.SASLAuthentication.StartMechanismWithData('PLAIN', INITIAL_RESPONSE)
@@ -93,18 +93,40 @@ def test_plain_fail(q, bus, conn, stream):
             )
     authenticator = e.authenticator
 
-    authenticator.failure('not-authorized')
+    authenticator.failure(element)
     e = q.expect('dbus-signal', signal='SASLStatusChanged',
                  interface=cs.CHANNEL_IFACE_SASL_AUTH)
-    assertEquals(e.args[:2],
-                 [cs.SASL_STATUS_SERVER_FAILED,
-                  cs.AUTHENTICATION_FAILED])
+    assertEquals([cs.SASL_STATUS_SERVER_FAILED, error], e.args[:2])
     assertContains('debug-message', e.args[2])
 
     e = q.expect('dbus-signal', signal='ConnectionError')
-    assertEquals(cs.AUTHENTICATION_FAILED, e.args[0])
+    assertEquals(error, e.args[0])
     q.expect('dbus-signal', signal='StatusChanged',
-             args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
+             args=[cs.CONN_STATUS_DISCONNECTED, csr])
+
+def test_plain_fail(q, bus, conn, stream):
+    test_plain_fail_helper(q, bus, conn, stream, 'not-authorized',
+            cs.AUTHENTICATION_FAILED, cs.CSR_AUTHENTICATION_FAILED)
+
+def test_plain_bad_encoding(q, bus, conn, stream):
+    test_plain_fail_helper(q, bus, conn, stream, 'incorrect-encoding',
+            cs.AUTHENTICATION_FAILED, cs.CSR_AUTHENTICATION_FAILED)
+
+def test_plain_weak(q, bus, conn, stream):
+    test_plain_fail_helper(q, bus, conn, stream, 'mechanism-too-weak',
+            cs.AUTHENTICATION_FAILED, cs.CSR_AUTHENTICATION_FAILED)
+
+def test_plain_bad_authzid(q, bus, conn, stream):
+    test_plain_fail_helper(q, bus, conn, stream, 'invalid-authzid',
+            cs.AUTHENTICATION_FAILED, cs.CSR_AUTHENTICATION_FAILED)
+
+def test_plain_bad_mech(q, bus, conn, stream):
+    test_plain_fail_helper(q, bus, conn, stream, 'invalid-mechanism',
+            cs.AUTHENTICATION_FAILED, cs.CSR_AUTHENTICATION_FAILED)
+
+def test_plain_tempfail(q, bus, conn, stream):
+    test_plain_fail_helper(q, bus, conn, stream, 'temporary-failure',
+            cs.AUTHENTICATION_FAILED, cs.CSR_AUTHENTICATION_FAILED)
 
 def test_plain_abort(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
@@ -168,6 +190,26 @@ if __name__ == '__main__':
 
     exec_test(
         test_plain_fail, {'password': None, 'account' : JID},
+        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+
+    exec_test(
+        test_plain_bad_encoding, {'password': None, 'account' : JID},
+        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+
+    exec_test(
+        test_plain_weak, {'password': None, 'account' : JID},
+        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+
+    exec_test(
+        test_plain_bad_authzid, {'password': None, 'account' : JID},
+        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+
+    exec_test(
+        test_plain_bad_mech, {'password': None, 'account' : JID},
+        authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
+
+    exec_test(
+        test_plain_tempfail, {'password': None, 'account' : JID},
         authenticator=SaslComplexAuthenticator('test', ['PLAIN']))
 
     exec_test(

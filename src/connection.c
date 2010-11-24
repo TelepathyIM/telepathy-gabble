@@ -1578,12 +1578,11 @@ connector_error_disconnect (GabbleConnection *self,
   GError *tp_error = NULL;
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
+  gchar *dbus_error = NULL;
+  GHashTable *details = NULL;
 
   if (error->domain == GABBLE_SERVER_TLS_ERROR)
     {
-      gchar *dbus_error = NULL;
-      GHashTable *details = NULL;
-
       gabble_server_tls_manager_get_rejection_details (
           self->priv->server_tls_manager, &dbus_error, &details, &reason);
 
@@ -1597,6 +1596,21 @@ connector_error_disconnect (GabbleConnection *self,
       tp_clear_pointer (&details, g_hash_table_unref);
       g_free (dbus_error);
 
+      return;
+    }
+
+  if (error->domain == WOCKY_AUTH_ERROR &&
+      gabble_auth_manager_get_failure_details (self->priv->auth_manager,
+        &dbus_error, &details, &reason))
+    {
+      DEBUG ("Interactive authentication error, reason %u, dbus error %s",
+          reason, dbus_error);
+
+      tp_base_connection_disconnect_with_dbus_error (base, dbus_error,
+          details, reason);
+
+      tp_clear_pointer (&details, g_hash_table_unref);
+      g_free (dbus_error);
       return;
     }
 

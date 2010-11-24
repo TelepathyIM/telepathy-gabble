@@ -649,6 +649,24 @@ map_wocky_auth_error (const GError *error,
     case WOCKY_AUTH_ERROR_STREAM:
       return set_easy_conn_reason (conn_reason, NETWORK_ERROR);
 
+    case WOCKY_AUTH_ERROR_RESOURCE_CONFLICT:
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_NAME_IN_USE,
+          TP_ERROR_ALREADY_CONNECTED);
+
+    case WOCKY_AUTH_ERROR_NOT_SUPPORTED:
+    case WOCKY_AUTH_ERROR_NO_SUPPORTED_MECHANISMS:
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED,
+          TP_ERROR_NOT_IMPLEMENTED);
+
+    case WOCKY_AUTH_ERROR_INVALID_REPLY:
+      /* FIXME: fd.o #14003: should be ServerConfused when we have it; until
+       * then, fall through */
+    case WOCKY_AUTH_ERROR_INIT_FAILED:
+    case WOCKY_AUTH_ERROR_NO_CREDENTIALS:
+    case WOCKY_AUTH_ERROR_NOT_AUTHORIZED:
+    case WOCKY_AUTH_ERROR_FAILURE:
     default:
       return set_easy_conn_reason (conn_reason, AUTHENTICATION_FAILED);
     }

@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/base-channel.h>
 #include <wocky/wocky-auth-registry.h>
 
 #include <extensions/extensions.h>
@@ -31,18 +31,20 @@
 
 G_BEGIN_DECLS
 
+#define X_TELEPATHY_PASSWORD "X-TELEPATHY-PASSWORD"
+
 typedef struct _GabbleServerSaslChannelPrivate GabbleServerSaslChannelPrivate;
 typedef struct _GabbleServerSaslChannelClass GabbleServerSaslChannelClass;
 typedef struct _GabbleServerSaslChannel GabbleServerSaslChannel;
 
 struct _GabbleServerSaslChannelClass {
-    WockyAuthRegistryClass parent_class;
+    TpBaseChannelClass parent_class;
 
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleServerSaslChannel {
-    WockyAuthRegistry parent;
+    TpBaseChannel parent;
 
     GabbleServerSaslChannelPrivate *priv;
 };
@@ -66,12 +68,35 @@ GType gabble_server_sasl_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_SERVER_SASL_CHANNEL,\
                               GabbleServerSaslChannelClass))
 
-void gabble_server_sasl_channel_close (GabbleServerSaslChannel *self);
-
 GabbleServerSaslChannel *gabble_server_sasl_channel_new (
-    GabbleConnection *conn);
+    GabbleConnection *conn, GStrv available_mechanisms,
+    gboolean secure, const gchar *session_id);
 
-gboolean gabble_server_sasl_channel_is_open (GabbleServerSaslChannel *self);
+void gabble_server_sasl_channel_start_auth_async (
+    GabbleServerSaslChannel *self, GAsyncReadyCallback callback,
+    gpointer user_data);
+gboolean gabble_server_sasl_channel_start_auth_finish (
+    GabbleServerSaslChannel *self, GAsyncResult *result,
+    WockyAuthRegistryStartData **start_data, GError **error);
+
+void gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
+    const GString *challenge_data, GAsyncReadyCallback callback,
+    gpointer user_data);
+gboolean gabble_server_sasl_channel_challenge_finish (
+    GabbleServerSaslChannel *self, GAsyncResult *result, GString **response,
+    GError **error);
+
+void gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
+    GAsyncReadyCallback callback, gpointer user_data);
+gboolean gabble_server_sasl_channel_success_finish (
+    GabbleServerSaslChannel *self, GAsyncResult *result, GError **error);
+
+void gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
+    const GError *error);
+
+gboolean gabble_server_sasl_channel_get_failure_details (
+    GabbleServerSaslChannel *self, gchar **dbus_error, GHashTable **details,
+    TpConnectionStatusReason *reason);
 
 G_END_DECLS
 

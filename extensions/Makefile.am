@@ -17,7 +17,8 @@ EXTRA_DIST = \
     Gabble_Plugin_Test.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
-    Channel_Interface_Sasl_Authentication.xml \
+    Channel_Interface_SASL_Authentication.xml \
+    Channel_Interface_Securable.xml \
     Channel_Type_Server_Authentication.xml
 
 noinst_LTLIBRARIES = libgabble-extensions.la

@@ -63,6 +63,7 @@ TWISTED_TESTS = \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
 	sasl/abort.py \
+	sasl/close.py \
 	sasl/jabber_auth.py \
 	sasl/plain.py \
 	sasl/complex.py \

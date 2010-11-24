@@ -91,7 +91,11 @@ class GabbleAuthenticator(xmlstream.Authenticator):
         self.resource = resource
         self.bare_jid = None
         self.full_jid = None
+        self._event_func = lambda e: None
         xmlstream.Authenticator.__init__(self)
+
+    def set_event_func(self, event_func):
+        self._event_func = event_func
 
 class JabberAuthenticator(GabbleAuthenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
@@ -112,6 +116,10 @@ class JabberAuthenticator(GabbleAuthenticator):
     EventDispatcher._oldAddObserver = EventDispatcher._addObserver
     EventDispatcher._addObserver = _addObserver
 
+    def __init__(self, username, password, resource=None, emit_events=False):
+        GabbleAuthenticator.__init__(self, username, password, resource)
+        self.emit_events = emit_events
+
     def streamStarted(self, root=None):
         if root:
             self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
@@ -121,6 +129,15 @@ class JabberAuthenticator(GabbleAuthenticator):
             "/iq/query[@xmlns='jabber:iq:auth']", self.initialIq)
 
     def initialIq(self, iq):
+        if self.emit_events:
+            self._event_func(Event('auth-initial-iq', authenticator=self,
+                iq=iq, id=iq["id"]))
+        else:
+            self.respondToInitialIq(iq)
+
+        self.xmlstream.addOnetimeObserver('/iq/query/username', self.secondIq)
+
+    def respondToInitialIq(self, iq):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         query = result.addElement('query')
@@ -129,10 +146,16 @@ class JabberAuthenticator(GabbleAuthenticator):
         query.addElement('password')
         query.addElement('digest')
         query.addElement('resource')
-        self.xmlstream.addOnetimeObserver('/iq/query/username', self.secondIq)
         self.xmlstream.send(result)
 
     def secondIq(self, iq):
+        if self.emit_events:
+            self._event_func(Event('auth-second-iq', authenticator=self,
+                iq=iq, id=iq["id"]))
+        else:
+            self.respondToSecondIq(self, iq)
+
+    def respondToSecondIq(self, iq):
         username = xpath.queryForNodes('/iq/query/username', iq)
         assert map(str, username) == [self.username]
 
@@ -484,6 +507,8 @@ def make_stream(event_func, authenticator=None, protocol=None,
     # set up Jabber server
     if authenticator is None:
         authenticator = XmppAuthenticator('test%s' % suffix, 'pass', resource=resource)
+
+    authenticator.set_event_func(event_func)
 
     if protocol is None:
         protocol = XmppXmlStream

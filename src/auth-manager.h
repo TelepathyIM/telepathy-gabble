@@ -33,11 +33,11 @@ typedef struct _GabbleAuthManagerClass GabbleAuthManagerClass;
 typedef struct _GabbleAuthManagerPrivate GabbleAuthManagerPrivate;
 
 struct _GabbleAuthManagerClass {
-  GObjectClass parent_class;
+  WockyAuthRegistryClass parent_class;
 };
 
 struct _GabbleAuthManager {
-  GObject parent;
+  WockyAuthRegistry parent;
   GabbleAuthManagerPrivate *priv;
 };
 
@@ -59,8 +59,9 @@ GType gabble_auth_manager_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_AUTH_MANAGER,\
                               GabbleAuthManagerClass))
 
-WockyAuthRegistry *gabble_auth_manager_get_auth_registry (
-    GabbleAuthManager *self);
+gboolean gabble_auth_manager_get_failure_details (GabbleAuthManager *self,
+    gchar **dbus_error, GHashTable **details,
+    TpConnectionStatusReason *reason);
 
 G_END_DECLS
 

@@ -12,8 +12,7 @@ import dbus
 from servicetest import EventPattern, assertEquals, assertSameSets
 from gabbletest import exec_test, JabberXmlStream, JabberAuthenticator
 import constants as cs
-from saslutil import SaslPlainAuthenticator, connect_and_get_sasl_channel, \
-    abort_auth
+from saslutil import connect_and_get_sasl_channel, abort_auth
 
 JID = "test@localhost"
 PASSWORD = "pass"

@@ -8,7 +8,7 @@ from servicetest import EventPattern, assertEquals
 from gabbletest import exec_test, call_async
 import constants as cs
 from saslutil import SaslComplexAuthenticator, connect_and_get_sasl_channel, \
-    abort_auth, SaslPlainAuthenticator
+    abort_auth
 
 JID = "test@example.org"
 PASSWORD = "pass"

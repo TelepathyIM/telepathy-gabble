@@ -52,6 +52,12 @@ enum
   LAST_PROPERTY
 };
 
+typedef struct {
+  gchar *name;
+  GHashTable *details;
+  TpConnectionStatusReason reason;
+} SavedError;
+
 struct _GabbleAuthManagerPrivate
 {
   GabbleConnection *conn;
@@ -66,6 +72,8 @@ struct _GabbleAuthManagerPrivate
   gchar *username;
   gboolean allow_plain;
   gboolean is_secure_channel;
+
+  SavedError *error;
 
   gboolean dispose_has_run;
 };
@@ -103,10 +111,18 @@ static void
 auth_channel_closed_cb (GabbleServerSaslChannel *channel,
     GabbleAuthManager *self)
 {
+  SavedError tmp = { NULL, NULL, 0 };
+
   tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (channel));
 
   g_assert (self->priv->channel == channel);
+
+  /* this is our last chance to find out why it failed */
+  if (gabble_server_sasl_channel_get_failure_details (channel,
+      &tmp.name, &tmp.details, &tmp.reason))
+    self->priv->error = g_slice_dup (SavedError, &tmp);
+
   g_signal_handler_disconnect (self->priv->channel, self->priv->closed_id);
   tp_clear_object (&self->priv->channel);
 
@@ -149,6 +165,22 @@ gabble_auth_manager_dispose (GObject *object)
   if (G_OBJECT_CLASS (gabble_auth_manager_parent_class)->dispose)
     G_OBJECT_CLASS (
         gabble_auth_manager_parent_class)->dispose (object);
+}
+
+static void
+gabble_auth_manager_finalize (GObject *object)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (object);
+
+  if (self->priv->error != NULL)
+    {
+      g_free (self->priv->error->name);
+      g_hash_table_unref (self->priv->error->details);
+      g_slice_free (SavedError, self->priv->error);
+    }
+
+  if (G_OBJECT_CLASS (gabble_auth_manager_parent_class)->finalize)
+    G_OBJECT_CLASS (gabble_auth_manager_parent_class)->finalize (object);
 }
 
 static void
@@ -482,6 +514,7 @@ gabble_auth_manager_class_init (GabbleAuthManagerClass *klass)
 
   object_class->constructed = gabble_auth_manager_constructed;
   object_class->dispose = gabble_auth_manager_dispose;
+  object_class->finalize = gabble_auth_manager_finalize;
 
   object_class->get_property = gabble_auth_manager_get_property;
   object_class->set_property = gabble_auth_manager_set_property;
@@ -529,4 +562,35 @@ channel_manager_iface_init (gpointer g_iface,
   iface->create_channel = NULL;
   iface->request_channel = NULL;
   iface->foreach_channel_class = NULL;
+}
+
+gboolean
+gabble_auth_manager_get_failure_details (GabbleAuthManager *self,
+    gchar **dbus_error,
+    GHashTable **details,
+    TpConnectionStatusReason *reason)
+{
+  if (self->priv->channel != NULL)
+    {
+      return gabble_server_sasl_channel_get_failure_details (
+          self->priv->channel, dbus_error, details, reason);
+    }
+  else if (self->priv->error != NULL)
+    {
+      if (dbus_error != NULL)
+        *dbus_error = g_strdup (self->priv->error->name);
+
+      if (details != NULL)
+        *details = g_hash_table_ref (self->priv->error->details);
+
+      if (reason != NULL)
+        *reason = self->priv->error->reason;
+
+      return TRUE;
+    }
+  else
+    {
+      /* failure? what failure? I don't know anything about that :-( */
+      return FALSE;
+    }
 }

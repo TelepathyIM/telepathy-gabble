@@ -59,6 +59,10 @@ GType gabble_auth_manager_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_AUTH_MANAGER,\
                               GabbleAuthManagerClass))
 
+gboolean gabble_auth_manager_get_failure_details (GabbleAuthManager *self,
+    gchar **dbus_error, GHashTable **details,
+    TpConnectionStatusReason *reason);
+
 G_END_DECLS
 
 #endif /* #ifndef __AUTH_MANAGER_H__ */

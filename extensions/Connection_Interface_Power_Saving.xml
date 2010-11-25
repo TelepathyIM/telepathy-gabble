@@ -20,7 +20,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
   </tp:license>
   <interface
     name="org.freedesktop.Telepathy.Connection.Interface.PowerSaving">
-    <tp:added version="0.21.UNRELEASED">(as stable API)</tp:added>
+    <tp:added version="0.21.5">(as stable API)</tp:added>
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>Some protocols support mechanisms for reducing bandwidth usage—and
         hence power usage, on mobile devices—when the user is not directly

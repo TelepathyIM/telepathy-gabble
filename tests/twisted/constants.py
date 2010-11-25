@@ -24,7 +24,7 @@ CHANNEL_IFACE_MEDIA_SIGNALLING = CHANNEL + ".Interface.MediaSignalling"
 CHANNEL_IFACE_MESSAGES = CHANNEL + ".Interface.Messages"
 CHANNEL_IFACE_PASSWORD = CHANNEL + ".Interface.Password"
 CHANNEL_IFACE_TUBE = CHANNEL + ".Interface.Tube"
-CHANNEL_IFACE_SASL_AUTH = CHANNEL + ".Interface.SASLAuthentication.DRAFT2"
+CHANNEL_IFACE_SASL_AUTH = CHANNEL + ".Interface.SASLAuthentication"
 CHANNEL_IFACE_CONFERENCE = CHANNEL + '.Interface.Conference'
 
 CHANNEL_TYPE_CALL = CHANNEL + ".Type.Call.DRAFT"
@@ -38,7 +38,7 @@ CHANNEL_TYPE_STREAMED_MEDIA = CHANNEL + ".Type.StreamedMedia"
 CHANNEL_TYPE_TEXT = CHANNEL + ".Type.Text"
 CHANNEL_TYPE_FILE_TRANSFER = CHANNEL + ".Type.FileTransfer"
 CHANNEL_TYPE_SERVER_AUTHENTICATION = \
-    CHANNEL + ".Type.ServerAuthentication.DRAFT2"
+    CHANNEL + ".Type.ServerAuthentication"
 CHANNEL_TYPE_SERVER_TLS_CONNECTION = \
     CHANNEL + ".Type.ServerTLSConnection"
 

@@ -16,9 +16,8 @@ Lesser General Public License for more details.</p>
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
   </tp:license>
-  <interface name="org.freedesktop.Telepathy.Channel.Type.ServerAuthentication.DRAFT2"
-    tp:causes-havoc="experimental">
-    <tp:added version="0.21.UNRELEASED">(draft 2)</tp:added>
+  <interface name="org.freedesktop.Telepathy.Channel.Type.ServerAuthentication">
+    <tp:added version="0.21.5">(as stable API)</tp:added>
     <tp:requires interface="org.freedesktop.Telepathy.Channel"/>
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -27,7 +26,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         the additional interface named in
         <tp:member-ref>AuthenticationMethod</tp:member-ref>,
         such as <tp:dbus-ref namespace="ofdT"
-          >Channel.Interface.SASLAuthentication.DRAFT2</tp:dbus-ref>.</p>
+          >Channel.Interface.SASLAuthentication</tp:dbus-ref>.</p>
 
       <p>Future authentication steps also supported by this channel type might
         include solving a captcha and/or agreeing to an EULA or terms-of-use
@@ -35,9 +34,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         type, but a different
         <tp:member-ref>AuthenticationMethod</tp:member-ref>.</p>
 
-      <p>Channels of this type SHOULD be signalled and dispatched while the
-        <tp:dbus-ref namespace="ofdT">Connection</tp:dbus-ref> owning them is in
-        the CONNECTING state. Normally, only one channel of this type will
+      <p>Channels of this type will normally be be signalled and dispatched
+        while the <tp:dbus-ref namespace="ofdT">Connection</tp:dbus-ref>
+        owning them is in the CONNECTING state. They MAY also appear on a
+        Connection in the CONNECTED state, for instance if periodic
+        re-authentication is required.</p>
+
+      <p>Normally, only one channel of this type will
         exist on a given Connection; if there is more than one, the handler
         must complete authentication with each of them in turn.</p>
 
@@ -52,12 +55,13 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
           namespace="org.freedesktop.Telepathy.Channel">TargetHandle</tp:dbus-ref>
         = 0.</p>
 
-      <p>The Connection MUST NOT proceed with connection, or signal
+      <p>While it is CONNECTING, the Connection MUST NOT proceed with
+        connection, or signal
         <tp:dbus-ref namespace="ofdT.Connection">StatusChanged</tp:dbus-ref>
         to the CONNECTED state, until each channel of this type has either
         been accepted as having a positive result (for instance, on SASL
         channels this is done with the <tp:dbus-ref
-          namespace="ofdT.Channel.Interface.SASLAuthentication.DRAFT2"
+          namespace="ofdT.Channel.Interface.SASLAuthentication"
           >AcceptSASL</tp:dbus-ref> method), or closed with the <tp:dbus-ref
           namespace="ofdT.Channel">Close</tp:dbus-ref> method.</p>
 
@@ -108,7 +112,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
         <p>The initially-defined interface that can be used here is
           <tp:dbus-ref namespace="ofdT"
-            >Channel.Interface.SASLAuthentication.DRAFT2</tp:dbus-ref>.</p>
+            >Channel.Interface.SASLAuthentication</tp:dbus-ref>.</p>
       </tp:docstring>
     </property>
 

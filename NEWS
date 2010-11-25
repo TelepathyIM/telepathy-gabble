@@ -6,6 +6,8 @@ can hardly eat.” release.
 
 Enhancements:
 
+• fd.o #31106: add Protocol.Interface.Presence (vivek)
+
 Fixes:
 
 telepathy-gabble 0.11.2 (2010-11-22)

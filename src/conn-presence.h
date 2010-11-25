@@ -62,6 +62,8 @@ void conn_decloak_emit_requested (GabbleConnection *conn,
 
 GabblePresenceId conn_presence_get_type (GabblePresence *presence);
 
+const TpPresenceStatusSpec *conn_presence_statuses (void);
+
 G_END_DECLS
 
 #endif /* __CONN_PRESENCE_H__ */

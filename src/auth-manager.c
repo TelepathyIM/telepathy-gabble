@@ -237,7 +237,8 @@ gabble_auth_manager_start_fallback_cb (GObject *self_object,
     }
   else
     {
-      g_simple_async_result_take_error (user_data, error);
+      g_simple_async_result_set_from_error (user_data, error);
+      g_clear_error (&error);
     }
 
   g_simple_async_result_complete (user_data);
@@ -283,7 +284,8 @@ gabble_auth_manager_start_auth_cb (GObject *channel,
     }
   else
     {
-      g_simple_async_result_take_error (user_data, error);
+      g_simple_async_result_set_from_error (user_data, error);
+      g_clear_error (&error);
     }
 
   g_simple_async_result_complete (user_data);

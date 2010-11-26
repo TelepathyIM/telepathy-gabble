@@ -26,8 +26,6 @@
 #include "util.h"
 #include "conn-util.h"
 
-#include "extensions/extensions.h"
-
 enum
 {
   PROP_POWER_SAVING_ACTIVE,
@@ -89,7 +87,7 @@ toggle_queueing_cb (GObject *source_object,
     {
       DEBUG ("%sabled queueing", enabling ? "en" : "dis");
 
-      gabble_svc_connection_interface_power_saving_return_from_set_power_saving (
+      tp_svc_connection_interface_power_saving_return_from_set_power_saving (
           queueing_context->dbus_context);
 
       if (!enabling)
@@ -99,7 +97,7 @@ toggle_queueing_cb (GObject *source_object,
   if (enabling != enabled)
     {
       g_object_set (source_object, "power-saving", enabling, NULL);
-      gabble_svc_connection_interface_power_saving_emit_power_saving_changed (
+      tp_svc_connection_interface_power_saving_emit_power_saving_changed (
           self, enabling);
     }
 
@@ -108,7 +106,7 @@ toggle_queueing_cb (GObject *source_object,
 
 static void
 conn_power_saving_set_power_saving (
-    GabbleSvcConnectionInterfacePowerSaving *conn,
+    TpSvcConnectionInterfacePowerSaving *conn,
     gboolean enable,
     DBusGMethodInvocation *context)
 {
@@ -124,7 +122,7 @@ conn_power_saving_set_power_saving (
   if (enable == enabled)
     {
       /* no-op */
-      gabble_svc_connection_interface_power_saving_return_from_set_power_saving (
+      tp_svc_connection_interface_power_saving_return_from_set_power_saving (
           context);
       return;
     }
@@ -144,7 +142,7 @@ conn_power_saving_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
 #define IMPLEMENT(x) \
-  gabble_svc_connection_interface_power_saving_implement_##x (\
+  tp_svc_connection_interface_power_saving_implement_##x (\
   g_iface, conn_power_saving_##x)
   IMPLEMENT (set_power_saving);
 #undef IMPLEMENT

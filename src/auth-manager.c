@@ -28,8 +28,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_AUTH
 
-#include "extensions/extensions.h"
-
 #include "caps-channel-manager.h"
 #include "server-sasl-channel.h"
 #include "connection.h"

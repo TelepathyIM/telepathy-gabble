@@ -133,7 +133,7 @@ def expect_sasl_channel(q, bus, conn):
 def abort_auth(q, chan, reason, message):
     reason_err_map = {
         cs.SASL_ABORT_REASON_USER_ABORT : cs.CANCELLED,
-        cs.SASL_ABORT_REASON_INVALID_CHALLENGE : cs.AUTHENTICATION_FAILED}
+        cs.SASL_ABORT_REASON_INVALID_CHALLENGE : cs.SERVICE_CONFUSED }
 
     mapped_error = reason_err_map.get(reason, cs.CANCELLED)
 

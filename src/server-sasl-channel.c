@@ -737,8 +737,7 @@ gabble_server_sasl_channel_abort_sasl (
             case TP_SASL_ABORT_REASON_INVALID_CHALLENGE:
               DEBUG ("invalid challenge (%s)", in_Debug_Message);
               code = WOCKY_AUTH_ERROR_INVALID_REPLY;
-              /* FIXME: should be ServiceConfused, when it lands in tp-glib */
-              dbus_error = TP_ERROR_STR_AUTHENTICATION_FAILED;
+              dbus_error = TP_ERROR_STR_SERVICE_CONFUSED;
               break;
 
             case TP_SASL_ABORT_REASON_USER_ABORT:

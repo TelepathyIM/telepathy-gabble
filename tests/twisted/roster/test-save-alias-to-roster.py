@@ -39,12 +39,14 @@ def test(q, bus, conn, stream):
     group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
     assert group_iface.GetMembers() == []
     handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
-    group_iface.AddMembers([handle], '')
+    call_async(q, group_iface, 'AddMembers', [handle], '')
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
 
     acknowledge_iq(stream, event.stanza)
+    # FIXME: when we depend on a new enough tp-glib, expect AddMembers
+    # to return here
 
     call_async(q, conn.Aliasing, 'RequestAliases', [handle])
 

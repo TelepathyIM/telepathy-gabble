@@ -120,7 +120,7 @@ struct _GabbleTubesChannelPrivate
 
 #define GABBLE_TUBES_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
 
-static gboolean update_tubes_presence (GabbleTubesChannel *self);
+static void update_tubes_presence (GabbleTubesChannel *self);
 
 static void pre_presence_cb (GabbleMucChannel *muc, LmMessage *msg,
     GabbleTubesChannel *self);
@@ -1147,15 +1147,15 @@ pre_presence_cb (GabbleMucChannel *muc,
   g_hash_table_foreach (priv->tubes, publish_tubes_in_node, &data);
 }
 
-static gboolean
+static void
 update_tubes_presence (GabbleTubesChannel *self)
 {
   GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
 
   if (priv->handle_type != TP_HANDLE_TYPE_ROOM)
-    return FALSE;
+    return;
 
-  return gabble_muc_channel_send_presence (self->muc, NULL);
+  gabble_muc_channel_send_presence (self->muc);
 }
 
 /* Called when we receive a SI request,

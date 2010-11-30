@@ -555,9 +555,9 @@ map_wocky_xmpp_error (const GError *error,
 
     case WOCKY_XMPP_ERROR_BAD_REQUEST:
     case WOCKY_XMPP_ERROR_UNEXPECTED_REQUEST:
-      /* FIXME: internal problem in Gabble, probably */
+      /* probably an internal error in Gabble/Wocky */
       return set_conn_reason (conn_reason,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR, TP_ERROR_NOT_AVAILABLE);
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR, TP_ERROR_CONFUSED);
 
     case WOCKY_XMPP_ERROR_JID_MALFORMED:
       return set_conn_reason (conn_reason,

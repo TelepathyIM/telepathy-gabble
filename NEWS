@@ -1,14 +1,23 @@
-telepathy-gabble 0.11.3 (UNRELEASED)
+telepathy-gabble 0.11.3 (2010-11-30)
 ====================================
 
 The “Hey, I'm so desperately waiting for telepathy-gablle 0.11 that I
 can hardly eat.” release.
 
+Dependencies:
+
+• telepathy-glib >= 0.13.7 is now required.
+
 Enhancements:
 
 • fd.o #31106: add Protocol.Interface.Presence (vivek)
 
+• fd.o #31874: implement and refactor undrafted SASL interface (smcv)
+
 Fixes:
+
+• fd.o #31998: relax assertions about how fast
+  AddMembers/RemoveMembers succeed (smcv)
 
 telepathy-gabble 0.11.2 (2010-11-22)
 ====================================

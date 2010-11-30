@@ -24,8 +24,6 @@
 #include <wocky/wocky-auth-registry.h>
 #include <telepathy-glib/handle.h>
 
-#include "extensions/extensions.h"
-
 G_BEGIN_DECLS
 
 typedef struct _GabbleAuthManager GabbleAuthManager;

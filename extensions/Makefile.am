@@ -12,14 +12,10 @@ EXTRA_DIST = \
     Channel_Type_FileTransfer_Future.xml \
     Connection_Future.xml \
     Connection_Interface_Gabble_Decloak.xml \
-    Connection_Interface_Power_Saving.xml \
     Gabble_Plugin_Gateways.xml \
     Gabble_Plugin_Test.xml \
     OLPC_Activity_Properties.xml \
-    OLPC_Buddy_Info.xml \
-    Channel_Interface_SASL_Authentication.xml \
-    Channel_Interface_Securable.xml \
-    Channel_Type_Server_Authentication.xml
+    OLPC_Buddy_Info.xml
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 

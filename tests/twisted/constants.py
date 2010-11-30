@@ -155,6 +155,7 @@ NOT_YET = ERROR + '.NotYet'
 INVALID_HANDLE = ERROR + '.InvalidHandle'
 CERT_UNTRUSTED = ERROR + '.Cert.Untrusted'
 SERVICE_BUSY = ERROR + '.ServiceBusy'
+SERVICE_CONFUSED = ERROR + '.ServiceConfused'
 
 UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 

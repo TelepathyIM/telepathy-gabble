@@ -555,9 +555,9 @@ map_wocky_xmpp_error (const GError *error,
 
     case WOCKY_XMPP_ERROR_BAD_REQUEST:
     case WOCKY_XMPP_ERROR_UNEXPECTED_REQUEST:
-      /* FIXME: internal problem in Gabble, probably */
+      /* probably an internal error in Gabble/Wocky */
       return set_conn_reason (conn_reason,
-          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR, TP_ERROR_NOT_AVAILABLE);
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR, TP_ERROR_CONFUSED);
 
     case WOCKY_XMPP_ERROR_JID_MALFORMED:
       return set_conn_reason (conn_reason,
@@ -605,10 +605,9 @@ map_wocky_xmpp_error (const GError *error,
           TP_ERROR_NOT_AVAILABLE);
 
     case WOCKY_XMPP_ERROR_INTERNAL_SERVER_ERROR:
-      /* FIXME: best we can do right now */
       return set_conn_reason (conn_reason,
           TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED,
-          TP_ERROR_NOT_AVAILABLE);
+          TP_ERROR_SERVICE_CONFUSED);
 
     case WOCKY_XMPP_ERROR_RESOURCE_CONSTRAINT:
       /* FIXME: Telepathy's ServiceBusy means the server, but the remote
@@ -661,8 +660,10 @@ map_wocky_auth_error (const GError *error,
           TP_ERROR_NOT_IMPLEMENTED);
 
     case WOCKY_AUTH_ERROR_INVALID_REPLY:
-      /* FIXME: fd.o #14003: should be ServerConfused when we have it; until
-       * then, fall through */
+      return set_conn_reason (conn_reason,
+          TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED,
+          TP_ERROR_SERVICE_CONFUSED);
+
     case WOCKY_AUTH_ERROR_INIT_FAILED:
     case WOCKY_AUTH_ERROR_NO_CREDENTIALS:
     case WOCKY_AUTH_ERROR_NOT_AUTHORIZED:

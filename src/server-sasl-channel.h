@@ -25,8 +25,6 @@
 #include <telepathy-glib/base-channel.h>
 #include <wocky/wocky-auth-registry.h>
 
-#include <extensions/extensions.h>
-
 #include "types.h"
 
 G_BEGIN_DECLS

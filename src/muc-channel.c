@@ -828,7 +828,7 @@ send_leave_message (GabbleMucChannel *gmuc,
 
   /* build the message */
   msg = (LmMessage *) wocky_muc_create_presence (priv->wmuc,
-      WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason, NULL);
+      WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason);
 
   g_signal_emit (gmuc, signals[PRE_PRESENCE], 0, msg);
 
@@ -3610,7 +3610,7 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self,
     return TRUE;
 
   stanza = wocky_muc_create_presence (priv->wmuc,
-      WOCKY_STANZA_SUB_TYPE_NONE, NULL, NULL);
+      WOCKY_STANZA_SUB_TYPE_NONE, NULL);
   result = _gabble_connection_send (
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
       (LmMessage *) stanza, error);

@@ -816,39 +816,20 @@ send_join_request (GabbleMucChannel *gmuc,
   return TRUE;
 }
 
-static gboolean
+static void
 send_leave_message (GabbleMucChannel *gmuc,
                     const gchar *reason)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
-  LmMessage *msg;
-  GError *error = NULL;
-  gboolean ret;
+  WockyStanza *stanza = wocky_muc_create_presence (priv->wmuc,
+      WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason);
 
-  /* build the message */
-  msg = (LmMessage *) wocky_muc_create_presence (priv->wmuc,
-      WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason, NULL);
+  g_signal_emit (gmuc, signals[PRE_PRESENCE], 0, stanza);
+  _gabble_connection_send (
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base)), stanza, NULL);
 
-  g_signal_emit (gmuc, signals[PRE_PRESENCE], 0, msg);
-
-  /* send it */
-  ret = _gabble_connection_send (
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg, &error);
-
-  if (!ret)
-    {
-      DEBUG ("_gabble_connection_send failed");
-      g_error_free (error);
-    }
-  else
-    {
-      DEBUG ("leave message sent");
-    }
-
-  lm_message_unref (msg);
-
-  return ret;
+  g_object_unref (stanza);
 }
 
 static void
@@ -3596,27 +3577,23 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
 }
 
-gboolean
-gabble_muc_channel_send_presence (GabbleMucChannel *self,
-                                  GError **error)
+void
+gabble_muc_channel_send_presence (GabbleMucChannel *self)
 {
   GabbleMucChannelPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   WockyStanza *stanza;
-  gboolean result;
 
   /* do nothing if we havn't actually joined yet */
   if (priv->state < MUC_STATE_INITIATED)
-    return TRUE;
+    return;
 
   stanza = wocky_muc_create_presence (priv->wmuc,
-      WOCKY_STANZA_SUB_TYPE_NONE, NULL, NULL);
-  result = _gabble_connection_send (
+      WOCKY_STANZA_SUB_TYPE_NONE, NULL);
+  _gabble_connection_send (
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-      (LmMessage *) stanza, error);
-
+      stanza, NULL);
   g_object_unref (stanza);
-  return result;
 }
 
 GabbleTubesChannel *

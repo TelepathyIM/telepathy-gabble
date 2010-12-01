@@ -1,10 +1,13 @@
+# vim: set fileencoding=utf-8 : Python sucks!
 """
 Utility functions for tests that need to interact with MUCs.
 """
 
 import dbus
 
-from servicetest import call_async, wrap_channel, EventPattern
+from twisted.words.xish import domish, xpath
+
+from servicetest import call_async, wrap_channel, EventPattern, assertLength
 from gabbletest import make_muc_presence, request_muc_handle
 
 import constants as cs
@@ -42,7 +45,14 @@ def join_muc(q, bus, conn, stream, muc, request=None,
     call_async(q, requests, 'CreateChannel',
         dbus.Dictionary(request, signature='sv'))
 
-    q.expect('stream-presence', to='%s/test' % muc)
+    join_event = q.expect('stream-presence', to='%s/test' % muc)
+    # XEP-0045 §7.1.2 sez:
+    #   “MUC clients SHOULD signal their ability to speak the MUC protocol by
+    #   including in the initial presence stanza an empty <x/> element
+    #   qualified by the 'http://jabber.org/protocol/muc' namespace.”
+    x_muc_nodes = xpath.queryForNodes('/presence/x[@xmlns="%s"]' % ns.MUC,
+        join_event.stanza)
+    assertLength(1, x_muc_nodes)
 
     # Send presence for other member of room.
     stream.send(make_muc_presence('owner', 'moderator', muc, 'bob'))

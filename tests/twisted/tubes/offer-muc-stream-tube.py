@@ -114,11 +114,6 @@ def test(q, bus, conn, stream, bytestream_cls,
     # handle stream_event
     # We announce our newly created tube in our muc presence
     presence = stream_event.stanza
-    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
-            'protocol/muc"]', presence)
-    assert x_nodes is not None
-    assert len(x_nodes) == 1
-
     tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
         % ns.TUBES, presence)
     assert tubes_nodes is not None
@@ -306,11 +301,6 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert new_tube_event.args[5] == cs.TUBE_CHANNEL_STATE_OPEN
 
     presence = stream_event.stanza
-    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
-            'protocol/muc"]', presence)
-    assert x_nodes is not None
-    assert len(x_nodes) == 1
-
     tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
         % ns.TUBES, presence)
     assert tubes_nodes is not None

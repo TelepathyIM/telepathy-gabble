@@ -25,11 +25,6 @@ sample_parameters = dbus.Dictionary({
     }, signature='sv')
 
 def check_tube_in_presence(presence, dbus_tube_id, initiator):
-    x_nodes = xpath.queryForNodes('/presence/x[@xmlns="http://jabber.org/'
-            'protocol/muc"]', presence)
-    assert x_nodes is not None
-    assert len(x_nodes) == 1
-
     tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'
         % ns.TUBES, presence)
     assert tubes_nodes is not None

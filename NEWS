@@ -7,6 +7,10 @@ Enhancements:
 
 Fixes:
 
+• fd.o #29147: you will no longer get the scrollback from MUCs hosted by
+  M-Link (and possibly other servers) when you change your presence
+  (wjt)
+
 telepathy-gabble 0.11.3 (2010-11-30)
 ====================================
 

@@ -75,12 +75,6 @@ test_handles (guint handle_type)
   /* Now unref it */
   tp_handle_unref (tp_repo, handle);
 
-  if (handle_type != TP_HANDLE_TYPE_LIST)
-    {
-      /* Try to unref it again, should fail */
-      g_assert (tp_handle_is_valid (tp_repo, handle, NULL) == FALSE);
-    }
-
   for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
       if (repos[i])

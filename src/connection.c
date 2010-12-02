@@ -1997,8 +1997,10 @@ _gabble_connection_connect (TpBaseConnection *base,
       tls_handler);
   g_free (jid);
 
+#ifdef GTLS_SYSTEM_CA_CERTIFICATES
   /* system certs */
   wocky_tls_handler_add_ca (tls_handler, GTLS_SYSTEM_CA_CERTIFICATES);
+#endif
 
   /* user certs */
   user_certs_dir = g_build_filename (g_get_user_config_dir (),

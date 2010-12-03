@@ -967,6 +967,18 @@ _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
 }
 
 static void
+_each_content_rejected (GabbleJingleSession *sess, GabbleJingleContent *c,
+    LmMessageNode *content_node, gpointer user_data, GError **error)
+{
+  JingleReason reason = GPOINTER_TO_UINT (user_data);
+  g_assert (c != NULL);
+
+  gabble_jingle_content_set_reason_rejected (c , reason);
+
+  gabble_jingle_content_remove (c, FALSE);
+}
+
+static void
 _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
     LmMessageNode *content_node, gpointer user_data, GError **error)
 {
@@ -1119,10 +1131,19 @@ static void
 on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  /* FIXME: reject is different from remove - remove is for
-   * acknowledged contents, reject is for pending; but the result
-   * is the same. */
-  _foreach_content (sess, node, TRUE, _each_content_remove, NULL, error);
+  LmMessageNode *n = lm_message_node_get_child (node, "reason");
+  JingleReason reason = JINGLE_REASON_UNKNOWN;
+
+  DEBUG (" ");
+
+  if (n != NULL)
+    extract_reason (n, &reason, NULL);
+
+  if (reason == JINGLE_REASON_UNKNOWN)
+    reason = JINGLE_REASON_GENERAL_ERROR;
+
+  _foreach_content (sess, node, TRUE, _each_content_rejected,
+      GUINT_TO_POINTER (reason), error);
 }
 
 static void

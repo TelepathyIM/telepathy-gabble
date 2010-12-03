@@ -2283,6 +2283,69 @@ copy_stream_list (GabbleMediaChannel *channel)
   return gabble_g_ptr_array_copy (channel->priv->streams);
 }
 
+
+/* return TRUE when the jingle reason is reason enough to raise a
+ * StreamError */
+static gboolean
+extract_media_stream_error_from_jingle_reason (JingleReason jingle_reason,
+    TpMediaStreamError *stream_error)
+{
+  TpMediaStreamError _stream_error;
+
+  /* TODO: Make a better mapping with more distinction of possible errors */
+  switch (jingle_reason) {
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+      _stream_error = TP_MEDIA_STREAM_ERROR_NETWORK_ERROR;
+      break;
+    case JINGLE_REASON_MEDIA_ERROR:
+      _stream_error = TP_MEDIA_STREAM_ERROR_MEDIA_ERROR;
+      break;
+    case JINGLE_REASON_FAILED_APPLICATION:
+      _stream_error = TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED;
+      break;
+    case JINGLE_REASON_GENERAL_ERROR:
+      _stream_error = TP_MEDIA_STREAM_ERROR_UNKNOWN;
+      break;
+    default:
+      {
+        if (stream_error != NULL)
+          *stream_error =  TP_MEDIA_STREAM_ERROR_UNKNOWN;
+
+        return FALSE;
+      }
+  }
+
+  if (stream_error != NULL)
+    *stream_error = _stream_error;
+
+  return TRUE;
+}
+
+static TpChannelGroupChangeReason
+jingle_reason_to_group_change_reason (JingleReason jingle_reason)
+{
+  switch (jingle_reason) {
+    case JINGLE_REASON_BUSY:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
+    case JINGLE_REASON_GONE:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE;
+    case JINGLE_REASON_TIMEOUT:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER;
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+    case JINGLE_REASON_FAILED_APPLICATION:
+    case JINGLE_REASON_FAILED_TRANSPORT:
+    case JINGLE_REASON_GENERAL_ERROR:
+    case JINGLE_REASON_MEDIA_ERROR:
+    case JINGLE_REASON_SECURITY_ERROR:
+    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_ERROR;
+    default:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  }
+}
+
 static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
@@ -2293,7 +2356,6 @@ session_terminated_cb (GabbleJingleSession *session,
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
-  TpChannelGroupChangeReason reason;
   guint terminator;
   JingleState state;
   TpHandle peer;
@@ -2317,33 +2379,9 @@ session_terminated_cb (GabbleJingleSession *session,
   tp_intset_add (set, mixin->self_handle);
   tp_intset_add (set, peer);
 
-  switch (jingle_reason) {
-    case JINGLE_REASON_BUSY:
-      reason = TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
-      break;
-    case JINGLE_REASON_GONE:
-      reason = TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE;
-      break;
-    case JINGLE_REASON_TIMEOUT:
-      reason = TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER;
-      break;
-    case JINGLE_REASON_CONNECTIVITY_ERROR:
-    case JINGLE_REASON_FAILED_APPLICATION:
-    case JINGLE_REASON_FAILED_TRANSPORT:
-    case JINGLE_REASON_GENERAL_ERROR:
-    case JINGLE_REASON_MEDIA_ERROR:
-    case JINGLE_REASON_SECURITY_ERROR:
-    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
-    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
-    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
-      reason = TP_CHANNEL_GROUP_CHANGE_REASON_ERROR;
-      break;
-    default:
-      reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
-  }
-
   tp_group_mixin_change_members ((GObject *) channel,
-      text, NULL, set, NULL, NULL, terminator, reason);
+      text, NULL, set, NULL, NULL, terminator,
+      jingle_reason_to_group_change_reason (jingle_reason));
 
   tp_intset_destroy (set);
 
@@ -2359,8 +2397,28 @@ session_terminated_cb (GabbleJingleSession *session,
 
   {
     GPtrArray *tmp = copy_stream_list (channel);
+    guint i;
+    TpMediaStreamError stream_error = TP_MEDIA_STREAM_ERROR_UNKNOWN;
+    gboolean is_error = extract_media_stream_error_from_jingle_reason (
+        jingle_reason, &stream_error);
 
-    g_ptr_array_foreach (tmp, (GFunc) gabble_media_stream_close, NULL);
+    for (i = 0; i < tmp->len; i++)
+      {
+        GabbleMediaStream *stream = tmp->pdata[i];
+
+        if (is_error)
+          {
+            guint id;
+
+            DEBUG ("emitting stream error");
+
+            g_object_get (stream, "id", &id, NULL);
+            tp_svc_channel_type_streamed_media_emit_stream_error (channel, id,
+                stream_error, "");
+          }
+
+        gabble_media_stream_close (stream);
+      }
 
     /* All the streams should have closed. */
     g_assert (priv->streams->len == 0);
@@ -2840,6 +2898,7 @@ session_content_rejected_cb (GabbleJingleSession *session,
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (user_data);
   GabbleMediaStream *stream = _find_stream_by_content (chan, c);
+  TpMediaStreamError stream_error = TP_MEDIA_STREAM_ERROR_UNKNOWN;
   guint id = 0;
 
   DEBUG (" ");
@@ -2850,24 +2909,10 @@ session_content_rejected_cb (GabbleJingleSession *session,
       "id", &id,
       NULL);
 
-  switch (reason) {
-    case JINGLE_REASON_CONNECTIVITY_ERROR:
-      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
-          TP_MEDIA_STREAM_ERROR_NETWORK_ERROR, message);
-      break;
-    case JINGLE_REASON_MEDIA_ERROR:
-      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
-          TP_MEDIA_STREAM_ERROR_MEDIA_ERROR, message);
-      break;
-    case JINGLE_REASON_FAILED_APPLICATION:
-      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
-          TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED, message);
-      break;
-    default:
-      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
-          TP_MEDIA_STREAM_ERROR_UNKNOWN, message);
-      break;
-  }
+  extract_media_stream_error_from_jingle_reason (reason, &stream_error);
+
+  tp_svc_channel_type_streamed_media_emit_stream_error (chan, id, stream_error,
+      message);
 }
 
 static void

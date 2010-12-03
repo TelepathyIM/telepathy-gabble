@@ -223,6 +223,9 @@ static void create_stream_from_content (GabbleMediaChannel *chan,
 static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer,
     gboolean *wait, GError **error);
 static void stream_creation_data_cancel (gpointer p, gpointer unused);
+static void session_content_rejected_cb (GabbleJingleSession *session,
+    GabbleJingleContent *c, JingleReason reason, const gchar *message,
+    gpointer user_data);
 
 static void
 create_initial_streams (GabbleMediaChannel *chan)
@@ -288,6 +291,9 @@ _latch_to_session (GabbleMediaChannel *chan)
 
   g_signal_connect (priv->session, "terminated",
                     (GCallback) session_terminated_cb, chan);
+
+  g_signal_connect (priv->session, "content-rejected",
+                    (GCallback) session_content_rejected_cb, chan);
 
   gabble_media_channel_hold_latch_to_session (chan);
 
@@ -1281,6 +1287,30 @@ _find_stream_by_id (GabbleMediaChannel *chan,
 
   g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
       "given stream id %u does not exist", stream_id);
+  return NULL;
+}
+
+static GabbleMediaStream *
+_find_stream_by_content (GabbleMediaChannel *chan,
+    GabbleJingleContent *content)
+{
+  GabbleMediaChannelPrivate *priv;
+  guint i;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
+
+  priv = chan->priv;
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+      GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (
+          gabble_media_stream_get_content (stream));
+
+      if (content == c)
+        return stream;
+    }
+
   return NULL;
 }
 
@@ -2761,6 +2791,43 @@ create_stream_from_content (GabbleMediaChannel *self,
    * behaviour is the same in each case) */
   g_idle_add_full (G_PRIORITY_DEFAULT, construct_stream_later_cb,
       d, stream_creation_data_free);
+}
+
+static void
+session_content_rejected_cb (GabbleJingleSession *session,
+    GabbleJingleContent *c, JingleReason reason, const gchar *message,
+    gpointer user_data)
+{
+  GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (user_data);
+  GabbleMediaStream *stream = _find_stream_by_content (chan, c);
+  guint id = 0;
+
+  DEBUG (" ");
+
+  g_return_if_fail (stream != NULL);
+
+  g_object_get (stream,
+      "id", &id,
+      NULL);
+
+  switch (reason) {
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
+          TP_MEDIA_STREAM_ERROR_NETWORK_ERROR, message);
+      break;
+    case JINGLE_REASON_MEDIA_ERROR:
+      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
+          TP_MEDIA_STREAM_ERROR_MEDIA_ERROR, message);
+      break;
+    case JINGLE_REASON_FAILED_APPLICATION:
+      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
+          TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED, message);
+      break;
+    default:
+      tp_svc_channel_type_streamed_media_emit_stream_error (chan, id,
+          TP_MEDIA_STREAM_ERROR_UNKNOWN, message);
+      break;
+  }
 }
 
 static void

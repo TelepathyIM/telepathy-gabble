@@ -487,6 +487,90 @@ typedef void (*ContentHandlerFunc)(GabbleJingleSession *sess,
     GabbleJingleContent *c, LmMessageNode *content_node, gpointer user_data,
     GError **error);
 
+static JingleReason
+parse_reason (const gchar *txt)
+{
+  if (txt == NULL)
+      return JINGLE_REASON_UNKNOWN;
+
+  if (!tp_strdiff (txt, "alternative-session"))
+    return JINGLE_REASON_ALTERNATIVE_SESSION;
+  if (!tp_strdiff (txt, "busy"))
+    return JINGLE_REASON_BUSY;
+  if (!tp_strdiff (txt, "cancel"))
+    return JINGLE_REASON_CANCEL;
+  if (!tp_strdiff (txt, "connectivity-error"))
+    return JINGLE_REASON_CONNECTIVITY_ERROR;
+  if (!tp_strdiff (txt, "decline"))
+    return JINGLE_REASON_DECLINE;
+  if (!tp_strdiff (txt, "expired"))
+    return JINGLE_REASON_EXPIRED;
+  if (!tp_strdiff (txt, "failed-application"))
+    return JINGLE_REASON_FAILED_APPLICATION;
+  if (!tp_strdiff (txt, "failed-transport"))
+    return JINGLE_REASON_FAILED_TRANSPORT;
+  if (!tp_strdiff (txt, "general-error"))
+    return JINGLE_REASON_GENERAL_ERROR;
+  if (!tp_strdiff (txt, "gone"))
+    return JINGLE_REASON_GONE;
+  if (!tp_strdiff (txt, "incompatible-parameters"))
+    return JINGLE_REASON_INCOMPATIBLE_PARAMETERS;
+  if (!tp_strdiff (txt, "media-error"))
+    return JINGLE_REASON_MEDIA_ERROR;
+  if (!tp_strdiff (txt, "security-error"))
+    return JINGLE_REASON_SECURITY_ERROR;
+  if (!tp_strdiff (txt, "success"))
+    return JINGLE_REASON_SUCCESS;
+  if (!tp_strdiff (txt, "timeout"))
+    return JINGLE_REASON_TIMEOUT;
+  if (!tp_strdiff (txt, "unsupported-applications"))
+    return JINGLE_REASON_UNSUPPORTED_APPLICATIONS;
+  if (!tp_strdiff (txt, "unsupported-transports"))
+    return JINGLE_REASON_UNSUPPORTED_TRANSPORTS;
+
+  return JINGLE_REASON_UNKNOWN;
+}
+
+static gboolean
+extract_reason (LmMessageNode *node, JingleReason *reason, gchar **message)
+{
+  LmMessageNode *n = node;
+  JingleReason _reason = JINGLE_REASON_UNKNOWN;
+  NodeIter i;
+
+  g_return_val_if_fail (node != NULL, FALSE);
+
+  /* Iterate across the <reason/> element's children, looking for a child whose
+   * name we recognise as a machine-readable reason for the call ending, and a
+   * <text> node containing a human-readable message.
+   */
+  for (i = node_iter (n); i; i = node_iter_next (i))
+    {
+      const gchar *name;
+
+
+      n = node_iter_data (i);
+
+      name = lm_message_node_get_name (n);
+
+      if (!tp_strdiff (name, "text") && message != NULL)
+        {
+          *message = g_strdup (lm_message_node_get_value (n));
+          continue;
+        }
+
+      _reason = parse_reason (name);
+
+      if (_reason != JINGLE_REASON_UNKNOWN)
+        {
+          if (reason != NULL)
+            *reason = _reason;
+          break;
+        }
+    }
+  return _reason != JINGLE_REASON_UNKNOWN;
+}
+
 static JingleAction
 parse_action (const gchar *txt)
 {
@@ -1261,76 +1345,50 @@ on_session_info (GabbleJingleSession *sess,
         "no recognized session-info payloads");
 }
 
-typedef struct {
-    const gchar *element;
-    TpChannelGroupChangeReason reason;
-} ReasonMapping;
-
-/* Taken from the schema in XEP 0166 */
-ReasonMapping reasons[] = {
-    { "alternative-session", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "busy", TP_CHANNEL_GROUP_CHANGE_REASON_BUSY },
-    { "cancel", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "connectivity-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "decline", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "expired", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "failed-application", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "failed-transport", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "general-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "gone", TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE },
-    { "incompatible-parameters", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "media-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "security-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "success", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "timeout", TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER },
-    { "unsupported-applications", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "unsupported-transports", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { NULL, }
-};
-
 static void
 on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
-  const gchar *text = NULL;
+  gchar *text = NULL;
   LmMessageNode *n = lm_message_node_get_child (node, "reason");
-  ReasonMapping *m = NULL;
-  NodeIter i;
 
-  /* If the session-terminate stanza has a <reason> child, then iterate across
-   * its children, looking for a child whose name we recognise as a
-   * machine-readable reason for the call ending (looked up from the table
-   * above), and a <text> node containing a human-readable message.
-   */
-  if (n != NULL)
-    for (i = node_iter (n); i; i = node_iter_next (i))
-      {
-        const gchar *name;
+  if (n != NULL) {
+    JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
 
-        n = node_iter_data (i);
+    extract_reason (n, &jingle_reason, &text);
 
-        name = lm_message_node_get_name (n);
+    switch (jingle_reason) {
+      case JINGLE_REASON_BUSY:
+        reason = TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
+        break;
+      case JINGLE_REASON_GONE:
+        reason = TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE;
+        break;
+      case JINGLE_REASON_TIMEOUT:
+        reason = TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER;
+        break;
+      case JINGLE_REASON_CONNECTIVITY_ERROR:
+      case JINGLE_REASON_FAILED_APPLICATION:
+      case JINGLE_REASON_FAILED_TRANSPORT:
+      case JINGLE_REASON_GENERAL_ERROR:
+      case JINGLE_REASON_MEDIA_ERROR:
+      case JINGLE_REASON_SECURITY_ERROR:
+      case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+      case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+      case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+        reason = TP_CHANNEL_GROUP_CHANGE_REASON_ERROR;
+        break;
+      default:
+        reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+    }
+  }
 
-        if (!tp_strdiff (name, "text"))
-          {
-            text = lm_message_node_get_value (n);
-            continue;
-          }
-
-        for (m = reasons; m->element != NULL; m++)
-          if (!tp_strdiff (m->element, name))
-            {
-              reason = m->reason;
-              break;
-            }
-      }
-
-  DEBUG ("remote end terminated the session with reason %s (%u) "
-      "and text '%s'",
-      (m != NULL && m->element != NULL ? m->element : "(none)"), reason,
-      (text != NULL ? text : "(none)"));
+  DEBUG ("remote end terminated the session with reason %u "
+      "and text '%s'", reason, (text != NULL ? text : "(none)"));
   set_state (sess, JINGLE_STATE_ENDED, reason, text);
+
+  g_free (text);
 }
 
 static void

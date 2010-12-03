@@ -2321,6 +2321,21 @@ extract_media_stream_error_from_jingle_reason (JingleReason jingle_reason,
   return TRUE;
 }
 
+static JingleReason
+media_stream_error_to_jingle_reason (TpMediaStreamError stream_error)
+{
+  switch (stream_error) {
+    case TP_MEDIA_STREAM_ERROR_NETWORK_ERROR:
+      return JINGLE_REASON_CONNECTIVITY_ERROR;
+    case TP_MEDIA_STREAM_ERROR_MEDIA_ERROR:
+      return  JINGLE_REASON_MEDIA_ERROR;
+    case TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED:
+      return JINGLE_REASON_FAILED_APPLICATION;
+    default:
+      return JINGLE_REASON_GENERAL_ERROR;
+  }
+}
+
 static TpChannelGroupChangeReason
 jingle_reason_to_group_change_reason (JingleReason jingle_reason)
 {
@@ -2575,7 +2590,7 @@ stream_error_cb (GabbleMediaStream *stream,
        */
       DEBUG ("Terminating call in response to stream error");
       gabble_jingle_session_terminate (priv->session,
-          JINGLE_REASON_GENERAL_ERROR, message, NULL);
+          media_stream_error_to_jingle_reason (errno), message, NULL);
     }
 
   g_list_free (contents);

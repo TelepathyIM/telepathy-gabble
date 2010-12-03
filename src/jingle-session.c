@@ -682,9 +682,7 @@ action_is_allowed (JingleAction action, JingleState state)
 static void gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
     const gchar *name);
 static void set_state (GabbleJingleSession *sess,
-    JingleState state,
-    TpChannelGroupChangeReason termination_reason,
-    const gchar *text);
+    JingleState state, JingleReason termination_reason, const gchar *text);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
 static gboolean
@@ -1048,8 +1046,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
     {
       /* We ignore initiate from us, and terminate the session immediately
        * afterwards */
-      gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY, NULL, NULL);
+      gabble_jingle_session_terminate (sess, JINGLE_REASON_BUSY, NULL, NULL);
       return;
     }
 
@@ -1098,7 +1095,8 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * disposition; resolve this as soon as the proper procedure is defined
        * in XEP-0166. */
 
-      set_state (sess, JINGLE_STATE_PENDING_INITIATED, 0, NULL);
+      set_state (sess, JINGLE_STATE_PENDING_INITIATED, JINGLE_REASON_UNKNOWN,
+          NULL);
 
       gabble_jingle_session_send_rtp_info (sess, "ringing");
     }
@@ -1190,7 +1188,7 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
   if (*error != NULL)
       return;
 
-  set_state (sess, JINGLE_STATE_ACTIVE, 0, NULL);
+  set_state (sess, JINGLE_STATE_ACTIVE, JINGLE_REASON_UNKNOWN, NULL);
 
   if (priv->dialect != JINGLE_DIALECT_V032)
     {
@@ -1375,44 +1373,18 @@ static void
 on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   gchar *text = NULL;
   LmMessageNode *n = lm_message_node_get_child (node, "reason");
+  JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
 
-  if (n != NULL) {
-    JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
-
+  if (n != NULL)
     extract_reason (n, &jingle_reason, &text);
 
-    switch (jingle_reason) {
-      case JINGLE_REASON_BUSY:
-        reason = TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
-        break;
-      case JINGLE_REASON_GONE:
-        reason = TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE;
-        break;
-      case JINGLE_REASON_TIMEOUT:
-        reason = TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER;
-        break;
-      case JINGLE_REASON_CONNECTIVITY_ERROR:
-      case JINGLE_REASON_FAILED_APPLICATION:
-      case JINGLE_REASON_FAILED_TRANSPORT:
-      case JINGLE_REASON_GENERAL_ERROR:
-      case JINGLE_REASON_MEDIA_ERROR:
-      case JINGLE_REASON_SECURITY_ERROR:
-      case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
-      case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
-      case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
-        reason = TP_CHANNEL_GROUP_CHANGE_REASON_ERROR;
-        break;
-      default:
-        reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
-    }
-  }
+  DEBUG ("remote end terminated the session with reason %s and text '%s'",
+      gabble_jingle_session_get_reason_name (jingle_reason),
+      (text != NULL ? text : "(none)"));
 
-  DEBUG ("remote end terminated the session with reason %u "
-      "and text '%s'", reason, (text != NULL ? text : "(none)"));
-  set_state (sess, JINGLE_STATE_ENDED, reason, text);
+  set_state (sess, JINGLE_STATE_ENDED, jingle_reason, text);
 
   g_free (text);
 }
@@ -2052,14 +2024,14 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
  * @sess: a jingle session
  * @state: the new state for the session
  * @termination_reason: if @state is JINGLE_STATE_ENDED, the reason the session
- *                      ended. Otherwise, must be 0.
+ *                      ended. Otherwise, must be JINGLE_REASON_UNKNOWN.
  * @text: if @state is JINGLE_STATE_ENDED, the human-readable reason the session
  *        ended.
  */
 static void
 set_state (GabbleJingleSession *sess,
            JingleState state,
-           TpChannelGroupChangeReason termination_reason,
+           JingleReason termination_reason,
            const gchar *text)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -2071,7 +2043,7 @@ set_state (GabbleJingleSession *sess,
     }
 
   if (state != JINGLE_STATE_ENDED)
-    g_assert (termination_reason == 0);
+    g_assert (termination_reason == JINGLE_REASON_UNKNOWN);
 
   DEBUG ("Setting state of JingleSession: %p (priv = %p) from %u to %u", sess, priv, priv->state, state);
 
@@ -2099,33 +2071,52 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
   try_session_initiate_or_accept (sess);
 }
 
-static const gchar *
-_get_jingle_reason (GabbleJingleSession *sess,
-                    TpChannelGroupChangeReason reason)
+const gchar *
+gabble_jingle_session_get_reason_name (JingleReason reason)
 {
-  switch (reason)
-    {
-    case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
-      if (sess->priv->state == JINGLE_STATE_ACTIVE)
-        return "success";
-      else
-        return "cancel";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE:
-      return "gone";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_BUSY:
+  switch (reason) {
+    case JINGLE_REASON_ALTERNATIVE_SESSION:
+      return "alternative-session";
+    case JINGLE_REASON_BUSY:
       return "busy";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_ERROR:
+    case JINGLE_REASON_CANCEL:
+      return "cancel";
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+      return "connectivity-error";
+    case JINGLE_REASON_DECLINE:
+      return "decline";
+    case JINGLE_REASON_EXPIRED:
+      return "expired";
+    case JINGLE_REASON_FAILED_APPLICATION:
+      return "failed-application";
+    case JINGLE_REASON_FAILED_TRANSPORT:
+      return "failed-transport";
+    case JINGLE_REASON_GENERAL_ERROR:
       return "general-error";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER:
+    case JINGLE_REASON_GONE:
+      return "gone";
+    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+      return "incompatible-parameters";
+    case JINGLE_REASON_MEDIA_ERROR:
+      return "media-error";
+    case JINGLE_REASON_SECURITY_ERROR:
+      return "security-error";
+    case JINGLE_REASON_SUCCESS:
+      return "success";
+    case JINGLE_REASON_TIMEOUT:
       return "timeout";
+    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+      return "unsupported-applications";
+    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+      return "unsupported-transports";
     default:
-      return NULL;
-    }
+      g_assert_not_reached ();
+  }
 }
 
 gboolean
 gabble_jingle_session_terminate (GabbleJingleSession *sess,
-                                 TpChannelGroupChangeReason reason,
+                                 JingleReason reason,
                                  const gchar *text,
                                  GError **error)
 {
@@ -2138,14 +2129,11 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
       return TRUE;
     }
 
-  reason_elt = _get_jingle_reason (sess, reason);
+  if (reason == JINGLE_REASON_UNKNOWN)
+    reason = (priv->state == JINGLE_STATE_ACTIVE) ?
+      JINGLE_REASON_SUCCESS : JINGLE_REASON_CANCEL;
 
-  if (reason_elt == NULL)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "%u doesn't make sense as a reason to end a call", reason);
-      return FALSE;
-    }
+  reason_elt = gabble_jingle_session_get_reason_name (reason);
 
   if (priv->state != JINGLE_STATE_PENDING_CREATED)
     {
@@ -2225,7 +2213,7 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
   if (count_active_contents (sess) == 0)
     {
       gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+          JINGLE_REASON_UNKNOWN, NULL, NULL);
     }
   else
     {

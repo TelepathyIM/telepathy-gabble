@@ -212,9 +212,7 @@ gabble_media_channel_init (GabbleMediaChannel *self)
 static void session_state_changed_cb (GabbleJingleSession *session,
     GParamSpec *arg1, GabbleMediaChannel *channel);
 static void session_terminated_cb (GabbleJingleSession *session,
-    gboolean local_terminator,
-    TpChannelGroupChangeReason reason,
-    const gchar *text,
+    gboolean local_terminator, JingleReason reason, const gchar *text,
     gpointer user_data);
 static void session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data);
@@ -1061,7 +1059,7 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
       if (priv->session != NULL)
         gabble_jingle_session_terminate (priv->session,
-            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+            JINGLE_REASON_UNKNOWN, NULL, NULL);
 
       tp_svc_channel_emit_closed (self);
     }
@@ -2214,7 +2212,7 @@ static gboolean
 gabble_media_channel_remove_member (GObject *obj,
                                     TpHandle handle,
                                     const gchar *message,
-                                    guint reason,
+                                    TpChannelGroupChangeReason reason,
                                     GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
@@ -2236,15 +2234,31 @@ gabble_media_channel_remove_member (GObject *obj,
     }
   else
     {
-      /* Terminate can fail if the UI provides a reason that makes no sense,
-       * like Invited.
-       */
-      if (!gabble_jingle_session_terminate (priv->session, reason, message,
-              error))
-        {
+      JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
+
+      switch (reason) {
+        case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
+          jingle_reason = JINGLE_REASON_UNKNOWN;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE:
+          jingle_reason = JINGLE_REASON_GONE;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_BUSY:
+          jingle_reason = JINGLE_REASON_BUSY;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_ERROR:
+          jingle_reason = JINGLE_REASON_GENERAL_ERROR;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER:
+          jingle_reason = JINGLE_REASON_TIMEOUT;
+          break;
+        default:
           g_object_unref (chan);
           return FALSE;
-        }
+      }
+
+      gabble_jingle_session_terminate (priv->session, jingle_reason, message,
+          error);
     }
 
   /* Remove CanAdd if it was there for the deprecated anonymous channel
@@ -2272,13 +2286,14 @@ copy_stream_list (GabbleMediaChannel *channel)
 static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
-                       TpChannelGroupChangeReason reason,
+                       JingleReason jingle_reason,
                        const gchar *text,
                        gpointer user_data)
 {
   GabbleMediaChannel *channel = (GabbleMediaChannel *) user_data;
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
+  TpChannelGroupChangeReason reason;
   guint terminator;
   JingleState state;
   TpHandle peer;
@@ -2301,6 +2316,31 @@ session_terminated_cb (GabbleJingleSession *session,
   /* remove us and the peer from the member list */
   tp_intset_add (set, mixin->self_handle);
   tp_intset_add (set, peer);
+
+  switch (jingle_reason) {
+    case JINGLE_REASON_BUSY:
+      reason = TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
+      break;
+    case JINGLE_REASON_GONE:
+      reason = TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE;
+      break;
+    case JINGLE_REASON_TIMEOUT:
+      reason = TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER;
+      break;
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+    case JINGLE_REASON_FAILED_APPLICATION:
+    case JINGLE_REASON_FAILED_TRANSPORT:
+    case JINGLE_REASON_GENERAL_ERROR:
+    case JINGLE_REASON_MEDIA_ERROR:
+    case JINGLE_REASON_SECURITY_ERROR:
+    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+      reason = TP_CHANNEL_GROUP_CHANGE_REASON_ERROR;
+      break;
+    default:
+      reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+  }
 
   tp_group_mixin_change_members ((GObject *) channel,
       text, NULL, set, NULL, NULL, terminator, reason);
@@ -2477,7 +2517,7 @@ stream_error_cb (GabbleMediaStream *stream,
        */
       DEBUG ("Terminating call in response to stream error");
       gabble_jingle_session_terminate (priv->session,
-          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, message, NULL);
+          JINGLE_REASON_GENERAL_ERROR, message, NULL);
     }
 
   g_list_free (contents);

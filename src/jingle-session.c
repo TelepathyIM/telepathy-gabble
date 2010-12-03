@@ -484,7 +484,8 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
   LmMessageNode *node, GError **error);
 typedef void (*ContentHandlerFunc)(GabbleJingleSession *sess,
-  GabbleJingleContent *c, LmMessageNode *content_node, GError **error);
+    GabbleJingleContent *c, LmMessageNode *content_node, gpointer user_data,
+    GError **error);
 
 static JingleAction
 parse_action (const gchar *txt)
@@ -682,6 +683,7 @@ _foreach_content (GabbleJingleSession *sess,
     LmMessageNode *node,
     gboolean fail_if_missing,
     ContentHandlerFunc func,
+    gpointer user_data,
     GError **error)
 {
   GabbleJingleContent *c;
@@ -700,7 +702,7 @@ _foreach_content (GabbleJingleSession *sess,
               fail_if_missing, &c, error))
         return;
 
-      func (sess, c, content_node, error);
+      func (sess, c, content_node, user_data, error);
       if (*error != NULL)
         return;
     }
@@ -829,7 +831,7 @@ create_content (GabbleJingleSession *sess, GType content_type,
 
 static void
 _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *name = lm_message_node_get_attribute (content_node, "name");
@@ -873,7 +875,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   g_assert (c != NULL);
 
@@ -882,7 +884,7 @@ _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   g_assert (c != NULL);
 
@@ -894,19 +896,19 @@ _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_replace (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
-  _each_content_remove (sess, c, content_node, error);
+  _each_content_remove (sess, c, content_node, NULL, error);
 
   if (*error != NULL)
     return;
 
-  _each_content_add (sess, c, content_node, error);
+  _each_content_add (sess, c, content_node, NULL, error);
 }
 
 static void
 _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node ,GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   JingleContentState state;
@@ -929,7 +931,7 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_description_info (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   gabble_jingle_content_parse_description_info (c, content_node, error);
 }
@@ -976,17 +978,17 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
         }
       else
         {
-          _each_content_add (sess, NULL, node, error);
+          _each_content_add (sess, NULL, node, NULL, error);
         }
     }
   else if (priv->dialect == JINGLE_DIALECT_GTALK4)
     {
       /* in this case we implicitly have just one content */
-      _each_content_add (sess, NULL, node, error);
+      _each_content_add (sess, NULL, node, NULL, error);
     }
   else
     {
-      _foreach_content (sess, node, FALSE, _each_content_add, error);
+      _foreach_content (sess, node, FALSE, _each_content_add, NULL, error);
     }
 
   if (*error == NULL)
@@ -1005,28 +1007,28 @@ static void
 on_content_add (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
-  _foreach_content (sess, node, FALSE, _each_content_add, error);
+  _foreach_content (sess, node, FALSE, _each_content_add, NULL, error);
 }
 
 static void
 on_content_modify (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_modify, error);
+  _foreach_content (sess, node, TRUE, _each_content_modify, NULL, error);
 }
 
 static void
 on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_remove, error);
+  _foreach_content (sess, node, TRUE, _each_content_remove, NULL, error);
 }
 
 static void
 on_content_replace (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_replace, error);
+  _foreach_content (sess, node, TRUE, _each_content_replace, NULL, error);
 }
 
 static void
@@ -1036,14 +1038,14 @@ on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
   /* FIXME: reject is different from remove - remove is for
    * acknowledged contents, reject is for pending; but the result
    * is the same. */
-  _foreach_content (sess, node, TRUE, _each_content_remove, error);
+  _foreach_content (sess, node, TRUE, _each_content_remove, NULL, error);
 }
 
 static void
 on_content_accept (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_accept, error);
+  _foreach_content (sess, node, TRUE, _each_content_accept, NULL, error);
 }
 
 static void
@@ -1066,13 +1068,13 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
       GList *l;
 
       for (l = cs; l != NULL; l = l->next)
-        _each_content_accept (sess, l->data, node, error);
+        _each_content_accept (sess, l->data, node, NULL, error);
 
       g_list_free (cs);
     }
   else
     {
-      _foreach_content (sess, node, TRUE, _each_content_accept, error);
+      _foreach_content (sess, node, TRUE, _each_content_accept, NULL, error);
     }
 
   if (*error != NULL)
@@ -1409,7 +1411,7 @@ static void
 on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_description_info, error);
+  _foreach_content (sess, node, TRUE, _each_description_info, NULL, error);
 }
 
 static void

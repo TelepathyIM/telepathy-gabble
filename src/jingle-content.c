@@ -1167,10 +1167,53 @@ _on_remove_reply (GObject *c_as_obj,
   g_signal_emit (c, signals[REMOVED], 0);
 }
 
+static const gchar *
+produce_reason (JingleReason reason)
+{
+  switch (reason) {
+    case JINGLE_REASON_ALTERNATIVE_SESSION:
+      return "alternative-session";
+    case JINGLE_REASON_BUSY:
+      return "busy";
+    case JINGLE_REASON_CANCEL:
+      return "cancel";
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+      return "connectivity-error";
+    case JINGLE_REASON_DECLINE:
+      return "decline";
+    case JINGLE_REASON_EXPIRED:
+      return "expired";
+    case JINGLE_REASON_FAILED_APPLICATION:
+      return "failed-application";
+    case JINGLE_REASON_FAILED_TRANSPORT:
+      return "failed-transport";
+    case JINGLE_REASON_GENERAL_ERROR:
+      return "general-error";
+    case JINGLE_REASON_GONE:
+      return "gone";
+    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+      return "incompatible-parameters";
+    case JINGLE_REASON_MEDIA_ERROR:
+      return "media-error";
+    case JINGLE_REASON_SECURITY_ERROR:
+      return "security-error";
+    case JINGLE_REASON_SUCCESS:
+      return "success";
+    case JINGLE_REASON_TIMEOUT:
+      return "timeout";
+    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+      return "unsupported-applications";
+    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+      return "unsupported-transports";
+    default:
+      g_assert_not_reached ();
+  }
+}
+
 static void
 _content_remove (GabbleJingleContent *c,
     gboolean signal_peer,
-    gboolean failed_app)
+    JingleReason reason)
 {
   GabbleJingleContentPrivate *priv = c->priv;
   LmMessage *msg;
@@ -1193,15 +1236,16 @@ _content_remove (GabbleJingleContent *c,
       g_object_notify ((GObject *) c, "state");
 
       msg = gabble_jingle_session_new_message (c->session,
-          failed_app ?
-          JINGLE_ACTION_CONTENT_REJECT : JINGLE_ACTION_CONTENT_REMOVE,
+          reason == JINGLE_REASON_UNKNOWN ?
+          JINGLE_ACTION_CONTENT_REMOVE : JINGLE_ACTION_CONTENT_REJECT,
           &sess_node);
 
-      if (failed_app)
+      if (reason != JINGLE_REASON_UNKNOWN)
         {
-          LmMessageNode *reason = lm_message_node_add_child (sess_node,
+          LmMessageNode *reason_node = lm_message_node_add_child (sess_node,
               "reason", NULL);
-          lm_message_node_add_child (reason, "failed-application", NULL);
+          lm_message_node_add_child (reason_node, produce_reason (reason),
+              NULL);
         }
 
       gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
@@ -1222,13 +1266,14 @@ void
 gabble_jingle_content_remove (GabbleJingleContent *c,
     gboolean signal_peer)
 {
-  _content_remove (c, signal_peer, FALSE);
+  _content_remove (c, signal_peer, JINGLE_REASON_UNKNOWN);
 }
 
 void
-gabble_jingle_content_failed_application (GabbleJingleContent *c)
+gabble_jingle_content_reject (GabbleJingleContent *c,
+    JingleReason reason)
 {
-  _content_remove (c, TRUE, TRUE);
+  _content_remove (c, TRUE, reason);
 }
 
 gboolean

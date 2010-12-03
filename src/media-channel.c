@@ -2432,7 +2432,8 @@ stream_error_cb (GabbleMediaStream *stream,
       c = gabble_media_stream_get_content (stream);
 
       if (errno == TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED)
-        gabble_jingle_content_failed_application ((GabbleJingleContent *) c);
+        gabble_jingle_content_reject ((GabbleJingleContent *) c,
+            JINGLE_REASON_FAILED_APPLICATION);
       else
         gabble_jingle_session_remove_content (priv->session,
             (GabbleJingleContent *) c);

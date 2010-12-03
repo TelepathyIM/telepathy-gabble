@@ -52,6 +52,7 @@ enum
   NEW_CONTENT,
   REMOTE_STATE_CHANGED,
   TERMINATED,
+  CONTENT_REJECTED,
   LAST_SIGNAL
 };
 
@@ -479,6 +480,10 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__VOID,
         G_TYPE_NONE, 0);
+  signals[CONTENT_REJECTED] = g_signal_new ("content-rejected",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL, gabble_marshal_VOID__OBJECT_UINT_STRING,
+        G_TYPE_NONE, 3, G_TYPE_OBJECT, G_TYPE_UINT, G_TYPE_STRING);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
@@ -973,7 +978,7 @@ _each_content_rejected (GabbleJingleSession *sess, GabbleJingleContent *c,
   JingleReason reason = GPOINTER_TO_UINT (user_data);
   g_assert (c != NULL);
 
-  gabble_jingle_content_set_reason_rejected (c , reason);
+  g_signal_emit (sess, signals[CONTENT_REJECTED], 0, c, reason, "");
 
   gabble_jingle_content_remove (c, FALSE);
 }

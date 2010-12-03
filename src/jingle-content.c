@@ -1167,8 +1167,10 @@ _on_remove_reply (GObject *c_as_obj,
   g_signal_emit (c, signals[REMOVED], 0);
 }
 
-void
-gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
+static void
+_content_remove (GabbleJingleContent *c,
+    gboolean signal_peer,
+    gboolean failed_app)
 {
   GabbleJingleContentPrivate *priv = c->priv;
   LmMessage *msg;
@@ -1191,7 +1193,17 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
       g_object_notify ((GObject *) c, "state");
 
       msg = gabble_jingle_session_new_message (c->session,
-          JINGLE_ACTION_CONTENT_REMOVE, &sess_node);
+          failed_app ?
+          JINGLE_ACTION_CONTENT_REJECT : JINGLE_ACTION_CONTENT_REMOVE,
+          &sess_node);
+
+      if (failed_app)
+        {
+          LmMessageNode *reason = lm_message_node_add_child (sess_node,
+              "reason", NULL);
+          lm_message_node_add_child (reason, "failed-application", NULL);
+        }
+
       gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
       gabble_jingle_session_send (c->session, msg, _on_remove_reply,
           (GObject *) c);
@@ -1204,6 +1216,19 @@ gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer)
        */
       g_signal_emit (c, signals[REMOVED], 0);
     }
+}
+
+void
+gabble_jingle_content_remove (GabbleJingleContent *c,
+    gboolean signal_peer)
+{
+  _content_remove (c, signal_peer, FALSE);
+}
+
+void
+gabble_jingle_content_failed_application (GabbleJingleContent *c)
+{
+  _content_remove (c, TRUE, TRUE);
 }
 
 gboolean

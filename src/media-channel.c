@@ -2430,8 +2430,12 @@ stream_error_cb (GabbleMediaStream *stream,
        * so we can dispose of the stream)
        */
       c = gabble_media_stream_get_content (stream);
-      gabble_jingle_session_remove_content (priv->session,
-          (GabbleJingleContent *) c);
+
+      if (errno == TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED)
+        gabble_jingle_content_failed_application ((GabbleJingleContent *) c);
+      else
+        gabble_jingle_session_remove_content (priv->session,
+            (GabbleJingleContent *) c);
     }
   else
     {

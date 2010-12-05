@@ -1863,7 +1863,7 @@ _on_initiate_reply (GObject *sess_as_obj,
     }
   else
     {
-      set_state (sess, JINGLE_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+      set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
 }
@@ -1882,7 +1882,7 @@ _on_accept_reply (GObject *sess_as_obj,
     }
   else
     {
-      set_state (sess, JINGLE_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+      set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
 }

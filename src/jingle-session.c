@@ -537,43 +537,32 @@ parse_reason (const gchar *txt)
 }
 
 static gboolean
-extract_reason (LmMessageNode *node, JingleReason *reason, gchar **message)
+extract_reason (WockyNode *node, JingleReason *reason, gchar **message)
 {
-  LmMessageNode *n = node;
   JingleReason _reason = JINGLE_REASON_UNKNOWN;
-  NodeIter i;
+  WockyNode *child;
+  WockyNodeIter iter;
 
   g_return_val_if_fail (node != NULL, FALSE);
 
-  /* Iterate across the <reason/> element's children, looking for a child whose
-   * name we recognise as a machine-readable reason for the call ending, and a
-   * <text> node containing a human-readable message.
-   */
-  for (i = node_iter (n); i; i = node_iter_next (i))
+  if (message != NULL)
+    *message = g_strdup (wocky_node_get_content_from_child (node, "text"));
+
+  wocky_node_iter_init (&iter, node, NULL, NULL);
+
+  while (wocky_node_iter_next (&iter, &child))
     {
-      const gchar *name;
-
-
-      n = node_iter_data (i);
-
-      name = lm_message_node_get_name (n);
-
-      if (!tp_strdiff (name, "text") && message != NULL)
-        {
-          *message = g_strdup (lm_message_node_get_value (n));
-          continue;
-        }
-
-      _reason = parse_reason (name);
+      _reason = parse_reason (child->name);
 
       if (_reason != JINGLE_REASON_UNKNOWN)
         {
           if (reason != NULL)
             *reason = _reason;
-          break;
+          return TRUE;
         }
     }
-  return _reason != JINGLE_REASON_UNKNOWN;
+
+  return FALSE;
 }
 
 static JingleAction

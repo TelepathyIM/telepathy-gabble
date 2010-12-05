@@ -2253,6 +2253,8 @@ gabble_media_channel_remove_member (GObject *obj,
           jingle_reason = JINGLE_REASON_TIMEOUT;
           break;
         default:
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "%u doesn't make sense as a reason to end a call", reason);
           g_object_unref (chan);
           return FALSE;
       }

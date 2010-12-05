@@ -2064,6 +2064,8 @@ const gchar *
 gabble_jingle_session_get_reason_name (JingleReason reason)
 {
   switch (reason) {
+    case JINGLE_REASON_UNKNOWN:
+      return "unknown";
     case JINGLE_REASON_ALTERNATIVE_SESSION:
       return "alternative-session";
     case JINGLE_REASON_BUSY:

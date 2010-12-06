@@ -84,7 +84,8 @@ def _test_terminate_reason(jp, q, bus, conn, stream, incoming):
 
     if incoming:
         q.expect('dbus-signal', signal='SetRemoteCodecs')
-        stream_handler.Error(2, msg)
+        stream_handler.Error(cs.MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED,
+                             msg)
         expected_events = [EventPattern(
                 "stream-iq", iq_type="set",
                 predicate=lambda x: _session_terminate_predicate(x, msg))]

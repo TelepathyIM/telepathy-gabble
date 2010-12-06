@@ -159,6 +159,7 @@ TWISTED_JINGLE_TESTS = \
 	jingle/payload-types.py \
 	jingle/preload-caps-crash.py \
 	jingle/session-id-collision.py \
+	jingle/stream-errors-on-terminate.py \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \
 	jingle/test-description-info.py \

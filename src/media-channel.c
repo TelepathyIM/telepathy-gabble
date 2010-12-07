@@ -2431,7 +2431,7 @@ session_terminated_cb (GabbleJingleSession *session,
 
             g_object_get (stream, "id", &id, NULL);
             tp_svc_channel_type_streamed_media_emit_stream_error (channel, id,
-                stream_error, "");
+                stream_error, text);
           }
 
         gabble_media_stream_close (stream);

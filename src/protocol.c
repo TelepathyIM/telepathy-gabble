@@ -346,6 +346,17 @@ get_connection_details (TpBaseProtocol *self,
     }
 }
 
+static GStrv
+dup_authentication_types (TpBaseProtocol *self)
+{
+  const gchar * const types[] = {
+    TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
+    TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+    NULL };
+
+  return g_strdupv ((GStrv) types);
+}
+
 static void
 gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
 {
@@ -359,6 +370,7 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   base_class->get_interfaces = get_interfaces;
   base_class->get_connection_details = get_connection_details;
   base_class->get_statuses = get_presence_statuses;
+  base_class->dup_authentication_types = dup_authentication_types;
 }
 
 TpBaseProtocol *

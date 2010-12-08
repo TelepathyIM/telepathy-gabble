@@ -2236,7 +2236,8 @@ gabble_media_channel_remove_member (GObject *obj,
     {
       JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
 
-      switch (reason) {
+      switch (reason)
+        {
         case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
           jingle_reason = JINGLE_REASON_UNKNOWN;
           break;
@@ -2257,7 +2258,7 @@ gabble_media_channel_remove_member (GObject *obj,
               "%u doesn't make sense as a reason to end a call", reason);
           g_object_unref (chan);
           return FALSE;
-      }
+        }
 
       gabble_jingle_session_terminate (priv->session, jingle_reason, message,
           error);
@@ -2295,7 +2296,8 @@ extract_media_stream_error_from_jingle_reason (JingleReason jingle_reason,
   TpMediaStreamError _stream_error;
 
   /* TODO: Make a better mapping with more distinction of possible errors */
-  switch (jingle_reason) {
+  switch (jingle_reason)
+    {
     case JINGLE_REASON_CONNECTIVITY_ERROR:
       _stream_error = TP_MEDIA_STREAM_ERROR_NETWORK_ERROR;
       break;
@@ -2315,7 +2317,7 @@ extract_media_stream_error_from_jingle_reason (JingleReason jingle_reason,
 
         return FALSE;
       }
-  }
+    }
 
   if (stream_error != NULL)
     *stream_error = _stream_error;
@@ -2326,7 +2328,8 @@ extract_media_stream_error_from_jingle_reason (JingleReason jingle_reason,
 static JingleReason
 media_stream_error_to_jingle_reason (TpMediaStreamError stream_error)
 {
-  switch (stream_error) {
+  switch (stream_error)
+    {
     case TP_MEDIA_STREAM_ERROR_NETWORK_ERROR:
       return JINGLE_REASON_CONNECTIVITY_ERROR;
     case TP_MEDIA_STREAM_ERROR_MEDIA_ERROR:
@@ -2335,13 +2338,14 @@ media_stream_error_to_jingle_reason (TpMediaStreamError stream_error)
       return JINGLE_REASON_FAILED_APPLICATION;
     default:
       return JINGLE_REASON_GENERAL_ERROR;
-  }
+    }
 }
 
 static TpChannelGroupChangeReason
 jingle_reason_to_group_change_reason (JingleReason jingle_reason)
 {
-  switch (jingle_reason) {
+  switch (jingle_reason)
+    {
     case JINGLE_REASON_BUSY:
       return TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
     case JINGLE_REASON_GONE:
@@ -2360,7 +2364,7 @@ jingle_reason_to_group_change_reason (JingleReason jingle_reason)
       return TP_CHANNEL_GROUP_CHANGE_REASON_ERROR;
     default:
       return TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
-  }
+    }
 }
 
 static void

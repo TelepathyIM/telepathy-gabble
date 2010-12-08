@@ -96,7 +96,8 @@ typedef enum {
   JINGLE_CANDIDATE_TYPE_RELAY
 } JingleCandidateType;
 
-typedef enum {
+typedef enum
+{
   JINGLE_REASON_UNKNOWN,
   JINGLE_REASON_ALTERNATIVE_SESSION,
   JINGLE_REASON_BUSY,

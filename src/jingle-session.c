@@ -487,7 +487,7 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
-  LmMessageNode *node, GError **error);
+    LmMessageNode *node, GError **error);
 typedef void (*ContentHandlerFunc)(GabbleJingleSession *sess,
     GabbleJingleContent *c, LmMessageNode *content_node, gpointer user_data,
     GError **error);
@@ -2063,7 +2063,8 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
 const gchar *
 gabble_jingle_session_get_reason_name (JingleReason reason)
 {
-  switch (reason) {
+  switch (reason)
+    {
     case JINGLE_REASON_UNKNOWN:
       return "unknown";
     case JINGLE_REASON_ALTERNATIVE_SESSION:
@@ -2102,7 +2103,7 @@ gabble_jingle_session_get_reason_name (JingleReason reason)
       return "unsupported-transports";
     default:
       g_assert_not_reached ();
-  }
+    }
 }
 
 gboolean

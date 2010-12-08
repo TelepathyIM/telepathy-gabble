@@ -26,7 +26,7 @@
 
 G_BEGIN_DECLS
 
-typedef enum {
+typedef enum { /*< skip >*/
   /* not a jingle message */
   JINGLE_DIALECT_ERROR,
   /* old libjingle3 gtalk variant */
@@ -42,7 +42,7 @@ typedef enum {
 #define JINGLE_IS_GOOGLE_DIALECT(d)\
     ((d == JINGLE_DIALECT_GTALK3) || (d == JINGLE_DIALECT_GTALK4))
 
-typedef enum {
+typedef enum { /*< skip >*/
   JINGLE_STATE_INVALID = -1,
   JINGLE_STATE_PENDING_CREATED = 0,
   JINGLE_STATE_PENDING_INITIATE_SENT,
@@ -53,7 +53,7 @@ typedef enum {
   MAX_JINGLE_STATES
 } JingleState;
 
-typedef enum {
+typedef enum { /*< skip >*/
   JINGLE_ACTION_UNKNOWN,
   JINGLE_ACTION_CONTENT_ACCEPT,
   JINGLE_ACTION_CONTENT_ADD,
@@ -71,26 +71,26 @@ typedef enum {
   JINGLE_ACTION_INFO
 } JingleAction;
 
-typedef enum {
+typedef enum { /*< skip >*/
   JINGLE_CONTENT_SENDERS_NONE,
   JINGLE_CONTENT_SENDERS_INITIATOR,
   JINGLE_CONTENT_SENDERS_RESPONDER,
   JINGLE_CONTENT_SENDERS_BOTH
 } JingleContentSenders;
 
-typedef enum {
+typedef enum { /*< skip >*/
   JINGLE_TRANSPORT_UNKNOWN,
   JINGLE_TRANSPORT_GOOGLE_P2P,
   JINGLE_TRANSPORT_RAW_UDP,
   JINGLE_TRANSPORT_ICE_UDP,
 } JingleTransportType;
 
-typedef enum {
+typedef enum { /*< skip >*/
   JINGLE_TRANSPORT_PROTOCOL_UDP,
   JINGLE_TRANSPORT_PROTOCOL_TCP
 } JingleTransportProtocol;
 
-typedef enum {
+typedef enum { /*< skip >*/
   JINGLE_CANDIDATE_TYPE_LOCAL,
   JINGLE_CANDIDATE_TYPE_STUN,
   JINGLE_CANDIDATE_TYPE_RELAY

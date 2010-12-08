@@ -26,6 +26,7 @@
 
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
+#include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -34,6 +35,7 @@
 #include "conn-presence.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
+#include "gabble-enumtypes.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
 /* FIXME: the RTP-specific bits of this file should be separated from the
@@ -492,50 +494,6 @@ typedef void (*ContentHandlerFunc)(GabbleJingleSession *sess,
     GabbleJingleContent *c, LmMessageNode *content_node, gpointer user_data,
     GError **error);
 
-static JingleReason
-parse_reason (const gchar *txt)
-{
-  if (txt == NULL)
-      return JINGLE_REASON_UNKNOWN;
-
-  if (!tp_strdiff (txt, "alternative-session"))
-    return JINGLE_REASON_ALTERNATIVE_SESSION;
-  if (!tp_strdiff (txt, "busy"))
-    return JINGLE_REASON_BUSY;
-  if (!tp_strdiff (txt, "cancel"))
-    return JINGLE_REASON_CANCEL;
-  if (!tp_strdiff (txt, "connectivity-error"))
-    return JINGLE_REASON_CONNECTIVITY_ERROR;
-  if (!tp_strdiff (txt, "decline"))
-    return JINGLE_REASON_DECLINE;
-  if (!tp_strdiff (txt, "expired"))
-    return JINGLE_REASON_EXPIRED;
-  if (!tp_strdiff (txt, "failed-application"))
-    return JINGLE_REASON_FAILED_APPLICATION;
-  if (!tp_strdiff (txt, "failed-transport"))
-    return JINGLE_REASON_FAILED_TRANSPORT;
-  if (!tp_strdiff (txt, "general-error"))
-    return JINGLE_REASON_GENERAL_ERROR;
-  if (!tp_strdiff (txt, "gone"))
-    return JINGLE_REASON_GONE;
-  if (!tp_strdiff (txt, "incompatible-parameters"))
-    return JINGLE_REASON_INCOMPATIBLE_PARAMETERS;
-  if (!tp_strdiff (txt, "media-error"))
-    return JINGLE_REASON_MEDIA_ERROR;
-  if (!tp_strdiff (txt, "security-error"))
-    return JINGLE_REASON_SECURITY_ERROR;
-  if (!tp_strdiff (txt, "success"))
-    return JINGLE_REASON_SUCCESS;
-  if (!tp_strdiff (txt, "timeout"))
-    return JINGLE_REASON_TIMEOUT;
-  if (!tp_strdiff (txt, "unsupported-applications"))
-    return JINGLE_REASON_UNSUPPORTED_APPLICATIONS;
-  if (!tp_strdiff (txt, "unsupported-transports"))
-    return JINGLE_REASON_UNSUPPORTED_TRANSPORTS;
-
-  return JINGLE_REASON_UNKNOWN;
-}
-
 static gboolean
 extract_reason (WockyNode *node, JingleReason *reason, gchar **message)
 {
@@ -552,9 +510,8 @@ extract_reason (WockyNode *node, JingleReason *reason, gchar **message)
 
   while (wocky_node_iter_next (&iter, &child))
     {
-      _reason = parse_reason (child->name);
-
-      if (_reason != JINGLE_REASON_UNKNOWN)
+      if (wocky_enum_from_nick (
+              jingle_reason_get_type (), child->name, (gint *) &_reason))
         {
           if (reason != NULL)
             *reason = _reason;
@@ -2063,47 +2020,12 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
 const gchar *
 gabble_jingle_session_get_reason_name (JingleReason reason)
 {
-  switch (reason)
-    {
-    case JINGLE_REASON_UNKNOWN:
-      return "unknown";
-    case JINGLE_REASON_ALTERNATIVE_SESSION:
-      return "alternative-session";
-    case JINGLE_REASON_BUSY:
-      return "busy";
-    case JINGLE_REASON_CANCEL:
-      return "cancel";
-    case JINGLE_REASON_CONNECTIVITY_ERROR:
-      return "connectivity-error";
-    case JINGLE_REASON_DECLINE:
-      return "decline";
-    case JINGLE_REASON_EXPIRED:
-      return "expired";
-    case JINGLE_REASON_FAILED_APPLICATION:
-      return "failed-application";
-    case JINGLE_REASON_FAILED_TRANSPORT:
-      return "failed-transport";
-    case JINGLE_REASON_GENERAL_ERROR:
-      return "general-error";
-    case JINGLE_REASON_GONE:
-      return "gone";
-    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
-      return "incompatible-parameters";
-    case JINGLE_REASON_MEDIA_ERROR:
-      return "media-error";
-    case JINGLE_REASON_SECURITY_ERROR:
-      return "security-error";
-    case JINGLE_REASON_SUCCESS:
-      return "success";
-    case JINGLE_REASON_TIMEOUT:
-      return "timeout";
-    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
-      return "unsupported-applications";
-    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
-      return "unsupported-transports";
-    default:
-      g_assert_not_reached ();
-    }
+  GEnumClass *klass = g_type_class_ref (jingle_reason_get_type ());
+  GEnumValue *enum_value = g_enum_get_value (klass, (gint) reason);
+
+  g_return_val_if_fail (enum_value != NULL, NULL);
+
+  return enum_value->value_nick;
 }
 
 gboolean

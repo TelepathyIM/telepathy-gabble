@@ -190,6 +190,10 @@ libgabble_convenience_la_SOURCES = \
     vcard-manager.h \
     vcard-manager.c
 
+enumtype_sources = \
+    jingle-factory.h \
+    presence.h
+
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la \
    $(top_builddir)/lib/gibber/libgibber.la \
@@ -257,19 +261,19 @@ gabble-signals-marshal.list: $(libgabble_convenience_la_SOURCES) Makefile.am
 	} > $@
 
 # rules for making the glib enum objects
-gabble-enumtypes.h: presence.h Makefile.in
+gabble-enumtypes.h: $(enumtype_sources) Makefile.in
 	$(AM_V_GEN)glib-mkenums \
 	--fhead "#ifndef __GABBLE_ENUM_TYPES_H__\n#define __GABBLE_ENUM_TYPES_H__\n\n#include <glib-object.h>\n\nG_BEGIN_DECLS\n" \
 	--fprod "/* enumerations from \"@filename@\" */\n" \
 	--vhead "GType @enum_name@_get_type (void);\n#define GABBLE_TYPE_@ENUMSHORT@ (@enum_name@_get_type())\n"         \
 	--ftail "G_END_DECLS\n\n#endif /* __GABBLE_ENUM_TYPES_H__ */" \
-	$< > $@
+	$(enumtype_sources) > $@
 
-gabble-enumtypes.c: presence.h Makefile.in
+gabble-enumtypes.c: $(enumtype_sources) Makefile.in
 	$(AM_V_GEN)glib-mkenums \
 	--fhead "#include <$*.h>" \
 	--fprod "\n/* enumerations from \"@filename@\" */\n#include \"@filename@\"" \
 	--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {"     \
 	--vprod "      { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
 	--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (\"@EnumName@\", values);\n  }\n  return etype;\n}\n" \
-	$< > $@
+	$(enumtype_sources) > $@

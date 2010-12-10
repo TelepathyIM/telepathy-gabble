@@ -67,6 +67,7 @@ TWISTED_TESTS = \
 	sasl/jabber_auth.py \
 	sasl/plain.py \
 	sasl/complex.py \
+	sasl/telepathy-password.py \
 	search/ceci-nest-pas-un-serveur.py \
 	search/extended.py \
 	search/no-server-property.py \

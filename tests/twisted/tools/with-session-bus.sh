@@ -82,6 +82,11 @@ if [ -n "$WITH_SESSION_BUS_FORK_DBUS_MONITOR" ] ; then
         > $me-$$.dbus-monitor-logs 2>&1 &
 fi
 
+if [ -n "$GABBLE_TEST_BUSTLE" ]; then
+  echo "Forking bustle-dbus-monitor" >&2
+  bustle-dbus-monitor > tools/$me-$$.bustle-logs 2>&1 &
+fi
+
 "$@" || e=$?
 
 if test $sleep != 0; then

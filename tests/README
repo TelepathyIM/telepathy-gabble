@@ -73,6 +73,9 @@ To debug an individual test you can set one of the following env variable:
     to tools/strace.log.
         export GABBLE_TEST_STRACE=1
 
+  * GABBLE_TEST_BUSTLE : to run bustle-dbus-monitor in the temporary
+    bus daemon. The logs are saved to tools/*bustle-logs.
+        export GABBLE_TEST_BUSTLE=1
 
 == Jingle tests ==
 

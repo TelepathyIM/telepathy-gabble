@@ -7,8 +7,9 @@ dist-hook:
 	fi
 
 distcheck-hook:
-	@case @VERSION@ in \
-		*.*.*.*) ;; \
+	@test "z$(CHECK_FOR_UNRELEASED)" = z || \
+	case @VERSION@ in \
+		*.*.*.*|*+) ;; \
 		*) \
 			if grep -r UNRELEASED $(CHECK_FOR_UNRELEASED); \
 			then \
@@ -20,13 +21,17 @@ distcheck-hook:
 
 _is-release-check:
 	@case @VERSION@ in \
-		(*.*.*.*) \
+		(*.*.*.*|*+) \
 			echo "Hey! @VERSION@ is not a release!" >&2; \
 			exit 2; \
 			;; \
 	esac
 	@if ! git diff --no-ext-diff --quiet --exit-code; then \
 		echo "Hey! Your tree is dirty! No release for you." >&2; \
+		exit 2; \
+	fi
+	@if ! git diff --cached --no-ext-diff --quiet --exit-code; then \
+		echo "Hey! You have changes staged! No release for you." >&2; \
 		exit 2; \
 	fi
 
@@ -59,6 +64,6 @@ maintainer-make-release: maintainer-prepare-release maintainer-upload-release
 	@echo "Now:"
 	@echo " • bump the nano-version;"
 	@echo " • push the branch and tags upstream; and"
-	@echo " • send release-mail to <telepathy@freedesktop.org>."
+	@echo " • send release-mail to <telepathy@lists.freedesktop.org>."
 
 ## vim:set ft=automake:

@@ -136,6 +136,8 @@ def test(q, bus, conn, stream):
     header = sent_message[0]
     assert header['message-type'] == 2, header # Notice
     assert header['message-token'] == sent_token, header
+    assertEquals(conn.GetSelfHandle(), header['message-sender'])
+    assertEquals('test@localhost', header['message-sender-id'])
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'what up', body

@@ -695,7 +695,10 @@ gabble_server_sasl_channel_accept_sasl (
        * is what Wocky wants for an empty response. In the Server_Succeeded
        * response, the async result is just success or error - we succeed. */
       self->priv->result = NULL;
-      g_simple_async_result_complete_in_idle (r);
+
+      /* We want want to complete not in an idle because if we do we
+       * will hit fd.o#32278. */
+      g_simple_async_result_complete (r);
       g_object_unref (r);
     }
 

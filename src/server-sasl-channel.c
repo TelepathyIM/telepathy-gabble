@@ -697,7 +697,8 @@ gabble_server_sasl_channel_accept_sasl (
       self->priv->result = NULL;
 
       /* We want want to complete not in an idle because if we do we
-       * will hit fd.o#32278. */
+       * will hit fd.o#32278. This is safe because we're being called
+       * from dbus-glib in the main loop. */
       g_simple_async_result_complete (r);
       g_object_unref (r);
     }

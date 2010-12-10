@@ -242,7 +242,7 @@ gtalk_file_collection_dispose (GObject *object)
 
   if (self->priv->jingle != NULL)
     gabble_jingle_session_terminate (self->priv->jingle,
-        TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+        JINGLE_REASON_UNKNOWN, NULL, NULL);
 
   tp_clear_object (&self->priv->jingle);
 
@@ -464,7 +464,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
 static void
 jingle_session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
-                       TpChannelGroupChangeReason reason,
+                       JingleReason reason,
                        const gchar *text,
                        gpointer user_data)
 {
@@ -1714,7 +1714,7 @@ gtalk_file_collection_terminate (GTalkFileCollection *self,
              jingle session */
           self->priv->status = GTALK_FT_STATUS_TERMINATED;
           gabble_jingle_session_terminate (self->priv->jingle,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+              JINGLE_REASON_UNKNOWN, NULL, NULL);
           return;
         }
       return;
@@ -1755,7 +1755,7 @@ channel_disposed (gpointer data, GObject *object)
              jingle session */
           self->priv->status = GTALK_FT_STATUS_TERMINATED;
           gabble_jingle_session_terminate (self->priv->jingle,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+              JINGLE_REASON_UNKNOWN, NULL, NULL);
           return;
         }
     }

@@ -8,7 +8,8 @@ from servicetest import make_channel_proxy, assertEquals
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
-def test(jp, q, bus, conn, stream):
+def _test(jp, q, bus, conn, stream,
+          jingle_reason, group_change_reason, stream_error):
     remote_jid = 'foo@bar.com/Foo'
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', remote_jid)
 
@@ -47,7 +48,7 @@ def test(jp, q, bus, conn, stream):
     text = u"begone!"
 
     jt.parse_session_initiate(e.query)
-    jt.terminate(reason="busy", text=text)
+    jt.terminate(reason=jingle_reason, text=text)
 
     mc = q.expect('dbus-signal', signal='MembersChanged')
     message, added, removed, lp, rp, actor, reason = mc.args
@@ -59,9 +60,21 @@ def test(jp, q, bus, conn, stream):
     assert actor == remote_handle, (actor, remote_handle)
     if jp.is_modern_jingle():
         assertEquals(text, message)
-        assertEquals(cs.GC_REASON_BUSY, reason)
+        assertEquals(group_change_reason, reason)
+
+    if jp.is_modern_jingle() and stream_error:
+        se = q.expect('dbus-signal', signal='StreamError')
+        assertEquals(stream_error, se.args[1])
 
     q.expect('dbus-signal', signal='Close') #XXX - match against the path
 
+def test_busy(jp, q, bus, conn, stream):
+    _test(jp, q, bus, conn, stream, "busy", cs.GC_REASON_BUSY, None)
+
+def test_codec_fail(jp, q, bus, conn, stream):
+    _test(jp, q, bus, conn, stream, "failed-application", cs.GC_REASON_ERROR,
+          cs.MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED)
+
 if __name__ == '__main__':
-    test_all_dialects(test)
+    test_all_dialects(test_busy)
+    test_all_dialects(test_codec_fail)

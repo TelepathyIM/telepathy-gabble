@@ -1062,7 +1062,7 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
   if (member == NULL || gabble_call_member_get_session (member) != NULL)
     {
       gabble_jingle_session_terminate (session,
-        TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+        JINGLE_REASON_UNKNOWN,
         "Muji jingle session initiated while there already was one",
         NULL);
     }

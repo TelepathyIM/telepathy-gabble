@@ -378,7 +378,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
       priv->chat_states_supported = CHAT_STATES_UNKNOWN;
     }
 
-  msg = tp_message_new (base_conn, 2, 2);
+  msg = tp_cm_message_new (base_conn, 2);
 
   /* Header */
   if (type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
@@ -393,8 +393,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
   if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
-      tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
-          sender);
+      tp_cm_message_set_sender (msg, sender);
       tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
 
       if (id != NULL)
@@ -404,12 +403,11 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
     }
   else
     {
-      TpMessage *delivery_report = tp_message_new (base_conn, 1, 1);
+      TpMessage *delivery_report = tp_cm_message_new (base_conn, 1);
 
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
-      tp_message_set_handle (delivery_report, 0, "message-sender",
-          TP_HANDLE_TYPE_CONTACT, sender);
+      tp_cm_message_set_sender (delivery_report, sender);
       tp_message_set_uint64 (delivery_report, 0, "message-received",
           time (NULL));
 
@@ -426,14 +424,13 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
       /* We're getting a send error, so the original sender of the echoed
        * message must be us! */
-      tp_message_set_handle (msg, 0, "message-sender", TP_HANDLE_TYPE_CONTACT,
-          base_conn->self_handle);
+      tp_cm_message_set_sender (msg, base_conn->self_handle);
 
       /* Since this is a send error, we can trust the id on the message. */
       if (id != NULL)
         tp_message_set_string (msg, 0, "message-token", id);
 
-      tp_message_take_message (delivery_report, 0, "delivery-echo", msg);
+      tp_cm_message_take_message (delivery_report, 0, "delivery-echo", msg);
 
       tp_message_mixin_take_received (G_OBJECT (chan), delivery_report);
     }

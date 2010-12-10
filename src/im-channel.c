@@ -385,7 +385,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
     tp_message_set_uint32 (msg, 0, "message-type", type);
 
   if (timestamp != 0)
-    tp_message_set_uint64 (msg, 0, "message-sent", timestamp);
+    tp_message_set_int64 (msg, 0, "message-sent", timestamp);
 
   /* Body */
   tp_message_set_string (msg, 1, "content-type", "text/plain");
@@ -394,7 +394,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       tp_cm_message_set_sender (msg, sender);
-      tp_message_set_uint64 (msg, 0, "message-received", time (NULL));
+      tp_message_set_int64 (msg, 0, "message-received", time (NULL));
 
       if (id != NULL)
         tp_message_set_string (msg, 0, "message-token", id);
@@ -408,7 +408,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
       tp_cm_message_set_sender (delivery_report, sender);
-      tp_message_set_uint64 (delivery_report, 0, "message-received",
+      tp_message_set_int64 (delivery_report, 0, "message-received",
           time (NULL));
 
       tmp = gabble_generate_id ();

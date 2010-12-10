@@ -2732,7 +2732,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     tp_message_set_uint32 (message, 0, "message-type", msg_type);
 
   if (timestamp != 0)
-    tp_message_set_uint64 (message, 0, "message-sent", timestamp);
+    tp_message_set_int64 (message, 0, "message-sent", timestamp);
 
   /* Body */
   tp_message_set_string (message, 1, "content-type", "text/plain");

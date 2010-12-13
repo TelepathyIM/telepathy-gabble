@@ -135,6 +135,8 @@ def test(q, bus, conn, stream):
     assert len(sent_message) == 2, sent_message
     header = sent_message[0]
     assert header['message-type'] == 1, header # Action
+    assertEquals(test_handle, header['message-sender'])
+    assertEquals('chat@conf.localhost/test', header['message-sender-id'])
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'peers through a gap in the curtains', body

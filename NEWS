@@ -1,15 +1,34 @@
 telepathy-gabble 0.11.4 (UNRELEASED)
 ====================================
 
+Potentially-incompatible changes:
+
+• Following telepathy-spec 0.21.5, the message-token field in message headers
+  is no longer guaranteed to be globally-unique. This is known to be
+  problematic for rtcom-event-logger, as used in Maemo 5.
+
 Dependencies:
 
+• telepathy-glib ≥ 0.13.9 is now required
+
 Enhancements:
+
+• Implement Protocol.AuthenticationTypes (jonny)
+
+• Improve error reporting in Group and StreamedMedia channels (eeejay)
 
 Fixes:
 
 • fd.o #29147: you will no longer get the scrollback from MUCs hosted by
   M-Link (and possibly other servers) when you change your presence
   (wjt)
+
+• fd.o #32278: fix an assertion failure when accepting X-TELEPATHY-PASSWORD
+  authentication and immediately closing the channel (jonny)
+
+• Make the regression tests pass with telepathy-glib ≥ 0.13.8 (smcv)
+
+• Fix the build without system CA certificates (ptlo)
 
 telepathy-gabble 0.11.3 (2010-11-30)
 ====================================

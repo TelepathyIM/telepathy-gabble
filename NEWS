@@ -1,3 +1,12 @@
+telepathy-gabble 0.11.5 (UNRELEASED)
+====================================
+
+Fixes:
+
+• Support for Google Talk's google:queue extension now works against Google's
+  server again. This regressed in 0.11.1, which changed gabble to send iq gets
+  rather than iq sets. (wjt)
+
 telepathy-gabble 0.11.4 (2010-12-14)
 ====================================
 

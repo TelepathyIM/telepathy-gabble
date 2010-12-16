@@ -20,6 +20,11 @@ from twisted.words.xish import domish
 
 def expect_command(q, name):
     event = q.expect('stream-iq', query_name='query', query_ns=ns.GOOGLE_QUEUE)
+
+    # Regression test: when we split MCE out of Gabble and moved Gabble's code
+    # to conn-power-saving, this erroneously became a 'get'.
+    assertEquals('set', event.iq_type)
+
     command = event.query.firstChildElement()
     assertEquals(name, command.name)
     return event.stanza

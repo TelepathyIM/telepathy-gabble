@@ -45,7 +45,7 @@ conn_power_saving_send_command (
     gpointer user_data)
 {
   WockyStanza *stanza = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
-      WOCKY_STANZA_SUB_TYPE_GET, NULL, NULL,
+      WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
       '(', "query",
         ':', NS_GOOGLE_QUEUE,
         '(', command, ')',

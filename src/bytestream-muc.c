@@ -285,9 +285,7 @@ send_data_to (GabbleBytestreamMuc *self,
               const gchar *str)
 {
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
-  LmMessage *msg;
   guint sent, stanza_count;
-  LmMessageNode *data = NULL;
   guint frag;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
@@ -297,42 +295,45 @@ send_data_to (GabbleBytestreamMuc *self,
       return FALSE;
     }
 
-  msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
-      '(', "data", "",
-        '*', &data,
-        '@', "xmlns", NS_MUC_BYTESTREAM,
-        '@', "sid", priv->stream_id,
-      ')',
-      '(', "amp", "",
-        '@', "xmlns", NS_AMP,
-        '(', "rule", "",
-          '@', "condition", "deliver-at",
-          '@', "value", "stored",
-          '@', "action", "error",
-        ')',
-        '(', "rule", "",
-          '@', "condition", "match-resource",
-          '@', "value", "exact",
-          '@', "action", "error",
-        ')',
-      ')', NULL);
-
-  g_assert (data != NULL);
-
-  if (groupchat)
-    {
-      lm_message_node_set_attribute (wocky_stanza_get_top_node (msg),
-          "type", "groupchat");
-    }
-
   sent = 0;
   stanza_count = 0;
+
   while (sent < len)
     {
       gboolean ret;
       gchar *encoded;
       guint send_now;
       GError *error = NULL;
+      LmMessage *msg;
+      LmMessageNode *data = NULL;
+
+      msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
+          '(', "data", "",
+            '*', &data,
+            '@', "xmlns", NS_MUC_BYTESTREAM,
+            '@', "sid", priv->stream_id,
+          ')',
+          '(', "amp", "",
+            '@', "xmlns", NS_AMP,
+            '(', "rule", "",
+              '@', "condition", "deliver-at",
+              '@', "value", "stored",
+              '@', "action", "error",
+            ')',
+            '(', "rule", "",
+              '@', "condition", "match-resource",
+              '@', "value", "exact",
+              '@', "action", "error",
+            ')',
+          ')', NULL);
+
+      g_assert (data != NULL);
+
+      if (groupchat)
+        {
+          lm_message_node_set_attribute (wocky_stanza_get_top_node (msg),
+              "type", "groupchat");
+        }
 
       if ((len - sent) > MAX_BLOCK_SIZE)
         {
@@ -386,11 +387,12 @@ send_data_to (GabbleBytestreamMuc *self,
 
       sent += send_now;
       stanza_count++;
+
+      lm_message_unref (msg);
     }
 
   DEBUG ("finished to send %d bytes (%d stanzas needed)", len, stanza_count);
 
-  lm_message_unref (msg);
   return TRUE;
 }
 

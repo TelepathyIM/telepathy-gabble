@@ -36,6 +36,10 @@ by Gabble, or various undocumented options (which may change from release to
 release) to filter the output. For general Gabble debugging, "net" is
 recommended.
 .TP
+\fBGABBLE_PERSIST\fR=\fI1\fR
+If set (to any value), Gabble will continue running until killed, rather than
+timing out if it has no open connections for a few seconds.
+.TP
 \fBGABBLE_PLUGIN_DIR\fR=\fIdirectory\fR
 If set, and Gabble was compiled with plugin support, plugins will be loaded
 from \fIdirectory\fR rather than from the default directory.

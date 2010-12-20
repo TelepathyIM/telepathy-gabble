@@ -82,6 +82,30 @@ def fire_signal_on_tube(q, tube, chatroom, dbus_stream_id, my_bus_name):
     # being in the message somewhere
     assert my_bus_name in binary
 
+    # Send another big signal which has to be split on 3 stanzas
+    signal = SignalMessage('/', 'foo.bar', 'baz')
+    signal.append('a' * 100000, signature='s')
+    tube.send_message(signal)
+
+    def wait_for_data(q):
+        event = q.expect('stream-message', to=chatroom,
+            message_type='groupchat')
+
+        data_nodes = xpath.queryForNodes('/message/data[@xmlns="%s"]' % ns.MUC_BYTESTREAM,
+            event.stanza)
+        ibb_data = data_nodes[0]
+
+        return ibb_data['frag']
+
+    frag = wait_for_data(q)
+    assertEquals(frag, 'first')
+
+    frag = wait_for_data(q)
+    assertEquals(frag, 'middle')
+
+    frag = wait_for_data(q)
+    assertEquals(frag, 'last')
+
 def test(q, bus, conn, stream, access_control):
     conn.Connect()
 

@@ -376,6 +376,7 @@ gabble_muc_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle target, initiator, self_handle;
+  gchar *tmp;
   TpChannelTextMessageType types[] = {
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
@@ -482,7 +483,20 @@ gabble_muc_channel_constructed (GObject *obj)
   tp_group_mixin_add_handle_owner (obj, self_handle, base_conn->self_handle);
 
   /* Room interface */
-  priv->room_id = g_strdup ("");
+  g_object_get (self, "target-id", &tmp, NULL);
+  if (g_str_has_prefix (tmp, "private-chat-"))
+    {
+      gboolean ok;
+      priv->room_id = g_strdup ("");
+      ok = gabble_decode_jid (tmp, NULL, &(priv->server), NULL);
+    }
+  else
+    {
+      gboolean ok;
+      ok = gabble_decode_jid (tmp, &(priv->room_id), &(priv->server), NULL);
+    }
+  g_free (tmp);
+
   priv->subject = tp_value_array_build (3,
       G_TYPE_STRING, "",
       G_TYPE_STRING, "",
@@ -2627,6 +2641,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   TpIntSet *changed_values, *changed_flags;
   GValue val = { 0, };
+  const gchar *actor;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2722,6 +2737,28 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       changed_flags);
 
   g_value_unset (&val);
+
+  /* Room properties */
+  g_value_array_free (priv->subject);
+
+  if (handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+          tp_base_channel_get_connection (TP_BASE_CHANNEL (chan)),
+          handle_type);
+
+      actor = tp_handle_inspect (contact_handles, sender);
+    }
+  else
+    {
+      actor = "";
+    }
+
+  priv->subject = tp_value_array_build (3,
+      G_TYPE_STRING, subject,
+      G_TYPE_STRING, actor,
+      G_TYPE_INT64, (gint64) timestamp,
+      G_TYPE_INVALID);
 
   /* Emit signals */
   tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);

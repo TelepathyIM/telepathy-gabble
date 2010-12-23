@@ -484,10 +484,12 @@ gabble_muc_channel_constructed (GObject *obj)
 
   /* Room interface */
   g_object_get (self, "target-id", &tmp, NULL);
-  if (g_str_has_prefix (tmp, "private-chat-"))
+  /* The target ID has already been checked so we don't care about the
+   * return type of gabble_decode_jid, but it warns if it the result
+   * is unused. */
+  if (priv->room_id != NULL)
     {
       gboolean ok;
-      priv->room_id = g_strdup ("");
       ok = gabble_decode_jid (tmp, NULL, &(priv->server), NULL);
     }
   else
@@ -961,6 +963,9 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INITIAL_INVITEE_IDS:
       priv->initial_ids = g_value_dup_boxed (value);
       break;
+    case PROP_ROOM_ID:
+      priv->room_id = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -1121,7 +1126,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       "RoomID",
       "The human-readable identifier of a chat room.",
       "",
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ROOM_ID,
       param_spec);
 

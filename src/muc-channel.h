@@ -54,6 +54,7 @@ struct _GabbleMucChannelClass {
 
     TpGroupMixinClass group_class;
     TpPropertiesMixinClass properties_class;
+    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleMucChannel {

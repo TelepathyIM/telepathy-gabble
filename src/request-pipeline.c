@@ -213,14 +213,31 @@ gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
 }
 
 static void
+gabble_request_pipeline_flush (GabbleRequestPipeline *self,
+    GSList **list)
+{
+  GabbleRequestPipelineItem *item;
+  GError disconnected = { TP_ERRORS, TP_ERROR_DISCONNECTED,
+      "Request failed because connection became disconnected" };
+
+  while (*list != NULL)
+    {
+      item = (*list)->data;
+
+      if (!item->zombie)
+        (item->callback) (self->priv->connection, NULL, item->user_data,
+                            &disconnected);
+
+      delete_item (item);
+    }
+}
+
+static void
 gabble_request_pipeline_dispose (GObject *object)
 {
   GabbleRequestPipeline *self = GABBLE_REQUEST_PIPELINE (object);
   GabbleRequestPipelinePrivate *priv =
       GABBLE_REQUEST_PIPELINE_GET_PRIVATE (self);
-  GError disconnected = { TP_ERRORS, TP_ERROR_DISCONNECTED,
-      "Request failed because connection became disconnected" };
-  GabbleRequestPipelineItem *item;
 
   if (priv->dispose_has_run)
     return;
@@ -229,25 +246,8 @@ gabble_request_pipeline_dispose (GObject *object)
 
   DEBUG ("disposing request-pipeline");
 
-  while (priv->items_in_flight)
-    {
-      item = priv->items_in_flight->data;
-      if (!item->zombie)
-          (item->callback) (priv->connection, NULL, item->user_data,
-                            &disconnected);
-
-      delete_item (item);
-    }
-
-  while (priv->pending_items)
-    {
-      item = priv->pending_items->data;
-      if (!item->zombie)
-          (item->callback) (priv->connection, NULL, item->user_data,
-                            &disconnected);
-
-      delete_item (item);
-    }
+  gabble_request_pipeline_flush (self, &priv->items_in_flight);
+  gabble_request_pipeline_flush (self, &priv->pending_items);
 
   g_idle_remove_by_data (self);
 

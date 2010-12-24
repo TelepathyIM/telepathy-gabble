@@ -288,15 +288,8 @@ response_cb (GabbleConnection *conn,
     {
       GError *error = gabble_message_get_xmpp_error (reply);
 
-      if (error)
-        {
-          item->callback (priv->connection, reply, item->user_data, error);
-          g_error_free (error);
-        }
-      else
-        {
-          item->callback (priv->connection, reply, item->user_data, NULL);
-        }
+      item->callback (priv->connection, reply, item->user_data, error);
+      g_clear_error (&error);
     }
   else
     {

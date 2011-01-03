@@ -395,8 +395,8 @@ def sync_dbus(bus, q, conn):
     assert conn.object.bus_name.startswith(':')
     root_object = bus.get_object(conn.object.bus_name, '/')
     call_async(
-        q, dbus.Interface(root_object, 'org.freedesktop.DBus.Peer'), 'Ping')
-    q.expect('dbus-return', method='Ping')
+        q, dbus.Interface(root_object, 'org.freedesktop.Telepathy.Tests'), 'DummySyncDBus')
+    q.expect('dbus-error', method='DummySyncDBus')
 
 class ProxyWrapper:
     def __init__(self, object, default, others):

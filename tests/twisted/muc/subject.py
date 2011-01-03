@@ -98,7 +98,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
 
-        check_room_props(chan, 'Testing', room + '/bob', 3, signal=s)
+        check_room_props(chan, 'Testing', room + '/bob',
+                         cs.ROOM_SUBJECT_PRESENT | cs.ROOM_SUBJECT_CAN_SET, signal=s)
 
     # Reply to the disco
     iq = make_result_iq(stream, disco.stanza)
@@ -129,7 +130,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
                                       predicate=lambda e: (props['subject'], 'lalala') in e.args[0]),
                          EventPattern('dbus-signal', signal='SubjectChanged'))
 
-    check_room_props(chan, 'lalala', room + '/bob', 3, signal=s)
+    check_room_props(chan, 'lalala', room + '/bob',
+                     cs.ROOM_SUBJECT_PRESENT | cs.ROOM_SUBJECT_CAN_SET, signal=s)
 
     # if send_first was true, then we already got this
     if not send_first:
@@ -141,7 +143,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
 
-        check_room_props(chan, 'lalala', room + '/bob', 3)
+        check_room_props(chan, 'lalala', room + '/bob',
+                         cs.ROOM_SUBJECT_PRESENT | cs.ROOM_SUBJECT_CAN_SET)
 
     # test changing the subject
     chan.SetSubject('le lolz', dbus_interface=cs.CHANNEL_IFACE_ROOM)

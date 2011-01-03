@@ -143,6 +143,14 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
 
         check_room_props(chan, 'lalala', room + '/bob', 3)
 
+    # test changing the subject
+    chan.SetSubject('le lolz', dbus_interface=cs.CHANNEL_IFACE_ROOM)
+
+    e = q.expect('stream-message', to=room)
+    elem = e.stanza
+    assertEquals('groupchat', elem['type'])
+    assertEquals(str(elem.children[0]), 'le lolz')
+
     chan.Close()
 
     event = q.expect('stream-presence', to=room + '/test')

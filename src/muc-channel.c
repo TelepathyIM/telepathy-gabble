@@ -508,7 +508,7 @@ gabble_muc_channel_constructed (GObject *obj)
       G_TYPE_STRING, "",
       G_TYPE_STRING, "",
       G_TYPE_INT64, (gint64) 0,
-      G_TYPE_UINT, 0,
+      G_TYPE_UINT, GABBLE_ROOM_SUBJECT_FLAG_PRESENT,
       G_TYPE_INVALID);
 
   if (priv->invited)

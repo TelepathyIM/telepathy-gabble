@@ -483,7 +483,10 @@ gabble_muc_channel_constructed (GObject *obj)
   tp_group_mixin_add_handle_owner (obj, self_handle, base_conn->self_handle);
 
   /* Room interface */
-  g_object_get (self, "target-id", &tmp, NULL);
+  g_object_get (self,
+      "target-id", &tmp,
+      NULL);
+
   /* The target ID has already been checked so we don't care about the
    * return type of gabble_decode_jid, but it warns if it the result
    * is unused. */

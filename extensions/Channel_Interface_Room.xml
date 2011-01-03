@@ -294,6 +294,26 @@
 
     </tp:docstring>
 
+    <method name="SetSubject" tp:name-for-bindings="Set_Subject">
+      <arg direction="in" type="s" name="Subject">
+        <tp:docstring>The new subject.</tp:docstring>
+      </arg>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>Set the room's subject. Clients SHOULD look at the subject
+          flags before calling this method as the user might not have
+          permission to set the subject.</p>
+
+        <p>Clients SHOULD NOT assume success if no errors are raised
+          by calling this method, but instead should listen to the
+          <tp:member-ref>SubjectChanged</tp:member-ref> signal for
+          change notification.</p>
+      </tp:docstring>
+      <tp:possible-errors>
+        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
+        <tp:error name="org.freedesktop.Telepathy.Error.NotCapable"/>
+      </tp:possible-errors>
+    </method>
+
     <property name="RoomID" tp:name-for-bindings="Room_ID" type="s"
               access="read">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -350,23 +370,88 @@
            A unix timestamp indicating when the subject was last modified.
         </tp:docstring>
       </tp:member>
+      <tp:member type="u" tp:type="Room_Subject_Flags" name="Flags">
+        <tp:docstring>
+           A bitwise OR of the flags applicable to this channel's
+           subject.
+        </tp:docstring>
+      </tp:member>
     </tp:struct>
 
     <property name="Subject" tp:name-for-bindings="Subject"
-              type="(ssx)" tp:type="Room_Subject" access="read">
+              type="(ssxu)" tp:type="Room_Subject" access="read">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>The subject on the room such as the topic in an IRC channel,
           or the room name in XMPP MUCs. In protocols which do not support
-          subjects (like MSN), this property should be ("", "", 0).</p>
+          subjects (like MSN), this property should be ("", "", 0, 0).</p>
 
         <tp:rationale>This property replaces the subject, subject-contact, and
           subject-timestamp Telepathy properties of Text channels, as Telepathy
           properties are soon to be deprecated completely.</tp:rationale>
 
+        <p>Change notification for this property is provided by the
+          <tp:member-ref>SubjectChanged</tp:member-ref> signal.</p>
+
         <p>This property may change during the lifetime of the channel and
           MUST not be included in a channel request.</p>
       </tp:docstring>
     </property>
+
+    <signal name="SubjectChanged" tp:name-for-bindings="Subject_Changed">
+      <arg name="Subject" type="s">
+        <tp:docstring>
+          The new subject string.
+        </tp:docstring>
+      </arg>
+      <arg name="Actor" type="s">
+        <tp:docstring>
+          A normalized contact ID representing who last modified the
+          subject, or the empty string if it is not known.
+        </tp:docstring>
+      </arg>
+      <arg name="Timestamp" type="x" tp:type="Unix_Timestamp64">
+        <tp:docstring>
+          A unix timestamp indicating when the subject was last
+          modified.
+        </tp:docstring>
+      </arg>
+      <arg name="Flags" type="u" tp:type="Room_Subject_Flags">
+        <tp:docstring>
+          A bitwise OR of the flags applicable to this channel's
+          subject.
+        </tp:docstring>
+      </arg>
+      <tp:docstring>
+        Emitted when the <tp:member-ref>Subject</tp:member-ref>
+        property is changed.
+      </tp:docstring>
+    </signal>
+
+    <tp:flags name="Room_Subject_Flags"
+      value-prefix="Room_Subject_Flag" type="u">
+      <tp:docstring>
+        Flags indicating capabilities regarding the room subject.
+      </tp:docstring>
+
+      <tp:flag suffix="Present" value="1">
+        <tp:docstring>
+          A subject exists on this channel. Protocols which do not
+          have the concept of room subjects MUST NOT have this flag
+          set as an indication to clients that no notice should be
+          taken of the <tp:member-ref>Subject</tp:member-ref>
+          property.
+        </tp:docstring>
+      </tp:flag>
+
+      <tp:flag suffix="Can_Set" value="2">
+        <tp:docstring>
+          The <tp:member-ref>Subject</tp:member-ref> property can be
+          set by the user by calling
+          <tp:member-ref>SetSubject</tp:member-ref>. If this flag is
+          set, then Present MUST also be set.
+        </tp:docstring>
+      </tp:flag>
+    </tp:flags>
 
   </interface>
 </node>

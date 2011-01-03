@@ -388,6 +388,7 @@ gabble_muc_channel_constructed (GObject *obj)
   };
   void (*chain_up) (GObject *) =
     ((GObjectClass *) gabble_muc_channel_parent_class)->constructed;
+  gboolean ok;
 
   if (chain_up != NULL)
     chain_up (obj);
@@ -487,20 +488,13 @@ gabble_muc_channel_constructed (GObject *obj)
       "target-id", &tmp,
       NULL);
 
-  /* The target ID has already been checked so we don't care about the
-   * return type of gabble_decode_jid, but it warns if it the result
-   * is unused. */
   if (priv->room_id != NULL)
-    {
-      gboolean ok;
-      ok = gabble_decode_jid (tmp, NULL, &(priv->server), NULL);
-    }
+    ok = gabble_decode_jid (tmp, NULL, &(priv->server), NULL);
   else
-    {
-      gboolean ok;
-      ok = gabble_decode_jid (tmp, &(priv->room_id), &(priv->server), NULL);
-    }
+    ok = gabble_decode_jid (tmp, &(priv->room_id), &(priv->server), NULL);
   g_free (tmp);
+
+  g_assert (ok);
 
   priv->subject = tp_value_array_build (3,
       G_TYPE_STRING, "",

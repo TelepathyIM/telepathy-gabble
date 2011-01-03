@@ -62,6 +62,7 @@
 
 static void password_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
+static void room_iface_init (gpointer, gpointer);
 static void gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
     GHashTable *request);
 static void muc_call_channel_finish_requests (GabbleMucChannel *self,
@@ -83,7 +84,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init)
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_ROOM,
+        room_iface_init);
     )
 
 static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
@@ -4075,6 +4077,55 @@ gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
 }
 
 static void
+gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceRoom *iface,
+    const gchar *subject,
+    DBusGMethodInvocation *context)
+{
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
+  GabbleMucChannelPrivate *priv = self->priv;
+  GabbleConnection *conn = GABBLE_CONNECTION (tp_base_channel_get_connection (
+          TP_BASE_CHANNEL (self)));
+  GError *error = NULL;
+  GabbleRoomSubjectFlags flags;
+  LmMessage *msg;
+
+  flags = g_value_get_uint (g_value_array_get_nth (priv->subject, 3));
+
+  if (!(flags & GABBLE_ROOM_SUBJECT_FLAG_CAN_SET))
+    {
+      GError *error2 = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+          "User does not have permission to set subject");
+      dbus_g_method_return_error (context, error2);
+      g_clear_error (&error2);
+      return;
+    }
+
+
+  msg = lm_message_new_with_sub_type (priv->jid,
+      LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
+  lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "subject", subject);
+
+  if (!_gabble_connection_send (conn, msg, &error))
+    {
+      GError *error2;
+      DEBUG ("Failed to send message: %s", error->message);
+
+      error2 = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          "Failed to set subject: %s", error->message);
+      dbus_g_method_return_error (context, error2);
+      g_clear_error (&error);
+      g_clear_error (&error2);
+    }
+  else
+    {
+      gabble_svc_channel_interface_room_return_from_set_subject (context);
+    }
+
+  lm_message_unref (msg);
+}
+
+static void
 password_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfacePasswordClass *klass =
@@ -4096,5 +4147,17 @@ chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
     klass, gabble_muc_channel_##x)
   IMPLEMENT(set_chat_state);
+#undef IMPLEMENT
+}
+
+static void
+room_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  GabbleSvcChannelInterfaceRoomClass *klass =
+    (GabbleSvcChannelInterfaceRoomClass *) g_iface;
+
+#define IMPLEMENT(x) gabble_svc_channel_interface_room_implement_##x (\
+    klass, gabble_muc_channel_##x)
+  IMPLEMENT(set_subject);
 #undef IMPLEMENT
 }

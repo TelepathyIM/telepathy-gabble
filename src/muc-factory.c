@@ -1413,6 +1413,51 @@ handle_text_channel_request (GabbleMucFactory *self,
       tp_handle_ref (room_handles, room);
     }
 
+  /* Make sure TargetID and RoomID don't conflict. */
+  if (room_id != NULL && room_id[0] != '\0')
+    {
+      const gchar *target_id = tp_handle_inspect (room_handles, room);
+      gchar *a = NULL;
+      gboolean ok;
+
+      g_assert (gabble_decode_jid (target_id, &a, NULL, NULL));
+
+      ok = !tp_strdiff (a, room_id);
+
+      g_free (a);
+
+      if (!ok)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "TargetID and RoomID conflict.");
+          ret = FALSE;
+          goto out;
+        }
+    }
+
+  /* Make sure TargetID and Server don't conflict. */
+  if (server_prop != NULL)
+    {
+      const gchar *target_id = tp_handle_inspect (room_handles, room);
+      gchar *b = NULL;
+      gboolean ok = TRUE;
+
+      g_assert (gabble_decode_jid (target_id, NULL, &b, NULL));
+
+      if (b != NULL)
+        ok = !tp_strdiff (b, server_prop);
+
+      g_free (b);
+
+      if (!ok)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "TargetID and Server conflict.");
+          ret = FALSE;
+          goto out;
+        }
+    }
+
   if (ensure_muc_channel (self, priv, room, &text_chan, TRUE,
           final_channels, final_handles, final_ids, room_id))
     {
@@ -1428,13 +1473,11 @@ handle_text_channel_request (GabbleMucFactory *self,
         {
           if (initial_channels != NULL ||
               initial_handles != NULL ||
-              initial_ids != NULL ||
-              room_id != NULL ||
-              server_prop != NULL)
+              initial_ids != NULL)
             {
               g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                  "Cannot set InitialChannels, InitialInviteeHandles, "
-                  "InitialInviteIDs, RoomID or Server for existing channel");
+                  "Cannot set InitialChannels, InitialInviteeHandles or "
+                  "InitialInviteIDs for existing channel");
               ret = FALSE;
             }
           else

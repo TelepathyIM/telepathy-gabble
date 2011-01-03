@@ -155,7 +155,7 @@ def test(q, bus, conn, stream):
     assertEquals('fallback.conf.localhost', props[cs.ROOM_SERVER])
 
     # Now a channel which already exists (any of the above) with
-    # RoomID set.
+    # RoomID set to a non-harmful value
     jid = 'booyakasha@conf.localhost'
     call_async(q, conn.Requests, 'EnsureChannel', {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
@@ -164,10 +164,34 @@ def test(q, bus, conn, stream):
             cs.ROOM_ROOM_ID: '',
             })
 
-    e = q.expect('dbus-error', name=cs.INVALID_ARGUMENT, method='EnsureChannel')
+    q.expect('dbus-return', method='EnsureChannel')
 
     # Now a channel which already exists (any of the above) with
-    # Server set.
+    # a conflicting Server set.
+    jid = 'booyakasha@conf.localhost'
+    call_async(q, conn.Requests, 'EnsureChannel', {
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.TARGET_ID: jid,
+            cs.ROOM_ROOM_ID: 'happynewyear',
+            })
+
+    q.expect('dbus-error', name=cs.INVALID_ARGUMENT, method='EnsureChannel')
+
+    # Now a channel which already exists (any of the above) with
+    # a non-conflicting Server set.
+    jid = 'booyakasha@conf.localhost'
+    call_async(q, conn.Requests, 'EnsureChannel', {
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.TARGET_ID: jid,
+            cs.ROOM_SERVER: 'conf.localhost',
+            })
+
+    q.expect('dbus-return', method='EnsureChannel')
+
+    # Now a channel which already exists (any of the above) with
+    # a conflicting Server set.
     jid = 'booyakasha@conf.localhost'
     call_async(q, conn.Requests, 'EnsureChannel', {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
@@ -176,7 +200,7 @@ def test(q, bus, conn, stream):
             cs.ROOM_SERVER: 'lol.conf.localhost',
             })
 
-    e = q.expect('dbus-error', name=cs.INVALID_ARGUMENT, method='EnsureChannel')
+    q.expect('dbus-error', name=cs.INVALID_ARGUMENT, method='EnsureChannel')
 
 if __name__ == '__main__':
     exec_test(test, params={ 'fallback-conference-server': 'fallback.conf.localhost' } )

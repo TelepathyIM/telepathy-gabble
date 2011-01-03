@@ -1725,6 +1725,18 @@ OUT:
 }
 
 static void
+emit_subject_changed (GabbleMucChannel *chan)
+{
+  GabbleMucChannelPrivate *priv = chan->priv;
+
+  gabble_svc_channel_interface_room_emit_subject_changed (chan,
+      g_value_get_string (g_value_array_get_nth (priv->subject, 0)),
+      g_value_get_string (g_value_array_get_nth (priv->subject, 1)),
+      g_value_get_int64 (g_value_array_get_nth (priv->subject, 2)),
+      g_value_get_uint (g_value_array_get_nth (priv->subject, 3)));
+}
+
+static void
 update_permissions (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv = chan->priv;
@@ -1791,11 +1803,7 @@ update_permissions (GabbleMucChannel *chan)
   g_value_set_uint (g_value_array_get_nth (priv->subject, 3),
       room_subject_flags);
 
-  gabble_svc_channel_interface_room_emit_subject_changed (chan,
-      g_value_get_string (g_value_array_get_nth (priv->subject, 0)),
-      g_value_get_string (g_value_array_get_nth (priv->subject, 1)),
-      g_value_get_int64 (g_value_array_get_nth (priv->subject, 2)),
-      room_subject_flags);
+  emit_subject_changed (chan);
 
   /* The room properties below are part of the "room definition", so are
    * defined by the XEP to be editable only by owners. */
@@ -2830,11 +2838,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       G_TYPE_INVALID);
 
   /* Emit signals */
-  gabble_svc_channel_interface_room_emit_subject_changed (chan,
-      g_value_get_string (g_value_array_get_nth (priv->subject, 0)),
-      g_value_get_string (g_value_array_get_nth (priv->subject, 1)),
-      g_value_get_int64 (g_value_array_get_nth (priv->subject, 2)),
-      g_value_get_uint (g_value_array_get_nth (priv->subject, 3)));
+  emit_subject_changed (chan);
 
   tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);
   tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_flags);

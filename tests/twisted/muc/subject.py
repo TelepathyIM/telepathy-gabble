@@ -31,13 +31,19 @@ def test(q, bus, conn, stream):
     test_subject(q, bus, conn, stream, False, True, False)
     test_subject(q, bus, conn, stream, False, False, True)
 
-def check_room_props(chan, subject_str, actor):
+def check_room_props(chan, subject_str, actor, flags, signal=None):
     # Room props
+    if signal is not None:
+        assertEquals(subject_str, signal.args[0])
+        assertEquals(actor, signal.args[1])
+        assertEquals(flags, signal.args[3])
+
     props = chan.GetAll(cs.CHANNEL_IFACE_ROOM,
                         dbus_interface=dbus.PROPERTIES_IFACE)
     subject = props['Subject']
     assertEquals(subject_str, subject[0])
     assertEquals(actor, subject[1])
+    assertEquals(flags, subject[3])
 
 counter = 0
 
@@ -80,17 +86,19 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         message.addElement('subject', content='Testing')
         stream.send(message)
 
-        q.expect('dbus-signal', signal='PropertiesChanged',
-                predicate=lambda e: (props['subject'], 'Testing') in e.args[0])
-        e = q.expect('dbus-signal', signal='PropertyFlagsChanged',
-                predicate=lambda e:
-                    (props['subject'], cs.PROPERTY_FLAGS_RW) in e.args[0])
+        _, e, s = q.expect_many(EventPattern('dbus-signal', signal='PropertiesChanged',
+                                          predicate=lambda e: (props['subject'], 'Testing') in e.args[0]),
+                                EventPattern('dbus-signal', signal='PropertyFlagsChanged',
+                                             predicate=lambda e:
+                                                 (props['subject'], cs.PROPERTY_FLAGS_RW) in e.args[0]),
+                                EventPattern('dbus-signal', signal='SubjectChanged'))
+
         assertContains((props['subject-contact'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
 
-        check_room_props(chan, 'Testing', room + '/bob')
+        check_room_props(chan, 'Testing', room + '/bob', 3, signal=s)
 
     # Reply to the disco
     iq = make_result_iq(stream, disco.stanza)
@@ -117,10 +125,11 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     message.addElement('subject', content='lalala')
     stream.send(message)
 
-    q.expect('dbus-signal', signal='PropertiesChanged',
-            predicate=lambda e: (props['subject'], 'lalala') in e.args[0])
+    _, s = q.expect_many(EventPattern('dbus-signal', signal='PropertiesChanged',
+                                      predicate=lambda e: (props['subject'], 'lalala') in e.args[0]),
+                         EventPattern('dbus-signal', signal='SubjectChanged'))
 
-    check_room_props(chan, 'lalala', room + '/bob')
+    check_room_props(chan, 'lalala', room + '/bob', 3, signal=s)
 
     # if send_first was true, then we already got this
     if not send_first:
@@ -132,7 +141,7 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
 
-        check_room_props(chan, 'lalala', room + '/bob')
+        check_room_props(chan, 'lalala', room + '/bob', 3)
 
     chan.Close()
 

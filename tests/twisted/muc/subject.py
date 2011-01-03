@@ -152,6 +152,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     e = q.expect('stream-message', to=room)
     elem = e.stanza
     assertEquals('groupchat', elem['type'])
+    assertEquals(1, len(elem.children))
+    assertEquals(elem.children[0].name, 'subject')
     assertEquals(str(elem.children[0]), 'le lolz')
 
     chan.Close()

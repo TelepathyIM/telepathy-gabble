@@ -43,12 +43,11 @@
 #define VCARD_FIELD_NAME "x-" PROTOCOL_NAME
 #define ENGLISH_NAME "Jabber"
 
-G_DEFINE_TYPE (GabbleJabberProtocol,
-    gabble_jabber_protocol,
-    TP_TYPE_BASE_PROTOCOL)
+static void addressing_iface_init (TpProtocolAddressingInterface *iface);
 
-static const gchar *addressing_vcard_fields[] = {"x-jabber", NULL};
-static const gchar *addressing_uri_schemes[] = {"xmpp", NULL};
+G_DEFINE_TYPE_WITH_CODE (GabbleJabberProtocol, gabble_jabber_protocol,
+    TP_TYPE_BASE_PROTOCOL,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_PROTOCOL_ADDRESSING, addressing_iface_init))
 
 static TpCMParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
@@ -379,27 +378,20 @@ dup_authentication_types (TpBaseProtocol *self)
   return g_strdupv ((GStrv) types);
 }
 
-static void
-addressing_get_details (TpBaseProtocol *self,
-    GStrv *addressable_vcard_fields,
-    GStrv *addressable_uri_schemes)
+static GStrv
+get_supported_uri_schemes (TpBaseProtocol *self)
 {
-  if (addressable_vcard_fields != NULL)
-    *addressable_vcard_fields = g_strdupv ((gchar **) addressing_vcard_fields);
+  const gchar * const addressing_uri_schemes[] = {"xmpp", NULL};
 
-  if (addressable_uri_schemes != NULL)
-    *addressable_uri_schemes = g_strdupv ((gchar **) addressing_uri_schemes);
+  return g_strdupv ((GStrv) addressing_uri_schemes);
 }
 
-static gboolean
-valid_field_or_scheme (const gchar *field,
-    const gchar * const *supported)
+static GStrv
+get_supported_vcard_fields (TpBaseProtocol *self)
 {
-  gchar *normalized_field = g_ascii_strdown (field, -1);
-  gboolean is_supported = tp_strv_contains (supported, normalized_field);
+  const gchar * const addressing_vcard_fields[] = {"x-jabber", NULL};
 
-  g_free (normalized_field);
-  return is_supported;
+  return g_strdupv ((GStrv) addressing_vcard_fields);
 }
 
 static gchar *
@@ -410,10 +402,10 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
 {
   gchar *normalized_address = NULL;
 
-  if (!valid_field_or_scheme (vcard_field, addressing_vcard_fields))
+  if (g_ascii_strcasecmp (vcard_field, "x-jabber") != 0)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "'%s' vCard field is not supported by this protocol", vcard_field);
+          "'x-jabber' is the only vCard field supported by this protocol");
     }
   else
     {
@@ -439,7 +431,6 @@ addressing_normalize_uri (TpBaseProtocol *self,
     const gchar *uri,
     GError **error)
 {
-  /* excuse the poor man's URI parsing, couldn't find a GLib helper */
   gchar *scheme = g_uri_parse_scheme (uri);
   gchar *normalized_uri = NULL;
 
@@ -448,11 +439,10 @@ addressing_normalize_uri (TpBaseProtocol *self,
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid URI", uri);
     }
-  else if (!valid_field_or_scheme (scheme, addressing_uri_schemes))
+  else if (g_ascii_strcasecmp (scheme, "xmpp") != 0)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "'%s' URI scheme is not supported by this protocol",
-          scheme);
+          "'xmpp' is the only URI scheme supported by this protocol");
     }
   else
     {
@@ -498,9 +488,6 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   base_class->get_connection_details = get_connection_details;
   base_class->get_statuses = get_presence_statuses;
   base_class->dup_authentication_types = dup_authentication_types;
-  base_class->get_addressing_details = addressing_get_details;
-  base_class->normalize_vcard_address = addressing_normalize_vcard_address;
-  base_class->normalize_uri = addressing_normalize_uri;
 }
 
 TpBaseProtocol *
@@ -511,3 +498,11 @@ gabble_jabber_protocol_new (void)
       NULL);
 }
 
+static void
+addressing_iface_init (TpProtocolAddressingInterface *iface)
+{
+  iface->get_supported_vcard_fields = get_supported_vcard_fields;
+  iface->get_supported_uri_schemes = get_supported_uri_schemes;
+  iface->normalize_vcard_address = addressing_normalize_vcard_address;
+  iface->normalize_uri = addressing_normalize_uri;
+}

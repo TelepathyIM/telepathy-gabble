@@ -494,6 +494,8 @@ gabble_muc_channel_constructed (GObject *obj)
     ok = gabble_decode_jid (tmp, &(priv->room_id), &(priv->server), NULL);
   g_free (tmp);
 
+  /* Asserting here is fine because the target ID has already been
+   * checked so we know it's valid. */
   g_assert (ok);
 
   priv->subject = tp_value_array_build (3,

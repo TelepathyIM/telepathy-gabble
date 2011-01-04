@@ -61,7 +61,7 @@
           <tp:dbus-ref
           namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>
           = <code>"#telepathy"</code>,
-          <tp:member-ref>RoomID</tp:member-ref> = <code>"#telepathy"</code>,
+          <tp:member-ref>RoomName</tp:member-ref> = <code>"#telepathy"</code>,
           <tp:member-ref>Server</tp:member-ref> = <code>""</code>, indicating
           that the room has a human-readable identifier, and is not confined to
           a particular server on the network.
@@ -82,7 +82,7 @@
           <tp:dbus-ref
           namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>
           = <code>"0xdeadbeef"</code>,
-          <tp:member-ref>RoomID</tp:member-ref> = <code>""</code>,
+          <tp:member-ref>RoomName</tp:member-ref> = <code>""</code>,
           <tp:member-ref>Server</tp:member-ref> = <code>""</code>, indicating
           that the room has an identifier but no human-readable name.
         </li>
@@ -91,7 +91,7 @@
           <tp:dbus-ref
           namespace="org.freedesktop.Telepathy.Channel">TargetHandleType</tp:dbus-ref>
           = <code>None</code>,
-          <tp:member-ref>RoomID</tp:member-ref> = <code>""</code>,
+          <tp:member-ref>RoomName</tp:member-ref> = <code>""</code>,
           <tp:member-ref>Server</tp:member-ref> = <code>""</code>, indicating
           that the room has neither an identifier (so it cannot be re-joined
           later) nor a human-readable name.
@@ -105,7 +105,7 @@
           <tp:dbus-ref
           namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>
           = <code>"jdev@conference.jabber.org"</code>,
-          <tp:member-ref>RoomID</tp:member-ref> = <code>"jdev"</code>,
+          <tp:member-ref>RoomName</tp:member-ref> = <code>"jdev"</code>,
           <tp:member-ref>Server</tp:member-ref> = <code>"conference.jabber.org"</code>.
         </li>
 
@@ -116,7 +116,7 @@
           <tp:dbus-ref
           namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>
           = <code>"private-chat-11111x1x-11xx-111x-1111-111x1xx11x11@groupchat.google.com"</code>,
-          <tp:member-ref>RoomID</tp:member-ref> = <code>""</code>,
+          <tp:member-ref>RoomName</tp:member-ref> = <code>""</code>,
           <tp:member-ref>Server</tp:member-ref> =
           <code>"groupchat.google.com"</code>, indicating that the room has a
           persistent identifier, no human-readable name, and is hosted by a
@@ -131,7 +131,7 @@
           <tp:dbus-ref
           namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>
           = <code>"lrcgsnthzvwm@conference.jabber.org"</code>,
-          <tp:member-ref>RoomID</tp:member-ref> = <code>""</code>,
+          <tp:member-ref>RoomName</tp:member-ref> = <code>""</code>,
           <tp:member-ref>Server</tp:member-ref> =
           <code>"conference.jabber.org"</code>, indicating that the room has a
           persistent identifier, no human-readable name, and is hosted by a
@@ -165,7 +165,7 @@
         >TargetHandle</tp:dbus-ref>.</p>
 
       <p>If, like IRC, the room identifiers are also human-readable, the
-        RCCs should also include RoomID in <var>Allowed_Properties</var>:</p>
+        RCCs should also include RoomName in <var>Allowed_Properties</var>:</p>
 
       <blockquote>
         <pre>
@@ -179,7 +179,7 @@
               >TargetID</tp:dbus-ref>,
               ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel"
               >TargetHandle</tp:dbus-ref>,
-              ...<tp:member-ref>RoomID</tp:member-ref>
+              ...<tp:member-ref>RoomName</tp:member-ref>
             ]
 ),
 
@@ -187,14 +187,14 @@
             >ChannelType</tp:dbus-ref>: ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel.Type"
                                         >Text</tp:dbus-ref>
           },
-  Allowed = [ ...<tp:member-ref>RoomID</tp:member-ref>,
+  Allowed = [ ...<tp:member-ref>RoomName</tp:member-ref>,
             ]
 )</pre></blockquote>
 
-      <p>Requests may specify the RoomID in place of
+      <p>Requests may specify the RoomName in place of
         <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref> or
         <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetHandle</tp:dbus-ref>
-        . Note how <tp:member-ref>RoomID</tp:member-ref> appears
+        . Note how <tp:member-ref>RoomName</tp:member-ref> appears
         in <var>Allowed_Properties</var> of a different RCC because
         when <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel"
         >TargetHandleType</tp:dbus-ref> is omitted (or is None), both
@@ -202,7 +202,7 @@
         >TargetHandle</tp:dbus-ref> and
         <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel"
         >TargetID</tp:dbus-ref> must also be omitted.
-        <tp:member-ref>RoomID</tp:member-ref> is allowed in conjuction
+        <tp:member-ref>RoomName</tp:member-ref> is allowed in conjuction
         with
         <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref> or
         <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetHandle</tp:dbus-ref>
@@ -221,7 +221,7 @@
         fallback conference server is specified on jabber connections in
         gabble.</p>
 
-      <p>If the protocol supports unnamed rooms, <tp:member-ref>RoomID</tp:member-ref>
+      <p>If the protocol supports unnamed rooms, <tp:member-ref>RoomName</tp:member-ref>
         should be fixed to the empty string, and
         <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetHandleType</tp:dbus-ref>
         should be None:</p>
@@ -233,7 +233,7 @@
                                         >Text</tp:dbus-ref>,
             ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel"
             >TargetHandleType</tp:dbus-ref>: None,
-            ...<tp:member-ref>RoomID</tp:member-ref>: "",
+            ...<tp:member-ref>RoomName</tp:member-ref>: "",
           },
   Allowed = [ ]
 )</pre></blockquote>
@@ -242,7 +242,7 @@
 
       <p>When explicitly joining a room, the CM cannot know whether the room
         ID is unique or not. As a result, if this is the case, adding an
-        empty string <tp:member-ref>RoomID</tp:member-ref> into the channel
+        empty string <tp:member-ref>RoomName</tp:member-ref> into the channel
         request will ensure the CM knows. For example:</p>
 
       <blockquote>
@@ -250,16 +250,16 @@
 { ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">ChannelType</tp:dbus-ref>: ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel.Type">Text</tp:dbus-ref>,
   ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetHandleType</tp:dbus-ref>: Room,
   ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>: "qwerasdfzxcv@conference.jabber.org",
-  ...<tp:member-ref>RoomID</tp:member-ref>: ""
+  ...<tp:member-ref>RoomName</tp:member-ref>: ""
 }</pre></blockquote>
 
-      <p>If <tp:member-ref>RoomID</tp:member-ref> features in
+      <p>If <tp:member-ref>RoomName</tp:member-ref> features in
         <var>Allowed_Properties</var> then the only value allowed in conjunction
         with <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>
         or <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetHandle</tp:dbus-ref>
         is the empty string. Requests with conflicting
         <tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>
-        and <tp:member-ref>RoomID</tp:member-ref> properties
+        and <tp:member-ref>RoomName</tp:member-ref> properties
         will fail with InvalidArgument.</p>
 
       <p>To create a XEP-0045 §10.1.4 uniquely-named room channel
@@ -269,7 +269,7 @@
       <blockquote>
         <pre>
 { ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">ChannelType</tp:dbus-ref>: ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel.Type">Text</tp:dbus-ref>,
-  ...<tp:member-ref>RoomID</tp:member-ref>: ""
+  ...<tp:member-ref>RoomName</tp:member-ref>: ""
   ...<tp:member-ref>Server</tp:member-ref>: "conference.jabber.org"
 }</pre>
       </blockquote>
@@ -282,39 +282,19 @@
 { ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">ChannelType</tp:dbus-ref>: ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel.Type">Text</tp:dbus-ref>,
   ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetHandleType</tp:dbus-ref>: Room,
   ...<tp:dbus-ref namespace="org.freedesktop.Telepathy.Channel">TargetID</tp:dbus-ref>: "kajsdhkajshdfjkshdfjkhs@conference.jabber.org",
-  ...<tp:member-ref>RoomID</tp:member-ref>: ""
+  ...<tp:member-ref>RoomName</tp:member-ref>: ""
   ...<tp:member-ref>Server</tp:member-ref>: "conference.jabber.org"
 }</pre>
       </blockquote>
 
       <p>The CM will have received the unique room name (kajsdhkajshdfjkshdfjkhs)
         and then created a room with such a name on the said server. The empty
-        <tp:member-ref>RoomID</tp:member-ref> property shows that the room name
+        <tp:member-ref>RoomName</tp:member-ref> property shows that the room name
         is not human-readable.</p>
 
     </tp:docstring>
 
-    <method name="SetSubject" tp:name-for-bindings="Set_Subject">
-      <arg direction="in" type="s" name="Subject">
-        <tp:docstring>The new subject.</tp:docstring>
-      </arg>
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>Set the room's subject. Clients SHOULD look at the subject
-          flags before calling this method as the user might not have
-          permission to set the subject.</p>
-
-        <p>Clients SHOULD NOT assume success if no errors are raised
-          by calling this method, but instead should listen to the
-          <tp:member-ref>SubjectChanged</tp:member-ref> signal for
-          change notification.</p>
-      </tp:docstring>
-      <tp:possible-errors>
-        <tp:error name="org.freedesktop.Telepathy.Error.InvalidArgument"/>
-        <tp:error name="org.freedesktop.Telepathy.Error.NotCapable"/>
-      </tp:possible-errors>
-    </method>
-
-    <property name="RoomID" tp:name-for-bindings="Room_ID" type="s"
+    <property name="RoomName" tp:name-for-bindings="Room_Name" type="s"
               access="read">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>The human-readable identifier of a chat room. Note that if
@@ -348,110 +328,6 @@
           and only if non-empty values are supported.</p>
       </tp:docstring>
     </property>
-
-    <tp:struct name="Room_Subject">
-      <tp:docstring>
-        A struct representing the subject of a room channel.
-      </tp:docstring>
-      <tp:member type="s" name="Subject">
-        <tp:docstring>
-           A human-readable description of the current subject of
-           conversation in the channel, similar to /topic in IRC.
-        </tp:docstring>
-      </tp:member>
-      <tp:member type="s" name="Actor">
-        <tp:docstring>
-           A normalized contact ID representing who last modified the
-           subject, or the empty string if it is not known.
-        </tp:docstring>
-      </tp:member>
-      <tp:member type="x" tp:type="Unix_Timestamp64" name="Timestamp">
-        <tp:docstring>
-           A unix timestamp indicating when the subject was last modified.
-        </tp:docstring>
-      </tp:member>
-      <tp:member type="u" tp:type="Room_Subject_Flags" name="Flags">
-        <tp:docstring>
-           A bitwise OR of the flags applicable to this channel's
-           subject.
-        </tp:docstring>
-      </tp:member>
-    </tp:struct>
-
-    <property name="Subject" tp:name-for-bindings="Subject"
-              type="(ssxu)" tp:type="Room_Subject" access="read">
-      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-        <p>The subject on the room such as the topic in an IRC channel,
-          or the room name in XMPP MUCs. In protocols which do not support
-          subjects (like MSN), this property should be ("", "", 0, 0).</p>
-
-        <tp:rationale>This property replaces the subject, subject-contact, and
-          subject-timestamp Telepathy properties of Text channels, as Telepathy
-          properties are soon to be deprecated completely.</tp:rationale>
-
-        <p>Change notification for this property is provided by the
-          <tp:member-ref>SubjectChanged</tp:member-ref> signal.</p>
-
-        <p>This property may change during the lifetime of the channel and
-          MUST not be included in a channel request.</p>
-      </tp:docstring>
-    </property>
-
-    <signal name="SubjectChanged" tp:name-for-bindings="Subject_Changed">
-      <arg name="Subject" type="s">
-        <tp:docstring>
-          The new subject string.
-        </tp:docstring>
-      </arg>
-      <arg name="Actor" type="s">
-        <tp:docstring>
-          A normalized contact ID representing who last modified the
-          subject, or the empty string if it is not known.
-        </tp:docstring>
-      </arg>
-      <arg name="Timestamp" type="x" tp:type="Unix_Timestamp64">
-        <tp:docstring>
-          A unix timestamp indicating when the subject was last
-          modified.
-        </tp:docstring>
-      </arg>
-      <arg name="Flags" type="u" tp:type="Room_Subject_Flags">
-        <tp:docstring>
-          A bitwise OR of the flags applicable to this channel's
-          subject.
-        </tp:docstring>
-      </arg>
-      <tp:docstring>
-        Emitted when the <tp:member-ref>Subject</tp:member-ref>
-        property is changed.
-      </tp:docstring>
-    </signal>
-
-    <tp:flags name="Room_Subject_Flags"
-      value-prefix="Room_Subject_Flag" type="u">
-      <tp:docstring>
-        Flags indicating capabilities regarding the room subject.
-      </tp:docstring>
-
-      <tp:flag suffix="Present" value="1">
-        <tp:docstring>
-          A subject exists on this channel. Protocols which do not
-          have the concept of room subjects MUST NOT have this flag
-          set as an indication to clients that no notice should be
-          taken of the <tp:member-ref>Subject</tp:member-ref>
-          property.
-        </tp:docstring>
-      </tp:flag>
-
-      <tp:flag suffix="Can_Set" value="2">
-        <tp:docstring>
-          The <tp:member-ref>Subject</tp:member-ref> property can be
-          set by the user by calling
-          <tp:member-ref>SetSubject</tp:member-ref>. If this flag is
-          set, then Present MUST also be set.
-        </tp:docstring>
-      </tp:flag>
-    </tp:flags>
 
   </interface>
 </node>

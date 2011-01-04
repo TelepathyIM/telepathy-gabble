@@ -62,7 +62,7 @@
 
 static void password_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
-static void room_iface_init (gpointer, gpointer);
+static void subject_iface_init (gpointer, gpointer);
 static void gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
     GHashTable *request);
 static void muc_call_channel_finish_requests (GabbleMucChannel *self,
@@ -82,10 +82,11 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
       tp_message_mixin_messages_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
-      chat_state_iface_init)
+      chat_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_ROOM,
-        room_iface_init);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT,
+      subject_iface_init);
     )
 
 static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
@@ -100,6 +101,7 @@ static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
     GABBLE_IFACE_CHANNEL_INTERFACE_ROOM,
+    GABBLE_IFACE_CHANNEL_INTERFACE_SUBJECT,
     NULL
 };
 
@@ -132,7 +134,7 @@ enum
   PROP_INITIAL_INVITEE_HANDLES,
   PROP_INITIAL_INVITEE_IDS,
   PROP_ORIGINAL_CHANNELS,
-  PROP_ROOM_ID,
+  PROP_ROOM_NAME,
   PROP_SERVER,
   PROP_SUBJECT,
   LAST_PROPERTY
@@ -249,7 +251,7 @@ struct _GabbleMucChannelPrivate
   TpPropertiesContext *properties_ctx;
 
   /* Room interface */
-  gchar *room_id;
+  gchar *room_name;
   gchar *server;
   GValueArray *subject;
 
@@ -494,10 +496,10 @@ gabble_muc_channel_constructed (GObject *obj)
       "target-id", &tmp,
       NULL);
 
-  if (priv->room_id != NULL)
+  if (priv->room_name != NULL)
     ok = gabble_decode_jid (tmp, NULL, &(priv->server), NULL);
   else
-    ok = gabble_decode_jid (tmp, &(priv->room_id), &(priv->server), NULL);
+    ok = gabble_decode_jid (tmp, &(priv->room_name), &(priv->server), NULL);
   g_free (tmp);
 
   /* Asserting here is fine because the target ID has already been
@@ -922,8 +924,8 @@ gabble_muc_channel_get_property (GObject    *object,
        * which we can't do anyway in XMPP. */
       g_value_take_boxed (value, g_hash_table_new (NULL, NULL));
       break;
-    case PROP_ROOM_ID:
-      g_value_set_string (value, priv->room_id);
+    case PROP_ROOM_NAME:
+      g_value_set_string (value, priv->room_name);
       break;
     case PROP_SERVER:
       g_value_set_string (value, priv->server);
@@ -978,8 +980,8 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INITIAL_INVITEE_IDS:
       priv->initial_ids = g_value_dup_boxed (value);
       break;
-    case PROP_ROOM_ID:
-      priv->room_id = g_value_dup_string (value);
+    case PROP_ROOM_NAME:
+      priv->room_name = g_value_dup_string (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1014,7 +1016,7 @@ gabble_muc_channel_fill_immutable_properties (
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessageTypes",
-      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM, "RoomID",
+      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM, "RoomName",
       GABBLE_IFACE_CHANNEL_INTERFACE_ROOM, "Server",
       NULL);
 }
@@ -1032,8 +1034,11 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { NULL }
   };
   static TpDBusPropertiesMixinPropImpl room_props[] = {
-      { "RoomID", "room-id", NULL, },
+      { "RoomName", "room-name", NULL, },
       { "Server", "server", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl subject_props[] = {
       { "Subject", "subject", NULL },
       { NULL }
   };
@@ -1048,6 +1053,11 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       room_props,
+    },
+    { GABBLE_IFACE_CHANNEL_INTERFACE_SUBJECT,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      subject_props,
     },
     { NULL }
   };
@@ -1138,12 +1148,12 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_install_property (object_class, PROP_ORIGINAL_CHANNELS,
       param_spec);
 
-  param_spec = g_param_spec_string ("room-id",
-      "RoomID",
+  param_spec = g_param_spec_string ("room-name",
+      "RoomName",
       "The human-readable identifier of a chat room.",
       "",
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_ROOM_ID,
+  g_object_class_install_property (object_class, PROP_ROOM_NAME,
       param_spec);
 
   param_spec = g_param_spec_string ("server",
@@ -1307,7 +1317,7 @@ gabble_muc_channel_finalize (GObject *object)
       priv->initial_ids = NULL;
     }
 
-  g_free (priv->room_id);
+  g_free (priv->room_name);
   g_free (priv->server);
   g_value_array_free (priv->subject);
 
@@ -1729,7 +1739,7 @@ emit_subject_changed (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv = chan->priv;
 
-  gabble_svc_channel_interface_room_emit_subject_changed (chan,
+  gabble_svc_channel_interface_subject_emit_subject_changed (chan,
       g_value_get_string (g_value_array_get_nth (priv->subject, 0)),
       g_value_get_string (g_value_array_get_nth (priv->subject, 1)),
       g_value_get_int64 (g_value_array_get_nth (priv->subject, 2)),
@@ -4081,7 +4091,7 @@ gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
 }
 
 static void
-gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceRoom *iface,
+gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceSubject *iface,
     const gchar *subject,
     DBusGMethodInvocation *context)
 {
@@ -4097,13 +4107,12 @@ gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceRoom *iface,
 
   if (!(flags & GABBLE_ROOM_SUBJECT_FLAG_CAN_SET))
     {
-      GError *error2 = g_error_new_literal (TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+      GError *error2 = g_error_new_literal (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
           "User does not have permission to set subject");
       dbus_g_method_return_error (context, error2);
       g_clear_error (&error2);
       return;
     }
-
 
   msg = lm_message_new_with_sub_type (priv->jid,
       LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
@@ -4123,7 +4132,7 @@ gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceRoom *iface,
     }
   else
     {
-      gabble_svc_channel_interface_room_return_from_set_subject (context);
+      gabble_svc_channel_interface_subject_return_from_set_subject (context);
     }
 
   lm_message_unref (msg);
@@ -4155,12 +4164,12 @@ chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 static void
-room_iface_init (gpointer g_iface, gpointer iface_data)
+subject_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcChannelInterfaceRoomClass *klass =
-    (GabbleSvcChannelInterfaceRoomClass *) g_iface;
+  GabbleSvcChannelInterfaceSubjectClass *klass =
+    (GabbleSvcChannelInterfaceSubjectClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_channel_interface_room_implement_##x (\
+#define IMPLEMENT(x) gabble_svc_channel_interface_subject_implement_##x (\
     klass, gabble_muc_channel_##x)
   IMPLEMENT(set_subject);
 #undef IMPLEMENT

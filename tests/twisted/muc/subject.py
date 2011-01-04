@@ -31,14 +31,13 @@ def test(q, bus, conn, stream):
     test_subject(q, bus, conn, stream, False, True, False)
     test_subject(q, bus, conn, stream, False, False, True)
 
-def check_room_props(chan, subject_str, actor, flags, signal=None):
-    # Room props
+def check_subject_props(chan, subject_str, actor, flags, signal=None):
     if signal is not None:
         assertEquals(subject_str, signal.args[0])
         assertEquals(actor, signal.args[1])
         assertEquals(flags, signal.args[3])
 
-    props = chan.GetAll(cs.CHANNEL_IFACE_ROOM,
+    props = chan.GetAll(cs.CHANNEL_IFACE_SUBJECT,
                         dbus_interface=dbus.PROPERTIES_IFACE)
     subject = props['Subject']
     assertEquals(subject_str, subject[0])
@@ -98,8 +97,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
 
-        check_room_props(chan, 'Testing', room + '/bob',
-                         cs.ROOM_SUBJECT_PRESENT | cs.ROOM_SUBJECT_CAN_SET, signal=s)
+        check_subject_props(chan, 'Testing', room + '/bob',
+                            cs.SUBJECT_PRESENT | cs.SUBJECT_CAN_SET, signal=s)
 
     # Reply to the disco
     iq = make_result_iq(stream, disco.stanza)
@@ -130,8 +129,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
                                       predicate=lambda e: (props['subject'], 'lalala') in e.args[0]),
                          EventPattern('dbus-signal', signal='SubjectChanged'))
 
-    check_room_props(chan, 'lalala', room + '/bob',
-                     cs.ROOM_SUBJECT_PRESENT | cs.ROOM_SUBJECT_CAN_SET, signal=s)
+    check_subject_props(chan, 'lalala', room + '/bob',
+                        cs.SUBJECT_PRESENT | cs.SUBJECT_CAN_SET, signal=s)
 
     # if send_first was true, then we already got this
     if not send_first:
@@ -143,11 +142,11 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
 
-        check_room_props(chan, 'lalala', room + '/bob',
-                         cs.ROOM_SUBJECT_PRESENT | cs.ROOM_SUBJECT_CAN_SET)
+        check_subject_props(chan, 'lalala', room + '/bob',
+                            cs.SUBJECT_PRESENT | cs.SUBJECT_CAN_SET)
 
     # test changing the subject
-    chan.SetSubject('le lolz', dbus_interface=cs.CHANNEL_IFACE_ROOM)
+    chan.SetSubject('le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
 
     e = q.expect('stream-message', to=room)
     elem = e.stanza

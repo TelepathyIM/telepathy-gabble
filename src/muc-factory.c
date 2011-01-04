@@ -1420,6 +1420,7 @@ handle_text_channel_request (GabbleMucFactory *self,
       gchar *a = NULL;
       gboolean ok;
 
+      /* JIDs that are handles must already be valid. */
       g_assert (gabble_decode_jid (target_id, &a, NULL, NULL));
 
       ok = !tp_strdiff (a, room_id);
@@ -1442,6 +1443,7 @@ handle_text_channel_request (GabbleMucFactory *self,
       gchar *b = NULL;
       gboolean ok = TRUE;
 
+      /* JIDs that are handles must already be valid. */
       g_assert (gabble_decode_jid (target_id, NULL, &b, NULL));
 
       if (b != NULL)

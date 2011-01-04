@@ -1417,15 +1417,15 @@ handle_text_channel_request (GabbleMucFactory *self,
   if (room_id != NULL && room_id[0] != '\0')
     {
       const gchar *target_id = tp_handle_inspect (room_handles, room);
-      gchar *a = NULL;
+      gchar *target_room = NULL;
       gboolean ok;
 
       /* JIDs that are handles must already be valid. */
-      g_assert (gabble_decode_jid (target_id, &a, NULL, NULL));
+      g_assert (gabble_decode_jid (target_id, &target_room, NULL, NULL));
 
-      ok = !tp_strdiff (a, room_id);
+      ok = !tp_strdiff (target_room, room_id);
 
-      g_free (a);
+      g_free (target_room);
 
       if (!ok)
         {
@@ -1440,16 +1440,16 @@ handle_text_channel_request (GabbleMucFactory *self,
   if (server_prop != NULL)
     {
       const gchar *target_id = tp_handle_inspect (room_handles, room);
-      gchar *b = NULL;
+      gchar *target_server = NULL;
       gboolean ok = TRUE;
 
       /* JIDs that are handles must already be valid. */
-      g_assert (gabble_decode_jid (target_id, NULL, &b, NULL));
+      g_assert (gabble_decode_jid (target_id, NULL, &target_server, NULL));
 
-      if (b != NULL)
-        ok = !tp_strdiff (b, server_prop);
+      if (target_server != NULL)
+        ok = !tp_strdiff (target_server, server_prop);
 
-      g_free (b);
+      g_free (target_server);
 
       if (!ok)
         {

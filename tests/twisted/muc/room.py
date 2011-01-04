@@ -167,7 +167,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-return', method='EnsureChannel')
 
     # Now a channel which already exists (any of the above) with
-    # a conflicting Server set.
+    # a conflicting RoomID set.
     jid = 'booyakasha@conf.localhost'
     call_async(q, conn.Requests, 'EnsureChannel', {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,

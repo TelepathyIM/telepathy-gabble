@@ -44,11 +44,10 @@ G_BEGIN_DECLS
 
 #define GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE(obj) \
   (G_TYPE_INSTANCE_GET_INTERFACE ((obj), \
-  GABBLE_TYPE_CAPS_CHANNEL_MANAGER, GabbleCapsChannelManagerIface))
+  GABBLE_TYPE_CAPS_CHANNEL_MANAGER, GabbleCapsChannelManagerInterface))
 
 typedef struct _GabbleCapsChannelManager GabbleCapsChannelManager;
-typedef struct _GabbleCapsChannelManagerIface GabbleCapsChannelManagerIface;
-
+typedef struct _GabbleCapsChannelManagerInterface GabbleCapsChannelManagerInterface;
 
 /* virtual methods */
 
@@ -89,7 +88,7 @@ void gabble_caps_channel_manager_represent_client (
     const gchar * const *cap_tokens,
     GabbleCapabilitySet *cap_set);
 
-struct _GabbleCapsChannelManagerIface {
+struct _GabbleCapsChannelManagerInterface {
     GTypeInterface parent;
 
     GabbleCapsChannelManagerResetCapsFunc reset_caps;

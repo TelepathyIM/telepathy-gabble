@@ -30,10 +30,15 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"
 
-G_DEFINE_INTERFACE(GabbleCapsChannelManager, gabble_caps_channel_manager, TP_TYPE_CHANNEL_MANAGER);
+G_DEFINE_INTERFACE (GabbleCapsChannelManager, gabble_caps_channel_manager,
+    TP_TYPE_CHANNEL_MANAGER);
 
 /* stub function needed for the G_DEFINE_INTERFACE macro above */
-static void gabble_caps_channel_manager_default_init (GabbleCapsChannelManagerInterface *interface) {}
+static void
+gabble_caps_channel_manager_default_init (
+    GabbleCapsChannelManagerInterface *interface)
+{
+}
 
 /* Virtual-method wrappers */
 void

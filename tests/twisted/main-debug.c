@@ -24,6 +24,7 @@
 #include "vcard-manager.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
+#include "gtalk-file-collection.h"
 
 #include "test-resolver.h"
 
@@ -60,6 +61,7 @@ main (int argc,
       "stun.telepathy.im", "6.7.8.9");
 
   gabble_jingle_factory_set_test_mode ();
+  gtalk_file_collection_set_test_mode ();
 
   ret = gabble_main (argc, argv);
 

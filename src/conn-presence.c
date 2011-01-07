@@ -1404,7 +1404,7 @@ conn_presence_set_initial_presence_finish (GabbleConnection *self,
     GAsyncResult *result,
     GError **error)
 {
-  wocky_implement_finish_void (self, conn_presence_set_initial_presence_async)
+  wocky_implement_finish_void (self, conn_presence_set_initial_presence_async);
 }
 
 /**
@@ -1561,7 +1561,7 @@ toggle_presence_visibility_finish (
     GAsyncResult *result,
     GError **error)
 {
-  wocky_implement_finish_void (self, toggle_presence_visibility_async)
+  wocky_implement_finish_void (self, toggle_presence_visibility_async);
 }
 
 static void

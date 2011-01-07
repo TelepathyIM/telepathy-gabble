@@ -108,6 +108,14 @@
  *
  */
 
+static gboolean test_mode = FALSE;
+
+void
+gtalk_file_collection_set_test_mode (void)
+{
+  test_mode = TRUE;
+}
+
 G_DEFINE_TYPE (GTalkFileCollection, gtalk_file_collection, G_TYPE_OBJECT);
 
 /* properties */
@@ -940,6 +948,9 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
 
   DEBUG ("New Share channel %s was created and linked to id %d", name,
       share_channel_id);
+
+  if (test_mode)
+    g_object_set (agent, "upnp", FALSE, NULL);
 
   share_channel->agent = agent;
   share_channel->stream_id = stream_id;

@@ -153,6 +153,7 @@ TWISTED_JINGLE_TESTS = \
 	jingle/initial-audio-video.py \
 	jingle/misuse.py \
 	jingle/stun-server.py \
+	jingle/transport-info-parsing.py \
 	jingle/outgoing-basics.py \
 	jingle/outgoing-ensure.py \
 	jingle/outgoing-many-streams.py \

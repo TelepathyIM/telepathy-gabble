@@ -59,7 +59,7 @@ struct _GabbleRequestPipelinePrivate
   GabbleConnection *connection;
   GSList *pending_items;
   GSList *items_in_flight;
-  /* Zombie storage */
+  /* Zombie storage (items which were cancelled while the IQ was in flight) */
   GSList *crypt_items;
 
   gboolean dispose_has_run;

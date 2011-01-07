@@ -1387,17 +1387,37 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
     }
   else
     {
-      node = lm_message_node_get_child_any_ns (node, "content");
+      WockyNodeIter i;
+      WockyNode *content_node;
+      GError *e = NULL;
 
-      if (!lookup_content (sess,
-              lm_message_node_get_attribute (node, "name"),
-              lm_message_node_get_attribute (node, "creator"),
-              TRUE /* fail_if_missing */, &c, error))
-        return;
+      wocky_node_iter_init (&i, node, "content", NULL);
 
-      /* we need transport child of content node */
-      node = lm_message_node_get_child_any_ns (node, "transport");
-      gabble_jingle_content_parse_transport_info (c, node, error);
+      while (wocky_node_iter_next (&i, &content_node))
+        {
+          WockyNode *transport_node;
+
+          if (lookup_content (sess,
+                lm_message_node_get_attribute (content_node, "name"),
+                lm_message_node_get_attribute (content_node, "creator"),
+                TRUE /* fail_if_missing */, &c, &e))
+            {
+              /* we need transport child of content node */
+              transport_node = lm_message_node_get_child_any_ns (
+                content_node, "transport");
+              gabble_jingle_content_parse_transport_info (c,
+                transport_node, &e);
+            }
+
+          /* Save the first error we encounter, but go through all remaining
+           * contents anyway to try and recover as much info as we can */
+          if (e != NULL && error != NULL && *error == NULL)
+            {
+              *error = e;
+              e = NULL;
+            }
+          g_clear_error (&e);
+        }
     }
 
 }

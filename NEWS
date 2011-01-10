@@ -6,11 +6,16 @@ Fixes:
 • Support for Google Talk's google:queue extension now works against Google's
   server again. This regressed in 0.11.1, which changed gabble to send iq gets
   rather than iq sets. (wjt)
+• Fix crash caused by timing out items in the iq pipeline before sending
+  them out. (sjoerd)
+• Correctly parse jingle transport-info message that refer to multiple
+  contents. (sjoerd)
 
 • Updated Wocky:
 
   » Fix a bug in WockyHeartbeatSource which caused criticals when it was
     destroyed. (wjt)
+  » Fix parsing of chat state messages in MUCs. (wjt)
 
 telepathy-gabble 0.11.4 (2010-12-14)
 ====================================

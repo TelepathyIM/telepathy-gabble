@@ -257,6 +257,9 @@ struct _GabbleConnectionPrivate
   /* server TLS manager */
   GabbleServerTLSManager *server_tls_manager;
 
+  /* IM factory */
+  GabbleImFactory *im_factory;
+
   /* stream id returned by the connector */
   gchar *stream_id;
 
@@ -294,10 +297,10 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
       (gabble_conn_aliasing_nickname_updated), self);
   g_ptr_array_add (channel_managers, self->roster);
 
-  g_ptr_array_add (channel_managers,
-      g_object_new (GABBLE_TYPE_IM_FACTORY,
-        "connection", self,
-        NULL));
+  self->priv->im_factory = g_object_new (GABBLE_TYPE_IM_FACTORY,
+      "connection", self,
+      NULL);
+  g_ptr_array_add (channel_managers, self->priv->im_factory);
 
   g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_ROOMLIST_MANAGER,

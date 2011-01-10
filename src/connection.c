@@ -2961,8 +2961,14 @@ gabble_connection_get_handle_contact_capabilities (
 
   if (p == NULL)
     {
-      DEBUG ("don't know %u's presence; no caps for them.", handle);
-      return NULL;
+      DEBUG ("don't know %u's presence; assuming text chat caps.", handle);
+
+      arr = g_ptr_array_new ();
+      gabble_caps_channel_manager_get_contact_capabilities (
+          GABBLE_CAPS_CHANNEL_MANAGER (self->priv->im_factory),
+          handle, NULL, arr);
+
+      return arr;
     }
 
   caps = gabble_presence_peek_caps (p);

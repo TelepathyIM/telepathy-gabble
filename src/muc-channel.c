@@ -2454,7 +2454,7 @@ handle_message (GObject *source,
           case WOCKY_MUC_MSG_STATE_ACTIVE:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
             break;
-          case WOCKY_MUC_MSG_STATE_TYPING:
+          case WOCKY_MUC_MSG_STATE_COMPOSING:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_COMPOSING;
             break;
           case WOCKY_MUC_MSG_STATE_INACTIVE:

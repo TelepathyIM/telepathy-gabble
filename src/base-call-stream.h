@@ -27,6 +27,7 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <extensions/extensions.h>
 
+#include <telepathy-yell/enums.h>
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -72,29 +73,29 @@ GabbleConnection *gabble_base_call_stream_get_connection (
 const gchar *gabble_base_call_stream_get_object_path (
     GabbleBaseCallStream *self);
 
-GabbleSendingState gabble_base_call_stream_get_sender_state (
+TpySendingState gabble_base_call_stream_get_sender_state (
     GabbleBaseCallStream *self,
     TpHandle sender,
     gboolean *existed);
 
 gboolean gabble_base_call_stream_update_local_sending_state (
   GabbleBaseCallStream *self,
-  GabbleSendingState state);
+  TpySendingState state);
 
-GabbleSendingState
+TpySendingState
 gabble_base_call_stream_get_local_sending_state (
   GabbleBaseCallStream *self);
 
 gboolean
 gabble_base_call_stream_remote_member_update_state (GabbleBaseCallStream *self,
     TpHandle contact,
-    GabbleSendingState state);
+    TpySendingState state);
 
 
 gboolean gabble_base_call_stream_update_senders (
     GabbleBaseCallStream *self,
     TpHandle contact,
-    GabbleSendingState state,
+    TpySendingState state,
     ...) G_GNUC_NULL_TERMINATED;
 
 G_END_DECLS

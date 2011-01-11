@@ -81,7 +81,7 @@ const gchar *gabble_base_call_content_get_object_path (
 const gchar *gabble_base_call_content_get_name (GabbleBaseCallContent *self);
 TpMediaStreamType gabble_base_call_content_get_media_type (
     GabbleBaseCallContent *self);
-GabbleCallContentDisposition gabble_base_call_content_get_disposition (
+TpyCallContentDisposition gabble_base_call_content_get_disposition (
     GabbleBaseCallContent *self);
 
 GList *gabble_base_call_content_get_streams (GabbleBaseCallContent *self);

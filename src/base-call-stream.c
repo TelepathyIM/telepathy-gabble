@@ -26,13 +26,17 @@
 
 #include "connection.h"
 
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/svc-call.h>
+
 G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallStream, gabble_base_call_stream,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
         tp_dbus_properties_mixin_iface_init);
     /* The base class doesn't implement SetSending or RequestReceiving, because
      * they're pretty protocol-specific. It just implements the properties. */
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM, NULL);
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM, NULL);
     )
 
 enum
@@ -56,7 +60,7 @@ struct _GabbleBaseCallStreamPrivate
 
   GHashTable *remote_members;
 
-  GabbleSendingState local_sending_state;
+  TpySendingState local_sending_state;
 };
 
 static void
@@ -81,7 +85,7 @@ gabble_base_call_stream_constructed (GObject *obj)
       != NULL)
     G_OBJECT_CLASS (gabble_base_call_stream_parent_class)->constructed (obj);
 
-  priv->local_sending_state = GABBLE_SENDING_STATE_NONE;
+  priv->local_sending_state = TPY_SENDING_STATE_NONE;
 
   /* register object on the bus */
   DEBUG ("Registering %s", priv->object_path);
@@ -209,7 +213,7 @@ gabble_base_call_stream_class_init (GabbleBaseCallStreamClass *bsc_class)
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_CALL_STREAM,
+      { TPY_IFACE_CALL_STREAM,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         stream_props,
@@ -247,7 +251,7 @@ gabble_base_call_stream_class_init (GabbleBaseCallStreamClass *bsc_class)
 
   param_spec = g_param_spec_boxed ("remote-members", "Remote members",
       "Remote member map",
-      GABBLE_HASH_TYPE_CONTACT_SENDING_STATE_MAP,
+      TPY_HASH_TYPE_CONTACT_SENDING_STATE_MAP,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_REMOTE_MEMBERS,
       param_spec);
@@ -292,7 +296,7 @@ gabble_base_call_stream_get_object_path (GabbleBaseCallStream *self)
 gboolean
 gabble_base_call_stream_remote_member_update_state (GabbleBaseCallStream *self,
     TpHandle contact,
-    GabbleSendingState state)
+    TpySendingState state)
 {
   GabbleBaseCallStreamPrivate *priv = self->priv;
   gpointer state_p = 0;
@@ -316,7 +320,7 @@ gabble_base_call_stream_remote_member_update_state (GabbleBaseCallStream *self,
   return TRUE;
 }
 
-GabbleSendingState
+TpySendingState
 gabble_base_call_stream_get_local_sending_state (
   GabbleBaseCallStream *self)
 {
@@ -325,15 +329,15 @@ gabble_base_call_stream_get_local_sending_state (
 
 gboolean
 gabble_base_call_stream_update_local_sending_state (GabbleBaseCallStream *self,
-    GabbleSendingState state)
+    TpySendingState state)
 {
   GabbleBaseCallStreamPrivate *priv = self->priv;
 
   if (priv->local_sending_state == state)
     return FALSE;
 
-  gabble_svc_call_stream_emit_local_sending_state_changed (
-    GABBLE_SVC_CALL_STREAM (self), state);
+  tpy_svc_call_stream_emit_local_sending_state_changed (
+    TPY_SVC_CALL_STREAM (self), state);
   priv->local_sending_state = state;
 
   return TRUE;

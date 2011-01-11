@@ -286,9 +286,9 @@ gabble_base_call_channel_fill_immutable_properties (
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
-      GABBLE_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
-      GABBLE_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
+      TPY_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
+      TPY_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
+      TPY_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
       NULL);
 }
 
@@ -327,7 +327,7 @@ gabble_base_call_channel_class_init (
   object_class->dispose = gabble_base_call_channel_dispose;
   object_class->finalize = gabble_base_call_channel_finalize;
 
-  base_channel_class->channel_type = GABBLE_IFACE_CHANNEL_TYPE_CALL;
+  base_channel_class->channel_type = TPY_IFACE_CHANNEL_TYPE_CALL;
   base_channel_class->interfaces = gabble_base_call_channel_interfaces;
   base_channel_class->get_object_path_suffix =
       gabble_base_call_channel_get_object_path_suffix;
@@ -436,7 +436,7 @@ gabble_base_call_channel_class_init (
       param_spec);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
-      GABBLE_IFACE_QUARK_CHANNEL_TYPE_CALL,
+      TPY_IFACE_QUARK_CHANNEL_TYPE_CALL,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       call_props);

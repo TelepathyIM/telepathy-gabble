@@ -238,7 +238,7 @@ gabble_call_content_class_init (
       G_TYPE_NONE, 1, G_TYPE_POINTER);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
-      GABBLE_IFACE_QUARK_CALL_CONTENT_INTERFACE_MEDIA,
+      TPY_IFACE_QUARK_CALL_CONTENT_INTERFACE_MEDIA,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       content_media_props);

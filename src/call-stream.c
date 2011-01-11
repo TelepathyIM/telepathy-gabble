@@ -502,7 +502,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       param_spec);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
-      GABBLE_IFACE_QUARK_CALL_STREAM_INTERFACE_MEDIA,
+      TPY_IFACE_QUARK_CALL_STREAM_INTERFACE_MEDIA,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       stream_media_props);
@@ -637,7 +637,7 @@ gabble_call_stream_set_sending (GabbleCallStream *self,
 {
   GabbleCallStreamPrivate *priv = self->priv;
   GabbleBaseCallStream *base = GABBLE_BASE_CALL_STREAM (self);
-  GabbleSendingState state =
+  TpySendingState state =
       sending ? TPY_SENDING_STATE_SENDING : TPY_SENDING_STATE_NONE;
 
   /* If this changes the state, update the content. */

@@ -26,6 +26,11 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 #include "debug.h"
 
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/svc-call.h>
+
 G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallContent, gabble_base_call_content,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
@@ -33,7 +38,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallContent, gabble_base_call_content,
     /* The base class doesn't implement Remove(), which is pretty
      * protocol-specific. It just implements the properties.
      */
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_CONTENT,
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT,
         NULL);
     );
 
@@ -47,7 +52,7 @@ struct _GabbleBaseCallContentPrivate
   gchar *name;
   TpMediaStreamType media_type;
   TpHandle creator;
-  GabbleCallContentDisposition disposition;
+  TpyCallContentDisposition disposition;
 
   GList *streams;
 
@@ -249,7 +254,7 @@ gabble_base_call_content_class_init (
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_CALL_CONTENT,
+      { TPY_IFACE_CALL_CONTENT,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         content_props,
@@ -354,11 +359,11 @@ gabble_base_call_content_get_media_type (GabbleBaseCallContent *self)
   return self->priv->media_type;
 }
 
-GabbleCallContentDisposition
+TpyCallContentDisposition
 gabble_base_call_content_get_disposition (GabbleBaseCallContent *self)
 {
   g_return_val_if_fail (GABBLE_IS_BASE_CALL_CONTENT (self),
-      GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+      TPY_CALL_CONTENT_DISPOSITION_NONE);
 
   return self->priv->disposition;
 }
@@ -387,7 +392,7 @@ gabble_base_call_content_add_stream (GabbleBaseCallContent *self,
   g_ptr_array_add (paths, g_strdup (
      gabble_base_call_stream_get_object_path (
          GABBLE_BASE_CALL_STREAM (stream))));
-  gabble_svc_call_content_emit_streams_added (self, paths);
+  tpy_svc_call_content_emit_streams_added (self, paths);
   g_ptr_array_unref (paths);
 }
 
@@ -411,7 +416,7 @@ gabble_base_call_content_remove_stream (GabbleBaseCallContent *self,
   g_ptr_array_add (paths, g_strdup (
      gabble_base_call_stream_get_object_path (
          GABBLE_BASE_CALL_STREAM (stream))));
-  gabble_svc_call_content_emit_streams_removed (self, paths);
+  tpy_svc_call_content_emit_streams_removed (self, paths);
   g_ptr_array_unref (paths);
   g_object_unref (stream);
 }

@@ -26,6 +26,7 @@
 #include "types.h"
 #include <telepathy-glib/dtmf.h>
 #include <telepathy-glib/enums.h>
+#include <telepathy-glib/dbus-properties-mixin.h>
 
 G_BEGIN_DECLS
 
@@ -45,6 +46,8 @@ typedef struct _GabbleMediaStreamPrivate GabbleMediaStreamPrivate;
 
 struct _GabbleMediaStreamClass {
     GObjectClass parent_class;
+
+    TpDBusPropertiesMixinClass props_class;
 };
 
 struct _GabbleMediaStream {

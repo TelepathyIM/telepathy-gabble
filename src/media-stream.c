@@ -49,7 +49,6 @@
 #include "util.h"
 
 static void stream_handler_iface_init (gpointer, gpointer);
-static void dbus_properties_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
     gabble_media_stream,
@@ -57,7 +56,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleMediaStream,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_MEDIA_STREAM_HANDLER,
       stream_handler_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-      dbus_properties_iface_init)
+      tp_dbus_properties_mixin_iface_init);
     )
 
 /* signal enum */
@@ -487,6 +486,21 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_media_stream_class);
   GParamSpec *param_spec;
+  static TpDBusPropertiesMixinPropImpl stream_handler_props[] = {
+      { "RelayInfo", "relay-info", NULL },
+      { "STUNServers", "stun-servers", NULL },
+      { "NATTraversal", "nat-traversal", NULL },
+      { "CreatedLocally", "created-locally", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+      { TP_IFACE_MEDIA_STREAM_HANDLER,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        stream_handler_props,
+      },
+      { NULL }
+  };
 
   g_type_class_add_private (gabble_media_stream_class,
       sizeof (GabbleMediaStreamPrivate));
@@ -635,6 +649,10 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
       G_OBJECT_CLASS_TYPE (gabble_media_stream_class),
       G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED, 0, NULL, NULL,
       g_cclosure_marshal_VOID__VOID, G_TYPE_NONE, 0);
+
+  gabble_media_stream_class->props_class.interfaces = prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMediaStreamClass, props_class));
 }
 
 void
@@ -1723,116 +1741,6 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(supported_codecs,);
   IMPLEMENT(unhold_failure,);
   IMPLEMENT(codecs_updated,);
-#undef IMPLEMENT
-}
-
-static void
-gabble_media_stream_props_get (TpSvcDBusProperties *iface,
-                               const gchar *interface_name,
-                               const gchar *property_name,
-                               DBusGMethodInvocation *context)
-{
-  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GValue value = { 0 };
-
-  if (!tp_strdiff (interface_name, TP_IFACE_MEDIA_STREAM_HANDLER))
-    {
-      if (!tp_strdiff (property_name, "RelayInfo"))
-        {
-          g_value_init (&value, TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST);
-          g_object_get_property ((GObject *) self, "relay-info", &value);
-        }
-      else if (!tp_strdiff (property_name, "STUNServers"))
-        {
-          /* FIXME: use correct macro when available */
-          g_value_init (&value, tp_type_dbus_array_su ());
-          g_object_get_property ((GObject *) self, "stun-servers", &value);
-        }
-      else if (!tp_strdiff (property_name, "NATTraversal"))
-        {
-          g_value_init (&value, G_TYPE_STRING);
-          g_object_get_property ((GObject *) self, "nat-traversal", &value);
-        }
-      else if (!tp_strdiff (property_name, "CreatedLocally"))
-        {
-          g_value_init (&value, G_TYPE_BOOLEAN);
-          g_object_get_property ((GObject *) self, "created-locally", &value);
-        }
-      else
-        {
-          GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-              "Property not implemented" };
-
-          dbus_g_method_return_error (context, &not_implemented);
-          return;
-        }
-    }
-  else
-    {
-      GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Interface not implemented" };
-
-      dbus_g_method_return_error (context, &not_implemented);
-      return;
-    }
-
-  tp_svc_dbus_properties_return_from_get (context, &value);
-  g_value_unset (&value);
-}
-
-static void
-gabble_media_stream_props_get_all (TpSvcDBusProperties *iface,
-                                   const gchar *interface_name,
-                                   DBusGMethodInvocation *context)
-{
-  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-
-  if (!tp_strdiff (interface_name, TP_IFACE_MEDIA_STREAM_HANDLER))
-    {
-      GValue *value;
-      GHashTable *values = g_hash_table_new_full (g_str_hash, g_str_equal,
-          NULL, (GDestroyNotify) tp_g_value_slice_free);
-
-      value = tp_g_value_slice_new (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST);
-      g_object_get_property ((GObject *) self, "relay-info", value);
-      g_hash_table_insert (values, "RelayInfo", value);
-
-      /* FIXME: use correct macro when available */
-      value = tp_g_value_slice_new (tp_type_dbus_array_su ());
-      g_object_get_property ((GObject *) self, "stun-servers", value);
-      g_hash_table_insert (values, "STUNServers", value);
-
-      value = tp_g_value_slice_new (G_TYPE_STRING);
-      g_object_get_property ((GObject *) self, "nat-traversal", value);
-      g_hash_table_insert (values, "NATTraversal", value);
-
-      value = tp_g_value_slice_new (G_TYPE_BOOLEAN);
-      g_object_get_property ((GObject *) self, "created-locally", value);
-      g_hash_table_insert (values, "CreatedLocally", value);
-
-      tp_svc_dbus_properties_return_from_get_all (context, values);
-      g_hash_table_destroy (values);
-    }
-  else
-    {
-      GError not_implemented = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "Interface not implemented" };
-
-      dbus_g_method_return_error (context, &not_implemented);
-    }
-}
-
-static void
-dbus_properties_iface_init (gpointer g_iface,
-                            gpointer iface_data G_GNUC_UNUSED)
-{
-  TpSvcDBusPropertiesClass *cls = g_iface;
-
-#define IMPLEMENT(x) \
-    tp_svc_dbus_properties_implement_##x (cls, gabble_media_stream_props_##x)
-  IMPLEMENT (get);
-  IMPLEMENT (get_all);
-  /* set not implemented in this class */
 #undef IMPLEMENT
 }
 

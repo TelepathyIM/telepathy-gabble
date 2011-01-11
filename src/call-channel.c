@@ -33,7 +33,8 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
 
-#include <extensions/extensions.h>
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/svc-call.h>
 
 #include "util.h"
 #include "call-channel.h"
@@ -93,7 +94,7 @@ gabble_call_channel_constructed (GObject *obj)
   GabbleCallMember *member;
 
   member = gabble_base_call_channel_ensure_member_from_handle (cbase,
-    cbase->target);
+    tp_base_channel_get_target_handle (TP_BASE_CHANNEL (cbase)));
   priv->member = member;
 
   if (priv->session != NULL)
@@ -118,7 +119,7 @@ gabble_call_channel_constructed (GObject *obj)
           c = gabble_base_call_channel_add_content (cbase,
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
-                GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+                TPY_CALL_CONTENT_DISPOSITION_INITIAL);
 
           gabble_call_content_add_member_content (c, content);
 
@@ -201,7 +202,9 @@ gabble_call_channel_class_init (
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_channel_class);
   GabbleBaseCallChannelClass *base_call_class =
-    GABBLE_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
+      GABBLE_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
+  TpBaseChannelClass *base_channel_class =
+      TP_BASE_CHANNEL_CLASS (gabble_call_channel_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_call_channel_class,
@@ -215,7 +218,8 @@ gabble_call_channel_class_init (
   object_class->dispose = gabble_call_channel_dispose;
   object_class->finalize = gabble_call_channel_finalize;
 
-  base_call_class->handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_channel_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+
   base_call_class->accept = call_channel_accept;
   base_call_class->add_content = call_channel_add_content;
 
@@ -256,22 +260,22 @@ call_session_state_changed_cb (GabbleJingleSession *session,
 {
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
   JingleState state;
-  GabbleCallState cstate;
+  TpyCallState cstate;
 
   cstate = gabble_base_call_channel_get_state (
     GABBLE_BASE_CALL_CHANNEL (self));
 
   g_object_get (session, "state", &state, NULL);
 
-  if (state == JINGLE_STATE_ACTIVE && cstate != GABBLE_CALL_STATE_ACCEPTED)
+  if (state == JINGLE_STATE_ACTIVE && cstate != TPY_CALL_STATE_ACCEPTED)
     {
-      gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ACCEPTED);
+      gabble_base_call_channel_set_state (cbase, TPY_CALL_STATE_ACCEPTED);
       return;
     }
 
-  if (state == JINGLE_STATE_ENDED && cstate < GABBLE_CALL_STATE_ENDED)
+  if (state == JINGLE_STATE_ENDED && cstate < TPY_CALL_STATE_ENDED)
     {
-      gabble_base_call_channel_set_state (cbase, GABBLE_CALL_STATE_ENDED);
+      gabble_base_call_channel_set_state (cbase, TPY_CALL_STATE_ENDED);
       return;
     }
 }
@@ -285,6 +289,7 @@ call_member_content_added_cb (GabbleCallMember *member,
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
   GabbleJingleContent *jingle_content;
   GabbleCallContent *c;
+  GabbleBaseCallContent *base_content;
 
   jingle_content = gabble_call_member_content_get_jingle_content (content);
 
@@ -295,13 +300,13 @@ call_member_content_added_cb (GabbleCallMember *member,
   c = gabble_base_call_channel_add_content (cbase,
       gabble_call_member_content_get_name (content),
       gabble_call_member_content_get_media_type (content),
-      GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+      TPY_CALL_CONTENT_DISPOSITION_NONE);
+  base_content = GABBLE_BASE_CALL_CONTENT (c);
 
   gabble_call_content_add_member_content (c, content);
 
-  gabble_svc_channel_type_call_emit_content_added (self,
-      gabble_call_content_get_object_path (c),
-      gabble_call_content_get_media_type (c));
+  tpy_svc_channel_type_call_emit_content_added (self,
+      gabble_base_call_content_get_object_path (base_content));
 }
 
 static gboolean
@@ -310,13 +315,16 @@ contact_is_media_capable (GabbleCallChannel *self,
     gboolean *wait_ret,
     GError **error)
 {
-  GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
+
   GabblePresence *presence;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *) base->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base_conn,
+      TP_HANDLE_TYPE_CONTACT);
   gboolean wait = FALSE;
 
-  presence = gabble_presence_cache_get (base->conn->presence_cache, handle);
+  presence = gabble_presence_cache_get (conn->presence_cache, handle);
 
   if (presence != NULL)
     {
@@ -330,7 +338,7 @@ contact_is_media_capable (GabbleCallChannel *self,
   /* Okay, they're not capable (yet). Let's figure out whether we should wait,
    * and return an appropriate error.
    */
-  if (gabble_presence_cache_is_unsure (base->conn->presence_cache, handle))
+  if (gabble_presence_cache_is_unsure (conn->presence_cache, handle))
     {
       DEBUG ("presence cache is still unsure about handle %u", handle);
       wait = TRUE;
@@ -367,7 +375,7 @@ call_member_content_removed_cb (GabbleCallMember *member,
 
       if (contents != NULL && contents->data == mcontent)
         {
-          base_call_channel_remove_content (cbase, content);
+          gabble_base_call_channel_remove_content (cbase, content);
           break;
         }
     }
@@ -379,7 +387,9 @@ call_channel_continue_init (GabbleCallChannel *self,
 {
   GabbleCallChannelPrivate *priv = self->priv;
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  TpBaseChannel *tp_base = TP_BASE_CHANNEL (self);
   GError *error = NULL;
+  gchar *initial_audio_name = NULL, *initial_video_name = NULL;
 
   if (priv->session == NULL)
     {
@@ -387,11 +397,16 @@ call_channel_continue_init (GabbleCallChannel *self,
       GList *contents, *l;
 
       member = gabble_base_call_channel_ensure_member_from_handle (base,
-        base->target);
+          tp_base_channel_get_target_handle (tp_base));
+
+      g_object_get (self,
+          "initial-audio-name", &initial_audio_name,
+          "initial-video-name", &initial_video_name,
+          NULL);
 
       if (!gabble_call_member_start_session (member,
-          base->initial_audio ? "Audio" : NULL,
-          base->initial_video ? "Video" : NULL,
+          base->initial_audio ? initial_audio_name : NULL,
+          base->initial_video ? initial_video_name : NULL,
           &error))
        {
          g_simple_async_result_set_from_error (result, error);
@@ -414,7 +429,7 @@ call_channel_continue_init (GabbleCallChannel *self,
           c = gabble_base_call_channel_add_content (base,
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
-                GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+                TPY_CALL_CONTENT_DISPOSITION_INITIAL);
 
           gabble_call_content_add_member_content (c, content);
         }
@@ -425,11 +440,13 @@ call_channel_continue_init (GabbleCallChannel *self,
         G_CALLBACK (call_member_content_removed_cb), G_OBJECT (self));
     }
 
-  gabble_base_call_channel_register (base);
+  tp_base_channel_register (tp_base);
 
 out:
   g_simple_async_result_complete_in_idle (result);
   g_object_unref (result);
+  g_free (initial_audio_name);
+  g_free (initial_video_name);
 }
 
 static void
@@ -440,17 +457,19 @@ call_channel_capabilities_discovered_cb (GabblePresenceCache *cache,
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (
       g_async_result_get_source_object (G_ASYNC_RESULT (result)));
-  GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  TpBaseChannel *tp_base = TP_BASE_CHANNEL (self);
+  TpHandle target = tp_base_channel_get_target_handle (tp_base);
   GError *error_ = NULL;
   gboolean wait;
 
-  if (base->target != handle || gabble_base_call_channel_registered (base))
+  if (target != handle || tp_base_channel_is_registered (tp_base))
     goto out;
-  if (!contact_is_media_capable (self, base->target, &wait, &error_))
+
+  if (!contact_is_media_capable (self, target, &wait, &error_))
     {
       if (wait)
         {
-          DEBUG ("contact %u caps still pending", base->target);
+          DEBUG ("contact %u caps still pending", target);
           g_error_free (error_);
         }
       else
@@ -481,6 +500,10 @@ call_channel_init_async (GAsyncInitable *initable,
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (initable);
   GabbleCallChannelPrivate *priv = self->priv;
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  TpBaseChannel *tp_base = TP_BASE_CHANNEL (base);
+  TpHandle target = tp_base_channel_get_target_handle (tp_base);
+  GabbleConnection *conn = GABBLE_CONNECTION (
+      tp_base_channel_get_connection (tp_base));
   GSimpleAsyncResult *result;
   GError *error_ = NULL;
   gboolean wait;
@@ -488,7 +511,7 @@ call_channel_init_async (GAsyncInitable *initable,
   result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, NULL);
 
-  if (gabble_base_call_channel_registered (base))
+  if (tp_base_channel_is_registered (tp_base))
     {
       g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
@@ -496,15 +519,15 @@ call_channel_init_async (GAsyncInitable *initable,
     }
 
   if (priv->session == NULL &&
-      !contact_is_media_capable (self, base->target, &wait, &error_))
+      !contact_is_media_capable (self, target, &wait, &error_))
     {
       if (wait)
         {
-          DEBUG ("contact %u caps still pending, adding anyways",
-              base->target);
+          DEBUG ("contact %u caps still pending, adding anyways", target);
           g_error_free (error_);
 
-          gabble_signal_connect_weak (base->conn->presence_cache,
+          /* Fuckers */
+          gabble_signal_connect_weak (conn->presence_cache,
               "capabilities-discovered",
               G_CALLBACK (call_channel_capabilities_discovered_cb),
               G_OBJECT (result));
@@ -553,7 +576,7 @@ call_channel_add_content (GabbleBaseCallChannel *base,
   if (mcontent != NULL)
     {
       content = gabble_base_call_channel_add_content (base,
-        name, type, GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+        name, type, TPY_CALL_CONTENT_DISPOSITION_NONE);
       gabble_call_content_add_member_content (content, mcontent);
     }
 

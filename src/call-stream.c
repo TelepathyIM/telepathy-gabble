@@ -26,7 +26,11 @@
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
-#include <extensions/extensions.h>
+
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/gtypes.h>
+#include <telepathy-yell/interfaces.h>
+#include <telepathy-yell/svc-call.h>
 
 #include "call-stream.h"
 #include "call-stream-endpoint.h"
@@ -41,27 +45,20 @@
 
 static void call_stream_iface_init (gpointer, gpointer);
 static void call_stream_media_iface_init (gpointer, gpointer);
-static void call_stream_update_sender_states (GabbleCallStream *self);
+static void call_stream_update_member_states (GabbleCallStream *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallStream, gabble_call_stream,
-  G_TYPE_OBJECT,
-   G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-    tp_dbus_properties_mixin_iface_init);
-   G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM,
-    call_stream_iface_init);
-   G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CALL_STREAM_INTERFACE_MEDIA,
-    call_stream_media_iface_init);
-  );
+    GABBLE_TYPE_BASE_CALL_STREAM,
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM,
+        call_stream_iface_init);
+    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM_INTERFACE_MEDIA,
+        call_stream_media_iface_init);
+    );
 
 /* properties */
 enum
 {
-  PROP_OBJECT_PATH = 1,
-  PROP_JINGLE_CONTENT,
-  PROP_CONNECTION,
-
-  /* Call interface properties */
-  PROP_SENDERS,
+  PROP_JINGLE_CONTENT = 1,
 
   /* Media interface properties */
   PROP_LOCAL_CANDIDATES,
@@ -69,7 +66,7 @@ enum
   PROP_TRANSPORT,
   PROP_STUN_SERVERS,
   PROP_RELAY_INFO,
-  PROP_RETRIEVED_SERVER_INFO,
+  PROP_HAS_SERVER_INFO,
 };
 
 #if 0
@@ -88,13 +85,12 @@ struct _GabbleCallStreamPrivate
 {
   gboolean dispose_has_run;
 
-  gchar *object_path;
-  GabbleConnection *conn;
   GabbleJingleContent *content;
 
-  GHashTable *senders;
   GList *endpoints;
   GPtrArray *relay_info;
+
+  TpySendingState local_sending_state;
 
   gboolean got_relay_info;
 };
@@ -106,11 +102,50 @@ gabble_call_stream_init (GabbleCallStream *self)
       GABBLE_TYPE_CALL_STREAM, GabbleCallStreamPrivate);
 
   self->priv = priv;
-  priv->senders = g_hash_table_new (g_direct_hash, g_direct_equal);
 }
 
 static void gabble_call_stream_dispose (GObject *object);
 static void gabble_call_stream_finalize (GObject *object);
+
+static gboolean
+has_server_info (GabbleCallStream *self)
+{
+  /* extend this function when HasServerInfo gains more info to
+   * retrieve than just relay info */
+  return self->priv->got_relay_info;
+}
+
+static GPtrArray *
+get_stun_servers (GabbleCallStream *self)
+{
+  GPtrArray *arr;
+  GabbleConnection *connection;
+  gchar *stun_server;
+  guint stun_port;
+
+  arr = g_ptr_array_sized_new (1);
+
+  g_object_get (self->priv->content,
+      "connection", &connection,
+      NULL);
+
+  /* maybe one day we'll support multiple STUN servers */
+  if (gabble_jingle_factory_get_stun_server (
+          connection->jingle_factory, &stun_server, &stun_port))
+    {
+      GValueArray *va = tp_value_array_build (2,
+          G_TYPE_STRING, stun_server,
+          G_TYPE_UINT, stun_port,
+          G_TYPE_INVALID);
+
+      g_free (stun_server);
+      g_ptr_array_add (arr, va);
+    }
+
+  g_object_unref (connection);
+
+  return arr;
+}
 
 static void
 gabble_call_stream_get_property (GObject    *object,
@@ -123,12 +158,6 @@ gabble_call_stream_get_property (GObject    *object,
 
   switch (property_id)
     {
-      case PROP_CONNECTION:
-        g_value_set_object (value, priv->conn);
-        break;
-      case PROP_OBJECT_PATH:
-        g_value_set_string (value, priv->object_path);
-        break;
       case PROP_JINGLE_CONTENT:
         g_value_set_object (value, priv->content);
         break;
@@ -166,11 +195,11 @@ gabble_call_stream_get_property (GObject    *object,
           guint tptransport = G_MAXUINT;
           guint transport_mapping[][2] = {
               { JINGLE_TRANSPORT_GOOGLE_P2P,
-                GABBLE_STREAM_TRANSPORT_TYPE_GTALK_P2P },
+                TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P },
               { JINGLE_TRANSPORT_RAW_UDP,
-                GABBLE_STREAM_TRANSPORT_TYPE_RAW_UDP },
+                TPY_STREAM_TRANSPORT_TYPE_RAW_UDP },
               { JINGLE_TRANSPORT_ICE_UDP,
-                 GABBLE_STREAM_TRANSPORT_TYPE_ICE },
+                 TPY_STREAM_TRANSPORT_TYPE_ICE },
           };
 
           transport = gabble_jingle_content_get_transport_type (priv->content);
@@ -188,38 +217,9 @@ gabble_call_stream_get_property (GObject    *object,
 
           break;
         }
-      case PROP_SENDERS:
-        g_value_set_boxed (value, priv->senders);
-        break;
       case PROP_STUN_SERVERS:
         {
-          GPtrArray *arr;
-          GabbleConnection *connection;
-          gchar *stun_server;
-          guint stun_port;
-
-          arr = g_ptr_array_sized_new (1);
-
-          g_object_get (priv->content,
-              "connection", &connection,
-              NULL);
-
-          /* maybe one day we'll support multiple STUN servers */
-          if (gabble_jingle_factory_get_stun_server (
-                connection->jingle_factory, &stun_server, &stun_port))
-            {
-              GValueArray *va = tp_value_array_build (2,
-                  G_TYPE_STRING, stun_server,
-                  G_TYPE_UINT, stun_port,
-                  G_TYPE_INVALID);
-
-              g_free (stun_server);
-              g_ptr_array_add (arr, va);
-            }
-
-          g_object_unref (connection);
-
-          g_value_take_boxed (value, arr);
+          g_value_take_boxed (value, get_stun_servers (stream));
           break;
         }
       case PROP_RELAY_INFO:
@@ -235,9 +235,9 @@ gabble_call_stream_get_property (GObject    *object,
 
           break;
         }
-      case PROP_RETRIEVED_SERVER_INFO:
+      case PROP_HAS_SERVER_INFO:
         {
-          g_value_set_boolean (value, priv->got_relay_info);
+          g_value_set_boolean (value, has_server_info (stream));
           break;
         }
       default:
@@ -257,14 +257,6 @@ gabble_call_stream_set_property (GObject *object,
 
   switch (property_id)
     {
-      case PROP_CONNECTION:
-        priv->conn = g_value_get_object (value);
-        g_assert (priv->conn != NULL);
-        break;
-      case PROP_OBJECT_PATH:
-        g_free (priv->object_path);
-        priv->object_path = g_value_dup_string (value);
-        break;
       case PROP_JINGLE_CONTENT:
         priv->content = g_value_dup_object (value);
         break;
@@ -277,15 +269,16 @@ gabble_call_stream_set_property (GObject *object,
 static void
 maybe_emit_server_info_retrieved (GabbleCallStream *self)
 {
-  if (self->priv->got_relay_info)
-    gabble_svc_call_stream_interface_media_emit_server_info_retrieved (self);
+  if (has_server_info (self))
+    tpy_svc_call_stream_interface_media_emit_server_info_retrieved (self);
 }
 
 static void
 google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
-  GabbleCallStreamPrivate *priv = GABBLE_CALL_STREAM (user_data)->priv;
+  GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
+  GabbleCallStreamPrivate *priv = self->priv;
 
   priv->relay_info =
       g_boxed_copy (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, relays);
@@ -295,6 +288,9 @@ google_relay_session_cb (GPtrArray *relays,
       priv->got_relay_info = TRUE;
       maybe_emit_server_info_retrieved (user_data);
     }
+
+  tpy_svc_call_stream_interface_media_emit_relay_info_changed (
+      self, priv->relay_info);
 }
 
 static void
@@ -304,37 +300,53 @@ content_state_changed_cb (GabbleJingleContent *content,
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
 
-  call_stream_update_sender_states (self);
+  call_stream_update_member_states (self);
 }
 
 static void
-content_senders_changed_cb (GabbleJingleContent *content,
+content_remote_members_changed_cb (GabbleJingleContent *content,
     GParamSpec *spec,
     gpointer user_data)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
 
-  call_stream_update_sender_states (self);
+  call_stream_update_member_states (self);
+}
+
+static void
+jingle_factory_stun_server_changed_cb (GabbleJingleFactory *factory,
+    const gchar *stun_server,
+    guint stun_port,
+    GabbleCallStream *self)
+{
+  GPtrArray *stun_servers = get_stun_servers (self);
+
+  tpy_svc_call_stream_interface_media_emit_stun_servers_changed (
+      self, stun_servers);
+  g_ptr_array_unref (stun_servers);
 }
 
 static void
 gabble_call_stream_constructed (GObject *obj)
 {
-  GabbleCallStreamPrivate *priv;
-  TpDBusDaemon *bus;
+  GabbleCallStream *self = GABBLE_CALL_STREAM (obj);
+  GabbleBaseCallStream *base = (GabbleBaseCallStream *) self;
+  GabbleCallStreamPrivate *priv = self->priv;
+  GabbleConnection *conn;
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
+      (TpBaseConnection *) gabble_base_call_stream_get_connection (base));
   GabbleCallStreamEndpoint *endpoint;
   gchar *path;
   JingleTransportType transport;
 
-  priv = GABBLE_CALL_STREAM (obj)->priv;
+  if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
+    G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
 
-  /* register object on the bus */
-  DEBUG ("Registering %s", priv->object_path);
-  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) priv->conn);
-  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
+  conn = gabble_base_call_stream_get_connection (base);
 
   /* Currently we'll only have one endpoint we know right away */
-  path = g_strdup_printf ("%s/Endpoint", priv->object_path);
+  path = g_strdup_printf ("%s/Endpoint",
+      gabble_base_call_stream_get_object_path (base));
   endpoint = gabble_call_stream_endpoint_new (bus, path, priv->content);
   priv->endpoints = g_list_append (priv->endpoints, endpoint);
   g_free (path);
@@ -349,60 +361,32 @@ gabble_call_stream_constructed (GObject *obj)
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
       gabble_jingle_factory_create_google_relay_session (
-          priv->conn->jingle_factory, 2, google_relay_session_cb, obj);
+          gabble_base_call_stream_get_connection (base)->jingle_factory,
+          2, google_relay_session_cb, obj);
     }
   else
     {
       priv->got_relay_info = TRUE;
     }
 
-  call_stream_update_sender_states (GABBLE_CALL_STREAM (obj));
+  call_stream_update_member_states (GABBLE_CALL_STREAM (obj));
   gabble_signal_connect_weak (priv->content, "notify::state",
     G_CALLBACK (content_state_changed_cb), obj);
   gabble_signal_connect_weak (priv->content, "notify::senders",
-    G_CALLBACK (content_senders_changed_cb), obj);
-
-  if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
-    G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
-}
-
-static gboolean
-call_stream_sender_update_state (GabbleCallStream *self,
-    TpHandle contact,
-    GabbleSendingState state)
-{
-  GabbleCallStreamPrivate *priv = self->priv;
-  gpointer state_p = 0;
-  gboolean exists;
-
-  exists = g_hash_table_lookup_extended (priv->senders,
-    GUINT_TO_POINTER (contact),
-    NULL,
-    &state_p);
-
-  if (exists && GPOINTER_TO_UINT (state_p) == state)
-    return FALSE;
-
-  DEBUG ("Updating sender %d state: %d => %d", contact,
-    GPOINTER_TO_UINT (state_p), state);
-
-
-  g_hash_table_insert (priv->senders,
-    GUINT_TO_POINTER (contact),
-    GUINT_TO_POINTER (state));
-
-  return TRUE;
+    G_CALLBACK (content_remote_members_changed_cb), obj);
+  gabble_signal_connect_weak (conn->jingle_factory, "stun-server-changed",
+    G_CALLBACK (jingle_factory_stun_server_changed_cb), obj);
 }
 
 static void
-call_stream_update_sender_states (GabbleCallStream *self)
+call_stream_update_member_states (GabbleCallStream *self)
 {
+  GabbleBaseCallStream *base = GABBLE_BASE_CALL_STREAM (self);
   GabbleCallStreamPrivate *priv = self->priv;
   gboolean created_by_us;
   JingleContentState state;
-  GabbleSendingState local_state = 0;
-  GabbleSendingState remote_state = 0;
-  GHashTable *updates;
+  TpySendingState local_state = 0;
+  TpySendingState remote_state = 0;
 
   g_object_get (priv->content, "state", &state, NULL);
 
@@ -410,53 +394,28 @@ call_stream_update_sender_states (GabbleCallStream *self)
     return;
 
   created_by_us = gabble_jingle_content_is_created_by_us (priv->content);
-  updates = g_hash_table_new (g_direct_hash, g_direct_equal);
 
   DEBUG ("Created by us?: %d, State: %d", created_by_us, state);
 
   if (gabble_jingle_content_sending (priv->content))
     {
       if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        local_state = GABBLE_SENDING_STATE_SENDING;
+        local_state = TPY_SENDING_STATE_SENDING;
       else
-        local_state = GABBLE_SENDING_STATE_PENDING_SEND;
+        local_state = TPY_SENDING_STATE_PENDING_SEND;
     }
 
   if (gabble_jingle_content_receiving (priv->content))
     {
       if (created_by_us && state != JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        remote_state = GABBLE_SENDING_STATE_PENDING_SEND;
+        remote_state = TPY_SENDING_STATE_PENDING_SEND;
       else
-        remote_state = GABBLE_SENDING_STATE_SENDING;
+        remote_state = TPY_SENDING_STATE_SENDING;
     }
 
-  if (call_stream_sender_update_state (self,
-        TP_BASE_CONNECTION (priv->conn)->self_handle, local_state))
-    {
-      g_hash_table_insert (updates,
-        GUINT_TO_POINTER (TP_BASE_CONNECTION (priv->conn)->self_handle),
-        GUINT_TO_POINTER (local_state));
-    }
-
-  if (call_stream_sender_update_state (self,
-        priv->content->session->peer, remote_state))
-    {
-      g_hash_table_insert (updates,
-        GUINT_TO_POINTER (priv->content->session->peer),
-        GUINT_TO_POINTER (remote_state));
-    }
-
-  if (g_hash_table_size (updates) > 0)
-    {
-      GArray *empty = g_array_new (FALSE, TRUE, sizeof (TpHandle));
-
-      gabble_svc_call_stream_emit_senders_changed (self,
-        updates,
-        empty);
-      g_array_unref (empty);
-    }
-
-  g_hash_table_unref (updates);
+  gabble_base_call_stream_update_local_sending_state (base, local_state);
+  gabble_base_call_stream_remote_member_update_state (base,
+        priv->content->session->peer, remote_state);
 }
 
 
@@ -464,32 +423,21 @@ static void
 gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_stream_class);
+  GabbleBaseCallStreamClass *bcs_class =
+      GABBLE_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
-  static TpDBusPropertiesMixinPropImpl stream_props[] = {
-    { "Senders", "senders", NULL },
-    { NULL }
-  };
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
     { "Transport", "transport", NULL },
     { "LocalCandidates", "local-candidates", NULL },
     { "STUNServers", "stun-servers", NULL },
     { "RelayInfo", "relay-info", NULL },
-    { "RetrievedServerInfo", "retrieved-server-info", NULL },
+    { "HasServerInfo", "has-server-info", NULL },
     { "Endpoints", "endpoints", NULL },
     { NULL }
   };
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { GABBLE_IFACE_CALL_STREAM,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        stream_props,
-      },
-      { GABBLE_IFACE_CALL_STREAM_INTERFACE_MEDIA,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        stream_media_props,
-      },
-      { NULL }
+  static const gchar *interfaces[] = {
+      TPY_IFACE_CALL_STREAM_INTERFACE_MEDIA,
+      NULL
   };
 
   g_type_class_add_private (gabble_call_stream_class,
@@ -502,26 +450,6 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   object_class->finalize = gabble_call_stream_finalize;
   object_class->constructed = gabble_call_stream_constructed;
 
-  param_spec = g_param_spec_string ("object-path", "D-Bus object path",
-      "The D-Bus object path used for this "
-      "object on the bus.",
-      NULL,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_OBJECT_PATH, param_spec);
-
-  param_spec = g_param_spec_boxed ("senders", "Senders",
-      "Sender map",
-      GABBLE_HASH_TYPE_CONTACT_SENDING_STATE_MAP,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_SENDERS,
-      param_spec);
-
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that owns this call stream",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
   param_spec = g_param_spec_object ("jingle-content", "Jingle Content",
       "The Jingle Content related to this content object",
       GABBLE_TYPE_JINGLE_CONTENT,
@@ -531,7 +459,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 
   param_spec = g_param_spec_boxed ("local-candidates", "LocalCandidates",
       "List of local candidates",
-      GABBLE_ARRAY_TYPE_CANDIDATE_LIST,
+      TPY_ARRAY_TYPE_CANDIDATE_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_LOCAL_CANDIDATES,
       param_spec);
@@ -552,7 +480,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 
   param_spec = g_param_spec_boxed ("stun-servers", "STUNServers",
       "List of STUN servers",
-      GABBLE_ARRAY_TYPE_SOCKET_ADDRESS_IP_LIST,
+      TP_ARRAY_TYPE_SOCKET_ADDRESS_IP_LIST,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STUN_SERVERS,
       param_spec);
@@ -564,18 +492,22 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   g_object_class_install_property (object_class, PROP_RELAY_INFO,
       param_spec);
 
-  param_spec = g_param_spec_boolean ("retrieved-server-info",
-      "RetrievedServerInfo",
+  param_spec = g_param_spec_boolean ("has-server-info",
+      "HasServerInfo",
       "True if the server information about STUN and "
       "relay servers has been retrieved",
       FALSE,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_RETRIEVED_SERVER_INFO,
+  g_object_class_install_property (object_class, PROP_HAS_SERVER_INFO,
       param_spec);
 
-  gabble_call_stream_class->dbus_props_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleCallStreamClass, dbus_props_class));
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TPY_IFACE_QUARK_CALL_STREAM_INTERFACE_MEDIA,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      stream_media_props);
+
+  bcs_class->extra_interfaces = interfaces;
 }
 
 void
@@ -599,8 +531,6 @@ gabble_call_stream_dispose (GObject *object)
 
   tp_clear_object (&priv->content);
 
-  priv->conn = NULL;
-
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->dispose (object);
 }
@@ -611,11 +541,6 @@ gabble_call_stream_finalize (GObject *object)
   GabbleCallStream *self = GABBLE_CALL_STREAM (object);
   GabbleCallStreamPrivate *priv = self->priv;
 
-  /* free any data held directly by the object here */
-  g_free (priv->object_path);
-
-  g_hash_table_destroy (priv->senders);
-
   if (priv->relay_info != NULL)
     g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
 
@@ -623,7 +548,7 @@ gabble_call_stream_finalize (GObject *object)
 }
 
 static void
-gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
+gabble_call_stream_add_candidates (TpySvcCallStreamInterfaceMedia *iface,
     const GPtrArray *candidates,
     DBusGMethodInvocation *context)
 {
@@ -691,18 +616,18 @@ gabble_call_stream_add_candidates (GabbleSvcCallStreamInterfaceMedia *iface,
 
   gabble_jingle_content_add_candidates (priv->content, l);
 
-  gabble_svc_call_stream_interface_media_emit_local_candidates_added (self,
+  tpy_svc_call_stream_interface_media_emit_local_candidates_added (self,
       candidates);
 
-  gabble_svc_call_stream_interface_media_return_from_add_candidates (context);
+  tpy_svc_call_stream_interface_media_return_from_add_candidates (context);
 }
 
 static void
 gabble_call_stream_candidates_prepared (
-    GabbleSvcCallStreamInterfaceMedia *iface,
+    TpySvcCallStreamInterfaceMedia *iface,
     DBusGMethodInvocation *context)
 {
-  gabble_svc_call_stream_interface_media_return_from_candidates_prepared (
+  tpy_svc_call_stream_interface_media_return_from_candidates_prepared (
     context);
 }
 
@@ -711,47 +636,17 @@ gabble_call_stream_set_sending (GabbleCallStream *self,
     gboolean sending)
 {
   GabbleCallStreamPrivate *priv = self->priv;
-  guint self_handle = TP_BASE_CONNECTION (priv->conn)->self_handle;
-  gpointer state_p;
-  gboolean exists;
-  guint state;
+  GabbleBaseCallStream *base = GABBLE_BASE_CALL_STREAM (self);
+  TpySendingState state =
+      sending ? TPY_SENDING_STATE_SENDING : TPY_SENDING_STATE_NONE;
 
-  if (sending)
-    state = GABBLE_SENDING_STATE_SENDING;
-  else
-    state = GABBLE_SENDING_STATE_NONE;
-
-  exists = g_hash_table_lookup_extended (priv->senders,
-      GUINT_TO_POINTER (self_handle),
-      NULL,
-      &state_p);
-
-  if (!exists || state != GPOINTER_TO_UINT (state_p))
-    {
-      GHashTable *updates = g_hash_table_new (g_direct_hash, g_direct_equal);
-      GArray *empty = g_array_new (FALSE, TRUE, sizeof (TpHandle));
-
-      g_hash_table_insert (priv->senders,
-          GUINT_TO_POINTER (self_handle),
-          GUINT_TO_POINTER (state));
-
-      g_hash_table_insert (updates,
-          GUINT_TO_POINTER (self_handle),
-          GUINT_TO_POINTER (state));
-
-      gabble_svc_call_stream_emit_senders_changed (self,
-        updates,
-        empty);
-      g_array_unref (empty);
-      g_hash_table_unref (updates);
-
-      if (sending == (!exists || state_p == GABBLE_SENDING_STATE_NONE))
-        gabble_jingle_content_set_sending (priv->content, sending);
-    }
+  /* If this changes the state, update the content. */
+  if (gabble_base_call_stream_update_local_sending_state (base, state))
+    gabble_jingle_content_set_sending (priv->content, sending);
 }
 
 static void
-gabble_call_stream_set_sending_async (GabbleSvcCallStream *iface,
+gabble_call_stream_set_sending_async (TpySvcCallStream *iface,
     gboolean sending,
     DBusGMethodInvocation *context)
 {
@@ -759,16 +654,16 @@ gabble_call_stream_set_sending_async (GabbleSvcCallStream *iface,
 
   gabble_call_stream_set_sending (self, sending);
 
-  gabble_svc_call_stream_return_from_set_sending (context);
+  tpy_svc_call_stream_return_from_set_sending (context);
 }
 
 static void
 call_stream_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcCallStreamClass *klass =
-    (GabbleSvcCallStreamClass *) g_iface;
+  TpySvcCallStreamClass *klass =
+    (TpySvcCallStreamClass *) g_iface;
 
-#define IMPLEMENT(x, suffix) gabble_svc_call_stream_implement_##x (\
+#define IMPLEMENT(x, suffix) tpy_svc_call_stream_implement_##x (\
     klass, gabble_call_stream_##x##suffix)
   IMPLEMENT(set_sending, _async);
 #undef IMPLEMENT
@@ -777,37 +672,14 @@ call_stream_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 call_stream_media_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcCallStreamInterfaceMediaClass *klass =
-    (GabbleSvcCallStreamInterfaceMediaClass *) g_iface;
+  TpySvcCallStreamInterfaceMediaClass *klass =
+    (TpySvcCallStreamInterfaceMediaClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_call_stream_interface_media_implement_##x (\
+#define IMPLEMENT(x) tpy_svc_call_stream_interface_media_implement_##x (\
     klass, gabble_call_stream_##x)
   IMPLEMENT(add_candidates);
   IMPLEMENT(candidates_prepared);
 #undef IMPLEMENT
-}
-
-const gchar *
-gabble_call_stream_get_object_path (GabbleCallStream *stream)
-{
-  return stream->priv->object_path;
-}
-
-guint
-gabble_call_stream_get_local_sending_state (GabbleCallStream *self)
-{
-  GabbleCallStreamPrivate *priv = self->priv;
-  guint self_handle = TP_BASE_CONNECTION (priv->conn)->self_handle;
-  gpointer state_p;
-  gboolean exists;
-
-  exists = g_hash_table_lookup_extended (priv->senders,
-      GUINT_TO_POINTER (self_handle), NULL, &state_p);
-
-  if (exists)
-    return GPOINTER_TO_UINT (state_p);
-  else
-    return GABBLE_SENDING_STATE_NONE;
 }
 
 GabbleJingleContent *

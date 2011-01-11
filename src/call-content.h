@@ -23,6 +23,7 @@
 
 #include <glib-object.h>
 
+#include "base-call-content.h"
 #include "jingle-content.h"
 #include "call-member-content.h"
 
@@ -33,13 +34,11 @@ typedef struct _GabbleCallContentPrivate GabbleCallContentPrivate;
 typedef struct _GabbleCallContentClass GabbleCallContentClass;
 
 struct _GabbleCallContentClass {
-    GObjectClass parent_class;
-
-    TpDBusPropertiesMixinClass dbus_props_class;
+    GabbleBaseCallContentClass parent_class;
 };
 
 struct _GabbleCallContent {
-    GObject parent;
+    GabbleBaseCallContent parent;
 
     GabbleCallContentPrivate *priv;
 };
@@ -63,12 +62,10 @@ GType gabble_call_content_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
     GABBLE_TYPE_CALL_CONTENT, GabbleCallContentClass))
 
-const gchar *gabble_call_content_get_object_path (GabbleCallContent *content);
 void gabble_call_content_accept (GabbleCallContent *content);
-void gabble_call_content_deinit (GabbleCallContent *content);
-const gchar *gabble_call_content_get_name (GabbleCallContent *self);
 JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
 GList *gabble_call_content_get_local_codecs (GabbleCallContent *self);
+void gabble_call_content_new_offer (GabbleCallContent *self);
 
 void gabble_call_content_add_member_content (GabbleCallContent *self,
     GabbleCallMemberContent *content);

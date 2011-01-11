@@ -272,7 +272,7 @@ def test_call(q, bus, conn, stream,
             expected_stun_server, expected_stun_port)
 
     assertEquals(expected_relays, stream_props['RelayInfo'])
-    assertEquals(True, stream_props['RetrievedServerInfo'])
+    assertEquals(True, stream_props['HasServerInfo'])
 
 if __name__ == '__main__':
     # StreamedMedia tests

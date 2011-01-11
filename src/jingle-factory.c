@@ -32,6 +32,7 @@
 
 #include "connection.h"
 #include "debug.h"
+#include "gabble-signals-marshal.h"
 #include "jingle-share.h"
 #include "jingle-media-rtp.h"
 #include "jingle-session.h"
@@ -47,6 +48,7 @@ G_DEFINE_TYPE(GabbleJingleFactory, gabble_jingle_factory, G_TYPE_OBJECT);
 enum
 {
     NEW_SESSION,
+    STUN_SERVER_CHANGED,
     LAST_SIGNAL
 };
 
@@ -208,6 +210,9 @@ stun_server_resolved_cb (GObject *resolver,
       g_free (self->priv->stun_server);
       self->priv->stun_server = stun_server;
       self->priv->stun_port = data->stun_port;
+
+      g_signal_emit (self, signals[STUN_SERVER_CHANGED], 0,
+          stun_server, data->stun_port);
     }
 
 out:
@@ -585,6 +590,11 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
         G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+  signals[STUN_SERVER_CHANGED] = g_signal_new ("stun-server-changed",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL, gabble_marshal_VOID__STRING_UINT,
+      G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_UINT);
 }
 
 static void

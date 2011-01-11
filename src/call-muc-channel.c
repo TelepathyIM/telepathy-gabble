@@ -24,6 +24,10 @@
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
+
+#include <telepathy-yell/enums.h>
+#include <telepathy-yell/interfaces.h>
+
 #include <wocky/wocky-muc.h>
 
 #include "muc-channel.h"
@@ -49,7 +53,7 @@ static void call_muc_channel_hangup (
     const gchar *detailed_reason,
     const gchar *message);
 
-static void call_muc_channel_close (GabbleBaseCallChannel *base);
+static void call_muc_channel_close (TpBaseChannel *base);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   gabble_call_muc_channel, GABBLE_TYPE_BASE_CALL_CHANNEL,
@@ -202,6 +206,8 @@ gabble_call_muc_channel_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_muc_channel_class);
   GabbleBaseCallChannelClass *base_call_class =
     GABBLE_BASE_CALL_CHANNEL_CLASS (gabble_call_muc_channel_class);
+  TpBaseChannelClass *base_channel_class =
+      TP_BASE_CHANNEL_CLASS (gabble_call_muc_channel_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_call_muc_channel_class,
@@ -214,11 +220,12 @@ gabble_call_muc_channel_class_init (
   object_class->dispose = gabble_call_muc_channel_dispose;
   object_class->finalize = gabble_call_muc_channel_finalize;
 
-  base_call_class->handle_type = TP_HANDLE_TYPE_ROOM;
+  base_channel_class->target_handle_type = TP_HANDLE_TYPE_ROOM;
+  base_channel_class->close = call_muc_channel_close;
+
   base_call_class->accept = call_muc_channel_accept;
   base_call_class->add_content = call_muc_channel_add_content;
   base_call_class->hangup = call_muc_channel_hangup;
-  base_call_class->close = call_muc_channel_close;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",
@@ -350,7 +357,7 @@ call_muc_channel_open_new_streams (GabbleCallMucChannel *self)
       /* At the point where we opened the sessions we're accepted
          in the call */
       gabble_base_call_channel_set_state ( GABBLE_BASE_CALL_CHANNEL (self),
-          GABBLE_CALL_STATE_ACCEPTED);
+          TPY_CALL_STATE_ACCEPTED);
     }
 
   priv->sessions_opened = TRUE;
@@ -412,7 +419,8 @@ call_muc_channel_member_content_added_cb (GabbleCallMember *member,
       JingleMediaType cmtype;
 
       ccontent = GABBLE_CALL_CONTENT (l->data);
-      cname = gabble_call_content_get_name (ccontent);
+      cname = gabble_base_call_content_get_name (
+          GABBLE_BASE_CALL_CONTENT (ccontent));
       cmtype = gabble_call_content_get_media_type (ccontent);
 
       if (!tp_strdiff (cname, name) && mtype == cmtype)
@@ -421,7 +429,7 @@ call_muc_channel_member_content_added_cb (GabbleCallMember *member,
 
   ccontent = gabble_base_call_channel_add_content (
       GABBLE_BASE_CALL_CHANNEL (self), name, mtype,
-      self->priv->initialized ? GABBLE_CALL_CONTENT_DISPOSITION_INITIAL : 0);
+      self->priv->initialized ? TPY_CALL_CONTENT_DISPOSITION_INITIAL : 0);
   call_muc_channel_setup_content (self, ccontent);
 
 have_content:
@@ -511,7 +519,8 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
       GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
     {
       GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
-      const gchar *name = gabble_call_content_get_name (content);
+      const gchar *name = gabble_base_call_content_get_name (
+          GABBLE_BASE_CALL_CONTENT (content));
       WockyNode *description;
       GList *codecs;
       JingleMediaType mtype = gabble_call_content_get_media_type (content);
@@ -666,12 +675,11 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
   WockyStanza *stanza)
 {
   GabbleCallMucChannelPrivate *priv = self->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
+      TP_HANDLE_TYPE_CONTACT);
   GabbleCallMember *call_member;
   TpHandle handle;
-  TpHandleRepoIface *contact_repo =
-    tp_base_connection_get_handles (
-      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
-        TP_HANDLE_TYPE_CONTACT);
   WockyNode *muji;
 
   muji = wocky_node_get_child_ns (
@@ -756,10 +764,9 @@ call_muc_channel_left_cb (GObject *source,
   gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
-  TpHandleRepoIface *contact_repo =
-    tp_base_connection_get_handles (
-      (TpBaseConnection *) GABBLE_BASE_CALL_CHANNEL (self)->conn,
-        TP_HANDLE_TYPE_CONTACT);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
+      TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   GabbleCallMember *call_member;
 
@@ -839,7 +846,7 @@ call_muc_channel_own_presence_cb (WockyMuc *wmuc,
 
   /* If our presence didn't have a muji stanza or had an older version we don't
    * care about it */
-  if (muji == NULL ||
+  if (muji == NULL || priv->muji == NULL ||
       !wocky_node_equal (muji, wocky_node_tree_get_top_node (priv->muji)))
     return;
 
@@ -897,7 +904,7 @@ call_muc_channel_ready (GabbleCallMucChannel *self)
       G_OBJECT (self));
 
   priv->initialized = TRUE;
-  gabble_base_call_channel_register (GABBLE_BASE_CALL_CHANNEL (self));
+  tp_base_channel_register (TP_BASE_CHANNEL (self));
 }
 
 static void
@@ -944,6 +951,12 @@ call_muc_channel_init_async (GAsyncInitable *initable,
   GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
   GabbleCallContent *content;
   GSimpleAsyncResult *result;
+  gchar *initial_audio_name, *initial_video_name;
+
+  g_object_get (self,
+      "initial-audio-name", &initial_audio_name,
+      "initial-video-name", &initial_video_name,
+      NULL);
 
   result = g_simple_async_result_new (G_OBJECT (initable),
       callback, user_data, NULL);
@@ -951,18 +964,21 @@ call_muc_channel_init_async (GAsyncInitable *initable,
   if (base->initial_audio)
     {
       content = gabble_base_call_channel_add_content (base,
-        "Audio", JINGLE_MEDIA_TYPE_AUDIO,
-        GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+        initial_audio_name, JINGLE_MEDIA_TYPE_AUDIO,
+        TPY_CALL_CONTENT_DISPOSITION_INITIAL);
       call_muc_channel_setup_content (self, content);
     }
 
   if (base->initial_video)
     {
       content = gabble_base_call_channel_add_content (base,
-        "Video", JINGLE_MEDIA_TYPE_VIDEO,
-        GABBLE_CALL_CONTENT_DISPOSITION_INITIAL);
+        initial_video_name, JINGLE_MEDIA_TYPE_VIDEO,
+        TPY_CALL_CONTENT_DISPOSITION_INITIAL);
       call_muc_channel_setup_content (self, content);
     }
+
+  g_free (initial_audio_name);
+  g_free (initial_video_name);
 
   if (_gabble_muc_channel_is_ready (priv->muc))
     {
@@ -1016,9 +1032,9 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
   if (request != NULL)
     {
       initial_audio = tp_asv_get_boolean (request,
-        GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
+          TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
       initial_video = tp_asv_get_boolean (request,
-        GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
+          TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
     }
 
   g_async_initable_new_async (GABBLE_TYPE_CALL_MUC_CHANNEL,
@@ -1098,7 +1114,7 @@ call_muc_channel_add_content (GabbleBaseCallChannel *base,
 
   content = gabble_base_call_channel_add_content (base,
         name, type,
-        GABBLE_CALL_CONTENT_DISPOSITION_NONE);
+        TPY_CALL_CONTENT_DISPOSITION_NONE);
 
   call_muc_channel_setup_content (self, content);
 
@@ -1129,7 +1145,9 @@ call_muc_channel_hangup (GabbleBaseCallChannel *base,
 }
 
 static void
-call_muc_channel_close (GabbleBaseCallChannel *base)
+call_muc_channel_close (TpBaseChannel *base)
 {
   call_muc_channel_leave (GABBLE_CALL_MUC_CHANNEL (base));
+
+  TP_BASE_CHANNEL_CLASS (gabble_call_muc_channel_parent_class)->close (base);
 }

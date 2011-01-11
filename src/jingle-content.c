@@ -1352,3 +1352,31 @@ gabble_jingle_content_set_sending (GabbleJingleContent *self,
   else
     gabble_jingle_content_change_direction (self, senders);
 }
+
+JingleMediaType
+jingle_media_type_from_tp (TpMediaStreamType type)
+{
+  switch (type)
+    {
+      case TP_MEDIA_STREAM_TYPE_AUDIO:
+        return JINGLE_MEDIA_TYPE_AUDIO;
+      case TP_MEDIA_STREAM_TYPE_VIDEO:
+        return JINGLE_MEDIA_TYPE_VIDEO;
+      default:
+        g_return_val_if_reached (JINGLE_MEDIA_TYPE_NONE);
+    }
+}
+
+TpMediaStreamType
+jingle_media_type_to_tp (JingleMediaType type)
+{
+  switch (type)
+    {
+      case JINGLE_MEDIA_TYPE_AUDIO:
+        return TP_MEDIA_STREAM_TYPE_AUDIO;
+      case JINGLE_MEDIA_TYPE_VIDEO:
+        return TP_MEDIA_STREAM_TYPE_VIDEO;
+      default:
+        g_return_val_if_reached (TP_MEDIA_STREAM_TYPE_AUDIO);
+    }
+}

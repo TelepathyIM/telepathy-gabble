@@ -37,8 +37,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "extensions/extensions.h"
-
 #include "connection.h"
 #include "debug.h"
 #include "jingle-content.h"

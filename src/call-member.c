@@ -58,10 +58,8 @@ struct _GabbleCallMemberPrivate
   TpHandle target;
 
   GabbleBaseCallChannel *call;
-  GabbleCallMemberFlags flags;
+  TpyCallMemberFlags flags;
   GabbleJingleSession *session;
-
-  GabbleConnection *connection;
 
   GList *contents;
   gchar *transport_ns;
@@ -96,7 +94,7 @@ gabble_call_member_get_property (GObject    *object,
   switch (property_id)
     {
       case PROP_CALL:
-        g_value_set_object (value, priv->connection);
+        g_value_set_object (value, gabble_call_member_get_connection (self));
         break;
       case PROP_SESSION:
         g_value_set_object (value, priv->session);
@@ -248,13 +246,13 @@ remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
 {
   GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
   GabbleCallMemberPrivate *priv = self->priv;
-  GabbleCallMemberFlags newflags = 0;
+  TpyCallMemberFlags newflags = 0;
 
   if (gabble_jingle_session_get_remote_ringing (session))
-    newflags |= GABBLE_CALL_MEMBER_FLAG_RINGING;
+    newflags |= TPY_CALL_MEMBER_FLAG_RINGING;
 
   if (gabble_jingle_session_get_remote_hold (session))
-    newflags |= GABBLE_CALL_MEMBER_FLAG_HELD;
+    newflags |= TPY_CALL_MEMBER_FLAG_HELD;
 
   if (priv->flags == newflags)
     return;
@@ -387,7 +385,7 @@ gabble_call_member_get_session (GabbleCallMember *self)
   return self->priv->session;
 }
 
-GabbleCallMemberFlags
+TpyCallMemberFlags
 gabble_call_member_get_flags (GabbleCallMember *self)
 {
   return self->priv->flags;
@@ -460,7 +458,7 @@ gabble_call_member_create_content (GabbleCallMember *self,
   else
     DEBUG ("existing call, using bare JID");
 
-  content_ns = jingle_pick_best_content_type (priv->call->conn,
+  content_ns = jingle_pick_best_content_type (gabble_call_member_get_connection (self),
     priv->target,
     peer_resource, mtype);
 
@@ -505,14 +503,14 @@ gabble_call_member_open_session (GabbleCallMember *self,
     GError **error)
 {
   GabbleCallMemberPrivate *priv = self->priv;
+  GabbleConnection *conn = gabble_call_member_get_connection (self);
   GabbleJingleSession *session;
   gchar *jid;
 
-  jid = gabble_peer_to_jid (priv->call->conn, priv->target, NULL);
+  jid = gabble_peer_to_jid (conn, priv->target, NULL);
 
-  session = gabble_jingle_factory_create_session (
-        priv->call->conn->jingle_factory,
-        priv->target, jid, FALSE);
+  session = gabble_jingle_factory_create_session (conn->jingle_factory,
+      priv->target, jid, FALSE);
   DEBUG ("Created a jingle session: %p", session);
 
   g_object_set (session, "dialect", JINGLE_DIALECT_V032, NULL);
@@ -533,6 +531,8 @@ gabble_call_member_start_session (GabbleCallMember *self,
     GError **error)
 {
   GabbleCallMemberPrivate *priv = self->priv;
+  TpBaseChannel *base_channel = TP_BASE_CHANNEL (priv->call);
+  TpHandle target = tp_base_channel_get_target_handle (base_channel);
   const gchar *resource;
   JingleDialect dialect;
   gchar *jid;
@@ -541,19 +541,19 @@ gabble_call_member_start_session (GabbleCallMember *self,
 
   /* FIXME might need to wait on capabilities, also don't need transport
    * and dialect already */
-  if (!jingle_pick_best_resource (priv->call->conn,
-      priv->call->target, audio_name != NULL, video_name != NULL,
-      &transport, &dialect, &resource))
+  if (!jingle_pick_best_resource (gabble_call_member_get_connection (self),
+          target, audio_name != NULL, video_name != NULL,
+          &transport, &dialect, &resource))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
         "member does not have the desired audio/video capabilities");
       return FALSE;
     }
 
-  jid = gabble_peer_to_jid (priv->call->conn, priv->call->target, resource);
+  jid = gabble_peer_to_jid (gabble_call_member_get_connection (self), target, resource);
 
   session = gabble_jingle_factory_create_session (
-        priv->call->conn->jingle_factory, priv->call->target, jid, FALSE);
+        gabble_call_member_get_connection (self)->jingle_factory, target, jid, FALSE);
   g_free (jid);
 
   gabble_call_member_set_session (self, session);
@@ -575,7 +575,9 @@ gabble_call_member_start_session (GabbleCallMember *self,
 GabbleConnection *
 gabble_call_member_get_connection (GabbleCallMember *self)
 {
-  return self->priv->call->conn;
+  TpBaseChannel *base_chan = TP_BASE_CHANNEL (self->priv->call);
+
+  return GABBLE_CONNECTION (tp_base_channel_get_connection (base_chan));
 }
 
 const gchar *

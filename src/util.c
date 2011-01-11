@@ -34,7 +34,7 @@
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/dbus.h>
 
-#include <extensions/extensions.h>
+#include <telepathy-yell/gtypes.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 
@@ -1311,7 +1311,7 @@ gabble_call_candidates_to_array (GList *candidates)
             G_TYPE_UINT, cand->component,
             G_TYPE_STRING, cand->address,
             G_TYPE_UINT, cand->port,
-            GABBLE_HASH_TYPE_CANDIDATE_INFO, info,
+            TPY_HASH_TYPE_CANDIDATE_INFO, info,
             G_TYPE_INVALID);
 
         g_ptr_array_add (arr, a);

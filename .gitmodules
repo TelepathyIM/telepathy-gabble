@@ -1,3 +1,6 @@
 [submodule "lib/ext/wocky"]
 	path = lib/ext/wocky
 	url = git://git.collabora.co.uk/git/wocky.git
+[submodule "lib/ext/telepathy-yell"]
+	path = lib/ext/telepathy-yell
+	url = git://git.collabora.co.uk/git/telepathy-yell.git

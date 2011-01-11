@@ -32,6 +32,8 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
+#include <telepathy-yell/interfaces.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
 #include "caps-channel-manager.h"
@@ -1164,7 +1166,7 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
 
   /* Muc Channel.Type.Call */
   g_value_set_static_string (channel_type_value,
-      GABBLE_IFACE_CHANNEL_TYPE_CALL);
+      TPY_IFACE_CHANNEL_TYPE_CALL);
   func (type, table,
       gabble_media_factory_call_channel_allowed_properties (),
       user_data);
@@ -1706,9 +1708,9 @@ handle_call_channel_request (GabbleMucFactory *self,
     return FALSE;
 
   initial_audio = tp_asv_get_boolean (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
+      TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
   initial_video = tp_asv_get_boolean (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
+      TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
 
   if (!initial_audio && !initial_video)
     {
@@ -1792,7 +1794,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE) &&
-      tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_CALL))
+      tp_strdiff (channel_type, TPY_IFACE_CHANNEL_TYPE_CALL))
     return FALSE;
 
   /* validity already checked by TpBaseConnection */
@@ -1824,7 +1826,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
           request_properties, require_new, handle, &error))
         return TRUE;
     }
-  else if (!tp_strdiff (channel_type, GABBLE_IFACE_CHANNEL_TYPE_CALL))
+  else if (!tp_strdiff (channel_type, TPY_IFACE_CHANNEL_TYPE_CALL))
     {
       if (handle_call_channel_request (self, request_token,
           request_properties, require_new, handle, &error))

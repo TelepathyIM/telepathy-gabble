@@ -16,16 +16,21 @@ fi
 
 autoreconf -i -f
 
-# Fetch Wocky if needed
-if test ! -f lib/ext/wocky/autogen.sh;
+# Fetch submodules if needed
+if test ! -f lib/ext/wocky/autogen.sh -o ! -f lib/ext/telepathy-yell/autogen.sh;
 then
-  echo "+ Setting up Wocky submodule"
+  echo "+ Setting up submodules"
   git submodule init
 fi
 git submodule update
 
 # launch Wocky's autogen.sh
 cd lib/ext/wocky
+sh autogen.sh --no-configure
+cd ../../..
+
+# launch tp-yell's autogen.sh
+cd lib/ext/telepathy-yell
 sh autogen.sh --no-configure
 cd ../../..
 

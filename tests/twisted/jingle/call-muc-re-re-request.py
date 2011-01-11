@@ -24,7 +24,14 @@ def run_cancel_test(q, bus, conn, stream):
 
         content = bus.get_object (conn.bus_name, contents[0])
         codecs = jt.get_call_audio_codecs_dbus()
-        content.SetCodecs(codecs)
+
+        # Accept codec offer
+        props = content.GetAll(cs.CALL_CONTENT_IFACE_MEDIA,
+            dbus_interface=dbus.PROPERTIES_IFACE)
+        offer = bus.get_object (conn.bus_name, props["CodecOffer"][0])
+        offer.Accept(codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
+
+        # Accept the channel
         channel.Accept()
 
         e = q.expect('stream-presence', to = muc + "/test")

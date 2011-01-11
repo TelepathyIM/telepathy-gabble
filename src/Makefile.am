@@ -19,6 +19,10 @@ libgabble_convenience_la_SOURCES = \
     base64.c \
     base-call-channel.h \
     base-call-channel.c \
+    base-call-content.h \
+    base-call-content.c \
+    base-call-stream.h \
+    base-call-stream.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \
@@ -33,8 +37,8 @@ libgabble_convenience_la_SOURCES = \
     bytestream-socks5.c \
     call-content.h \
     call-content.c \
-    call-content-codecoffer.h \
-    call-content-codecoffer.c \
+    call-content-codec-offer.h \
+    call-content-codec-offer.c \
     call-channel.h \
     call-channel.c \
     call-muc-channel.h \
@@ -227,13 +231,14 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
 	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
 	    @SOUP_CFLAGS@ @NICE_CFLAGS@ @GMODULE_CFLAGS@ \
-	    @SQLITE_CFLAGS@ \
+	    @SQLITE_CFLAGS@ @TP_YELL_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
 	    -DG_LOG_DOMAIN=\"gabble\" \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@ \
-	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@ @SQLITE_LIBS@
+	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@ @SQLITE_LIBS@ \
+	    @TP_YELL_LIBS@
 
 # build gibber first
 all: gibber

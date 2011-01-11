@@ -26,16 +26,17 @@
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/util.h>
 
 #include <telepathy-yell/enums.h>
 #include <telepathy-yell/gtypes.h>
 #include <telepathy-yell/interfaces.h>
 #include <telepathy-yell/svc-call.h>
+#include <telepathy-yell/call-stream-endpoint.h>
 
 #include <telepathy-yell/base-call-stream.h>
 
 #include "call-stream.h"
-#include "call-stream-endpoint.h"
 #include "connection.h"
 #include "jingle-session.h"
 #include "jingle-content.h"
@@ -181,10 +182,10 @@ gabble_call_stream_get_property (GObject    *object,
 
           for (l = priv->endpoints; l != NULL; l = g_list_next (l))
             {
-              GabbleCallStreamEndpoint *e =
-                GABBLE_CALL_STREAM_ENDPOINT (l->data);
+              TpyCallStreamEndpoint *e =
+                TPY_CALL_STREAM_ENDPOINT (l->data);
               g_ptr_array_add (arr,
-                g_strdup (gabble_call_stream_endpoint_get_object_path (e)));
+                g_strdup (tpy_call_stream_endpoint_get_object_path (e)));
             }
 
           g_value_take_boxed (value, arr);
@@ -328,6 +329,82 @@ jingle_factory_stun_server_changed_cb (GabbleJingleFactory *factory,
   g_ptr_array_unref (stun_servers);
 }
 
+
+static void
+_new_candidates_cb (
+    GabbleJingleContent *content,
+    GList *candidates,
+    TpyCallStreamEndpoint *endpoint)
+{
+  GPtrArray *tp_candidates;
+
+  if (candidates == NULL)
+    return;
+
+  tp_candidates = gabble_call_candidates_to_array (candidates);
+  tpy_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
+  g_boxed_free (TPY_ARRAY_TYPE_CANDIDATE_LIST, tp_candidates);
+}
+
+static void
+_stream_state_changed_cb (
+    TpyCallStreamEndpoint *endpoint,
+    GParamSpec *spec,
+    GabbleJingleContent *content)
+{
+  TpMediaStreamState state = 0;
+
+  g_object_get (endpoint, "stream-state", &state, NULL);
+  gabble_jingle_content_set_transport_state (content,
+    state);
+}
+
+static TpyCallStreamEndpoint *
+_hook_up_endpoint (GabbleCallStream *self,
+    const gchar *path,
+    GabbleJingleContent *content)
+{
+  TpyBaseCallStream *base = (TpyBaseCallStream *) self;
+  TpBaseConnection *conn = tpy_base_call_stream_get_connection (base);
+  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (conn);
+  TpyCallStreamEndpoint *endpoint;
+  TpyStreamTransportType type = 0;
+  GPtrArray *tp_candidates;
+  GList *candidates;
+
+  switch (gabble_jingle_content_get_transport_type (content))
+    {
+    case JINGLE_TRANSPORT_GOOGLE_P2P:
+      type = TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P;
+      break;
+    case JINGLE_TRANSPORT_RAW_UDP:
+      type = TPY_STREAM_TRANSPORT_TYPE_RAW_UDP;
+      break;
+    case JINGLE_TRANSPORT_ICE_UDP:
+      type = TPY_STREAM_TRANSPORT_TYPE_ICE;
+      break;
+    case JINGLE_TRANSPORT_UNKNOWN:
+    default:
+      g_assert_not_reached ();
+    }
+
+  endpoint = tpy_call_stream_endpoint_new (bus, path, type);
+
+  candidates = gabble_jingle_content_get_remote_candidates (content);
+  tp_candidates = gabble_call_candidates_to_array (candidates);
+  tpy_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
+  g_boxed_free (TPY_ARRAY_TYPE_CANDIDATE_LIST, tp_candidates);
+
+  tp_g_signal_connect_object (content, "new-candidates",
+      G_CALLBACK (_new_candidates_cb), endpoint, 0);
+
+  tp_g_signal_connect_object (endpoint, "notify::stream-state",
+      G_CALLBACK(_stream_state_changed_cb), content, 0);
+
+  return endpoint;
+}
+
+
 static void
 gabble_call_stream_constructed (GObject *obj)
 {
@@ -335,9 +412,7 @@ gabble_call_stream_constructed (GObject *obj)
   TpyBaseCallStream *base = (TpyBaseCallStream *) self;
   GabbleCallStreamPrivate *priv = self->priv;
   GabbleConnection *conn;
-  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
-      (TpBaseConnection *) tpy_base_call_stream_get_connection (base));
-  GabbleCallStreamEndpoint *endpoint;
+  TpyCallStreamEndpoint *endpoint;
   gchar *path;
   JingleTransportType transport;
 
@@ -349,7 +424,7 @@ gabble_call_stream_constructed (GObject *obj)
   /* Currently we'll only have one endpoint we know right away */
   path = g_strdup_printf ("%s/Endpoint",
       tpy_base_call_stream_get_object_path (base));
-  endpoint = gabble_call_stream_endpoint_new (bus, path, priv->content);
+  endpoint = _hook_up_endpoint (self, path, priv->content);
   priv->endpoints = g_list_append (priv->endpoints, endpoint);
   g_free (path);
 

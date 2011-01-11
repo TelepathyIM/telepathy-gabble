@@ -43,8 +43,6 @@ libgabble_convenience_la_SOURCES = \
     call-member-content.c \
     call-stream.h \
     call-stream.c \
-    call-stream-endpoint.h \
-    call-stream-endpoint.c \
     $(top_srcdir)/gabble/capabilities-set.h \
     capabilities.h \
     capabilities.c \

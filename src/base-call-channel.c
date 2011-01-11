@@ -62,20 +62,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallChannel, gabble_base_call_channel,
         call_iface_init)
   G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DTMF,
       dtmf_iface_init);
-
-#if 0
-=======
-  G_TYPE_OBJECT,
-  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-  G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_CALL,
-        call_iface_init);
-  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-    tp_dbus_properties_mixin_iface_init);
-  G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
-  G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
-
->>>>>>> master
-#endif
 );
 
 static const gchar *gabble_base_call_channel_interfaces[] = {

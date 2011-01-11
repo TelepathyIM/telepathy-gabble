@@ -22,6 +22,7 @@ TWISTED_TESTS = \
 	muc/conference.py \
 	muc/chat-states.py \
 	muc/name-conflict.py \
+	muc/presence-before-closing.py \
 	muc/renamed.py \
 	muc/roomlist.py \
 	muc/scrollback.py \

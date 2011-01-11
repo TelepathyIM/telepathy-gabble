@@ -16,10 +16,11 @@ TWISTED_TESTS = \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \
+	client-types.py \
 	cm/protocol.py \
-	device-idleness.py \
 	gateways.py \
 	muc/conference.py \
+	muc/chat-states.py \
 	muc/name-conflict.py \
 	muc/renamed.py \
 	muc/roomlist.py \
@@ -39,6 +40,7 @@ TWISTED_TESTS = \
 	olpc/test-olpc-set-props-preload.py \
 	olpc/change-notifications.py \
 	pep-support.py \
+	power-save.py \
 	presence/decloak.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
@@ -47,6 +49,7 @@ TWISTED_TESTS = \
 	presence/presence.py \
 	presence/plugins.py \
 	presence/set-idempotence.py \
+	presence/shared-status.py \
 	roster/authorize.py \
 	roster/edit-before-roster.py \
 	roster/ensure.py \
@@ -61,9 +64,11 @@ TWISTED_TESTS = \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
 	sasl/abort.py \
+	sasl/close.py \
 	sasl/jabber_auth.py \
 	sasl/plain.py \
 	sasl/complex.py \
+	sasl/telepathy-password.py \
 	search/ceci-nest-pas-un-serveur.py \
 	search/extended.py \
 	search/no-server-property.py \
@@ -104,6 +109,7 @@ TWISTED_TUBE_TESTS = \
 	$(NULL)
 
 TWISTED_VCARD_TESTS = \
+	vcard/disconnect-during-pep.py \
 	vcard/get-contact-info.py \
 	vcard/item-not-found.py \
 	vcard/overlapping-sets.py \
@@ -132,11 +138,14 @@ TWISTED_JINGLE_TESTS = \
 	jingle/accept-extra-stream.py \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
+	jingle/call-dtmf.py \
 	jingle/call-muc.py \
 	jingle/call-muc-cancel.py \
 	jingle/call-muc-re-re-request.py \
 	jingle/call-state.py \
 	jingle/decloak-peer.py \
+	jingle/dtmf.py \
+	jingle/dtmf-no-audio.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
@@ -145,12 +154,15 @@ TWISTED_JINGLE_TESTS = \
 	jingle/initial-audio-video.py \
 	jingle/misuse.py \
 	jingle/stun-server.py \
+	jingle/transport-info-parsing.py \
 	jingle/outgoing-basics.py \
 	jingle/outgoing-ensure.py \
 	jingle/outgoing-many-streams.py \
 	jingle/payload-types.py \
 	jingle/preload-caps-crash.py \
 	jingle/session-id-collision.py \
+	jingle/stream-errors-on-terminate.py \
+	jingle/stream-errors-on-content-reject.py \
 	jingle/stream-handler-error.py \
 	jingle/test-content-adding-removal.py \
 	jingle/test-description-info.py \
@@ -233,16 +245,21 @@ check-twisted:
         else \
 	  sleep=$(CHECK_TWISTED_SLEEP); \
 	fi; \
+	failed=0; \
 	sh $(srcdir)/tools/with-session-bus.sh \
 		--sleep=$$sleep \
 		--config-file=tools/tmp-session-bus.conf \
 		-- $(MAKE) check-TESTS \
 		TESTS="$(TWISTED_TESTS)" \
-		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) $(TEST_PYTHON) -u"
-	@if test -e tools/core; then\
-		echo "Core dump exists: tools/core";\
+		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) $(TEST_PYTHON) -u" || \
+		failed=1; \
+	if test -e tools/core; then\
+		echo -e "\033[0;31;1mCore dump exists: tools/core\033[0m";\
 		exit 1;\
-	fi
+	fi; \
+	if test $$failed = 1; then\
+		exit 1;\
+	fi;
 
 if ENABLE_DEBUG
 DEBUGGING_PYBOOL = True
@@ -262,12 +279,6 @@ else
 CHANNEL_TYPE_CALL_ENABLED_PYBOOL = False
 endif
 
-if HAVE_MCE
-HAVE_MCE_PYBOOL = True
-else
-HAVE_MCE_PYBOOL = False
-endif
-
 config.py: Makefile
 	$(AM_V_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
@@ -275,7 +286,6 @@ config.py: Makefile
 		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
 		echo "PLUGINS_ENABLED = $(PLUGINS_ENABLED_PYBOOL)"; \
 		echo "CHANNEL_TYPE_CALL_ENABLED = $(CHANNEL_TYPE_CALL_ENABLED_PYBOOL)"; \
-		echo "HAVE_MCE = $(HAVE_MCE_PYBOOL)"; \
 	} > $@
 
 BUILT_SOURCES = config.py

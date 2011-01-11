@@ -1,7 +1,184 @@
-telepathy-gabble 0.11.0 (UNRELEASED)
+telepathy-gabble 0.11.6 (UNRELEASED)
 ====================================
 
-…
+Fixes:
+
+telepathy-gabble 0.11.5 (2011-01-10)
+====================================
+
+Fixes:
+
+• Support for Google Talk's google:queue extension now works against Google's
+  server again. This regressed in 0.11.1, which changed gabble to send iq gets
+  rather than iq sets. (wjt)
+• Fix crash caused by timing out items in the iq pipeline before sending
+  them out. (sjoerd)
+• Correctly parse jingle transport-info message that refer to multiple
+  contents. (sjoerd)
+
+• Updated Wocky:
+
+  » Fix a bug in WockyHeartbeatSource which caused criticals when it was
+    destroyed. (wjt)
+  » Fix parsing of chat state messages in MUCs. (wjt)
+
+telepathy-gabble 0.11.4 (2010-12-14)
+====================================
+
+Potentially-incompatible changes:
+
+• Following telepathy-spec 0.21.5, the message-token field in message headers
+  is no longer guaranteed to be globally-unique. This is known to be
+  problematic for rtcom-event-logger, as used in Maemo 5.
+
+Dependencies:
+
+• telepathy-glib ≥ 0.13.9 is now required
+
+Enhancements:
+
+• Implement Protocol.AuthenticationTypes (jonny)
+
+• Improve error reporting in Group and StreamedMedia channels (eeejay)
+
+Fixes:
+
+• fd.o #29147: you will no longer get the scrollback from MUCs hosted by
+  M-Link (and possibly other servers) when you change your presence
+  (wjt)
+
+• fd.o #32278: fix an assertion failure when accepting X-TELEPATHY-PASSWORD
+  authentication and immediately closing the channel (jonny)
+
+• Make the regression tests pass with telepathy-glib ≥ 0.13.8 (smcv)
+
+• Fix the build without system CA certificates (ptlo)
+
+telepathy-gabble 0.11.3 (2010-11-30)
+====================================
+
+The “Hey, I'm so desperately waiting for telepathy-gablle 0.11 that I
+can hardly eat.” release.
+
+Dependencies:
+
+• telepathy-glib >= 0.13.7 is now required.
+
+Enhancements:
+
+• fd.o #31106: add Protocol.Interface.Presence (vivek)
+
+• fd.o #31874: implement and refactor undrafted SASL interface (smcv)
+
+Fixes:
+
+• fd.o #31998: relax assertions about how fast
+  AddMembers/RemoveMembers succeed (smcv)
+
+telepathy-gabble 0.11.2 (2010-11-22)
+====================================
+
+The “Please enjoy this refreshing beverage” release.
+
+Fixes:
+
+• fd.o #31412: fix crashes during disconnection if a PEP alias request is
+  in-flight (smcv)
+
+• Loosen an assertion to fix test failure with telepathy-glib >= 0.13.5,
+  which releases connections' object paths sooner (smcv)
+
+• fd.o #31772: fix a crash if a contact goes invisible while we're discovering
+  their capabilities (wjt)
+
+• Remove accidentally re-added libuuid dependency (jonnylamb)
+
+• --with-ca-certificates, formerly known as --with-ca-file, now warns—rather
+  than making configure fail—if the specified path does not exist. This is
+  kinder to buildds which may not actually have the CAs installed.
+
+telepathy-gabble 0.11.1 (2010-11-16)
+====================================
+
+Enhancements:
+
+• Implement Conn.I.PowerSaving (eeejay)
+
+• fd.o #31474: replace --with-ca-certificates configure option with
+  --with-ca-file. The default is to use the normal location for either Red Hat
+  or Debian, or fail if neither exists. Use --with-ca-file to force a
+  particular location (e.g. if your build system doesn't guarantee to have
+  the CA certificate bundle installed), or use --without-ca-file if your system
+  doesn't have a standard CA certificate store. (Brian Pepple)
+
+Fixes:
+
+• Don't generate unused bindings for channel bundles (wjt)
+
+• Update wocky snapshot
+  · Add an optional dependency on libiphb and link it up to the main loop
+    to provide non-regular XMPP pings where appropriate. (wjt)
+  · Misc OpenSSL fixes. (wjt)
+
+telepathy-gabble 0.11.0 (2010-11-04)
+====================================
+
+The "your gmail theme is horrible and offensive" release.
+
+Enhancements:
+
+• Implement the ContactList, ContactGroups interfaces, refactoring
+  GabbleRoster considerably in the process (smcv)
+
+• fd.o #28413: implement DTMF on StreamedMedia and Call channels, up-to-date
+  for spec 0.21.3 (Jack Bates, smcv, jonny)
+
+• Implement the ClientTypes interface (jonny)
+
+• Make the tests considerably less prone to race conditions (sjoerd)
+
+• Adapt GabbleCapsChannelManager to be useful in Salut too (smcv)
+
+• fd.o #31216: implement the stable version of MailNotification (smcv)
+
+• fd.o #28726: use Google's Shared Status extension to support being
+  invisible/hidden on Google Talk (eeejay)
+
+• Add a summary of how Tubes capabilities work (wjt)
+
+Fixes:
+
+• Poll GMail servers periodically for a short time after each mail
+  notification, to work around the server throttling notifications (stormer)
+
+• fd.o #30950: advertise the immutable properties of Messages channels (smcv)
+
+• fd.o #28279: don't announce new Tubes channels until ready (sjoerd)
+
+telepathy-gabble 0.10.4 (2010-11-02)
+====================================
+
+The “Well, this super analysis i made!!!!! could be useful for
+you!!!!!!!!!!!!” release. There are plenty more bangs where these come
+from, I assure you.
+
+Enhancements:
+
+• fd.o #24775: implement local IPv4 address discovery on Windows, allowing
+  out-of-band SOCKS5 bytestreams to work there (Thomas Flueeli)
+
+Fixes:
+
+• Updated Wocky snapshot:
+  · Added HTTP proxy support. This is not technically a fix, but it's
+    nice to have. ;-) (stormer)
+  · Miscellaneous leak fixes. (stormer)
+  · Miscellaneous other fixes. (wjt)
+
+• Prefer XEP-0186 invisibility over privacy list-based invisibility when
+  both are available (eeejay)
+
+• fd.o #31197: improve portability to Windows (Thomas Flueeli)
 
 telepathy-gabble 0.10.3 (2010-10-06)
 ====================================

@@ -59,6 +59,8 @@ struct _GabbleRequestPipelinePrivate
   GabbleConnection *connection;
   GSList *pending_items;
   GSList *items_in_flight;
+  /* Zombie storage (items which were cancelled while the IQ was in flight) */
+  GSList *crypt_items;
 
   gboolean dispose_has_run;
 };
@@ -175,7 +177,11 @@ delete_item (GabbleRequestPipelineItem *item)
 
   DEBUG ("deleting item %p", item);
 
-  if (item->in_flight)
+  if (item->zombie)
+    {
+      priv->crypt_items = g_slist_remove (priv->crypt_items, item);
+    }
+  else if (item->in_flight)
     {
       priv->items_in_flight = g_slist_remove (priv->items_in_flight, item);
     }
@@ -192,14 +198,14 @@ delete_item (GabbleRequestPipelineItem *item)
   g_slice_free (GabbleRequestPipelineItem, item);
 }
 
-void
-gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
+static void
+gabble_request_pipeline_create_zombie (GabbleRequestPipeline *pipeline,
+  GabbleRequestPipelineItem *item,
+  GError *error)
 {
-  GError cancelled = { GABBLE_REQUEST_PIPELINE_ERROR,
-      GABBLE_REQUEST_PIPELINE_ERROR_CANCELLED,
-      "Request cancelled" };
-  GabbleRequestPipelinePrivate *priv =
-      GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
+  GabbleRequestPipelinePrivate *priv = pipeline->priv;
+
+  g_assert (!item->zombie);
 
   if (item->timer_id != 0)
     {
@@ -207,9 +213,51 @@ gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
       item->timer_id = 0;
     }
 
-  (item->callback) (priv->connection, NULL, item->user_data, &cancelled);
+  (item->callback) (priv->connection, NULL, item->user_data, error);
 
-  item->zombie = TRUE;
+  if (item->in_flight)
+    {
+      item->zombie = TRUE;
+
+      priv->items_in_flight = g_slist_remove (priv->items_in_flight, item);
+      priv->crypt_items = g_slist_prepend (priv->crypt_items, item);
+
+      gabble_request_pipeline_go (pipeline);
+    }
+  else
+    {
+      delete_item (item);
+    }
+}
+
+void
+gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *item)
+{
+  GError cancelled = { GABBLE_REQUEST_PIPELINE_ERROR,
+      GABBLE_REQUEST_PIPELINE_ERROR_CANCELLED,
+      "Request cancelled" };
+
+  gabble_request_pipeline_create_zombie (item->pipeline, item, &cancelled);
+}
+
+static void
+gabble_request_pipeline_flush (GabbleRequestPipeline *self,
+    GSList **list)
+{
+  GabbleRequestPipelineItem *item;
+  GError disconnected = { TP_ERRORS, TP_ERROR_DISCONNECTED,
+      "Request failed because connection became disconnected" };
+
+  while (*list != NULL)
+    {
+      item = (*list)->data;
+
+      if (!item->zombie)
+        (item->callback) (self->priv->connection, NULL, item->user_data,
+                            &disconnected);
+
+      delete_item (item);
+    }
 }
 
 static void
@@ -218,9 +266,6 @@ gabble_request_pipeline_dispose (GObject *object)
   GabbleRequestPipeline *self = GABBLE_REQUEST_PIPELINE (object);
   GabbleRequestPipelinePrivate *priv =
       GABBLE_REQUEST_PIPELINE_GET_PRIVATE (self);
-  GError disconnected = { TP_ERRORS, TP_ERROR_DISCONNECTED,
-      "Request failed because connection became disconnected" };
-  GabbleRequestPipelineItem *item;
 
   if (priv->dispose_has_run)
     return;
@@ -229,25 +274,9 @@ gabble_request_pipeline_dispose (GObject *object)
 
   DEBUG ("disposing request-pipeline");
 
-  while (priv->items_in_flight)
-    {
-      item = priv->items_in_flight->data;
-      if (!item->zombie)
-          (item->callback) (priv->connection, NULL, item->user_data,
-                            &disconnected);
-
-      delete_item (item);
-    }
-
-  while (priv->pending_items)
-    {
-      item = priv->pending_items->data;
-      if (!item->zombie)
-          (item->callback) (priv->connection, NULL, item->user_data,
-                            &disconnected);
-
-      delete_item (item);
-    }
+  gabble_request_pipeline_flush (self, &priv->items_in_flight);
+  gabble_request_pipeline_flush (self, &priv->pending_items);
+  gabble_request_pipeline_flush (self, &priv->crypt_items);
 
   g_idle_remove_by_data (self);
 
@@ -288,15 +317,8 @@ response_cb (GabbleConnection *conn,
     {
       GError *error = gabble_message_get_xmpp_error (reply);
 
-      if (error)
-        {
-          item->callback (priv->connection, reply, item->user_data, error);
-          g_error_free (error);
-        }
-      else
-        {
-          item->callback (priv->connection, reply, item->user_data, NULL);
-        }
+      item->callback (priv->connection, reply, item->user_data, error);
+      g_clear_error (&error);
     }
   else
     {
@@ -314,23 +336,11 @@ static gboolean
 timeout_cb (gpointer data)
 {
   GabbleRequestPipelineItem *item = (GabbleRequestPipelineItem *) data;
-  GabbleRequestPipeline *pipeline = item->pipeline;
-  GabbleRequestPipelinePrivate *priv;
-  GError *error = NULL;
-
-  g_assert (GABBLE_IS_REQUEST_PIPELINE (pipeline));
-  priv = GABBLE_REQUEST_PIPELINE_GET_PRIVATE (item->pipeline);
-
-  error = g_error_new (GABBLE_REQUEST_PIPELINE_ERROR,
+  GError timed_out = { GABBLE_REQUEST_PIPELINE_ERROR,
       GABBLE_REQUEST_PIPELINE_ERROR_TIMEOUT,
-      "Request timed out");
+      "Request timed out" };
 
-  item->callback (priv->connection, NULL, item->user_data, error);
-
-  item->timer_id = 0;
-  item->zombie = TRUE;
-
-  gabble_request_pipeline_go (pipeline);
+  gabble_request_pipeline_create_zombie (item->pipeline, item, &timed_out);
 
   return FALSE;
 }

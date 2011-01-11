@@ -8,7 +8,7 @@ from twisted.words.protocols.jabber import xmlstream
 import dbus
 
 from servicetest import assertEquals
-from gabbletest import exec_test
+from gabbletest import exec_test, GabbleAuthenticator
 import constants as cs
 import ns
 
@@ -40,9 +40,9 @@ def test_conflict_after_connect(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NAME_IN_USE])
 
-class StreamErrorAuthenticator(xmlstream.Authenticator):
+class StreamErrorAuthenticator(GabbleAuthenticator):
     def __init__(self, stream_error):
-        xmlstream.Authenticator.__init__(self)
+        GabbleAuthenticator.__init__(self, username='n/a', password='n/a')
         self.__stream_error = stream_error
 
     def streamStarted(self, root=None):

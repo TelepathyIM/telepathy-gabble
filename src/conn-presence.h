@@ -33,7 +33,8 @@ typedef enum {
     CONN_PRESENCE_ERROR_RETRIEVE_PRIVACY_LIST,
     CONN_PRESENCE_ERROR_INVALID_PRIVACY_LIST,
     CONN_PRESENCE_ERROR_SET_PRIVACY_LIST,
-    CONN_PRESENCE_ERROR_SET_INVISIBLE_PRESENCE
+    CONN_PRESENCE_ERROR_SET_INVISIBLE_PRESENCE,
+    CONN_PRESENCE_ERROR_SET_SHARED_STATUS
 } GabbleConnPresenceErrorType;
 
 GQuark conn_presence_error_quark (void);
@@ -42,6 +43,7 @@ GQuark conn_presence_error_quark (void);
 void conn_presence_class_init (GabbleConnectionClass *klass);
 void conn_presence_init (GabbleConnection *conn);
 void conn_presence_finalize (GabbleConnection *conn);
+void conn_presence_dispose (GabbleConnection *self);
 void conn_presence_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_presence_emit_presence_update (
     GabbleConnection *, const GArray *contact_handles);
@@ -59,6 +61,8 @@ void conn_decloak_emit_requested (GabbleConnection *conn,
     TpHandle contact, const gchar *reason, gboolean decloaked);
 
 GabblePresenceId conn_presence_get_type (GabblePresence *presence);
+
+const TpPresenceStatusSpec *conn_presence_statuses (void);
 
 G_END_DECLS
 

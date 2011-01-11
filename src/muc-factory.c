@@ -833,7 +833,7 @@ gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
   while (g_hash_table_iter_next (&iter, NULL, &channel))
     {
       g_assert (GABBLE_IS_MUC_CHANNEL (channel));
-      gabble_muc_channel_send_presence (GABBLE_MUC_CHANNEL (channel), NULL);
+      gabble_muc_channel_send_presence (GABBLE_MUC_CHANNEL (channel));
     }
 }
 

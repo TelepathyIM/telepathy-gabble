@@ -124,13 +124,6 @@ typedef void (*GabbleVCardManagerEditCb)(GabbleVCardManager *self,
                                          GError *error,
                                          gpointer user_data);
 
-GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_one (GabbleVCardManager *,
-                                                              guint timeout,
-                                                              GabbleVCardManagerEditCb,
-                                                              gpointer user_data,
-                                                              GObject *object,
-                                                              const gchar *element_name,
-                                                              const gchar *element_value);
 GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
                                                           guint timeout,
                                                           GabbleVCardManagerEditCb,
@@ -158,10 +151,6 @@ gboolean gabble_vcard_manager_has_limited_vcard_fields (
     GabbleVCardManager *self);
 gboolean gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
     const gchar *field_name);
-
-GabbleVCardManagerEditRequest *gabble_vcard_manager_edit_alias (
-    GabbleVCardManager *self, guint timeout, GabbleVCardManagerEditCb callback,
-    gpointer user_data, GObject *object, const gchar *new_alias);
 
 /* For unit tests only */
 void gabble_vcard_manager_set_suspend_reply_timeout (guint timeout);

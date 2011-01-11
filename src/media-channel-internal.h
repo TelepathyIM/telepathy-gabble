@@ -26,6 +26,8 @@
 
 #include <glib.h>
 
+#include <telepathy-glib/dtmf.h>
+
 #include "media-stream.h"
 #include "jingle-session.h"
 #include "jingle-media-rtp.h"
@@ -59,6 +61,9 @@ struct _GabbleMediaChannelPrivate
 
   GPtrArray *delayed_request_streams;
 
+  TpDTMFPlayer *dtmf_player;
+  gchar *deferred_tones;
+
   gboolean initial_audio;
   gboolean initial_video;
   gboolean immutable_streams;
@@ -66,6 +71,7 @@ struct _GabbleMediaChannelPrivate
   gboolean closed;
   gboolean dispose_has_run;
   gboolean tried_decloaking;
+  gboolean have_some_audio;
 };
 
 void gabble_media_channel_hold_latch_to_session (GabbleMediaChannel *chan);

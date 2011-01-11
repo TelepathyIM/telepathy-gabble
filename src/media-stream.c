@@ -1844,3 +1844,34 @@ gabble_media_stream_get_content (GabbleMediaStream *self)
    */
   return GABBLE_JINGLE_MEDIA_RTP (self->priv->content);
 }
+
+void
+gabble_media_stream_start_telephony_event (GabbleMediaStream *self,
+    guchar event)
+{
+  DEBUG ("stream %s: %c", self->name, tp_dtmf_event_to_char (event));
+
+  tp_svc_media_stream_handler_emit_start_telephony_event (
+      (TpSvcMediaStreamHandler *) self, event);
+}
+
+void
+gabble_media_stream_stop_telephony_event (GabbleMediaStream *self)
+{
+  DEBUG ("stream %s", self->name);
+
+  tp_svc_media_stream_handler_emit_stop_telephony_event (
+      (TpSvcMediaStreamHandler *) self);
+}
+
+void
+gabble_media_stream_add_dtmf_player (GabbleMediaStream *self,
+    TpDTMFPlayer *dtmf_player)
+{
+  tp_g_signal_connect_object (dtmf_player, "started-tone",
+      G_CALLBACK (gabble_media_stream_start_telephony_event), self,
+      G_CONNECT_SWAPPED);
+  tp_g_signal_connect_object (dtmf_player, "stopped-tone",
+      G_CALLBACK (gabble_media_stream_stop_telephony_event), self,
+      G_CONNECT_SWAPPED);
+}

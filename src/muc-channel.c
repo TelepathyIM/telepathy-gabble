@@ -280,8 +280,6 @@ gabble_muc_channel_init (GabbleMucChannel *self)
 static TpHandle create_room_identity (GabbleMucChannel *)
   G_GNUC_WARN_UNUSED_RESULT;
 
-#define NUM_SUPPORTED_MESSAGE_TYPES 3
-
 /*  signatures for presence handlers */
 
 static void handle_fill_presence (WockyMuc *muc,
@@ -366,7 +364,7 @@ gabble_muc_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle target, initiator, self_handle;
-  TpChannelTextMessageType types[NUM_SUPPORTED_MESSAGE_TYPES] = {
+  TpChannelTextMessageType types[] = {
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
@@ -409,7 +407,7 @@ gabble_muc_channel_constructed (GObject *obj)
   /* initialise the wocky muc object */
   {
     GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
-    WockyPorter *porter = gabble_connection_get_porter (conn);
+    WockyPorter *porter = gabble_connection_dup_porter (conn);
     const gchar *room_jid = tp_handle_inspect (contact_handles, self_handle);
     gchar *user_jid = gabble_connection_get_full_jid (conn);
     WockyMuc *wmuc = g_object_new (WOCKY_TYPE_MUC,
@@ -464,7 +462,7 @@ gabble_muc_channel_constructed (GObject *obj)
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, message_mixin),
       base_conn);
   tp_message_mixin_implement_sending (obj, gabble_muc_channel_send,
-      NUM_SUPPORTED_MESSAGE_TYPES, types, 0,
+      G_N_ELEMENTS (types), types, 0,
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_FAILURES |
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_SUCCESSES,
       supported_content_types);
@@ -816,39 +814,20 @@ send_join_request (GabbleMucChannel *gmuc,
   return TRUE;
 }
 
-static gboolean
+static void
 send_leave_message (GabbleMucChannel *gmuc,
                     const gchar *reason)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
-  LmMessage *msg;
-  GError *error = NULL;
-  gboolean ret;
+  WockyStanza *stanza = wocky_muc_create_presence (priv->wmuc,
+      WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason);
 
-  /* build the message */
-  msg = (LmMessage *) wocky_muc_create_presence (priv->wmuc,
-      WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason, NULL);
+  g_signal_emit (gmuc, signals[PRE_PRESENCE], 0, stanza);
+  _gabble_connection_send (
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base)), stanza, NULL);
 
-  g_signal_emit (gmuc, signals[PRE_PRESENCE], 0, msg);
-
-  /* send it */
-  ret = _gabble_connection_send (
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg, &error);
-
-  if (!ret)
-    {
-      DEBUG ("_gabble_connection_send failed");
-      g_error_free (error);
-    }
-  else
-    {
-      DEBUG ("leave message sent");
-    }
-
-  lm_message_unref (msg);
-
-  return ret;
+  g_object_unref (stanza);
 }
 
 static void
@@ -968,6 +947,9 @@ gabble_muc_channel_fill_immutable_properties (
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessagePartSupportFlags",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
       NULL);
 }
 
@@ -2291,7 +2273,7 @@ handle_join (WockyMuc *muc,
       WockyStanza *accept = wocky_stanza_build (
           WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
           NULL, NULL,
-            '(', "query", ':', WOCKY_NS_MUC_OWN,
+            '(', "query", ':', WOCKY_NS_MUC_OWNER,
               '(', "x", ':', WOCKY_XMPP_NS_DATA,
                 '@', "type", "submit",
               ')',
@@ -2469,7 +2451,7 @@ handle_message (GObject *source,
           case WOCKY_MUC_MSG_STATE_ACTIVE:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
             break;
-          case WOCKY_MUC_MSG_STATE_TYPING:
+          case WOCKY_MUC_MSG_STATE_COMPOSING:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_COMPOSING;
             break;
           case WOCKY_MUC_MSG_STATE_INACTIVE:
@@ -2740,14 +2722,14 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       return;
     }
 
-  message = tp_message_new (base_conn, 2, 2);
+  message = tp_cm_message_new (base_conn, 2);
 
   /* Header common to normal message and delivery-echo */
   if (msg_type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
     tp_message_set_uint32 (message, 0, "message-type", msg_type);
 
   if (timestamp != 0)
-    tp_message_set_uint64 (message, 0, "message-sent", timestamp);
+    tp_message_set_int64 (message, 0, "message-sent", timestamp);
 
   /* Body */
   tp_message_set_string (message, 1, "content-type", "text/plain");
@@ -2759,7 +2741,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
        * delivery reports.
        */
 
-      TpMessage *delivery_report = tp_message_new (base_conn, 1, 1);
+      TpMessage *delivery_report = tp_cm_message_new (base_conn, 1);
       TpDeliveryStatus status =
           is_error ? error_status : TP_DELIVERY_STATUS_DELIVERED;
 
@@ -2785,15 +2767,14 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
        * The sender of the echo, however, is ourself.  (Unless we get errors
        * for messages that we didn't send, which would be odd.)
        */
-      tp_message_set_handle (message, 0, "message-sender",
-          TP_HANDLE_TYPE_CONTACT, muc_self_handle);
+      tp_cm_message_set_sender (message, muc_self_handle);
 
       /* If we sent the message whose delivery has succeeded or failed, we
        * trust the id='' attribute. */
       if (id != NULL)
         tp_message_set_string (message, 0, "message-token", id);
 
-      tp_message_take_message (delivery_report, 0, "delivery-echo",
+      tp_cm_message_take_message (delivery_report, 0, "delivery-echo",
           message);
 
       tp_message_mixin_take_received (G_OBJECT (chan), delivery_report);
@@ -2802,18 +2783,13 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     {
       /* Messages from the MUC itself should have no sender. */
       if (sender_handle_type == TP_HANDLE_TYPE_CONTACT)
-        tp_message_set_handle (message, 0, "message-sender",
-            TP_HANDLE_TYPE_CONTACT, sender);
+        tp_cm_message_set_sender (message, sender);
 
       if (timestamp != 0)
         tp_message_set_boolean (message, 0, "scrollback", TRUE);
 
-      /* We can't trust the id='' attribute set by the contact to be unique
-       * enough to be a message-token, so let's generate one locally.
-       */
-      tmp = gabble_generate_id ();
-      tp_message_set_string (message, 0, "message-token", tmp);
-      g_free (tmp);
+      if (id != NULL)
+        tp_message_set_string (message, 0, "message-token", id);
 
       tp_message_mixin_take_received (G_OBJECT (chan), message);
     }
@@ -3592,27 +3568,23 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
 }
 
-gboolean
-gabble_muc_channel_send_presence (GabbleMucChannel *self,
-                                  GError **error)
+void
+gabble_muc_channel_send_presence (GabbleMucChannel *self)
 {
   GabbleMucChannelPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   WockyStanza *stanza;
-  gboolean result;
 
   /* do nothing if we havn't actually joined yet */
   if (priv->state < MUC_STATE_INITIATED)
-    return TRUE;
+    return;
 
   stanza = wocky_muc_create_presence (priv->wmuc,
-      WOCKY_STANZA_SUB_TYPE_NONE, NULL, NULL);
-  result = _gabble_connection_send (
+      WOCKY_STANZA_SUB_TYPE_NONE, NULL);
+  _gabble_connection_send (
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-      (LmMessage *) stanza, error);
-
+      stanza, NULL);
   g_object_unref (stanza);
-  return result;
 }
 
 GabbleTubesChannel *

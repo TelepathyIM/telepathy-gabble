@@ -395,8 +395,8 @@ def sync_dbus(bus, q, conn):
     assert conn.object.bus_name.startswith(':')
     root_object = bus.get_object(conn.object.bus_name, '/')
     call_async(
-        q, dbus.Interface(root_object, 'org.freedesktop.DBus.Peer'), 'Ping')
-    q.expect('dbus-return', method='Ping')
+        q, dbus.Interface(root_object, 'org.freedesktop.Telepathy.Tests'), 'DummySyncDBus')
+    q.expect('dbus-error', method='DummySyncDBus')
 
 class ProxyWrapper:
     def __init__(self, object, default, others):
@@ -432,6 +432,7 @@ def wrap_connection(conn):
          ('MailNotification', cs.CONN_IFACE_MAIL_NOTIFICATION),
          ('ContactList', cs.CONN_IFACE_CONTACT_LIST),
          ('ContactGroups', cs.CONN_IFACE_CONTACT_GROUPS),
+         ('PowerSaving', cs.CONN_IFACE_POWER_SAVING),
         ]))
 
 def wrap_channel(chan, type_, extra=None):
@@ -585,8 +586,12 @@ def install_colourer():
             self.patterns = patterns
 
         def write(self, s):
-            f = self.patterns.get(s, lambda x: x)
-            self.fh.write(f(s))
+            for p, f in self.patterns.items():
+                if s.startswith(p):
+                    self.fh.write(f(p) + s[len(p):])
+                    return
+
+            self.fh.write(s)
 
     sys.stdout = Colourer(sys.stdout, patterns)
     return sys.stdout

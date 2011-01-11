@@ -84,7 +84,7 @@ LmMessage *gabble_jingle_session_new_message (GabbleJingleSession *sess,
 
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
 gboolean gabble_jingle_session_terminate (GabbleJingleSession *sess,
-    TpChannelGroupChangeReason reason,
+    JingleReason reason,
     const gchar *text,
     GError **error);
 void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
@@ -126,6 +126,8 @@ gboolean gabble_jingle_session_defines_action (GabbleJingleSession *sess,
     JingleAction action);
 
 const gchar *gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess);
+
+const gchar *gabble_jingle_session_get_reason_name (JingleReason reason);
 
 #endif /* __JINGLE_SESSION_H__ */
 

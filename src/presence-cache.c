@@ -791,6 +791,12 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
   GabblePresence *presence = priv->conn->self_presence;
   GError *error = NULL;
 
+  if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      DEBUG ("no longer connected");
+      return;
+    }
+
   /* We don't want recursive image resetting
    *
    * FIXME: There is a race here: if the other resource sends us first the
@@ -902,7 +908,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
               "<NULL>" : presence->avatar_sha1);
           self_avatar_resolve_conflict (cache);
         }
-      else
+      else if (base_conn->status == TP_CONNECTION_STATUS_CONNECTED)
         {
           g_free (presence->avatar_sha1);
           presence->avatar_sha1 = g_strdup (sha1);
@@ -1220,6 +1226,36 @@ _signal_presences_updated (GabblePresenceCache *cache,
 }
 
 static void
+process_client_types (
+    GabblePresenceCache *cache,
+    LmMessageNode *query_result,
+    TpHandle handle,
+    DiscoWaiter *waiter_self)
+{
+  GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+  GPtrArray *client_types;
+
+  /* If the contact's gone offline since we sent the disco request, we have no
+   * presence to attach their freshly-discovered client types to.
+   */
+  if (presence == NULL)
+    return;
+
+  client_types = client_types_from_message (handle, query_result,
+      waiter_self->resource);
+
+  if (waiter_self->resource != NULL)
+    gabble_presence_update_client_types (presence, waiter_self->resource,
+        client_types);
+
+  if (client_types != NULL)
+    {
+      g_ptr_array_unref (client_types);
+      _signal_presences_updated (cache, handle);
+    }
+}
+
+static void
 _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
                 const gchar *jid,
@@ -1241,8 +1277,6 @@ _caps_disco_cb (GabbleDisco *disco,
   gchar *resource;
   gboolean jid_is_valid;
   gpointer key;
-  GabblePresence *presence;
-  GPtrArray *client_types;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = cache->priv;
@@ -1287,21 +1321,9 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  /* Sort out client types */
-  presence = gabble_presence_cache_get (cache, handle);
-  client_types = client_types_from_message (handle, query_result,
-      waiter_self->resource);
-  if (client_types != NULL)
-    {
-      gabble_presence_update_client_types (presence, waiter_self->resource,
-          client_types);
-      g_ptr_array_unref (client_types);
-
-      _signal_presences_updated (cache, handle);
-    }
+  process_client_types (cache, query_result, handle, waiter_self);
 
   /* Now onto caps */
-
   cap_set = gabble_capability_set_new_from_stanza (query_result);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
@@ -1500,9 +1522,11 @@ _process_caps_uri (GabblePresenceCache *cache,
               WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
               GPtrArray *types = client_types_from_message (handle, query, resource);
 
+              if (resource != NULL)
+                gabble_presence_update_client_types (presence, resource, types);
+
               if (types != NULL)
                 {
-                  gabble_presence_update_client_types (presence, resource, types);
                   g_ptr_array_unref (types);
 
                   _signal_presences_updated (cache, handle);
@@ -2453,7 +2477,7 @@ gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
     {
       DiscoWaiter *w = l->data;
 
-      if (w->handle == handle && !tp_strdiff (w->resource, resource))
+      if (w != NULL && w->handle == handle && !tp_strdiff (w->resource, resource))
         {
           out = TRUE;
           break;

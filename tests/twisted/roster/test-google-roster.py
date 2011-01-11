@@ -140,13 +140,15 @@ def test_flickering(q, bus, conn, stream, subscribe):
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
 
     # request subscription
-    subscribe.Group.AddMembers([handle], '')
+    call_async(q, subscribe.Group, 'AddMembers', [handle], "")
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
     assertEquals(contact, item['jid'])
 
     acknowledge_iq(stream, event.stanza)
+    # FIXME: when we depend on a new enough tp-glib we could expect
+    # AddMembers to return at this point
 
     # send empty roster item
     iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
@@ -281,7 +283,7 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
     handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
     assertContains(handle,
         stored.Properties.Get(cs.CHANNEL_IFACE_GROUP, "Members"))
-    stored.Group.RemoveMembers([handle], "")
+    call_async(q, stored.Group, 'RemoveMembers', [handle], "")
 
     q.forbid_events(remove_events)
 
@@ -290,6 +292,7 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
             presence_type='unsubscribe'),
         EventPattern('stream-presence', to=contact,
             presence_type='unsubscribed'),
+        EventPattern('dbus-return', method='RemoveMembers'),
         )
 
     # Our server sends roster pushes in response to our unsubscribe and
@@ -431,8 +434,8 @@ def test_deny_overlap_two(q, bus, conn, stream,
         ]
     q.forbid_events(patterns)
 
-    deny.Group.AddMembers([handle], '')
-    stored.Group.RemoveMembers([handle], '')
+    call_async(q, deny.Group, 'AddMembers', [handle], "")
+    call_async(q, stored.Group, 'RemoveMembers', [handle], "")
 
     # Make sure if the edits are sent prematurely, we've got them.
     sync_stream(q, stream)
@@ -471,7 +474,7 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
         stored.Properties.Get(cs.CHANNEL_IFACE_GROUP, "Members"))
 
     # Unblock them.
-    deny.Group.RemoveMembers([handle], '')
+    call_async(q, deny.Group, 'RemoveMembers', [handle], "")
 
     roster_event = q.expect('stream-iq', query_ns=ns.ROSTER)
     item = roster_event.query.firstChildElement()
@@ -481,7 +484,7 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
     # If we now remove them from stored, the edit shouldn't be sent until the
     # unblock event has had a reply.
     q.forbid_events(remove_events)
-    stored.Group.RemoveMembers([handle], '')
+    call_async(q, stored.Group, 'RemoveMembers', [handle], "")
 
     # Make sure if the remove is sent prematurely, we catch it.
     sync_stream(q, stream)

@@ -13,6 +13,7 @@ html_DATA = \
 EXTRA_DIST = \
     $(man_MANS:.8=.8.in) \
     $(html_DATA:.html=.xml) \
+    tube-caps.txt \
     xep.dtd \
     xep.ent \
     xep.xsd \

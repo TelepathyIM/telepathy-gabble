@@ -25,9 +25,6 @@ from twisted.internet import reactor, ssl
 
 import dbus
 
-NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'
-NS_XMPP_BIND = 'urn:ietf:params:xml:ns:xmpp-bind'
-
 def make_result_iq(stream, iq, add_query_node=True):
     result = IQ(stream, "result")
     result["id"] = iq["id"]
@@ -94,7 +91,11 @@ class GabbleAuthenticator(xmlstream.Authenticator):
         self.resource = resource
         self.bare_jid = None
         self.full_jid = None
+        self._event_func = lambda e: None
         xmlstream.Authenticator.__init__(self)
+
+    def set_event_func(self, event_func):
+        self._event_func = event_func
 
 class JabberAuthenticator(GabbleAuthenticator):
     "Trivial XML stream authenticator that accepts one username/digest pair."
@@ -115,6 +116,10 @@ class JabberAuthenticator(GabbleAuthenticator):
     EventDispatcher._oldAddObserver = EventDispatcher._addObserver
     EventDispatcher._addObserver = _addObserver
 
+    def __init__(self, username, password, resource=None, emit_events=False):
+        GabbleAuthenticator.__init__(self, username, password, resource)
+        self.emit_events = emit_events
+
     def streamStarted(self, root=None):
         if root:
             self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
@@ -124,6 +129,15 @@ class JabberAuthenticator(GabbleAuthenticator):
             "/iq/query[@xmlns='jabber:iq:auth']", self.initialIq)
 
     def initialIq(self, iq):
+        if self.emit_events:
+            self._event_func(Event('auth-initial-iq', authenticator=self,
+                iq=iq, id=iq["id"]))
+        else:
+            self.respondToInitialIq(iq)
+
+        self.xmlstream.addOnetimeObserver('/iq/query/username', self.secondIq)
+
+    def respondToInitialIq(self, iq):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         query = result.addElement('query')
@@ -132,10 +146,16 @@ class JabberAuthenticator(GabbleAuthenticator):
         query.addElement('password')
         query.addElement('digest')
         query.addElement('resource')
-        self.xmlstream.addOnetimeObserver('/iq/query/username', self.secondIq)
         self.xmlstream.send(result)
 
     def secondIq(self, iq):
+        if self.emit_events:
+            self._event_func(Event('auth-second-iq', authenticator=self,
+                iq=iq, id=iq["id"]))
+        else:
+            self.respondToSecondIq(self, iq)
+
+    def respondToSecondIq(self, iq):
         username = xpath.queryForNodes('/iq/query/username', iq)
         assert map(str, username) == [self.username]
 
@@ -165,19 +185,26 @@ class XmppAuthenticator(GabbleAuthenticator):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
 
+        if self.xmlstream.sid is None:
+            self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
+
         self.xmlstream.sendHeader()
 
     def streamIQ(self):
-        features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-        bind = features.addElement((NS_XMPP_BIND, 'bind'))
+        features = elem(xmlstream.NS_STREAMS, 'features')(
+            elem(ns.NS_XMPP_BIND, 'bind'),
+            elem(ns.NS_XMPP_SESSION, 'session'),
+        )
         self.xmlstream.send(features)
 
         self.xmlstream.addOnetimeObserver(
-            "/iq/bind[@xmlns='%s']" % NS_XMPP_BIND, self.bindIq)
+            "/iq/bind[@xmlns='%s']" % ns.NS_XMPP_BIND, self.bindIq)
+        self.xmlstream.addOnetimeObserver(
+            "/iq/session[@xmlns='%s']" % ns.NS_XMPP_SESSION, self.sessionIq)
 
     def streamSASL(self):
         features = domish.Element((xmlstream.NS_STREAMS, 'features'))
-        mechanisms = features.addElement((NS_XMPP_SASL, 'mechanisms'))
+        mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
         mechanism = mechanisms.addElement('mechanism', content='PLAIN')
         self.xmlstream.send(features)
 
@@ -196,7 +223,7 @@ class XmppAuthenticator(GabbleAuthenticator):
         assert (base64.b64decode(str(auth)) ==
             '\x00%s\x00%s' % (self.username, self.password))
 
-        success = domish.Element((NS_XMPP_SASL, 'success'))
+        success = domish.Element((ns.NS_XMPP_SASL, 'success'))
         self.xmlstream.send(success)
         self.xmlstream.reset()
         self.authenticated = True
@@ -210,13 +237,16 @@ class XmppAuthenticator(GabbleAuthenticator):
 
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
-        bind = result.addElement((NS_XMPP_BIND, 'bind'))
+        bind = result.addElement((ns.NS_XMPP_BIND, 'bind'))
         self.bare_jid = '%s@localhost' % self.username
         self.full_jid = '%s/%s' % (self.bare_jid, resource)
         jid = bind.addElement('jid', content=self.full_jid)
         self.xmlstream.send(result)
 
         self.xmlstream.dispatch(self.xmlstream, xmlstream.STREAM_AUTHD_EVENT)
+
+    def sessionIq(self, iq):
+        self.xmlstream.send(make_result_iq(self.xmlstream, iq))
 
 def make_stream_event(type, stanza, stream):
     event = servicetest.Event(type, stanza=stanza)
@@ -477,6 +507,8 @@ def make_stream(event_func, authenticator=None, protocol=None,
     # set up Jabber server
     if authenticator is None:
         authenticator = XmppAuthenticator('test%s' % suffix, 'pass', resource=resource)
+
+    authenticator.set_event_func(event_func)
 
     if protocol is None:
         protocol = XmppXmlStream

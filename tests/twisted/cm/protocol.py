@@ -39,6 +39,22 @@ def test(q, bus, conn, stream):
     assertEquals('foo@mit.edu',
         unwrap(proto_iface.NormalizeContact('foo@MIT.Edu/Telepathy')))
 
+    # org.freedesktop.Telepathy.Protocol.Interface.Presence
+    expected_status = {'available': (cs.PRESENCE_AVAILABLE,     True,  True),
+                       'dnd'      : (cs.PRESENCE_BUSY,          True,  True),
+                       'unknown'  : (cs.PRESENCE_UNKNOWN,       False, False),
+                       'away'     : (cs.PRESENCE_AWAY,          True,  True),
+                       'xa'       : (cs.PRESENCE_EXTENDED_AWAY, True,  True),
+                       'chat'     : (cs.PRESENCE_AVAILABLE,     True,  True),
+                       'error'    : (cs.PRESENCE_ERROR,         False, False),
+                       'offline'  : (cs.PRESENCE_OFFLINE,       False, False),
+                       'testaway' : (cs.PRESENCE_AWAY,          False, False),
+                       'testbusy' : (cs.PRESENCE_BUSY,          True,  False),
+                       'hidden'   : (cs.PRESENCE_HIDDEN,        True,  True)}
+
+    presences = proto_prop_iface.Get(cs.PROTOCOL_IFACE_PRESENCES, 'Statuses');
+    assertEquals(expected_status, unwrap(presences))
+
     # (Only) 'account' is mandatory for IdentifyAccount()
     call_async(q, proto_iface, 'IdentifyAccount', {})
     q.expect('dbus-error', method='IdentifyAccount', name=cs.INVALID_ARGUMENT)

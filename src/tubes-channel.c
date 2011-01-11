@@ -118,9 +118,7 @@ struct _GabbleTubesChannelPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_TUBES_CHANNEL_GET_PRIVATE(obj) ((obj)->priv)
-
-static gboolean update_tubes_presence (GabbleTubesChannel *self);
+static void update_tubes_presence (GabbleTubesChannel *self);
 
 static void pre_presence_cb (GabbleMucChannel *muc, LmMessage *msg,
     GabbleTubesChannel *self);
@@ -154,7 +152,7 @@ gabble_tubes_channel_constructor (GType type,
            constructor (type, n_props, props);
 
   self = GABBLE_TUBES_CHANNEL (obj);
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   handle_repo = tp_base_connection_get_handles (
@@ -200,7 +198,7 @@ gabble_tubes_channel_get_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleTubesChannel *chan = GABBLE_TUBES_CHANNEL (object);
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (chan);
+  GabbleTubesChannelPrivate *priv = chan->priv;
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
   switch (property_id)
@@ -293,7 +291,7 @@ gabble_tubes_channel_set_property (GObject *object,
                                    GParamSpec *pspec)
 {
   GabbleTubesChannel *chan = GABBLE_TUBES_CHANNEL (object);
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (chan);
+  GabbleTubesChannelPrivate *priv = chan->priv;
 
   switch (property_id)
     {
@@ -364,7 +362,7 @@ d_bus_names_changed_removed (GabbleTubesChannel *self,
                              guint tube_id,
                              TpHandle contact)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   GPtrArray *added;
   GArray *removed;
 
@@ -389,7 +387,7 @@ add_name_in_dbus_names (GabbleTubesChannel *self,
                         TpHandle handle,
                         const gchar *dbus_name)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   GabbleTubeDBus *tube;
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -410,7 +408,7 @@ static void
 add_yourself_in_dbus_names (GabbleTubesChannel *self,
                             guint tube_id)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   GabbleTubeDBus *tube;
   gchar *dbus_name;
 
@@ -435,7 +433,7 @@ tube_closed_cb (GabbleTubeIface *tube,
                 gpointer user_data)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (user_data);
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   guint tube_id;
 
   if (priv->closed)
@@ -548,7 +546,7 @@ create_new_tube (GabbleTubesChannel *self,
                  GabbleBytestreamIface *bytestream,
                  gboolean requested)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   GabbleTubeIface *tube;
   TpTubeChannelState state;
 
@@ -605,7 +603,7 @@ extract_tube_information (GabbleTubesChannel *self,
                           GHashTable **parameters,
                           guint *tube_id)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
@@ -752,7 +750,7 @@ void gabble_tubes_channel_foreach (GabbleTubesChannel *self,
     TpExportableChannelFunc foreach, gpointer user_data)
 {
   struct _ForeachData data;
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
 
   data.user_data = user_data;
   data.foreach = foreach;
@@ -782,7 +780,7 @@ static void
 contact_left_muc (GabbleTubesChannel *self,
                   TpHandle contact)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
 #ifdef ENABLE_DEBUG
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -817,7 +815,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                                        TpHandle contact,
                                        LmMessageNode *pnode)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   LmMessageNode *tubes_node;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -1075,7 +1073,7 @@ gabble_tubes_channel_list_tubes (TpSvcChannelTypeTubes *iface,
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   ret = make_tubes_ptr_array (self, priv->tubes);
   tp_svc_channel_type_tubes_return_from_list_tubes (context, ret);
@@ -1100,8 +1098,7 @@ publish_tubes_in_node (gpointer key,
   GabbleTubeIface *tube = (GabbleTubeIface *) value;
   struct _i_hate_g_hash_table_foreach *data =
     (struct _i_hate_g_hash_table_foreach *) user_data;
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (
-      data->self);
+  GabbleTubesChannelPrivate *priv = data->self->priv;
   TpTubeChannelState state;
   LmMessageNode *tube_node;
   TpTubeType type;
@@ -1133,7 +1130,7 @@ pre_presence_cb (GabbleMucChannel *muc,
                  LmMessage *msg,
                  GabbleTubesChannel *self)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   struct _i_hate_g_hash_table_foreach data;
   LmMessageNode *node;
 
@@ -1147,15 +1144,15 @@ pre_presence_cb (GabbleMucChannel *muc,
   g_hash_table_foreach (priv->tubes, publish_tubes_in_node, &data);
 }
 
-static gboolean
+static void
 update_tubes_presence (GabbleTubesChannel *self)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
 
   if (priv->handle_type != TP_HANDLE_TYPE_ROOM)
-    return FALSE;
+    return;
 
-  return gabble_muc_channel_send_presence (self->muc, NULL);
+  gabble_muc_channel_send_presence (self->muc);
 }
 
 /* Called when we receive a SI request,
@@ -1166,7 +1163,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
                                       GabbleBytestreamIface *bytestream,
                                       LmMessage *msg)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *service, *stream_id;
   GHashTable *parameters;
   TpTubeType type;
@@ -1252,7 +1249,7 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
                                          GabbleBytestreamIface *bytestream,
                                          LmMessage *msg)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *stream_id, *tmp;
   gchar *endptr;
   LmMessageNode *si_node, *stream_node;
@@ -1325,7 +1322,7 @@ static void
 send_tube_close_msg (GabbleTubesChannel *self,
                      guint tube_id)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   LmMessage *msg;
   const gchar *jid;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -1366,7 +1363,7 @@ static void
 tube_msg_offered (GabbleTubesChannel *self,
                   LmMessage *msg)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *service;
   GHashTable *parameters;
   TpTubeType type;
@@ -1425,7 +1422,7 @@ static void
 tube_msg_close (GabbleTubesChannel *self,
                 LmMessage *msg)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   LmMessageNode *close_node;
   guint tube_id;
   const gchar *tmp;
@@ -1504,7 +1501,7 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
     gpointer request_token, GHashTable *request_properties,
     gboolean require_new)
 {
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   GabbleTubeIface *tube;
   const gchar *channel_type;
   const gchar *service;
@@ -1580,7 +1577,7 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
   base = (TpBaseConnection *) priv->conn;
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
@@ -1650,7 +1647,7 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
   base = (TpBaseConnection *) priv->conn;
 
   if (!gabble_tube_stream_check_params (address_type, address,
@@ -1728,7 +1725,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
@@ -1798,7 +1795,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
@@ -1873,7 +1870,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
 
@@ -1910,7 +1907,7 @@ gabble_tubes_channel_get_d_bus_tube_address (TpSvcChannelTypeTubes *iface,
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
 
@@ -1972,7 +1969,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   GabbleTubeIface *tube;
   GHashTable *names;
   GPtrArray *ret;
@@ -2042,7 +2039,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
                                                      DBusGMethodInvocation *context)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
-  GabbleTubesChannelPrivate *priv  = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv  = self->priv;
   GabbleTubeIface *tube;
   TpTubeType type;
   TpTubeChannelState state;
@@ -2130,7 +2127,7 @@ gabble_tubes_channel_close (GabbleTubesChannel *self)
 
   DEBUG ("called on %p", self);
 
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   if (priv->closed)
     {
@@ -2193,7 +2190,7 @@ gabble_tubes_channel_get_handle (TpSvcChannel *iface,
   GabbleTubesChannelPrivate *priv;
 
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
-  priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  priv = self->priv;
 
   tp_svc_channel_return_from_get_handle (context, priv->handle_type,
       priv->handle);
@@ -2337,7 +2334,7 @@ void
 gabble_tubes_channel_dispose (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, priv->handle_type);
 
@@ -2367,7 +2364,7 @@ void
 gabble_tubes_channel_finalize (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
-  GabbleTubesChannelPrivate *priv = GABBLE_TUBES_CHANNEL_GET_PRIVATE (self);
+  GabbleTubesChannelPrivate *priv = self->priv;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 

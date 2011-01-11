@@ -324,7 +324,7 @@ call_muc_do_update (GabbleCallMucChannel *self)
         wocky_node_add_child (wocky_node_tree_get_top_node (priv->muji),
           "preparing");
         priv->state = STATE_PREPARING_SENT;
-        gabble_muc_channel_send_presence (priv->muc, NULL);
+        gabble_muc_channel_send_presence (priv->muc);
         break;
       case STATE_LEFT:
         /* we left not doing anything */
@@ -577,7 +577,7 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
     }
 
   priv->state = STATE_STABLE;
-  gabble_muc_channel_send_presence (priv->muc, NULL);
+  gabble_muc_channel_send_presence (priv->muc);
 }
 
 static void
@@ -1078,7 +1078,7 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
   if (member == NULL || gabble_call_member_get_session (member) != NULL)
     {
       gabble_jingle_session_terminate (session,
-        TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+        JINGLE_REASON_UNKNOWN,
         "Muji jingle session initiated while there already was one",
         NULL);
     }
@@ -1132,7 +1132,7 @@ call_muc_channel_leave (GabbleCallMucChannel *self)
   tp_clear_object (&priv->muji);
 
   priv->state = STATE_LEFT;
-  gabble_muc_channel_send_presence (priv->muc, NULL);
+  gabble_muc_channel_send_presence (priv->muc);
 }
 
 static void

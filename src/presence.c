@@ -37,8 +37,6 @@
 
 G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);
 
-#define GABBLE_PRESENCE_PRIV(account) ((account)->priv)
-
 typedef struct _Resource Resource;
 
 struct _Resource {
@@ -66,6 +64,7 @@ _resource_new (gchar *name)
 {
   Resource *new = g_slice_new0 (Resource);
   new->name = name;
+  new->client_type = G_MAXUINT;
   new->cap_set = gabble_capability_set_new ();
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
@@ -91,7 +90,7 @@ gabble_presence_finalize (GObject *object)
 {
   GSList *i;
   GabblePresence *presence = GABBLE_PRESENCE (object);
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
 
   for (i = priv->resources; NULL != i; i = i->next)
     _resource_free (i->data);
@@ -203,7 +202,7 @@ gabble_presence_pick_resource_by_caps (
     GabbleCapabilitySetPredicate predicate,
     gconstpointer user_data)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
   GSList *i;
   Resource *chosen = NULL;
 
@@ -232,7 +231,7 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
                                    GabbleCapabilitySetPredicate predicate,
                                    gconstpointer user_data)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
   GSList *i;
 
   for (i = priv->resources; NULL != i; i = i->next)
@@ -252,7 +251,7 @@ gabble_presence_set_capabilities (GabblePresence *presence,
                                   const GabbleCapabilitySet *cap_set,
                                   guint serial)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
   GSList *i;
 
   if (resource == NULL && priv->resources != NULL)
@@ -310,13 +309,16 @@ static Resource *
 _find_resource (GabblePresence *presence, const gchar *resource)
 {
   GSList *i;
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
 
-  for (i = priv->resources; NULL != i; i = i->next)
+  /* you've been warned! */
+  g_return_val_if_fail (presence != NULL, NULL);
+  g_return_val_if_fail (resource != NULL, NULL);
+
+  for (i = presence->priv->resources; NULL != i; i = i->next)
     {
-      Resource *res = (Resource *) i->data;
+      Resource *res = i->data;
 
-      if (0 == strcmp (res->name, resource))
+      if (!tp_strdiff (res->name, resource))
         return res;
     }
 
@@ -326,7 +328,7 @@ _find_resource (GabblePresence *presence, const gchar *resource)
 static void
 aggregate_resources (GabblePresence *presence)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
   GSList *i;
   guint8 prio;
   time_t activity;
@@ -376,7 +378,7 @@ gabble_presence_update (GabblePresence *presence,
                         const gchar *status_message,
                         gint8 priority)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
   Resource *res;
   GabblePresenceId old_status;
   gchar *old_status_message;
@@ -555,7 +557,7 @@ LmMessage *
 gabble_presence_as_message (GabblePresence *presence,
                             const gchar *to)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
   LmMessage *message;
   LmMessageSubType subtype;
   Resource *res = priv->resources->data; /* pick first resource */
@@ -591,7 +593,7 @@ gabble_presence_dump (GabblePresence *presence)
   GSList *i;
   GString *ret = g_string_new ("");
   gchar *tmp;
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (presence);
+  GabblePresencePrivate *priv = presence->priv;
 
   g_string_append_printf (ret,
     "nickname: %s\n"
@@ -641,7 +643,7 @@ gabble_presence_dump (GabblePresence *presence)
 gboolean
 gabble_presence_added_to_view (GabblePresence *self)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresencePrivate *priv = self->priv;
   GabblePresenceId old_status;
   gchar *old_status_message;
   gboolean ret = FALSE;
@@ -665,7 +667,7 @@ gabble_presence_added_to_view (GabblePresence *self)
 gboolean
 gabble_presence_removed_from_view (GabblePresence *self)
 {
-  GabblePresencePrivate *priv = GABBLE_PRESENCE_PRIV (self);
+  GabblePresencePrivate *priv = self->priv;
   GabblePresenceId old_status;
   gchar *old_status_message;
   gboolean ret = FALSE;
@@ -752,7 +754,13 @@ gabble_presence_update_client_types (GabblePresence *presence,
   if (res == NULL)
     return;
 
+  /* since this method has been called, the client types have been
+   * discovered to be something, or discovered to be nothing, so set
+   * the client_type member to something other than G_MAXUINT */
   res->client_type = 0;
+
+  if (client_types == NULL)
+    return;
 
   for (i = 0; i < client_types->len; i++)
     {
@@ -778,7 +786,7 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
 
   res = _find_resource (presence, resource);
 
-  if (res == NULL)
+  if (res == NULL || res->client_type == G_MAXUINT)
     return NULL;
 
   klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);

@@ -95,3 +95,4 @@ cscope.out
 /tests/twisted/tools/*.service
 /tests/twisted/with-session-bus-*.pid
 /tests/twisted/with-session-bus-*.address
+/tests/twisted/tools/with-session-bus-*.bustle-logs

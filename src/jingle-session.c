@@ -26,6 +26,7 @@
 
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
+#include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -34,6 +35,7 @@
 #include "conn-presence.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
+#include "gabble-enumtypes.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
 /* FIXME: the RTP-specific bits of this file should be separated from the
@@ -52,6 +54,7 @@ enum
   NEW_CONTENT,
   REMOTE_STATE_CHANGED,
   TERMINATED,
+  CONTENT_REJECTED,
   LAST_SIGNAL
 };
 
@@ -477,14 +480,47 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 
   signals[REMOTE_STATE_CHANGED] = g_signal_new ("remote-state-changed",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, gabble_marshal_VOID__VOID,
+        0, NULL, NULL, g_cclosure_marshal_VOID__VOID,
         G_TYPE_NONE, 0);
+  signals[CONTENT_REJECTED] = g_signal_new ("content-rejected",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL, gabble_marshal_VOID__OBJECT_UINT_STRING,
+        G_TYPE_NONE, 3, G_TYPE_OBJECT, G_TYPE_UINT, G_TYPE_STRING);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
-  LmMessageNode *node, GError **error);
+    LmMessageNode *node, GError **error);
 typedef void (*ContentHandlerFunc)(GabbleJingleSession *sess,
-  GabbleJingleContent *c, LmMessageNode *content_node, GError **error);
+    GabbleJingleContent *c, LmMessageNode *content_node, gpointer user_data,
+    GError **error);
+
+static gboolean
+extract_reason (WockyNode *node, JingleReason *reason, gchar **message)
+{
+  JingleReason _reason = JINGLE_REASON_UNKNOWN;
+  WockyNode *child;
+  WockyNodeIter iter;
+
+  g_return_val_if_fail (node != NULL, FALSE);
+
+  if (message != NULL)
+    *message = g_strdup (wocky_node_get_content_from_child (node, "text"));
+
+  wocky_node_iter_init (&iter, node, NULL, NULL);
+
+  while (wocky_node_iter_next (&iter, &child))
+    {
+      if (wocky_enum_from_nick (
+              jingle_reason_get_type (), child->name, (gint *) &_reason))
+        {
+          if (reason != NULL)
+            *reason = _reason;
+          return TRUE;
+        }
+    }
+
+  return FALSE;
+}
 
 static JingleAction
 parse_action (const gchar *txt)
@@ -592,9 +628,7 @@ action_is_allowed (JingleAction action, JingleState state)
 static void gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
     const gchar *name);
 static void set_state (GabbleJingleSession *sess,
-    JingleState state,
-    TpChannelGroupChangeReason termination_reason,
-    const gchar *text);
+    JingleState state, JingleReason termination_reason, const gchar *text);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
 static gboolean
@@ -682,6 +716,7 @@ _foreach_content (GabbleJingleSession *sess,
     LmMessageNode *node,
     gboolean fail_if_missing,
     ContentHandlerFunc func,
+    gpointer user_data,
     GError **error)
 {
   GabbleJingleContent *c;
@@ -700,7 +735,7 @@ _foreach_content (GabbleJingleSession *sess,
               fail_if_missing, &c, error))
         return;
 
-      func (sess, c, content_node, error);
+      func (sess, c, content_node, user_data, error);
       if (*error != NULL)
         return;
     }
@@ -829,7 +864,7 @@ create_content (GabbleJingleSession *sess, GType content_type,
 
 static void
 _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *name = lm_message_node_get_attribute (content_node, "name");
@@ -873,7 +908,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   g_assert (c != NULL);
 
@@ -881,8 +916,20 @@ _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
 }
 
 static void
+_each_content_rejected (GabbleJingleSession *sess, GabbleJingleContent *c,
+    LmMessageNode *content_node, gpointer user_data, GError **error)
+{
+  JingleReason reason = GPOINTER_TO_UINT (user_data);
+  g_assert (c != NULL);
+
+  g_signal_emit (sess, signals[CONTENT_REJECTED], 0, c, reason, "");
+
+  gabble_jingle_content_remove (c, FALSE);
+}
+
+static void
 _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   g_assert (c != NULL);
 
@@ -894,19 +941,19 @@ _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_replace (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
-  _each_content_remove (sess, c, content_node, error);
+  _each_content_remove (sess, c, content_node, NULL, error);
 
   if (*error != NULL)
     return;
 
-  _each_content_add (sess, c, content_node, error);
+  _each_content_add (sess, c, content_node, NULL, error);
 }
 
 static void
 _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node ,GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   JingleContentState state;
@@ -929,7 +976,7 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_description_info (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error)
+    LmMessageNode *content_node, gpointer user_data, GError **error)
 {
   gabble_jingle_content_parse_description_info (c, content_node, error);
 }
@@ -945,8 +992,7 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
     {
       /* We ignore initiate from us, and terminate the session immediately
        * afterwards */
-      gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_BUSY, NULL, NULL);
+      gabble_jingle_session_terminate (sess, JINGLE_REASON_BUSY, NULL, NULL);
       return;
     }
 
@@ -976,17 +1022,17 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
         }
       else
         {
-          _each_content_add (sess, NULL, node, error);
+          _each_content_add (sess, NULL, node, NULL, error);
         }
     }
   else if (priv->dialect == JINGLE_DIALECT_GTALK4)
     {
       /* in this case we implicitly have just one content */
-      _each_content_add (sess, NULL, node, error);
+      _each_content_add (sess, NULL, node, NULL, error);
     }
   else
     {
-      _foreach_content (sess, node, FALSE, _each_content_add, error);
+      _foreach_content (sess, node, FALSE, _each_content_add, NULL, error);
     }
 
   if (*error == NULL)
@@ -995,7 +1041,8 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
        * disposition; resolve this as soon as the proper procedure is defined
        * in XEP-0166. */
 
-      set_state (sess, JINGLE_STATE_PENDING_INITIATED, 0, NULL);
+      set_state (sess, JINGLE_STATE_PENDING_INITIATED, JINGLE_REASON_UNKNOWN,
+          NULL);
 
       gabble_jingle_session_send_rtp_info (sess, "ringing");
     }
@@ -1005,45 +1052,54 @@ static void
 on_content_add (GabbleJingleSession *sess, LmMessageNode *node,
   GError **error)
 {
-  _foreach_content (sess, node, FALSE, _each_content_add, error);
+  _foreach_content (sess, node, FALSE, _each_content_add, NULL, error);
 }
 
 static void
 on_content_modify (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_modify, error);
+  _foreach_content (sess, node, TRUE, _each_content_modify, NULL, error);
 }
 
 static void
 on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_remove, error);
+  _foreach_content (sess, node, TRUE, _each_content_remove, NULL, error);
 }
 
 static void
 on_content_replace (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_replace, error);
+  _foreach_content (sess, node, TRUE, _each_content_replace, NULL, error);
 }
 
 static void
 on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  /* FIXME: reject is different from remove - remove is for
-   * acknowledged contents, reject is for pending; but the result
-   * is the same. */
-  _foreach_content (sess, node, TRUE, _each_content_remove, error);
+  LmMessageNode *n = lm_message_node_get_child (node, "reason");
+  JingleReason reason = JINGLE_REASON_UNKNOWN;
+
+  DEBUG (" ");
+
+  if (n != NULL)
+    extract_reason (n, &reason, NULL);
+
+  if (reason == JINGLE_REASON_UNKNOWN)
+    reason = JINGLE_REASON_GENERAL_ERROR;
+
+  _foreach_content (sess, node, TRUE, _each_content_rejected,
+      GUINT_TO_POINTER (reason), error);
 }
 
 static void
 on_content_accept (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_content_accept, error);
+  _foreach_content (sess, node, TRUE, _each_content_accept, NULL, error);
 }
 
 static void
@@ -1066,19 +1122,19 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
       GList *l;
 
       for (l = cs; l != NULL; l = l->next)
-        _each_content_accept (sess, l->data, node, error);
+        _each_content_accept (sess, l->data, node, NULL, error);
 
       g_list_free (cs);
     }
   else
     {
-      _foreach_content (sess, node, TRUE, _each_content_accept, error);
+      _foreach_content (sess, node, TRUE, _each_content_accept, NULL, error);
     }
 
   if (*error != NULL)
       return;
 
-  set_state (sess, JINGLE_STATE_ACTIVE, 0, NULL);
+  set_state (sess, JINGLE_STATE_ACTIVE, JINGLE_REASON_UNKNOWN, NULL);
 
   if (priv->dialect != JINGLE_DIALECT_V032)
     {
@@ -1259,76 +1315,24 @@ on_session_info (GabbleJingleSession *sess,
         "no recognized session-info payloads");
 }
 
-typedef struct {
-    const gchar *element;
-    TpChannelGroupChangeReason reason;
-} ReasonMapping;
-
-/* Taken from the schema in XEP 0166 */
-ReasonMapping reasons[] = {
-    { "alternative-session", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "busy", TP_CHANNEL_GROUP_CHANGE_REASON_BUSY },
-    { "cancel", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "connectivity-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "decline", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "expired", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "failed-application", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "failed-transport", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "general-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "gone", TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE },
-    { "incompatible-parameters", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "media-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "security-error", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "success", TP_CHANNEL_GROUP_CHANGE_REASON_NONE },
-    { "timeout", TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER },
-    { "unsupported-applications", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { "unsupported-transports", TP_CHANNEL_GROUP_CHANGE_REASON_ERROR },
-    { NULL, }
-};
-
 static void
 on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
-  const gchar *text = NULL;
+  gchar *text = NULL;
   LmMessageNode *n = lm_message_node_get_child (node, "reason");
-  ReasonMapping *m = NULL;
-  NodeIter i;
+  JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
 
-  /* If the session-terminate stanza has a <reason> child, then iterate across
-   * its children, looking for a child whose name we recognise as a
-   * machine-readable reason for the call ending (looked up from the table
-   * above), and a <text> node containing a human-readable message.
-   */
   if (n != NULL)
-    for (i = node_iter (n); i; i = node_iter_next (i))
-      {
-        const gchar *name;
+    extract_reason (n, &jingle_reason, &text);
 
-        n = node_iter_data (i);
-
-        name = lm_message_node_get_name (n);
-
-        if (!tp_strdiff (name, "text"))
-          {
-            text = lm_message_node_get_value (n);
-            continue;
-          }
-
-        for (m = reasons; m->element != NULL; m++)
-          if (!tp_strdiff (m->element, name))
-            {
-              reason = m->reason;
-              break;
-            }
-      }
-
-  DEBUG ("remote end terminated the session with reason %s (%u) "
-      "and text '%s'",
-      (m != NULL && m->element != NULL ? m->element : "(none)"), reason,
+  DEBUG ("remote end terminated the session with reason %s and text '%s'",
+      gabble_jingle_session_get_reason_name (jingle_reason),
       (text != NULL ? text : "(none)"));
-  set_state (sess, JINGLE_STATE_ENDED, reason, text);
+
+  set_state (sess, JINGLE_STATE_ENDED, jingle_reason, text);
+
+  g_free (text);
 }
 
 static void
@@ -1383,17 +1387,37 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
     }
   else
     {
-      node = lm_message_node_get_child_any_ns (node, "content");
+      WockyNodeIter i;
+      WockyNode *content_node;
+      GError *e = NULL;
 
-      if (!lookup_content (sess,
-              lm_message_node_get_attribute (node, "name"),
-              lm_message_node_get_attribute (node, "creator"),
-              TRUE /* fail_if_missing */, &c, error))
-        return;
+      wocky_node_iter_init (&i, node, "content", NULL);
 
-      /* we need transport child of content node */
-      node = lm_message_node_get_child_any_ns (node, "transport");
-      gabble_jingle_content_parse_transport_info (c, node, error);
+      while (wocky_node_iter_next (&i, &content_node))
+        {
+          WockyNode *transport_node;
+
+          if (lookup_content (sess,
+                lm_message_node_get_attribute (content_node, "name"),
+                lm_message_node_get_attribute (content_node, "creator"),
+                TRUE /* fail_if_missing */, &c, &e))
+            {
+              /* we need transport child of content node */
+              transport_node = lm_message_node_get_child_any_ns (
+                content_node, "transport");
+              gabble_jingle_content_parse_transport_info (c,
+                transport_node, &e);
+            }
+
+          /* Save the first error we encounter, but go through all remaining
+           * contents anyway to try and recover as much info as we can */
+          if (e != NULL && error != NULL && *error == NULL)
+            {
+              *error = e;
+              e = NULL;
+            }
+          g_clear_error (&e);
+        }
     }
 
 }
@@ -1409,7 +1433,7 @@ static void
 on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
     GError **error)
 {
-  _foreach_content (sess, node, TRUE, _each_description_info, error);
+  _foreach_content (sess, node, TRUE, _each_description_info, NULL, error);
 }
 
 static void
@@ -1816,7 +1840,7 @@ _on_initiate_reply (GObject *sess_as_obj,
     }
   else
     {
-      set_state (sess, JINGLE_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+      set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
 }
@@ -1835,7 +1859,7 @@ _on_accept_reply (GObject *sess_as_obj,
     }
   else
     {
-      set_state (sess, JINGLE_STATE_ENDED, TP_CHANNEL_GROUP_CHANGE_REASON_NONE,
+      set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
 }
@@ -1966,14 +1990,14 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
  * @sess: a jingle session
  * @state: the new state for the session
  * @termination_reason: if @state is JINGLE_STATE_ENDED, the reason the session
- *                      ended. Otherwise, must be 0.
+ *                      ended. Otherwise, must be JINGLE_REASON_UNKNOWN.
  * @text: if @state is JINGLE_STATE_ENDED, the human-readable reason the session
  *        ended.
  */
 static void
 set_state (GabbleJingleSession *sess,
            JingleState state,
-           TpChannelGroupChangeReason termination_reason,
+           JingleReason termination_reason,
            const gchar *text)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -1985,7 +2009,7 @@ set_state (GabbleJingleSession *sess,
     }
 
   if (state != JINGLE_STATE_ENDED)
-    g_assert (termination_reason == 0);
+    g_assert (termination_reason == JINGLE_REASON_UNKNOWN);
 
   DEBUG ("Setting state of JingleSession: %p (priv = %p) from %u to %u", sess, priv, priv->state, state);
 
@@ -2013,33 +2037,20 @@ gabble_jingle_session_accept (GabbleJingleSession *sess)
   try_session_initiate_or_accept (sess);
 }
 
-static const gchar *
-_get_jingle_reason (GabbleJingleSession *sess,
-                    TpChannelGroupChangeReason reason)
+const gchar *
+gabble_jingle_session_get_reason_name (JingleReason reason)
 {
-  switch (reason)
-    {
-    case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
-      if (sess->priv->state == JINGLE_STATE_ACTIVE)
-        return "success";
-      else
-        return "cancel";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE:
-      return "gone";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_BUSY:
-      return "busy";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_ERROR:
-      return "general-error";
-    case TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER:
-      return "timeout";
-    default:
-      return NULL;
-    }
+  GEnumClass *klass = g_type_class_ref (jingle_reason_get_type ());
+  GEnumValue *enum_value = g_enum_get_value (klass, (gint) reason);
+
+  g_return_val_if_fail (enum_value != NULL, NULL);
+
+  return enum_value->value_nick;
 }
 
 gboolean
 gabble_jingle_session_terminate (GabbleJingleSession *sess,
-                                 TpChannelGroupChangeReason reason,
+                                 JingleReason reason,
                                  const gchar *text,
                                  GError **error)
 {
@@ -2052,14 +2063,11 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
       return TRUE;
     }
 
-  reason_elt = _get_jingle_reason (sess, reason);
+  if (reason == JINGLE_REASON_UNKNOWN)
+    reason = (priv->state == JINGLE_STATE_ACTIVE) ?
+      JINGLE_REASON_SUCCESS : JINGLE_REASON_CANCEL;
 
-  if (reason_elt == NULL)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "%u doesn't make sense as a reason to end a call", reason);
-      return FALSE;
-    }
+  reason_elt = gabble_jingle_session_get_reason_name (reason);
 
   if (priv->state != JINGLE_STATE_PENDING_CREATED)
     {
@@ -2139,7 +2147,7 @@ content_removed_cb (GabbleJingleContent *c, gpointer user_data)
   if (count_active_contents (sess) == 0)
     {
       gabble_jingle_session_terminate (sess,
-          TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+          JINGLE_REASON_UNKNOWN, NULL, NULL);
     }
   else
     {

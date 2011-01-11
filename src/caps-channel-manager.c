@@ -30,32 +30,14 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"
 
-GType
-gabble_caps_channel_manager_get_type (void)
+G_DEFINE_INTERFACE (GabbleCapsChannelManager, gabble_caps_channel_manager,
+    TP_TYPE_CHANNEL_MANAGER);
+
+/* stub function needed for the G_DEFINE_INTERFACE macro above */
+static void
+gabble_caps_channel_manager_default_init (
+    GabbleCapsChannelManagerInterface *interface)
 {
-  static GType type = 0;
-
-  if (G_UNLIKELY (type == 0))
-    {
-      static const GTypeInfo info = {
-        sizeof (GabbleCapsChannelManagerIface),
-        NULL,   /* base_init */
-        NULL,   /* base_finalize */
-        NULL,   /* class_init */
-        NULL,   /* class_finalize */
-        NULL,   /* class_data */
-        0,
-        0,      /* n_preallocs */
-        NULL    /* instance_init */
-      };
-
-      type = g_type_register_static (G_TYPE_INTERFACE,
-          "GabbleCapsChannelManager", &info, 0);
-
-      g_type_interface_add_prerequisite (type, TP_TYPE_CHANNEL_MANAGER);
-    }
-
-  return type;
 }
 
 /* Virtual-method wrappers */
@@ -63,7 +45,7 @@ void
 gabble_caps_channel_manager_reset_capabilities (
     GabbleCapsChannelManager *caps_manager)
 {
-  GabbleCapsChannelManagerIface *iface =
+  GabbleCapsChannelManagerInterface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
   GabbleCapsChannelManagerResetCapsFunc method = iface->reset_caps;
 
@@ -81,7 +63,7 @@ gabble_caps_channel_manager_get_contact_capabilities (
     const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
-  GabbleCapsChannelManagerIface *iface =
+  GabbleCapsChannelManagerInterface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
   GabbleCapsChannelManagerGetContactCapsFunc method = iface->get_contact_caps;
 
@@ -115,7 +97,7 @@ gabble_caps_channel_manager_represent_client (
     const gchar * const *cap_tokens,
     GabbleCapabilitySet *cap_set)
 {
-  GabbleCapsChannelManagerIface *iface =
+  GabbleCapsChannelManagerInterface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
   GabbleCapsChannelManagerRepresentClientFunc method = iface->represent_client;
 

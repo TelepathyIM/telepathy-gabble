@@ -1,0 +1,41 @@
+Tubes are meant to allow arbitrary applications to communicate with your IM
+contacts. To know whether it's possible to start a StreamTube or DBusTube
+channel with a contact, we need to know whether they support tubes at all:
+Gabble advertises the capability "http://telepathy.freedesktop.org/xmpp/tubes/"
+(NS_TUBES) for that.
+
+But we also need to know whether, for example, Bob has an application that can
+handle VNC stream tubes (for Share My Desktop). At the XMPP level, that's
+implemented as advertising
+"http://telepathy.freedesktop.org/xmpp/tubes/stream#vnc".
+
+Gabble knows how to translate between this representation and the
+representation used on D-Bus.
+<http://telepathy.freedesktop.org/spec/Connection_Interface_Contact_Capabilities.html#Contact_Capabilities_Map>
+
+For XMPP → Telepathy, it translates
+"http://telepathy.freedesktop.org/xmpp/tubes/stream#$foo" into the channel
+class
+
+    { ChannelType: StreamTube,
+      StreamTube.Service: $foo,
+    }
+
+In the other direction, it looks through the channel classes passed to
+ContactCapabilities.UpdateCapabilities and performs the reverse translation to
+figure out what to advertise on XMPP.
+
+Mission Control calls UpdateCapabilities by basically concatenating every
+installed or running client's HandlerChannelFilter property.  So if you have a
+client installed that says it can handle
+
+    { ChannelType: StreamTube,
+      StreamTube.Service: "vnc",
+    }
+
+MC relays that fact to Gabble, and Gabble can advertise the right
+capability.
+
+Thus, Gabble doesn't need to know anything at all about the possible
+applications that can be built on tubes to be able to advertise support for
+them.

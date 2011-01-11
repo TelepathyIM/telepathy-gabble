@@ -33,24 +33,24 @@ To run all Twisted tests:
 
 To run an individual Twisted test:
 
-  make -C tests/twisted check-twisted TWISTED_TESTS=test-connect.py
+  make -C tests/twisted check-twisted TWISTED_TESTS=connect/test-success.py
 
 or:
 
   cd tests/twisted
   sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf \
-        -- python test-connect.py
+        -- python connect/test-success.py
 
 To run with debug information:
 
-  make -C tests/twisted check-twisted TWISTED_TESTS=test-connect.py \
+  make -C tests/twisted check-twisted TWISTED_TESTS=connect/test-success.py \
         CHECK_TWISTED_VERBOSE=1
 
 or:
 
   cd tests/twisted
   sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf \
-        -- python test-connect.py -v
+        -- python connect/test-success.py -v
 
 To debug an individual test you can set one of the following env variable:
 
@@ -73,6 +73,9 @@ To debug an individual test you can set one of the following env variable:
     to tools/strace.log.
         export GABBLE_TEST_STRACE=1
 
+  * GABBLE_TEST_BUSTLE : to run bustle-dbus-monitor in the temporary
+    bus daemon. The logs are saved to tools/*bustle-logs.
+        export GABBLE_TEST_BUSTLE=1
 
 == Jingle tests ==
 

@@ -38,8 +38,8 @@ gibber_normalize_address (struct sockaddr_storage *addr)
   if (s6->sin6_family == AF_INET6 && IN6_IS_ADDR_V4MAPPED (&(s6->sin6_addr)))
     {
       /* Normalize to ipv4 address */
-      u_int32_t addr_big_endian;
-      u_int16_t port;
+      guint32 addr_big_endian;
+      guint16 port;
 
       memcpy (&addr_big_endian, s6->sin6_addr.s6_addr + 12, 4);
       port = s6->sin6_port;

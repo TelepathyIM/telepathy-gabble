@@ -594,7 +594,7 @@ gabble_call_member_shutdown (GabbleCallMember *self)
   if (priv->session != NULL)
     {
       gabble_jingle_session_terminate (priv->session,
-        TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+        JINGLE_REASON_UNKNOWN, NULL, NULL);
     }
 
   /* removing the content will remove it from our list */

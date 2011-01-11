@@ -255,18 +255,15 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             call_async(q, publish.Group, 'RemoveMembers', [holly], '')
 
     if remove:
-        patterns = [EventPattern('stream-iq', iq_type='set',
-            query_ns=ns.ROSTER, query_name='query')]
-
-        if not modern:
-            patterns.append(EventPattern('dbus-return', method='RemoveMembers'))
-
-        iq = q.expect_many(*patterns)[0]
+        iq = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER,
+                query_name='query')
 
         acknowledge_iq(stream, iq.stanza)
 
         if modern:
             q.expect('dbus-return', method='RemoveContacts')
+        # FIXME: when we depend on a new enough tp-glib, expect RemoveMembers
+        # to return here too
 
         send_roster_push(stream, 'holly@example.com', 'remove')
         q.expect_many(

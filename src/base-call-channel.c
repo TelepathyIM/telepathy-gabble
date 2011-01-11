@@ -25,6 +25,7 @@
 #include <gio/gio.h>
 
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/dtmf.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/interfaces.h>
@@ -51,6 +52,7 @@
 
 static void call_iface_init (gpointer, gpointer);
 static void gabble_base_call_channel_close (TpBaseChannel *base);
+static void dtmf_iface_init (gpointer, gpointer);
 
 static GHashTable *members_to_hash (GabbleBaseCallChannel *self);
 
@@ -58,6 +60,22 @@ G_DEFINE_TYPE_WITH_CODE(GabbleBaseCallChannel, gabble_base_call_channel,
   TP_TYPE_BASE_CHANNEL,
   G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CHANNEL_TYPE_CALL,
         call_iface_init)
+  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DTMF,
+      dtmf_iface_init);
+
+#if 0
+=======
+  G_TYPE_OBJECT,
+  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+  G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_CALL,
+        call_iface_init);
+  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+    tp_dbus_properties_mixin_iface_init);
+  G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
+  G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
+
+>>>>>>> master
+#endif
 );
 
 static const gchar *gabble_base_call_channel_interfaces[] = {
@@ -83,6 +101,10 @@ enum
   PROP_CALL_STATE_REASON,
 
   PROP_CALL_MEMBERS,
+
+  PROP_CURRENTLY_SENDING_TONES,
+  PROP_INITIAL_TONES,
+  PROP_DEFERRED_TONES,
 
   LAST_PROPERTY
 };
@@ -113,9 +135,25 @@ struct _GabbleBaseCallChannelPrivate
   GHashTable *details;
   GValueArray *reason;
 
+  TpDTMFPlayer *dtmf_player;
+  gchar *deferred_tones;
+  gboolean have_some_audio;
+
   /* handle -> CallMember object hash */
   GHashTable *members;
 };
+
+static void
+gabble_base_call_channel_tones_deferred_cb (GabbleBaseCallChannel *self,
+    const gchar *tones,
+    TpDTMFPlayer *dtmf_player)
+{
+  DEBUG ("waiting for user to continue sending '%s'", tones);
+
+  g_free (self->priv->deferred_tones);
+  self->priv->deferred_tones = g_strdup (tones);
+  tp_svc_channel_interface_dtmf_emit_tones_deferred (self, tones);
+}
 
 static void
 gabble_base_call_channel_constructed (GObject *obj)
@@ -153,6 +191,17 @@ gabble_base_call_channel_init (GabbleBaseCallChannel *self)
 
   priv->members = g_hash_table_new_full (g_direct_hash, g_direct_equal,
     NULL, g_object_unref);
+
+  priv->dtmf_player = tp_dtmf_player_new ();
+  priv->have_some_audio = FALSE;
+
+  tp_g_signal_connect_object (priv->dtmf_player, "finished",
+      G_CALLBACK (tp_svc_channel_interface_dtmf_emit_stopped_tones), self,
+      G_CONNECT_SWAPPED);
+
+  tp_g_signal_connect_object (priv->dtmf_player, "tones-deferred",
+      G_CALLBACK (gabble_base_call_channel_tones_deferred_cb), self,
+      G_CONNECT_SWAPPED);
 }
 
 static void gabble_base_call_channel_dispose (GObject *object);
@@ -226,6 +275,20 @@ gabble_base_call_channel_get_property (GObject    *object,
         break;
       case PROP_CALL_MEMBERS:
         g_value_take_boxed (value, members_to_hash (self));
+        break;
+      case PROP_CURRENTLY_SENDING_TONES:
+        g_value_set_boolean (value,
+            tp_dtmf_player_is_active (priv->dtmf_player));
+        break;
+      case PROP_INITIAL_TONES:
+        /* FIXME: stub */
+        g_value_set_static_string (value, "");
+        break;
+      case PROP_DEFERRED_TONES:
+        if (priv->deferred_tones != NULL)
+          g_value_set_string (value, priv->deferred_tones);
+        else
+          g_value_set_static_string (value, "");
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -313,6 +376,12 @@ gabble_base_call_channel_class_init (
       { "CallFlags", "call-flags", NULL },
       { "CallStateReason",  "call-state-reason", NULL },
       { "CallStateDetails", "call-state-details", NULL },
+      { NULL }
+  };
+ static TpDBusPropertiesMixinPropImpl dtmf_props[] = {
+      { "CurrentlySendingTones", "currently-sending-tones", NULL },
+      { "InitialTones", "initial-tones", NULL },
+      { "DeferredTones", "deferred-tones", NULL },
       { NULL }
   };
 
@@ -435,11 +504,37 @@ gabble_base_call_channel_class_init (
   g_object_class_install_property (object_class, PROP_CALL_MEMBERS,
       param_spec);
 
+  param_spec = g_param_spec_boolean ("currently-sending-tones",
+      "CurrentlySendingTones",
+      "True if a DTMF tone is being sent",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CURRENTLY_SENDING_TONES,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initial-tones", "InitialTones",
+      "Initial DTMF tones to be sent in the first audio stream",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_TONES,
+      param_spec);
+
+  param_spec = g_param_spec_string ("deferred-tones", "DeferredTones",
+      "DTMF tones that followed a 'w' or 'W', to be resumed on user request",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DEFERRED_TONES,
+      param_spec);
+
   tp_dbus_properties_mixin_implement_interface (object_class,
       TPY_IFACE_QUARK_CHANNEL_TYPE_CALL,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       call_props);
+
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_DTMF,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      dtmf_props);
 }
 
 void
@@ -476,6 +571,7 @@ gabble_base_call_channel_finalize (GObject *object)
   g_free (self->priv->object_path_prefix);
   g_free (self->priv->initial_audio_name);
   g_free (self->priv->initial_video_name);
+  tp_clear_pointer (&self->priv->deferred_tones, g_free);
 
   G_OBJECT_CLASS (gabble_base_call_channel_parent_class)->finalize (object);
 }
@@ -512,6 +608,8 @@ gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
 {
   GabbleBaseCallChannelPrivate *priv = self->priv;
   const gchar *path;
+  GList *l;
+  gboolean still_have_audio = FALSE;
 
   priv->contents = g_list_remove (priv->contents, content);
 
@@ -521,6 +619,26 @@ gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
 
   gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
   g_object_unref (content);
+
+  /* let's see if we still have any audio contents */
+  for (l = priv->contents; l != NULL; l = l->next)
+    {
+      if (gabble_call_content_get_media_type (
+              GABBLE_CALL_CONTENT (l->data)) ==
+          JINGLE_MEDIA_TYPE_AUDIO)
+        {
+          still_have_audio = TRUE;
+          break;
+        }
+    }
+
+  if (priv->have_some_audio && !still_have_audio)
+    {
+      /* the last audio stream just closed */
+      tp_dtmf_player_cancel (priv->dtmf_player);
+    }
+
+  priv->have_some_audio = still_have_audio;
 }
 
 GabbleCallContent *
@@ -557,6 +675,9 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
       G_CALLBACK (gabble_base_call_channel_remove_content), self);
 
   priv->contents = g_list_prepend (priv->contents, content);
+
+  if (mtype == JINGLE_MEDIA_TYPE_AUDIO)
+    priv->have_some_audio = TRUE;
 
   tpy_svc_channel_type_call_emit_content_added (self,
      gabble_base_call_content_get_object_path (content));
@@ -767,6 +888,103 @@ call_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(accept,);
   IMPLEMENT(hangup,);
   IMPLEMENT(add_content, _dbus);
+#undef IMPLEMENT
+}
+
+#define TONE_MS 200
+#define GAP_MS 100
+#define PAUSE_MS 3000
+/* arbitrary limit on the length of a tone started with StartTone */
+#define MAX_TONE_SECONDS 10
+
+static void
+gabble_base_call_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
+    guint stream_id G_GNUC_UNUSED,
+    guchar event,
+    DBusGMethodInvocation *context)
+{
+  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
+  gchar tones[2] = { '\0', '\0' };
+  GError *error = NULL;
+
+  if (!self->priv->have_some_audio)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  tones[0] = tp_dtmf_event_to_char (event);
+
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
+      tones, MAX_TONE_SECONDS * 1000, GAP_MS, PAUSE_MS, &error))
+    {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, tones);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
+}
+
+static void
+gabble_base_call_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
+    guint stream_id,
+    DBusGMethodInvocation *context)
+{
+  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
+
+  tp_dtmf_player_cancel (self->priv->dtmf_player);
+  tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
+}
+
+static void
+gabble_base_call_channel_multiple_tones (
+    TpSvcChannelInterfaceDTMF *iface,
+    const gchar *dialstring,
+    DBusGMethodInvocation *context)
+{
+  GabbleBaseCallChannel *self = GABBLE_BASE_CALL_CHANNEL (iface);
+  GError *error = NULL;
+
+  if (!self->priv->have_some_audio)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
+      dialstring, TONE_MS, GAP_MS, PAUSE_MS, &error))
+    {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, dialstring);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
+}
+
+static void
+dtmf_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceDTMFClass *klass = g_iface;
+
+#define IMPLEMENT(x) tp_svc_channel_interface_dtmf_implement_##x (\
+    klass, gabble_base_call_channel_##x)
+  IMPLEMENT(start_tone);
+  IMPLEMENT(stop_tone);
+  IMPLEMENT(multiple_tones);
 #undef IMPLEMENT
 }
 

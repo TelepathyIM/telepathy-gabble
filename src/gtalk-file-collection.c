@@ -108,6 +108,14 @@
  *
  */
 
+static gboolean test_mode = FALSE;
+
+void
+gtalk_file_collection_set_test_mode (void)
+{
+  test_mode = TRUE;
+}
+
 G_DEFINE_TYPE (GTalkFileCollection, gtalk_file_collection, G_TYPE_OBJECT);
 
 /* properties */
@@ -242,7 +250,7 @@ gtalk_file_collection_dispose (GObject *object)
 
   if (self->priv->jingle != NULL)
     gabble_jingle_session_terminate (self->priv->jingle,
-        TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+        JINGLE_REASON_UNKNOWN, NULL, NULL);
 
   tp_clear_object (&self->priv->jingle);
 
@@ -464,7 +472,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
 static void
 jingle_session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
-                       TpChannelGroupChangeReason reason,
+                       JingleReason reason,
                        const gchar *text,
                        gpointer user_data)
 {
@@ -940,6 +948,9 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
 
   DEBUG ("New Share channel %s was created and linked to id %d", name,
       share_channel_id);
+
+  if (test_mode)
+    g_object_set (agent, "upnp", FALSE, NULL);
 
   share_channel->agent = agent;
   share_channel->stream_id = stream_id;
@@ -1714,7 +1725,7 @@ gtalk_file_collection_terminate (GTalkFileCollection *self,
              jingle session */
           self->priv->status = GTALK_FT_STATUS_TERMINATED;
           gabble_jingle_session_terminate (self->priv->jingle,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+              JINGLE_REASON_UNKNOWN, NULL, NULL);
           return;
         }
       return;
@@ -1755,7 +1766,7 @@ channel_disposed (gpointer data, GObject *object)
              jingle session */
           self->priv->status = GTALK_FT_STATUS_TERMINATED;
           gabble_jingle_session_terminate (self->priv->jingle,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+              JINGLE_REASON_UNKNOWN, NULL, NULL);
           return;
         }
     }

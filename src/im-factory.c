@@ -669,7 +669,7 @@ static void
 caps_channel_manager_iface_init (gpointer g_iface,
                                  gpointer iface_data)
 {
-  GabbleCapsChannelManagerIface *iface = g_iface;
+  GabbleCapsChannelManagerInterface *iface = g_iface;
 
   iface->get_contact_caps = gabble_im_factory_get_contact_caps;
 }

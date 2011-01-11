@@ -227,6 +227,12 @@ presences_updated_cb (GabblePresenceCache *presence_cache,
 
       array = gabble_presence_get_client_types_array (presence, res, TRUE);
 
+      if (gabble_presence_cache_disco_in_progress (presence_cache, handle, res)
+          || array == NULL)
+        {
+          goto cleanup;
+        }
+
 emit:
       tp_svc_connection_interface_client_types_emit_client_types_updated (
           conn, handle, (const gchar **) array->pdata);
@@ -234,6 +240,7 @@ emit:
       if (array != empty_array)
         g_ptr_array_unref (array);
 
+cleanup:
       g_ptr_array_unref (empty_array);
     }
 }

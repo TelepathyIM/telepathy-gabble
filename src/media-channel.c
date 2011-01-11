@@ -53,15 +53,19 @@
 #define MAX_STREAMS 99
 
 static void channel_iface_init (gpointer, gpointer);
+static void dtmf_iface_init (gpointer, gpointer);
 static void media_signalling_iface_init (gpointer, gpointer);
 static void streamed_media_iface_init (gpointer, gpointer);
 static void session_handler_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
     G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL,
+      channel_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CALL_STATE,
       gabble_media_channel_call_state_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DTMF,
+      dtmf_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_HOLD,
@@ -81,6 +85,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMediaChannel, gabble_media_channel,
 
 static const gchar *gabble_media_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CALL_STATE,
+    TP_IFACE_CHANNEL_INTERFACE_DTMF,
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_HOLD,
     TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING,
@@ -110,6 +115,9 @@ enum
   PROP_INITIAL_AUDIO,
   PROP_INITIAL_VIDEO,
   PROP_IMMUTABLE_STREAMS,
+  PROP_CURRENTLY_SENDING_TONES,
+  PROP_INITIAL_TONES,
+  PROP_DEFERRED_TONES,
   /* TP properties (see also below) */
   PROP_NAT_TRAVERSAL,
   PROP_STUN_SERVER,
@@ -161,6 +169,18 @@ static void destroy_request (struct _delayed_request_streams_ctx *ctx,
     gpointer user_data);
 
 static void
+tones_deferred_cb (GabbleMediaChannel *self,
+    const gchar *tones,
+    TpDTMFPlayer *dtmf_player)
+{
+  DEBUG ("waiting for user to continue sending '%s'", tones);
+
+  g_free (self->priv->deferred_tones);
+  self->priv->deferred_tones = g_strdup (tones);
+  tp_svc_channel_interface_dtmf_emit_tones_deferred (self, tones);
+}
+
+static void
 gabble_media_channel_init (GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
@@ -175,14 +195,22 @@ gabble_media_channel_init (GabbleMediaChannel *self)
   /* initialize properties mixin */
   tp_properties_mixin_init (G_OBJECT (self), G_STRUCT_OFFSET (
         GabbleMediaChannel, properties));
+
+  priv->dtmf_player = tp_dtmf_player_new ();
+
+  tp_g_signal_connect_object (priv->dtmf_player, "finished",
+      G_CALLBACK (tp_svc_channel_interface_dtmf_emit_stopped_tones), self,
+      G_CONNECT_SWAPPED);
+
+  tp_g_signal_connect_object (priv->dtmf_player, "tones-deferred",
+      G_CALLBACK (tones_deferred_cb), self,
+      G_CONNECT_SWAPPED);
 }
 
 static void session_state_changed_cb (GabbleJingleSession *session,
     GParamSpec *arg1, GabbleMediaChannel *channel);
 static void session_terminated_cb (GabbleJingleSession *session,
-    gboolean local_terminator,
-    TpChannelGroupChangeReason reason,
-    const gchar *text,
+    gboolean local_terminator, JingleReason reason, const gchar *text,
     gpointer user_data);
 static void session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data);
@@ -191,6 +219,9 @@ static void create_stream_from_content (GabbleMediaChannel *chan,
 static gboolean contact_is_media_capable (GabbleMediaChannel *chan, TpHandle peer,
     gboolean *wait, GError **error);
 static void stream_creation_data_cancel (gpointer p, gpointer unused);
+static void session_content_rejected_cb (GabbleJingleSession *session,
+    GabbleJingleContent *c, JingleReason reason, const gchar *message,
+    gpointer user_data);
 
 static void
 create_initial_streams (GabbleMediaChannel *chan)
@@ -256,6 +287,9 @@ _latch_to_session (GabbleMediaChannel *chan)
 
   g_signal_connect (priv->session, "terminated",
                     (GCallback) session_terminated_cb, chan);
+
+  g_signal_connect (priv->session, "content-rejected",
+                    (GCallback) session_content_rejected_cb, chan);
 
   gabble_media_channel_hold_latch_to_session (chan);
 
@@ -561,6 +595,20 @@ gabble_media_channel_get_property (GObject    *object,
     case PROP_IMMUTABLE_STREAMS:
       g_value_set_boolean (value, priv->immutable_streams);
       break;
+    case PROP_CURRENTLY_SENDING_TONES:
+      g_value_set_boolean (value,
+          tp_dtmf_player_is_active (priv->dtmf_player));
+      break;
+    case PROP_INITIAL_TONES:
+      /* FIXME: stub */
+      g_value_set_static_string (value, "");
+      break;
+    case PROP_DEFERRED_TONES:
+      if (priv->deferred_tones != NULL)
+        g_value_set_string (value, priv->deferred_tones);
+      else
+        g_value_set_static_string (value, "");
+      break;
     default:
       param_name = g_param_spec_get_name (pspec);
 
@@ -688,6 +736,12 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
       { "InitialVideo", "initial-video", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl dtmf_props[] = {
+      { "CurrentlySendingTones", "currently-sending-tones", NULL },
+      { "InitialTones", "initial-tones", NULL },
+      { "DeferredTones", "deferred-tones", NULL },
+      { NULL }
+  };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
       { TP_IFACE_CHANNEL,
         tp_dbus_properties_mixin_getter_gobject_properties,
@@ -698,6 +752,11 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         streamed_media_props,
+      },
+      { TP_IFACE_CHANNEL_INTERFACE_DTMF,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        NULL,
+        dtmf_props,
       },
       { NULL }
   };
@@ -844,6 +903,26 @@ gabble_media_channel_class_init (GabbleMediaChannelClass *gabble_media_channel_c
   g_object_class_install_property (object_class, PROP_IMMUTABLE_STREAMS,
       param_spec);
 
+  param_spec = g_param_spec_boolean ("currently-sending-tones",
+      "CurrentlySendingTones",
+      "True if a DTMF tone is being sent",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CURRENTLY_SENDING_TONES,
+      param_spec);
+
+  param_spec = g_param_spec_string ("initial-tones", "InitialTones",
+      "Initial DTMF tones to be sent in the first audio stream",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIAL_TONES,
+      param_spec);
+
+  param_spec = g_param_spec_string ("deferred-tones", "DeferredTones",
+      "DTMF tones that followed a 'w' or 'W', to be resumed on user request",
+      "", G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DEFERRED_TONES,
+      param_spec);
+
   tp_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMediaChannelClass, properties_class),
       channel_property_signatures, NUM_CHAN_PROPS, NULL);
@@ -932,6 +1011,7 @@ gabble_media_channel_finalize (GObject *object)
   GabbleMediaChannelPrivate *priv = self->priv;
 
   g_free (priv->object_path);
+  tp_clear_pointer (&self->priv->deferred_tones, g_free);
 
   tp_group_mixin_finalize (object);
   tp_properties_mixin_finalize (object);
@@ -977,7 +1057,7 @@ gabble_media_channel_close (GabbleMediaChannel *self)
 
       if (priv->session != NULL)
         gabble_jingle_session_terminate (priv->session,
-            TP_CHANNEL_GROUP_CHANGE_REASON_NONE, NULL, NULL);
+            JINGLE_REASON_UNKNOWN, NULL, NULL);
 
       tp_svc_channel_emit_closed (self);
     }
@@ -1203,6 +1283,30 @@ _find_stream_by_id (GabbleMediaChannel *chan,
 
   g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
       "given stream id %u does not exist", stream_id);
+  return NULL;
+}
+
+static GabbleMediaStream *
+_find_stream_by_content (GabbleMediaChannel *chan,
+    GabbleJingleContent *content)
+{
+  GabbleMediaChannelPrivate *priv;
+  guint i;
+
+  g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
+
+  priv = chan->priv;
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *stream = g_ptr_array_index (priv->streams, i);
+      GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (
+          gabble_media_stream_get_content (stream));
+
+      if (content == c)
+        return stream;
+    }
+
   return NULL;
 }
 
@@ -2106,7 +2210,7 @@ static gboolean
 gabble_media_channel_remove_member (GObject *obj,
                                     TpHandle handle,
                                     const gchar *message,
-                                    guint reason,
+                                    TpChannelGroupChangeReason reason,
                                     GError **error)
 {
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
@@ -2128,15 +2232,34 @@ gabble_media_channel_remove_member (GObject *obj,
     }
   else
     {
-      /* Terminate can fail if the UI provides a reason that makes no sense,
-       * like Invited.
-       */
-      if (!gabble_jingle_session_terminate (priv->session, reason, message,
-              error))
+      JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
+
+      switch (reason)
         {
+        case TP_CHANNEL_GROUP_CHANGE_REASON_NONE:
+          jingle_reason = JINGLE_REASON_UNKNOWN;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE:
+          jingle_reason = JINGLE_REASON_GONE;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_BUSY:
+          jingle_reason = JINGLE_REASON_BUSY;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_ERROR:
+          jingle_reason = JINGLE_REASON_GENERAL_ERROR;
+          break;
+        case TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER:
+          jingle_reason = JINGLE_REASON_TIMEOUT;
+          break;
+        default:
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "%u doesn't make sense as a reason to end a call", reason);
           g_object_unref (chan);
           return FALSE;
         }
+
+      gabble_jingle_session_terminate (priv->session, jingle_reason, message,
+          error);
     }
 
   /* Remove CanAdd if it was there for the deprecated anonymous channel
@@ -2161,10 +2284,91 @@ copy_stream_list (GabbleMediaChannel *channel)
   return gabble_g_ptr_array_copy (channel->priv->streams);
 }
 
+
+/* return TRUE when the jingle reason is reason enough to raise a
+ * StreamError */
+static gboolean
+extract_media_stream_error_from_jingle_reason (JingleReason jingle_reason,
+    TpMediaStreamError *stream_error)
+{
+  TpMediaStreamError _stream_error;
+
+  /* TODO: Make a better mapping with more distinction of possible errors */
+  switch (jingle_reason)
+    {
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+      _stream_error = TP_MEDIA_STREAM_ERROR_NETWORK_ERROR;
+      break;
+    case JINGLE_REASON_MEDIA_ERROR:
+      _stream_error = TP_MEDIA_STREAM_ERROR_MEDIA_ERROR;
+      break;
+    case JINGLE_REASON_FAILED_APPLICATION:
+      _stream_error = TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED;
+      break;
+    case JINGLE_REASON_GENERAL_ERROR:
+      _stream_error = TP_MEDIA_STREAM_ERROR_UNKNOWN;
+      break;
+    default:
+      {
+        if (stream_error != NULL)
+          *stream_error =  TP_MEDIA_STREAM_ERROR_UNKNOWN;
+
+        return FALSE;
+      }
+    }
+
+  if (stream_error != NULL)
+    *stream_error = _stream_error;
+
+  return TRUE;
+}
+
+static JingleReason
+media_stream_error_to_jingle_reason (TpMediaStreamError stream_error)
+{
+  switch (stream_error)
+    {
+    case TP_MEDIA_STREAM_ERROR_NETWORK_ERROR:
+      return JINGLE_REASON_CONNECTIVITY_ERROR;
+    case TP_MEDIA_STREAM_ERROR_MEDIA_ERROR:
+      return  JINGLE_REASON_MEDIA_ERROR;
+    case TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED:
+      return JINGLE_REASON_FAILED_APPLICATION;
+    default:
+      return JINGLE_REASON_GENERAL_ERROR;
+    }
+}
+
+static TpChannelGroupChangeReason
+jingle_reason_to_group_change_reason (JingleReason jingle_reason)
+{
+  switch (jingle_reason)
+    {
+    case JINGLE_REASON_BUSY:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
+    case JINGLE_REASON_GONE:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_OFFLINE;
+    case JINGLE_REASON_TIMEOUT:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_NO_ANSWER;
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+    case JINGLE_REASON_FAILED_APPLICATION:
+    case JINGLE_REASON_FAILED_TRANSPORT:
+    case JINGLE_REASON_GENERAL_ERROR:
+    case JINGLE_REASON_MEDIA_ERROR:
+    case JINGLE_REASON_SECURITY_ERROR:
+    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_ERROR;
+    default:
+      return TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+    }
+}
+
 static void
 session_terminated_cb (GabbleJingleSession *session,
                        gboolean local_terminator,
-                       TpChannelGroupChangeReason reason,
+                       JingleReason jingle_reason,
                        const gchar *text,
                        gpointer user_data)
 {
@@ -2195,7 +2399,8 @@ session_terminated_cb (GabbleJingleSession *session,
   tp_intset_add (set, peer);
 
   tp_group_mixin_change_members ((GObject *) channel,
-      text, NULL, set, NULL, NULL, terminator, reason);
+      text, NULL, set, NULL, NULL, terminator,
+      jingle_reason_to_group_change_reason (jingle_reason));
 
   tp_intset_destroy (set);
 
@@ -2211,8 +2416,28 @@ session_terminated_cb (GabbleJingleSession *session,
 
   {
     GPtrArray *tmp = copy_stream_list (channel);
+    guint i;
+    TpMediaStreamError stream_error = TP_MEDIA_STREAM_ERROR_UNKNOWN;
+    gboolean is_error = extract_media_stream_error_from_jingle_reason (
+        jingle_reason, &stream_error);
 
-    g_ptr_array_foreach (tmp, (GFunc) gabble_media_stream_close, NULL);
+    for (i = 0; i < tmp->len; i++)
+      {
+        GabbleMediaStream *stream = tmp->pdata[i];
+
+        if (is_error)
+          {
+            guint id;
+
+            DEBUG ("emitting stream error");
+
+            g_object_get (stream, "id", &id, NULL);
+            tp_svc_channel_type_streamed_media_emit_stream_error (channel, id,
+                stream_error, text);
+          }
+
+        gabble_media_stream_close (stream);
+      }
 
     /* All the streams should have closed. */
     g_assert (priv->streams->len == 0);
@@ -2288,7 +2513,8 @@ stream_close_cb (GabbleMediaStream *stream,
                  GabbleMediaChannel *chan)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
-  guint id;
+  guint id, i;
+  gboolean still_have_audio = FALSE;
 
   g_assert (GABBLE_IS_MEDIA_CHANNEL (chan));
 
@@ -2305,6 +2531,25 @@ stream_close_cb (GabbleMediaStream *stream,
         stream, stream->name);
 
   gabble_media_channel_hold_stream_closed (chan, stream);
+
+  for (i = 0; i < priv->streams->len; i++)
+    {
+      GabbleMediaStream *other = g_ptr_array_index (priv->streams, i);
+
+      if (gabble_media_stream_get_media_type (other) ==
+          TP_MEDIA_STREAM_TYPE_AUDIO)
+        {
+          still_have_audio = TRUE;
+        }
+    }
+
+  if (priv->have_some_audio && !still_have_audio)
+    {
+      /* the last audio stream just closed */
+      tp_dtmf_player_cancel (priv->dtmf_player);
+    }
+
+  priv->have_some_audio = still_have_audio;
 }
 
 static void
@@ -2332,8 +2577,13 @@ stream_error_cb (GabbleMediaStream *stream,
        * so we can dispose of the stream)
        */
       c = gabble_media_stream_get_content (stream);
-      gabble_jingle_session_remove_content (priv->session,
-          (GabbleJingleContent *) c);
+
+      if (errno == TP_MEDIA_STREAM_ERROR_CODEC_NEGOTIATION_FAILED)
+        gabble_jingle_content_reject ((GabbleJingleContent *) c,
+            JINGLE_REASON_FAILED_APPLICATION);
+      else
+        gabble_jingle_session_remove_content (priv->session,
+            (GabbleJingleContent *) c);
     }
   else
     {
@@ -2344,7 +2594,7 @@ stream_error_cb (GabbleMediaStream *stream,
        */
       DEBUG ("Terminating call in response to stream error");
       gabble_jingle_session_terminate (priv->session,
-          TP_CHANNEL_GROUP_CHANGE_REASON_ERROR, message, NULL);
+          media_stream_error_to_jingle_reason (errno), message, NULL);
     }
 
   g_list_free (contents);
@@ -2415,6 +2665,13 @@ construct_stream (GabbleMediaChannel *chan,
 
   stream = gabble_media_stream_new (object_path, c, name, id,
       nat_traversal, relays, local_hold);
+  mtype = gabble_media_stream_get_media_type (stream);
+
+  if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
+    {
+      gabble_media_stream_add_dtmf_player (stream, priv->dtmf_player);
+      priv->have_some_audio = TRUE;
+    }
 
   DEBUG ("%p: created new MediaStream %p for content '%s'", chan, stream, name);
 
@@ -2464,9 +2721,6 @@ construct_stream (GabbleMediaChannel *chan,
           gabble_media_stream_accept_pending_local_send (stream);
         }
     }
-
-  /* emit StreamAdded */
-  mtype = gabble_media_stream_get_media_type (stream);
 
   DEBUG ("emitting StreamAdded with type '%s'",
     mtype == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video");
@@ -2657,6 +2911,30 @@ create_stream_from_content (GabbleMediaChannel *self,
 }
 
 static void
+session_content_rejected_cb (GabbleJingleSession *session,
+    GabbleJingleContent *c, JingleReason reason, const gchar *message,
+    gpointer user_data)
+{
+  GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (user_data);
+  GabbleMediaStream *stream = _find_stream_by_content (chan, c);
+  TpMediaStreamError stream_error = TP_MEDIA_STREAM_ERROR_UNKNOWN;
+  guint id = 0;
+
+  DEBUG (" ");
+
+  g_return_if_fail (stream != NULL);
+
+  g_object_get (stream,
+      "id", &id,
+      NULL);
+
+  extract_media_stream_error_from_jingle_reason (reason, &stream_error);
+
+  tp_svc_channel_type_streamed_media_emit_stream_error (chan, id, stream_error,
+      message);
+}
+
+static void
 session_new_content_cb (GabbleJingleSession *session,
     GabbleJingleContent *c, gpointer user_data)
 {
@@ -2799,6 +3077,89 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
   tp_svc_media_session_handler_return_from_error (context);
 }
 
+#define TONE_MS 200
+#define GAP_MS 100
+#define PAUSE_MS 3000
+/* arbitrary limit on the length of a tone started with StartTone */
+#define MAX_TONE_SECONDS 10
+
+static void
+gabble_media_channel_start_tone (TpSvcChannelInterfaceDTMF *iface,
+                                 guint stream_id G_GNUC_UNUSED,
+                                 guchar event,
+                                 DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  gchar tones[2] = { '\0', '\0' };
+  GError *error = NULL;
+
+  if (!self->priv->have_some_audio)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  tones[0] = tp_dtmf_event_to_char (event);
+
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
+      tones, MAX_TONE_SECONDS * 1000, GAP_MS, PAUSE_MS, &error))
+    {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, tones);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
+}
+
+static void
+gabble_media_channel_stop_tone (TpSvcChannelInterfaceDTMF *iface,
+                                guint stream_id,
+                                DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+
+  tp_dtmf_player_cancel (self->priv->dtmf_player);
+  tp_svc_channel_interface_dtmf_return_from_stop_tone (context);
+}
+
+static void
+gabble_media_channel_multiple_tones (
+    TpSvcChannelInterfaceDTMF *iface,
+    const gchar *dialstring,
+    DBusGMethodInvocation *context)
+{
+  GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
+  GError *error = NULL;
+
+  if (!self->priv->have_some_audio)
+    {
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "There are no audio streams" };
+
+      dbus_g_method_return_error (context, &e);
+      return;
+    }
+
+  if (tp_dtmf_player_play (self->priv->dtmf_player,
+      dialstring, TONE_MS, GAP_MS, PAUSE_MS, &error))
+    {
+      tp_clear_pointer (&self->priv->deferred_tones, g_free);
+      tp_svc_channel_interface_dtmf_emit_sending_tones (self, dialstring);
+      tp_svc_channel_interface_dtmf_return_from_start_tone (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
+}
 
 static void
 channel_iface_init (gpointer g_iface, gpointer iface_data)
@@ -2811,6 +3172,19 @@ channel_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(get_channel_type,);
   IMPLEMENT(get_handle,);
   IMPLEMENT(get_interfaces,);
+#undef IMPLEMENT
+}
+
+static void
+dtmf_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceDTMFClass *klass = g_iface;
+
+#define IMPLEMENT(x) tp_svc_channel_interface_dtmf_implement_##x (\
+    klass, gabble_media_channel_##x)
+  IMPLEMENT(start_tone);
+  IMPLEMENT(stop_tone);
+  IMPLEMENT(multiple_tones);
 #undef IMPLEMENT
 }
 

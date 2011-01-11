@@ -8,8 +8,8 @@ AC_PREREQ([2.59])
 #   set gabble_nano_version to 0.
 
 m4_define([gabble_major_version], [0])
-m4_define([gabble_minor_version], [10])
-m4_define([gabble_micro_version], [999])
+m4_define([gabble_minor_version], [11])
+m4_define([gabble_micro_version], [5])
 m4_define([gabble_nano_version], [1])
 
 # Some magic
@@ -95,10 +95,38 @@ TP_COMPILER_WARNINGS([ERROR_CFLAGS], [test "x$official_release" = xno],
    unused-parameter])
 AC_SUBST([ERROR_CFLAGS])
 
+# -----------------------------------------------------------
+# Make CA certificates path configurable
+# Stolen from GIO's TLS
+# -----------------------------------------------------------
+AC_MSG_CHECKING([location of system Certificate Authority list])
 AC_ARG_WITH(ca-certificates,
-    AC_HELP_STRING([--with-ca-certificates],[path to CA certificates @<:@default=/etc/ssl/certs/ca-certificates.crt@:>@]),
-    ca_certificates_path="$withval", ca_certificates_path="/etc/ssl/certs/ca-certificates.crt")
-AC_DEFINE_UNQUOTED(CA_CERTIFICATES_PATH, ["${ca_certificates_path}"], [Path to CA certificates])
+            [AC_HELP_STRING([--with-ca-certificates=@<:@path@:>@],
+                            [path to system Certificate Authority list])])
+if test "$with_ca_certificates" = "no"; then
+    AC_MSG_RESULT([disabled])
+else
+    if test -z "$with_ca_certificates"; then
+        for f in /etc/pki/tls/certs/ca-bundle.crt \
+                 /etc/ssl/certs/ca-certificates.crt; do
+            if test -f "$f"; then
+                with_ca_certificates="$f"
+            fi
+        done
+        if test -z "$with_ca_certificates"; then
+            AC_MSG_ERROR([could not find. Use --with-ca-certificates=path to set, or --without-ca-certificates to disable])
+        fi
+    fi
+
+    AC_MSG_RESULT($with_ca_certificates)
+    AC_DEFINE_UNQUOTED([GTLS_SYSTEM_CA_CERTIFICATES], ["$with_ca_certificates"], [path to system Certificate Authority list])
+fi
+
+if test -n "$with_ca_certificates"; then
+    if ! test -f "$with_ca_certificates"; then
+        AC_MSG_WARN([Specified certificate authority file '$with_ca_certificates' does not exist])
+    fi
+fi
 
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
@@ -206,7 +234,7 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.13.1])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.13.9])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)
@@ -293,14 +321,6 @@ dnl Check for libnice
 PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
 AC_SUBST(NICE_CFLAGS)
 AC_SUBST(NICE_LIBS)
-
-dnl Check for MCE, a Maemo service used by Gabble to determine when the device
-dnl is idle.
-PKG_CHECK_MODULES([MCE], mce >= 1.5, [HAVE_MCE=yes], [HAVE_MCE=no])
-AM_CONDITIONAL([HAVE_MCE], [test x"$HAVE_MCE" = xyes])
-if test x"$HAVE_MCE" = xyes; then
-  AC_DEFINE([HAVE_MCE], [1], [Define if mce is available])
-fi
 
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 

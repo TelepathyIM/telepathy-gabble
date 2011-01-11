@@ -95,6 +95,7 @@ void gtalk_file_collection_block_reading (GTalkFileCollection *self,
 gboolean gtalk_file_collection_send_data (GTalkFileCollection *self,
     GabbleFileTransferChannel *channel, const gchar *data, guint length);
 
+void gtalk_file_collection_set_test_mode (void);
 
 #endif /* __GTALK_FILE_COLLECTION_H__ */
 

@@ -629,6 +629,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     except Exception, e:
         traceback.print_exc()
         error = e
+        queue.verbose = False
 
     if colourer:
         sys.stdout = colourer.fh

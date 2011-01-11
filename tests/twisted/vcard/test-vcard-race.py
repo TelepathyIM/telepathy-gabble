@@ -20,8 +20,6 @@ from gabbletest import (
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     expect_and_handle_get_vcard(q, stream)
 
     # Ensure that Gabble's actually got the initial vCard reply; if it hasn't

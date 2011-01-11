@@ -12,12 +12,7 @@ from invisible_helper import Xep0186Stream, ValidInvisibleListStream, \
     Xep0186AndValidInvisibleListStream
 
 def test_presence(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-presence'))
+    q.expect('stream-presence')
 
     iface = dbus.Interface (conn,
         u'org.freedesktop.Telepathy.Connection.Interface.Presence')
@@ -31,12 +26,7 @@ def test_presence(q, bus, conn, stream):
     run_test(q, bus, conn, stream, set_presence)
 
 def test_simple_presence(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-presence'))
+    q.expect('stream-presence')
 
     iface = dbus.Interface (conn, cs.CONN_IFACE_SIMPLE_PRESENCE)
     run_test(q, bus, conn, stream,

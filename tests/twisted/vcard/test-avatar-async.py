@@ -43,12 +43,8 @@ def test_get_avatar(q, bus, conn, stream, contact, handle, in_cache=False):
         q.unforbid_events([avatar_request_event])
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'))
+    iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard')
 
     # When we start, there is no avatar
     acknowledge_iq(stream, iq_event.stanza)

@@ -13,10 +13,6 @@ import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     client = 'http://example.com/perverse-client'
     contact_bare_jid = 'edgecase@example.com'
     contact_with_resource = 'edgecase@example.com/hi'

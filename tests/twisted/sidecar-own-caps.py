@@ -19,10 +19,6 @@ if not PLUGINS_ENABLED:
     raise SystemExit(77) # which makes the test show up as skipped
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # This sidecar sends a stanza, and waits for a reply, before being
     # created.
     pattern = EventPattern('stream-iq', to='sidecar.example.com',

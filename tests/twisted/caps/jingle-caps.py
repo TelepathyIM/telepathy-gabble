@@ -90,10 +90,6 @@ def test_all_transports(q, conn, stream, contact, features, audio, video):
         contact += "a"
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # Fully capable jingle clients with one transport each
     features = [ ns.JINGLE_RTP, ns.JINGLE_RTP_AUDIO, ns.JINGLE_RTP_VIDEO ]
     test_all_transports(q, conn, stream, "full@a", features, True, True)
@@ -171,10 +167,6 @@ def test_prefer_phones(q, bus, conn, stream, expect_disco):
         e = q.expect('stream-iq',
             predicate=jp.action_predicate('session-initiate'))
         assertEquals(expected_recipient, e.to)
-
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     features = [ ns.JINGLE_RTP, ns.JINGLE_RTP_AUDIO, ns.JINGLE_RTP_VIDEO
                ] + all_transports

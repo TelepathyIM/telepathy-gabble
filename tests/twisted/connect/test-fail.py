@@ -28,10 +28,6 @@ def test_network_error(q, bus, conn, stream):
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_NETWORK_ERROR])
 
 def test_conflict_after_connect(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     stream.send_stream_error('conflict')
 
     new = q.expect('dbus-signal', signal='ConnectionError')
@@ -84,10 +80,12 @@ def test_host_unknown(q, bus, conn, stream):
     assertEquals(cs.CSR_AUTHENTICATION_FAILED, reason)
 
 if __name__ == '__main__':
-    exec_test(test_network_error, {'port': dbus.UInt32(4243)})
+    exec_test(test_network_error, {'port': dbus.UInt32(4243)},
+              do_connect=False)
     exec_test(test_conflict_after_connect)
     exec_test(test_stream_conflict_during_connect,
-            authenticator=StreamErrorAuthenticator('conflict'))
+            authenticator=StreamErrorAuthenticator('conflict'), do_connect=False)
     exec_test(test_host_unknown, {'server': 'localhost',
                      'account': 'test@example.org',
-                    }, authenticator=StreamErrorAuthenticator('host-unknown'))
+                    }, authenticator=StreamErrorAuthenticator('host-unknown'),
+              do_connect=False)

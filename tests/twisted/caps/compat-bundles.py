@@ -30,7 +30,6 @@ def disco_bundle(q, bus, conn, stream, node, features):
     assertEquals(set(features), set(vars))
 
 def run_test(q, bus, conn, stream):
-    conn.Connect()
     event_stream = q.expect('stream-presence')
 
     c_nodes = xpath.queryForNodes('/presence/c', event_stream.stanza)

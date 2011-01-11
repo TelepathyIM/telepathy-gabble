@@ -23,8 +23,6 @@ def _expect_group_channel(q, bus, conn, name, contacts):
     assert inspected == contacts, (inspected, contacts)
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 

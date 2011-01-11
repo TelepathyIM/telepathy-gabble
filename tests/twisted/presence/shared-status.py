@@ -73,14 +73,10 @@ def _test_local_status(q, conn, msg, show, expected_show=None):
 
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
                                iq_type='get'),
                   EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
-                               iq_type='set'),
-                  EventPattern('dbus-signal', signal='StatusChanged',
-                               args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+                               iq_type='set'))
 
     # Set shared status to dnd.
     _test_local_status(q, conn, "Don't disturb, buddy.", "dnd")
@@ -226,14 +222,10 @@ def test_shared_status_list(q, bus, conn, stream):
 
     max_statuses = int(stream.max_statuses)
 
-    conn.Connect()
-
     q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
                                iq_type='get'),
                   EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
-                               iq_type='set'),
-                  EventPattern('dbus-signal', signal='StatusChanged',
-                               args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+                               iq_type='set'))
 
     for show, statuses in test_statuses.items():
         shared_show, _ = _show_to_shared_status_show(show)
@@ -245,8 +237,8 @@ def test_shared_status_list(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test, protocol=SharedStatusStream)
-    exec_test(test_connect_available, protocol=SharedStatusStream)
-    exec_test(test_connect_dnd, protocol=SharedStatusStream)
-    exec_test(test_connect_hidden, protocol=SharedStatusStream)
-    exec_test(test_connect_hidden_not_available, protocol=SharedStatusStream)
+    exec_test(test_connect_available, protocol=SharedStatusStream, do_connect=False)
+    exec_test(test_connect_dnd, protocol=SharedStatusStream, do_connect=False)
+    exec_test(test_connect_hidden, protocol=SharedStatusStream, do_connect=False)
+    exec_test(test_connect_hidden_not_available, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_shared_status_list, protocol=SharedStatusStream)

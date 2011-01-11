@@ -15,11 +15,6 @@ import constants as cs
 def test(q, bus, conn, stream, call_error_on):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 
     # Remote end calls us

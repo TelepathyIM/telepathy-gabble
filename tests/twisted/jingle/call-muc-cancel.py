@@ -10,11 +10,6 @@ import constants as cs
 muc = "muji@test"
 
 def run_cancel_test(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     call_async (q, conn.Requests, 'CreateChannel',
         { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
           cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,

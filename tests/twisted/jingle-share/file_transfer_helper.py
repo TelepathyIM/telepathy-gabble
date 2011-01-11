@@ -585,4 +585,4 @@ def exec_file_transfer_test(send_cls, recv_cls, file = None):
                     recv.set_target(send.self_handle_name)
                     target_set = True
 
-        exec_test(test, num_instances=2)
+        exec_test(test, num_instances=2, do_connect=False)

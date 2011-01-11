@@ -23,13 +23,8 @@ def repeat_previous_vcard(stream, iq, previous):
     stream.send(result)
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    _, event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'),
-        )
+    event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard')
 
     call_async(q, conn.ContactInfo, 'SetContactInfo',
                [(u'fn', [], [u'Wee Ninja']),

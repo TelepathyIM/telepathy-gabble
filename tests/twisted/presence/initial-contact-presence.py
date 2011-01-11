@@ -18,7 +18,6 @@ def make_roster_item(jid, subscription):
     return item
 
 def test(q, bus, conn, stream):
-    conn.Connect()
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
     amy, bob, che = conn.RequestHandles(cs.HT_CONTACT,

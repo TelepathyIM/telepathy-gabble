@@ -12,11 +12,7 @@ import dbus
 import re
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     # Wait for us to be fully logged in
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
     q.expect('stream-presence')
 
     test_create_pmuc(q, conn, stream)

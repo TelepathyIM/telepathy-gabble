@@ -11,8 +11,6 @@ from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import xpath
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 

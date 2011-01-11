@@ -352,10 +352,6 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         daap_xiangqi_caps)
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     test_tube_caps_from_contact(q, bus, conn, stream, 'bilbo1@foo.com/Foo')
 
     test_tube_caps_to_contact(q, bus, conn, stream)

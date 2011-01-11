@@ -42,11 +42,6 @@ class PepInServerDiscoXmlStream(BaseXmlStream):
         self.send(result)
 
 def test_legacy(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     call_async(q, conn.Location, 'SetLocation', {
         'lat': 0.0,
         'lon': 0.0})
@@ -61,11 +56,6 @@ def test_legacy(q, bus, conn, stream):
 
 # PEP is not supported.
 def test_no_pep(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     call_async(q, conn.Location, 'SetLocation', {
         'lat': 0.0,
         'lon': 0.0})
@@ -74,11 +64,6 @@ def test_no_pep(q, bus, conn, stream):
 
 #PEP is advertised using the right protocol
 def test_pep(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     call_async(q, conn.Location, 'SetLocation', {
         'lat': 0.0,
         'lon': 0.0})

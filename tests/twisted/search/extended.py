@@ -25,10 +25,6 @@ g_jid = 'guybrush.threepwood@lucasarts.example.com'
 f_jid = 'freddiet@pgwodehouse.example.com'
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     for f in [complete_search, complete_search2, openfire_search, double_nick,
               no_x_in_reply]:
         f(q, bus, conn, stream)

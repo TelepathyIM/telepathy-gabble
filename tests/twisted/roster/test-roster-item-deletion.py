@@ -22,8 +22,6 @@ def test_modern_queued(q, bus, conn, stream):
     test(q, bus, conn, stream, True, True)
 
 def test(q, bus, conn, stream, modern=True, queued=False):
-    conn.Connect()
-
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 

@@ -97,17 +97,20 @@ def test_abort_connected(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test_abort_early,
-              {'password': None,'account' : JID})
+              {'password': None,'account' : JID}, do_connect=False)
 
     exec_test(test_abort_mid,
               {'password': None,'account' : JID},
               authenticator=SaslEventAuthenticator(JID.split('@')[0],
-                                                     MECHANISMS))
+                                                     MECHANISMS),
+              do_connect=False)
     exec_test(test_disconnect_mid,
               {'password': None,'account' : JID},
-             authenticator=SaslEventAuthenticator(JID.split('@')[0],
-                                                    MECHANISMS))
+              authenticator=SaslEventAuthenticator(JID.split('@')[0],
+                                                    MECHANISMS),
+              do_connect=False)
 
     exec_test(
         test_abort_connected, {'password': None,'account' : JID},
-        authenticator=SaslEventAuthenticator(JID.split('@')[0], ['PLAIN']))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], ['PLAIN']),
+        do_connect=False)

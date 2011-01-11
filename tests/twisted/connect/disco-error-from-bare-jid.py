@@ -36,4 +36,4 @@ class BareJidDiscoErrorXmlStream(XmppXmlStream):
                 ))
 
 if __name__ == '__main__':
-    exec_test(test, protocol=BareJidDiscoErrorXmlStream)
+    exec_test(test, protocol=BareJidDiscoErrorXmlStream, do_connect=False)

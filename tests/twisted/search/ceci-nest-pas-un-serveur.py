@@ -162,10 +162,6 @@ def invalid_jid(q, stream, conn):
     assert event.error.get_dbus_name() == cs.INVALID_ARGUMENT, event.error
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     not_a_search_server(q, stream, conn)
     returns_invalid_fields(q, stream, conn)
     returns_error_from_search(q, stream, conn)

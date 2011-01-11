@@ -28,4 +28,4 @@ def test_no_password(q, bus, conn, stream):
             )
 
 if __name__ == '__main__':
-    exec_test(test_no_password, {'password': None,'account' : JID})
+    exec_test(test_no_password, {'password': None,'account' : JID}, do_connect=False)

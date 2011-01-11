@@ -40,10 +40,6 @@ def update_contact_caps(q, conn, stream, contact, caps, disco = True,
     expect_caps (q, conn, h)
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     caps = {
         'node': client,
         'ver':  '0.1',

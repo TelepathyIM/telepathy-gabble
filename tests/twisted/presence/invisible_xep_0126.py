@@ -320,12 +320,17 @@ def test_privacy_list_push_valid(q, bus, conn, stream):
     acknowledge_iq (stream, activate_list.stanza)
 
 if __name__ == '__main__':
-    exec_test(test_invisible, protocol=ManualPrivacyListStream)
-    exec_test(test_invisible_on_connect, protocol=ManualPrivacyListStream)
-    exec_test(test_create_invisible_list, protocol=ManualPrivacyListStream)
+    exec_test(test_invisible, protocol=ManualPrivacyListStream,
+              do_connect=False)
+    exec_test(test_invisible_on_connect, protocol=ManualPrivacyListStream,
+              do_connect=False)
+    exec_test(test_create_invisible_list, protocol=ManualPrivacyListStream,
+              do_connect=False)
     exec_test(test_invisible_on_connect_fail_no_list,
-              protocol=ManualPrivacyListStream)
+              protocol=ManualPrivacyListStream, do_connect=False)
     exec_test(test_invisible_on_connect_fail_invalid_list,
-              protocol=ManualPrivacyListStream)
-    exec_test(test_privacy_list_push_valid, protocol=ManualPrivacyListStream)
-    exec_test(test_privacy_list_push_conflict, protocol=ManualPrivacyListStream)
+              protocol=ManualPrivacyListStream, do_connect=False)
+    exec_test(test_privacy_list_push_valid, protocol=ManualPrivacyListStream,
+              do_connect=False)
+    exec_test(test_privacy_list_push_conflict, protocol=ManualPrivacyListStream,
+              do_connect=False)

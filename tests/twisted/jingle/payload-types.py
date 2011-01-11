@@ -14,12 +14,6 @@ from twisted.words.xish import domish
 def test(q, bus, conn, stream):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
-    # Connecting
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     self_handle = conn.GetSelfHandle()
 
     # We need remote end's presence for capabilities

@@ -10,13 +10,8 @@ import ns
 from mucutil import join_muc_and_check
 
 def test(q, bus, conn, stream, access_control):
-    conn.Connect()
-
-    _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'))
+    iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard')
 
     acknowledge_iq(stream, iq_event.stanza)
 

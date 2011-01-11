@@ -10,10 +10,6 @@ import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # <wjt> I need a random name generator
     # <fledermaus> Macro-Variable Spin Gel
     contact = 'macro-variable.spin.gel@example.com'

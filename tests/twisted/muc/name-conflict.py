@@ -20,10 +20,6 @@ import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     test_join(q, bus, conn, stream, 'chat@conf.localhost', False)
     test_join(q, bus, conn, stream, 'chien@conf.localhost', True)
 

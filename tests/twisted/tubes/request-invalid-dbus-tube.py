@@ -11,10 +11,6 @@ invalid_service_names = [ 'invalidServiceName'
                         ]
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     for invalid_service_name in invalid_service_names:
         try:
             conn.Requests.CreateChannel(

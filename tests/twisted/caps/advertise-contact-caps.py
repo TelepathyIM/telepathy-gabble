@@ -243,11 +243,11 @@ if __name__ == '__main__':
     exec_test(lambda q, b, c, s:
         run_test (q, b, c, s,
             cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
-            cs.INITIAL_AUDIO, cs.INITIAL_VIDEO))
+            cs.INITIAL_AUDIO, cs.INITIAL_VIDEO), do_connect=False)
 
     exec_test(lambda q, b, c, s:
         run_test (q, b, c, s,
             cs.CHANNEL_TYPE_CALL, cs.CHANNEL_TYPE_CALL,
-            cs.CALL_INITIAL_AUDIO, cs.CALL_INITIAL_VIDEO))
+            cs.CALL_INITIAL_AUDIO, cs.CALL_INITIAL_VIDEO), do_connect=False)
 
-    exec_test(run_mixed_test)
+    exec_test(run_mixed_test, do_connect=False)

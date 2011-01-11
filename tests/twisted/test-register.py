@@ -139,9 +139,9 @@ def test_redirection(q, bus, conn, stream):
         args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_AUTHENTICATION_FAILED])
 
 if __name__ == '__main__':
-    exec_test(test_success, {'register': True})
-    exec_test(test_conflict, {'register': True})
-    exec_test(test_with_email, {'register': True})
-    exec_test(test_data_forms, {'register': True})
-    exec_test(test_redirection, {'register': True})
+    exec_test(test_success, {'register': True}, do_connect=False)
+    exec_test(test_conflict, {'register': True}, do_connect=False)
+    exec_test(test_with_email, {'register': True}, do_connect=False)
+    exec_test(test_data_forms, {'register': True}, do_connect=False)
+    exec_test(test_redirection, {'register': True}, do_connect=False)
 

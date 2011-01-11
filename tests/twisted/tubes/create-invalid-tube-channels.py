@@ -18,11 +18,6 @@ def check_no_tubes(conn_props):
     assert len(tube_channels) == 0, tube_channels
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     conn_props = dbus.Interface(conn, cs.PROPERTIES_IFACE)
 
     # Try to CreateChannel with unknown properties

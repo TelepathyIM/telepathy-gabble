@@ -533,7 +533,8 @@ def disconnect_conn(q, conn, stream, expected_before=[], expected_after=[]):
     return before_events[:-2], after_events[:-1]
 
 def exec_test_deferred(fun, params, protocol=None, timeout=None,
-                        authenticator=None, num_instances=1):
+                        authenticator=None, num_instances=1,
+                        do_connect=True):
     # hack to ease debugging
     domish.Element.__repr__ = domish.Element.toXml
     colourer = None
@@ -609,6 +610,17 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
 
     error = None
 
+    if do_connect:
+        for conn in conns:
+            conn.Connect()
+            queue.expect('dbus-signal', signal='StatusChanged',
+                args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
+            queue.expect('stream-authenticated')
+            queue.expect('dbus-signal', signal='PresenceUpdate',
+                args=[{1L: (0L, {u'available': {}})}])
+            queue.expect('dbus-signal', signal='StatusChanged',
+                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
     try:
         if len(conns) == 1:
             fun(queue, bus, conns[0], streams[0])
@@ -656,9 +668,10 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
 
 
 def exec_test(fun, params=None, protocol=None, timeout=None,
-              authenticator=None, num_instances=1):
+              authenticator=None, num_instances=1, do_connect=True):
     reactor.callWhenRunning(
-        exec_test_deferred, fun, params, protocol, timeout, authenticator, num_instances)
+        exec_test_deferred, fun, params, protocol, timeout, authenticator, num_instances,
+        do_connect)
     reactor.run()
 
 # Useful routines for server-side vCard handling

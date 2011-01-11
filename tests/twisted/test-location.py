@@ -243,4 +243,4 @@ def test(q, bus, conn, stream):
     assertEquals(location['country'], 'France')
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test, do_connect=False)

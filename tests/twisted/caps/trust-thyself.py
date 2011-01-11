@@ -11,7 +11,6 @@ import ns
 import constants as cs
 
 def test(q, bus, conn, stream):
-    conn.Connect()
     self_presence = q.expect('stream-presence')
 
     c = xpath.queryForNodes('/presence/c', self_presence.stanza)[0]

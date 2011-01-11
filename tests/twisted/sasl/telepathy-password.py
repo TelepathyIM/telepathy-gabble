@@ -47,4 +47,5 @@ def test_close_straight_after_accept(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test_close_straight_after_accept,
-              {'password': None, 'account' : "test@example.org"})
+              {'password': None, 'account' : "test@example.org"},
+              do_connect=False)

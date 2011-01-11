@@ -14,12 +14,8 @@ def google(q, bus, conn, stream):
     test(q, bus, conn, stream, True)
 
 def test(q, bus, conn, stream, is_google):
-    conn.Connect()
-    _, iq_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-            query_name='vCard'))
+    iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
+            query_name='vCard')
 
     result = make_result_iq(stream, iq_event.stanza)
 

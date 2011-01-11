@@ -103,5 +103,5 @@ def test(q, bus, conn, stream, is_google=False):
         check_normal_props(props)
 
 if __name__ == '__main__':
-    exec_test(test)
-    exec_test(test_google, protocol=GoogleXmlStream)
+    exec_test(test, do_connect=False)
+    exec_test(test_google, protocol=GoogleXmlStream, do_connect=False)

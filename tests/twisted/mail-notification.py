@@ -333,10 +333,6 @@ def test_no_google_featured(q, bus, conn, stream):
 
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     interfaces = conn.GetInterfaces()
 
     if stream.__class__ is GoogleXmlStream:

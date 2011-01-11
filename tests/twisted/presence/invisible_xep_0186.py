@@ -49,11 +49,6 @@ def test_invisible_on_connect_fails(q, bus, conn, stream):
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
 def test_invisible(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     assertContains("hidden",
         conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
 
@@ -89,11 +84,6 @@ def test_invisible(q, bus, conn, stream):
                      args=[{1: (3, 'away', 'gone')}]))
 
 def test_invisible_fails(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     assertContains("hidden",
         conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
 
@@ -114,7 +104,9 @@ def test_invisible_fails(q, bus, conn, stream):
 
 if __name__ == '__main__':
     for protocol in [Xep0186Stream, Xep0186AndValidInvisibleListStream]:
-        exec_test(test_invisible_on_connect, protocol=protocol)
-        exec_test(test_invisible_on_connect_fails, protocol=protocol)
+        exec_test(test_invisible_on_connect, protocol=protocol,
+                  do_connect=False)
+        exec_test(test_invisible_on_connect_fails, protocol=protocol,
+                  do_connect=False)
         exec_test(test_invisible, protocol=protocol)
         exec_test(test_invisible_fails, protocol=protocol)

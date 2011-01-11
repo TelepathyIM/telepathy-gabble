@@ -284,11 +284,6 @@ def rccs(q, bus, conn, stream):
     Tests that the connection's RequestableChannelClasses for StreamedMedia are
     sane.
     """
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
         'RequestableChannelClasses')
 

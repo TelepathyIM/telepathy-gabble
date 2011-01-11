@@ -15,10 +15,6 @@ from servicetest import (
 import constants as cs
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     id = '1845a1a9-f7bc-4a2e-a885-633aadc81e1b'
 
     # <message type="chat"><body>hello</body</message>

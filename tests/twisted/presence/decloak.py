@@ -6,12 +6,7 @@ import ns
 import constants as cs
 
 def test(q, bus, conn, stream, should_decloak=False):
-    conn.Connect()
-    _, event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', query_ns=ns.ROSTER),
-        )
+    event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
     event.stanza['type'] = 'result'
     stream.send(event.stanza)

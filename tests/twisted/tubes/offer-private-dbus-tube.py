@@ -277,12 +277,7 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
         EventPattern('dbus-signal', signal='ChannelClosed'))
 
 def test(q, bus, conn, stream, bytestream_cls, access_control):
-    conn.Connect()
-
-    _, disco_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
+    disco_event = q.expect('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS)
 
     announce_socks5_proxy(q, stream, disco_event.stanza)
 

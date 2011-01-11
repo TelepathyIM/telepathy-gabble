@@ -49,8 +49,6 @@ def test_modern_revoke_remove(q, bus, conn, stream):
     test(q, bus, conn, stream, True, True, 'revoke')
 
 def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
-    conn.Connect()
-
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     # send back empty roster
     event.stanza['type'] = 'result'

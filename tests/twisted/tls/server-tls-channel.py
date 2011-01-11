@@ -214,18 +214,18 @@ def test_connect_success(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test_connect_success, { 'account' : JID },
-              authenticator=TlsAuthenticator(username='test', password='pass'))
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
     exec_test(test_connect_fail, { 'account' : JID },
-              authenticator=TlsAuthenticator(username='test', password='pass'))
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
     exec_test(test_connect_early_close_success,
               { 'account' : JID,
                 'ignore-ssl-errors' : False,
                 'require-encryption' : False },
-              authenticator=TlsAuthenticator(username='test', password='pass'))
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
     exec_test(test_connect_early_close_fail,
               { 'account' : JID,
                 'ignore-ssl-errors' : False,
                 'require-encryption' : True },
-              authenticator=TlsAuthenticator(username='test', password='pass'))
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
     exec_test(test_disconnect_inbetween, { 'account' : JID },
-              authenticator=TlsAuthenticator(username='test', password='pass'))
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)

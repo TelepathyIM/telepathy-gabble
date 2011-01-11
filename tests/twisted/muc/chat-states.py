@@ -13,10 +13,6 @@ MUC = 'ohai@groupchat.google.com'
 BOB = MUC + '/bob'
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     (muc_handle, chan, user, bob) = join_muc_and_check(q, bus, conn, stream,
         MUC)
 

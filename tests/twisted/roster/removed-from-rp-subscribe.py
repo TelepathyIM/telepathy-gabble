@@ -13,8 +13,6 @@ import ns
 jid = 'marco@barisione.lit'
 
 def test(q, bus, conn, stream, remove, local, modern):
-    conn.Connect()
-
     # Gabble asks for the roster; the server sends back an empty roster.
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'

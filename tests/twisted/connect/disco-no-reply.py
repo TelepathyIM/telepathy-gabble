@@ -24,4 +24,4 @@ class JabberXmlStreamNoDiscoReply(XmppXmlStream):
 
 if __name__ == '__main__':
     # telepathy-gabble-debug has been tweaked to time out after 3 seconds
-    exec_test(test, protocol=JabberXmlStreamNoDiscoReply)
+    exec_test(test, protocol=JabberXmlStreamNoDiscoReply, do_connect=False)

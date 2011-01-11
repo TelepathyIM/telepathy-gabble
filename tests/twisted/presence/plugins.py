@@ -110,6 +110,6 @@ def test_with_xep0186(q, bus, conn, stream):
 
 
 if __name__ == '__main__':
-    exec_test(test, protocol=ManualPrivacyListStream)
-    exec_test(test_with_xep0186, protocol=Xep0186AndManualPrivacyListStream)
+    exec_test(test, protocol=ManualPrivacyListStream, do_connect=False)
+    exec_test(test_with_xep0186, protocol=Xep0186AndManualPrivacyListStream, do_connect=False)
 

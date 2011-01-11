@@ -31,7 +31,7 @@ def test(q, bus, conn, stream):
     assertEquals('watching bees', children[1].children[0])
 
 if __name__ == '__main__':
-    exec_test(test)
+    exec_test(test, do_connect=False)
     for protocol in [ValidInvisibleListStream, Xep0186Stream,
                      Xep0186AndValidInvisibleListStream]:
-        exec_test(test, protocol=protocol)
+        exec_test(test, protocol=protocol, do_connect=False)

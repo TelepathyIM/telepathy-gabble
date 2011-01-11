@@ -17,11 +17,7 @@ import ns
 JUD_SERVER = 'jud.localhost'
 
 def server_discovered(q, bus, conn, stream):
-    conn.Connect()
-
-    _, iq_event, disco_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+    iq_event, disco_event = q.expect_many(
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
         EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
@@ -57,11 +53,7 @@ def server_discovered(q, bus, conn, stream):
     answer_field_query(q, stream, JUD_SERVER)
 
 def no_server_discovered(q, bus, conn, stream):
-    conn.Connect()
-
-    _, iq_event, disco_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+    iq_event, disco_event = q.expect_many(
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
         EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))
@@ -86,11 +78,7 @@ def no_server_discovered(q, bus, conn, stream):
     assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
 
 def disconnect_before_disco(q, bus, conn, stream):
-    conn.Connect()
-
-    _, iq_event, disco_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+    iq_event, disco_event = q.expect_many(
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
         EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))

@@ -39,9 +39,6 @@ def handle_muc_get_iq(stream, stanza):
     return True
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
     muc_handle = request_muc_handle(q, conn, stream, 'chat@conf.localhost')
 
     call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,

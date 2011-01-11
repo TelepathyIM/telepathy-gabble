@@ -11,11 +11,6 @@ from servicetest import call_async, EventPattern
 import constants as cs
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # Bob has invited us to an activity.
     message = domish.Element((None, 'message'))
     message['from'] = 'chat@conf.localhost'

@@ -30,12 +30,6 @@ def expect_command(q, name):
     return event.stanza
 
 def test_error(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
-
     assertContains(cs.CONN_IFACE_POWER_SAVING,
                   conn.Get(cs.CONN, "Interfaces",
                            dbus_interface=cs.PROPERTIES_IFACE))
@@ -76,11 +70,6 @@ def test_no_support(q, bus, conn, stream):
                                   dbus_interface=cs.PROPERTIES_IFACE))
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     assertContains(cs.CONN_IFACE_POWER_SAVING,
                   conn.Get(cs.CONN, "Interfaces",
                            dbus_interface=cs.PROPERTIES_IFACE))
@@ -150,11 +139,6 @@ def test_on_connect_error(q, bus, conn, stream):
     q.unforbid_events(pattern)
 
 def test_disconnect(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     assertContains(cs.CONN_IFACE_POWER_SAVING,
                   conn.Get(cs.CONN, "Interfaces",
                            dbus_interface=cs.PROPERTIES_IFACE))
@@ -171,7 +155,7 @@ def test_disconnect(q, bus, conn, stream):
 
 if __name__ == '__main__':
     exec_test(test, protocol=GoogleXmlStream)
-    exec_test(test_no_support)
+    exec_test(test_no_support, do_connect=False)
     exec_test(test_error, protocol=GoogleXmlStream)
-    exec_test(test_on_connect_error)
+    exec_test(test_on_connect_error, do_connect=False)
     exec_test(test_disconnect, protocol=GoogleXmlStream)

@@ -125,13 +125,17 @@ def test_complex_success_no_data_accept(q, bus, conn, stream):
 if __name__ == '__main__':
     exec_test(
         test_complex_success_data, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS),
+        do_connect=False)
     exec_test(
         test_complex_success_no_data, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS),
+        do_connect=False)
     exec_test(
         test_complex_success_data_accept, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS),
+        do_connect=False)
     exec_test(
         test_complex_success_no_data_accept, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS))
+        authenticator=SaslEventAuthenticator(JID.split('@')[0], MECHANISMS),
+        do_connect=False)

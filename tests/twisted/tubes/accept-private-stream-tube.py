@@ -112,11 +112,8 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
-    conn.Connect()
 
-    _, vcard_event, roster_event, disco_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+    vcard_event, roster_event, disco_event = q.expect_many(
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
         EventPattern('stream-iq', query_ns=ns.ROSTER),

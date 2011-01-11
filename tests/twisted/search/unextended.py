@@ -25,10 +25,6 @@ f_results = (f_jid, 'Frederick', 'Threepwood', 'Freddie')
 results = { g_jid: g_results, f_jid: f_results }
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     for f in [complete_search, cancelled_while_in_progress]:
         f(q, bus, conn, stream, 'jud.localhost')
 

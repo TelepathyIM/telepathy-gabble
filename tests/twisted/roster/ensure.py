@@ -8,8 +8,6 @@ import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     roster_event = q.expect('stream-iq', query_ns=ns.ROSTER)
     roster_event.stanza['type'] = 'result'
 

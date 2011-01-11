@@ -7,10 +7,6 @@ import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     contact = 'grapes@graze.box/delicious'
     presence = make_presence(contact, status='eat me!',
         caps={ 'node': 'oh:hai',

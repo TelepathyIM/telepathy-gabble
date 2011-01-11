@@ -20,10 +20,6 @@ def test(q, bus, conn, stream):
     # wait around until we're connected.
     call_async(q, conn.Future, 'EnsureSidecar', TEST_PLUGIN_IFACE)
 
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     if PLUGINS_ENABLED:
         # Now we're connected, the call we made earlier should return.
         path, props = q.expect('dbus-return', method='EnsureSidecar').value

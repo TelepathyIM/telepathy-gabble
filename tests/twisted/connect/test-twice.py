@@ -66,4 +66,4 @@ def test(q, bus, conns, streams):
     assertLength(0, pairs)      # i.e. we popped and checked all of them
 
 if __name__ == '__main__':
-    exec_test(test, num_instances=2)
+    exec_test(test, num_instances=2, do_connect=False)

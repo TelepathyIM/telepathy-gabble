@@ -21,8 +21,6 @@ def expect_get_and_send_item_not_found(q, stream):
     send_error_reply(stream, get_vcard_event.stanza, error)
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     expect_get_and_send_item_not_found(q, stream)
 
     sync_stream(q, stream)

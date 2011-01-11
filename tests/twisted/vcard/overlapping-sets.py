@@ -12,8 +12,6 @@ from gabbletest import (
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     # Initial vCard request. Respond only after we call SetAliases().
     vcard_get_event = q.expect('stream-iq', iq_type='get', to=None,
         query_ns=ns.VCARD_TEMP, query_name='vCard')

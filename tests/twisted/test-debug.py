@@ -32,9 +32,6 @@ def test(q, bus, conn, stream):
     # Turn signalling on and generate some messages.
 
     assert len(messages) == 0
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
     assert props_iface.Get(iface, 'Enabled') == False
     props_iface.Set(iface, 'Enabled', True)
 

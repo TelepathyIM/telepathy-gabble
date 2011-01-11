@@ -18,10 +18,6 @@ from jingleshareutils import test_ft_caps_from_contact
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     client = 'http://telepathy.freedesktop.org/fake-client'
     contact = 'bilbo1@foo.com/Resource'
     files = [("file", "File.txt", 12345, False),

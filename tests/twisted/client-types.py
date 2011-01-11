@@ -60,10 +60,6 @@ def contact_online(q, conn, stream, contact, identities,
         assertEquals([handle, types], event.args)
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # check all these types appear as they should
     contact_online(q, conn, stream, 'bot@bot.com/lol', BOT)
     contact_online(q, conn, stream, 'console@console.com/lol', CONSOLE)

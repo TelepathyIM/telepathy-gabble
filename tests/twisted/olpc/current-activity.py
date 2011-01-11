@@ -12,11 +12,7 @@ from util import (send_buddy_changed_current_act_msg,
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
-    _, iq_event, disco_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+    iq_event, disco_event = q.expect_many(
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),
         EventPattern('stream-iq', to='localhost', query_ns=ns.DISCO_ITEMS))

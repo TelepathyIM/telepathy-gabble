@@ -9,10 +9,6 @@ from servicetest import call_async, EventPattern
 import constants as cs
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     self_handle = conn.GetSelfHandle()
 
     jids = ['foo@bar.com', 'truc@cafe.fr']

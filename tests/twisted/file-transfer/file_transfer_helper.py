@@ -65,11 +65,7 @@ class FileTransferTest(object):
                     [cs.SOCKET_ACCESS_CONTROL_LOCALHOST])
 
     def connect(self):
-        self.conn.Connect()
-
-        _, vcard_event, roster_event, disco_event = self.q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
+        vcard_event, roster_event, disco_event = self.q.expect_many(
             EventPattern('stream-iq', to=None, query_ns='vcard-temp',
                 query_name='vCard'),
             EventPattern('stream-iq', query_ns=ns.ROSTER),

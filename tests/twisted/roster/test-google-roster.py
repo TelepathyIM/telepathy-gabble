@@ -517,8 +517,6 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
 
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     publish, subscribe, stored, deny = test_inital_roster(q, bus, conn, stream)
 
     test_flickering(q, bus, conn, stream, subscribe)

@@ -11,10 +11,6 @@ import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # message without body
     m = domish.Element((None, 'message'))
     m['from'] = 'alice@foo.com'

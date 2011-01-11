@@ -14,13 +14,7 @@ import constants as cs
 import ns
 
 def run_test(q, bus, conn, stream):
-    conn.Connect()
-
-    _, initial_presence = q.expect_many(
-            EventPattern('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-            EventPattern('stream-presence'),
-            )
+    initial_presence = q.expect('stream-presence')
 
     # This method call looks wrong, but it's "the other side" of
     # test/twisted/capabilities/legacy-caps.py in MC 5.1 - MC doesn't know

@@ -127,4 +127,4 @@ if __name__ == '__main__':
             test, {'password': None, 'account' : JID},
             protocol=JabberXmlStream,
             authenticator=JabberAuthenticator(JID.split('@')[0], PASSWORD,
-                emit_events=True))
+                emit_events=True), do_connect=False)

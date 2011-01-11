@@ -19,8 +19,6 @@ def test(q, bus, conn, stream, modern=True, remove=False):
     q.expect('dbus-error', method='GetContactListAttributes',
             name=cs.NOT_YET)
 
-    conn.Connect()
-
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
     item = event.query.addElement('item')

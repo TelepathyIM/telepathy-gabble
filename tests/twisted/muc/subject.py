@@ -16,10 +16,6 @@ import ns
 from mucutil import join_muc
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # 3x2x2 possible combinations of change_subject, send_first, moderator:
     # unrolling the loop here so we'll get better Python tracebacks on failure
     test_subject(q, bus, conn, stream, None, False, False)

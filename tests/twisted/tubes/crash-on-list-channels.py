@@ -16,11 +16,7 @@ from twisted.words.xish import domish
 jid = 'explosions@in.the.sky'
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    _, roster_event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', query_ns=ns.ROSTER))
+    roster_event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
     roster = roster_event.stanza
     roster['type'] = 'result'

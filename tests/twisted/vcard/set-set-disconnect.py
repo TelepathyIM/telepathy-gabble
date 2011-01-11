@@ -8,8 +8,6 @@ from gabbletest import exec_test, acknowledge_iq, expect_and_handle_get_vcard, s
 import constants as cs
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     expect_and_handle_get_vcard(q, stream)
     sync_stream(q, stream)
 

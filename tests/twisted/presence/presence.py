@@ -12,12 +12,7 @@ import ns
 import constants as cs
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    _, event = q.expect_many(
-        EventPattern('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
-        EventPattern('stream-iq', query_ns=ns.ROSTER),
-        )
+    event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
     amy_handle = conn.RequestHandles(1, ['amy@foo.com'])[0]
 

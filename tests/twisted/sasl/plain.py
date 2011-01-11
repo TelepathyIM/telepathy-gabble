@@ -181,41 +181,51 @@ def test_bad_usage(q, bus, conn, stream):
 if __name__ == '__main__':
     exec_test(
         test_plain_success, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_no_account,
         {'password': None, 'account' : 'example.com'},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_fail, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_bad_encoding, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_weak, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_bad_authzid, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_bad_mech, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_tempfail, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_plain_abort, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)
 
     exec_test(
         test_bad_usage, {'password': None, 'account' : JID},
-        authenticator=SaslEventAuthenticator('test', ['PLAIN']))
+        authenticator=SaslEventAuthenticator('test', ['PLAIN']),
+        do_connect=False)

@@ -25,11 +25,6 @@ xiangqi_tube_cap = (
       cs.DBUS_TUBE_SERVICE_NAME: u'com.example.Xiangqi'},
     [cs.TARGET_HANDLE, cs.TARGET_ID])
 
-def connect(q, conn):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
 def send_presence(q, stream, contact_jid, identity):
     ver = compute_caps_hash([identity], features, {})
     stream.send(make_presence(contact_jid, status='Hello',
@@ -54,7 +49,6 @@ def capabilities_changed(q, contact_handle):
     assertContains(xiangqi_tube_cap, e.args[0][contact_handle])
 
 def test1(q, bus, conn, stream):
-    connect(q, conn)
     contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact_bare_jid])[0]
     send_presence(q, stream, contact_jid, 'client/pc//thane')
     handle_disco(q, stream, contact_jid, 'client/pc//thane')
@@ -63,7 +57,6 @@ def test1(q, bus, conn, stream):
 def test2(q, bus, conn, stream):
     # The second time around, the capabilities are retrieved from the cache,
     # so no disco request is sent.
-    connect(q, conn)
     contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact_bare_jid])[0]
     send_presence(q, stream, contact_jid, 'client/pc//thane')
     capabilities_changed(q, contact_handle)

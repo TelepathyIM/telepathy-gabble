@@ -13,8 +13,6 @@ import ns
 import constants as cs
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
     expect_and_handle_get_vcard(q, stream)
     sync_stream(q, stream)
 

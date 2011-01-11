@@ -515,21 +515,11 @@ class JingleTest2:
         # If we need to override remote caps, feats, codecs or caps,
         # we should do it prior to calling this method.
 
-        # Connecting
-        self.conn.Connect()
-
-        # Catch events: status connecting, authentication, our presence update,
+        # Catch events: authentication, our presence update,
         # status connected, vCard query
         # If we don't catch the vCard query here, it can trip us up later:
         # http://bugs.freedesktop.org/show_bug.cgi?id=19161
         events = self.q.expect_many(
-                EventPattern('dbus-signal', signal='StatusChanged',
-                    args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED]),
-                EventPattern('stream-authenticated'),
-                EventPattern('dbus-signal', signal='PresenceUpdate',
-                    args=[{1L: (0L, {u'available': {}})}]),
-                EventPattern('dbus-signal', signal='StatusChanged',
-                    args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
                 EventPattern('stream-iq', to=None, query_ns='vcard-temp',
                     query_name='vCard'),
                 EventPattern('stream-iq', query_ns=ns.ROSTER),

@@ -28,11 +28,6 @@ proxy_port = {'fallback1-proxy.localhost': '12345', 'fallback2-proxy.localhost':
 def connect_and_announce_alice(q, bus, conn, stream):
     q.forbid_events(proxy_query_events)
 
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # Send Alice's presence
     caps =  { 'ext': '', 'ver': '0.0.0',
         'node': 'http://example.com/fake-client0' }

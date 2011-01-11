@@ -5,11 +5,6 @@ import constants as cs
 import ns
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-
-    q.expect('dbus-signal', signal='StatusChanged',
-      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     # event node without NS
     message = elem('message', from_='bob@foo.com')(
         elem('event')(

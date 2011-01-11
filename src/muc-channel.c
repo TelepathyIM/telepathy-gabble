@@ -223,6 +223,7 @@ const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
 struct _GabbleMucChannelPrivate
 {
   GabbleMucState state;
+  gboolean closing;
 
   guint join_timer_id;
   guint poll_timer_id;
@@ -1373,10 +1374,10 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
       "Muc channel closed below us"
   };
 
-  DEBUG ("Closing");
-
-  if (tp_base_channel_is_destroyed (base))
+  if (tp_base_channel_is_destroyed (base) || priv->closing)
     return;
+
+  DEBUG ("Closing");
 
   gabble_muc_channel_close_tube (chan);
 
@@ -1402,7 +1403,22 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   /* Inform the MUC if requested */
   if (inform_muc && priv->state >= MUC_STATE_INITIATED)
     {
+      /* If we want to inform the MUC of our leaving, and we have
+       * actually joined the MUC, then we should wait for our presence
+       * stanza to be given back to us by the conference server before
+       * calling tp_base_channel_destroyed. handle_parted will deal
+       * with calling _destroyed. This is fine because the channel
+       * isn't closed until Closed/ChannelClosed is emitted,
+       * regardless of when the CM returns from Close(). See
+       * fd.o#19930 for more details. */
       send_leave_message (chan, reason);
+      priv->closing = TRUE;
+    }
+  else
+    {
+      /* See the comment just above, except we're not sending the
+       * leave message, so let the channel destroy immediately. */
+      tp_base_channel_destroyed (base);
     }
 
   handles = tp_handle_set_to_array (chan->group.members);
@@ -1414,8 +1430,6 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 
   /* Update state and emit Closed signal */
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
-
-  tp_base_channel_destroyed (base);
 }
 
 gboolean
@@ -1978,6 +1992,16 @@ handle_parted (GObject *source,
   const char *jid = wocky_muc_jid (wmuc);
 
   member = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+
+  if (priv->closing)
+    {
+      /* Close has been called, and we informed the MUC of our leaving
+       * by sending a presence stanza of type='unavailable'. Now this
+       * has been returned to us we know we've successfully left the
+       * MUC, so we can finally close the channel here. */
+      tp_base_channel_destroyed (TP_BASE_CHANNEL (gmuc));
+      return;
+    }
 
   if (member == 0)
     {

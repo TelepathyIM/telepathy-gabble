@@ -421,8 +421,8 @@ call_muc_channel_member_content_added_cb (GabbleCallMember *member,
       JingleMediaType cmtype;
 
       ccontent = GABBLE_CALL_CONTENT (l->data);
-      cname = gabble_base_call_content_get_name (
-          GABBLE_BASE_CALL_CONTENT (ccontent));
+      cname = tpy_base_call_content_get_name (
+          TPY_BASE_CALL_CONTENT (ccontent));
       cmtype = gabble_call_content_get_media_type (ccontent);
 
       if (!tp_strdiff (cname, name) && mtype == cmtype)
@@ -521,8 +521,8 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
       GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
     {
       GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
-      const gchar *name = gabble_base_call_content_get_name (
-          GABBLE_BASE_CALL_CONTENT (content));
+      const gchar *name = tpy_base_call_content_get_name (
+          TPY_BASE_CALL_CONTENT (content));
       WockyNode *description;
       GList *codecs;
       JingleMediaType mtype = gabble_call_content_get_media_type (content);

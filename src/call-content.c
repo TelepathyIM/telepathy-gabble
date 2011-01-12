@@ -33,11 +33,12 @@
 #include <telepathy-yell/svc-call.h>
 
 #include <telepathy-yell/call-content-codec-offer.h>
+#include <telepathy-yell/base-call-content.h>
+#include <telepathy-yell/base-call-stream.h>
 
 #include "call-member.h"
 #include "call-content.h"
 #include "call-stream.h"
-#include "base-call-stream.h"
 #include "jingle-content.h"
 #include "jingle-session.h"
 #include "jingle-media-rtp.h"
@@ -55,11 +56,11 @@ static GPtrArray *call_content_codec_list_to_array (GList *codecs);
 static GHashTable *call_content_generate_codec_map (GabbleCallContent *self,
     gboolean include_local);
 
-static void call_content_deinit (GabbleBaseCallContent *base);
+static void call_content_deinit (TpyBaseCallContent *base);
 static void gabble_call_content_next_offer (GabbleCallContent *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
-    GABBLE_TYPE_BASE_CALL_CONTENT,
+    TPY_TYPE_BASE_CALL_CONTENT,
     G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT,
         call_content_iface_init);
     G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT_INTERFACE_MEDIA,
@@ -198,8 +199,8 @@ gabble_call_content_class_init (
     GabbleCallContentClass *gabble_call_content_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_content_class);
-  GabbleBaseCallContentClass *bcc_class =
-      GABBLE_BASE_CALL_CONTENT_CLASS (gabble_call_content_class);
+  TpyBaseCallContentClass *bcc_class =
+      TPY_BASE_CALL_CONTENT_CLASS (gabble_call_content_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl content_media_props[] = {
     { "ContactCodecMap", "contact-codec-map", NULL },
@@ -358,7 +359,7 @@ gabble_call_content_remove (TpySvcCallContent *content,
   /* it doesn't matter if a ::removed signal handler calls deinit as
    * there are guards around it being called again and breaking, so
    * let's just call it be sure it's done. */
-  gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
+  tpy_base_call_content_deinit (TPY_BASE_CALL_CONTENT (content));
   tpy_svc_call_content_return_from_remove (context);
 }
 
@@ -419,8 +420,8 @@ call_content_accept_stream (gpointer data, gpointer user_data)
 {
   GabbleCallStream *stream = GABBLE_CALL_STREAM (data);
 
-  if (gabble_base_call_stream_get_local_sending_state (
-      GABBLE_BASE_CALL_STREAM (stream)) ==
+  if (tpy_base_call_stream_get_local_sending_state (
+      TPY_BASE_CALL_STREAM (stream)) ==
       TPY_SENDING_STATE_PENDING_SEND)
     gabble_call_stream_set_sending (stream, TRUE);
 }
@@ -428,11 +429,11 @@ call_content_accept_stream (gpointer data, gpointer user_data)
 void
 gabble_call_content_accept (GabbleCallContent *content)
 {
-  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (content);
+  TpyBaseCallContent *base = TPY_BASE_CALL_CONTENT (content);
 
-  if (gabble_base_call_content_get_disposition (base)
+  if (tpy_base_call_content_get_disposition (base)
       == TPY_CALL_CONTENT_DISPOSITION_INITIAL)
-    g_list_foreach (gabble_base_call_content_get_streams (base),
+    g_list_foreach (tpy_base_call_content_get_streams (base),
         call_content_accept_stream, NULL);
 }
 
@@ -451,7 +452,7 @@ maybe_finish_deinit (GabbleCallContent *self)
 }
 
 static void
-call_content_deinit (GabbleBaseCallContent *base)
+call_content_deinit (TpyBaseCallContent *base)
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (base);
   GabbleCallContentPrivate *priv = self->priv;
@@ -461,7 +462,7 @@ call_content_deinit (GabbleBaseCallContent *base)
 
   priv->deinit_has_run = TRUE;
 
-  GABBLE_BASE_CALL_CONTENT_CLASS (gabble_call_content_parent_class)->deinit (
+  TPY_BASE_CALL_CONTENT_CLASS (gabble_call_content_parent_class)->deinit (
       base);
 
   /* Keep ourself alive until we've finished deinitializing;
@@ -526,11 +527,11 @@ call_content_generate_codec_map (GabbleCallContent *self,
 
   if (include_local && priv->local_codecs != NULL)
     {
-      GabbleConnection *conn = gabble_base_call_content_get_connection (
-          GABBLE_BASE_CALL_CONTENT (self));
+      TpBaseConnection *conn = tpy_base_call_content_get_connection (
+          TPY_BASE_CALL_CONTENT (self));
       arr = call_content_codec_list_to_array (priv->local_codecs);
       g_hash_table_insert (map,
-        GUINT_TO_POINTER (TP_BASE_CONNECTION (conn)->self_handle),
+        GUINT_TO_POINTER (conn->self_handle),
         arr);
     }
 
@@ -651,7 +652,7 @@ gabble_call_content_new_offer (GabbleCallContent *self,
   GabbleCallMemberContent *content)
 {
   GabbleCallContentPrivate *priv = self->priv;
-  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
+  TpyBaseCallContent *base = TPY_BASE_CALL_CONTENT (self);
   TpyCallContentCodecOffer *offer;
   gchar *path;
   TpHandle handle = 0;
@@ -671,7 +672,7 @@ gabble_call_content_new_offer (GabbleCallContent *self,
     }
 
   path = g_strdup_printf ("%s/Offer%d",
-      gabble_base_call_content_get_object_path (base),
+      tpy_base_call_content_get_object_path (base),
       priv->offers++);
 
   offer = tpy_call_content_codec_offer_new (path, handle, codecs);
@@ -697,10 +698,10 @@ gabble_call_content_get_local_codecs (GabbleCallContent *self)
 JingleMediaType
 gabble_call_content_get_media_type (GabbleCallContent *self)
 {
-  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
+  TpyBaseCallContent *base = TPY_BASE_CALL_CONTENT (self);
 
   return jingle_media_type_from_tp (
-      gabble_base_call_content_get_media_type (base));
+      tpy_base_call_content_get_media_type (base));
 }
 
 static void
@@ -718,7 +719,7 @@ call_content_setup_jingle (GabbleCallContent *self,
     GabbleCallMemberContent *mcontent)
 {
   GabbleCallContentPrivate *priv = self->priv;
-  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
+  TpyBaseCallContent *base = TPY_BASE_CALL_CONTENT (self);
   GabbleJingleContent *jingle;
   GabbleCallStream *stream;
   gchar *path;
@@ -729,11 +730,11 @@ call_content_setup_jingle (GabbleCallContent *self,
     return;
 
   path = g_strdup_printf ("%s/Stream%p",
-      gabble_base_call_content_get_object_path (base),
+      tpy_base_call_content_get_object_path (base),
       jingle);
   stream = g_object_new (GABBLE_TYPE_CALL_STREAM,
       "object-path", path,
-      "connection", gabble_base_call_content_get_connection (base),
+      "connection", tpy_base_call_content_get_connection (base),
       "jingle-content", jingle,
       NULL);
   g_free (path);
@@ -741,7 +742,7 @@ call_content_setup_jingle (GabbleCallContent *self,
   jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle),
       jingle_media_rtp_copy_codecs (priv->local_codecs), TRUE, NULL);
 
-  gabble_base_call_content_add_stream (base, GABBLE_BASE_CALL_STREAM (stream));
+  tpy_base_call_content_add_stream (base, TPY_BASE_CALL_STREAM (stream));
   g_object_unref (stream);
 }
 
@@ -759,7 +760,7 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
   GabbleCallContentPrivate *priv = self->priv;
-  GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
+  TpyBaseCallContent *base = TPY_BASE_CALL_CONTENT (self);
   GabbleJingleContent *content;
   GList *l;
 
@@ -767,7 +768,7 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
 
   content = gabble_call_member_content_get_jingle_content (mcontent);
 
-  for (l = gabble_base_call_content_get_streams (base);
+  for (l = tpy_base_call_content_get_streams (base);
        l != NULL;
        l = l->next)
     {
@@ -775,7 +776,7 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
 
       if (content == gabble_call_stream_get_jingle_content (stream))
         {
-          gabble_base_call_content_remove_stream (base, l->data);
+          tpy_base_call_content_remove_stream (base, l->data);
           break;
         }
     }

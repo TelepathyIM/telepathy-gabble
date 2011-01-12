@@ -32,6 +32,8 @@
 #include <telepathy-yell/interfaces.h>
 #include <telepathy-yell/svc-call.h>
 
+#include <telepathy-yell/base-call-stream.h>
+
 #include "call-stream.h"
 #include "call-stream-endpoint.h"
 #include "connection.h"
@@ -48,7 +50,7 @@ static void call_stream_media_iface_init (gpointer, gpointer);
 static void call_stream_update_member_states (GabbleCallStream *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallStream, gabble_call_stream,
-    GABBLE_TYPE_BASE_CALL_STREAM,
+    TPY_TYPE_BASE_CALL_STREAM,
     G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM,
         call_stream_iface_init);
     G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM_INTERFACE_MEDIA,
@@ -330,11 +332,11 @@ static void
 gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (obj);
-  GabbleBaseCallStream *base = (GabbleBaseCallStream *) self;
+  TpyBaseCallStream *base = (TpyBaseCallStream *) self;
   GabbleCallStreamPrivate *priv = self->priv;
   GabbleConnection *conn;
   TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
-      (TpBaseConnection *) gabble_base_call_stream_get_connection (base));
+      (TpBaseConnection *) tpy_base_call_stream_get_connection (base));
   GabbleCallStreamEndpoint *endpoint;
   gchar *path;
   JingleTransportType transport;
@@ -342,11 +344,11 @@ gabble_call_stream_constructed (GObject *obj)
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
 
-  conn = gabble_base_call_stream_get_connection (base);
+  conn = GABBLE_CONNECTION (tpy_base_call_stream_get_connection (base));
 
   /* Currently we'll only have one endpoint we know right away */
   path = g_strdup_printf ("%s/Endpoint",
-      gabble_base_call_stream_get_object_path (base));
+      tpy_base_call_stream_get_object_path (base));
   endpoint = gabble_call_stream_endpoint_new (bus, path, priv->content);
   priv->endpoints = g_list_append (priv->endpoints, endpoint);
   g_free (path);
@@ -360,8 +362,7 @@ gabble_call_stream_constructed (GObject *obj)
       /* See if our server is Google, and if it is, ask them for a relay.
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
-      gabble_jingle_factory_create_google_relay_session (
-          gabble_base_call_stream_get_connection (base)->jingle_factory,
+      gabble_jingle_factory_create_google_relay_session (conn->jingle_factory,
           2, google_relay_session_cb, obj);
     }
   else
@@ -381,7 +382,7 @@ gabble_call_stream_constructed (GObject *obj)
 static void
 call_stream_update_member_states (GabbleCallStream *self)
 {
-  GabbleBaseCallStream *base = GABBLE_BASE_CALL_STREAM (self);
+  TpyBaseCallStream *base = TPY_BASE_CALL_STREAM (self);
   GabbleCallStreamPrivate *priv = self->priv;
   gboolean created_by_us;
   JingleContentState state;
@@ -413,8 +414,8 @@ call_stream_update_member_states (GabbleCallStream *self)
         remote_state = TPY_SENDING_STATE_SENDING;
     }
 
-  gabble_base_call_stream_update_local_sending_state (base, local_state);
-  gabble_base_call_stream_remote_member_update_state (base,
+  tpy_base_call_stream_update_local_sending_state (base, local_state);
+  tpy_base_call_stream_remote_member_update_state (base,
         priv->content->session->peer, remote_state);
 }
 
@@ -423,8 +424,8 @@ static void
 gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_stream_class);
-  GabbleBaseCallStreamClass *bcs_class =
-      GABBLE_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
+  TpyBaseCallStreamClass *bcs_class =
+      TPY_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
     { "Transport", "transport", NULL },
@@ -636,12 +637,12 @@ gabble_call_stream_set_sending (GabbleCallStream *self,
     gboolean sending)
 {
   GabbleCallStreamPrivate *priv = self->priv;
-  GabbleBaseCallStream *base = GABBLE_BASE_CALL_STREAM (self);
+  TpyBaseCallStream *base = TPY_BASE_CALL_STREAM (self);
   TpySendingState state =
       sending ? TPY_SENDING_STATE_SENDING : TPY_SENDING_STATE_NONE;
 
   /* If this changes the state, update the content. */
-  if (gabble_base_call_stream_update_local_sending_state (base, state))
+  if (tpy_base_call_stream_update_local_sending_state (base, state))
     gabble_jingle_content_set_sending (priv->content, sending);
 }
 

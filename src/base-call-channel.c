@@ -235,9 +235,9 @@ gabble_base_call_channel_get_property (GObject    *object,
 
           for (l = priv->contents; l != NULL; l = g_list_next (l))
             {
-              GabbleBaseCallContent *c = GABBLE_BASE_CALL_CONTENT (l->data);
+              TpyBaseCallContent *c = TPY_BASE_CALL_CONTENT (l->data);
               g_ptr_array_add (arr,
-                (gpointer) gabble_base_call_content_get_object_path (c));
+                (gpointer) tpy_base_call_content_get_object_path (c));
             }
 
           g_value_set_boxed (value, arr);
@@ -538,7 +538,7 @@ gabble_base_call_channel_dispose (GObject *object)
 
   self->priv->dispose_has_run = TRUE;
 
-  g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit, NULL);
+  g_list_foreach (priv->contents, (GFunc) tpy_base_call_content_deinit, NULL);
   g_list_foreach (priv->contents, (GFunc) g_object_unref, NULL);
   tp_clear_pointer (&priv->contents, g_list_free);
 
@@ -601,11 +601,11 @@ gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
 
   priv->contents = g_list_remove (priv->contents, content);
 
-  path = gabble_base_call_content_get_object_path (
-      GABBLE_BASE_CALL_CONTENT (content));
+  path = tpy_base_call_content_get_object_path (
+      TPY_BASE_CALL_CONTENT (content));
   tpy_svc_channel_type_call_emit_content_removed (self, path);
 
-  gabble_base_call_content_deinit (GABBLE_BASE_CALL_CONTENT (content));
+  tpy_base_call_content_deinit (TPY_BASE_CALL_CONTENT (content));
   g_object_unref (content);
 
   /* let's see if we still have any audio contents */
@@ -638,7 +638,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
   GabbleBaseCallChannelPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   gchar *object_path;
-  GabbleBaseCallContent *content;
+  TpyBaseCallContent *content;
   gchar *escaped;
 
   /* FIXME could clash when other party in a one-to-one call creates a stream
@@ -668,7 +668,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
     priv->have_some_audio = TRUE;
 
   tpy_svc_channel_type_call_emit_content_added (self,
-     gabble_base_call_content_get_object_path (content));
+     tpy_base_call_content_get_object_path (content));
 
   return GABBLE_CALL_CONTENT (content);
 }
@@ -689,7 +689,7 @@ gabble_base_call_channel_close (TpBaseChannel *base)
     gabble_call_member_shutdown (value);
 
   /* shutdown all our contents */
-  g_list_foreach (priv->contents, (GFunc) gabble_base_call_content_deinit,
+  g_list_foreach (priv->contents, (GFunc) tpy_base_call_content_deinit,
       NULL);
   g_list_foreach (priv->contents, (GFunc) g_object_unref, NULL);
   tp_clear_pointer (&priv->contents, g_list_free);
@@ -845,8 +845,8 @@ gabble_base_call_channel_add_content_dbus (TpySvcChannelTypeCall *iface,
     goto error;
 
   tpy_svc_channel_type_call_return_from_add_content (context,
-      gabble_base_call_content_get_object_path (
-          GABBLE_BASE_CALL_CONTENT (content)));
+      tpy_base_call_content_get_object_path (
+          TPY_BASE_CALL_CONTENT (content)));
   return;
 
 unicorns:

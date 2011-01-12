@@ -61,7 +61,9 @@ GType gabble_call_stream_get_type (void);
     GabbleCallStreamClass))
 
 
-void gabble_call_stream_set_sending (GabbleCallStream *self, gboolean sending);
+
+void gabble_call_stream_set_sending (TpyBaseCallStream *stream, gboolean sending, GError **error);
+guint gabble_call_stream_get_local_sending_state (GabbleCallStream *self);
 GabbleJingleContent *gabble_call_stream_get_jingle_content (
     GabbleCallStream *stream);
 

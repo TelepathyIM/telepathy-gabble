@@ -46,14 +46,11 @@
 
 #include "debug.h"
 
-static void call_stream_iface_init (gpointer, gpointer);
 static void call_stream_media_iface_init (gpointer, gpointer);
 static void call_stream_update_member_states (GabbleCallStream *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallStream, gabble_call_stream,
     TPY_TYPE_BASE_CALL_STREAM,
-    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM,
-        call_stream_iface_init);
     G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM_INTERFACE_MEDIA,
         call_stream_media_iface_init);
     );
@@ -584,6 +581,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       stream_media_props);
 
   bcs_class->extra_interfaces = interfaces;
+  bcs_class->set_sending = gabble_call_stream_set_sending;
 }
 
 void
@@ -708,41 +706,21 @@ gabble_call_stream_candidates_prepared (
 }
 
 void
-gabble_call_stream_set_sending (GabbleCallStream *self,
-    gboolean sending)
+gabble_call_stream_set_sending (TpyBaseCallStream *stream,
+    gboolean sending,
+    GError **error)
 {
-  GabbleCallStreamPrivate *priv = self->priv;
-  TpyBaseCallStream *base = TPY_BASE_CALL_STREAM (self);
-  TpySendingState state =
-      sending ? TPY_SENDING_STATE_SENDING : TPY_SENDING_STATE_NONE;
+  GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
+  TpySendingState new_state;
+
+  if (sending)
+    new_state = TPY_SENDING_STATE_SENDING;
+  else
+    new_state = TPY_SENDING_STATE_NONE;
 
   /* If this changes the state, update the content. */
-  if (tpy_base_call_stream_update_local_sending_state (base, state))
-    gabble_jingle_content_set_sending (priv->content, sending);
-}
-
-static void
-gabble_call_stream_set_sending_async (TpySvcCallStream *iface,
-    gboolean sending,
-    DBusGMethodInvocation *context)
-{
-  GabbleCallStream *self = GABBLE_CALL_STREAM (iface);
-
-  gabble_call_stream_set_sending (self, sending);
-
-  tpy_svc_call_stream_return_from_set_sending (context);
-}
-
-static void
-call_stream_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpySvcCallStreamClass *klass =
-    (TpySvcCallStreamClass *) g_iface;
-
-#define IMPLEMENT(x, suffix) tpy_svc_call_stream_implement_##x (\
-    klass, gabble_call_stream_##x##suffix)
-  IMPLEMENT(set_sending, _async);
-#undef IMPLEMENT
+  if (tpy_base_call_stream_update_local_sending_state (stream, new_state))
+    gabble_jingle_content_set_sending (self->priv->content, sending);
 }
 
 static void

@@ -392,6 +392,8 @@ call_muc_channel_setup_content (GabbleCallMucChannel *self,
 
   if (priv->sessions_opened)
     g_queue_push_tail (priv->new_contents, content);
+
+  gabble_call_content_new_offer (content, NULL);
 }
 
 static void

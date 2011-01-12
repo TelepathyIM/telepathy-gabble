@@ -32,9 +32,10 @@
 #include <telepathy-yell/interfaces.h>
 #include <telepathy-yell/svc-call.h>
 
+#include <telepathy-yell/call-content-codec-offer.h>
+
 #include "call-member.h"
 #include "call-content.h"
-#include "call-content-codec-offer.h"
 #include "call-stream.h"
 #include "base-call-stream.h"
 #include "jingle-content.h"
@@ -55,6 +56,7 @@ static GHashTable *call_content_generate_codec_map (GabbleCallContent *self,
     gboolean include_local);
 
 static void call_content_deinit (GabbleBaseCallContent *base);
+static void gabble_call_content_next_offer (GabbleCallContent *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
     GABBLE_TYPE_BASE_CALL_CONTENT,
@@ -89,7 +91,8 @@ struct _GabbleCallContentPrivate
   GList *contents;
 
   gboolean initial_offer_appeared;
-  GabbleCallContentCodecOffer *offer;
+  TpyCallContentCodecOffer *current_offer;
+  GQueue *outstanding_offers;
   GCancellable *offer_cancellable;
   gint offers;
   guint offer_count;
@@ -107,9 +110,12 @@ gabble_call_content_init (GabbleCallContent *self)
       GABBLE_TYPE_CALL_CONTENT, GabbleCallContentPrivate);
 
   self->priv = priv;
+
+  priv->outstanding_offers = g_queue_new ();
 }
 
 static void gabble_call_content_dispose (GObject *object);
+static void gabble_call_content_finalize (GObject *object);
 
 static void
 gabble_call_content_get_property (GObject    *object,
@@ -139,29 +145,33 @@ gabble_call_content_get_property (GObject    *object,
         {
           GValueArray *arr;
           gchar *path;
-          GHashTable *map;
+          GPtrArray *codecs;
+          TpHandle contact;
 
-          if (priv->offer == NULL)
+          if (priv->current_offer == NULL)
             {
               path = g_strdup ("/");
-              map = g_hash_table_new (NULL, NULL);
+              contact = 0;
+              codecs = g_ptr_array_new ();
             }
           else
             {
-              g_object_get (priv->offer,
+              g_object_get (priv->current_offer,
                 "object-path", &path,
-                "remote-contact-codec-map", &map,
+                "remote-contact", &contact,
+                "remote-contact-codecs", &codecs,
                 NULL);
             }
 
-          arr = tp_value_array_build (2,
+          arr = tp_value_array_build (3,
             DBUS_TYPE_G_OBJECT_PATH, path,
-            TPY_HASH_TYPE_CONTACT_CODEC_MAP, map,
+            G_TYPE_UINT, contact,
+            TPY_ARRAY_TYPE_CODEC_LIST, codecs,
             G_TYPE_INVALID);
 
           g_value_take_boxed (value, arr);
           g_free (path);
-          g_boxed_free (TPY_HASH_TYPE_CONTACT_CODEC_MAP, map);
+          g_boxed_free (TPY_ARRAY_TYPE_CODEC_LIST, codecs);
           break;
         }
       default:
@@ -207,6 +217,7 @@ gabble_call_content_class_init (
   object_class->constructed = gabble_call_content_constructed;
   object_class->get_property = gabble_call_content_get_property;
   object_class->dispose = gabble_call_content_dispose;
+  object_class->finalize = gabble_call_content_finalize;
 
   param_spec = g_param_spec_uint ("packetization", "Packetization",
       "The Packetization of this content",
@@ -243,19 +254,11 @@ gabble_call_content_class_init (
       NULL,
       content_media_props);
 
-  signals[REMOVED] = g_signal_new ("removed",
-      G_OBJECT_CLASS_TYPE (gabble_call_content_class),
-      G_SIGNAL_RUN_LAST,
-      0,
-      NULL, NULL,
-      g_cclosure_marshal_VOID__VOID,
-      G_TYPE_NONE, 0);
-
   bcc_class->extra_interfaces = interfaces;
   bcc_class->deinit = call_content_deinit;
 }
 
-void
+static void
 gabble_call_content_dispose (GObject *object)
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (object);
@@ -266,7 +269,7 @@ gabble_call_content_dispose (GObject *object)
 
   priv->dispose_has_run = TRUE;
 
-  g_assert (priv->offer == NULL);
+  g_assert (priv->current_offer == NULL);
 
   jingle_media_rtp_free_codecs (priv->local_codecs);
   priv->local_codecs = NULL;
@@ -276,6 +279,18 @@ gabble_call_content_dispose (GObject *object)
 }
 
 static void
+gabble_call_content_finalize (GObject *object)
+{
+  GabbleCallContent *self = GABBLE_CALL_CONTENT (object);
+  GabbleCallContentPrivate *priv = self->priv;
+
+  g_queue_free (priv->outstanding_offers);
+
+  if (G_OBJECT_CLASS (gabble_call_content_parent_class)->finalize)
+    G_OBJECT_CLASS (gabble_call_content_parent_class)->finalize (object);
+}
+
+static gboolean
 call_content_set_local_codecs (GabbleCallContent *self,
     const GPtrArray *codecs)
 {
@@ -300,6 +315,12 @@ call_content_set_local_codecs (GabbleCallContent *self,
         l = g_list_append (l, c);
     }
 
+  if (jingle_media_rtp_codecs_equal (priv->local_codecs, l))
+    {
+      jingle_media_rtp_free_codecs (l);
+      return FALSE;
+    }
+
   jingle_media_rtp_free_codecs (priv->local_codecs);
   priv->local_codecs = l;
 
@@ -318,6 +339,8 @@ call_content_set_local_codecs (GabbleCallContent *self,
     }
 
   g_signal_emit (self, signals[LOCAL_CODECS_UPDATED], 0, priv->local_codecs);
+
+  return TRUE;
 }
 
 static void
@@ -358,10 +381,11 @@ gabble_call_content_update_codecs (TpySvcCallContentInterfaceMedia *iface,
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (iface);
 
-  if (self->priv->offer != NULL)
+  if (self->priv->current_offer != NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-          "There is a codec offer around so UpdateCodecs shouldn't be called." };
+          "There is a codec offer around so "
+          "UpdateCodecs shouldn't be called." };
       dbus_g_method_return_error (context, &error);
       return;
     }
@@ -444,6 +468,9 @@ call_content_deinit (GabbleBaseCallContent *base)
    * maybe_finish_deinit() will drop this reference to ourself.
    */
   g_object_ref (base);
+
+  g_queue_foreach (priv->outstanding_offers, (GFunc) g_object_unref, NULL);
+  g_queue_clear (priv->outstanding_offers);
 
   if (priv->offer_cancellable != NULL)
     g_cancellable_cancel (priv->offer_cancellable);
@@ -538,28 +565,29 @@ codec_offer_finished_cb (GObject *source,
   GHashTable *codec_map;
   GArray *empty;
 
-  local_codecs = gabble_call_content_codec_offer_offer_finish (
-    GABBLE_CALL_CONTENT_CODEC_OFFER (source), result, &error);
+  local_codecs = tpy_call_content_codec_offer_offer_finish (
+    TPY_CALL_CONTENT_CODEC_OFFER (source), result, &error);
 
   if (error != NULL || priv->deinit_has_run ||
-      priv->offer != GABBLE_CALL_CONTENT_CODEC_OFFER (source))
+      priv->current_offer != TPY_CALL_CONTENT_CODEC_OFFER (source))
     goto out;
 
-  call_content_set_local_codecs (self, local_codecs);
+  if (call_content_set_local_codecs (self, local_codecs))
+    {
+      codec_map = call_content_generate_codec_map (self, TRUE);
+      empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
-  codec_map = call_content_generate_codec_map (self, TRUE);
-  empty = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+      tpy_svc_call_content_interface_media_emit_codecs_changed (self,
+        codec_map, empty);
 
-  tpy_svc_call_content_interface_media_emit_codecs_changed (self,
-    codec_map, empty);
-
-  g_hash_table_unref (codec_map);
-  g_array_free (empty, TRUE);
+      g_hash_table_unref (codec_map);
+      g_array_free (empty, TRUE);
+    }
 
 out:
-  if (priv->offer == GABBLE_CALL_CONTENT_CODEC_OFFER (source))
+  if (priv->current_offer == TPY_CALL_CONTENT_CODEC_OFFER (source))
     {
-      priv->offer = NULL;
+      priv->current_offer = NULL;
       priv->offer_cancellable = NULL;
     }
 
@@ -568,44 +596,96 @@ out:
 
   if (priv->deinit_has_run)
     maybe_finish_deinit (self);
+  else
+    gabble_call_content_next_offer (self);
+}
+
+static void
+gabble_call_content_next_offer (GabbleCallContent *self)
+{
+  GabbleCallContentPrivate *priv = self->priv;
+  TpyCallContentCodecOffer *offer;
+  gchar *path;
+  GPtrArray *codecs;
+  TpHandle handle;
+
+  if (priv->current_offer != NULL)
+    {
+      DEBUG ("Waiting for the current offer to finish"
+        " before starting the next one");
+      return;
+    }
+
+  offer = g_queue_pop_head (priv->outstanding_offers);
+
+  if (offer == NULL)
+    {
+      DEBUG ("No more offers outstanding");
+      return;
+    }
+
+  priv->current_offer = offer;
+
+  g_assert (priv->offer_cancellable == NULL);
+  priv->offer_cancellable = g_cancellable_new ();
+
+  tpy_call_content_codec_offer_offer (priv->current_offer,
+    priv->offer_cancellable,
+    codec_offer_finished_cb, self);
+
+  g_object_get (offer,
+      "object-path", &path,
+      "remote-contact", &handle,
+      "remote-contact-codecs", &codecs,
+      NULL);
+
+  DEBUG ("emitting NewCodecOffer: %s", path);
+  tpy_svc_call_content_interface_media_emit_new_codec_offer (
+    self, handle, path, codecs);
+  g_free (path);
+  g_boxed_free (TPY_ARRAY_TYPE_CODEC_LIST, codecs);
 }
 
 void
-gabble_call_content_new_offer (GabbleCallContent *self)
+gabble_call_content_new_offer (GabbleCallContent *self,
+  GabbleCallMemberContent *content)
 {
   GabbleCallContentPrivate *priv = self->priv;
   GabbleBaseCallContent *base = GABBLE_BASE_CALL_CONTENT (self);
-  GabbleConnection *conn = gabble_base_call_content_get_connection (base);
-  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (
-      TP_BASE_CONNECTION (conn));
-  GHashTable *map;
+  TpyCallContentCodecOffer *offer;
   gchar *path;
+  TpHandle handle = 0;
+  GPtrArray *codecs;
 
-  map = call_content_generate_codec_map (self, FALSE);
+  if (content != NULL)
+    {
+      handle = gabble_call_member_get_handle (
+        gabble_call_member_content_get_member (content));
 
-  if (priv->offer != NULL)
-    g_cancellable_cancel (priv->offer_cancellable);
+      codecs = call_content_codec_list_to_array (
+        gabble_call_member_content_get_remote_codecs (content));
+    }
+  else
+    {
+      codecs = g_ptr_array_new ();
+    }
 
   path = g_strdup_printf ("%s/Offer%d",
       gabble_base_call_content_get_object_path (base),
       priv->offers++);
 
-  priv->offer = gabble_call_content_codec_offer_new (bus, path, map);
-  priv->offer_cancellable = g_cancellable_new ();
+  offer = tpy_call_content_codec_offer_new (path, handle, codecs);
   ++priv->offer_count;
-  gabble_call_content_codec_offer_offer (priv->offer, priv->offer_cancellable,
-    codec_offer_finished_cb, self);
 
-  DEBUG ("emitting NewCodecOffer: %s", path);
-  tpy_svc_call_content_interface_media_emit_new_codec_offer (
-    self, path, map);
-
-  g_hash_table_unref (map);
+  g_ptr_array_unref (codecs);
   g_free (path);
 
   /* set this to TRUE so that after the initial offer disappears,
    * UpdateCodecs is allowed to be called. */
   priv->initial_offer_appeared = TRUE;
+
+  g_queue_push_tail (priv->outstanding_offers, offer);
+  gabble_call_content_next_offer (self);
 }
 
 GList *
@@ -629,8 +709,8 @@ member_content_codecs_changed (GabbleCallMemberContent *mcontent,
 {
   GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
 
-  DEBUG ("Popping up new codec offer");
-  gabble_call_content_new_offer (self);
+  DEBUG ("Preparing new codec offer");
+  gabble_call_content_new_offer (self, mcontent);
 }
 
 static void
@@ -716,6 +796,8 @@ gabble_call_content_add_member_content (GabbleCallContent *self,
 
   gabble_signal_connect_weak (content, "removed",
     G_CALLBACK (member_content_removed_cb), G_OBJECT (self));
+
+  gabble_call_content_new_offer (self, content);
 }
 
 GList *

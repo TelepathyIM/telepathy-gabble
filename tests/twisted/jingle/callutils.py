@@ -34,7 +34,7 @@ def check_state (q, chan, state, wait = False):
 def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
         content, codecs, offer_path = None, check_codecs_changed = True ):
 
-    [path, codecmap] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+    (path, handle, remote_codecs ) = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     if offer_path != None:
@@ -43,10 +43,10 @@ def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
     assertNotEquals ("/", path)
 
     offer = bus.get_object (conn.bus_name, path)
-    codecmap_property = offer.Get (cs.CALL_CONTENT_CODECOFFER,
-        "RemoteContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
+    remote_codecs_property = offer.Get (cs.CALL_CONTENT_CODECOFFER,
+        "RemoteContactCodecs", dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assertEquals (codecmap, codecmap_property)
+    assertEquals (remote_codecs, remote_codecs_property)
 
     offer.Accept (codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
 
@@ -55,11 +55,8 @@ def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
 
     assertEquals (codecs,  current_codecs[self_handle])
 
-    codecmap[self_handle] = codecs
-
     if check_codecs_changed:
         o = q.expect ('dbus-signal', signal='CodecsChanged')
-        assertEquals ([codecmap, []], o.args)
 
 def no_muji_presences (muc):
     return EventPattern ('stream-presence',
@@ -73,6 +70,7 @@ def create_muji_channel (q, conn, stream, muc, in_muc = False):
           cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
           cs.TARGET_ID: muc,
           cs.CALL_INITIAL_AUDIO: True,
+          cs.CALL_INITIAL_AUDIO_NAME: "Audio",
          }, byte_arrays = True)
 
     if not in_muc:

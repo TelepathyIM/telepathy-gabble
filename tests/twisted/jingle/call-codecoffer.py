@@ -20,20 +20,21 @@ if not CHANNEL_TYPE_CALL_ENABLED:
     raise SystemExit(77)
 
 def check_offer (bus, conn, content):
-    [path, codecmap] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+    [path, handle, codecs] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     assertNotEquals ("/", path)
 
     offer = bus.get_object (conn.bus_name, path)
-    codecmap_property = offer.Get (cs.CALL_CONTENT_CODECOFFER,
-        "RemoteContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
+    codecs_property = offer.Get (cs.CALL_CONTENT_CODECOFFER,
+        "RemoteContactCodecs", dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assertEquals (codecmap, codecmap_property)
+    assertEquals (codecs, codecs_property)
 
 def accept_offer (q, bus, conn, self_handle, remote_handle,
-        content, codecs, offer_path = None):
-    [path, codecmap] = content.Get (cs.CALL_CONTENT_IFACE_MEDIA,
+        content, codecs, offer_path = None,
+        codecs_changed = True):
+    [path, _, _] = content.Get (cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     offer = bus.get_object (conn.bus_name, path)
@@ -45,14 +46,15 @@ def accept_offer (q, bus, conn, self_handle, remote_handle,
 
     assertEquals (codecs,  current_codecs[self_handle])
 
-    o = q.expect ('dbus-signal', signal='CodecsChanged')
+    if codecs_changed:
+        o = q.expect ('dbus-signal', signal='CodecsChanged')
 
-    assertEquals ([{ self_handle: codecs, remote_handle: codecs}, []],
-        o.args)
+        assertEquals ([{ self_handle: codecs, remote_handle: codecs}, []],
+            o.args)
 
 def reject_offer (q, bus, conn,
         content, codecs, offer_path = None):
-    [path, codecmap] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+    [path, _, _] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     offer = bus.get_object (conn.bus_name, path)
@@ -121,6 +123,8 @@ def test_incoming(jp, q, bus, conn, stream):
 
     codecs = jt2.get_call_audio_codecs_dbus()
     check_offer(bus, conn, content)
+    accept_offer(q, bus, conn, self_handle, remote_handle,
+        content, codecs)
 
     update_codecs(jt2)
     signal = q.expect('dbus-signal', signal='NewCodecOffer')
@@ -131,13 +135,13 @@ def test_incoming(jp, q, bus, conn, stream):
     signal = q.expect('dbus-signal', signal='NewCodecOffer')
     check_offer(bus, conn, content)
     accept_offer(q, bus, conn, self_handle, remote_handle,
-        content, codecs)
+        content, codecs, codecs_changed = False)
 
     update_codecs(jt2)
     signal = q.expect('dbus-signal', signal='NewCodecOffer')
     check_offer(bus, conn, content)
 
-    [path, codecmap] = content.Get (cs.CALL_CONTENT_IFACE_MEDIA,
+    [path, _, _] = content.Get (cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     chan.Close(dbus_interface=cs.CHANNEL)
@@ -177,7 +181,7 @@ def test_outgoing(jp, q, bus, conn, stream):
     chan = bus.get_object(conn.bus_name, ret[0].args[0][0][0])
 
     # there is no remote codec information, so this should be empty
-    assertEquals(ret[1].args[1], {})
+    assertEquals(ret[1].args[2], [])
 
     # get a list of audio codecs we can support
     codecs = jt2.get_call_audio_codecs_dbus()
@@ -201,14 +205,13 @@ def test_outgoing(jp, q, bus, conn, stream):
     content_props = content.GetAll(cs.CALL_CONTENT,
             dbus_interface=dbus.PROPERTIES_IFACE)
 
-
     # make an offer they can't refuse
-    offer = bus.get_object(conn.bus_name, ret[1].args[0])
+    offer = bus.get_object(conn.bus_name, ret[1].args[1])
     props = offer.GetAll(cs.CALL_CONTENT_CODECOFFER,
             dbus_interface=dbus.PROPERTIES_IFACE)
 
     # this also needs to be empty
-    assertEquals(props["RemoteContactCodecMap"], {})
+    assertEquals(props["RemoteContactCodecs"], [])
 
     offer.Accept(codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
 
@@ -250,10 +253,10 @@ def test_outgoing(jp, q, bus, conn, stream):
     ret = q.expect('dbus-signal', signal='NewCodecOffer')
 
     # make sure the codec offer has the updated codecs
-    assertEquals(ret.args[1], {remote_handle: codecs[:-1]})
+    assertEquals(ret.args[2], codecs[:-1])
 
     # accept new offer
-    offer = bus.get_object(conn.bus_name, ret.args[0])
+    offer = bus.get_object(conn.bus_name, ret.args[1])
     offer.Accept(codecs[:-1], dbus_interface=cs.CALL_CONTENT_CODECOFFER)
 
     # now we should both have the smaller set of codecs, easy

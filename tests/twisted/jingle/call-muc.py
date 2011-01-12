@@ -223,6 +223,10 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
     # Bob appears and starts a session right afterwards
     q.expect('dbus-signal', signal = 'CallMembersChanged')
 
+    e = q.expect('dbus-signal', signal = 'NewCodecOffer')
+    offer = bus.get_object (conn.bus_name, e.args[1])
+    offer.Accept(codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
+
     jt.incoming_call(audio = "Audio")
 
     e = q.expect ('dbus-signal', signal = 'StreamsAdded')

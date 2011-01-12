@@ -65,7 +65,8 @@ GType gabble_call_content_get_type (void);
 void gabble_call_content_accept (GabbleCallContent *content);
 JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
 GList *gabble_call_content_get_local_codecs (GabbleCallContent *self);
-void gabble_call_content_new_offer (GabbleCallContent *self);
+void gabble_call_content_new_offer (GabbleCallContent *self,
+    GabbleCallMemberContent *content);
 
 void gabble_call_content_add_member_content (GabbleCallContent *self,
     GabbleCallMemberContent *content);

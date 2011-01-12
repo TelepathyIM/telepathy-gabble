@@ -336,7 +336,9 @@ gabble_base_call_channel_fill_immutable_properties (
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
       TPY_IFACE_CHANNEL_TYPE_CALL, "InitialAudio",
+      TPY_IFACE_CHANNEL_TYPE_CALL, "InitialAudioName",
       TPY_IFACE_CHANNEL_TYPE_CALL, "InitialVideo",
+      TPY_IFACE_CHANNEL_TYPE_CALL, "InitialVideoName",
       TPY_IFACE_CHANNEL_TYPE_CALL, "MutableContents",
       NULL);
 }

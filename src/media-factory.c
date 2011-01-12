@@ -368,7 +368,9 @@ new_call_channel (GabbleMediaFactory *self,
   GabbleJingleSession *sess,
   TpHandle peer,
   gboolean initial_audio,
+  const gchar *initial_audio_name,
   gboolean initial_video,
+  const gchar *initial_video_name,
   gpointer request_token)
 {
   GabbleCallChannel *channel;
@@ -392,7 +394,11 @@ new_call_channel (GabbleMediaFactory *self,
     "session", sess,
     "handle", peer,
     "initial-audio", initial_audio,
+    "initial-audio-name",
+        initial_audio_name != NULL ? initial_audio_name : "audio",
     "initial-video", initial_video,
+    "initial-video-name",
+        initial_video_name != NULL ? initial_video_name : "video",
     "requested", request_token != NULL,
     "initiator-handle", initiator,
     NULL);
@@ -456,7 +462,10 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
     }
   else if (self->priv->use_call_channels)
     {
-      new_call_channel (self, sess, sess->peer, FALSE, FALSE, NULL);
+      new_call_channel (self, sess, sess->peer,
+        FALSE, NULL,
+        FALSE, NULL,
+        NULL);
     }
   else
     {
@@ -585,31 +594,39 @@ static const gchar * const call_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
     TPY_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
     NULL
 };
 
 static const gchar * const call_audio_allowed[] = {
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
     NULL
 };
 
 static const gchar * const call_video_allowed[] = {
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
     NULL
 };
 
 static const gchar * const call_both_allowed[] = {
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
     TPY_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
     NULL
 };
 
 static const gchar * const call_both_allowed_immutable[] = {
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
     TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
+    TPY_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
     NULL
 };
 
@@ -834,6 +851,7 @@ gabble_media_factory_create_call (TpChannelManager *manager,
   TpBaseConnection *conn;
   GError *error = NULL;
   gboolean initial_audio, initial_video;
+  const gchar *initial_audio_name, *initial_video_name;
 
   conn = (TpBaseConnection *) self->priv->conn;
 
@@ -907,7 +925,14 @@ gabble_media_factory_create_call (TpChannelManager *manager,
    * FIXME need to cope with disconnecting while channels are setting up
    */
 
-  new_call_channel (self, NULL, target, initial_audio, initial_video,
+  initial_audio_name = tp_asv_get_string (request_properties,
+    TPY_IFACE_CHANNEL_TYPE_CALL "InitialAudioName");
+  initial_video_name = tp_asv_get_string (request_properties,
+    TPY_IFACE_CHANNEL_TYPE_CALL "InitialVideoName");
+
+  new_call_channel (self, NULL, target,
+    initial_audio, initial_audio_name,
+    initial_video, initial_video_name,
     request_token);
 
   return TRUE;

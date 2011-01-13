@@ -236,7 +236,6 @@ check-local: check-coding-style check-twisted
 CHECK_TWISTED_SLEEP=0
 
 check-twisted:
-	$(MAKE) -C tools
 	rm -f tools/core
 	rm -f tools/vgcore.*
 	rm -f tools/gabble-testing.log
@@ -344,6 +343,42 @@ CLEANFILES = gabble-[1-9]*.log *.pyc */*.pyc config.py
 
 check_misc_sources = $(TESTS)
 
+# the following used to be in tools/
 include $(top_srcdir)/tools/check-coding-style.mk
 
-SUBDIRS = tools
+tools/exec-with-log.sh: tools/exec-with-log.sh.in
+	@mkdir -p tools
+	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" \
+		-e "s|[@]abs_top_srcdir[@]|@abs_top_srcdir@|g" $< > $@
+	@chmod +x $@
+
+tools/%.conf: tools/%.conf.in
+	@mkdir -p tools
+	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+
+# We don't use the full filename for the .in because > 99 character filenames
+# in tarballs are non-portable (and automake 1.8 doesn't let us build
+# non-archaic tarballs)
+tools/org.freedesktop.Telepathy.ConnectionManager.%.service: tools/%.service.in
+	@mkdir -p tools
+	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+
+# D-Bus service file for testing
+service_in_files = tools/gabble.service.in
+service_files = tools/org.freedesktop.Telepathy.ConnectionManager.gabble.service
+
+# D-Bus config file for testing
+conf_in_files = tools/tmp-session-bus.conf.in
+conf_files = $(conf_in_files:.conf.in=.conf)
+
+BUILT_SOURCES += $(service_files) $(conf_files) tools/exec-with-log.sh
+
+EXTRA_DIST += \
+	$(service_in_files) \
+	$(conf_in_files) \
+	tools/exec-with-log.sh.in \
+	tools/with-session-bus.sh
+
+CLEANFILES += \
+    $(BUILT_SOURCES) \
+    tools/gabble-testing.log

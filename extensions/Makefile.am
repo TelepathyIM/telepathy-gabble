@@ -2,8 +2,6 @@ tools_dir = $(top_srcdir)/tools
 
 EXTRA_DIST = \
     all.xml \
-    Channel_Bundle.xml \
-    Channel_Future.xml \
     Channel_Type_FileTransfer_Future.xml \
     Connection_Future.xml \
     Connection_Interface_Gabble_Decloak.xml \

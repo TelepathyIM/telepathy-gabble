@@ -849,6 +849,43 @@ string_string_maps_equal (GHashTable *a,
 }
 
 /**
+ * jingle_media_rtp_codecs_equal:
+ * @a: codec list
+ * @b: codec list to compare to
+ *
+ * Returns: %TRUE if the codecs lists are equal, %FALSE otherwise
+ */
+gboolean
+jingle_media_rtp_codecs_equal (GList *a, GList *b)
+{
+  JingleCodec *ac, *bc;
+
+  for (; a != NULL && b != NULL; a = a->next, b = b->next)
+    {
+      ac = a->data;
+      bc = b->data;
+
+      if (ac->id != bc->id)
+        return FALSE;
+
+      if (tp_strdiff (ac->name, bc->name))
+        return FALSE;
+
+      if (ac->clockrate != bc->clockrate)
+        return FALSE;
+
+      if (ac->channels != bc->channels)
+        return FALSE;
+
+      if (!string_string_maps_equal (ac->params, bc->params))
+        return FALSE;
+    }
+
+  /* Should have finished both lists */
+  return a == NULL && b == NULL;
+}
+
+/**
  * compare_codecs:
  * @old: previous local codecs
  * @new: new local codecs supplied by streaming implementation

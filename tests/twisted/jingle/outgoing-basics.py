@@ -321,6 +321,7 @@ def rccs(q, bus, conn, stream):
         expected_allowed = [
             cs.TARGET_ID, cs.TARGET_HANDLE,
             cs.CALL_INITIAL_VIDEO, cs.CALL_INITIAL_AUDIO,
+            cs.CALL_INITIAL_VIDEO_NAME, cs.CALL_INITIAL_AUDIO_NAME,
             cs.CALL_MUTABLE_CONTENTS
         ]
 

@@ -35,9 +35,10 @@ def check_state (q, chan, state, wait = False):
         properties["CallState"])
 
 def check_and_accept_offer (q, bus, conn, self_handle,
-        content, codecs, remote_handle = None, offer_path = None):
+        content, codecs, remote_handle = None, offer_path = None,
+        codecs_changed = True):
 
-    [path, codecmap] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+    [path, handle, remote_codecs ] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     if offer_path != None:
@@ -47,9 +48,9 @@ def check_and_accept_offer (q, bus, conn, self_handle,
 
     offer = bus.get_object (conn.bus_name, path)
     codecmap_property = offer.Get (cs.CALL_CONTENT_CODECOFFER,
-        "RemoteContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
+        "RemoteContactCodecs", dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assertEquals (codecmap, codecmap_property)
+    assertEquals (remote_codecs, codecmap_property)
 
     offer.Accept (codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
 
@@ -58,14 +59,15 @@ def check_and_accept_offer (q, bus, conn, self_handle,
 
     assertEquals (codecs,  current_codecs[self_handle])
 
-    o = q.expect ('dbus-signal', signal='CodecsChanged')
 
-    codecs_should_be = { self_handle: codecs }
+    if codecs_changed:
+        o = q.expect ('dbus-signal', signal='CodecsChanged')
+        codecs_should_be = { self_handle: codecs }
 
-    if remote_handle is not None:
-        codecs_should_be[remote_handle] = codecs
+        if remote_handle is not None:
+            codecs_should_be[remote_handle] = codecs
 
-    assertEquals ([codecs_should_be, []], o.args)
+        assertEquals ([codecs_should_be, []], o.args)
 
 def run_test(jp, q, bus, conn, stream, incoming):
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -336,11 +338,12 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
         o = q.expect ('dbus-signal', signal='NewCodecOffer')
 
-        [path, _ ] = o.args
+        [_, path, _ ] = o.args
         codecs = jt2.get_call_audio_codecs_dbus()
 
         check_and_accept_offer (q, bus, conn, self_handle,
-            content, codecs, remote_handle, path)
+            content, codecs, remote_handle, path,
+            codecs_changed = False )
 
     check_state (q, chan, cs.CALL_STATE_ACCEPTED)
 

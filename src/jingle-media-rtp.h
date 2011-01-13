@@ -82,6 +82,7 @@ void jingle_media_rtp_codec_free (JingleCodec *p);
 void jingle_media_rtp_free_codecs (GList *codecs);
 GList * jingle_media_rtp_copy_codecs (GList *codecs);
 
+gboolean jingle_media_rtp_codecs_equal (GList *a, GList *b);
 gboolean jingle_media_rtp_compare_codecs (GList *old,
     GList *new,
     GList **changed,

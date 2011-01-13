@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "base-call-stream.h"
+#include <telepathy-yell/base-call-stream.h>
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -33,11 +33,11 @@ typedef struct _GabbleCallStreamPrivate GabbleCallStreamPrivate;
 typedef struct _GabbleCallStreamClass GabbleCallStreamClass;
 
 struct _GabbleCallStreamClass {
-    GabbleBaseCallStreamClass parent_class;
+    TpyBaseCallStreamClass parent_class;
 };
 
 struct _GabbleCallStream {
-    GabbleBaseCallStream parent;
+    TpyBaseCallStream parent;
 
     GabbleCallStreamPrivate *priv;
 };

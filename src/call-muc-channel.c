@@ -392,6 +392,8 @@ call_muc_channel_setup_content (GabbleCallMucChannel *self,
 
   if (priv->sessions_opened)
     g_queue_push_tail (priv->new_contents, content);
+
+  gabble_call_content_new_offer (content, NULL);
 }
 
 static void
@@ -419,8 +421,8 @@ call_muc_channel_member_content_added_cb (GabbleCallMember *member,
       JingleMediaType cmtype;
 
       ccontent = GABBLE_CALL_CONTENT (l->data);
-      cname = gabble_base_call_content_get_name (
-          GABBLE_BASE_CALL_CONTENT (ccontent));
+      cname = tpy_base_call_content_get_name (
+          TPY_BASE_CALL_CONTENT (ccontent));
       cmtype = gabble_call_content_get_media_type (ccontent);
 
       if (!tp_strdiff (cname, name) && mtype == cmtype)
@@ -519,8 +521,8 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
       GABBLE_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
     {
       GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
-      const gchar *name = gabble_base_call_content_get_name (
-          GABBLE_BASE_CALL_CONTENT (content));
+      const gchar *name = tpy_base_call_content_get_name (
+          TPY_BASE_CALL_CONTENT (content));
       WockyNode *description;
       GList *codecs;
       JingleMediaType mtype = gabble_call_content_get_media_type (content);
@@ -1026,6 +1028,8 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
 {
   gboolean initial_audio = FALSE;
   gboolean initial_video = FALSE;
+  const gchar *initial_audio_name = NULL;
+  const gchar *initial_video_name = NULL;
 
   DEBUG ("Starting initialisation of a Muji call channel");
 
@@ -1035,6 +1039,11 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
           TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
       initial_video = tp_asv_get_boolean (request,
           TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
+
+      initial_audio_name = tp_asv_get_string (request,
+          TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO_NAME);
+      initial_video_name = tp_asv_get_string (request,
+          TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO_NAME);
     }
 
   g_async_initable_new_async (GABBLE_TYPE_CALL_MUC_CHANNEL,
@@ -1048,7 +1057,11 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
     "handle", target,
     "requested", request != NULL,
     "initial-audio", initial_audio,
+    "initial-audio-name",
+       initial_audio_name != NULL ? initial_audio_name : "audio",
     "initial-video", initial_video,
+    "initial-video-name",
+      initial_video_name != NULL ? initial_video_name : "video",
     NULL);
 }
 

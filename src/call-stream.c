@@ -34,8 +34,6 @@
 #include <telepathy-yell/svc-call.h>
 #include <telepathy-yell/call-stream-endpoint.h>
 
-#include <telepathy-yell/base-call-stream.h>
-
 #include "call-stream.h"
 #include "connection.h"
 #include "jingle-session.h"
@@ -46,14 +44,14 @@
 
 #include "debug.h"
 
-static void call_stream_media_iface_init (gpointer, gpointer);
 static void call_stream_update_member_states (GabbleCallStream *self);
+static GPtrArray *gabble_call_stream_add_candidates (
+    TpyBaseMediaCallStream *stream,
+    const GPtrArray *candidates,
+    GError **error);
 
-G_DEFINE_TYPE_WITH_CODE(GabbleCallStream, gabble_call_stream,
-    TPY_TYPE_BASE_CALL_STREAM,
-    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_STREAM_INTERFACE_MEDIA,
-        call_stream_media_iface_init);
-    );
+G_DEFINE_TYPE(GabbleCallStream, gabble_call_stream,
+    TPY_TYPE_BASE_MEDIA_CALL_STREAM)
 
 /* properties */
 enum
@@ -86,13 +84,6 @@ struct _GabbleCallStreamPrivate
   gboolean dispose_has_run;
 
   GabbleJingleContent *content;
-
-  GList *endpoints;
-  GPtrArray *relay_info;
-
-  TpySendingState local_sending_state;
-
-  gboolean got_relay_info;
 };
 
 static void
@@ -106,14 +97,6 @@ gabble_call_stream_init (GabbleCallStream *self)
 
 static void gabble_call_stream_dispose (GObject *object);
 static void gabble_call_stream_finalize (GObject *object);
-
-static gboolean
-has_server_info (GabbleCallStream *self)
-{
-  /* extend this function when HasServerInfo gains more info to
-   * retrieve than just relay info */
-  return self->priv->got_relay_info;
-}
 
 static GPtrArray *
 get_stun_servers (GabbleCallStream *self)
@@ -161,85 +144,6 @@ gabble_call_stream_get_property (GObject    *object,
       case PROP_JINGLE_CONTENT:
         g_value_set_object (value, priv->content);
         break;
-      case PROP_LOCAL_CANDIDATES:
-        {
-          GPtrArray *arr;
-          GList *candidates =
-            gabble_jingle_content_get_local_candidates (priv->content);
-
-          arr = gabble_call_candidates_to_array (candidates);
-          g_value_take_boxed (value, arr);
-          break;
-        }
-
-      case PROP_ENDPOINTS:
-        {
-          GPtrArray *arr = g_ptr_array_sized_new (1);
-          GList *l;
-
-          for (l = priv->endpoints; l != NULL; l = g_list_next (l))
-            {
-              TpyCallStreamEndpoint *e =
-                TPY_CALL_STREAM_ENDPOINT (l->data);
-              g_ptr_array_add (arr,
-                g_strdup (tpy_call_stream_endpoint_get_object_path (e)));
-            }
-
-          g_value_take_boxed (value, arr);
-          break;
-        }
-      case PROP_TRANSPORT:
-        {
-          JingleTransportType transport;
-          guint i;
-          guint tptransport = G_MAXUINT;
-          guint transport_mapping[][2] = {
-              { JINGLE_TRANSPORT_GOOGLE_P2P,
-                TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P },
-              { JINGLE_TRANSPORT_RAW_UDP,
-                TPY_STREAM_TRANSPORT_TYPE_RAW_UDP },
-              { JINGLE_TRANSPORT_ICE_UDP,
-                 TPY_STREAM_TRANSPORT_TYPE_ICE },
-          };
-
-          transport = gabble_jingle_content_get_transport_type (priv->content);
-
-          for (i = 0; i < G_N_ELEMENTS (transport_mapping); i++)
-            {
-              if (transport_mapping[i][0] == transport)
-                {
-                  tptransport = transport_mapping[i][1];
-                  break;
-                }
-            }
-          g_assert (tptransport < G_MAXUINT);
-          g_value_set_uint (value, tptransport);
-
-          break;
-        }
-      case PROP_STUN_SERVERS:
-        {
-          g_value_take_boxed (value, get_stun_servers (stream));
-          break;
-        }
-      case PROP_RELAY_INFO:
-        {
-          if (priv->relay_info == NULL)
-            {
-              GPtrArray *relay_info = g_ptr_array_sized_new (0);
-              g_value_set_boxed (value, relay_info);
-              g_ptr_array_free (relay_info, TRUE);
-            }
-          else
-            g_value_set_boxed (value, priv->relay_info);
-
-          break;
-        }
-      case PROP_HAS_SERVER_INFO:
-        {
-          g_value_set_boolean (value, has_server_info (stream));
-          break;
-        }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -267,30 +171,12 @@ gabble_call_stream_set_property (GObject *object,
 }
 
 static void
-maybe_emit_server_info_retrieved (GabbleCallStream *self)
-{
-  if (has_server_info (self))
-    tpy_svc_call_stream_interface_media_emit_server_info_retrieved (self);
-}
-
-static void
 google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
-  GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
-  GabbleCallStreamPrivate *priv = self->priv;
+  TpyBaseMediaCallStream *stream = TPY_BASE_MEDIA_CALL_STREAM (user_data);
 
-  priv->relay_info =
-      g_boxed_copy (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, relays);
-
-  if (!priv->got_relay_info)
-    {
-      priv->got_relay_info = TRUE;
-      maybe_emit_server_info_retrieved (user_data);
-    }
-
-  tpy_svc_call_stream_interface_media_emit_relay_info_changed (
-      self, priv->relay_info);
+  tpy_base_media_call_stream_set_relay_info (stream, relays);
 }
 
 static void
@@ -401,12 +287,28 @@ _hook_up_endpoint (GabbleCallStream *self,
   return endpoint;
 }
 
+static TpyStreamTransportType
+_jingle_to_tp_transport (JingleTransportType jt)
+{
+  switch (jt)
+  {
+    case JINGLE_TRANSPORT_GOOGLE_P2P:
+      return TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P;
+    case JINGLE_TRANSPORT_RAW_UDP:
+      return TPY_STREAM_TRANSPORT_TYPE_RAW_UDP;
+    case JINGLE_TRANSPORT_ICE_UDP:
+      return TPY_STREAM_TRANSPORT_TYPE_ICE;
+    default:
+      g_return_val_if_reached (G_MAXUINT);
+  }
+}
 
 static void
 gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (obj);
   TpyBaseCallStream *base = (TpyBaseCallStream *) self;
+  TpyBaseMediaCallStream *media_base = (TpyBaseMediaCallStream *) self;
   GabbleCallStreamPrivate *priv = self->priv;
   GabbleConnection *conn;
   TpyCallStreamEndpoint *endpoint;
@@ -422,10 +324,13 @@ gabble_call_stream_constructed (GObject *obj)
   path = g_strdup_printf ("%s/Endpoint",
       tpy_base_call_stream_get_object_path (base));
   endpoint = _hook_up_endpoint (self, path, priv->content);
-  priv->endpoints = g_list_append (priv->endpoints, endpoint);
+  tpy_base_media_call_stream_take_endpoint (media_base, endpoint);
   g_free (path);
 
   transport = gabble_jingle_content_get_transport_type (priv->content);
+
+  tpy_base_media_call_stream_set_transport (media_base,
+      _jingle_to_tp_transport (transport));
 
   if (transport == JINGLE_TRANSPORT_GOOGLE_P2P)
     {
@@ -439,7 +344,9 @@ gabble_call_stream_constructed (GObject *obj)
     }
   else
     {
-      priv->got_relay_info = TRUE;
+      GPtrArray *relays = g_ptr_array_new ();
+      tpy_base_media_call_stream_set_relay_info (media_base, relays);
+      g_ptr_array_free (relays, TRUE);
     }
 
   call_stream_update_member_states (GABBLE_CALL_STREAM (obj));
@@ -498,6 +405,8 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_stream_class);
   TpyBaseCallStreamClass *bcs_class =
       TPY_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
+  TpyBaseMediaCallStreamClass *bmcs_class =
+      TPY_BASE_MEDIA_CALL_STREAM_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
   static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
     { "Transport", "transport", NULL },
@@ -530,50 +439,6 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
       param_spec);
 
-  param_spec = g_param_spec_boxed ("local-candidates", "LocalCandidates",
-      "List of local candidates",
-      TPY_ARRAY_TYPE_CANDIDATE_LIST,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_LOCAL_CANDIDATES,
-      param_spec);
-
-  param_spec = g_param_spec_boxed ("endpoints", "Endpoints",
-      "The endpoints of this content",
-      TP_ARRAY_TYPE_OBJECT_PATH_LIST,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_ENDPOINTS,
-      param_spec);
-
-  param_spec = g_param_spec_uint ("transport", "Transport",
-      "The transport of this stream",
-      0, G_MAXUINT, 0,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_TRANSPORT,
-      param_spec);
-
-  param_spec = g_param_spec_boxed ("stun-servers", "STUNServers",
-      "List of STUN servers",
-      TP_ARRAY_TYPE_SOCKET_ADDRESS_IP_LIST,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_STUN_SERVERS,
-      param_spec);
-
-  param_spec = g_param_spec_boxed ("relay-info", "RelayInfo",
-      "List of relay information",
-      TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_RELAY_INFO,
-      param_spec);
-
-  param_spec = g_param_spec_boolean ("has-server-info",
-      "HasServerInfo",
-      "True if the server information about STUN and "
-      "relay servers has been retrieved",
-      FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_HAS_SERVER_INFO,
-      param_spec);
-
   tp_dbus_properties_mixin_implement_interface (object_class,
       TPY_IFACE_QUARK_CALL_STREAM_INTERFACE_MEDIA,
       tp_dbus_properties_mixin_getter_gobject_properties,
@@ -582,6 +447,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 
   bcs_class->extra_interfaces = interfaces;
   bcs_class->set_sending = gabble_call_stream_set_sending;
+  bmcs_class->add_local_candidates = gabble_call_stream_add_candidates;
 }
 
 void
@@ -589,19 +455,11 @@ gabble_call_stream_dispose (GObject *object)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (object);
   GabbleCallStreamPrivate *priv = self->priv;
-  GList *l;
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
-
-  for (l = priv->endpoints; l != NULL; l = g_list_next (l))
-    {
-      g_object_unref (l->data);
-    }
-
-  tp_clear_pointer (&priv->endpoints, g_list_free);
 
   tp_clear_object (&priv->content);
 
@@ -612,22 +470,17 @@ gabble_call_stream_dispose (GObject *object)
 void
 gabble_call_stream_finalize (GObject *object)
 {
-  GabbleCallStream *self = GABBLE_CALL_STREAM (object);
-  GabbleCallStreamPrivate *priv = self->priv;
-
-  if (priv->relay_info != NULL)
-    g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
-
   G_OBJECT_CLASS (gabble_call_stream_parent_class)->finalize (object);
 }
 
-static void
-gabble_call_stream_add_candidates (TpySvcCallStreamInterfaceMedia *iface,
+static GPtrArray *
+gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
     const GPtrArray *candidates,
-    DBusGMethodInvocation *context)
+    GError **error)
 {
-  GabbleCallStream *self = GABBLE_CALL_STREAM (iface);
+  GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
   GabbleCallStreamPrivate *priv = self->priv;
+  GPtrArray *accepted_candidates = g_ptr_array_sized_new (candidates->len);
   GList *l = NULL;
   guint i;
 
@@ -686,23 +539,17 @@ gabble_call_stream_add_candidates (TpySvcCallStreamInterfaceMedia *iface,
         0);
 
       l = g_list_append (l, c);
+      g_ptr_array_add (accepted_candidates,
+          g_boxed_copy (TPY_STRUCT_TYPE_CANDIDATE, va));
     }
 
   gabble_jingle_content_add_candidates (priv->content, l);
 
-  tpy_svc_call_stream_interface_media_emit_local_candidates_added (self,
-      candidates);
+  if (accepted_candidates->len == 0 && candidates->len != 0)
+    g_set_error_literal (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "All candidates had the wrong Type");
 
-  tpy_svc_call_stream_interface_media_return_from_add_candidates (context);
-}
-
-static void
-gabble_call_stream_candidates_prepared (
-    TpySvcCallStreamInterfaceMedia *iface,
-    DBusGMethodInvocation *context)
-{
-  tpy_svc_call_stream_interface_media_return_from_candidates_prepared (
-    context);
+  return accepted_candidates;
 }
 
 void
@@ -721,19 +568,6 @@ gabble_call_stream_set_sending (TpyBaseCallStream *stream,
   /* If this changes the state, update the content. */
   if (tpy_base_call_stream_update_local_sending_state (stream, new_state))
     gabble_jingle_content_set_sending (self->priv->content, sending);
-}
-
-static void
-call_stream_media_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpySvcCallStreamInterfaceMediaClass *klass =
-    (TpySvcCallStreamInterfaceMediaClass *) g_iface;
-
-#define IMPLEMENT(x) tpy_svc_call_stream_interface_media_implement_##x (\
-    klass, gabble_call_stream_##x)
-  IMPLEMENT(add_candidates);
-  IMPLEMENT(candidates_prepared);
-#undef IMPLEMENT
 }
 
 GabbleJingleContent *

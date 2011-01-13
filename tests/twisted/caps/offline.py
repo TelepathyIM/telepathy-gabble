@@ -1,5 +1,5 @@
 """
-Test for fd.o#32874
+Test for fd.o#32874 -- Offline contacts do not have capabilities.
 """
 
 from gabbletest import exec_test

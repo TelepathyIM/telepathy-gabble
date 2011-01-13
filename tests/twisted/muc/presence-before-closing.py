@@ -56,5 +56,9 @@ def test(q, bus, conn, stream):
     q.expect_many(EventPattern('dbus-signal', signal='Closed'),
                   EventPattern('dbus-signal', signal='ChannelClosed'))
 
+    # now that the channel has finally closed, let's try and request
+    # it again which should succeed!
+    join_muc(q, bus, conn, stream, room)
+
 if __name__ == '__main__':
     exec_test(test)

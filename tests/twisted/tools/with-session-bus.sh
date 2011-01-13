@@ -59,7 +59,7 @@ cleanup ()
 {
   pid=`head -n1 $me-$$.pid`
   if test -n "$pid" ; then
-    if [ -n "$CHECK_TWISTED_VERBOSE" ]; then
+    if [ -n "$CHECK_TWISTED_VERBOSE" ] || [ -n "$VERBOSE_TESTS" ]; then
       echo "Killing temporary bus daemon: $pid" >&2
     fi
     kill -INT "$pid"
@@ -71,7 +71,7 @@ cleanup ()
 trap cleanup INT HUP TERM
 dbus-daemon $dbus_daemon_args
 
-if [ -n "$CHECK_TWISTED_VERBOSE" ]; then
+if [ -n "$CHECK_TWISTED_VERBOSE" ] || [ -n "$VERBOSE_TESTS" ]; then
   { echo -n "Temporary bus daemon is "; cat $me-$$.address; } >&2
   { echo -n "Temporary bus daemon PID is "; head -n1 $me-$$.pid; } >&2
 fi

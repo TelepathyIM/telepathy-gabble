@@ -56,6 +56,7 @@
 #include "gabble-signals-marshal.h"
 
 #define DEFAULT_JOIN_TIMEOUT 180
+#define DEFAULT_LEAVE_TIMEOUT 180
 #define MAX_NICK_RETRIES 3
 
 #define PROPS_POLL_INTERVAL_LOW  60 * 5
@@ -227,6 +228,7 @@ struct _GabbleMucChannelPrivate
 
   guint join_timer_id;
   guint poll_timer_id;
+  guint leave_timer_id;
 
   TpChannelPasswordFlags password_flags;
   DBusGMethodInvocation *password_ctx;
@@ -817,6 +819,19 @@ send_join_request (GabbleMucChannel *gmuc,
   return TRUE;
 }
 
+static gboolean
+timeout_leave (gpointer data)
+{
+  GabbleMucChannel *chan = data;
+
+  DEBUG ("leave timed out (we never got our unavailable presence echoed "
+      "back to us by the conf server), closing channel now");
+
+  tp_base_channel_destroyed (TP_BASE_CHANNEL (chan));
+
+  return FALSE;
+}
+
 static void
 send_leave_message (GabbleMucChannel *gmuc,
                     const gchar *reason)
@@ -831,6 +846,9 @@ send_leave_message (GabbleMucChannel *gmuc,
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)), stanza, NULL);
 
   g_object_unref (stanza);
+
+  priv->leave_timer_id =
+    g_timeout_add_seconds (DEFAULT_LEAVE_TIMEOUT, timeout_leave, gmuc);
 }
 
 static void
@@ -1141,6 +1159,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 
 static void clear_join_timer (GabbleMucChannel *chan);
 static void clear_poll_timer (GabbleMucChannel *chan);
+static void clear_leave_timer (GabbleMucChannel *chan);
 
 void
 gabble_muc_channel_dispose (GObject *object)
@@ -1157,6 +1176,7 @@ gabble_muc_channel_dispose (GObject *object)
 
   clear_join_timer (self);
   clear_poll_timer (self);
+  clear_leave_timer (self);
 
   tp_clear_object (&priv->wmuc);
   tp_clear_object (&priv->requests_cancellable);
@@ -1207,7 +1227,8 @@ gabble_muc_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_muc_channel_parent_class)->finalize (object);
 }
 
-static void clear_join_timer (GabbleMucChannel *chan)
+static void
+clear_join_timer (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv = chan->priv;
 
@@ -1218,7 +1239,8 @@ static void clear_join_timer (GabbleMucChannel *chan)
     }
 }
 
-static void clear_poll_timer (GabbleMucChannel *chan)
+static void
+clear_poll_timer (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv = chan->priv;
 
@@ -1226,6 +1248,18 @@ static void clear_poll_timer (GabbleMucChannel *chan)
     {
       g_source_remove (priv->poll_timer_id);
       priv->poll_timer_id = 0;
+    }
+}
+
+static void
+clear_leave_timer (GabbleMucChannel *chan)
+{
+  GabbleMucChannelPrivate *priv = chan->priv;
+
+  if (priv->leave_timer_id != 0)
+    {
+      g_source_remove (priv->leave_timer_id);
+      priv->leave_timer_id = 0;
     }
 }
 
@@ -1991,15 +2025,23 @@ handle_parted (GObject *source,
       NULL };
   const char *jid = wocky_muc_jid (wmuc);
 
+  DEBUG ("called");
+
   member = tp_handle_ensure (contact_repo, jid, NULL, NULL);
 
   if (priv->closing)
     {
+      /* This was a timeout to ensure that leaving a room with a
+       * non-responsive conference server still meant the channel
+       * closed (eventually). */
+      clear_leave_timer (gmuc);
+
       /* Close has been called, and we informed the MUC of our leaving
        * by sending a presence stanza of type='unavailable'. Now this
        * has been returned to us we know we've successfully left the
        * MUC, so we can finally close the channel here. */
       tp_base_channel_destroyed (TP_BASE_CHANNEL (gmuc));
+
       return;
     }
 

@@ -1430,7 +1430,8 @@ handle_text_channel_request (GabbleMucFactory *self,
       if (!ok)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "TargetID and RoomID conflict.");
+              "TargetID's node part (%s) doesn't match RoomID (%s)",
+              target_room, room_id);
           ret = FALSE;
           goto out;
         }
@@ -1454,7 +1455,8 @@ handle_text_channel_request (GabbleMucFactory *self,
       if (!ok)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "TargetID and Server conflict.");
+              "TargetID's domain part (%s) doesn't match Server (%s)",
+              target_server, server_prop);
           ret = FALSE;
           goto out;
         }

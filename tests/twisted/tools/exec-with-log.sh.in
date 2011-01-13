@@ -30,6 +30,8 @@ elif test -n "$GABBLE_TEST_REFDBG"; then
         fi
 elif test -n "$GABBLE_TEST_STRACE"; then
         GABBLE_WRAPPER="strace -o strace.log"
+elif test -n "$GABBLE_TEST_BACKTRACE"; then
+        GABBLE_WRAPPER="gdb -x run_and_bt.gdb"
 fi
 
 export G_DEBUG=fatal-warnings,fatal-criticals" ${G_DEBUG}"

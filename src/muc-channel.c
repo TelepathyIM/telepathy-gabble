@@ -2025,7 +2025,7 @@ handle_parted (GObject *source,
       NULL };
   const char *jid = wocky_muc_jid (wmuc);
 
-  DEBUG ("called");
+  DEBUG ("called with jid='%s'", jid);
 
   member = tp_handle_ensure (contact_repo, jid, NULL, NULL);
 

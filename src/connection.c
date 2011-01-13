@@ -257,7 +257,9 @@ struct _GabbleConnectionPrivate
   /* server TLS manager */
   GabbleServerTLSManager *server_tls_manager;
 
-  /* IM factory */
+  /* IM factory; we need this to add text caps for everyone (even
+   * offline contacts) which is done through the IM factory's
+   * GabbleCapsChannelManagerInterface->get_contact_caps function. */
   GabbleImFactory *im_factory;
 
   /* stream id returned by the connector */

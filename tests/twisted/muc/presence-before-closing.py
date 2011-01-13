@@ -32,12 +32,24 @@ def test(q, bus, conn, stream):
     call_async(q, chan, 'Close')
     q.expect('dbus-return', method='Close')
 
-    # ...so gabble announces our unavailable presence to the MUC...
+    # ...so gabble announces our unavailable presence to the MUC.
     event = q.expect('stream-presence', to=room + '/test')
     elem = event.stanza
     assertEquals('unavailable', elem['type'])
 
-    # ...which the conference server echos...
+    # while we wait for the conference server to echo our unavailable
+    # presence, we try and create the same channel again...
+    call_async(q, conn.Requests, 'CreateChannel', {
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.TARGET_ID: room
+            })
+
+    # ...which should fail because the channel hasn't closed yet.
+    q.expect('dbus-error', method='CreateChannel', name=cs.NOT_AVAILABLE)
+
+    # the conference server finally gets around to echoing our
+    # unavailable presence...
     echo_muc_presence(q, stream, elem, 'none', 'participant')
 
     # ...and only now is the channel closed.

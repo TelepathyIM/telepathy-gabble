@@ -3,7 +3,7 @@ Test for fd.o#32874 -- Offline contacts do not have capabilities.
 """
 
 from gabbletest import exec_test
-from servicetest import assertEquals, assertSameSets
+from servicetest import assertEquals, assertSameSets, assertLength
 import constants as cs
 import ns
 
@@ -30,21 +30,19 @@ def test(q, bus, conn, stream):
 
     # new ContactCapabilities
     ccaps_map = conn.ContactCapabilities.GetContactCapabilities([bob_handle])
-    assertEquals(1, len(ccaps_map))
+    assertLength(1, ccaps_map)
 
-    assertEquals(1, len(ccaps_map[bob_handle]))
+    assertLength(1, ccaps_map[bob_handle])
 
     fixed, allowed = ccaps_map[bob_handle][0]
 
-    assertSameSets({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
-                    cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT}, fixed)
+    assertEquals({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT}, fixed)
     assertSameSets([cs.TARGET_HANDLE], allowed)
 
     # old Capabilities
     all_caps = conn.Capabilities.GetCapabilities([bob_handle])
-    assertEquals(1, len(all_caps))
-
-    print all_caps
+    assertLength(1, all_caps)
 
     caps = all_caps[0]
 

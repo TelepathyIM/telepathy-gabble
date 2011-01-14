@@ -31,7 +31,6 @@
 #include <telepathy-yell/enums.h>
 #include <telepathy-yell/gtypes.h>
 #include <telepathy-yell/interfaces.h>
-#include <telepathy-yell/svc-call.h>
 #include <telepathy-yell/call-stream-endpoint.h>
 
 #include "call-stream.h"
@@ -207,8 +206,8 @@ jingle_factory_stun_server_changed_cb (GabbleJingleFactory *factory,
 {
   GPtrArray *stun_servers = get_stun_servers (self);
 
-  tpy_svc_call_stream_interface_media_emit_stun_servers_changed (
-      self, stun_servers);
+  tpy_base_media_call_stream_set_stun_servers (
+    TPY_BASE_MEDIA_CALL_STREAM (self), stun_servers);
   g_ptr_array_unref (stun_servers);
 }
 
@@ -314,6 +313,7 @@ gabble_call_stream_constructed (GObject *obj)
   TpyCallStreamEndpoint *endpoint;
   gchar *path;
   JingleTransportType transport;
+  GPtrArray *stun_servers;
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
@@ -348,6 +348,11 @@ gabble_call_stream_constructed (GObject *obj)
       tpy_base_media_call_stream_set_relay_info (media_base, relays);
       g_ptr_array_free (relays, TRUE);
     }
+
+  stun_servers = get_stun_servers (self);
+  tpy_base_media_call_stream_set_stun_servers (
+    TPY_BASE_MEDIA_CALL_STREAM (self), stun_servers);
+  g_ptr_array_unref (stun_servers);
 
   call_stream_update_member_states (GABBLE_CALL_STREAM (obj));
   gabble_signal_connect_weak (priv->content, "notify::state",

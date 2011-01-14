@@ -194,6 +194,7 @@ libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la \
    $(top_builddir)/lib/gibber/libgibber.la \
    $(top_builddir)/lib/loudmouth/libloudmouth.la \
+   $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
    $(ALL_LIBS)
 
 nodist_libgabble_convenience_la_SOURCES = \
@@ -229,8 +230,7 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@ \
-	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@ @SQLITE_LIBS@ \
-	    @TP_YELL_LIBS@
+	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@ @SQLITE_LIBS@
 
 # build gibber first
 all: gibber

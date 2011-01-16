@@ -62,7 +62,6 @@ GType gabble_call_content_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
     GABBLE_TYPE_CALL_CONTENT, GabbleCallContentClass))
 
-void gabble_call_content_accept (GabbleCallContent *content);
 JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
 GList *gabble_call_content_get_local_codecs (GabbleCallContent *self);
 void gabble_call_content_new_offer (GabbleCallContent *self,

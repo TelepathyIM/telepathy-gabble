@@ -415,27 +415,6 @@ call_content_media_iface_init (gpointer g_iface, gpointer iface_data)
 #undef IMPLEMENT
 }
 
-static void
-call_content_accept_stream (gpointer data, gpointer user_data)
-{
-  TpyBaseCallStream *stream = TPY_BASE_CALL_STREAM (data);
-
-  if (tpy_base_call_stream_get_local_sending_state (stream) ==
-      TPY_SENDING_STATE_PENDING_SEND)
-    gabble_call_stream_set_sending (stream, TRUE, NULL);
-}
-
-void
-gabble_call_content_accept (GabbleCallContent *content)
-{
-  TpyBaseCallContent *base = TPY_BASE_CALL_CONTENT (content);
-
-  if (tpy_base_call_content_get_disposition (base)
-      == TPY_CALL_CONTENT_DISPOSITION_INITIAL)
-    g_list_foreach (tpy_base_call_content_get_streams (base),
-        call_content_accept_stream, NULL);
-}
-
 static gboolean
 maybe_finish_deinit (GabbleCallContent *self)
 {

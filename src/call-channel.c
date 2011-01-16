@@ -55,11 +55,11 @@ static void call_session_state_changed_cb (GabbleJingleSession *session,
 static void call_member_content_added_cb (GabbleCallMember *member,
     GabbleCallMemberContent *content, GabbleCallChannel *self);
 
-static void call_channel_accept (GabbleBaseCallChannel *channel);
-static GabbleCallContent * call_channel_add_content (
-    GabbleBaseCallChannel *base,
+static void call_channel_accept (TpyBaseCallChannel *channel);
+static TpyBaseCallContent * call_channel_add_content (
+    TpyBaseCallChannel *base,
     const gchar *name,
-    JingleMediaType type,
+    TpMediaStreamType type,
     GError **error);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
@@ -90,11 +90,12 @@ gabble_call_channel_constructed (GObject *obj)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (obj);
   GabbleCallChannelPrivate *priv = self->priv;
-  GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (obj);
+  TpyBaseCallChannel *tpy_base = TPY_BASE_CALL_CHANNEL (obj);
+  GabbleBaseCallChannel *g_base = GABBLE_BASE_CALL_CHANNEL (obj);
   GabbleCallMember *member;
 
-  member = gabble_base_call_channel_ensure_member_from_handle (cbase,
-    tp_base_channel_get_target_handle (TP_BASE_CHANNEL (cbase)));
+  member = gabble_base_call_channel_ensure_member_from_handle (g_base,
+    tp_base_channel_get_target_handle (TP_BASE_CHANNEL (obj)));
   priv->member = member;
 
   if (priv->session != NULL)
@@ -116,7 +117,7 @@ gabble_call_channel_constructed (GObject *obj)
             GABBLE_CALL_MEMBER_CONTENT (l->data);
           GabbleCallContent *c;
 
-          c = gabble_base_call_channel_add_content (cbase,
+          c = gabble_base_call_channel_add_content (g_base,
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
                 TPY_CALL_CONTENT_DISPOSITION_INITIAL);
@@ -126,10 +127,10 @@ gabble_call_channel_constructed (GObject *obj)
           switch (gabble_call_member_content_get_media_type (content))
             {
               case JINGLE_MEDIA_TYPE_AUDIO:
-                cbase->initial_audio = TRUE;
+                tpy_base->initial_audio = TRUE;
                 break;
               case JINGLE_MEDIA_TYPE_VIDEO:
-                cbase->initial_video = TRUE;
+                tpy_base->initial_video = TRUE;
                 break;
               default:
                 DEBUG ("Unknown media type: %d",
@@ -184,6 +185,8 @@ gabble_call_channel_set_property (GObject *object,
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (object);
   GabbleCallChannelPrivate *priv = self->priv;
 
+  DEBUG ("Setting %d property on %p", property_id, self);
+
   switch (property_id)
     {
       case PROP_SESSION:
@@ -201,8 +204,8 @@ gabble_call_channel_class_init (
     GabbleCallChannelClass *gabble_call_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_channel_class);
-  GabbleBaseCallChannelClass *base_call_class =
-      GABBLE_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
+  TpyBaseCallChannelClass *tpy_base_call_class =
+      TPY_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
   TpBaseChannelClass *base_channel_class =
       TP_BASE_CHANNEL_CLASS (gabble_call_channel_class);
   GParamSpec *param_spec;
@@ -220,8 +223,8 @@ gabble_call_channel_class_init (
 
   base_channel_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
 
-  base_call_class->accept = call_channel_accept;
-  base_call_class->add_content = call_channel_add_content;
+  tpy_base_call_class->accept = call_channel_accept;
+  tpy_base_call_class->add_content = call_channel_add_content;
 
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session associated with this media channel object.",
@@ -258,24 +261,23 @@ call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param,
   GabbleCallChannel *self)
 {
-  GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
+  TpyBaseCallChannel *cbase = TPY_BASE_CALL_CHANNEL (self);
   JingleState state;
   TpyCallState cstate;
 
-  cstate = gabble_base_call_channel_get_state (
-    GABBLE_BASE_CALL_CHANNEL (self));
+  cstate = tpy_base_call_channel_get_state (cbase);
 
   g_object_get (session, "state", &state, NULL);
 
   if (state == JINGLE_STATE_ACTIVE && cstate != TPY_CALL_STATE_ACCEPTED)
     {
-      gabble_base_call_channel_set_state (cbase, TPY_CALL_STATE_ACCEPTED);
+      tpy_base_call_channel_set_state (cbase, TPY_CALL_STATE_ACCEPTED);
       return;
     }
 
   if (state == JINGLE_STATE_ENDED && cstate < TPY_CALL_STATE_ENDED)
     {
-      gabble_base_call_channel_set_state (cbase, TPY_CALL_STATE_ENDED);
+      tpy_base_call_channel_set_state (cbase, TPY_CALL_STATE_ENDED);
       return;
     }
 }
@@ -364,10 +366,10 @@ call_member_content_removed_cb (GabbleCallMember *member,
     GabbleCallMemberContent *mcontent,
     GabbleBaseCallChannel *self)
 {
-  GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
+  TpyBaseCallChannel *cbase = TPY_BASE_CALL_CHANNEL (self);
   GList *l;
 
-  for (l = gabble_base_call_channel_get_contents (cbase);
+  for (l = tpy_base_call_channel_get_contents (cbase);
       l != NULL; l = g_list_next (l))
     {
       GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
@@ -375,7 +377,8 @@ call_member_content_removed_cb (GabbleCallMember *member,
 
       if (contents != NULL && contents->data == mcontent)
         {
-          gabble_base_call_channel_remove_content (cbase, content);
+          tpy_base_call_channel_remove_content (cbase,
+            TPY_BASE_CALL_CONTENT (content));
           break;
         }
     }
@@ -386,7 +389,7 @@ call_channel_continue_init (GabbleCallChannel *self,
     GSimpleAsyncResult *result)
 {
   GabbleCallChannelPrivate *priv = self->priv;
-  GabbleBaseCallChannel *base = GABBLE_BASE_CALL_CHANNEL (self);
+  TpyBaseCallChannel *base = TPY_BASE_CALL_CHANNEL (self);
   TpBaseChannel *tp_base = TP_BASE_CHANNEL (self);
   GError *error = NULL;
   gchar *initial_audio_name = NULL, *initial_video_name = NULL;
@@ -396,7 +399,8 @@ call_channel_continue_init (GabbleCallChannel *self,
       GabbleCallMember *member;
       GList *contents, *l;
 
-      member = gabble_base_call_channel_ensure_member_from_handle (base,
+      member = gabble_base_call_channel_ensure_member_from_handle (
+          GABBLE_BASE_CALL_CHANNEL (self),
           tp_base_channel_get_target_handle (tp_base));
 
       g_object_get (self,
@@ -426,7 +430,8 @@ call_channel_continue_init (GabbleCallChannel *self,
             GABBLE_CALL_MEMBER_CONTENT (l->data);
           GabbleCallContent *c;
 
-          c = gabble_base_call_channel_add_content (base,
+          c = gabble_base_call_channel_add_content (
+                GABBLE_BASE_CALL_CHANNEL (self),
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
                 TPY_CALL_CONTENT_DISPOSITION_INITIAL);
@@ -554,16 +559,16 @@ async_initable_iface_init (GAsyncInitableIface *iface)
 }
 
 static void
-call_channel_accept (GabbleBaseCallChannel *channel)
+call_channel_accept (TpyBaseCallChannel *channel)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (channel);
   gabble_jingle_session_accept (self->priv->session);
 }
 
-static GabbleCallContent *
-call_channel_add_content (GabbleBaseCallChannel *base,
+static TpyBaseCallContent *
+call_channel_add_content (TpyBaseCallChannel *base,
     const gchar *name,
-    JingleMediaType type,
+    TpMediaStreamType type,
     GError **error)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (base);
@@ -571,14 +576,16 @@ call_channel_add_content (GabbleBaseCallChannel *base,
   GabbleCallMemberContent *mcontent;
 
   mcontent = gabble_call_member_create_content (self->priv->member, name,
-      type, error);
+      jingle_media_type_from_tp (type), error);
 
   if (mcontent != NULL)
     {
-      content = gabble_base_call_channel_add_content (base,
-        name, type, TPY_CALL_CONTENT_DISPOSITION_NONE);
+      content = gabble_base_call_channel_add_content (
+        GABBLE_BASE_CALL_CHANNEL (base),
+        name, jingle_media_type_from_tp (type),
+        TPY_CALL_CONTENT_DISPOSITION_NONE);
       gabble_call_content_add_member_content (content, mcontent);
     }
 
-  return content;
+  return TPY_BASE_CALL_CONTENT (content);
 }

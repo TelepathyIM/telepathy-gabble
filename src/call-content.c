@@ -49,7 +49,6 @@
 
 #include "debug.h"
 
-static void call_content_iface_init (gpointer, gpointer);
 static void call_content_media_iface_init (gpointer, gpointer);
 
 static GPtrArray *call_content_codec_list_to_array (GList *codecs);
@@ -61,8 +60,6 @@ static void gabble_call_content_next_offer (GabbleCallContent *self);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallContent, gabble_call_content,
     TPY_TYPE_BASE_CALL_CONTENT,
-    G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT,
-        call_content_iface_init);
     G_IMPLEMENT_INTERFACE (TPY_TYPE_SVC_CALL_CONTENT_INTERFACE_MEDIA,
       call_content_media_iface_init);
     );
@@ -80,7 +77,6 @@ enum
 enum
 {
     LOCAL_CODECS_UPDATED,
-    REMOVED,
     LAST_SIGNAL
 };
 
@@ -342,37 +338,6 @@ call_content_set_local_codecs (GabbleCallContent *self,
   g_signal_emit (self, signals[LOCAL_CODECS_UPDATED], 0, priv->local_codecs);
 
   return TRUE;
-}
-
-static void
-gabble_call_content_remove (TpySvcCallContent *content,
-    TpyContentRemovalReason reason,
-    const gchar *detailed_removal_reason,
-    const gchar *message,
-    DBusGMethodInvocation *context)
-{
-  /* TODO: actually do something with this reason and message. */
-  DEBUG ("removing content for reason %u, dbus error: %s, message: %s",
-      reason, detailed_removal_reason, message);
-
-  g_signal_emit (content, signals[REMOVED], 0, NULL);
-  /* it doesn't matter if a ::removed signal handler calls deinit as
-   * there are guards around it being called again and breaking, so
-   * let's just call it be sure it's done. */
-  tpy_base_call_content_deinit (TPY_BASE_CALL_CONTENT (content));
-  tpy_svc_call_content_return_from_remove (context);
-}
-
-static void
-call_content_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpySvcCallContentClass *klass =
-    (TpySvcCallContentClass *) g_iface;
-
-#define IMPLEMENT(x) tpy_svc_call_content_implement_##x (\
-    klass, gabble_call_content_##x)
-  IMPLEMENT(remove);
-#undef IMPLEMENT
 }
 
 static void

@@ -413,6 +413,14 @@ call_content_deinit (TpyBaseCallContent *base)
    */
   g_object_ref (base);
 
+  while (priv->contents != NULL)
+    {
+      GabbleCallMemberContent *c = priv->contents->data;
+
+      priv->contents = g_list_delete_link (priv->contents, priv->contents);
+      gabble_call_member_content_remove (c);
+    }
+
   g_queue_foreach (priv->outstanding_offers, (GFunc) g_object_unref, NULL);
   g_queue_clear (priv->outstanding_offers);
 

@@ -307,8 +307,9 @@ call_content_setup_jingle (GabbleCallContent *self,
       tpy_base_media_call_content_get_local_codecs (
         TPY_BASE_MEDIA_CALL_CONTENT (self)));
 
-  jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle), codecs,
-      TRUE, NULL);
+  if (codecs != NULL)
+    jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle),
+      codecs, TRUE, NULL);
 
   tpy_base_call_content_add_stream (base, TPY_BASE_CALL_STREAM (stream));
   g_object_unref (stream);

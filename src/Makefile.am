@@ -31,6 +31,8 @@ libgabble_convenience_la_SOURCES = \
     bytestream-multiple.c \
     bytestream-socks5.h \
     bytestream-socks5.c \
+    base-media-call-content.c \
+    base-media-call-content.h \
     call-content.h \
     call-content.c \
     call-channel.h \

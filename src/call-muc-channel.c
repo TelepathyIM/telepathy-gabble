@@ -29,6 +29,7 @@
 #include <telepathy-yell/interfaces.h>
 
 #include <wocky/wocky-muc.h>
+#include "call-content.h"
 
 #include "muc-channel.h"
 #include "call-muc-channel.h"
@@ -281,9 +282,9 @@ call_muc_channel_got_codecs (GabbleCallMucChannel *self)
   for (l = tpy_base_call_channel_get_contents (
       TPY_BASE_CALL_CHANNEL (self)); l != NULL; l = g_list_next (l))
     {
-      GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
+      TpyBaseMediaCallContent *content = TPY_BASE_MEDIA_CALL_CONTENT (l->data);
 
-      if (gabble_call_content_get_local_codecs (content) == NULL)
+      if (tpy_base_media_call_content_get_local_codecs (content) == NULL)
         return FALSE;
     }
 
@@ -336,7 +337,7 @@ call_muc_do_update (GabbleCallMucChannel *self)
 
 static void
 call_muc_channel_content_local_codecs_updated (GabbleCallContent *content,
-    GList *local_codecs,
+    GPtrArray *local_codecs,
     gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
@@ -524,8 +525,10 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
       const gchar *name = tpy_base_call_content_get_name (
           TPY_BASE_CALL_CONTENT (content));
       WockyNode *description;
-      GList *codecs;
+      GPtrArray *codecs;
+      guint i;
       JingleMediaType mtype = gabble_call_content_get_media_type (content);
+
 
       wocky_node_add_build (m,
         '(', "content", '@', "name", name,
@@ -535,39 +538,47 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
         ')',
         NULL);
 
-      for (codecs = gabble_call_content_get_local_codecs (content) ;
-          codecs != NULL ; codecs = g_list_next (codecs))
+      codecs = tpy_base_media_call_content_get_local_codecs (
+        TPY_BASE_MEDIA_CALL_CONTENT (content));
+      for (i = 0; i < codecs->len; i++)
         {
-          JingleCodec *codec = codecs->data;
+          GValueArray *codec = g_ptr_array_index (codecs, i);
           WockyNode *pt;
           GHashTableIter iter;
           gpointer key, value;
           gchar *idstr;
+          guint v;
 
-          idstr = g_strdup_printf ("%d", codec->id);
+          idstr = g_strdup_printf ("%d",
+            g_value_get_uint (codec->values));
           wocky_node_add_build (description,
             '(', "payload-type", '*', &pt,
                 '@', "id", idstr,
-                '@', "name", codec->name,
+                '@', "name", g_value_get_string (codec->values + 1),
              ')',
             NULL);
           g_free (idstr);
 
-          if (codec->clockrate > 0)
+          /* clock-rate */
+          v = g_value_get_uint (codec->values + 2);
+          if (v > 0)
             {
-              gchar *rate = g_strdup_printf ("%d", codec->clockrate);
+              gchar *rate = g_strdup_printf ("%d", v);
               wocky_node_set_attribute (pt, "clockrate", rate);
               g_free (rate);
             }
 
-          if (codec->channels > 0)
+          /* channels */
+          v = g_value_get_uint (codec->values + 3);
+          if (v > 0)
             {
-              gchar *channels = g_strdup_printf ("%d", codec->channels);
+              gchar *channels = g_strdup_printf ("%d", v);
               wocky_node_set_attribute (pt, "channels", channels);
               g_free (channels);
             }
 
-          g_hash_table_iter_init (&iter, codec->params);
+          g_hash_table_iter_init (&iter,
+            g_value_get_boxed (codec->values + 4));
           while (g_hash_table_iter_next (&iter, &key, &value))
               wocky_node_add_build (pt,
                 '(', "parameter",

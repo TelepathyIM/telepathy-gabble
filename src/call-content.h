@@ -24,6 +24,8 @@
 #include <glib-object.h>
 
 #include <telepathy-yell/base-call-content.h>
+
+#include "base-media-call-content.h"
 #include "jingle-content.h"
 #include "call-member-content.h"
 
@@ -34,11 +36,11 @@ typedef struct _GabbleCallContentPrivate GabbleCallContentPrivate;
 typedef struct _GabbleCallContentClass GabbleCallContentClass;
 
 struct _GabbleCallContentClass {
-    TpyBaseCallContentClass parent_class;
+    TpyBaseMediaCallContentClass parent_class;
 };
 
 struct _GabbleCallContent {
-    TpyBaseCallContent parent;
+    TpyBaseMediaCallContent parent;
 
     GabbleCallContentPrivate *priv;
 };
@@ -63,7 +65,6 @@ GType gabble_call_content_get_type (void);
     GABBLE_TYPE_CALL_CONTENT, GabbleCallContentClass))
 
 JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
-GList *gabble_call_content_get_local_codecs (GabbleCallContent *self);
 void gabble_call_content_new_offer (GabbleCallContent *self,
     GabbleCallMemberContent *content);
 

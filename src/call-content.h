@@ -23,9 +23,8 @@
 
 #include <glib-object.h>
 
-#include <telepathy-yell/base-call-content.h>
+#include <telepathy-yell/base-media-call-content.h>
 
-#include "base-media-call-content.h"
 #include "jingle-content.h"
 #include "call-member-content.h"
 

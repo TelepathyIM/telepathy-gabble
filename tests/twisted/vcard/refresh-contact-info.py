@@ -3,7 +3,7 @@
 Test ContactInfo support.
 """
 
-from servicetest import call_async, EventPattern, assertEquals
+from servicetest import call_async, EventPattern, assertEquals, sync_dbus
 from gabbletest import exec_test, acknowledge_iq, make_result_iq
 import constants as cs
 import dbus
@@ -53,12 +53,19 @@ def test(q, bus, conn, stream):
                             u'Exemplary Team']),
                             ]])
 
+    # ContactInfoChanged should not be signalled again
+    forbidden = [EventPattern('dbus-signal', signal='ContactInfoChanged')]
+    q.forbid_events(forbidden)
+
     # Refresh the contact info again; gabble should contact the server again
     call_async(q, conn.ContactInfo, 'RefreshContactInfo', [handle])
 
     event = q.expect('stream-iq', to='bob@foo.com', query_ns='vcard-temp',
         query_name='vCard')
 
+    sync_dbus(bus, q, conn)
+
+    q.unforbid_events(forbidden)
 
 if __name__ == '__main__':
     exec_test(test)

@@ -409,8 +409,6 @@ _request_vcards_cb (GabbleVCardManager *manager,
                     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  TpSvcConnectionInterfaceContactInfo *iface =
-      (TpSvcConnectionInterfaceContactInfo *) conn;
 
   g_assert (g_hash_table_lookup (conn->vcard_requests,
       GUINT_TO_POINTER (handle)));
@@ -418,8 +416,8 @@ _request_vcards_cb (GabbleVCardManager *manager,
   g_hash_table_remove (conn->vcard_requests,
       GUINT_TO_POINTER (handle));
 
-  if (vcard_error == NULL)
-    _emit_contact_info_changed (iface, handle, vcard_node);
+  /* No need to signal ContactInfoChanged here because it'll get done
+   * in vcard_updated. */
 }
 
 /**

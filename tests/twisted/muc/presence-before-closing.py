@@ -15,10 +15,6 @@ import ns
 from mucutil import join_muc, echo_muc_presence
 
 def test(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     room = 'test@conf.localhost'
 
     room_handle, chan, path, props, disco = join_muc(q, bus, conn, stream,
@@ -68,10 +64,6 @@ def test(q, bus, conn, stream):
                   EventPattern('dbus-signal', signal='ChannelClosed'))
 
 def test_then_disconnect(q, bus, conn, stream):
-    conn.Connect()
-    q.expect('dbus-signal', signal='StatusChanged',
-            args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     room = 'test@conf.localhost'
 
     room_handle, chan, path, props, disco = join_muc(q, bus, conn, stream,

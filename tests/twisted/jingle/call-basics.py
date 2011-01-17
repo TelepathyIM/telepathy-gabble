@@ -222,6 +222,12 @@ def run_test(jp, q, bus, conn, stream, incoming):
     # Media type should audio
     assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
 
+    # Packetization should be RTP
+    content_media_properties = content.GetAll (cs.CALL_CONTENT_IFACE_MEDIA,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_CONTENT_PACKETIZATION_RTP,
+        content_media_properties["Packetization"])
+
     # Check if the channel is in the right pending state
     if not incoming:
         check_state (q, chan, cs.CALL_STATE_PENDING_INITIATOR)

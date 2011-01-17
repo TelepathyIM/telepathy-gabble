@@ -11,6 +11,8 @@ from servicetest import call_async, EventPattern
 import constants as cs
 import ns
 
+from mucutil import echo_muc_presence
+
 def test(q, bus, conn, stream):
     iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard')
@@ -358,6 +360,11 @@ def test(q, bus, conn, stream):
     q.expect('dbus-return', method='SetProperties')
 
     chan_iface.Close()
+
+    # we must echo the MUC presence so the room will actually close
+    event = q.expect('stream-presence', to='chat@conf.localhost/test',
+                     presence_type='unavailable')
+    echo_muc_presence(q, stream, event.stanza, 'none', 'participant')
 
     event = q.expect('stream-iq', iq_type='set')
     event.stanza['type'] = 'result'

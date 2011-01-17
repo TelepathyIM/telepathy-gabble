@@ -7,14 +7,14 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, assertContains, assertEquals
-from gabbletest import exec_test, acknowledge_iq, elem, make_muc_presence
+from gabbletest import exec_test, acknowledge_iq, elem, make_muc_presence, sync_stream
 import ns
 import constants as cs
 import tubetestutil as t
 
 from twisted.words.xish import xpath
 
-from mucutil import join_muc
+from mucutil import join_muc, echo_muc_presence
 from muctubeutil import get_muc_tubes_channel
 
 sample_parameters = dbus.Dictionary({
@@ -392,10 +392,18 @@ def test(q, bus, conn, stream, access_control):
 
     # leave the room
     text_chan.Close()
+
+    # we must echo the MUC presence so the room will actually close
+    # and we should wait to make sure gabble has actually parsed our
+    # echo before trying to rejoin
+    event = q.expect('stream-presence', to='chat2@conf.localhost/test',
+                     presence_type='unavailable')
+    echo_muc_presence(q, stream, event.stanza, 'none', 'participant')
+    sync_stream(q, stream)
+
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'),
-        EventPattern('stream-presence', presence_type='unavailable')
         )
 
     # rejoin the room

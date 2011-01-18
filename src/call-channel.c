@@ -185,8 +185,6 @@ gabble_call_channel_set_property (GObject *object,
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (object);
   GabbleCallChannelPrivate *priv = self->priv;
 
-  DEBUG ("Setting %d property on %p", property_id, self);
-
   switch (property_id)
     {
       case PROP_SESSION:

@@ -1,6 +1,6 @@
 /*
  * gabble-call-content.c - Source for GabbleCallContent
- * Copyright (C) 2009-2010 Collabora Ltd.
+ * Copyright (C) 2009-2011 Collabora Ltd.
  * @author Sjoerd Simons <sjoerd.simons@collabora.co.uk>
  *
  * This library is free software; you can redistribute it and/or

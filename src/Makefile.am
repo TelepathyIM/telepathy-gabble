@@ -46,8 +46,6 @@ libgabble_convenience_la_SOURCES = \
     $(top_srcdir)/gabble/capabilities-set.h \
     capabilities.h \
     capabilities.c \
-    caps-cache.h \
-    caps-cache.c \
     $(top_srcdir)/gabble/caps-hash.h \
     caps-hash.h \
     caps-hash.c \

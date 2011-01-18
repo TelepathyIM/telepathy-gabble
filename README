@@ -26,9 +26,7 @@ telepathy-gabble requires:
   libdbus <http://dbus.freedesktop.org/releases/dbus/>
   The D-Bus GLib bindings <http://dbus.freedesktop.org/releases/dbus-glib/>
   libxml2 <http://xmlsoft.org/>
-  libuuid <http://e2fsprogs.sourceforge.net/>
   libnice <http://nice.freedesktop.org/releases/>
-  SQLite <http://www.sqlite.org/>
   libsoup <http://ftp.gnome.org/pub/GNOME/sources/libsoup/>
 
 and either:

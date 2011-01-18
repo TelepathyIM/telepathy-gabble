@@ -36,11 +36,11 @@
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/intset.h>
+#include <wocky/wocky-caps-cache.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "capabilities.h"
-#include "caps-cache.h"
 #include "caps-channel-manager.h"
 #include "caps-hash.h"
 #include "conn-presence.h"
@@ -1375,7 +1375,7 @@ _caps_disco_cb (GabbleDisco *disco,
   if (trust >= CAPABILITY_BUNDLE_ENOUGH_TRUST)
     {
       WockyNodeTree *query_node = wocky_node_tree_new_from_node (query_result);
-      GabbleCapsCache *caps_cache = gabble_caps_cache_dup_shared ();
+      WockyCapsCache *caps_cache = wocky_caps_cache_dup_shared ();
 
       if (DEBUGGING)
         {
@@ -1386,7 +1386,7 @@ _caps_disco_cb (GabbleDisco *disco,
         }
 
       /* Update external cache. */
-      gabble_caps_cache_insert (caps_cache, node, query_node);
+      wocky_caps_cache_insert (caps_cache, node, query_node);
       g_object_unref (caps_cache);
       g_object_unref (query_node);
 
@@ -1470,15 +1470,15 @@ _process_caps_uri (GabblePresenceCache *cache,
   GabbleCapabilitySet *cached_caps = NULL;
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
-  GabbleCapsCache *caps_cache;
+  WockyCapsCache *caps_cache;
 
   priv = cache->priv;
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   info = capability_info_get (cache, uri);
 
-  caps_cache = gabble_caps_cache_dup_shared ();
-  cached_query_reply = gabble_caps_cache_lookup (caps_cache, uri);
+  caps_cache = wocky_caps_cache_dup_shared ();
+  cached_query_reply = wocky_caps_cache_lookup (caps_cache, uri);
 
   if (cached_query_reply != NULL)
     {

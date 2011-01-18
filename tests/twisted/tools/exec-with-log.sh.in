@@ -5,7 +5,7 @@ cd "@abs_top_builddir@/tests/twisted/tools"
 export GABBLE_DEBUG=all LM_DEBUG=net GIBBER_DEBUG=all WOCKY_DEBUG=all
 export GABBLE_TIMING=1
 export GABBLE_PLUGIN_DIR="@abs_top_builddir@/plugins/.libs"
-export GABBLE_CAPS_CACHE=:memory: GABBLE_CAPS_CACHE_SIZE=50
+export WOCKY_CAPS_CACHE=:memory: WOCKY_CAPS_CACHE_SIZE=50
 ulimit -c unlimited
 exec >> gabble-testing.log 2>&1
 

@@ -26,6 +26,7 @@
 #include <telepathy-yell/enums.h>
 
 #include <telepathy-glib/base-channel.h>
+#include <telepathy-yell/base-call-channel.h>
 
 #include "jingle-content.h"
 #include "call-member.h"
@@ -38,25 +39,11 @@ typedef struct _GabbleBaseCallChannelPrivate GabbleBaseCallChannelPrivate;
 typedef struct _GabbleBaseCallChannelClass GabbleBaseCallChannelClass;
 
 struct _GabbleBaseCallChannelClass {
-    TpBaseChannelClass parent_class;
-
-    void (*accept) (GabbleBaseCallChannel *self);
-    GabbleCallContent * (*add_content) (GabbleBaseCallChannel *self,
-      const gchar *name,
-      JingleMediaType media,
-      GError **error);
-
-    void (*hangup) (GabbleBaseCallChannel *self,
-      guint reason,
-      const gchar *detailed_reason,
-      const gchar *message);
+    TpyBaseCallChannelClass parent_class;
 };
 
 struct _GabbleBaseCallChannel {
-    TpBaseChannel parent;
-
-    gboolean initial_audio;
-    gboolean initial_video;
+    TpyBaseCallChannel parent;
 
     GabbleBaseCallChannelPrivate *priv;
 };
@@ -91,17 +78,9 @@ GabbleCallMember *gabble_base_call_channel_ensure_member_from_handle (
     GabbleBaseCallChannel *self,
     TpHandle handle);
 
-TpyCallState gabble_base_call_channel_get_state (
-  GabbleBaseCallChannel *self);
-
-void gabble_base_call_channel_set_state (GabbleBaseCallChannel *self,
-  TpyCallState state);
-
 GabbleCallMember * gabble_base_call_channel_get_member_from_handle (
     GabbleBaseCallChannel *self,
     TpHandle handle);
-
-GList * gabble_base_call_channel_get_contents (GabbleBaseCallChannel *self);
 
 GabbleCallContent * gabble_base_call_channel_add_content (
     GabbleBaseCallChannel *self,

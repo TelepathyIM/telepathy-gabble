@@ -53,29 +53,29 @@ G_END_DECLS
 #define ERROR(format, ...) \
   G_STMT_START \
     { \
-      gabble_log (G_LOG_LEVEL_ERROR, DEBUG_FLAG, "%s: " format, \
-          G_STRFUNC, ##__VA_ARGS__); \
+      gabble_log (G_LOG_LEVEL_ERROR, DEBUG_FLAG, "%s (%s): " format, \
+          G_STRFUNC, G_STRLOC, ##__VA_ARGS__); \
       g_assert_not_reached (); \
     } \
   G_STMT_END
 
 #define CRITICAL(format, ...) \
-  gabble_log (G_LOG_LEVEL_CRITICAL, DEBUG_FLAG, "%s: " format, \
-      G_STRFUNC, ##__VA_ARGS__)
+  gabble_log (G_LOG_LEVEL_CRITICAL, DEBUG_FLAG, "%s (%s): " format, \
+      G_STRFUNC, G_STRLOC, ##__VA_ARGS__)
 #define WARNING(format, ...) \
-  gabble_log (G_LOG_LEVEL_WARNING, DEBUG_FLAG, "%s: " format, \
-      G_STRFUNC, ##__VA_ARGS__)
+  gabble_log (G_LOG_LEVEL_WARNING, DEBUG_FLAG, "%s (%s): " format, \
+      G_STRFUNC, G_STRLOC, ##__VA_ARGS__)
 #define MESSAGE(format, ...) \
-  gabble_log (G_LOG_LEVEL_MESSAGE, DEBUG_FLAG, "%s: " format, \
-      G_STRFUNC, ##__VA_ARGS__)
+  gabble_log (G_LOG_LEVEL_MESSAGE, DEBUG_FLAG, "%s (%s): " format, \
+      G_STRFUNC, G_STRLOC, ##__VA_ARGS__)
 #define INFO(format, ...) \
-  gabble_log (G_LOG_LEVEL_INFO, DEBUG_FLAG, "%s: " format, \
-      G_STRFUNC, ##__VA_ARGS__)
+  gabble_log (G_LOG_LEVEL_INFO, DEBUG_FLAG, "%s (%s): " format, \
+      G_STRFUNC, G_STRLOC, ##__VA_ARGS__)
 
 #ifdef ENABLE_DEBUG
 #   define DEBUG(format, ...) \
-      gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s: " format, \
-          G_STRFUNC, ##__VA_ARGS__)
+      gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s (%s): " format, \
+          G_STRFUNC, G_STRLOC, ##__VA_ARGS__)
 #   define DEBUGGING gabble_debug_flag_is_set (DEBUG_FLAG)
 
 #   define STANZA_DEBUG(st, s) \

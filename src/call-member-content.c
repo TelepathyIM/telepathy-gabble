@@ -462,14 +462,16 @@ gabble_call_member_content_remove (GabbleCallMemberContent *self)
 {
   GabbleCallMemberContentPrivate *priv = self->priv;
 
+  if (priv->removed)
+    return;
+
+  priv->removed = TRUE;
+
   g_object_ref (self);
   /* Remove ourselves from the sesison */
   if (priv->jingle_content != NULL)
       gabble_jingle_content_remove (priv->jingle_content, TRUE);
 
-  if (!priv->removed)
-    g_signal_emit (self, signals[REMOVED], 0);
-  priv->removed = TRUE;
-
+  g_signal_emit (self, signals[REMOVED], 0);
   g_object_unref (self);
 }

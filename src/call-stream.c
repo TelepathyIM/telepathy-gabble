@@ -48,6 +48,9 @@ static GPtrArray *gabble_call_stream_add_candidates (
     TpyBaseMediaCallStream *stream,
     const GPtrArray *candidates,
     GError **error);
+static gboolean gabble_call_stream_set_sending (TpyBaseCallStream *stream,
+    gboolean sending,
+    GError **error);
 
 G_DEFINE_TYPE(GabbleCallStream, gabble_call_stream,
     TPY_TYPE_BASE_MEDIA_CALL_STREAM)
@@ -557,22 +560,16 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
   return accepted_candidates;
 }
 
-void
+static gboolean
 gabble_call_stream_set_sending (TpyBaseCallStream *stream,
     gboolean sending,
     GError **error)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
-  TpySendingState new_state;
 
-  if (sending)
-    new_state = TPY_SENDING_STATE_SENDING;
-  else
-    new_state = TPY_SENDING_STATE_NONE;
+  gabble_jingle_content_set_sending (self->priv->content, sending);
 
-  /* If this changes the state, update the content. */
-  if (tpy_base_call_stream_update_local_sending_state (stream, new_state))
-    gabble_jingle_content_set_sending (self->priv->content, sending);
+  return TRUE;
 }
 
 GabbleJingleContent *

@@ -903,7 +903,8 @@ gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
-  DEBUG ("called");
+  DEBUG ("called content: %s created_by_us: %d", priv->name,
+      priv->created_by_us);
 
   if (li == NULL)
     return;
@@ -1083,6 +1084,8 @@ _gabble_jingle_content_set_media_ready (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
 
+  DEBUG ("media ready on content: %s created_by_us: %d", priv->name,
+      priv->created_by_us);
 
   priv->media_ready = TRUE;
 

@@ -69,6 +69,33 @@ def check_and_accept_offer (q, bus, conn, self_handle,
 
         assertEquals ([codecs_should_be, []], o.args)
 
+def test_content_addition (jt2, jp, q, bus, conn, chan, self_handle):
+    path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,
+        dbus_interface=cs.CHANNEL_TYPE_CALL)
+    content = bus.get_object (conn.bus_name, path)
+    content_properties = content.GetAll (cs.CALL_CONTENT,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+
+    assertEquals (cs.CALL_DISPOSITION_NONE,
+        content_properties["Disposition"])
+    #assertEquals (self_handle, content_properties["Creator"])
+    assertContains ("Webcam", content_properties["Name"])
+
+    codecs = jt2.get_call_video_codecs_dbus()
+    check_and_accept_offer (q, bus, conn, self_handle,
+            content, codecs, None)
+
+    cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
+    candidates = jt2.get_call_remote_transports_dbus ()
+    cstream.AddCandidates (candidates,
+        dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+
+    q.expect('stream-iq', predicate=jp.action_predicate('content-add'))
+
+    content.Remove(1, "org.freedesktop.Telepathy.Reason.UserRequested", "Removed",
+        dbus_interface=cs.CALL_CONTENT)
+    q.expect('stream-iq', predicate=jp.action_predicate('content-remove'))
+
 def run_test(jp, q, bus, conn, stream, incoming):
     jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2.prepare()
@@ -194,6 +221,12 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     # Media type should audio
     assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
+
+    # Packetization should be RTP
+    content_media_properties = content.GetAll (cs.CALL_CONTENT_IFACE_MEDIA,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_CONTENT_PACKETIZATION_RTP,
+        content_media_properties["Packetization"])
 
     # Check if the channel is in the right pending state
     if not incoming:
@@ -382,19 +415,10 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
 
     try:
-        path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,
-            dbus_interface=cs.CHANNEL_TYPE_CALL)
-        content = bus.get_object (conn.bus_name, path)
-        content_properties = content.GetAll (cs.CALL_CONTENT,
-            dbus_interface=dbus.PROPERTIES_IFACE)
-
-        assertEquals (cs.CALL_DISPOSITION_NONE,
-            content_properties["Disposition"])
-        #assertEquals (self_handle, content_properties["Creator"])
-        assertContains ("Webcam", content_properties["Name"])
+        test_content_addition (jt2, jp, q, bus, conn, chan, self_handle)
     except DBusException, e:
-        assert not jp.can_do_video()
         assertEquals (cs.NOT_AVAILABLE, e.get_dbus_name ())
+        assert not jp.can_do_video()
 
     if incoming:
         jt2.terminate()

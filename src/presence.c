@@ -57,6 +57,8 @@ struct _GabblePresencePrivate {
     gchar *no_resource_status_message;
     GSList *resources;
     guint olpc_views;
+
+    gchar *active_resource;
 };
 
 static Resource *
@@ -64,7 +66,7 @@ _resource_new (gchar *name)
 {
   Resource *new = g_slice_new0 (Resource);
   new->name = name;
-  new->client_type = G_MAXUINT;
+  new->client_type = 0;
   new->cap_set = gabble_capability_set_new ();
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
@@ -101,6 +103,7 @@ gabble_presence_finalize (GObject *object)
   g_free (presence->nickname);
   g_free (presence->avatar_sha1);
   g_free (priv->no_resource_status_message);
+  g_free (priv->active_resource);
 }
 
 static void
@@ -325,13 +328,15 @@ _find_resource (GabblePresence *presence, const gchar *resource)
   return NULL;
 }
 
-static void
+static gboolean
 aggregate_resources (GabblePresence *presence)
 {
   GabblePresencePrivate *priv = presence->priv;
   GSList *i;
   guint8 prio;
   time_t activity;
+  Resource *best = NULL;
+  guint old_client_types = presence->client_types;
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
@@ -345,20 +350,32 @@ aggregate_resources (GabblePresence *presence)
     {
       Resource *r = (Resource *) i->data;
 
-      gabble_capability_set_update (priv->cap_set, r->cap_set);
+      if (best == NULL)
+        best = r;
 
       /* trump existing status & message if it's more present
        * or has the same presence and a more recent last activity
        * or has the same presence and a higher priority */
-      if (r->status > presence->status ||
-          (r->status == presence->status && r->last_activity > activity) ||
-          (r->status == presence->status && r->priority > prio))
+      if (r->status > best->status ||
+          (r->status == best->status && r->last_activity > activity) ||
+          (r->status == best->status && r->priority > prio) ||
+          (r->client_type & GABBLE_CLIENT_TYPE_PC
+              && !(best->client_type & GABBLE_CLIENT_TYPE_PC)))
         {
-          presence->status = r->status;
-          presence->status_message = r->status_message;
+          best = r;
           prio = r->priority;
           activity = r->last_activity;
         }
+    }
+
+  if (best != NULL)
+    {
+      presence->status = best->status;
+      presence->status_message = best->status_message;
+      presence->client_types = best->client_type;
+
+      g_free (priv->active_resource);
+      priv->active_resource = g_strdup (best->name);
     }
 
   if (presence->status <= GABBLE_PRESENCE_HIDDEN && priv->olpc_views > 0)
@@ -369,6 +386,8 @@ aggregate_resources (GabblePresence *presence)
       g_free (presence->status_message);
       presence->status_message = NULL;
     }
+
+  return old_client_types != presence->client_types;
 }
 
 gboolean
@@ -754,9 +773,6 @@ gabble_presence_update_client_types (GabblePresence *presence,
   if (res == NULL)
     return;
 
-  /* since this method has been called, the client types have been
-   * discovered to be something, or discovered to be nothing, so set
-   * the client_type member to something other than G_MAXUINT */
   res->client_type = 0;
 
   if (client_types == NULL)

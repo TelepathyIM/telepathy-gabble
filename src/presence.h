@@ -60,6 +60,7 @@ struct _GabblePresence {
     gchar *status_message;
     gchar *nickname;
     gchar *avatar_sha1;
+    guint client_types;
     gboolean keep_unavailable;
     GabblePresencePrivate *priv;
 };

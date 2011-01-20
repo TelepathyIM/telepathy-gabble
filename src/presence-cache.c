@@ -2468,23 +2468,28 @@ gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
     const gchar *resource)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
-  GList *l, *waiters;
+  GList *l, *waiter_list;
   gboolean out = FALSE;
 
-  waiters = g_hash_table_get_values (priv->disco_pending);
+  waiter_list = g_hash_table_get_values (priv->disco_pending);
 
-  for (l = waiters; l != NULL; l = l->next)
+  for (l = waiter_list; l != NULL; l = l->next)
     {
-      DiscoWaiter *w = l->data;
+      GList *j;
 
-      if (w != NULL && w->handle == handle && !tp_strdiff (w->resource, resource))
+      for (j = l->data; j != NULL; j = j->next)
         {
-          out = TRUE;
-          break;
+          DiscoWaiter *w = j->data;
+
+          if (w != NULL && w->handle == handle && !tp_strdiff (w->resource, resource))
+            {
+              out = TRUE;
+              break;
+            }
         }
     }
 
-  g_list_free (waiters);
+  g_list_free (waiter_list);
 
   return out;
 }

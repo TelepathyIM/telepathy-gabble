@@ -78,8 +78,15 @@ def test(q, bus, conn, stream):
     # Meredith signs in from one resource
     contact_online(q, conn, stream, meredith_one, PC, show='chat')
 
+    # * One: chat: pc
+    # ClientTypes should be: ['pc']
+
     # Meredith signs in from another resource
     contact_online(q, conn, stream, meredith_two, PHONE, show='dnd', initial=False)
+
+    # * One: chat: pc
+    # * Two: dnd: phone
+    # ClientTypes should be: ['pc']
 
     # check we're still a PC
     types = conn.GetClientTypes([meredith_handle],
@@ -92,12 +99,20 @@ def test(q, bus, conn, stream):
     # Two now becomes more available
     stream.send(make_presence(meredith_two, show='chat'))
 
+    # * One: chat: pc
+    # * Two: chat: phone
+    # ClientTypes should be: ['pc']
+
     types = conn.GetClientTypes([meredith_handle],
                                 dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
     assertEquals('pc', types[meredith_handle][0])
 
     # One now becomes less available
     stream.send(make_presence(meredith_one, show='away'))
+
+    # * One: away: pc
+    # * Two: chat: phone
+    # ClientTypes should be: ['phone']
 
     # wait for the presence change
     q.expect('dbus-signal', signal='PresencesChanged',
@@ -110,6 +125,10 @@ def test(q, bus, conn, stream):
     # make One more available again
     stream.send(make_presence(meredith_one, show='chat', status='lawl'))
 
+    # * One: chat: pc
+    # * Two: chat: phone
+    # ClientTypes should be: ['pc']
+
     # wait for the presence change
     q.expect('dbus-signal', signal='PresencesChanged',
              args=[{meredith_handle: (cs.PRESENCE_AVAILABLE, 'chat', 'lawl')}])
@@ -120,7 +139,16 @@ def test(q, bus, conn, stream):
 
     # both One and Two go away
     stream.send(make_presence(meredith_one, show='away'))
+
+    # * One: away: pc
+    # * Two: chat: phone
+    # ClientTypes should be: ['phone']
+
     stream.send(make_presence(meredith_two, show='away'))
+
+    # * One: away: pc
+    # * Two: away: phone
+    # ClientTypes should be: ['pc']
 
     # wait for the presence change
     q.expect('dbus-signal', signal='PresencesChanged',
@@ -135,6 +163,11 @@ def test(q, bus, conn, stream):
     identities = [PHONE[0], CONSOLE[0], HANDHELD[0], BOT[0]]
     contact_online(q, conn, stream, meredith_three, identities,
                    show='chat', initial=False)
+
+    # * One: away: pc
+    # * Two: away: phone
+    # * Three: chat: phone, console, handheld, bot
+    # ClientTypes should be: ['phone', 'console', 'handheld', 'bot'] in some order
 
     # wait for the presence change
     q.expect('dbus-signal', signal='PresencesChanged',

@@ -795,21 +795,15 @@ gabble_presence_update_client_types (GabblePresence *presence,
 
 GPtrArray *
 gabble_presence_get_client_types_array (GabblePresence *presence,
-    const gchar *resource,
-    gboolean add_null)
+    gboolean add_null,
+    const char **resource_name)
 {
-  Resource *res;
   GPtrArray *array;
   GFlagsClass *klass;
   GFlagsValue *value;
   guint i;
 
   array = g_ptr_array_new_with_free_func (g_free);
-
-  res = _find_resource (presence, resource);
-
-  if (res == NULL || res->client_type == G_MAXUINT)
-    return NULL;
 
   klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);
 
@@ -819,7 +813,7 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
         {
           value = &klass->values[i];
 
-          if (res->client_type & value->value)
+          if (presence->client_types & value->value)
             g_ptr_array_add (array, g_strdup (value->value_nick));
         }
 
@@ -828,6 +822,9 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
 
   if (add_null)
     g_ptr_array_add (array, NULL);
+
+  if (resource_name != NULL)
+    *resource_name = presence->priv->active_resource;
 
   return array;
 }

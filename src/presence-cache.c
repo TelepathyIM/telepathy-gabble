@@ -261,7 +261,8 @@ capability_info_recvd (GabblePresenceCache *cache,
     const gchar *node,
     TpHandle handle,
     GabbleCapabilitySet *cap_set,
-    guint trust_inc)
+    guint trust_inc,
+    GPtrArray *client_types)
 {
   GabbleCapabilityInfo *info = capability_info_get (cache, node);
 
@@ -289,6 +290,12 @@ capability_info_recvd (GabblePresenceCache *cache,
       tp_intset_add (info->guys, handle);
       info->trust += trust_inc;
     }
+
+  if (info->client_types != NULL)
+    g_ptr_array_unref (info->client_types);
+
+  if (client_types != NULL)
+    info->client_types = g_ptr_array_ref (client_types);
 
   return info->trust;
 }
@@ -1243,10 +1250,12 @@ process_client_types (
     GabblePresenceCache *cache,
     LmMessageNode *query_result,
     TpHandle handle,
-    DiscoWaiter *waiter_self)
+    DiscoWaiter *waiter_self,
+    GPtrArray **out_types)
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, handle);
   GPtrArray *client_types;
+  gboolean ret = FALSE;
 
   /* If the contact's gone offline since we sent the disco request, we have no
    * presence to attach their freshly-discovered client types to.
@@ -1258,14 +1267,14 @@ process_client_types (
       waiter_self->resource);
 
   if (waiter_self->resource != NULL)
-    gabble_presence_update_client_types (presence, waiter_self->resource,
+    ret = gabble_presence_update_client_types (presence, waiter_self->resource,
         client_types);
 
-  if (client_types != NULL)
-    {
-      g_ptr_array_unref (client_types);
-      _signal_presences_updated (cache, handle);
-    }
+  if (out_types != NULL)
+    *out_types = client_types;
+
+  if (ret)
+    g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, handle);
 }
 
 static void
@@ -1290,6 +1299,7 @@ _caps_disco_cb (GabbleDisco *disco,
   gchar *resource;
   gboolean jid_is_valid;
   gpointer key;
+  GPtrArray *client_types = NULL;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = cache->priv;
@@ -1334,7 +1344,7 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  process_client_types (cache, query_result, handle, waiter_self);
+  process_client_types (cache, query_result, handle, waiter_self, &client_types);
 
   /* Now onto caps */
   cap_set = gabble_capability_set_new_from_stanza (query_result);
@@ -1353,7 +1363,7 @@ _caps_disco_cb (GabbleDisco *disco,
       if (g_str_equal (waiter_self->ver, computed_hash))
         {
           trust = capability_info_recvd (cache, node, handle, cap_set,
-              CAPABILITY_BUNDLE_ENOUGH_TRUST);
+              CAPABILITY_BUNDLE_ENOUGH_TRUST, client_types);
         }
       else
         {
@@ -1368,7 +1378,7 @@ _caps_disco_cb (GabbleDisco *disco,
     }
   else
     {
-      trust = capability_info_recvd (cache, node, handle, cap_set, 1);
+      trust = capability_info_recvd (cache, node, handle, cap_set, 1, client_types);
     }
 
   /* Remove the node from the hash table without freeing the key or list of
@@ -1466,6 +1476,9 @@ _caps_disco_cb (GabbleDisco *disco,
 OUT:
   if (handle)
     tp_handle_unref (contact_repo, handle);
+
+  if (client_types != NULL)
+    g_ptr_array_unref (client_types);
 }
 
 static void
@@ -1525,6 +1538,8 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (presence)
         {
+          gboolean emit_updated = FALSE;
+
           gabble_presence_set_capabilities (
               presence, resource, cap_set, serial);
 
@@ -1536,15 +1551,22 @@ _process_caps_uri (GabblePresenceCache *cache,
               GPtrArray *types = client_types_from_message (handle, query, resource);
 
               if (resource != NULL)
-                gabble_presence_update_client_types (presence, resource, types);
+                emit_updated = gabble_presence_update_client_types (presence, resource, types);
 
               if (types != NULL)
+                g_ptr_array_unref (types);
+            }
+          else
+            {
+              if (info->client_types != NULL)
                 {
-                  g_ptr_array_unref (types);
-
-                  _signal_presences_updated (cache, handle);
+                  emit_updated = gabble_presence_update_client_types (presence,
+                      resource, info->client_types);
                 }
             }
+
+          if (emit_updated)
+            g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, handle);
         }
       else
         DEBUG ("presence not found");

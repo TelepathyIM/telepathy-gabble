@@ -145,7 +145,7 @@ typedef enum
   GABBLE_CLIENT_TYPE_SMS      = 1 << 7,
 } GabbleClientType;
 
-void gabble_presence_update_client_types (GabblePresence *presence,
+gboolean gabble_presence_update_client_types (GabblePresence *presence,
     const gchar *resource, GPtrArray *client_types);
 
 GPtrArray * gabble_presence_get_client_types_array (GabblePresence *presence,

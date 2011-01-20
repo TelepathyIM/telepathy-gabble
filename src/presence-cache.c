@@ -1990,7 +1990,8 @@ gabble_presence_cache_do_update (
     const gchar *resource,
     GabblePresenceId presence_id,
     const gchar *status_message,
-    gint8 priority)
+    gint8 priority,
+    gboolean *update_client_types)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2016,7 +2017,7 @@ gabble_presence_cache_do_update (
   old_cap_set = gabble_presence_dup_caps (presence);
 
   ret = gabble_presence_update (presence, resource, presence_id,
-      status_message, priority);
+      status_message, priority, update_client_types);
 
   new_cap_set = gabble_presence_peek_caps (presence);
 
@@ -2036,11 +2037,16 @@ gabble_presence_cache_update (
     const gchar *status_message,
     gint8 priority)
 {
+  gboolean update_client_types = FALSE;
+
   if (gabble_presence_cache_do_update (cache, handle, resource, presence_id,
-      status_message, priority))
+          status_message, priority, &update_client_types))
     {
       _signal_presences_updated (cache, handle);
     }
+
+  if (update_client_types)
+    g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, handle);
 
   gabble_presence_cache_maybe_remove (cache, handle);
 }
@@ -2067,7 +2073,7 @@ gabble_presence_cache_update_many (
       handle = g_array_index (contact_handles, TpHandle, i);
 
       if (gabble_presence_cache_do_update (cache, handle, resource,
-          presence_id, status_message, priority))
+          presence_id, status_message, priority, NULL))
         {
           g_array_append_val (updated, handle);
         }

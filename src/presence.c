@@ -395,7 +395,8 @@ gabble_presence_update (GabblePresence *presence,
                         const gchar *resource,
                         GabblePresenceId status,
                         const gchar *status_message,
-                        gint8 priority)
+                        gint8 priority,
+                        gboolean *update_client_types)
 {
   GabblePresencePrivate *priv = presence->priv;
   Resource *res;
@@ -483,7 +484,10 @@ gabble_presence_update (GabblePresence *presence,
    * keeping around just because it has a message on it */
   presence->status_message = res ? res->status_message : NULL;
 
-  aggregate_resources (presence);
+  if (update_client_types != NULL)
+    *update_client_types = aggregate_resources (presence);
+  else
+    aggregate_resources (presence);
 
 OUT:
   /* detect changes */

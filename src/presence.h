@@ -77,7 +77,8 @@ GabblePresence* gabble_presence_new (void);
 
 gboolean gabble_presence_update (GabblePresence *presence,
     const gchar *resource, GabblePresenceId status,
-    const gchar *status_message, gint8 priority);
+    const gchar *status_message, gint8 priority,
+    gboolean *update_client_types);
 
 void gabble_presence_set_capabilities (GabblePresence *presence,
     const gchar *resource,

@@ -43,7 +43,7 @@ get_client_types_from_handle (GabbleConnection *conn,
 {
   GabblePresence *presence;
   GPtrArray *empty_array;
-  const gchar *res;
+  const gchar *res = NULL;
 
   empty_array = g_ptr_array_new ();
   g_ptr_array_add (empty_array, NULL);
@@ -57,18 +57,8 @@ get_client_types_from_handle (GabbleConnection *conn,
       return TRUE;
     }
 
-  /* Find the best resource. */
-  res = gabble_presence_pick_resource_by_caps (presence,
-      DEVICE_AGNOSTIC, NULL, NULL);
-
-  if (res == NULL)
-    {
-      *types = empty_array;
-      return TRUE;
-    }
-
   /* Get the cached client types. */
-  *types = gabble_presence_get_client_types_array (presence, res, add_null);
+  *types = gabble_presence_get_client_types_array (presence, add_null, &res);
 
   if (*types == NULL)
     {
@@ -191,58 +181,73 @@ conn_client_types_fill_contact_attributes (GObject *obj,
     }
 }
 
-static void
-presences_updated_cb (GabblePresenceCache *presence_cache,
-    const GArray *contacts,
-    GabbleConnection *conn)
+typedef struct
 {
-  guint i;
+  GabblePresenceCache *cache;
+  TpHandle handle;
+  GabbleConnection *conn;
+} UpdatedData;
 
-  for (i = 0; i < contacts->len; i++)
+static gboolean
+idle_timeout (gpointer user_data)
+{
+  UpdatedData *data = user_data;
+  GabblePresence *presence;
+  GPtrArray *array, *empty_array;
+  const gchar *res = NULL;
+
+  empty_array = g_ptr_array_new ();
+  g_ptr_array_add (empty_array, NULL);
+
+  presence = gabble_presence_cache_get (data->cache, data->handle);
+
+  if (presence == NULL)
     {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GabblePresence *presence;
-      GPtrArray *array, *empty_array;
-      const gchar *res;
+      array = empty_array;
+      goto emit;
+    }
 
-      empty_array = g_ptr_array_new ();
-      g_ptr_array_add (empty_array, NULL);
+  array = gabble_presence_get_client_types_array (presence, TRUE, &res);
 
-      presence = gabble_presence_cache_get (presence_cache, handle);
-
-      if (presence == NULL)
-        {
-          array = empty_array;
-          goto emit;
-        }
-
-      res = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, NULL, NULL);
-
-      if (res == NULL)
-        {
-          array = empty_array;
-          goto emit;
-        }
-
-      array = gabble_presence_get_client_types_array (presence, res, TRUE);
-
-      if (gabble_presence_cache_disco_in_progress (presence_cache, handle, res)
-          || array == NULL)
-        {
-          goto cleanup;
-        }
+  if (gabble_presence_cache_disco_in_progress (data->cache, data->handle, res)
+      || array == NULL)
+    {
+      goto cleanup;
+    }
 
 emit:
-      tp_svc_connection_interface_client_types_emit_client_types_updated (
-          conn, handle, (const gchar **) array->pdata);
+  tp_svc_connection_interface_client_types_emit_client_types_updated (
+      data->conn, data->handle, (const gchar **) array->pdata);
 
-      if (array != empty_array)
-        g_ptr_array_unref (array);
+  if (array != empty_array)
+    g_ptr_array_unref (array);
 
 cleanup:
-      g_ptr_array_unref (empty_array);
-    }
+  g_ptr_array_unref (empty_array);
+
+  g_slice_free (UpdatedData, data);
+
+  return FALSE;
+}
+
+static void
+presence_cache_client_types_updated_cb (GabblePresenceCache *presence_cache,
+    TpHandle handle,
+    GabbleConnection *conn)
+{
+  UpdatedData *data = g_slice_new0 (UpdatedData);
+  data->cache = presence_cache;
+  data->handle = handle;
+  data->conn = conn;
+
+  /* Do this in an idle because the presence cache can make disco
+   * requests after dealing with the incoming presence stanza, so we
+   * can reach this point before the disco request has been made and
+   * disco_in_progress will return FALSE and we will signal with no
+   * client types which is a bit annoying. If we do this bit in an
+   * idle then the disco request will have been made by the time the
+   * idle source function is actually called. */
+  g_idle_add (idle_timeout, data);
 }
 
 void
@@ -252,6 +257,6 @@ conn_client_types_init (GabbleConnection *conn)
     TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
     conn_client_types_fill_contact_attributes);
 
-  g_signal_connect (conn->presence_cache, "presences-updated",
-      G_CALLBACK (presences_updated_cb), conn);
+  g_signal_connect (conn->presence_cache, "client-types-updated",
+      G_CALLBACK (presence_cache_client_types_updated_cb), conn);
 }

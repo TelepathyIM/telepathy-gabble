@@ -3,7 +3,7 @@ Test Conn.I.ClientTypes
 """
 import random
 
-from servicetest import EventPattern, assertEquals, assertLength, assertContains
+from servicetest import EventPattern, assertEquals, assertLength, assertContains, assertSameSets
 from gabbletest import exec_test, make_presence, sync_stream
 import constants as cs
 import ns
@@ -195,5 +195,42 @@ def test(q, bus, conn, stream):
     # longer in the presence cache. So we sync here to check if it's died.
     sync_stream(q, stream)
 
+def test2(q, bus, conn, stream):
+    marco_pidgin = 'marco@fancy.italian.restaurant/Pidgin'
+    marco_phone = 'marco@fancy.italian.restaurant/N900'
+    handle = conn.RequestHandles(cs.HT_CONTACT, [marco_pidgin])[0]
+
+    # pidgin comes online
+    contact_online(q, conn, stream, marco_pidgin, PC)
+
+    types = conn.GetClientTypes([handle],
+                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
+    assertSameSets(['pc'], types[handle])
+
+    # phone comes online
+    contact_online(q, conn, stream, marco_phone, PHONE, initial=False)
+
+    types = conn.GetClientTypes([handle],
+                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
+    assertSameSets(['pc'], types[handle])
+
+    sync_stream(q, stream)
+
+    # pidgin goes offline
+    stream.send(make_presence(marco_pidgin, type='unavailable'))
+
+    # no presence signal
+
+    q.expect('dbus-signal', signal='ClientTypesUpdated',
+             args=[handle, ['phone']])
+
+    # pidgin comes back online
+    caps, _, _ = build_stuff(PC)
+    stream.send(make_presence(marco_pidgin, status='hello', caps=caps))
+
+    q.expect('dbus-signal', signal='ClientTypesUpdated',
+             args=[handle, ['pc']])
+
 if __name__ == '__main__':
     exec_test(test)
+    exec_test(test2)

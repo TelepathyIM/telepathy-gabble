@@ -227,6 +227,7 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node)
     {
       info = g_slice_new0 (GabbleCapabilityInfo);
       info->cap_set = NULL;
+      info->client_types = NULL;
       info->guys = tp_intset_new ();
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
     }
@@ -247,6 +248,9 @@ capability_info_free (GabbleCapabilityInfo *info)
   info->identities = NULL;
 
   tp_intset_destroy (info->guys);
+
+  if (info->client_types != NULL)
+    g_ptr_array_unref (info->client_types);
 
   g_slice_free (GabbleCapabilityInfo, info);
 }

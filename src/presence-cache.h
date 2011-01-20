@@ -68,6 +68,9 @@ struct _GabbleCapabilityInfo
   TpIntSet *guys;
   guint trust;
 
+  /* array of owned gchar* client types or NULL */
+  GPtrArray *client_types;
+
   /* TRUE if this cache entry is one of our own, so between caps and
    * per_channel_manager_caps it holds the complete set of features for the
    * node.

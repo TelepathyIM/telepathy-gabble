@@ -79,6 +79,7 @@ enum
   CAPABILITIES_DISCOVERED,
   LOCATION_UPDATED,
   UNSURE_PERIOD_ENDED,
+  CLIENT_TYPES_UPDATED,
   LAST_SIGNAL
 };
 
@@ -421,6 +422,14 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     NULL, NULL,
     g_cclosure_marshal_VOID__VOID, G_TYPE_NONE,
     0);
+
+  signals[CLIENT_TYPES_UPDATED] = g_signal_new (
+    "client-types-updated",
+    G_TYPE_FROM_CLASS (klass),
+    G_SIGNAL_RUN_LAST,
+    0,
+    NULL, NULL,
+    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, TP_TYPE_HANDLE);
 }
 
 static gboolean

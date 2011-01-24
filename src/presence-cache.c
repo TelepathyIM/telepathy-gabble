@@ -38,6 +38,7 @@
 #include <telepathy-glib/intset.h>
 #include <wocky/wocky-caps-cache.h>
 #include <wocky/wocky-caps-hash.h>
+#include <wocky/wocky-disco-identity.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -243,7 +244,7 @@ capability_info_free (GabbleCapabilityInfo *info)
       info->cap_set = NULL;
     }
 
-  gabble_disco_identity_array_free (info->identities);
+  wocky_disco_identity_array_free (info->identities);
   info->identities = NULL;
 
   tp_intset_destroy (info->guys);
@@ -2123,8 +2124,8 @@ gabble_presence_cache_add_own_caps (
       gabble_capability_set_update (info->cap_set, cap_set);
     }
 
-  gabble_disco_identity_array_free (info->identities);
-  info->identities = gabble_disco_identity_array_copy (identities);
+  wocky_disco_identity_array_free (info->identities);
+  info->identities = wocky_disco_identity_array_copy (identities);
 
   info->complete = TRUE;
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;

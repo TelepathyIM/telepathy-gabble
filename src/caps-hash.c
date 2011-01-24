@@ -29,6 +29,8 @@
 
 #include <string.h>
 
+#include <wocky/wocky-disco-identity.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "base64.h"
@@ -38,7 +40,6 @@
 #include "presence-cache.h"
 #include "presence.h"
 #include "util.h"
-#include "gabble/disco-identity.h"
 
 typedef struct _DataFormField DataFormField;
 
@@ -69,8 +70,8 @@ char_cmp (gconstpointer a, gconstpointer b)
 static gint
 identity_cmp (gconstpointer a, gconstpointer b)
 {
-  GabbleDiscoIdentity *left = *(GabbleDiscoIdentity **) a;
-  GabbleDiscoIdentity *right = *(GabbleDiscoIdentity **) b;
+  WockyDiscoIdentity *left = *(WockyDiscoIdentity **) a;
+  WockyDiscoIdentity *right = *(WockyDiscoIdentity **) b;
   gint ret;
 
   if ((ret = strcmp (left->category, right->category)) != 0)
@@ -132,7 +133,7 @@ gabble_presence_free_xep0115_hash (
     GPtrArray *dataforms)
 {
   g_ptr_array_foreach (features, (GFunc) g_free, NULL);
-  gabble_disco_identity_array_free (identities);
+  wocky_disco_identity_array_free (identities);
   g_ptr_array_foreach (dataforms, _free_form, NULL);
 
   g_ptr_array_free (features, TRUE);
@@ -158,7 +159,7 @@ caps_hash_compute (
 
   for (i = 0 ; i < identities->len ; i++)
     {
-      const GabbleDiscoIdentity *identity = g_ptr_array_index (identities, i);
+      const WockyDiscoIdentity *identity = g_ptr_array_index (identities, i);
       gchar *str = g_strdup_printf ("%s/%s/%s/%s",
           identity->category, identity->type,
           identity->lang ? identity->lang : "",
@@ -390,13 +391,13 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   GabblePresence *presence = self->self_presence;
   const GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
-  GPtrArray *identities = gabble_disco_identity_array_new ();
+  GPtrArray *identities = wocky_disco_identity_array_new ();
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
   g_ptr_array_add (identities,
-      gabble_disco_identity_new ("client", CLIENT_TYPE,
+      wocky_disco_identity_new ("client", CLIENT_TYPE,
           NULL, PACKAGE_STRING));
 
   /* Gabble does not use dataforms, let 'dataforms' be empty */
@@ -423,8 +424,8 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
 {
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities_copy = ((identities == NULL) ?
-      gabble_disco_identity_array_new () :
-      gabble_disco_identity_array_copy (identities));
+      wocky_disco_identity_array_new () :
+      wocky_disco_identity_array_copy (identities));
   GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 

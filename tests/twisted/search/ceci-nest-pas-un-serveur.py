@@ -9,7 +9,9 @@ from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import domish
 
 from gabbletest import exec_test, send_error_reply, make_result_iq
-from servicetest import call_async, unwrap, make_channel_proxy, EventPattern
+from servicetest import (
+    call_async, unwrap, make_channel_proxy, EventPattern, assertDBusError
+    )
 
 from pprint import pformat
 
@@ -41,7 +43,7 @@ def not_a_search_server(q, stream, conn):
     send_error_reply(stream, iq, e)
 
     event = q.expect('dbus-error', method='CreateChannel')
-    assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
+    assertDBusError(cs.NOT_AVAILABLE, event.error)
 
 def returns_invalid_fields(q, stream, conn):
     iq = call_create(q, conn, 'broken.localhost')
@@ -53,7 +55,7 @@ def returns_invalid_fields(q, stream, conn):
     stream.send(result)
 
     event = q.expect('dbus-error', method='CreateChannel')
-    assert event.error.get_dbus_name() == cs.NOT_AVAILABLE, event.error
+    assertDBusError(cs.NOT_AVAILABLE, event.error)
 
 def returns_error_from_search(q, stream, conn):
     server = 'nofunforyou.localhost'
@@ -137,7 +139,7 @@ def disconnected_before_reply(q, stream, conn):
     call_async(q, conn, 'Disconnect')
 
     event = q.expect('dbus-error', method='CreateChannel')
-    assert event.error.get_dbus_name() == cs.DISCONNECTED, event.error
+    assertDBusError(cs.DISCONNECTED, event.error)
 
 def forbidden(q, stream, conn):
     iq = call_create(q, conn, 'notforyou.localhost')
@@ -148,7 +150,7 @@ def forbidden(q, stream, conn):
     send_error_reply(stream, iq, e)
 
     event = q.expect('dbus-error', method='CreateChannel')
-    assert event.error.get_dbus_name() == cs.PERMISSION_DENIED, event.error
+    assertDBusError(cs.PERMISSION_DENIED, event.error)
 
 def invalid_jid(q, stream, conn):
     iq = call_create(q, conn, 'invalid.localhost')
@@ -159,7 +161,7 @@ def invalid_jid(q, stream, conn):
     send_error_reply(stream, iq, e)
 
     event = q.expect('dbus-error', method='CreateChannel')
-    assert event.error.get_dbus_name() == cs.INVALID_ARGUMENT, event.error
+    assertDBusError(cs.INVALID_ARGUMENT, event.error)
 
 def test(q, bus, conn, stream):
     not_a_search_server(q, stream, conn)

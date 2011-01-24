@@ -163,6 +163,20 @@ def invalid_jid(q, stream, conn):
     event = q.expect('dbus-error', method='CreateChannel')
     assertDBusError(cs.INVALID_ARGUMENT, event.error)
 
+def really_invalid_jid(q, stream, conn):
+    request = dbus.Dictionary(
+        {
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_SEARCH,
+            cs.CONTACT_SEARCH_SERVER: 'this is literally bullshit',
+        }, signature='sv')
+    call_async(q, conn.Requests, 'CreateChannel', request)
+
+    # If the JID is actually malformed, we shouldn't even get as far as trying
+    # to talk to it.
+    event = q.expect('dbus-error', method='CreateChannel')
+
+    assertDBusError(cs.INVALID_ARGUMENT, event.error)
+
 def test(q, bus, conn, stream):
     not_a_search_server(q, stream, conn)
     returns_invalid_fields(q, stream, conn)
@@ -170,6 +184,7 @@ def test(q, bus, conn, stream):
     returns_bees_from_search(q, stream, conn)
     forbidden(q, stream, conn)
     invalid_jid(q, stream, conn)
+    really_invalid_jid(q, stream, conn)
     disconnected_before_reply(q, stream, conn)
 
     stream.sendFooter()

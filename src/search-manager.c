@@ -25,6 +25,8 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
 
+#include <wocky/wocky-utils.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 
 #include "caps-channel-manager.h"
@@ -480,9 +482,18 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   server = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server");
 
-  /* Treat an empty server as equivalent to omitting the server entirely. */
   if (tp_str_empty (server))
-    server = NULL;
+    {
+      /* Treat an empty server as equivalent to omitting the server entirely. */
+      server = NULL;
+    }
+  else if (!wocky_decode_jid (server, NULL, NULL, NULL))
+    {
+      /* On the other hand, if the JID's invalid, blow up. */
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Specified server '%s' is not a valid JID", server);
+      goto error;
+    }
 
   if (server == NULL)
     {

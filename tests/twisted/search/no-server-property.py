@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import xpath
 
 from gabbletest import exec_test, sync_stream, make_result_iq, acknowledge_iq, elem_iq, elem, disconnect_conn
-from servicetest import EventPattern
+from servicetest import EventPattern, assertEquals
 from search_helper import call_create, answer_field_query
 
 import constants as cs
@@ -45,12 +45,17 @@ def server_discovered(q, bus, conn, stream):
 
     stream.send(reply)
 
-    # JUD_SERVER is used as default
-    answer_field_query(q, stream, JUD_SERVER)
+    # JUD_SERVER is used as default, and shows up as the Server property on the
+    # resulting channel.
+    ret, _ = answer_field_query(q, stream, JUD_SERVER)
+    _, properties = ret.value
+    assertEquals(JUD_SERVER, properties[cs.CONTACT_SEARCH_SERVER])
 
     # Now that the search server has been discovered, it is used right away.
     call_create(q, conn, server=None)
-    answer_field_query(q, stream, JUD_SERVER)
+    ret, _ = answer_field_query(q, stream, JUD_SERVER)
+    _, properties = ret.value
+    assertEquals(JUD_SERVER, properties[cs.CONTACT_SEARCH_SERVER])
 
 def no_server_discovered(q, bus, conn, stream):
     iq_event, disco_event = q.expect_many(
@@ -75,7 +80,7 @@ def no_server_discovered(q, bus, conn, stream):
     # without specifying a Server property
     call_create(q, conn, server=None)
     e = q.expect('dbus-error', method='CreateChannel')
-    assert e.error.get_dbus_name() == cs.INVALID_ARGUMENT
+    assertEquals(cs.INVALID_ARGUMENT, e.error.get_dbus_name())
 
 def disconnect_before_disco(q, bus, conn, stream):
     iq_event, disco_event = q.expect_many(

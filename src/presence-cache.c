@@ -37,12 +37,12 @@
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/intset.h>
 #include <wocky/wocky-caps-cache.h>
+#include <wocky/wocky-caps-hash.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "capabilities.h"
 #include "caps-channel-manager.h"
-#include "caps-hash.h"
 #include "conn-presence.h"
 #include "debug.h"
 #include "disco.h"
@@ -1335,7 +1335,7 @@ _caps_disco_cb (GabbleDisco *disco,
     {
       gchar *computed_hash;
 
-      computed_hash = caps_hash_compute_from_lm_node (query_result);
+      computed_hash = wocky_caps_hash_compute_from_node (query_result);
 
       if (g_str_equal (waiter_self->ver, computed_hash))
         {

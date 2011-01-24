@@ -22,7 +22,7 @@
 
 #include "config.h"
 #include "util.h"
-#include "gabble/disco-identity.h"
+
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -1333,138 +1333,6 @@ gabble_peer_to_jid (GabbleConnection *conn,
     return g_strdup (target);
 
   return g_strdup_printf ("%s/%s", target, resource);
-}
-
-GabbleDiscoIdentity *
-gabble_disco_identity_new (const gchar *category,
-    const gchar *type,
-    const gchar *lang,
-    const gchar *name)
-{
-  GabbleDiscoIdentity *ret;
-
-  g_return_val_if_fail (category != NULL, NULL);
-  g_return_val_if_fail (type != NULL, NULL);
-
-  ret = g_slice_new (GabbleDiscoIdentity);
-  ret->category = g_strdup (category);
-  ret->type = g_strdup (type);
-  ret->lang = g_strdup (lang);
-  ret->name = g_strdup (name);
-  return ret;
-}
-
-GabbleDiscoIdentity *
-gabble_disco_identity_copy (const GabbleDiscoIdentity *source)
-{
-  g_return_val_if_fail (source != NULL, NULL);
-
-  return gabble_disco_identity_new (source->category, source->type,
-      source->lang, source->name);
-}
-
-const gchar *
-gabble_disco_identity_get_category (GabbleDiscoIdentity *identity)
-{
-  return identity->category;
-}
-
-const gchar *
-gabble_disco_identity_get_type (GabbleDiscoIdentity *identity)
-{
-  return identity->type;
-}
-
-const gchar *
-gabble_disco_identity_get_lang (GabbleDiscoIdentity *identity)
-{
-  return identity->lang;
-}
-
-const gchar *
-gabble_disco_identity_get_name (GabbleDiscoIdentity *identity)
-{
-  return identity->name;
-}
-
-void
-gabble_disco_identity_free (GabbleDiscoIdentity *identity)
-{
-  if (identity == NULL)
-    return;
-
-  g_free (identity->category);
-  g_free (identity->type);
-  g_free (identity->lang);
-  g_free (identity->name);
-  g_slice_free (GabbleDiscoIdentity, identity);
-}
-
-/**
- * gabble_disco_identity_array_new:
- *
- * Creates a new array of GabbleDiscoIdentity objects.
- *
- * Returns: A newly instantiated array.
- * See: gabble_disco_identity_array_free()
- */
-GPtrArray *
-gabble_disco_identity_array_new (void)
-{
-  return g_ptr_array_new_with_free_func (
-      (GDestroyNotify) gabble_disco_identity_free);
-}
-
-/**
- * gabble_disco_identity_array_copy():
- * @source: The source array to be copied.
- *
- * Copies an array of GabbleDiscoIdentity objects. The returned array contains
- * new copies of the contents of the source array.
- *
- * Returns: A newly instantiated array with new copies of the contents of the
- *          source array.
- * See: gabble_disco_identity_array_new()
- */
-GPtrArray *
-gabble_disco_identity_array_copy (const GPtrArray *source)
-{
-  GPtrArray *ret;
-  guint i;
-
-  if (!source)
-    return NULL;
-
-  ret = g_ptr_array_sized_new (source->len);
-  g_ptr_array_set_free_func (ret, (GDestroyNotify) gabble_disco_identity_free);
-  for (i = 0; i < source->len; ++i)
-    {
-      g_ptr_array_add (ret,
-         gabble_disco_identity_copy (g_ptr_array_index (source, i)));
-    }
-  return ret;
-}
-
-/**
- * gabble_disco_identity_array_free():
- * @arr: Array to be freed.
- *
- * Frees an array of GabbleDiscoIdentity objects created with
- * gabble_disco_identity_array_new() or returned by
- * gabble_disco_identity_array_copy().
- *
- * Note that if this method is called with an array created with
- * g_ptr_array_new, the caller should also free the array contents.
- *
- * See: gabble_disco_identity_array_new(), gabble_disco_identity_array_copy()
- */
-void
-gabble_disco_identity_array_free (GPtrArray *arr)
-{
-  if (!arr)
-    return;
-
-  g_ptr_array_free (arr, TRUE);
 }
 
 /* Like wocky_enum_from_nick, but for GFlagsValues instead. */

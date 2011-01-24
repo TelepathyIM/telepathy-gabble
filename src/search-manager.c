@@ -480,6 +480,10 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   server = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server");
 
+  /* Treat an empty server as equivalent to omitting the server entirely. */
+  if (tp_str_empty (server))
+    server = NULL;
+
   if (server == NULL)
     {
       if (self->priv->default_jud == NULL)

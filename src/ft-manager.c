@@ -382,7 +382,7 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
               channel = gabble_file_transfer_channel_new (self->priv->connection,
                   sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,
                   NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
-                  NULL, 0, 0, FALSE, NULL, gtalk_fc, token);
+                  NULL, 0, 0, FALSE, NULL, gtalk_fc, token, NULL);
               g_free (filename);
 
               gtalk_file_collection_add_channel (gtalk_fc, channel);
@@ -443,6 +443,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       tp_base_connection_get_handles (base_connection, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   const gchar *content_type, *filename, *content_hash, *description;
+  const gchar *file_uri;
   guint64 size, date, initial_offset;
   TpFileHashType content_hash_type;
   GError *error = NULL;
@@ -546,13 +547,16 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   initial_offset = tp_asv_get_uint64 (request_properties,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".InitialOffset", NULL);
 
+  file_uri = tp_asv_get_string (request_properties,
+      GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".FileURI");
+
   DEBUG ("Requested outgoing channel with contact: %s",
       tp_handle_inspect (contact_repo, handle));
 
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, initial_offset, TRUE, NULL, NULL, NULL);
+      description, date, initial_offset, TRUE, NULL, NULL, NULL, file_uri);
 
   if (!gabble_file_transfer_channel_offer_file (chan, &error))
     {
@@ -591,6 +595,7 @@ static const gchar * const file_transfer_channel_allowed_properties[] =
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHash",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Description",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Date",
+   GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".FileURI",
    NULL
 };
 
@@ -717,7 +722,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
-      description, date, 0, resume_supported, bytestream, NULL, NULL);
+      description, date, 0, resume_supported, bytestream, NULL, NULL, NULL);
 
   gabble_ft_manager_channel_created (self, chan, NULL);
 }

@@ -37,6 +37,8 @@ class File(object):
 
         self.offset = 0
 
+        self.uri = 'file:///tmp/%s' % self.name
+
     def compute_hash(self, hash_type):
         assert hash_type == cs.FILE_HASH_TYPE_MD5
         self.hash_type = hash_type
@@ -321,7 +323,7 @@ class SendFileTest(FileTransferTest):
         assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT},
                 [cs.FT_CONTENT_HASH_TYPE, cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE,
-                 cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE]
+                 cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE, cs.FT_FILE_URI]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -330,7 +332,8 @@ class SendFileTest(FileTransferTest):
                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
                  cs.FT_CONTENT_HASH_TYPE: cs.FILE_HASH_TYPE_MD5},
                 [cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE, cs.FT_FILENAME,
-                 cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE]
+                 cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE,
+                 cs.FT_FILE_URI]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -349,6 +352,7 @@ class SendFileTest(FileTransferTest):
             cs.FT_DESCRIPTION: self.file.description,
             cs.FT_DATE:  self.file.date,
             cs.FT_INITIAL_OFFSET: 0,
+            cs.FT_FILE_URI: self.file.uri,
             })
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
@@ -372,6 +376,7 @@ class SendFileTest(FileTransferTest):
         assert props[cs.FT_DATE] == self.file.date
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
+        assert props[cs.FT_FILE_URI] == self.file.uri
 
         self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
 

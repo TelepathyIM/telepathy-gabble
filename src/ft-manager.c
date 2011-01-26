@@ -548,7 +548,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".InitialOffset", NULL);
 
   file_uri = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".FileURI");
+      GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".URI");
 
   DEBUG ("Requested outgoing channel with contact: %s",
       tp_handle_inspect (contact_repo, handle));
@@ -595,7 +595,7 @@ static const gchar * const file_transfer_channel_allowed_properties[] =
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHash",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Description",
    TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Date",
-   GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".FileURI",
+   GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".URI",
    NULL
 };
 

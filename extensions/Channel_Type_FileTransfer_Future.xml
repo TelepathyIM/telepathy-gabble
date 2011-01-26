@@ -62,8 +62,8 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
-    <property name="FileURI" type="s" access="readwrite"
-      tp:name-for-bindings="File_URI" tp:immutable="sometimes" tp:requestable="yes">
+    <property name="URI" type="s" access="readwrite"
+      tp:name-for-bindings="URI" tp:immutable="sometimes" tp:requestable="yes">
       <tp:added version="0.21.UNRELEASED"/>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>For outgoing file transfers, this requestable property allows the channel
@@ -81,22 +81,21 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
         inform observers where the incoming file will be saved.
         Setting this property once AcceptFile
         has been called MUST fail. Once this property has been set
-        FileURIDefined is fired.</p>
+        URIDefined is fired.</p>
       </tp:docstring>
     </property>
 
-    <signal name="FileURIDefined"
-      tp:name-for-bindings="File_URI_Defined">
+    <signal name="URIDefined"
+      tp:name-for-bindings="URI_Defined">
       <tp:added version="0.21.UNRELEASED"/>
       <tp:docstring>
-        Emitted when the value of the FileURI
+        Emitted when the value of the URI
         property has been set. This signal MAY only be fired on incoming file
-        transfers if the handler had set a value to
-        FileURI before accepting the file.
+        transfers if the handler had set a value to URI before accepting the file.
       </tp:docstring>
-      <arg name="File_URI" type="s">
+      <arg name="URI" type="s">
         <tp:docstring>
-          The value of the FileURI property.
+          The value of the URI property.
         </tp:docstring>
       </arg>
     </signal>

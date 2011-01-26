@@ -155,7 +155,7 @@ class ReceiveFileTest(FileTransferTest):
 
         self._actions = [self.connect, self.announce_contact,
             self.send_ft_offer_iq, self.check_new_channel, self.create_ft_channel,
-            self.set_file_uri, self.accept_file,
+            self.set_uri, self.accept_file,
             self.receive_file, self.close_channel, self.done]
 
     def send_ft_offer_iq(self):
@@ -223,23 +223,23 @@ class ReceiveFileTest(FileTransferTest):
 
         self.ft_path = path
 
-    def set_file_uri(self):
+    def set_uri(self):
         ft_props = dbus.Interface(self.ft_channel, cs.PROPERTIES_IFACE)
 
-        # FileURI is not set yet
-        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'FileURI')
+        # URI is not set yet
+        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI')
         assertEquals('', uri)
 
-        # Setting FileURI
+        # Setting URI
         call_async(self.q, ft_props, 'Set',
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'FileURI', self.file.uri)
+            cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI', self.file.uri)
 
-        self.q.expect('dbus-signal', signal='FileURIDefined', args=[self.file.uri])
+        self.q.expect('dbus-signal', signal='URIDefined', args=[self.file.uri])
 
         self.q.expect('dbus-return', method='Set')
 
         # Check it has the right value now
-        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'FileURI')
+        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI')
         assertEquals(self.file.uri, uri)
 
     def accept_file(self):
@@ -343,7 +343,7 @@ class SendFileTest(FileTransferTest):
         assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT},
                 [cs.FT_CONTENT_HASH_TYPE, cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE,
-                 cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE, cs.FT_FILE_URI]
+                 cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE, cs.FT_URI]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -353,7 +353,7 @@ class SendFileTest(FileTransferTest):
                  cs.FT_CONTENT_HASH_TYPE: cs.FILE_HASH_TYPE_MD5},
                 [cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE, cs.FT_FILENAME,
                  cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE,
-                 cs.FT_FILE_URI]
+                 cs.FT_URI]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -372,7 +372,7 @@ class SendFileTest(FileTransferTest):
             cs.FT_DESCRIPTION: self.file.description,
             cs.FT_DATE:  self.file.date,
             cs.FT_INITIAL_OFFSET: 0,
-            cs.FT_FILE_URI: self.file.uri,
+            cs.FT_URI: self.file.uri,
             })
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
@@ -396,7 +396,7 @@ class SendFileTest(FileTransferTest):
         assert props[cs.FT_DATE] == self.file.date
         assert props[cs.FT_TRANSFERRED_BYTES] == 0
         assert props[cs.FT_INITIAL_OFFSET] == 0
-        assert props[cs.FT_FILE_URI] == self.file.uri
+        assert props[cs.FT_URI] == self.file.uri
 
         self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
 

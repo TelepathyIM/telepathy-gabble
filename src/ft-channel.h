@@ -72,7 +72,7 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     const gchar *description, guint64 date, guint64 initial_offset,
     gboolean resume_supported, GabbleBytestreamIface *bytestream,
     GTalkFileCollection *gtalk_fc, const gchar *file_collection,
-    const gchar *file_uri);
+    const gchar *uri);
 
 gboolean gabble_file_transfer_channel_offer_file (
     GabbleFileTransferChannel *self, GError **error);

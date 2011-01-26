@@ -376,27 +376,27 @@ class SendFileTest(FileTransferTest):
             })
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
-        assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER
-        assert props[cs.INTERFACES] == []
-        assert props[cs.TARGET_HANDLE] == self.handle
-        assert props[cs.TARGET_ID] == self.contact_name
-        assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
-        assert props[cs.REQUESTED] == True
-        assert props[cs.INITIATOR_HANDLE] == self.self_handle
-        assert props[cs.INITIATOR_ID] == self.self_handle_name
+        assertEquals(cs.CHANNEL_TYPE_FILE_TRANSFER, props[cs.CHANNEL_TYPE])
+        assertEquals([], props[cs.INTERFACES])
+        assertEquals(self.handle, props[cs.TARGET_HANDLE])
+        assertEquals(self.contact_name, props[cs.TARGET_ID])
+        assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
+        assert props[cs.REQUESTED]
+        assertEquals(self.self_handle, props[cs.INITIATOR_HANDLE])
+        assertEquals(self.self_handle_name, props[cs.INITIATOR_ID])
 
         # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
-        assert props[cs.FT_STATE] == cs.FT_STATE_PENDING
-        assert props[cs.FT_CONTENT_TYPE] == self.file.content_type
-        assert props[cs.FT_FILENAME] == self.file.name
-        assert props[cs.FT_SIZE] == self.file.size
-        assert props[cs.FT_CONTENT_HASH_TYPE] == self.file.hash_type
-        assert props[cs.FT_CONTENT_HASH] == self.file.hash
-        assert props[cs.FT_DESCRIPTION] == self.file.description
-        assert props[cs.FT_DATE] == self.file.date
-        assert props[cs.FT_TRANSFERRED_BYTES] == 0
-        assert props[cs.FT_INITIAL_OFFSET] == 0
-        assert props[cs.FT_URI] == self.file.uri
+        assertEquals(cs.FT_STATE_PENDING, props[cs.FT_STATE])
+        assertEquals(self.file.content_type, props[cs.FT_CONTENT_TYPE])
+        assertEquals(self.file.name, props[cs.FT_FILENAME])
+        assertEquals(self.file.size, props[cs.FT_SIZE])
+        assertEquals(self.file.hash_type, props[cs.FT_CONTENT_HASH_TYPE])
+        assertEquals(self.file.hash, props[cs.FT_CONTENT_HASH])
+        assertEquals(self.file.description, props[cs.FT_DESCRIPTION])
+        assertEquals(self.file.date, props[cs.FT_DATE])
+        assertEquals(0, props[cs.FT_TRANSFERRED_BYTES])
+        assertEquals(0, props[cs.FT_INITIAL_OFFSET])
+        assertEquals(self.file.uri, props[cs.FT_URI])
 
         self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
 

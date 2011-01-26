@@ -319,15 +319,14 @@ gabble_file_transfer_channel_get_property (GObject *object,
               GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
               NULL);
 
-              /* URI is immutable only for outgoing transfers */
-              if (self->priv->initiator == base_conn->self_handle)
-                {
-                  tp_dbus_properties_mixin_fill_properties_hash (object, props,
-                      GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "URI",
-                      NULL);
-                }
+          /* URI is immutable only for outgoing transfers */
+          if (self->priv->initiator == base_conn->self_handle)
+            {
+              tp_dbus_properties_mixin_fill_properties_hash (object, props,
+                  GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "URI", NULL);
+            }
 
-              g_value_take_boxed (value, props);
+          g_value_take_boxed (value, props);
         }
         break;
       case PROP_BYTESTREAM:

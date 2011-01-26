@@ -362,11 +362,10 @@ class SendFileTest(FileTransferTest):
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
-    def request_ft_channel(self):
+    def request_ft_channel(self, uri=True):
         requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
 
-        self.ft_path, props = requests_iface.CreateChannel({
-            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+        request = { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,
             cs.FT_CONTENT_TYPE: self.file.content_type,
@@ -376,9 +375,12 @@ class SendFileTest(FileTransferTest):
             cs.FT_CONTENT_HASH: self.file.hash,
             cs.FT_DESCRIPTION: self.file.description,
             cs.FT_DATE:  self.file.date,
-            cs.FT_INITIAL_OFFSET: 0,
-            cs.FT_URI: self.file.uri,
-            })
+            cs.FT_INITIAL_OFFSET: 0 }
+
+        if uri:
+            request[cs.FT_URI] = self.file.uri
+
+        self.ft_path, props = requests_iface.CreateChannel(request)
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
         assertEquals(cs.CHANNEL_TYPE_FILE_TRANSFER, props[cs.CHANNEL_TYPE])
@@ -401,7 +403,10 @@ class SendFileTest(FileTransferTest):
         assertEquals(self.file.date, props[cs.FT_DATE])
         assertEquals(0, props[cs.FT_TRANSFERRED_BYTES])
         assertEquals(0, props[cs.FT_INITIAL_OFFSET])
-        assertEquals(self.file.uri, props[cs.FT_URI])
+        if uri:
+            assertEquals(self.file.uri, props[cs.FT_URI])
+        else:
+            assertEquals('', props[cs.FT_URI])
 
         self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
 

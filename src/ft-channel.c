@@ -561,6 +561,56 @@ static void close_session_and_transport (GabbleFileTransferChannel *self);
 static void gabble_file_transfer_channel_dispose (GObject *object);
 static void gabble_file_transfer_channel_finalize (GObject *object);
 
+static gboolean
+file_transfer_channel_properties_setter (GObject *object,
+    GQuark interface,
+    GQuark name,
+    const GValue *value,
+    gpointer setter_data,
+    GError **error)
+{
+  GabbleFileTransferChannel *self = (GabbleFileTransferChannel *) object;
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->connection);
+
+  g_return_val_if_fail (interface ==
+      GABBLE_IFACE_QUARK_CHANNEL_TYPE_FILETRANSFER_FUTURE, FALSE);
+
+  /* There is only one property with write access. So TpDBusPropertiesMixin
+   * already checked this. */
+  g_assert (name == g_quark_from_static_string ("FileURI"));
+
+  /* TpDBusPropertiesMixin already checked this */
+  g_assert (G_VALUE_HOLDS_STRING (value));
+
+  if (self->priv->file_uri != NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "FileURI has already be set");
+      return FALSE;
+    }
+
+  if (self->priv->initiator == base_conn->self_handle)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Channel is not an incoming transfer");
+      return FALSE;
+    }
+
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_PENDING)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        "State is not pending; cannot set FileURI");
+      return FALSE;
+    }
+
+  self->priv->file_uri = g_value_dup_string (value);
+
+  gabble_svc_channel_type_filetransfer_future_emit_file_uri_defined (self,
+      self->priv->file_uri);
+
+  return TRUE;
+}
+
 static void
 gabble_file_transfer_channel_class_init (
     GabbleFileTransferChannelClass *gabble_file_transfer_channel_class)
@@ -615,7 +665,7 @@ gabble_file_transfer_channel_class_init (
     },
     { GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE,
       tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
+      file_transfer_channel_properties_setter,
       file_future_props
     },
     { NULL }

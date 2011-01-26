@@ -302,6 +302,8 @@ mgr_file_contents (const char *busname,
           TP_PROP_PROTOCOL_INTERFACES);
       const gchar * const *c_ifaces = tp_asv_get_strv (props,
           TP_PROP_PROTOCOL_CONNECTION_INTERFACES);
+      const gchar * const *auth_types = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_AUTHENTICATION_TYPES);
 
       write_parameters (f, section_name, protocol);
       write_rccs (f, section_name, props);
@@ -310,6 +312,8 @@ mgr_file_contents (const char *busname,
           ifaces, g_strv_length ((gchar **) ifaces));
       g_key_file_set_string_list (f, section_name, "ConnectionInterfaces",
           c_ifaces, g_strv_length ((gchar **) c_ifaces));
+      g_key_file_set_string_list (f, section_name, "AuthenticationTypes",
+          auth_types, g_strv_length ((gchar **) auth_types));
 
       WRITE_STR (TP_PROP_PROTOCOL_VCARD_FIELD, "VCardField");
       WRITE_STR (TP_PROP_PROTOCOL_ENGLISH_NAME, "EnglishName");

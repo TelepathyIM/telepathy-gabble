@@ -519,7 +519,7 @@ def platform_impls():
 
     return impls
 
-def exec_file_transfer_test(test_cls):
+def exec_file_transfer_test(test_cls, one_run=False):
     for bytestream_cls  in [
             bytestream.BytestreamIBBMsg,
             bytestream.BytestreamS5B,
@@ -537,3 +537,6 @@ def exec_file_transfer_test(test_cls):
             file.offset = 5
             test = test_cls(bytestream_cls, file, addr_type, access_control, access_control_param)
             exec_test(test.test)
+
+            if one_run:
+                return

@@ -5,7 +5,7 @@ import time
 import datetime
 import os
 
-from servicetest import EventPattern, assertEquals
+from servicetest import EventPattern, assertEquals, call_async
 from gabbletest import exec_test, sync_stream, make_result_iq
 import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
@@ -154,7 +154,8 @@ class ReceiveFileTest(FileTransferTest):
         FileTransferTest.__init__(self, bytestream_cls, file, address_type, access_control, access_control_param)
 
         self._actions = [self.connect, self.announce_contact,
-            self.send_ft_offer_iq, self.check_new_channel, self.create_ft_channel, self.accept_file,
+            self.send_ft_offer_iq, self.check_new_channel, self.create_ft_channel,
+            self.set_file_uri, self.accept_file,
             self.receive_file, self.close_channel, self.done]
 
     def send_ft_offer_iq(self):
@@ -221,6 +222,25 @@ class ReceiveFileTest(FileTransferTest):
         self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
 
         self.ft_path = path
+
+    def set_file_uri(self):
+        ft_props = dbus.Interface(self.ft_channel, cs.PROPERTIES_IFACE)
+
+        # FileURI is not set yet
+        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'FileURI')
+        assertEquals('', uri)
+
+        # Setting FileURI
+        call_async(self.q, ft_props, 'Set',
+            cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'FileURI', self.file.uri)
+
+        self.q.expect('dbus-signal', signal='FileURIDefined', args=[self.file.uri])
+
+        self.q.expect('dbus-return', method='Set')
+
+        # Check it has the right value now
+        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'FileURI')
+        assertEquals(self.file.uri, uri)
 
     def accept_file(self):
         try:

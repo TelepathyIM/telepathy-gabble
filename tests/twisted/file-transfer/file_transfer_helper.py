@@ -242,6 +242,11 @@ class ReceiveFileTest(FileTransferTest):
         uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI')
         assertEquals(self.file.uri, uri)
 
+        # We can't change it once it has been set
+        call_async(self.q, ft_props, 'Set',
+            cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI', 'badger://snake')
+        self.q.expect('dbus-error', method='Set', name=cs.INVALID_ARGUMENT)
+
     def accept_file(self):
         try:
             self.address = self.ft_channel.AcceptFile(self.address_type,

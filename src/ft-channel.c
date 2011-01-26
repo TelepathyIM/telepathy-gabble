@@ -583,21 +583,21 @@ file_transfer_channel_properties_setter (GObject *object,
 
   if (self->priv->uri != NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "URI has already be set");
       return FALSE;
     }
 
   if (self->priv->initiator == base_conn->self_handle)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Channel is not an incoming transfer");
       return FALSE;
     }
 
   if (self->priv->state != TP_FILE_TRANSFER_STATE_PENDING)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
         "State is not pending; cannot set URI");
       return FALSE;
     }

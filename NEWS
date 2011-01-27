@@ -1,7 +1,52 @@
 telepathy-gabble 0.11.6 (UNRELEASED)
 ====================================
 
+Interesting changes:
+
+• Generated code for the Call channel type has been moved to an
+  external submodule called telepathy-yell. This is included in the
+  source tarballs for telepathy-gabble (like how wocky is) so there
+  should be no changes necessary for packagers.
+
+Dependencies:
+
 Fixes:
+
+• fd.o#19930: MUC channels are now only closed properly when the
+  server acknowledges our request to leave. This fixes the case of
+  trying to join a MUC you left only seconds ago before the server had
+  a chance to notice. (jonny)
+
+• fd.o#26385: gabble's media stream code now uses
+  TpDBusPropertiesMixin for increased maintainability. (jonny)
+
+• Include Protocol.AuthenticationTypes in the manager file. (jonny)
+
+Enhancements:
+
+• More miscellaneous updates to the Call channel type including:
+
+  » Update to newest Call spec. (sjoerd)
+
+  » Base classes have been extracted from Gabble code and moved into
+    telepathy-yell. (wjt, sjoerd, alsuren)
+
+  » Some test updates to ensure Call works as it should. (sjoerd)
+
+• The caps cache has been moved from Gabble to Wocky. (jonny)
+
+Test suite changes:
+
+• Tests no longer need to call Connect() and wait for the connection
+  to connect but they can choose to do so if they need to. (jonny)
+
+• If a test hits an unhandled exception (a timeout, some other python
+  error or perhaps a DBus error?) the queue switches off verbose mode,
+  so users aren't forced to scroll up pages and pages of disconnection
+  logs to find the error. (jonny)
+
+• with-session-bus.sh is now as silent as it can be without verbose
+  mode turned on. (jonny)
 
 telepathy-gabble 0.11.5 (2011-01-10)
 ====================================

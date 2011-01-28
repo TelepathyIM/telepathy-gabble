@@ -568,6 +568,12 @@ def assertFlagsUnset(flags, value):
             "expected none of flags %u, but %u are set in %u" % (
             flags, masked, value))
 
+def assertDBusError(name, error):
+    if error.get_dbus_name() != name:
+        raise AssertionError(
+            "expected DBus error named:\n  %s\ngot:\n  %s\n(with message: %s)"
+            % (name, error.get_dbus_name(), error.message))
+
 def install_colourer():
     def red(s):
         return '\x1b[31m%s\x1b[0m' % s

@@ -12,6 +12,11 @@ Fixes:
 
 Enhancements:
 
+• fd.o#32815: fallback-conference-server now defaults to
+  conference.telepathy.im. Thus, if the user's server doesn't have a
+  conference component configured, upgrading a 1-1 chat into an ad-hoc
+  conference still works.
+
 telepathy-gabble 0.11.6 (2011-01-27)
 ====================================
 

@@ -99,7 +99,9 @@ static TpCMParamSpec jabber_params[] = {
     tp_cm_param_filter_uint_nonzero, NULL },
 
   { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
-    0, NULL, 0 /* unused */,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+    "conference.telepathy.im",
+    0 /* offset, not used */,
     /* FIXME: validate properly */
     tp_cm_param_filter_string_nonempty, NULL },
 

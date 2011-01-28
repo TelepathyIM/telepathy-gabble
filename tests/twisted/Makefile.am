@@ -202,6 +202,7 @@ TWISTED_FT_TESTS = \
 	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
 	file-transfer/test-send-file-send-before-accept.py \
+	file-transfer/test-uri.py \
 	$(NULL)
 
 TWISTED_TESTS += \

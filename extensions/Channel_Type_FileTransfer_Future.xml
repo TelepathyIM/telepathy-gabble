@@ -62,6 +62,44 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
       </tp:docstring>
     </property>
 
+    <property name="URI" type="s" access="readwrite"
+      tp:name-for-bindings="URI" tp:immutable="sometimes" tp:requestable="yes">
+      <tp:added version="0.21.UNRELEASED"/>
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        <p>For outgoing file transfers, this requestable property allows the channel
+        requester to inform observers (and the handler, if it is not the requester
+        itself) of the URI of the file being transferred. Note that the
+        connection manager SHOULD NOT read this file directly; the handler
+        streams the file into the CM through the socket negotiated using
+        ProvideFile.</p>
+
+        <p>On outgoing file transfers, this property MUST NOT change after the channel
+        is requested.</p>
+
+        <p>For incoming file transfers, this property MAY be set by the channel
+        handler before calling AcceptFile to
+        inform observers where the incoming file will be saved.
+        Setting this property once AcceptFile
+        has been called MUST fail. Once this property has been set
+        URIDefined is fired.</p>
+      </tp:docstring>
+    </property>
+
+    <signal name="URIDefined"
+      tp:name-for-bindings="URI_Defined">
+      <tp:added version="0.21.UNRELEASED"/>
+      <tp:docstring>
+        Emitted when the value of the URI
+        property has been set. This signal MAY only be fired on incoming file
+        transfers if the handler had set a value to URI before accepting the file.
+      </tp:docstring>
+      <arg name="URI" type="s">
+        <tp:docstring>
+          The value of the URI property.
+        </tp:docstring>
+      </arg>
+    </signal>
+
   </interface>
 </node>
 <!-- vim:set sw=2 sts=2 et ft=xml: -->

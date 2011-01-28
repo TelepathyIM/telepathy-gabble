@@ -118,6 +118,7 @@ enum
   PROP_INITIAL_OFFSET,
   PROP_RESUME_SUPPORTED,
   PROP_FILE_COLLECTION,
+  PROP_URI,
 
   PROP_CONNECTION,
   PROP_BYTESTREAM,
@@ -158,6 +159,7 @@ struct _GabbleFileTransferChannelPrivate {
   guint64 initial_offset;
   guint64 date;
   gchar *file_collection;
+  gchar *uri;
   gboolean channel_opened;
 };
 
@@ -280,6 +282,10 @@ gabble_file_transfer_channel_get_property (GObject *object,
       case PROP_FILE_COLLECTION:
         g_value_set_string (value, self->priv->file_collection);
         break;
+      case PROP_URI:
+        g_value_set_string (value,
+            self->priv->uri != NULL ? self->priv->uri: "");
+        break;
       case PROP_CHANNEL_DESTROYED:
         g_value_set_boolean (value, self->priv->closed);
         break;
@@ -287,29 +293,41 @@ gabble_file_transfer_channel_get_property (GObject *object,
         g_value_set_boolean (value, self->priv->resume_supported);
         break;
       case PROP_CHANNEL_PROPERTIES:
-        g_value_take_boxed (value,
-            tp_dbus_properties_mixin_make_properties_hash (object,
-                TP_IFACE_CHANNEL, "ChannelType",
-                TP_IFACE_CHANNEL, "Interfaces",
-                TP_IFACE_CHANNEL, "TargetHandle",
-                TP_IFACE_CHANNEL, "TargetID",
-                TP_IFACE_CHANNEL, "TargetHandleType",
-                TP_IFACE_CHANNEL, "Requested",
-                TP_IFACE_CHANNEL, "InitiatorHandle",
-                TP_IFACE_CHANNEL, "InitiatorID",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "State",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentType",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Filename",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Size",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHashType",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHash",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Description",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Date",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
-                TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
-                GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
-                NULL));
+        {
+          GHashTable *props;
+
+          props = tp_dbus_properties_mixin_make_properties_hash (object,
+              TP_IFACE_CHANNEL, "ChannelType",
+              TP_IFACE_CHANNEL, "Interfaces",
+              TP_IFACE_CHANNEL, "TargetHandle",
+              TP_IFACE_CHANNEL, "TargetID",
+              TP_IFACE_CHANNEL, "TargetHandleType",
+              TP_IFACE_CHANNEL, "Requested",
+              TP_IFACE_CHANNEL, "InitiatorHandle",
+              TP_IFACE_CHANNEL, "InitiatorID",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "State",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentType",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Filename",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Size",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHashType",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHash",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Description",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Date",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
+              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
+              GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
+              NULL);
+
+          /* URI is immutable only for outgoing transfers */
+          if (self->priv->initiator == base_conn->self_handle)
+            {
+              tp_dbus_properties_mixin_fill_properties_hash (object, props,
+                  GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "URI", NULL);
+            }
+
+          g_value_take_boxed (value, props);
+        }
         break;
       case PROP_BYTESTREAM:
         g_value_set_object (value, self->priv->bytestream);
@@ -392,6 +410,10 @@ gabble_file_transfer_channel_set_property (GObject *object,
       case PROP_FILE_COLLECTION:
         g_free (self->priv->file_collection);
         self->priv->file_collection = g_value_dup_string (value);
+        break;
+      case PROP_URI:
+        g_assert (self->priv->uri == NULL); /* construct only */
+        self->priv->uri = g_value_dup_string (value);
         break;
       case PROP_RESUME_SUPPORTED:
         self->priv->resume_supported = g_value_get_boolean (value);
@@ -527,12 +549,66 @@ gabble_file_transfer_channel_constructor (GType type,
        tp_handle_inspect (contact_repo, self->priv->initiator),
        self->priv->filename, self->priv->size);
 
+  if (self->priv->initiator != base_conn->self_handle)
+    /* Incoming transfer, URI has to be set by the handler */
+    g_assert (self->priv->uri == NULL);
+
   return obj;
 }
 
 static void close_session_and_transport (GabbleFileTransferChannel *self);
 static void gabble_file_transfer_channel_dispose (GObject *object);
 static void gabble_file_transfer_channel_finalize (GObject *object);
+
+static gboolean
+file_transfer_channel_properties_setter (GObject *object,
+    GQuark interface,
+    GQuark name,
+    const GValue *value,
+    gpointer setter_data,
+    GError **error)
+{
+  GabbleFileTransferChannel *self = (GabbleFileTransferChannel *) object;
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->connection);
+
+  g_return_val_if_fail (interface ==
+      GABBLE_IFACE_QUARK_CHANNEL_TYPE_FILETRANSFER_FUTURE, FALSE);
+
+  /* There is only one property with write access. So TpDBusPropertiesMixin
+   * already checked this. */
+  g_assert (name == g_quark_from_static_string ("URI"));
+
+  /* TpDBusPropertiesMixin already checked this */
+  g_assert (G_VALUE_HOLDS_STRING (value));
+
+  if (self->priv->uri != NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "URI has already be set");
+      return FALSE;
+    }
+
+  if (self->priv->initiator == base_conn->self_handle)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Channel is not an incoming transfer");
+      return FALSE;
+    }
+
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_PENDING)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+        "State is not pending; cannot set URI");
+      return FALSE;
+    }
+
+  self->priv->uri = g_value_dup_string (value);
+
+  gabble_svc_channel_type_filetransfer_future_emit_uri_defined (self,
+      self->priv->uri);
+
+  return TRUE;
+}
 
 static void
 gabble_file_transfer_channel_class_init (
@@ -571,6 +647,7 @@ gabble_file_transfer_channel_class_init (
 
   static TpDBusPropertiesMixinPropImpl file_future_props[] = {
     { "FileCollection", "file-collection", NULL },
+    { "URI", "uri", NULL },
     { NULL }
   };
 
@@ -587,7 +664,7 @@ gabble_file_transfer_channel_class_init (
     },
     { GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE,
       tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
+      file_transfer_channel_properties_setter,
       file_future_props
     },
     { NULL }
@@ -809,6 +886,15 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_FILE_COLLECTION,
       param_spec);
 
+  param_spec = g_param_spec_string (
+      "uri", "URI",
+      "URI of the file being transferred",
+      NULL,
+      G_PARAM_CONSTRUCT_ONLY |
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_URI,
+      param_spec);
+
   gabble_file_transfer_channel_class->dbus_props_class.interfaces =
       prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -884,6 +970,7 @@ gabble_file_transfer_channel_finalize (GObject *object)
   g_free (self->priv->description);
   g_hash_table_destroy (self->priv->available_socket_types);
   g_free (self->priv->file_collection);
+  g_free (self->priv->uri);
 
   G_OBJECT_CLASS (gabble_file_transfer_channel_parent_class)->finalize (object);
 }
@@ -2167,7 +2254,8 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   gboolean resume_supported,
                                   GabbleBytestreamIface *bytestream,
                                   GTalkFileCollection *gtalk_file_collection,
-                                  const gchar *file_collection)
+                                  const gchar *file_collection,
+                                  const gchar *uri)
 
 {
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
@@ -2187,5 +2275,6 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "file-collection", file_collection,
       "bytestream", bytestream,
       "gtalk-file-collection", gtalk_file_collection,
+      "uri", uri,
       NULL);
 }

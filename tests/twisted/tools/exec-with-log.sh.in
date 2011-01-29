@@ -34,5 +34,8 @@ elif test -n "$GABBLE_TEST_BACKTRACE"; then
         GABBLE_WRAPPER="gdb -x run_and_bt.gdb"
 fi
 
+# Prevent libproxy from hitting the network for wpad configuration
+export PX_MODULE_BLACKLIST=config_wpad
+
 export G_DEBUG=fatal-warnings,fatal-criticals" ${G_DEBUG}"
 exec @abs_top_builddir@/libtool --mode=execute $GABBLE_WRAPPER ../telepathy-gabble-debug

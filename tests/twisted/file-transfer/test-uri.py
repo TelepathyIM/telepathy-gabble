@@ -10,7 +10,7 @@ import constants as cs
 def assertNoURI(ft_channel):
     ft_props = dbus.Interface(ft_channel, cs.PROPERTIES_IFACE)
 
-    uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI')
+    uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER, 'URI')
     assertEquals('', uri)
 
 class SetURIAfterAccepting(ReceiveFileTest):
@@ -29,7 +29,7 @@ class SetURIAfterAccepting(ReceiveFileTest):
 
         # Setting URI
         call_async(self.q, ft_props, 'Set',
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI', self.file.uri)
+            cs.CHANNEL_TYPE_FILE_TRANSFER, 'URI', self.file.uri)
 
         # too late...
         self.q.expect('dbus-error', method='Set', name=cs.INVALID_ARGUMENT)

@@ -21,6 +21,25 @@ import constants as cs
 tp_name_prefix = 'org.freedesktop.Telepathy'
 tp_path_prefix = '/org/freedesktop/Telepathy'
 
+class DictionarySupersetOf (object):
+    """Utility class for expecting "a dictionary with at least these keys"."""
+    def __init__(self, dictionary):
+        self._dictionary = dictionary
+    def __repr__(self):
+        return "DictionarySupersetOf(%s)" % self._dictionary
+    def __eq__(self, other):
+        """would like to just do:
+        return set(other.items()).issuperset(self._dictionary.items())
+        but it turns out that this doesn't work if you have another dict
+        nested in the values of your dicts"""
+        try:
+            for k,v in self._dictionary.items():
+                if k not in other or other[k] != v:
+                    return False
+            return True
+        except TypeError: # other is not iterable
+            return False
+
 class Event:
     def __init__(self, type, **kw):
         self.__dict__.update(kw)

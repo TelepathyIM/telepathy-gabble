@@ -11,8 +11,8 @@ from gabbletest import exec_test
 from servicetest import (
     make_channel_proxy, wrap_channel,
     EventPattern, call_async,
-    assertEquals, assertDoesNotContain, assertContains, assertLength, assertNotEquals
-    )
+    assertEquals, assertDoesNotContain, assertContains, assertLength, assertNotEquals,
+    DictionarySupersetOf)
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 import ns
@@ -266,6 +266,10 @@ def run_test(jp, q, bus, conn, stream, incoming):
                 "ContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (codecs,  current_codecs[self_handle])
 
+
+    cstream.SetCredentials(jt2.ufrag, jt2.pwd,
+        dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+
     # Add candidates
     candidates = jt2.get_call_remote_transports_dbus ()
     cstream.AddCandidates (candidates,
@@ -318,25 +322,55 @@ def run_test(jp, q, bus, conn, stream, incoming):
         "StreamState",  dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (cs.MEDIA_STREAM_STATE_DISCONNECTED, state)
 
-    if incoming or jp.dialect != 'gtalk-v0.4':
-        jt2.remote_candidates(jt2.audio_names[0], "initiator")
+    if jp.dialect == 'gtalk-v0.3':
+        # Candidates must be sent one at a time.
+        for candidate in jt2.get_call_remote_transports_dbus():
+            component, addr, port, props = candidate
+            jt2.send_remote_candidates_call_xmpp(jt2.audio_names[0],
+                    "initiator", [candidate])
+            q.expect('dbus-signal',
+                    signal='RemoteCandidatesAdded',
+                    interface=cs.CALL_STREAM_ENDPOINT,
+                    args=[[(component, addr, port,
+                               DictionarySupersetOf(props))]])
+    elif jp.dialect == 'gtalk-v0.4' and not incoming:
+        # Don't test this case at all.
+        pass
+    else:
+        jt2.send_remote_candidates_call_xmpp(jt2.audio_names[0], "initiator")
 
-        remote_candidates = q.expect ('dbus-signal',
-            signal='RemoteCandidatesAdded', interface=cs.CALL_STREAM_ENDPOINT)
-        assertEquals (jt2.get_call_remote_transports_dbus(),
-            remote_candidates.args[0])
+        candidates = []
+        for component, addr, port, props in \
+                jt2.get_call_remote_transports_dbus():
+            candidates.append((component, addr, port,
+                               DictionarySupersetOf(props)))
+
+        q.expect ('dbus-signal',
+                signal='RemoteCandidatesAdded',
+                interface=cs.CALL_STREAM_ENDPOINT,
+                args=[candidates])
 
     endpoint.SetSelectedCandidate (jt2.get_call_remote_transports_dbus()[0],
         dbus_interface=cs.CALL_STREAM_ENDPOINT)
 
     selected_candidate = q.expect ('dbus-signal',
         signal='CandidateSelected', interface=cs.CALL_STREAM_ENDPOINT)
-    assertEquals (jt2.get_call_remote_transports_dbus(),
-        selected_candidate.args)
+    assertEquals (jt2.get_call_remote_transports_dbus()[0],
+        selected_candidate.args[0])
+
+    endpoint.SetSelectedCandidate (jt2.get_call_remote_transports_dbus()[1],
+        dbus_interface=cs.CALL_STREAM_ENDPOINT)
+
+    # We have an RTCP candidate as well, so we should set this as selected
+    # too.
+    selected_candidate = q.expect ('dbus-signal',
+        signal='CandidateSelected', interface=cs.CALL_STREAM_ENDPOINT)
+    assertEquals (jt2.get_call_remote_transports_dbus()[1],
+        selected_candidate.args[0])
 
     selected_candidate = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
         "SelectedCandidate",  dbus_interface=dbus.PROPERTIES_IFACE)
-    assertEquals (jt2.get_call_remote_transports_dbus()[0], selected_candidate)
+    assertEquals (jt2.get_call_remote_transports_dbus()[1], selected_candidate)
 
     endpoint.SetStreamState (cs.MEDIA_STREAM_STATE_CONNECTED,
         dbus_interface=cs.CALL_STREAM_ENDPOINT)

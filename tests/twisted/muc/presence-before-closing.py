@@ -6,7 +6,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, request_muc_handle, wrap_channel
 from servicetest import (EventPattern, assertEquals, assertLength,
         assertContains, sync_dbus, call_async)
 import constants as cs
@@ -102,6 +102,54 @@ def test_then_disconnect(q, bus, conn, stream):
     # finally, Disconnect returns
     q.expect('dbus-return', method='Disconnect')
 
+def test_with_password(q, bus, conn, stream):
+    room = 'chat@conf.localhost'
+    handle = request_muc_handle(q, conn, stream, room)
+
+    call_async(q, conn.Requests, 'CreateChannel', {
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.TARGET_HANDLE: handle})
+
+    q.expect('stream-presence', to='chat@conf.localhost/test')
+
+    # tell gabble the room needs a password
+    presence = domish.Element(('jabber:client', 'presence'))
+    presence['from'] = '%s/%s' % (room, 'test')
+    presence['type'] = 'error'
+    x = presence.addElement((ns.MUC, 'x'))
+    error = presence.addElement('error')
+    error['type'] = 'auth'
+    not_authorized = error.addElement((ns.STANZA, 'not-authorized'))
+    stream.send(presence)
+
+    cc, _, _ = q.expect_many(EventPattern('dbus-return', method='CreateChannel'),
+                             EventPattern('dbus-signal', signal='NewChannels'),
+                             EventPattern('dbus-signal', signal='PasswordFlagsChanged',
+                                          args=[cs.PASSWORD_FLAG_PROVIDE, 0]))
+
+    chan = wrap_channel(bus.get_object(conn.bus_name, cc.value[0]),
+                        'Text', ['Password'])
+
+    # ensure gabble knows we need a password
+    flags = chan.Password.GetPasswordFlags()
+    assertEquals(cs.PASSWORD_FLAG_PROVIDE, flags)
+
+    forbidden = [EventPattern('stream-presence', to=room + '/test')]
+    q.forbid_events(forbidden)
+
+    # we call Close...
+    call_async(q, chan, 'Close')
+
+    # ...but this time no unavailable presence because we were in the
+    # auth state, so the channel closes immediately.
+    q.expect_many(EventPattern('dbus-return', method='Close'),
+                  EventPattern('dbus-signal', signal='Closed'),
+                  EventPattern('dbus-signal', signal='ChannelClosed'))
+
+    q.unforbid_events(forbidden)
+
 if __name__ == '__main__':
     exec_test(test)
     exec_test(test_then_disconnect)
+    exec_test(test_with_password)

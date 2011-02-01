@@ -52,7 +52,7 @@ struct _JingleCandidate {
   int component;
   int generation;
 
-  gdouble preference;
+  int preference;
   gchar *username;
   gchar *password;
   int network;

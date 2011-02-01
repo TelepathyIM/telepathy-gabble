@@ -555,7 +555,7 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
         /* generation */
         0,
         /* preference */
-        tp_asv_get_uint32 (info, "Priority", NULL) / 65536.0,
+        tp_asv_get_uint32 (info, "Priority", NULL),
         /* username, password */
         username,
         password,

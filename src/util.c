@@ -1301,8 +1301,7 @@ gabble_call_candidates_to_array (GList *candidates)
           "Protocol", G_TYPE_UINT, cand->protocol,
           "Type", G_TYPE_UINT, cand->type,
           "Foundation", G_TYPE_STRING, cand->id,
-          "Priority", G_TYPE_UINT,
-            (guint) cand->preference * 65536,
+          "Priority", G_TYPE_UINT, cand->preference,
           "Username", G_TYPE_STRING, cand->username,
           "Password", G_TYPE_STRING, cand->password,
           NULL);

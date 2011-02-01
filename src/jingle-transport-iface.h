@@ -92,7 +92,7 @@ GabbleJingleTransportIface *gabble_jingle_transport_iface_new (
 
 JingleCandidate *jingle_candidate_new (JingleTransportProtocol protocol,
     JingleCandidateType type, const gchar *id, int component,
-    const gchar *address, int port, int generation, gdouble preference,
+    const gchar *address, int port, int generation, int preference,
     const gchar *username, const gchar *password, int network);
 
 void jingle_candidate_free (JingleCandidate *c);

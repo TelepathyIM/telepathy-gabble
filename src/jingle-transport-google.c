@@ -248,7 +248,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       LmMessageNode *node = node_iter_data (i);
       const gchar *name, *address, *user, *pass, *str;
       guint port, net, gen, component;
-      gdouble pref;
+      int pref;
       JingleTransportProtocol proto;
       JingleCandidateType ctype;
       JingleCandidate *c;
@@ -314,7 +314,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str == NULL)
           break;
 
-      pref = g_ascii_strtod (str, NULL);
+      pref = g_ascii_strtod (str, NULL) * 65536;
 
       str = lm_message_node_get_attribute (node, "type");
       if (str == NULL)
@@ -410,7 +410,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
       LmMessageNode *cnode;
 
       sprintf (port_str, "%d", c->port);
-      sprintf (pref_str, "%lf", c->preference);
+      sprintf (pref_str, "%lf", c->preference / 65536.0);
       sprintf (comp_str, "%d", c->component);
 
       switch (c->type) {

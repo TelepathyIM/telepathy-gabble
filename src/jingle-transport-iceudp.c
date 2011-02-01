@@ -299,7 +299,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
           DEBUG ("candidate doesn't contain priority");
           continue;
         }
-      pref = g_ascii_strtod (str, NULL) / 65536.0;
+      pref = g_ascii_strtod (str, NULL);
 
       str = lm_message_node_get_attribute (node, "type");
       if (str == NULL)
@@ -426,7 +426,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
           break;
         }
 
-      sprintf (pref_str, "%d", (int) (65536.0 * c->preference));
+      sprintf (pref_str, "%d", c->preference);
       sprintf (port_str, "%d", c->port);
       sprintf (comp_str, "%d", c->component);
       sprintf (id_str, "%d", priv->id_sequence++);

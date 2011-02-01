@@ -1431,8 +1431,12 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 
   tp_intset_destroy (set);
 
-  /* Inform the MUC if requested */
-  if (inform_muc && priv->state >= MUC_STATE_INITIATED)
+  /* Inform the MUC if requested. Don't inform the muc if we're in the
+   * auth state because not all jabberds will echo the MUC presence
+   * when in this state. One example of these jabber servers is M-Link
+   * Isode which is currently running on jabber.org. */
+  if (inform_muc && priv->state >= MUC_STATE_INITIATED
+      && priv->state != MUC_STATE_AUTH)
     {
       /* If we want to inform the MUC of our leaving, and we have
        * actually joined the MUC, then we should wait for our presence

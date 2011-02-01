@@ -1434,7 +1434,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   /* Inform the MUC if requested. Don't inform the muc if we're in the
    * auth state because not all jabberds will echo the MUC presence
    * when in this state. One example of these jabber servers is M-Link
-   * Isode which is currently running on jabber.org. */
+   * which is currently running on jabber.org. */
   if (inform_muc && priv->state >= MUC_STATE_INITIATED
       && priv->state != MUC_STATE_AUTH)
     {

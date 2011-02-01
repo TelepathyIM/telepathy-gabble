@@ -498,6 +498,10 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
       JingleCandidate *c;
       GHashTable *info;
       guint fstype, type;
+      /* borrowed strings, owned by other people. */
+      const gchar *username;
+      const gchar *password;
+      const gchar *foundation;
 
       va = g_ptr_array_index (candidates, i);
 
@@ -523,13 +527,25 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
           continue;
         }
 
+      username = tp_asv_get_string (info, "Username");
+      if (username == NULL)
+        username = tpy_base_media_call_stream_get_username (stream);
+
+      password = tp_asv_get_string (info, "Password");
+      if (password == NULL)
+        password = tpy_base_media_call_stream_get_password (stream);
+
+      foundation = tp_asv_get_string (info, "Foundation");
+      if (foundation == NULL)
+        foundation = "1";
+
       c = jingle_candidate_new (
         /* transport protocol */
         tp_asv_get_uint32 (info, "Protocol", NULL),
         /* Candidate type */
         type,
         /* id/foundation */
-        tp_asv_get_string (info, "Foundation"),
+        foundation,
         /* component */
         g_value_get_uint (va->values + 0),
         /* ip */
@@ -541,8 +557,8 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
         /* preference */
         tp_asv_get_uint32 (info, "Priority", NULL) / 65536.0,
         /* username, password */
-        tp_asv_get_string (info, "Username"),
-        tp_asv_get_string (info, "Password"),
+        username,
+        password,
         /* network */
         0);
 

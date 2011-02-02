@@ -177,7 +177,9 @@ _do_disconnect (GibberFdTransport *self)
       if (priv->watch_out)
         g_source_remove (priv->watch_out);
 
-      g_source_remove (priv->watch_err);
+      if (priv->watch_err)
+        g_source_remove (priv->watch_err);
+
       g_io_channel_shutdown (priv->channel, FALSE, NULL);
       g_io_channel_unref (priv->channel);
       priv->channel = NULL;
@@ -362,6 +364,27 @@ _channel_io_err (GIOChannel *source, GIOCondition condition, gpointer data)
   return FALSE;
 }
 
+#ifdef G_OS_WIN32
+
+/* workaround for GLib bug #338943 */
+
+static gboolean
+_channel_io_in_dispatcher (GIOChannel *source, GIOCondition condition, gpointer data)
+{
+  if (condition & G_IO_ERR)
+    {
+      return _channel_io_err (source, condition, data);
+    }
+  if (condition == G_IO_IN)
+    {
+      return _channel_io_in (source, condition, data);
+    }
+
+  g_assert_not_reached ();
+}
+
+#endif
+
 /* Default read and write implementations */
 static GibberFdIOResult
 gibber_fd_transport_write (GibberFdTransport *fd_transport,
@@ -448,6 +471,19 @@ gibber_fd_transport_set_fd (GibberFdTransport *self, int fd,
   g_io_channel_set_encoding (priv->channel, NULL, NULL);
   g_io_channel_set_buffered (priv->channel, FALSE);
 
+#ifdef G_OS_WIN32
+  /* workaround for GLib bug #338943 */
+  if (!priv->receiving_blocked)
+    {
+      priv->watch_in =
+        g_io_add_watch (priv->channel, G_IO_IN | G_IO_ERR, _channel_io_in_dispatcher, self);
+    }
+  else
+    {
+      priv->watch_err =
+        g_io_add_watch (priv->channel, G_IO_ERR, _channel_io_err, self);
+    }
+#else
   if (!priv->receiving_blocked)
     {
       priv->watch_in =
@@ -456,6 +492,7 @@ gibber_fd_transport_set_fd (GibberFdTransport *self, int fd,
 
   priv->watch_err =
     g_io_add_watch (priv->channel, G_IO_ERR, _channel_io_err, self);
+#endif
 
   gibber_transport_set_state (GIBBER_TRANSPORT(self),
       GIBBER_TRANSPORT_CONNECTED);
@@ -538,8 +575,20 @@ gibber_fd_transport_block_receiving (GibberTransport *transport,
       DEBUG ("unblock receiving from the transport");
       if (priv->channel != NULL)
         {
+#ifdef G_OS_WIN32
+          /* workaround for GLib bug #338943 */
+          if (priv->watch_err)
+            {
+              g_source_remove (priv->watch_err);
+              priv->watch_err = 0;
+            }
+
+          priv->watch_in = g_io_add_watch (priv->channel, G_IO_IN | G_IO_ERR,
+              _channel_io_in_dispatcher, self);
+#else
           priv->watch_in = g_io_add_watch (priv->channel, G_IO_IN,
               _channel_io_in, self);
+#endif
         }
       /* else the transport isn't connected yet */
     }

@@ -270,6 +270,13 @@ def run_test(jp, q, bus, conn, stream, incoming):
     cstream.SetCredentials(jt2.ufrag, jt2.pwd,
         dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
+    q.expect('dbus-signal', signal='LocalCredentialsChanged',
+             args=[jt2.ufrag, jt2.pwd])
+
+    credentials = cstream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
+        dbus_interface=dbus.PROPERTIES_IFACE)["LocalCredentials"]
+    assertEquals ((jt2.ufrag, jt2.pwd), credentials)
+
     # Add candidates
     candidates = jt2.get_call_remote_transports_dbus ()
     cstream.AddCandidates (candidates,
@@ -305,8 +312,9 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     endpoint = bus.get_object (conn.bus_name, endpoints[0])
 
-    transport = endpoint.Get(cs.CALL_STREAM_ENDPOINT,
-                "Transport", dbus_interface=dbus.PROPERTIES_IFACE)
+    endpoint_props = endpoint.GetAll(cs.CALL_STREAM_ENDPOINT,
+                 dbus_interface=dbus.PROPERTIES_IFACE)
+    transport = endpoint_props["Transport"]
     assertEquals (cs.CALL_STREAM_TRANSPORT_GOOGLE, transport)
 
     candidates = endpoint.Get (cs.CALL_STREAM_ENDPOINT,

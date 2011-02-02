@@ -416,19 +416,6 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   TpyBaseMediaCallStreamClass *bmcs_class =
       TPY_BASE_MEDIA_CALL_STREAM_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
-  static TpDBusPropertiesMixinPropImpl stream_media_props[] = {
-    { "Transport", "transport", NULL },
-    { "LocalCandidates", "local-candidates", NULL },
-    { "STUNServers", "stun-servers", NULL },
-    { "RelayInfo", "relay-info", NULL },
-    { "HasServerInfo", "has-server-info", NULL },
-    { "Endpoints", "endpoints", NULL },
-    { NULL }
-  };
-  static const gchar *interfaces[] = {
-      TPY_IFACE_CALL_STREAM_INTERFACE_MEDIA,
-      NULL
-  };
 
   g_type_class_add_private (gabble_call_stream_class,
     sizeof (GabbleCallStreamPrivate));
@@ -447,13 +434,6 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
       param_spec);
 
-  tp_dbus_properties_mixin_implement_interface (object_class,
-      TPY_IFACE_QUARK_CALL_STREAM_INTERFACE_MEDIA,
-      tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
-      stream_media_props);
-
-  bcs_class->extra_interfaces = interfaces;
   bcs_class->set_sending = gabble_call_stream_set_sending;
   bmcs_class->add_local_candidates = gabble_call_stream_add_candidates;
 }
@@ -498,6 +478,10 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
       JingleCandidate *c;
       GHashTable *info;
       guint fstype, type;
+      /* borrowed strings, owned by other people. */
+      const gchar *username;
+      const gchar *password;
+      const gchar *foundation;
 
       va = g_ptr_array_index (candidates, i);
 
@@ -523,13 +507,25 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
           continue;
         }
 
+      username = tp_asv_get_string (info, "Username");
+      if (username == NULL)
+        username = tpy_base_media_call_stream_get_username (stream);
+
+      password = tp_asv_get_string (info, "Password");
+      if (password == NULL)
+        password = tpy_base_media_call_stream_get_password (stream);
+
+      foundation = tp_asv_get_string (info, "Foundation");
+      if (foundation == NULL)
+        foundation = "1";
+
       c = jingle_candidate_new (
         /* transport protocol */
         tp_asv_get_uint32 (info, "Protocol", NULL),
         /* Candidate type */
         type,
         /* id/foundation */
-        tp_asv_get_string (info, "Foundation"),
+        foundation,
         /* component */
         g_value_get_uint (va->values + 0),
         /* ip */
@@ -539,10 +535,10 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
         /* generation */
         0,
         /* preference */
-        tp_asv_get_uint32 (info, "Priority", NULL) / 65536.0,
+        tp_asv_get_uint32 (info, "Priority", NULL),
         /* username, password */
-        tp_asv_get_string (info, "Username"),
-        tp_asv_get_string (info, "Password"),
+        username,
+        password,
         /* network */
         0);
 

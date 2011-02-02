@@ -955,7 +955,7 @@ gabble_media_stream_new_native_candidate (TpSvcMediaStreamHandler *iface,
           /* generation */
           0,
           /* preference */
-          g_value_get_double (g_value_array_get_nth (transport, 6)),
+          (int) (g_value_get_double (g_value_array_get_nth (transport, 6)) * 65536),
           /* username */
           g_value_get_string (g_value_array_get_nth (transport, 8)),
           /* password */
@@ -1367,7 +1367,7 @@ new_remote_candidates_cb (GabbleJingleContent *content,
           3, c->protocol == JINGLE_TRANSPORT_PROTOCOL_UDP ? 0 : 1,
           4, "RTP",
           5, "AVP",
-          6, c->preference,
+          6, (gdouble) (c->preference / 65536.0),
           7, c->type, /* FIXME: we're relying on 1:1 tp/jingle candidate type enums */
           8, c->username,
           9, c->password,

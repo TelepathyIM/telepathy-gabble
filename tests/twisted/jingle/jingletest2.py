@@ -83,6 +83,25 @@ class JingleProtocol:
         "Creates a <parameter> element"
         return ('parameter', None, {'name': name, 'value': value}, [])
 
+    def TransportGoogleP2PCall (self, username, password, call_remote_candidates=[]):
+        candidates = []
+        for (component, host, port, props) in call_remote_candidates:
+
+            candidates.append(("candidate", None, {
+                "name": "rtp",
+                "address": host,
+                "port": str(port),
+                "protocol": "udp",
+                "preference": str(props["Priority"] / 65536.0),
+                "type":  ["local", "stun", "relay"][props["Type"]],
+                "network": "0",
+                "generation": "0",# Increment this yourself if you care.
+                "component": str(component), # 1 is rtp, 2 is rtcp
+                "username": props.get("Username", username),
+                "password": props.get("Password", password),
+                }, [])) #NOTE: subtype and profile are unused
+        return ('transport', ns.GOOGLE_P2P, {}, candidates)
+
     def TransportGoogleP2P(self, remote_transports=[]):
         """
         Creates a <transport> element for Google P2P transport.
@@ -248,6 +267,9 @@ class GtalkProtocol03(JingleProtocol):
         if description != None:
             return description
         else:
+            assert len(transport[3]) == 1, \
+                    "gtalk 0.3 only lets you send one candidate at a time." \
+                    "You sent %r" % [transport]
             return transport[3][0]
 
     def Description(self, type, children):
@@ -487,7 +509,66 @@ class JingleTest2:
     # a suitable value here...
     video_codecs = [ ('WTF', 42, 80000, {}) ]
 
+
+    ufrag = "SessionUfrag"
+    pwd = "SessionPwd"
     # Default candidates for the remote end
+    remote_call_candidates = [# Local candidates
+                         (1, "192.168.0.1", 666,
+                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                             #"Foundation":,
+                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "Priority": 10000,
+                             #"BaseIP":,
+                             #"RawUDPFallback": False
+                             }),
+                         (2, "192.168.0.1", 667,
+                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                             #"Foundation":,
+                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "Priority": 10000,
+                             #"BaseIP":,
+                             #"RawUDPFallback": False
+                             }),
+                         # STUN candidates have their own ufrag
+                         (1, "168.192.0.1", 10666,
+                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                             #"Foundation":,
+                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "Priority": 100,
+                             #"BaseIP":,
+                             "Username": "STUNRTPUfrag",
+                             "Password": "STUNRTPPwd",
+                             #"RawUDPFallback": False
+                             }),
+                         (2, "168.192.0.1", 10667,
+                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                             #"Foundation":,
+                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "Priority": 100,
+                             #"BaseIP":,
+                             "Username": "STUNRTCPUfrag",
+                             "Password": "STUNRTCPPwd",
+                             #"RawUDPFallback": False
+                             }),
+                         # Candidates found using UPnP or somesuch?
+                         (1, "131.111.12.50", 10666,
+                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                             #"Foundation":,
+                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "Priority": 1000,
+                             #"BaseIP":,
+                             #"RawUDPFallback": False
+                             }),
+                         (2, "131.111.12.50", 10667,
+                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                             #"Foundation":,
+                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "Priority": 1000,
+                             #"BaseIP":,
+                             #"RawUDPFallback": False
+                             }),
+                             ]
     remote_transports = [
           ( "192.168.0.1", # host
             666, # port
@@ -673,6 +754,20 @@ class JingleTest2:
             jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
         self.stream.send(jp.xml(iq))
 
+    def send_remote_candidates_call_xmpp(self, name, creator, candidates=None):
+        jp = self.jp
+        if candidates is None:
+            candidates = self.remote_call_candidates
+
+        node = jp.SetIq(self.peer, self.jid,
+            [ jp.Jingle(self.sid, self.peer, 'transport-info',
+                [ jp.Content(name, creator,
+                    transport=jp.TransportGoogleP2PCall (self.ufrag, self.pwd,
+                                                 candidates))
+                ] )
+            ])
+        self.stream.send(jp.xml(node))
+
     def remote_candidates(self, name, creator):
         jp = self.jp
 
@@ -723,17 +818,7 @@ class JingleTest2:
             signature='(usuussduss)')
 
     def get_call_remote_transports_dbus(self):
-        return dbus.Array([
-            (1 , host, port,
-                { "Type": transtype,
-                  "Foundation": "",
-                  "Protocol": proto,
-                  "Priority": int((1+i) * 65536),
-                  "Username": user,
-                  "Password": pwd }
-             ) for i, (host, port, proto, subtype, profile,
-                    pref, transtype, user, pwd)
-                in enumerate(self.remote_transports) ],
+        return dbus.Array(self.remote_call_candidates,
             signature='(usqa{sv})')
 
 

@@ -225,7 +225,7 @@ gabble_jingle_transport_iface_get_type (void)
 JingleCandidate *
 jingle_candidate_new (JingleTransportProtocol protocol,
     JingleCandidateType type, const gchar *id, int component,
-    const gchar *address, int port, int generation, gdouble preference,
+    const gchar *address, int port, int generation, int preference,
     const gchar *username, const gchar *password, int network)
 {
   JingleCandidate *c = g_slice_new0 (JingleCandidate);

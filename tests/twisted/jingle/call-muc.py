@@ -86,6 +86,9 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     e = q.expect ('dbus-signal', signal = 'StreamsAdded')
     cstream = bus.get_object (conn.bus_name, e.args[0][0])
 
+    cstream.SetCredentials(jt.ufrag, jt.pwd,
+        dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+
     candidates = jt.get_call_remote_transports_dbus ()
     cstream.AddCandidates (candidates,
         dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)

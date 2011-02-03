@@ -450,6 +450,12 @@ gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
   /* We don't need to check this contact's capabilities, we assume every
    * contact support text channels. */
 
+  /* NOTE: if any more contact caps are added here which are not
+   * assumed then be sure to change the implementation of
+   * gabble_connection_get_handle_contact_capabilities, as that uses
+   * this function to fill the contact caps hash for all contacts
+   * (even offline). */
+
   GValue monster = {0, };
   GHashTable *fixed_properties;
   GValue *channel_type_value;

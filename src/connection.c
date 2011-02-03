@@ -257,6 +257,11 @@ struct _GabbleConnectionPrivate
   /* server TLS manager */
   GabbleServerTLSManager *server_tls_manager;
 
+  /* IM factory; we need this to add text caps for everyone (even
+   * offline contacts) which is done through the IM factory's
+   * GabbleCapsChannelManagerInterface->get_contact_caps function. */
+  GabbleImFactory *im_factory;
+
   /* stream id returned by the connector */
   gchar *stream_id;
 
@@ -294,10 +299,10 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
       (gabble_conn_aliasing_nickname_updated), self);
   g_ptr_array_add (channel_managers, self->roster);
 
-  g_ptr_array_add (channel_managers,
-      g_object_new (GABBLE_TYPE_IM_FACTORY,
-        "connection", self,
-        NULL));
+  self->priv->im_factory = g_object_new (GABBLE_TYPE_IM_FACTORY,
+      "connection", self,
+      NULL);
+  g_ptr_array_add (channel_managers, self->priv->im_factory);
 
   g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_ROOMLIST_MANAGER,
@@ -2958,8 +2963,14 @@ gabble_connection_get_handle_contact_capabilities (
 
   if (p == NULL)
     {
-      DEBUG ("don't know %u's presence; no caps for them.", handle);
-      return NULL;
+      DEBUG ("don't know %u's presence; assuming text chat caps.", handle);
+
+      arr = g_ptr_array_new ();
+      gabble_caps_channel_manager_get_contact_capabilities (
+          GABBLE_CAPS_CHANNEL_MANAGER (self->priv->im_factory),
+          handle, NULL, arr);
+
+      return arr;
     }
 
   caps = gabble_presence_peek_caps (p);

@@ -13,6 +13,7 @@ TWISTED_TESTS = \
 	caps/hashed-caps.py \
 	caps/initial-caps.py \
 	caps/jingle-caps.py \
+	caps/offline.py \
 	caps/receive-jingle.py \
 	caps/trust-thyself.py \
 	caps/tube-caps.py \

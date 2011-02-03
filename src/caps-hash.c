@@ -41,23 +41,6 @@
 #include "presence.h"
 #include "util.h"
 
-typedef struct _DataFormField DataFormField;
-
-struct _DataFormField {
-  gchar *field_name;
-  /* array of strings */
-  GPtrArray *values;
-};
-
-typedef struct _DataForm DataForm;
-
-struct _DataForm {
-  gchar *form_type;
-  /* array of DataFormField */
-  GPtrArray *fields;
-};
-
-
 static gint
 char_cmp (gconstpointer a, gconstpointer b)
 {
@@ -83,68 +66,21 @@ identity_cmp (gconstpointer a, gconstpointer b)
   return strcmp (left->name, right->name);
 }
 
-static gint
-fields_cmp (gconstpointer a, gconstpointer b)
-{
-  DataFormField *left = *(DataFormField **) a;
-  DataFormField *right = *(DataFormField **) b;
-
-  return strcmp (left->field_name, right->field_name);
-}
-
-static gint
-dataforms_cmp (gconstpointer a, gconstpointer b)
-{
-  DataForm *left = *(DataForm **) a;
-  DataForm *right = *(DataForm **) b;
-
-  return strcmp (left->form_type, right->form_type);
-}
-
-static void
-_free_field (gpointer data, gpointer user_data)
-{
-  DataFormField *field = data;
-
-  g_free (field->field_name);
-  g_ptr_array_foreach (field->values, (GFunc) g_free, NULL);
-  g_ptr_array_free (field->values, TRUE);
-
-  g_slice_free (DataFormField, field);
-}
-
-static void
-_free_form (gpointer data, gpointer user_data)
-{
-  DataForm *form = data;
-
-  g_free (form->form_type);
-
-  g_ptr_array_foreach (form->fields, _free_field, NULL);
-  g_ptr_array_free (form->fields, TRUE);
-
-  g_slice_free (DataForm, form);
-}
-
 static void
 gabble_presence_free_xep0115_hash (
     GPtrArray *features,
-    GPtrArray *identities,
-    GPtrArray *dataforms)
+    GPtrArray *identities)
 {
   g_ptr_array_foreach (features, (GFunc) g_free, NULL);
   wocky_disco_identity_array_free (identities);
-  g_ptr_array_foreach (dataforms, _free_form, NULL);
 
   g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (dataforms, TRUE);
 }
 
 static gchar *
 caps_hash_compute (
     GPtrArray *features,
-    GPtrArray *identities,
-    GPtrArray *dataforms)
+    GPtrArray *identities)
 {
   GString *s;
   gchar sha1[SHA1_HASH_SIZE];
@@ -153,7 +89,6 @@ caps_hash_compute (
 
   g_ptr_array_sort (identities, identity_cmp);
   g_ptr_array_sort (features, char_cmp);
-  g_ptr_array_sort (dataforms, dataforms_cmp);
 
   s = g_string_new ("");
 
@@ -173,36 +108,6 @@ caps_hash_compute (
     {
       g_string_append (s, g_ptr_array_index (features, i));
       g_string_append_c (s, '<');
-    }
-
-  for (i = 0 ; i < dataforms->len ; i++)
-    {
-      guint j;
-      DataForm *form = g_ptr_array_index (dataforms, i);
-
-      g_assert (form->form_type != NULL);
-
-      g_string_append (s, form->form_type);
-      g_string_append_c (s, '<');
-
-      g_ptr_array_sort (form->fields, fields_cmp);
-
-      for (j = 0 ; j < form->fields->len ; j++)
-        {
-          guint k;
-          DataFormField *field = g_ptr_array_index (form->fields, j);
-
-          g_string_append (s, field->field_name);
-          g_string_append_c (s, '<');
-
-          g_ptr_array_sort (field->values, char_cmp);
-
-          for (k = 0 ; k < field->values->len ; k++)
-            {
-              g_string_append (s, g_ptr_array_index (field->values, k));
-              g_string_append_c (s, '<');
-            }
-        }
     }
 
   sha1_bin (s->str, s->len, (guchar *) sha1);
@@ -232,7 +137,6 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   const GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = wocky_disco_identity_array_new ();
-  GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
@@ -240,15 +144,13 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
       wocky_disco_identity_new ("client", CLIENT_TYPE,
           NULL, PACKAGE_STRING));
 
-  /* Gabble does not use dataforms, let 'dataforms' be empty */
-
   /* FIXME: allow iteration over the strings without copying */
   cap_set = gabble_presence_peek_caps (presence);
   gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
 
-  str = caps_hash_compute (features, identities, dataforms);
+  str = caps_hash_compute (features, identities);
 
-  gabble_presence_free_xep0115_hash (features, identities, dataforms);
+  gabble_presence_free_xep0115_hash (features, identities);
 
   return str;
 }
@@ -266,15 +168,14 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
   GPtrArray *identities_copy = ((identities == NULL) ?
       wocky_disco_identity_array_new () :
       wocky_disco_identity_array_copy (identities));
-  GPtrArray *dataforms = g_ptr_array_new ();
   gchar *str;
 
   /* FIXME: allow iteration over the strings without copying */
   gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
 
-  str = caps_hash_compute (features, identities_copy, dataforms);
+  str = caps_hash_compute (features, identities_copy);
 
-  gabble_presence_free_xep0115_hash (features, identities_copy, dataforms);
+  gabble_presence_free_xep0115_hash (features, identities_copy);
 
   return str;
 }

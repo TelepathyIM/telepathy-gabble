@@ -323,7 +323,7 @@ gabble_file_transfer_channel_get_property (GObject *object,
           if (self->priv->initiator == base_conn->self_handle)
             {
               tp_dbus_properties_mixin_fill_properties_hash (object, props,
-                  GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "URI", NULL);
+                  TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "URI", NULL);
             }
 
           g_value_take_boxed (value, props);
@@ -571,8 +571,8 @@ file_transfer_channel_properties_setter (GObject *object,
   GabbleFileTransferChannel *self = (GabbleFileTransferChannel *) object;
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->connection);
 
-  g_return_val_if_fail (interface ==
-      GABBLE_IFACE_QUARK_CHANNEL_TYPE_FILETRANSFER_FUTURE, FALSE);
+  g_return_val_if_fail (interface == TP_IFACE_QUARK_CHANNEL_TYPE_FILE_TRANSFER,
+      FALSE);
 
   /* There is only one property with write access. So TpDBusPropertiesMixin
    * already checked this. */
@@ -604,8 +604,7 @@ file_transfer_channel_properties_setter (GObject *object,
 
   self->priv->uri = g_value_dup_string (value);
 
-  gabble_svc_channel_type_filetransfer_future_emit_uri_defined (self,
-      self->priv->uri);
+  tp_svc_channel_type_file_transfer_emit_uri_defined (self, self->priv->uri);
 
   return TRUE;
 }
@@ -642,12 +641,12 @@ gabble_file_transfer_channel_class_init (
     { "TransferredBytes", "transferred-bytes", NULL },
     { "InitialOffset", "initial-offset", NULL },
     { "Date", "date", NULL },
+    { "URI", "uri", NULL },
     { NULL }
   };
 
   static TpDBusPropertiesMixinPropImpl file_future_props[] = {
     { "FileCollection", "file-collection", NULL },
-    { "URI", "uri", NULL },
     { NULL }
   };
 
@@ -659,12 +658,12 @@ gabble_file_transfer_channel_class_init (
     },
     { TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER,
       tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
+      file_transfer_channel_properties_setter,
       file_props
     },
     { GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE,
       tp_dbus_properties_mixin_getter_gobject_properties,
-      file_transfer_channel_properties_setter,
+      NULL,
       file_future_props
     },
     { NULL }

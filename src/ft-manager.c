@@ -548,7 +548,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".InitialOffset", NULL);
 
   file_uri = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".URI");
+      TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_URI);
 
   DEBUG ("Requested outgoing channel with contact: %s",
       tp_handle_inspect (contact_repo, handle));
@@ -586,16 +586,16 @@ static const gchar * const file_transfer_channel_fixed_properties[] = {
 static const gchar * const file_transfer_channel_allowed_properties[] =
 {
    /* ContentHashType has to be first so we can easily skip it when needed */
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHashType",
-   TP_IFACE_CHANNEL ".TargetHandle",
-   TP_IFACE_CHANNEL ".TargetID",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentType",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Filename",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Size",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHash",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Description",
-   TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Date",
-   GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE ".URI",
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_HASH_TYPE,
+   TP_PROP_CHANNEL_TARGET_HANDLE,
+   TP_PROP_CHANNEL_TARGET_ID,
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_TYPE,
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_FILENAME,
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_SIZE,
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_HASH,
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_DESCRIPTION,
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_DATE,
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_URI,
    NULL
 };
 

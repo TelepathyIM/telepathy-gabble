@@ -227,24 +227,24 @@ class ReceiveFileTest(FileTransferTest):
         ft_props = dbus.Interface(self.ft_channel, cs.PROPERTIES_IFACE)
 
         # URI is not set yet
-        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI')
+        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER, 'URI')
         assertEquals('', uri)
 
         # Setting URI
         call_async(self.q, ft_props, 'Set',
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI', self.file.uri)
+            cs.CHANNEL_TYPE_FILE_TRANSFER, 'URI', self.file.uri)
 
         self.q.expect('dbus-signal', signal='URIDefined', args=[self.file.uri])
 
         self.q.expect('dbus-return', method='Set')
 
         # Check it has the right value now
-        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI')
+        uri = ft_props.Get(cs.CHANNEL_TYPE_FILE_TRANSFER, 'URI')
         assertEquals(self.file.uri, uri)
 
         # We can't change it once it has been set
         call_async(self.q, ft_props, 'Set',
-            cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE', 'URI', 'badger://snake')
+            cs.CHANNEL_TYPE_FILE_TRANSFER, 'URI', 'badger://snake')
         self.q.expect('dbus-error', method='Set', name=cs.INVALID_ARGUMENT)
 
     def accept_file(self):

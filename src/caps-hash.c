@@ -43,10 +43,10 @@
 #include "util.h"
 
 static void
-ptr_array_strdup (gpointer str,
+ptr_array_add_str (gpointer str,
     gpointer array)
 {
-  g_ptr_array_add (array, g_strdup (str));
+  g_ptr_array_add (array, str);
 }
 
 /**
@@ -59,8 +59,7 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
   const GabbleCapabilitySet *cap_set;
-  GPtrArray *features = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
-  GPtrArray *dataforms = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = wocky_disco_identity_array_new ();
   gchar *str;
 
@@ -69,14 +68,12 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
       wocky_disco_identity_new ("client", CLIENT_TYPE,
           NULL, PACKAGE_STRING));
 
-  /* FIXME: allow iteration over the strings without copying */
   cap_set = gabble_presence_peek_caps (presence);
-  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+  gabble_capability_set_foreach (cap_set, ptr_array_add_str, features);
 
-  str = wocky_caps_hash_compute_from_lists (features, identities, dataforms);
+  str = wocky_caps_hash_compute_from_lists (features, identities, NULL);
 
   g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (dataforms, TRUE);
   wocky_disco_identity_array_free (identities);
 
   return str;
@@ -91,20 +88,17 @@ gchar *
 gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
     const GPtrArray *identities)
 {
-  GPtrArray *features = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
-  GPtrArray *dataforms = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
+  GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities_copy = ((identities == NULL) ?
       wocky_disco_identity_array_new () :
       wocky_disco_identity_array_copy (identities));
   gchar *str;
 
-  /* FIXME: allow iteration over the strings without copying */
-  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+  gabble_capability_set_foreach (cap_set, ptr_array_add_str, features);
 
-  str = wocky_caps_hash_compute_from_lists (features, identities_copy, dataforms);
+  str = wocky_caps_hash_compute_from_lists (features, identities_copy, NULL);
 
   g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (dataforms, TRUE);
   wocky_disco_identity_array_free (identities_copy);
 
   return str;

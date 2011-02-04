@@ -30,6 +30,7 @@
 #include <string.h>
 
 #include <wocky/wocky-disco-identity.h>
+#include <wocky/wocky-caps-hash.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -40,83 +41,6 @@
 #include "presence-cache.h"
 #include "presence.h"
 #include "util.h"
-
-static gint
-char_cmp (gconstpointer a, gconstpointer b)
-{
-  gchar *left = *(gchar **) a;
-  gchar *right = *(gchar **) b;
-
-  return strcmp (left, right);
-}
-
-static gint
-identity_cmp (gconstpointer a, gconstpointer b)
-{
-  WockyDiscoIdentity *left = *(WockyDiscoIdentity **) a;
-  WockyDiscoIdentity *right = *(WockyDiscoIdentity **) b;
-  gint ret;
-
-  if ((ret = strcmp (left->category, right->category)) != 0)
-    return ret;
-  if ((ret = strcmp (left->type, right->type)) != 0)
-    return ret;
-  if ((ret = strcmp (left->lang, right->lang)) != 0)
-    return ret;
-  return strcmp (left->name, right->name);
-}
-
-static void
-gabble_presence_free_xep0115_hash (
-    GPtrArray *features,
-    GPtrArray *identities)
-{
-  g_ptr_array_foreach (features, (GFunc) g_free, NULL);
-  wocky_disco_identity_array_free (identities);
-
-  g_ptr_array_free (features, TRUE);
-}
-
-static gchar *
-caps_hash_compute (
-    GPtrArray *features,
-    GPtrArray *identities)
-{
-  GString *s;
-  gchar sha1[SHA1_HASH_SIZE];
-  guint i;
-  gchar *encoded;
-
-  g_ptr_array_sort (identities, identity_cmp);
-  g_ptr_array_sort (features, char_cmp);
-
-  s = g_string_new ("");
-
-  for (i = 0 ; i < identities->len ; i++)
-    {
-      const WockyDiscoIdentity *identity = g_ptr_array_index (identities, i);
-      gchar *str = g_strdup_printf ("%s/%s/%s/%s",
-          identity->category, identity->type,
-          identity->lang ? identity->lang : "",
-          identity->name ? identity->name : "");
-      g_string_append (s, str);
-      g_string_append_c (s, '<');
-      g_free (str);
-    }
-
-  for (i = 0 ; i < features->len ; i++)
-    {
-      g_string_append (s, g_ptr_array_index (features, i));
-      g_string_append_c (s, '<');
-    }
-
-  sha1_bin (s->str, s->len, (guchar *) sha1);
-  g_string_free (s, TRUE);
-
-  encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
-
-  return encoded;
-}
 
 static void
 ptr_array_strdup (gpointer str,
@@ -135,7 +59,8 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
 {
   GabblePresence *presence = self->self_presence;
   const GabbleCapabilitySet *cap_set;
-  GPtrArray *features = g_ptr_array_new ();
+  GPtrArray *features = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
+  GPtrArray *dataforms = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   GPtrArray *identities = wocky_disco_identity_array_new ();
   gchar *str;
 
@@ -148,9 +73,11 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   cap_set = gabble_presence_peek_caps (presence);
   gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
 
-  str = caps_hash_compute (features, identities);
+  str = wocky_caps_hash_compute_from_lists (features, identities, dataforms);
 
-  gabble_presence_free_xep0115_hash (features, identities);
+  g_ptr_array_free (features, TRUE);
+  g_ptr_array_free (dataforms, TRUE);
+  wocky_disco_identity_array_free (identities);
 
   return str;
 }
@@ -164,7 +91,8 @@ gchar *
 gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
     const GPtrArray *identities)
 {
-  GPtrArray *features = g_ptr_array_new ();
+  GPtrArray *features = g_ptr_array_new_with_free_func ((GDestroyNotify) g_free);
+  GPtrArray *dataforms = g_ptr_array_new_with_free_func ((GDestroyNotify) g_object_unref);
   GPtrArray *identities_copy = ((identities == NULL) ?
       wocky_disco_identity_array_new () :
       wocky_disco_identity_array_copy (identities));
@@ -173,9 +101,11 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
   /* FIXME: allow iteration over the strings without copying */
   gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
 
-  str = caps_hash_compute (features, identities_copy);
+  str = wocky_caps_hash_compute_from_lists (features, identities_copy, dataforms);
 
-  gabble_presence_free_xep0115_hash (features, identities_copy);
+  g_ptr_array_free (features, TRUE);
+  g_ptr_array_free (dataforms, TRUE);
+  wocky_disco_identity_array_free (identities_copy);
 
   return str;
 }

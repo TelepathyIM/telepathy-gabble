@@ -2125,7 +2125,11 @@ gabble_presence_cache_add_own_caps (
     }
 
   wocky_disco_identity_array_free (info->identities);
-  info->identities = wocky_disco_identity_array_copy (identities);
+
+  info->identities = NULL;
+
+  if (identities != NULL)
+    info->identities = wocky_disco_identity_array_copy (identities);
 
   info->complete = TRUE;
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;

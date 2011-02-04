@@ -390,7 +390,7 @@ send_close_stanza (GabbleBytestreamIBB *self)
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "close", "",
-        '@', "xmlns", NS_IBB,
+        ':', NS_IBB,
         '@', "sid", priv->stream_id,
       ')', NULL);
 
@@ -503,7 +503,7 @@ send_data (GabbleBytestreamIBB *self,
       iq = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
           '@', "type", "set",
           '(', "data", encoded,
-            '@', "xmlns", NS_IBB,
+            ':', NS_IBB,
             '@', "sid", priv->stream_id,
             '@', "seq", seq,
           ')', NULL);
@@ -877,7 +877,7 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "open", "",
-        '@', "xmlns", NS_IBB,
+        ':', NS_IBB,
         '@', "sid", priv->stream_id,
         '@', "block-size", block_size,
       ')', NULL);

@@ -181,7 +181,7 @@ test_another_error (void)
         '@', "code", "404",
         '@', "type", "cancel",
         '(', "item-not-found", "",
-          '@', "xmlns", "urn:ietf:params:xml:ns:xmpp-stanzas",
+          ':', "urn:ietf:params:xml:ns:xmpp-stanzas",
         ')',
       ')',
       NULL);
@@ -231,7 +231,7 @@ test_yet_another_error (void)
         '@', "code", "404",
         '@', "type", "wait",
         '(', "recipient-unavailable", "",
-          '@', "xmlns", "urn:ietf:params:xml:ns:xmpp-stanzas",
+          ':', "urn:ietf:params:xml:ns:xmpp-stanzas",
         ')',
       ')',
       NULL);
@@ -270,11 +270,11 @@ test_google_offline (void)
       '@', "from", "foo@bar.com",
       '(', "body", "hello", ')',
       '(', "x", "",
-         '@', "xmlns", "jabber:x:delay",
+         ':', "jabber:x:delay",
          '@', "stamp", "20070927T13:24:14",
       ')',
       '(', "time", "",
-         '@', "xmlns", "google:timestamp",
+         ':', "google:timestamp",
          '@', "ms", "1190899454656",
       ')',
       NULL);

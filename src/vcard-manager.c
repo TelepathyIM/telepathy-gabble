@@ -1502,7 +1502,7 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
       msg = lm_message_build_with_sub_type (jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
           '(', "vCard", "",
-              '@', "xmlns", NS_VCARD_TEMP,
+              ':', NS_VCARD_TEMP,
           ')',
           NULL);
 

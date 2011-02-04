@@ -825,7 +825,7 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
   iq = lm_message_build (priv->proxy_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "query", "",
-        '@', "xmlns", NS_BYTESTREAMS,
+        ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
         '(', "activate", priv->peer_jid, ')',
       ')', NULL);
@@ -1926,20 +1926,20 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
       '@', "type", "set",
       '(', "query", "",
-        '@', "xmlns", NS_BYTESTREAMS,
+        ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
         '@', "mode", "tcp",
       ')', NULL);
 
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {
-      LmMessageNode *node;
+      WockyNode *node;
       NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
 
-      node = lm_message_node_add_child (node_iter_data (i),
+      node = wocky_node_add_child_with_content (node_iter_data (i),
           "streamhost", "");
 
-      lm_message_node_set_attributes (node,
+      wocky_node_set_attributes (node,
           "jid", priv->self_full_jid,
           "host", ip->data,
           "port", port,

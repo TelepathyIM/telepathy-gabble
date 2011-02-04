@@ -82,9 +82,9 @@ GType gabble_jingle_content_get_type (void);
 struct _GabbleJingleContentClass {
     GObjectClass parent_class;
 
-    void  (*parse_description) (GabbleJingleContent *, LmMessageNode *,
+    void  (*parse_description) (GabbleJingleContent *, WockyNode *,
         GError **);
-    void  (*produce_description) (GabbleJingleContent *, LmMessageNode *);
+    void  (*produce_description) (GabbleJingleContent *, WockyNode *);
     void  (*transport_created) (GabbleJingleContent *,
         GabbleJingleTransportIface *);
     JingleContentSenders (*get_default_senders) (GabbleJingleContent *);
@@ -101,23 +101,23 @@ struct _GabbleJingleContent {
 };
 
 void gabble_jingle_content_parse_add (GabbleJingleContent *c,
-    LmMessageNode *content_node, gboolean google_mode, GError **error);
+    WockyNode *content_node, gboolean google_mode, GError **error);
 void gabble_jingle_content_update_senders (GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error);
+    WockyNode *content_node, GError **error);
 void gabble_jingle_content_produce_node (GabbleJingleContent *c,
-    LmMessageNode *parent,
+    WockyNode *parent,
     gboolean include_description,
     gboolean include_transport,
-    LmMessageNode **trans_node_out);
+    WockyNode **trans_node_out);
 void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
-  LmMessageNode *content_node, gboolean google_mode, GError **error);
+  WockyNode *content_node, gboolean google_mode, GError **error);
 
 void gabble_jingle_content_parse_info (GabbleJingleContent *c,
-    LmMessageNode *content_node, GError **error);
+    WockyNode *content_node, GError **error);
 void gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
-  LmMessageNode *trans_node, GError **error);
+  WockyNode *trans_node, GError **error);
 void gabble_jingle_content_parse_description_info (GabbleJingleContent *self,
-  LmMessageNode *trans_node, GError **error);
+  WockyNode *trans_node, GError **error);
 guint gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
     const gchar *name);
 void gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li);
@@ -136,7 +136,7 @@ gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
 void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
     gboolean all);
 void gabble_jingle_content_inject_candidates (GabbleJingleContent *self,
-    LmMessageNode *transport_node);
+    WockyNode *transport_node);
 gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
 gboolean gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c);
 

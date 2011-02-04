@@ -42,11 +42,11 @@ struct _GabbleJingleTransportIfaceClass {
   GTypeInterface parent;
 
   void (*parse_candidates) (GabbleJingleTransportIface *,
-    LmMessageNode *, GError **);
+    WockyNode *, GError **);
 
   void (*new_local_candidates) (GabbleJingleTransportIface *, GList *);
   void (*inject_candidates) (GabbleJingleTransportIface *,
-      LmMessageNode *transport_node);
+      WockyNode *transport_node);
   void (*send_candidates) (GabbleJingleTransportIface *, gboolean all);
   gboolean (*can_accept) (GabbleJingleTransportIface *);
 
@@ -69,14 +69,14 @@ GType gabble_jingle_transport_iface_get_type (void);
                               GabbleJingleTransportIfaceClass))
 
 void gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *,
-    LmMessageNode *, GError **);
+    WockyNode *, GError **);
 
 void gabble_jingle_transport_iface_new_local_candidates (
     GabbleJingleTransportIface *self,
     GList *candidates);
 void gabble_jingle_transport_iface_inject_candidates (
     GabbleJingleTransportIface *self,
-    LmMessageNode *transport_node);
+    WockyNode *transport_node);
 void gabble_jingle_transport_iface_send_candidates (
     GabbleJingleTransportIface *self,
     gboolean all);

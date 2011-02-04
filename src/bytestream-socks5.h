@@ -65,7 +65,7 @@ GType gabble_bytestream_socks5_get_type (void);
                               GabbleBytestreamSocks5Class))
 
 void gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *socks5,
-    LmMessageNode *streamhost_node);
+    WockyNode *streamhost_node);
 
 void gabble_bytestream_socks5_connect_to_streamhost (
     GabbleBytestreamSocks5 *socks5, LmMessage *msg);

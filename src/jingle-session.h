@@ -80,7 +80,7 @@ const gchar * gabble_jingle_session_detect (LmMessage *message,
 gboolean gabble_jingle_session_parse (GabbleJingleSession *sess,
     JingleAction action, LmMessage *message, GError **error);
 LmMessage *gabble_jingle_session_new_message (GabbleJingleSession *sess,
-    JingleAction action, LmMessageNode **sess_node);
+    JingleAction action, WockyNode **sess_node);
 
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
 gboolean gabble_jingle_session_terminate (GabbleJingleSession *sess,

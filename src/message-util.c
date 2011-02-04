@@ -40,32 +40,30 @@ static void
 _add_chat_state (LmMessage *msg,
                  TpChannelChatState state)
 {
-  LmMessageNode *node = NULL;
+  WockyNode *node = NULL;
   WockyNode *n = wocky_stanza_get_top_node (msg);
 
   switch (state)
     {
       case TP_CHANNEL_CHAT_STATE_GONE:
-        node = lm_message_node_add_child (n, "gone", NULL);
+        node = wocky_node_add_child_with_content (n, "gone", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_INACTIVE:
-        node = lm_message_node_add_child (n, "inactive", NULL);
+        node = wocky_node_add_child_with_content (n, "inactive", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_ACTIVE:
-        node = lm_message_node_add_child (n, "active", NULL);
+        node = wocky_node_add_child_with_content (n, "active", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_PAUSED:
-        node = lm_message_node_add_child (n, "paused", NULL);
+        node = wocky_node_add_child_with_content (n, "paused", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_COMPOSING:
-        node = lm_message_node_add_child (n, "composing", NULL);
+        node = wocky_node_add_child_with_content (n, "composing", NULL);
         break;
     }
 
   if (node != NULL)
-    {
-      lm_message_node_set_attributes (node, "xmlns", NS_CHAT_STATES, NULL);
-    }
+    node->ns = g_quark_from_static_string (NS_CHAT_STATES);
 }
 
 
@@ -156,7 +154,7 @@ gabble_message_util_send_message (GObject *obj,
   node = wocky_stanza_get_top_node (msg);
   /* Generate a UUID for the message */
   id = gabble_generate_id ();
-  lm_message_node_set_attribute (node, "id", id);
+  wocky_node_set_attribute (node, "id", id);
   tp_message_set_string (message, 0, "message-token", id);
 
   if (send_nick)
@@ -166,12 +164,12 @@ gabble_message_util_send_message (GObject *obj,
     {
       gchar *tmp;
       tmp = g_strconcat ("/me ", text, NULL);
-      lm_message_node_add_child (node, "body", tmp);
+      wocky_node_add_child_with_content (node, "body", tmp);
       g_free (tmp);
     }
   else
     {
-      lm_message_node_add_child (node, "body", text);
+      wocky_node_add_child_with_content (node, "body", text);
     }
 
   _add_chat_state (msg, state);
@@ -262,7 +260,7 @@ gabble_tp_send_error_from_wocky_xmpp_error (WockyXmppError err)
 }
 
 static TpChannelTextSendError
-_tp_send_error_from_error_node (LmMessageNode *error_node,
+_tp_send_error_from_error_node (WockyNode *error_node,
                                 TpDeliveryStatus *delivery_status)
 {
   if (error_node != NULL)
@@ -320,7 +318,7 @@ _tp_send_error_from_error_node (LmMessageNode *error_node,
 static gint
 _tp_chat_state_from_message (LmMessage *message)
 {
-  LmMessageNode *node;
+  WockyNode *node;
 
 #define MAP_TO(str, state) \
   node = lm_message_node_get_child_with_namespace ( \
@@ -376,26 +374,26 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
                                             TpDeliveryStatus *delivery_status)
 {
   const gchar *type, *body;
-  LmMessageNode *node;
+  WockyNode *node;
 
   *send_error = GABBLE_TEXT_CHANNEL_SEND_NO_ERROR;
   *delivery_status = TP_DELIVERY_STATUS_UNKNOWN;
 
   if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
-      LmMessageNode *error_node;
+      WockyNode *error_node;
 
-      error_node = lm_message_node_get_child (
+      error_node = wocky_node_get_child (
         wocky_stanza_get_top_node (message), "error");
 
       *send_error = _tp_send_error_from_error_node (error_node,
           delivery_status);
     }
 
-  *id = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+  *id = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
       "id");
 
-  *from = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+  *from = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
       "from");
   if (*from == NULL)
     {
@@ -403,7 +401,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
       return FALSE;
     }
 
-  type = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+  type = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
     "type");
 
   /*
@@ -422,7 +420,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
        * in GMT. They're in the format yyyymmddThhmmss, so if we append 'Z'
        * we'll get (one of the many valid syntaxes for) an ISO-8601 timestamp.
        */
-      stamp_str = lm_message_node_get_attribute (node, "stamp");
+      stamp_str = wocky_node_get_attribute (node, "stamp");
 
       if (stamp_str != NULL)
         {
@@ -446,12 +444,12 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
   /*
    * Parse body if it exists.
    */
-  node = lm_message_node_get_child (wocky_stanza_get_top_node (message),
+  node = wocky_node_get_child (wocky_stanza_get_top_node (message),
       "body");
 
   if (node)
     {
-      body = lm_message_node_get_value (node);
+      body = node->content;
     }
   else
     {

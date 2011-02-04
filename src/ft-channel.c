@@ -1260,7 +1260,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  LmMessageNode *file;
+  WockyNode *file;
 
   if (bytestream == NULL)
     {
@@ -1272,17 +1272,17 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       return;
     }
 
-  file = lm_message_node_find_child (wocky_stanza_get_top_node (msg), "file");
+  file = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (msg), "file", NULL);
   if (file != NULL)
     {
-      LmMessageNode *range;
+      WockyNode *range;
 
-      range = lm_message_node_get_child_any_ns (file, "range");
+      range = wocky_node_get_child_any_ns (file, "range");
       if (range != NULL)
         {
           const gchar *offset_str;
 
-          offset_str = lm_message_node_get_attribute (range, "offset");
+          offset_str = wocky_node_get_attribute (range, "offset");
           if (offset_str != NULL)
             {
               self->priv->initial_offset = g_ascii_strtoull (offset_str, NULL,
@@ -1304,7 +1304,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
 {
   gboolean result;
   LmMessage *msg;
-  LmMessageNode *si_node, *file_node;
+  WockyNode *si_node, *file_node;
   gchar *stream_id, *size_str, *full_jid;
 
   if (resource)
@@ -1330,16 +1330,16 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
 
   size_str = g_strdup_printf ("%" G_GUINT64_FORMAT, self->priv->size);
 
-  file_node = lm_message_node_add_child (si_node, "file", NULL);
-  lm_message_node_set_attributes (file_node,
-      "xmlns", NS_FILE_TRANSFER,
+  file_node = wocky_node_add_child_with_content (si_node, "file", NULL);
+  file_node->ns = g_quark_from_string (NS_FILE_TRANSFER);
+  wocky_node_set_attributes (file_node,
       "name", self->priv->filename,
       "size", size_str,
       "mime-type", self->priv->content_type,
       NULL);
 
   if (self->priv->content_hash != NULL)
-    lm_message_node_set_attribute (file_node, "hash", self->priv->content_hash);
+    wocky_node_set_attribute (file_node, "hash", self->priv->content_hash);
 
   if (self->priv->date != 0)
     {
@@ -1352,13 +1352,13 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
 
       strftime (date_str, sizeof (date_str), "%FT%H:%M:%SZ", tm);
 
-      lm_message_node_set_attribute (file_node, "date", date_str);
+      wocky_node_set_attribute (file_node, "date", date_str);
     }
 
-  lm_message_node_add_child (file_node, "desc", self->priv->description);
+  wocky_node_add_child_with_content (file_node, "desc", self->priv->description);
 
   /* we support resume */
-  lm_message_node_add_child (file_node, "range", NULL);
+  wocky_node_add_child_with_content (file_node, "range", NULL);
 
   result = gabble_bytestream_factory_negotiate_stream (
       self->priv->connection->bytestream_factory, msg, stream_id,
@@ -1697,24 +1697,24 @@ bytestream_data_received_cb (GabbleBytestreamIface *stream,
 }
 
 static void
-augment_si_reply (LmMessageNode *si,
+augment_si_reply (WockyNode *si,
                   gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  LmMessageNode *file;
+  WockyNode *file;
 
-  file = lm_message_node_add_child (si, "file", NULL);
-  lm_message_node_set_attribute (file, "xmlns", NS_FILE_TRANSFER);
+  file = wocky_node_add_child_with_content (si, "file", NULL);
+  file->ns = g_quark_from_string (NS_FILE_TRANSFER);
 
   if (self->priv->initial_offset != 0)
     {
-      LmMessageNode *range;
+      WockyNode *range;
       gchar *offset_str;
 
-      range = lm_message_node_add_child (file, "range", NULL);
+      range = wocky_node_add_child_with_content (file, "range", NULL);
       offset_str = g_strdup_printf ("%" G_GUINT64_FORMAT,
           self->priv->initial_offset);
-      lm_message_node_set_attribute (range, "offset", offset_str);
+      wocky_node_set_attribute (range, "offset", offset_str);
 
       /* Don't set "length" attribute as the default is the length of the file
        * from offset to the end which is what we want when resuming a FT. */

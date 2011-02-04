@@ -60,7 +60,7 @@ void gabble_tube_iface_add_bytestream (GabbleTubeIface *tube,
     GabbleBytestreamIface *bytestream);
 
 void gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
-    TpBaseConnection *conn, LmMessageNode *node);
+    TpBaseConnection *conn, WockyNode *node);
 
 G_END_DECLS
 

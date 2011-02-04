@@ -613,7 +613,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
                                gboolean is_iq)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessageNode *data;
+  WockyNode *data;
   GString *str;
   TpHandle sender;
 
@@ -639,7 +639,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
 
   /* FIXME: check sequence number */
 
-  str = base64_decode (lm_message_node_get_value (data));
+  str = base64_decode (data->content);
   if (str == NULL)
     {
       DEBUG ("base64 decoding failed");
@@ -711,7 +711,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   LmMessage *msg;
-  LmMessageNode *si;
+  WockyNode *si;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {

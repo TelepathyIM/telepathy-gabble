@@ -246,7 +246,7 @@ location_request_location (
 static gboolean
 add_to_geoloc_node (const gchar *tp_name,
     GValue *value,
-    LmMessageNode *geoloc,
+    WockyNode *geoloc,
     GError **err)
 {
   LocationMapping *mapping;
@@ -263,7 +263,7 @@ add_to_geoloc_node (const gchar *tp_name,
           return FALSE;
         }
 
-      lm_message_node_set_attribute (
+      wocky_node_set_attribute (
           geoloc, "xml:lang", g_value_get_string (value));
       return TRUE;
     }
@@ -307,7 +307,7 @@ add_to_geoloc_node (const gchar *tp_name,
     /* Keys and their type have been checked */
     g_assert_not_reached ();
 
-  lm_message_node_add_child (geoloc, mapping->xmpp_name, str);
+  wocky_node_add_child_with_content (geoloc, mapping->xmpp_name, str);
   DEBUG ("\t - %s: %s", (gchar *) tp_name, str);
   g_free (str);
   return TRUE;
@@ -349,7 +349,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   LmMessage *msg;
-  LmMessageNode *geoloc;
+  WockyNode *geoloc;
   WockyNode *item;
   GHashTableIter iter;
   gpointer key, value;
@@ -520,7 +520,7 @@ update_location_from_msg (GabbleConnection *conn,
                           TpHandle contact,
                           LmMessage *msg)
 {
-  LmMessageNode *node;
+  WockyNode *node;
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       g_free, (GDestroyNotify) tp_g_value_slice_free);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -529,14 +529,14 @@ update_location_from_msg (GabbleConnection *conn,
   NodeIter i;
   const gchar *lang;
 
-  node = lm_message_node_find_child (wocky_stanza_get_top_node (msg),
-      "geoloc");
+  node = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (msg),
+      "geoloc", NULL);
   if (node == NULL)
     return FALSE;
 
   DEBUG ("LocationsUpdate for %s:", from);
 
-  lang = lm_message_node_get_attribute (node, "xml:lang");
+  lang = wocky_node_get_language (node);
   if (lang != NULL)
     {
       g_hash_table_insert (location, g_strdup ("language"),
@@ -547,14 +547,14 @@ update_location_from_msg (GabbleConnection *conn,
 
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      LmMessageNode *subloc_node = node_iter_data (i);
+      WockyNode *subloc_node = node_iter_data (i);
       GValue *value = NULL;
       gchar *xmpp_name;
       const gchar *str;
       LocationMapping *mapping;
 
       xmpp_name = subloc_node->name;
-      str = lm_message_node_get_value (subloc_node);
+      str = subloc_node->content;
       if (str == NULL)
         continue;
 

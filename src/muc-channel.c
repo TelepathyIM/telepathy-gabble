@@ -516,13 +516,13 @@ properties_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
                      const gchar *jid,
                      const gchar *node,
-                     LmMessageNode *query_result,
+                     WockyNode *query_result,
                      GError *error,
                      gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
   TpIntSet *changed_props_val, *changed_props_flags;
-  LmMessageNode *lm_node;
+  WockyNode *lm_node;
   const gchar *str;
   GValue val = { 0, };
   NodeIter i;
@@ -543,14 +543,14 @@ properties_disco_cb (GabbleDisco *disco,
    */
 
   /* ROOM_PROP_NAME */
-  lm_node = lm_message_node_get_child (query_result, "identity");
+  lm_node = wocky_node_get_child (query_result, "identity");
   if (lm_node)
     {
       const gchar *category, *type, *name;
 
-      category = lm_message_node_get_attribute (lm_node, "category");
-      type = lm_message_node_get_attribute (lm_node, "type");
-      name = lm_message_node_get_attribute (lm_node, "name");
+      category = wocky_node_get_attribute (lm_node, "category");
+      type = wocky_node_get_attribute (lm_node, "type");
+      name = wocky_node_get_attribute (lm_node, "name");
 
       if (!tp_strdiff (category, "conference") &&
           !tp_strdiff (type, "text") &&
@@ -573,11 +573,11 @@ properties_disco_cb (GabbleDisco *disco,
   for (i = node_iter (query_result); i; i = node_iter_next (i))
     {
       guint prop_id = INVALID_ROOM_PROP;
-      LmMessageNode *child = node_iter_data (i);
+      WockyNode *child = node_iter_data (i);
 
       if (strcmp (child->name, "feature") == 0)
         {
-          str = lm_message_node_get_attribute (child, "var");
+          str = wocky_node_get_attribute (child, "var");
           if (str == NULL)
             continue;
 
@@ -686,24 +686,24 @@ properties_disco_cb (GabbleDisco *disco,
 
               for (j = node_iter (child); j; j = node_iter_next (j))
                 {
-                  LmMessageNode *field = node_iter_data (j);
-                  LmMessageNode *value_node;
+                  WockyNode *field = node_iter_data (j);
+                  WockyNode *value_node;
 
                   if (strcmp (field->name, "field") != 0)
                     continue;
 
-                  str = lm_message_node_get_attribute (field, "var");
+                  str = wocky_node_get_attribute (field, "var");
                   if (str == NULL)
                     continue;
 
                   if (strcmp (str, "muc#roominfo_description") != 0)
                     continue;
 
-                  value_node = lm_message_node_get_child (field, "value");
+                  value_node = wocky_node_get_child (field, "value");
                   if (value_node == NULL)
                     continue;
 
-                  str = lm_message_node_get_value (value_node);
+                  str = value_node->content;
                   if (str == NULL)
                     {
                       str = "";
@@ -1535,21 +1535,21 @@ room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static LmMessageNode *
+static WockyNode *
 config_form_get_form_node (LmMessage *msg)
 {
-  LmMessageNode *node;
+  WockyNode *node;
   NodeIter i;
 
   /* find the query node */
-  node = lm_message_node_get_child (wocky_stanza_get_top_node (msg), "query");
+  node = wocky_node_get_child (wocky_stanza_get_top_node (msg), "query");
   if (node == NULL)
     return NULL;
 
   /* then the form node */
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      LmMessageNode *child = node_iter_data (i);
+      WockyNode *child = node_iter_data (i);
 
       if (tp_strdiff (child->name, "x"))
         {
@@ -1561,7 +1561,7 @@ config_form_get_form_node (LmMessage *msg)
           continue;
         }
 
-      if (tp_strdiff (lm_message_node_get_attribute (child, "type"), "form"))
+      if (tp_strdiff (wocky_node_get_attribute (child, "type"), "form"))
         {
           continue;
         }
@@ -1579,7 +1579,7 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = chan->priv;
-  LmMessageNode *form_node;
+  WockyNode *form_node;
   NodeIter i;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
@@ -1603,12 +1603,12 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   for (i = node_iter (form_node); i; i = node_iter_next (i))
     {
       const gchar *var;
-      LmMessageNode *node = node_iter_data (i);
+      WockyNode *node = node_iter_data (i);
 
       if (strcmp (node->name, "field") != 0)
         continue;
 
-      var = lm_message_node_get_attribute (node, "var");
+      var = wocky_node_get_attribute (node, "var");
       if (var == NULL)
         continue;
 
@@ -1746,15 +1746,15 @@ update_permissions (GabbleMucChannel *chan)
       /* request the configuration form purely to see if the description
        * is writable by us in this room. sigh. GO MUC!!! */
       LmMessage *msg;
-      LmMessageNode *node;
+      WockyNode *node;
       GError *error = NULL;
       gboolean success;
 
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = lm_message_node_add_child (
+      node = wocky_node_add_child_with_content (
           wocky_stanza_get_top_node (msg), "query", NULL);
-      lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
+      node->ns = g_quark_from_string (NS_MUC_OWNER);
 
       success = _gabble_connection_send_with_reply (
           GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg,
@@ -2631,10 +2631,10 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   if (is_error)
     {
-      LmMessageNode *node;
+      WockyNode *node;
       const gchar *err_desc = NULL;
 
-      node = lm_message_node_get_child (
+      node = wocky_node_get_child (
           wocky_stanza_get_top_node (msg), "error");
       if (node)
         {
@@ -2982,29 +2982,29 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
   LmMessage *msg;
-  LmMessageNode *x_node, *invite_node;
+  WockyNode *x_node, *invite_node;
   gboolean result;
 
   g_signal_emit (self, signals[PRE_INVITE], 0, jid);
 
   msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
 
-  x_node = lm_message_node_add_child (
+  x_node = wocky_node_add_child_with_content (
       wocky_stanza_get_top_node (msg), "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
+  x_node->ns = g_quark_from_string (NS_MUC_USER);
 
-  invite_node = lm_message_node_add_child (x_node, "invite", NULL);
+  invite_node = wocky_node_add_child_with_content (x_node, "invite", NULL);
 
-  lm_message_node_set_attribute (invite_node, "to", jid);
+  wocky_node_set_attribute (invite_node, "to", jid);
 
   if (message != NULL && *message != '\0')
     {
-      lm_message_node_add_child (invite_node, "reason", message);
+      wocky_node_add_child_with_content (invite_node, "reason", message);
     }
 
   if (continue_)
     {
-      lm_message_node_add_child (invite_node, "continue", NULL);
+      wocky_node_add_child_with_content (invite_node, "continue", NULL);
     }
 
   DEBUG ("sending MUC invitation for room %s to contact %s with reason "
@@ -3120,7 +3120,7 @@ gabble_muc_channel_remove_member (GObject *obj,
   GabbleMucChannelPrivate *priv = chan->priv;
   TpGroupMixin *group = TP_GROUP_MIXIN (chan);
   LmMessage *msg;
-  LmMessageNode *query_node, *item_node;
+  WockyNode *query_node, *item_node;
   const gchar *jid, *nick;
   gboolean result;
 
@@ -3137,11 +3137,11 @@ gabble_muc_channel_remove_member (GObject *obj,
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_SET);
 
-  query_node = lm_message_node_add_child (
+  query_node = wocky_node_add_child_with_content (
       wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (query_node, "xmlns", NS_MUC_ADMIN);
+  query_node->ns = g_quark_from_string (NS_MUC_ADMIN);
 
-  item_node = lm_message_node_add_child (query_node, "item", NULL);
+  item_node = wocky_node_add_child_with_content (query_node, "item", NULL);
 
   jid = tp_handle_inspect (TP_GROUP_MIXIN (obj)->handle_repo, handle);
 
@@ -3149,14 +3149,14 @@ gabble_muc_channel_remove_member (GObject *obj,
   if (nick != NULL)
     nick++;
 
-  lm_message_node_set_attributes (item_node,
+  wocky_node_set_attributes (item_node,
                                   "nick", nick,
                                   "role", "none",
                                   NULL);
 
   if (*message != '\0')
     {
-      lm_message_node_add_child (item_node, "reason", message);
+      wocky_node_add_child_with_content (item_node, "reason", message);
     }
 
   DEBUG ("sending MUC kick request for contact %u (%s) to room %s with reason "
@@ -3187,7 +3187,7 @@ gabble_muc_channel_do_set_properties (GObject *obj,
   GabbleConnection *conn =
       GABBLE_CONNECTION (tp_base_channel_get_connection (base));
   LmMessage *msg;
-  LmMessageNode *node;
+  WockyNode *node;
   gboolean success;
 
   g_assert (priv->properties_ctx == NULL);
@@ -3202,7 +3202,7 @@ gabble_muc_channel_do_set_properties (GObject *obj,
 
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-      lm_message_node_add_child (
+      wocky_node_add_child_with_content (
           wocky_stanza_get_top_node (msg), "subject", str);
 
       success = _gabble_connection_send (conn, msg, error);
@@ -3218,9 +3218,9 @@ gabble_muc_channel_do_set_properties (GObject *obj,
     {
       msg = lm_message_new_with_sub_type (priv->jid,
           LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = lm_message_node_add_child (
+      node = wocky_node_add_child_with_content (
           wocky_stanza_get_top_node (msg), "query", NULL);
-      lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
+      node->ns = g_quark_from_string (NS_MUC_OWNER);
 
       success = _gabble_connection_send_with_reply (conn, msg,
           request_config_form_reply_cb, G_OBJECT (obj), NULL,
@@ -3251,7 +3251,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   TpPropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
   LmMessage *msg = NULL;
-  LmMessageNode *submit_node, *form_node, *node;
+  WockyNode *submit_node, *form_node, *node;
   guint i, props_left;
   NodeIter j;
 
@@ -3271,15 +3271,14 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_SET);
 
-  node = lm_message_node_add_child (
+  node = wocky_node_add_child_with_content (
       wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
+  node->ns = g_quark_from_string (NS_MUC_OWNER);
 
-  submit_node = lm_message_node_add_child (node, "x", NULL);
-  lm_message_node_set_attributes (submit_node,
-                                  "xmlns", NS_X_DATA,
-                                  "type", "submit",
-                                  NULL);
+  submit_node = wocky_node_add_child_with_content (node, "x", NULL);
+  submit_node->ns = g_quark_from_static_string (NS_X_DATA);
+  wocky_node_set_attribute (submit_node,
+      "type", "submit");
 
   /* we assume that the number of props will fit in a guint on all supported
    * platforms, so fail at compile time if this is no longer the case
@@ -3301,8 +3300,8 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   for (j = node_iter (form_node); j; j = node_iter_next (j))
     {
       const gchar *var;
-      LmMessageNode *field_node;
-      LmMessageNode *child = node_iter_data (j);
+      WockyNode *field_node;
+      WockyNode *child = node_iter_data (j);
       guint id;
       GType type;
       gboolean invert;
@@ -3315,7 +3314,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           continue;
         }
 
-      var = lm_message_node_get_attribute (child, "var");
+      var = wocky_node_get_attribute (child, "var");
       if (var == NULL) {
         DEBUG ("skipping node '%s' because of lacking var attribute",
                child->name);
@@ -3414,13 +3413,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         }
 
       /* add the corresponding field node to the reply message */
-      field_node = lm_message_node_add_child (submit_node, "field", NULL);
-      lm_message_node_set_attribute (field_node, "var", var);
+      field_node = wocky_node_add_child_with_content (submit_node, "field", NULL);
+      wocky_node_set_attribute (field_node, "var", var);
 
-      type_str = lm_message_node_get_attribute (child, "type");
+      type_str = wocky_node_get_attribute (child, "type");
       if (type_str)
         {
-          lm_message_node_set_attribute (field_node, "type", type_str);
+          wocky_node_set_attribute (field_node, "type", type_str);
         }
 
       if (id != INVALID_ROOM_PROP && tp_properties_context_has (ctx, id))
@@ -3455,7 +3454,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           props_left &= ~(1 << id);
 
           /* add the corresponding value node(s) to the reply message */
-          lm_message_node_add_child (field_node, "value", val_str);
+          wocky_node_add_child_with_content (field_node, "value", val_str);
         }
       else
         {
@@ -3464,14 +3463,14 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
           for (k = node_iter (child); k; k = node_iter_next (k))
             {
-              LmMessageNode *value_node = node_iter_data (k);
+              WockyNode *value_node = node_iter_data (k);
 
               if (tp_strdiff (value_node->name, "value"))
                 /* Not a value, skip it */
                 continue;
 
-              lm_message_node_add_child (field_node, "value",
-                  lm_message_node_get_value (value_node));
+              wocky_node_add_child_with_content (field_node, "value",
+                  value_node->content);
             }
         }
     }

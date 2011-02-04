@@ -1234,7 +1234,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       const gchar *jid, *resource;
       gchar *full_jid;
       GabblePresence *presence;
-      LmMessageNode *tube_node, *si_node;
+      WockyNode *tube_node, *si_node;
       LmMessage *msg;
       gboolean result;
 
@@ -1270,8 +1270,8 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
           wocky_stanza_get_top_node (msg), "si", NS_SI);
       g_assert (si_node != NULL);
 
-      tube_node = lm_message_node_add_child (si_node, "tube", NULL);
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
+      tube_node = wocky_node_add_child_with_content (si_node, "tube", NULL);
+      tube_node->ns = g_quark_from_string (NS_TUBES);
       gabble_tube_iface_publish_in_node (GABBLE_TUBE_IFACE (tube),
           (TpBaseConnection *) priv->conn, tube_node);
 
@@ -1563,13 +1563,13 @@ gabble_tube_dbus_new (GabbleConnection *conn,
 }
 
 static void
-augment_si_accept_iq (LmMessageNode *si,
+augment_si_accept_iq (WockyNode *si,
                       gpointer user_data)
 {
-  LmMessageNode *tube_node;
+  WockyNode *tube_node;
 
-  tube_node = lm_message_node_add_child (si, "tube", "");
-  lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
+  tube_node = wocky_node_add_child_with_content (si, "tube", "");
+  tube_node->ns = g_quark_from_string (NS_TUBES);
 }
 
 /*

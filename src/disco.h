@@ -83,7 +83,7 @@ struct _GabbleDisco {
 };
 
 typedef void (*GabbleDiscoCb)(GabbleDisco *self, GabbleDiscoRequest *request,
-    const gchar *jid, const gchar *node, LmMessageNode *query_result,
+    const gchar *jid, const gchar *node, WockyNode *query_result,
     GError* error, gpointer user_data);
 
 GabbleDisco *gabble_disco_new (GabbleConnection *);

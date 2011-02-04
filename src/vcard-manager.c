@@ -154,7 +154,7 @@ struct _GabbleVCardManagerPrivate
   /* Patched vCard that we sent to the server to update, but haven't
    * got confirmation yet. We don't want to store it in cache (visible
    * to others) before we're sure the server accepts it. */
-  LmMessageNode *patched_vcard;
+  WockyNode *patched_vcard;
 };
 
 struct _GabbleVCardManagerRequest
@@ -208,7 +208,7 @@ struct _GabbleVCardCacheEntry
   guint suspended_timer_id;
 
   /* VCard node for this entry (owned reference), or NULL if there's no node */
-  LmMessageNode *vcard_node;
+  WockyNode *vcard_node;
 
   /* If @vcard_node is not NULL, the time the message will expire */
   time_t expires;
@@ -235,7 +235,7 @@ gabble_vcard_manager_cache_quark (void)
 static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);
 static void manager_patch_vcard (
-    GabbleVCardManager *self, LmMessageNode *vcard_node);
+    GabbleVCardManager *self, WockyNode *vcard_node);
 static void request_send (GabbleVCardManagerRequest *request,
     guint timeout);
 
@@ -350,6 +350,42 @@ gabble_vcard_manager_set_property (GObject *object,
   }
 }
 
+static gboolean
+copy_attribute (const gchar *key,
+    const gchar *value,
+    const gchar *prefix,
+    const gchar *ns,
+    gpointer user_data)
+{
+  WockyNode *copy = (WockyNode *) user_data;
+
+  wocky_node_set_attribute_ns (copy, key, value, ns);
+  return TRUE;
+}
+
+static WockyNode *
+copy_node (WockyNode *node)
+{
+  WockyNode *copy;
+  GSList *l;
+
+  copy = wocky_node_new (node->name, wocky_node_get_ns (node));
+  wocky_node_set_content (copy, node->content);
+  wocky_node_set_language (copy, wocky_node_get_language (node));
+
+  wocky_node_each_attribute (node, copy_attribute, copy);
+
+  for (l = node->children; l != NULL; l = g_slist_next (l))
+    {
+      WockyNode *child = l->data;
+
+      copy->children = g_slist_prepend (copy->children, copy_node (child));
+    }
+  copy->children = g_slist_reverse (copy->children);
+
+  return copy;
+}
+
 static void delete_request (GabbleVCardManagerRequest *request);
 static void cancel_request (GabbleVCardManagerRequest *request);
 static void cancel_all_edit_requests (GabbleVCardManager *manager);
@@ -382,7 +418,7 @@ cache_entry_free (gpointer data)
       gabble_request_pipeline_item_cancel (entry->pipeline_item);
     }
 
-  tp_clear_pointer (&entry->vcard_node, lm_message_node_unref);
+  tp_clear_pointer (&entry->vcard_node, wocky_node_free);
 
   tp_handle_unref (contact_repo, entry->handle);
 
@@ -503,13 +539,13 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager,
 
   tp_heap_remove (priv->timed_cache, entry);
 
-  tp_clear_pointer (&entry->vcard_node, lm_message_node_unref);
+  tp_clear_pointer (&entry->vcard_node, wocky_node_free);
 
   cache_entry_attempt_to_free (entry);
 }
 
 static void complete_one_request (GabbleVCardManagerRequest *request,
-    LmMessageNode *vcard_node, GError *error);
+    WockyNode *vcard_node, GError *error);
 
 static void
 cache_entry_complete_requests (GabbleVCardCacheEntry *entry, GError *error)
@@ -530,7 +566,7 @@ cache_entry_complete_requests (GabbleVCardCacheEntry *entry, GError *error)
 
 static void
 complete_one_request (GabbleVCardManagerRequest *request,
-                      LmMessageNode *vcard_node,
+                      WockyNode *vcard_node,
                       GError *error)
 {
   if (request->callback)
@@ -609,26 +645,26 @@ gabble_vcard_manager_finalize (GObject *object)
 }
 
 gchar *
-vcard_get_avatar_sha1 (LmMessageNode *vcard)
+vcard_get_avatar_sha1 (WockyNode *vcard)
 {
   gchar *sha1;
   const gchar *binval_value;
   GString *avatar;
-  LmMessageNode *node;
-  LmMessageNode *binval;
+  WockyNode *node;
+  WockyNode *binval;
 
-  node = lm_message_node_get_child (vcard, "PHOTO");
+  node = wocky_node_get_child (vcard, "PHOTO");
 
   if (!node)
     return g_strdup ("");
 
   DEBUG ("Our vCard has a PHOTO %p", node);
-  binval = lm_message_node_get_child (node, "BINVAL");
+  binval = wocky_node_get_child (node, "BINVAL");
 
   if (!binval)
     return g_strdup ("");
 
-  binval_value = lm_message_node_get_value (binval);
+  binval_value = binval->content;
 
   if (!binval_value)
     return g_strdup ("");
@@ -655,7 +691,7 @@ static void
 initial_request_cb (GabbleVCardManager *self,
                     GabbleVCardManagerRequest *request,
                     TpHandle handle,
-                    LmMessageNode *vcard,
+                    WockyNode *vcard,
                     GError *error,
                     gpointer user_data)
 {
@@ -810,17 +846,17 @@ cancel_request (GabbleVCardManagerRequest *request)
 }
 
 static gchar *
-extract_nickname (LmMessageNode *vcard_node)
+extract_nickname (WockyNode *vcard_node)
 {
-  LmMessageNode *node;
+  WockyNode *node;
   const gchar *nick;
 
-  node = lm_message_node_get_child (vcard_node, "NICKNAME");
+  node = wocky_node_get_child (vcard_node, "NICKNAME");
 
   if (node == NULL)
     return NULL;
 
-  nick = lm_message_node_get_value (node);
+  nick = node->content;
 
   return g_strdup (nick);
 }
@@ -829,7 +865,7 @@ static void
 observe_vcard (GabbleConnection *conn,
                GabbleVCardManager *manager,
                TpHandle handle,
-               LmMessageNode *vcard_node)
+               WockyNode *vcard_node)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
@@ -841,11 +877,11 @@ observe_vcard (GabbleConnection *conn,
 
   if (alias == NULL)
     {
-      LmMessageNode *fn_node = lm_message_node_get_child (vcard_node, "FN");
+      WockyNode *fn_node = wocky_node_get_child (vcard_node, "FN");
 
       if (fn_node != NULL)
         {
-          const gchar *fn = lm_message_node_get_value (fn_node);
+          const gchar *fn = fn_node->content;
 
           if (!CHECK_STR_EMPTY(fn))
             {
@@ -901,7 +937,7 @@ replace_reply_cb (GabbleConnection *conn,
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GList *li;
-  LmMessageNode *node = NULL;
+  WockyNode *node = NULL;
 
   /* If we sent a SET request, it's dead now. */
   priv->edit_pipeline_item = NULL;
@@ -911,7 +947,7 @@ replace_reply_cb (GabbleConnection *conn,
   if (error)
     {
       /* We won't need our patched vcard after all */
-      tp_clear_pointer (&priv->patched_vcard, lm_message_node_unref);
+      tp_clear_pointer (&priv->patched_vcard, wocky_node_free);
     }
   else
     {
@@ -921,7 +957,7 @@ replace_reply_cb (GabbleConnection *conn,
       g_assert (priv->patched_vcard != NULL);
 
       /* Finally we may put the new vcard in the cache. */
-      tp_clear_pointer (&entry->vcard_node, lm_message_node_unref);
+      tp_clear_pointer (&entry->vcard_node, wocky_node_free);
 
       entry->vcard_node = priv->patched_vcard;
       priv->patched_vcard = NULL;
@@ -974,14 +1010,14 @@ replace_reply_cb (GabbleConnection *conn,
  * (NICKNAME, PHOTO and in future FN are the problematic ones). */
 static gboolean
 gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
-    LmMessageNode *old_vcard)
+    WockyNode *old_vcard)
 {
   gboolean seen = FALSE;
   NodeIter i;
 
   for (i = node_iter (old_vcard); i != NULL; i = node_iter_next (i))
     {
-      LmMessageNode *node = node_iter_data (i);
+      WockyNode *node = node_iter_data (i);
       const gchar *value;
       const gchar *new_value;
 
@@ -996,7 +1032,7 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
 
       /* consider NULL and "" to be different representations for the
        * same thing */
-      value = lm_message_node_get_value (node);
+      value = node->content;
       new_value = info->element_value;
 
       if (value == NULL)
@@ -1024,11 +1060,11 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
               child_iter = child_iter->next)
             {
               GabbleVCardChild *child = child_iter->data;
-              LmMessageNode *child_node = lm_message_node_get_child (node,
+              WockyNode *child_node = wocky_node_get_child (node,
                   child->key);
 
               if (child_node == NULL ||
-                  tp_strdiff (lm_message_node_get_value (child_node),
+                  tp_strdiff (child_node->content,
                     child->value))
                 {
                   return TRUE;
@@ -1048,17 +1084,17 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
   return !seen;
 }
 
-static LmMessageNode *vcard_copy (LmMessageNode *parent, LmMessageNode *src,
+static WockyNode *vcard_copy (WockyNode *parent, WockyNode *src,
     const gchar *exclude, gboolean *exclude_mattered);
 
 static LmMessage *
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
-    LmMessageNode *old_vcard,
+    WockyNode *old_vcard,
     GabbleVCardManager *vcard_manager)
 {
   LmMessage *msg;
-  LmMessageNode *vcard_node;
-  LmMessageNode *node;
+  WockyNode *vcard_node;
+  WockyNode *node;
   GList *iter;
   gboolean maybe_changed = FALSE;
   GabbleConnection *conn = vcard_manager->priv->connection;
@@ -1087,7 +1123,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
            * */
           gchar *alias;
 
-          node = lm_message_node_get_child (old_vcard, info->element_name);
+          node = wocky_node_get_child (old_vcard, info->element_name);
 
           /* If the user has set this field explicitly via SetContactInfo(),
            * that takes precedence */
@@ -1138,18 +1174,18 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   if (info->edit_type == GABBLE_VCARD_EDIT_CLEAR)
     {
       /* start from a clean slate... */
-      vcard_node = lm_message_node_add_child (
+      vcard_node = wocky_node_add_child_with_content (
           wocky_stanza_get_top_node (msg), "vCard", "");
-      lm_message_node_set_attribute (vcard_node, "xmlns", "vcard-temp");
+      vcard_node->ns = g_quark_from_string ("vcard-temp");
 
       /* ... but as a special case, the photo gets copied in from the old
        * vCard, because SetContactInfo doesn't touch photos */
-      node = lm_message_node_get_child (old_vcard, "PHOTO");
+      node = wocky_node_get_child (old_vcard, "PHOTO");
 
       if (node != NULL)
         vcard_copy (vcard_node, node, NULL, NULL);
 
-      /* Yes, we can do this: "LmMessageNode" is really a WockyNode */
+      /* Yes, we can do this: "WockyNode" is really a WockyNode */
       if (wocky_node_equal (old_vcard, vcard_node))
         {
           /* nothing actually happened, forget it */
@@ -1179,14 +1215,14 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
     {
       maybe_changed = TRUE;
 
-      node = lm_message_node_add_child (vcard_node,
+      node = wocky_node_add_child_with_content (vcard_node,
           info->element_name, info->element_value);
 
       for (iter = info->children; iter != NULL; iter = iter->next)
         {
           GabbleVCardChild *child = iter->data;
 
-          lm_message_node_add_child (node, child->key, child->value);
+          wocky_node_add_child_with_content (node, child->key, child->value);
         }
     }
 
@@ -1204,24 +1240,24 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
  *
  * Note that this function doesn't copy any attributes other than
  * xmlns, because LM provides no way to iterate over attributes. Thanks, LM. */
-static LmMessageNode *
-vcard_copy (LmMessageNode *parent,
-    LmMessageNode *src,
+static WockyNode *
+vcard_copy (WockyNode *parent,
+    WockyNode *src,
     const gchar *exclude,
     gboolean *exclude_mattered)
 {
-    LmMessageNode *new = lm_message_node_add_child (parent, src->name,
-        lm_message_node_get_value (src));
+    WockyNode *new = wocky_node_add_child_with_content (parent, src->name,
+        src->content);
     const gchar *xmlns;
     NodeIter i;
 
-    xmlns = lm_message_node_get_attribute (src, "xmlns");
+    xmlns = wocky_node_get_ns (src);
     if (xmlns != NULL)
-      lm_message_node_set_attribute (new, "xmlns", xmlns);
+      new->ns = g_quark_from_string (xmlns);
 
     for (i = node_iter (src); i; i = node_iter_next (i))
       {
-        LmMessageNode *child = node_iter_data (i);
+        WockyNode *child = node_iter_data (i);
 
         if (tp_strdiff (child->name, exclude))
           {
@@ -1239,7 +1275,7 @@ vcard_copy (LmMessageNode *parent,
 
 static void
 manager_patch_vcard (GabbleVCardManager *self,
-                     LmMessageNode *vcard_node)
+                     WockyNode *vcard_node)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
   LmMessage *msg = NULL;
@@ -1266,7 +1302,7 @@ manager_patch_vcard (GabbleVCardManager *self,
       msg = new_msg;
       /* gabble_vcard_manager_edit_info_apply always returns an IQ message
        * with one vCard child */
-      vcard_node = lm_message_node_get_child (
+      vcard_node = wocky_node_get_child (
           wocky_stanza_get_top_node (msg), "vCard");
       g_assert (vcard_node != NULL);
     }
@@ -1282,7 +1318,7 @@ manager_patch_vcard (GabbleVCardManager *self,
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the
    * original vcard in the cache until that happens. */
-  priv->patched_vcard = lm_message_node_ref (vcard_node);
+  priv->patched_vcard = copy_node (vcard_node);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
       priv->connection->req_pipeline, msg, default_request_timeout,
@@ -1339,7 +1375,7 @@ pipeline_reply_cb (GabbleConnection *conn,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_repo =
       tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *vcard_node = NULL;
+  WockyNode *vcard_node = NULL;
 
   DEBUG("called for entry %p", entry);
 
@@ -1358,7 +1394,7 @@ pipeline_reply_cb (GabbleConnection *conn,
     {
       /* First, handle the error "wait": suspend the request and replay it
        * later */
-      LmMessageNode *error_node = NULL;
+      WockyNode *error_node = NULL;
       GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
       GabbleXmppErrorType error_type = XMPP_ERROR_UNDEFINED_CONDITION;
 
@@ -1366,7 +1402,7 @@ pipeline_reply_cb (GabbleConnection *conn,
        *        from an XMPP stanza.
        */
       if (reply_msg != NULL)
-        error_node = lm_message_node_get_child (
+        error_node = wocky_node_get_child (
             wocky_stanza_get_top_node (reply_msg), "error");
 
       if (error_node != NULL)
@@ -1408,7 +1444,7 @@ pipeline_reply_cb (GabbleConnection *conn,
 
   g_assert (reply_msg != NULL);
 
-  vcard_node = lm_message_node_get_child (
+  vcard_node = wocky_node_get_child (
       wocky_stanza_get_top_node (reply_msg), "vCard");
 
   if (NULL == vcard_node)
@@ -1417,14 +1453,14 @@ pipeline_reply_cb (GabbleConnection *conn,
       DEBUG ("successful lookup response contained no <vCard> node, "
           "creating an empty one");
 
-      vcard_node = lm_message_node_add_child (
+      vcard_node = wocky_node_add_child_with_content (
           wocky_stanza_get_top_node (reply_msg), "vCard",
           NULL);
-      lm_message_node_set_attribute (vcard_node, "xmlns", NS_VCARD_TEMP);
+      vcard_node->ns = g_quark_from_string (NS_VCARD_TEMP);
     }
 
   /* Put the message in the cache */
-  entry->vcard_node = lm_message_node_ref (vcard_node);
+  entry->vcard_node = copy_node (vcard_node);
 
   entry->expires = time (NULL) + VCARD_CACHE_ENTRY_TTL;
   tp_heap_add (priv->timed_cache, entry);
@@ -1695,7 +1731,7 @@ gabble_vcard_manager_cancel_request (GabbleVCardManager *self,
 gboolean
 gabble_vcard_manager_get_cached (GabbleVCardManager *self,
                                  TpHandle handle,
-                                 LmMessageNode **node)
+                                 WockyNode **node)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache,

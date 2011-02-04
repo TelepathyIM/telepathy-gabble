@@ -728,7 +728,7 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *tube_node, *close_node;
+  WockyNode *tube_node, *close_node;
   GabbleTubesChannel *chan;
   const gchar *from;
   TpHandle handle;
@@ -741,7 +741,7 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
   if (tube_node == NULL && close_node == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  from = lm_message_node_get_attribute (
+  from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
   if (from == NULL)
     {

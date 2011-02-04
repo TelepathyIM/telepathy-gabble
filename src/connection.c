@@ -1534,7 +1534,7 @@ static gboolean iq_disco_cb (WockyPorter *, WockyStanza *, gpointer);
 static gboolean iq_version_cb (WockyPorter *, WockyStanza *, gpointer);
 static gboolean iq_unknown_cb (WockyPorter *, WockyStanza *, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
-    const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
+    const gchar *, const gchar *, WockyNode *, GError *, gpointer);
 static void decrement_waiting_connected (GabbleConnection *connection);
 static void connection_initial_presence_cb (GObject *, GAsyncResult *,
     gpointer);
@@ -1683,7 +1683,7 @@ bare_jid_disco_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
     const gchar *jid,
     const gchar *node,
-    LmMessageNode *result,
+    WockyNode *result,
     GError *disco_error,
     gpointer user_data)
 {
@@ -1698,13 +1698,13 @@ bare_jid_disco_cb (GabbleDisco *disco,
     {
       for (i = node_iter (result); i; i = node_iter_next (i))
         {
-          LmMessageNode *child = node_iter_data (i);
+          WockyNode *child = node_iter_data (i);
 
           if (!tp_strdiff (child->name, "identity"))
             {
-              const gchar *category = lm_message_node_get_attribute (child,
+              const gchar *category = wocky_node_get_attribute (child,
                   "category");
-              const gchar *type = lm_message_node_get_attribute (child, "type");
+              const gchar *type = wocky_node_get_attribute (child, "type");
 
               if (!tp_strdiff (category, "pubsub") &&
                   !tp_strdiff (type, "pep"))
@@ -2234,21 +2234,21 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
     LmMessage *presence_message)
 {
   GabblePresence *presence = self->self_presence;
-  LmMessageNode *node = lm_message_get_node (presence_message);
+  WockyNode *node = lm_message_get_node (presence_message);
   gchar *caps_hash;
   gboolean share_v1, voice_v1, video_v1;
   GString *ext = g_string_new ("");
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
   caps_hash = caps_hash_compute_from_self_presence (self);
-  node = lm_message_node_add_child (node, "c", NULL);
-  lm_message_node_set_attributes (
+  node = wocky_node_add_child_with_content (node, "c", NULL);
+  wocky_node_set_attributes (
     node,
-    "xmlns", NS_CAPS,
     "hash",  "sha-1",
     "node",  NS_GABBLE_CAPS,
     "ver",   caps_hash,
     NULL);
+  node->ns = g_quark_from_string (NS_CAPS);
 
   /* Ensure this set of capabilities is in the cache. */
   gabble_presence_cache_add_own_caps (self->presence_cache, caps_hash,
@@ -2272,7 +2272,7 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   if (video_v1)
     g_string_append (ext, " " BUNDLE_VIDEO_V1);
 
-  lm_message_node_set_attribute (node, "ext", ext->str);
+  wocky_node_set_attribute (node, "ext", ext->str);
   g_string_free (ext, TRUE);
   g_free (caps_hash);
 }
@@ -2319,18 +2319,18 @@ gabble_connection_request_decloak (GabbleConnection *self,
 {
   GabblePresence *presence = self->self_presence;
   LmMessage *message = gabble_presence_as_message (presence, to);
-  LmMessageNode *decloak;
+  WockyNode *decloak;
   gboolean ret;
 
   gabble_connection_fill_in_caps (self, message);
 
-  decloak = lm_message_node_add_child (lm_message_get_node (message),
+  decloak = wocky_node_add_child_with_content (lm_message_get_node (message),
       "temppres", NULL);
-  lm_message_node_set_attribute (decloak, "xmlns", NS_TEMPPRES);
+  decloak->ns = g_quark_from_string (NS_TEMPPRES);
 
   if (reason != NULL && *reason != '\0')
     {
-      lm_message_node_set_attribute (decloak, "reason", reason);
+      wocky_node_set_attribute (decloak, "reason", reason);
     }
 
   ret = _gabble_connection_send (self, message, error);
@@ -2445,11 +2445,11 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
 {
   const gchar *to, *id;
   LmMessage *msg;
-  LmMessageNode *iq_node;
+  WockyNode *iq_node;
 
   iq_node = lm_message_get_node (message);
-  to = lm_message_node_get_attribute (iq_node, "from");
-  id = lm_message_node_get_attribute (iq_node, "id");
+  to = wocky_node_get_attribute (iq_node, "from");
+  id = wocky_node_get_attribute (iq_node, "id");
 
   if (id == NULL)
     {
@@ -2460,7 +2460,7 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
   msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
                                       LM_MESSAGE_SUB_TYPE_ERROR);
 
-  lm_message_node_set_attribute (wocky_stanza_get_top_node (msg), "id", id);
+  wocky_node_set_attribute (wocky_stanza_get_top_node (msg), "id", id);
 
   lm_message_node_steal_children (
       wocky_stanza_get_top_node (msg), iq_node);
@@ -2476,27 +2476,27 @@ static void
 add_feature_node (gpointer namespace,
     gpointer result_query)
 {
-  LmMessageNode *feature_node;
+  WockyNode *feature_node;
 
-  feature_node = lm_message_node_add_child (result_query, "feature",
+  feature_node = wocky_node_add_child_with_content (result_query, "feature",
       NULL);
-  lm_message_node_set_attribute (feature_node, "var", namespace);
+  wocky_node_set_attribute (feature_node, "var", namespace);
 }
 
 static void
 add_identity_node (const GabbleDiscoIdentity *identity,
     gpointer result_query)
 {
-  LmMessageNode *identity_node;
+  WockyNode *identity_node;
 
-  identity_node = lm_message_node_add_child
+  identity_node = wocky_node_add_child_with_content
       (result_query, "identity", NULL);
-  lm_message_node_set_attribute (identity_node, "category", identity->category);
-  lm_message_node_set_attribute (identity_node, "type", identity->type);
+  wocky_node_set_attribute (identity_node, "category", identity->category);
+  wocky_node_set_attribute (identity_node, "type", identity->type);
   if (identity->lang)
-    lm_message_node_set_attribute (identity_node, "lang", identity->lang);
+    wocky_node_set_attribute (identity_node, "lang", identity->lang);
   if (identity->name)
-    lm_message_node_set_attribute (identity_node, "name", identity->name);
+    wocky_node_set_attribute (identity_node, "name", identity->name);
 }
 
 /**
@@ -2719,7 +2719,7 @@ connection_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
                      const gchar *jid,
                      const gchar *node,
-                     LmMessageNode *result,
+                     WockyNode *result,
                      GError *disco_error,
                      gpointer user_data)
 {
@@ -2749,13 +2749,13 @@ connection_disco_cb (GabbleDisco *disco,
 
       for (i = node_iter (result); i; i = node_iter_next (i))
         {
-          LmMessageNode *child = node_iter_data (i);
+          WockyNode *child = node_iter_data (i);
 
           if (0 == strcmp (child->name, "identity"))
             {
-              const gchar *category = lm_message_node_get_attribute (child,
+              const gchar *category = wocky_node_get_attribute (child,
                   "category");
-              const gchar *type = lm_message_node_get_attribute (child, "type");
+              const gchar *type = wocky_node_get_attribute (child, "type");
 
               if (!tp_strdiff (category, "pubsub") &&
                   !tp_strdiff (type, "pep"))
@@ -2766,7 +2766,7 @@ connection_disco_cb (GabbleDisco *disco,
             }
           else if (0 == strcmp (child->name, "feature"))
             {
-              const gchar *var = lm_message_node_get_attribute (child, "var");
+              const gchar *var = wocky_node_get_attribute (child, "var");
 
               if (var == NULL)
                 continue;
@@ -3551,7 +3551,7 @@ gabble_connection_send_presence (GabbleConnection *conn,
         wocky_stanza_get_top_node (message), conn);
 
   if (!CHECK_STR_EMPTY(status))
-    lm_message_node_add_child (
+    wocky_node_add_child_with_content (
         wocky_stanza_get_top_node (message), "status", status);
 
   result = _gabble_connection_send (conn, message, error);

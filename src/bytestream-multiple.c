@@ -388,7 +388,7 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamMultiplePrivate *priv =
       GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
   LmMessage *msg;
-  LmMessageNode *si;
+  WockyNode *si;
   GList *all_methods;
   gchar *current_method;
 

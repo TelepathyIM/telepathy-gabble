@@ -489,9 +489,9 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
-    LmMessageNode *node, GError **error);
+    WockyNode *node, GError **error);
 typedef void (*ContentHandlerFunc)(GabbleJingleSession *sess,
-    GabbleJingleContent *c, LmMessageNode *content_node, gpointer user_data,
+    GabbleJingleContent *c, WockyNode *content_node, gpointer user_data,
     GError **error);
 
 static gboolean
@@ -713,7 +713,7 @@ lookup_content (GabbleJingleSession *sess,
 
 static void
 _foreach_content (GabbleJingleSession *sess,
-    LmMessageNode *node,
+    WockyNode *node,
     gboolean fail_if_missing,
     ContentHandlerFunc func,
     gpointer user_data,
@@ -724,14 +724,14 @@ _foreach_content (GabbleJingleSession *sess,
 
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      LmMessageNode *content_node = node_iter_data (i);
+      WockyNode *content_node = node_iter_data (i);
 
       if (tp_strdiff (lm_message_node_get_name (content_node), "content"))
         continue;
 
       if (!lookup_content (sess,
-              lm_message_node_get_attribute (content_node, "name"),
-              lm_message_node_get_attribute (content_node, "creator"),
+              wocky_node_get_attribute (content_node, "name"),
+              wocky_node_get_attribute (content_node, "creator"),
               fail_if_missing, &c, error))
         return;
 
@@ -754,7 +754,7 @@ static gboolean
 idle_content_reject (gpointer data)
 {
   LmMessage *msg;
-  LmMessageNode *sess_node, *node;
+  WockyNode *sess_node, *node;
   struct idle_content_reject_ctx *ctx = data;
 
   msg = gabble_jingle_session_new_message (ctx->session,
@@ -762,8 +762,8 @@ idle_content_reject (gpointer data)
 
   g_debug ("name = %s, intiiator = %s", ctx->name, ctx->creator);
 
-  node = lm_message_node_add_child (sess_node, "content", NULL);
-  lm_message_node_set_attributes (node,
+  node = wocky_node_add_child_with_content (sess_node, "content", NULL);
+  wocky_node_set_attributes (node,
       "name", ctx->name, "creator", ctx->creator, NULL);
 
   gabble_jingle_session_send (ctx->session, msg, NULL, NULL);
@@ -796,7 +796,7 @@ fire_idle_content_reject (GabbleJingleSession *sess, const gchar *name,
 static GabbleJingleContent *
 create_content (GabbleJingleSession *sess, GType content_type,
   JingleMediaType type, const gchar *content_ns, const gchar *transport_ns,
-  const gchar *name, LmMessageNode *content_node, GError **error)
+  const gchar *name, WockyNode *content_node, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   GabbleJingleContent *c;
@@ -864,11 +864,11 @@ create_content (GabbleJingleSession *sess, GType content_type,
 
 static void
 _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, gpointer user_data, GError **error)
+    WockyNode *content_node, gpointer user_data, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
-  const gchar *name = lm_message_node_get_attribute (content_node, "name");
-  LmMessageNode *desc_node = lm_message_node_get_child_any_ns (content_node,
+  const gchar *name = wocky_node_get_attribute (content_node, "name");
+  WockyNode *desc_node = wocky_node_get_child_any_ns (content_node,
       "description");
   GType content_type = 0;
   const gchar *content_ns = NULL;
@@ -890,7 +890,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
             "unsupported content type with ns %s", content_ns);
       else
         fire_idle_content_reject (sess, name,
-            lm_message_node_get_attribute (content_node, "creator"));
+            wocky_node_get_attribute (content_node, "creator"));
 
       return;
     }
@@ -908,7 +908,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, gpointer user_data, GError **error)
+    WockyNode *content_node, gpointer user_data, GError **error)
 {
   g_assert (c != NULL);
 
@@ -917,7 +917,7 @@ _each_content_remove (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_rejected (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, gpointer user_data, GError **error)
+    WockyNode *content_node, gpointer user_data, GError **error)
 {
   JingleReason reason = GPOINTER_TO_UINT (user_data);
   g_assert (c != NULL);
@@ -929,7 +929,7 @@ _each_content_rejected (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, gpointer user_data, GError **error)
+    WockyNode *content_node, gpointer user_data, GError **error)
 {
   g_assert (c != NULL);
 
@@ -941,7 +941,7 @@ _each_content_modify (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_replace (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, gpointer user_data, GError **error)
+    WockyNode *content_node, gpointer user_data, GError **error)
 {
   _each_content_remove (sess, c, content_node, NULL, error);
 
@@ -953,7 +953,7 @@ _each_content_replace (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, gpointer user_data, GError **error)
+    WockyNode *content_node, gpointer user_data, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   JingleContentState state;
@@ -964,7 +964,7 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
   if (state != JINGLE_CONTENT_STATE_SENT)
     {
 #ifdef ENABLE_DEBUG
-      const gchar *name = lm_message_node_get_attribute (content_node, "name");
+      const gchar *name = wocky_node_get_attribute (content_node, "name");
       DEBUG ("ignoring content \"%s\"s acceptance for content not in SENT state", name);
 #endif
       return;
@@ -976,13 +976,13 @@ _each_content_accept (GabbleJingleSession *sess, GabbleJingleContent *c,
 
 static void
 _each_description_info (GabbleJingleSession *sess, GabbleJingleContent *c,
-    LmMessageNode *content_node, gpointer user_data, GError **error)
+    WockyNode *content_node, gpointer user_data, GError **error)
 {
   gabble_jingle_content_parse_description_info (c, content_node, error);
 }
 
 static void
-on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
+on_session_initiate (GabbleJingleSession *sess, WockyNode *node,
   GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -999,8 +999,8 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
   if ((priv->dialect == JINGLE_DIALECT_GTALK3))
     {
       const gchar *content_ns = NULL;
-      LmMessageNode *desc_node =
-        lm_message_node_get_child_any_ns (node, "description");
+      WockyNode *desc_node =
+        wocky_node_get_child_any_ns (node, "description");
       content_ns = lm_message_node_get_namespace (desc_node);
 
       if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
@@ -1049,38 +1049,38 @@ on_session_initiate (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void
-on_content_add (GabbleJingleSession *sess, LmMessageNode *node,
+on_content_add (GabbleJingleSession *sess, WockyNode *node,
   GError **error)
 {
   _foreach_content (sess, node, FALSE, _each_content_add, NULL, error);
 }
 
 static void
-on_content_modify (GabbleJingleSession *sess, LmMessageNode *node,
+on_content_modify (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   _foreach_content (sess, node, TRUE, _each_content_modify, NULL, error);
 }
 
 static void
-on_content_remove (GabbleJingleSession *sess, LmMessageNode *node,
+on_content_remove (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   _foreach_content (sess, node, TRUE, _each_content_remove, NULL, error);
 }
 
 static void
-on_content_replace (GabbleJingleSession *sess, LmMessageNode *node,
+on_content_replace (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   _foreach_content (sess, node, TRUE, _each_content_replace, NULL, error);
 }
 
 static void
-on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
+on_content_reject (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
-  LmMessageNode *n = lm_message_node_get_child (node, "reason");
+  WockyNode *n = wocky_node_get_child (node, "reason");
   JingleReason reason = JINGLE_REASON_UNKNOWN;
 
   DEBUG (" ");
@@ -1096,14 +1096,14 @@ on_content_reject (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void
-on_content_accept (GabbleJingleSession *sess, LmMessageNode *node,
+on_content_accept (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   _foreach_content (sess, node, TRUE, _each_content_accept, NULL, error);
 }
 
 static void
-on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
+on_session_accept (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -1211,14 +1211,14 @@ set_ringing (GabbleJingleSession *sess,
 
 static gboolean
 handle_payload (GabbleJingleSession *sess,
-    LmMessageNode *payload,
+    WockyNode *payload,
     gboolean *handled,
     GError **error)
 {
   const gchar *ns = lm_message_node_get_namespace (payload);
   const gchar *elt = lm_message_node_get_name (payload);
-  const gchar *name = lm_message_node_get_attribute (payload, "name");
-  const gchar *creator = lm_message_node_get_attribute (payload, "creator");
+  const gchar *name = wocky_node_get_attribute (payload, "name");
+  const gchar *creator = wocky_node_get_attribute (payload, "creator");
 
   if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
     {
@@ -1271,7 +1271,7 @@ handle_payload (GabbleJingleSession *sess,
 
 static void
 on_session_info (GabbleJingleSession *sess,
-    LmMessageNode *node,
+    WockyNode *node,
     GError **error)
 {
   gboolean understood_a_payload = FALSE;
@@ -1286,7 +1286,7 @@ on_session_info (GabbleJingleSession *sess,
     {
       gboolean handled;
       GError *e = NULL;
-      LmMessageNode *n = node_iter_data (i);
+      WockyNode *n = node_iter_data (i);
 
       if (handle_payload (sess, n, &handled, &e))
         {
@@ -1316,11 +1316,11 @@ on_session_info (GabbleJingleSession *sess,
 }
 
 static void
-on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
+on_session_terminate (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   gchar *text = NULL;
-  LmMessageNode *n = lm_message_node_get_child (node, "reason");
+  WockyNode *n = wocky_node_get_child (node, "reason");
   JingleReason jingle_reason = JINGLE_REASON_UNKNOWN;
 
   if (n != NULL)
@@ -1336,7 +1336,7 @@ on_session_terminate (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void
-on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
+on_transport_info (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -1349,7 +1349,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
         {
-          if (!tp_strdiff (lm_message_node_get_attribute (node, "type"),
+          if (!tp_strdiff (wocky_node_get_attribute (node, "type"),
                 "candidates"))
             {
               GList *contents = gabble_jingle_session_get_contents (sess);
@@ -1365,7 +1365,7 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
             }
           else
             {
-              node = lm_message_node_get_child_any_ns (node, "transport");
+              node = wocky_node_get_child_any_ns (node, "transport");
 
               if (node == NULL)
                 {
@@ -1398,12 +1398,12 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
           WockyNode *transport_node;
 
           if (lookup_content (sess,
-                lm_message_node_get_attribute (content_node, "name"),
-                lm_message_node_get_attribute (content_node, "creator"),
+                wocky_node_get_attribute (content_node, "name"),
+                wocky_node_get_attribute (content_node, "creator"),
                 TRUE /* fail_if_missing */, &c, &e))
             {
               /* we need transport child of content node */
-              transport_node = lm_message_node_get_child_any_ns (
+              transport_node = wocky_node_get_child_any_ns (
                 content_node, "transport");
               gabble_jingle_content_parse_transport_info (c,
                 transport_node, &e);
@@ -1423,21 +1423,21 @@ on_transport_info (GabbleJingleSession *sess, LmMessageNode *node,
 }
 
 static void
-on_transport_accept (GabbleJingleSession *sess, LmMessageNode *node,
+on_transport_accept (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   DEBUG ("Ignoring 'transport-accept' action from peer");
 }
 
 static void
-on_description_info (GabbleJingleSession *sess, LmMessageNode *node,
+on_description_info (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   _foreach_content (sess, node, TRUE, _each_description_info, NULL, error);
 }
 
 static void
-on_info (GabbleJingleSession *sess, LmMessageNode *node,
+on_info (GabbleJingleSession *sess, WockyNode *node,
     GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -1478,7 +1478,7 @@ static HandlerFunc handlers[] = {
 static void
 jingle_state_machine_dance (GabbleJingleSession *sess,
     JingleAction action,
-    LmMessageNode *node,
+    WockyNode *node,
     GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -1491,7 +1491,7 @@ jingle_state_machine_dance (GabbleJingleSession *sess,
 }
 
 static JingleDialect
-detect_google_dialect (LmMessageNode *session_node)
+detect_google_dialect (WockyNode *session_node)
 {
   /* The GTALK3 dialect is the only one that supports video at this time */
   if (lm_message_node_get_child_with_namespace (session_node,
@@ -1510,7 +1510,7 @@ const gchar *
 gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDialect *dialect)
 {
   const gchar *actxt, *sid;
-  LmMessageNode *iq_node, *session_node;
+  WockyNode *iq_node, *session_node;
   gboolean google_mode = FALSE;
 
   /* all jingle actions are sets */
@@ -1519,8 +1519,8 @@ gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDi
 
   iq_node = lm_message_get_node (message);
 
-  if ((NULL == lm_message_node_get_attribute (iq_node, "from")) ||
-      (NULL == lm_message_node_get_attribute (iq_node, "to")))
+  if ((NULL == wocky_node_get_attribute (iq_node, "from")) ||
+      (NULL == wocky_node_get_attribute (iq_node, "to")))
         return NULL;
 
   /* first, we try standard jingle */
@@ -1561,13 +1561,13 @@ gabble_jingle_session_detect (LmMessage *message, JingleAction *action, JingleDi
 
   if (google_mode)
     {
-      actxt = lm_message_node_get_attribute (session_node, "type");
-      sid = lm_message_node_get_attribute (session_node, "id");
+      actxt = wocky_node_get_attribute (session_node, "type");
+      sid = wocky_node_get_attribute (session_node, "id");
     }
   else
     {
-      actxt = lm_message_node_get_attribute (session_node, "action");
-      sid = lm_message_node_get_attribute (session_node, "sid");
+      actxt = wocky_node_get_attribute (session_node, "action");
+      sid = wocky_node_get_attribute (session_node, "sid");
     }
 
   *action = parse_action (actxt);
@@ -1579,13 +1579,13 @@ gboolean
 gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmMessage *message, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
-  LmMessageNode *iq_node, *session_node;
+  WockyNode *iq_node, *session_node;
   const gchar *from, *action_name;
 
   iq_node = lm_message_get_node (message);
 
   /* IQ from/to can come in handy */
-  from = lm_message_node_get_attribute (iq_node, "from");
+  from = wocky_node_get_attribute (iq_node, "from");
 
   if (action == JINGLE_ACTION_UNKNOWN)
     {
@@ -1649,11 +1649,11 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
 
 LmMessage *
 gabble_jingle_session_new_message (GabbleJingleSession *sess,
-    JingleAction action, LmMessageNode **sess_node)
+    JingleAction action, WockyNode **sess_node)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   LmMessage *msg;
-  LmMessageNode *iq_node, *session_node;
+  WockyNode *iq_node, *session_node;
   gchar *el = NULL, *ns = NULL;
   gboolean gtalk_mode = FALSE;
 
@@ -1690,9 +1690,9 @@ gabble_jingle_session_new_message (GabbleJingleSession *sess,
         g_assert_not_reached ();
     }
 
-  session_node = lm_message_node_add_child (iq_node, el, NULL);
-  lm_message_node_set_attributes (session_node,
-      "xmlns", ns,
+  session_node = wocky_node_add_child_with_content (iq_node, el, NULL);
+  session_node->ns = g_quark_from_static_string (ns);
+  wocky_node_set_attributes (session_node,
       "initiator", priv->initiator,
       (gtalk_mode) ? "id" : "sid", priv->sid,
       (gtalk_mode) ? "type" : "action",
@@ -1751,8 +1751,8 @@ static void
 _fill_content (GabbleJingleSession *sess,
     GabbleJingleContent *c, gpointer user_data)
 {
-  LmMessageNode *sess_node = user_data;
-  LmMessageNode *transport_node;
+  WockyNode *sess_node = user_data;
+  WockyNode *transport_node;
   JingleContentState state;
 
   gabble_jingle_content_produce_node (c, sess_node, TRUE, TRUE,
@@ -1871,7 +1871,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessage *msg;
-  LmMessageNode *sess_node;
+  WockyNode *sess_node;
   gboolean contents_ready = TRUE;
   JingleAction action;
   JingleState new_state;
@@ -1964,15 +1964,11 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
       if (has_video || has_audio)
         {
-          sess_node = lm_message_node_add_child (sess_node, "description",
+          sess_node = wocky_node_add_child_with_content (sess_node, "description",
               NULL);
 
-          if (has_video)
-            lm_message_node_set_attribute (sess_node, "xmlns",
-                NS_GOOGLE_SESSION_VIDEO);
-          else
-            lm_message_node_set_attribute (sess_node, "xmlns",
-                NS_GOOGLE_SESSION_PHONE);
+          sess_node->ns = g_quark_from_static_string (
+              has_video ? NS_GOOGLE_SESSION_VIDEO : NS_GOOGLE_SESSION_PHONE);
         }
     }
 
@@ -2071,19 +2067,19 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
 
   if (priv->state != JINGLE_STATE_PENDING_CREATED)
     {
-      LmMessageNode *session_node;
+      WockyNode *session_node;
       LmMessage *msg = gabble_jingle_session_new_message (sess,
           JINGLE_ACTION_SESSION_TERMINATE, &session_node);
 
       if (priv->dialect == JINGLE_DIALECT_V032 && reason_elt != NULL)
         {
-          LmMessageNode *r = lm_message_node_add_child (session_node, "reason",
+          WockyNode *r = wocky_node_add_child_with_content (session_node, "reason",
               NULL);
 
-          lm_message_node_add_child (r, reason_elt, NULL);
+          wocky_node_add_child_with_content (r, reason_elt, NULL);
 
           if (!CHECK_STR_EMPTY(text))
-            lm_message_node_add_child (r, "text", text);
+            wocky_node_add_child_with_content (r, "text", text);
         }
 
       gabble_jingle_session_send (sess, msg, NULL, NULL);
@@ -2302,7 +2298,7 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
     const gchar *name)
 {
   LmMessage *message;
-  LmMessageNode *jingle, *notification;
+  WockyNode *jingle, *notification;
 
   if (!gabble_jingle_session_defines_action (sess, JINGLE_ACTION_SESSION_INFO))
     {
@@ -2313,9 +2309,8 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
   message = gabble_jingle_session_new_message (sess,
       JINGLE_ACTION_SESSION_INFO, &jingle);
 
-  notification = lm_message_node_add_child (jingle, name, NULL);
-  lm_message_node_set_attributes (notification, "xmlns", NS_JINGLE_RTP_INFO,
-      NULL);
+  notification = wocky_node_add_child_with_content (jingle, name, NULL);
+  notification->ns = g_quark_from_static_string (NS_JINGLE_RTP_INFO);
 
   /* This is just informational, so ignoring the reply. */
   gabble_jingle_session_send (sess, message, NULL, NULL);

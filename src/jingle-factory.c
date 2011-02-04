@@ -258,7 +258,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
   LmMessageSubType sub_type;
-  LmMessageNode *query_node, *node;
+  WockyNode *query_node, *node;
   const gchar *from = wocky_stanza_get_from (message);
 
   if (from != NULL)
@@ -288,7 +288,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
     {
       GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
 
-      node = lm_message_node_get_child (wocky_stanza_get_top_node (message),
+      node = wocky_node_get_child (wocky_stanza_get_top_node (message),
           "error");
       if (node != NULL)
         {
@@ -309,13 +309,13 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
     }
 
   if (fac->priv->get_stun_from_jingle)
-    node = lm_message_node_get_child (query_node, "stun");
+    node = wocky_node_get_child (query_node, "stun");
   else
     node = NULL;
 
   if (node != NULL)
     {
-      node = lm_message_node_get_child (node, "server");
+      node = wocky_node_get_child (node, "server");
 
       if (node != NULL)
         {
@@ -323,8 +323,8 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
           const gchar *port_attr;
           guint port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
 
-          server = lm_message_node_get_attribute (node, "host");
-          port_attr = lm_message_node_get_attribute (node, "udp");
+          server = wocky_node_get_attribute (node, "host");
+          port_attr = wocky_node_get_attribute (node, "udp");
 
           if (port_attr != NULL)
             port = atoi (port_attr);
@@ -338,19 +338,19 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
         }
     }
 
-  node = lm_message_node_get_child (query_node, "relay");
+  node = wocky_node_get_child (query_node, "relay");
 
   if (node != NULL)
     {
-      LmMessageNode *subnode;
+      WockyNode *subnode;
 
-      subnode = lm_message_node_get_child (node, "token");
+      subnode = wocky_node_get_child (node, "token");
 
       if (subnode != NULL)
         {
           const gchar *token;
 
-          token = lm_message_node_get_value (subnode);
+          token = subnode->content;
           if (token != NULL)
             {
               DEBUG ("jingle info: got Google relay token %s", token);
@@ -359,14 +359,14 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
             }
         }
 
-      subnode = lm_message_node_get_child (node, "server");
+      subnode = wocky_node_get_child (node, "server");
 
       if (subnode != NULL)
         {
           const gchar *server;
           const gchar *port;
 
-          server = lm_message_node_get_attribute (subnode, "host");
+          server = wocky_node_get_attribute (subnode, "host");
 
           if (server != NULL)
             {
@@ -379,7 +379,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
             {
               /* this is not part of the real protocol, but we can't listen on
                * port 80 in an unprivileged regression test */
-              port = lm_message_node_get_attribute (subnode,
+              port = wocky_node_get_attribute (subnode,
                   "gabble-test-http-port");
 
               if (port != NULL)
@@ -393,7 +393,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
           /* FIXME: these are not really actually used anywhere at
            * the moment, because we get the same info when creating
            * relay session. */
-          port = lm_message_node_get_attribute (subnode, "udp");
+          port = wocky_node_get_attribute (subnode, "udp");
 
           if (port != NULL)
             {
@@ -401,7 +401,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
               fac->priv->relay_udp = atoi (port);
             }
 
-          port = lm_message_node_get_attribute (subnode, "tcp");
+          port = wocky_node_get_attribute (subnode, "tcp");
 
           if (port != NULL)
             {
@@ -409,7 +409,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
               fac->priv->relay_tcp = atoi (port);
             }
 
-          port = lm_message_node_get_attribute (subnode, "tcpssl");
+          port = wocky_node_get_attribute (subnode, "tcpssl");
 
           if (port != NULL)
             {
@@ -464,7 +464,7 @@ jingle_info_send_request (GabbleJingleFactory *fac)
   GabbleJingleFactoryPrivate *priv = fac->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->conn;
   LmMessage *msg;
-  LmMessageNode *node;
+  WockyNode *node;
   const gchar *jid;
   GError *error = NULL;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
@@ -474,9 +474,9 @@ jingle_info_send_request (GabbleJingleFactory *fac)
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
       LM_MESSAGE_SUB_TYPE_GET);
 
-  node = lm_message_node_add_child (
+  node = wocky_node_add_child_with_content (
       wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_JINGLE_INFO);
+  node->ns = g_quark_from_string (NS_GOOGLE_JINGLE_INFO);
 
   if (!_gabble_connection_send_with_reply (priv->conn, msg,
         jingle_info_reply_cb, G_OBJECT (fac), fac, &error))
@@ -803,7 +803,7 @@ jingle_cb (LmMessageHandler *handler,
 
   /* see if it's a jingle message and detect dialect */
   sid = gabble_jingle_session_detect (msg, &action, &dialect);
-  from = lm_message_node_get_attribute (lm_message_get_node (msg), "from");
+  from = wocky_node_get_attribute (lm_message_get_node (msg), "from");
 
   if (sid == NULL || from == NULL)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;

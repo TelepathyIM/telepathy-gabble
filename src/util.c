@@ -137,16 +137,16 @@ gabble_generate_id (void)
 
 
 static void
-lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
+lm_message_node_add_nick (WockyNode *node, const gchar *nick)
 {
-  LmMessageNode *nick_node;
+  WockyNode *nick_node;
 
-  nick_node = lm_message_node_add_child (node, "nick", nick);
-  lm_message_node_set_attribute (nick_node, "xmlns", NS_NICK);
+  nick_node = wocky_node_add_child_with_content (node, "nick", nick);
+  nick_node->ns = g_quark_from_string (NS_NICK);
 }
 
 void
-lm_message_node_add_own_nick (LmMessageNode *node,
+lm_message_node_add_own_nick (WockyNode *node,
                               GabbleConnection *connection)
 {
   gchar *nick;
@@ -164,8 +164,8 @@ lm_message_node_add_own_nick (LmMessageNode *node,
 
 
 void
-lm_message_node_steal_children (LmMessageNode *snatcher,
-                                LmMessageNode *mum)
+lm_message_node_steal_children (WockyNode *snatcher,
+                                WockyNode *mum)
 {
   g_return_if_fail (snatcher->children == NULL);
 
@@ -176,16 +176,16 @@ lm_message_node_steal_children (LmMessageNode *snatcher,
   mum->children = NULL;
 }
 
-/* variant of lm_message_node_get_child() which ignores node namespace
+/* variant of wocky_node_get_child() which ignores node namespace
  * prefix */
-LmMessageNode *
-lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
+WockyNode *
+wocky_node_get_child_any_ns (WockyNode *node, const gchar *name)
 {
   NodeIter i;
 
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      LmMessageNode *child = node_iter_data (i);
+      WockyNode *child = node_iter_data (i);
 
       if (!tp_strdiff (lm_message_node_get_name (child), name))
           return child;
@@ -195,31 +195,31 @@ lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
 }
 
 const gchar *
-lm_message_node_get_namespace (LmMessageNode *node)
+lm_message_node_get_namespace (WockyNode *node)
 {
   return wocky_node_get_ns (node);
 }
 
 const gchar *
-lm_message_node_get_name (LmMessageNode *node)
+lm_message_node_get_name (WockyNode *node)
 {
   return node->name;
 }
 
 gboolean
-lm_message_node_has_namespace (LmMessageNode *node,
+lm_message_node_has_namespace (WockyNode *node,
                                const gchar *ns,
                                const gchar *tag)
 {
   return (!tp_strdiff (lm_message_node_get_namespace (node), ns));
 }
 
-LmMessageNode *
-lm_message_node_get_child_with_namespace (LmMessageNode *node,
+WockyNode *
+lm_message_node_get_child_with_namespace (WockyNode *node,
                                           const gchar *name,
                                           const gchar *ns)
 {
-  LmMessageNode *found;
+  WockyNode *found;
   NodeIter i;
 
   found = wocky_node_get_child_ns (node, name, ns);
@@ -228,7 +228,7 @@ lm_message_node_get_child_with_namespace (LmMessageNode *node,
 
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      LmMessageNode *child = node_iter_data (i);
+      WockyNode *child = node_iter_data (i);
 
       found = lm_message_node_get_child_with_namespace (child, name, ns);
       if (found != NULL)
@@ -255,7 +255,7 @@ enum {
  * Used to implement lm_message_build and lm_message_build_with_sub_type.
  */
 static void
-lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
+lm_message_node_add_build_va (WockyNode *node, guint spec, va_list ap)
 {
   GSList *stack = NULL;
   guint arg = spec;
@@ -273,7 +273,7 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
 
             g_return_if_fail (key != NULL);
             g_return_if_fail (value != NULL);
-            lm_message_node_set_attribute (stack->data, key, value);
+            wocky_node_set_attribute (stack->data, key, value);
           }
           break;
 
@@ -281,11 +281,11 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
           {
             gchar *name = va_arg (ap, gchar *);
             gchar *value = va_arg (ap, gchar *);
-            LmMessageNode *child;
+            WockyNode *child;
 
             g_return_if_fail (name != NULL);
             g_return_if_fail (value != NULL);
-            child = lm_message_node_add_child (stack->data, name, value);
+            child = wocky_node_add_child_with_content (stack->data, name, value);
             stack = g_slist_prepend (stack, child);
           }
           break;
@@ -303,7 +303,7 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
 
         case BUILD_POINTER:
           {
-            LmMessageNode **assign_to = va_arg (ap, LmMessageNode **);
+            WockyNode **assign_to = va_arg (ap, WockyNode **);
 
             g_return_if_fail (assign_to != NULL);
             *assign_to = stack->data;
@@ -639,7 +639,7 @@ OUT:
  *
  */
 GHashTable *
-lm_message_node_extract_properties (LmMessageNode *node,
+lm_message_node_extract_properties (WockyNode *node,
                                     const gchar *prop)
 {
   GHashTable *properties;
@@ -653,7 +653,7 @@ lm_message_node_extract_properties (LmMessageNode *node,
 
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
-      LmMessageNode *child = node_iter_data (i);
+      WockyNode *child = node_iter_data (i);
       const gchar *name;
       const gchar *type;
       const gchar *value;
@@ -662,13 +662,13 @@ lm_message_node_extract_properties (LmMessageNode *node,
       if (0 != strcmp (child->name, prop))
         continue;
 
-      name = lm_message_node_get_attribute (child, "name");
+      name = wocky_node_get_attribute (child, "name");
 
       if (!name)
         continue;
 
-      type = lm_message_node_get_attribute (child, "type");
-      value = lm_message_node_get_value (child);
+      type = wocky_node_get_attribute (child, "type");
+      value = child->content;
 
       if (type == NULL || value == NULL)
         continue;
@@ -741,7 +741,7 @@ lm_message_node_extract_properties (LmMessageNode *node,
 
 struct _set_child_from_property_data
 {
-  LmMessageNode *node;
+  WockyNode *node;
   const gchar *prop;
 };
 
@@ -753,7 +753,7 @@ set_child_from_property (gpointer key,
   GValue *gvalue = value;
   struct _set_child_from_property_data *data =
     (struct _set_child_from_property_data *) user_data;
-  LmMessageNode *child;
+  WockyNode *child;
   const char *type = NULL;
 
   if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
@@ -784,11 +784,11 @@ set_child_from_property (gpointer key,
       return;
     }
 
-  child = lm_message_node_add_child (data->node, data->prop, "");
+  child = wocky_node_add_child_with_content (data->node, data->prop, "");
 
   if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
     {
-      lm_message_node_set_value (child,
+      wocky_node_set_content (child,
         g_value_get_string (gvalue));
     }
   else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
@@ -799,7 +799,7 @@ set_child_from_property (gpointer key,
       type = "bytes";
       arr = g_value_get_boxed (gvalue);
       str = base64_encode (arr->len, arr->data, FALSE);
-      lm_message_node_set_value (child, str);
+      wocky_node_set_content (child, str);
 
       g_free (str);
     }
@@ -808,7 +808,7 @@ set_child_from_property (gpointer key,
       gchar *str;
 
       str = g_strdup_printf ("%d", g_value_get_int (gvalue));
-      lm_message_node_set_value (child, str);
+      wocky_node_set_content (child, str);
 
       g_free (str);
     }
@@ -817,7 +817,7 @@ set_child_from_property (gpointer key,
       gchar *str;
 
       str = g_strdup_printf ("%u", g_value_get_uint (gvalue));
-      lm_message_node_set_value (child, str);
+      wocky_node_set_content (child, str);
 
       g_free (str);
     }
@@ -826,7 +826,7 @@ set_child_from_property (gpointer key,
       /* we output as "0" or "1" despite the canonical representation for
        * xs:boolean being "false" or "true", for compatibility with older
        * Gabble versions (OLPC Trial-3) */
-      lm_message_node_set_value (child,
+      wocky_node_set_content (child,
           g_value_get_boolean (gvalue) ? "1" : "0");
     }
   else
@@ -834,8 +834,8 @@ set_child_from_property (gpointer key,
       g_assert_not_reached ();
     }
 
-  lm_message_node_set_attribute (child, "name", key);
-  lm_message_node_set_attribute (child, "type", type);
+  wocky_node_set_attribute (child, "name", key);
+  wocky_node_set_attribute (child, "type", type);
 }
 
 /**
@@ -857,7 +857,7 @@ set_child_from_property (gpointer key,
  *
  */
 void
-lm_message_node_add_children_from_properties (LmMessageNode *node,
+lm_message_node_add_children_from_properties (WockyNode *node,
                                               GHashTable *properties,
                                               const gchar *prop)
 {
@@ -881,7 +881,7 @@ LmMessage *
 lm_iq_message_make_result (LmMessage *iq_message)
 {
   LmMessage *result;
-  LmMessageNode *iq, *result_iq;
+  WockyNode *iq, *result_iq;
   const gchar *from_jid, *id;
 
   g_assert (lm_message_get_type (iq_message) == LM_MESSAGE_TYPE_IQ);
@@ -889,7 +889,7 @@ lm_iq_message_make_result (LmMessage *iq_message)
             lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_SET);
 
   iq = lm_message_get_node (iq_message);
-  id = lm_message_node_get_attribute (iq, "id");
+  id = wocky_node_get_attribute (iq, "id");
 
   if (id == NULL)
     {
@@ -897,12 +897,12 @@ lm_iq_message_make_result (LmMessage *iq_message)
       return NULL;
     }
 
-  from_jid = lm_message_node_get_attribute (iq, "from");
+  from_jid = wocky_node_get_attribute (iq, "from");
 
   result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
                                          LM_MESSAGE_SUB_TYPE_RESULT);
   result_iq = lm_message_get_node (result);
-  lm_message_node_set_attribute (result_iq, "id", id);
+  wocky_node_set_attribute (result_iq, "id", id);
 
   return result;
 }
@@ -1056,7 +1056,7 @@ typedef struct {
 } Attribute;
 
 const gchar *
-lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
+wocky_node_get_attribute_with_namespace (WockyNode *node,
     const gchar *attribute,
     const gchar *ns)
 {

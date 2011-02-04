@@ -236,7 +236,7 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
 
 static void
 parse_candidates (GabbleJingleTransportIface *obj,
-    LmMessageNode *transport_node, GError **error)
+    WockyNode *transport_node, GError **error)
 {
   GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
   GabbleJingleTransportGooglePrivate *priv = t->priv;
@@ -245,7 +245,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
   for (i = node_iter (transport_node); i; i = node_iter_next (i))
     {
-      LmMessageNode *node = node_iter_data (i);
+      WockyNode *node = node_iter_data (i);
       const gchar *name, *address, *user, *pass, *str;
       guint port, net, gen, component;
       int pref;
@@ -256,7 +256,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (tp_strdiff (lm_message_node_get_name (node), "candidate"))
           continue;
 
-      name = lm_message_node_get_attribute (node, "name");
+      name = wocky_node_get_attribute (node, "name");
       if (name == NULL)
           break;
 
@@ -269,16 +269,16 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       component = GPOINTER_TO_INT (g_hash_table_lookup (priv->component_names,
               name));
-      address = lm_message_node_get_attribute (node, "address");
+      address = wocky_node_get_attribute (node, "address");
       if (address == NULL)
           break;
 
-      str = lm_message_node_get_attribute (node, "port");
+      str = wocky_node_get_attribute (node, "port");
       if (str == NULL)
           break;
       port = atoi (str);
 
-      str = lm_message_node_get_attribute (node, "protocol");
+      str = wocky_node_get_attribute (node, "protocol");
       if (str == NULL)
           break;
 
@@ -310,13 +310,13 @@ parse_candidates (GabbleJingleTransportIface *obj,
           break;
         }
 
-      str = lm_message_node_get_attribute (node, "preference");
+      str = wocky_node_get_attribute (node, "preference");
       if (str == NULL)
           break;
 
       pref = g_ascii_strtod (str, NULL) * 65536;
 
-      str = lm_message_node_get_attribute (node, "type");
+      str = wocky_node_get_attribute (node, "type");
       if (str == NULL)
           break;
 
@@ -339,25 +339,25 @@ parse_candidates (GabbleJingleTransportIface *obj,
           break;
         }
 
-      user = lm_message_node_get_attribute (node, "username");
+      user = wocky_node_get_attribute (node, "username");
       if (user == NULL)
           break;
 
-      pass = lm_message_node_get_attribute (node, "password");
+      pass = wocky_node_get_attribute (node, "password");
       if (pass == NULL)
           break;
 
-      str = lm_message_node_get_attribute (node, "network");
+      str = wocky_node_get_attribute (node, "network");
       if (str == NULL)
           break;
       net = atoi (str);
 
-      str = lm_message_node_get_attribute (node, "generation");
+      str = wocky_node_get_attribute (node, "generation");
       if (str == NULL)
           break;
       gen = atoi (str);
 
-      str = lm_message_node_get_attribute (node, "component");
+      str = wocky_node_get_attribute (node, "component");
       if (str != NULL)
           component = atoi (str);
 
@@ -392,7 +392,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
   GList *li;
   LmMessage *msg;
-  LmMessageNode *trans_node, *sess_node;
+  WockyNode *trans_node, *sess_node;
 
   if (candidates == NULL)
     return;
@@ -407,7 +407,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
     {
       JingleCandidate *c = (JingleCandidate *) li->data;
       gchar port_str[16], pref_str[16], comp_str[16], *type_str, *proto_str;
-      LmMessageNode *cnode;
+      WockyNode *cnode;
 
       sprintf (port_str, "%d", c->port);
       sprintf (pref_str, "%lf", c->preference / 65536.0);
@@ -441,8 +441,8 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
           g_assert_not_reached ();
       }
 
-      cnode = lm_message_node_add_child (trans_node, "candidate", NULL);
-      lm_message_node_set_attributes (cnode,
+      cnode = wocky_node_add_child_with_content (trans_node, "candidate", NULL);
+      wocky_node_set_attributes (cnode,
           "address", c->address,
           "port", port_str,
           "username", c->username,
@@ -455,7 +455,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
           "generation", "0",
           NULL);
 
-      lm_message_node_set_attribute (cnode, "name", name);
+      wocky_node_set_attribute (cnode, "name", name);
     }
 
   _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,

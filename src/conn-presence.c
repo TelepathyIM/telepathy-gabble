@@ -516,7 +516,7 @@ activate_current_privacy_list (GabbleConnection *self,
   gboolean invisible;
   GabblePresence *presence = self->self_presence;
   GError *error = NULL;
-  LmMessageNode *active_node;
+  WockyNode *active_node;
 
   g_assert (priv->privacy_statuses != NULL);
 
@@ -866,14 +866,14 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   LmMessage *result;
-  LmMessageNode *list_node, *iq;
+  WockyNode *list_node, *iq;
   const gchar *list_name;
 
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq = lm_message_get_node (message);
-  list_node = lm_message_node_find_child (iq, "list");
+  list_node = lm_message_node_get_child_with_namespace (iq, "list", NULL);
 
   if (!lm_message_node_get_child_with_namespace (iq, "query", NS_PRIVACY) ||
       !list_node)
@@ -883,7 +883,7 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
 
   wocky_porter_send (wocky_session_get_porter (conn->session), result);
 
-  list_name = lm_message_node_get_attribute (list_node, "name");
+  list_name = wocky_node_get_attribute (list_node, "name");
 
   if (g_strcmp0 (list_name, conn->presence_priv->invisible_list_name) == 0)
     setup_invisible_privacy_list_async (conn, NULL, NULL);
@@ -1042,7 +1042,7 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
   else
     {
       GabbleConnectionPresencePrivate *priv = conn->presence_priv;
-      LmMessageNode *list_node;
+      WockyNode *list_node;
       WockyNodeIter iter;
       GabblePluginLoader *loader = gabble_plugin_loader_dup ();
 
@@ -1056,7 +1056,7 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
       wocky_node_iter_init (&iter, query_node, "list", NULL);
       while (wocky_node_iter_next (&iter, &list_node))
         {
-          const gchar *list_name = lm_message_node_get_attribute (list_node,
+          const gchar *list_name = wocky_node_get_attribute (list_node,
               "name");
           const gchar *status_name;
 
@@ -1166,15 +1166,15 @@ setup_invisible_privacy_list_finish (GabbleConnection *self,
 }
 
 static gboolean
-is_valid_invisible_list (LmMessageNode *list_node)
+is_valid_invisible_list (WockyNode *list_node)
 {
-  LmMessageNode *top_node = NULL;
+  WockyNode *top_node = NULL;
   NodeIter i;
   guint top_order = G_MAXUINT;
 
   for (i = node_iter (list_node); i; i = node_iter_next (i))
     {
-      LmMessageNode *child = node_iter_data (i);
+      WockyNode *child = node_iter_data (i);
       const gchar *order_str;
       guint order;
       gchar *end;
@@ -1182,7 +1182,7 @@ is_valid_invisible_list (LmMessageNode *list_node)
       if (g_strcmp0 (lm_message_node_get_name (child), "item") != 0)
         continue;
 
-      order_str = lm_message_node_get_attribute (child, "order");
+      order_str = wocky_node_get_attribute (child, "order");
 
       if (order_str == NULL)
         continue;
@@ -1201,9 +1201,9 @@ is_valid_invisible_list (LmMessageNode *list_node)
 
   if (top_node != NULL)
     {
-      const gchar *value = lm_message_node_get_attribute (top_node, "value");
-      const gchar *action = lm_message_node_get_attribute (top_node, "action");
-      LmMessageNode *presence_out = lm_message_node_get_child (top_node,
+      const gchar *value = wocky_node_get_attribute (top_node, "value");
+      const gchar *action = wocky_node_get_attribute (top_node, "action");
+      WockyNode *presence_out = wocky_node_get_child (top_node,
           "presence-out");
 
       return (value == NULL && g_strcmp0 (action, "deny") == 0 &&
@@ -1221,8 +1221,8 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
     gpointer user_data)
 {
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
-  LmMessageNode *node = lm_message_node_find_child
-    (wocky_stanza_get_top_node (reply_msg), "list");
+  WockyNode *node = lm_message_node_get_child_with_namespace (
+      wocky_stanza_get_top_node (reply_msg), "list", NULL);
   GError *error = gabble_message_get_xmpp_error (reply_msg);
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT &&
@@ -1481,7 +1481,7 @@ conn_presence_signal_own_presence (GabbleConnection *self,
   if (presence->status == GABBLE_PRESENCE_HIDDEN && to == NULL)
     {
       if (priv->invisibility_method == INVISIBILITY_METHOD_PRESENCE_INVISIBLE)
-        lm_message_node_set_attribute (lm_message_get_node (message),
+        wocky_node_set_attribute (lm_message_get_node (message),
             "type", "invisible");
       /* FIXME: or if sending directed presence, should we add
        * <show>away</show>? */

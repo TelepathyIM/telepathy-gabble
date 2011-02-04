@@ -40,7 +40,7 @@
 typedef GSList * NodeIter;
 #define node_iter(node) (node->children)
 #define node_iter_next(i) (g_slist_next (i))
-#define node_iter_data(i) ((LmMessageNode *) i->data)
+#define node_iter_data(i) ((WockyNode *) i->data)
 
 /* Guarantees that the resulting hash is in lower-case */
 gchar *sha1_hex (const gchar *bytes, guint len);
@@ -51,13 +51,13 @@ void sha1_bin (const gchar *bytes, guint len, guchar out[SHA1_HASH_SIZE]);
 
 gchar *gabble_generate_id (void);
 
-void lm_message_node_add_own_nick (LmMessageNode *node,
+void lm_message_node_add_own_nick (WockyNode *node,
     GabbleConnection *conn);
-void lm_message_node_steal_children (LmMessageNode *snatcher,
-    LmMessageNode *mum);
-gboolean lm_message_node_has_namespace (LmMessageNode *node, const gchar *ns,
+void lm_message_node_steal_children (WockyNode *snatcher,
+    WockyNode *mum);
+gboolean lm_message_node_has_namespace (WockyNode *node, const gchar *ns,
     const gchar *tag);
-LmMessageNode *lm_message_node_get_child_with_namespace (LmMessageNode *node,
+WockyNode *lm_message_node_get_child_with_namespace (WockyNode *node,
     const gchar *name, const gchar *ns);
 G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to,
     LmMessageType type, guint spec, ...);
@@ -78,14 +78,14 @@ gchar *gabble_normalize_room (TpHandleRepoIface *repo, const gchar *jid,
 TpHandle gabble_get_room_handle_from_jid (TpHandleRepoIface *room_repo,
     const gchar *jid);
 
-GHashTable *lm_message_node_extract_properties (LmMessageNode *node,
+GHashTable *lm_message_node_extract_properties (WockyNode *node,
     const gchar *prop);
 void
-lm_message_node_add_children_from_properties (LmMessageNode *node,
+lm_message_node_add_children_from_properties (WockyNode *node,
     GHashTable *properties, const gchar *prop);
-const gchar * lm_message_node_get_namespace (LmMessageNode *node);
-const gchar * lm_message_node_get_name (LmMessageNode *node);
-LmMessageNode * lm_message_node_get_child_any_ns (LmMessageNode *node,
+const gchar * lm_message_node_get_namespace (WockyNode *node);
+const gchar * lm_message_node_get_name (WockyNode *node);
+WockyNode * wocky_node_get_child_any_ns (WockyNode *node,
     const gchar *name);
 
 LmMessage *
@@ -95,7 +95,7 @@ void gabble_signal_connect_weak (gpointer instance, const gchar *detailed_signal
     GCallback c_handler, GObject *user_data);
 guint gabble_idle_add_weak (GSourceFunc function, GObject *object);
 
-const gchar * lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
+const gchar * wocky_node_get_attribute_with_namespace (WockyNode *node,
     const gchar *attribute,
     const gchar *ns);
 

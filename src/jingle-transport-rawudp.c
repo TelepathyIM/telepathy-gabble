@@ -217,7 +217,7 @@ gabble_jingle_transport_rawudp_class_init (GabbleJingleTransportRawUdpClass *cls
 
 static void
 parse_candidates (GabbleJingleTransportIface *obj,
-    LmMessageNode *transport_node, GError **error)
+    WockyNode *transport_node, GError **error)
 {
   GabbleJingleTransportRawUdp *t = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv = t->priv;
@@ -234,7 +234,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
   for (i = node_iter (transport_node); i; i = node_iter_next (i))
     {
-      LmMessageNode *node = node_iter_data (i);
+      WockyNode *node = node_iter_data (i);
       const gchar *id, *ip, *str;
       guint port, gen, component = 1;
       JingleCandidate *c;
@@ -242,7 +242,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (tp_strdiff (node->name, "candidate"))
           continue;
 
-      str = lm_message_node_get_attribute (node, "component");
+      str = wocky_node_get_attribute (node, "component");
       if (str != NULL)
           component = atoi (str);
 
@@ -252,20 +252,20 @@ parse_candidates (GabbleJingleTransportIface *obj,
           continue;
         }
 
-      id = lm_message_node_get_attribute (node, "id");
+      id = wocky_node_get_attribute (node, "id");
       if (id == NULL)
           break;
 
-      ip = lm_message_node_get_attribute (node, "ip");
+      ip = wocky_node_get_attribute (node, "ip");
       if (ip == NULL)
           break;
 
-      str = lm_message_node_get_attribute (node, "port");
+      str = wocky_node_get_attribute (node, "port");
       if (str == NULL)
           break;
       port = atoi (str);
 
-      str = lm_message_node_get_attribute (node, "generation");
+      str = wocky_node_get_attribute (node, "generation");
       if (str == NULL)
           break;
       gen = atoi (str);
@@ -294,14 +294,14 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
 static void
 inject_candidates (GabbleJingleTransportIface *obj,
-    LmMessageNode *transport_node)
+    WockyNode *transport_node)
 {
   GabbleJingleTransportRawUdp *self = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv = self->priv;
   JingleCandidate *c;
   GList *li;
   gchar port_str[16], comp_str[16];
-  LmMessageNode *cnode;
+  WockyNode *cnode;
 
   /* If we don't have the local candidates yet, we should've waited with
    * the session initiation, or can_accept would have returned FALSE.
@@ -314,8 +314,8 @@ inject_candidates (GabbleJingleTransportIface *obj,
       sprintf (port_str, "%d", c->port);
       sprintf (comp_str, "%d", c->component);
 
-      cnode = lm_message_node_add_child (transport_node, "candidate", NULL);
-      lm_message_node_set_attributes (cnode,
+      cnode = wocky_node_add_child_with_content (transport_node, "candidate", NULL);
+      wocky_node_set_attributes (cnode,
           "ip", c->address,
           "port", port_str,
           "generation", "0",

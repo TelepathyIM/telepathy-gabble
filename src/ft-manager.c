@@ -631,9 +631,9 @@ gabble_ft_manager_type_foreach_channel_class (GType type,
   g_hash_table_destroy (table);
 }
 
-static LmMessageNode *
+static WockyNode *
 hyvaa_vappua (
-    LmMessageNode *si_node,
+    WockyNode *si_node,
     const gchar **filename,
     const gchar **size_str,
     GError **error)
@@ -645,13 +645,13 @@ hyvaa_vappua (
       return NULL; \
     }
 
-  LmMessageNode *file_node = lm_message_node_get_child_with_namespace (si_node,
+  WockyNode *file_node = lm_message_node_get_child_with_namespace (si_node,
       "file", NS_FILE_TRANSFER);
 
   die_if_null (file_node, "Invalid file transfer SI request: no <file>")
-  die_if_null (*filename = lm_message_node_get_attribute (file_node, "name"),
+  die_if_null (*filename = wocky_node_get_attribute (file_node, "name"),
       "Invalid file transfer SI request: missing file name")
-  die_if_null (*size_str = lm_message_node_get_attribute (file_node, "size"),
+  die_if_null (*size_str = wocky_node_get_attribute (file_node, "size"),
       "Invalid file transfer SI request: missing file size")
 
   return file_node;
@@ -664,7 +664,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
                                           const gchar *stream_id,
                                           LmMessage *msg)
 {
-  LmMessageNode *si_node, *file_node, *desc_node;
+  WockyNode *si_node, *file_node, *desc_node;
   const gchar *filename, *size_str, *content_type, *content_hash, *description;
   const gchar *date_str;
   guint64 size;
@@ -690,24 +690,24 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
 
   size = g_ascii_strtoull (size_str, NULL, 0);
 
-  content_type = lm_message_node_get_attribute (file_node, "mime-type");
+  content_type = wocky_node_get_attribute (file_node, "mime-type");
   if (content_type == NULL)
     content_type = "application/octet-stream";
 
   /* The hash is always an MD5-sum, if present. */
-  content_hash = lm_message_node_get_attribute (file_node, "hash");
+  content_hash = wocky_node_get_attribute (file_node, "hash");
   if (content_hash != NULL)
     content_hash_type = TP_FILE_HASH_TYPE_MD5;
   else
     content_hash_type = TP_FILE_HASH_TYPE_NONE;
 
-  desc_node = lm_message_node_get_child (file_node, "desc");
+  desc_node = wocky_node_get_child (file_node, "desc");
   if (desc_node != NULL)
-    description = lm_message_node_get_value (desc_node);
+    description = desc_node->content;
   else
     description = NULL;
 
-  date_str = lm_message_node_get_attribute (file_node, "date");
+  date_str = wocky_node_get_attribute (file_node, "date");
   if (date_str != NULL)
     {
       GTimeVal val;
@@ -717,7 +717,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
         date = val.tv_sec;
     }
 
-  resume_supported = (lm_message_node_get_child (file_node, "range") != NULL);
+  resume_supported = (wocky_node_get_child (file_node, "range") != NULL);
 
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,

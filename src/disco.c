@@ -391,7 +391,7 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   GabbleDiscoRequest *request = (GabbleDiscoRequest *) user_data;
   GabbleDisco *disco = GABBLE_DISCO (object);
   GabbleDiscoPrivate *priv = disco->priv;
-  LmMessageNode *query_node;
+  WockyNode *query_node;
   GError *err = NULL;
 
   g_assert (request);
@@ -490,7 +490,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   GabbleDiscoPrivate *priv = self->priv;
   GabbleDiscoRequest *request;
   LmMessage *msg;
-  LmMessageNode *lm_node;
+  WockyNode *lm_node;
 
   request = g_slice_new0 (GabbleDiscoRequest);
   request->disco = self;
@@ -511,14 +511,14 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
   priv->requests = g_list_prepend (priv->requests, request);
   msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
                                            LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = lm_message_node_add_child (
+  lm_node = wocky_node_add_child_with_content (
       wocky_stanza_get_top_node (msg), "query", NULL);
 
-  lm_message_node_set_attribute (lm_node, "xmlns", disco_type_to_xmlns (type));
+  lm_node->ns = g_quark_from_string (disco_type_to_xmlns (type));
 
   if (node)
     {
-      lm_message_node_set_attribute (lm_node, "node", node);
+      wocky_node_set_attribute (lm_node, "node", node);
     }
 
   if (! _gabble_connection_send_with_reply (priv->connection, msg,
@@ -575,11 +575,11 @@ item_info_cb (GabbleDisco *disco,
               GabbleDiscoRequest *request,
               const gchar *jid,
               const gchar *node,
-              LmMessageNode *result,
+              WockyNode *result,
               GError *error,
               gpointer user_data)
 {
-  LmMessageNode *identity, *value_node;
+  WockyNode *identity, *value_node;
   const char *category, *type, *var, *name, *value;
   GHashTable *keys;
   GabbleDiscoItem item;
@@ -595,19 +595,19 @@ item_info_cb (GabbleDisco *disco,
       goto done;
     }
 
-  identity = lm_message_node_get_child (result, "identity");
+  identity = wocky_node_get_child (result, "identity");
   if (NULL == identity)
     goto done;
 
-  name = lm_message_node_get_attribute (identity, "name");
+  name = wocky_node_get_attribute (identity, "name");
   if (NULL == name)
     goto done;
 
-  category = lm_message_node_get_attribute (identity, "category");
+  category = wocky_node_get_attribute (identity, "category");
   if (NULL == category)
     goto done;
 
-  type = lm_message_node_get_attribute (identity, "type");
+  type = wocky_node_get_attribute (identity, "type");
   if (NULL == type)
     goto done;
 
@@ -618,11 +618,11 @@ item_info_cb (GabbleDisco *disco,
 
   for (i = node_iter (result); i; i = node_iter_next (i))
     {
-      LmMessageNode *feature = node_iter_data (i);
+      WockyNode *feature = node_iter_data (i);
 
       if (0 == strcmp (feature->name, "feature"))
         {
-          var = lm_message_node_get_attribute (feature, "var");
+          var = wocky_node_get_attribute (feature, "var");
           if (var)
             g_hash_table_insert (keys, g_strdup (var), NULL);
         }
@@ -634,20 +634,20 @@ item_info_cb (GabbleDisco *disco,
 
               for (j = node_iter (feature); j; j = node_iter_next (j))
                 {
-                  LmMessageNode *field = node_iter_data (j);
+                  WockyNode *field = node_iter_data (j);
 
                   if (0 != strcmp (field->name, "field"))
                     continue;
 
-                  var = lm_message_node_get_attribute (field, "var");
+                  var = wocky_node_get_attribute (field, "var");
                   if (NULL == var)
                     continue;
 
-                  value_node = lm_message_node_get_child (field, "value");
+                  value_node = wocky_node_get_child (field, "value");
                   if (NULL == value_node)
                     continue;
 
-                  value = lm_message_node_get_value (value_node);
+                  value = value_node->content;
                   if (NULL == value)
                     continue;
 
@@ -725,7 +725,7 @@ disco_items_cb (GabbleDisco *disco,
           GabbleDiscoRequest *request,
           const gchar *jid,
           const gchar *node,
-          LmMessageNode *result,
+          WockyNode *result,
           GError *error,
           gpointer user_data)
 {
@@ -744,12 +744,12 @@ disco_items_cb (GabbleDisco *disco,
 
   for (i = node_iter (result); i; i = node_iter_next (i))
     {
-      LmMessageNode *item = node_iter_data (i);
+      WockyNode *item = node_iter_data (i);
 
       if (0 != strcmp (item->name, "item"))
         continue;
 
-      item_jid = lm_message_node_get_attribute (item, "jid");
+      item_jid = wocky_node_get_attribute (item, "jid");
 
       if (NULL != item_jid &&
           !g_hash_table_lookup_extended (pipeline->remaining_items, item_jid,

@@ -352,7 +352,7 @@ gabble_xmpp_error_quark (void)
 }
 
 GabbleXmppError
-gabble_xmpp_error_from_node (LmMessageNode *error_node,
+gabble_xmpp_error_from_node (WockyNode *error_node,
                              GabbleXmppErrorType *type_out)
 {
   gint i, j;
@@ -365,7 +365,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node,
     {
       if (type_out != NULL)
         *type_out = gabble_xmpp_error_type_to_enum (
-            lm_message_node_get_attribute (error_node, "type"));
+            wocky_node_get_attribute (error_node, "type"));
 
       /* we loop backwards because the most specific errors are the larger
        * numbers; the >= 0 test is OK because i is signed */
@@ -380,7 +380,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node,
     }
 
   /* Ok, do it the legacy way */
-  error_code_str = lm_message_node_get_attribute (error_node, "code");
+  error_code_str = wocky_node_get_attribute (error_node, "code");
   if (error_code_str)
     {
       gint error_code;
@@ -431,13 +431,13 @@ gabble_xmpp_error_to_g_error (GabbleXmppError error)
 /*
  * See RFC 3920: 4.7 Stream Errors, 9.3 Stanza Errors.
  */
-LmMessageNode *
+WockyNode *
 gabble_xmpp_error_to_node (GabbleXmppError error,
-                           LmMessageNode *parent_node,
+                           WockyNode *parent_node,
                            const gchar *errmsg)
 {
   const XmppErrorSpec *spec, *extra;
-  LmMessageNode *error_node, *node;
+  WockyNode *error_node, *node;
   gchar str[6];
 
   g_return_val_if_fail (error != XMPP_ERROR_UNDEFINED_CONDITION &&
@@ -454,27 +454,27 @@ gabble_xmpp_error_to_node (GabbleXmppError error,
       spec = &xmpp_errors[error];
     }
 
-  error_node = lm_message_node_add_child (parent_node, "error", NULL);
+  error_node = wocky_node_add_child_with_content (parent_node, "error", NULL);
 
   sprintf (str, "%d", spec->legacy_errors[0]);
-  lm_message_node_set_attribute (error_node, "code", str);
+  wocky_node_set_attribute (error_node, "code", str);
 
   if (spec->type)
     {
-      lm_message_node_set_attribute (error_node, "type", spec->type);
+      wocky_node_set_attribute (error_node, "type", spec->type);
     }
 
-  node = lm_message_node_add_child (error_node, spec->name, NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_XMPP_STANZAS);
+  node = wocky_node_add_child_with_content (error_node, spec->name, NULL);
+  node->ns = g_quark_from_string (NS_XMPP_STANZAS);
 
   if (extra != NULL)
     {
-      node = lm_message_node_add_child (error_node, extra->name, NULL);
-      lm_message_node_set_attribute (node, "xmlns", extra->namespace);
+      node = wocky_node_add_child_with_content (error_node, extra->name, NULL);
+      node->ns = g_quark_from_string (extra->namespace);
     }
 
   if (NULL != errmsg)
-    lm_message_node_add_child (error_node, "text", errmsg);
+    wocky_node_add_child_with_content (error_node, "text", errmsg);
 
   return error_node;
 }
@@ -504,7 +504,7 @@ gabble_message_get_xmpp_error (LmMessage *msg)
 
   if (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR)
     {
-      LmMessageNode *error_node = lm_message_node_get_child (
+      WockyNode *error_node = wocky_node_get_child (
           wocky_stanza_get_top_node (msg), "error");
 
       if (error_node != NULL)

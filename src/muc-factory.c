@@ -574,7 +574,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
                           GabbleDiscoRequest *request,
                           const gchar *jid,
                           const gchar *node,
-                          LmMessageNode *query_result,
+                          WockyNode *query_result,
                           GError* error,
                           gpointer user_data)
 {
@@ -584,7 +584,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *identity;
+  WockyNode *identity;
   const char *category = NULL, *type = NULL;
 
   g_hash_table_remove (priv->disco_requests, request);
@@ -596,11 +596,11 @@ obsolete_invite_disco_cb (GabbleDisco *self,
       goto out;
     }
 
-  identity = lm_message_node_get_child (query_result, "identity");
+  identity = wocky_node_get_child (query_result, "identity");
   if (identity != NULL)
     {
-      category = lm_message_node_get_attribute (identity, "category");
-      type = lm_message_node_get_attribute (identity, "type");
+      category = wocky_node_get_attribute (identity, "category");
+      type = wocky_node_get_attribute (identity, "type");
     }
 
   if (tp_strdiff (category, "conference") ||
@@ -631,7 +631,7 @@ process_muc_invite (GabbleMucFactory *fac,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  LmMessageNode *x_node, *invite_node, *reason_node;
+  WockyNode *x_node, *invite_node, *reason_node;
   const gchar *invite_from, *reason = NULL;
   TpHandle inviter_handle;
   gchar *room;
@@ -645,7 +645,7 @@ process_muc_invite (GabbleMucFactory *fac,
     return FALSE;
 
   /* and an invitation? */
-  invite_node = lm_message_node_get_child (x_node, "invite");
+  invite_node = wocky_node_get_child (x_node, "invite");
 
   if (invite_node == NULL)
     return FALSE;
@@ -659,7 +659,7 @@ process_muc_invite (GabbleMucFactory *fac,
       return TRUE;
     }
 
-  invite_from = lm_message_node_get_attribute (invite_node, "from");
+  invite_from = wocky_node_get_attribute (invite_node, "from");
   if (invite_from == NULL)
     {
       STANZA_DEBUG (message, "got a MUC invitation message with no JID; "
@@ -678,10 +678,10 @@ process_muc_invite (GabbleMucFactory *fac,
       return TRUE;
     }
 
-  reason_node = lm_message_node_get_child (invite_node, "reason");
+  reason_node = wocky_node_get_child (invite_node, "reason");
 
   if (reason_node != NULL)
-    reason = lm_message_node_get_value (reason_node);
+    reason = reason_node->content;
 
   /* create the channel */
   room = gabble_remove_resource (from);
@@ -705,7 +705,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  LmMessageNode *x_node;
+  WockyNode *x_node;
   const gchar *room;
   TpHandle inviter_handle;
   GabbleDiscoRequest *request;
@@ -729,7 +729,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
     }
 
   /* the room JID is in x */
-  room = lm_message_node_get_attribute (x_node, "jid");
+  room = wocky_node_get_attribute (x_node, "jid");
   if (room == NULL)
     {
       STANZA_DEBUG (message,

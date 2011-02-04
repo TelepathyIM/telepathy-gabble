@@ -695,10 +695,10 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
 }
 
 static GabblePresenceId
-_presence_node_get_status (LmMessageNode *pres_node)
+_presence_node_get_status (WockyNode *pres_node)
 {
   const gchar *presence_show;
-  LmMessageNode *child_node = lm_message_node_get_child (pres_node, "show");
+  WockyNode *child_node = wocky_node_get_child (pres_node, "show");
 
   if (!child_node)
     {
@@ -710,7 +710,7 @@ _presence_node_get_status (LmMessageNode *pres_node)
       return GABBLE_PRESENCE_AVAILABLE;
     }
 
-  presence_show = lm_message_node_get_value (child_node);
+  presence_show = child_node->content;
 
   if (!presence_show)
     {
@@ -743,7 +743,7 @@ static void
 _grab_nickname (GabblePresenceCache *cache,
                 TpHandle handle,
                 const gchar *from,
-                LmMessageNode *node)
+                WockyNode *node)
 {
   const gchar *nickname;
   GabblePresence *presence;
@@ -758,7 +758,7 @@ _grab_nickname (GabblePresenceCache *cache,
   if (NULL == presence)
     return;
 
-  nickname = lm_message_node_get_value (node);
+  nickname = node->content;
   DEBUG ("got nickname \"%s\" for %s", nickname, from);
 
   if (tp_strdiff (presence->nickname, nickname))
@@ -773,7 +773,7 @@ static void
 self_vcard_request_cb (GabbleVCardManager *self,
                        GabbleVCardManagerRequest *request,
                        TpHandle handle,
-                       LmMessageNode *vcard,
+                       WockyNode *vcard,
                        GError *error,
                        gpointer user_data)
 {
@@ -862,12 +862,12 @@ static void
 _grab_avatar_sha1 (GabblePresenceCache *cache,
                    TpHandle handle,
                    const gchar *from,
-                   LmMessageNode *node)
+                   WockyNode *node)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   const gchar *sha1;
-  LmMessageNode *x_node, *photo_node;
+  WockyNode *x_node, *photo_node;
   GabblePresence *presence;
 
   if (handle == base_conn->self_handle)
@@ -900,14 +900,14 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
       return;
     }
 
-  photo_node = lm_message_node_get_child (x_node, "photo");
+  photo_node = wocky_node_get_child (x_node, "photo");
 
   /* If there is no photo node, the resource supports XEP-0153, but has
    * nothing in particular to say about the avatar. */
   if (NULL == photo_node)
     return;
 
-  sha1 = lm_message_node_get_value (photo_node);
+  sha1 = photo_node->content;
 
   /* "" means we know there is no avatar. NULL means we don't know what is the
    * avatar. In this case, there is a <photo> node. */
@@ -935,13 +935,13 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
 static GSList *
 _parse_cap_bundles (
-    LmMessageNode *lm_node,
+    WockyNode *lm_node,
     const gchar **hash,
     const gchar **ver)
 {
   const gchar *node, *ext;
   GSList *uris = NULL;
-  LmMessageNode *cap_node;
+  WockyNode *cap_node;
 
   *hash = NULL;
   *ver = NULL;
@@ -951,14 +951,14 @@ _parse_cap_bundles (
   if (NULL == cap_node)
       return NULL;
 
-  *hash = lm_message_node_get_attribute (cap_node, "hash");
+  *hash = wocky_node_get_attribute (cap_node, "hash");
 
-  node = lm_message_node_get_attribute (cap_node, "node");
+  node = wocky_node_get_attribute (cap_node, "node");
 
   if (NULL == node)
     return NULL;
 
-  *ver = lm_message_node_get_attribute (cap_node, "ver");
+  *ver = wocky_node_get_attribute (cap_node, "ver");
 
   if (NULL != *ver)
     uris = g_slist_prepend (uris, g_strdup_printf ("%s#%s", node, *ver));
@@ -968,7 +968,7 @@ _parse_cap_bundles (
   if (NULL != *hash)
     return uris;
 
-  ext = lm_message_node_get_attribute (cap_node, "ext");
+  ext = wocky_node_get_attribute (cap_node, "ext");
 
   if (NULL != ext)
     {
@@ -987,11 +987,11 @@ _parse_cap_bundles (
 
 static void
 _parse_node (GabblePresence *presence,
-    LmMessageNode *lm_node,
+    WockyNode *lm_node,
     const gchar *resource,
     guint serial)
 {
-  LmMessageNode *cap_node;
+  WockyNode *cap_node;
   const gchar *node;
 
   cap_node = lm_message_node_get_child_with_namespace (lm_node, "c", NS_CAPS);
@@ -999,7 +999,7 @@ _parse_node (GabblePresence *presence,
   if (NULL == cap_node)
     return;
 
-  node = lm_message_node_get_attribute (cap_node, "node");
+  node = wocky_node_get_attribute (cap_node, "node");
 
   if (!tp_strdiff (node, "http://mail.google.com/xmpp/client/caps"))
     {
@@ -1018,7 +1018,7 @@ static void _caps_disco_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
     const gchar *jid,
     const gchar *node,
-    LmMessageNode *query_result,
+    WockyNode *query_result,
     GError *error,
     gpointer user_data);
 
@@ -1173,7 +1173,7 @@ emit_capabilities_discovered (GabblePresenceCache *cache,
 
 static guint
 client_types_from_message (TpHandle handle,
-    LmMessageNode *lm_node,
+    WockyNode *lm_node,
     const gchar *resource)
 {
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
@@ -1235,7 +1235,7 @@ _caps_disco_cb (GabbleDisco *disco,
                 GabbleDiscoRequest *request,
                 const gchar *jid,
                 const gchar *node,
-                LmMessageNode *query_result,
+                WockyNode *query_result,
                 GError *error,
                 gpointer user_data)
 {
@@ -1586,7 +1586,7 @@ _process_caps (GabblePresenceCache *cache,
                GabblePresence *presence,
                TpHandle handle,
                const gchar *from,
-               LmMessageNode *lm_node)
+               WockyNode *lm_node)
 {
   const gchar *resource;
   GSList *uris, *i;
@@ -1658,7 +1658,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
   gint8 priority = 0;
   const gchar *resource, *status_message = NULL;
   gchar *my_full_jid;
-  LmMessageNode *presence_node, *child_node;
+  WockyNode *presence_node, *child_node;
   LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
   GabblePresenceId presence_id;
   GabblePresence *presence;
@@ -1694,19 +1694,19 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
    * tracking */
   g_hash_table_remove (priv->decloak_requests, GUINT_TO_POINTER (handle));
 
-  child_node = lm_message_node_get_child (presence_node, "status");
+  child_node = wocky_node_get_child (presence_node, "status");
 
   if (child_node)
-    status_message = lm_message_node_get_value (child_node);
+    status_message = child_node->content;
 
   if (child_node)
-    status_message = lm_message_node_get_value (child_node);
+    status_message = child_node->content;
 
-  child_node = lm_message_node_get_child (presence_node, "priority");
+  child_node = wocky_node_get_child (presence_node, "priority");
 
   if (child_node)
     {
-      const gchar *prio = lm_message_node_get_value (child_node);
+      const gchar *prio = child_node->content;
 
       if (prio != NULL)
         priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
@@ -1726,7 +1726,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
           "decloak-automatically", &decloak,
           NULL);
 
-      reason = lm_message_node_get_attribute (child_node, "reason");
+      reason = wocky_node_get_attribute (child_node, "reason");
 
       if (reason == NULL)
         reason = "";
@@ -1792,7 +1792,7 @@ _parse_message_message (GabblePresenceCache *cache,
                         const gchar *from,
                         LmMessage *message)
 {
-  LmMessageNode *node;
+  WockyNode *node;
   GabblePresence *presence;
 
   switch (lm_message_get_sub_type (message))
@@ -1847,7 +1847,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
 
   g_assert (lmconn == priv->conn->lmconn);
 
-  from = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+  from = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
       "from");
 
   if (NULL == from)

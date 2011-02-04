@@ -305,7 +305,7 @@ send_data_to (GabbleBytestreamMuc *self,
       guint send_now;
       GError *error = NULL;
       LmMessage *msg;
-      LmMessageNode *data = NULL;
+      WockyNode *data = NULL;
 
       msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
           '(', "data", "",
@@ -331,7 +331,7 @@ send_data_to (GabbleBytestreamMuc *self,
 
       if (groupchat)
         {
-          lm_message_node_set_attribute (wocky_stanza_get_top_node (msg),
+          wocky_node_set_attribute (wocky_stanza_get_top_node (msg),
               "type", "groupchat");
         }
 
@@ -357,18 +357,18 @@ send_data_to (GabbleBytestreamMuc *self,
         }
 
       encoded = base64_encode (send_now, str + sent, FALSE);
-      lm_message_node_set_value (data, encoded);
+      wocky_node_set_content (data, encoded);
 
       switch (frag)
         {
           case FRAG_FIRST:
-            lm_message_node_set_attribute (data, "frag", "first");
+            wocky_node_set_attribute (data, "frag", "first");
             break;
           case FRAG_MIDDLE:
-            lm_message_node_set_attribute (data, "frag", "middle");
+            wocky_node_set_attribute (data, "frag", "middle");
             break;
           case FRAG_LAST:
-            lm_message_node_set_attribute (data, "frag", "last");
+            wocky_node_set_attribute (data, "frag", "last");
             break;
         }
 
@@ -420,7 +420,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *from;
-  LmMessageNode *data;
+  WockyNode *data;
   GString *str;
   TpHandle sender;
   GString *buffer;
@@ -441,7 +441,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
       return;
     }
 
-  from = lm_message_node_get_attribute (
+  from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
   g_return_if_fail (from != NULL);
   sender = tp_handle_lookup (contact_repo, from,
@@ -453,7 +453,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
       return;
     }
 
-  frag_val = lm_message_node_get_attribute (data, "frag");
+  frag_val = wocky_node_get_attribute (data, "frag");
   if (frag_val == NULL)
     frag = FRAG_COMPLETE;
   else if (!tp_strdiff (frag_val, "first"))
@@ -470,7 +470,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
       return;
     }
 
-  str = base64_decode (lm_message_node_get_value (data));
+  str = base64_decode (data->content);
   if (str == NULL)
     {
       DEBUG ("base64 decoding failed");

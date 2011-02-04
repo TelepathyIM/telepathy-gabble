@@ -86,10 +86,10 @@ typedef enum {
 GQuark gabble_xmpp_error_quark (void);
 #define GABBLE_XMPP_ERROR (gabble_xmpp_error_quark ())
 
-GabbleXmppError gabble_xmpp_error_from_node (LmMessageNode *error_node,
+GabbleXmppError gabble_xmpp_error_from_node (WockyNode *error_node,
     GabbleXmppErrorType *type_out);
-LmMessageNode *gabble_xmpp_error_to_node (GabbleXmppError error,
-    LmMessageNode *parent_node, const gchar *errmsg);
+WockyNode *gabble_xmpp_error_to_node (GabbleXmppError error,
+    WockyNode *parent_node, const gchar *errmsg);
 const gchar *gabble_xmpp_error_string (GabbleXmppError error);
 const gchar *gabble_xmpp_error_description (GabbleXmppError error);
 GError *gabble_message_get_xmpp_error (LmMessage *msg);

@@ -746,20 +746,20 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
       priv->msg_for_acknowledge_connection);
   if (NULL != iq_result)
     {
-      LmMessageNode *node;
+      WockyNode *node;
       Streamhost *current_streamhost;
 
-      node = lm_message_node_add_child (
+      node = wocky_node_add_child_with_content (
         wocky_stanza_get_top_node (iq_result), "query", "");
-      lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
+      node->ns = g_quark_from_string (NS_BYTESTREAMS);
 
       /* streamhost-used informs the other end of the streamhost we
        * decided to use. In case of a direct connetion this is useless
        * but if we are using an external proxy we need to know which
        * one was selected */
-      node = lm_message_node_add_child (node, "streamhost-used", "");
+      node = wocky_node_add_child_with_content (node, "streamhost-used", "");
       current_streamhost = priv->streamhosts->data;
-      lm_message_node_set_attribute (node, "jid",
+      wocky_node_set_attribute (node, "jid",
           current_streamhost->jid);
 
       _gabble_connection_send (priv->conn, iq_result, NULL);
@@ -1257,7 +1257,7 @@ socks5_connect (GabbleBytestreamSocks5 *self)
  */
 void
 gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
-                                         LmMessageNode *streamhost_node)
+                                         WockyNode *streamhost_node)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
@@ -1270,7 +1270,7 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
 
   g_return_if_fail (!tp_strdiff (streamhost_node->name, "streamhost"));
 
-  zeroconf = lm_message_node_get_attribute (streamhost_node, "zeroconf");
+  zeroconf = wocky_node_get_attribute (streamhost_node, "zeroconf");
   if (zeroconf != NULL)
     {
       /* TODO: add suppport for zeroconf */
@@ -1278,21 +1278,21 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
       return;
     }
 
-  jid = lm_message_node_get_attribute (streamhost_node, "jid");
+  jid = wocky_node_get_attribute (streamhost_node, "jid");
   if (jid == NULL)
     {
       DEBUG ("streamhost doesn't contain a JID");
       return;
     }
 
-  host = lm_message_node_get_attribute (streamhost_node, "host");
+  host = wocky_node_get_attribute (streamhost_node, "host");
   if (host == NULL)
     {
       DEBUG ("streamhost doesn't contain a host");
       return;
     }
 
-  portstr = lm_message_node_get_attribute (streamhost_node, "port");
+  portstr = wocky_node_get_attribute (streamhost_node, "port");
   if (portstr == NULL)
     {
       DEBUG ("streamhost doesn't contain a port");
@@ -1409,7 +1409,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   LmMessage *msg;
-  LmMessageNode *si;
+  WockyNode *si;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
@@ -1566,14 +1566,14 @@ socks5_init_reply_cb (GabbleConnection *conn,
 
   if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
     {
-      LmMessageNode *query, *streamhost = NULL;
+      WockyNode *query, *streamhost = NULL;
       const gchar *jid;
 
       query = lm_message_node_get_child_with_namespace (
         wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
 
       if (query != NULL)
-        streamhost = lm_message_node_get_child (query, "streamhost-used");
+        streamhost = wocky_node_get_child (query, "streamhost-used");
 
       if (streamhost == NULL)
         {
@@ -1581,7 +1581,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
           goto socks5_init_error;
         }
 
-      jid = lm_message_node_get_attribute (streamhost, "jid");
+      jid = wocky_node_get_attribute (streamhost, "jid");
       if (jid == NULL)
         {
           DEBUG ("no jid attribute in streamhost. Closing the bytestream");
@@ -1960,17 +1960,17 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
       for (l = proxies; l != NULL; l = g_slist_next (l))
         {
-          LmMessageNode *node;
+          WockyNode *node;
           gchar *portstr;
           GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
           NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
 
-          node = lm_message_node_add_child (node_iter_data (i),
+          node = wocky_node_add_child_with_content (node_iter_data (i),
               "streamhost", "");
 
           portstr = g_strdup_printf ("%d", proxy->port);
 
-          lm_message_node_set_attributes (node,
+          wocky_node_set_attributes (node,
               "jid", proxy->jid,
               "host", proxy->host,
               "port", portstr,

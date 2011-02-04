@@ -43,7 +43,7 @@ typedef enum
 } GabbleBytestreamState;
 
 typedef void (* GabbleBytestreamAugmentSiAcceptReply) (
-    LmMessageNode *si, gpointer user_data);
+    WockyNode *si, gpointer user_data);
 
 typedef struct _GabbleBytestreamIface GabbleBytestreamIface;
 typedef struct _GabbleBytestreamIfaceClass GabbleBytestreamIfaceClass;

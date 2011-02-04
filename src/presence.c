@@ -619,10 +619,10 @@ gabble_presence_as_message (GabblePresence *presence,
   if (res->priority)
     {
       gchar *priority = g_strdup_printf ("%d", res->priority);
-      LmMessageNode *node;
+      WockyNode *node;
 
       node = lm_message_get_node (message);
-      lm_message_node_add_child (node, "priority", priority);
+      wocky_node_add_child_with_content (node, "priority", priority);
       g_free (priority);
     }
 

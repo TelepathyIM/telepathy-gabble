@@ -409,17 +409,17 @@ gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *ifac
 
 
 static gboolean
-parse_avatar (LmMessageNode *vcard,
+parse_avatar (WockyNode *vcard,
               const gchar **mime_type,
               GString **avatar,
               GError **error)
 {
-  LmMessageNode *photo_node;
-  LmMessageNode *type_node;
-  LmMessageNode *binval_node;
+  WockyNode *photo_node;
+  WockyNode *type_node;
+  WockyNode *binval_node;
   const gchar *binval_value;
 
-  photo_node = lm_message_node_get_child (vcard, "PHOTO");
+  photo_node = wocky_node_get_child (vcard, "PHOTO");
 
   if (NULL == photo_node)
     {
@@ -428,18 +428,18 @@ parse_avatar (LmMessageNode *vcard,
       return FALSE;
     }
 
-  type_node = lm_message_node_get_child (photo_node, "TYPE");
+  type_node = wocky_node_get_child (photo_node, "TYPE");
 
   if (NULL != type_node)
     {
-      *mime_type = lm_message_node_get_value (type_node);
+      *mime_type = type_node->content;
     }
   else
     {
       *mime_type = "";
     }
 
-  binval_node = lm_message_node_get_child (photo_node, "BINVAL");
+  binval_node = wocky_node_get_child (photo_node, "BINVAL");
 
   if (NULL == binval_node)
     {
@@ -448,7 +448,7 @@ parse_avatar (LmMessageNode *vcard,
       return FALSE;
     }
 
-  binval_value = lm_message_node_get_value (binval_node);
+  binval_value = binval_node->content;
 
   if (NULL == binval_value)
     {
@@ -473,7 +473,7 @@ static void
 _request_avatar_cb (GabbleVCardManager *self,
                     GabbleVCardManagerRequest *request,
                     TpHandle handle,
-                    LmMessageNode *vcard,
+                    WockyNode *vcard,
                     GError *vcard_error,
                     gpointer user_data)
 {
@@ -598,7 +598,7 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
   GError *err = NULL;
-  LmMessageNode *vcard_node;
+  WockyNode *vcard_node;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
@@ -625,7 +625,7 @@ gabble_connection_request_avatar (TpSvcConnectionInterfaceAvatars *iface,
 static void
 emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
                        TpHandle contact,
-                       LmMessageNode *vcard_node)
+                       WockyNode *vcard_node)
 {
   const gchar *mime_type;
   GString *avatar_str;
@@ -656,7 +656,7 @@ static void
 request_avatars_cb (GabbleVCardManager *manager,
                     GabbleVCardManagerRequest *request,
                     TpHandle handle,
-                    LmMessageNode *vcard,
+                    WockyNode *vcard,
                     GError *vcard_error,
                     gpointer user_data)
 {
@@ -697,7 +697,7 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
 
   for (i = 0; i < contacts->len; i++)
     {
-      LmMessageNode *vcard_node;
+      WockyNode *vcard_node;
       TpHandle contact = g_array_index (contacts, TpHandle, i);
 
       if (gabble_vcard_manager_get_cached (self->vcard_manager,
@@ -748,7 +748,7 @@ _set_avatar_ctx_free (struct _set_avatar_ctx *ctx)
 static void
 _set_avatar_cb2 (GabbleVCardManager *manager,
                  GabbleVCardManagerEditRequest *request,
-                 LmMessageNode *vcard,
+                 WockyNode *vcard,
                  GError *vcard_error,
                  gpointer user_data)
 {

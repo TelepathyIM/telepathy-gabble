@@ -23,8 +23,6 @@
 
 #include <wocky/wocky-stanza.h>
 
-#include "lm-message-node.h"
-
 G_BEGIN_DECLS
 
 typedef WockyStanza LmMessage;
@@ -81,7 +79,7 @@ void lm_message_unref (LmMessage *message);
 LmMessageType lm_message_get_type (LmMessage *message);
 LmMessageSubType lm_message_get_sub_type (LmMessage *message);
 
-LmMessageNode * lm_message_get_node (LmMessage *message);
+WockyNode * lm_message_get_node (LmMessage *message);
 
 G_END_DECLS
 

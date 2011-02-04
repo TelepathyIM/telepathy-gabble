@@ -12,8 +12,6 @@ OUR_SOURCES =                     \
   lm-connection.h                 \
   lm-message.c                    \
   lm-message.h                    \
-  lm-message-node.c               \
-  lm-message-node.h               \
   lm-message-handler.c            \
   lm-message-handler.h            \
   lm-connection.c                 \

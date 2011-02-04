@@ -246,6 +246,8 @@ enum {
     BUILD_CHILD = '(',
     BUILD_CHILD_END = ')',
     BUILD_POINTER = '*',
+    BUILD_NS = ':',
+    BUILD_LANG = '#',
 };
 
 /* lm_message_node_add_build_va
@@ -305,6 +307,24 @@ lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
 
             g_return_if_fail (assign_to != NULL);
             *assign_to = stack->data;
+          }
+          break;
+
+        case BUILD_NS:
+          {
+            gchar *ns = va_arg (ap, gchar *);
+
+            g_return_if_fail (ns != NULL);
+            ((WockyNode *) stack->data)->ns = g_quark_from_string (ns);
+          }
+          break;
+
+        case BUILD_LANG:
+          {
+            gchar *lang = va_arg (ap, gchar *);
+
+            g_return_if_fail (lang != NULL);
+            wocky_node_set_language (stack->data, lang);
           }
           break;
 

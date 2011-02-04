@@ -3606,6 +3606,7 @@ gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
     }
 }
 
+/* identities is actually a WockyDiscoIdentityArray */
 gchar *
 gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
     const GabbleCapabilitySet *cap_set,

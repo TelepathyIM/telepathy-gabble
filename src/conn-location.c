@@ -76,6 +76,14 @@ build_mapping_tables (void)
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
+/*
+ * get_cached_location:
+ * @conn: a connection
+ * @handle: a handle, which must have been pre-validated.
+ *
+ * Returns: a new ref to a GHashTable containing @handle's location, or %NULL
+ *          if we have no cached location.
+ */
 static GHashTable *
 get_cached_location (GabbleConnection *conn,
     TpHandle handle)

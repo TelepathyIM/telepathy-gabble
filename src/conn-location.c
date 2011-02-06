@@ -74,7 +74,7 @@ build_mapping_tables (void)
 }
 
 static gboolean update_location_from_msg (GabbleConnection *conn,
-    const gchar *from, LmMessage *msg);
+    TpHandle contact, LmMessage *msg);
 
 /*
  * get_cached_location:
@@ -424,7 +424,7 @@ conn_location_properties_setter (GObject *object,
 
 static gboolean
 update_location_from_msg (GabbleConnection *conn,
-                          const gchar *from,
+                          TpHandle contact,
                           LmMessage *msg)
 {
   LmMessageNode *node;
@@ -432,10 +432,9 @@ update_location_from_msg (GabbleConnection *conn,
       g_free, (GDestroyNotify) tp_g_value_slice_free);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *from = tp_handle_inspect (contact_repo, contact);
   NodeIter i;
   const gchar *lang;
-
-  TpHandle contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
   node = lm_message_node_find_child (wocky_stanza_get_top_node (msg),
       "geoloc");
@@ -545,7 +544,7 @@ location_pep_node_changed (WockyPepService *pep,
     /* Ignore echoed pubsub notifications */
     goto out;
 
-  update_location_from_msg (conn, jid, stanza);
+  update_location_from_msg (conn, handle, stanza);
 
 out:
   tp_handle_unref (contact_repo, handle);

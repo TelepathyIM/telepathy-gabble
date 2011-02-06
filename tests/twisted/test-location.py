@@ -2,7 +2,9 @@ import dbus
 import time
 import datetime
 
-from gabbletest import exec_test, make_result_iq, elem, acknowledge_iq, send_error_reply
+from gabbletest import (
+    exec_test, elem, acknowledge_iq, send_error_reply, sync_stream,
+)
 from servicetest import (
     call_async, EventPattern,
     assertEquals, assertLength, assertContains,
@@ -158,35 +160,45 @@ def test(q, bus, conn, stream):
     bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
     call_async(q, conn.Location, 'GetLocations', [bob_handle])
 
-    # Gabble sends a pubsub query.
-    # GetLocations doesn't wait for the reply.
-    stream_iq, get_locations = q.expect_many(
+    # Gabble should not send a pubsub query. The point of PEP is that we don't
+    # have to do this.
+    q.forbid_events([
         EventPattern('stream-iq', iq_type='get', query_ns=ns.PUBSUB),
-        EventPattern('dbus-return', method='GetLocations'),
-        )
+        ])
+
+    # GetLocations returns immediately.
+    get_locations = q.expect('dbus-return', method='GetLocations')
     locations = get_locations.value[0]
     # Location isn't known yet
     assertLength(0, locations)
 
-    # reply with Bob's location
-    result = make_result_iq(stream, stream_iq.stanza)
-    result['from'] = 'bob@foo.com'
-    query = result.firstChildElement()
-    geoloc = query.addElement((ns.GEOLOC, 'geoloc'))
-    geoloc['xml:lang'] = 'en'
-    geoloc.addElement('lat', content='1.25')
-    geoloc.addElement('lon', content='5.5')
-    geoloc.addElement('country', content='Belgium')
-    geoloc.addElement('accuracy', content='2.3')
-    geoloc.addElement('timestamp', content=date_str)
-    # invalid element, will be discarded by Gabble
-    geoloc.addElement('badger', content='mushroom')
-    stream.send(result)
+    # Sync the XMPP stream to ensure Gabble hasn't sent a query.
+    sync_stream(q, stream)
+
+    # Bob updates his location
+    message = elem('message', from_='bob@foo.com')(
+        elem((ns.PUBSUB_EVENT), 'event')(
+            elem('items', node=ns.GEOLOC)(
+                elem('item', id='12345')(
+                    elem(ns.GEOLOC, 'geoloc', attrs={'xml:lang': 'en'})(
+                        elem('lat')(u'1.25'),
+                        elem('lon')(u'5.5'),
+                        elem('country')(u'Belgium'),
+                        elem('accuracy')(u'2.3'),
+                        elem('timestamp')(unicode(date_str)),
+                        # invalid element, will be ignored by Gabble
+                        elem('badger')(u'mushroom'),
+                    )
+                )
+            )
+        )
+    )
+    stream.send(message)
 
     update_event = q.expect('dbus-signal', signal='LocationUpdated')
 
     handle, location = update_event.args
-    assertEquals(handle, bob_handle)
+    assertEquals(bob_handle, handle)
 
     assertLength(6, location)
     assertEquals(location['language'], 'en')
@@ -196,10 +208,7 @@ def test(q, bus, conn, stream):
     assertEquals(location['accuracy'], 2.3)
     assertEquals(location['timestamp'], date)
 
-    q.forbid_events([geoloc_iq_set_event])
-
-    # Get location again, Gabble doesn't send a query any more and return the known
-    # location
+    # Get location again; Gabble should return the cached location
     locations = conn.Location.GetLocations([bob_handle])
     assertLength(1, locations)
     assertEquals(locations[bob_handle], location)
@@ -224,6 +233,9 @@ def test(q, bus, conn, stream):
 
     # Try to set our location by passing a valid with an invalid type (lat is
     # supposed to be a double)
+
+    q.forbid_events([geoloc_iq_set_event])
+
     try:
         conn.Location.SetLocation({'lat': 'pony'})
     except dbus.DBusException, e:
@@ -231,7 +243,7 @@ def test(q, bus, conn, stream):
     else:
         assert False
 
-    # Bob updates his location
+    # Bob updates his location again
     message = elem('message', from_='bob@foo.com')(
         elem((ns.PUBSUB_EVENT), 'event')(
             elem('items', node=ns.GEOLOC)(

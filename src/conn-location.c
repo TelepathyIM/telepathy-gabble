@@ -76,65 +76,26 @@ build_mapping_tables (void)
 static gboolean update_location_from_msg (GabbleConnection *conn,
     const gchar *from, LmMessage *msg);
 
-static void
-pep_reply_cb (GObject *source,
-    GAsyncResult *res,
-    gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  WockyStanza *reply_msg;
-  GError *error = NULL;
-  const gchar *from;
-
-  reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &error);
-  if (reply_msg == NULL)
-    {
-      DEBUG ("Query failed: %s", error->message);
-      g_error_free (error);
-      goto out;
-    }
-
-  from = lm_message_node_get_attribute (
-    wocky_stanza_get_top_node (reply_msg), "from");
-
-  if (from != NULL)
-    update_location_from_msg (conn, from, reply_msg);
-  g_object_unref (reply_msg);
-
-out:
-  g_object_unref (conn);
-}
-
 static GHashTable *
-get_cached_location_or_query (GabbleConnection *conn,
-    TpHandle handle,
-    GError **error)
+get_cached_location (GabbleConnection *conn,
+    TpHandle handle)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GHashTable *location;
   const gchar *jid;
   TpHandleRepoIface *contact_repo;
-  WockyBareContact *contact;
 
   contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   jid = tp_handle_inspect (contact_repo, handle);
 
   location = gabble_presence_cache_get_location (conn->presence_cache, handle);
+
   if (location != NULL)
-    {
-      DEBUG (" - %s: cached", jid);
-      return location;
-    }
+    DEBUG (" - %s: cached", jid);
+  else
+    DEBUG (" - %s: unknown", jid);
 
-  contact = ensure_bare_contact_from_jid (conn, jid);
-
-  /* Send a query */
-  wocky_pep_service_get_async (conn->pep_location, contact, NULL, pep_reply_cb,
-      g_object_ref (conn));
-
-  g_object_unref (contact);
-  return NULL;
+  return location;
 }
 
 static void
@@ -169,21 +130,8 @@ location_get_locations (TpSvcConnectionInterfaceLocation *iface,
 
   for (i = 0; i < contacts->len; i++)
     {
-      GHashTable *location;
       TpHandle contact = g_array_index (contacts, TpHandle, i);
-
-      location = get_cached_location_or_query (conn, contact, &error);
-      if (error != NULL)
-        {
-          GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-              "Sending PEP location query failed" };
-
-          DEBUG ("Sending PEP location query failed: %s", error->message);
-          g_error_free (error);
-          dbus_g_method_return_error (context, &error2);
-          g_hash_table_unref (return_locations);
-          return;
-        }
+      GHashTable *location = get_cached_location (conn, contact);
 
       if (location != NULL)
         g_hash_table_insert (return_locations, GUINT_TO_POINTER (contact),
@@ -606,7 +554,7 @@ conn_location_fill_contact_attributes (GObject *obj,
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GHashTable *location = get_cached_location_or_query (self, handle, NULL);
+      GHashTable *location = get_cached_location (self, handle);
 
       if (location != NULL)
         {

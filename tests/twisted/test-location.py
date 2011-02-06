@@ -3,7 +3,10 @@ import time
 import datetime
 
 from gabbletest import exec_test, make_result_iq, elem, acknowledge_iq, send_error_reply
-from servicetest import call_async, EventPattern, assertEquals, assertLength
+from servicetest import (
+    call_async, EventPattern,
+    assertEquals, assertLength, assertContains,
+)
 
 from twisted.words.xish import xpath
 import constants as cs
@@ -204,14 +207,21 @@ def test(q, bus, conn, stream):
     charles_handle = conn.RequestHandles(cs.HT_CONTACT, ['charles@foo.com'])[0]
 
     # check that Contacts interface supports location
-    assert conn.Contacts.GetContactAttributes([bob_handle, charles_handle],
-        [cs.CONN_IFACE_LOCATION], False) == {
-            bob_handle:
-              { cs.CONN_IFACE_LOCATION + '/location': location,
-                'org.freedesktop.Telepathy.Connection/contact-id': 'bob@foo.com'},
-            charles_handle:
-              { cs.CONN_IFACE_LOCATION + '/location': {},
-                'org.freedesktop.Telepathy.Connection/contact-id': 'charles@foo.com'}}
+    attributes = conn.Contacts.GetContactAttributes(
+        [bob_handle, charles_handle], [cs.CONN_IFACE_LOCATION], False)
+    assertLength(2, attributes)
+    assertContains(bob_handle, attributes)
+    assertContains(charles_handle, attributes)
+
+    assertEquals(
+        { cs.CONN_IFACE_LOCATION + '/location': location,
+          cs.CONN + '/contact-id': 'bob@foo.com'},
+        attributes[bob_handle])
+
+    assertEquals(
+        { cs.CONN_IFACE_LOCATION + '/location': {},
+          cs.CONN + '/contact-id': 'charles@foo.com'},
+        attributes[charles_handle])
 
     # Try to set our location by passing a valid with an invalid type (lat is
     # supposed to be a double)

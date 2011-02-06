@@ -219,8 +219,7 @@ def test(q, bus, conn, stream):
         attributes[bob_handle])
 
     assertEquals(
-        { cs.CONN_IFACE_LOCATION + '/location': {},
-          cs.CONN + '/contact-id': 'charles@foo.com'},
+        { cs.CONN + '/contact-id': 'charles@foo.com'},
         attributes[charles_handle])
 
     # Try to set our location by passing a valid with an invalid type (lat is

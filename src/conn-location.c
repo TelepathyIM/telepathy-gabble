@@ -151,6 +151,98 @@ location_get_locations (TpSvcConnectionInterfaceLocation *iface,
   g_hash_table_unref (return_locations);
 }
 
+typedef struct {
+    GabbleConnection *self;
+    TpHandle handle;
+    DBusGMethodInvocation *context;
+} YetAnotherContextStruct;
+
+static void
+request_location_reply_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  YetAnotherContextStruct *ctx = user_data;
+  WockyStanza *reply;
+  GError *wocky_error = NULL, *tp_error = NULL;
+
+  reply = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
+      &wocky_error);
+
+  if (reply == NULL ||
+      wocky_stanza_extract_errors (reply, NULL, &wocky_error, NULL, NULL))
+    {
+      DEBUG ("fetching location failed: %s", wocky_error->message);
+      gabble_set_tp_error_from_wocky (wocky_error, &tp_error);
+      dbus_g_method_return_error (ctx->context, tp_error);
+      g_error_free (tp_error);
+    }
+  else
+    {
+      GHashTable *location;
+
+      if (update_location_from_msg (ctx->self, ctx->handle, reply))
+        {
+          location = get_cached_location (ctx->self, ctx->handle);
+          /* We just cached a location for this contact, so it should be
+           * non-NULL.
+           */
+          g_return_if_fail (location != NULL);
+        }
+      else
+        {
+          /* If the location's unparseable, we'll hit this path. That seems
+           * okay.
+           */
+          location = g_hash_table_new (NULL, NULL);
+        }
+
+      tp_svc_connection_interface_location_return_from_request_location (
+          ctx->context, location);
+      g_hash_table_unref (location);
+    }
+
+  tp_clear_object (&reply);
+  g_object_unref (ctx->self);
+  g_slice_free (YetAnotherContextStruct, ctx);
+}
+
+static void
+location_request_location (
+    TpSvcConnectionInterfaceLocation *iface,
+    TpHandle handle,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid;
+  WockyBareContact *contact;
+  YetAnotherContextStruct *ctx;
+  GError *error = NULL;
+
+  if (!tp_handle_is_valid (contact_handles, handle, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  /* Oh! for GDBus. */
+  ctx = g_slice_new (YetAnotherContextStruct);
+  ctx->self = g_object_ref (self);
+  ctx->handle = handle;
+  ctx->context = context;
+
+  jid = tp_handle_inspect (contact_handles, handle);
+  contact = ensure_bare_contact_from_jid (self, jid);
+  DEBUG ("fetching location for '%s'", jid);
+  wocky_pep_service_get_async (self->pep_location, contact, NULL,
+      request_location_reply_cb, ctx);
+  g_object_unref (contact);
+}
+
 static gboolean
 add_to_geoloc_node (const gchar *tp_name,
     GValue *value,
@@ -318,6 +410,7 @@ location_iface_init (gpointer g_iface, gpointer iface_data)
   (klass, location_##x)
   IMPLEMENT(get_locations);
   IMPLEMENT(set_location);
+  IMPLEMENT(request_location);
 #undef IMPLEMENT
 }
 

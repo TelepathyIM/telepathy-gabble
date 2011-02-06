@@ -4,6 +4,7 @@ import datetime
 
 from gabbletest import (
     exec_test, elem, acknowledge_iq, send_error_reply, sync_stream,
+    make_result_iq, disconnect_conn,
 )
 from servicetest import (
     call_async, EventPattern,
@@ -162,9 +163,9 @@ def test(q, bus, conn, stream):
 
     # Gabble should not send a pubsub query. The point of PEP is that we don't
     # have to do this.
-    q.forbid_events([
-        EventPattern('stream-iq', iq_type='get', query_ns=ns.PUBSUB),
-        ])
+    pubsub_get_pattern = EventPattern('stream-iq', iq_type='get',
+        query_ns=ns.PUBSUB)
+    q.forbid_events([ pubsub_get_pattern ])
 
     # GetLocations returns immediately.
     get_locations = q.expect('dbus-return', method='GetLocations')
@@ -262,6 +263,56 @@ def test(q, bus, conn, stream):
     assertEquals(handle, bob_handle)
     assertLength(1, location)
     assertEquals(location['country'], 'France')
+
+    # Now we test explicitly retrieving Bob's location, so we should not forbid
+    # such queries. :)
+    q.unforbid_events([ pubsub_get_pattern ])
+
+    call_async(q, conn.Location, 'RequestLocation', bob_handle)
+    e = q.expect('stream-iq', iq_type='get', query_ns=ns.PUBSUB,
+        to='bob@foo.com')
+
+    # Hey, while we weren't looking Bob moved abroad!
+    result = make_result_iq(stream, e.stanza)
+    result['from'] = 'bob@foo.com'
+    query = result.firstChildElement()
+    result.addChild(
+      elem('items', node=ns.GEOLOC)(
+        elem('item', id='12345')(
+          elem(ns.GEOLOC, 'geoloc')(
+            elem ('country') (u'Chad')
+          )
+        )
+      )
+    )
+    stream.send(result)
+
+    ret = q.expect('dbus-return', method='RequestLocation')
+    location, = ret.value
+    assertLength(1, location)
+    assertEquals(location['country'], 'Chad')
+
+    # Let's ask again; this time Bob's server hates us for some reason.
+    call_async(q, conn.Location, 'RequestLocation', bob_handle)
+    e = q.expect('stream-iq', iq_type='get', query_ns=ns.PUBSUB,
+        to='bob@foo.com')
+    send_error_reply(stream, e.stanza,
+        elem('error', type='auth')(
+          elem(ns.STANZA, 'forbidden')
+        ))
+    e = q.expect('dbus-error', method='RequestLocation')
+    assertEquals(cs.PERMISSION_DENIED, e.name)
+
+    # Let's ask a final time, and disconnect while we're doing so, to make sure
+    # this doesn't break Gabble or Wocky.
+    call_async(q, conn.Location, 'RequestLocation', bob_handle)
+    e = q.expect('stream-iq', iq_type='get', query_ns=ns.PUBSUB,
+        to='bob@foo.com')
+    # Tasty argument unpacking. disconnect_conn returns two lists, one for
+    # expeced_before=[] and one for expected_after=[...]
+    _, (e, ) = disconnect_conn(q, conn, stream,
+        expected_after=[EventPattern('dbus-error', method='RequestLocation')])
+    assertEquals(cs.CANCELLED, e.name)
 
 if __name__ == '__main__':
     exec_test(test, do_connect=False)

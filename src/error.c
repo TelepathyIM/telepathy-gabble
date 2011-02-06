@@ -785,6 +785,22 @@ map_wocky_tls_cert_error (const GError *error,
     }
 }
 
+static TpError
+map_connection_error (const GError *error)
+{
+  switch (error->code)
+    {
+      case WOCKY_XMPP_CONNECTION_ERROR_EOS:
+      case WOCKY_XMPP_CONNECTION_ERROR_CLOSED:
+        return TP_ERROR_CANCELLED;
+      case WOCKY_XMPP_CONNECTION_ERROR_NOT_OPEN:
+      case WOCKY_XMPP_CONNECTION_ERROR_IS_CLOSED:
+      case WOCKY_XMPP_CONNECTION_ERROR_IS_OPEN:
+      default:
+        return TP_ERROR_DISCONNECTED;
+    }
+}
+
 static const gchar *
 get_error_prefix (GEnumClass *klass,
     gint code,
@@ -880,6 +896,13 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
           map_wocky_tls_cert_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
+    }
+  else if (wocky_error->domain == WOCKY_XMPP_CONNECTION_ERROR)
+    {
+      /* FIXME: there's no GEnum for WockyXmppConnectionError. */
+      g_set_error_literal (error, TP_ERRORS,
+          map_connection_error (wocky_error),
+          wocky_error->message);
     }
   else
     {

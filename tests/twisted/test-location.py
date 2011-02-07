@@ -303,6 +303,10 @@ def test(q, bus, conn, stream):
     e = q.expect('dbus-error', method='RequestLocation')
     assertEquals(cs.PERMISSION_DENIED, e.name)
 
+    # FIXME: maybe we should check that the cache gets invalidated in this
+    # case? We should also test whether or not the cache is invalidated
+    # properly if the contact clears their PEP node.
+
     # Let's ask a final time, and disconnect while we're doing so, to make sure
     # this doesn't break Gabble or Wocky.
     call_async(q, conn.Location, 'RequestLocation', bob_handle)

@@ -32,5 +32,5 @@ gateways_la_SOURCES = \
 AM_CFLAGS = $(ERROR_CFLAGS) \
     -I $(top_srcdir) -I $(top_builddir) \
     @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ @TP_GLIB_CFLAGS@ \
-    -I $(top_gabbledir)/gabble -I $(top_builddir)/gabble \
+    -I $(top_srcdir)/gabble -I $(top_builddir)/gabble \
     -I $(top_srcdir)/plugins

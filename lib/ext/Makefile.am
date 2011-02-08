@@ -15,7 +15,9 @@ clean-local:
 	fi
 
 uninstall-local:
+	@cd wocky/wocky && $(MAKE) uninstall
 	@cd telepathy-yell/telepathy-yell && $(MAKE) uninstall
 
 install-data-local:
+	@cd wocky/wocky && $(MAKE) install
 	@cd telepathy-yell/telepathy-yell && $(MAKE) install

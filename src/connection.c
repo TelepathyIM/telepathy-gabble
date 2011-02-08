@@ -181,9 +181,6 @@ struct _GabbleConnectionPrivate
 
   GCancellable *cancellable;
 
-  LmMessageHandler *iq_disco_cb;
-  LmMessageHandler *iq_unknown_cb;
-
   /* connection properties */
   gchar *connect_server;
   guint port;
@@ -727,8 +724,6 @@ gabble_connection_set_property (GObject      *object,
 
 static void gabble_connection_dispose (GObject *object);
 static void gabble_connection_finalize (GObject *object);
-static void connect_callbacks (TpBaseConnection *base);
-static void disconnect_callbacks (TpBaseConnection *base);
 static void connection_shut_down (TpBaseConnection *base);
 static gboolean _gabble_connection_connect (TpBaseConnection *base,
     GError **error);
@@ -890,9 +885,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->create_channel_factories = NULL;
   parent_class->create_channel_managers =
     _gabble_connection_create_channel_managers;
-  parent_class->connecting = connect_callbacks;
   parent_class->connected = base_connected_cb;
-  parent_class->disconnected = disconnect_callbacks;
   parent_class->shut_down = connection_shut_down;
   parent_class->start_connecting = _gabble_connection_connect;
   parent_class->interfaces_always_present = interfaces_always_present;
@@ -1155,9 +1148,6 @@ gabble_connection_dispose (GObject *object)
   conn_presence_dispose (self);
 
   conn_mail_notif_dispose (self);
-
-  g_assert (priv->iq_disco_cb == NULL);
-  g_assert (priv->iq_unknown_cb == NULL);
 
   tp_clear_object (&priv->connector);
   tp_clear_object (&self->session);
@@ -1479,10 +1469,9 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   return ret;
 }
 
-static LmHandlerResult connection_iq_disco_cb (LmMessageHandler *,
-    LmConnection *, LmMessage *, gpointer);
-static LmHandlerResult connection_iq_unknown_cb (LmMessageHandler *,
-    LmConnection *, LmMessage *, gpointer);
+static void connect_iq_callbacks (GabbleConnection *conn);
+static gboolean iq_disco_cb (WockyPorter *, WockyStanza *, gpointer);
+static gboolean iq_unknown_cb (WockyPorter *, WockyStanza *, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
 static void decrement_waiting_connected (GabbleConnection *connection);
@@ -1793,6 +1782,7 @@ connector_connected (GabbleConnection *self,
 
   lm_connection_set_porter (self->lmconn, priv->porter);
   g_signal_emit (self, sig_id_porter_available, 0, priv->porter);
+  connect_iq_callbacks (self);
 
   wocky_pep_service_start (self->pep_location, self->session);
   wocky_pep_service_start (self->pep_nick, self->session);
@@ -1927,43 +1917,20 @@ connector_register_cb (GObject *source,
 }
 
 static void
-connect_callbacks (TpBaseConnection *base)
+connect_iq_callbacks (GabbleConnection *conn)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = conn->priv;
 
-  g_assert (priv->iq_disco_cb == NULL);
-  g_assert (priv->iq_unknown_cb == NULL);
+  wocky_porter_register_handler (priv->porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+      iq_disco_cb, conn,
+      '(', "query", ':', NS_DISCO_INFO, ')', NULL);
 
-  priv->iq_disco_cb = lm_message_handler_new (connection_iq_disco_cb,
-                                              conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->iq_disco_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_NORMAL);
-
-  priv->iq_unknown_cb = lm_message_handler_new (connection_iq_unknown_cb,
-                                            conn, NULL);
-  lm_connection_register_message_handler (conn->lmconn, priv->iq_unknown_cb,
-                                          LM_MESSAGE_TYPE_IQ,
-                                          LM_HANDLER_PRIORITY_LAST);
-}
-
-static void
-disconnect_callbacks (TpBaseConnection *base)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (base);
-  GabbleConnectionPrivate *priv = conn->priv;
-
-  g_assert (priv->iq_disco_cb != NULL);
-  g_assert (priv->iq_unknown_cb != NULL);
-
-  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_disco_cb,
-                                            LM_MESSAGE_TYPE_IQ);
-  tp_clear_pointer (&priv->iq_disco_cb, lm_message_handler_unref);
-
-  lm_connection_unregister_message_handler (conn->lmconn, priv->iq_unknown_cb,
-                                            LM_MESSAGE_TYPE_IQ);
-  tp_clear_pointer (&priv->iq_unknown_cb, lm_message_handler_unref);
+  wocky_porter_register_handler (priv->porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, WOCKY_PORTER_HANDLER_PRIORITY_MIN,
+      iq_unknown_cb, conn, NULL);
 }
 
 /**
@@ -2463,43 +2430,34 @@ add_identity_node (const GabbleDiscoIdentity *identity,
 }
 
 /**
- * connection_iq_disco_cb
+ * iq_disco_cb
  *
- * Called by loudmouth when we get an incoming <iq>. This handler handles
- * disco-related IQs.
+ * Called by Wocky when we get an incoming <iq> with a <query xmlns="disco#info">
+ * node. This handler handles disco-related IQs.
  */
-static LmHandlerResult
-connection_iq_disco_cb (LmMessageHandler *handler,
-                        LmConnection *connection,
-                        LmMessage *message,
-                        gpointer user_data)
+static gboolean
+iq_disco_cb (WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
 {
   GabbleConnection *self = GABBLE_CONNECTION (user_data);
-  LmMessage *result;
-  LmMessageNode *iq, *result_iq, *query, *result_query, *identity;
+  WockyStanza *result;
+  WockyNode *query, *result_query;
   const gchar *node, *suffix;
   const GabbleCapabilityInfo *info = NULL;
   const GabbleCapabilitySet *features = NULL;
   const GPtrArray *identities = NULL;
 
-  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_GET)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  iq = lm_message_get_node (message);
-  query = lm_message_node_get_child_with_namespace (iq, "query",
-      NS_DISCO_INFO);
-
-  if (!query)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  node = lm_message_node_get_attribute (query, "node");
+  /* query's existence is checked by WockyPorter before this function is called */
+  query = wocky_node_get_child (wocky_stanza_get_top_node (stanza), "query");
+  node = wocky_node_get_attribute (query, "node");
 
   if (node && (
       0 != strncmp (node, NS_GABBLE_CAPS "#", strlen (NS_GABBLE_CAPS) + 1) ||
       strlen (node) < strlen (NS_GABBLE_CAPS) + 2))
     {
-      NODE_DEBUG (iq, "got iq disco query with unexpected node attribute");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      STANZA_DEBUG (stanza, "got iq disco query with unexpected node attribute");
+      return FALSE;
     }
 
   if (node == NULL)
@@ -2507,20 +2465,15 @@ connection_iq_disco_cb (LmMessageHandler *handler,
   else
     suffix = node + strlen (NS_GABBLE_CAPS) + 1;
 
-  result = lm_iq_message_make_result (message);
+  result = wocky_stanza_build_iq_result (stanza,
+      '(', "query", ':', NS_DISCO_INFO, '*', &result_query, ')', NULL);
 
   /* If we get an IQ without an id='', there's not much we can do. */
   if (result == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  result_iq = lm_message_get_node (result);
-  result_query = lm_message_node_add_child (result_iq, "query", NULL);
-  lm_message_node_set_attribute (result_query, "xmlns", NS_DISCO_INFO);
+    return FALSE;
 
   if (node)
-    lm_message_node_set_attribute (result_query, "node", node);
-
-  DEBUG ("got disco request for node %s", node);
+    wocky_node_set_attribute (result_query, "node", node);
 
   if (node == NULL)
     features = gabble_presence_peek_caps (self->self_presence);
@@ -2545,14 +2498,15 @@ connection_iq_disco_cb (LmMessageHandler *handler,
     }
   else
     {
-      /* Every entity MUST have at least one identity (XEP-0030). Gabble publishs
+      /* Every entity MUST have at least one identity (XEP-0030). Gabble publishes
        * one identity. If you change the identity here, you also need to change
        * caps_hash_compute_from_self_presence(). */
-      identity = lm_message_node_add_child
-          (result_query, "identity", NULL);
-      lm_message_node_set_attribute (identity, "category", "client");
-      lm_message_node_set_attribute (identity, "name", PACKAGE_STRING);
-      lm_message_node_set_attribute (identity, "type", CLIENT_TYPE);
+      wocky_node_add_build (result_query,
+        '(', "identity",
+          '@', "category", "client",
+          '@', "name", PACKAGE_STRING,
+          '@', "type", CLIENT_TYPE,
+        ')', NULL);
     }
 
   if (features == NULL)
@@ -2575,7 +2529,7 @@ connection_iq_disco_cb (LmMessageHandler *handler,
 
   if (features == NULL && tp_strdiff (suffix, BUNDLE_PMUC_V1))
     {
-      _gabble_connection_send_iq_error (self, message,
+      _gabble_connection_send_iq_error (self, stanza,
           XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
   else
@@ -2587,47 +2541,43 @@ connection_iq_disco_cb (LmMessageHandler *handler,
               result_query);
         }
 
-      NODE_DEBUG (result_iq, "sending disco response");
-
       wocky_porter_send (self->priv->porter, result);
     }
 
-  lm_message_unref (result);
+  g_object_unref (result);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 /**
- * connection_iq_unknown_cb
+ * iq_unknown_cb
  *
- * Called by loudmouth when we get an incoming <iq>. This handler is
+ * Called by Wocky when we get an incoming <iq>. This handler is
  * at a lower priority than the others, and should reply with an error
  * about unsupported get/set attempts.
  */
-static LmHandlerResult
-connection_iq_unknown_cb (LmMessageHandler *handler,
-                          LmConnection *connection,
-                          LmMessage *message,
-                          gpointer user_data)
+static gboolean
+iq_unknown_cb (WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  WockyStanzaSubType subtype;
 
-  g_assert (connection == conn->lmconn);
+  wocky_stanza_get_type_info (stanza, NULL, &subtype);
 
-  STANZA_DEBUG (message, "got unknown iq");
-
-  switch (lm_message_get_sub_type (message))
+  switch (subtype)
     {
-    case LM_MESSAGE_SUB_TYPE_GET:
-    case LM_MESSAGE_SUB_TYPE_SET:
-      _gabble_connection_send_iq_error (conn, message,
+    case WOCKY_STANZA_SUB_TYPE_GET:
+    case WOCKY_STANZA_SUB_TYPE_SET:
+      _gabble_connection_send_iq_error (conn, stanza,
           XMPP_ERROR_SERVICE_UNAVAILABLE, NULL);
-      break;
+      return TRUE;
     default:
       break;
     }
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return FALSE;
 }
 
 /**

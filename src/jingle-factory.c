@@ -259,6 +259,22 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
   GabbleJingleFactoryPrivate *priv = fac->priv;
   LmMessageSubType sub_type;
   LmMessageNode *query_node, *node;
+  const gchar *from = wocky_stanza_get_from (message);
+
+  if (from != NULL)
+    {
+      TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          base_conn, TP_HANDLE_TYPE_CONTACT);
+      TpHandle sender = tp_handle_lookup (contact_repo, from, NULL, NULL);
+
+      if (sender != base_conn->self_handle)
+        {
+          DEBUG ("ignoring jingleinfo from '%s', not ourself nor the server",
+              from);
+          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+        }
+    }
 
   query_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (message), "query", NS_GOOGLE_JINGLE_INFO);

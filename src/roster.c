@@ -1360,9 +1360,9 @@ got_roster_iq (GabbleRoster *roster,
 
       if (sender != conn->self_handle)
         {
-           NODE_DEBUG (iq_node, "discarding roster IQ which is not from "
+          NODE_DEBUG (iq_node, "discarding roster IQ which is not from "
               "ourselves or the server");
-          return TRUE;
+          return FALSE;
         }
     }
 

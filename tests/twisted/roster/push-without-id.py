@@ -43,5 +43,23 @@ def test(q, bus, conn, stream):
     # Verify that Gabble didn't crash while trying to ack the push.
     sync_stream(q, stream)
 
+    # Just for completeness, let's repeat this test with a malicious roster
+    # push from a contact (rather than from our server). Our server's *really*
+    # broken if it allows this. Nonetheless...
+    iq = make_roster_push(stream, 'silvio@gov.it', 'both')
+    del iq['id']
+    iq['from'] = 'silvio@gov.it'
+    stream.send(iq)
+
+    q.forbid_events(
+        [ EventPattern('dbus-signal', signal='MembersChanged',
+              path=stored.object_path),
+          EventPattern('dbus-signal', signal='ContactsChanged'),
+        ])
+    # Make sure Gabble's got the evil push...
+    sync_stream(q, stream)
+    # ...and make sure it's not emitted anything.
+    sync_dbus(bus, q, conn)
+
 if __name__ == '__main__':
     exec_test(test)

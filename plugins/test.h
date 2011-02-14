@@ -123,3 +123,33 @@ GType test_sidecar_iq_get_type (void);
 #define TEST_SIDECAR_IQ_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), TEST_TYPE_SIDECAR_IQ, \
                               TestSidecarIQClass))
+
+/* Test channel manager */
+typedef struct _TestChannelManager TestChannelManager;
+typedef struct _TestChannelManagerClass TestChannelManagerClass;
+
+struct _TestChannelManagerClass {
+  GObjectClass parent_class;
+};
+
+struct _TestChannelManager {
+  GObject parent;
+};
+
+GType test_channel_manager_get_type (void);
+
+/* TYPE MACROS */
+#define TEST_TYPE_CHANNEL_MANAGER \
+  (test_channel_manager_get_type ())
+#define TEST_CHANNEL_MANAGER(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), TEST_TYPE_CHANNEL_MANAGER, TestChannelManager))
+#define TEST_CHANNEL_MANAGER_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), TEST_TYPE_CHANNEL_MANAGER,\
+                           TestChannelManagerClass))
+#define TEST_IS_CHANNEL_MANAGER(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), TEST_TYPE_CHANNEL_MANAGER))
+#define TEST_IS_CHANNEL_MANAGER_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), TEST_TYPE_CHANNEL_MANAGER))
+#define TEST_CHANNEL_MANAGER_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), TEST_TYPE_CHANNEL_MANAGER,\
+                              TestChannelManagerClass))

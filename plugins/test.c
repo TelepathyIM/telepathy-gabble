@@ -122,6 +122,21 @@ test_plugin_create_sidecar (
   g_object_unref (result);
 }
 
+static GPtrArray *
+test_plugin_create_channel_managers (GabblePlugin *plugin,
+    TpBaseConnection *connection)
+{
+  GPtrArray *ret = g_ptr_array_new ();
+
+  DEBUG ("plugin %p on connection %p", plugin, connection);
+
+  g_ptr_array_add (ret,
+      g_object_new (TEST_TYPE_CHANNEL_MANAGER,
+          NULL));
+
+  return ret;
+}
+
 static TpPresenceStatusSpec test_presences[] = {
   { "testbusy", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, NULL, NULL, NULL },
   { "testaway", TP_CONNECTION_PRESENCE_TYPE_AWAY, FALSE, NULL, NULL, NULL },
@@ -143,6 +158,7 @@ plugin_iface_init (
   iface->name = "Sidecar test plugin";
   iface->sidecar_interfaces = sidecar_interfaces;
   iface->create_sidecar = test_plugin_create_sidecar;
+  iface->create_channel_managers = test_plugin_create_channel_managers;
 
   iface->presence_statuses = test_presences;
   iface->privacy_list_map = privacy_list_map;
@@ -459,4 +475,54 @@ async_initable_iface_init (
 
   iface->init_async = sidecar_iq_init_async;
   iface->init_finish = sidecar_iq_init_finish;
+}
+
+/***********************************
+ * TestChannelManager implementation *
+ ***********************************/
+static void channel_manager_iface_init (gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE (TestChannelManager, test_channel_manager,
+    G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
+        channel_manager_iface_init));
+
+static void
+test_channel_manager_init (TestChannelManager *self)
+{
+}
+
+static void
+test_channel_manager_class_init (TestChannelManagerClass *klass)
+{
+}
+
+static void
+test_channel_manager_type_foreach_channel_class (GType type,
+    TpChannelManagerTypeChannelClassFunc func,
+    gpointer user_data)
+{
+  GHashTable *table = tp_asv_new (
+      "cookies", G_TYPE_STRING, "lolbags",
+      NULL);
+  const gchar * const empty[] = { "omg", "hi mum!", NULL };
+
+  func (type, table, empty, user_data);
+
+  g_hash_table_destroy (table);
+}
+
+static void
+channel_manager_iface_init (gpointer g_iface,
+                            gpointer iface_data)
+{
+  TpChannelManagerIface *iface = g_iface;
+
+  iface->type_foreach_channel_class = test_channel_manager_type_foreach_channel_class;
+
+  /* not requestable. */
+  iface->ensure_channel = NULL;
+  iface->create_channel = NULL;
+  iface->request_channel = NULL;
+  iface->foreach_channel_class = NULL;
 }

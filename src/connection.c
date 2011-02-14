@@ -1471,6 +1471,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
 static void connect_iq_callbacks (GabbleConnection *conn);
 static gboolean iq_disco_cb (WockyPorter *, WockyStanza *, gpointer);
+static gboolean iq_version_cb (WockyPorter *, WockyStanza *, gpointer);
 static gboolean iq_unknown_cb (WockyPorter *, WockyStanza *, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, LmMessageNode *, GError *, gpointer);
@@ -1926,6 +1927,12 @@ connect_iq_callbacks (GabbleConnection *conn)
       NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
       iq_disco_cb, conn,
       '(', "query", ':', NS_DISCO_INFO, ')', NULL);
+
+  wocky_porter_register_handler (priv->porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+      iq_version_cb, conn,
+      '(', "query", ':', NS_VERSION, ')', NULL);
 
   wocky_porter_register_handler (priv->porter,
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_NONE,
@@ -2545,6 +2552,27 @@ iq_disco_cb (WockyPorter *porter,
     }
 
   g_object_unref (result);
+
+  return TRUE;
+}
+
+static gboolean
+iq_version_cb (WockyPorter *porter, WockyStanza *stanza, gpointer user_data)
+{
+  WockyStanza *result;
+
+  result = wocky_stanza_build_iq_result (stanza,
+      '(', "query", ':', NS_VERSION,
+        '(', "name", '$', PACKAGE_NAME, ')',
+        '(', "version", '$', PACKAGE_VERSION, ')',
+      ')', NULL);
+
+  if (result == NULL)
+    return FALSE;
+
+  wocky_porter_send (porter, result);
+
+  g_object_unref ((GObject *) result);
 
   return TRUE;
 }

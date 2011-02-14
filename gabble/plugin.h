@@ -53,6 +53,13 @@ typedef void (*GabblePluginCreateSidecarImpl) (
     GAsyncReadyCallback callback,
     gpointer user_data);
 
+/* The return type should be a new GPtrArray* which will be freed
+ * straight after this function is called, so the pointer array must
+ * not have a free function. */
+typedef GPtrArray * (*GabblePluginCreateChannelManagersImpl) (
+    GabblePlugin *plugin,
+    TpBaseConnection *connection);
+
 struct _GabblePluginPrivacyListMap {
     const gchar *presence_status_name;
     const gchar *privacy_list_name;
@@ -93,6 +100,11 @@ struct _GabblePluginInterface {
      * Privacy lists implementing specific statuses
      */
     GabblePluginPrivacyListMap *privacy_list_map;
+
+    /**
+     * An optional callback to create additional channel managers.
+     */
+    GabblePluginCreateChannelManagersImpl create_channel_managers;
 };
 
 GType gabble_plugin_get_type (void);
@@ -131,6 +143,9 @@ gboolean gabble_plugin_implements_presence_status (
 const gchar *gabble_plugin_presence_status_for_privacy_list (
     GabblePlugin *plugin,
     const gchar *list_name);
+
+GPtrArray * gabble_plugin_create_channel_managers (GabblePlugin *plugin,
+    TpBaseConnection *connection);
 
 /**
  * gabble_plugin_create:

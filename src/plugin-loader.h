@@ -85,4 +85,7 @@ const gchar *gabble_plugin_loader_presence_status_for_privacy_list (
     GabblePluginLoader *loader,
     const gchar *list_name);
 
+GPtrArray * gabble_plugin_loader_create_channel_managers (
+    GabblePluginLoader *self, TpBaseConnection *connection);
+
 #endif /* #ifndef __PLUGIN_LOADER_H__ */

@@ -17,6 +17,9 @@ Enhancements:
   conference component configured, upgrading a 1-1 chat into an ad-hoc
   conference still works.
 
+• fd.o#11291: support for xep-0092, Software Version. (Robot101, Michael
+  Scherer)
+
 telepathy-gabble 0.11.6 (2011-01-27)
 ====================================
 

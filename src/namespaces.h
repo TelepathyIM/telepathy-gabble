@@ -110,6 +110,7 @@
 #define NS_X_DELAY              "jabber:x:delay"
 #define NS_X_CONFERENCE         "jabber:x:conference"
 #define NS_XMPP_STANZAS         "urn:ietf:params:xml:ns:xmpp-stanzas"
+#define NS_VERSION              "jabber:iq:version"
 #define NS_GEOLOC               "http://jabber.org/protocol/geoloc"
 #define NS_GOOGLE_MAIL_NOTIFY   "google:mail:notify"
 

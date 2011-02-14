@@ -87,6 +87,7 @@ TWISTED_TESTS = \
 	text/test-text-no-body.py \
 	text/test-text.py \
 	tls/server-tls-channel.py \
+	version.py \
 	$(NULL)
 
 TWISTED_TUBE_TESTS = \

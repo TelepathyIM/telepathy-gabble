@@ -120,7 +120,9 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
     stream.send(jingleinfo)
     jingleinfo = None
 
-    # Spoof some jingle info
+    # Spoof some jingle info. This is a regression test for
+    # <https://bugs.freedesktop.org/show_bug.cgi?id=34048>. We assert that
+    # Gabble has ignored this stuff later.
     iq = IQ(stream, 'set')
     iq['from'] = "evil@evil.net"
     query = iq.addElement((ns.GOOGLE_JINGLE_INFO, "query"))
@@ -254,7 +256,10 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
 
     assert sh_props['NATTraversal'] == 'gtalk-p2p'
     assert sh_props['CreatedLocally'] == (not incoming)
-    assertEquals ([(expected_stun_server, expected_stun_port)], \
+
+    # If Gabble has erroneously paid attention to the contact evil@evil.net who
+    # sent us a google:jingleinfo stanza, this assertion will fail.
+    assertEquals([(expected_stun_server, expected_stun_port)],
         sh_props['STUNServers'])
 
     credentials_used = {}

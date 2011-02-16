@@ -9,6 +9,9 @@ Fixes:
 • Loosen an assertion to fix test failure with telepathy-glib >= 0.13.5,
   which releases connections' object paths sooner (smcv)
 
+• fd.o#34048: Malicious contacts can no longer trick Gabble into relaying
+  audio/video data via a server of their choosing. (wjt, sjoerd)
+
 telepathy-gabble 0.10.4 (2010-11-02)
 ====================================
 

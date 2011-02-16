@@ -1,3 +1,16 @@
+telepathy-gabble 0.8.15 (2011-02-16)
+====================================
+
+The “From now on, I will live on cigarettes and black coffee.” release.
+
+Fixes:
+
+• fd.o#34048: Malicious contacts can no longer trick Gabble into relaying
+  audio/video data via a server of their choosing. (wjt, sjoerd)
+
+• Messages from JIDS with valid, but non-ASCII, domains are no longer silently
+  dropped.
+
 telepathy-gabble 0.8.14 (2010-06-08)
 ====================================
 

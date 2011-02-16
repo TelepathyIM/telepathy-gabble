@@ -3,12 +3,20 @@ telepathy-gabble 0.11.7 (UNRELEASED)
 
 Dependencies:
 
+• telepathy-glib ≥ 0.13.12 is now required.
+
 Fixes:
 
 • fd.o#32390: Gabble now treats a request for a ContactSearch channel
   with Server set to the empty string as equivalent to not specifying a
   server, and rejects requests where the JID specified for Server is
   invalid. (wjt)
+
+• fd.o#32874: Offline contacts are now assumed to support 1–1 text channels.
+  (jonnylamb)
+
+• fd.o#34048: Malicious contacts can no longer trick Gabble into relaying
+  audio/video data via a server of their choosing. (wjt, sjoerd)
 
 Enhancements:
 
@@ -19,6 +27,8 @@ Enhancements:
 
 • fd.o#11291: support for xep-0092, Software Version. (Robot101, Michael
   Scherer)
+
+• fd.o#33471: support for the FileTransfer.URI property. (cassidy)
 
 telepathy-gabble 0.11.6 (2011-01-27)
 ====================================

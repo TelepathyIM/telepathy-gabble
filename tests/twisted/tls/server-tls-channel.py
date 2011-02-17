@@ -62,13 +62,19 @@ class TlsAuthenticator(XmppAuthenticator):
             self.streamTLS()
 
     def tlsAuth(self, auth):
-        with open(CA_KEY, 'rb') as file:
+        try:
+            file = open(CA_KEY, 'rb')
             pem_key = file.read()
             pkey = crypto.load_privatekey(crypto.FILETYPE_PEM, pem_key, "")
+        finally:
+            file.close()
 
-        with open(CA_CERT, 'rb') as file:
+        try:
+            file = open(CA_CERT, 'rb')
             pem_cert = file.read()
             cert = crypto.load_certificate(crypto.FILETYPE_PEM, pem_cert)
+        finally:
+            file.close()
 
         tls_ctx = ssl.CertificateOptions(privateKey=pkey, certificate=cert)
 

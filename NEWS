@@ -1,3 +1,11 @@
+telepathy-gabble 0.11.8 (üNRëLëäSëD)
+====================================
+
+Fixes:
+
+• fd.o#27693: Gabble no longer polls for contacts' geolocation
+  information; it relies on PEP working properly. (wjt)
+
 telepathy-gabble 0.11.7 (2011-02-16)
 ====================================
 

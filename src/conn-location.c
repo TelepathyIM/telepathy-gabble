@@ -74,67 +74,36 @@ build_mapping_tables (void)
 }
 
 static gboolean update_location_from_msg (GabbleConnection *conn,
-    const gchar *from, LmMessage *msg);
+    TpHandle contact, LmMessage *msg);
 
-static void
-pep_reply_cb (GObject *source,
-    GAsyncResult *res,
-    gpointer user_data)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  WockyStanza *reply_msg;
-  GError *error = NULL;
-  const gchar *from;
-
-  reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &error);
-  if (reply_msg == NULL)
-    {
-      DEBUG ("Query failed: %s", error->message);
-      g_error_free (error);
-      goto out;
-    }
-
-  from = lm_message_node_get_attribute (
-    wocky_stanza_get_top_node (reply_msg), "from");
-
-  if (from != NULL)
-    update_location_from_msg (conn, from, reply_msg);
-  g_object_unref (reply_msg);
-
-out:
-  g_object_unref (conn);
-}
-
+/*
+ * get_cached_location:
+ * @conn: a connection
+ * @handle: a handle, which must have been pre-validated.
+ *
+ * Returns: a new ref to a GHashTable containing @handle's location, or %NULL
+ *          if we have no cached location.
+ */
 static GHashTable *
-get_cached_location_or_query (GabbleConnection *conn,
-    TpHandle handle,
-    GError **error)
+get_cached_location (GabbleConnection *conn,
+    TpHandle handle)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GHashTable *location;
   const gchar *jid;
   TpHandleRepoIface *contact_repo;
-  WockyBareContact *contact;
 
   contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
   jid = tp_handle_inspect (contact_repo, handle);
 
   location = gabble_presence_cache_get_location (conn->presence_cache, handle);
+
   if (location != NULL)
-    {
-      DEBUG (" - %s: cached", jid);
-      return location;
-    }
+    DEBUG (" - %s: cached", jid);
+  else
+    DEBUG (" - %s: unknown", jid);
 
-  contact = ensure_bare_contact_from_jid (conn, jid);
-
-  /* Send a query */
-  wocky_pep_service_get_async (conn->pep_location, contact, NULL, pep_reply_cb,
-      g_object_ref (conn));
-
-  g_object_unref (contact);
-  return NULL;
+  return location;
 }
 
 static void
@@ -169,21 +138,8 @@ location_get_locations (TpSvcConnectionInterfaceLocation *iface,
 
   for (i = 0; i < contacts->len; i++)
     {
-      GHashTable *location;
       TpHandle contact = g_array_index (contacts, TpHandle, i);
-
-      location = get_cached_location_or_query (conn, contact, &error);
-      if (error != NULL)
-        {
-          GError error2 = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-              "Sending PEP location query failed" };
-
-          DEBUG ("Sending PEP location query failed: %s", error->message);
-          g_error_free (error);
-          dbus_g_method_return_error (context, &error2);
-          g_hash_table_unref (return_locations);
-          return;
-        }
+      GHashTable *location = get_cached_location (conn, contact);
 
       if (location != NULL)
         g_hash_table_insert (return_locations, GUINT_TO_POINTER (contact),
@@ -193,6 +149,98 @@ location_get_locations (TpSvcConnectionInterfaceLocation *iface,
   tp_svc_connection_interface_location_return_from_get_locations
       (context, return_locations);
   g_hash_table_unref (return_locations);
+}
+
+typedef struct {
+    GabbleConnection *self;
+    TpHandle handle;
+    DBusGMethodInvocation *context;
+} YetAnotherContextStruct;
+
+static void
+request_location_reply_cb (GObject *source,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  YetAnotherContextStruct *ctx = user_data;
+  WockyStanza *reply;
+  GError *wocky_error = NULL, *tp_error = NULL;
+
+  reply = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
+      &wocky_error);
+
+  if (reply == NULL ||
+      wocky_stanza_extract_errors (reply, NULL, &wocky_error, NULL, NULL))
+    {
+      DEBUG ("fetching location failed: %s", wocky_error->message);
+      gabble_set_tp_error_from_wocky (wocky_error, &tp_error);
+      dbus_g_method_return_error (ctx->context, tp_error);
+      g_error_free (tp_error);
+    }
+  else
+    {
+      GHashTable *location;
+
+      if (update_location_from_msg (ctx->self, ctx->handle, reply))
+        {
+          location = get_cached_location (ctx->self, ctx->handle);
+          /* We just cached a location for this contact, so it should be
+           * non-NULL.
+           */
+          g_return_if_fail (location != NULL);
+        }
+      else
+        {
+          /* If the location's unparseable, we'll hit this path. That seems
+           * okay.
+           */
+          location = g_hash_table_new (NULL, NULL);
+        }
+
+      tp_svc_connection_interface_location_return_from_request_location (
+          ctx->context, location);
+      g_hash_table_unref (location);
+    }
+
+  tp_clear_object (&reply);
+  g_object_unref (ctx->self);
+  g_slice_free (YetAnotherContextStruct, ctx);
+}
+
+static void
+location_request_location (
+    TpSvcConnectionInterfaceLocation *iface,
+    TpHandle handle,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid;
+  WockyBareContact *contact;
+  YetAnotherContextStruct *ctx;
+  GError *error = NULL;
+
+  if (!tp_handle_is_valid (contact_handles, handle, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  /* Oh! for GDBus. */
+  ctx = g_slice_new (YetAnotherContextStruct);
+  ctx->self = g_object_ref (self);
+  ctx->handle = handle;
+  ctx->context = context;
+
+  jid = tp_handle_inspect (contact_handles, handle);
+  contact = ensure_bare_contact_from_jid (self, jid);
+  DEBUG ("fetching location for '%s'", jid);
+  wocky_pep_service_get_async (self->pep_location, contact, NULL,
+      request_location_reply_cb, ctx);
+  g_object_unref (contact);
 }
 
 static gboolean
@@ -362,6 +410,7 @@ location_iface_init (gpointer g_iface, gpointer iface_data)
   (klass, location_##x)
   IMPLEMENT(get_locations);
   IMPLEMENT(set_location);
+  IMPLEMENT(request_location);
 #undef IMPLEMENT
 }
 
@@ -468,7 +517,7 @@ conn_location_properties_setter (GObject *object,
 
 static gboolean
 update_location_from_msg (GabbleConnection *conn,
-                          const gchar *from,
+                          TpHandle contact,
                           LmMessage *msg)
 {
   LmMessageNode *node;
@@ -476,10 +525,9 @@ update_location_from_msg (GabbleConnection *conn,
       g_free, (GDestroyNotify) tp_g_value_slice_free);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *from = tp_handle_inspect (contact_repo, contact);
   NodeIter i;
   const gchar *lang;
-
-  TpHandle contact = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
   node = lm_message_node_find_child (wocky_stanza_get_top_node (msg),
       "geoloc");
@@ -589,7 +637,7 @@ location_pep_node_changed (WockyPepService *pep,
     /* Ignore echoed pubsub notifications */
     goto out;
 
-  update_location_from_msg (conn, jid, stanza);
+  update_location_from_msg (conn, handle, stanza);
 
 out:
   tp_handle_unref (contact_repo, handle);
@@ -600,28 +648,22 @@ conn_location_fill_contact_attributes (GObject *obj,
     const GArray *contacts,
     GHashTable *attributes_hash)
 {
+  GabbleConnection *self = GABBLE_CONNECTION (obj);
   guint i;
-  GabbleConnection *self = GABBLE_CONNECTION(obj);
 
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GHashTable *location;
-      GValue *val;
+      GHashTable *location = get_cached_location (self, handle);
 
-      location = get_cached_location_or_query (self, handle, NULL);
       if (location != NULL)
-        g_hash_table_ref (location);
-      else
-        location = g_hash_table_new (NULL, NULL);
+        {
+          GValue *val = tp_g_value_slice_new_take_boxed (
+              TP_HASH_TYPE_STRING_VARIANT_MAP, location);
 
-      val = tp_g_value_slice_new_boxed (TP_HASH_TYPE_STRING_VARIANT_MAP,
-          location);
-
-      tp_contacts_mixin_set_contact_attribute (attributes_hash,
-          handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION"/location", val);
-
-      g_hash_table_unref (location);
+          tp_contacts_mixin_set_contact_attribute (attributes_hash,
+              handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION"/location", val);
+        }
     }
 }
 

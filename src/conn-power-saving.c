@@ -26,6 +26,9 @@
 #include "util.h"
 #include "conn-util.h"
 
+#include <wocky/wocky-namespaces.h>
+#include <wocky/wocky-c2s-porter.h>
+
 enum
 {
   PROP_POWER_SAVING_ACTIVE,
@@ -38,7 +41,7 @@ typedef struct {
 } ToggleQueueingContext;
 
 static void
-conn_power_saving_send_command (
+google_queueing_send_command (
     GabbleConnection *conn,
     const gchar *command,
     GAsyncReadyCallback callback,
@@ -58,7 +61,23 @@ conn_power_saving_send_command (
 }
 
 static void
-toggle_queueing_cb (GObject *source_object,
+maybe_emit_power_saving_changed (GabbleConnection *self,
+    gboolean enabling)
+{
+  gboolean enabled;
+
+  g_object_get (self, "power-saving", &enabled, NULL);
+
+  if (enabling != enabled)
+    {
+      g_object_set (self, "power-saving", enabling, NULL);
+      tp_svc_connection_interface_power_saving_emit_power_saving_changed (
+          self, enabling);
+    }
+}
+
+static void
+toggle_google_queueing_cb (GObject *source_object,
     GAsyncResult *res,
     gpointer user_data)
 {
@@ -66,9 +85,6 @@ toggle_queueing_cb (GObject *source_object,
   ToggleQueueingContext *queueing_context = (ToggleQueueingContext *) user_data;
   GError *error = NULL;
   gboolean enabling;
-  gboolean enabled;
-
-  g_object_get (source_object, "power-saving", &enabled, NULL);
 
   enabling = queueing_context->enabling;
 
@@ -91,15 +107,10 @@ toggle_queueing_cb (GObject *source_object,
           queueing_context->dbus_context);
 
       if (!enabling)
-        conn_power_saving_send_command (self, "flush", NULL, NULL);
+        google_queueing_send_command (self, "flush", NULL, NULL);
     }
 
-  if (enabling != enabled)
-    {
-      g_object_set (source_object, "power-saving", enabling, NULL);
-      tp_svc_connection_interface_power_saving_emit_power_saving_changed (
-          self, enabling);
-    }
+  maybe_emit_power_saving_changed (self, enabling);
 
   g_slice_free (ToggleQueueingContext, queueing_context);
 }
@@ -112,7 +123,6 @@ conn_power_saving_set_power_saving (
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
-  ToggleQueueingContext *queueing_context;
   gboolean enabled;
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
@@ -127,14 +137,38 @@ conn_power_saving_set_power_saving (
       return;
     }
 
-  queueing_context = g_slice_new0 (ToggleQueueingContext);
-  queueing_context->enabling = enable;
-  queueing_context->dbus_context = context;
-
   DEBUG ("%sabling presence queueing", enable ? "en" : "dis");
 
-  conn_power_saving_send_command (self, enable ? "enable" : "disable",
-      toggle_queueing_cb, queueing_context);
+  /* Of course, the Google Talk server doesn't advertise support for
+   * google:queue. So we use google:roster. We still support the hypothetically
+   * advertised google:queue just in case google starts using it, or another
+   * server implementation adopts it. google:queue is described here:
+   * http://mail.jabber.org/pipermail/summit/2010-February/000528.html */
+  if (self->features & (GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE |
+          GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
+    {
+      ToggleQueueingContext *queueing_context;
+      queueing_context = g_slice_new0 (ToggleQueueingContext);
+      queueing_context->enabling = enable;
+      queueing_context->dbus_context = context;
+
+      google_queueing_send_command (self, enable ? "enable" : "disable",
+          toggle_google_queueing_cb, queueing_context);
+    }
+  else
+    {
+      /* If the server doesn't support any method of queueing, we can still
+       * do it locally by enabling power save mode on Wocky. */
+      WockyPorter *porter = gabble_connection_dup_porter (self);
+
+      wocky_c2s_porter_enable_power_saving_mode (WOCKY_C2S_PORTER (porter), enable);
+      DEBUG ("%sabled local stanza queueing", enable ? "En" : "Dis");
+      g_object_unref (porter);
+      maybe_emit_power_saving_changed (self, enable);
+
+      tp_svc_connection_interface_power_saving_return_from_set_power_saving (
+          context);
+    }
 }
 
 void

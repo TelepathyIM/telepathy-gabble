@@ -3041,7 +3041,7 @@ gabble_roster_dup_contact_groups (TpBaseContactList *base,
     TpHandle contact)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
-  GPtrArray *ret = g_ptr_array_new ();
+  GPtrArray *ret;
   GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
 
   if (item != NULL && item->groups != NULL)

@@ -966,7 +966,7 @@ roster_item_set_publish (GabbleRosterItem *item,
     TpSubscriptionState publish,
     const gchar *request)
 {
-  gboolean changed;
+  gboolean changed = FALSE;
 
   g_assert (publish == TP_SUBSCRIPTION_STATE_ASK || request == NULL);
 

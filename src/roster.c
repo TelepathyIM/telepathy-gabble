@@ -484,6 +484,7 @@ _gabble_roster_item_maybe_remove (GabbleRoster *roster,
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
   item = _gabble_roster_item_lookup (roster, handle);
+  g_return_val_if_fail (item != NULL, FALSE);
 
   /* don't remove items that are really on our server-side roster */
   if (item->subscription != GABBLE_ROSTER_SUBSCRIPTION_REMOVE)

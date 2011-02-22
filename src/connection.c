@@ -775,9 +775,9 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
     GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
     GABBLE_IFACE_OLPC_BUDDY_INFO,
-    TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
 
     /* always present interfaces */
+    TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
     TP_IFACE_CONNECTION_INTERFACE_ALIASING,
     TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
     TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
@@ -795,7 +795,7 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
     NULL
 };
-static const gchar **interfaces_always_present = implemented_interfaces + 4;
+static const gchar **interfaces_always_present = implemented_interfaces + 3;
 
 const gchar **
 gabble_connection_get_implemented_interfaces (void)
@@ -2628,21 +2628,6 @@ set_status_to_connected (GabbleConnection *conn)
     {
        const gchar *ifaces[] =
          { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
-    }
-
-  /* We can only cork presence updates on Google Talk. Of course, the Google
-   * Talk server doesn't advertise support for google:queue. So we use
-   * google:roster. We still support the hypothetically advertised google:queue
-   * just in case google starts using it, or another server implementation
-   * adopts it. google:queue is described here:
-   * http://mail.jabber.org/pipermail/summit/2010-February/000528.html */
-  if (conn->features & (GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE |
-          GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
-    {
-       const gchar *ifaces[] =
-         { TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }

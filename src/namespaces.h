@@ -64,6 +64,10 @@
 #define NS_JINGLE_RTP_AUDIO     "urn:xmpp:jingle:apps:rtp:audio"
 #define NS_JINGLE_RTP_VIDEO     "urn:xmpp:jingle:apps:rtp:video"
 
+/* ProtoXEPs for rtcp-fb and rtp-hdrext */
+#define NS_JINGLE_RTCP_FB       "urn:xmpp:jingle:apps:rtp:rtcp-fb:0"
+#define NS_JINGLE_RTP_HDREXT    "urn:xmpp:jingle:apps:rtp:rtp-hdrext:0"
+
 /* Google's Jingle dialect */
 #define NS_GOOGLE_SESSION       "http://www.google.com/session"
 /* Audio capability in Google Jingle dialect */

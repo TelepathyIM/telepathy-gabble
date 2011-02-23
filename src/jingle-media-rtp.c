@@ -68,11 +68,11 @@ typedef enum {
 
 struct _GabbleJingleMediaRtpPrivate
 {
-  GList *local_codecs;
-  /* Holds (JingleCodec *)'s borrowed from local_codecs, namely those which have
-   * changed from local_codecs' previous value. Since the contents are
-   * borrowed, this must be freed with g_list_free, not
-   * jingle_media_rtp_free_codecs().
+  JingleMediaDescription *local_media_description;
+  /* Holds (JingleCodec *)'s borrowed from local_media_description,
+   * namely codecs which havew* changed from local_media_description's
+   * previous value. Since the contents are * borrowed, this must be
+   * freed with g_list_free, not * jingle_media_rtp_free_codecs().
    */
   GList *local_codec_updates;
 
@@ -183,8 +183,9 @@ gabble_jingle_media_rtp_dispose (GObject *object)
     jingle_media_description_free (priv->remote_media_description);
   priv->remote_media_description = NULL;
 
-  jingle_media_rtp_free_codecs (priv->local_codecs);
-  priv->local_codecs = NULL;
+  if (priv->local_media_description)
+    jingle_media_description_free (priv->local_media_description);
+  priv->local_media_description = NULL;
 
   if (priv->local_codec_updates != NULL)
     {
@@ -817,7 +818,7 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   if (priv->local_codec_updates != NULL)
     li = priv->local_codec_updates;
   else
-    li = priv->local_codecs;
+    li = priv->local_media_description->codecs;
 
   for (; li != NULL; li = li->next)
     produce_payload_type (desc_node, priv->media_type, li->data, dialect);
@@ -914,14 +915,15 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
 
   DEBUG ("setting new local codecs");
 
-  if (priv->local_codecs != NULL)
+  if (priv->local_media_description != NULL)
     {
       GList *changed = NULL;
       GError *err = NULL;
 
       g_assert (priv->local_codec_updates == NULL);
 
-      if (!jingle_media_rtp_compare_codecs (priv->local_codecs,
+      if (!jingle_media_rtp_compare_codecs (
+            priv->local_media_description->codecs,
             codecs, &changed, &err))
         {
           DEBUG ("codec update was illegal: %s", err->message);
@@ -940,10 +942,11 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
       DEBUG ("%u codecs changed", g_list_length (changed));
       priv->local_codec_updates = changed;
 
-      jingle_media_rtp_free_codecs (priv->local_codecs);
+      jingle_media_description_free (priv->local_media_description);
     }
 
-  priv->local_codecs = codecs;
+  priv->local_media_description = jingle_media_description_new ();
+  priv->local_media_description->codecs = codecs;
 
   /* Codecs have changed, sending a fresh description might be necessary */
   gabble_jingle_content_maybe_send_description (GABBLE_JINGLE_CONTENT (self));

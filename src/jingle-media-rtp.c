@@ -1023,3 +1023,22 @@ jingle_media_description_copy (JingleMediaDescription *md)
   return newmd;
 }
 
+JingleRtpHeaderExtension *
+jingle_rtp_header_extension_new (guint id, JingleContentSenders senders,
+    const gchar *uri)
+{
+  JingleRtpHeaderExtension *hdrext = g_slice_new (JingleRtpHeaderExtension);
+
+  hdrext->id = id;
+  hdrext->senders = senders;
+  hdrext->uri = g_strdup (uri);
+
+  return hdrext;
+}
+
+void
+jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext)
+{
+  g_free (hdrext->uri);
+  g_slice_free (JingleRtpHeaderExtension, hdrext);
+}

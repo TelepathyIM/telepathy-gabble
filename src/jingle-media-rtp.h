@@ -69,6 +69,12 @@ typedef struct {
 } JingleCodec;
 
 typedef struct {
+  guint id;
+  JingleContentSenders senders;
+  gchar *uri;
+} JingleRtpHeaderExtension;
+
+typedef struct {
   GList *codecs;
 } JingleMediaDescription;
 
@@ -95,6 +101,9 @@ void jingle_media_description_free (JingleMediaDescription *md);
 JingleMediaDescription *jingle_media_description_copy (
     JingleMediaDescription *md);
 
+JingleRtpHeaderExtension *jingle_rtp_header_extension_new (guint id,
+    JingleContentSenders senders, const gchar *uri);
+void jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext);
 
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */

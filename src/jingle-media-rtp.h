@@ -68,6 +68,10 @@ typedef struct {
   GHashTable *params;
 } JingleCodec;
 
+typedef struct {
+  GList *codecs;
+} JingleMediaDescription;
+
 const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,
     LmMessage *message, GError **error);
 void jingle_media_rtp_register (GabbleJingleFactory *factory);
@@ -85,6 +89,13 @@ gboolean jingle_media_rtp_compare_codecs (GList *old,
     GList *new,
     GList **changed,
     GError **e);
+
+JingleMediaDescription *jingle_media_description_new (void);
+void jingle_media_description_free (JingleMediaDescription *md);
+JingleMediaDescription *jingle_media_description_copy (
+    JingleMediaDescription *md);
+
+
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

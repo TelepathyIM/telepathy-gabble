@@ -990,3 +990,28 @@ gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
 {
   return self->priv->remote_codecs;
 }
+
+JingleMediaDescription *
+jingle_media_description_new (void)
+{
+  return g_slice_new0 (JingleMediaDescription);
+}
+
+void
+jingle_media_description_free (JingleMediaDescription *md)
+{
+  jingle_media_rtp_free_codecs (md->codecs);
+
+  g_slice_free (JingleMediaDescription, md);
+}
+
+JingleMediaDescription *
+jingle_media_description_copy (JingleMediaDescription *md)
+{
+  JingleMediaDescription *newmd = g_slice_new0 (JingleMediaDescription);
+
+  newmd->codecs = jingle_media_rtp_copy_codecs (md->codecs);
+
+  return newmd;
+}
+

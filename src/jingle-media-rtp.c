@@ -76,7 +76,7 @@ struct _GabbleJingleMediaRtpPrivate
    */
   GList *local_codec_updates;
 
-  GList *remote_codecs;
+  JingleMediaDescription *remote_media_description;
   JingleMediaType media_type;
   gboolean remote_mute;
 
@@ -179,8 +179,9 @@ gabble_jingle_media_rtp_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  jingle_media_rtp_free_codecs (priv->remote_codecs);
-  priv->remote_codecs = NULL;
+  if (priv->remote_media_description)
+    jingle_media_description_free (priv->remote_media_description);
+  priv->remote_media_description = NULL;
 
   jingle_media_rtp_free_codecs (priv->local_codecs);
   priv->local_codecs = NULL;
@@ -483,9 +484,9 @@ codec_update_coherent (const JingleCodec *old_c,
 }
 
 static void
-update_remote_codecs (GabbleJingleMediaRtp *self,
-                      GList *new_codecs,
-                      GError **error)
+update_remote_media_description (GabbleJingleMediaRtp *self,
+                                 JingleMediaDescription *new_media_description,
+                                 GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   GHashTable *rc = NULL;
@@ -493,19 +494,19 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
   GList *l;
   GError *e = NULL;
 
-  if (priv->remote_codecs == NULL)
+  if (priv->remote_media_description == NULL)
     {
-      priv->remote_codecs = new_codecs;
-      new_codecs = NULL;
+      priv->remote_media_description = new_media_description;
+      new_media_description = NULL;
       goto out;
     }
 
-  rc = build_codec_table (priv->remote_codecs);
+  rc = build_codec_table (priv->remote_media_description->codecs);
 
   /* We already know some remote codecs, so this is just the other end updating
    * some parameters.
    */
-  for (l = new_codecs; l != NULL; l = l->next)
+  for (l = new_media_description->codecs; l != NULL; l = l->next)
     {
       new_c = l->data;
       old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
@@ -516,7 +517,7 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
     }
 
   /* Okay, all the updates are cool. Let's switch the parameters around. */
-  for (l = new_codecs; l != NULL; l = l->next)
+  for (l = new_media_description->codecs; l != NULL; l = l->next)
     {
       GHashTable *params;
 
@@ -529,7 +530,8 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
     }
 
 out:
-  jingle_media_rtp_free_codecs (new_codecs);
+  if (new_media_description)
+    jingle_media_description_free (new_media_description);
 
   tp_clear_pointer (&rc, g_hash_table_unref);
 
@@ -541,7 +543,8 @@ out:
   else
     {
       DEBUG ("Emitting remote-codecs signal");
-      g_signal_emit (self, signals[REMOTE_CODECS], 0, priv->remote_codecs);
+      g_signal_emit (self, signals[REMOTE_CODECS], 0,
+          priv->remote_media_description->codecs);
     }
 }
 
@@ -552,7 +555,7 @@ parse_description (GabbleJingleContent *content,
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleMediaType mtype;
-  GList *codecs = NULL;
+  JingleMediaDescription *md;
   JingleCodec *p;
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   gboolean video_session = FALSE;
@@ -577,6 +580,8 @@ parse_description (GabbleJingleContent *content,
         lm_message_node_get_namespace (desc_node);
       video_session = !tp_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
     }
+
+  md = jingle_media_description_new ();
 
   for (i = node_iter (desc_node); i && !payload_error; i = node_iter_next (i))
     {
@@ -608,13 +613,13 @@ parse_description (GabbleJingleContent *content,
       if (p == NULL)
         payload_error = TRUE;
       else
-        codecs = g_list_append (codecs, p);
+        md->codecs = g_list_append (md->codecs, p);
     }
 
   if (payload_error)
     {
       /* rollback these */
-      jingle_media_rtp_free_codecs (codecs);
+      jingle_media_description_free (md);
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
           "invalid payload");
       return;
@@ -622,7 +627,7 @@ parse_description (GabbleJingleContent *content,
 
   priv->media_type = mtype;
 
-  update_remote_codecs (self, codecs, error);
+  update_remote_media_description (self, md, error);
 }
 
 /* The Google Talk desktop client is picky about the case of codec names, even
@@ -988,7 +993,7 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
 GList *
 gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
 {
-  return self->priv->remote_codecs;
+  return self->priv->remote_media_description->codecs;
 }
 
 JingleMediaDescription *

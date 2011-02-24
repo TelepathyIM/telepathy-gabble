@@ -101,7 +101,7 @@ struct _GabbleMediaStreamPrivate
   guint id;
   guint media_type;
 
-  GValue native_codecs;     /* intersected codec list */
+  gboolean local_codecs_set;
 
   /* Whether we're waiting for a codec intersection from the streaming
    * implementation. If FALSE, SupportedCodecs is a no-op.
@@ -208,10 +208,6 @@ gabble_media_stream_init (GabbleMediaStream *self)
   GType rtp_hdrext_list_type = TP_ARRAY_TYPE_RTP_HEADER_EXTENSIONS_LIST;
 
   self->priv = priv;
-
-  g_value_init (&priv->native_codecs, codec_list_type);
-  g_value_take_boxed (&priv->native_codecs,
-      dbus_g_type_specialized_construct (codec_list_type));
 
   g_value_init (&priv->remote_codecs, codec_list_type);
   g_value_take_boxed (&priv->remote_codecs,
@@ -707,8 +703,6 @@ gabble_media_stream_finalize (GObject *object)
   if (priv->relay_info != NULL)
     g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
 
-  g_value_unset (&priv->native_codecs);
-
   g_value_unset (&priv->remote_codecs);
   g_value_unset (&priv->remote_rtp_hdrexts);
   g_value_unset (&priv->remote_candidates);
@@ -1024,8 +1018,6 @@ pass_local_codecs (GabbleMediaStream *stream,
   DEBUG ("putting list of %d supported codecs from stream-engine into cache",
       codecs->len);
 
-  g_value_set_boxed (&priv->native_codecs, codecs);
-
   for (i = 0; i < codecs->len; i++)
     {
       GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
@@ -1071,9 +1063,15 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+  GabbleMediaStreamPrivate *priv = self->priv;
   GError *error = NULL;
 
   DEBUG ("called");
+
+  if (codecs->len == 0)
+    goto done;
+
+  priv->local_codecs_set = TRUE;
 
   if (gabble_jingle_content_is_created_by_us (self->priv->content))
     {
@@ -1091,6 +1089,7 @@ gabble_media_stream_set_local_codecs (TpSvcMediaStreamHandler *iface,
     {
       DEBUG ("ignoring local codecs, waiting for codec intersection");
     }
+ done:
 
   tp_svc_media_stream_handler_return_from_set_local_codecs (context);
 }
@@ -1150,6 +1149,11 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
 
   DEBUG ("called");
 
+  if (codecs->len == 0)
+    return;
+
+  priv->local_codecs_set = TRUE;
+
   if (priv->awaiting_intersection)
     {
       if (!pass_local_codecs (self, codecs, TRUE, &error))
@@ -1190,11 +1194,9 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  gboolean codecs_set =
-      (g_value_get_boxed (&self->priv->native_codecs) != NULL);
   GError *error = NULL;
 
-  if (!codecs_set)
+  if (!self->priv->local_codecs_set)
     {
       GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "CodecsUpdated may only be called once an initial set of codecs "

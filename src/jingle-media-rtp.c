@@ -854,6 +854,29 @@ produce_description_node (JingleDialect dialect, JingleMediaType media_type,
 }
 
 static void
+produce_hdrext (gpointer data, gpointer user_data)
+{
+  JingleRtpHeaderExtension *hdrext = data;
+  LmMessageNode *desc_node = user_data;
+  LmMessageNode *hdrext_node;
+  gchar buf[16];
+
+  hdrext_node = lm_message_node_add_child (desc_node, "rtp-hdrext", NULL);
+
+  /* id: required */
+  sprintf (buf, "%d", hdrext->id);
+  lm_message_node_set_attribute (hdrext_node, "id", buf);
+  lm_message_node_set_attribute (hdrext_node, "uri", hdrext->uri);
+
+  if (hdrext->senders == JINGLE_CONTENT_SENDERS_INITIATOR)
+    lm_message_node_set_attribute (hdrext_node, "senders", "initiator");
+  else if (hdrext->senders == JINGLE_CONTENT_SENDERS_RESPONDER)
+    lm_message_node_set_attribute (hdrext_node, "senders", "responder");
+
+  lm_message_node_set_attribute (hdrext_node, "xmlns", NS_JINGLE_RTP_HDREXT);
+}
+
+static void
 produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 {
   GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
@@ -879,6 +902,10 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
 
   for (; li != NULL; li = li->next)
     produce_payload_type (desc_node, priv->media_type, li->data, dialect);
+
+  if (priv->local_media_description->hdrexts && dialect == JINGLE_DIALECT_V032)
+    g_list_foreach (priv->local_media_description->hdrexts, produce_hdrext,
+        desc_node);
 }
 
 /**

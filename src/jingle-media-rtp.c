@@ -1010,6 +1010,12 @@ jingle_media_description_free (JingleMediaDescription *md)
 {
   jingle_media_rtp_free_codecs (md->codecs);
 
+  while (md->hdrexts != NULL)
+    {
+      jingle_rtp_header_extension_free (md->hdrexts->data);
+      md->hdrexts = g_list_delete_link (md->hdrexts, md->hdrexts);
+    }
+
   g_slice_free (JingleMediaDescription, md);
 }
 
@@ -1017,8 +1023,17 @@ JingleMediaDescription *
 jingle_media_description_copy (JingleMediaDescription *md)
 {
   JingleMediaDescription *newmd = g_slice_new0 (JingleMediaDescription);
+  GList *li;
 
   newmd->codecs = jingle_media_rtp_copy_codecs (md->codecs);
+
+  for (li = md->hdrexts; li; li = li->next)
+    {
+      JingleRtpHeaderExtension *h = li->data;
+
+      newmd->hdrexts = g_list_append (newmd->hdrexts,
+          jingle_rtp_header_extension_new (h->id, h->senders, h->uri));
+    }
 
   return newmd;
 }

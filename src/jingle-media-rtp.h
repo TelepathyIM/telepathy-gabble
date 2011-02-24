@@ -76,6 +76,7 @@ typedef struct {
 
 typedef struct {
   GList *codecs;
+  GList *hdrexts;
 } JingleMediaDescription;
 
 const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,

@@ -108,6 +108,8 @@ struct _GabbleMediaStreamPrivate
    */
   gboolean awaiting_intersection;
 
+  GValue local_rtp_hdrexts;
+
   GValue remote_codecs;
   GValue remote_rtp_hdrexts;
   GValue remote_candidates;
@@ -208,6 +210,8 @@ gabble_media_stream_init (GabbleMediaStream *self)
   GType rtp_hdrext_list_type = TP_ARRAY_TYPE_RTP_HEADER_EXTENSIONS_LIST;
 
   self->priv = priv;
+
+  g_value_init (&priv->local_rtp_hdrexts, rtp_hdrext_list_type);
 
   g_value_init (&priv->remote_codecs, codec_list_type);
   g_value_take_boxed (&priv->remote_codecs,
@@ -703,6 +707,8 @@ gabble_media_stream_finalize (GObject *object)
   if (priv->relay_info != NULL)
     g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
 
+  g_value_unset (&priv->local_rtp_hdrexts);
+
   g_value_unset (&priv->remote_codecs);
   g_value_unset (&priv->remote_rtp_hdrexts);
   g_value_unset (&priv->remote_candidates);
@@ -1013,6 +1019,7 @@ pass_local_codecs (GabbleMediaStream *stream,
   GabbleMediaStreamPrivate *priv = stream->priv;
   guint i;
   JingleMediaDescription *md;
+  const GPtrArray *hdrexts;
 
   DEBUG ("putting list of %d supported codecs from stream-engine into cache",
       codecs->len);
@@ -1047,6 +1054,68 @@ pass_local_codecs (GabbleMediaStream *stream,
       md->codecs = g_list_append (md->codecs, c);
       g_free (name);
       g_hash_table_unref (params);
+    }
+
+  hdrexts = g_value_get_boxed (&priv->local_rtp_hdrexts);
+
+  if (hdrexts)
+    {
+      gboolean have_initiator = FALSE;
+      gboolean initiated_by_us;
+
+      for (i = 0; i < hdrexts->len; i++)
+        {
+          GValueArray *hdrext;
+          guint id;
+          guint direction;
+          JingleContentSenders senders;
+          gchar *uri;
+          gchar *params;
+
+          hdrext = g_ptr_array_index (hdrexts, i);
+
+          g_assert (hdrext);
+          g_assert (hdrext->n_values == 4);
+          g_assert (G_VALUE_HOLDS_UINT   (g_value_array_get_nth (hdrext, 0)));
+          g_assert (G_VALUE_HOLDS_UINT   (g_value_array_get_nth (hdrext, 1)));
+          g_assert (G_VALUE_HOLDS_STRING (g_value_array_get_nth (hdrext, 2)));
+          g_assert (G_VALUE_HOLDS_STRING (g_value_array_get_nth (hdrext, 3)));
+
+          tp_value_array_unpack (hdrext, 4,
+              &id,
+              &direction,
+              &uri,
+              &params);
+
+          if (direction == TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
+            senders = JINGLE_CONTENT_SENDERS_BOTH;
+          else if (direction == TP_MEDIA_STREAM_DIRECTION_NONE)
+            senders = JINGLE_CONTENT_SENDERS_NONE;
+          else
+            {
+              if (!have_initiator)
+                {
+                  g_object_get (priv->content->session, "local-initiator",
+                      &initiated_by_us, NULL);
+                  have_initiator = TRUE;
+                }
+
+              if (direction == TP_MEDIA_STREAM_DIRECTION_SEND)
+                senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
+                    JINGLE_CONTENT_SENDERS_RESPONDER;
+              else if (direction == TP_MEDIA_STREAM_DIRECTION_RECEIVE)
+                senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
+                    JINGLE_CONTENT_SENDERS_INITIATOR;
+              else
+                g_assert_not_reached ();
+            }
+
+
+          md->hdrexts = g_list_append (md->hdrexts,
+              jingle_rtp_header_extension_new (id, senders, uri));
+        }
+      /* Can only be used once */
+      g_value_reset (&priv->local_rtp_hdrexts);
     }
 
   return jingle_media_rtp_set_local_media_description (
@@ -1228,6 +1297,24 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
       dbus_g_method_return_error (context, error);
       g_error_free (error);
     }
+}
+
+/**
+ * gabble_media_stream_supported_header_extensions
+ *
+ * Implements D-Bus method SupportedHeaderExtensions
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ */
+static void
+gabble_media_stream_supported_header_extensions (TpSvcMediaStreamHandler *iface,
+                                                 const GPtrArray *hdrexts,
+                                                 DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+
+  g_value_set_boxed (&self->priv->local_rtp_hdrexts, hdrexts);
+
+  tp_svc_media_stream_handler_return_from_supported_header_extensions (context);
 }
 
 void
@@ -1796,6 +1883,7 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(supported_codecs,);
   IMPLEMENT(unhold_failure,);
   IMPLEMENT(codecs_updated,);
+  IMPLEMENT(supported_header_extensions,);
 #undef IMPLEMENT
 }
 

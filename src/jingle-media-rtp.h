@@ -79,8 +79,6 @@ typedef struct {
   GList *hdrexts;
 } JingleMediaDescription;
 
-const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,
-    LmMessage *message, GError **error);
 void jingle_media_rtp_register (GabbleJingleFactory *factory);
 gboolean jingle_media_rtp_set_local_media_description (
     GabbleJingleMediaRtp *self, JingleMediaDescription *md, gboolean ready,

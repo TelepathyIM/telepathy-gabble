@@ -1011,12 +1011,13 @@ pass_local_codecs (GabbleMediaStream *stream,
                    GError **error)
 {
   GabbleMediaStreamPrivate *priv = stream->priv;
-  GList *li = NULL;
-  JingleCodec *c;
   guint i;
+  JingleMediaDescription *md;
 
   DEBUG ("putting list of %d supported codecs from stream-engine into cache",
       codecs->len);
+
+  md = jingle_media_description_new ();
 
   for (i = 0; i < codecs->len; i++)
     {
@@ -1026,6 +1027,7 @@ pass_local_codecs (GabbleMediaStream *stream,
       guint id, clock_rate, channels;
       gchar *name;
       GHashTable *params;
+      JingleCodec *c;
 
       g_value_init (&codec, codec_struct_type);
       g_value_set_static_boxed (&codec, g_ptr_array_index (codecs, i));
@@ -1042,13 +1044,13 @@ pass_local_codecs (GabbleMediaStream *stream,
           clock_rate, channels, params);
 
       DEBUG ("adding codec %s (%u %u %u)", c->name, c->id, c->clockrate, c->channels);
-      li = g_list_append (li, c);
+      md->codecs = g_list_append (md->codecs, c);
       g_free (name);
       g_hash_table_unref (params);
     }
 
-  return jingle_media_rtp_set_local_codecs (
-      GABBLE_JINGLE_MEDIA_RTP (priv->content), li, ready, error);
+  return jingle_media_rtp_set_local_media_description (
+      GABBLE_JINGLE_MEDIA_RTP (priv->content), md, ready, error);
 }
 
 /**

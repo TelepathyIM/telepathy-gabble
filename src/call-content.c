@@ -259,7 +259,9 @@ call_content_local_codecs_updated (GabbleCallContent *self,
     gpointer data)
 {
   GList *l;
-  GList *codecs = codec_array_to_list (local_codecs);
+  JingleMediaDescription *md = jingle_media_description_new ();
+
+  md->codecs = codec_array_to_list (local_codecs);
 
   for (l = self->priv->contents; l != NULL; l = g_list_next (l))
     {
@@ -271,11 +273,11 @@ call_content_local_codecs_updated (GabbleCallContent *self,
         continue;
 
       /* FIXME react properly on errors ? */
-      jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (j),
-        jingle_media_rtp_copy_codecs (codecs), TRUE, NULL);
+      jingle_media_rtp_set_local_media_description (GABBLE_JINGLE_MEDIA_RTP (j),
+        jingle_media_description_copy (md), TRUE, NULL);
     }
 
-  jingle_media_rtp_free_codecs (codecs);
+  jingle_media_description_free (md);
 }
 
 static void
@@ -286,7 +288,7 @@ call_content_setup_jingle (GabbleCallContent *self,
   GabbleJingleContent *jingle;
   GabbleCallStream *stream;
   gchar *path;
-  GList *codecs;
+  JingleMediaDescription *md;
 
   jingle = gabble_call_member_content_get_jingle_content (mcontent);
 
@@ -303,13 +305,16 @@ call_content_setup_jingle (GabbleCallContent *self,
       NULL);
   g_free (path);
 
-  codecs = codec_array_to_list (
+  md = jingle_media_description_new ();
+  md->codecs = codec_array_to_list (
       tpy_base_media_call_content_get_local_codecs (
         TPY_BASE_MEDIA_CALL_CONTENT (self)));
 
-  if (codecs != NULL)
-    jingle_media_rtp_set_local_codecs (GABBLE_JINGLE_MEDIA_RTP (jingle),
-      codecs, TRUE, NULL);
+  if (md->codecs != NULL)
+    jingle_media_rtp_set_local_media_description (
+        GABBLE_JINGLE_MEDIA_RTP (jingle), md, TRUE, NULL);
+  else
+    jingle_media_description_free (md);
 
   tpy_base_call_content_add_stream (base, TPY_BASE_CALL_STREAM (stream));
   g_object_unref (stream);

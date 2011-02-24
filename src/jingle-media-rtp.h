@@ -82,8 +82,9 @@ typedef struct {
 const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,
     LmMessage *message, GError **error);
 void jingle_media_rtp_register (GabbleJingleFactory *factory);
-gboolean jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
-    GList *codecs, gboolean ready, GError **error);
+gboolean jingle_media_rtp_set_local_media_description (
+    GabbleJingleMediaRtp *self, JingleMediaDescription *md, gboolean ready,
+    GError **error);
 JingleMediaDescription *gabble_jingle_media_rtp_get_remote_media_description (
     GabbleJingleMediaRtp *self);
 

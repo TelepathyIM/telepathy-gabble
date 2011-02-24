@@ -990,14 +990,14 @@ out:
 /* Takes in a list of slice-allocated JingleCodec structs. Ready indicated
  * whether the codecs can regarded as ready to sent from now on */
 gboolean
-jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
-                                   GList *codecs,
-                                   gboolean ready,
-                                   GError **error)
+jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
+                                              JingleMediaDescription *md,
+                                              gboolean ready,
+                                              GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
 
-  DEBUG ("setting new local codecs");
+  DEBUG ("setting new local media description");
 
   if (priv->local_media_description != NULL)
     {
@@ -1008,10 +1008,10 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
 
       if (!jingle_media_rtp_compare_codecs (
             priv->local_media_description->codecs,
-            codecs, &changed, &err))
+            md->codecs, &changed, &err))
         {
           DEBUG ("codec update was illegal: %s", err->message);
-          jingle_media_rtp_free_codecs (codecs);
+          jingle_media_description_free (md);
           g_propagate_error (error, err);
           return FALSE;
         }
@@ -1019,7 +1019,7 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
       if (changed == NULL)
         {
           DEBUG ("codec update changed nothing!");
-          jingle_media_rtp_free_codecs (codecs);
+          jingle_media_description_free (md);
           goto out;
         }
 
@@ -1029,8 +1029,7 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
       jingle_media_description_free (priv->local_media_description);
     }
 
-  priv->local_media_description = jingle_media_description_new ();
-  priv->local_media_description->codecs = codecs;
+  priv->local_media_description = md;
 
   /* Codecs have changed, sending a fresh description might be necessary */
   gabble_jingle_content_maybe_send_description (GABBLE_JINGLE_CONTENT (self));

@@ -109,6 +109,7 @@ struct _GabbleMediaStreamPrivate
   gboolean awaiting_intersection;
 
   GValue remote_codecs;
+  GValue remote_rtp_hdrexts;
   GValue remote_candidates;
 
   guint remote_candidate_count;
@@ -133,7 +134,7 @@ struct _GabbleMediaStreamPrivate
   unsigned created_locally:1;
 };
 
-static void push_remote_codecs (GabbleMediaStream *stream);
+static void push_remote_media_description (GabbleMediaStream *stream);
 static void push_remote_candidates (GabbleMediaStream *stream);
 static void push_playing (GabbleMediaStream *stream);
 static void push_sending (GabbleMediaStream *stream);
@@ -204,6 +205,7 @@ gabble_media_stream_init (GabbleMediaStream *self)
       TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CANDIDATE_LIST;
   GType codec_list_type =
       TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST;
+  GType rtp_hdrext_list_type = TP_ARRAY_TYPE_RTP_HEADER_EXTENSIONS_LIST;
 
   self->priv = priv;
 
@@ -214,6 +216,10 @@ gabble_media_stream_init (GabbleMediaStream *self)
   g_value_init (&priv->remote_codecs, codec_list_type);
   g_value_take_boxed (&priv->remote_codecs,
       dbus_g_type_specialized_construct (codec_list_type));
+
+  g_value_init (&priv->remote_rtp_hdrexts, rtp_hdrext_list_type);
+  g_value_take_boxed (&priv->remote_rtp_hdrexts,
+      dbus_g_type_specialized_construct (rtp_hdrext_list_type));
 
   g_value_init (&priv->remote_candidates, candidate_list_type);
   g_value_take_boxed (&priv->remote_candidates,
@@ -704,6 +710,7 @@ gabble_media_stream_finalize (GObject *object)
   g_value_unset (&priv->native_codecs);
 
   g_value_unset (&priv->remote_codecs);
+  g_value_unset (&priv->remote_rtp_hdrexts);
   g_value_unset (&priv->remote_candidates);
 
   G_OBJECT_CLASS (gabble_media_stream_parent_class)->finalize (object);
@@ -982,7 +989,7 @@ gabble_media_stream_ready (TpSvcMediaStreamHandler *iface,
     {
       g_object_set (self, "ready", TRUE, NULL);
 
-      push_remote_codecs (self);
+      push_remote_media_description (self);
       push_remote_candidates (self);
       push_playing (self);
       push_sending (self);
@@ -1242,7 +1249,10 @@ new_remote_media_description_cb (GabbleJingleContent *content,
   GabbleMediaStreamPrivate *priv;
   GList *li;
   GPtrArray *codecs;
+  GPtrArray *hdrexts;
   GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
+  gboolean have_initiator = FALSE;
+  gboolean initiated_by_us;
 
   DEBUG ("called");
 
@@ -1261,6 +1271,19 @@ new_remote_media_description_cb (GabbleJingleContent *content,
       codecs = dbus_g_type_specialized_construct (
           TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST);
       g_value_take_boxed (&priv->remote_codecs, codecs);
+    }
+
+  hdrexts = g_value_get_boxed (&priv->remote_rtp_hdrexts);
+
+  if (hdrexts->len != 0)
+    {
+      /* We already had some rtp hdrext; let's free the old list and make a new,
+       * empty one to fill in.
+       */
+      g_value_reset (&priv->remote_rtp_hdrexts);
+      hdrexts = dbus_g_type_specialized_construct (
+          TP_ARRAY_TYPE_RTP_HEADER_EXTENSIONS_LIST);
+      g_value_take_boxed (&priv->remote_rtp_hdrexts, hdrexts);
     }
 
   for (li = md->codecs; li; li = li->next)
@@ -1288,17 +1311,58 @@ new_remote_media_description_cb (GabbleJingleContent *content,
       g_ptr_array_add (codecs, g_value_get_boxed (&codec));
     }
 
+  for (li = md->hdrexts; li; li = li->next)
+    {
+      JingleRtpHeaderExtension *h = li->data;
+      TpMediaStreamDirection direction;
+
+
+      if (h->senders == JINGLE_CONTENT_SENDERS_BOTH)
+        direction = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
+      else if (h->senders == JINGLE_CONTENT_SENDERS_NONE)
+        direction = TP_MEDIA_STREAM_DIRECTION_NONE;
+      else
+        {
+          if (!have_initiator)
+            {
+              g_object_get (priv->content->session, "local-initiator",
+                  &initiated_by_us, NULL);
+              have_initiator = TRUE;
+            }
+
+          if (h->senders == JINGLE_CONTENT_SENDERS_INITIATOR)
+            direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_SEND :
+                TP_MEDIA_STREAM_DIRECTION_RECEIVE;
+          else if (h->senders == JINGLE_CONTENT_SENDERS_RESPONDER)
+            direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_RECEIVE :
+                TP_MEDIA_STREAM_DIRECTION_SEND;
+          else
+            g_assert_not_reached ();
+        }
+
+      DEBUG ("new RTP header ext : %u %s", h->id, h->uri);
+
+      g_ptr_array_add (hdrexts,
+          tp_value_array_build (4,
+              G_TYPE_UINT,  h->id,
+              G_TYPE_UINT, direction,
+              G_TYPE_STRING, h->uri,
+              G_TYPE_STRING, "", /* No protocol defines parameters */
+              G_TYPE_INVALID));
+    }
+
   DEBUG ("pushing remote codecs");
 
-  push_remote_codecs (stream);
+  push_remote_media_description (stream);
 }
 
 
 static void
-push_remote_codecs (GabbleMediaStream *stream)
+push_remote_media_description (GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
   GPtrArray *codecs;
+  GPtrArray *hdrexts;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1311,9 +1375,13 @@ push_remote_codecs (GabbleMediaStream *stream)
   if (codecs->len == 0)
     return;
 
+  hdrexts = g_value_get_boxed (&priv->remote_rtp_hdrexts);
+
   DEBUG ("passing %d remote codecs to stream-engine",
                    codecs->len);
 
+  tp_svc_media_stream_handler_emit_set_remote_header_extensions (stream,
+      hdrexts);
   tp_svc_media_stream_handler_emit_set_remote_codecs (stream, codecs);
 }
 

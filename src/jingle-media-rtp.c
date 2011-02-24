@@ -429,6 +429,44 @@ parse_payload_type (LmMessageNode *node)
   return p;
 }
 
+static JingleRtpHeaderExtension *
+parse_rtp_header_extension (LmMessageNode *node)
+{
+  guint id;
+  JingleContentSenders senders;
+  const gchar *uri;
+  const char *txt;
+
+  txt = lm_message_node_get_attribute (node, "id");
+  if (txt == NULL)
+    return NULL;
+
+  id = atoi (txt);
+
+  /* Only valid ranges are 1-256 and 4096-4351 */
+  if ((id < 1 || id > 256) && (id < 4096 || id > 4351))
+    return NULL;
+
+  txt = lm_message_node_get_attribute (node, "senders");
+
+  if (txt == NULL || !g_ascii_strcasecmp (txt, "both"))
+    senders = JINGLE_CONTENT_SENDERS_BOTH;
+  else if (!g_ascii_strcasecmp (txt, "initiator"))
+    senders = JINGLE_CONTENT_SENDERS_INITIATOR;
+  else if (!g_ascii_strcasecmp (txt, "responder"))
+    senders = JINGLE_CONTENT_SENDERS_RESPONDER;
+  else
+    return NULL;
+
+  uri = lm_message_node_get_attribute (node, "uri");
+
+  if (uri == NULL)
+    return NULL;
+
+  return jingle_rtp_header_extension_new (id, senders, uri);
+}
+
+
 /**
  * codec_update_coherent:
  * @old_c: Gabble's old cache of the codec, or %NULL if it hasn't heard of it.
@@ -561,7 +599,7 @@ parse_description (GabbleJingleContent *content,
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   gboolean video_session = FALSE;
   NodeIter i;
-  gboolean payload_error = FALSE;
+  gboolean description_error = FALSE;
 
   DEBUG ("node: %s", desc_node->name);
 
@@ -584,45 +622,64 @@ parse_description (GabbleJingleContent *content,
 
   md = jingle_media_description_new ();
 
-  for (i = node_iter (desc_node); i && !payload_error; i = node_iter_next (i))
+  for (i = node_iter (desc_node); i && !description_error; i = node_iter_next (i))
     {
       LmMessageNode *node = node_iter_data (i);
-      if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
-        continue;
 
-      if (dialect == JINGLE_DIALECT_GTALK3)
+      if (!tp_strdiff (lm_message_node_get_name (node), "payload-type"))
+        {
+
+          if (dialect == JINGLE_DIALECT_GTALK3)
+            {
+              const gchar *pt_ns =
+                  lm_message_node_get_namespace (node);
+
+              if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+                {
+                  if (video_session &&
+                      tp_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
+                    continue;
+                }
+              else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+                {
+                  if (!(video_session && pt_ns == NULL)
+                      && tp_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
+                    continue;
+                }
+            }
+
+          p = parse_payload_type (node);
+
+          if (p == NULL)
+            description_error = TRUE;
+          else
+            md->codecs = g_list_append (md->codecs, p);
+        }
+      else if (!tp_strdiff (lm_message_node_get_name (node), "rtp-hdrext"))
         {
           const gchar *pt_ns =
-            lm_message_node_get_namespace (node);
+              lm_message_node_get_namespace (node);
+          JingleRtpHeaderExtension *hdrext;
 
-          if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
-            {
-              if (video_session &&
-                  tp_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
-                continue;
-            }
-          else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
-            {
-              if (!(video_session && pt_ns == NULL)
-                    && tp_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
-                continue;
-            }
+          if (tp_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
+            continue;
+
+          hdrext = parse_rtp_header_extension (node);
+
+          if (hdrext == NULL)
+            description_error = TRUE;
+          else
+            md->hdrexts = g_list_append (md->hdrexts, hdrext);
+
         }
-
-      p = parse_payload_type (node);
-
-      if (p == NULL)
-        payload_error = TRUE;
-      else
-        md->codecs = g_list_append (md->codecs, p);
     }
 
-  if (payload_error)
+  if (description_error)
     {
       /* rollback these */
       jingle_media_description_free (md);
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "invalid payload");
+          "invalid description");
       return;
     }
 

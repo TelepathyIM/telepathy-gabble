@@ -48,7 +48,7 @@ G_DEFINE_TYPE (GabbleJingleMediaRtp,
 /* signal enum */
 enum
 {
-  REMOTE_CODECS,
+  REMOTE_MEDIA_DESCRIPTION,
   LAST_SIGNAL
 };
 
@@ -280,7 +280,7 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 
   /* signal definitions */
 
-  signals[REMOTE_CODECS] = g_signal_new ("remote-codecs",
+  signals[REMOTE_MEDIA_DESCRIPTION] = g_signal_new ("remote-media-description",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
         G_TYPE_NONE, 1, G_TYPE_POINTER);
@@ -581,9 +581,9 @@ out:
     }
   else
     {
-      DEBUG ("Emitting remote-codecs signal");
-      g_signal_emit (self, signals[REMOTE_CODECS], 0,
-          priv->remote_media_description->codecs);
+      DEBUG ("Emitting remote-media-description signal");
+      g_signal_emit (self, signals[REMOTE_MEDIA_DESCRIPTION], 0,
+          priv->remote_media_description);
     }
 }
 
@@ -1073,14 +1073,15 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
       GABBLE_TYPE_JINGLE_MEDIA_RTP);
 }
 
-/* We can't get remote codecs when they're signalled, because
+/* We can't get remote media description when they're signalled, because
  * the signal is emitted immediately upon JingleContent creation,
  * and parsing, which is before a corresponding MediaStream is
  * created. */
-GList *
-gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
+JingleMediaDescription *
+gabble_jingle_media_rtp_get_remote_media_description (
+    GabbleJingleMediaRtp *self)
 {
-  return self->priv->remote_media_description->codecs;
+  return self->priv->remote_media_description;
 }
 
 JingleMediaDescription *

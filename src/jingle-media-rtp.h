@@ -84,7 +84,8 @@ const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,
 void jingle_media_rtp_register (GabbleJingleFactory *factory);
 gboolean jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
     GList *codecs, gboolean ready, GError **error);
-GList *gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self);
+JingleMediaDescription *gabble_jingle_media_rtp_get_remote_media_description (
+    GabbleJingleMediaRtp *self);
 
 JingleCodec * jingle_media_rtp_codec_new (guint id, const gchar *name,
     guint clockrate, guint channels, GHashTable *params);

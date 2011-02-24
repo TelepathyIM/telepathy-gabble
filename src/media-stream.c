@@ -140,8 +140,8 @@ static void push_sending (GabbleMediaStream *stream);
 
 static void new_remote_candidates_cb (GabbleJingleContent *content,
     GList *clist, GabbleMediaStream *stream);
-static void new_remote_codecs_cb (GabbleJingleContent *content,
-    GList *clist, GabbleMediaStream *stream);
+static void new_remote_media_description_cb (GabbleJingleContent *content,
+    JingleMediaDescription *md, GabbleMediaStream *stream);
 static void content_state_changed_cb (GabbleJingleContent *c,
      GParamSpec *pspec, GabbleMediaStream *stream);
 static void content_senders_changed_cb (GabbleJingleContent *c,
@@ -227,13 +227,15 @@ _get_initial_codecs_and_candidates (gpointer user_data)
 {
   GabbleMediaStream *stream = GABBLE_MEDIA_STREAM (user_data);
   GabbleMediaStreamPrivate *priv = stream->priv;
+  JingleMediaDescription *md;
 
   priv->initial_getter_id = 0;
 
   /* we can immediately get the codecs if we're responder */
-  new_remote_codecs_cb (priv->content,
-      gabble_jingle_media_rtp_get_remote_codecs (GABBLE_JINGLE_MEDIA_RTP (priv->content)),
-      stream);
+  md = gabble_jingle_media_rtp_get_remote_media_description (
+      GABBLE_JINGLE_MEDIA_RTP (priv->content));
+  if (md)
+    new_remote_media_description_cb (priv->content, md, stream);
 
   /* if any candidates arrived before idle loop had the chance to excute
    * us (e.g. specified in session-initiate/content-add), we don't want to
@@ -446,8 +448,8 @@ gabble_media_stream_set_property (GObject      *object,
 
       /* we need this also, if we're the initiator of the stream
        * (so remote codecs arrive later) */
-      gabble_signal_connect_weak (priv->content, "remote-codecs",
-          (GCallback) new_remote_codecs_cb, object);
+      gabble_signal_connect_weak (priv->content, "remote-media-description",
+          (GCallback) new_remote_media_description_cb, object);
 
       gabble_signal_connect_weak (priv->content, "notify::state",
           (GCallback) content_state_changed_cb, object);
@@ -1234,8 +1236,8 @@ gabble_media_stream_close (GabbleMediaStream *stream)
 }
 
 static void
-new_remote_codecs_cb (GabbleJingleContent *content,
-    GList *clist, GabbleMediaStream *stream)
+new_remote_media_description_cb (GabbleJingleContent *content,
+    JingleMediaDescription *md, GabbleMediaStream *stream)
 {
   GabbleMediaStreamPrivate *priv;
   GList *li;
@@ -1261,7 +1263,7 @@ new_remote_codecs_cb (GabbleJingleContent *content,
       g_value_take_boxed (&priv->remote_codecs, codecs);
     }
 
-  for (li = clist; li; li = li->next)
+  for (li = md->codecs; li; li = li->next)
     {
       GValue codec = { 0, };
       JingleCodec *c = li->data;

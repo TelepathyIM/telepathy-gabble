@@ -879,7 +879,25 @@ _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-produce_payload_type (LmMessageNode *desc_node,
+produce_rtcp_fb_trr_int (LmMessageNode *node,
+                         guint trr_int)
+{
+  LmMessageNode *trr_int_node;
+  gchar tmp[10];
+
+ if (trr_int == G_MAXUINT || trr_int == 0)
+    return;
+
+  trr_int_node = lm_message_node_add_child (node, "rtcp-fb_trr-int", NULL);
+
+  lm_message_node_set_attribute (trr_int_node, "xmlns", NS_JINGLE_RTCP_FB);
+  snprintf (tmp, 9, "%d", trr_int);
+  lm_message_node_set_attribute (trr_int_node, "value", tmp);
+}
+
+static void
+produce_payload_type (GabbleJingleContent *content,
+                      LmMessageNode *desc_node,
                       JingleMediaType type,
                       JingleCodec *p,
                       JingleDialect dialect)
@@ -950,6 +968,10 @@ produce_payload_type (LmMessageNode *desc_node,
 
   if (p->params != NULL)
     g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
+
+
+  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+    produce_rtcp_fb_trr_int (pt_node, p->trr_int);
 }
 
 static LmMessageNode *
@@ -1045,13 +1067,16 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
     li = priv->local_media_description->codecs;
 
   for (; li != NULL; li = li->next)
-    produce_payload_type (desc_node, priv->media_type, li->data, dialect);
-
+    produce_payload_type (content, desc_node, priv->media_type, li->data,
+        dialect);
 
   if (priv->local_media_description->hdrexts &&
       content_has_cap (content, NS_JINGLE_RTP_HDREXT))
     g_list_foreach (priv->local_media_description->hdrexts, produce_hdrext,
         desc_node);
+
+  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+    produce_rtcp_fb_trr_int (desc_node, priv->local_media_description->trr_int);
 }
 
 /**

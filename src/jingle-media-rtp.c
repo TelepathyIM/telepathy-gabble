@@ -395,6 +395,78 @@ extract_media_type (LmMessageNode *desc_node,
   g_assert_not_reached ();
 }
 
+static gboolean
+content_has_cap (GabbleJingleContent *content, const gchar *cap)
+{
+  GabblePresence *presence = gabble_presence_cache_get (
+      content->conn->presence_cache, content->session->peer);
+
+  return gabble_presence_resource_has_caps (presence,
+      gabble_jingle_session_get_peer_resource (content->session),
+      gabble_capability_set_predicate_has, cap);
+}
+
+static JingleFeedbackMessage *
+parse_rtcp_fb (GabbleJingleContent *content, LmMessageNode *node)
+{
+  const gchar *pt_ns =
+      lm_message_node_get_namespace (node);
+  const gchar *type;
+  const gchar *subtype;
+
+  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+    return NULL;
+
+  /* Ignore rtp-hdrext that if it wasn't in the caps */
+  if (!content_has_cap (content, NS_JINGLE_RTCP_FB))
+    return NULL;
+
+
+  type = lm_message_node_get_attribute (node, "type");
+  if (type == NULL)
+    return NULL;
+
+  subtype = lm_message_node_get_attribute (node, "subtype");
+
+  /* This is optional, defaults to "" */
+  if (subtype == NULL)
+    subtype = "";
+
+  return jingle_feedback_message_new (type, subtype);
+}
+
+
+/*
+ * Returns G_MAXUINT on error
+ */
+static guint
+parse_rtcp_fb_trr_int (GabbleJingleContent *content, LmMessageNode *node)
+{
+  const gchar *pt_ns =
+      lm_message_node_get_namespace (node);
+  const gchar *txt;
+  guint trr_int;
+  gchar *endptr = NULL;
+
+  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+    return G_MAXUINT;
+
+  /* Ignore rtp-hdrext that if it wasn't in the caps */
+  if (!content_has_cap (content, NS_JINGLE_RTCP_FB))
+    return G_MAXUINT;
+
+  txt = lm_message_node_get_attribute (node, "value");
+  if (txt == NULL)
+    return G_MAXUINT;
+
+  trr_int = strtol (txt, &endptr, 10);
+  if (endptr == NULL || endptr == txt)
+    return G_MAXUINT;
+
+  return trr_int;
+}
+
+
 /**
  * parse_payload_type:
  * @node: a <payload-type> node.
@@ -403,7 +475,7 @@ extract_media_type (LmMessageNode *desc_node,
  *          otherwise.
  */
 static JingleCodec *
-parse_payload_type (LmMessageNode *node)
+parse_payload_type (GabbleJingleContent *content, LmMessageNode *node)
 {
   JingleCodec *p;
   const char *txt;
@@ -441,19 +513,35 @@ parse_payload_type (LmMessageNode *node)
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
       LmMessageNode *param = node_iter_data (i);
-      const gchar *param_name, *param_value;
 
-      if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
-        continue;
+      if (!tp_strdiff (lm_message_node_get_name (param), "parameter"))
+        {
+          const gchar *param_name, *param_value;
 
-      param_name = lm_message_node_get_attribute (param, "name");
-      param_value = lm_message_node_get_attribute (param, "value");
+          param_name = lm_message_node_get_attribute (param, "name");
+          param_value = lm_message_node_get_attribute (param, "value");
 
-      if (param_name == NULL || param_value == NULL)
-        continue;
+          if (param_name == NULL || param_value == NULL)
+            continue;
 
-      g_hash_table_insert (p->params, g_strdup (param_name),
-          g_strdup (param_value));
+          g_hash_table_insert (p->params, g_strdup (param_name),
+              g_strdup (param_value));
+        }
+        else if (!tp_strdiff (lm_message_node_get_name (param), "rtcp-fb"))
+        {
+          JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
+
+          if (fb != NULL)
+            p->feedback_msgs = g_list_append (p->feedback_msgs, fb);
+        }
+        else if (!tp_strdiff (lm_message_node_get_name (param),
+                "rtcp-fb-trr-int"))
+        {
+          guint trr_int = parse_rtcp_fb_trr_int (content, param);
+
+          if (trr_int != G_MAXUINT)
+            p->trr_int = trr_int;
+       }
     }
 
   DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
@@ -620,17 +708,6 @@ out:
     }
 }
 
-static gboolean
-content_has_cap (GabbleJingleContent *content, const gchar *cap)
-{
-  GabblePresence *presence = gabble_presence_cache_get (
-      content->conn->presence_cache, content->session->peer);
-
-  return gabble_presence_resource_has_caps (presence,
-      gabble_jingle_session_get_peer_resource (content->session),
-      gabble_capability_set_predicate_has, cap);
-}
-
 static void
 parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
@@ -692,7 +769,7 @@ parse_description (GabbleJingleContent *content,
                 }
             }
 
-          p = parse_payload_type (node);
+          p = parse_payload_type (content, node);
 
           if (p == NULL)
             description_error = TRUE;
@@ -720,6 +797,25 @@ parse_description (GabbleJingleContent *content,
             md->hdrexts = g_list_append (md->hdrexts, hdrext);
 
         }
+      else if (!tp_strdiff (lm_message_node_get_name (node), "rtcp-fb"))
+        {
+          JingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
+
+          if (fb == NULL)
+            description_error = TRUE;
+          else
+            md->feedback_msgs = g_list_append (md->feedback_msgs, fb);
+        }
+      else if (!tp_strdiff (lm_message_node_get_name (node),
+                "rtcp-fb-trr-int"))
+        {
+          guint trr_int = parse_rtcp_fb_trr_int (content, node);
+
+          if (trr_int == G_MAXUINT)
+            description_error = TRUE;
+          else
+            md->trr_int = trr_int;
+       }
     }
 
   if (description_error)

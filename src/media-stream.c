@@ -1167,6 +1167,8 @@ pass_local_codecs (GabbleMediaStream *stream,
       g_value_reset (&priv->local_rtp_hdrexts);
     }
 
+  jingle_media_description_simplify (md);
+
   return jingle_media_rtp_set_local_media_description (
       GABBLE_JINGLE_MEDIA_RTP (priv->content), md, ready, error);
 }

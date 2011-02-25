@@ -1312,3 +1312,101 @@ jingle_feedback_message_free (JingleFeedbackMessage *fb)
   g_free (fb->subtype);
   g_slice_free (JingleFeedbackMessage, fb);
 }
+
+
+static gboolean
+jingle_feedback_message_compare (const JingleFeedbackMessage *fb1,
+    const JingleFeedbackMessage *fb2)
+{
+  if (!g_ascii_strcasecmp (fb1->type, fb2->type) &&
+      !g_ascii_strcasecmp (fb1->subtype, fb2->subtype))
+    return 0;
+  else
+    return 1;
+}
+
+/**
+ * jingle_media_description_simplify:
+ *
+ * Removes duplicated Feedback message and put them in the global structure
+ */
+
+void
+jingle_media_description_simplify (JingleMediaDescription *md)
+{
+  GList *item;
+  guint trr_int = 0;
+  gboolean trr_int_all_same = TRUE;
+  gboolean init = FALSE;
+  GList *identical_fbs = NULL;
+
+  for (item = md->codecs; item; item = item->next)
+    {
+      JingleCodec *c = item->data;
+
+      if (!init)
+        {
+          trr_int = c->trr_int;
+          identical_fbs = g_list_copy (c->feedback_msgs);
+          init = TRUE;
+        }
+      else
+        {
+          GList *item2;
+
+          if (trr_int != c->trr_int)
+            trr_int_all_same = FALSE;
+
+          for (item2 = identical_fbs; item2;)
+            {
+              JingleFeedbackMessage *fb = identical_fbs->data;
+              GList *next = item2->next;
+
+              if (!g_list_find_custom (c->feedback_msgs, fb,
+                      (GCompareFunc) jingle_feedback_message_compare))
+                identical_fbs = g_list_delete_link (identical_fbs,  item2);
+
+              item2 = next;
+            }
+
+          if (!trr_int_all_same && identical_fbs == NULL)
+            break;
+        }
+    }
+
+  if (trr_int_all_same && trr_int == G_MAXUINT)
+    trr_int_all_same = FALSE;
+
+  if (trr_int_all_same)
+    md->trr_int = trr_int;
+
+  if (identical_fbs)
+    {
+      md->feedback_msgs = jingle_feedback_message_list_copy (identical_fbs);
+      g_list_free (identical_fbs);
+    }
+
+  if (trr_int_all_same || md->feedback_msgs)
+    for (item = md->codecs; item; item = item->next)
+      {
+        JingleCodec *c = item->data;
+        GList *item2;
+
+        if (trr_int_all_same)
+          c->trr_int = G_MAXUINT;
+
+        for (item2 = md->feedback_msgs; item2; item2 = item2->next)
+          {
+            GList *duplicated;
+            JingleFeedbackMessage *fb = item2->data;
+
+            while ((duplicated = g_list_find_custom (c->feedback_msgs, fb,
+                        (GCompareFunc) jingle_feedback_message_compare)) != NULL)
+              {
+                jingle_feedback_message_free (duplicated->data);
+                c->feedback_msgs = g_list_delete_link (c->feedback_msgs,
+                    duplicated);
+              }
+          }
+      }
+}

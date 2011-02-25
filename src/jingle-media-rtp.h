@@ -119,6 +119,7 @@ void jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext);
 JingleFeedbackMessage *jingle_feedback_message_new (const gchar *type,
     const gchar *subtype);
 void jingle_feedback_message_free (JingleFeedbackMessage *fb);
+void jingle_media_description_simplify (JingleMediaDescription *md);
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

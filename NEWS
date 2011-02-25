@@ -1,6 +1,17 @@
 telepathy-gabble 0.11.8 (üNRëLëäSëD)
 ====================================
 
+Enhancements:
+
+• Updated Wocky:
+  · wocky_porter_register_handler() has been split into three functions:
+    wocky_porter_register_handler_from(),
+    wocky_porter_register_handler_from_server(), and
+    wocky_porter_register_handler_from_anyone(). These make it harder to
+    introduce bugs like fd.o#34048.
+  · Since wocky_porter_register_handler() has been removed entirely,
+    out-of-tree plugins may need to be updated to work with this release.
+
 Fixes:
 
 • fd.o#27693: Gabble no longer polls for contacts' geolocation

@@ -1024,11 +1024,14 @@ pass_local_codecs (GabbleMediaStream *stream,
   guint i;
   JingleMediaDescription *md;
   const GPtrArray *hdrexts;
+  GHashTable *fbs;
 
   DEBUG ("putting list of %d supported codecs from stream-engine into cache",
       codecs->len);
 
   md = jingle_media_description_new ();
+
+  fbs = g_value_get_boxed (&priv->local_feedback_messages);
 
   for (i = 0; i < codecs->len; i++)
     {
@@ -1039,6 +1042,7 @@ pass_local_codecs (GabbleMediaStream *stream,
       gchar *name;
       GHashTable *params;
       JingleCodec *c;
+      GValueArray *fb_codec;
 
       g_value_init (&codec, codec_struct_type);
       g_value_set_static_boxed (&codec, g_ptr_array_index (codecs, i));
@@ -1054,11 +1058,52 @@ pass_local_codecs (GabbleMediaStream *stream,
       c = jingle_media_rtp_codec_new (id, name,
           clock_rate, channels, params);
 
+      if (fbs)
+        {
+          fb_codec = g_hash_table_lookup (fbs, GUINT_TO_POINTER (id));
+          if (fb_codec)
+            {
+              if (G_VALUE_HOLDS_UINT (
+                      g_value_array_get_nth (fb_codec, 0)) &&
+                  G_VALUE_TYPE (g_value_array_get_nth (fb_codec, 1)) ==
+                  TP_ARRAY_TYPE_RTCP_FEEDBACK_MESSAGE_LIST)
+                {
+                  GValue *val;
+                  const GPtrArray *fb_array;
+                  guint j;
+
+                  val = g_value_array_get_nth (fb_codec, 0);
+                  c->trr_int = g_value_get_uint (val);
+
+                  val = g_value_array_get_nth (fb_codec, 1);
+                  fb_array = g_value_get_boxed (val);
+
+                  for (j = 0; j < fb_array->len; j++)
+                    {
+                      GValueArray *message = g_ptr_array_index (fb_array, j);
+                      const gchar *type;
+                      const gchar *subtype;
+
+                      val = g_value_array_get_nth (message, 0);
+                      type = g_value_get_string (val);
+
+                      val = g_value_array_get_nth (message, 1);
+                      subtype = g_value_get_string (val);
+
+                      c->feedback_msgs = g_list_append (c->feedback_msgs,
+                          jingle_feedback_message_new (type, subtype));
+                    }
+                }
+            }
+        }
       DEBUG ("adding codec %s (%u %u %u)", c->name, c->id, c->clockrate, c->channels);
       md->codecs = g_list_append (md->codecs, c);
       g_free (name);
       g_hash_table_unref (params);
     }
+
+  if (fbs)
+    g_value_reset (&priv->local_feedback_messages);
 
   hdrexts = g_value_get_boxed (&priv->local_rtp_hdrexts);
 

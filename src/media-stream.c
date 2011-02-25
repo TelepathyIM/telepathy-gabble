@@ -109,6 +109,7 @@ struct _GabbleMediaStreamPrivate
   gboolean awaiting_intersection;
 
   GValue local_rtp_hdrexts;
+  GValue local_feedback_messages;
 
   GValue remote_codecs;
   GValue remote_rtp_hdrexts;
@@ -208,10 +209,12 @@ gabble_media_stream_init (GabbleMediaStream *self)
   GType codec_list_type =
       TP_ARRAY_TYPE_MEDIA_STREAM_HANDLER_CODEC_LIST;
   GType rtp_hdrext_list_type = TP_ARRAY_TYPE_RTP_HEADER_EXTENSIONS_LIST;
+  GType fb_msg_map_type  = TP_HASH_TYPE_RTCP_FEEDBACK_MESSAGE_MAP;
 
   self->priv = priv;
 
   g_value_init (&priv->local_rtp_hdrexts, rtp_hdrext_list_type);
+  g_value_init (&priv->local_feedback_messages, fb_msg_map_type);
 
   g_value_init (&priv->remote_codecs, codec_list_type);
   g_value_take_boxed (&priv->remote_codecs,
@@ -708,6 +711,7 @@ gabble_media_stream_finalize (GObject *object)
     g_boxed_free (TP_ARRAY_TYPE_STRING_VARIANT_MAP_LIST, priv->relay_info);
 
   g_value_unset (&priv->local_rtp_hdrexts);
+  g_value_unset (&priv->local_feedback_messages);
 
   g_value_unset (&priv->remote_codecs);
   g_value_unset (&priv->remote_rtp_hdrexts);
@@ -1323,6 +1327,24 @@ gabble_media_stream_supported_header_extensions (TpSvcMediaStreamHandler *iface,
   tp_svc_media_stream_handler_return_from_supported_header_extensions (context);
 }
 
+/**
+ * gabble_media_stream_supported_feedback_messages
+ *
+ * Implements D-Bus method SupportedFeedbackMessages
+ * on interface org.freedesktop.Telepathy.Media.StreamHandler
+ */
+static void
+gabble_media_stream_supported_feedback_messages (TpSvcMediaStreamHandler *iface,
+                                                 GHashTable *messages,
+                                                 DBusGMethodInvocation *context)
+{
+  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
+
+  g_value_set_boxed (&self->priv->local_feedback_messages, messages);
+
+  tp_svc_media_stream_handler_return_from_supported_feedback_messages (context);
+}
+
 void
 gabble_media_stream_close (GabbleMediaStream *stream)
 {
@@ -1890,6 +1912,7 @@ stream_handler_iface_init (gpointer g_iface, gpointer iface_data)
   IMPLEMENT(unhold_failure,);
   IMPLEMENT(codecs_updated,);
   IMPLEMENT(supported_header_extensions,);
+  IMPLEMENT(supported_feedback_messages,);
 #undef IMPLEMENT
 }
 

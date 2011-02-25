@@ -39,6 +39,7 @@
 #include "jingle-factory.h"
 #include "jingle-session.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "util.h"
 #include "jingle-transport-google.h"
 
@@ -587,6 +588,17 @@ out:
     }
 }
 
+static gboolean
+content_has_cap (GabbleJingleContent *content, const gchar *cap)
+{
+  GabblePresence *presence = gabble_presence_cache_get (
+      content->conn->presence_cache, content->session->peer);
+
+  return gabble_presence_resource_has_caps (presence,
+      gabble_jingle_session_get_peer_resource (content->session),
+      gabble_capability_set_predicate_has, cap);
+}
+
 static void
 parse_description (GabbleJingleContent *content,
     LmMessageNode *desc_node, GError **error)
@@ -662,6 +674,10 @@ parse_description (GabbleJingleContent *content,
           JingleRtpHeaderExtension *hdrext;
 
           if (tp_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
+            continue;
+
+          /* Ignore rtp-hdrext that if it wasn't in the caps */
+          if (!content_has_cap (content, NS_JINGLE_RTP_HDREXT))
             continue;
 
           hdrext = parse_rtp_header_extension (node);
@@ -877,12 +893,12 @@ produce_hdrext (gpointer data, gpointer user_data)
 }
 
 static void
-produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
+produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
 {
-  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
+  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (content);
   GabbleJingleMediaRtpPrivate *priv = desc->priv;
   GList *li;
-  JingleDialect dialect = gabble_jingle_session_get_dialect (obj->session);
+  JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   LmMessageNode *desc_node;
 
   desc_node = produce_description_node (dialect, priv->media_type,
@@ -903,7 +919,9 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   for (; li != NULL; li = li->next)
     produce_payload_type (desc_node, priv->media_type, li->data, dialect);
 
-  if (priv->local_media_description->hdrexts && dialect == JINGLE_DIALECT_V032)
+
+  if (priv->local_media_description->hdrexts &&
+      content_has_cap (content, NS_JINGLE_RTP_HDREXT))
     g_list_foreach (priv->local_media_description->hdrexts, produce_hdrext,
         desc_node);
 }

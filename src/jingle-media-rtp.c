@@ -895,6 +895,21 @@ produce_rtcp_fb_trr_int (LmMessageNode *node,
   lm_message_node_set_attribute (trr_int_node, "value", tmp);
 }
 
+
+static void
+produce_rtcp_fb (JingleFeedbackMessage *fb, LmMessageNode *node)
+{
+  LmMessageNode *fb_node;
+
+  fb_node = lm_message_node_add_child (node, "rtcp-fb", NULL);
+
+  lm_message_node_set_attribute (fb_node, "xmlns", NS_JINGLE_RTCP_FB);
+  lm_message_node_set_attribute (fb_node, "type", fb->type);
+
+  if (fb->subtype && fb->subtype[0] != 0)
+    lm_message_node_set_attribute (fb_node, "subtype", fb->subtype);
+}
+
 static void
 produce_payload_type (GabbleJingleContent *content,
                       LmMessageNode *desc_node,
@@ -971,7 +986,10 @@ produce_payload_type (GabbleJingleContent *content,
 
 
   if (content_has_cap (content, NS_JINGLE_RTCP_FB))
-    produce_rtcp_fb_trr_int (pt_node, p->trr_int);
+    {
+      g_list_foreach (p->feedback_msgs, (GFunc) produce_rtcp_fb, pt_node);
+      produce_rtcp_fb_trr_int (pt_node, p->trr_int);
+    }
 }
 
 static LmMessageNode *
@@ -1076,7 +1094,12 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
         desc_node);
 
   if (content_has_cap (content, NS_JINGLE_RTCP_FB))
-    produce_rtcp_fb_trr_int (desc_node, priv->local_media_description->trr_int);
+    {
+      g_list_foreach (priv->local_media_description->feedback_msgs,
+          (GFunc) produce_rtcp_fb, desc_node);
+      produce_rtcp_fb_trr_int (desc_node,
+          priv->local_media_description->trr_int);
+    }
 }
 
 /**

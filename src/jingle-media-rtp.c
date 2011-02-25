@@ -104,6 +104,7 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   p->name = g_strdup (name);
   p->clockrate = clockrate;
   p->channels = channels;
+  p->trr_int = G_MAXUINT;
 
   if (params != NULL)
     {
@@ -119,11 +120,40 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   return p;
 }
 
+
+static GList *
+jingle_feedback_message_list_copy (GList *fbs)
+{
+  GQueue new = G_QUEUE_INIT;
+  GList *li;
+
+  for (li = fbs; li; li = li->next)
+    {
+      JingleFeedbackMessage *fb = li->data;
+
+      g_queue_push_tail (&new, jingle_feedback_message_new (fb->type,
+              fb->subtype));
+    }
+
+  return new.head;
+}
+
+static void
+jingle_feedback_message_list_free (GList *fbs)
+{
+  while (fbs)
+    {
+      jingle_feedback_message_free (fbs->data);
+      fbs = fbs->next;
+    }
+}
+
 void
 jingle_media_rtp_codec_free (JingleCodec *p)
 {
   g_hash_table_unref (p->params);
   g_free (p->name);
+  jingle_feedback_message_list_free (p->feedback_msgs);
   g_slice_free (JingleCodec, p);
 }
 
@@ -151,8 +181,10 @@ jingle_media_rtp_copy_codecs (GList *codecs)
   for (l = codecs; l != NULL; l = g_list_next (l))
     {
       JingleCodec *c = l->data;
-      ret = g_list_append (ret, jingle_media_rtp_codec_new (c->id,
-            c->name, c->clockrate, c->channels, c->params));
+      JingleCodec *newc =  jingle_media_rtp_codec_new (c->id,
+          c->name, c->clockrate, c->channels, c->params);
+      newc->trr_int = c->trr_int;
+      ret = g_list_append (ret, newc);
     }
 
   return ret;
@@ -1104,7 +1136,11 @@ gabble_jingle_media_rtp_get_remote_media_description (
 JingleMediaDescription *
 jingle_media_description_new (void)
 {
-  return g_slice_new0 (JingleMediaDescription);
+  JingleMediaDescription *md = g_slice_new0 (JingleMediaDescription);
+
+  md->trr_int = G_MAXUINT;
+
+  return md;
 }
 
 void
@@ -1128,6 +1164,8 @@ jingle_media_description_copy (JingleMediaDescription *md)
   GList *li;
 
   newmd->codecs = jingle_media_rtp_copy_codecs (md->codecs);
+  newmd->feedback_msgs = jingle_feedback_message_list_copy (md->feedback_msgs);
+  newmd->trr_int = md->trr_int;
 
   for (li = md->hdrexts; li; li = li->next)
     {
@@ -1158,4 +1196,23 @@ jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext)
 {
   g_free (hdrext->uri);
   g_slice_free (JingleRtpHeaderExtension, hdrext);
+}
+
+JingleFeedbackMessage *
+jingle_feedback_message_new (const gchar *type, const gchar *subtype)
+{
+  JingleFeedbackMessage *fb = g_slice_new0 (JingleFeedbackMessage);
+
+  fb->type = g_strdup (type);
+  fb->subtype = g_strdup (subtype);
+
+  return fb;
+}
+
+void
+jingle_feedback_message_free (JingleFeedbackMessage *fb)
+{
+  g_free (fb->type);
+  g_free (fb->subtype);
+  g_slice_free (JingleFeedbackMessage, fb);
 }

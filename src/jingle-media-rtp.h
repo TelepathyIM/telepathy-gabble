@@ -66,7 +66,14 @@ typedef struct {
   guint clockrate;
   guint channels;
   GHashTable *params;
+  guint trr_int;
+  GList *feedback_msgs;
 } JingleCodec;
+
+typedef struct {
+  gchar *type;
+  gchar *subtype;
+} JingleFeedbackMessage;
 
 typedef struct {
   guint id;
@@ -77,6 +84,8 @@ typedef struct {
 typedef struct {
   GList *codecs;
   GList *hdrexts;
+  guint trr_int;
+  GList *feedback_msgs;
 } JingleMediaDescription;
 
 void jingle_media_rtp_register (GabbleJingleFactory *factory);
@@ -106,6 +115,10 @@ JingleRtpHeaderExtension *jingle_rtp_header_extension_new (guint id,
     JingleContentSenders senders, const gchar *uri);
 void jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext);
 
+
+JingleFeedbackMessage *jingle_feedback_message_new (const gchar *type,
+    const gchar *subtype);
+void jingle_feedback_message_free (JingleFeedbackMessage *fb);
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

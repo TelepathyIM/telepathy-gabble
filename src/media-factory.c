@@ -1030,6 +1030,8 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
       gabble_capability_set_add (caps, NS_JINGLE_RTP);
       gabble_capability_set_add (caps, NS_JINGLE_RTP_AUDIO);
       gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_AUDIO);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_HDREXT);
+      gabble_capability_set_add (caps, NS_JINGLE_RTCP_FB);
 
       /* voice-v1 implies that we interop with GTalk, i.e. we have gtalk-p2p
        * as well as audio */
@@ -1042,6 +1044,8 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
       gabble_capability_set_add (caps, NS_JINGLE_RTP);
       gabble_capability_set_add (caps, NS_JINGLE_RTP_VIDEO);
       gabble_capability_set_add (caps, NS_JINGLE_DESCRIPTION_VIDEO);
+      gabble_capability_set_add (caps, NS_JINGLE_RTP_HDREXT);
+      gabble_capability_set_add (caps, NS_JINGLE_RTCP_FB);
 
       /* video-v1 implies that we interop with Google Video Chat, i.e. we have
        * gtalk-p2p and H.264 as well as video */

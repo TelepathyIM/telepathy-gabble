@@ -1922,21 +1922,22 @@ connect_iq_callbacks (GabbleConnection *conn)
 {
   GabbleConnectionPrivate *priv = conn->priv;
 
-  wocky_porter_register_handler (priv->porter,
+  wocky_porter_register_handler_from_anyone (priv->porter,
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
-      NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
       iq_disco_cb, conn,
       '(', "query", ':', NS_DISCO_INFO, ')', NULL);
 
-  wocky_porter_register_handler (priv->porter,
+  wocky_porter_register_handler_from_anyone (priv->porter,
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
-      NULL, WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
       iq_version_cb, conn,
       '(', "query", ':', NS_VERSION, ')', NULL);
 
-  wocky_porter_register_handler (priv->porter,
+  /* FIXME: the porter should do this for us. */
+  wocky_porter_register_handler_from_anyone (priv->porter,
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_NONE,
-      NULL, WOCKY_PORTER_HANDLER_PRIORITY_MIN,
+      WOCKY_PORTER_HANDLER_PRIORITY_MIN,
       iq_unknown_cb, conn, NULL);
 }
 

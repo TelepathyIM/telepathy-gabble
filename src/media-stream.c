@@ -113,6 +113,7 @@ struct _GabbleMediaStreamPrivate
 
   GValue remote_codecs;
   GValue remote_rtp_hdrexts;
+  GValue remote_feedback_messages;
   GValue remote_candidates;
 
   guint remote_candidate_count;
@@ -223,6 +224,10 @@ gabble_media_stream_init (GabbleMediaStream *self)
   g_value_init (&priv->remote_rtp_hdrexts, rtp_hdrext_list_type);
   g_value_take_boxed (&priv->remote_rtp_hdrexts,
       dbus_g_type_specialized_construct (rtp_hdrext_list_type));
+
+  g_value_init (&priv->remote_feedback_messages, fb_msg_map_type);
+  g_value_take_boxed (&priv->remote_feedback_messages,
+      dbus_g_type_specialized_construct (fb_msg_map_type));
 
   g_value_init (&priv->remote_candidates, candidate_list_type);
   g_value_take_boxed (&priv->remote_candidates,
@@ -715,6 +720,7 @@ gabble_media_stream_finalize (GObject *object)
 
   g_value_unset (&priv->remote_codecs);
   g_value_unset (&priv->remote_rtp_hdrexts);
+  g_value_unset (&priv->remote_feedback_messages);
   g_value_unset (&priv->remote_candidates);
 
   G_OBJECT_CLASS (gabble_media_stream_parent_class)->finalize (object);
@@ -1409,6 +1415,20 @@ gabble_media_stream_close (GabbleMediaStream *stream)
 }
 
 static void
+insert_feedback_message (JingleFeedbackMessage *fb, GPtrArray *fb_msgs)
+{
+  GValueArray *msg;
+
+  msg = tp_value_array_build (3,
+      G_TYPE_STRING, fb->type,
+      G_TYPE_STRING, fb->subtype,
+      G_TYPE_STRING, "",
+      G_TYPE_INVALID);
+
+  g_ptr_array_add (fb_msgs, msg);
+}
+
+static void
 new_remote_media_description_cb (GabbleJingleContent *content,
     JingleMediaDescription *md, GabbleMediaStream *stream)
 {
@@ -1416,6 +1436,7 @@ new_remote_media_description_cb (GabbleJingleContent *content,
   GList *li;
   GPtrArray *codecs;
   GPtrArray *hdrexts;
+  GHashTable *fbs;
   GType codec_struct_type = TP_STRUCT_TYPE_MEDIA_STREAM_HANDLER_CODEC;
   gboolean have_initiator = FALSE;
   gboolean initiated_by_us;
@@ -1452,6 +1473,19 @@ new_remote_media_description_cb (GabbleJingleContent *content,
       g_value_take_boxed (&priv->remote_rtp_hdrexts, hdrexts);
     }
 
+  fbs = g_value_get_boxed (&priv->remote_feedback_messages);
+
+  if (g_hash_table_size (fbs) != 0)
+    {
+      /* We already had some rtp hdrext; let's free the old list and make a new,
+       * empty one to fill in.
+       */
+      g_value_reset (&priv->remote_feedback_messages);
+      fbs = dbus_g_type_specialized_construct (
+          TP_HASH_TYPE_RTCP_FEEDBACK_MESSAGE_MAP);
+      g_value_take_boxed (&priv->remote_feedback_messages, fbs);
+    }
+
   for (li = md->codecs; li; li = li->next)
     {
       GValue codec = { 0, };
@@ -1473,6 +1507,33 @@ new_remote_media_description_cb (GabbleJingleContent *content,
           4, c->channels,
           5, c->params,
           G_MAXUINT);
+
+      if (md->trr_int != G_MAXUINT || c->trr_int != G_MAXUINT ||
+          md->feedback_msgs != NULL || c->feedback_msgs != NULL)
+        {
+          GValueArray *fb_msg_props;
+          guint trr_int;
+          GPtrArray *fb_msgs = g_ptr_array_new ();
+
+          if (c->trr_int != G_MAXUINT)
+            trr_int = c->trr_int;
+          else
+            trr_int = md->trr_int;
+
+          g_list_foreach (md->feedback_msgs, (GFunc) insert_feedback_message,
+              fb_msgs);
+          g_list_foreach (c->feedback_msgs, (GFunc) insert_feedback_message,
+              fb_msgs);
+
+          fb_msg_props = tp_value_array_build (2,
+              G_TYPE_UINT, trr_int,
+              TP_ARRAY_TYPE_RTCP_FEEDBACK_MESSAGE_LIST, fb_msgs,
+              G_TYPE_INVALID);
+
+          g_boxed_free (TP_ARRAY_TYPE_RTCP_FEEDBACK_MESSAGE_LIST, fb_msgs);
+
+          g_hash_table_insert (fbs, GUINT_TO_POINTER (c->id), fb_msg_props);
+        }
 
       g_ptr_array_add (codecs, g_value_get_boxed (&codec));
     }
@@ -1529,6 +1590,7 @@ push_remote_media_description (GabbleMediaStream *stream)
   GabbleMediaStreamPrivate *priv;
   GPtrArray *codecs;
   GPtrArray *hdrexts;
+  GHashTable *fbs;
 
   g_assert (GABBLE_IS_MEDIA_STREAM (stream));
 
@@ -1543,11 +1605,14 @@ push_remote_media_description (GabbleMediaStream *stream)
 
   hdrexts = g_value_get_boxed (&priv->remote_rtp_hdrexts);
 
+  fbs = g_value_get_boxed (&priv->remote_feedback_messages);
+
   DEBUG ("passing %d remote codecs to stream-engine",
                    codecs->len);
 
   tp_svc_media_stream_handler_emit_set_remote_header_extensions (stream,
       hdrexts);
+  tp_svc_media_stream_handler_emit_set_remote_feedback_messages (stream, fbs);
   tp_svc_media_stream_handler_emit_set_remote_codecs (stream, codecs);
 }
 

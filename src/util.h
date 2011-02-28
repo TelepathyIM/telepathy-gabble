@@ -55,8 +55,6 @@ void lm_message_node_add_own_nick (WockyNode *node,
     GabbleConnection *conn);
 void lm_message_node_steal_children (WockyNode *snatcher,
     WockyNode *mum);
-gboolean lm_message_node_has_namespace (WockyNode *node, const gchar *ns,
-    const gchar *tag);
 WockyNode *lm_message_node_get_child_with_namespace (WockyNode *node,
     const gchar *name, const gchar *ns);
 G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to,
@@ -83,10 +81,7 @@ GHashTable *lm_message_node_extract_properties (WockyNode *node,
 void
 lm_message_node_add_children_from_properties (WockyNode *node,
     GHashTable *properties, const gchar *prop);
-const gchar * lm_message_node_get_namespace (WockyNode *node);
 const gchar * lm_message_node_get_name (WockyNode *node);
-WockyNode * wocky_node_get_child_any_ns (WockyNode *node,
-    const gchar *name);
 
 LmMessage *
 lm_iq_message_make_result (LmMessage *iq_message);

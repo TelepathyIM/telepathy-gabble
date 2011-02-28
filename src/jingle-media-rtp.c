@@ -355,7 +355,7 @@ static JingleMediaType
 extract_media_type (WockyNode *desc_node,
                     GError **error)
 {
-  if (lm_message_node_has_namespace (desc_node, NS_JINGLE_RTP, NULL))
+  if (wocky_node_has_ns (desc_node, NS_JINGLE_RTP))
     {
       const gchar *type = wocky_node_get_attribute (desc_node, "media");
 
@@ -377,20 +377,16 @@ extract_media_type (WockyNode *desc_node,
       return JINGLE_MEDIA_TYPE_NONE;
     }
 
-  if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_AUDIO, NULL))
+  if (wocky_node_has_ns (desc_node, NS_JINGLE_DESCRIPTION_AUDIO))
     return JINGLE_MEDIA_TYPE_AUDIO;
 
-  if (lm_message_node_has_namespace (desc_node,
-        NS_JINGLE_DESCRIPTION_VIDEO, NULL))
+  if (wocky_node_has_ns (desc_node, NS_JINGLE_DESCRIPTION_VIDEO))
     return JINGLE_MEDIA_TYPE_VIDEO;
 
-  if (lm_message_node_has_namespace (desc_node,
-        NS_GOOGLE_SESSION_PHONE, NULL))
+  if (wocky_node_has_ns (desc_node, NS_GOOGLE_SESSION_PHONE))
     return JINGLE_MEDIA_TYPE_AUDIO;
 
-  if (lm_message_node_has_namespace (desc_node,
-        NS_GOOGLE_SESSION_VIDEO, NULL))
+  if (wocky_node_has_ns (desc_node, NS_GOOGLE_SESSION_VIDEO))
     return JINGLE_MEDIA_TYPE_VIDEO;
 
   /* If we get here, namespace in use is not one of namespaces we signed up
@@ -740,7 +736,7 @@ parse_description (GabbleJingleContent *content,
   if (dialect == JINGLE_DIALECT_GTALK3)
     {
       const gchar *desc_ns =
-        lm_message_node_get_namespace (desc_node);
+        wocky_node_get_ns (desc_node);
       video_session = !tp_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
     }
 
@@ -755,8 +751,7 @@ parse_description (GabbleJingleContent *content,
 
           if (dialect == JINGLE_DIALECT_GTALK3)
             {
-              const gchar *pt_ns =
-                  lm_message_node_get_namespace (node);
+              const gchar *pt_ns = wocky_node_get_ns (node);
 
               if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
                 {
@@ -787,8 +782,7 @@ parse_description (GabbleJingleContent *content,
         }
       else if (!tp_strdiff (lm_message_node_get_name (node), "rtp-hdrext"))
         {
-          const gchar *pt_ns =
-              lm_message_node_get_namespace (node);
+          const gchar *pt_ns = wocky_node_get_ns (node);
           JingleRtpHeaderExtension *hdrext;
 
           if (tp_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))

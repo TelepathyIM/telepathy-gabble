@@ -680,7 +680,7 @@ properties_disco_cb (GabbleDisco *disco,
         }
       else if (strcmp (child->name, "x") == 0)
         {
-          if (lm_message_node_has_namespace (child, NS_X_DATA, NULL))
+          if (wocky_node_has_ns (child, NS_X_DATA))
             {
               NodeIter j;
 
@@ -1556,7 +1556,7 @@ config_form_get_form_node (LmMessage *msg)
           continue;
         }
 
-      if (!lm_message_node_has_namespace (child, NS_X_DATA, NULL))
+      if (!wocky_node_has_ns (child, NS_X_DATA))
         {
           continue;
         }

@@ -507,8 +507,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   GabbleJingleTransportIface *trans = NULL;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
-  desc_node = wocky_node_get_child_any_ns (content_node, "description");
-  trans_node = wocky_node_get_child_any_ns (content_node, "transport");
+  desc_node = wocky_node_get_child (content_node, "description");
+  trans_node = wocky_node_get_child (content_node, "transport");
   creator = wocky_node_get_attribute (content_node, "creator");
   name = wocky_node_get_attribute (content_node, "name");
   senders = wocky_node_get_attribute (content_node, "senders");
@@ -563,7 +563,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   /* if we didn't set it to google-p2p implicitly already, detect it */
   if (transport_type == 0)
     {
-      const gchar *ns = lm_message_node_get_namespace (trans_node);
+      const gchar *ns = wocky_node_get_ns (trans_node);
 
       transport_type = gabble_jingle_factory_lookup_transport (
           c->conn->jingle_factory, ns);
@@ -717,8 +717,8 @@ gabble_jingle_content_parse_info (GabbleJingleContent *c,
   WockyNode *channel_node;
   WockyNode *complete_node;
 
-  channel_node = wocky_node_get_child_any_ns (content_node, "channel");
-  complete_node = wocky_node_get_child_any_ns (content_node, "complete");
+  channel_node = wocky_node_get_child (content_node, "channel");
+  complete_node = wocky_node_get_child (content_node, "complete");
 
   DEBUG ("parsing info message : %p - %p", channel_node, complete_node);
   if (channel_node)
@@ -745,8 +745,8 @@ gabble_jingle_content_parse_accept (GabbleJingleContent *c,
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
   JingleContentSenders newsenders;
 
-  desc_node = wocky_node_get_child_any_ns (content_node, "description");
-  trans_node = wocky_node_get_child_any_ns (content_node, "transport");
+  desc_node = wocky_node_get_child (content_node, "description");
+  trans_node = wocky_node_get_child (content_node, "transport");
   senders = wocky_node_get_attribute (content_node, "senders");
 
   if (GABBLE_IS_JINGLE_MEDIA_RTP (c) &&
@@ -796,7 +796,7 @@ gabble_jingle_content_parse_description_info (GabbleJingleContent *c,
 {
   GabbleJingleContentPrivate *priv = c->priv;
   WockyNode *desc_node;
-  desc_node = wocky_node_get_child_any_ns (content_node, "description");
+  desc_node = wocky_node_get_child (content_node, "description");
   if (desc_node == NULL)
     {
       SET_BAD_REQ ("invalid description-info action");

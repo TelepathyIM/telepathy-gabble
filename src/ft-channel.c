@@ -1277,7 +1277,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
     {
       WockyNode *range;
 
-      range = wocky_node_get_child_any_ns (file, "range");
+      range = wocky_node_get_child (file, "range");
       if (range != NULL)
         {
           const gchar *offset_str;

@@ -868,14 +868,14 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
   const gchar *name = wocky_node_get_attribute (content_node, "name");
-  WockyNode *desc_node = wocky_node_get_child_any_ns (content_node,
+  WockyNode *desc_node = wocky_node_get_child (content_node,
       "description");
   GType content_type = 0;
   const gchar *content_ns = NULL;
 
   if (desc_node != NULL)
     {
-      content_ns = lm_message_node_get_namespace (desc_node);
+      content_ns = wocky_node_get_ns (desc_node);
       DEBUG ("namespace: %s", content_ns);
       content_type = gabble_jingle_factory_lookup_content_type (
           priv->conn->jingle_factory, content_ns);
@@ -1000,8 +1000,8 @@ on_session_initiate (GabbleJingleSession *sess, WockyNode *node,
     {
       const gchar *content_ns = NULL;
       WockyNode *desc_node =
-        wocky_node_get_child_any_ns (node, "description");
-      content_ns = lm_message_node_get_namespace (desc_node);
+        wocky_node_get_child (node, "description");
+      content_ns = wocky_node_get_ns (desc_node);
 
       if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
         {
@@ -1215,7 +1215,7 @@ handle_payload (GabbleJingleSession *sess,
     gboolean *handled,
     GError **error)
 {
-  const gchar *ns = lm_message_node_get_namespace (payload);
+  const gchar *ns = wocky_node_get_ns (payload);
   const gchar *elt = lm_message_node_get_name (payload);
   const gchar *name = wocky_node_get_attribute (payload, "name");
   const gchar *creator = wocky_node_get_attribute (payload, "creator");
@@ -1365,7 +1365,7 @@ on_transport_info (GabbleJingleSession *sess, WockyNode *node,
             }
           else
             {
-              node = wocky_node_get_child_any_ns (node, "transport");
+              node = wocky_node_get_child (node, "transport");
 
               if (node == NULL)
                 {
@@ -1403,7 +1403,7 @@ on_transport_info (GabbleJingleSession *sess, WockyNode *node,
                 TRUE /* fail_if_missing */, &c, &e))
             {
               /* we need transport child of content node */
-              transport_node = wocky_node_get_child_any_ns (
+              transport_node = wocky_node_get_child (
                 content_node, "transport");
               gabble_jingle_content_parse_transport_info (c,
                 transport_node, &e);

@@ -176,42 +176,10 @@ lm_message_node_steal_children (WockyNode *snatcher,
   mum->children = NULL;
 }
 
-/* variant of wocky_node_get_child() which ignores node namespace
- * prefix */
-WockyNode *
-wocky_node_get_child_any_ns (WockyNode *node, const gchar *name)
-{
-  NodeIter i;
-
-  for (i = node_iter (node); i; i = node_iter_next (i))
-    {
-      WockyNode *child = node_iter_data (i);
-
-      if (!tp_strdiff (lm_message_node_get_name (child), name))
-          return child;
-    }
-
-  return NULL;
-}
-
-const gchar *
-lm_message_node_get_namespace (WockyNode *node)
-{
-  return wocky_node_get_ns (node);
-}
-
 const gchar *
 lm_message_node_get_name (WockyNode *node)
 {
   return node->name;
-}
-
-gboolean
-lm_message_node_has_namespace (WockyNode *node,
-                               const gchar *ns,
-                               const gchar *tag)
-{
-  return (!tp_strdiff (lm_message_node_get_namespace (node), ns));
 }
 
 WockyNode *

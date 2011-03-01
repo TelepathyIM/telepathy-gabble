@@ -721,6 +721,7 @@ parse_description (GabbleJingleContent *content,
   gboolean video_session = FALSE;
   NodeIter i;
   gboolean description_error = FALSE;
+  gboolean is_avpf = FALSE;
 
   DEBUG ("node: %s", desc_node->name);
 
@@ -772,9 +773,15 @@ parse_description (GabbleJingleContent *content,
           p = parse_payload_type (content, node);
 
           if (p == NULL)
-            description_error = TRUE;
+            {
+              description_error = TRUE;
+            }
           else
-            md->codecs = g_list_append (md->codecs, p);
+            {
+              md->codecs = g_list_append (md->codecs, p);
+              if (p->trr_int != G_MAXUINT || p->feedback_msgs)
+                is_avpf = TRUE;
+            }
         }
       else if (!tp_strdiff (lm_message_node_get_name (node), "rtp-hdrext"))
         {
@@ -802,9 +809,14 @@ parse_description (GabbleJingleContent *content,
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
 
           if (fb == NULL)
-            description_error = TRUE;
+            {
+              description_error = TRUE;
+            }
           else
-            md->feedback_msgs = g_list_append (md->feedback_msgs, fb);
+            {
+              md->feedback_msgs = g_list_append (md->feedback_msgs, fb);
+              is_avpf = TRUE;
+            }
         }
       else if (!tp_strdiff (lm_message_node_get_name (node),
                 "rtcp-fb-trr-int"))
@@ -812,9 +824,14 @@ parse_description (GabbleJingleContent *content,
           guint trr_int = parse_rtcp_fb_trr_int (content, node);
 
           if (trr_int == G_MAXUINT)
-            description_error = TRUE;
+            {
+              description_error = TRUE;
+            }
           else
-            md->trr_int = trr_int;
+            {
+              md->trr_int = trr_int;
+              is_avpf = TRUE;
+            }
        }
     }
 
@@ -826,6 +843,10 @@ parse_description (GabbleJingleContent *content,
           "invalid description");
       return;
     }
+
+  /* If the profile is AVPF, the trr-int default to 0 */
+  if (is_avpf && md->trr_int == G_MAXUINT)
+    md->trr_int = 0;
 
   priv->media_type = mtype;
 

@@ -2443,33 +2443,17 @@ _gabble_connection_send_iq_error (GabbleConnection *conn,
                                   GabbleXmppError error,
                                   const gchar *errmsg)
 {
-  const gchar *to, *id;
-  LmMessage *msg;
-  WockyNode *iq_node;
+  WockyStanza *reply = wocky_stanza_build_iq_error (message, NULL);
 
-  iq_node = lm_message_get_node (message);
-  to = wocky_node_get_attribute (iq_node, "from");
-  id = wocky_node_get_attribute (iq_node, "id");
-
-  if (id == NULL)
+  if (reply == NULL)
     {
-      NODE_DEBUG (iq_node, "can't acknowledge IQ with no id");
+      STANZA_DEBUG (message, "can't acknowledge IQ with no id");
       return;
     }
 
-  msg = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_ERROR);
-
-  wocky_node_set_attribute (wocky_stanza_get_top_node (msg), "id", id);
-
-  lm_message_node_steal_children (
-      wocky_stanza_get_top_node (msg), iq_node);
-
-  gabble_xmpp_error_to_node (error, wocky_stanza_get_top_node (msg), errmsg);
-
-  _gabble_connection_send (conn, msg, NULL);
-
-  lm_message_unref (msg);
+  gabble_xmpp_error_to_node (error, wocky_stanza_get_top_node (reply), errmsg);
+  wocky_porter_send (conn->priv->porter, reply);
+  g_object_unref (reply);
 }
 
 static void

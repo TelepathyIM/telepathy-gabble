@@ -293,7 +293,7 @@ finally:
 
 static void
 gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
-    const GSList *mechanisms,
+    GSList *mechanisms,
     gboolean allow_plain,
     gboolean is_secure_channel,
     const gchar *username,
@@ -312,7 +312,7 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
   if (password == NULL || username == NULL)
     {
       GPtrArray *mech_array = g_ptr_array_new ();
-      const GSList *iter;
+      GSList *iter;
 
       for (iter = mechanisms; iter != NULL; iter = iter->next)
         {

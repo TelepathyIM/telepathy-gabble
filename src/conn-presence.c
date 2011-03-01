@@ -844,16 +844,11 @@ iq_shared_status_changed_cb (WockyPorter *porter,
   WockyNode *query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (stanza), "query",
       NS_GOOGLE_SHARED_STATUS);
-  WockyStanza *result;
 
   if (store_shared_statuses (self, query_node))
     emit_presences_changed_for_self (self);
 
-  result = wocky_stanza_build_iq_result (stanza, NULL);
-
-  wocky_porter_send (porter, result);
-
-  g_object_unref (result);
+  wocky_porter_acknowledge_iq (porter, stanza, NULL);
 
   return TRUE;
 }
@@ -879,16 +874,18 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
       !list_node)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  result = lm_iq_message_make_result (message);
+  result = wocky_stanza_build_iq_result (message, NULL);
 
-  wocky_porter_send (wocky_session_get_porter (conn->session), result);
+  if (result != NULL)
+    {
+      wocky_porter_send (wocky_session_get_porter (conn->session), result);
+      g_object_unref (result);
+    }
 
   list_name = wocky_node_get_attribute (list_node, "name");
 
   if (g_strcmp0 (list_name, conn->presence_priv->invisible_list_name) == 0)
     setup_invisible_privacy_list_async (conn, NULL, NULL);
-
-  lm_message_unref (result);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

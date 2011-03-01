@@ -2423,7 +2423,7 @@ _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
   g_assert (LM_MESSAGE_TYPE_IQ == lm_message_get_type (iq));
   g_assert (LM_MESSAGE_SUB_TYPE_SET == lm_message_get_sub_type (iq));
 
-  result = lm_iq_message_make_result (iq);
+  result = wocky_stanza_build_iq_result (iq, NULL);
 
   if (NULL != result)
     {

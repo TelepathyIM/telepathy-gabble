@@ -734,7 +734,8 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
-  LmMessage *iq_result;
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
+  Streamhost *current_streamhost;
 
   DEBUG ("Received CONNECT reply. Socks5 stream connected. "
       "Bytestream is now open");
@@ -742,29 +743,17 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
 
   /* Acknowledge the connection */
-  iq_result = lm_iq_message_make_result (
-      priv->msg_for_acknowledge_connection);
-  if (NULL != iq_result)
-    {
-      WockyNode *node;
-      Streamhost *current_streamhost;
-
-      node = wocky_node_add_child_with_content (
-        wocky_stanza_get_top_node (iq_result), "query", "");
-      node->ns = g_quark_from_string (NS_BYTESTREAMS);
-
-      /* streamhost-used informs the other end of the streamhost we
-       * decided to use. In case of a direct connetion this is useless
-       * but if we are using an external proxy we need to know which
-       * one was selected */
-      node = wocky_node_add_child_with_content (node, "streamhost-used", "");
-      current_streamhost = priv->streamhosts->data;
-      wocky_node_set_attribute (node, "jid",
-          current_streamhost->jid);
-
-      _gabble_connection_send (priv->conn, iq_result, NULL);
-      lm_message_unref (iq_result);
-    }
+  current_streamhost = priv->streamhosts->data;
+  wocky_porter_acknowledge_iq (porter, priv->msg_for_acknowledge_connection,
+      '(', "query", ':', NS_BYTESTREAMS,
+        /* streamhost-used informs the other end of the streamhost we
+         * decided to use. In case of a direct connetion this is useless
+         * but if we are using an external proxy we need to know which
+         * one was selected */
+        '(', "streamhost-used",
+          '@', "jid", current_streamhost->jid,
+        ')',
+      ')', NULL);
 
   if (priv->read_blocked)
     {

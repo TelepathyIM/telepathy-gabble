@@ -83,9 +83,6 @@ lm_message_node_add_children_from_properties (WockyNode *node,
     GHashTable *properties, const gchar *prop);
 const gchar * lm_message_node_get_name (WockyNode *node);
 
-LmMessage *
-lm_iq_message_make_result (LmMessage *iq_message);
-
 void gabble_signal_connect_weak (gpointer instance, const gchar *detailed_signal,
     GCallback c_handler, GObject *user_data);
 guint gabble_idle_add_weak (GSourceFunc function, GObject *object);

@@ -162,20 +162,6 @@ lm_message_node_add_own_nick (WockyNode *node,
   g_free (nick);
 }
 
-
-void
-lm_message_node_steal_children (WockyNode *snatcher,
-                                WockyNode *mum)
-{
-  g_return_if_fail (snatcher->children == NULL);
-
-  if (mum->children == NULL)
-    return;
-
-  snatcher->children = mum->children;
-  mum->children = NULL;
-}
-
 const gchar *
 lm_message_node_get_name (WockyNode *node)
 {

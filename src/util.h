@@ -53,8 +53,6 @@ gchar *gabble_generate_id (void);
 
 void lm_message_node_add_own_nick (WockyNode *node,
     GabbleConnection *conn);
-void lm_message_node_steal_children (WockyNode *snatcher,
-    WockyNode *mum);
 WockyNode *lm_message_node_get_child_with_namespace (WockyNode *node,
     const gchar *name, const gchar *ns);
 G_GNUC_NULL_TERMINATED LmMessage *lm_message_build (const gchar *to,

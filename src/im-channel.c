@@ -166,6 +166,7 @@ gabble_im_channel_fill_immutable_properties (TpBaseChannel *chan,
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessagePartSupportFlags",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
+      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessageTypes",
       NULL);
 }
 

@@ -505,9 +505,9 @@ test_channel_manager_type_foreach_channel_class (GType type,
   GHashTable *table = tp_asv_new (
       "cookies", G_TYPE_STRING, "lolbags",
       NULL);
-  const gchar * const empty[] = { "omg", "hi mum!", NULL };
+  const gchar * const chock_a_block_full_of_strings[] = {"omg", "hi mum!", NULL };
 
-  func (type, table, empty, user_data);
+  func (type, table, chock_a_block_full_of_strings, user_data);
 
   g_hash_table_destroy (table);
 }

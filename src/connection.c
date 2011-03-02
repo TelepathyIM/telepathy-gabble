@@ -359,7 +359,7 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   g_object_unref (loader);
 
   g_ptr_array_foreach (tmp, add_to_array, channel_managers);
-  g_ptr_array_free (tmp, FALSE);
+  g_ptr_array_free (tmp, TRUE);
 
   return channel_managers;
 }

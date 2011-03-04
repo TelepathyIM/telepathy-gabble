@@ -2418,18 +2418,8 @@ void
 _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
                                        LmMessage *iq)
 {
-  LmMessage *result;
-
-  g_assert (LM_MESSAGE_TYPE_IQ == lm_message_get_type (iq));
-  g_assert (LM_MESSAGE_SUB_TYPE_SET == lm_message_get_sub_type (iq));
-
-  result = wocky_stanza_build_iq_result (iq, NULL);
-
-  if (NULL != result)
-    {
-      _gabble_connection_send (conn, result, NULL);
-      lm_message_unref (result);
-    }
+  wocky_porter_acknowledge_iq (wocky_session_get_porter (conn->session),
+      iq, NULL);
 }
 
 /**

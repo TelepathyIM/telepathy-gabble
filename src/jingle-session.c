@@ -643,7 +643,7 @@ lookup_content (GabbleJingleSession *sess,
 
   if (name == NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "'name' attribute unset");
       return FALSE;
     }
@@ -694,7 +694,7 @@ lookup_content (GabbleJingleSession *sess,
         }
       else
         {
-          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
               "'creator' attribute %s",
               (creator == NULL ? "missing" : "invalid"));
           return FALSE;
@@ -703,7 +703,7 @@ lookup_content (GabbleJingleSession *sess,
 
   if (fail_if_missing && *c == NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "Content '%s' (created by %s) does not exist", name, creator);
       return FALSE;
     }
@@ -886,7 +886,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
       /* if this is session-initiate, we should return error, otherwise,
        * we should respond with content-reject */
       if (priv->state < JINGLE_STATE_PENDING_INITIATED)
-        g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+        g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
             "unsupported content type with ns %s", content_ns);
       else
         fire_idle_content_reject (sess, name,
@@ -897,7 +897,7 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
 
   if (c != NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "content '%s' already exists", name);
       return;
     }
@@ -1186,7 +1186,7 @@ set_mute (GabbleJingleSession *sess,
 
   if (G_OBJECT_TYPE (c) != GABBLE_TYPE_JINGLE_MEDIA_RTP)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "content '%s' isn't an RTP session", name);
       return FALSE;
     }
@@ -1260,8 +1260,8 @@ handle_payload (GabbleJingleSession *sess,
     }
   else
     {
-      g_set_error (error, GABBLE_XMPP_ERROR,
-          XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
+      g_set_error (error, WOCKY_JINGLE_ERROR,
+          WOCKY_JINGLE_ERROR_UNSUPPORTED_INFO,
           "<%s> is not known in namespace %s", elt, ns);
       return FALSE;
     }
@@ -1311,7 +1311,7 @@ on_session_info (GabbleJingleSession *sess,
   if (understood_a_payload)
     g_signal_emit (sess, signals[REMOTE_STATE_CHANGED], 0);
   else if (!hit_an_error)
-    g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_UNSUPPORTED_INFO,
+    g_set_error (error, WOCKY_JINGLE_ERROR, WOCKY_JINGLE_ERROR_UNSUPPORTED_INFO,
         "no recognized session-info payloads");
 }
 
@@ -1369,7 +1369,7 @@ on_transport_info (GabbleJingleSession *sess, WockyNode *node,
 
               if (node == NULL)
                 {
-                  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+                  g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
                       "transport-info stanza without a <transport/>");
                   return;
                 }
@@ -1589,7 +1589,7 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
 
   if (action == JINGLE_ACTION_UNKNOWN)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "unknown session action");
       return FALSE;
     }
@@ -1620,21 +1620,21 @@ gabble_jingle_session_parse (GabbleJingleSession *sess, JingleAction action, LmM
 
   if (session_node == NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "malformed jingle stanza");
       return FALSE;
     }
 
   if (!gabble_jingle_session_defines_action (sess, action))
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "action '%s' unknown (using dialect %u)", action_name, priv->dialect);
       return FALSE;
     }
 
   if (!action_is_allowed (action, priv->state))
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_JINGLE_OUT_OF_ORDER,
+      g_set_error (error, WOCKY_JINGLE_ERROR, WOCKY_JINGLE_ERROR_OUT_OF_ORDER,
           "action '%s' not allowed in current state", action_name);
       return FALSE;
     }

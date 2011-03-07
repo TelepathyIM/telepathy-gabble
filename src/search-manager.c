@@ -406,16 +406,16 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
     }
   else
     {
-      if (domain == GABBLE_XMPP_ERROR)
+      if (domain == WOCKY_XMPP_ERROR)
         {
           domain = TP_ERRORS;
 
           switch (code)
             {
-            case XMPP_ERROR_FORBIDDEN:
+            case WOCKY_XMPP_ERROR_FORBIDDEN:
               code = TP_ERROR_PERMISSION_DENIED;
               break;
-            case XMPP_ERROR_JID_MALFORMED:
+            case WOCKY_XMPP_ERROR_JID_MALFORMED:
               code = TP_ERROR_INVALID_ARGUMENT;
               break;
             default:

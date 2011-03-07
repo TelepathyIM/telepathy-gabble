@@ -49,6 +49,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_AUTH
 
+#include <gabble/error.h>
 #include "connection.h"
 #include "debug.h"
 #include "namespaces.h"

@@ -33,9 +33,9 @@
 #include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
+#include <gabble/error.h>
 #include "connection.h"
 #include "debug.h"
-#include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
@@ -407,13 +407,9 @@ query_reply_cb (GabbleConnection *conn,
   query_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
     {
-      err = gabble_message_get_xmpp_error (reply_msg);
-
-      if (err == NULL)
-        err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "%s gave us an error we don't understand", chan->priv->server);
+      /* pass */
     }
   else if (NULL == query_node)
     {
@@ -797,6 +793,7 @@ search_reply_cb (GabbleConnection *conn,
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (object);
   WockyNode *query_node;
+  GError *stanza_error = NULL;
   GError *err = NULL;
 
   DEBUG ("called");
@@ -812,36 +809,10 @@ search_reply_cb (GabbleConnection *conn,
   query_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &stanza_error, NULL, NULL))
     {
-      err = gabble_message_get_xmpp_error (reply_msg);
-
-      if (err == NULL)
-        {
-          err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "%s gave us an error we don't understand", chan->priv->server);
-        }
-      else
-        {
-          err->domain = TP_ERRORS;
-
-          switch (err->code)
-            {
-            case XMPP_ERROR_NOT_AUTHORIZED:
-            case XMPP_ERROR_NOT_ACCEPTABLE:
-            case XMPP_ERROR_FORBIDDEN:
-            case XMPP_ERROR_NOT_ALLOWED:
-            case XMPP_ERROR_REGISTRATION_REQUIRED:
-            case XMPP_ERROR_SUBSCRIPTION_REQUIRED:
-              err->code = TP_ERROR_PERMISSION_DENIED;
-              break;
-            /* FIXME: other error mappings go here. Maybe we need some kind of
-             *        generic GabbleXmppError -> TpError mapping.
-             */
-            default:
-              err->code = TP_ERROR_NOT_AVAILABLE;
-            }
-        }
+      gabble_set_tp_error_from_wocky (stanza_error, &err);
+      g_clear_error (&stanza_error);
     }
   else if (NULL == query_node)
     {

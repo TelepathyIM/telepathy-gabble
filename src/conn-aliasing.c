@@ -25,6 +25,7 @@
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/svc-connection.h>
+#include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
@@ -488,22 +489,14 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
                            gpointer user_data)
 {
 #ifdef ENABLE_DEBUG
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  GError *error = NULL;
+
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
-      WockyNode *error_node;
+      DEBUG ("can't publish nick using PEP: %s: %s",
+          wocky_xmpp_stanza_error_to_string (error), error->message);
 
-      error_node = wocky_node_get_child (
-          wocky_stanza_get_top_node (reply_msg), "error");
-
-      if (error_node != NULL)
-        {
-          GabbleXmppError error = gabble_xmpp_error_from_node (error_node,
-              NULL);
-
-          DEBUG ("can't publish nick using PEP: %s: %s",
-              gabble_xmpp_error_string (error),
-              gabble_xmpp_error_description (error));
-        }
+      g_clear_error (&error);
     }
 #endif
 

@@ -35,7 +35,6 @@
 
 #include "gabble/connection.h"
 #include "capabilities.h"
-#include "error.h"
 #include "ft-manager.h"
 #include "jingle-factory.h"
 #include "muc-factory.h"
@@ -214,8 +213,6 @@ gboolean _gabble_connection_send_with_reply (GabbleConnection *conn,
     gpointer user_data, GError **error);
 void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
     LmMessage *iq);
-void _gabble_connection_send_iq_error (GabbleConnection *conn,
-    LmMessage *message, GabbleXmppError error, const gchar *errmsg);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,

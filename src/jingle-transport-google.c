@@ -231,9 +231,6 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
 
 }
 
-#define SET_BAD_REQ(txt) \
-  g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
-
 static void
 parse_candidates (GabbleJingleTransportIface *obj,
     WockyNode *transport_node, GError **error)
@@ -372,7 +369,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */
       jingle_transport_free_candidates (candidates);
-      SET_BAD_REQ ("invalid candidate");
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "invalid candidate");
       return;
     }
 

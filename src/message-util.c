@@ -29,6 +29,7 @@
 
 #include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus.h>
+#include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 #include "debug.h"
@@ -260,56 +261,54 @@ gabble_tp_send_error_from_wocky_xmpp_error (WockyXmppError err)
 }
 
 static TpChannelTextSendError
-_tp_send_error_from_error_node (WockyNode *error_node,
-                                TpDeliveryStatus *delivery_status)
+_tp_send_error_from_xmpp_error (
+    WockyXmppErrorType error_type,
+    GError *error,
+    TpDeliveryStatus *delivery_status)
 {
-  if (error_node != NULL)
-    {
-      GabbleXmppErrorType err_type = XMPP_ERROR_TYPE_UNDEFINED;
-      GabbleXmppError err = gabble_xmpp_error_from_node (error_node, &err_type);
+  /* The thing calling us should have got this back from
+   * wocky_stanza_extract_errors().
+   */
+  g_assert (error->domain == WOCKY_XMPP_ERROR);
 
-      DEBUG ("got xmpp error: %s (type=%u): %s", gabble_xmpp_error_string (err),
-          err_type, gabble_xmpp_error_description (err));
+  DEBUG ("got xmpp error: %s (type=%u): '%s'",
+      wocky_xmpp_stanza_error_to_string (error),
+      error_type, error->message);
 
-      if (err_type == XMPP_ERROR_TYPE_WAIT)
-        *delivery_status = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
-      else
-        *delivery_status = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
-
-      /* these are based on descriptions of errors, and some testing */
-      switch (err)
-        {
-        /* Note: Google replies with <service-unavailable/> if you send a
-         * message to someone you're not subscribed to. But
-         * http://xmpp.org/rfcs/rfc3921.html#rules explicitly says that means
-         * the user is offline and doesn't have offline storage. I think Google
-         * should be returning <forbidden/> or <not-authorized/>. --wjt
-         */
-        case XMPP_ERROR_SERVICE_UNAVAILABLE:
-        case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
-          return TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
-
-        case XMPP_ERROR_ITEM_NOT_FOUND:
-        case XMPP_ERROR_JID_MALFORMED:
-        case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
-          return TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
-
-        case XMPP_ERROR_FORBIDDEN:
-        case XMPP_ERROR_NOT_AUTHORIZED:
-          return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
-
-        case XMPP_ERROR_RESOURCE_CONSTRAINT:
-          return TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
-
-        case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
-          return TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
-
-        default:
-          return TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
-        }
-    }
+  if (error_type == WOCKY_XMPP_ERROR_TYPE_WAIT)
+    *delivery_status = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
   else
+    *delivery_status = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
+
+  /* these are based on descriptions of errors, and some testing */
+  switch (error->code)
     {
+    /* Note: Google replies with <service-unavailable/> if you send a
+     * message to someone you're not subscribed to. But
+     * http://xmpp.org/rfcs/rfc3921.html#rules explicitly says that means
+     * the user is offline and doesn't have offline storage. I think Google
+     * should be returning <forbidden/> or <not-authorized/>. --wjt
+     */
+    case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
+    case WOCKY_XMPP_ERROR_RECIPIENT_UNAVAILABLE:
+      return TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
+
+    case WOCKY_XMPP_ERROR_ITEM_NOT_FOUND:
+    case WOCKY_XMPP_ERROR_JID_MALFORMED:
+    case WOCKY_XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
+      return TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
+
+    case WOCKY_XMPP_ERROR_FORBIDDEN:
+    case WOCKY_XMPP_ERROR_NOT_AUTHORIZED:
+      return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
+
+    case WOCKY_XMPP_ERROR_RESOURCE_CONSTRAINT:
+      return TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
+
+    case WOCKY_XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
+      return TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
+
+    default:
       return TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
     }
 }
@@ -375,19 +374,17 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
 {
   const gchar *type, *body;
   WockyNode *node;
+  WockyXmppErrorType error_type;
+  GError *error = NULL;
 
   *send_error = GABBLE_TEXT_CHANNEL_SEND_NO_ERROR;
   *delivery_status = TP_DELIVERY_STATUS_UNKNOWN;
 
-  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (message, &error_type, &error, NULL, NULL))
     {
-      WockyNode *error_node;
-
-      error_node = wocky_node_get_child (
-        wocky_stanza_get_top_node (message), "error");
-
-      *send_error = _tp_send_error_from_error_node (error_node,
+      *send_error = _tp_send_error_from_xmpp_error (error_type, error,
           delivery_status);
+      g_clear_error (&error);
     }
 
   *id = wocky_node_get_attribute (wocky_stanza_get_top_node (message),

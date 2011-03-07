@@ -27,6 +27,7 @@
 
 #include <loudmouth/loudmouth.h>
 #include <libsoup/soup.h>
+#include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -260,6 +261,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
   LmMessageSubType sub_type;
   WockyNode *query_node, *node;
   const gchar *from = wocky_stanza_get_from (message);
+  GError *error = NULL;
 
   if (from != NULL)
     {
@@ -284,19 +286,11 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
 
   sub_type = lm_message_get_sub_type (message);
 
-  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (message, NULL, &error, NULL, NULL))
     {
-      GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
-
-      node = wocky_node_get_child (wocky_stanza_get_top_node (message),
-          "error");
-      if (node != NULL)
-        {
-          xmpp_error = gabble_xmpp_error_from_node (node, NULL);
-        }
-
-      DEBUG ("jingle info error: %s", gabble_xmpp_error_string (xmpp_error));
-
+      DEBUG ("jingle info error: %s",
+          wocky_xmpp_stanza_error_to_string (error));
+      g_error_free (error);
       return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
 
@@ -772,8 +766,9 @@ ensure_session (GabbleJingleFactory *self,
         }
       else
         {
-          g_set_error (error, GABBLE_XMPP_ERROR,
-              XMPP_ERROR_JINGLE_UNKNOWN_SESSION, "session %s is unknown", sid);
+          g_set_error (error, WOCKY_XMPP_ERROR,
+              WOCKY_JINGLE_ERROR_UNKNOWN_SESSION,
+              "session %s is unknown", sid);
           return NULL;
         }
     }
@@ -828,11 +823,9 @@ jingle_cb (LmMessageHandler *handler,
 
 REQUEST_ERROR:
   g_assert (error != NULL);
-
   DEBUG ("NAKing with error: %s", error->message);
-  _gabble_connection_send_iq_error (priv->conn, msg, error->code,
-      error->message);
-
+  wocky_porter_send_iq_gerror (wocky_session_get_porter (priv->conn->session),
+      msg, error);
   g_error_free (error);
 
   if (sess != NULL && new_session)

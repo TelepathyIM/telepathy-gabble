@@ -403,16 +403,9 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       wocky_stanza_get_top_node (reply_msg),
       "query", disco_type_to_xmlns (request->type));
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
     {
-      err = gabble_message_get_xmpp_error (reply_msg);
-
-      if (err == NULL)
-        {
-          err = g_error_new (GABBLE_DISCO_ERROR,
-                             GABBLE_DISCO_ERROR_UNKNOWN,
-                             "an unknown error occurred");
-        }
+      /* pass */
     }
   else if (NULL == query_node)
     {

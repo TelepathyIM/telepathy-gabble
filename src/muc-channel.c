@@ -42,7 +42,6 @@
 #include "conn-aliasing.h"
 #include "debug.h"
 #include "disco.h"
-#include "error.h"
 #include "message-util.h"
 #include "namespaces.h"
 #include "presence.h"
@@ -2612,16 +2611,14 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     const gchar *subject,
                                     LmMessage *msg)
 {
-  gboolean is_error;
   GabbleMucChannelPrivate *priv;
   TpIntSet *changed_values, *changed_flags;
   GValue val = { 0, };
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = chan->priv;
-
-  is_error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
   if (priv->properties_ctx)
     {
@@ -2629,26 +2626,18 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           ROOM_PROP_SUBJECT);
     }
 
-  if (is_error)
+  if (wocky_stanza_extract_errors (msg, NULL, &error, NULL, NULL))
     {
-      WockyNode *node;
-      const gchar *err_desc = NULL;
-
-      node = wocky_node_get_child (
-          wocky_stanza_get_top_node (msg), "error");
-      if (node)
-        {
-          GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (node,
-              NULL);
-          err_desc = gabble_xmpp_error_description (xmpp_error);
-        }
-
       if (priv->properties_ctx)
         {
-          GError *error = NULL;
+          error->domain = TP_ERRORS;
+          error->code = TP_ERROR_PERMISSION_DENIED;
 
-          error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-              "%s", (err_desc) ? err_desc : "failed to change subject");
+          if (tp_str_empty (error->message))
+            {
+              g_free (error->message);
+              error->message = g_strdup ("failed to change subject");
+            }
 
           tp_properties_context_return (priv->properties_ctx, error);
           priv->properties_ctx = NULL;
@@ -2657,6 +2646,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           room_properties_update (chan);
         }
 
+      g_clear_error (&error);
       return;
     }
 

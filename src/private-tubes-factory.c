@@ -706,7 +706,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
   chan = g_hash_table_lookup (priv->tubes_channels, GUINT_TO_POINTER (handle));
   if (chan == NULL)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "No tubes channel available for this contact" };
 
       DEBUG ("tubes channel with contact %d doesn't exist", handle);

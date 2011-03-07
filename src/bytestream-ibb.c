@@ -628,8 +628,9 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       DEBUG ("can't receive data through a not open bytestream (state: %d)",
           priv->state);
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB bytestream isn't open");
+        wocky_porter_send_iq_error (
+            wocky_session_get_porter (priv->conn->session), msg,
+            WOCKY_XMPP_ERROR_BAD_REQUEST, "IBB bytestream isn't open");
       return;
     }
 
@@ -644,8 +645,9 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
     {
       DEBUG ("base64 decoding failed");
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "base64 decoding failed");
+        wocky_porter_send_iq_error (
+            wocky_session_get_porter (priv->conn->session), msg,
+            WOCKY_XMPP_ERROR_BAD_REQUEST, "base64 decoding failed");
       return;
     }
 
@@ -662,8 +664,9 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
           DEBUG ("Buffer is full. Closing the bytestream");
 
           if (is_iq)
-            _gabble_connection_send_iq_error (priv->conn, msg,
-                XMPP_ERROR_NOT_ACCEPTABLE, "buffer is full");
+            wocky_porter_send_iq_error (
+                wocky_session_get_porter (priv->conn->session), msg,
+                WOCKY_XMPP_ERROR_NOT_ACCEPTABLE, "buffer is full");
 
           gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
           g_string_free (str, TRUE);
@@ -755,16 +758,15 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
       '@', "id", priv->stream_init_id,
       NULL);
 
-  if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
+  if (error != NULL)
     {
-      gabble_xmpp_error_to_node (error->code,
-        wocky_stanza_get_top_node (msg), error->message);
+      wocky_stanza_error_to_node (error, wocky_stanza_get_top_node (msg));
     }
   else
     {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN,
-          wocky_stanza_get_top_node (msg),
-          "Offer Declined");
+      GError fallback = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN,
+          "Offer Declined" };
+      wocky_stanza_error_to_node (&fallback, wocky_stanza_get_top_node (msg));
     }
 
   _gabble_connection_send (priv->conn, msg, NULL);
@@ -785,6 +787,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   GSList *l;
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_CLOSED)
@@ -795,16 +798,9 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
   priv->received_stanzas_not_acked = g_slist_reverse (
       priv->received_stanzas_not_acked);
 
-  for (l = priv->received_stanzas_not_acked; l != NULL;
-      l = g_slist_next (l))
-    {
-      LmMessage *iq = (LmMessage *) l->data;
-
-      _gabble_connection_send_iq_error (priv->conn, iq,
-          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
-
-      lm_message_unref (iq);
-    }
+  for (l = priv->received_stanzas_not_acked; l != NULL; l = g_slist_next (l))
+    wocky_porter_send_iq_error (porter, l->data,
+        WOCKY_XMPP_ERROR_ITEM_NOT_FOUND, NULL);
 
   g_slist_free (priv->received_stanzas_not_acked);
   priv->received_stanzas_not_acked = NULL;

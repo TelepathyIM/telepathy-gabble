@@ -1076,7 +1076,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
 
   if (tube == NULL)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "No tubes channel available for this MUC" };
 
       DEBUG ("tubes channel doesn't exist for muc %d", room_handle);

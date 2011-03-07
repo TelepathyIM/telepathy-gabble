@@ -361,7 +361,7 @@ extract_media_type (WockyNode *desc_node,
 
       if (type == NULL)
         {
-          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
               "missing required media type attribute");
           return JINGLE_MEDIA_TYPE_NONE;
         }
@@ -372,7 +372,7 @@ extract_media_type (WockyNode *desc_node,
       if (!tp_strdiff (type, "video"))
         return JINGLE_MEDIA_TYPE_VIDEO;
 
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "unknown media type %s", type);
       return JINGLE_MEDIA_TYPE_NONE;
     }
@@ -669,8 +669,8 @@ update_remote_media_description (GabbleJingleMediaRtp *self,
       new_c = l->data;
       old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
 
-      if (!codec_update_coherent (old_c, new_c, GABBLE_XMPP_ERROR,
-            XMPP_ERROR_BAD_REQUEST, &e))
+      if (!codec_update_coherent (old_c, new_c, WOCKY_XMPP_ERROR,
+            WOCKY_XMPP_ERROR_BAD_REQUEST, &e))
         goto out;
     }
 
@@ -838,7 +838,7 @@ parse_description (GabbleJingleContent *content,
     {
       /* rollback these */
       jingle_media_description_free (md);
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "invalid description");
       return;
     }

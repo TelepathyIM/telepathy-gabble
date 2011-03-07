@@ -494,15 +494,15 @@ _request_avatar_cb (GabbleVCardManager *self,
       GError tp_error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           vcard_error->message };
 
-      if (vcard_error->domain == GABBLE_XMPP_ERROR)
+      if (vcard_error->domain == WOCKY_XMPP_ERROR)
         {
           switch (vcard_error->code)
             {
-            case XMPP_ERROR_NOT_AUTHORIZED:
-            case XMPP_ERROR_FORBIDDEN:
+            case WOCKY_XMPP_ERROR_NOT_AUTHORIZED:
+            case WOCKY_XMPP_ERROR_FORBIDDEN:
               tp_error.code = TP_ERROR_PERMISSION_DENIED;
               break;
-            case XMPP_ERROR_ITEM_NOT_FOUND:
+            case WOCKY_XMPP_ERROR_ITEM_NOT_FOUND:
               tp_error.code = TP_ERROR_DOES_NOT_EXIST;
               break;
             }
@@ -764,9 +764,9 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
        * too big. It's not clear what other XMPP errors make sense here, or how
        * to map them.
        */
-      if (vcard_error->domain == GABBLE_XMPP_ERROR)
-        if (vcard_error->code == XMPP_ERROR_BAD_REQUEST ||
-            vcard_error->code == XMPP_ERROR_NOT_ACCEPTABLE)
+      if (vcard_error->domain == WOCKY_XMPP_ERROR)
+        if (vcard_error->code == WOCKY_XMPP_ERROR_BAD_REQUEST ||
+            vcard_error->code == WOCKY_XMPP_ERROR_NOT_ACCEPTABLE)
           tp_error.code = TP_ERROR_INVALID_ARGUMENT;
 
       dbus_g_method_return_error (ctx->invocation, &tp_error);

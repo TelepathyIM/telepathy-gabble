@@ -446,7 +446,8 @@ produce_senders (JingleContentSenders senders)
 }
 
 
-#define SET_BAD_REQ(txt) g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, txt)
+#define SET_BAD_REQ(txt) \
+    g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST, txt)
 
 static void
 new_transport_candidates_cb (GabbleJingleTransportIface *trans,

@@ -33,7 +33,6 @@
 #include "caps-channel-manager.h"
 #include "connection.h"
 #include "ft-manager.h"
-#include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "presence-cache.h"
@@ -641,7 +640,8 @@ hyvaa_vappua (
 #define die_if_null(var, msg) \
   if ((var) == NULL) \
     { \
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, msg); \
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST, \
+          msg); \
       return NULL; \
     }
 

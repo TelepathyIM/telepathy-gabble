@@ -28,7 +28,6 @@
 #include <telepathy-glib/base-connection.h>
 
 #include "bytestream-iface.h"
-#include "error.h"
 
 G_BEGIN_DECLS
 

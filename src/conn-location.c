@@ -11,6 +11,8 @@
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 
+#include <gabble/gabble.h>
+
 #include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
@@ -323,19 +325,19 @@ set_location_sent_cb (GabbleConnection *conn,
   DBusGMethodInvocation *context = user_data;
   GError *error = NULL;
 
-  error = gabble_message_get_xmpp_error (reply_msg);
-  if (error == NULL)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
       dbus_g_method_return (context);
     }
   else
     {
-      GError tp_error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          error->message };
+      GError *tp_error = NULL;
 
       DEBUG ("SetLocation failed: %s", error->message);
 
-      dbus_g_method_return_error (context, &tp_error);
+      gabble_set_tp_error_from_wocky (error, &tp_error);
+      dbus_g_method_return_error (context, tp_error);
+      g_error_free (tp_error);
       g_error_free (error);
     }
 

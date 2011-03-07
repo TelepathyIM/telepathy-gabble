@@ -380,7 +380,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
         {
           NODE_DEBUG (transport_node,
               "couldn't parse any of the given candidates");
-          g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
               "could not parse any of the given candidates");
         }
       else

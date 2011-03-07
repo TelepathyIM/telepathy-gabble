@@ -1069,7 +1069,7 @@ si_tube_received (GabbleBytestreamFactory *self,
 
       if (room_handle == 0)
         {
-          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
               "<muc-stream> is only valid in a MUC context" };
 
           gabble_bytestream_iface_close (bytestream, &e);
@@ -1082,7 +1082,7 @@ si_tube_received (GabbleBytestreamFactory *self,
     }
   else
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "Invalid tube SI request: expected <tube>, <stream> or "
           "<muc-stream>" };
 
@@ -1112,6 +1112,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   WockyNode *si;
   TpHandle peer_handle = 0, room_handle;
   GabbleBytestreamIface *bytestream = NULL;
@@ -1136,8 +1137,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (!streaminit_parse_request (msg, si, &profile, &from, &stream_id,
         &stream_init_id, &mime_type, &stream_methods, &multiple))
     {
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "failed to parse SI request");
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, "failed to parse SI request");
       goto out;
     }
 
@@ -1190,8 +1191,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   if (peer_handle == 0)
     {
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_JID_MALFORMED, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_JID_MALFORMED, NULL);
       goto out;
     }
 
@@ -1241,10 +1242,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   if (bytestream == NULL)
     {
-      DEBUG ("SI request doesn't contain any supported stream methods.");
+      GError error = { WOCKY_SI_ERROR, WOCKY_SI_ERROR_NO_VALID_STREAMS, "" };
 
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_SI_NO_VALID_STREAMS, NULL);
+      DEBUG ("SI request doesn't contain any supported stream methods.");
+      wocky_porter_send_iq_gerror (porter, msg, &error);
       goto out;
     }
 
@@ -1254,7 +1255,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       if (!gabble_bytestream_multiple_has_stream_method (
             GABBLE_BYTESTREAM_MULTIPLE (bytestream)))
         {
-          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_NO_VALID_STREAMS, "" };
+          GError e = { WOCKY_SI_ERROR, WOCKY_SI_ERROR_NO_VALID_STREAMS, "" };
           DEBUG ("No valid stream method in the multi bytestream. Closing");
 
           gabble_bytestream_iface_close (bytestream, &e);
@@ -1278,7 +1279,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
     }
   else
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_BAD_PROFILE, "" };
+      GError e = { WOCKY_SI_ERROR, WOCKY_SI_ERROR_BAD_PROFILE, "" };
       DEBUG ("SI profile unsupported: %s", profile);
 
       gabble_bytestream_iface_close (bytestream, &e);
@@ -1300,6 +1301,7 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   GabbleBytestreamIBB *bytestream;
   WockyNode *open_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
@@ -1319,8 +1321,8 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -1328,8 +1330,8 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   if (bsid.stream == NULL)
     {
       DEBUG ("IBB open stanza doesn't contain stream id");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -1338,8 +1340,8 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
     {
       /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -1349,8 +1351,8 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
     {
       /* We don't accept streams not previously accepted using SI */
       DEBUG ("unaccepted stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -1366,7 +1368,7 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_OPEN,
       NULL);
 
-  _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+  wocky_porter_acknowledge_iq (porter, msg, NULL);
 
   return TRUE;
 }
@@ -1377,6 +1379,7 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   GabbleBytestreamIBB *bytestream;
   WockyNode *close_node;
@@ -1394,8 +1397,8 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
       return TRUE;
     }
 
@@ -1403,8 +1406,8 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   if (bsid.stream == NULL)
     {
       DEBUG ("IBB close stanza doesn't contain stream id");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "IBB <close> has no stream ID");
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, "IBB <close> has no stream ID");
       return TRUE;
     }
 
@@ -1412,8 +1415,8 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   if (bytestream == NULL)
     {
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
   else
     {
@@ -1434,6 +1437,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   GabbleBytestreamIBB *bytestream = NULL;
   WockyNode *data;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
@@ -1454,8 +1458,8 @@ handle_ibb_data (GabbleBytestreamFactory *self,
     {
       DEBUG ("got a message without a from field");
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
+        wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+            "IBB <close> has no 'from' attribute");
       return TRUE;
     }
 
@@ -1464,8 +1468,8 @@ handle_ibb_data (GabbleBytestreamFactory *self,
     {
       DEBUG ("got a IBB message data without a stream id field");
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB <data> needs a stream ID");
+        wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+            "IBB <data> needs a stream ID");
       return TRUE;
     }
 
@@ -1475,8 +1479,8 @@ handle_ibb_data (GabbleBytestreamFactory *self,
     {
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB <data> has unknown stream ID");
+        wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+            "IBB <data> has unknown stream ID");
 
       return TRUE;
     }
@@ -1594,6 +1598,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   GabbleBytestreamSocks5 *bytestream;
   WockyNode *query_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
@@ -1613,8 +1618,8 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no 'from' attribute");
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "SOCKS5 <query> has no 'from' attribute");
       return TRUE;
     }
 
@@ -1622,8 +1627,8 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   if (bsid.stream == NULL)
     {
       DEBUG ("SOCKS5 query stanza doesn't contain stream id");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no stream ID");
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "SOCKS5 <query> has no stream ID");
       return TRUE;
     }
 
@@ -1632,8 +1637,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     {
       /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_ITEM_NOT_FOUND,
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_ITEM_NOT_FOUND,
           "SOCKS5 <query> has an unknown stream ID");
       return TRUE;
     }
@@ -1643,8 +1647,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   if (tmp != NULL && tp_strdiff (tmp, "tcp"))
     {
       DEBUG ("non-TCP SOCKS5 bytestreams are not supported");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST,
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "SOCKS5 non-TCP bytestreams are not supported");
       return TRUE;
     }

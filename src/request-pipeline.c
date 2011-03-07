@@ -315,7 +315,10 @@ response_cb (GabbleConnection *conn,
 
   if (!item->zombie)
     {
-      GError *error = gabble_message_get_xmpp_error (reply);
+      GError *error = NULL;
+
+      /* FIXME: did anything depend on getting errors outside core? */
+      wocky_stanza_extract_errors (reply, NULL, &error, NULL, NULL);
 
       item->callback (priv->connection, reply, item->user_data, error);
       g_clear_error (&error);

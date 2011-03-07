@@ -26,6 +26,7 @@
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/heap.h>
+#include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD
 
@@ -1357,8 +1358,8 @@ suspended_request_timeout_cb (gpointer data)
 static gboolean
 is_item_not_found (const GError *error)
 {
-  return (error->domain == GABBLE_XMPP_ERROR &&
-      error->code == XMPP_ERROR_ITEM_NOT_FOUND);
+  return (error->domain == WOCKY_XMPP_ERROR &&
+      error->code == WOCKY_XMPP_ERROR_ITEM_NOT_FOUND);
 }
 
 /* Called when a GET request in the pipeline has either succeeded or failed. */
@@ -1394,33 +1395,32 @@ pipeline_reply_cb (GabbleConnection *conn,
     {
       /* First, handle the error "wait": suspend the request and replay it
        * later */
-      WockyNode *error_node = NULL;
-      GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
-      GabbleXmppErrorType error_type = XMPP_ERROR_UNDEFINED_CONDITION;
+      WockyXmppErrorType error_type = WOCKY_XMPP_ERROR_TYPE_CANCEL;
+      GError *stanza_error = NULL;
 
-      /* FIXME: add a helper in error.c to extract the type, error, and message
-       *        from an XMPP stanza.
-       */
-      if (reply_msg != NULL)
-        error_node = wocky_node_get_child (
-            wocky_stanza_get_top_node (reply_msg), "error");
-
-      if (error_node != NULL)
-        xmpp_error = gabble_xmpp_error_from_node (error_node, &error_type);
-
-      if (error_type == XMPP_ERROR_TYPE_WAIT)
+      if (reply_msg != NULL &&
+          wocky_stanza_extract_errors (reply_msg, &error_type, &stanza_error,
+              NULL, NULL))
         {
-          DEBUG ("Retrieving %u's vCard returned a temporary <%s/> error; "
-              "trying againg in %u seconds", entry->handle,
-              gabble_xmpp_error_string (xmpp_error), request_wait_delay);
+          if (error_type == WOCKY_XMPP_ERROR_TYPE_WAIT)
+            {
+              DEBUG ("%s", g_quark_to_string (stanza_error->domain));
+              DEBUG ("Retrieving %u's vCard returned a temporary <%s/> error; "
+                  "trying againg in %u seconds", entry->handle,
+                  wocky_xmpp_stanza_error_to_string (stanza_error),
+                  request_wait_delay);
 
-          g_source_remove (request->timer_id);
-          request->timer_id = 0;
+              g_source_remove (request->timer_id);
+              request->timer_id = 0;
 
-          entry->suspended_timer_id = g_timeout_add_seconds (
-              request_wait_delay, suspended_request_timeout_cb, request);
+              entry->suspended_timer_id = g_timeout_add_seconds (
+                  request_wait_delay, suspended_request_timeout_cb, request);
 
-          return;
+              g_error_free (stanza_error);
+              return;
+            }
+
+          g_error_free (stanza_error);
         }
 
       /* If request for our own vCard failed, and we do have

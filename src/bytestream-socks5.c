@@ -621,6 +621,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   Socks5State previous_state;
 
   stop_timer (self);
@@ -657,8 +658,9 @@ socks5_error (GabbleBytestreamSocks5 *self)
         g_signal_emit_by_name (self, "connection-error");
 
         g_assert (priv->msg_for_acknowledge_connection != NULL);
-        _gabble_connection_send_iq_error (priv->conn,
-            priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
+        wocky_porter_send_iq_error (porter,
+            priv->msg_for_acknowledge_connection,
+            WOCKY_XMPP_ERROR_ITEM_NOT_FOUND,
             "impossible to connect to any streamhost");
 
         lm_message_unref (priv->msg_for_acknowledge_connection);
@@ -1444,16 +1446,15 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
       '@', "id", priv->stream_init_id,
       NULL);
 
-  if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
+  if (error != NULL)
     {
-      gabble_xmpp_error_to_node (error->code,
-        wocky_stanza_get_top_node (msg), error->message);
+      wocky_stanza_error_to_node (error, wocky_stanza_get_top_node (msg));
     }
   else
     {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN,
-          wocky_stanza_get_top_node (msg),
-          "Offer Declined");
+      GError fallback = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN,
+          "Offer Declined" };
+      wocky_stanza_error_to_node (&fallback, wocky_stanza_get_top_node (msg));
     }
 
   _gabble_connection_send (priv->conn, msg, NULL);

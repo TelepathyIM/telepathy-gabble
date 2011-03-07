@@ -28,6 +28,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_OLPC
 
+#include <gabble/error.h>
+
 #include "debug.h"
 #include "connection.h"
 #include "muc-channel.h"
@@ -154,84 +156,54 @@ static gboolean
 check_publish_reply_msg (LmMessage *reply_msg,
                          DBusGMethodInvocation *context)
 {
-  switch (lm_message_get_sub_type (reply_msg))
+  GError *error = NULL;
+
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
-    case LM_MESSAGE_SUB_TYPE_RESULT:
-      return TRUE;
+      GError *tp_error = NULL;
 
-    default:
-        {
-          WockyNode *error_node;
-          GError *error = NULL;
+      gabble_set_tp_error_from_wocky (error, &tp_error);
+      g_prefix_error (&tp_error, "Failed to publish to the PEP node: ");
+      DEBUG ("%s", tp_error->message);
 
-          error_node = wocky_node_get_child (
-              wocky_stanza_get_top_node (reply_msg), "error");
-          if (error_node != NULL)
-            {
-              GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (
-                  error_node, NULL);
+      if (context != NULL)
+        dbus_g_method_return_error (context, tp_error);
 
-              error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Failed to publish to the PEP node: %s",
-                  gabble_xmpp_error_description (xmpp_error));
-            }
-          else
-            {
-              error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Failed to publish to the PEP node");
-            }
-
-          DEBUG ("%s", error->message);
-          if (context != NULL)
-            dbus_g_method_return_error (context, error);
-          g_error_free (error);
-        }
+      g_error_free (tp_error);
+      g_error_free (error);
+      return FALSE;
     }
-
-  return FALSE;
+  else
+    {
+      return TRUE;
+    }
 }
 
 static gboolean
 check_query_reply_msg (LmMessage *reply_msg,
                        DBusGMethodInvocation *context)
 {
-  switch (lm_message_get_sub_type (reply_msg))
+  GError *error = NULL;
+
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
-    case LM_MESSAGE_SUB_TYPE_RESULT:
-      return TRUE;
+      GError *tp_error = NULL;
 
-    default:
-        {
-          WockyNode *error_node;
-          GError *error = NULL;
+      gabble_set_tp_error_from_wocky (error, &tp_error);
+      g_prefix_error (&tp_error, "Failed to query the PEP node: ");
+      DEBUG ("%s", tp_error->message);
 
-          error_node = wocky_node_get_child (
-              wocky_stanza_get_top_node (reply_msg), "error");
-          if (error_node != NULL)
-            {
-              GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (
-                  error_node, NULL);
+      if (context != NULL)
+        dbus_g_method_return_error (context, tp_error);
 
-              error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Failed to query the PEP node: %s",
-                  gabble_xmpp_error_description (xmpp_error));
-            }
-          else
-            {
-              error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-                  "Failed to query the PEP node");
-            }
-
-          DEBUG ("%s", error->message);
-
-          if (context != NULL)
-              dbus_g_method_return_error (context, error);
-
-          g_error_free (error);
-        }
+      g_error_free (tp_error);
+      g_error_free (error);
+      return FALSE;
     }
-
-  return FALSE;
+  else
+    {
+      return TRUE;
+    }
 }
 
 typedef struct

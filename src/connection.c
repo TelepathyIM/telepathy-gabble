@@ -48,6 +48,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
+#include <gabble/error.h>
 #include "bytestream-factory.h"
 #include "capabilities.h"
 #include "caps-channel-manager.h"
@@ -2422,30 +2423,6 @@ _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
       iq, NULL);
 }
 
-/**
- * _gabble_connection_send_iq_error
- *
- * Function used to acknowledge an IQ stanza with an error.
- */
-void
-_gabble_connection_send_iq_error (GabbleConnection *conn,
-                                  LmMessage *message,
-                                  GabbleXmppError error,
-                                  const gchar *errmsg)
-{
-  WockyStanza *reply = wocky_stanza_build_iq_error (message, NULL);
-
-  if (reply == NULL)
-    {
-      STANZA_DEBUG (message, "can't acknowledge IQ with no id");
-      return;
-    }
-
-  gabble_xmpp_error_to_node (error, wocky_stanza_get_top_node (reply), errmsg);
-  wocky_porter_send (conn->priv->porter, reply);
-  g_object_unref (reply);
-}
-
 static void
 add_feature_node (gpointer namespace,
     gpointer result_query)
@@ -2573,8 +2550,8 @@ iq_disco_cb (WockyPorter *porter,
 
   if (features == NULL && tp_strdiff (suffix, BUNDLE_PMUC_V1))
     {
-      _gabble_connection_send_iq_error (self, stanza,
-          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
+      wocky_porter_send_iq_error (porter, stanza,
+          WOCKY_XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
   else
     {
@@ -2626,7 +2603,6 @@ iq_unknown_cb (WockyPorter *porter,
     WockyStanza *stanza,
     gpointer user_data)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   WockyStanzaSubType subtype;
 
   wocky_stanza_get_type_info (stanza, NULL, &subtype);
@@ -2635,8 +2611,8 @@ iq_unknown_cb (WockyPorter *porter,
     {
     case WOCKY_STANZA_SUB_TYPE_GET:
     case WOCKY_STANZA_SUB_TYPE_SET:
-      _gabble_connection_send_iq_error (conn, stanza,
-          XMPP_ERROR_SERVICE_UNAVAILABLE, NULL);
+      wocky_porter_send_iq_error (porter, stanza,
+          WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE, NULL);
       return TRUE;
     default:
       break;

@@ -19,6 +19,8 @@
 
 #include "conn-util.h"
 
+#include <gabble/gabble.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 #include "debug.h"
 #include "namespaces.h"

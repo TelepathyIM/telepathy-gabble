@@ -1188,7 +1188,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   if (!extract_tube_information (self, tube_node, NULL, NULL,
               NULL, NULL, &tube_id))
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "<tube> has no id attribute" };
 
       NODE_DEBUG (tube_node, e.message);
@@ -1199,7 +1199,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "tube ID already in use" };
 
       NODE_DEBUG (tube_node, e.message);
@@ -1211,7 +1211,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   if (!extract_tube_information (self, tube_node, &type, NULL,
               &service, &parameters, NULL))
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "can't extract <tube> information from SI request" };
 
       NODE_DEBUG (tube_node, e.message);
@@ -1222,7 +1222,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
 
   if (type != TP_TUBE_TYPE_DBUS)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_FORBIDDEN,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN,
           "Only D-Bus tubes are allowed to be created using SI" };
 
       DEBUG ("%s", e.message);
@@ -1281,7 +1281,7 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   tmp = wocky_node_get_attribute (stream_node, "tube");
   if (tmp == NULL)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "<stream> or <muc-stream> has no tube attribute" };
 
       NODE_DEBUG (stream_node, e.message);
@@ -1291,7 +1291,7 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   tube_id_tmp = strtoul (tmp, &endptr, 10);
   if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "<stream> or <muc-stream> tube attribute not numeric or > 2**32" };
 
       DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
@@ -1303,7 +1303,7 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "<stream> or <muc-stream> tube attribute points to a nonexistent "
           "tube" };
 

@@ -282,7 +282,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */
       jingle_transport_free_candidates (candidates);
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "invalid candidate");
       return;
     }

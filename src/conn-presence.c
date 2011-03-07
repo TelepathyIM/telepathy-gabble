@@ -643,13 +643,11 @@ create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
     gpointer user_data)
 {
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
-      GError *error = gabble_message_get_xmpp_error (reply_msg);
-
       g_simple_async_result_set_from_error (result, error);
-
       g_free (error);
     }
 
@@ -1021,9 +1019,9 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   WockyNode *query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "query", NS_PRIVACY);
-  GError *error = gabble_message_get_xmpp_error (reply_msg);
+  GError *error = NULL;
 
-  if (error != NULL)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
       DEBUG ("Error getting privacy lists: %s", error->message);
 
@@ -1220,9 +1218,9 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
   WockyNode *node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (reply_msg), "list", NULL);
-  GError *error = gabble_message_get_xmpp_error (reply_msg);
+  GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT &&
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL) &&
       node != NULL)
     {
       if (!is_valid_invisible_list (node))
@@ -1243,25 +1241,20 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
           toggle_presence_visibility_async (conn,
               toggle_initial_presence_visibility_cb, user_data);
         }
-
-      goto OUT;
     }
-  else if (error != NULL)
+  else if (error->code == WOCKY_XMPP_ERROR_ITEM_NOT_FOUND)
     {
-      if (error->code == XMPP_ERROR_ITEM_NOT_FOUND)
-        {
-          create_invisible_privacy_list_async (conn,
-              create_invisible_privacy_list_cb, user_data);
-          goto OUT;
-        }
+      create_invisible_privacy_list_async (conn,
+          create_invisible_privacy_list_cb, user_data);
+    }
+  else
+    {
+      disable_invisible_privacy_list (conn);
+
+      toggle_presence_visibility_async (conn,
+          toggle_initial_presence_visibility_cb, user_data);
     }
 
-  disable_invisible_privacy_list (conn);
-
-  toggle_presence_visibility_async (conn,
-      toggle_initial_presence_visibility_cb, user_data);
-
- OUT:
   if (error != NULL)
     g_error_free (error);
 

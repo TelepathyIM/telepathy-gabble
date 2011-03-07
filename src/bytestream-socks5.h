@@ -27,8 +27,6 @@
 
 #include <telepathy-glib/base-connection.h>
 
-#include "error.h"
-
 G_BEGIN_DECLS
 
 typedef struct _GabbleBytestreamSocks5 GabbleBytestreamSocks5;

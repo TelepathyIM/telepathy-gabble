@@ -146,9 +146,6 @@ static GHashTable *known_fields_xmpp = NULL;
 /* g_strdup'd Telepathy pseudo-vCard element name => static VCardField */
 static GHashTable *known_fields_vcard = NULL;
 
-/* one-per-process GABBLE_ARRAY_TYPE_FIELD_SPECS */
-static GPtrArray *supported_fields = NULL;
-
 /*
  * _insert_contact_field:
  * @contact_info: an array of Contact_Info_Field structures
@@ -958,9 +955,9 @@ _vcard_updated (GObject *object,
     }
 }
 
-/* vcard_manager may be NULL. */
 static GPtrArray *
-conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
+conn_contact_info_build_supported_fields (GabbleConnection *conn,
+    GabbleVCardManager *vcard_manager)
 {
   GPtrArray *fields = dbus_g_type_specialized_construct (
           TP_ARRAY_TYPE_FIELD_SPECS);
@@ -996,8 +993,7 @@ conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
         }
 #endif
 
-      if (vcard_manager != NULL &&
-          !gabble_vcard_manager_can_use_vcard_field (vcard_manager,
+      if (!gabble_vcard_manager_can_use_vcard_field (vcard_manager,
             field->xmpp_name))
         {
           continue;
@@ -1007,6 +1003,32 @@ conn_contact_info_build_supported_fields (GabbleVCardManager *vcard_manager)
         vcard_name = g_strdup (field->vcard_name);
       else
         vcard_name = g_ascii_strdown (field->xmpp_name, -1);
+
+      /* On Google, your full name in your VCard *is* your alias, so
+       * SetAliases and setting FN will do exactly the same thing. As
+       * a result, we should set the Overwritten_By_Nickname flag on
+       * the FN VCard field if we're on Google.
+       *
+       * If we're not on Google, your nickname in your VCard is your
+       * alias and the same stuff applies, so we should set the same
+       * flag.
+       *
+       * Doing this means that UIs can omit fields from ContactInfo
+       * dialogs with this flag set so they can just display one
+       * widget to set the alias. It's confusing to have an entry
+       * widget which gets overridden and can screw up your alias
+       * setting anyway.
+       */
+      if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
+        {
+          if (!tp_strdiff (vcard_name, "fn"))
+            field->tp_flags |= TP_CONTACT_INFO_FIELD_FLAG_OVERWRITTEN_BY_NICKNAME;
+        }
+      else
+        {
+          if (!tp_strdiff (vcard_name, "nickname"))
+            field->tp_flags |= TP_CONTACT_INFO_FIELD_FLAG_OVERWRITTEN_BY_NICKNAME;
+        }
 
       switch (field->behaviour)
         {
@@ -1045,8 +1067,6 @@ conn_contact_info_class_init (GabbleConnectionClass *klass)
   known_fields_vcard = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, NULL);
 
-  supported_fields = conn_contact_info_build_supported_fields (NULL);
-
   for (field = known_fields; field->xmpp_name != NULL; field++)
     {
       gchar *vcard_name;
@@ -1071,12 +1091,12 @@ conn_contact_info_status_changed_cb (GabbleConnection *conn,
   if (status != TP_CONNECTION_STATUS_CONNECTED)
     return;
 
-  g_assert (conn->contact_info_fields == NULL);
-
   if (gabble_vcard_manager_has_limited_vcard_fields (conn->vcard_manager))
     {
+      g_ptr_array_free (conn->contact_info_fields, TRUE);
+
       conn->contact_info_fields = conn_contact_info_build_supported_fields (
-          conn->vcard_manager);
+          conn, conn->vcard_manager);
     }
 }
 
@@ -1121,7 +1141,8 @@ conn_contact_info_init (GabbleConnection *conn)
     TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
     conn_contact_info_fill_contact_attributes);
 
-  conn->contact_info_fields = NULL;
+  conn->contact_info_fields =
+    conn_contact_info_build_supported_fields (conn, conn->vcard_manager);
 
   g_signal_connect (conn->vcard_manager, "vcard-update",
       G_CALLBACK (_vcard_updated), conn);
@@ -1133,11 +1154,8 @@ conn_contact_info_init (GabbleConnection *conn)
 void
 conn_contact_info_finalize (GabbleConnection *conn)
 {
-  if (conn->contact_info_fields != NULL)
-    {
-      g_boxed_free (TP_ARRAY_TYPE_FIELD_SPECS, conn->contact_info_fields);
-      conn->contact_info_fields = NULL;
-    }
+  g_boxed_free (TP_ARRAY_TYPE_FIELD_SPECS, conn->contact_info_fields);
+  conn->contact_info_fields = NULL;
 }
 
 void
@@ -1175,14 +1193,7 @@ conn_contact_info_properties_getter (GObject *object,
 
   if (name == q_supported_fields)
     {
-      if (conn->contact_info_fields != NULL)
-        {
-          g_value_set_boxed (value, conn->contact_info_fields);
-        }
-      else
-        {
-          g_value_set_static_boxed (value, supported_fields);
-        }
+      g_value_set_boxed (value, conn->contact_info_fields);
     }
   else
     {

@@ -310,12 +310,12 @@ gabble_gateway_sidecar_constructed (GObject *object)
 
   porter = wocky_session_get_porter (self->priv->session);
 
-  self->priv->subscribe_id = wocky_porter_register_handler (porter,
-      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBE, NULL,
+  self->priv->subscribe_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBE,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
       NULL);
-  self->priv->subscribed_id = wocky_porter_register_handler (porter,
-      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBED, NULL,
+  self->priv->subscribed_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_SUBSCRIBED,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX, presence_cb, self,
       NULL);
 }

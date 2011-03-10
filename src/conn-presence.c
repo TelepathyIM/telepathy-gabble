@@ -1366,9 +1366,10 @@ shared_status_setup_cb (GObject *source_object,
 
       priv->invisibility_method = INVISIBILITY_METHOD_SHARED_STATUS;
 
-      priv->iq_shared_status_cb = wocky_porter_register_handler (porter,
-          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET, NULL,
-          WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, iq_shared_status_changed_cb, self,
+      priv->iq_shared_status_cb = wocky_porter_register_handler_from_server (
+          porter, WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+          WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+          iq_shared_status_changed_cb, self,
           '(', "query",
             ':', NS_GOOGLE_SHARED_STATUS,
           ')', NULL);

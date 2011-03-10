@@ -221,7 +221,7 @@ def test_google_featured(q, bus, conn, stream):
     # a different list.
     m = domish.Element((None, 'iq'))
     m['type'] = 'set'
-    m['from'] = 'alice@foo.com'
+    m['from'] = 'test@localhost'
     m['id'] = '3'
     m.addElement((ns.GOOGLE_MAIL_NOTIFY, 'new-mail'))
     stream.send(m)
@@ -306,7 +306,7 @@ def test_no_google_featured(q, bus, conn, stream):
     # notification.
     m = domish.Element((None, 'iq'))
     m['type'] = 'set'
-    m['from'] = 'alice@foo.com'
+    m['from'] = 'test@localhost'
     m['id'] = '2'
     m.addElement((ns.GOOGLE_MAIL_NOTIFY, 'new-mail'))
     stream.send(m)

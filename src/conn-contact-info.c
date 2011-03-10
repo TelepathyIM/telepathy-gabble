@@ -969,6 +969,7 @@ conn_contact_info_build_supported_fields (GabbleConnection *conn,
       gchar *vcard_name;
       guint max_times;
       guint i;
+      TpContactInfoFieldFlags tp_flags = field->tp_flags;
 
       /* Shorthand to avoid having to put it in the struct initialization:
        * on XMPP, there is no field that supports arbitrary type-parameters.
@@ -976,7 +977,7 @@ conn_contact_info_build_supported_fields (GabbleConnection *conn,
        * empty list means arbitrary parameters. */
       if (field->types[0] == NULL)
         {
-          field->tp_flags |=
+          tp_flags |=
             TP_CONTACT_INFO_FIELD_FLAG_PARAMETERS_EXACT;
         }
 
@@ -1022,12 +1023,12 @@ conn_contact_info_build_supported_fields (GabbleConnection *conn,
       if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
         {
           if (!tp_strdiff (vcard_name, "fn"))
-            field->tp_flags |= TP_CONTACT_INFO_FIELD_FLAG_OVERWRITTEN_BY_NICKNAME;
+            tp_flags |= TP_CONTACT_INFO_FIELD_FLAG_OVERWRITTEN_BY_NICKNAME;
         }
       else
         {
           if (!tp_strdiff (vcard_name, "nickname"))
-            field->tp_flags |= TP_CONTACT_INFO_FIELD_FLAG_OVERWRITTEN_BY_NICKNAME;
+            tp_flags |= TP_CONTACT_INFO_FIELD_FLAG_OVERWRITTEN_BY_NICKNAME;
         }
 
       switch (field->behaviour)
@@ -1044,7 +1045,7 @@ conn_contact_info_build_supported_fields (GabbleConnection *conn,
       va = tp_value_array_build (4,
           G_TYPE_STRING, vcard_name,
           G_TYPE_STRV, field->types,
-          G_TYPE_UINT, field->tp_flags,
+          G_TYPE_UINT, tp_flags,
           G_TYPE_UINT, max_times,
           G_TYPE_INVALID);
 

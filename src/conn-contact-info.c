@@ -1093,7 +1093,7 @@ conn_contact_info_status_changed_cb (GabbleConnection *conn,
 
   if (gabble_vcard_manager_has_limited_vcard_fields (conn->vcard_manager))
     {
-      g_ptr_array_free (conn->contact_info_fields, TRUE);
+      g_boxed_free (TP_ARRAY_TYPE_FIELD_SPECS, conn->contact_info_fields);
 
       conn->contact_info_fields = conn_contact_info_build_supported_fields (
           conn, conn->vcard_manager);

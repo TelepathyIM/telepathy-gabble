@@ -1399,6 +1399,11 @@ jingle_feedback_message_compare (const JingleFeedbackMessage *fb1,
  * jingle_media_description_simplify:
  *
  * Removes duplicated Feedback message and put them in the global structure
+ *
+ * This function will iterate over every codec in a description and look for
+ * feedback messages that are exactly the same in every codec and will instead
+ * put the in the list in the description and remove them from the childs.
+ * This limits the amount of duplication in the resulting XML.
  */
 
 void
@@ -1416,6 +1421,8 @@ jingle_media_description_simplify (JingleMediaDescription *md)
 
       if (!init)
         {
+          /* For the first codec, it stores the trr_int and the list
+           * of feedback messages */
           trr_int = c->trr_int;
           identical_fbs = g_list_copy (c->feedback_msgs);
           init = TRUE;
@@ -1424,8 +1431,15 @@ jingle_media_description_simplify (JingleMediaDescription *md)
         {
           GList *item2;
 
+          /* For every subsequent codec, we check if the trr_int is the same */
+
           if (trr_int != c->trr_int)
             trr_int_all_same = FALSE;
+
+          /* We also intersect the remembered list of feedback messages with
+           * the list for that codec and remove any feedback message that isn't
+           * in both
+           */
 
           for (item2 = identical_fbs; item2;)
             {
@@ -1439,6 +1453,9 @@ jingle_media_description_simplify (JingleMediaDescription *md)
               item2 = next;
             }
 
+          /* If the trr_int is not the same everywhere and there are not common
+           * feedback messages, then stop
+           */
           if (!trr_int_all_same && identical_fbs == NULL)
             break;
         }
@@ -1447,9 +1464,13 @@ jingle_media_description_simplify (JingleMediaDescription *md)
   if (trr_int_all_same && trr_int == G_MAXUINT)
     trr_int_all_same = FALSE;
 
+  /* if the trr_int is the same everywhere, lets set it globally */
   if (trr_int_all_same)
     md->trr_int = trr_int;
 
+  /* If there are feedback messages that are in every codec, put a copy of them
+   * in the global structure
+   */
   if (identical_fbs)
     {
       md->feedback_msgs = jingle_feedback_message_list_copy (identical_fbs);
@@ -1462,9 +1483,15 @@ jingle_media_description_simplify (JingleMediaDescription *md)
         JingleCodec *c = item->data;
         GList *item2;
 
+        /* If the trr_int is the same everywhere, lets put the default on
+         * each codec, we have it in the main structure
+         */
         if (trr_int_all_same)
           c->trr_int = G_MAXUINT;
 
+        /* Find the feedback messages that were put in the main structure and
+         * remove them from each codec
+         */
         for (item2 = md->feedback_msgs; item2; item2 = item2->next)
           {
             GList *duplicated;

@@ -82,6 +82,9 @@ struct _GabbleJingleMediaRtpPrivate
   JingleMediaType media_type;
   gboolean remote_mute;
 
+  gboolean has_rtcp_fb;
+  gboolean has_rtp_hdrext;
+
   gboolean dispose_has_run;
 };
 
@@ -402,7 +405,7 @@ content_has_cap (GabbleJingleContent *content, const gchar *cap)
   GabblePresence *presence = gabble_presence_cache_get (
       content->conn->presence_cache, content->session->peer);
 
-  return gabble_presence_resource_has_caps (presence,
+  return presence && gabble_presence_resource_has_caps (presence,
       gabble_jingle_session_get_peer_resource (content->session),
       gabble_capability_set_predicate_has, cap);
 }
@@ -418,12 +421,7 @@ parse_rtcp_fb (GabbleJingleContent *content, LmMessageNode *node)
   if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
     return NULL;
 
-  /* Ignore rtp-hdrext that if it wasn't in the caps */
-  if (!content_has_cap (content, NS_JINGLE_RTCP_FB))
-    return NULL;
-
-
-  type = lm_message_node_get_attribute (node, "type");
+ type = lm_message_node_get_attribute (node, "type");
   if (type == NULL)
     return NULL;
 
@@ -452,10 +450,6 @@ parse_rtcp_fb_trr_int (GabbleJingleContent *content, LmMessageNode *node)
   if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
     return G_MAXUINT;
 
-  /* Ignore rtp-hdrext that if it wasn't in the caps */
-  if (!content_has_cap (content, NS_JINGLE_RTCP_FB))
-    return G_MAXUINT;
-
   txt = lm_message_node_get_attribute (node, "value");
   if (txt == NULL)
     return G_MAXUINT;
@@ -478,6 +472,7 @@ parse_rtcp_fb_trr_int (GabbleJingleContent *content, LmMessageNode *node)
 static JingleCodec *
 parse_payload_type (GabbleJingleContent *content, LmMessageNode *node)
 {
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   JingleCodec *p;
   const char *txt;
   guint8 id;
@@ -533,7 +528,10 @@ parse_payload_type (GabbleJingleContent *content, LmMessageNode *node)
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
 
           if (fb != NULL)
-            p->feedback_msgs = g_list_append (p->feedback_msgs, fb);
+            {
+              p->feedback_msgs = g_list_append (p->feedback_msgs, fb);
+              self->priv->has_rtcp_fb = TRUE;
+            }
         }
       else if (!tp_strdiff (lm_message_node_get_name (param),
               "rtcp-fb-trr-int"))
@@ -541,7 +539,10 @@ parse_payload_type (GabbleJingleContent *content, LmMessageNode *node)
           guint trr_int = parse_rtcp_fb_trr_int (content, param);
 
           if (trr_int != G_MAXUINT)
-            p->trr_int = trr_int;
+            {
+              p->trr_int = trr_int;
+              self->priv->has_rtcp_fb = TRUE;
+            }
         }
     }
 
@@ -793,16 +794,17 @@ parse_description (GabbleJingleContent *content,
           if (tp_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
             continue;
 
-          /* Ignore rtp-hdrext that if it wasn't in the caps */
-          if (!content_has_cap (content, NS_JINGLE_RTP_HDREXT))
-            continue;
-
           hdrext = parse_rtp_header_extension (node);
 
           if (hdrext == NULL)
-            description_error = TRUE;
+            {
+              description_error = TRUE;
+            }
           else
-            md->hdrexts = g_list_append (md->hdrexts, hdrext);
+            {
+              md->hdrexts = g_list_append (md->hdrexts, hdrext);
+              self->priv->has_rtp_hdrext = TRUE;
+            }
 
         }
       else if (!tp_strdiff (lm_message_node_get_name (node), "rtcp-fb"))
@@ -817,6 +819,7 @@ parse_description (GabbleJingleContent *content,
             {
               md->feedback_msgs = g_list_append (md->feedback_msgs, fb);
               is_avpf = TRUE;
+              self->priv->has_rtcp_fb = TRUE;
             }
         }
       else if (!tp_strdiff (lm_message_node_get_name (node),
@@ -832,6 +835,7 @@ parse_description (GabbleJingleContent *content,
             {
               md->trr_int = trr_int;
               is_avpf = TRUE;
+              self->priv->has_rtcp_fb = TRUE;
             }
        }
     }
@@ -939,6 +943,7 @@ produce_payload_type (GabbleJingleContent *content,
                       JingleCodec *p,
                       JingleDialect dialect)
 {
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   LmMessageNode *pt_node;
   gchar buf[16];
 
@@ -1007,7 +1012,7 @@ produce_payload_type (GabbleJingleContent *content,
     g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
 
 
-  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+  if (self->priv->has_rtcp_fb)
     {
       g_list_foreach (p->feedback_msgs, (GFunc) produce_rtcp_fb, pt_node);
       produce_rtcp_fb_trr_int (pt_node, p->trr_int);
@@ -1085,11 +1090,17 @@ produce_hdrext (gpointer data, gpointer user_data)
 static void
 produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
 {
-  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = desc->priv;
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
   GList *li;
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   LmMessageNode *desc_node;
+
+  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+    self->priv->has_rtcp_fb = TRUE;
+
+  if (content_has_cap (content, NS_JINGLE_RTP_HDREXT))
+    self->priv->has_rtp_hdrext = TRUE;
 
   desc_node = produce_description_node (dialect, priv->media_type,
       content_node);
@@ -1110,12 +1121,11 @@ produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
     produce_payload_type (content, desc_node, priv->media_type, li->data,
         dialect);
 
-  if (priv->local_media_description->hdrexts &&
-      content_has_cap (content, NS_JINGLE_RTP_HDREXT))
+  if (priv->has_rtp_hdrext && priv->local_media_description->hdrexts)
     g_list_foreach (priv->local_media_description->hdrexts, produce_hdrext,
         desc_node);
 
-  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+  if (self->priv->has_rtcp_fb)
     {
       g_list_foreach (priv->local_media_description->feedback_msgs,
           (GFunc) produce_rtcp_fb, desc_node);

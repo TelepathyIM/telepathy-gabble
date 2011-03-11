@@ -61,7 +61,7 @@ struct _GabbleJingleMediaRtp {
 };
 
 typedef struct {
-  guint8 id;
+  guint id;
   gchar *name;
   guint clockrate;
   guint channels;

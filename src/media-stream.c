@@ -1543,13 +1543,16 @@ new_remote_media_description_cb (GabbleJingleContent *content,
       JingleRtpHeaderExtension *h = li->data;
       TpMediaStreamDirection direction;
 
-
-      if (h->senders == JINGLE_CONTENT_SENDERS_BOTH)
-        direction = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
-      else if (h->senders == JINGLE_CONTENT_SENDERS_NONE)
-        direction = TP_MEDIA_STREAM_DIRECTION_NONE;
-      else
+      switch (h->senders)
         {
+        case JINGLE_CONTENT_SENDERS_BOTH:
+          direction = TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL;
+          break;
+        case JINGLE_CONTENT_SENDERS_NONE:
+          direction = TP_MEDIA_STREAM_DIRECTION_NONE;
+          break;
+        case JINGLE_CONTENT_SENDERS_INITIATOR:
+        case JINGLE_CONTENT_SENDERS_RESPONDER:
           if (!have_initiator)
             {
               g_object_get (priv->content->session, "local-initiator",
@@ -1557,14 +1560,22 @@ new_remote_media_description_cb (GabbleJingleContent *content,
               have_initiator = TRUE;
             }
 
-          if (h->senders == JINGLE_CONTENT_SENDERS_INITIATOR)
-            direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_SEND :
-                TP_MEDIA_STREAM_DIRECTION_RECEIVE;
-          else if (h->senders == JINGLE_CONTENT_SENDERS_RESPONDER)
-            direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_RECEIVE :
-                TP_MEDIA_STREAM_DIRECTION_SEND;
-          else
-            g_assert_not_reached ();
+          switch (h->senders)
+            {
+            case JINGLE_CONTENT_SENDERS_INITIATOR:
+              direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_SEND :
+              TP_MEDIA_STREAM_DIRECTION_RECEIVE;
+              break;
+            case JINGLE_CONTENT_SENDERS_RESPONDER:
+              direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_RECEIVE :
+              TP_MEDIA_STREAM_DIRECTION_SEND;
+              break;
+            default:
+              g_assert_not_reached ();
+            }
+          break;
+        default:
+          g_assert_not_reached ();
         }
 
       DEBUG ("new RTP header ext : %u %s", h->id, h->uri);

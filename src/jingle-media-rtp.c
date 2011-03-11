@@ -910,7 +910,7 @@ produce_rtcp_fb_trr_int (LmMessageNode *node,
  if (trr_int == G_MAXUINT || trr_int == 0)
     return;
 
-  trr_int_node = lm_message_node_add_child (node, "rtcp-fb_trr-int", NULL);
+  trr_int_node = lm_message_node_add_child (node, "rtcp-fb-trr-int", NULL);
 
   lm_message_node_set_attribute (trr_int_node, "xmlns", NS_JINGLE_RTCP_FB);
   snprintf (tmp, 9, "%d", trr_int);

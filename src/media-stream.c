@@ -1280,7 +1280,7 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
   if (codecs->len == 0)
     {
       GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                   "SupportedCodecs msut have a non-empty list of codecs" };
+                   "SupportedCodecs must have a non-empty list of codecs" };
 
       dbus_g_method_return_error (context, &e);
       return;

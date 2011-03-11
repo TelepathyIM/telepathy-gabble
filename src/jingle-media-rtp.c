@@ -70,10 +70,11 @@ typedef enum {
 struct _GabbleJingleMediaRtpPrivate
 {
   JingleMediaDescription *local_media_description;
+
   /* Holds (JingleCodec *)'s borrowed from local_media_description,
-   * namely codecs which havew* changed from local_media_description's
-   * previous value. Since the contents are * borrowed, this must be
-   * freed with g_list_free, not * jingle_media_rtp_free_codecs().
+   * namely codecs which have changed from local_media_description's
+   * previous value. Since the contents are borrowed, this must be
+   * freed with g_list_free, not jingle_media_rtp_free_codecs().
    */
   GList *local_codec_updates;
 

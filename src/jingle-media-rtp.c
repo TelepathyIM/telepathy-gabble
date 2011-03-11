@@ -145,7 +145,7 @@ jingle_feedback_message_list_free (GList *fbs)
   while (fbs)
     {
       jingle_feedback_message_free (fbs->data);
-      fbs = fbs->next;
+      fbs = g_list_delete_link (fbs, fbs);
     }
 }
 

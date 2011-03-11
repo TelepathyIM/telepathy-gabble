@@ -528,21 +528,21 @@ parse_payload_type (GabbleJingleContent *content, LmMessageNode *node)
           g_hash_table_insert (p->params, g_strdup (param_name),
               g_strdup (param_value));
         }
-        else if (!tp_strdiff (lm_message_node_get_name (param), "rtcp-fb"))
+      else if (!tp_strdiff (lm_message_node_get_name (param), "rtcp-fb"))
         {
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
 
           if (fb != NULL)
             p->feedback_msgs = g_list_append (p->feedback_msgs, fb);
         }
-        else if (!tp_strdiff (lm_message_node_get_name (param),
-                "rtcp-fb-trr-int"))
+      else if (!tp_strdiff (lm_message_node_get_name (param),
+              "rtcp-fb-trr-int"))
         {
           guint trr_int = parse_rtcp_fb_trr_int (content, param);
 
           if (trr_int != G_MAXUINT)
             p->trr_int = trr_int;
-       }
+        }
     }
 
   DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",

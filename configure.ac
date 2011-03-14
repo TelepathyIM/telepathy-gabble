@@ -181,6 +181,12 @@ fi
 
 AC_SUBST(CLIENT_TYPE)
 
+dnl dummy check for gtk-doc
+AC_ARG_ENABLE(gtk-doc,
+  AC_HELP_STRING([--enable-gtk-doc],[doesn't actually do anything]),
+  enable_gtk_doc=yes, enable_gtk_doc=no)
+AM_CONDITIONAL([ENABLE_GTK_DOC], [test "x$enable_gtk_doc" = xyes])
+
 dnl Check for Glib
 PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24])
 

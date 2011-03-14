@@ -34,13 +34,18 @@ _is-release-check:
 		echo "Hey! You have changes staged! No release for you." >&2; \
 		exit 2; \
 	fi
+if ENABLE_GTK_DOC
+else
+	@echo "Hey! You need to pass --enable-gtk-doc to configure!"
+	@exit 2;
+endif
 
 %.tar.gz.asc: %.tar.gz
 	$(AM_V_GEN)gpg --detach-sign --armor $@
 
 @PACKAGE@-@VERSION@.tar.gz: _is-release-check check distcheck
 
-maintainer-prepare-release: _is-release-check check distcheck release-mail
+maintainer-prepare-release: _is-release-check all distcheck release-mail
 	git tag -s @PACKAGE@-@VERSION@ -m @PACKAGE@' '@VERSION@
 	gpg --detach-sign --armor @PACKAGE@-@VERSION@.tar.gz
 

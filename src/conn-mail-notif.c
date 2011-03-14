@@ -38,6 +38,8 @@
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 
+#include <wocky/wocky-c2s-porter.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_MAIL_NOTIF
 #include "connection.h"
 #include "debug.h"
@@ -590,8 +592,8 @@ connection_status_changed (GabbleConnection *conn,
       DEBUG ("Connected, registering Google 'new-mail' notification");
 
       conn->mail_priv->new_mail_handler_id =
-        wocky_porter_register_handler_from_server (
-            wocky_session_get_porter (conn->session),
+        wocky_c2s_porter_register_handler_from_server (
+            WOCKY_C2S_PORTER (wocky_session_get_porter (conn->session)),
             WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
             WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
             new_mail_handler, conn,

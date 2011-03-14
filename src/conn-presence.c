@@ -30,6 +30,7 @@
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/interfaces.h>
 
+#include <wocky/wocky-c2s-porter.h>
 #include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
@@ -1366,8 +1367,9 @@ shared_status_setup_cb (GObject *source_object,
 
       priv->invisibility_method = INVISIBILITY_METHOD_SHARED_STATUS;
 
-      priv->iq_shared_status_cb = wocky_porter_register_handler_from_server (
-          porter, WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      priv->iq_shared_status_cb = wocky_c2s_porter_register_handler_from_server (
+          WOCKY_C2S_PORTER (porter),
+          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
           WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
           iq_shared_status_changed_cb, self,
           '(', "query",

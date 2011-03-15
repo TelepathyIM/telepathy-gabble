@@ -1233,14 +1233,11 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
                                                 const gchar      *account,
                                                 GError          **error)
 {
-  GabbleConnectionPrivate *priv;
   char *username, *server, *resource;
   gboolean result;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
   g_assert (account != NULL);
-
-  priv = conn->priv;
 
   username = server = resource = NULL;
   result = TRUE;
@@ -1413,7 +1410,6 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
                                     gpointer user_data,
                                     GError **error)
 {
-  GabbleConnectionPrivate *priv;
   LmMessageHandler *handler;
   GabbleMsgHandlerData *handler_data;
   gboolean ret;
@@ -1427,8 +1423,6 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
               "connection is disconnected");
       return FALSE;
     }
-
-  priv = conn->priv;
 
   lm_message_ref (msg);
 
@@ -2676,18 +2670,14 @@ connection_disco_cb (GabbleDisco *disco,
                      GError *disco_error,
                      gpointer user_data)
 {
-  GabbleConnection *conn = user_data;
+  GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  GabbleConnectionPrivate *priv;
 
   if (base->status != TP_CONNECTION_STATUS_CONNECTING)
     {
       g_assert (base->status == TP_CONNECTION_STATUS_DISCONNECTED);
       return;
     }
-
-  g_assert (GABBLE_IS_CONNECTION (conn));
-  priv = conn->priv;
 
   if (disco_error)
     {

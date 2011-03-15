@@ -718,13 +718,6 @@ gabble_media_stream_codec_choice (TpSvcMediaStreamHandler *iface,
                                   guint codec_id,
                                   DBusGMethodInvocation *context)
 {
-  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GabbleMediaStreamPrivate *priv;
-
-  g_assert (GABBLE_IS_MEDIA_STREAM (self));
-
-  priv = self->priv;
-
   tp_svc_media_stream_handler_return_from_codec_choice (context);
 }
 
@@ -735,15 +728,10 @@ gabble_media_stream_error (GabbleMediaStream *self,
                            const gchar *message,
                            GError **error)
 {
-  GabbleMediaStreamPrivate *priv;
-
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
-
-  priv = self->priv;
 
   DEBUG ( "Media.StreamHandler::Error called, error %u (%s) -- emitting signal",
       errno, message);
-
   g_signal_emit (self, signals[ERROR], 0, errno, message);
 
   return TRUE;
@@ -851,13 +839,6 @@ static void
 gabble_media_stream_native_candidates_prepared (TpSvcMediaStreamHandler *iface,
                                                 DBusGMethodInvocation *context)
 {
-  GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
-  GabbleMediaStreamPrivate *priv;
-
-  g_assert (GABBLE_IS_MEDIA_STREAM (self));
-
-  priv = self->priv;
-
   tp_svc_media_stream_handler_return_from_native_candidates_prepared (context);
 }
 

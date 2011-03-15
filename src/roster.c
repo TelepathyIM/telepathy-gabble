@@ -2198,7 +2198,6 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   GabbleRosterItem *item;
-  GoogleItemType orig_type;
 
   g_return_if_fail (roster != NULL);
   g_return_if_fail (GABBLE_IS_ROSTER (roster));
@@ -2207,7 +2206,6 @@ gabble_roster_handle_set_blocked (GabbleRoster *roster,
       GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER);
 
   item = _gabble_roster_item_ensure (roster, handle);
-  orig_type = item->google_type;
 
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);

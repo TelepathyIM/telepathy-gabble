@@ -639,10 +639,7 @@ mail_clients_uninterested_cb (GabbleConnection *self,
 void
 conn_mail_notif_init (GabbleConnection *conn)
 {
-  GabbleConnectionMailNotificationPrivate *priv;
-
-  conn->mail_priv = g_slice_new0(GabbleConnectionMailNotificationPrivate);
-  priv = conn->mail_priv;
+  conn->mail_priv = g_slice_new0 (GabbleConnectionMailNotificationPrivate);
 
   g_signal_connect (conn, "status-changed",
       G_CALLBACK (connection_status_changed), conn);

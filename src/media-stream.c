@@ -248,7 +248,7 @@ _get_initial_codecs_and_candidates (gpointer user_data)
   /* we can immediately get the codecs if we're responder */
   md = gabble_jingle_media_rtp_get_remote_media_description (
       GABBLE_JINGLE_MEDIA_RTP (priv->content));
-  if (md)
+  if (md != NULL)
     new_remote_media_description_cb (priv->content, md, stream);
 
   /* if any candidates arrived before idle loop had the chance to excute
@@ -1064,10 +1064,10 @@ pass_local_codecs (GabbleMediaStream *stream,
       c = jingle_media_rtp_codec_new (id, name,
           clock_rate, channels, params);
 
-      if (fbs)
+      if (fbs != NULL)
         {
           fb_codec = g_hash_table_lookup (fbs, GUINT_TO_POINTER (id));
-          if (fb_codec)
+          if (fb_codec != NULL)
             {
               if (G_VALUE_HOLDS_UINT (
                       g_value_array_get_nth (fb_codec, 0)) &&
@@ -1108,12 +1108,12 @@ pass_local_codecs (GabbleMediaStream *stream,
       g_hash_table_unref (params);
     }
 
-  if (fbs)
+  if (fbs != NULL)
     g_value_reset (&priv->local_feedback_messages);
 
   hdrexts = g_value_get_boxed (&priv->local_rtp_hdrexts);
 
-  if (hdrexts)
+  if (hdrexts != NULL)
     {
       gboolean have_initiator = FALSE;
       gboolean initiated_by_us;

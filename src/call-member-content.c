@@ -404,7 +404,7 @@ gabble_call_member_content_get_remote_codecs (GabbleCallMemberContent *self)
       JingleMediaDescription *md;
       md = gabble_jingle_media_rtp_get_remote_media_description (
           GABBLE_JINGLE_MEDIA_RTP (self->priv->jingle_content));
-      if (md)
+      if (md != NULL)
         jcodecs = md->codecs;
     }
 

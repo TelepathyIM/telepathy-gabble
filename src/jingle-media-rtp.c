@@ -145,7 +145,7 @@ jingle_feedback_message_list_copy (GList *fbs)
 static void
 jingle_feedback_message_list_free (GList *fbs)
 {
-  while (fbs)
+  while (fbs != NULL)
     {
       jingle_feedback_message_free (fbs->data);
       fbs = g_list_delete_link (fbs, fbs);
@@ -216,11 +216,11 @@ gabble_jingle_media_rtp_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  if (priv->remote_media_description)
+  if (priv->remote_media_description != NULL)
     jingle_media_description_free (priv->remote_media_description);
   priv->remote_media_description = NULL;
 
-  if (priv->local_media_description)
+  if (priv->local_media_description != NULL)
     jingle_media_description_free (priv->local_media_description);
   priv->local_media_description = NULL;
 
@@ -405,7 +405,7 @@ content_has_cap (GabbleJingleContent *content, const gchar *cap)
   GabblePresence *presence = gabble_presence_cache_get (
       content->conn->presence_cache, content->session->peer);
 
-  return presence && gabble_presence_resource_has_caps (presence,
+  return (presence != NULL) && gabble_presence_resource_has_caps (presence,
       gabble_jingle_session_get_peer_resource (content->session),
       gabble_capability_set_predicate_has, cap);
 }
@@ -421,7 +421,7 @@ parse_rtcp_fb (GabbleJingleContent *content, LmMessageNode *node)
   if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
     return NULL;
 
- type = lm_message_node_get_attribute (node, "type");
+  type = lm_message_node_get_attribute (node, "type");
   if (type == NULL)
     return NULL;
 
@@ -693,7 +693,7 @@ update_remote_media_description (GabbleJingleMediaRtp *self,
     }
 
 out:
-  if (new_media_description)
+  if (new_media_description != NULL)
     jingle_media_description_free (new_media_description);
 
   tp_clear_pointer (&rc, g_hash_table_unref);
@@ -933,7 +933,7 @@ produce_rtcp_fb (JingleFeedbackMessage *fb, LmMessageNode *node)
   lm_message_node_set_attribute (fb_node, "xmlns", NS_JINGLE_RTCP_FB);
   lm_message_node_set_attribute (fb_node, "type", fb->type);
 
-  if (fb->subtype && fb->subtype[0] != 0)
+  if (fb->subtype != NULL && fb->subtype[0] != 0)
     lm_message_node_set_attribute (fb_node, "subtype", fb->subtype);
 }
 
@@ -1491,7 +1491,7 @@ jingle_media_description_simplify (JingleMediaDescription *md)
       g_list_free (identical_fbs);
     }
 
-  if (trr_int_all_same || md->feedback_msgs)
+  if (trr_int_all_same || md->feedback_msgs != NULL)
     for (item = md->codecs; item; item = item->next)
       {
         JingleCodec *c = item->data;

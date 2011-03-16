@@ -1142,12 +1142,16 @@ pass_local_codecs (GabbleMediaStream *stream,
               &uri,
               &params);
 
-          if (direction == TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
-            senders = JINGLE_CONTENT_SENDERS_BOTH;
-          else if (direction == TP_MEDIA_STREAM_DIRECTION_NONE)
-            senders = JINGLE_CONTENT_SENDERS_NONE;
-          else
+          switch (direction)
             {
+            case TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL:
+              senders = JINGLE_CONTENT_SENDERS_BOTH;
+              break;
+            case TP_MEDIA_STREAM_DIRECTION_NONE:
+              senders = JINGLE_CONTENT_SENDERS_NONE;
+              break;
+            case TP_MEDIA_STREAM_DIRECTION_SEND:
+            case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
               if (!have_initiator)
                 {
                   g_object_get (priv->content->session, "local-initiator",
@@ -1155,16 +1159,23 @@ pass_local_codecs (GabbleMediaStream *stream,
                   have_initiator = TRUE;
                 }
 
-              if (direction == TP_MEDIA_STREAM_DIRECTION_SEND)
-                senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
-                    JINGLE_CONTENT_SENDERS_RESPONDER;
-              else if (direction == TP_MEDIA_STREAM_DIRECTION_RECEIVE)
-                senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
-                    JINGLE_CONTENT_SENDERS_INITIATOR;
-              else
-                g_assert_not_reached ();
+              switch (direction)
+                {
+                case TP_MEDIA_STREAM_DIRECTION_SEND:
+                  senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
+                  JINGLE_CONTENT_SENDERS_RESPONDER;
+                  break;
+                case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
+                  senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
+                  JINGLE_CONTENT_SENDERS_INITIATOR;
+                  break;
+                default:
+                  g_assert_not_reached ();
+                }
+              break;
+            default:
+              g_assert_not_reached ();
             }
-
 
           md->hdrexts = g_list_append (md->hdrexts,
               jingle_rtp_header_extension_new (id, senders, uri));

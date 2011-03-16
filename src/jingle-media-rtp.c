@@ -1398,7 +1398,7 @@ jingle_feedback_message_free (JingleFeedbackMessage *fb)
 }
 
 
-static gboolean
+static gint
 jingle_feedback_message_compare (const JingleFeedbackMessage *fb1,
     const JingleFeedbackMessage *fb2)
 {

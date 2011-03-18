@@ -98,6 +98,14 @@ class EventPattern:
 class TimeoutError(Exception):
     pass
 
+class ForbiddenEventOccurred(Exception):
+    def __init__(self, event):
+        Exception.__init__(self)
+        self.event = event
+
+    def __str__(self):
+        return '\n' + '\n'.join(format_event(self.event))
+
 class BaseEventQueue:
     """Abstract event queue base class.
 
@@ -146,10 +154,7 @@ class BaseEventQueue:
     def _check_forbidden(self, event):
         for e in self.forbidden_events:
             if e.match(event):
-                print "forbidden event occurred:"
-                for x in format_event(event):
-                    print x
-                assert False
+                raise ForbiddenEventOccurred(event)
 
     def expect(self, type, **kw):
         """

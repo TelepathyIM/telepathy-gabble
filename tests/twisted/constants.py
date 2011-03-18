@@ -390,6 +390,8 @@ SASL_DEFAULT_USERNAME = CHANNEL_IFACE_SASL_AUTH + ".DefaultUsername"
 # Channel_Type_ServerTLSConnection
 TLS_CERT_PATH = CHANNEL_TYPE_SERVER_TLS_CONNECTION + ".ServerCertificate"
 TLS_HOSTNAME = CHANNEL_TYPE_SERVER_TLS_CONNECTION + ".Hostname"
+TLS_REFERENCE_IDENTITIES = \
+    CHANNEL_TYPE_SERVER_TLS_CONNECTION + ".ReferenceIdentities"
 
 # Connection.Interface.Location
 

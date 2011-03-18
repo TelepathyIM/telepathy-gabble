@@ -241,6 +241,7 @@ check-local: check-coding-style check-twisted
 CHECK_TWISTED_SLEEP=0
 
 check-twisted:
+if WANT_TWISTED_TESTS
 	rm -f tools/core
 	rm -f tools/vgcore.*
 	rm -f tools/gabble-testing.log
@@ -265,6 +266,14 @@ check-twisted:
 	if test $$failed = 1; then\
 		exit 1;\
 	fi;
+else
+	@echo "Configured without Twisted test support. To enable them,"
+	@echo "ensure that these Python modules are available:"
+	@echo " • twisted.words.xish.domish"
+	@echo " • twisted.words.protocols.jabber"
+	@echo " • twisted.internet.reactor"
+	@echo "and then re-run configure."
+endif
 
 if ENABLE_DEBUG
 DEBUGGING_PYBOOL = True

@@ -650,6 +650,9 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                 conn.Disconnect()
         except dbus.DBusException, e:
             pass
+        except Exception, e:
+            traceback.print_exc()
+            error = e
 
         try:
             conn.Disconnect()

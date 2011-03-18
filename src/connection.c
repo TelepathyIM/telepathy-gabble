@@ -612,7 +612,7 @@ gabble_connection_set_property (GObject      *object,
     case PROP_EXPLICIT_SERVER:
       g_free (priv->explicit_server);
       priv->explicit_server = g_value_dup_string (value);
-      if (!priv->connect_server)
+      if (priv->connect_server == NULL)
         priv->connect_server = g_value_dup_string (value);
       break;
     case PROP_PORT:

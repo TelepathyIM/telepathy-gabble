@@ -185,7 +185,7 @@ gabble_server_tls_channel_constructed (GObject *object)
   gchar *connect_server = NULL;
   gchar *explicit_server = NULL;
   gchar **extra_identities = NULL;
-  gchar **ident;
+  gint i;
 
   if (chain_up != NULL)
     chain_up (object);
@@ -219,15 +219,23 @@ gabble_server_tls_channel_constructed (GObject *object)
       g_strdup (self->priv->hostname));
 
   /* And secondly the an explicitly overridden server (if in use) */
-  if (explicit_server && !tp_strdiff (connect_server, explicit_server))
+  if (!tp_str_empty (explicit_server) &&
+      !tp_strdiff (connect_server, explicit_server))
     {
-      g_ptr_array_add (self->priv->reference_identities, explicit_server);
-      explicit_server = NULL;
+      g_ptr_array_add (self->priv->reference_identities,
+          g_strdup (explicit_server));
     }
 
-  /* Lastly add identities added to the account as a result of user choices */
-  for (ident = extra_identities; ident && *ident; ++ident)
-    g_ptr_array_add (self->priv->reference_identities, g_strdup (*ident));
+  /* Lastly extra identities added to the account as a result of user choices */
+  if (extra_identities != NULL)
+    {
+      for (i = 0; extra_identities[i] != NULL; ++i)
+        {
+          if (!tp_str_empty (extra_identities[i]))
+            g_ptr_array_add (self->priv->reference_identities,
+                g_strdup (extra_identities[i]));
+        }
+    }
 
   /* Null terminate, since this is a gchar** */
   g_ptr_array_add (self->priv->reference_identities, NULL);

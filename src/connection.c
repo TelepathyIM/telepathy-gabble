@@ -609,13 +609,11 @@ gabble_connection_set_property (GObject      *object,
   GabbleConnectionPrivate *priv = self->priv;
 
   switch (property_id) {
-    case PROP_CONNECT_SERVER:
-      g_free (priv->connect_server);
-      priv->connect_server = g_value_dup_string (value);
-      break;
     case PROP_EXPLICIT_SERVER:
       g_free (priv->explicit_server);
       priv->explicit_server = g_value_dup_string (value);
+      if (!priv->connect_server)
+        priv->connect_server = g_value_dup_string (value);
       break;
     case PROP_PORT:
       priv->port = g_value_get_uint (value);
@@ -910,7 +908,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           "connect-server", "Hostname or IP of Jabber server",
           "The server used when establishing a connection.",
           NULL,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+          G_PARAM_READABLE | G_PARAM_STATIC_STRINGS));
 
   /*
    * The explicit-server property can be used for verification of a
@@ -1728,11 +1726,13 @@ next_fallback_server (GabbleConnection *self,
       return FALSE;
     }
 
-  g_object_set (self,
-      "connect-server", g_network_address_get_hostname (addr),
-      "port", g_network_address_get_port (addr),
-      "old-ssl", old_ssl,
-      NULL);
+  g_free (priv->connect_server);
+  priv->connect_server = g_strdup (g_network_address_get_hostname (addr));
+  priv->port = g_network_address_get_port (addr);
+  priv->old_ssl = old_ssl;
+  g_object_notify (G_OBJECT (self), "connect-server");
+  g_object_notify (G_OBJECT (self), "port");
+  g_object_notify (G_OBJECT (self), "old-ssl");
 
   g_object_unref (addr);
 

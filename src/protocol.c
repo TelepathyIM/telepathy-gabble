@@ -206,6 +206,7 @@ struct ParamMapping {
   const gchar *conn_prop;
 } params2props[] = {
   MAP ("server", "connect-server"),
+  MAP ("server", "explicit-server"),
   SAME ("resource"),
   SAME ("priority"),
   SAME ("port"),

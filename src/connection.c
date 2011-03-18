@@ -143,6 +143,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
 enum
 {
     PROP_CONNECT_SERVER = 1,
+    PROP_EXPLICIT_SERVER,
     PROP_PORT,
     PROP_OLD_SSL,
     PROP_REQUIRE_ENCRYPTION,
@@ -183,6 +184,7 @@ struct _GabbleConnectionPrivate
 
   /* connection properties */
   gchar *connect_server;
+  gchar *explicit_server;
   guint port;
   gboolean old_ssl;
   gboolean require_encryption;
@@ -512,6 +514,9 @@ gabble_connection_get_property (GObject    *object,
     case PROP_CONNECT_SERVER:
       g_value_set_string (value, priv->connect_server);
       break;
+    case PROP_EXPLICIT_SERVER:
+      g_value_set_string (value, priv->explicit_server);
+      break;
     case PROP_STREAM_SERVER:
       g_value_set_string (value, priv->stream_server);
       break;
@@ -607,6 +612,10 @@ gabble_connection_set_property (GObject      *object,
     case PROP_CONNECT_SERVER:
       g_free (priv->connect_server);
       priv->connect_server = g_value_dup_string (value);
+      break;
+    case PROP_EXPLICIT_SERVER:
+      g_free (priv->explicit_server);
+      priv->explicit_server = g_value_dup_string (value);
       break;
     case PROP_PORT:
       priv->port = g_value_get_uint (value);
@@ -903,6 +912,20 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           NULL,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  /*
+   * The explicit-server property can be used for verification of a
+   * server certificate. It's important that it comes from the user
+   * and is not the result of any other outside lookup, unlike the
+   * connect-server property.
+   */
+
+  g_object_class_install_property (object_class, PROP_EXPLICIT_SERVER,
+      g_param_spec_string (
+          "explicit-server", "Explicit Hostname or IP of Jabber server",
+          "Server explicitly specified by the user to connect to.",
+          NULL,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
   g_object_class_install_property (object_class, PROP_PORT,
       g_param_spec_uint (
           "port", "Jabber server port",
@@ -1193,6 +1216,7 @@ gabble_connection_finalize (GObject *object)
   DEBUG ("called with %p", object);
 
   g_free (priv->connect_server);
+  g_free (priv->explicit_server);
   g_free (priv->stream_server);
   g_free (priv->username);
   g_free (priv->password);

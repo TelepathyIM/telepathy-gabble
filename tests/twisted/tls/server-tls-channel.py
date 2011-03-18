@@ -24,7 +24,8 @@ from twisted.internet import ssl
 
 import ns
 from gabbletest import exec_test, XmppAuthenticator
-from servicetest import ProxyWrapper, EventPattern, assertEquals, assertLength
+from servicetest import ProxyWrapper, EventPattern
+from servicetest import assertEquals, assertLength, assertSameSets
 import constants as cs
 
 JID = "test@example.org"
@@ -226,10 +227,8 @@ def test_channel_reference_identity(q, bus, conn, stream):
                                           "ReferenceIdentities")
     hostname = chan_props.Get(cs.CHANNEL_TYPE_SERVER_TLS_CONNECTION, "Hostname")
 
-    assertLength(2, reference_identities)
-    assert "example.org" in reference_identities
-    assert "localhost" in reference_identities
-    assert hostname == "example.org"
+    assertSameSets(reference_identities, [ "example.org", "localhost"])
+    assertEquals(hostname, "example.org")
 
 if __name__ == '__main__':
     exec_test(test_connect_success, { 'account' : JID },

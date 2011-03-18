@@ -1411,6 +1411,8 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
     return;
 
   DEBUG ("Closing");
+  /* Ensure we stay alive even while telling everyone else to abandon us. */
+  g_object_ref (chan);
 
   gabble_muc_channel_close_tube (chan);
 
@@ -1452,20 +1454,18 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
     }
   else
     {
-      /* See the comment just above, except we're not sending the
-       * leave message, so let the channel destroy immediately. */
+      /* See the comment just above, except we're not sending the leave
+       * message, so let the channel announce that it's dead immediately. */
       tp_base_channel_destroyed (base);
     }
 
   handles = tp_handle_set_to_array (chan->group.members);
-
   gabble_presence_cache_update_many (conn->presence_cache, handles,
     NULL, GABBLE_PRESENCE_UNKNOWN, NULL, 0);
-
   g_array_free (handles, TRUE);
 
-  /* Update state and emit Closed signal */
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
+  g_object_unref (chan);
 }
 
 gboolean

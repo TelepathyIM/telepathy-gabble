@@ -20,8 +20,10 @@ TWISTED_TESTS = \
 	client-types.py \
 	cm/protocol.py \
 	gateways.py \
+	muc/banned.py \
 	muc/conference.py \
 	muc/chat-states.py \
+	muc/kicked.py \
 	muc/name-conflict.py \
 	muc/presence-before-closing.py \
 	muc/renamed.py \

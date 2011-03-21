@@ -155,7 +155,7 @@ static TpCMParamSpec jabber_params[] = {
   { "fallback-servers", "as", 0,
     0, NULL, 0 /* unused */, NULL, NULL },
 
-  { "extra-identities", "as", 0,
+  { "extra-certificate-identities", "as", 0,
     0, NULL, 0 /* unused */, NULL, NULL },
 
   { NULL, NULL, 0, 0, NULL, 0 }
@@ -191,7 +191,7 @@ get_parameters (TpBaseProtocol *self G_GNUC_UNUSED)
               jabber_params[i].gtype = G_TYPE_STRV;
             }
           else if (!g_strcmp0 (jabber_params[i].name,
-                "extra-identities"))
+                "extra-certificate-identities"))
             {
               jabber_params[i].gtype = G_TYPE_STRV;
             }
@@ -235,7 +235,7 @@ struct ParamMapping {
   MAP (GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
        "decloak-automatically"),
   SAME ("fallback-servers"),
-  SAME ("extra-identities"),
+  SAME ("extra-certificate-identities"),
   SAME (NULL)
 };
 #undef SAME

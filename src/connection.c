@@ -167,7 +167,7 @@ enum
     PROP_KEEPALIVE_INTERVAL,
     PROP_DECLOAK_AUTOMATICALLY,
     PROP_FALLBACK_SERVERS,
-    PROP_EXTRA_IDENTITIES,
+    PROP_EXTRA_CERTIFICATE_IDENTITIES,
     PROP_POWER_SAVING,
 
     LAST_PROPERTY
@@ -217,7 +217,7 @@ struct _GabbleConnectionPrivate
   GStrv fallback_servers;
   guint fallback_server_index;
 
-  GStrv extra_identities;
+  GStrv extra_certificate_identities;
 
   gboolean power_saving;
 
@@ -592,8 +592,8 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_boxed (value, priv->fallback_servers);
       break;
 
-    case PROP_EXTRA_IDENTITIES:
-      g_value_set_boxed (value, priv->extra_identities);
+    case PROP_EXTRA_CERTIFICATE_IDENTITIES:
+      g_value_set_boxed (value, priv->extra_certificate_identities);
       break;
 
     case PROP_POWER_SAVING:
@@ -726,10 +726,10 @@ gabble_connection_set_property (GObject      *object,
       priv->fallback_server_index = 0;
       break;
 
-    case PROP_EXTRA_IDENTITIES:
-      if (priv->extra_identities != NULL)
-        g_strfreev (priv->extra_identities);
-      priv->extra_identities = g_value_dup_boxed (value);
+    case PROP_EXTRA_CERTIFICATE_IDENTITIES:
+      if (priv->extra_certificate_identities != NULL)
+        g_strfreev (priv->extra_certificate_identities);
+      priv->extra_certificate_identities = g_value_dup_boxed (value);
       break;
 
     case PROP_POWER_SAVING:
@@ -1108,9 +1108,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         G_TYPE_STRV,
         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  g_object_class_install_property (object_class, PROP_EXTRA_IDENTITIES,
+  g_object_class_install_property (object_class,
+      PROP_EXTRA_CERTIFICATE_IDENTITIES,
       g_param_spec_boxed (
-        "extra-identities", "Extra Reference Identities",
+        "extra-certificate-identities",
+        "Extra Certificate Reference Identities",
         "Extra identities to check certificate against. These are present as a "
         "result of a user choice or configuration.",
         G_TYPE_STRV,
@@ -1247,7 +1249,7 @@ gabble_connection_finalize (GObject *object)
   g_free (priv->fallback_conference_server);
   g_strfreev (priv->fallback_socks5_proxies);
   g_strfreev (priv->fallback_servers);
-  g_strfreev (priv->extra_identities);
+  g_strfreev (priv->extra_certificate_identities);
 
   g_free (priv->alias);
   g_free (priv->stream_id);

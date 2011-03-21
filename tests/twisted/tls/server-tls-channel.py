@@ -270,9 +270,9 @@ if __name__ == '__main__':
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
     exec_test(test_channel_reference_identity_with_extra,
               { 'account' : JID,
-                'extra-identities' : [ 'hypnotoad.example.org' ] },
+                'extra-certificate-identities' : [ 'hypnotoad.example.org' ] },
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
     exec_test(test_channel_reference_identity_with_extra_multiple,
               { 'account' : JID,
-                'extra-identities' : [ 'hypnotoad.example.org', 'other.local', '' ] },
+                'extra-certificate-identities' : [ 'hypnotoad.example.org', 'other.local', '' ] },
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)

@@ -1142,6 +1142,13 @@ pass_local_codecs (GabbleMediaStream *stream,
               &uri,
               &params);
 
+          if (!have_initiator)
+            {
+              g_object_get (priv->content->session, "local-initiator",
+                  &initiated_by_us, NULL);
+              have_initiator = TRUE;
+            }
+
           switch (direction)
             {
             case TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL:
@@ -1151,27 +1158,12 @@ pass_local_codecs (GabbleMediaStream *stream,
               senders = JINGLE_CONTENT_SENDERS_NONE;
               break;
             case TP_MEDIA_STREAM_DIRECTION_SEND:
+              senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
+              JINGLE_CONTENT_SENDERS_RESPONDER;
+              break;
             case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
-              if (!have_initiator)
-                {
-                  g_object_get (priv->content->session, "local-initiator",
-                      &initiated_by_us, NULL);
-                  have_initiator = TRUE;
-                }
-
-              switch (direction)
-                {
-                case TP_MEDIA_STREAM_DIRECTION_SEND:
-                  senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
-                  JINGLE_CONTENT_SENDERS_RESPONDER;
-                  break;
-                case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
-                  senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
-                  JINGLE_CONTENT_SENDERS_INITIATOR;
-                  break;
-                default:
-                  g_assert_not_reached ();
-                }
+              senders = initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
+              JINGLE_CONTENT_SENDERS_INITIATOR;
               break;
             default:
               g_assert_not_reached ();
@@ -1554,6 +1546,13 @@ new_remote_media_description_cb (GabbleJingleContent *content,
       JingleRtpHeaderExtension *h = li->data;
       TpMediaStreamDirection direction;
 
+      if (!have_initiator)
+        {
+          g_object_get (priv->content->session, "local-initiator",
+              &initiated_by_us, NULL);
+          have_initiator = TRUE;
+        }
+
       switch (h->senders)
         {
         case JINGLE_CONTENT_SENDERS_BOTH:
@@ -1563,27 +1562,12 @@ new_remote_media_description_cb (GabbleJingleContent *content,
           direction = TP_MEDIA_STREAM_DIRECTION_NONE;
           break;
         case JINGLE_CONTENT_SENDERS_INITIATOR:
+          direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_SEND :
+          TP_MEDIA_STREAM_DIRECTION_RECEIVE;
+          break;
         case JINGLE_CONTENT_SENDERS_RESPONDER:
-          if (!have_initiator)
-            {
-              g_object_get (priv->content->session, "local-initiator",
-                  &initiated_by_us, NULL);
-              have_initiator = TRUE;
-            }
-
-          switch (h->senders)
-            {
-            case JINGLE_CONTENT_SENDERS_INITIATOR:
-              direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_SEND :
-              TP_MEDIA_STREAM_DIRECTION_RECEIVE;
-              break;
-            case JINGLE_CONTENT_SENDERS_RESPONDER:
-              direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_RECEIVE :
-              TP_MEDIA_STREAM_DIRECTION_SEND;
-              break;
-            default:
-              g_assert_not_reached ();
-            }
+          direction = initiated_by_us ? TP_MEDIA_STREAM_DIRECTION_RECEIVE :
+          TP_MEDIA_STREAM_DIRECTION_SEND;
           break;
         default:
           g_assert_not_reached ();

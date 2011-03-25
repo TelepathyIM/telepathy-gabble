@@ -5,16 +5,11 @@ use in a MUC you try to join.
 
 import dbus
 
-from twisted.words.xish import domish
-
 from gabbletest import (
-    exec_test, make_muc_presence, request_muc_handle, sync_stream
+    exec_test, make_muc_presence, sync_stream, elem,
     )
-from servicetest import call_async, unwrap, sync_dbus, assertEquals
-from constants import (
-    HT_CONTACT, HT_ROOM,
-    CONN_IFACE_REQUESTS, CHANNEL_TYPE_TEXT, CHANNEL_IFACE_GROUP,
-    CHANNEL_TYPE, TARGET_HANDLE_TYPE, TARGET_HANDLE,
+from servicetest import (
+    call_async, unwrap, sync_dbus, assertEquals, assertSameSets, wrap_channel,
     )
 import constants as cs
 import ns
@@ -31,34 +26,26 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     user turns out not actually to be in the room (they left while we were
     retrying).
     """
-
-    self_handle = conn.GetSelfHandle()
-
-    requests = dbus.Interface(conn, CONN_IFACE_REQUESTS)
-
-    room_handle = request_muc_handle(q, conn, stream, room_jid)
     # Implementation detail: Gabble uses the first part of your jid (if you
     # don't have an alias) as your room nickname, and appends an underscore a
     # few times before giving up.
     member, member_ = [room_jid + '/' + x for x in ['test', 'test_']]
 
-    call_async(q, requests, 'CreateChannel',
-        dbus.Dictionary({ CHANNEL_TYPE: CHANNEL_TYPE_TEXT,
-                          TARGET_HANDLE_TYPE: HT_ROOM,
-                          TARGET_HANDLE: room_handle,
+    call_async(q, conn.Requests, 'CreateChannel',
+        dbus.Dictionary({ cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+                          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+                          cs.TARGET_ID: room_jid,
                         }, signature='sv'))
 
     # Gabble first tries to join as test
     q.expect('stream-presence', to=member)
 
     # MUC says no: there's already someone called test in room_jid
-    presence = domish.Element((None, 'presence'))
-    presence['from'] = member
-    presence['type'] = 'error'
-    x = presence.addElement((ns.MUC, 'x'))
-    error = presence.addElement((None, 'error'))
-    error['type'] = 'cancel'
-    error.addElement((ns.STANZA, 'conflict'))
+    presence = elem('presence', from_=member, type='error')(
+        elem(ns.MUC, 'x'),
+        elem('error', type='cancel')(
+          elem(ns.STANZA, 'conflict'),
+        ))
     stream.send(presence)
 
     # Gabble tries again as test_
@@ -83,11 +70,10 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     # Only now should we have finished joining the room.
     event = q.expect('dbus-return', method='CreateChannel')
     path, props = event.value
-    text_chan = bus.get_object(conn.bus_name, path)
-    group_props = unwrap(text_chan.GetAll(CHANNEL_IFACE_GROUP,
-        dbus_interface=dbus.PROPERTIES_IFACE))
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
+    group_props = unwrap(text_chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP))
 
-    t, t_ = conn.RequestHandles(HT_CONTACT, [member, member_])
+    t, t_ = conn.RequestHandles(cs.HT_CONTACT, [member, member_])
 
     # Check that Gabble think our nickname in the room is test_, not test
     muc_self_handle = group_props['SelfHandle']
@@ -101,7 +87,7 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
         assert members == [t_], (members, t_, t)
     else:
         # Check there are exactly two members (test and test_)
-        assert sorted(members) == sorted([t, t_]), (members, [t, t_])
+        assertSameSets([t, t_], members)
 
     # In either case, there should be no pending members.
     assert len(group_props['LocalPendingMembers']) == 0, group_props
@@ -110,7 +96,7 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     # Check that test_'s handle owner is us, and that test (if it's there) has
     # no owner.
     handle_owners = group_props['HandleOwners']
-    assertEquals (self_handle,  handle_owners[t_])
+    assertEquals (conn.GetSelfHandle(), handle_owners[t_])
     if not transient_conflict:
         assertEquals (0, handle_owners[t])
 
@@ -119,8 +105,7 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     text_chan.Close()
 
     event = q.expect('stream-presence', to=member_)
-    elem = event.stanza
-    assert elem['type'] == 'unavailable'
+    assertEquals('unavailable', event.stanza['type'])
 
 if __name__ == '__main__':
     exec_test(test)

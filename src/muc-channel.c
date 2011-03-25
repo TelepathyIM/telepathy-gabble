@@ -1458,6 +1458,7 @@ _gabble_muc_channel_is_ready (GabbleMucChannel *chan)
 
 static gboolean
 handle_nick_conflict (GabbleMucChannel *chan,
+                      WockyStanza *stanza,
                       GError **tp_error)
 {
   GabbleMucChannelPrivate *priv = chan->priv;
@@ -1467,6 +1468,26 @@ handle_nick_conflict (GabbleMucChannel *chan,
       tp_base_channel_get_connection (base), TP_HANDLE_TYPE_CONTACT);
   TpHandle self_handle;
   TpIntSet *add_rp, *remove_rp;
+  const gchar *from = wocky_stanza_get_from (stanza);
+
+  /* If this is a nick conflict message with a resource in the JID, and the
+   * resource doesn't match the one we're currently trying to join as, then
+   * ignore it. This works around a bug in Google Talk's MUC server, which
+   * sends the conflict message twice. It's valid for there to be no resource
+   * in the from='' field. If Google didn't include the resource, we couldn't
+   * work around the bug; but they happen to do so, so yay.
+   * <https://bugs.freedesktop.org/show_bug.cgi?id=35619>
+   *
+   * FIXME: WockyMuc should provide a _join_async() method and do all this for
+   * us.
+   */
+  g_assert (from != NULL);
+
+  if (index (from, '/') != NULL && tp_strdiff (from, priv->self_jid->str))
+    {
+      DEBUG ("ignoring spurious conflict message for %s", from);
+      return TRUE;
+    }
 
   if (priv->nick_retry_count >= MAX_NICK_RETRIES)
     {
@@ -1867,7 +1888,7 @@ handle_error (GObject *source,
             break;
 
           case WOCKY_XMPP_ERROR_CONFLICT:
-            if (handle_nick_conflict (gmuc, &tp_error))
+            if (handle_nick_conflict (gmuc, stanza, &tp_error))
               return;
             break;
 

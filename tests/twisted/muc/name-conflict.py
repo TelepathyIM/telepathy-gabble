@@ -1,3 +1,4 @@
+# vim: fileencoding=utf-8 :
 """
 Test gabble trying alternative nicknames when the nick you wanted is already in
 use in a MUC you try to join.
@@ -10,6 +11,7 @@ from gabbletest import (
     )
 from servicetest import (
     call_async, unwrap, sync_dbus, assertEquals, assertSameSets, wrap_channel,
+    EventPattern,
     )
 import constants as cs
 import ns
@@ -17,6 +19,9 @@ import ns
 def test(q, bus, conn, stream):
     test_join(q, bus, conn, stream, 'chat@conf.localhost', False)
     test_join(q, bus, conn, stream, 'chien@conf.localhost', True)
+
+    test_gtalk_weirdness(q, bus, conn, stream,
+        'private-chat-massive-uuid@groupchat.google.com')
 
 def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     """
@@ -106,6 +111,84 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
 
     event = q.expect('stream-presence', to=member_)
     assertEquals('unavailable', event.stanza['type'])
+
+def test_gtalk_weirdness(q, bus, conn, stream, room_jid):
+    """
+    There's a strange bug in the Google Talk MUC server where it sends the
+    <conflict/> stanza twice. This has been reported to their server team; but
+    in any case it triggered a crazy bug in Gabble, so here's a regression test.
+    """
+
+    # Implementation detail: Gabble uses the first part of your jid (if you
+    # don't have an alias) as your room nickname, and appends an underscore a
+    # few times before giving up.
+    jids = ['%s/test%s' % (room_jid, x) for x in ['', '_', '__']]
+    member, member_, member__ = jids
+
+    # Gabble should never get as far as trying to join as 'test__' since
+    # joining as 'test_' will succeed.
+    q.forbid_events([ EventPattern('stream-presence', to=member__) ])
+
+    call_async(q, conn.Requests, 'CreateChannel',
+        dbus.Dictionary({ cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+                          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+                          cs.TARGET_ID: room_jid,
+                        }, signature='sv'))
+
+    # Gabble first tries to join as test
+    q.expect('stream-presence', to=member)
+
+    # Google Talk says no from 'test', twice.
+    presence = elem('presence', from_=member, type='error')(
+        elem(ns.MUC, 'x'),
+        elem('error', type='cancel')(
+          elem(ns.STANZA, 'conflict'),
+        ))
+    stream.send(presence)
+    stream.send(presence)
+
+    # Gabble should try to join again as test_
+    q.expect('stream-presence', to=member_)
+
+    # Since 'test_' is not in use in the MUC, joining should succeed. According
+    # to XEP-0045 §7.1.3 <http://xmpp.org/extensions/xep-0045.html#enter-pres>:
+    #  The service MUST first send the complete list of the existing occupants
+    #  to the new occupant and only then send the new occupant's own presence
+    #  to the new occupant
+    # but groupchat.google.com cheerfully violates this.
+    stream.send(make_muc_presence('none', 'participant', room_jid, 'test_'))
+
+    # Here's some other random person, who owns the MUC.
+    stream.send(make_muc_presence('owner', 'moderator', room_jid, 'foobar_gmail.com'))
+    # And here's our hypothetical other self.
+    stream.send(make_muc_presence('none', 'participant', room_jid, 'test'))
+
+    # The Gabble bug makes this time out: because Gabble thinks it's joining as
+    # test__ it ignores the presence for test_, since it's not flagged with
+    # code='210' to say “this is you”. (This is acceptable behaviour by the
+    # server: it only needs to include code='210' if it's assigned the client a
+    # name other than the one it asked for.
+    #
+    # The forbidden stream-presence event above doesn't blow up here because
+    # servicetest doesn't process events on the 'stream-*' queue at all when
+    # we're not waiting for one. But during disconnection in the test clean-up,
+    # the forbidden event is encountered and correctly flagged up.
+    event = q.expect('dbus-return', method='CreateChannel')
+    path, _ = event.value
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
+
+    # As far as Gabble's concerned, the two other participants joined
+    # immediately after we did.
+    handle, handle_, handle__, foobar_handle = conn.RequestHandles(
+        cs.HT_CONTACT, jids + ['%s/foobar_gmail.com' % room_jid])
+    q.expect('dbus-signal', signal='MembersChangedDetailed',
+        predicate=lambda e: e.args[0:4] == [[foobar_handle], [], [], []])
+    q.expect('dbus-signal', signal='MembersChangedDetailed',
+        predicate=lambda e: e.args[0:4] == [[handle], [], [], []])
+
+    group_props = text_chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)
+    assertEquals(handle_, group_props['SelfHandle'])
+    assertSameSets([handle, handle_, foobar_handle], group_props['Members'])
 
 if __name__ == '__main__':
     exec_test(test)

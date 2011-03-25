@@ -802,19 +802,14 @@ create_room_identity (GabbleMucChannel *chan)
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 }
 
-static gboolean
+static void
 send_join_request (GabbleMucChannel *gmuc,
-                   const gchar *password,
-                   GError **error)
+                   const gchar *password)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
 
   g_object_set (priv->wmuc, "password", password, NULL);
   wocky_muc_join (priv->wmuc, NULL);
-
-  /* this used to be a meaningful success/failure return, but the two-stage  *
-   * async op involved means we don't have any way of detecting failure here */
-  return TRUE;
 }
 
 static gboolean
@@ -1502,7 +1497,8 @@ handle_nick_conflict (GabbleMucChannel *chan,
   tp_handle_unref (contact_repo, self_handle);
 
   priv->nick_retry_count++;
-  return send_join_request (chan, priv->password, tp_error);
+  send_join_request (chan, priv->password);
+  return TRUE;
 }
 
 static LmHandlerResult
@@ -2911,7 +2907,6 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
                                      DBusGMethodInvocation *context)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
-  GError *error = NULL;
   GabbleMucChannelPrivate *priv;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (self));
@@ -2921,23 +2916,15 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
   if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0 ||
       priv->password_ctx != NULL)
     {
-      error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                           "password cannot be provided in the current state");
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
-      return;
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "password cannot be provided in the current state" };
+      dbus_g_method_return_error (context, &error);
     }
-
-  if (!send_join_request (self, password, &error))
+  else
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
-      return;
+      send_join_request (self, password);
+      priv->password_ctx = context;
     }
-
-  priv->password_ctx = context;
 }
 
 
@@ -3030,7 +3017,6 @@ gabble_muc_channel_add_member (GObject *obj,
       TpBaseConnection *conn = tp_base_channel_get_connection (base);
       TpIntSet *set_remove_members, *set_remote_pending;
       GArray *arr_members;
-      gboolean result;
 
       /* are we already a member or in remote pending? */
       if (tp_handle_set_is_member (mixin->members, handle) ||
@@ -3069,16 +3055,12 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_destroy (set_remote_pending);
 
       /* seek to enter the room */
-      result = send_join_request (self, NULL, error);
-
-      g_object_set (obj, "state",
-                    (result) ? MUC_STATE_INITIATED : MUC_STATE_ENDED,
-                    NULL);
+      send_join_request (self, NULL);
+      g_object_set (obj, "state", MUC_STATE_INITIATED, NULL);
 
       /* deny adding */
       tp_group_mixin_change_flags (obj, 0, TP_CHANNEL_GROUP_FLAG_CAN_ADD);
-
-      return result;
+      return TRUE;
     }
 
   /* check that we're indeed a member when attempting to invite others */

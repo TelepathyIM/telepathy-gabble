@@ -318,7 +318,7 @@ timeout_request (gpointer data)
 {
   GabbleDiscoRequest *request = (GabbleDiscoRequest *) data;
   GabbleDisco *disco;
-  GError *err /* doesn't need initializing */;
+  GError *err = NULL;
   g_return_val_if_fail (data != NULL, FALSE);
 
   err = g_error_new (GABBLE_DISCO_ERROR, GABBLE_DISCO_ERROR_TIMEOUT,
@@ -354,7 +354,7 @@ timeout_request (gpointer data)
 static void
 cancel_request (GabbleDiscoRequest *request)
 {
-  GError *err /* doesn't need initializing */;
+  GError *err = NULL;
 
   g_assert (request != NULL);
 

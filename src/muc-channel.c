@@ -1846,7 +1846,7 @@ handle_error (GObject *source,
     }
   else
     {
-      GError *tp_error /* doesn't need initializing */;
+      GError *tp_error = NULL;
 
       switch (errnum)
         {

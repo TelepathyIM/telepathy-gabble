@@ -211,10 +211,12 @@ gabble_server_tls_channel_constructed (GObject *object)
   g_ptr_array_add (self->priv->reference_identities,
       g_strdup (self->priv->hostname));
 
-  /* And secondly the an explicitly overridden server */
+  /* Secondly include an explicitly overridden server */
   connect_server = NULL;
+  explicit_server = NULL;
   g_object_get (tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
-      "connect-server", &connect_server, "explicit-server", &explicit_server,
+      "connect-server", &connect_server,
+      "explicit-server", &explicit_server,
       NULL);
   if (!tp_strdiff (connect_server, explicit_server))
     {

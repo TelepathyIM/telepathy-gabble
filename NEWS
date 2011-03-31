@@ -1,11 +1,37 @@
-telepathy-gabble 0.11.9 (üNRëLëäSëD)
+telepathy-gabble 0.11.9 (2011-03-31)
 ====================================
+
+The “I am going to bake a cake with beetroot in it” release.
 
 Dependencies:
 
+• telepathy-glib 0.14.3 is now required!
+
 Enhancements:
 
+• Non-urgent stanzas are now queued locally if PowerSaving is turned on
+  but the google:queue extension is not available. (Senko)
+
+• The ReferenceIdentities property on server TLS channels is now
+  implemented, populated partly from a new
+  'extra-certificate-identities' parameter. This allows Empathy/Gabble
+  to safely trust the Google Talk server's certificate when using a JID
+  hosted by Google Apps without prompting the user. (fd.o#35410 and
+  fd.o#35415, Stef Walter)
+
+• Fatal criticals can now be turned off at configure time (fd.o#35840,
+  Marco Barisione)
+
+• The new StreamHandler methods from spec 0.22.1 for rtcp-fb and
+  rtp-hdrext are now implemented. (fd.o#34985, Olivier)
+
 Fixes:
+
+• `make check -C tests/twisted` now prints a helpful message if Twisted
+  is not available, and the regular tests now pass if Twisted is not
+  available. (Will)
+
+• Fix memory leaks in ServerTLSManager (fd.o#35395, Stef Walter)
 
 telepathy-gabble 0.11.8 (2011-03-14)
 ====================================

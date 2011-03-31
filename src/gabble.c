@@ -144,10 +144,12 @@ gabble_main (int argc,
 
   tp_debug_divert_messages (g_getenv ("GABBLE_LOGFILE"));
 
+#ifdef ENABLE_FATAL_CRITICALS
   /* make critical warnings fatal */
   fatal_mask = g_log_set_always_fatal (G_LOG_FATAL_MASK);
   fatal_mask |= G_LOG_LEVEL_CRITICAL;
   g_log_set_always_fatal (fatal_mask);
+#endif
 
 #ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();

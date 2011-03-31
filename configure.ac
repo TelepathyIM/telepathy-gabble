@@ -181,6 +181,18 @@ fi
 
 AC_SUBST(CLIENT_TYPE)
 
+# whether to assert when g_critical() is used
+AC_ARG_ENABLE([fatal-criticals],
+  AC_HELP_STRING([--disable-fatal-criticals],
+    [do not assert because of critical warnings]),
+    [fatal_criticals=$enableval], [fatal_criticals=yes])
+
+if test x$fatal_criticals = xyes; then
+  AC_DEFINE(ENABLE_FATAL_CRITICALS, [],
+      [Critical warnings will result in an assertion])
+fi
+AM_CONDITIONAL([ENABLE_FATAL_CRITICALS], [test "x$fatal_criticals" = xyes])
+
 dnl dummy check for gtk-doc
 AC_ARG_ENABLE(gtk-doc,
   AC_HELP_STRING([--enable-gtk-doc],[doesn't actually do anything]),

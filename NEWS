@@ -1,5 +1,5 @@
-telepathy-gabble 0.11.9 (2011-03-31)
-====================================
+telepathy-gabble 0.11.10 (2011-03-31)
+=====================================
 
 The “I am going to bake a cake with beetroot in it” release.
 
@@ -32,6 +32,11 @@ Fixes:
   available. (Will)
 
 • Fix memory leaks in ServerTLSManager (fd.o#35395, Stef Walter)
+
+telepathy-gabble 0.11.9 (never)
+===============================
+
+There is no telepathy-gabble 0.11.9.
 
 telepathy-gabble 0.11.8 (2011-03-14)
 ====================================

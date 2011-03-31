@@ -61,20 +61,39 @@ struct _GabbleJingleMediaRtp {
 };
 
 typedef struct {
-  guint8 id;
+  guint id;
   gchar *name;
   guint clockrate;
   guint channels;
   GHashTable *params;
+  guint trr_int;
+  GList *feedback_msgs;
 } JingleCodec;
 
-const gchar *gabble_jingle_media_rtp_parse (GabbleJingleMediaRtp *sess,
-    LmMessage *message, GError **error);
+typedef struct {
+  gchar *type;
+  gchar *subtype;
+} JingleFeedbackMessage;
+
+typedef struct {
+  guint id;
+  JingleContentSenders senders;
+  gchar *uri;
+} JingleRtpHeaderExtension;
+
+typedef struct {
+  GList *codecs;
+  GList *hdrexts;
+  guint trr_int;
+  GList *feedback_msgs;
+} JingleMediaDescription;
+
 void jingle_media_rtp_register (GabbleJingleFactory *factory);
-gboolean jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
-    GList *codecs, gboolean ready, GError **error);
-GList *gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self);
-GList *gabble_jingle_media_rtp_get_local_codecs (GabbleJingleMediaRtp *self);
+gboolean jingle_media_rtp_set_local_media_description (
+    GabbleJingleMediaRtp *self, JingleMediaDescription *md, gboolean ready,
+    GError **error);
+JingleMediaDescription *gabble_jingle_media_rtp_get_remote_media_description (
+    GabbleJingleMediaRtp *self);
 
 JingleCodec * jingle_media_rtp_codec_new (guint id, const gchar *name,
     guint clockrate, guint channels, GHashTable *params);
@@ -82,11 +101,25 @@ void jingle_media_rtp_codec_free (JingleCodec *p);
 void jingle_media_rtp_free_codecs (GList *codecs);
 GList * jingle_media_rtp_copy_codecs (GList *codecs);
 
-gboolean jingle_media_rtp_codecs_equal (GList *a, GList *b);
 gboolean jingle_media_rtp_compare_codecs (GList *old,
     GList *new,
     GList **changed,
     GError **e);
+
+JingleMediaDescription *jingle_media_description_new (void);
+void jingle_media_description_free (JingleMediaDescription *md);
+JingleMediaDescription *jingle_media_description_copy (
+    JingleMediaDescription *md);
+
+JingleRtpHeaderExtension *jingle_rtp_header_extension_new (guint id,
+    JingleContentSenders senders, const gchar *uri);
+void jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext);
+
+
+JingleFeedbackMessage *jingle_feedback_message_new (const gchar *type,
+    const gchar *subtype);
+void jingle_feedback_message_free (JingleFeedbackMessage *fb);
+void jingle_media_description_simplify (JingleMediaDescription *md);
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

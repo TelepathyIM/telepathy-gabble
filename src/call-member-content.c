@@ -353,8 +353,8 @@ call_member_content_jingle_removed_cb (GabbleJingleContent *jingle_content,
 }
 
 static void
-call_member_content_jingle_codecs_cb (GabbleJingleMediaRtp *media,
-    GList *codecs,
+call_member_content_jingle_media_description_cb (GabbleJingleMediaRtp *media,
+    JingleMediaDescription *md,
     gpointer user_data)
 {
   GabbleCallMemberContent *self = GABBLE_CALL_MEMBER_CONTENT (user_data);
@@ -400,8 +400,13 @@ gabble_call_member_content_get_remote_codecs (GabbleCallMemberContent *self)
   GList *jcodecs = NULL;
 
   if (self->priv->jingle_content != NULL)
-    jcodecs = gabble_jingle_media_rtp_get_remote_codecs (
-      GABBLE_JINGLE_MEDIA_RTP (self->priv->jingle_content));
+    {
+      JingleMediaDescription *md;
+      md = gabble_jingle_media_rtp_get_remote_media_description (
+          GABBLE_JINGLE_MEDIA_RTP (self->priv->jingle_content));
+      if (md != NULL)
+        jcodecs = md->codecs;
+    }
 
   return jcodecs != NULL ? jcodecs : self->priv->remote_codecs;
 }
@@ -451,8 +456,9 @@ gabble_call_member_content_set_jingle_content (GabbleCallMemberContent *self,
 
   gabble_signal_connect_weak (content, "removed",
       G_CALLBACK (call_member_content_jingle_removed_cb), G_OBJECT (self));
-  gabble_signal_connect_weak (content, "remote-codecs",
-    G_CALLBACK (call_member_content_jingle_codecs_cb), G_OBJECT (self));
+  gabble_signal_connect_weak (content, "remote-media-description",
+    G_CALLBACK (call_member_content_jingle_media_description_cb),
+      G_OBJECT (self));
 
   g_signal_emit (self, signals[GOT_JINGLE_CONTENT], 0);
 }

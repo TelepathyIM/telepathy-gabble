@@ -39,6 +39,7 @@
 #include "jingle-factory.h"
 #include "jingle-session.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "util.h"
 #include "jingle-transport-google.h"
 
@@ -48,7 +49,7 @@ G_DEFINE_TYPE (GabbleJingleMediaRtp,
 /* signal enum */
 enum
 {
-  REMOTE_CODECS,
+  REMOTE_MEDIA_DESCRIPTION,
   LAST_SIGNAL
 };
 
@@ -68,17 +69,21 @@ typedef enum {
 
 struct _GabbleJingleMediaRtpPrivate
 {
-  GList *local_codecs;
-  /* Holds (JingleCodec *)'s borrowed from local_codecs, namely those which have
-   * changed from local_codecs' previous value. Since the contents are
-   * borrowed, this must be freed with g_list_free, not
-   * jingle_media_rtp_free_codecs().
+  JingleMediaDescription *local_media_description;
+
+  /* Holds (JingleCodec *)'s borrowed from local_media_description,
+   * namely codecs which have changed from local_media_description's
+   * previous value. Since the contents are borrowed, this must be
+   * freed with g_list_free, not jingle_media_rtp_free_codecs().
    */
   GList *local_codec_updates;
 
-  GList *remote_codecs;
+  JingleMediaDescription *remote_media_description;
   JingleMediaType media_type;
   gboolean remote_mute;
+
+  gboolean has_rtcp_fb;
+  gboolean has_rtp_hdrext;
 
   gboolean dispose_has_run;
 };
@@ -103,6 +108,7 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   p->name = g_strdup (name);
   p->clockrate = clockrate;
   p->channels = channels;
+  p->trr_int = G_MAXUINT;
 
   if (params != NULL)
     {
@@ -118,11 +124,40 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
   return p;
 }
 
+
+static GList *
+jingle_feedback_message_list_copy (GList *fbs)
+{
+  GQueue new = G_QUEUE_INIT;
+  GList *li;
+
+  for (li = fbs; li; li = li->next)
+    {
+      JingleFeedbackMessage *fb = li->data;
+
+      g_queue_push_tail (&new, jingle_feedback_message_new (fb->type,
+              fb->subtype));
+    }
+
+  return new.head;
+}
+
+static void
+jingle_feedback_message_list_free (GList *fbs)
+{
+  while (fbs != NULL)
+    {
+      jingle_feedback_message_free (fbs->data);
+      fbs = g_list_delete_link (fbs, fbs);
+    }
+}
+
 void
 jingle_media_rtp_codec_free (JingleCodec *p)
 {
   g_hash_table_unref (p->params);
   g_free (p->name);
+  jingle_feedback_message_list_free (p->feedback_msgs);
   g_slice_free (JingleCodec, p);
 }
 
@@ -150,8 +185,10 @@ jingle_media_rtp_copy_codecs (GList *codecs)
   for (l = codecs; l != NULL; l = g_list_next (l))
     {
       JingleCodec *c = l->data;
-      ret = g_list_append (ret, jingle_media_rtp_codec_new (c->id,
-            c->name, c->clockrate, c->channels, c->params));
+      JingleCodec *newc =  jingle_media_rtp_codec_new (c->id,
+          c->name, c->clockrate, c->channels, c->params);
+      newc->trr_int = c->trr_int;
+      ret = g_list_append (ret, newc);
     }
 
   return ret;
@@ -179,11 +216,13 @@ gabble_jingle_media_rtp_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  jingle_media_rtp_free_codecs (priv->remote_codecs);
-  priv->remote_codecs = NULL;
+  if (priv->remote_media_description != NULL)
+    jingle_media_description_free (priv->remote_media_description);
+  priv->remote_media_description = NULL;
 
-  jingle_media_rtp_free_codecs (priv->local_codecs);
-  priv->local_codecs = NULL;
+  if (priv->local_media_description != NULL)
+    jingle_media_description_free (priv->local_media_description);
+  priv->local_media_description = NULL;
 
   if (priv->local_codec_updates != NULL)
     {
@@ -278,7 +317,7 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 
   /* signal definitions */
 
-  signals[REMOTE_CODECS] = g_signal_new ("remote-codecs",
+  signals[REMOTE_MEDIA_DESCRIPTION] = g_signal_new ("remote-media-description",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
         G_TYPE_NONE, 1, G_TYPE_POINTER);
@@ -360,6 +399,69 @@ extract_media_type (LmMessageNode *desc_node,
   g_assert_not_reached ();
 }
 
+static gboolean
+content_has_cap (GabbleJingleContent *content, const gchar *cap)
+{
+  GabblePresence *presence = gabble_presence_cache_get (
+      content->conn->presence_cache, content->session->peer);
+
+  return (presence != NULL) && gabble_presence_resource_has_caps (presence,
+      gabble_jingle_session_get_peer_resource (content->session),
+      gabble_capability_set_predicate_has, cap);
+}
+
+static JingleFeedbackMessage *
+parse_rtcp_fb (GabbleJingleContent *content, LmMessageNode *node)
+{
+  const gchar *pt_ns =
+      lm_message_node_get_namespace (node);
+  const gchar *type;
+  const gchar *subtype;
+
+  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+    return NULL;
+
+  type = lm_message_node_get_attribute (node, "type");
+  if (type == NULL)
+    return NULL;
+
+  subtype = lm_message_node_get_attribute (node, "subtype");
+
+  /* This is optional, defaults to "" */
+  if (subtype == NULL)
+    subtype = "";
+
+  return jingle_feedback_message_new (type, subtype);
+}
+
+
+/*
+ * Returns G_MAXUINT on error
+ */
+static guint
+parse_rtcp_fb_trr_int (GabbleJingleContent *content, LmMessageNode *node)
+{
+  const gchar *pt_ns =
+      lm_message_node_get_namespace (node);
+  const gchar *txt;
+  guint trr_int;
+  gchar *endptr = NULL;
+
+  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+    return G_MAXUINT;
+
+  txt = lm_message_node_get_attribute (node, "value");
+  if (txt == NULL)
+    return G_MAXUINT;
+
+  trr_int = strtol (txt, &endptr, 10);
+  if (endptr == NULL || endptr == txt)
+    return G_MAXUINT;
+
+  return trr_int;
+}
+
+
 /**
  * parse_payload_type:
  * @node: a <payload-type> node.
@@ -368,8 +470,10 @@ extract_media_type (LmMessageNode *desc_node,
  *          otherwise.
  */
 static JingleCodec *
-parse_payload_type (LmMessageNode *node)
+parse_payload_type (GabbleJingleContent *content, LmMessageNode *node)
 {
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleCodec *p;
   const char *txt;
   guint8 id;
@@ -406,19 +510,41 @@ parse_payload_type (LmMessageNode *node)
   for (i = node_iter (node); i; i = node_iter_next (i))
     {
       LmMessageNode *param = node_iter_data (i);
-      const gchar *param_name, *param_value;
 
-      if (tp_strdiff (lm_message_node_get_name (param), "parameter"))
-        continue;
+      if (!tp_strdiff (lm_message_node_get_name (param), "parameter"))
+        {
+          const gchar *param_name, *param_value;
 
-      param_name = lm_message_node_get_attribute (param, "name");
-      param_value = lm_message_node_get_attribute (param, "value");
+          param_name = lm_message_node_get_attribute (param, "name");
+          param_value = lm_message_node_get_attribute (param, "value");
 
-      if (param_name == NULL || param_value == NULL)
-        continue;
+          if (param_name == NULL || param_value == NULL)
+            continue;
 
-      g_hash_table_insert (p->params, g_strdup (param_name),
-          g_strdup (param_value));
+          g_hash_table_insert (p->params, g_strdup (param_name),
+              g_strdup (param_value));
+        }
+      else if (!tp_strdiff (lm_message_node_get_name (param), "rtcp-fb"))
+        {
+          JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
+
+          if (fb != NULL)
+            {
+              p->feedback_msgs = g_list_append (p->feedback_msgs, fb);
+              priv->has_rtcp_fb = TRUE;
+            }
+        }
+      else if (!tp_strdiff (lm_message_node_get_name (param),
+              "rtcp-fb-trr-int"))
+        {
+          guint trr_int = parse_rtcp_fb_trr_int (content, param);
+
+          if (trr_int != G_MAXUINT)
+            {
+              p->trr_int = trr_int;
+              priv->has_rtcp_fb = TRUE;
+            }
+        }
     }
 
   DEBUG ("new remote codec: id = %u, name = %s, clockrate = %u, channels = %u",
@@ -426,6 +552,44 @@ parse_payload_type (LmMessageNode *node)
 
   return p;
 }
+
+static JingleRtpHeaderExtension *
+parse_rtp_header_extension (LmMessageNode *node)
+{
+  guint id;
+  JingleContentSenders senders;
+  const gchar *uri;
+  const char *txt;
+
+  txt = lm_message_node_get_attribute (node, "id");
+  if (txt == NULL)
+    return NULL;
+
+  id = atoi (txt);
+
+  /* Only valid ranges are 1-256 and 4096-4351 */
+  if ((id < 1 || id > 256) && (id < 4096 || id > 4351))
+    return NULL;
+
+  txt = lm_message_node_get_attribute (node, "senders");
+
+  if (txt == NULL || !g_ascii_strcasecmp (txt, "both"))
+    senders = JINGLE_CONTENT_SENDERS_BOTH;
+  else if (!g_ascii_strcasecmp (txt, "initiator"))
+    senders = JINGLE_CONTENT_SENDERS_INITIATOR;
+  else if (!g_ascii_strcasecmp (txt, "responder"))
+    senders = JINGLE_CONTENT_SENDERS_RESPONDER;
+  else
+    return NULL;
+
+  uri = lm_message_node_get_attribute (node, "uri");
+
+  if (uri == NULL)
+    return NULL;
+
+  return jingle_rtp_header_extension_new (id, senders, uri);
+}
+
 
 /**
  * codec_update_coherent:
@@ -483,9 +647,9 @@ codec_update_coherent (const JingleCodec *old_c,
 }
 
 static void
-update_remote_codecs (GabbleJingleMediaRtp *self,
-                      GList *new_codecs,
-                      GError **error)
+update_remote_media_description (GabbleJingleMediaRtp *self,
+                                 JingleMediaDescription *new_media_description,
+                                 GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   GHashTable *rc = NULL;
@@ -493,19 +657,19 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
   GList *l;
   GError *e = NULL;
 
-  if (priv->remote_codecs == NULL)
+  if (priv->remote_media_description == NULL)
     {
-      priv->remote_codecs = new_codecs;
-      new_codecs = NULL;
+      priv->remote_media_description = new_media_description;
+      new_media_description = NULL;
       goto out;
     }
 
-  rc = build_codec_table (priv->remote_codecs);
+  rc = build_codec_table (priv->remote_media_description->codecs);
 
   /* We already know some remote codecs, so this is just the other end updating
    * some parameters.
    */
-  for (l = new_codecs; l != NULL; l = l->next)
+  for (l = new_media_description->codecs; l != NULL; l = l->next)
     {
       new_c = l->data;
       old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
@@ -516,7 +680,7 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
     }
 
   /* Okay, all the updates are cool. Let's switch the parameters around. */
-  for (l = new_codecs; l != NULL; l = l->next)
+  for (l = new_media_description->codecs; l != NULL; l = l->next)
     {
       GHashTable *params;
 
@@ -529,7 +693,8 @@ update_remote_codecs (GabbleJingleMediaRtp *self,
     }
 
 out:
-  jingle_media_rtp_free_codecs (new_codecs);
+  if (new_media_description != NULL)
+    jingle_media_description_free (new_media_description);
 
   tp_clear_pointer (&rc, g_hash_table_unref);
 
@@ -540,8 +705,9 @@ out:
     }
   else
     {
-      DEBUG ("Emitting remote-codecs signal");
-      g_signal_emit (self, signals[REMOTE_CODECS], 0, priv->remote_codecs);
+      DEBUG ("Emitting remote-media-description signal");
+      g_signal_emit (self, signals[REMOTE_MEDIA_DESCRIPTION], 0,
+          priv->remote_media_description);
     }
 }
 
@@ -552,12 +718,13 @@ parse_description (GabbleJingleContent *content,
   GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
   GabbleJingleMediaRtpPrivate *priv = self->priv;
   JingleMediaType mtype;
-  GList *codecs = NULL;
+  JingleMediaDescription *md;
   JingleCodec *p;
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   gboolean video_session = FALSE;
   NodeIter i;
-  gboolean payload_error = FALSE;
+  gboolean description_error = FALSE;
+  gboolean is_avpf = FALSE;
 
   DEBUG ("node: %s", desc_node->name);
 
@@ -578,51 +745,118 @@ parse_description (GabbleJingleContent *content,
       video_session = !tp_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
     }
 
-  for (i = node_iter (desc_node); i && !payload_error; i = node_iter_next (i))
+  md = jingle_media_description_new ();
+
+  for (i = node_iter (desc_node); i && !description_error; i = node_iter_next (i))
     {
       LmMessageNode *node = node_iter_data (i);
-      if (tp_strdiff (lm_message_node_get_name (node), "payload-type"))
-        continue;
 
-      if (dialect == JINGLE_DIALECT_GTALK3)
+      if (!tp_strdiff (lm_message_node_get_name (node), "payload-type"))
         {
-          const gchar *pt_ns =
-            lm_message_node_get_namespace (node);
 
-          if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+          if (dialect == JINGLE_DIALECT_GTALK3)
             {
-              if (video_session &&
-                  tp_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
-                continue;
+              const gchar *pt_ns =
+                  lm_message_node_get_namespace (node);
+
+              if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+                {
+                  if (video_session &&
+                      tp_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
+                    continue;
+                }
+              else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+                {
+                  if (!(video_session && pt_ns == NULL)
+                      && tp_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
+                    continue;
+                }
             }
-          else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+
+          p = parse_payload_type (content, node);
+
+          if (p == NULL)
             {
-              if (!(video_session && pt_ns == NULL)
-                    && tp_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
-                continue;
+              description_error = TRUE;
+            }
+          else
+            {
+              md->codecs = g_list_append (md->codecs, p);
+              if (p->trr_int != G_MAXUINT || p->feedback_msgs)
+                is_avpf = TRUE;
             }
         }
+      else if (!tp_strdiff (lm_message_node_get_name (node), "rtp-hdrext"))
+        {
+          const gchar *pt_ns =
+              lm_message_node_get_namespace (node);
+          JingleRtpHeaderExtension *hdrext;
 
-      p = parse_payload_type (node);
+          if (tp_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
+            continue;
 
-      if (p == NULL)
-        payload_error = TRUE;
-      else
-        codecs = g_list_append (codecs, p);
+          hdrext = parse_rtp_header_extension (node);
+
+          if (hdrext == NULL)
+            {
+              description_error = TRUE;
+            }
+          else
+            {
+              md->hdrexts = g_list_append (md->hdrexts, hdrext);
+              priv->has_rtp_hdrext = TRUE;
+            }
+
+        }
+      else if (!tp_strdiff (lm_message_node_get_name (node), "rtcp-fb"))
+        {
+          JingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
+
+          if (fb == NULL)
+            {
+              description_error = TRUE;
+            }
+          else
+            {
+              md->feedback_msgs = g_list_append (md->feedback_msgs, fb);
+              is_avpf = TRUE;
+              priv->has_rtcp_fb = TRUE;
+            }
+        }
+      else if (!tp_strdiff (lm_message_node_get_name (node),
+                "rtcp-fb-trr-int"))
+        {
+          guint trr_int = parse_rtcp_fb_trr_int (content, node);
+
+          if (trr_int == G_MAXUINT)
+            {
+              description_error = TRUE;
+            }
+          else
+            {
+              md->trr_int = trr_int;
+              is_avpf = TRUE;
+              priv->has_rtcp_fb = TRUE;
+            }
+       }
     }
 
-  if (payload_error)
+  if (description_error)
     {
       /* rollback these */
-      jingle_media_rtp_free_codecs (codecs);
+      jingle_media_description_free (md);
       g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
-          "invalid payload");
+          "invalid description");
       return;
     }
 
+  /* If the profile is AVPF, the trr-int default to 0 */
+  if (is_avpf && md->trr_int == G_MAXUINT)
+    md->trr_int = 0;
+
   priv->media_type = mtype;
 
-  update_remote_codecs (self, codecs, error);
+  update_remote_media_description (self, md, error);
 }
 
 /* The Google Talk desktop client is picky about the case of codec names, even
@@ -672,11 +906,46 @@ _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
 }
 
 static void
-produce_payload_type (LmMessageNode *desc_node,
+produce_rtcp_fb_trr_int (LmMessageNode *node,
+                         guint trr_int)
+{
+  LmMessageNode *trr_int_node;
+  gchar tmp[10];
+
+ if (trr_int == G_MAXUINT || trr_int == 0)
+    return;
+
+  trr_int_node = lm_message_node_add_child (node, "rtcp-fb-trr-int", NULL);
+
+  lm_message_node_set_attribute (trr_int_node, "xmlns", NS_JINGLE_RTCP_FB);
+  snprintf (tmp, 9, "%d", trr_int);
+  lm_message_node_set_attribute (trr_int_node, "value", tmp);
+}
+
+
+static void
+produce_rtcp_fb (JingleFeedbackMessage *fb, LmMessageNode *node)
+{
+  LmMessageNode *fb_node;
+
+  fb_node = lm_message_node_add_child (node, "rtcp-fb", NULL);
+
+  lm_message_node_set_attribute (fb_node, "xmlns", NS_JINGLE_RTCP_FB);
+  lm_message_node_set_attribute (fb_node, "type", fb->type);
+
+  if (fb->subtype != NULL && fb->subtype[0] != 0)
+    lm_message_node_set_attribute (fb_node, "subtype", fb->subtype);
+}
+
+static void
+produce_payload_type (GabbleJingleContent *content,
+                      LmMessageNode *desc_node,
                       JingleMediaType type,
                       JingleCodec *p,
                       JingleDialect dialect)
 {
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
   LmMessageNode *pt_node;
   gchar buf[16];
 
@@ -743,6 +1012,13 @@ produce_payload_type (LmMessageNode *desc_node,
 
   if (p->params != NULL)
     g_hash_table_foreach (p->params, _produce_extra_param, pt_node);
+
+
+  if (priv->has_rtcp_fb)
+    {
+      g_list_foreach (p->feedback_msgs, (GFunc) produce_rtcp_fb, pt_node);
+      produce_rtcp_fb_trr_int (pt_node, p->trr_int);
+    }
 }
 
 static LmMessageNode *
@@ -791,13 +1067,42 @@ produce_description_node (JingleDialect dialect, JingleMediaType media_type,
 }
 
 static void
-produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
+produce_hdrext (gpointer data, gpointer user_data)
 {
-  GabbleJingleMediaRtp *desc = GABBLE_JINGLE_MEDIA_RTP (obj);
-  GabbleJingleMediaRtpPrivate *priv = desc->priv;
+  JingleRtpHeaderExtension *hdrext = data;
+  LmMessageNode *desc_node = user_data;
+  LmMessageNode *hdrext_node;
+  gchar buf[16];
+
+  hdrext_node = lm_message_node_add_child (desc_node, "rtp-hdrext", NULL);
+
+  /* id: required */
+  sprintf (buf, "%d", hdrext->id);
+  lm_message_node_set_attribute (hdrext_node, "id", buf);
+  lm_message_node_set_attribute (hdrext_node, "uri", hdrext->uri);
+
+  if (hdrext->senders == JINGLE_CONTENT_SENDERS_INITIATOR)
+    lm_message_node_set_attribute (hdrext_node, "senders", "initiator");
+  else if (hdrext->senders == JINGLE_CONTENT_SENDERS_RESPONDER)
+    lm_message_node_set_attribute (hdrext_node, "senders", "responder");
+
+  lm_message_node_set_attribute (hdrext_node, "xmlns", NS_JINGLE_RTP_HDREXT);
+}
+
+static void
+produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
+{
+  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
   GList *li;
-  JingleDialect dialect = gabble_jingle_session_get_dialect (obj->session);
+  JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   LmMessageNode *desc_node;
+
+  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+    priv->has_rtcp_fb = TRUE;
+
+  if (content_has_cap (content, NS_JINGLE_RTP_HDREXT))
+    priv->has_rtp_hdrext = TRUE;
 
   desc_node = produce_description_node (dialect, priv->media_type,
       content_node);
@@ -812,10 +1117,23 @@ produce_description (GabbleJingleContent *obj, LmMessageNode *content_node)
   if (priv->local_codec_updates != NULL)
     li = priv->local_codec_updates;
   else
-    li = priv->local_codecs;
+    li = priv->local_media_description->codecs;
 
   for (; li != NULL; li = li->next)
-    produce_payload_type (desc_node, priv->media_type, li->data, dialect);
+    produce_payload_type (content, desc_node, priv->media_type, li->data,
+        dialect);
+
+  if (priv->has_rtp_hdrext && priv->local_media_description->hdrexts)
+    g_list_foreach (priv->local_media_description->hdrexts, produce_hdrext,
+        desc_node);
+
+  if (priv->has_rtcp_fb)
+    {
+      g_list_foreach (priv->local_media_description->feedback_msgs,
+          (GFunc) produce_rtcp_fb, desc_node);
+      produce_rtcp_fb_trr_int (desc_node,
+          priv->local_media_description->trr_int);
+    }
 }
 
 /**
@@ -846,43 +1164,6 @@ string_string_maps_equal (GHashTable *a,
     }
 
   return TRUE;
-}
-
-/**
- * jingle_media_rtp_codecs_equal:
- * @a: codec list
- * @b: codec list to compare to
- *
- * Returns: %TRUE if the codecs lists are equal, %FALSE otherwise
- */
-gboolean
-jingle_media_rtp_codecs_equal (GList *a, GList *b)
-{
-  JingleCodec *ac, *bc;
-
-  for (; a != NULL && b != NULL; a = a->next, b = b->next)
-    {
-      ac = a->data;
-      bc = b->data;
-
-      if (ac->id != bc->id)
-        return FALSE;
-
-      if (tp_strdiff (ac->name, bc->name))
-        return FALSE;
-
-      if (ac->clockrate != bc->clockrate)
-        return FALSE;
-
-      if (ac->channels != bc->channels)
-        return FALSE;
-
-      if (!string_string_maps_equal (ac->params, bc->params))
-        return FALSE;
-    }
-
-  /* Should have finished both lists */
-  return a == NULL && b == NULL;
 }
 
 /**
@@ -937,27 +1218,28 @@ out:
 /* Takes in a list of slice-allocated JingleCodec structs. Ready indicated
  * whether the codecs can regarded as ready to sent from now on */
 gboolean
-jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
-                                   GList *codecs,
-                                   gboolean ready,
-                                   GError **error)
+jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
+                                              JingleMediaDescription *md,
+                                              gboolean ready,
+                                              GError **error)
 {
   GabbleJingleMediaRtpPrivate *priv = self->priv;
 
-  DEBUG ("setting new local codecs");
+  DEBUG ("setting new local media description");
 
-  if (priv->local_codecs != NULL)
+  if (priv->local_media_description != NULL)
     {
       GList *changed = NULL;
       GError *err = NULL;
 
       g_assert (priv->local_codec_updates == NULL);
 
-      if (!jingle_media_rtp_compare_codecs (priv->local_codecs,
-            codecs, &changed, &err))
+      if (!jingle_media_rtp_compare_codecs (
+            priv->local_media_description->codecs,
+            md->codecs, &changed, &err))
         {
           DEBUG ("codec update was illegal: %s", err->message);
-          jingle_media_rtp_free_codecs (codecs);
+          jingle_media_description_free (md);
           g_propagate_error (error, err);
           return FALSE;
         }
@@ -965,17 +1247,17 @@ jingle_media_rtp_set_local_codecs (GabbleJingleMediaRtp *self,
       if (changed == NULL)
         {
           DEBUG ("codec update changed nothing!");
-          jingle_media_rtp_free_codecs (codecs);
+          jingle_media_description_free (md);
           goto out;
         }
 
       DEBUG ("%u codecs changed", g_list_length (changed));
       priv->local_codec_updates = changed;
 
-      jingle_media_rtp_free_codecs (priv->local_codecs);
+      jingle_media_description_free (priv->local_media_description);
     }
 
-  priv->local_codecs = codecs;
+  priv->local_media_description = md;
 
   /* Codecs have changed, sending a fresh description might be necessary */
   gabble_jingle_content_maybe_send_description (GABBLE_JINGLE_CONTENT (self));
@@ -1018,18 +1300,224 @@ jingle_media_rtp_register (GabbleJingleFactory *factory)
       GABBLE_TYPE_JINGLE_MEDIA_RTP);
 }
 
-/* We can't get remote codecs when they're signalled, because
+/* We can't get remote media description when they're signalled, because
  * the signal is emitted immediately upon JingleContent creation,
  * and parsing, which is before a corresponding MediaStream is
  * created. */
-GList *
-gabble_jingle_media_rtp_get_remote_codecs (GabbleJingleMediaRtp *self)
+JingleMediaDescription *
+gabble_jingle_media_rtp_get_remote_media_description (
+    GabbleJingleMediaRtp *self)
 {
-  return self->priv->remote_codecs;
+  GabbleJingleMediaRtpPrivate *priv = self->priv;
+
+  return priv->remote_media_description;
 }
 
-GList *
-gabble_jingle_media_rtp_get_local_codecs (GabbleJingleMediaRtp *self)
+JingleMediaDescription *
+jingle_media_description_new (void)
 {
-  return self->priv->local_codecs;
+  JingleMediaDescription *md = g_slice_new0 (JingleMediaDescription);
+
+  md->trr_int = G_MAXUINT;
+
+  return md;
+}
+
+void
+jingle_media_description_free (JingleMediaDescription *md)
+{
+  jingle_media_rtp_free_codecs (md->codecs);
+
+  while (md->hdrexts != NULL)
+    {
+      jingle_rtp_header_extension_free (md->hdrexts->data);
+      md->hdrexts = g_list_delete_link (md->hdrexts, md->hdrexts);
+    }
+
+  g_slice_free (JingleMediaDescription, md);
+}
+
+JingleMediaDescription *
+jingle_media_description_copy (JingleMediaDescription *md)
+{
+  JingleMediaDescription *newmd = g_slice_new0 (JingleMediaDescription);
+  GList *li;
+
+  newmd->codecs = jingle_media_rtp_copy_codecs (md->codecs);
+  newmd->feedback_msgs = jingle_feedback_message_list_copy (md->feedback_msgs);
+  newmd->trr_int = md->trr_int;
+
+  for (li = md->hdrexts; li; li = li->next)
+    {
+      JingleRtpHeaderExtension *h = li->data;
+
+      newmd->hdrexts = g_list_append (newmd->hdrexts,
+          jingle_rtp_header_extension_new (h->id, h->senders, h->uri));
+    }
+
+  return newmd;
+}
+
+JingleRtpHeaderExtension *
+jingle_rtp_header_extension_new (guint id, JingleContentSenders senders,
+    const gchar *uri)
+{
+  JingleRtpHeaderExtension *hdrext = g_slice_new (JingleRtpHeaderExtension);
+
+  hdrext->id = id;
+  hdrext->senders = senders;
+  hdrext->uri = g_strdup (uri);
+
+  return hdrext;
+}
+
+void
+jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext)
+{
+  g_free (hdrext->uri);
+  g_slice_free (JingleRtpHeaderExtension, hdrext);
+}
+
+JingleFeedbackMessage *
+jingle_feedback_message_new (const gchar *type, const gchar *subtype)
+{
+  JingleFeedbackMessage *fb = g_slice_new0 (JingleFeedbackMessage);
+
+  fb->type = g_strdup (type);
+  fb->subtype = g_strdup (subtype);
+
+  return fb;
+}
+
+void
+jingle_feedback_message_free (JingleFeedbackMessage *fb)
+{
+  g_free (fb->type);
+  g_free (fb->subtype);
+  g_slice_free (JingleFeedbackMessage, fb);
+}
+
+
+static gint
+jingle_feedback_message_compare (const JingleFeedbackMessage *fb1,
+    const JingleFeedbackMessage *fb2)
+{
+  if (!g_ascii_strcasecmp (fb1->type, fb2->type) &&
+      !g_ascii_strcasecmp (fb1->subtype, fb2->subtype))
+    return 0;
+  else
+    return 1;
+}
+
+/**
+ * jingle_media_description_simplify:
+ *
+ * Removes duplicated Feedback message and put them in the global structure
+ *
+ * This function will iterate over every codec in a description and look for
+ * feedback messages that are exactly the same in every codec and will instead
+ * put the in the list in the description and remove them from the childs.
+ * This limits the amount of duplication in the resulting XML.
+ */
+
+void
+jingle_media_description_simplify (JingleMediaDescription *md)
+{
+  GList *item;
+  guint trr_int = 0;
+  gboolean trr_int_all_same = TRUE;
+  gboolean init = FALSE;
+  GList *identical_fbs = NULL;
+
+  for (item = md->codecs; item; item = item->next)
+    {
+      JingleCodec *c = item->data;
+
+      if (!init)
+        {
+          /* For the first codec, it stores the trr_int and the list
+           * of feedback messages */
+          trr_int = c->trr_int;
+          identical_fbs = g_list_copy (c->feedback_msgs);
+          init = TRUE;
+        }
+      else
+        {
+          GList *item2;
+
+          /* For every subsequent codec, we check if the trr_int is the same */
+
+          if (trr_int != c->trr_int)
+            trr_int_all_same = FALSE;
+
+          /* We also intersect the remembered list of feedback messages with
+           * the list for that codec and remove any feedback message that isn't
+           * in both
+           */
+
+          for (item2 = identical_fbs; item2;)
+            {
+              JingleFeedbackMessage *fb = identical_fbs->data;
+              GList *next = item2->next;
+
+              if (!g_list_find_custom (c->feedback_msgs, fb,
+                      (GCompareFunc) jingle_feedback_message_compare))
+                identical_fbs = g_list_delete_link (identical_fbs,  item2);
+
+              item2 = next;
+            }
+
+          /* If the trr_int is not the same everywhere and there are not common
+           * feedback messages, then stop
+           */
+          if (!trr_int_all_same && identical_fbs == NULL)
+            break;
+        }
+    }
+
+  if (trr_int_all_same && trr_int == G_MAXUINT)
+    trr_int_all_same = FALSE;
+
+  /* if the trr_int is the same everywhere, lets set it globally */
+  if (trr_int_all_same)
+    md->trr_int = trr_int;
+
+  /* If there are feedback messages that are in every codec, put a copy of them
+   * in the global structure
+   */
+  if (identical_fbs)
+    {
+      md->feedback_msgs = jingle_feedback_message_list_copy (identical_fbs);
+      g_list_free (identical_fbs);
+    }
+
+  if (trr_int_all_same || md->feedback_msgs != NULL)
+    for (item = md->codecs; item; item = item->next)
+      {
+        JingleCodec *c = item->data;
+        GList *item2;
+
+        /* If the trr_int is the same everywhere, lets put the default on
+         * each codec, we have it in the main structure
+         */
+        if (trr_int_all_same)
+          c->trr_int = G_MAXUINT;
+
+        /* Find the feedback messages that were put in the main structure and
+         * remove them from each codec
+         */
+        for (item2 = md->feedback_msgs; item2; item2 = item2->next)
+          {
+            GList *duplicated;
+            JingleFeedbackMessage *fb = item2->data;
+
+            while ((duplicated = g_list_find_custom (c->feedback_msgs, fb,
+                        (GCompareFunc) jingle_feedback_message_compare)) != NULL)
+              {
+                jingle_feedback_message_free (duplicated->data);
+                c->feedback_msgs = g_list_delete_link (c->feedback_msgs,
+                    duplicated);
+              }
+          }
+      }
 }

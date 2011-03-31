@@ -24,7 +24,8 @@ from twisted.internet import ssl
 
 import ns
 from gabbletest import exec_test, XmppAuthenticator
-from servicetest import ProxyWrapper, EventPattern, assertEquals, assertLength
+from servicetest import ProxyWrapper, EventPattern
+from servicetest import assertEquals, assertLength, assertSameSets
 import constants as cs
 
 JID = "test@example.org"
@@ -218,6 +219,17 @@ def test_connect_success(q, bus, conn, stream):
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
         )
 
+def test_channel_reference_identity(q, bus, conn, stream):
+    chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn)
+
+    chan_props = dbus.Interface(chan, cs.PROPERTIES_IFACE)
+    reference_identities = chan_props.Get(cs.CHANNEL_TYPE_SERVER_TLS_CONNECTION,
+                                          "ReferenceIdentities")
+    hostname = chan_props.Get(cs.CHANNEL_TYPE_SERVER_TLS_CONNECTION, "Hostname")
+
+    assertSameSets(reference_identities, [ "example.org", "localhost"])
+    assertEquals(hostname, "example.org")
+
 if __name__ == '__main__':
     exec_test(test_connect_success, { 'account' : JID },
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
@@ -234,4 +246,8 @@ if __name__ == '__main__':
                 'require-encryption' : True },
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
     exec_test(test_disconnect_inbetween, { 'account' : JID },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+
+    # Certificate verification reference identity checks
+    exec_test(test_channel_reference_identity, { 'account' : JID },
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)

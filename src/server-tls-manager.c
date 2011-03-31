@@ -313,6 +313,7 @@ gabble_server_tls_manager_dispose (GObject *object)
 
   self->priv->dispose_has_run = TRUE;
 
+  tp_clear_object (&self->priv->tls_session);
   tp_clear_object (&self->priv->connection);
 
   G_OBJECT_CLASS (gabble_server_tls_manager_parent_class)->dispose (object);
@@ -327,6 +328,8 @@ gabble_server_tls_manager_finalize (GObject *object)
 
   if (self->priv->channel != NULL)
     tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
+
+  g_free (self->priv->peername);
 
   G_OBJECT_CLASS (gabble_server_tls_manager_parent_class)->finalize (object);
 }

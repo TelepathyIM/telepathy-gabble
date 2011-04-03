@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda:stream1
-    port1 = reactor.listenTCP(4242, factory)
+    port1 = reactor.listenTCP(4242, factory, interface='localhost')
 
     params = {
         'account': 'test2@localhost/Resource',
@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda:stream2
-    port1 = reactor.listenTCP(4343, factory)
+    port1 = reactor.listenTCP(4343, factory, interface='localhost')
 
 
     bus.add_signal_receiver(

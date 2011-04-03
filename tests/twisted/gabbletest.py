@@ -587,7 +587,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                                    resource=resource, suffix=suffix))
 
     factory = StreamFactory(streams, jids)
-    port = reactor.listenTCP(4242, factory)
+    port = reactor.listenTCP(4242, factory, interface='localhost')
 
     def signal_receiver(*args, **kw):
         if kw['path'] == '/org/freedesktop/DBus' and \

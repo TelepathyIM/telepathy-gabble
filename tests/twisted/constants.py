@@ -162,6 +162,8 @@ CERT_UNTRUSTED = ERROR + '.Cert.Untrusted'
 SERVICE_BUSY = ERROR + '.ServiceBusy'
 SERVICE_CONFUSED = ERROR + '.ServiceConfused'
 
+BANNED = ERROR + '.Channel.Banned'
+
 UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 
 TUBE_PARAMETERS = CHANNEL_IFACE_TUBE + '.Parameters'

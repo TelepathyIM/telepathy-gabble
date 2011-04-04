@@ -25,21 +25,15 @@ def echo_muc_presence (q, stream, stanza, affiliation, role):
 
     stream.send (stanza)
 
-def join_muc(q, bus, conn, stream, muc, request=None,
-        also_capture=[], role='participant'):
-    """
-    Joins 'muc', returning the muc's handle, a proxy object for the channel,
-    its path and its immutable properties just after the CreateChannel event
-    has fired. The room contains one other member.
-    """
+def try_to_join_muc(q, bus, conn, stream, muc, request=None):
+    """Ask Gabble to join a MUC, and expect it to send <presence/>"""
+
     if request is None:
         request = {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
             cs.TARGET_ID: muc,
         }
-
-    muc_handle = request_muc_handle(q, conn, stream, muc)
 
     requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
     call_async(q, requests, 'CreateChannel',
@@ -53,6 +47,16 @@ def join_muc(q, bus, conn, stream, muc, request=None,
     x_muc_nodes = xpath.queryForNodes('/presence/x[@xmlns="%s"]' % ns.MUC,
         join_event.stanza)
     assertLength(1, x_muc_nodes)
+
+def join_muc(q, bus, conn, stream, muc, request=None,
+        also_capture=[], role='participant'):
+    """
+    Joins 'muc', returning the muc's handle, a proxy object for the channel,
+    its path and its immutable properties just after the CreateChannel event
+    has fired. The room contains one other member.
+    """
+    muc_handle = request_muc_handle(q, conn, stream, muc)
+    try_to_join_muc(q, bus, conn, stream, muc, request=request)
 
     # Send presence for other member of room.
     stream.send(make_muc_presence('owner', 'moderator', muc, 'bob'))

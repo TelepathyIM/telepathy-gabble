@@ -1399,73 +1399,54 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   GabbleMucChannelPrivate *priv = chan->priv;
   GabbleConnection *conn = GABBLE_CONNECTION (
       tp_base_channel_get_connection (base));
-
   TpIntSet *set;
   GArray *handles;
-  GError error = { TP_ERRORS,
-      TP_ERROR_CANCELLED,
-      "Muc channel closed below us"
-  };
+  GError error = { TP_ERRORS, TP_ERROR_CANCELLED,
+      "Muc channel closed below us" };
 
   if (tp_base_channel_is_destroyed (base) || priv->closing)
     return;
 
   DEBUG ("Closing");
+  /* Ensure we stay alive even while telling everyone else to abandon us. */
+  g_object_ref (chan);
 
   gabble_muc_channel_close_tube (chan);
-
   muc_call_channel_finish_requests (chan, NULL, &error);
-
   g_cancellable_cancel (priv->requests_cancellable);
 
   while (priv->calls != NULL)
     tp_base_channel_close (TP_BASE_CHANNEL (priv->calls->data));
 
-  /* Remove us from member list */
-  set = tp_intset_new ();
-  tp_intset_add (set, TP_GROUP_MIXIN (chan)->self_handle);
-
-  tp_group_mixin_change_members ((GObject *) chan,
-                                     (reason != NULL) ? reason : "",
-                                     NULL, set, NULL, NULL, actor,
-                                     reason_code);
-
+  set = tp_intset_new_containing (TP_GROUP_MIXIN (chan)->self_handle);
+  tp_group_mixin_change_members ((GObject *) chan, reason,
+      NULL, set, NULL, NULL, actor, reason_code);
   tp_intset_destroy (set);
 
-  /* Inform the MUC if requested. Don't inform the muc if we're in the
-   * auth state because not all jabberds will echo the MUC presence
-   * when in this state. One example of these jabber servers is M-Link
-   * which is currently running on jabber.org. */
+  /* If we're currently in the MUC, tell it we're leaving and wait for a reply;
+   * handle_parted() will call tp_base_channel_destroyed() and all the Closed
+   * signals will be emitted. (Since there's no waiting-for-password state on
+   * the protocol level, MUC_STATE_AUTH doesn't count as ‘in the MUC’.) See
+   * fd.o#19930 for more details.
+   */
   if (inform_muc && priv->state >= MUC_STATE_INITIATED
       && priv->state != MUC_STATE_AUTH)
     {
-      /* If we want to inform the MUC of our leaving, and we have
-       * actually joined the MUC, then we should wait for our presence
-       * stanza to be given back to us by the conference server before
-       * calling tp_base_channel_destroyed. handle_parted will deal
-       * with calling _destroyed. This is fine because the channel
-       * isn't closed until Closed/ChannelClosed is emitted,
-       * regardless of when the CM returns from Close(). See
-       * fd.o#19930 for more details. */
       send_leave_message (chan, reason);
       priv->closing = TRUE;
     }
   else
     {
-      /* See the comment just above, except we're not sending the
-       * leave message, so let the channel destroy immediately. */
       tp_base_channel_destroyed (base);
     }
 
   handles = tp_handle_set_to_array (chan->group.members);
-
   gabble_presence_cache_update_many (conn->presence_cache, handles,
     NULL, GABBLE_PRESENCE_UNKNOWN, NULL, 0);
-
   g_array_free (handles, TRUE);
 
-  /* Update state and emit Closed signal */
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
+  g_object_unref (chan);
 }
 
 gboolean

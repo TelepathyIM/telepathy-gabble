@@ -134,6 +134,7 @@ struct _TestChannelManagerClass {
 
 struct _TestChannelManager {
   GObject parent;
+  GabbleConnection *connection;
 };
 
 GType test_channel_manager_get_type (void);

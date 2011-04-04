@@ -132,6 +132,7 @@ test_plugin_create_channel_managers (GabblePlugin *plugin,
 
   g_ptr_array_add (ret,
       g_object_new (TEST_TYPE_CHANNEL_MANAGER,
+          "connection", connection,
           NULL));
 
   return ret;
@@ -493,8 +494,92 @@ test_channel_manager_init (TestChannelManager *self)
 }
 
 static void
+test_channel_manager_set_property (
+    GObject *object,
+    guint property_id,
+    const GValue *value,
+    GParamSpec *pspec)
+{
+  TestChannelManager *self = TEST_CHANNEL_MANAGER (object);
+
+  switch (property_id)
+    {
+      case PROP_CONNECTION:
+        self->connection = g_value_dup_object (value);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    }
+}
+
+static void
+test_channel_manager_get_property (
+    GObject *object,
+    guint property_id,
+    GValue *value,
+    GParamSpec *pspec)
+{
+  TestChannelManager *self = TEST_CHANNEL_MANAGER (object);
+
+  switch (property_id)
+    {
+      case PROP_CONNECTION:
+        g_value_set_object (value, self->connection);
+        break;
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
+    }
+}
+
+static void
+test_channel_manager_porter_available_cb (GabbleConnection *connection,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  DEBUG ("now we have a porter: %p", porter);
+  /* so now we can call things like wocky_porter_register_handler_*
+   * and get some stanzas. */
+}
+
+static void
+test_channel_manager_constructed (GObject *object)
+{
+  TestChannelManager *self = TEST_CHANNEL_MANAGER (object);
+
+  if (G_OBJECT_CLASS (test_channel_manager_parent_class)->constructed != NULL)
+    G_OBJECT_CLASS (test_channel_manager_parent_class)->constructed (object);
+
+  tp_g_signal_connect_object (self->connection, "porter-available",
+      G_CALLBACK (test_channel_manager_porter_available_cb),
+      self, 0);
+}
+
+static void
+test_channel_manager_dispose (GObject *object)
+{
+  TestChannelManager *self = TEST_CHANNEL_MANAGER (object);
+
+  if (G_OBJECT_CLASS (test_channel_manager_parent_class)->dispose != NULL)
+    G_OBJECT_CLASS (test_channel_manager_parent_class)->dispose (object);
+
+  tp_clear_object (&self->connection);
+}
+
+static void
 test_channel_manager_class_init (TestChannelManagerClass *klass)
 {
+  GObjectClass *oclass = G_OBJECT_CLASS (klass);
+
+  oclass->set_property = test_channel_manager_set_property;
+  oclass->get_property = test_channel_manager_get_property;
+  oclass->constructed = test_channel_manager_constructed;
+  oclass->dispose = test_channel_manager_dispose;
+
+  g_object_class_install_property (oclass, PROP_CONNECTION,
+      g_param_spec_object ("connection", "Gabble Connection",
+          "Gabble connection",
+          GABBLE_TYPE_CONNECTION,
+          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
 static void

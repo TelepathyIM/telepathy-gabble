@@ -474,8 +474,8 @@ class GoogleXmlStream(BaseXmlStream):
 def make_connection(bus, event_func, params=None, suffix=''):
     # Gabble accepts a resource in 'account', but the value of 'resource'
     # overrides it if there is one.
-
-    account = 'test%s@localhost/%s' % (suffix, re.sub(r'.*/', '', sys.argv[0]))
+    test_name = re.sub('(.*tests/twisted/|\./)', '',  sys.argv[0])
+    account = 'test%s@localhost/%s' % (suffix, test_name)
 
     default_params = {
         'account': account,

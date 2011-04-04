@@ -200,3 +200,17 @@ gabble_plugin_presence_status_for_privacy_list (
 
   return NULL;
 }
+
+GPtrArray *
+gabble_plugin_create_channel_managers (GabblePlugin *plugin,
+    TpBaseConnection *connection)
+{
+  GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
+  GabblePluginCreateChannelManagersImpl func = iface->create_channel_managers;
+  GPtrArray *out = NULL;
+
+  if (func != NULL)
+    out = func (plugin, connection);
+
+  return out;
+}

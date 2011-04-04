@@ -79,6 +79,7 @@
 #include "search-manager.h"
 #include "server-tls-channel.h"
 #include "server-tls-manager.h"
+#include "plugin-loader.h"
 #include "private-tubes-factory.h"
 #include "util.h"
 #include "vcard-manager.h"
@@ -290,11 +291,20 @@ static void connection_capabilities_update_cb (GabblePresenceCache *cache,
 static gboolean gabble_connection_refresh_capabilities (GabbleConnection *self,
     GabbleCapabilitySet **old_out);
 
+static void
+add_to_array (gpointer data,
+    gpointer user_data)
+{
+  g_ptr_array_add (user_data, data);
+}
+
 static GPtrArray *
 _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
   GPtrArray *channel_managers = g_ptr_array_sized_new (5);
+  GabblePluginLoader *loader;
+  GPtrArray *tmp;
 
   self->roster = gabble_roster_new (self);
   g_signal_connect (self->roster, "nickname-update", G_CALLBACK
@@ -344,6 +354,14 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 
   self->ft_manager = gabble_ft_manager_new (self);
   g_ptr_array_add (channel_managers, self->ft_manager);
+
+  /* plugin channel managers */
+  loader = gabble_plugin_loader_dup ();
+  tmp = gabble_plugin_loader_create_channel_managers (loader, conn);
+  g_object_unref (loader);
+
+  g_ptr_array_foreach (tmp, add_to_array, channel_managers);
+  g_ptr_array_free (tmp, TRUE);
 
   return channel_managers;
 }
@@ -2852,11 +2870,11 @@ gabble_connection_build_contact_caps (
 
   while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
-      /* all channel managers must implement the capability interface */
-      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
-
-      gabble_caps_channel_manager_get_contact_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager), handle, caps, ret);
+      if (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
+        {
+          gabble_caps_channel_manager_get_contact_capabilities (
+              GABBLE_CAPS_CHANNEL_MANAGER (manager), handle, caps, ret);
+        }
     }
 
   return ret;
@@ -3141,11 +3159,11 @@ gabble_connection_update_capabilities (
 
   while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
     {
-      /* all channel managers must implement the capability interface */
-      g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
-
-      gabble_caps_channel_manager_reset_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (manager));
+      if (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
+        {
+          gabble_caps_channel_manager_reset_capabilities (
+              GABBLE_CAPS_CHANNEL_MANAGER (manager));
+        }
     }
 
   DEBUG ("enter");
@@ -3174,12 +3192,12 @@ gabble_connection_update_capabilities (
 
       while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
         {
-          /* all channel managers must implement the capability interface */
-          g_assert (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager));
-
-          gabble_caps_channel_manager_represent_client (
-              GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
-              cap_tokens, cap_set);
+          if (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
+            {
+              gabble_caps_channel_manager_represent_client (
+                  GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
+                  cap_tokens, cap_set);
+            }
         }
 
       if (gabble_capability_set_size (cap_set) == 0)

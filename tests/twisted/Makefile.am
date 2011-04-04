@@ -42,6 +42,7 @@ TWISTED_TESTS = \
 	olpc/test-olpc-set-props-preload.py \
 	olpc/change-notifications.py \
 	pep-support.py \
+	plugin-channel-managers.py \
 	power-save.py \
 	presence/decloak.py \
 	presence/initial-contact-presence.py \

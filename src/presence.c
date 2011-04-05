@@ -333,8 +333,6 @@ aggregate_resources (GabblePresence *presence)
 {
   GabblePresencePrivate *priv = presence->priv;
   GSList *i;
-  guint8 prio;
-  time_t activity;
   Resource *best = NULL;
   guint old_client_types = presence->client_types;
 
@@ -343,31 +341,23 @@ aggregate_resources (GabblePresence *presence)
   gabble_capability_set_clear (priv->cap_set);
   presence->status = GABBLE_PRESENCE_OFFLINE;
 
-  prio = -128;
-  activity = 0;
-
   for (i = priv->resources; NULL != i; i = i->next)
     {
       Resource *r = (Resource *) i->data;
 
       gabble_capability_set_update (priv->cap_set, r->cap_set);
 
-      if (best == NULL)
-        best = r;
-
       /* trump existing status & message if it's more present
        * or has the same presence and a more recent last activity
        * or has the same presence and a higher priority */
-      if (r->status > best->status ||
-          (r->status == best->status && r->last_activity > activity) ||
-          (r->status == best->status && r->priority > prio) ||
+      if (best == NULL ||
+          r->status > best->status ||
+          (r->status == best->status &&
+              (r->last_activity > best->last_activity ||
+               r->priority > best->priority)) ||
           (r->client_type & GABBLE_CLIENT_TYPE_PC
               && !(best->client_type & GABBLE_CLIENT_TYPE_PC)))
-        {
-          best = r;
-          prio = r->priority;
-          activity = r->last_activity;
-        }
+        best = r;
     }
 
   if (best != NULL)

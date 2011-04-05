@@ -177,21 +177,51 @@ big_test_of_doom (void)
   g_object_unref (presence);
 }
 
+/*
+ * prefer_higher_priority_resources:
+ *
+ * This is a regression test for a bug which didn't actually happen, but would
+ * have happened (and would not have been caught by the other tests in this
+ * file) had a series of apparently-tautological if(){}s been turned into
+ * if(){}else if(){} as suggested in a review comment
+ * <https://bugs.freedesktop.org/show_bug.cgi?id=32139#c3>.
+ */
+static void
+prefer_higher_priority_resources (void)
+{
+  GabblePresence *presence = gabble_presence_new ();
+
+  /* 'foo' and 'bar' are equally available, at the same time, but bar has a
+   * lower priority.
+   */
+  gabble_presence_update (presence, "foo", GABBLE_PRESENCE_AVAILABLE, "foo", 10,
+      NULL);
+  gabble_presence_update (presence, "bar", GABBLE_PRESENCE_AVAILABLE, "bar", 5,
+      NULL);
+
+  /* We should be sure to prefer "foo"'s status message to "bar"'s.
+   */
+  g_assert_cmpstr (presence->status_message, ==, "foo");
+
+  g_object_unref (presence);
+}
+
 int main (int argc, char **argv)
 {
   int ret;
 
   g_type_init ();
   gabble_capabilities_init (NULL);
+  gabble_debug_set_flags_from_env ();
 
   g_test_init (&argc, &argv, NULL);
   g_test_add_func ("/presence/big-test-of-doom", big_test_of_doom);
+  g_test_add_func ("/presence/prefer-higher-priority-resources",
+      prefer_higher_priority_resources);
 
   ret = g_test_run ();
 
   gabble_capabilities_finalize (NULL);
-  /* The capabilities code will have initialized the debugging infrastructure
-   */
   gabble_debug_free ();
 
   return ret;

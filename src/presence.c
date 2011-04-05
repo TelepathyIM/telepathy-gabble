@@ -296,6 +296,9 @@ gabble_presence_set_capabilities (GabblePresence *presence,
     {
       Resource *tmp = (Resource *) i->data;
 
+      /* This does not use _find_resource() because it also refreshes
+       * priv->cap_set as we go.
+       */
       if (0 == strcmp (tmp->name, resource))
         {
           DEBUG ("found resource %s", resource);
@@ -358,6 +361,14 @@ aggregate_resources (GabblePresence *presence)
       Resource *r = (Resource *) i->data;
 
       gabble_capability_set_update (priv->cap_set, r->cap_set);
+
+      /* This doesn't use resource_better_than() because phone preferences take
+       * priority above all others whereas this is only using the PC thing as a
+       * last-ditch tiebreak. wjt looked into changing this but gave up because
+       * it's messy and the phone preference stuff will go away when we do
+       * Jingle call forking anyway:
+       * <https://bugs.freedesktop.org/show_bug.cgi?id=26673>
+       */
 
       /* trump existing status & message if it's more present
        * or has the same presence and a more recent last activity

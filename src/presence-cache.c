@@ -2510,27 +2510,26 @@ gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
 {
   GabblePresenceCachePrivate *priv = cache->priv;
   GList *l, *waiter_list;
-  gboolean out = FALSE;
+  gboolean in_progress = FALSE;
 
   waiter_list = g_hash_table_get_values (priv->disco_pending);
 
-  for (l = waiter_list; l != NULL; l = l->next)
+  for (l = waiter_list; !in_progress && l != NULL; l = l->next)
     {
       GList *j;
 
-      for (j = l->data; j != NULL; j = j->next)
+      for (j = l->data; !in_progress && j != NULL; j = j->next)
         {
           DiscoWaiter *w = j->data;
 
-          if (w != NULL && w->handle == handle && !tp_strdiff (w->resource, resource))
-            {
-              out = TRUE;
-              break;
-            }
+          if (w != NULL &&
+              w->handle == handle &&
+              !tp_strdiff (w->resource, resource))
+            in_progress = TRUE;
         }
     }
 
   g_list_free (waiter_list);
 
-  return out;
+  return in_progress;
 }

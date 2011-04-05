@@ -1252,8 +1252,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
           return FALSE;
         }
 
-      resource = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC,
+      resource = gabble_presence_pick_resource_by_caps (presence, 0,
           gabble_capability_set_predicate_has, NS_TUBES);
 
       if (resource == NULL)

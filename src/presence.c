@@ -137,7 +137,7 @@ static gboolean
 resource_better_than (
     Resource *a,
     Resource *b,
-    DevicePreference preference)
+    GabbleClientType preferred_client_type)
 {
     if (a->priority < 0)
         return FALSE;
@@ -145,10 +145,10 @@ resource_better_than (
     if (NULL == b)
         return TRUE;
 
-    if (preference == PREFER_PHONES)
+    if (preferred_client_type != 0)
       {
-        gboolean a_p = a->client_type & GABBLE_CLIENT_TYPE_PHONE;
-        gboolean b_p = b->client_type & GABBLE_CLIENT_TYPE_PHONE;
+        gboolean a_p = a->client_type & preferred_client_type;
+        gboolean b_p = b->client_type & preferred_client_type;
 
         if (a_p && !b_p)
           return TRUE;
@@ -198,10 +198,22 @@ gabble_presence_has_resources (GabblePresence *self)
   return (self->priv->resources != NULL);
 }
 
+/*
+ * gabble_presence_pick_resource_by_caps:
+ * @presence: a presence, which may not be NULL
+ * @preferred_client_type: a single client type flag, such as
+ *  GABBLE_CLIENT_TYPE_PHONE, to specify that resources with that type should
+ *  be preferred to those without it; or 0 to express no preference
+ * @predicate: a condition which must be satisfied by a resource's
+ *  capabilities, or NULL to disregard capabilities
+ * @user_data: the second argument for @predicate (ignored if @predicate is
+ *  NULL)
+ *
+ */
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
-    DevicePreference any_special_requests,
+    GabbleClientType preferred_client_type,
     GabbleCapabilitySetPredicate predicate,
     gconstpointer user_data)
 {
@@ -218,7 +230,7 @@ gabble_presence_pick_resource_by_caps (
       if (predicate != NULL && !predicate (res->cap_set, user_data))
         continue;
 
-      if (resource_better_than (res, chosen, any_special_requests))
+      if (resource_better_than (res, chosen, preferred_client_type))
         chosen = res;
     }
 

@@ -1503,14 +1503,12 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
 
       /* FIXME: should we check for SI, bytestreams and/or IBB too?
        * http://bugs.freedesktop.org/show_bug.cgi?id=23777 */
-      si_resource = gabble_presence_pick_resource_by_caps (presence,
-         DEVICE_AGNOSTIC, gabble_capability_set_predicate_has,
-         NS_FILE_TRANSFER);
+      si_resource = gabble_presence_pick_resource_by_caps (presence, 0,
+         gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
       si = (si_resource != NULL);
 
-      share_resource = gabble_presence_pick_resource_by_caps (presence,
-          DEVICE_AGNOSTIC, gabble_capability_set_predicate_has,
-          NS_GOOGLE_FEAT_SHARE);
+      share_resource = gabble_presence_pick_resource_by_caps (presence, 0,
+          gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_SHARE);
       jingle_share  = (share_resource != NULL);
     }
   else

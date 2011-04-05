@@ -20,14 +20,12 @@ predicate_true (const GabbleCapabilitySet *set,
   return TRUE;
 }
 
-int main (int argc, char **argv)
+static void
+big_test_of_doom (void)
 {
   const gchar *resource;
   GabblePresence *presence;
   GabbleCapabilitySet *cap_set;
-
-  g_type_init ();
-  gabble_capabilities_init (NULL);
 
   presence = gabble_presence_new ();
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
@@ -177,13 +175,24 @@ int main (int argc, char **argv)
   g_assert (NULL == resource);
 
   g_object_unref (presence);
+}
+
+int main (int argc, char **argv)
+{
+  int ret;
+
+  g_type_init ();
+  gabble_capabilities_init (NULL);
+
+  g_test_init (&argc, &argv, NULL);
+  g_test_add_func ("/presence/big-test-of-doom", big_test_of_doom);
+
+  ret = g_test_run ();
 
   gabble_capabilities_finalize (NULL);
-
   /* The capabilities code will have initialized the debugging infrastructure
    */
   gabble_debug_free ();
 
-  return 0;
+  return ret;
 }
-

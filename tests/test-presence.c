@@ -13,13 +13,6 @@
 #include "src/presence.h"
 #include "src/namespaces.h"
 
-static gboolean
-predicate_true (const GabbleCapabilitySet *set,
-    gconstpointer unused G_GNUC_UNUSED)
-{
-  return TRUE;
-}
-
 static void
 big_test_of_doom (void)
 {
@@ -70,8 +63,7 @@ big_test_of_doom (void)
 
   /* but if we were to make a voip call, we would prefer the newer one */
   g_assert (0 == strcmp ("bar",
-        gabble_presence_pick_resource_by_caps (presence, 0,
-            predicate_true, NULL)));
+        gabble_presence_pick_resource_by_caps (presence, 0, NULL, NULL)));
 
   /* sleep a while so the next resource will have different timestamp */
   sleep (1);
@@ -101,8 +93,7 @@ big_test_of_doom (void)
   g_assert (FALSE == gabble_presence_update (presence, "foo",
     GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL));
   g_assert (0 == strcmp ("foo",
-        gabble_presence_pick_resource_by_caps (presence, 0,
-            predicate_true, NULL)));
+        gabble_presence_pick_resource_by_caps (presence, 0, NULL, NULL)));
 
   /* sleep a while so the next resource will have different timestamp */
   sleep (1);
@@ -120,8 +111,7 @@ big_test_of_doom (void)
 
   /* we still prefer foo for the voip calls, because it's more present */
   g_assert (0 == strcmp ("foo",
-        gabble_presence_pick_resource_by_caps (presence, 0,
-            predicate_true, NULL)));
+        gabble_presence_pick_resource_by_caps (presence, 0, NULL, NULL)));
 
   g_assert (GABBLE_PRESENCE_CHAT == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));

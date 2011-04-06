@@ -178,9 +178,15 @@ def test_gtalk_weirdness(q, bus, conn, stream, room_jid):
     text_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     # As far as Gabble's concerned, the two other participants joined
-    # immediately after we did.
+    # immediately after we did.  We can't request handles for them before we
+    # try to join the MUC, because until we do so, Gabble doesn't know that
+    # room_jid is a MUC, and so considers these three JIDs to be different
+    # resources of the same contact. There is no race between this method
+    # returning and MembersChangedDetailed firing, because libdbus reorders
+    # messages when you make blocking calls.
     handle, handle_, handle__, foobar_handle = conn.RequestHandles(
         cs.HT_CONTACT, jids + ['%s/foobar_gmail.com' % room_jid])
+
     q.expect('dbus-signal', signal='MembersChangedDetailed',
         predicate=lambda e: e.args[0:4] == [[foobar_handle], [], [], []])
     q.expect('dbus-signal', signal='MembersChangedDetailed',

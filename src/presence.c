@@ -47,7 +47,10 @@ struct _Resource {
     GabblePresenceId status;
     gchar *status_message;
     gint8 priority;
-    time_t last_activity;
+    /* The last time we saw an available (or chatty! \o\ /o/) presence for
+     * this resource.
+     */
+    time_t last_available;
 };
 
 struct _GabblePresencePrivate {
@@ -72,7 +75,7 @@ _resource_new (gchar *name)
   new->status_message = NULL;
   new->priority = 0;
   new->caps_serial = 0;
-  new->last_activity = 0;
+  new->last_available = 0;
 
   return new;
 }
@@ -161,9 +164,9 @@ resource_better_than (
     else if (a->status > b->status)
         return TRUE;
 
-    if (a->last_activity < b->last_activity)
+    if (a->last_available < b->last_available)
         return FALSE;
-    else if (a->last_activity > b->last_activity)
+    else if (a->last_available > b->last_available)
         return TRUE;
 
     return (a->priority > b->priority);
@@ -371,12 +374,12 @@ aggregate_resources (GabblePresence *presence)
        */
 
       /* trump existing status & message if it's more present
-       * or has the same presence and a more recent last activity
+       * or has the same presence and was more recently available
        * or has the same presence and a higher priority */
       if (best == NULL ||
           r->status > best->status ||
           (r->status == best->status &&
-              (r->last_activity > best->last_activity ||
+              (r->last_available > best->last_available ||
                r->priority > best->priority)) ||
           (r->client_type & GABBLE_CLIENT_TYPE_PC
               && !(best->client_type & GABBLE_CLIENT_TYPE_PC)))
@@ -487,7 +490,7 @@ gabble_presence_update (GabblePresence *presence,
       res->priority = priority;
 
       if (res->status >= GABBLE_PRESENCE_AVAILABLE)
-          res->last_activity = time (NULL);
+          res->last_available = time (NULL);
     }
 
   /* select the most preferable Resource and update presence->* based on our

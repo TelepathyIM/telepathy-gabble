@@ -610,18 +610,18 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
 
     error = None
 
-    if do_connect:
-        for conn in conns:
-            conn.Connect()
-            queue.expect('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
-            queue.expect('stream-authenticated')
-            queue.expect('dbus-signal', signal='PresenceUpdate',
-                args=[{1L: (0L, {u'available': {}})}])
-            queue.expect('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
-
     try:
+        if do_connect:
+            for conn in conns:
+                conn.Connect()
+                queue.expect('dbus-signal', signal='StatusChanged',
+                    args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
+                queue.expect('stream-authenticated')
+                queue.expect('dbus-signal', signal='PresenceUpdate',
+                    args=[{1L: (0L, {u'available': {}})}])
+                queue.expect('dbus-signal', signal='StatusChanged',
+                    args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
         if len(conns) == 1:
             fun(queue, bus, conns[0], streams[0])
         else:

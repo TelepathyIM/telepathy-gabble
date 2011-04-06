@@ -588,9 +588,11 @@ test_channel_manager_type_foreach_channel_class (GType type,
     gpointer user_data)
 {
   GHashTable *table = tp_asv_new (
-      "cookies", G_TYPE_STRING, "lolbags",
+      TP_PROP_CHANNEL_CHANNEL_TYPE, G_TYPE_STRING, "com.jonnylamb.lolbags",
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, G_TYPE_UINT, TP_HANDLE_TYPE_NONE,
       NULL);
-  const gchar * const chock_a_block_full_of_strings[] = {"omg", "hi mum!", NULL };
+  const gchar * const chock_a_block_full_of_strings[] = {
+      "com.jonnylamb.omg", "com.jonnylamb.brokethebuild", NULL };
 
   func (type, table, chock_a_block_full_of_strings, user_data);
 

@@ -16,10 +16,16 @@ if not PLUGINS_ENABLED:
     raise SystemExit(77) # which makes the test show up as skipped
 
 def test(q, bus, conn, stream):
-    rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS, 'RequestableChannelClasses')
+    rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
+        'RequestableChannelClasses')
 
-    # these values are from the test plugin.
-    assertContains(({'cookies': 'lolbags'}, ['omg', 'hi mum!']), rccs)
+    # These values are from plugins/test.c
+    fixed = {
+        cs.CHANNEL_TYPE: "com.jonnylamb.lolbags",
+        cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
+    }
+    allowed = ["com.jonnylamb.omg", "com.jonnylamb.brokethebuild"]
+    assertContains((fixed, allowed), rccs)
 
 if __name__ == '__main__':
     exec_test(test)

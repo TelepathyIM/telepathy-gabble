@@ -337,8 +337,8 @@ set_shared_status_cb (GObject *source_object,
       gabble_muc_factory_broadcast_presence (self->muc_factory);
     }
 
-      g_simple_async_result_complete (result);
-      g_object_unref (result);
+  g_simple_async_result_complete (result);
+  g_object_unref (result);
 
   if (error != NULL)
     g_error_free (error);

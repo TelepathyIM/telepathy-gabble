@@ -383,23 +383,50 @@ set_shared_status (GabbleConnection *self,
 {
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
   GabblePresence *presence = self->self_presence;
-  WockyStanza *iq;
 
   g_object_ref (result);
 
-  DEBUG ("shared status invisibility is %savailable",
-      priv->shared_status_compat ? "" : "un");
+  if (presence->status != GABBLE_PRESENCE_AWAY &&
+      presence->status != GABBLE_PRESENCE_XA)
+    {
+      WockyStanza *iq;
 
-  if (presence->status == GABBLE_PRESENCE_HIDDEN && !priv->shared_status_compat)
-    presence->status = GABBLE_PRESENCE_DND;
+      DEBUG ("shared status invisibility is %savailable",
+          priv->shared_status_compat ? "" : "un");
 
-  insert_presence_to_shared_statuses (self);
+      if (presence->status == GABBLE_PRESENCE_HIDDEN && !priv->shared_status_compat)
+        presence->status = GABBLE_PRESENCE_DND;
 
-  iq = build_shared_status_stanza (self);
+      insert_presence_to_shared_statuses (self);
 
-  conn_util_send_iq_async (self, iq, NULL, set_shared_status_cb, result);
+      iq = build_shared_status_stanza (self);
 
-  g_object_unref (iq);
+      conn_util_send_iq_async (self, iq, NULL, set_shared_status_cb, result);
+
+      g_object_unref (iq);
+    }
+  else
+    {
+      gboolean retval;
+      GError *error = NULL;
+
+      /* Away is treated like idleness in GTalk, so it's per connection and
+       * not global. To set the presence as away we use the normal
+       * <presence/> method. */
+      DEBUG ("not updating shared status as it's not supported for away");
+
+      retval = conn_presence_signal_own_presence (self, NULL, &error);
+      if (!retval)
+        {
+          g_simple_async_result_set_from_error (result, error);
+          g_error_free (error);
+        }
+
+      emit_presences_changed_for_self (self);
+
+      g_simple_async_result_complete_in_idle (result);
+      g_object_unref (result);
+    }
 }
 
 static void

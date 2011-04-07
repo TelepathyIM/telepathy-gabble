@@ -326,12 +326,15 @@ set_shared_status_cb (GObject *source_object,
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
   GError *error = NULL;
 
-  if (!conn_util_send_iq_finish (self, res, NULL, &error) ||
-      !conn_presence_signal_own_presence (self, NULL, &error))
+  if (!conn_util_send_iq_finish (self, res, NULL, &error))
     {
       g_simple_async_result_set_error (result,
           CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_SET_SHARED_STATUS,
           "error setting Google shared status: %s", error->message);
+    }
+  else
+    {
+      gabble_muc_factory_broadcast_presence (self->muc_factory);
     }
 
       g_simple_async_result_complete (result);

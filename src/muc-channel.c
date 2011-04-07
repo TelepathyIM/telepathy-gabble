@@ -2742,7 +2742,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              TpChannelTextSendError send_error,
                              TpDeliveryStatus error_status)
 {
-  GabbleMucChannelPrivate *priv;
   TpBaseChannel *base;
   TpBaseConnection *base_conn;
   TpMessage *message;
@@ -2753,7 +2752,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
-  priv = chan->priv;
   base = TP_BASE_CHANNEL (chan);
   base_conn = tp_base_channel_get_connection (base);
   muc_self_handle = chan->group.self_handle;

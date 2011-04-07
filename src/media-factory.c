@@ -848,12 +848,10 @@ gabble_media_factory_create_call (TpChannelManager *manager,
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
   TpHandle target;
-  TpBaseConnection *conn;
   GError *error = NULL;
   gboolean initial_audio, initial_video;
   const gchar *initial_audio_name, *initial_video_name;
 
-  conn = (TpBaseConnection *) self->priv->conn;
 
   DEBUG ("Creating a new call channel");
 

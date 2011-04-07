@@ -1569,7 +1569,6 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
-  TpBaseConnection *base;
   guint tube_id;
   GabbleTubeIface *tube;
   gchar *stream_id;
@@ -1578,7 +1577,6 @@ gabble_tubes_channel_offer_d_bus_tube (TpSvcChannelTypeTubes *iface,
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   priv = self->priv;
-  base = (TpBaseConnection *) priv->conn;
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
   tube_id = generate_tube_id ();
@@ -1639,7 +1637,6 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (iface);
   GabbleTubesChannelPrivate *priv;
-  TpBaseConnection *base;
   guint tube_id;
   GabbleTubeIface *tube;
   gchar *stream_id;
@@ -1648,7 +1645,6 @@ gabble_tubes_channel_offer_stream_tube (TpSvcChannelTypeTubes *iface,
   g_assert (GABBLE_IS_TUBES_CHANNEL (self));
 
   priv = self->priv;
-  base = (TpBaseConnection *) priv->conn;
 
   if (!gabble_tube_stream_check_params (address_type, address,
         access_control, access_control_param, &error))

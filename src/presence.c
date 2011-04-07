@@ -785,29 +785,14 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
 gboolean
 gabble_presence_update_client_types (GabblePresence *presence,
     const gchar *resource,
-    GPtrArray *client_types)
+    guint client_types)
 {
-  Resource *res;
-  guint i, value;
-
-  res = _find_resource (presence, resource);
+  Resource *res = _find_resource (presence, resource);
 
   if (res == NULL)
     return FALSE;
 
-  res->client_type = 0;
-
-  if (client_types == NULL)
-    return FALSE;
-
-  for (i = 0; i < client_types->len; i++)
-    {
-      const gchar *type = g_ptr_array_index (client_types, i);
-
-      if (gabble_flag_from_nick (GABBLE_TYPE_CLIENT_TYPE, type, &value))
-        res->client_type |= value;
-    }
-
+  res->client_type = client_types;
   return aggregate_resources (presence);
 }
 

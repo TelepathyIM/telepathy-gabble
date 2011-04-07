@@ -140,7 +140,8 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
     GabbleCapabilitySetPredicate predicate);
 
 gboolean gabble_presence_update_client_types (GabblePresence *presence,
-    const gchar *resource, GPtrArray *client_types);
+    const gchar *resource,
+    guint client_types);
 
 GPtrArray * gabble_presence_get_client_types_array (GabblePresence *presence,
     gboolean add_null, const gchar **resource_name);

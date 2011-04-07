@@ -21,6 +21,7 @@
 #include "config.h"
 #include "presence-cache.h"
 #include "vcard-manager.h"
+#include "gabble-enumtypes.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -228,7 +229,7 @@ capability_info_get (GabblePresenceCache *cache, const gchar *node)
     {
       info = g_slice_new0 (GabbleCapabilityInfo);
       info->cap_set = NULL;
-      info->client_types = NULL;
+      info->client_types = 0;
       info->guys = tp_intset_new ();
       g_hash_table_insert (priv->capabilities, g_strdup (node), info);
     }
@@ -250,9 +251,6 @@ capability_info_free (GabbleCapabilityInfo *info)
 
   tp_intset_destroy (info->guys);
 
-  if (info->client_types != NULL)
-    g_ptr_array_unref (info->client_types);
-
   g_slice_free (GabbleCapabilityInfo, info);
 }
 
@@ -262,7 +260,7 @@ capability_info_recvd (GabblePresenceCache *cache,
     TpHandle handle,
     GabbleCapabilitySet *cap_set,
     guint trust_inc,
-    GPtrArray *client_types)
+    guint client_types)
 {
   GabbleCapabilityInfo *info = capability_info_get (cache, node);
 
@@ -291,11 +289,7 @@ capability_info_recvd (GabblePresenceCache *cache,
       info->trust += trust_inc;
     }
 
-  if (info->client_types != NULL)
-    g_ptr_array_unref (info->client_types);
-
-  if (client_types != NULL)
-    info->client_types = g_ptr_array_ref (client_types);
+  info->client_types = client_types;
 
   return info->trust;
 }
@@ -1174,31 +1168,24 @@ emit_capabilities_discovered (GabblePresenceCache *cache,
   g_signal_emit (cache, signals[CAPABILITIES_DISCOVERED], 0, handle);
 }
 
-static GPtrArray *
+static guint
 client_types_from_message (TpHandle handle,
     LmMessageNode *lm_node,
     const gchar *resource)
 {
   WockyNode *identity, *query_result = (WockyNode *) lm_node;
   WockyNodeIter iter;
-  GPtrArray *array;
-
-  array = g_ptr_array_new_with_free_func (g_free);
+  guint client_types = 0;
 
   /* Find all identity nodes in the result. */
-  wocky_node_iter_init (&iter, query_result,
-      "identity", NS_DISCO_INFO);
+  wocky_node_iter_init (&iter, query_result, "identity", NS_DISCO_INFO);
   while (wocky_node_iter_next (&iter, &identity))
     {
-      const gchar *category, *type;
+      const gchar *category = wocky_node_get_attribute (identity, "category");
+      const gchar *type = wocky_node_get_attribute (identity, "type");
+      guint value;
 
-      category = wocky_node_get_attribute (identity, "category");
-      if (category == NULL)
-        continue;
-
-      /* Now get the client type */
-      type = wocky_node_get_attribute (identity, "type");
-      if (type == NULL)
+      if (category == NULL || type == NULL)
         continue;
 
       /* So, turns out if you disco a specific resource of a gtalk
@@ -1212,25 +1199,20 @@ client_types_from_message (TpHandle handle,
       they're phones. */
 
       if (!tp_strdiff (category, "account")
-          && g_str_has_prefix (resource, "android")
+          && (resource != NULL && g_str_has_prefix (resource, "android"))
           && !tp_strdiff (type, "registered"))
         {
-          type = "phone";
+          client_types |= GABBLE_CLIENT_TYPE_PHONE;
         }
-
-      DEBUG ("Got type for %u: %s", handle, type);
-
-      g_ptr_array_add (array, g_strdup (type));
+      else if (!tp_strdiff (category, "client") &&
+          gabble_flag_from_nick (GABBLE_TYPE_CLIENT_TYPE, type, &value))
+        {
+          DEBUG ("Got type for %u: %s (%u)", handle, type, value);
+          client_types |= value;
+        }
     }
 
-  if (array->len == 0)
-    {
-      DEBUG ("How very odd, we didn't get any client types");
-      g_ptr_array_unref (array);
-      return NULL;
-    }
-
-  return array;
+  return client_types;
 }
 
 static void
@@ -1251,10 +1233,10 @@ process_client_types (
     LmMessageNode *query_result,
     TpHandle handle,
     DiscoWaiter *waiter_self,
-    GPtrArray **out_types)
+    guint *out_types)
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, handle);
-  GPtrArray *client_types;
+  guint client_types;
   gboolean ret = FALSE;
 
   /* If the contact's gone offline since we sent the disco request, we have no
@@ -1299,7 +1281,7 @@ _caps_disco_cb (GabbleDisco *disco,
   gchar *resource;
   gboolean jid_is_valid;
   gpointer key;
-  GPtrArray *client_types = NULL;
+  guint client_types = 0;
 
   cache = GABBLE_PRESENCE_CACHE (user_data);
   priv = cache->priv;
@@ -1476,9 +1458,6 @@ _caps_disco_cb (GabbleDisco *disco,
 OUT:
   if (handle)
     tp_handle_unref (contact_repo, handle);
-
-  if (client_types != NULL)
-    g_ptr_array_unref (client_types);
 }
 
 static void
@@ -1548,21 +1527,15 @@ _process_caps_uri (GabblePresenceCache *cache,
           if (cached_query_reply != NULL)
             {
               WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
-              GPtrArray *types = client_types_from_message (handle, query, resource);
+              guint types = client_types_from_message (handle, query, resource);
 
               if (resource != NULL)
                 emit_updated = gabble_presence_update_client_types (presence, resource, types);
-
-              if (types != NULL)
-                g_ptr_array_unref (types);
             }
           else
             {
-              if (info->client_types != NULL)
-                {
-                  emit_updated = gabble_presence_update_client_types (presence,
-                      resource, info->client_types);
-                }
+              emit_updated = gabble_presence_update_client_types (presence,
+                  resource, info->client_types);
             }
 
           if (emit_updated)

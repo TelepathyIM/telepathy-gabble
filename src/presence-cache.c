@@ -1136,6 +1136,7 @@ static void
 set_caps_for (DiscoWaiter *waiter,
     GabblePresenceCache *cache,
     GabbleCapabilitySet *cap_set,
+    guint client_types,
     TpHandle responder_handle,
     const gchar *responder_jid)
 {
@@ -1153,12 +1154,15 @@ set_caps_for (DiscoWaiter *waiter,
 
   gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
       waiter->serial);
-
   new_cap_set = gabble_presence_peek_caps (presence);
-
   emit_capabilities_update (cache, waiter->handle, old_cap_set, new_cap_set);
-
   gabble_capability_set_free (old_cap_set);
+
+  /* FIXME: why can't a bare JID have client types? */
+  if (waiter->resource != NULL &&
+      gabble_presence_update_client_types (presence, waiter->resource,
+        client_types))
+    g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, waiter->handle);
 }
 
 static void
@@ -1225,36 +1229,6 @@ _signal_presences_updated (GabblePresenceCache *cache,
   g_array_append_val (handles, handle);
   g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, handles);
   g_array_free (handles, TRUE);
-}
-
-static guint
-process_client_types (
-    GabblePresenceCache *cache,
-    LmMessageNode *query_result,
-    TpHandle handle,
-    DiscoWaiter *waiter_self)
-{
-  GabblePresence *presence = gabble_presence_cache_get (cache, handle);
-  guint client_types;
-  gboolean ret = FALSE;
-
-  /* If the contact's gone offline since we sent the disco request, we have no
-   * presence to attach their freshly-discovered client types to.
-   */
-  if (presence == NULL)
-    return 0;
-
-  client_types = client_types_from_message (handle, query_result,
-      waiter_self->resource);
-
-  if (waiter_self->resource != NULL)
-    ret = gabble_presence_update_client_types (presence, waiter_self->resource,
-        client_types);
-
-  if (ret)
-    g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, handle);
-
-  return client_types;
 }
 
 static void
@@ -1324,10 +1298,10 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  client_types = process_client_types (cache, query_result, handle, waiter_self);
-
   /* Now onto caps */
   cap_set = gabble_capability_set_new_from_stanza (query_result);
+  client_types = client_types_from_message (handle, query_result,
+      waiter_self->resource);
 
   /* Only 'sha-1' is mandatory to implement by XEP-0115. If the remote contact
    * uses another hash algorithm, don't check the hash and fallback to the old
@@ -1398,7 +1372,7 @@ _caps_disco_cb (GabbleDisco *disco,
         {
           DiscoWaiter *waiter = (DiscoWaiter *) i->data;
 
-          set_caps_for (waiter, cache, cap_set, handle, jid);
+          set_caps_for (waiter, cache, cap_set, client_types, handle, jid);
           emit_capabilities_discovered (cache, waiter->handle);
         }
 
@@ -1426,7 +1400,7 @@ _caps_disco_cb (GabbleDisco *disco,
               g_free (tmp);
             }
 
-          set_caps_for (waiter_self, cache, cap_set, handle, jid);
+          set_caps_for (waiter_self, cache, cap_set, client_types, handle, jid);
         }
 
       waiters = g_slist_remove (waiters, waiter_self);

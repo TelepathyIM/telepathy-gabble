@@ -2,6 +2,7 @@
 Test Conn.I.ClientTypes
 """
 import random
+from functools import partial
 
 from servicetest import EventPattern, assertEquals, assertLength, assertContains, assertSameSets
 from gabbletest import exec_test, make_presence, sync_stream
@@ -9,6 +10,7 @@ import constants as cs
 import ns
 from caps_helper import (
     presence_and_disco, send_presence, expect_disco, send_disco_reply,
+    compute_caps_hash,
 )
 
 client_base = 'http://telepathy.freedesktop.org/fake-client/client-types-'
@@ -32,6 +34,7 @@ PHONE = ['client/phone/en/gr8phone 101']
 WEB = ['client/web/en/webcat']
 SMS = ['client/phone/en/tlk 2 u l8r']
 TRANSIENT_PHONE = ['client/phone/en/fleeting visit']
+BANANAPHONE = ['client/phone/en/banana milk is pretty disgusting']
 
 def build_stuff(identities):
     types = map(lambda x: x.split('/')[1], identities)
@@ -231,6 +234,38 @@ def test2(q, bus, conn, stream):
     q.expect('dbus-signal', signal='ClientTypesUpdated',
              args=[handle, ['pc']])
 
+def two_contacts_with_the_same_hash(q, bus, conn, stream):
+    contact1 = 'bowyer.place@tfl.gov.uk/foo'
+    contact2 = 'albany.road@tfl.gov.uk/bar'
+    h1, h2 = conn.RequestHandles(cs.HT_CONTACT, [contact1, contact2])
+    ver = compute_caps_hash(BANANAPHONE, features, {})
+    caps = {
+        'node': client_base,
+        'ver':  ver,
+        'hash': 'sha-1',
+        }
+
+    send_presence(q, conn, stream, contact1, caps)
+    stanza = expect_disco(q, contact1, client_base, caps)
+
+    send_presence(q, conn, stream, contact2, caps)
+    q.forbid_events([
+        EventPattern('stream-iq', to=contact2, query_ns=ns.DISCO_INFO),
+        ])
+    sync_stream(q, stream)
+
+    send_disco_reply(stream, stanza, BANANAPHONE, features, {})
+    q.expect_many(
+        EventPattern('dbus-signal', signal='ClientTypesUpdated',
+            args=[h1, ['phone']]),
+        # Gabble previously did not emit ClientTypesUpdated for anyone beside
+        # the contact we sent the disco request to; so this second event would
+        # never arrive.
+        EventPattern('dbus-signal', signal='ClientTypesUpdated',
+            args=[h2, ['phone']]),
+        )
+
 if __name__ == '__main__':
     exec_test(test)
     exec_test(test2)
+    exec_test(two_contacts_with_the_same_hash)

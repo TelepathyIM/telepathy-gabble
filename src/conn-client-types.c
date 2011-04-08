@@ -38,37 +38,41 @@
 static gboolean
 get_client_types_from_handle (GabbleConnection *conn,
     TpHandle handle,
-    gchar ***types)
+    gchar ***types_out)
 {
-  GabblePresence *presence;
-  static gchar *empty[] = { NULL };
-  const gchar *res = NULL;
+  GabblePresence *presence = gabble_presence_cache_get (conn->presence_cache,
+      handle);
 
-  presence = gabble_presence_cache_get (conn->presence_cache, handle);
-
-  /* We know that we know nothing about this chap, so empty array it is. */
   if (presence == NULL)
     {
-      *types = g_strdupv (empty);
+      /* We have no presence information for this contact; so they have no
+       * known client types.
+       */
+      static gchar *empty[] = { NULL };
+      *types_out = g_strdupv (empty);
       return TRUE;
     }
-
-  /* Get the cached client types. */
-  *types = gabble_presence_get_client_types_array (presence, &res);
-
-  if (*types == NULL)
+  else
     {
-      /* There's a pending disco request happening, so don't give an
-       * empty array for this fellow. */
-      if (gabble_presence_cache_disco_in_progress (conn->presence_cache,
+      const gchar *res;
+      gchar **types = gabble_presence_get_client_types_array (presence, &res);
+
+      /* If we don't have any client types for this contact, and a disco
+       * request is in progress, then keep quiet rather than reporting that
+       * they have no client types; when the result comes in, their true client
+       * types will be reported.
+       */
+      if (types[0] == NULL &&
+          gabble_presence_cache_disco_in_progress (conn->presence_cache,
               handle, res))
-        return FALSE;
+        {
+          g_strfreev (types);
+          return FALSE;
+        }
 
-      /* This guy, on the other hand, can get the most empty of arrays. */
-      *types = g_strdupv (empty);
+      *types_out = types;
+      return TRUE;
     }
-
-  return TRUE;
 }
 
 static void

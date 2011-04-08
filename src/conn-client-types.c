@@ -169,8 +169,14 @@ typedef struct
 } UpdatedData;
 
 static void
-updated_data_free (gpointer data)
+updated_data_free (gpointer user_data)
 {
+  UpdatedData *data = user_data;
+
+  if (data->conn != NULL)
+    g_object_remove_weak_pointer (G_OBJECT (data->conn),
+        (gpointer *) &data->conn);
+
   g_slice_free (UpdatedData, data);
 }
 
@@ -179,6 +185,9 @@ idle_timeout (gpointer user_data)
 {
   UpdatedData *data = user_data;
   GabblePresence *presence;
+
+  if (data->conn == NULL)
+    return FALSE;
 
   presence = gabble_presence_cache_get (data->cache, data->handle);
 
@@ -214,14 +223,22 @@ presence_cache_client_types_updated_cb (GabblePresenceCache *presence_cache,
   data->cache = presence_cache;
   data->handle = handle;
   data->conn = conn;
+  g_object_add_weak_pointer (G_OBJECT (conn), (gpointer *) &data->conn);
 
-  /* Do this in an idle because the presence cache can make disco
-   * requests after dealing with the incoming presence stanza, so we
-   * can reach this point before the disco request has been made and
-   * disco_in_progress will return FALSE and we will signal with no
-   * client types which is a bit annoying. If we do this bit in an
-   * idle then the disco request will have been made by the time the
-   * idle source function is actually called. */
+  /* Unfortunately, the client-types-updated signal can be emitted before the
+   * caps URIs have been processed to determine which client types a
+   * freshly-online contact has (and whether a disco request needs to be made
+   * to find out).
+   *
+   * Specifically, gabble_presence_cache_update() may emit client-types-updated
+   * if a presence change causes the "dominant" resource to change and the new
+   * resource has a different set of client types to the previous one. It is
+   * called by gabble_presence_parse_presence_message() just before
+   * _process_caps() is called (within which disco requests are sent if
+   * necessary). It turns out to be very difficult to rearrange things to sort
+   * this out. Moving the emission of the D-Bus signal to an idle allows us to
+   * avoid it when we're actually waiting for a disco response to come in.
+   */
   g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, idle_timeout, data,
       updated_data_free);
 }

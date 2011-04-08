@@ -167,7 +167,6 @@ conn_client_types_fill_contact_attributes (GObject *obj,
 
 typedef struct
 {
-  GabblePresenceCache *cache;
   TpHandle handle;
   GabbleConnection *conn;
 } UpdatedData;
@@ -188,30 +187,15 @@ static gboolean
 idle_timeout (gpointer user_data)
 {
   UpdatedData *data = user_data;
-  GabblePresence *presence;
+  gchar **types;
 
   if (data->conn == NULL)
     return FALSE;
 
-  presence = gabble_presence_cache_get (data->cache, data->handle);
-
-  if (presence == NULL)
+  if (get_client_types_from_handle (data->conn, data->handle, &types))
     {
-      gchar *empty_array[] = { NULL };
-
       tp_svc_connection_interface_client_types_emit_client_types_updated (
-          data->conn, data->handle, (const gchar **) empty_array);
-    }
-  else
-    {
-      const gchar *res = NULL;
-      gchar **types = gabble_presence_get_client_types_array (presence, &res);
-
-      if (!gabble_presence_cache_disco_in_progress (data->cache, data->handle,
-              res))
-        tp_svc_connection_interface_client_types_emit_client_types_updated (
-            data->conn, data->handle, (const gchar **) types);
-
+          data->conn, data->handle, (const gchar **) types);
       g_strfreev (types);
     }
 
@@ -224,7 +208,6 @@ presence_cache_client_types_updated_cb (GabblePresenceCache *presence_cache,
     GabbleConnection *conn)
 {
   UpdatedData *data = g_slice_new0 (UpdatedData);
-  data->cache = presence_cache;
   data->handle = handle;
   data->conn = conn;
   g_object_add_weak_pointer (G_OBJECT (conn), (gpointer *) &data->conn);

@@ -38,27 +38,23 @@
 static gboolean
 get_client_types_from_handle (GabbleConnection *conn,
     TpHandle handle,
-    GPtrArray **types,
-    gboolean add_null)
+    gchar ***types)
 {
   GabblePresence *presence;
-  GPtrArray *empty_array;
+  static gchar *empty[] = { NULL };
   const gchar *res = NULL;
-
-  empty_array = g_ptr_array_new ();
-  g_ptr_array_add (empty_array, NULL);
 
   presence = gabble_presence_cache_get (conn->presence_cache, handle);
 
   /* We know that we know nothing about this chap, so empty array it is. */
   if (presence == NULL)
     {
-      *types = empty_array;
+      *types = g_strdupv (empty);
       return TRUE;
     }
 
   /* Get the cached client types. */
-  *types = gabble_presence_get_client_types_array (presence, add_null, &res);
+  *types = gabble_presence_get_client_types_array (presence, &res);
 
   if (*types == NULL)
     {
@@ -66,17 +62,10 @@ get_client_types_from_handle (GabbleConnection *conn,
        * empty array for this fellow. */
       if (gabble_presence_cache_disco_in_progress (conn->presence_cache,
               handle, res))
-        {
-          g_ptr_array_unref (empty_array);
-          return FALSE;
-        }
+        return FALSE;
 
       /* This guy, on the other hand, can get the most empty of arrays. */
-      *types = empty_array;
-    }
-  else
-    {
-      g_ptr_array_unref (empty_array);
+      *types = g_strdupv (empty);
     }
 
   return TRUE;
@@ -93,7 +82,6 @@ client_types_get_client_types (TpSvcConnectionInterfaceClientTypes *iface,
   guint i;
   GHashTable *client_types;
   GError *error = NULL;
-  GPtrArray *types_list;
 
   /* Validate contacts */
   contact_handles = tp_base_connection_get_handles (base,
@@ -116,29 +104,25 @@ client_types_get_client_types (TpSvcConnectionInterfaceClientTypes *iface,
         }
     }
 
-  client_types = g_hash_table_new (g_direct_hash, g_direct_equal);
-  types_list = g_ptr_array_new_with_free_func (
-      (GDestroyNotify) g_ptr_array_unref);
+  client_types = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
+      (GDestroyNotify) g_strfreev);
 
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GPtrArray *types;
+      gchar **types;
 
-      if (!get_client_types_from_handle (conn, handle, &types, TRUE))
+      if (!get_client_types_from_handle (conn, handle, &types))
         continue;
 
       g_hash_table_insert (client_types, GUINT_TO_POINTER (handle),
-          types->pdata);
-
-      g_ptr_array_add (types_list, types);
+          types);
     }
 
   tp_svc_connection_interface_client_types_return_from_get_client_types (
       context, client_types);
 
   g_hash_table_unref (client_types);
-  g_ptr_array_unref (types_list);
 }
 
 void
@@ -165,17 +149,15 @@ conn_client_types_fill_contact_attributes (GObject *obj,
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
       GValue *val;
-      GPtrArray *types;
+      gchar **types;
 
-      if (!get_client_types_from_handle (conn, handle, &types, TRUE))
+      if (!get_client_types_from_handle (conn, handle, &types))
         continue;
 
-      val = tp_g_value_slice_new_boxed (G_TYPE_STRV, types->pdata);
+      val = tp_g_value_slice_new_take_boxed (G_TYPE_STRV, types);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
           TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES "/client-types", val);
-
-      g_ptr_array_unref (types);
     }
 }
 
@@ -191,38 +173,34 @@ idle_timeout (gpointer user_data)
 {
   UpdatedData *data = user_data;
   GabblePresence *presence;
-  GPtrArray *array, *empty_array;
+  gchar **types;
+  gchar *empty_array[] = { NULL };
   const gchar *res = NULL;
-
-  empty_array = g_ptr_array_new ();
-  g_ptr_array_add (empty_array, NULL);
 
   presence = gabble_presence_cache_get (data->cache, data->handle);
 
   if (presence == NULL)
     {
-      array = empty_array;
+      types = empty_array;
       goto emit;
     }
 
-  array = gabble_presence_get_client_types_array (presence, TRUE, &res);
+  types = gabble_presence_get_client_types_array (presence, &res);
 
   if (gabble_presence_cache_disco_in_progress (data->cache, data->handle, res)
-      || array == NULL)
+      || types == NULL)
     {
       goto cleanup;
     }
 
 emit:
   tp_svc_connection_interface_client_types_emit_client_types_updated (
-      data->conn, data->handle, (const gchar **) array->pdata);
+      data->conn, data->handle, (const gchar **) types);
 
-  if (array != empty_array)
-    g_ptr_array_unref (array);
+  if (types != empty_array)
+    g_strfreev (types);
 
 cleanup:
-  g_ptr_array_unref (empty_array);
-
   g_slice_free (UpdatedData, data);
 
   return FALSE;

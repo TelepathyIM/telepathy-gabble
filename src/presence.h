@@ -143,8 +143,8 @@ gboolean gabble_presence_update_client_types (GabblePresence *presence,
     const gchar *resource,
     guint client_types);
 
-GPtrArray * gabble_presence_get_client_types_array (GabblePresence *presence,
-    gboolean add_null, const gchar **resource_name);
+gchar **gabble_presence_get_client_types_array (GabblePresence *presence,
+    const gchar **resource_name);
 
 G_END_DECLS
 

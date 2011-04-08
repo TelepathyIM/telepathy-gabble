@@ -167,12 +167,10 @@ conn_client_types_fill_contact_attributes (GObject *obj,
       GValue *val;
       GPtrArray *types;
 
-      if (!get_client_types_from_handle (conn, handle, &types, FALSE))
+      if (!get_client_types_from_handle (conn, handle, &types, TRUE))
         continue;
 
-      val = tp_g_value_slice_new_boxed (
-          dbus_g_type_get_collection ("GPtrArray", G_TYPE_STRING),
-          types);
+      val = tp_g_value_slice_new_boxed (G_TYPE_STRV, types->pdata);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
           TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES "/client-types", val);

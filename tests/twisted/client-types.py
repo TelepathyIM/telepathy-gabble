@@ -234,6 +234,13 @@ def test2(q, bus, conn, stream):
     q.expect('dbus-signal', signal='ClientTypesUpdated',
              args=[handle, ['pc']])
 
+    attrs = conn.Contacts.GetContactAttributes([handle],
+        [cs.CONN_IFACE_CLIENT_TYPES], False)
+    assertContains(handle, attrs)
+    attr = cs.CONN_IFACE_CLIENT_TYPES + '/client-types'
+    assertContains(attr, attrs[handle])
+    assertEquals(['pc'], attrs[handle][attr])
+
 def two_contacts_with_the_same_hash(q, bus, conn, stream, bare_jids):
     contact1 = 'bowyer.place@tfl.gov.uk'
     contact2 = 'albany.road@tfl.gov.uk'

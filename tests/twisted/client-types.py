@@ -234,19 +234,25 @@ def test2(q, bus, conn, stream):
     q.expect('dbus-signal', signal='ClientTypesUpdated',
              args=[handle, ['pc']])
 
-def two_contacts_with_the_same_hash(q, bus, conn, stream):
-    contact1 = 'bowyer.place@tfl.gov.uk/foo'
-    contact2 = 'albany.road@tfl.gov.uk/bar'
+def two_contacts_with_the_same_hash(q, bus, conn, stream, bare_jids):
+    contact1 = 'bowyer.place@tfl.gov.uk'
+    contact2 = 'albany.road@tfl.gov.uk'
+
+    if not bare_jids:
+        contact1 += '/lol'
+        contact2 += '/whut'
+
     h1, h2 = conn.RequestHandles(cs.HT_CONTACT, [contact1, contact2])
     ver = compute_caps_hash(BANANAPHONE, features, {})
     caps = {
-        'node': client_base,
+        # Uniquify slightly with a stringified boolean ;-)
+        'node': '%s%s' % (client_base, bare_jids),
         'ver':  ver,
         'hash': 'sha-1',
         }
 
     send_presence(q, conn, stream, contact1, caps)
-    stanza = expect_disco(q, contact1, client_base, caps)
+    stanza = expect_disco(q, contact1, caps['node'], caps)
 
     send_presence(q, conn, stream, contact2, caps)
     q.forbid_events([
@@ -268,4 +274,5 @@ def two_contacts_with_the_same_hash(q, bus, conn, stream):
 if __name__ == '__main__':
     exec_test(test)
     exec_test(test2)
-    exec_test(two_contacts_with_the_same_hash)
+    exec_test(partial(two_contacts_with_the_same_hash, bare_jids=False))
+    exec_test(partial(two_contacts_with_the_same_hash, bare_jids=True))

@@ -782,12 +782,32 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
   return NULL;
 }
 
+/* FIXME: this function should be combined with
+ * gabble_presence_set_capabilities().
+ */
 gboolean
 gabble_presence_update_client_types (GabblePresence *presence,
     const gchar *resource,
     guint client_types)
 {
-  Resource *res = _find_resource (presence, resource);
+  Resource *res;
+
+  if (resource == NULL && presence->priv->resources != NULL)
+    {
+      DEBUG ("Ignoring client types for NULL resource since we have "
+          "presence for some resources");
+      return FALSE;
+    }
+
+  if (resource == NULL)
+    {
+      guint old_client_types = presence->client_types;
+
+      presence->client_types = client_types;
+      return (old_client_types != client_types);
+    }
+
+  res = _find_resource (presence, resource);
 
   if (res == NULL)
     return FALSE;

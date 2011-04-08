@@ -1158,9 +1158,7 @@ set_caps_for (DiscoWaiter *waiter,
   emit_capabilities_update (cache, waiter->handle, old_cap_set, new_cap_set);
   gabble_capability_set_free (old_cap_set);
 
-  /* FIXME: why can't a bare JID have client types? */
-  if (waiter->resource != NULL &&
-      gabble_presence_update_client_types (presence, waiter->resource,
+  if (gabble_presence_update_client_types (presence, waiter->resource,
         client_types))
     g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, waiter->handle);
 }
@@ -1489,7 +1487,7 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (presence)
         {
-          gboolean emit_updated = FALSE;
+          guint types;
 
           gabble_presence_set_capabilities (
               presence, resource, cap_set, serial);
@@ -1499,18 +1497,14 @@ _process_caps_uri (GabblePresenceCache *cache,
           if (cached_query_reply != NULL)
             {
               WockyNode *query = wocky_node_tree_get_top_node (cached_query_reply);
-              guint types = client_types_from_message (handle, query, resource);
-
-              if (resource != NULL)
-                emit_updated = gabble_presence_update_client_types (presence, resource, types);
+              types = client_types_from_message (handle, query, resource);
             }
           else
             {
-              emit_updated = gabble_presence_update_client_types (presence,
-                  resource, info->client_types);
+              types = info->client_types;
             }
 
-          if (emit_updated)
+          if (gabble_presence_update_client_types (presence, resource, types))
             g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, handle);
         }
       else

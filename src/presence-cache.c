@@ -1227,13 +1227,12 @@ _signal_presences_updated (GabblePresenceCache *cache,
   g_array_free (handles, TRUE);
 }
 
-static void
+static guint
 process_client_types (
     GabblePresenceCache *cache,
     LmMessageNode *query_result,
     TpHandle handle,
-    DiscoWaiter *waiter_self,
-    guint *out_types)
+    DiscoWaiter *waiter_self)
 {
   GabblePresence *presence = gabble_presence_cache_get (cache, handle);
   guint client_types;
@@ -1243,7 +1242,7 @@ process_client_types (
    * presence to attach their freshly-discovered client types to.
    */
   if (presence == NULL)
-    return;
+    return 0;
 
   client_types = client_types_from_message (handle, query_result,
       waiter_self->resource);
@@ -1252,11 +1251,10 @@ process_client_types (
     ret = gabble_presence_update_client_types (presence, waiter_self->resource,
         client_types);
 
-  if (out_types != NULL)
-    *out_types = client_types;
-
   if (ret)
     g_signal_emit (cache, signals[CLIENT_TYPES_UPDATED], 0, handle);
+
+  return client_types;
 }
 
 static void
@@ -1326,7 +1324,7 @@ _caps_disco_cb (GabbleDisco *disco,
       goto OUT;
     }
 
-  process_client_types (cache, query_result, handle, waiter_self, &client_types);
+  client_types = process_client_types (cache, query_result, handle, waiter_self);
 
   /* Now onto caps */
   cap_set = gabble_capability_set_new_from_stanza (query_result);

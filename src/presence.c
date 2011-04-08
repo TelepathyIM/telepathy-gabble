@@ -350,6 +350,8 @@ aggregate_resources (GabblePresence *presence)
     {
       Resource *r = (Resource *) i->data;
 
+      gabble_capability_set_update (priv->cap_set, r->cap_set);
+
       if (best == NULL)
         best = r;
 

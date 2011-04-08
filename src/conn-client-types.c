@@ -168,40 +168,39 @@ typedef struct
   GabbleConnection *conn;
 } UpdatedData;
 
+static void
+updated_data_free (gpointer data)
+{
+  g_slice_free (UpdatedData, data);
+}
+
 static gboolean
 idle_timeout (gpointer user_data)
 {
   UpdatedData *data = user_data;
   GabblePresence *presence;
-  gchar **types;
-  gchar *empty_array[] = { NULL };
-  const gchar *res = NULL;
 
   presence = gabble_presence_cache_get (data->cache, data->handle);
 
   if (presence == NULL)
     {
-      types = empty_array;
-      goto emit;
+      gchar *empty_array[] = { NULL };
+
+      tp_svc_connection_interface_client_types_emit_client_types_updated (
+          data->conn, data->handle, (const gchar **) empty_array);
     }
-
-  types = gabble_presence_get_client_types_array (presence, &res);
-
-  if (gabble_presence_cache_disco_in_progress (data->cache, data->handle, res)
-      || types == NULL)
+  else
     {
-      goto cleanup;
+      const gchar *res = NULL;
+      gchar **types = gabble_presence_get_client_types_array (presence, &res);
+
+      if (!gabble_presence_cache_disco_in_progress (data->cache, data->handle,
+              res))
+        tp_svc_connection_interface_client_types_emit_client_types_updated (
+            data->conn, data->handle, (const gchar **) types);
+
+      g_strfreev (types);
     }
-
-emit:
-  tp_svc_connection_interface_client_types_emit_client_types_updated (
-      data->conn, data->handle, (const gchar **) types);
-
-  if (types != empty_array)
-    g_strfreev (types);
-
-cleanup:
-  g_slice_free (UpdatedData, data);
 
   return FALSE;
 }
@@ -223,7 +222,8 @@ presence_cache_client_types_updated_cb (GabblePresenceCache *presence_cache,
    * client types which is a bit annoying. If we do this bit in an
    * idle then the disco request will have been made by the time the
    * idle source function is actually called. */
-  g_idle_add (idle_timeout, data);
+  g_idle_add_full (G_PRIORITY_DEFAULT_IDLE, idle_timeout, data,
+      updated_data_free);
 }
 
 void

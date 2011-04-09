@@ -820,20 +820,16 @@ gchar **
 gabble_presence_get_client_types_array (GabblePresence *presence,
     const char **resource_name)
 {
-  GPtrArray *array;
-  GFlagsClass *klass;
-  GFlagsValue *value;
-  guint i;
-
-  array = g_ptr_array_new_with_free_func (g_free);
-
-  klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);
+  GPtrArray *array = g_ptr_array_new ();
+  GFlagsClass *klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);
 
   if (klass != NULL)
     {
+      guint i;
+
       for (i = 0; i < klass->n_values; i++)
         {
-          value = &klass->values[i];
+          GFlagsValue *value = &klass->values[i];
 
           if (presence->client_types & value->value)
             g_ptr_array_add (array, g_strdup (value->value_nick));

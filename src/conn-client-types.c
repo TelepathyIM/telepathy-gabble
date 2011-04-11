@@ -43,6 +43,8 @@ get_client_types_from_handle (GabbleConnection *conn,
   GabblePresence *presence = gabble_presence_cache_get (conn->presence_cache,
       handle);
 
+  g_return_val_if_fail (types_out != NULL, FALSE);
+
   if (presence == NULL)
     {
       /* We have no presence information for this contact; so they have no

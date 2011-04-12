@@ -49,7 +49,7 @@ conn_util_send_iq_cb (GObject *source_object,
       g_clear_error (&error);
     }
 
-  g_simple_async_result_complete_in_idle (result);
+  g_simple_async_result_complete (result);
   g_object_unref (result);
 }
 

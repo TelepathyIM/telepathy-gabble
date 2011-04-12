@@ -597,7 +597,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                            signal=kw['member'], args=map(unwrap, args),
                            interface=kw['interface']))
 
-    bus.add_signal_receiver(
+    match_all_signals = bus.add_signal_receiver(
         signal_receiver,
         None,       # signal name
         None,       # interface
@@ -663,6 +663,8 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
         except Exception, e:
             traceback.print_exc()
             error = e
+
+    match_all_signals.remove()
 
     if error is None:
         d.addBoth((lambda *args: reactor.crash()))

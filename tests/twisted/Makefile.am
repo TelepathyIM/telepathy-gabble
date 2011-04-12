@@ -310,6 +310,7 @@ BUILT_SOURCES = config.py
 EXTRA_DIST = \
 	$(TWISTED_TESTS) \
 	bytestream.py \
+	connect/torture.py \
 	constants.py \
 	gabbletest.py \
 	httptest.py \

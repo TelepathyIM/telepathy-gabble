@@ -39,13 +39,17 @@ conn_util_send_iq_cb (GObject *source_object,
   reply = wocky_porter_send_iq_finish (porter, res, &error);
 
   if (reply != NULL)
-    g_simple_async_result_set_op_res_gpointer (result, reply,
-        (GDestroyNotify) g_object_unref);
+    {
+      g_simple_async_result_set_op_res_gpointer (result, reply,
+          (GDestroyNotify) g_object_unref);
+    }
   else
-    g_simple_async_result_set_from_error (result, error);
+    {
+      g_simple_async_result_set_from_error (result, error);
+      g_clear_error (&error);
+    }
 
   g_simple_async_result_complete_in_idle (result);
-
   g_object_unref (result);
 }
 

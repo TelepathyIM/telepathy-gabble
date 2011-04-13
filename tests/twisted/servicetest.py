@@ -414,7 +414,11 @@ def call_async(test, proxy, method, *args, **kw):
     method_proxy(*args, **kw)
 
 def sync_dbus(bus, q, conn):
-    # Dummy D-Bus method call
+    # Dummy D-Bus method call. We can't use DBus.Peer.Ping() because libdbus
+    # replies to that message immediately, rather than handing it up to
+    # dbus-glib and thence Gabble, which means that Ping()ing Gabble doesn't
+    # ensure that it's processed all D-Bus messages prior to our ping.
+    #
     # This won't do the right thing unless the proxy has a unique name.
     assert conn.object.bus_name.startswith(':')
     root_object = bus.get_object(conn.object.bus_name, '/')

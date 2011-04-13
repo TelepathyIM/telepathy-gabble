@@ -505,7 +505,10 @@ test_channel_manager_set_property (
   switch (property_id)
     {
       case PROP_CONNECTION:
-        self->connection = g_value_dup_object (value);
+        /* Not reffing this: the connection owns all channel managers, so it
+         * must outlive us. Taking a reference leads to a cycle.
+         */
+        self->connection = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -555,17 +558,6 @@ test_channel_manager_constructed (GObject *object)
 }
 
 static void
-test_channel_manager_dispose (GObject *object)
-{
-  TestChannelManager *self = TEST_CHANNEL_MANAGER (object);
-
-  if (G_OBJECT_CLASS (test_channel_manager_parent_class)->dispose != NULL)
-    G_OBJECT_CLASS (test_channel_manager_parent_class)->dispose (object);
-
-  tp_clear_object (&self->connection);
-}
-
-static void
 test_channel_manager_class_init (TestChannelManagerClass *klass)
 {
   GObjectClass *oclass = G_OBJECT_CLASS (klass);
@@ -573,7 +565,6 @@ test_channel_manager_class_init (TestChannelManagerClass *klass)
   oclass->set_property = test_channel_manager_set_property;
   oclass->get_property = test_channel_manager_get_property;
   oclass->constructed = test_channel_manager_constructed;
-  oclass->dispose = test_channel_manager_dispose;
 
   g_object_class_install_property (oclass, PROP_CONNECTION,
       g_param_spec_object ("connection", "Gabble Connection",

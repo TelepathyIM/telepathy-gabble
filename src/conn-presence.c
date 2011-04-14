@@ -1448,6 +1448,15 @@ conn_presence_statuses (void)
   return gabble_statuses;
 }
 
+static guint
+get_maximum_status_message_length_cb (GObject *obj)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (obj);
+  GabbleConnectionPresencePrivate *priv = conn->presence_priv;
+
+  return priv->max_status_message_length;
+}
+
 /**
  * conn_presence_signal_own_presence:
  * @self: A #GabbleConnection
@@ -1836,10 +1845,15 @@ conn_presence_get_type (GabblePresence *presence)
 void
 conn_presence_class_init (GabbleConnectionClass *klass)
 {
+  TpPresenceMixinClass *mixin_cls;
+
   tp_presence_mixin_class_init ((GObjectClass *) klass,
       G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
       status_available_cb, construct_contact_statuses_cb,
       set_own_status_cb, conn_presence_statuses ());
+  mixin_cls = TP_PRESENCE_MIXIN_CLASS (klass);
+  mixin_cls->get_maximum_status_message_length =
+      get_maximum_status_message_length_cb;
 
   tp_presence_mixin_simple_presence_init_dbus_properties (
     (GObjectClass *) klass);

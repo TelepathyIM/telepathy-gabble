@@ -109,6 +109,7 @@ class SharedStatusStream(XmppXmlStream):
 
         self.min_version = '2'
 
+        self.max_status_message_length = '512'
         self.max_statuses = '5'
 
     def set_shared_status_lists(self, shared_status_lists=None, status=None,
@@ -141,7 +142,7 @@ class SharedStatusStream(XmppXmlStream):
             elems.append(elem('status-list', show=show)(*lst))
         elems.append(elem('invisible', value=invisible)())
 
-        attribs = {'status-max' : '512',
+        attribs = {'status-max' : self.max_status_message_length,
                    'status-list-max' : '3',
                    'status-list-contents-max' : self.max_statuses,
                    'status-min-ver' : self.min_version}

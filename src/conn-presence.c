@@ -75,6 +75,9 @@ struct _GabbleConnectionPresencePrivate {
     /* Are all of the connected resources complying to version 2 */
     gboolean shared_status_compat;
 
+    /* Max length of status message */
+    gint max_status_message_length;
+
     /* Max statuses in a shared status list */
     gint max_shared_statuses;
 
@@ -947,8 +950,16 @@ get_shared_status_cb  (GObject *source_object,
 
       if (query_node != NULL)
         {
+          const gchar *max_status_message = wocky_node_get_attribute (query_node,
+              "status-max");
           const gchar *max_shared = wocky_node_get_attribute (query_node,
               "status-list-contents-max");
+
+          if (max_status_message != NULL)
+            priv->max_status_message_length = (gint) g_ascii_strtoll (
+                max_status_message, NULL, 10);
+          else
+            priv->max_status_message_length = 0; /* no limit */
 
           if (max_shared != NULL)
             priv->max_shared_statuses = (gint) g_ascii_strtoll (max_shared, NULL, 10);
@@ -1627,6 +1638,7 @@ set_own_status_cb (GObject *obj,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GabblePresenceId i = GABBLE_PRESENCE_AVAILABLE;
   const gchar *message_str = NULL;
+  gchar *message_truncated = NULL;
   gchar *resource;
   gint8 prio;
   gboolean retval = TRUE;
@@ -1689,6 +1701,14 @@ set_own_status_cb (GObject *obj,
         }
     }
 
+  if (message_str && priv->max_status_message_length > 0 &&
+      priv->shared_statuses != NULL)
+    {
+      message_truncated = g_strndup (message_str,
+          priv->max_status_message_length);
+      message_str = message_truncated;
+    }
+
   if (gabble_presence_update (conn->self_presence, resource, i,
           message_str, prio))
     {
@@ -1721,6 +1741,7 @@ set_own_status_cb (GObject *obj,
     }
 
 OUT:
+  g_free (message_truncated);
   g_free (resource);
 
   return retval;

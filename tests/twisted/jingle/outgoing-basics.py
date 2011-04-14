@@ -2,7 +2,7 @@
 Test basic outgoing call handling, using CreateChannel and all three variations
 of RequestChannel.
 """
-
+from functools import partial
 import dbus
 from twisted.words.xish import xpath
 
@@ -337,11 +337,7 @@ if __name__ == '__main__':
     test_all_dialects(request_anonymous)
     test_all_dialects(request_anonymous_and_add)
     test_all_dialects(request_nonymous)
-    test_all_dialects(lambda j, q, b, c, s:
-            create(j, q, b, c, s, peer='foo@gw.bar.com'))
-    test_all_dialects(lambda j, q, b, c, s:
-            request_anonymous(j, q, b, c, s, peer='foo@gw.bar.com'))
-    test_all_dialects(lambda j, q, b, c, s:
-            request_anonymous_and_add(j, q, b, c, s, peer='foo@gw.bar.com'))
-    test_all_dialects(lambda j, q, b, c, s:
-            request_nonymous(j, q, b, c, s, peer='foo@gw.bar.com'))
+    test_all_dialects(partial(create, peer='foo@gw.bar.com'))
+    test_all_dialects(partial(request_anonymous, peer='foo@gw.bar.com'))
+    test_all_dialects(partial(request_anonymous_and_add, peer='foo@gw.bar.com'))
+    test_all_dialects(partial(request_nonymous, peer='foo@gw.bar.com'))

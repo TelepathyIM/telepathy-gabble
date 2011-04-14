@@ -7,6 +7,7 @@
 # This can be used in parallel with the old API, but should
 # obsolete it in time.
 
+from functools import partial
 from twisted.words.xish import domish, xpath
 import random
 from gabbletest import sync_stream, exec_test
@@ -824,8 +825,7 @@ class JingleTest2:
 
 def test_dialects(f, dialects):
     for dialect in dialects:
-        exec_test(
-            lambda q, bus, conn, stream: f(dialect(), q, bus, conn, stream))
+        exec_test(partial(f, dialect()))
 
 def test_all_dialects(f):
     dialectmap = { "jingle015": JingleProtocol015,

@@ -1423,7 +1423,8 @@ shared_status_setup_cb (GObject *source_object,
       g_error_free (error);
     }
 
-  get_existing_privacy_lists_async (self, privacy_lists_loaded_cb, user_data);
+  toggle_presence_visibility_async (self,
+      toggle_initial_presence_visibility_cb, user_data);
 }
 
 void

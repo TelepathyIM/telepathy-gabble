@@ -462,6 +462,7 @@ class GoogleXmlStream(BaseXmlStream):
     disco_features = [ns.GOOGLE_ROSTER,
                       ns.GOOGLE_JINGLE_INFO,
                       ns.GOOGLE_MAIL_NOTIFY,
+                      ns.GOOGLE_QUEUE,
                      ]
 
     def _cb_bare_jid_disco_iq(self, iq):

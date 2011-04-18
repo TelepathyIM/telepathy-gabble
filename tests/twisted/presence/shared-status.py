@@ -100,7 +100,8 @@ def test(q, bus, conn, stream):
     q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
                                iq_type='get'),
                   EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
-                               iq_type='set'))
+                               iq_type='set'),
+                  EventPattern('stream-presence'))
 
     # Set shared status to dnd.
     _test_local_status(q, conn, stream, "Don't disturb, buddy.", "dnd")
@@ -256,7 +257,8 @@ def test_shared_status_list(q, bus, conn, stream):
     q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
                                iq_type='get'),
                   EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
-                               iq_type='set'))
+                               iq_type='set'),
+                  EventPattern('stream-presence'))
 
     for show, statuses in test_statuses.items():
         shared_show, _ = _show_to_shared_status_show(show)
@@ -271,7 +273,8 @@ def test_shared_status_away(q, bus, conn, stream):
     q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
                                iq_type='get'),
                   EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
-                               iq_type='set'))
+                               iq_type='set'),
+                  EventPattern('stream-presence'))
 
     expected_list = copy.deepcopy(stream.shared_status_lists)
     for show in ('away', 'xa'):

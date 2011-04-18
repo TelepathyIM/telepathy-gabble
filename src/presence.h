@@ -60,9 +60,22 @@ struct _GabblePresence {
     gchar *status_message;
     gchar *nickname;
     gchar *avatar_sha1;
+    guint client_types;
     gboolean keep_unavailable;
     GabblePresencePrivate *priv;
 };
+
+typedef enum
+{
+  GABBLE_CLIENT_TYPE_BOT      = 1 << 0,
+  GABBLE_CLIENT_TYPE_CONSOLE  = 1 << 1,
+  GABBLE_CLIENT_TYPE_GAME     = 1 << 2,
+  GABBLE_CLIENT_TYPE_HANDHELD = 1 << 3,
+  GABBLE_CLIENT_TYPE_PC       = 1 << 4,
+  GABBLE_CLIENT_TYPE_PHONE    = 1 << 5,
+  GABBLE_CLIENT_TYPE_WEB      = 1 << 6,
+  GABBLE_CLIENT_TYPE_SMS      = 1 << 7,
+} GabbleClientType;
 
 typedef struct _GabblePresenceClass GabblePresenceClass;
 
@@ -76,7 +89,8 @@ GabblePresence* gabble_presence_new (void);
 
 gboolean gabble_presence_update (GabblePresence *presence,
     const gchar *resource, GabblePresenceId status,
-    const gchar *status_message, gint8 priority);
+    const gchar *status_message, gint8 priority,
+    gboolean *update_client_types);
 
 void gabble_presence_set_capabilities (GabblePresence *presence,
     const gchar *resource,
@@ -89,14 +103,8 @@ const GabbleCapabilitySet *gabble_presence_peek_caps (GabblePresence *presence);
 
 gboolean gabble_presence_has_resources (GabblePresence *self);
 
-typedef enum /*< skip >*/
-{
-  DEVICE_AGNOSTIC = 0,
-  PREFER_PHONES = 1
-} DevicePreference;
-
 const gchar *gabble_presence_pick_resource_by_caps (GabblePresence *presence,
-    DevicePreference any_special_requests,
+    GabbleClientType preferred_client_type,
     GabbleCapabilitySetPredicate predicate,
     gconstpointer user_data);
 
@@ -131,23 +139,12 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
     const GabbleFeatureFallback *table,
     GabbleCapabilitySetPredicate predicate);
 
-typedef enum
-{
-  GABBLE_CLIENT_TYPE_BOT      = 1 << 0,
-  GABBLE_CLIENT_TYPE_CONSOLE  = 1 << 1,
-  GABBLE_CLIENT_TYPE_GAME     = 1 << 2,
-  GABBLE_CLIENT_TYPE_HANDHELD = 1 << 3,
-  GABBLE_CLIENT_TYPE_PC       = 1 << 4,
-  GABBLE_CLIENT_TYPE_PHONE    = 1 << 5,
-  GABBLE_CLIENT_TYPE_WEB      = 1 << 6,
-  GABBLE_CLIENT_TYPE_SMS      = 1 << 7,
-} GabbleClientType;
+gboolean gabble_presence_update_client_types (GabblePresence *presence,
+    const gchar *resource,
+    guint client_types);
 
-void gabble_presence_update_client_types (GabblePresence *presence,
-    const gchar *resource, GPtrArray *client_types);
-
-GPtrArray * gabble_presence_get_client_types_array (GabblePresence *presence,
-    const gchar *resource, gboolean add_null);
+gchar **gabble_presence_get_client_types_array (GabblePresence *presence,
+    const gchar **resource_name);
 
 G_END_DECLS
 

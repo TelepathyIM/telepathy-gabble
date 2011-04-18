@@ -823,7 +823,7 @@ store_shared_statuses (GabbleConnection *self,
   /* If we are connected, use the new shared status. If not, override with local */
   if (base->status == TP_CONNECTION_STATUS_CONNECTED)
     rv = gabble_presence_update (self->self_presence, resource, presence_id,
-        status_message, prio);
+        status_message, prio, NULL);
   else
     rv = TRUE;
 
@@ -1690,7 +1690,7 @@ set_own_status_cb (GObject *obj,
     }
 
   if (gabble_presence_update (conn->self_presence, resource, i,
-          message_str, prio))
+          message_str, prio, NULL))
     {
       if (base->status != TP_CONNECTION_STATUS_CONNECTED)
         {

@@ -165,6 +165,7 @@ def make_caps_disco_reply(stream, req, identities, features, dataforms={}):
         el['category'] = category
         el['type'] = type_
         el['name'] = name
+        el['xml:lang'] = lang
 
     for f in features:
         el = domish.Element((None, 'feature'))

@@ -34,6 +34,10 @@ from caps_helper import (
 
 caps_changed_flag = False
 
+some_identities = [
+    'client/pc/fr/le gabble',
+    'client/pc/en/gabble',
+    ]
 jingle_av_features = [
     ns.JINGLE_015,
     ns.JINGLE_015_AUDIO,
@@ -158,7 +162,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
 
     # send correct presence
-    ver = compute_caps_hash([], jingle_av_features, fake_client_dataforms)
+    ver = compute_caps_hash(some_identities, jingle_av_features, fake_client_dataforms)
     caps = {
         'node': client,
         'ver':  ver,
@@ -180,7 +184,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # send good reply
     send_disco_reply(
-        stream, event.stanza, [], jingle_av_features, fake_client_dataforms)
+        stream, event.stanza, some_identities, jingle_av_features, fake_client_dataforms)
 
     # we can now do audio calls
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',
@@ -221,7 +225,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     assert conn.Capabilities.GetCapabilities([contact_handle2]) == basic_caps
 
     # send updated presence with Jingle caps info
-    ver = compute_caps_hash([], jingle_av_features, {})
+    ver = compute_caps_hash(some_identities, jingle_av_features, {})
     caps = {
         'node': client,
         'ver': ver,
@@ -244,7 +248,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     assert caps_changed_flag == False
 
     result = make_caps_disco_reply(
-        stream, event.stanza, [], jingle_av_features)
+        stream, event.stanza, some_identities, jingle_av_features)
 
     if broken_hash:
         # make the hash break!
@@ -267,7 +271,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         assert caps_changed_flag == False
 
         # send good reply
-        send_disco_reply(stream, event.stanza, [], jingle_av_features)
+        send_disco_reply(stream, event.stanza, some_identities, jingle_av_features)
 
     # we can now do audio calls with both contacts
     event = q.expect('dbus-signal', signal='CapabilitiesChanged',

@@ -47,7 +47,10 @@ struct _Resource {
     GabblePresenceId status;
     gchar *status_message;
     gint8 priority;
-    time_t last_activity;
+    /* The last time we saw an available (or chatty! \o\ /o/) presence for
+     * this resource.
+     */
+    time_t last_available;
 };
 
 struct _GabblePresencePrivate {
@@ -57,6 +60,8 @@ struct _GabblePresencePrivate {
     gchar *no_resource_status_message;
     GSList *resources;
     guint olpc_views;
+
+    gchar *active_resource;
 };
 
 static Resource *
@@ -64,13 +69,13 @@ _resource_new (gchar *name)
 {
   Resource *new = g_slice_new0 (Resource);
   new->name = name;
-  new->client_type = G_MAXUINT;
+  new->client_type = 0;
   new->cap_set = gabble_capability_set_new ();
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
   new->caps_serial = 0;
-  new->last_activity = 0;
+  new->last_available = 0;
 
   return new;
 }
@@ -101,6 +106,7 @@ gabble_presence_finalize (GObject *object)
   g_free (presence->nickname);
   g_free (presence->avatar_sha1);
   g_free (priv->no_resource_status_message);
+  g_free (priv->active_resource);
 }
 
 static void
@@ -134,7 +140,7 @@ static gboolean
 resource_better_than (
     Resource *a,
     Resource *b,
-    DevicePreference preference)
+    GabbleClientType preferred_client_type)
 {
     if (a->priority < 0)
         return FALSE;
@@ -142,10 +148,10 @@ resource_better_than (
     if (NULL == b)
         return TRUE;
 
-    if (preference == PREFER_PHONES)
+    if (preferred_client_type != 0)
       {
-        gboolean a_p = a->client_type & GABBLE_CLIENT_TYPE_PHONE;
-        gboolean b_p = b->client_type & GABBLE_CLIENT_TYPE_PHONE;
+        gboolean a_p = a->client_type & preferred_client_type;
+        gboolean b_p = b->client_type & preferred_client_type;
 
         if (a_p && !b_p)
           return TRUE;
@@ -158,9 +164,9 @@ resource_better_than (
     else if (a->status > b->status)
         return TRUE;
 
-    if (a->last_activity < b->last_activity)
+    if (a->last_available < b->last_available)
         return FALSE;
-    else if (a->last_activity > b->last_activity)
+    else if (a->last_available > b->last_available)
         return TRUE;
 
     return (a->priority > b->priority);
@@ -195,10 +201,22 @@ gabble_presence_has_resources (GabblePresence *self)
   return (self->priv->resources != NULL);
 }
 
+/*
+ * gabble_presence_pick_resource_by_caps:
+ * @presence: a presence, which may not be NULL
+ * @preferred_client_type: a single client type flag, such as
+ *  GABBLE_CLIENT_TYPE_PHONE, to specify that resources with that type should
+ *  be preferred to those without it; or 0 to express no preference
+ * @predicate: a condition which must be satisfied by a resource's
+ *  capabilities, or NULL to disregard capabilities
+ * @user_data: the second argument for @predicate (ignored if @predicate is
+ *  NULL)
+ *
+ */
 const gchar *
 gabble_presence_pick_resource_by_caps (
     GabblePresence *presence,
-    DevicePreference any_special_requests,
+    GabbleClientType preferred_client_type,
     GabbleCapabilitySetPredicate predicate,
     gconstpointer user_data)
 {
@@ -215,7 +233,7 @@ gabble_presence_pick_resource_by_caps (
       if (predicate != NULL && !predicate (res->cap_set, user_data))
         continue;
 
-      if (resource_better_than (res, chosen, any_special_requests))
+      if (resource_better_than (res, chosen, preferred_client_type))
         chosen = res;
     }
 
@@ -281,6 +299,9 @@ gabble_presence_set_capabilities (GabblePresence *presence,
     {
       Resource *tmp = (Resource *) i->data;
 
+      /* This does not use _find_resource() because it also refreshes
+       * priv->cap_set as we go.
+       */
       if (0 == strcmp (tmp->name, resource))
         {
           DEBUG ("found resource %s", resource);
@@ -325,21 +346,18 @@ _find_resource (GabblePresence *presence, const gchar *resource)
   return NULL;
 }
 
-static void
+static gboolean
 aggregate_resources (GabblePresence *presence)
 {
   GabblePresencePrivate *priv = presence->priv;
   GSList *i;
-  guint8 prio;
-  time_t activity;
+  Resource *best = NULL;
+  guint old_client_types = presence->client_types;
 
   /* select the most preferable Resource and update presence->* based on our
    * choice */
   gabble_capability_set_clear (priv->cap_set);
   presence->status = GABBLE_PRESENCE_OFFLINE;
-
-  prio = -128;
-  activity = 0;
 
   for (i = priv->resources; NULL != i; i = i->next)
     {
@@ -347,18 +365,35 @@ aggregate_resources (GabblePresence *presence)
 
       gabble_capability_set_update (priv->cap_set, r->cap_set);
 
+      /* This doesn't use resource_better_than() because phone preferences take
+       * priority above all others whereas this is only using the PC thing as a
+       * last-ditch tiebreak. wjt looked into changing this but gave up because
+       * it's messy and the phone preference stuff will go away when we do
+       * Jingle call forking anyway:
+       * <https://bugs.freedesktop.org/show_bug.cgi?id=26673>
+       */
+
       /* trump existing status & message if it's more present
-       * or has the same presence and a more recent last activity
+       * or has the same presence and was more recently available
        * or has the same presence and a higher priority */
-      if (r->status > presence->status ||
-          (r->status == presence->status && r->last_activity > activity) ||
-          (r->status == presence->status && r->priority > prio))
-        {
-          presence->status = r->status;
-          presence->status_message = r->status_message;
-          prio = r->priority;
-          activity = r->last_activity;
-        }
+      if (best == NULL ||
+          r->status > best->status ||
+          (r->status == best->status &&
+              (r->last_available > best->last_available ||
+               r->priority > best->priority)) ||
+          (r->client_type & GABBLE_CLIENT_TYPE_PC
+              && !(best->client_type & GABBLE_CLIENT_TYPE_PC)))
+        best = r;
+    }
+
+  if (best != NULL)
+    {
+      presence->status = best->status;
+      presence->status_message = best->status_message;
+      presence->client_types = best->client_type;
+
+      g_free (priv->active_resource);
+      priv->active_resource = g_strdup (best->name);
     }
 
   if (presence->status <= GABBLE_PRESENCE_HIDDEN && priv->olpc_views > 0)
@@ -369,6 +404,8 @@ aggregate_resources (GabblePresence *presence)
       g_free (presence->status_message);
       presence->status_message = NULL;
     }
+
+  return old_client_types != presence->client_types;
 }
 
 gboolean
@@ -376,7 +413,8 @@ gabble_presence_update (GabblePresence *presence,
                         const gchar *resource,
                         GabblePresenceId status,
                         const gchar *status_message,
-                        gint8 priority)
+                        gint8 priority,
+                        gboolean *update_client_types)
 {
   GabblePresencePrivate *priv = presence->priv;
   Resource *res;
@@ -452,7 +490,7 @@ gabble_presence_update (GabblePresence *presence,
       res->priority = priority;
 
       if (res->status >= GABBLE_PRESENCE_AVAILABLE)
-          res->last_activity = time (NULL);
+          res->last_available = time (NULL);
     }
 
   /* select the most preferable Resource and update presence->* based on our
@@ -464,7 +502,10 @@ gabble_presence_update (GabblePresence *presence,
    * keeping around just because it has a message on it */
   presence->status_message = res ? res->status_message : NULL;
 
-  aggregate_resources (presence);
+  if (update_client_types != NULL)
+    *update_client_types = aggregate_resources (presence);
+  else
+    aggregate_resources (presence);
 
 OUT:
   /* detect changes */
@@ -741,71 +782,66 @@ gabble_presence_pick_best_feature (GabblePresence *presence,
   return NULL;
 }
 
-void
+/* FIXME: this function should be combined with
+ * gabble_presence_set_capabilities().
+ */
+gboolean
 gabble_presence_update_client_types (GabblePresence *presence,
     const gchar *resource,
-    GPtrArray *client_types)
+    guint client_types)
 {
   Resource *res;
-  guint i, value;
+
+  if (resource == NULL && presence->priv->resources != NULL)
+    {
+      DEBUG ("Ignoring client types for NULL resource since we have "
+          "presence for some resources");
+      return FALSE;
+    }
+
+  if (resource == NULL)
+    {
+      guint old_client_types = presence->client_types;
+
+      presence->client_types = client_types;
+      return (old_client_types != client_types);
+    }
 
   res = _find_resource (presence, resource);
 
   if (res == NULL)
-    return;
+    return FALSE;
 
-  /* since this method has been called, the client types have been
-   * discovered to be something, or discovered to be nothing, so set
-   * the client_type member to something other than G_MAXUINT */
-  res->client_type = 0;
-
-  if (client_types == NULL)
-    return;
-
-  for (i = 0; i < client_types->len; i++)
-    {
-      const gchar *type = g_ptr_array_index (client_types, i);
-
-      if (gabble_flag_from_nick (GABBLE_TYPE_CLIENT_TYPE, type, &value))
-        res->client_type |= value;
-    }
+  res->client_type = client_types;
+  return aggregate_resources (presence);
 }
 
-GPtrArray *
+gchar **
 gabble_presence_get_client_types_array (GabblePresence *presence,
-    const gchar *resource,
-    gboolean add_null)
+    const char **resource_name)
 {
-  Resource *res;
-  GPtrArray *array;
-  GFlagsClass *klass;
-  GFlagsValue *value;
-  guint i;
-
-  array = g_ptr_array_new_with_free_func (g_free);
-
-  res = _find_resource (presence, resource);
-
-  if (res == NULL || res->client_type == G_MAXUINT)
-    return NULL;
-
-  klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);
+  GPtrArray *array = g_ptr_array_new ();
+  GFlagsClass *klass = g_type_class_ref (GABBLE_TYPE_CLIENT_TYPE);
 
   if (klass != NULL)
     {
+      guint i;
+
       for (i = 0; i < klass->n_values; i++)
         {
-          value = &klass->values[i];
+          GFlagsValue *value = &klass->values[i];
 
-          if (res->client_type & value->value)
+          if (presence->client_types & value->value)
             g_ptr_array_add (array, g_strdup (value->value_nick));
         }
 
       g_type_class_unref (klass);
     }
 
-  if (add_null)
-    g_ptr_array_add (array, NULL);
+  g_ptr_array_add (array, NULL);
 
-  return array;
+  if (resource_name != NULL)
+    *resource_name = presence->priv->active_resource;
+
+  return (gchar **) g_ptr_array_free (array, FALSE);
 }

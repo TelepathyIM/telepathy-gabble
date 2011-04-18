@@ -1394,6 +1394,38 @@ privacy_lists_loaded_cb (GObject *source_object,
 }
 
 static void
+shared_status_toggle_initial_presence_visibility_cb (GObject *source_object,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GSimpleAsyncResult *external_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GError *error = NULL;
+
+  if (!toggle_presence_visibility_finish (self, result, &error))
+    {
+      g_simple_async_result_set_from_error (external_result, error);
+      g_clear_error (&error);
+    }
+  else if (self->self_presence->status != GABBLE_PRESENCE_AWAY &&
+      self->self_presence->status != GABBLE_PRESENCE_XA)
+    {
+      /* With shared status we send the normal <presence/> only with away and
+       * extended away, but for initial status we need to send <presence/> as
+       * it also contains the caps. */
+      if (!conn_presence_signal_own_presence (self, NULL, &error))
+        {
+          g_simple_async_result_set_from_error (external_result, error);
+          g_error_free (error);
+        }
+    }
+
+  g_simple_async_result_complete_in_idle (external_result);
+
+  g_object_unref (external_result);
+}
+
+static void
 shared_status_setup_cb (GObject *source_object,
     GAsyncResult *result,
     gpointer user_data)
@@ -1424,7 +1456,7 @@ shared_status_setup_cb (GObject *source_object,
     }
 
   toggle_presence_visibility_async (self,
-      toggle_initial_presence_visibility_cb, user_data);
+      shared_status_toggle_initial_presence_visibility_cb, user_data);
 }
 
 void

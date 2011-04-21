@@ -1832,7 +1832,7 @@ connector_connected (GabbleConnection *self,
 
   DEBUG ("connected (jid: %s)", jid);
 
-  self->session = wocky_session_new (conn, jid);
+  self->session = wocky_session_new_with_connection (conn, jid);
   priv->porter = wocky_session_get_porter (self->session);
   priv->pinger = wocky_ping_new (priv->porter, priv->keepalive_interval);
 

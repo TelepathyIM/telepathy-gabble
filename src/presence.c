@@ -414,7 +414,8 @@ gabble_presence_update (GabblePresence *presence,
                         GabblePresenceId status,
                         const gchar *status_message,
                         gint8 priority,
-                        gboolean *update_client_types)
+                        gboolean *update_client_types,
+                        time_t now)
 {
   GabblePresencePrivate *priv = presence->priv;
   Resource *res;
@@ -490,7 +491,7 @@ gabble_presence_update (GabblePresence *presence,
       res->priority = priority;
 
       if (res->status >= GABBLE_PRESENCE_AVAILABLE)
-          res->last_available = time (NULL);
+          res->last_available = now;
     }
 
   /* select the most preferable Resource and update presence->* based on our

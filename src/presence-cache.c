@@ -1978,7 +1978,8 @@ gabble_presence_cache_do_update (
   old_cap_set = gabble_presence_dup_caps (presence);
 
   ret = gabble_presence_update (presence, resource, presence_id,
-      status_message, priority, update_client_types);
+      status_message, priority, update_client_types,
+      time (NULL));
 
   new_cap_set = gabble_presence_peek_caps (presence);
 

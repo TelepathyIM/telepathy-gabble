@@ -494,7 +494,7 @@ gabble_connection_constructed (GObject *object)
   self->self_presence = gabble_presence_new ();
   g_assert (priv->resource);
   gabble_presence_update (self->self_presence, priv->resource,
-      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority, NULL);
+      GABBLE_PRESENCE_AVAILABLE, NULL, priv->priority, NULL, time (NULL));
 }
 
 static void
@@ -672,16 +672,17 @@ gabble_connection_set_property (GObject      *object,
         {
           gchar *old_resource = priv->resource;
           gchar *new_resource = g_value_dup_string (value);
+          time_t now = time (NULL);
 
           priv->resource = new_resource;
 
           /* Add self presence for new resource... */
           gabble_presence_update (self->self_presence, new_resource,
               self->self_presence->status, self->self_presence->status_message,
-              priv->priority, NULL);
+              priv->priority, NULL, now);
           /* ...and remove it for the old one. */
           gabble_presence_update (self->self_presence, old_resource,
-              GABBLE_PRESENCE_OFFLINE, NULL, 0, NULL);
+              GABBLE_PRESENCE_OFFLINE, NULL, 0, NULL, now);
 
           g_free (old_resource);
         }

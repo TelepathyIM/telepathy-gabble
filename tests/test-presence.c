@@ -19,6 +19,7 @@ big_test_of_doom (void)
   const gchar *resource;
   GabblePresence *presence;
   GabbleCapabilitySet *cap_set;
+  time_t now = time (NULL);
 
   presence = gabble_presence_new ();
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
@@ -26,10 +27,10 @@ big_test_of_doom (void)
 
   /* offline presence from unknown resource: no change */
   g_assert (FALSE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_OFFLINE, NULL, 0, NULL));
+    GABBLE_PRESENCE_OFFLINE, NULL, 0, NULL, now));
   /* available presence from unknown resource: change */
   g_assert (TRUE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, NULL, 0, NULL));
+    GABBLE_PRESENCE_AVAILABLE, NULL, 0, NULL, now));
 
   /* accumulated presence has changed; status message unchanged */
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
@@ -37,10 +38,10 @@ big_test_of_doom (void)
 
   /* available presence again; no change */
   g_assert (FALSE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, NULL, 0, NULL));
+    GABBLE_PRESENCE_AVAILABLE, NULL, 0, NULL, now));
   /* available presence again, but with status message: change */
   g_assert (TRUE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL, now));
 
   /* accumulated presence unchanged; status message changed */
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
@@ -48,15 +49,15 @@ big_test_of_doom (void)
 
   /* same presence again; no change */
   g_assert (FALSE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL, now));
 
-  /* sleep a while so the next resource will have different timestamp */
-  sleep (1);
+  /* time passes */
+  now++;
 
   /* presence from different resource, but equal present-ness and equal
    * status message; unchanged */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL, now));
 
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("status message", presence->status_message));
@@ -65,49 +66,48 @@ big_test_of_doom (void)
   g_assert (0 == strcmp ("bar",
         gabble_presence_pick_resource_by_caps (presence, 0, NULL, NULL)));
 
-  /* sleep a while so the next resource will have different timestamp */
-  sleep (1);
+  /* mountain ranges form */
+  now++;
 
   /* presence from different resource, but equal present-ness and different
    * status message; changed */
   g_assert (TRUE == gabble_presence_update (presence, "baz",
-    GABBLE_PRESENCE_AVAILABLE, "dingbats", 0, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "dingbats", 0, NULL, now));
 
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("dingbats", presence->status_message));
 
-  /* sleep a while so the next resource will have different timestamp */
-  sleep (1);
+  /* babies are born */
+  now++;
 
   /* presence with higher priority; presence and message changed */
   g_assert (TRUE == gabble_presence_update (presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "dingoes", 1, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", 1, NULL, now));
 
   g_assert (GABBLE_PRESENCE_AVAILABLE == presence->status);
   g_assert (0 == strcmp ("dingoes", presence->status_message));
 
-  /* sleep a while so the next resource will have different timestamp */
-  sleep (1);
+  /* third-world dictators are deposed */
+  now++;
 
   /* now foo is newer, so the next voip call would prefer that */
   g_assert (FALSE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "status message", 0, NULL, now));
   g_assert (0 == strcmp ("foo",
         gabble_presence_pick_resource_by_caps (presence, 0, NULL, NULL)));
 
-  /* sleep a while so the next resource will have different timestamp */
-  sleep (1);
+  /* portal 2 is released */
+  now++;
 
   /* presence from first resource with greated present-ness: change */
   g_assert (TRUE == gabble_presence_update (presence, "foo",
-    GABBLE_PRESENCE_CHAT, "status message", 0, NULL));
+    GABBLE_PRESENCE_CHAT, "status message", 0, NULL, now));
 
-  /* sleep a while so the next resource will have different timestamp */
-  sleep (1);
+  /* seasons change */
 
   /* make bar be the latest presence: no change, since foo is more present */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "dingoes", 1, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", 1, NULL, now));
 
   /* we still prefer foo for the voip calls, because it's more present */
   g_assert (0 == strcmp ("foo",
@@ -123,7 +123,7 @@ big_test_of_doom (void)
 
   /* give voice cap to second resource, but make priority negative */
   g_assert (FALSE == gabble_presence_update (presence, "bar",
-    GABBLE_PRESENCE_AVAILABLE, "dingoes", -1, NULL));
+    GABBLE_PRESENCE_AVAILABLE, "dingoes", -1, NULL, now));
   cap_set = gabble_capability_set_new ();
   gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_VOICE);
   gabble_presence_set_capabilities (presence, "bar", cap_set, 0);
@@ -148,7 +148,7 @@ big_test_of_doom (void)
   /* presence turns up from null resource; it trumps other presence regardless
    * of whether status is more present or not */
   g_assert (TRUE == gabble_presence_update (presence, NULL,
-    GABBLE_PRESENCE_OFFLINE, "gone", 0, NULL));
+    GABBLE_PRESENCE_OFFLINE, "gone", 0, NULL, now));
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
   g_assert (0 == strcmp ("gone", presence->status_message));
 
@@ -173,14 +173,15 @@ static void
 prefer_higher_priority_resources (void)
 {
   GabblePresence *presence = gabble_presence_new ();
+  time_t now = time (NULL);
 
   /* 'foo' and 'bar' are equally available, at the same time, but bar has a
    * lower priority.
    */
   gabble_presence_update (presence, "foo", GABBLE_PRESENCE_AVAILABLE, "foo", 10,
-      NULL);
+      NULL, now);
   gabble_presence_update (presence, "bar", GABBLE_PRESENCE_AVAILABLE, "bar", 5,
-      NULL);
+      NULL, now);
 
   /* We should be sure to prefer "foo"'s status message to "bar"'s.
    */

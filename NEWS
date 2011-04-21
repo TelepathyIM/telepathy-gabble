@@ -1,7 +1,29 @@
-telepathy-gabble 0.11.11 (UNRELEASED)
-=====================================
+telepathy-gabble 0.12.0 (2011-04-21)
+====================================
 
-Maybe this should be 0.12.
+The “Is that Noam Chomsky on the telephone” release. This is the
+long-awaited start of the 0.12 stable branch.
+
+Dependencies:
+
+• telepathy-glib 0.14.5 is now required.
+
+Enhancements:
+
+• Plugins can now implement channel managers. (Jonny)
+
+Fixes:
+
+• No longer crashes when joining MUCs fails, or when kicked from a MUC.
+  (Will, fd.o#35120)
+
+• Handles MUC nickname conflicts more accurately, resolving an issue
+  triggered by a Google Talk server bug. (Will, fd.o#35619)
+
+• No longer gets contacts' client types confused (Jonny, fd.o#32139)
+
+• Exposes the status message length limit imposed by Google Talk, and
+  truncates status messages if necessary. (André, fd.o#33054)
 
 telepathy-gabble 0.11.10 (2011-03-31)
 =====================================

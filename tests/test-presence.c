@@ -104,6 +104,7 @@ big_test_of_doom (void)
     GABBLE_PRESENCE_CHAT, "status message", 0, NULL, now));
 
   /* seasons change */
+  now++;
 
   /* make bar be the latest presence: no change, since foo is more present */
   g_assert (FALSE == gabble_presence_update (presence, "bar",

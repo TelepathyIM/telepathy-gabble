@@ -46,7 +46,7 @@ def _test_remote_status(q, stream, msg, show, list_attrs):
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (presence_types[show], show, msg)}]))
 
-def _test_local_status(q, conn, msg, show, expected_show=None):
+def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     expected_show = expected_show or show
 
     shared_show, shared_invisible = _show_to_shared_status_show(expected_show)
@@ -56,8 +56,10 @@ def _test_local_status(q, conn, msg, show, expected_show=None):
     event = q.expect('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
                                  iq_type='set')
 
+    max_status_message_length = int(stream.max_status_message_length)
+
     _status = xpath.queryForNodes('//status', event.query)[0]
-    assertEquals(msg, _status.children[0])
+    assertEquals(msg[:max_status_message_length], _status.children[0])
     _show = xpath.queryForNodes('//show', event.query)[0]
     assertEquals(shared_show, _show.children[0])
     _invisible = xpath.queryForNodes('//invisible', event.query)[0]
@@ -66,10 +68,12 @@ def _test_local_status(q, conn, msg, show, expected_show=None):
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      interface=cs.CONN_IFACE_PRESENCE,
-                     args=[{1: (0, {expected_show: {'message': msg}})}]),
+                     args=[{1: (0, {expected_show: {'message':
+                            msg[:max_status_message_length]}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (presence_types[expected_show], expected_show, msg)}]))
+                     args=[{1: (presence_types[expected_show], expected_show,
+                            msg[:max_status_message_length])}]))
 
 
 def test(q, bus, conn, stream):
@@ -79,13 +83,17 @@ def test(q, bus, conn, stream):
                                iq_type='set'))
 
     # Set shared status to dnd.
-    _test_local_status(q, conn, "Don't disturb, buddy.", "dnd")
+    _test_local_status(q, conn, stream, "Don't disturb, buddy.", "dnd")
+
+    # Test maximum status message length
+    max_status_message_length = int(stream.max_status_message_length)
+    _test_local_status(q, conn, stream, "ab" * max_status_message_length, "dnd")
 
     # Test invisibility
-    _test_local_status(q, conn, "Peekabo", "hidden")
+    _test_local_status(q, conn, stream, "Peekabo", "hidden")
 
     # Set shared status to default, local status to away.
-    _test_local_status(q, conn, "I'm away right now", "away")
+    _test_local_status(q, conn, stream, "I'm away right now", "away")
 
     # Status changes from another client
     _test_remote_status(q, stream, "This is me, set from another client.",
@@ -96,14 +104,14 @@ def test(q, bus, conn, stream):
     q.expect('stream-iq', iq_type='result')
 
     # Going invisible now should fail, we should just be dnd.
-    _test_local_status(q, conn, "Peekabo", "hidden", "dnd")
+    _test_local_status(q, conn, stream, "Peekabo", "hidden", "dnd")
 
     # Let's go back to version 2
     stream.set_shared_status_lists(min_version="2")
     q.expect('stream-iq', iq_type='result')
 
     # "hidden" should work again.
-    _test_local_status(q, conn, "Peekabo", "hidden")
+    _test_local_status(q, conn, stream, "Peekabo", "hidden")
 
     # Changing min version mid-flight should make us 'dnd'
     stream.set_shared_status_lists(min_version="1")
@@ -231,7 +239,7 @@ def test_shared_status_list(q, bus, conn, stream):
         shared_show, _ = _show_to_shared_status_show(show)
         expected_list = stream.shared_status_lists[shared_show]
         for status in statuses:
-            _test_local_status(q, conn, status, show)
+            _test_local_status(q, conn, stream, status, show)
             expected_list = [status] + expected_list[:max_statuses - 1]
             assertEquals(expected_list, stream.shared_status_lists[shared_show])
 

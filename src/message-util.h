@@ -24,16 +24,20 @@
 #include <telepathy-glib/message-mixin.h>
 
 #include <loudmouth/loudmouth.h>
+#include <wocky/wocky.h>
 #include <wocky/wocky-xmpp-error.h>
 
 #include "connection.h"
 
 G_BEGIN_DECLS
 
-void gabble_message_util_send_message (GObject *obj,
-    GabbleConnection *conn, TpMessage *message, TpMessageSendingFlags flags,
-    LmMessageSubType subtype, TpChannelChatState state, const char *recipient,
-    gboolean send_nick);
+void
+gabble_message_util_add_chat_state (LmMessage *msg,TpChannelChatState state);
+
+WockyStanza *
+gabble_message_util_build_stanza (TpMessage *message,
+    GabbleConnection *conn, LmMessageSubType subtype, TpChannelChatState state,
+    const char *recipient, gboolean send_nick, gchar **token, GError **error);
 
 gboolean gabble_message_util_send_chat_state (GObject *obj,
     GabbleConnection *conn, LmMessageSubType subtype, TpChannelChatState state,

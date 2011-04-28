@@ -95,6 +95,12 @@ struct _GabbleIMChannelPrivate
   gboolean dispose_has_run;
 };
 
+typedef struct {
+  GabbleIMChannel *channel;
+  TpMessage *message;
+  gchar *token;
+} _GabbleIMSendMessageCtx;
+
 static void
 gabble_im_channel_init (GabbleIMChannel *self)
 {
@@ -292,6 +298,33 @@ gabble_im_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
 
+static void
+_gabble_im_channel_message_sent_cb (GObject *source,
+                                    GAsyncResult *res,
+                                    gpointer user_data)
+{
+    WockyPorter *porter = WOCKY_PORTER (source);
+    GError *error = NULL;
+    _GabbleIMSendMessageCtx *context = user_data;
+    GabbleIMChannel *chan = context->channel;
+    TpMessage *message = context->message;
+
+    if (wocky_porter_send_finish (porter, res, &error))
+      {
+        tp_message_mixin_sent ((GObject *) chan, message, 0,
+            context->token, NULL);
+      }
+    else
+      {
+        tp_message_mixin_sent ((GObject *) chan, context->message,
+            0, NULL, error);
+      }
+
+    g_object_unref (context->channel);
+    g_object_unref (context->message);
+    g_free (context->token);
+    g_slice_free (_GabbleIMSendMessageCtx, context);
+}
 
 static void
 _gabble_im_channel_send_message (GObject *object,
@@ -300,8 +333,14 @@ _gabble_im_channel_send_message (GObject *object,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   TpBaseChannel *base = (TpBaseChannel *) self;
+  GabbleConnection *gabble_conn;
   GabbleIMChannelPrivate *priv;
   gint state = -1;
+  WockyStanza *stanza = NULL;
+  gchar *id = NULL;
+  GError *error = NULL;
+  WockyPorter *porter;
+  _GabbleIMSendMessageCtx *context;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = self->priv;
@@ -314,10 +353,32 @@ _gabble_im_channel_send_message (GObject *object,
 
   /* We don't support providing successful delivery reports. */
   flags = 0;
+  gabble_conn =
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
 
-  gabble_message_util_send_message (object,
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-      message, flags, 0, state, priv->peer_jid, priv->send_nick);
+  stanza = gabble_message_util_build_stanza (message,
+      gabble_conn, 0, state, priv->peer_jid,
+      priv->send_nick, &id, &error);
+
+
+  if (stanza != NULL)
+    {
+      porter = gabble_connection_dup_porter (gabble_conn);
+      context = g_slice_new0 (_GabbleIMSendMessageCtx);
+      context->channel = g_object_ref (base);
+      context->message = g_object_ref (message);
+      context->token = id;
+      wocky_porter_send_async (porter, stanza, NULL,
+          _gabble_im_channel_message_sent_cb, context);
+      g_object_unref (porter);
+      g_object_unref (stanza);
+    }
+  else
+    {
+      tp_message_mixin_sent (object, message, flags, NULL, error);
+      g_error_free (error);
+    }
+
 
   if (priv->send_nick)
     priv->send_nick = FALSE;

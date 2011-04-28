@@ -279,6 +279,12 @@ struct _GabbleMucChannelPrivate
   char **initial_ids;
 };
 
+typedef struct {
+  GabbleMucChannel *channel;
+  TpMessage *message;
+  gchar *token;
+} _GabbleMUCSendMessageCtx;
+
 static void
 gabble_muc_channel_init (GabbleMucChannel *self)
 {
@@ -3064,6 +3070,34 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
     }
 }
 
+static void
+_gabble_muc_channel_message_sent_cb (GObject *source,
+                                     GAsyncResult *res,
+                                     gpointer user_data)
+{
+  WockyPorter *porter = WOCKY_PORTER (source);
+  _GabbleMUCSendMessageCtx *context = user_data;
+  GabbleMucChannel *chan = context->channel;
+  TpMessage *message = context->message;
+  GError *error = NULL;
+
+  if (wocky_porter_send_finish (porter, res, &error))
+    {
+      tp_message_mixin_sent ((GObject *) chan, message,
+          TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY, context->token, NULL);
+    }
+  else
+    {
+      tp_message_mixin_sent ((GObject *) chan, context->message,
+          TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY, NULL, error);
+      g_free (error);
+    }
+
+  g_object_unref (context->channel);
+  g_object_unref (context->message);
+  g_free (context->token);
+  g_slice_free (_GabbleMUCSendMessageCtx, context);
+}
 
 /**
  * gabble_muc_channel_send
@@ -3080,14 +3114,35 @@ gabble_muc_channel_send (GObject *obj,
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
+  GabbleConnection *gabble_conn =
+      GABBLE_CONNECTION(tp_base_channel_get_connection (base));
+  _GabbleMUCSendMessageCtx *context = NULL;
+  WockyStanza *stanza = NULL;
+  WockyPorter *porter = NULL;
+  GError *error = NULL;
+  gchar *id = NULL;
 
-  flags &= TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
-
-  gabble_message_util_send_message (obj,
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-      message, flags,
+  stanza = gabble_message_util_build_stanza (message,gabble_conn,
       LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
-      priv->jid, FALSE /* send nick */);
+      priv->jid, FALSE, &id, &error);
+
+  if (stanza != NULL)
+    {
+      context = g_slice_new0 (_GabbleMUCSendMessageCtx);
+      context->channel = g_object_ref (obj);
+      context->message = g_object_ref (message);
+      context->token = id;
+      porter = gabble_connection_dup_porter (gabble_conn);
+      wocky_porter_send_async (porter, stanza, NULL,
+          _gabble_muc_channel_message_sent_cb, context);
+      g_object_unref(stanza);
+      g_object_unref(porter);
+   }
+  else
+   {
+     tp_message_mixin_sent (obj, message, flags, NULL, error);
+     g_error_free (error);
+   }
 }
 
 gboolean

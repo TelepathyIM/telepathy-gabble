@@ -29,6 +29,9 @@
 
 #include <string.h>
 
+#include <wocky/wocky-disco-identity.h>
+#include <wocky/wocky-caps-hash.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "base64.h"
@@ -38,345 +41,12 @@
 #include "presence-cache.h"
 #include "presence.h"
 #include "util.h"
-#include "gabble/disco-identity.h"
-
-typedef struct _DataFormField DataFormField;
-
-struct _DataFormField {
-  gchar *field_name;
-  /* array of strings */
-  GPtrArray *values;
-};
-
-typedef struct _DataForm DataForm;
-
-struct _DataForm {
-  gchar *form_type;
-  /* array of DataFormField */
-  GPtrArray *fields;
-};
-
-
-static gint
-char_cmp (gconstpointer a, gconstpointer b)
-{
-  gchar *left = *(gchar **) a;
-  gchar *right = *(gchar **) b;
-
-  return strcmp (left, right);
-}
-
-static gint
-identity_cmp (gconstpointer a, gconstpointer b)
-{
-  GabbleDiscoIdentity *left = *(GabbleDiscoIdentity **) a;
-  GabbleDiscoIdentity *right = *(GabbleDiscoIdentity **) b;
-  gint ret;
-
-  if ((ret = strcmp (left->category, right->category)) != 0)
-    return ret;
-  if ((ret = strcmp (left->type, right->type)) != 0)
-    return ret;
-  if ((ret = strcmp (left->lang, right->lang)) != 0)
-    return ret;
-  return strcmp (left->name, right->name);
-}
-
-static gint
-fields_cmp (gconstpointer a, gconstpointer b)
-{
-  DataFormField *left = *(DataFormField **) a;
-  DataFormField *right = *(DataFormField **) b;
-
-  return strcmp (left->field_name, right->field_name);
-}
-
-static gint
-dataforms_cmp (gconstpointer a, gconstpointer b)
-{
-  DataForm *left = *(DataForm **) a;
-  DataForm *right = *(DataForm **) b;
-
-  return strcmp (left->form_type, right->form_type);
-}
 
 static void
-_free_field (gpointer data, gpointer user_data)
-{
-  DataFormField *field = data;
-
-  g_free (field->field_name);
-  g_ptr_array_foreach (field->values, (GFunc) g_free, NULL);
-  g_ptr_array_free (field->values, TRUE);
-
-  g_slice_free (DataFormField, field);
-}
-
-static void
-_free_form (gpointer data, gpointer user_data)
-{
-  DataForm *form = data;
-
-  g_free (form->form_type);
-
-  g_ptr_array_foreach (form->fields, _free_field, NULL);
-  g_ptr_array_free (form->fields, TRUE);
-
-  g_slice_free (DataForm, form);
-}
-
-static void
-gabble_presence_free_xep0115_hash (
-    GPtrArray *features,
-    GPtrArray *identities,
-    GPtrArray *dataforms)
-{
-  g_ptr_array_foreach (features, (GFunc) g_free, NULL);
-  gabble_disco_identity_array_free (identities);
-  g_ptr_array_foreach (dataforms, _free_form, NULL);
-
-  g_ptr_array_free (features, TRUE);
-  g_ptr_array_free (dataforms, TRUE);
-}
-
-static gchar *
-caps_hash_compute (
-    GPtrArray *features,
-    GPtrArray *identities,
-    GPtrArray *dataforms)
-{
-  GString *s;
-  gchar sha1[SHA1_HASH_SIZE];
-  guint i;
-  gchar *encoded;
-
-  g_ptr_array_sort (identities, identity_cmp);
-  g_ptr_array_sort (features, char_cmp);
-  g_ptr_array_sort (dataforms, dataforms_cmp);
-
-  s = g_string_new ("");
-
-  for (i = 0 ; i < identities->len ; i++)
-    {
-      const GabbleDiscoIdentity *identity = g_ptr_array_index (identities, i);
-      gchar *str = g_strdup_printf ("%s/%s/%s/%s",
-          identity->category, identity->type,
-          identity->lang ? identity->lang : "",
-          identity->name ? identity->name : "");
-      g_string_append (s, str);
-      g_string_append_c (s, '<');
-      g_free (str);
-    }
-
-  for (i = 0 ; i < features->len ; i++)
-    {
-      g_string_append (s, g_ptr_array_index (features, i));
-      g_string_append_c (s, '<');
-    }
-
-  for (i = 0 ; i < dataforms->len ; i++)
-    {
-      guint j;
-      DataForm *form = g_ptr_array_index (dataforms, i);
-
-      g_assert (form->form_type != NULL);
-
-      g_string_append (s, form->form_type);
-      g_string_append_c (s, '<');
-
-      g_ptr_array_sort (form->fields, fields_cmp);
-
-      for (j = 0 ; j < form->fields->len ; j++)
-        {
-          guint k;
-          DataFormField *field = g_ptr_array_index (form->fields, j);
-
-          g_string_append (s, field->field_name);
-          g_string_append_c (s, '<');
-
-          g_ptr_array_sort (field->values, char_cmp);
-
-          for (k = 0 ; k < field->values->len ; k++)
-            {
-              g_string_append (s, g_ptr_array_index (field->values, k));
-              g_string_append_c (s, '<');
-            }
-        }
-    }
-
-  sha1_bin (s->str, s->len, (guchar *) sha1);
-  g_string_free (s, TRUE);
-
-  encoded = base64_encode (SHA1_HASH_SIZE, sha1, FALSE);
-
-  return encoded;
-}
-
-/**
- * parse a XEP-0128 dataform
- *
- * helper function for caps_hash_compute_from_lm_node
- */
-static DataForm *
-_parse_dataform (LmMessageNode *node)
-{
-  DataForm *form;
-  NodeIter i;
-
-  form = g_slice_new0 (DataForm);
-  form->form_type = NULL;
-  form->fields = g_ptr_array_new ();
-
-  for (i = node_iter (node); i; i = node_iter_next (i))
-    {
-      LmMessageNode *field_node = node_iter_data (i);
-      const gchar *var;
-
-      if (! g_str_equal (field_node->name, "field"))
-        continue;
-
-      var = lm_message_node_get_attribute (field_node, "var");
-
-      if (NULL == var)
-        continue;
-
-      if (g_str_equal (var, "FORM_TYPE"))
-        {
-          NodeIter j;
-
-          for (j = node_iter (field_node); j; j = node_iter_next (j))
-            {
-              LmMessageNode *value_node = node_iter_data (j);
-              const gchar *content;
-
-              if (tp_strdiff (value_node->name, "value"))
-                continue;
-
-              content = lm_message_node_get_value (value_node);
-
-              /* If the stanza is correctly formed, there is only one
-               * FORM_TYPE and this check is useless. Otherwise, just
-               * use the first one */
-              if (form->form_type == NULL)
-                form->form_type = g_strdup (content);
-            }
-        }
-      else
-        {
-          DataFormField *field = NULL;
-          NodeIter j;
-
-          field = g_slice_new0 (DataFormField);
-          field->values = g_ptr_array_new ();
-          field->field_name = g_strdup (var);
-
-          for (j = node_iter (field_node); j; j = node_iter_next (j))
-            {
-              LmMessageNode *value_node = node_iter_data (j);
-              const gchar *content;
-
-              if (tp_strdiff (value_node->name, "value"))
-                continue;
-
-              content = lm_message_node_get_value (value_node);
-
-              g_ptr_array_add (field->values, g_strdup (content));
-            }
-
-            g_ptr_array_add (form->fields, (gpointer) field);
-        }
-    }
-
-  /* this should not happen if the stanza is correctly formed. */
-  if (form->form_type == NULL)
-    form->form_type = g_strdup ("");
-
-  return form;
-}
-
-/**
- * Compute the hash as defined by the XEP-0115 from a received LmMessageNode
- *
- * Returns: the hash. The called must free the returned hash with g_free().
- */
-gchar *
-caps_hash_compute_from_lm_node (LmMessageNode *node)
-{
-  GPtrArray *features = g_ptr_array_new ();
-  GPtrArray *identities = gabble_disco_identity_array_new ();
-  GPtrArray *dataforms = g_ptr_array_new ();
-  gchar *str;
-  NodeIter i;
-
-  for (i = node_iter (node); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-
-      if (g_str_equal (child->name, "identity"))
-        {
-          const gchar *category;
-          const gchar *name;
-          const gchar *type;
-          const gchar *xmllang;
-          GabbleDiscoIdentity *identity;
-
-          category = lm_message_node_get_attribute (child, "category");
-          name = lm_message_node_get_attribute (child, "name");
-          type = lm_message_node_get_attribute (child, "type");
-          xmllang = lm_message_node_get_attribute (child, "xml:lang");
-
-          if (NULL == category)
-            continue;
-          if (NULL == name)
-            name = "";
-          if (NULL == type)
-            type = "";
-          if (NULL == xmllang)
-            xmllang = "";
-
-          identity = gabble_disco_identity_new (category, type, xmllang, name);
-          g_ptr_array_add (identities, identity);
-        }
-      else if (g_str_equal (child->name, "feature"))
-        {
-          const gchar *var;
-          var = lm_message_node_get_attribute (child, "var");
-
-          if (NULL == var)
-            continue;
-
-          g_ptr_array_add (features, g_strdup (var));
-        }
-      else if (g_str_equal (child->name, "x"))
-        {
-          const gchar *xmlns;
-          const gchar *type;
-
-          xmlns = lm_message_node_get_attribute (child, "xmlns");
-          type = lm_message_node_get_attribute (child, "type");
-
-          if (tp_strdiff (xmlns, "jabber:x:data"))
-            continue;
-
-          if (tp_strdiff (type, "result"))
-            continue;
-
-          g_ptr_array_add (dataforms, (gpointer) _parse_dataform (child));
-        }
-    }
-
-  str = caps_hash_compute (features, identities, dataforms);
-
-  gabble_presence_free_xep0115_hash (features, identities, dataforms);
-
-  return str;
-}
-
-static void
-ptr_array_strdup (gpointer str,
+ptr_array_add_str (gpointer str,
     gpointer array)
 {
-  g_ptr_array_add (array, g_strdup (str));
+  g_ptr_array_add (array, str);
 }
 
 /**
@@ -390,24 +60,21 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   GabblePresence *presence = self->self_presence;
   const GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
-  GPtrArray *identities = gabble_disco_identity_array_new ();
-  GPtrArray *dataforms = g_ptr_array_new ();
+  GPtrArray *identities = wocky_disco_identity_array_new ();
   gchar *str;
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
   g_ptr_array_add (identities,
-      gabble_disco_identity_new ("client", CLIENT_TYPE,
+      wocky_disco_identity_new ("client", CLIENT_TYPE,
           NULL, PACKAGE_STRING));
 
-  /* Gabble does not use dataforms, let 'dataforms' be empty */
-
-  /* FIXME: allow iteration over the strings without copying */
   cap_set = gabble_presence_peek_caps (presence);
-  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+  gabble_capability_set_foreach (cap_set, ptr_array_add_str, features);
 
-  str = caps_hash_compute (features, identities, dataforms);
+  str = wocky_caps_hash_compute_from_lists (features, identities, NULL);
 
-  gabble_presence_free_xep0115_hash (features, identities, dataforms);
+  g_ptr_array_free (features, TRUE);
+  wocky_disco_identity_array_free (identities);
 
   return str;
 }
@@ -423,17 +90,16 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
 {
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities_copy = ((identities == NULL) ?
-      gabble_disco_identity_array_new () :
-      gabble_disco_identity_array_copy (identities));
-  GPtrArray *dataforms = g_ptr_array_new ();
+      wocky_disco_identity_array_new () :
+      wocky_disco_identity_array_copy (identities));
   gchar *str;
 
-  /* FIXME: allow iteration over the strings without copying */
-  gabble_capability_set_foreach (cap_set, ptr_array_strdup, features);
+  gabble_capability_set_foreach (cap_set, ptr_array_add_str, features);
 
-  str = caps_hash_compute (features, identities_copy, dataforms);
+  str = wocky_caps_hash_compute_from_lists (features, identities_copy, NULL);
 
-  gabble_presence_free_xep0115_hash (features, identities_copy, dataforms);
+  g_ptr_array_free (features, TRUE);
+  wocky_disco_identity_array_free (identities_copy);
 
   return str;
 }

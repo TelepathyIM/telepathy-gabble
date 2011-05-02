@@ -38,12 +38,13 @@
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/intset.h>
 #include <wocky/wocky-caps-cache.h>
+#include <wocky/wocky-caps-hash.h>
+#include <wocky/wocky-disco-identity.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "capabilities.h"
 #include "caps-channel-manager.h"
-#include "caps-hash.h"
 #include "conn-presence.h"
 #include "debug.h"
 #include "disco.h"
@@ -246,7 +247,7 @@ capability_info_free (GabbleCapabilityInfo *info)
       info->cap_set = NULL;
     }
 
-  gabble_disco_identity_array_free (info->identities);
+  wocky_disco_identity_array_free (info->identities);
   info->identities = NULL;
 
   tp_intset_destroy (info->guys);
@@ -1310,7 +1311,7 @@ _caps_disco_cb (GabbleDisco *disco,
     {
       gchar *computed_hash;
 
-      computed_hash = caps_hash_compute_from_lm_node (query_result);
+      computed_hash = wocky_caps_hash_compute_from_node (query_result);
 
       if (g_str_equal (waiter_self->ver, computed_hash))
         {
@@ -2104,8 +2105,12 @@ gabble_presence_cache_add_own_caps (
       gabble_capability_set_update (info->cap_set, cap_set);
     }
 
-  gabble_disco_identity_array_free (info->identities);
-  info->identities = gabble_disco_identity_array_copy (identities);
+  wocky_disco_identity_array_free (info->identities);
+
+  info->identities = NULL;
+
+  if (identities != NULL)
+    info->identities = wocky_disco_identity_array_copy (identities);
 
   info->complete = TRUE;
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;

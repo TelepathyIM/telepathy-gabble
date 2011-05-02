@@ -7,7 +7,6 @@ gabbleinclude_HEADERS = \
     capabilities-set.h \
     caps-hash.h \
     connection.h \
-    disco-identity.h \
     error.h \
     gabble.h \
     namespaces.h \

@@ -2,7 +2,6 @@ SUBDIRS = twisted suppressions
 
 noinst_PROGRAMS = \
 	test-base64 \
-	test-caps-hash \
 	test-dtube-unique-names \
 	test-gabble-idle-weak \
 	test-handles \
@@ -45,7 +44,6 @@ check-valgrind: $(TESTS)
 check_c_sources = \
 	$(dbus_test_sources) \
 	test-base64.c \
-	test-caps-hash.c \
 	test-dtube-unique-names.c \
 	test-presence.c \
 	test-jid-decode.c \

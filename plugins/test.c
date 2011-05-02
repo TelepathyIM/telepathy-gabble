@@ -4,6 +4,8 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 
+#include <wocky/wocky-disco-identity.h>
+
 #include "extensions/extensions.h"
 
 #include <gabble/plugin.h>
@@ -319,7 +321,7 @@ test_sidecar_iq_set_property (
               const gchar *applications[] = { "com.example.test1",
                   "com.example.test2", NULL };
               GPtrArray *identities;
-              GabbleDiscoIdentity *identity;
+              WockyDiscoIdentity *identity;
               gchar *hash;
               guint i;
 
@@ -327,8 +329,8 @@ test_sidecar_iq_set_property (
               for (i = 0; applications[i] != NULL; i++)
                 gabble_capability_set_add (features, applications[i]);
 
-              identities = gabble_disco_identity_array_new ();
-              identity = gabble_disco_identity_new ("test", "app-list",
+              identities = wocky_disco_identity_array_new ();
+              identity = wocky_disco_identity_new ("test", "app-list",
                   NULL, "Test");
               g_ptr_array_add (identities, identity);
 
@@ -337,7 +339,7 @@ test_sidecar_iq_set_property (
                   features, identities);
 
               g_free (hash);
-              gabble_disco_identity_array_free (identities);
+              wocky_disco_identity_array_free (identities);
               gabble_capability_set_free (features);
             }
         }

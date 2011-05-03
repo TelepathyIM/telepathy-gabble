@@ -14,6 +14,7 @@ from servicetest import (
 import ns
 import copy
 import constants as cs
+import dbus
 from twisted.words.xish import xpath, domish
 from invisible_helper import SharedStatusStream
 
@@ -150,7 +151,8 @@ def test(q, bus, conn, stream):
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (cs.PRESENCE_BUSY, 'dnd', "Peekabo")}]))
 
-def _test_on_connect(q, bus, conn, stream, shared_status, show, msg):
+def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_show=None):
+    expected_show = expected_show or show
     _status, _show, _invisible = shared_status
     stream.shared_status = shared_status
 
@@ -181,16 +183,21 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg):
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      interface=cs.CONN_IFACE_PRESENCE,
-                     args=[{1: (0, {show: {'message': msg}})}]),
+                     args=[{1: (0, {expected_show: {'message': msg}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (presence_types[show], show, msg)}]),
+                     args=[{1: (presence_types[expected_show],
+                                expected_show, msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
 def test_connect_available(q, bus, conn, stream):
     _test_on_connect(q, bus, conn, stream,  ("I'm busy, buddy.", 'dnd', 'false'),
                      'available', "I'm here, baby.")
+
+def test_connect_chat(q, bus, conn, stream):
+    _test_on_connect(q, bus, conn, stream,  ("I'm busy, buddy.", 'dnd', 'false'),
+                     'chat', "Do you want to chat?", 'available')
 
 def test_connect_dnd(q, bus, conn, stream):
     _test_on_connect(q, bus, conn, stream,  ("Chat with me.", 'default', 'false'),
@@ -282,11 +289,28 @@ def test_shared_status_away(q, bus, conn, stream):
             _test_local_status(q, conn, stream, status, show)
             assertEquals(expected_list, stream.shared_status_lists)
 
+def test_shared_status_chat(q, bus, conn, stream):
+    '''Test that 'chat' is not supported with shared status'''
+    q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
+                               iq_type='get'),
+                  EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
+                               iq_type='set'),
+                  EventPattern('stream-presence'))
+
+    try:
+        conn.SimplePresence.SetPresence('chat', 'This is not going to work')
+    except dbus.DBusException, e:
+        assert e.get_dbus_name() == cs.NOT_AVAILABLE
+    else:
+        assert False
+
 if __name__ == '__main__':
     exec_test(test, protocol=SharedStatusStream)
     exec_test(test_connect_available, protocol=SharedStatusStream, do_connect=False)
+    exec_test(test_connect_chat, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_connect_dnd, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_connect_hidden, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_connect_hidden_not_available, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_shared_status_list, protocol=SharedStatusStream)
     exec_test(test_shared_status_away, protocol=SharedStatusStream)
+    exec_test(test_shared_status_chat, protocol=SharedStatusStream)

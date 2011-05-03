@@ -1853,6 +1853,12 @@ status_available_cb (GObject *obj, guint status)
   TpConnectionPresenceType presence_type =
     gabble_statuses[status].presence_type;
 
+  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      /* we just don't know yet */
+      return TRUE;
+    }
+
   /* This relies on the fact the first entries in the statuses table
    * are from gabble_base_statuses. If index to the statuses table is outside
    * the gabble_base_statuses table, the status is provided by a plugin. */
@@ -1862,32 +1868,22 @@ status_available_cb (GObject *obj, guint status)
        * lists, so any extra status should be backed by one. If it's not
        * (or if privacy lists are not supported by the server at all)
        * by the time we're connected, it's not available. */
-
-      if (base->status == TP_CONNECTION_STATUS_CONNECTED)
+      if (priv->privacy_statuses != NULL &&
+          g_hash_table_lookup (priv->privacy_statuses,
+              gabble_statuses[status].name))
         {
-          if (priv->privacy_statuses != NULL &&
-              g_hash_table_lookup (priv->privacy_statuses,
-                  gabble_statuses[status].name))
-            {
-              return TRUE;
-            }
-          else
-            {
-              return FALSE;
-            }
+          return TRUE;
         }
       else
         {
-          /* we just don't know yet */
-          return TRUE;
+          return FALSE;
         }
     }
 
   /* If we've gone online and found that the server doesn't support invisible,
    * reject it.
    */
-  if (base->status == TP_CONNECTION_STATUS_CONNECTED &&
-      presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
+  if (presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
       priv->invisibility_method == INVISIBILITY_METHOD_NONE)
     return FALSE;
   else

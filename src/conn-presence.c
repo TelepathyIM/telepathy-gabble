@@ -1033,6 +1033,10 @@ get_shared_status_async (GabbleConnection *self,
 
   conn_util_send_iq_async (self, iq, NULL, get_shared_status_cb, result);
 
+  /* We cannot use the chat status with GTalk's shared status. */
+  if (self->self_presence->status == GABBLE_PRESENCE_CHAT)
+    self->self_presence->status = GABBLE_PRESENCE_AVAILABLE;
+
   g_object_unref (iq);
 }
 
@@ -1880,14 +1884,23 @@ status_available_cb (GObject *obj, guint status)
         }
     }
 
-  /* If we've gone online and found that the server doesn't support invisible,
-   * reject it.
-   */
   if (presence_type == TP_CONNECTION_PRESENCE_TYPE_HIDDEN &&
       priv->invisibility_method == INVISIBILITY_METHOD_NONE)
-    return FALSE;
+    {
+      /* If we've gone online and found that the server doesn't support
+       * invisible, reject it. */
+      return FALSE;
+    }
+  else if (status == GABBLE_PRESENCE_CHAT &&
+      priv->shared_statuses != NULL)
+    {
+      /* We cannot use the chat status with GTalk's shared status. */
+      return FALSE;
+    }
   else
-    return TRUE;
+    {
+      return TRUE;
+    }
 }
 
 GabblePresenceId

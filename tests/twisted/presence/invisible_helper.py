@@ -95,6 +95,8 @@ class Xep0186AndManualPrivacyListStream(ManualPrivacyListStream):
 
 class SharedStatusStream(XmppXmlStream):
     disco_features = [ns.GOOGLE_SHARED_STATUS]
+    handle_privacy_lists = False
+
     def __init__(self, event_func, authenticator):
         XmppXmlStream.__init__(self, event_func, authenticator)
         self.addObserver("/iq/query[@xmlns='%s']" % ns.GOOGLE_SHARED_STATUS,

@@ -153,8 +153,10 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg):
     _status, _show, _invisible = shared_status
     stream.shared_status = shared_status
 
-    presence_event_pattern = EventPattern('stream-presence')
-    q.forbid_events([presence_event_pattern])
+    forbidden_even_patterns = [EventPattern('stream-presence'),
+                               EventPattern('stream-iq', query_ns=ns.PRIVACY,
+                                            iq_type='get')]
+    q.forbid_events(forbidden_even_patterns)
 
     conn.SimplePresence.SetPresence(show, msg)
     conn.Connect()
@@ -173,7 +175,7 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg):
     _invisible = xpath.queryForNodes('//invisible', event.query)[0]
     assertEquals(shared_invisible, _invisible.getAttribute('value'))
 
-    q.unforbid_events([presence_event_pattern])
+    q.unforbid_events(forbidden_even_patterns)
 
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',

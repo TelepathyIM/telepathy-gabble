@@ -139,13 +139,12 @@ conn_power_saving_set_power_saving (
 
   DEBUG ("%sabling presence queueing", enable ? "en" : "dis");
 
-  /* Of course, the Google Talk server doesn't advertise support for
-   * google:queue. So we use google:roster. We still support the hypothetically
-   * advertised google:queue just in case google starts using it, or another
-   * server implementation adopts it. google:queue is described here:
-   * http://mail.jabber.org/pipermail/summit/2010-February/000528.html */
-  if (self->features & (GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE |
-          GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER))
+  /* google:queue is loosely described here:
+   * <http://mail.jabber.org/pipermail/summit/2010-February/000528.html>. Since
+   * April 2011, it is advertised as a stream feature by the Google Talk
+   * server; the development version of M-Link, and possibly other servers,
+   * also implement the protocol and advertise this stream feature. */
+  if (self->features & GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE)
     {
       ToggleQueueingContext *queueing_context;
       queueing_context = g_slice_new0 (ToggleQueueingContext);

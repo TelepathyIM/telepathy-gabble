@@ -31,6 +31,14 @@ def test(q, bus, conn, stream):
     test_subject(q, bus, conn, stream, False, True, False)
     test_subject(q, bus, conn, stream, False, False, True)
 
+def check_room_props(chan, subject_str, actor):
+    # Room props
+    props = chan.GetAll(cs.CHANNEL_IFACE_ROOM,
+                        dbus_interface=dbus.PROPERTIES_IFACE)
+    subject = props['Subject']
+    assertEquals(subject_str, subject[0])
+    assertEquals(actor, subject[1])
+
 counter = 0
 
 def test_subject(q, bus, conn, stream, change_subject, send_first,
@@ -82,6 +90,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
 
+        check_room_props(chan, 'Testing', room + '/bob')
+
     # Reply to the disco
     iq = make_result_iq(stream, disco.stanza)
     query = iq.firstChildElement()
@@ -110,6 +120,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     q.expect('dbus-signal', signal='PropertiesChanged',
             predicate=lambda e: (props['subject'], 'lalala') in e.args[0])
 
+    check_room_props(chan, 'lalala', room + '/bob')
+
     # if send_first was true, then we already got this
     if not send_first:
         e = q.expect('dbus-signal', signal='PropertyFlagsChanged',
@@ -119,6 +131,8 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
                 e.args[0])
         assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
                 e.args[0])
+
+        check_room_props(chan, 'lalala', room + '/bob')
 
     chan.Close()
 

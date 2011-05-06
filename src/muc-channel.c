@@ -48,10 +48,10 @@
 #include "presence.h"
 #include "util.h"
 #include "presence-cache.h"
-
 #include "call-muc-channel.h"
-
 #include "gabble-signals-marshal.h"
+
+#include "extensions/extensions.h"
 
 #define DEFAULT_JOIN_TIMEOUT 180
 #define DEFAULT_LEAVE_TIMEOUT 180
@@ -83,6 +83,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init)
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
     )
 
 static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
@@ -96,6 +97,7 @@ static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
+    GABBLE_IFACE_CHANNEL_INTERFACE_ROOM,
     NULL
 };
 
@@ -128,6 +130,9 @@ enum
   PROP_INITIAL_INVITEE_HANDLES,
   PROP_INITIAL_INVITEE_IDS,
   PROP_ORIGINAL_CHANNELS,
+  PROP_ROOM_ID,
+  PROP_SERVER,
+  PROP_SUBJECT,
   LAST_PROPERTY
 };
 
@@ -243,6 +248,11 @@ struct _GabbleMucChannelPrivate
   guint recv_id;
 
   TpPropertiesContext *properties_ctx;
+
+  /* Room interface */
+  gchar *room_id;
+  gchar *server;
+  GValueArray *subject;
 
   gboolean ready;
   gboolean dispose_has_run;
@@ -367,6 +377,7 @@ gabble_muc_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle target, initiator, self_handle;
+  gchar *tmp;
   TpChannelTextMessageType types[] = {
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
@@ -378,6 +389,7 @@ gabble_muc_channel_constructed (GObject *obj)
   };
   void (*chain_up) (GObject *) =
     ((GObjectClass *) gabble_muc_channel_parent_class)->constructed;
+  gboolean ok;
 
   if (chain_up != NULL)
     chain_up (obj);
@@ -471,6 +483,27 @@ gabble_muc_channel_constructed (GObject *obj)
       supported_content_types);
 
   tp_group_mixin_add_handle_owner (obj, self_handle, base_conn->self_handle);
+
+  /* Room interface */
+  g_object_get (self,
+      "target-id", &tmp,
+      NULL);
+
+  if (priv->room_id != NULL)
+    ok = gabble_decode_jid (tmp, NULL, &(priv->server), NULL);
+  else
+    ok = gabble_decode_jid (tmp, &(priv->room_id), &(priv->server), NULL);
+  g_free (tmp);
+
+  /* Asserting here is fine because the target ID has already been
+   * checked so we know it's valid. */
+  g_assert (ok);
+
+  priv->subject = tp_value_array_build (3,
+      G_TYPE_STRING, "",
+      G_TYPE_STRING, "",
+      G_TYPE_INT64, 0,
+      G_TYPE_INVALID);
 
   if (priv->invited)
     {
@@ -885,6 +918,15 @@ gabble_muc_channel_get_property (GObject    *object,
        * which we can't do anyway in XMPP. */
       g_value_take_boxed (value, g_hash_table_new (NULL, NULL));
       break;
+    case PROP_ROOM_ID:
+      g_value_set_string (value, priv->room_id);
+      break;
+    case PROP_SERVER:
+      g_value_set_string (value, priv->server);
+      break;
+    case PROP_SUBJECT:
+      g_value_set_boxed (value, priv->subject);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -932,6 +974,9 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INITIAL_INVITEE_IDS:
       priv->initial_ids = g_value_dup_boxed (value);
       break;
+    case PROP_ROOM_ID:
+      priv->room_id = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -965,6 +1010,8 @@ gabble_muc_channel_fill_immutable_properties (
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessageTypes",
+      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM, "RoomID",
+      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM, "Server",
       NULL);
 }
 
@@ -980,6 +1027,27 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { "OriginalChannels", "original-channels", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl room_props[] = {
+      { "RoomID", "room-id", NULL, },
+      { "Server", "server", NULL },
+      { "Subject", "subject", NULL },
+      { NULL }
+  };
+
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+    { TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      conference_props,
+    },
+    { GABBLE_IFACE_CHANNEL_INTERFACE_ROOM,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      room_props,
+    },
+    { NULL }
+  };
+
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
   TpBaseChannelClass *base_class = TP_BASE_CHANNEL_CLASS (object_class);
   GParamSpec *param_spec;
@@ -1066,6 +1134,30 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_install_property (object_class, PROP_ORIGINAL_CHANNELS,
       param_spec);
 
+  param_spec = g_param_spec_string ("room-id",
+      "RoomID",
+      "The human-readable identifier of a chat room.",
+      "",
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ROOM_ID,
+      param_spec);
+
+  param_spec = g_param_spec_string ("server",
+      "Server",
+      "the DNS name of the server hosting this channel",
+      "",
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SERVER,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("subject",
+      "Subject",
+      "The room name.",
+      GABBLE_STRUCT_TYPE_ROOM_SUBJECT,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBJECT,
+      param_spec);
+
   signals[READY] =
     g_signal_new ("ready",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
@@ -1136,10 +1228,9 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                       gabble_muc_channel_do_set_properties);
 
 
-  tp_dbus_properties_mixin_implement_interface (object_class,
-      TP_IFACE_QUARK_CHANNEL_INTERFACE_CONFERENCE,
-      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
-      conference_props);
+  gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
 
   tp_message_mixin_init_dbus_properties (object_class);
 
@@ -1213,6 +1304,10 @@ gabble_muc_channel_finalize (GObject *object)
       g_boxed_free (G_TYPE_STRV, priv->initial_ids);
       priv->initial_ids = NULL;
     }
+
+  g_free (priv->room_id);
+  g_free (priv->server);
+  g_value_array_free (priv->subject);
 
   tp_properties_mixin_finalize (object);
   tp_group_mixin_finalize (object);
@@ -2616,6 +2711,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   TpIntSet *changed_values, *changed_flags;
   GValue val = { 0, };
+  const gchar *actor;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2711,6 +2807,28 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       changed_flags);
 
   g_value_unset (&val);
+
+  /* Room properties */
+  g_value_array_free (priv->subject);
+
+  if (handle_type == TP_HANDLE_TYPE_CONTACT)
+    {
+      TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+          tp_base_channel_get_connection (TP_BASE_CHANNEL (chan)),
+          handle_type);
+
+      actor = tp_handle_inspect (contact_handles, sender);
+    }
+  else
+    {
+      actor = "";
+    }
+
+  priv->subject = tp_value_array_build (3,
+      G_TYPE_STRING, subject,
+      G_TYPE_STRING, actor,
+      G_TYPE_INT64, (gint64) timestamp,
+      G_TYPE_INVALID);
 
   /* Emit signals */
   tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);

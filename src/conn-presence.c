@@ -83,6 +83,9 @@ struct _GabbleConnectionPresencePrivate {
 
     /* The shared status IQ handler */
     guint iq_shared_status_cb;
+
+    /* The previous presence when using shared status */
+    GabblePresenceId previous_shared_status;
 };
 
 static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
@@ -324,6 +327,8 @@ set_shared_status_cb (GObject *source_object,
 {
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  GabblePresence *presence = self->self_presence;
   GError *error = NULL;
 
   if (!conn_util_send_iq_finish (self, res, NULL, &error))
@@ -335,6 +340,17 @@ set_shared_status_cb (GObject *source_object,
   else
     {
       gabble_muc_factory_broadcast_presence (self->muc_factory);
+
+      /* To use away and xa we need to send a <presence/> to the server, but
+       * then GTalk also expects us to leave the status using <presence/>
+       * too. */
+      if (priv->previous_shared_status == GABBLE_PRESENCE_AWAY ||
+          priv->previous_shared_status == GABBLE_PRESENCE_XA)
+        {
+          conn_presence_signal_own_presence (self, NULL, &error);
+        }
+
+      priv->previous_shared_status = presence->status;
     }
 
   g_simple_async_result_complete (result);
@@ -423,6 +439,8 @@ set_shared_status (GabbleConnection *self,
         }
 
       emit_presences_changed_for_self (self);
+
+      priv->previous_shared_status = presence->status;
 
       g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
@@ -1935,6 +1953,7 @@ void
 conn_presence_init (GabbleConnection *conn)
 {
   conn->presence_priv = g_slice_new0 (GabbleConnectionPresencePrivate);
+  conn->presence_priv->previous_shared_status = GABBLE_PRESENCE_UNKNOWN;
 
   g_signal_connect (conn->presence_cache, "presences-updated",
       G_CALLBACK (connection_presences_updated_cb), conn);

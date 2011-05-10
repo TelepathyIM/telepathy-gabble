@@ -156,10 +156,10 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_sh
     _status, _show, _invisible = shared_status
     stream.shared_status = shared_status
 
-    forbidden_even_patterns = [EventPattern('stream-presence'),
-                               EventPattern('stream-iq', query_ns=ns.PRIVACY,
-                                            iq_type='get')]
-    q.forbid_events(forbidden_even_patterns)
+    forbidden_event_patterns = [EventPattern('stream-presence'),
+                                EventPattern('stream-iq', query_ns=ns.PRIVACY,
+                                             iq_type='get')]
+    q.forbid_events(forbidden_event_patterns)
 
     conn.SimplePresence.SetPresence(show, msg)
     conn.Connect()
@@ -189,7 +189,7 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_sh
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
-    q.unforbid_events(forbidden_even_patterns)
+    q.unforbid_events(forbidden_event_patterns)
 
 def test_connect_available(q, bus, conn, stream):
     _test_on_connect(q, bus, conn, stream,  ("I'm busy, buddy.", 'dnd', 'false'),

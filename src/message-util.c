@@ -469,6 +469,14 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
 
   if (body != NULL)
     {
+      if (lm_message_node_get_child_with_namespace (
+              wocky_stanza_get_top_node (message),
+              "google-rbc-announcement", "google:metadata") != NULL)
+        {
+          /* Fixes: https://bugs.freedesktop.org/show_bug.cgi?id=36647 */
+          return FALSE;
+        }
+
       if (type == NULL &&
           lm_message_node_get_child_with_namespace (
               wocky_stanza_get_top_node (message),

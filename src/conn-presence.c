@@ -320,6 +320,12 @@ build_shared_status_stanza (GabbleConnection *self)
   return iq;
 }
 
+static gboolean
+is_presence_away (GabblePresenceId status)
+{
+  return status == GABBLE_PRESENCE_AWAY || status == GABBLE_PRESENCE_XA;
+}
+
 static void
 set_shared_status_cb (GObject *source_object,
     GAsyncResult *res,
@@ -344,8 +350,7 @@ set_shared_status_cb (GObject *source_object,
       /* To use away and xa we need to send a <presence/> to the server, but
        * then GTalk also expects us to leave the status using <presence/>
        * too. */
-      if (priv->previous_shared_status == GABBLE_PRESENCE_AWAY ||
-          priv->previous_shared_status == GABBLE_PRESENCE_XA)
+      if (is_presence_away (priv->previous_shared_status))
         {
           conn_presence_signal_own_presence (self, NULL, &error);
         }
@@ -402,8 +407,7 @@ set_shared_status (GabbleConnection *self,
 
   g_object_ref (result);
 
-  if (presence->status != GABBLE_PRESENCE_AWAY &&
-      presence->status != GABBLE_PRESENCE_XA)
+  if (!is_presence_away (presence->status))
     {
       WockyStanza *iq;
 

@@ -56,15 +56,29 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     expected_show = expected_show or show
     away = expected_show in ('away', 'xa')
 
-    # Away and extended away are mapped to idle, that is per connection.
-    # This means we use <presence/> instead of shared presence.
-    if not away:
-        wrong_presence_pattern = EventPattern('stream-presence')
-    else:
+    self = conn.GetSelfHandle()
+    prev_presence = conn.SimplePresence.GetPresences([self])[self]
+    was_away = prev_presence[0] in (cs.PRESENCE_AWAY,
+                                    cs.PRESENCE_EXTENDED_AWAY)
+
+    if away:
+        # Away and extended away are mapped to idle, that is per connection.
+        # This means we use <presence/> instead of shared presence.
         wrong_presence_pattern = EventPattern('stream-iq',
                                               query_ns=ns.GOOGLE_SHARED_STATUS,
                                               iq_type='set')
-    q.forbid_events([wrong_presence_pattern])
+    elif was_away:
+        # Non-away status, but we were away previously. Considering that we
+        # went away using <presence/>, we need to also leave it using
+        # <presence/> plus the shared status.
+        wrong_presence_pattern = None
+    else:
+        # Normal case without away involvement; we just expect the use of
+        # shared status.
+        wrong_presence_pattern = EventPattern('stream-presence')
+
+    if wrong_presence_pattern:
+        q.forbid_events([wrong_presence_pattern])
 
     conn.SimplePresence.SetPresence(show, msg)
 
@@ -82,6 +96,9 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
         assertEquals(shared_show, _show.children[0])
         _invisible = xpath.queryForNodes('//invisible', event.query)[0]
         assertEquals(shared_invisible, _invisible.getAttribute('value'))
+
+        if was_away:
+            q.expect('stream-presence')
     else:
         q.expect('stream-presence')
 
@@ -95,7 +112,8 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
                      args=[{1: (presence_types[expected_show], expected_show,
                             msg[:max_status_message_length])}]))
 
-    q.unforbid_events([wrong_presence_pattern])
+    if wrong_presence_pattern:
+        q.unforbid_events([wrong_presence_pattern])
 
 def test(q, bus, conn, stream):
     q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
@@ -117,6 +135,13 @@ def test(q, bus, conn, stream):
     # Set shared status to default, local status to away.
     _test_local_status(q, conn, stream, "I'm away right now", "away")
     _test_local_status(q, conn, stream, "cd" * max_status_message_length, "away")
+
+    # Test the transition from away to non-away as GTalk treats it in a
+    # different way.
+    _test_local_status(q, conn, stream, "Here!", "available")
+    _test_local_status(q, conn, stream, "I'm away right now", "away")
+    _test_local_status(q, conn, stream, "I'm away right now", "xa")
+    _test_local_status(q, conn, stream, "Here!", "available")
 
     # Test interaction with another client.
     _test_local_status(q, conn, stream, "Don't disturb, buddy.", "dnd")

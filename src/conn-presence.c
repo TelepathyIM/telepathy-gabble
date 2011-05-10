@@ -347,12 +347,20 @@ set_shared_status_cb (GObject *source_object,
     {
       gabble_muc_factory_broadcast_presence (self->muc_factory);
 
-      /* To use away and xa we need to send a <presence/> to the server, but
-       * then GTalk also expects us to leave the status using <presence/>
-       * too. */
       if (is_presence_away (priv->previous_shared_status))
         {
+          /* To use away and xa we need to send a <presence/> to the server,
+           * but then GTalk also expects us to leave the status using
+           * <presence/> too. */
           conn_presence_signal_own_presence (self, NULL, &error);
+        }
+      else if (priv->previous_shared_status == GABBLE_PRESENCE_HIDDEN &&
+          is_presence_away (presence->status))
+        {
+          /* We sent the shared status change to leave the invisibility, so
+           * now we can actually go to away / xa. */
+          conn_presence_signal_own_presence (self, NULL, &error);
+          emit_presences_changed_for_self (self);
         }
 
       priv->previous_shared_status = presence->status;
@@ -373,7 +381,7 @@ insert_presence_to_shared_statuses (GabbleConnection *self)
   const gchar *show = presence->status == GABBLE_PRESENCE_DND ? "dnd" : "default";
   gchar **statuses = g_hash_table_lookup (priv->shared_statuses, show);
 
-  if (presence->status_message == NULL)
+  if (presence->status_message == NULL || is_presence_away (presence->status))
     return;
 
   if (statuses == NULL)
@@ -408,6 +416,11 @@ set_shared_status (GabbleConnection *self,
   g_object_ref (result);
 
   if (!is_presence_away (presence->status))
+  /* Away is treated like idleness in GTalk; it's per connection and not
+   * global. To set the presence as away we use the traditional <presence/>,
+   * but, if we were invisible, we need to first leave invisibility. */
+  if (!is_presence_away (presence->status) ||
+      priv->previous_shared_status == GABBLE_PRESENCE_HIDDEN)
     {
       WockyStanza *iq;
 
@@ -430,9 +443,6 @@ set_shared_status (GabbleConnection *self,
       gboolean retval;
       GError *error = NULL;
 
-      /* Away is treated like idleness in GTalk, so it's per connection and
-       * not global. To set the presence as away we use the normal
-       * <presence/> method. */
       DEBUG ("not updating shared status as it's not supported for away");
 
       retval = conn_presence_signal_own_presence (self, NULL, &error);

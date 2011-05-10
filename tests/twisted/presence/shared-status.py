@@ -178,8 +178,6 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_sh
     _invisible = xpath.queryForNodes('//invisible', event.query)[0]
     assertEquals(shared_invisible, _invisible.getAttribute('value'))
 
-    q.unforbid_events(forbidden_even_patterns)
-
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      interface=cs.CONN_IFACE_PRESENCE,
@@ -190,6 +188,8 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_sh
                                 expected_show, msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+
+    q.unforbid_events(forbidden_even_patterns)
 
 def test_connect_available(q, bus, conn, stream):
     _test_on_connect(q, bus, conn, stream,  ("I'm busy, buddy.", 'dnd', 'false'),
@@ -235,8 +235,6 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
     _invisible = xpath.queryForNodes('//invisible', event.query)[0]
     assertEquals("false", _invisible.getAttribute('value'))
 
-    q.unforbid_events([presence_event_pattern])
-
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      interface=cs.CONN_IFACE_PRESENCE,
@@ -246,6 +244,8 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
                      args=[{1: (cs.PRESENCE_BUSY, "dnd", msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+
+    q.unforbid_events([presence_event_pattern])
 
 def test_shared_status_list(q, bus, conn, stream):
     '''Test the shared status list usage'''

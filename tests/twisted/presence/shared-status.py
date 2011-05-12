@@ -26,8 +26,6 @@ presence_types = {'available' : cs.PRESENCE_AVAILABLE,
 
 def _show_to_shared_status_show(show):
     # Away and extended away don't use shared status.
-    assert show not in ('away', 'xa')
-
     shared_show = 'default'
     if show == 'dnd':
         shared_show = 'dnd'
@@ -56,21 +54,42 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     expected_show = expected_show or show
     away = expected_show in ('away', 'xa')
 
-    # Away and extended away are mapped to idle, that is per connection.
-    # This means we use <presence/> instead of shared presence.
-    if not away:
-        wrong_presence_pattern = EventPattern('stream-presence')
+    self = conn.GetSelfHandle()
+    prev_presence = conn.SimplePresence.GetPresences([self])[self]
+    was_away = prev_presence[0] in (cs.PRESENCE_AWAY,
+                                    cs.PRESENCE_EXTENDED_AWAY)
+    was_invisible = (prev_presence[0] == cs.PRESENCE_HIDDEN)
+
+    if away:
+        # Away and extended away are mapped to idle, that is per connection.
+        # This means we use <presence/> instead of shared presence...
+        if not was_invisible:
+            # ... so in normal cases we don't expect the shared presence
+            # stuff, but ...
+            wrong_presence_pattern = EventPattern('stream-iq',
+                    query_ns=ns.GOOGLE_SHARED_STATUS, iq_type='set')
+        else:
+            # ... when switching from invisible we have to leave invisible
+            # first and then go away.
+            wrong_presence_pattern = None
+    elif was_away:
+        # Non-away status, but we were away previously. Considering that we
+        # went away using <presence/>, we need to also leave it using
+        # <presence/> plus the shared status.
+        wrong_presence_pattern = None
     else:
-        wrong_presence_pattern = EventPattern('stream-iq',
-                                              query_ns=ns.GOOGLE_SHARED_STATUS,
-                                              iq_type='set')
-    q.forbid_events([wrong_presence_pattern])
+        # Normal case without away involvement; we just expect the use of
+        # shared status.
+        wrong_presence_pattern = EventPattern('stream-presence')
+
+    if wrong_presence_pattern:
+        q.forbid_events([wrong_presence_pattern])
 
     conn.SimplePresence.SetPresence(show, msg)
 
     max_status_message_length = int(stream.max_status_message_length)
 
-    if not away:
+    if not away or (away and was_invisible):
         event = q.expect('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
                                      iq_type='set')
 
@@ -82,6 +101,9 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
         assertEquals(shared_show, _show.children[0])
         _invisible = xpath.queryForNodes('//invisible', event.query)[0]
         assertEquals(shared_invisible, _invisible.getAttribute('value'))
+
+        if was_away or (away and was_invisible):
+            q.expect('stream-presence')
     else:
         q.expect('stream-presence')
 
@@ -95,7 +117,8 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
                      args=[{1: (presence_types[expected_show], expected_show,
                             msg[:max_status_message_length])}]))
 
-    q.unforbid_events([wrong_presence_pattern])
+    if wrong_presence_pattern:
+        q.unforbid_events([wrong_presence_pattern])
 
 def test(q, bus, conn, stream):
     q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
@@ -113,10 +136,22 @@ def test(q, bus, conn, stream):
 
     # Test invisibility
     _test_local_status(q, conn, stream, "Peekabo", "hidden")
+    _test_local_status(q, conn, stream, "Here!", "available")
 
     # Set shared status to default, local status to away.
     _test_local_status(q, conn, stream, "I'm away right now", "away")
     _test_local_status(q, conn, stream, "cd" * max_status_message_length, "away")
+
+    # Test the transition from away to non-away as GTalk treats it in a
+    # different way.
+    _test_local_status(q, conn, stream, "Here!", "available")
+    _test_local_status(q, conn, stream, "I'm away right now", "away")
+    _test_local_status(q, conn, stream, "I'm away right now", "xa")
+    _test_local_status(q, conn, stream, "Here!", "available")
+
+    # Test the transition from hidden to away.
+    _test_local_status(q, conn, stream, "Peekabo", "hidden")
+    _test_local_status(q, conn, stream, "I'm away right now", "away")
 
     # Test interaction with another client.
     _test_local_status(q, conn, stream, "Don't disturb, buddy.", "dnd")
@@ -156,10 +191,10 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_sh
     _status, _show, _invisible = shared_status
     stream.shared_status = shared_status
 
-    forbidden_even_patterns = [EventPattern('stream-presence'),
-                               EventPattern('stream-iq', query_ns=ns.PRIVACY,
-                                            iq_type='get')]
-    q.forbid_events(forbidden_even_patterns)
+    forbidden_event_patterns = [EventPattern('stream-presence'),
+                                EventPattern('stream-iq', query_ns=ns.PRIVACY,
+                                             iq_type='get')]
+    q.forbid_events(forbidden_event_patterns)
 
     conn.SimplePresence.SetPresence(show, msg)
     conn.Connect()
@@ -178,8 +213,6 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_sh
     _invisible = xpath.queryForNodes('//invisible', event.query)[0]
     assertEquals(shared_invisible, _invisible.getAttribute('value'))
 
-    q.unforbid_events(forbidden_even_patterns)
-
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      interface=cs.CONN_IFACE_PRESENCE,
@@ -190,6 +223,8 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_sh
                                 expected_show, msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+
+    q.unforbid_events(forbidden_event_patterns)
 
 def test_connect_available(q, bus, conn, stream):
     _test_on_connect(q, bus, conn, stream,  ("I'm busy, buddy.", 'dnd', 'false'),
@@ -235,8 +270,6 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
     _invisible = xpath.queryForNodes('//invisible', event.query)[0]
     assertEquals("false", _invisible.getAttribute('value'))
 
-    q.unforbid_events([presence_event_pattern])
-
     q.expect_many(
         EventPattern('dbus-signal', signal='PresenceUpdate',
                      interface=cs.CONN_IFACE_PRESENCE,
@@ -246,6 +279,8 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
                      args=[{1: (cs.PRESENCE_BUSY, "dnd", msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
+
+    q.unforbid_events([presence_event_pattern])
 
 def test_shared_status_list(q, bus, conn, stream):
     '''Test the shared status list usage'''

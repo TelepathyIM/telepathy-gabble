@@ -415,7 +415,6 @@ set_shared_status (GabbleConnection *self,
 
   g_object_ref (result);
 
-  if (!is_presence_away (presence->status))
   /* Away is treated like idleness in GTalk; it's per connection and not
    * global. To set the presence as away we use the traditional <presence/>,
    * but, if we were invisible, we need to first leave invisibility. */

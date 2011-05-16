@@ -20,8 +20,6 @@ OUR_SOURCES =                     \
   gibber-linklocal-transport.h    \
   gibber-listener.c               \
   gibber-listener.h               \
-  gibber-linklocal-transport.c    \
-  gibber-linklocal-transport.h    \
   gibber-sockets.c                \
   gibber-sockets.h                \
   gibber-sockets-unix.h           \

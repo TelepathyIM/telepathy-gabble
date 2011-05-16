@@ -2683,6 +2683,13 @@ set_status_to_connected (GabbleConnection *conn)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
 
+  if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
+    {
+      /* We already failed to connect, but at the time an async thing was
+       * still pending, and now it has finished. Do nothing special. */
+      return;
+    }
+
   if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
     {
       const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,

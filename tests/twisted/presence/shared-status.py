@@ -37,7 +37,7 @@ def _show_to_shared_status_show(show):
     return shared_show, shared_invisible
 
 def _test_remote_status(q, stream, msg, show, list_attrs):
-    list_attrs['status'] = list_attrs.get('status') or msg
+    list_attrs['status'] = list_attrs.get('status', msg)
     stream.set_shared_status_lists(**list_attrs)
 
     q.expect('stream-iq', iq_type='result')

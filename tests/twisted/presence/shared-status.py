@@ -9,7 +9,7 @@ from gabbletest import (
 )
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
-    assertDoesNotContain
+    assertDoesNotContain, sync_dbus
 )
 import ns
 import copy
@@ -36,8 +36,40 @@ def _show_to_shared_status_show(show):
 
     return shared_show, shared_invisible
 
-def _test_remote_status(q, stream, msg, show, list_attrs):
-    list_attrs['status'] = list_attrs.get('status') or msg
+def _test_remote_status(q, bus, conn, stream, msg, show, list_attrs):
+    self = conn.GetSelfHandle()
+    presence = conn.SimplePresence.GetPresences([self])[self]
+    is_away = presence[0] in (cs.PRESENCE_AWAY, cs.PRESENCE_EXTENDED_AWAY)
+
+    if is_away:
+        # Away is per connection. If we remotely change the shared status,
+        # we have to stay away.
+        _test_remote_status_away(q, bus, conn, stream, msg, show, list_attrs)
+    else:
+        # If we are not away and the remote status changes, we have to change
+        # also our local presence to reflect that.
+        _test_remote_status_not_away(q, stream, msg, show, list_attrs)
+
+def _test_remote_status_away(q, bus, conn, stream, msg, show, list_attrs):
+    events = [EventPattern('dbus-signal', signal='PresenceUpdate',
+                           interface=cs.CONN_IFACE_PRESENCE,
+                           args=[{1: (0, {show: {'message': msg}})}]),
+              EventPattern('dbus-signal', signal='PresencesChanged',
+                           interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                           args=[{1: (presence_types[show], show, msg)}])]
+    q.forbid_events(events)
+
+    list_attrs['status'] = list_attrs.get('status', msg)
+    stream.set_shared_status_lists(**list_attrs)
+
+    q.expect('stream-iq', iq_type='result')
+
+    sync_dbus(bus, q, conn)
+
+    q.unforbid_events(events)
+
+def _test_remote_status_not_away(q, stream, msg, show, list_attrs):
+    list_attrs['status'] = list_attrs.get('status', msg)
     stream.set_shared_status_lists(**list_attrs)
 
     q.expect('stream-iq', iq_type='result')
@@ -153,11 +185,23 @@ def test(q, bus, conn, stream):
     _test_local_status(q, conn, stream, "Peekabo", "hidden")
     _test_local_status(q, conn, stream, "I'm away right now", "away")
 
-    # Test interaction with another client.
+    # Test if the status is changed correctly from another client.
     _test_local_status(q, conn, stream, "Don't disturb, buddy.", "dnd")
-    _test_remote_status(q, stream, "This is me busy, set from another client.",
+    _test_remote_status(q, bus, conn, stream,
+                        "This is me busy, set from another client.",
                         "dnd", {"show" : "dnd"})
-    _test_remote_status(q, stream, "This is me available, set from another client.",
+    _test_remote_status(q, bus, conn, stream,
+                        "This is me available, set from another client.",
+                        "available", {"show" : "default"})
+
+    # Test that our own status as exposed over D-Bus doesn't change when
+    # when we are away and other clients change the shared status.
+    _test_local_status(q, conn, stream, "Lunch!", "away")
+    _test_remote_status(q, bus, conn, stream,
+                        "This is me busy, set from another client.",
+                        "dnd", {"show" : "dnd"})
+    _test_remote_status(q, bus, conn, stream,
+                        "This is me available, set from another client.",
                         "available", {"show" : "default"})
 
     # Change min version

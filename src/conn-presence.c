@@ -884,12 +884,23 @@ store_shared_statuses (GabbleConnection *self,
         presence_id = GABBLE_PRESENCE_AVAILABLE;
     }
 
-  /* If we are connected, use the new shared status. If not, override with local */
-  if (base->status == TP_CONNECTION_STATUS_CONNECTED)
-    rv = gabble_presence_update (self->self_presence, resource, presence_id,
-        status_message, prio, NULL, time (NULL));
+  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      /* Not connected, override with the local status. */
+      rv = TRUE;
+    }
+  else if (is_presence_away (self->self_presence->status))
+    {
+      /* Away presence is not overridden with remote presence because it's
+       * per connection. */
+      rv = FALSE;
+    }
   else
-    rv = TRUE;
+    {
+      /* Update with the remote presence */
+      rv = gabble_presence_update (self->self_presence, resource, presence_id,
+          status_message, prio, NULL, time (NULL));
+    }
 
   g_free (resource);
 

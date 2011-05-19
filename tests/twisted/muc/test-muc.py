@@ -117,7 +117,11 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    sent_token = chan.Messages.SendMessage(greeting, dbus.UInt32(0))
+    # We ask for delivery reports (which MUCs provide) and read reports (which
+    # MUCs do not provide).
+    sent_token = chan.Messages.SendMessage(greeting,
+        cs.MSG_SENDING_FLAGS_REPORT_DELIVERY |
+        cs.MSG_SENDING_FLAGS_REPORT_READ)
 
     assert sent_token
 
@@ -127,7 +131,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
-    sent_message = message_sent.args[0]
+    sent_message, flags, token = message_sent.args
     assert len(sent_message) == 2, sent_message
     header = sent_message[0]
     assert header['message-type'] == 1, header # Action
@@ -136,6 +140,11 @@ def test(q, bus, conn, stream):
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'peers through a gap in the curtains', body
+
+    # Of the flags passed to SendMessage, Gabble should only report the
+    # DELIVERY flag, since the other is not supported.
+    assertEquals(cs.MSG_SENDING_FLAGS_REPORT_DELIVERY, flags)
+    assertEquals(sent_token, token)
 
     assert sent.args[1] == 1, sent.args # Action
     assert sent.args[2] == u'peers through a gap in the curtains', sent.args
@@ -207,13 +216,18 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
-    sent_message = message_sent.args[0]
+    sent_message, flags, _ = message_sent.args
     assert len(sent_message) == 2, sent_message
     header = sent_message[0]
     assert 'message-type' not in header, header # Normal
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'goodbye', body
+
+    # The caller didn't ask for delivery reports (how could they? they're using
+    # the old API), but the server's going to send us an echo anyway, so
+    # Gabble's within its rights to pretend that the caller asked.
+    assert flags in [0, cs.MSG_SENDING_FLAGS_REPORT_DELIVERY], flags
 
     assert sent.args[1] == 0, sent.args # Normal
     assert sent.args[2] == u'goodbye', sent.args

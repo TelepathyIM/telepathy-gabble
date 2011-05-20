@@ -37,11 +37,11 @@
 
 
 void
-gabble_message_util_add_chat_state (LmMessage *msg,
+gabble_message_util_add_chat_state (WockyStanza *stanza,
                  TpChannelChatState state)
 {
   LmMessageNode *node = NULL;
-  WockyNode *n = wocky_stanza_get_top_node (msg);
+  WockyNode *n = wocky_stanza_get_top_node (stanza);
 
   switch (state)
     {
@@ -93,7 +93,7 @@ gabble_message_util_build_stanza (TpMessage *message,
                                   GError **error)
 {
   const GHashTable *part;
-  WockyStanza *msg = NULL;
+  WockyStanza *stanza = NULL;
   WockyNode *node;
   guint type = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
   gboolean result = TRUE;
@@ -101,7 +101,7 @@ gabble_message_util_build_stanza (TpMessage *message,
   gchar *id = NULL;
   guint n_parts;
 
-#define INVALID_ARGUMENT(msg, ...) \
+#define RETURN_INVALID_ARGUMENT(msg, ...) \
   G_STMT_START { \
     DEBUG (msg , ## __VA_ARGS__); \
     g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, \
@@ -115,15 +115,15 @@ gabble_message_util_build_stanza (TpMessage *message,
     type = tp_asv_get_uint32 (part, "message-type", &result);
 
   if (!result)
-    INVALID_ARGUMENT ("message-type must be a 32-bit unsigned integer");
+    RETURN_INVALID_ARGUMENT ("message-type must be a 32-bit unsigned integer");
 
   if (type >= NUM_TP_CHANNEL_TEXT_MESSAGE_TYPES)
-    INVALID_ARGUMENT ("invalid message type: %u", type);
+    RETURN_INVALID_ARGUMENT ("invalid message type: %u", type);
 
   n_parts = tp_message_count_parts (message);
 
   if (n_parts != 2)
-    INVALID_ARGUMENT ("message must contain exactly 1 part, not %u",
+    RETURN_INVALID_ARGUMENT ("message must contain exactly 1 part, not %u",
         (n_parts - 1));
 
   part = tp_message_peek (message, 1);
@@ -131,10 +131,10 @@ gabble_message_util_build_stanza (TpMessage *message,
   text = tp_asv_get_string (part, "content");
 
   if (content_type == NULL || tp_strdiff (content_type, "text/plain"))
-    INVALID_ARGUMENT ("message must be text/plain");
+    RETURN_INVALID_ARGUMENT ("message must be text/plain");
 
   if (text == NULL)
-    INVALID_ARGUMENT ("content must be a UTF-8 string");
+    RETURN_INVALID_ARGUMENT ("content must be a UTF-8 string");
 
   if (!subtype)
     {
@@ -150,9 +150,9 @@ gabble_message_util_build_stanza (TpMessage *message,
         }
     }
 
-  msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
+  stanza = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
       subtype);
-  node = wocky_stanza_get_top_node (msg);
+  node = wocky_stanza_get_top_node (stanza);
   /* Generate a UUID for the message */
   id = gabble_generate_id ();
   lm_message_node_set_attribute (node, "id", id);
@@ -173,14 +173,14 @@ gabble_message_util_build_stanza (TpMessage *message,
       lm_message_node_add_child (node, "body", text);
     }
  
-  gabble_message_util_add_chat_state (msg, state);
+  gabble_message_util_add_chat_state (stanza, state);
 
   if (token != NULL)
     *token = id;
   else
     g_free(id);
 
-  return msg;
+  return stanza;
 }
 
 

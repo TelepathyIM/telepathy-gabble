@@ -31,13 +31,13 @@
 
 G_BEGIN_DECLS
 
-void
-gabble_message_util_add_chat_state (LmMessage *msg,TpChannelChatState state);
+void gabble_message_util_add_chat_state (WockyStanza *stanza,
+    TpChannelChatState state);
 
-WockyStanza *
-gabble_message_util_build_stanza (TpMessage *message,
-    GabbleConnection *conn, LmMessageSubType subtype, TpChannelChatState state,
-    const char *recipient, gboolean send_nick, gchar **token, GError **error);
+WockyStanza * gabble_message_util_build_stanza (TpMessage *message,
+    GabbleConnection *conn, LmMessageSubType subtype,
+    TpChannelChatState state, const char *recipient, gboolean send_nick,
+    gchar **token, GError **error);
 
 gboolean gabble_message_util_send_chat_state (GObject *obj,
     GabbleConnection *conn, LmMessageSubType subtype, TpChannelChatState state,

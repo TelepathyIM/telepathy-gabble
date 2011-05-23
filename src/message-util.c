@@ -36,12 +36,12 @@
 #include "util.h"
 
 
-static void
-_add_chat_state (LmMessage *msg,
+void
+gabble_message_util_add_chat_state (WockyStanza *stanza,
                  TpChannelChatState state)
 {
   LmMessageNode *node = NULL;
-  WockyNode *n = wocky_stanza_get_top_node (msg);
+  WockyNode *n = wocky_stanza_get_top_node (stanza);
 
   switch (state)
     {
@@ -68,31 +68,32 @@ _add_chat_state (LmMessage *msg,
     }
 }
 
-
 /**
- * gabble_message_util_send_message:
- * @obj: a channel implementation featuring TpMessageMixin
- * @conn: the connection owning this channel
+ * gabble_message_util_build_stanza
  * @message: the message to be sent
- * @flags: the flags used if sending is successful
+ * @conn: the connection owning this channel
  * @subtype: the Loudmouth message subtype
  * @state: the Telepathy chat state, or -1 if unknown or not applicable
  * @recipient: the recipient's JID
  * @send_nick: whether to include our own nick in the message
+ * @token: return the message id
+ * @error: return the error if operation failed
+ *
+ * Returns: The wocky stanza for the message
  */
-void
-gabble_message_util_send_message (GObject *obj,
+
+WockyStanza *
+gabble_message_util_build_stanza (TpMessage *message,
                                   GabbleConnection *conn,
-                                  TpMessage *message,
-                                  TpMessageSendingFlags flags,
                                   LmMessageSubType subtype,
                                   TpChannelChatState state,
                                   const char *recipient,
-                                  gboolean send_nick)
+                                  gboolean send_nick,
+                                  gchar **token,
+                                  GError **error)
 {
-  GError *error = NULL;
   const GHashTable *part;
-  LmMessage *msg;
+  WockyStanza *stanza = NULL;
   WockyNode *node;
   guint type = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
   gboolean result = TRUE;
@@ -100,12 +101,12 @@ gabble_message_util_send_message (GObject *obj,
   gchar *id = NULL;
   guint n_parts;
 
-#define INVALID_ARGUMENT(msg, ...) \
+#define RETURN_INVALID_ARGUMENT(msg, ...) \
   G_STMT_START { \
     DEBUG (msg , ## __VA_ARGS__); \
-    g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, \
+    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, \
         msg , ## __VA_ARGS__); \
-    goto despair_island; \
+    return NULL; \
   } G_STMT_END
 
   part = tp_message_peek (message, 0);
@@ -114,15 +115,15 @@ gabble_message_util_send_message (GObject *obj,
     type = tp_asv_get_uint32 (part, "message-type", &result);
 
   if (!result)
-    INVALID_ARGUMENT ("message-type must be a 32-bit unsigned integer");
+    RETURN_INVALID_ARGUMENT ("message-type must be a 32-bit unsigned integer");
 
   if (type >= NUM_TP_CHANNEL_TEXT_MESSAGE_TYPES)
-    INVALID_ARGUMENT ("invalid message type: %u", type);
+    RETURN_INVALID_ARGUMENT ("invalid message type: %u", type);
 
   n_parts = tp_message_count_parts (message);
 
   if (n_parts != 2)
-    INVALID_ARGUMENT ("message must contain exactly 1 part, not %u",
+    RETURN_INVALID_ARGUMENT ("message must contain exactly 1 part, not %u",
         (n_parts - 1));
 
   part = tp_message_peek (message, 1);
@@ -130,12 +131,10 @@ gabble_message_util_send_message (GObject *obj,
   text = tp_asv_get_string (part, "content");
 
   if (content_type == NULL || tp_strdiff (content_type, "text/plain"))
-    INVALID_ARGUMENT ("message must be text/plain");
+    RETURN_INVALID_ARGUMENT ("message must be text/plain");
 
   if (text == NULL)
-    INVALID_ARGUMENT ("content must be a UTF-8 string");
-
-  /* Okay, it's valid. Let's send it. */
+    RETURN_INVALID_ARGUMENT ("content must be a UTF-8 string");
 
   if (!subtype)
     {
@@ -151,9 +150,9 @@ gabble_message_util_send_message (GObject *obj,
         }
     }
 
-  msg = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
+  stanza = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
       subtype);
-  node = wocky_stanza_get_top_node (msg);
+  node = wocky_stanza_get_top_node (stanza);
   /* Generate a UUID for the message */
   id = gabble_generate_id ();
   lm_message_node_set_attribute (node, "id", id);
@@ -173,25 +172,15 @@ gabble_message_util_send_message (GObject *obj,
     {
       lm_message_node_add_child (node, "body", text);
     }
+ 
+  gabble_message_util_add_chat_state (stanza, state);
 
-  _add_chat_state (msg, state);
+  if (token != NULL)
+    *token = id;
+  else
+    g_free(id);
 
-  result = _gabble_connection_send (conn, msg, &error);
-  lm_message_unref (msg);
-
-  if (!result)
-    goto despair_island;
-
-  tp_message_mixin_sent (obj, message, flags, id, NULL);
-  g_free (id);
-
-  return;
-
-despair_island:
-  g_assert (error != NULL);
-  tp_message_mixin_sent (obj, message, 0, NULL, error);
-  g_error_free (error);
-  g_free (id);
+  return stanza;
 }
 
 
@@ -218,7 +207,7 @@ gabble_message_util_send_chat_state (GObject *obj,
       LM_MESSAGE_TYPE_MESSAGE, subtype);
   gboolean result;
 
-  _add_chat_state (msg, state);
+  gabble_message_util_add_chat_state (msg, state);
 
   result = _gabble_connection_send (conn, msg, error);
   lm_message_unref (msg);

@@ -1428,16 +1428,18 @@ handle_text_channel_request (GabbleMucFactory *self,
 
       ok = !tp_strdiff (target_room, room_id);
 
-      g_free (target_room);
-
       if (!ok)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "TargetID's node part (%s) doesn't match RoomID (%s)",
               target_room, room_id);
           ret = FALSE;
-          goto out;
         }
+
+      g_free (target_room);
+
+      if (!ok)
+        goto out;
     }
 
   /* Make sure TargetID and Server don't conflict. */
@@ -1456,16 +1458,19 @@ handle_text_channel_request (GabbleMucFactory *self,
       else
         ok = TRUE;
 
-      g_free (target_server);
-
       if (!ok)
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
               "TargetID's domain part (%s) doesn't match Server (%s)",
               target_server, server_prop);
           ret = FALSE;
-          goto out;
         }
+
+      g_free (target_server);
+
+      if (!ok)
+        goto out;
+
     }
 
   if (ensure_muc_channel (self, priv, room, &text_chan, TRUE,

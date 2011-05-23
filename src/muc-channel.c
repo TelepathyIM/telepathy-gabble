@@ -3135,8 +3135,8 @@ gabble_muc_channel_send (GObject *obj,
       porter = gabble_connection_dup_porter (gabble_conn);
       wocky_porter_send_async (porter, stanza, NULL,
           _gabble_muc_channel_message_sent_cb, context);
-      g_object_unref(stanza);
-      g_object_unref(porter);
+      g_object_unref (stanza);
+      g_object_unref (porter);
    }
   else
    {

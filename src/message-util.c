@@ -172,13 +172,13 @@ gabble_message_util_build_stanza (TpMessage *message,
     {
       lm_message_node_add_child (node, "body", text);
     }
- 
+
   gabble_message_util_add_chat_state (stanza, state);
 
   if (token != NULL)
     *token = id;
   else
-    g_free(id);
+    g_free (id);
 
   return stanza;
 }

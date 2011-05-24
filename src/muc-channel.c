@@ -508,7 +508,7 @@ gabble_muc_channel_constructed (GObject *obj)
   priv->subject = tp_value_array_build (3,
       G_TYPE_STRING, "",
       G_TYPE_STRING, "",
-      G_TYPE_INT64, 0,
+      G_TYPE_INT64, (gint64) 0,
       G_TYPE_INVALID);
 
   if (priv->invited)

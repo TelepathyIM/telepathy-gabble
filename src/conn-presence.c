@@ -83,6 +83,9 @@ struct _GabbleConnectionPresencePrivate {
 
     /* The shared status IQ handler */
     guint iq_shared_status_cb;
+
+    /* The previous presence when using shared status */
+    GabblePresenceId previous_shared_status;
 };
 
 static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
@@ -317,6 +320,12 @@ build_shared_status_stanza (GabbleConnection *self)
   return iq;
 }
 
+static gboolean
+is_presence_away (GabblePresenceId status)
+{
+  return status == GABBLE_PRESENCE_AWAY || status == GABBLE_PRESENCE_XA;
+}
+
 static void
 set_shared_status_cb (GObject *source_object,
     GAsyncResult *res,
@@ -324,6 +333,8 @@ set_shared_status_cb (GObject *source_object,
 {
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   GabbleConnection *self = GABBLE_CONNECTION (source_object);
+  GabbleConnectionPresencePrivate *priv = self->presence_priv;
+  GabblePresence *presence = self->self_presence;
   GError *error = NULL;
 
   if (!conn_util_send_iq_finish (self, res, NULL, &error))
@@ -335,6 +346,24 @@ set_shared_status_cb (GObject *source_object,
   else
     {
       gabble_muc_factory_broadcast_presence (self->muc_factory);
+
+      if (is_presence_away (priv->previous_shared_status))
+        {
+          /* To use away and xa we need to send a <presence/> to the server,
+           * but then GTalk also expects us to leave the status using
+           * <presence/> too. */
+          conn_presence_signal_own_presence (self, NULL, &error);
+        }
+      else if (priv->previous_shared_status == GABBLE_PRESENCE_HIDDEN &&
+          is_presence_away (presence->status))
+        {
+          /* We sent the shared status change to leave the invisibility, so
+           * now we can actually go to away / xa. */
+          conn_presence_signal_own_presence (self, NULL, &error);
+          emit_presences_changed_for_self (self);
+        }
+
+      priv->previous_shared_status = presence->status;
     }
 
   g_simple_async_result_complete (result);
@@ -352,7 +381,7 @@ insert_presence_to_shared_statuses (GabbleConnection *self)
   const gchar *show = presence->status == GABBLE_PRESENCE_DND ? "dnd" : "default";
   gchar **statuses = g_hash_table_lookup (priv->shared_statuses, show);
 
-  if (presence->status_message == NULL)
+  if (presence->status_message == NULL || is_presence_away (presence->status))
     return;
 
   if (statuses == NULL)
@@ -386,8 +415,11 @@ set_shared_status (GabbleConnection *self,
 
   g_object_ref (result);
 
-  if (presence->status != GABBLE_PRESENCE_AWAY &&
-      presence->status != GABBLE_PRESENCE_XA)
+  /* Away is treated like idleness in GTalk; it's per connection and not
+   * global. To set the presence as away we use the traditional <presence/>,
+   * but, if we were invisible, we need to first leave invisibility. */
+  if (!is_presence_away (presence->status) ||
+      priv->previous_shared_status == GABBLE_PRESENCE_HIDDEN)
     {
       WockyStanza *iq;
 
@@ -410,9 +442,6 @@ set_shared_status (GabbleConnection *self,
       gboolean retval;
       GError *error = NULL;
 
-      /* Away is treated like idleness in GTalk, so it's per connection and
-       * not global. To set the presence as away we use the normal
-       * <presence/> method. */
       DEBUG ("not updating shared status as it's not supported for away");
 
       retval = conn_presence_signal_own_presence (self, NULL, &error);
@@ -423,6 +452,8 @@ set_shared_status (GabbleConnection *self,
         }
 
       emit_presences_changed_for_self (self);
+
+      priv->previous_shared_status = presence->status;
 
       g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
@@ -853,12 +884,23 @@ store_shared_statuses (GabbleConnection *self,
         presence_id = GABBLE_PRESENCE_AVAILABLE;
     }
 
-  /* If we are connected, use the new shared status. If not, override with local */
-  if (base->status == TP_CONNECTION_STATUS_CONNECTED)
-    rv = gabble_presence_update (self->self_presence, resource, presence_id,
-        status_message, prio, NULL, time (NULL));
+  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+    {
+      /* Not connected, override with the local status. */
+      rv = TRUE;
+    }
+  else if (is_presence_away (self->self_presence->status))
+    {
+      /* Away presence is not overridden with remote presence because it's
+       * per connection. */
+      rv = FALSE;
+    }
   else
-    rv = TRUE;
+    {
+      /* Update with the remote presence */
+      rv = gabble_presence_update (self->self_presence, resource, presence_id,
+          status_message, prio, NULL, time (NULL));
+    }
 
   g_free (resource);
 
@@ -1935,6 +1977,7 @@ void
 conn_presence_init (GabbleConnection *conn)
 {
   conn->presence_priv = g_slice_new0 (GabbleConnectionPresencePrivate);
+  conn->presence_priv->previous_shared_status = GABBLE_PRESENCE_UNKNOWN;
 
   g_signal_connect (conn->presence_cache, "presences-updated",
       G_CALLBACK (connection_presences_updated_cb), conn);

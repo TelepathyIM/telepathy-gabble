@@ -99,17 +99,14 @@ struct _GabbleMucFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MUC_FACTORY_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_FACTORY, \
-                                GabbleMucFactoryPrivate))
-
 static GObject *gabble_muc_factory_constructor (GType type, guint n_props,
     GObjectConstructParam *props);
 
 static void
 gabble_muc_factory_init (GabbleMucFactory *fac)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (fac,
+      GABBLE_TYPE_MUC_FACTORY, GabbleMucFactoryPrivate);
 
   fac->priv = priv;
 
@@ -150,7 +147,7 @@ static void
 gabble_muc_factory_dispose (GObject *object)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (object);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -179,7 +176,7 @@ gabble_muc_factory_get_property (GObject    *object,
                                  GParamSpec *pspec)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (object);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -198,7 +195,7 @@ gabble_muc_factory_set_property (GObject      *object,
                                  GParamSpec   *pspec)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (object);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -242,7 +239,7 @@ static void
 muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandle room_handle;
 
   tp_channel_manager_emit_channel_closed_for_object (fac,
@@ -265,7 +262,7 @@ muc_ready_cb (GabbleMucChannel *text_chan,
               gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   GabbleTubesChannel *tubes_chan;
   GSList *requests_satisfied_text, *requests_satisfied_tubes = NULL;
   gboolean text_requested;
@@ -354,7 +351,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
                    gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   GabbleTubesChannel *tubes_chan;
   GSList *requests_satisfied;
   GSList *iter;
@@ -455,7 +452,7 @@ new_muc_channel (GabbleMucFactory *fac,
                  char **initial_ids,
                  const char *room_name)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   GabbleMucChannel *chan;
   char *object_path;
@@ -531,7 +528,7 @@ do_invite (GabbleMucFactory *fac,
            TpHandle inviter_handle,
            const gchar *reason)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room_handle;
@@ -583,7 +580,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   struct DiscoInviteData *data = (struct DiscoInviteData *) user_data;
 
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data->factory);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *identity;
@@ -628,7 +625,7 @@ process_muc_invite (GabbleMucFactory *fac,
                     const gchar *from,
                     TpChannelTextSendError send_error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -702,7 +699,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
                          const gchar *body,
                          TpChannelTextSendError send_error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -790,7 +787,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
                         gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   const gchar *from, *body, *id;
   time_t stamp;
@@ -826,7 +823,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
 void
 gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   GHashTableIter iter;
   gpointer channel = NULL;
 
@@ -844,7 +841,7 @@ gabble_muc_factory_associate_request (GabbleMucFactory *self,
                                       gpointer channel,
                                       gpointer request)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   GSList *list = g_hash_table_lookup (priv->queued_requests, channel);
 
   g_assert (TP_IS_EXPORTABLE_CHANNEL (channel));
@@ -882,7 +879,7 @@ cancel_queued_requests (gpointer k,
 static void
 gabble_muc_factory_close_all (GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   DEBUG ("closing channels");
 
@@ -937,7 +934,7 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   switch (status)
     {
@@ -966,7 +963,7 @@ gabble_muc_factory_constructor (GType type, guint n_props,
   GObject *obj = G_OBJECT_CLASS (gabble_muc_factory_parent_class)->
            constructor (type, n_props, props);
   GabbleMucFactory *self = GABBLE_MUC_FACTORY (obj);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   priv->status_changed_id = g_signal_connect (priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
@@ -1011,7 +1008,7 @@ gabble_muc_factory_foreach_channel (TpChannelManager *manager,
                                     gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (manager);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   struct _ForeachData data;
 
   data.user_data = user_data;
@@ -1065,7 +1062,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
                                              const gchar *stream_id,
                                              LmMessage *msg)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleMucChannel *gmuc = NULL;
@@ -1095,7 +1092,7 @@ GabbleMucChannel *
 gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
                                       TpHandle handle)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   return g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 }
@@ -1186,7 +1183,7 @@ ensure_tubes_channel (GabbleMucFactory *self,
                       GabbleTubesChannel **tubes_chan,
                       gboolean requested)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   GabbleMucChannel *text_chan;
   TpHandle initiator = base_conn->self_handle;
@@ -1212,7 +1209,7 @@ handle_text_channel_request (GabbleMucFactory *self,
                             TpHandle room,
                             GError **error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpBaseConnection *conn = TP_BASE_CONNECTION (priv->conn);
   GabbleMucChannel *text_chan;
   TpHandleSet *handles;
@@ -1558,7 +1555,7 @@ handle_tubes_channel_request (GabbleMucFactory *self,
                               TpHandle handle,
                               GError **error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   GabbleTubesChannel *tube = NULL;
   GabbleMucChannel *gmuc = NULL;
 
@@ -1615,7 +1612,7 @@ handle_tube_channel_request (GabbleMucFactory *self,
                              GError **error)
 
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   gboolean can_announce_now = TRUE;
   gboolean tubes_channel_created = FALSE;
   GabbleTubesChannel *tube = NULL;
@@ -1781,7 +1778,7 @@ handle_call_channel_request (GabbleMucFactory *self,
     TpHandle handle,
     GError **error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   gboolean initial_audio, initial_video;
   GabbleMucChannel *muc;
   GabbleCallMucChannel *call;
@@ -1975,7 +1972,7 @@ gboolean
 gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
   GabbleJingleSession *session)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room;

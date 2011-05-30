@@ -1099,8 +1099,8 @@ gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
 
 
 static const gchar * const muc_channel_fixed_properties[] = {
-    TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
+    TP_PROP_CHANNEL_CHANNEL_TYPE,
+    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
     NULL
 };
 
@@ -1108,20 +1108,20 @@ static const gchar * const * muc_tubes_channel_fixed_properties =
     muc_channel_fixed_properties;
 
 static const gchar * const muc_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage",
+    TP_PROP_CHANNEL_TARGET_HANDLE,
+    TP_PROP_CHANNEL_TARGET_ID,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INVITATION_MESSAGE,
     TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME,
     TP_PROP_CHANNEL_INTERFACE_ROOM_SERVER,
     NULL
 };
 
 static const gchar * const muc_tubes_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
+    TP_PROP_CHANNEL_TARGET_HANDLE,
+    TP_PROP_CHANNEL_TARGET_ID,
     NULL
 };
 
@@ -1136,12 +1136,12 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
 
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   /* no string value yet - we'll change it for each channel class */
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
+  g_hash_table_insert (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
 
   handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_ROOM);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
       handle_type_value);
 
   /* Channel.Type.Text */
@@ -1236,16 +1236,16 @@ handle_text_channel_request (GabbleMucFactory *self,
     return FALSE;
 
   initial_channels = tp_asv_get_boxed (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS,
       TP_ARRAY_TYPE_OBJECT_PATH_LIST);
   initial_handles = tp_asv_get_boxed (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES,
       DBUS_TYPE_G_UINT_ARRAY);
   initial_ids = tp_asv_get_boxed (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS,
       G_TYPE_STRV);
   invite_msg = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INVITATION_MESSAGE);
 
   room_name = tp_asv_get_string (request_properties,
       TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME);
@@ -1700,12 +1700,12 @@ handle_stream_tube_channel_request (GabbleMucFactory *self,
 
   /* "Service" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-            TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+            TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
   if (service == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+          TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
       return FALSE;
     }
 
@@ -1731,12 +1731,12 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
 
   /* "ServiceName" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+      TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
   if (service == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+          TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
       return FALSE;
     }
 
@@ -1855,19 +1855,19 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   const gchar *channel_type;
 
   handle_type = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandleType", NULL);
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
   channel_type = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL ".ChannelType");
+      TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   /* Conference channels can be anonymous (HandleTypeNone) */
   conference = (handle_type == TP_HANDLE_TYPE_NONE &&
       !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
       (g_hash_table_lookup (request_properties,
-         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels") ||
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS) ||
        g_hash_table_lookup (request_properties,
-         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles") ||
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES) ||
        g_hash_table_lookup (request_properties,
-         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs")));
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS)));
 
   room = (handle_type == TP_HANDLE_TYPE_NONE
       && !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT)
@@ -1887,7 +1887,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 
   /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+      TP_PROP_CHANNEL_TARGET_HANDLE, NULL);
   g_assert (conference || room || handle != 0);
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))

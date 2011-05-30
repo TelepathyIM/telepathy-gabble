@@ -1841,6 +1841,27 @@ error:
   return FALSE;
 }
 
+typedef gboolean (*ChannelTypeHandlerFunc) (
+    GabbleMucFactory *self,
+    gpointer request_token,
+    GHashTable *request_properties,
+    gboolean require_new,
+    TpHandle room,
+    GError **error);
+
+typedef struct {
+    const gchar *channel_type;
+    ChannelTypeHandlerFunc f;
+} ChannelTypeHandler;
+
+static ChannelTypeHandler channel_type_handlers[] = {
+    { TP_IFACE_CHANNEL_TYPE_TEXT, handle_text_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_TUBES, handle_tubes_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, handle_stream_tube_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, handle_dbus_tube_channel_request },
+    { TPY_IFACE_CHANNEL_TYPE_CALL, handle_call_channel_request },
+    { NULL }
+};
 
 static gboolean
 gabble_muc_factory_request (GabbleMucFactory *self,
@@ -1853,6 +1874,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   TpHandle handle;
   gboolean conference, room;
   const gchar *channel_type;
+  ChannelTypeHandler *h;
 
   handle_type = tp_asv_get_uint32 (request_properties,
       TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
@@ -1878,58 +1900,29 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   if (handle_type != TP_HANDLE_TYPE_ROOM && !conference && !room)
     return FALSE;
 
-  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE) &&
-      tp_strdiff (channel_type, TPY_IFACE_CHANNEL_TYPE_CALL))
-    return FALSE;
-
   /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
       TP_PROP_CHANNEL_TARGET_HANDLE, NULL);
   g_assert (conference || room || handle != 0);
 
-  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))
+  for (h = channel_type_handlers; h->channel_type != NULL; h++)
     {
-      if (handle_text_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
-    {
-      if (handle_tubes_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
-    {
-      if (handle_stream_tube_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
-    {
-      if (handle_dbus_tube_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TPY_IFACE_CHANNEL_TYPE_CALL))
-    {
-      if (handle_call_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else
-    {
-      g_assert_not_reached ();
+      if (tp_strdiff (channel_type, h->channel_type))
+        continue;
+
+      if (!h->f (self, request_token, request_properties, require_new,
+            handle, &error))
+        {
+          tp_channel_manager_emit_request_failed (self, request_token,
+              error->domain, error->code, error->message);
+          g_error_free (error);
+        }
+
+      /* We've handled the request one way or another. */
+      return TRUE;
     }
 
-  /* Something failed */
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
-  g_error_free (error);
-  return TRUE;
+  return FALSE;
 }
 
 

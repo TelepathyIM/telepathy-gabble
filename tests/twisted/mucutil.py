@@ -26,7 +26,11 @@ def echo_muc_presence (q, stream, stanza, affiliation, role):
     stream.send (stanza)
 
 def try_to_join_muc(q, bus, conn, stream, muc, request=None):
-    """Ask Gabble to join a MUC, and expect it to send <presence/>"""
+    """
+    Ask Gabble to join a MUC, and expect it to send <presence/>
+
+    Returns: the stream-presence Event object.
+    """
 
     if request is None:
         request = {
@@ -35,8 +39,7 @@ def try_to_join_muc(q, bus, conn, stream, muc, request=None):
             cs.TARGET_ID: muc,
         }
 
-    requests = dbus.Interface(conn, cs.CONN_IFACE_REQUESTS)
-    call_async(q, requests, 'CreateChannel',
+    call_async(q, conn.Requests, 'CreateChannel',
         dbus.Dictionary(request, signature='sv'))
 
     join_event = q.expect('stream-presence', to='%s/test' % muc)
@@ -47,6 +50,8 @@ def try_to_join_muc(q, bus, conn, stream, muc, request=None):
     x_muc_nodes = xpath.queryForNodes('/presence/x[@xmlns="%s"]' % ns.MUC,
         join_event.stanza)
     assertLength(1, x_muc_nodes)
+
+    return join_event
 
 def join_muc(q, bus, conn, stream, muc, request=None,
         also_capture=[], role='participant'):

@@ -19,6 +19,7 @@ class HTTPFactory(http.HTTPFactory):
     protocol = HTTPChannel
 
     def __init__(self, queue):
+        http.HTTPFactory.__init__(self)
         self.queue = queue
 
     def buildProtocol(self, addr):

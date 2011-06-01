@@ -757,7 +757,7 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
 static void
 call_muc_channel_presence_cb (WockyMuc *wmuc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     gpointer user_data)
 {
@@ -769,7 +769,7 @@ call_muc_channel_presence_cb (WockyMuc *wmuc,
 static void
 call_muc_channel_left_cb (GObject *source,
   WockyStanza *stanza,
-  GHashTable *code,
+  guint codes,
   WockyMucMember *member,
   const gchar *actor_jid,
   const gchar *why,
@@ -820,7 +820,7 @@ call_muc_channel_update_all_members (GabbleCallMucChannel *self)
 static void
 call_muc_channel_joined_cb (WockyMuc *muc,
   WockyStanza *stanza,
-  GHashTable *code,
+  guint codes,
   gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
@@ -845,7 +845,7 @@ call_muc_channel_pre_presence_cb (WockyMuc *wmuc,
 static void
 call_muc_channel_own_presence_cb (WockyMuc *wmuc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer user_data)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);

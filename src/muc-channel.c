@@ -307,7 +307,7 @@ static void handle_fill_presence (WockyMuc *muc,
 
 static void handle_renamed (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data);
 
 static void handle_error (GObject *source,
@@ -318,12 +318,12 @@ static void handle_error (GObject *source,
 
 static void handle_join (WockyMuc *muc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data);
 
 static void handle_parted (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     const gchar *actor_jid,
     const gchar *why,
     const gchar *msg,
@@ -331,7 +331,7 @@ static void handle_parted (GObject *source,
 
 static void handle_left (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     const gchar *actor_jid,
     const gchar *why,
@@ -340,7 +340,7 @@ static void handle_left (GObject *source,
 
 static void handle_presence (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     gpointer data);
 
@@ -2093,13 +2093,27 @@ handle_tube_presence (GabbleMucChannel *gmuc,
   gabble_tubes_channel_presence_updated (priv->tube, from, node);
 }
 
+static TpChannelGroupChangeReason
+muc_status_codes_to_change_reason (guint codes)
+{
+  if ((codes & WOCKY_MUC_CODE_BANNED) != 0)
+    return TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
+  else if ((codes & ( WOCKY_MUC_CODE_KICKED
+                    | WOCKY_MUC_CODE_KICKED_AFFILIATION
+                    | WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED
+                    | WOCKY_MUC_CODE_KICKED_SHUTDOWN
+                    )) != 0)
+    return TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
+  else
+    return TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+}
 
 /* connect to wocky-muc:SIG_PARTED, which we will receive when the MUC tells *
  * us that we have left the channel                                          */
 static void
 handle_parted (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     const gchar *actor_jid,
     const gchar *why,
     const gchar *msg,
@@ -2116,14 +2130,6 @@ handle_parted (GObject *source,
   TpIntSet *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
-  int x = 0;
-  static const gpointer banned = GUINT_TO_POINTER (WOCKY_MUC_CODE_BANNED);
-  static const gpointer const kicked[] =
-    { GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_AFFILIATION),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_SHUTDOWN),
-      NULL };
   const char *jid = wocky_muc_jid (wmuc);
 
   DEBUG ("called with jid='%s'", jid);
@@ -2162,14 +2168,7 @@ handle_parted (GObject *source,
         DEBUG ("ignoring invalid actor JID %s", actor_jid);
     }
 
-  if (g_hash_table_lookup (code, banned) != NULL)
-    reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-  else
-    for (x = 0; kicked[x] != NULL; x++)
-      {
-        if (g_hash_table_lookup (code, kicked[x]) != NULL)
-          reason = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
-      }
+  reason = muc_status_codes_to_change_reason (codes);
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
   if (priv->tube != NULL)
@@ -2190,7 +2189,7 @@ handle_parted (GObject *source,
 static void
 handle_left (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     const gchar *actor_jid,
     const gchar *why,
@@ -2207,14 +2206,6 @@ handle_left (GObject *source,
   TpIntSet *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
-  int x = 0;
-  static const gpointer banned = GUINT_TO_POINTER (WOCKY_MUC_CODE_BANNED);
-  static const gpointer const kicked[] =
-    { GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_AFFILIATION),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_SHUTDOWN),
-      NULL };
 
   member = tp_handle_ensure (contact_repo, who->from, NULL, NULL);
 
@@ -2234,14 +2225,7 @@ handle_left (GObject *source,
         DEBUG ("ignoring invalid actor JID %s", actor_jid);
     }
 
-  if (g_hash_table_lookup (code, banned) != NULL)
-    reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-  else
-    for (x = 0; kicked[x] != NULL; x++)
-      {
-        if (g_hash_table_lookup (code, kicked[x]) != NULL)
-          reason = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
-      }
+  reason = muc_status_codes_to_change_reason (codes);
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
   if (priv->tube != NULL)
@@ -2320,7 +2304,7 @@ handle_fill_presence (WockyMuc *muc,
 static void
 handle_renamed (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data)
 {
   WockyMuc *wmuc = WOCKY_MUC (source);
@@ -2402,7 +2386,7 @@ update_roster_presence (GabbleMucChannel *gmuc,
 static void
 handle_join (WockyMuc *muc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
@@ -2436,7 +2420,7 @@ handle_join (WockyMuc *muc,
       tp_handle_set_peek (members), NULL, NULL, NULL, 0, 0);
 
   /* accept the config of the room if it was created for us: */
-  if (g_hash_table_lookup (code, (gpointer) WOCKY_MUC_CODE_NEW_ROOM))
+  if (codes & WOCKY_MUC_CODE_NEW_ROOM)
     {
       GError *error = NULL;
       gboolean sent = FALSE;
@@ -2484,7 +2468,7 @@ handle_join (WockyMuc *muc,
 static void
 handle_presence (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     gpointer data)
 {

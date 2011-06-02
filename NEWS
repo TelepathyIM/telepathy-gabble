@@ -1,27 +1,27 @@
-telepathy-gabble 0.12.1 (UNRELEASED but inevitable)
-===================================================
+telepathy-gabble 0.12.1 (2011-06-02)
+====================================
 
-             *     ,MMM8&&&.            *
-                  MMMM88&&&&&    .
-                 MMMM88&&&&&&&
-     *           MMM88&&&&&&&&
-                 MMM88&&&&&&&&
-                 'MMM88&&&&&&'
-                   'MMM8&&&'      *    _
-          |\___/|                      \\
-         =) ^Y^ (=   |\_/|              ||    '
-          \  ^  /    )a a '._.-""""-.  //
-           )=*=(    =\T_= /    ~  ~  \//
-          /     \     `"`\   ~   / ~  /
-          |     |         |~   \ |  ~/
-         /| | | |\         \  ~/- \ ~\
-         \| | |_|/|        || |  // /`
-  jgs_/\_//_// __//\_/\_/\_((_|\((_//\_/\_/\_
-  |  |  |  | \_) |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+The “Have you seen this cat?” release.
+
+Enhancements:
+
+• Spurious server-generated messages sent by the Google Mail client's
+  “reply to email over chat” feature are now filtered out. (fd.o#36647,
+  Chandni)
+
+Fixes:
+
+• No longer crashes if Disconnect() is called just before a connection
+  declares itself Connected. (fd.o#37078, Simon)
+
+• No longer assumes Google's Queue extension is supported if Google's
+  Roster extension is supported. (fd.o#36260, Will)
+
+• Many corner cases of the transitions to and from Away and Invisible
+  when using Google's Shared Status extension have been fixed.
+  (fd.o#37069, fd.o#36058, fd.o#37283, Marco)
+
+• You can now see your own avatar in MUCs. (fd.o#32017, Will)
 
 telepathy-gabble 0.12.0 (2011-04-21)
 ====================================

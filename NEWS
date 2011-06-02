@@ -1,5 +1,15 @@
-telepathy-gabble 0.12.2 (UNRELEASED)
+telepathy-gabble 0.13.0 (2011-06-02)
 ====================================
+
+The “Belgian Wake-Up Drill” release. This is the first release in an
+all-new unstable series of Gabble.
+
+Enhancements:
+
+• The draft Channel.Interface.Room is implemented. (Jonny)
+
+• IM and MUC channels now signal failure to send messages in some
+  situations. (fd.o#33460, Siraj)
 
 telepathy-gabble 0.12.1 (2011-06-02)
 ====================================

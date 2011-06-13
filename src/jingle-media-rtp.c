@@ -618,7 +618,7 @@ codec_update_coherent (const JingleCodec *old_c,
       return FALSE;
     }
 
-  if (tp_strdiff (new_c->name, old_c->name))
+  if (g_ascii_strcasecmp (new_c->name, old_c->name))
     {
       g_set_error (e, domain, code,
           "tried to change codec %u's name from %s to %s",

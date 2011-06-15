@@ -632,6 +632,21 @@ static void set_state (GabbleJingleSession *sess,
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
 static gboolean
+gabble_jingle_session_peer_has_quirk (
+    GabbleJingleSession *self,
+    const gchar *quirk)
+{
+  GabbleJingleSessionPrivate *priv = self->priv;
+  GabblePresence *presence = gabble_presence_cache_get (
+      priv->conn->presence_cache, self->peer);
+
+  return (presence != NULL &&
+      priv->peer_resource != NULL &&
+      gabble_presence_resource_has_caps (presence, priv->peer_resource,
+          gabble_capability_set_predicate_has, quirk));
+}
+
+static gboolean
 lookup_content (GabbleJingleSession *sess,
     const gchar *name,
     const gchar *creator,
@@ -668,13 +683,8 @@ lookup_content (GabbleJingleSession *sess,
        * of the moon, and get kind of confused in the process), and we try to
        * pick globally-unique content names.
        */
-      GabblePresence *presence = gabble_presence_cache_get (
-          priv->conn->presence_cache, sess->peer);
-
-      if (creator == NULL && presence != NULL &&
-          priv->peer_resource != NULL &&
-          gabble_presence_resource_has_caps (presence, priv->peer_resource,
-              gabble_capability_set_predicate_has,
+      if (creator == NULL &&
+          gabble_jingle_session_peer_has_quirk (sess,
               QUIRK_OMITS_CONTENT_CREATORS))
         {
           DEBUG ("working around missing 'creator' attribute");

@@ -507,6 +507,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   GabbleJingleTransportIface *trans = NULL;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
+  priv->created_by_us = FALSE;
+
   desc_node = lm_message_node_get_child_any_ns (content_node, "description");
   trans_node = lm_message_node_get_child_any_ns (content_node, "transport");
   creator = lm_message_node_get_attribute (content_node, "creator");
@@ -549,6 +551,19 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
     }
   else
     {
+      if (creator == NULL &&
+          gabble_jingle_session_peer_has_quirk (c->session,
+              QUIRK_GOOGLE_WEBMAIL_CLIENT))
+        {
+          if (gabble_jingle_content_creator_is_initiator (c))
+            creator = "initiator";
+          else
+            creator = "responder";
+
+          DEBUG ("Working around GMail omitting creator=''; assuming '%s'",
+              creator);
+        }
+
       if ((trans_node == NULL) || (creator == NULL) || (name == NULL))
         {
           SET_BAD_REQ ("missing required content attributes or elements");
@@ -577,7 +592,6 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       priv->transport_ns = g_strdup (ns);
     }
 
-  priv->created_by_us = FALSE;
   if (senders == NULL)
     priv->senders = get_default_senders (c);
   else

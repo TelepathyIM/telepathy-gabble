@@ -631,7 +631,7 @@ static void set_state (GabbleJingleSession *sess,
     JingleState state, JingleReason termination_reason, const gchar *text);
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
-static gboolean
+gboolean
 gabble_jingle_session_peer_has_quirk (
     GabbleJingleSession *self,
     const gchar *quirk)

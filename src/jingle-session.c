@@ -2365,7 +2365,8 @@ gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess)
 gboolean
 gabble_jingle_session_can_modify_contents (GabbleJingleSession *sess)
 {
-  return !JINGLE_IS_GOOGLE_DIALECT (sess->priv->dialect);
+  return !JINGLE_IS_GOOGLE_DIALECT (sess->priv->dialect) &&
+      !gabble_jingle_session_peer_has_quirk (sess, QUIRK_GOOGLE_WEBMAIL_CLIENT);
 }
 
 JingleDialect

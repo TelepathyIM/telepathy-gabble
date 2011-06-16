@@ -1,7 +1,16 @@
 telepathy-gabble 0.13.1 (UNRELEASED)
 ====================================
 
-woop woop.
+The “old piano” release. This includes all of the fixes from the 0.12.2
+release.
+
+Fixes:
+
+• We now interoperate with Google Mail's brand new implementation of
+  Jingle.  Some of the workarounds added are temporary, and some are
+  not. (fd.o#38352, Will)
+
+• Compare codec names case-insensitively. (fd.o#38264, Olivier)
 
 telepathy-gabble 0.13.0 (2011-06-02)
 ====================================

@@ -1008,6 +1008,7 @@ _parse_node (GabblePresence *presence,
       DEBUG ("Client is Google Web Client");
 
       gabble_capability_set_add (cap_set, QUIRK_GOOGLE_WEBMAIL_CLIENT);
+      gabble_capability_set_add (cap_set, QUIRK_OMITS_CONTENT_CREATORS);
       gabble_presence_set_capabilities (presence, resource, cap_set, serial);
       gabble_capability_set_free (cap_set);
     }

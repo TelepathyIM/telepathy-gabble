@@ -161,6 +161,7 @@ TWISTED_JINGLE_TESTS = \
 	jingle/hold-av.py \
 	jingle/incoming-basics.py \
 	jingle/incoming-call-stream-error.py \
+	jingle/incoming-gmail-modern-jingle.py \
 	jingle/initial-audio-video.py \
 	jingle/misuse.py \
 	jingle/stun-server.py \

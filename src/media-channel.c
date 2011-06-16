@@ -450,9 +450,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   /* If this is a Google session, let's set ImmutableStreams */
   if (priv->session != NULL)
     {
-      JingleDialect d = gabble_jingle_session_get_dialect (priv->session);
-
-      priv->immutable_streams = JINGLE_IS_GOOGLE_DIALECT (d);
+      priv->immutable_streams = !gabble_jingle_session_can_modify_contents (priv->session);
     }
   /* If there's no session yet, but we know who the peer will be, and we have
    * presence for them, we can set ImmutableStreams using the same algorithm as

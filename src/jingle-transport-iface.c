@@ -107,7 +107,7 @@ gabble_jingle_transport_iface_can_accept (GabbleJingleTransportIface *self)
   if (state != JINGLE_TRANSPORT_STATE_CONNECTED)
     return FALSE;
 
-  /* Only Raw UDP *needs* contents in order to accept. */
+  /* Only Raw UDP *needs* candidates in order to accept. */
   if (m != NULL)
     return m (self);
   else

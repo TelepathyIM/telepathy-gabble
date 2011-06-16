@@ -1,5 +1,15 @@
-telepathy-gabble 0.12.2 (UNRELEASED)
+telepathy-gabble 0.12.2 (2011-06-16)
 ====================================
+
+The “paving stones” release.
+
+Fixes:
+
+• We now interoperate with Google Mail's brand new implementation of
+  Jingle.  Some of the workarounds added are temporary, and some are
+  not. (fd.o#38352, Will)
+
+• Compare codec names case-insensitively. (fd.o#38264, Olivier)
 
 telepathy-gabble 0.12.1 (2011-06-02)
 ====================================

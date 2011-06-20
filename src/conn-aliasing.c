@@ -887,7 +887,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
       GABBLE_CONNECTION_ALIAS_NONE);
 
   tmp = gabble_roster_handle_get_name (conn->roster, handle);
-  if (NULL != tmp)
+  if (!tp_str_empty (tmp))
     {
       maybe_set (alias, tmp);
       return GABBLE_CONNECTION_ALIAS_FROM_ROSTER;

@@ -5,11 +5,25 @@ Test that updating an alias saves it to the roster.
 
 import dbus
 
-from servicetest import EventPattern, call_async
-from gabbletest import acknowledge_iq, exec_test, make_result_iq
+from servicetest import EventPattern, call_async, assertEquals
+from gabbletest import acknowledge_iq, exec_test, make_result_iq, sync_stream
 import constants as cs
 import ns
-from rostertest import expect_contact_list_signals
+from rostertest import expect_contact_list_signals, send_roster_push
+
+def send_pep_nick_reply(stream, stanza, nickname):
+    result = make_result_iq(stream, stanza)
+    pubsub = result.firstChildElement()
+    items = pubsub.addElement('items')
+    items['node'] = ns.NICK
+    item = items.addElement('item')
+    item.addElement('nick', ns.NICK, content=nickname)
+    stream.send(result)
+
+def check_roster_write(event, jid, name):
+    item = event.query.firstChildElement()
+    assertEquals(jid, item['jid'])
+    assertEquals(name, item['name'])
 
 def test(q, bus, conn, stream):
     event, event2 = q.expect_many(
@@ -42,24 +56,42 @@ def test(q, bus, conn, stream):
     event = q.expect('stream-iq', iq_type='get',
         query_ns='http://jabber.org/protocol/pubsub',
         to='bob@foo.com')
-
-    result = make_result_iq(stream, event.stanza)
-    pubsub = result.firstChildElement()
-    items = pubsub.addElement('items')
-    items['node'] = 'http://jabber.org/protocol/nick'
-    item = items.addElement('item')
-    item.addElement('nick', 'http://jabber.org/protocol/nick',
-        content='Bobby')
-    stream.send(result)
+    send_pep_nick_reply(stream, event.stanza, 'Bobby')
 
     event, _ = q.expect_many(
         EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
         EventPattern('dbus-return', method='RequestAliases',
         value=(['Bobby'],)))
+    check_roster_write(event, 'bob@foo.com', 'Bobby')
 
-    item = event.query.firstChildElement()
-    assert item['jid'] == 'bob@foo.com'
-    assert item['name'] == 'Bobby'
+    # We get a roster push for a contact who for some reason has their alias
+    # set on our roster to the empty string (maybe a buggy client?). It's never
+    # useful for Gabble to say that someone's alias is the empty string (given
+    # the current semantics where the alias is always meant to be something you
+    # could show, even if it's just their JID), so let's forbid that.
+    jid = 'parts@labor.lit'
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    q.forbid_events([EventPattern('dbus-signal', signal='AliasesChanged',
+        args=[[(handle, '')]])])
+
+    send_roster_push(stream, jid, 'both', name='')
+    # I don't really have very strong opinions on whether Gabble should be
+    # signalling that this contact's alias has *changed* per se, so am not
+    # explicitly expecting that.
+    q.expect('dbus-signal', signal='MembersChanged')
+
+    # But if we ask for it, Gabble should probably send a PEP query.
+    assertEquals(jid, conn.Aliasing.GetAliases([handle])[handle])
+    event = q.expect('stream-iq', iq_type='get', query_ns=ns.PUBSUB, to=jid)
+    nick = 'Constant Future'
+
+    send_pep_nick_reply(stream, event.stanza, nick)
+    _, roster_write = q.expect_many(
+        EventPattern('dbus-signal', signal='AliasesChanged',
+            args=[[(handle, nick)]]),
+        EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
+        )
+    check_roster_write(roster_write, jid, nick)
 
 if __name__ == '__main__':
     exec_test(test)

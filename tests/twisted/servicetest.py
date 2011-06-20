@@ -40,16 +40,19 @@ class DictionarySupersetOf (object):
         except TypeError: # other is not iterable
             return False
 
-class Event:
+class Event(object):
     def __init__(self, type, **kw):
         self.__dict__.update(kw)
         self.type = type
         (self.subqueue, self.subtype) = type.split ("-", 1)
 
+    def __str__(self):
+        return '\n'.join([ str(type(self)) ] + format_event(self))
+
 def format_event(event):
     ret = ['- type %s' % event.type]
 
-    for key in dir(event):
+    for key in sorted(dir(event)):
         if key != 'type' and not key.startswith('_'):
             ret.append('- %s: %s' % (
                 key, pprint.pformat(getattr(event, key))))

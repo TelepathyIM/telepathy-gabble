@@ -42,8 +42,7 @@ def test(q, bus, conn, stream):
     item = event.query.firstChildElement()
 
     acknowledge_iq(stream, event.stanza)
-    # FIXME: when we depend on a new enough tp-glib, expect AddMembers
-    # to return here
+    q.expect('dbus-return', method='AddMembers')
 
     call_async(q, conn.Aliasing, 'RequestAliases', [handle])
 

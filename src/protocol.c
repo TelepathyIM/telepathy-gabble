@@ -76,7 +76,7 @@ static TpCMParamSpec jabber_params[] = {
     0 /* unused */, NULL, NULL },
 
   { "require-encryption", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(TRUE),
     0 /* unused */, NULL, NULL },
 
   { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,

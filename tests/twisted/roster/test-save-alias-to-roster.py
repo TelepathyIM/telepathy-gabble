@@ -9,6 +9,7 @@ from servicetest import EventPattern, call_async
 from gabbletest import acknowledge_iq, exec_test, make_result_iq
 import constants as cs
 import ns
+from rostertest import expect_contact_list_signals
 
 def test(q, bus, conn, stream):
     event, event2 = q.expect_many(
@@ -19,17 +20,9 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
     acknowledge_iq(stream, event2.stanza)
 
-    while True:
-        event = q.expect('dbus-signal', signal='NewChannel')
-        path, type, handle_type, handle, suppress_handler = event.args
-
-        if type != cs.CHANNEL_TYPE_CONTACT_LIST:
-            continue
-
-        chan_name = conn.InspectHandles(handle_type, [handle])[0]
-
-        if chan_name == 'subscribe':
-            break
+    signals = expect_contact_list_signals(q, bus, conn, lists=['subscribe'])
+    old_signal, new_signal = signals[0]
+    path = old_signal.args[0]
 
     # request subscription
     chan = bus.get_object(conn.bus_name, path)

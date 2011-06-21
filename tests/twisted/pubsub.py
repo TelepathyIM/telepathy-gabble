@@ -4,6 +4,17 @@ from gabbletest import exec_test, elem, sync_stream
 import constants as cs
 import ns
 
+def make_pubsub_event(from_, node, *contents):
+    return elem('message', from_=from_)(
+        elem((ns.PUBSUB_EVENT), 'event')(
+            elem('items', node=node)(
+                elem('item')(
+                    *contents
+                )
+            )
+        )
+    )
+
 def test(q, bus, conn, stream):
     # event node without NS
     message = elem('message', from_='bob@foo.com')(

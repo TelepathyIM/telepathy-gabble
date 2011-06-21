@@ -7,7 +7,7 @@ from servicetest import (assertEquals, assertLength, EventPattern,
 import constants as cs
 import ns
 
-def make_roster_push(stream, jid, subscription, ask_subscribe=False):
+def make_roster_push(stream, jid, subscription, ask_subscribe=False, name=None):
     iq = IQ(stream, "set")
     iq['id'] = 'push'
     query = iq.addElement('query')
@@ -16,14 +16,17 @@ def make_roster_push(stream, jid, subscription, ask_subscribe=False):
     item['jid'] = jid
     item['subscription'] = subscription
 
+    if name is not None:
+        item['name'] = name
+
     if ask_subscribe:
         item['ask'] = 'subscribe'
 
     return iq
 
-def send_roster_push(stream, jid, subscription, ask_subscribe=False):
+def send_roster_push(stream, jid, subscription, ask_subscribe=False, name=None):
     iq = make_roster_push(stream, jid, subscription,
-        ask_subscribe=ask_subscribe)
+        ask_subscribe=ask_subscribe, name=name)
     stream.send(iq)
 
 def get_contact_list_event_patterns(q, bus, conn, expected_handle_type, name):

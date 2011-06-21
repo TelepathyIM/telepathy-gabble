@@ -880,14 +880,35 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
   GabblePresence *pres;
   const gchar *tmp, *jid;
   gchar *resource = NULL;
+  gboolean roster_alias_was_jid = FALSE;
 
   g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
   g_return_val_if_fail (tp_handle_is_valid (contact_handles, handle, NULL),
       GABBLE_CONNECTION_ALIAS_NONE);
 
+  jid = tp_handle_inspect (contact_handles, handle);
+  g_assert (NULL != jid);
+
   tmp = gabble_roster_handle_get_name (conn->roster, handle);
-  if (NULL != tmp)
+  if (!tp_strdiff (tmp, jid))
+    {
+      /* Normally, we prefer whatever we've cached on the roster, to avoid
+       * wasting bandwidth checking for aliases by repeatedly fetching the
+       * vCard, and (more importantly) to prefer anything the local user set
+       * over what the contact says their name is.
+       *
+       * However, if the alias stored on the roster is just the contact's JID,
+       * we check for better aliases that we happen to have received from other
+       * sources (maybe a PEP nick update, or a vCard we've fetched for the
+       * avatar, or whatever). If we can't find anything better, we'll use the
+       * JID, and still say that it came from the roster: this means we don't
+       * defeat negative caching for contacts who genuinely don't have an
+       * alias.
+       */
+      roster_alias_was_jid = TRUE;
+    }
+  else if (!tp_str_empty (tmp))
     {
       maybe_set (alias, tmp);
       return GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
@@ -925,10 +946,6 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
         }
     }
 
-  jid = tp_handle_inspect (contact_handles, handle);
-  g_assert (NULL != jid);
-
-
   /* MUC handles have the nickname in the resource */
   if (gabble_decode_jid (jid, NULL, NULL, &resource) &&
       NULL != resource)
@@ -949,9 +966,11 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
         }
     }
 
-  /* otherwise just take their jid */
+  /* otherwise just take their jid, which may have been specified on the roster
+   * as the contact's alias. */
   maybe_set (alias, jid);
-  return GABBLE_CONNECTION_ALIAS_FROM_JID;
+  return roster_alias_was_jid ? GABBLE_CONNECTION_ALIAS_FROM_ROSTER
+      : GABBLE_CONNECTION_ALIAS_FROM_JID;
 }
 
 static void

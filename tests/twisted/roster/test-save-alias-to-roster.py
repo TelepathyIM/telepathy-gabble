@@ -6,10 +6,13 @@ Test that updating an alias saves it to the roster.
 import dbus
 
 from servicetest import EventPattern, call_async, assertEquals
-from gabbletest import acknowledge_iq, exec_test, make_result_iq, sync_stream
+from gabbletest import (
+    acknowledge_iq, exec_test, make_result_iq, sync_stream, elem
+    )
 import constants as cs
 import ns
 from rostertest import expect_contact_list_signals, send_roster_push
+from pubsub import make_pubsub_event
 
 def send_pep_nick_reply(stream, stanza, nickname):
     result = make_result_iq(stream, stanza)
@@ -86,6 +89,31 @@ def test(q, bus, conn, stream):
     nick = 'Constant Future'
 
     send_pep_nick_reply(stream, event.stanza, nick)
+    _, roster_write = q.expect_many(
+        EventPattern('dbus-signal', signal='AliasesChanged',
+            args=[[(handle, nick)]]),
+        EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
+        )
+    check_roster_write(roster_write, jid, nick)
+
+    # Here's another contact, whose alias is set on our roster to their JID:
+    # because we've cached that they have no alias. Gabble shouldn't make
+    # unsolicited PEP or vCard queries to them.
+    jid = 'friendly@faith.plate'
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+
+    q.forbid_events([
+        EventPattern('stream-iq', query_ns=ns.PUBSUB, to=jid),
+        EventPattern('stream-iq', query_ns=ns.VCARD_TEMP, to=jid),
+    ])
+    send_roster_push(stream, jid, 'both', name=jid)
+    q.expect('dbus-signal', signal='AliasesChanged', args=[[(handle, jid)]])
+    sync_stream(q, stream)
+
+    # But if we get a PEP nickname update for this contact, Gabble should use
+    # the new nickname, and write it back to the roster.
+    nick = u'The Friendly Faith Plate'
+    stream.send(make_pubsub_event(jid, ns.NICK, elem(ns.NICK, 'nick')(nick)))
     _, roster_write = q.expect_many(
         EventPattern('dbus-signal', signal='AliasesChanged',
             args=[[(handle, nick)]]),

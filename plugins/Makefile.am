@@ -1,6 +1,7 @@
 plugindir = $(libdir)/telepathy/gabble-0
 
 installable_plugins = \
+	console.la \
 	gateways.la
 
 test_only_plugins = \
@@ -44,6 +45,10 @@ test_la_SOURCES = \
 gateways_la_SOURCES = \
 	gateways.c \
 	gateways.h
+
+console_la_SOURCES = \
+	console.c \
+	console.h
 
 AM_CFLAGS = $(ERROR_CFLAGS) \
     -I $(top_srcdir) -I $(top_builddir) \

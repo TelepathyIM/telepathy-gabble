@@ -1,6 +1,11 @@
 """
 Test that contacts we're subscribed to have their presence go from unknown to
-offline when we get the roster.
+offline when we get the roster, even if we've got (unavailable) presence for
+them before we receive the roster; and that receiving available presence from a
+contact before we get the roster also works.
+
+This serves as a regression test for
+<https://bugs.freedesktop.org/show_bug.cgi?id=38603>, among other bugs.
 """
 
 from gabbletest import exec_test, make_presence, sync_stream

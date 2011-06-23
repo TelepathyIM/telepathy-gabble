@@ -1919,7 +1919,8 @@ gabble_presence_cache_maybe_remove (
   if (NULL == presence)
     return;
 
-  if (presence->status == GABBLE_PRESENCE_OFFLINE &&
+  if ((presence->status == GABBLE_PRESENCE_OFFLINE ||
+       presence->status == GABBLE_PRESENCE_UNKNOWN) &&
       presence->status_message == NULL &&
       !presence->keep_unavailable)
     {

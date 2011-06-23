@@ -39,13 +39,10 @@ def test(q, bus, conn, stream):
     # Dre's presence is still unknown, since we don't have the roster. This
     # isn't a change per se---we checked above, and Dre's presence was
     # unknown---so it shouldn't be signalled.
-    # q.forbid_events([EventPattern('dbus-signal', signal='PresencesChanged',
-    #     args=[{dre: (cs.PRESENCE_UNKNOWN, u'unknown', u'')}])])
-    # sync_stream(q, stream)
-    # sync_dbus(bus, q, conn)
-    # FIXME: but it currently is, so let's swallow that signal for now...
-    q.expect('dbus-signal', signal='PresencesChanged',
-        args=[{dre: (cs.PRESENCE_UNKNOWN, u'unknown', u'')}])
+    q.forbid_events([EventPattern('dbus-signal', signal='PresencesChanged',
+        args=[{dre: (cs.PRESENCE_UNKNOWN, u'unknown', u'')}])])
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
 
     event.stanza['type'] = 'result'
     event.query.addChild(make_roster_item('amy@foo.com', 'both'))

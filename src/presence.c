@@ -129,6 +129,8 @@ gabble_presence_init (GabblePresence *self)
   priv = self->priv;
   priv->cap_set = gabble_capability_set_new ();
   priv->resources = NULL;
+
+  self->status = GABBLE_PRESENCE_UNKNOWN;
 }
 
 GabblePresence *

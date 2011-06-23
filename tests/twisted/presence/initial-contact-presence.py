@@ -11,6 +11,9 @@ import ns
 
 from twisted.words.xish import domish
 
+OFFLINE = (cs.PRESENCE_OFFLINE, u'offline', u'')
+UNKNOWN = (cs.PRESENCE_UNKNOWN, u'unknown', u'')
+
 def make_roster_item(jid, subscription):
     item = domish.Element((None, 'item'))
     item['jid'] = jid
@@ -22,10 +25,10 @@ def test(q, bus, conn, stream):
 
     amy, bob, che, dre = conn.RequestHandles(cs.HT_CONTACT,
         ['amy@foo.com', 'bob@foo.com', 'che@foo.com', 'dre@foo.com'])
-    assertEquals({amy: (cs.PRESENCE_UNKNOWN, u'unknown', u''),
-                  bob: (cs.PRESENCE_UNKNOWN, u'unknown', u''),
-                  che: (cs.PRESENCE_UNKNOWN, u'unknown', u''),
-                  dre: (cs.PRESENCE_UNKNOWN, u'unknown', u''),
+    assertEquals({amy: UNKNOWN,
+                  bob: UNKNOWN,
+                  che: UNKNOWN,
+                  dre: UNKNOWN,
                  },
         conn.SimplePresence.GetPresences([amy, bob, che, dre]))
 
@@ -40,7 +43,7 @@ def test(q, bus, conn, stream):
     # isn't a change per se---we checked above, and Dre's presence was
     # unknown---so it shouldn't be signalled.
     q.forbid_events([EventPattern('dbus-signal', signal='PresencesChanged',
-        args=[{dre: (cs.PRESENCE_UNKNOWN, u'unknown', u'')}])])
+        args=[{dre: UNKNOWN}])])
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
 
@@ -57,16 +60,16 @@ def test(q, bus, conn, stream):
     e = q.expect('dbus-signal', signal='PresencesChanged')
     changed_presences, = e.args
     assertEquals(
-        {amy: (cs.PRESENCE_OFFLINE, u'offline', u''),
-         che: (cs.PRESENCE_OFFLINE, u'offline', u''),
-         dre: (cs.PRESENCE_OFFLINE, u'offline', u''),
+        {amy: OFFLINE,
+         che: OFFLINE,
+         dre: OFFLINE,
         },
         changed_presences)
 
-    assertEquals({amy: (cs.PRESENCE_OFFLINE, u'offline', u''),
-                  bob: (cs.PRESENCE_UNKNOWN, u'unknown', u''),
-                  che: (cs.PRESENCE_OFFLINE, u'offline', u''),
-                  dre: (cs.PRESENCE_OFFLINE, u'offline', u''),
+    assertEquals({amy: OFFLINE,
+                  bob: UNKNOWN,
+                  che: OFFLINE,
+                  dre: OFFLINE,
                  },
         conn.SimplePresence.GetPresences([amy, bob, che, dre]))
 

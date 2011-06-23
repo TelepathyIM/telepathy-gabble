@@ -11,6 +11,7 @@ import ns
 
 from twisted.words.xish import domish
 
+AVAILABLE = (cs.PRESENCE_AVAILABLE, u'available', u'')
 OFFLINE = (cs.PRESENCE_OFFLINE, u'offline', u'')
 UNKNOWN = (cs.PRESENCE_UNKNOWN, u'unknown', u'')
 
@@ -23,14 +24,16 @@ def make_roster_item(jid, subscription):
 def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
-    amy, bob, che, dre = conn.RequestHandles(cs.HT_CONTACT,
-        ['amy@foo.com', 'bob@foo.com', 'che@foo.com', 'dre@foo.com'])
+    amy, bob, che, dre, eve = conn.RequestHandles(cs.HT_CONTACT,
+        ['amy@foo.com', 'bob@foo.com', 'che@foo.com', 'dre@foo.com',
+         'eve@foo.com'])
     assertEquals({amy: UNKNOWN,
                   bob: UNKNOWN,
                   che: UNKNOWN,
                   dre: UNKNOWN,
+                  eve: UNKNOWN,
                  },
-        conn.SimplePresence.GetPresences([amy, bob, che, dre]))
+        conn.SimplePresence.GetPresences([amy, bob, che, dre, eve]))
 
     # Before the server sends Gabble the roster, it relays an 'unavailable'
     # presence for one of the contacts we're subscribed to. This seems to
@@ -44,14 +47,18 @@ def test(q, bus, conn, stream):
     # unknown---so it shouldn't be signalled.
     q.forbid_events([EventPattern('dbus-signal', signal='PresencesChanged',
         args=[{dre: UNKNOWN}])])
-    sync_stream(q, stream)
-    sync_dbus(bus, q, conn)
+
+    # We also receive an available presence from Eve before the roster arrives:
+    # this presence should behave normally.
+    stream.send(make_presence('eve@foo.com'))
+    q.expect('dbus-signal', signal='PresencesChanged', args=[{eve: AVAILABLE}])
 
     event.stanza['type'] = 'result'
     event.query.addChild(make_roster_item('amy@foo.com', 'both'))
     event.query.addChild(make_roster_item('bob@foo.com', 'from'))
     event.query.addChild(make_roster_item('che@foo.com', 'to'))
     event.query.addChild(make_roster_item('dre@foo.com', 'both'))
+    event.query.addChild(make_roster_item('eve@foo.com', 'both'))
     stream.send(event.stanza)
 
     # The presence for contacts on the roster whose subscription is 'to' or
@@ -70,8 +77,9 @@ def test(q, bus, conn, stream):
                   bob: UNKNOWN,
                   che: OFFLINE,
                   dre: OFFLINE,
+                  eve: AVAILABLE,
                  },
-        conn.SimplePresence.GetPresences([amy, bob, che, dre]))
+        conn.SimplePresence.GetPresences([amy, bob, che, dre, eve]))
 
 if __name__ == '__main__':
     exec_test(test)

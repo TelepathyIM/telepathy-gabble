@@ -38,6 +38,7 @@
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/intset.h>
 #include <wocky/wocky-caps-cache.h>
+#include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -1918,7 +1919,8 @@ gabble_presence_cache_maybe_remove (
   if (NULL == presence)
     return;
 
-  if (presence->status == GABBLE_PRESENCE_OFFLINE &&
+  if ((presence->status == GABBLE_PRESENCE_OFFLINE ||
+       presence->status == GABBLE_PRESENCE_UNKNOWN) &&
       presence->status_message == NULL &&
       !presence->keep_unavailable)
     {
@@ -1956,20 +1958,28 @@ gabble_presence_cache_do_update (
     gboolean *update_client_types)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const gchar *jid;
   GabblePresence *presence;
   GabbleCapabilitySet *old_cap_set;
   const GabbleCapabilitySet *new_cap_set;
   gboolean ret = FALSE;
 
-  jid = tp_handle_inspect (contact_repo, handle);
-  DEBUG ("%s (%d) resource %s prio %d presence %d message \"%s\"",
-      jid, handle,
-      resource == NULL ? "<null>" : resource,
-      priority, presence_id,
-      status_message == NULL ? "<null>" : status_message);
+  if (DEBUGGING)
+    {
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      const gchar *jid = tp_handle_inspect (contact_repo, handle);
+      const gchar *presence_name = wocky_enum_to_nick (
+          GABBLE_TYPE_PRESENCE_ID, presence_id);
+
+      if (presence_name == NULL)
+        presence_name = "plugin-specific, not an element of GabblePresenceId";
+
+      DEBUG ("%s (%d) resource %s prio %d presence %d (%s) message \"%s\"",
+          jid, handle,
+          resource == NULL ? "<null>" : resource,
+          priority, presence_id, presence_name,
+          status_message == NULL ? "<null>" : status_message);
+    }
 
   presence = gabble_presence_cache_get (cache, handle);
 

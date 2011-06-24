@@ -21,7 +21,18 @@ big_test_of_doom (void)
   GabbleCapabilitySet *cap_set;
   time_t now = time (NULL);
 
+  /* When we create a new presence, we know nothing about the contact in
+   * question's presence.
+   */
   presence = gabble_presence_new ();
+  g_assert (GABBLE_PRESENCE_UNKNOWN == presence->status);
+  g_assert (NULL == presence->status_message);
+
+  /* offline presence from no resource: we now know something about this
+   * contact's presence.
+   */
+  g_assert (TRUE == gabble_presence_update (presence, NULL,
+    GABBLE_PRESENCE_OFFLINE, NULL, 0, NULL, now));
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
   g_assert (NULL == presence->status_message);
 

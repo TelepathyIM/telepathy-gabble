@@ -23,6 +23,7 @@
 
 #include <string.h>
 #include <telepathy-glib/channel-manager.h>
+#include <wocky/wocky-utils.h>
 
 #include "capabilities.h"
 #include "conn-presence.h"
@@ -128,6 +129,8 @@ gabble_presence_init (GabblePresence *self)
   priv = self->priv;
   priv->cap_set = gabble_capability_set_new ();
   priv->resources = NULL;
+
+  self->status = GABBLE_PRESENCE_UNKNOWN;
 }
 
 GabblePresence *
@@ -636,13 +639,19 @@ gabble_presence_dump (GabblePresence *presence)
   GString *ret = g_string_new ("");
   gchar *tmp;
   GabblePresencePrivate *priv = presence->priv;
+  const gchar *presence_name = wocky_enum_to_nick (GABBLE_TYPE_PRESENCE_ID,
+      presence->status);
+
+  if (presence_name == NULL)
+    presence_name = "plugin-specific, not an element of GabblePresenceId";
 
   g_string_append_printf (ret,
     "nickname: %s\n"
-    "accumulated status: %d\n"
+    "accumulated status: %d (%s)\n"
     "accumulated status msg: %s\n"
     "kept while unavailable: %d\n",
-    presence->nickname, presence->status,
+    presence->nickname,
+    presence->status, presence_name,
     presence->status_message,
     presence->keep_unavailable);
 

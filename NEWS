@@ -1,5 +1,32 @@
-telepathy-gabble 0.12.3 (UNRELEASED lol)
+telepathy-gabble 0.12.3 (2011-06-24)
 ====================================
+
+The “hard sunshine” release.
+
+Enhancements:
+
+• autogen.sh now honours the NOCONFIGURE environment variable, for
+  compatibility with gnome-autogen.sh. (Colin Walters)
+
+Fixes:
+
+• Empty aliases stored on the roster are now ignored. Additionally, if
+  we've cached a contact's JID as their alias on our roster (because we
+  couldn't find a better alias), and we come across a better alias for
+  the contact (via a PEP nickname push, or by fetching their vCard for
+  some other reason), we now replace the JID with that better alias.
+  (fd.o#27361, Will)
+
+• We now handle receiving unavailable presence from our contacts before
+  we receive the roster correctly. Previously, this would cause those
+  contacts to be stuck in state 'unknown' rather than 'offline' until
+  they next came online. (fd.o#38603, Will)
+
+• Don't make assertions about TpChannelIface:handle-type's value in
+  GabbleFileTransferChannel's set_property implementation. The
+  property's not really writeable—the getter returns a constant value
+  for it anyway—and this fixes a crash with telepathy-glib 0.15.2, in
+  which the default value has changed from NONE to UNKNOWN. (Will)
 
 telepathy-gabble 0.12.2 (2011-06-16)
 ====================================

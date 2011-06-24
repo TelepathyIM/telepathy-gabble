@@ -184,6 +184,7 @@ libgabble_convenience_la_SOURCES = \
     vcard-manager.c
 
 enumtype_sources = \
+    $(top_srcdir)/src/connection.h \
     $(top_srcdir)/src/jingle-factory.h \
     $(top_srcdir)/src/presence.h
 

@@ -1381,7 +1381,9 @@ got_roster_iq (GabbleRoster *roster,
           GabbleRosterItem *item = v;
           TpHandle contact = GPOINTER_TO_UINT (k);
 
-          if (item->subscribe == TP_SUBSCRIPTION_STATE_YES)
+          if (item->subscribe == TP_SUBSCRIPTION_STATE_YES &&
+              gabble_presence_cache_get (roster->priv->conn->presence_cache,
+                  contact) == NULL)
             g_array_append_val (members, contact);
 
           if (item->unsent_edits != NULL)

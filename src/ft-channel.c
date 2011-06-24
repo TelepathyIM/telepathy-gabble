@@ -361,13 +361,10 @@ gabble_file_transfer_channel_set_property (GObject *object,
       case PROP_CONNECTION:
         self->priv->connection = g_value_get_object (value);
         break;
+      /* these properties are writable in the interface, but not actually
+       * meaningfully changeable on this channel, so we do nothing */
       case PROP_HANDLE_TYPE:
-        g_assert (g_value_get_uint (value) == 0
-                  || g_value_get_uint (value) == TP_HANDLE_TYPE_CONTACT);
-        break;
       case PROP_CHANNEL_TYPE:
-        /* these properties are writable in the interface, but not actually
-         * meaningfully changeable on this channel, so we do nothing */
         break;
       case PROP_STATE:
         gabble_file_transfer_channel_set_state (

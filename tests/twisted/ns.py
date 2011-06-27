@@ -32,6 +32,7 @@ JINGLE_RTP_ERRORS = "urn:xmpp:jingle:apps:rtp:errors:1"
 JINGLE_RTP_INFO_1 = "urn:xmpp:jingle:apps:rtp:info:1"
 JINGLE_TRANSPORT_ICEUDP = "urn:xmpp:jingle:transports:ice-udp:1"
 JINGLE_TRANSPORT_RAWUDP = "urn:xmpp:jingle:transports:raw-udp:1"
+LAST = "jabber:iq:last"
 MUC = 'http://jabber.org/protocol/muc'
 MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 MUC_OWNER = '%s#owner' % MUC

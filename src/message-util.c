@@ -180,6 +180,7 @@ gabble_message_util_build_stanza (TpMessage *message,
   else
     g_free (id);
 
+  gabble_connection_update_last_use (conn);
   return stanza;
 }
 

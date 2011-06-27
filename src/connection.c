@@ -800,14 +800,6 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
           conn);
 }
 
-static void
-base_connected_cb (TpBaseConnection *base_conn)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
-
-  gabble_connection_connected_olpc (conn);
-}
-
 #define TWICE(x) (x), (x)
 
 static const gchar *implemented_interfaces[] = {
@@ -925,7 +917,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->create_channel_factories = NULL;
   parent_class->create_channel_managers =
     _gabble_connection_create_channel_managers;
-  parent_class->connected = base_connected_cb;
   parent_class->shut_down = connection_shut_down;
   parent_class->start_connecting = _gabble_connection_connect;
   parent_class->interfaces_always_present = interfaces_always_present;

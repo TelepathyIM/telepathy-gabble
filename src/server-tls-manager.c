@@ -222,19 +222,6 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
 
   self->priv->verify_async_called = TRUE;
 
-  if (!self->priv->interactive_tls)
-    {
-      DEBUG ("ignore-ssl-errors is set, fallback to non-interactive "
-          "verification.");
-
-      WOCKY_TLS_HANDLER_CLASS
-        (gabble_server_tls_manager_parent_class)->verify_async_func (
-            WOCKY_TLS_HANDLER (self), tls_session, peername,
-            extra_identities, callback, user_data);
-
-      return;
-    }
-
   result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, gabble_server_tls_manager_verify_async);
 
@@ -245,6 +232,21 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
           "The Telepathy connection has already been disconnected");
       g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);
+      return;
+    }
+
+  if (!self->priv->interactive_tls)
+    {
+      DEBUG ("ignore-ssl-errors is set, fallback to non-interactive "
+          "verification.");
+
+      g_object_unref (result);
+
+      WOCKY_TLS_HANDLER_CLASS
+        (gabble_server_tls_manager_parent_class)->verify_async_func (
+            WOCKY_TLS_HANDLER (self), tls_session, peername,
+            extra_identities, callback, user_data);
+
       return;
     }
 

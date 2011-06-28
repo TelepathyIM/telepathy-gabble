@@ -854,50 +854,18 @@ maybe_set (gchar **target,
     *target = g_strdup (source);
 }
 
-GabbleConnectionAliasSource
-_gabble_connection_get_cached_alias (GabbleConnection *conn,
-                                     TpHandle handle,
-                                     gchar **alias)
+static GabbleConnectionAliasSource
+get_cached_remote_alias (
+    GabbleConnection *conn,
+    TpHandleRepoIface *contact_handles,
+    TpHandle handle,
+    const gchar *jid,
+    gchar **alias)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
   GabblePresence *pres;
-  const gchar *tmp, *jid;
-  gchar *resource = NULL;
-  gboolean roster_alias_was_jid = FALSE;
-
-  g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
-  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_handles, handle, NULL),
-      GABBLE_CONNECTION_ALIAS_NONE);
-
-  jid = tp_handle_inspect (contact_handles, handle);
-  g_assert (NULL != jid);
-
-  tmp = gabble_roster_handle_get_name (conn->roster, handle);
-  if (!tp_strdiff (tmp, jid))
-    {
-      /* Normally, we prefer whatever we've cached on the roster, to avoid
-       * wasting bandwidth checking for aliases by repeatedly fetching the
-       * vCard, and (more importantly) to prefer anything the local user set
-       * over what the contact says their name is.
-       *
-       * However, if the alias stored on the roster is just the contact's JID,
-       * we check for better aliases that we happen to have received from other
-       * sources (maybe a PEP nick update, or a vCard we've fetched for the
-       * avatar, or whatever). If we can't find anything better, we'll use the
-       * JID, and still say that it came from the roster: this means we don't
-       * defeat negative caching for contacts who genuinely don't have an
-       * alias.
-       */
-      roster_alias_was_jid = TRUE;
-    }
-  else if (!tp_str_empty (tmp))
-    {
-      maybe_set (alias, tmp);
-      return GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
-    }
+  const gchar *tmp;
+  gchar *resource;
 
   tmp = tp_handle_get_qdata (contact_handles, handle,
       gabble_conn_aliasing_pep_alias_quark ());
@@ -950,6 +918,71 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
           return GABBLE_CONNECTION_ALIAS_FROM_VCARD;
         }
     }
+
+  maybe_set (alias, NULL);
+  return GABBLE_CONNECTION_ALIAS_NONE;
+}
+
+/*
+ * _gabble_connection_get_cached_alias:
+ * @conn: a connection
+ * @handle: a handle
+ * @alias: (allow-none): location at which to store @handle's alias. If
+ *         provided, it will always be set to a non-NULL, non-empty string,
+ *         which the caller must free.
+ *
+ * Gets the best possible alias for @handle, falling back to their JID if
+ * necessary.
+ *
+ * Returns: the source of the alias.
+ */
+GabbleConnectionAliasSource
+_gabble_connection_get_cached_alias (GabbleConnection *conn,
+                                     TpHandle handle,
+                                     gchar **alias)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *tmp, *jid;
+  gboolean roster_alias_was_jid = FALSE;
+  GabbleConnectionAliasSource source;
+
+  g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_handles, handle, NULL),
+      GABBLE_CONNECTION_ALIAS_NONE);
+
+  jid = tp_handle_inspect (contact_handles, handle);
+  g_assert (NULL != jid);
+
+  tmp = gabble_roster_handle_get_name (conn->roster, handle);
+  if (!tp_strdiff (tmp, jid))
+    {
+      /* Normally, we prefer whatever we've cached on the roster, to avoid
+       * wasting bandwidth checking for aliases by repeatedly fetching the
+       * vCard, and (more importantly) to prefer anything the local user set
+       * over what the contact says their name is.
+       *
+       * However, if the alias stored on the roster is just the contact's JID,
+       * we check for better aliases that we happen to have received from other
+       * sources (maybe a PEP nick update, or a vCard we've fetched for the
+       * avatar, or whatever). If we can't find anything better, we'll use the
+       * JID, and still say that it came from the roster: this means we don't
+       * defeat negative caching for contacts who genuinely don't have an
+       * alias.
+       */
+      roster_alias_was_jid = TRUE;
+    }
+  else if (!tp_str_empty (tmp))
+    {
+      maybe_set (alias, tmp);
+      return GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+    }
+
+  source = get_cached_remote_alias (conn, contact_handles, handle, jid, alias);
+  if (source != GABBLE_CONNECTION_ALIAS_NONE)
+    return source;
 
   /* otherwise just take their jid, which may have been specified on the roster
    * as the contact's alias. */

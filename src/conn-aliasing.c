@@ -521,6 +521,9 @@ set_one_alias (
 
   g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
 
+  if (tp_str_empty (alias))
+    alias = NULL;
+
   if (!tp_handle_is_valid (contact_handles, handle, error))
     {
       ret = FALSE;
@@ -542,7 +545,7 @@ set_one_alias (
       gchar *remote_alias = NULL;
       GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
 
-      if (tp_str_empty (alias))
+      if (alias == NULL)
         {
           source = _gabble_connection_get_cached_remote_alias (conn, handle,
               &remote_alias);
@@ -561,7 +564,8 @@ set_one_alias (
 
   if (base->self_handle == handle)
     {
-      GList *edits = NULL;
+      GabbleVCardManagerEditInfo *edit;
+      GQueue edits = G_QUEUE_INIT;
 
       /* User has called SetAliases on themselves - patch their vCard.
        * FIXME: because SetAliases is currently synchronous, we ignore errors
@@ -575,8 +579,8 @@ set_one_alias (
           WockyNode *item;
 
           msg = wocky_pep_service_make_publish_stanza (conn->pep_nick, &item);
-          wocky_node_add_child_with_content_ns (item, "nick",
-              alias, NS_NICK);
+          /* Does the right thing if alias == NULL. */
+          wocky_node_add_child_with_content_ns (item, "nick", alias, NS_NICK);
 
           _gabble_connection_send_with_reply (conn, msg,
               nick_publish_msg_reply_cb, NULL, NULL, NULL);
@@ -584,10 +588,20 @@ set_one_alias (
           lm_message_unref (msg);
         }
 
-      edits = g_list_append (edits, gabble_vcard_manager_edit_info_new (
-            NULL, alias, GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
+      if (alias == NULL)
+        /* Deliberately not doing the fall-back-to-FN-on-GTalk dance because
+         * clearing your FN is more serious.
+         */
+        edit = gabble_vcard_manager_edit_info_new ("NICKNAME", NULL,
+            GABBLE_VCARD_EDIT_DELETE, NULL);
+      else
+        edit = gabble_vcard_manager_edit_info_new (NULL, alias,
+            GABBLE_VCARD_EDIT_SET_ALIAS, NULL);
+
+      g_queue_push_head (&edits, edit);
+      /* Yes, gabble_vcard_manager_edit steals the list you pass it. */
       gabble_vcard_manager_edit (conn->vcard_manager, 0, NULL,
-          NULL, G_OBJECT (conn), edits);
+          NULL, G_OBJECT (conn), edits.head);
     }
 
   return ret;

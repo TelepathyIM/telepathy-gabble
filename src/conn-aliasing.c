@@ -41,6 +41,11 @@ static void gabble_conn_aliasing_pep_nick_reply_handler (
     GabbleConnection *conn, LmMessage *msg, TpHandle handle);
 static GQuark gabble_conn_aliasing_pep_alias_quark (void);
 
+static GabbleConnectionAliasSource _gabble_connection_get_cached_remote_alias (
+    GabbleConnection *, TpHandle, gchar **);
+static void maybe_request_vcard (GabbleConnection *self, TpHandle handle,
+  GabbleConnectionAliasSource source);
+
 /* distinct from any strdup()d pointer - used for negative caching */
 static const gchar *NO_ALIAS = "";
 
@@ -532,9 +537,26 @@ set_one_alias (
           ret = FALSE;
         }
     }
-  else if (!gabble_roster_handle_set_name (conn->roster, handle, alias, error))
+  else
     {
-      ret = FALSE;
+      gchar *remote_alias = NULL;
+      GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+
+      if (tp_str_empty (alias))
+        {
+          source = _gabble_connection_get_cached_remote_alias (conn, handle,
+              &remote_alias);
+          alias = remote_alias;
+        }
+
+      ret = gabble_roster_handle_set_name (conn->roster, handle, alias, error);
+      g_free (remote_alias);
+
+      /* If we don't have a cached remote alias for this contact, try to ask
+       * for one. (Maybe we haven't seen a PEP update or fetched their vCard in
+       * this session?)
+       */
+      maybe_request_vcard (conn, handle, source);
     }
 
   if (base->self_handle == handle)
@@ -989,6 +1011,36 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
   maybe_set (alias, jid);
   return roster_alias_was_jid ? GABBLE_CONNECTION_ALIAS_FROM_ROSTER
       : GABBLE_CONNECTION_ALIAS_FROM_JID;
+}
+
+/*
+ * _gabble_connection_get_cached_remote_alias:
+ * @conn: a connection
+ * @handle: a handle
+ * @alias: (allow-none): location at which to store @handle's alias. If
+ *         provided, it may be set to %NULL (if @handle has no cached remote
+ *         alias) or a non-empty string which the caller must free.
+ *
+ * Gets the best cached alias for @handle as provided by them (such as via PEP
+ * Nicknames, in their vCard, etc), not considering anything the local user has
+ * specified on their roster.
+ *
+ * Returns: the source of the alias, or GABBLE_CONNECTION_ALIAS_NONE if we have
+ *          no cached remote alias for @handle
+ */
+static GabbleConnectionAliasSource
+_gabble_connection_get_cached_remote_alias (
+    GabbleConnection *conn,
+    TpHandle handle,
+    gchar **alias)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid = tp_handle_inspect (contact_handles, handle);
+
+  g_assert (NULL != jid);
+  return get_cached_remote_alias (conn, contact_handles, handle, jid, alias);
 }
 
 static void

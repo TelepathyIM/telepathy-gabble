@@ -52,6 +52,7 @@ struct _GabbleServerTLSManagerPrivate {
   GabbleServerTLSChannel *channel;
 
   gchar *peername;
+  GStrv reference_identities;
   WockyTLSSession *tls_session;
 
   GSimpleAsyncResult *async_result;
@@ -144,8 +145,8 @@ server_tls_channel_closed_cb (GabbleServerTLSChannel *channel,
       WOCKY_TLS_HANDLER_CLASS
         (gabble_server_tls_manager_parent_class)->verify_async_func (
             WOCKY_TLS_HANDLER (self), self->priv->tls_session,
-            self->priv->peername, self->priv->async_callback,
-            self->priv->async_data);
+            self->priv->peername, self->priv->reference_identities,
+            self->priv->async_callback, self->priv->async_data);
     }
 
   tp_clear_object (&self->priv->async_result);
@@ -206,6 +207,7 @@ static void
 gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
     WockyTLSSession *tls_session,
     const gchar *peername,
+    GStrv extra_identities,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
@@ -228,7 +230,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
       WOCKY_TLS_HANDLER_CLASS
         (gabble_server_tls_manager_parent_class)->verify_async_func (
             WOCKY_TLS_HANDLER (self), tls_session, peername,
-            callback, user_data);
+            extra_identities, callback, user_data);
 
       return;
     }
@@ -249,6 +251,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   self->priv->async_result = result;
   self->priv->tls_session = g_object_ref (tls_session);
   self->priv->peername = g_strdup (peername);
+  self->priv->reference_identities = g_strdupv (extra_identities);
   self->priv->async_callback = callback;
   self->priv->async_data = user_data;
 
@@ -330,6 +333,7 @@ gabble_server_tls_manager_finalize (GObject *object)
     tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
 
   g_free (self->priv->peername);
+  g_strfreev (self->priv->reference_identities);
 
   G_OBJECT_CLASS (gabble_server_tls_manager_parent_class)->finalize (object);
 }

@@ -114,8 +114,12 @@ struct _GabbleRosterItemEdit
   /* if these are ..._INVALID, that means don't edit */
   GabbleRosterSubscription new_subscription;
   GoogleItemType new_google_type;
-  /* owned by the GabbleRosterItemEdit; if NULL, that means don't edit */
+
+  /* owned by the GabbleRosterItemEdit. If NULL, that means don't edit... */
   gchar *new_name;
+  /* if TRUE, disregard new_name and remove name='' from the roster item */
+  gboolean remove_name;
+
   TpHandleSet *add_to_groups;
   TpHandleSet *remove_from_groups;
   gboolean remove_from_all_other_groups;
@@ -2019,7 +2023,13 @@ roster_item_apply_edits (GabbleRoster *roster,
         }
     }
 
-  if (edits->new_name != NULL && tp_strdiff (item->name, edits->new_name))
+  if (edits->remove_name)
+    {
+      DEBUG ("Removing name='' (was '%s')", item->name);
+      altered = TRUE;
+      edited_item.name = NULL;
+    }
+  else if (edits->new_name != NULL && tp_strdiff (item->name, edits->new_name))
     {
       DEBUG ("Changing name from %s to %s", item->name, edits->new_name);
       altered = TRUE;
@@ -2286,7 +2296,6 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   g_return_val_if_fail (GABBLE_IS_ROSTER (roster), FALSE);
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
-  g_return_val_if_fail (name != NULL, FALSE);
 
   item = _gabble_roster_item_ensure (roster, handle);
   g_return_val_if_fail (item != NULL, FALSE);
@@ -2294,10 +2303,19 @@ gabble_roster_handle_set_name (GabbleRoster *roster,
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, handle);
 
-  DEBUG ("queue edit to contact#%u - change name to \"%s\"",
-         handle, name);
-  g_free (item->unsent_edits->new_name);
-  item->unsent_edits->new_name = g_strdup (name);
+  tp_clear_pointer (&item->unsent_edits->new_name, g_free);
+
+  if (name == NULL)
+    {
+      DEBUG ("queue edit to contact#%u - remove name", handle);
+      item->unsent_edits->remove_name = TRUE;
+    }
+  else
+    {
+      DEBUG ("queue edit to contact#%u - set name='%s'", handle, name);
+      item->unsent_edits->remove_name = FALSE;
+      item->unsent_edits->new_name = g_strdup (name);
+    }
 
   /* maybe we can apply the edit immediately? */
   roster_item_apply_edits (roster, handle, item);

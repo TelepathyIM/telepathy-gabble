@@ -41,6 +41,11 @@ static void gabble_conn_aliasing_pep_nick_reply_handler (
     GabbleConnection *conn, LmMessage *msg, TpHandle handle);
 static GQuark gabble_conn_aliasing_pep_alias_quark (void);
 
+static GabbleConnectionAliasSource _gabble_connection_get_cached_remote_alias (
+    GabbleConnection *, TpHandle, gchar **);
+static void maybe_request_vcard (GabbleConnection *self, TpHandle handle,
+  GabbleConnectionAliasSource source);
+
 /* distinct from any strdup()d pointer - used for negative caching */
 static const gchar *NO_ALIAS = "";
 
@@ -472,14 +477,6 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
     aliases_request_free (request);
 }
 
-
-struct _i_hate_g_hash_table_foreach
-{
-  GabbleConnection *conn;
-  GError **error;
-  gboolean retval;
-};
-
 static LmHandlerResult
 nick_publish_msg_reply_cb (GabbleConnection *conn,
                            LmMessage *sent_msg,
@@ -510,85 +507,104 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static void
-setaliases_foreach (gpointer key, gpointer value, gpointer user_data)
+static gboolean
+set_one_alias (
+    GabbleConnection *conn,
+    TpHandle handle,
+    gchar *alias,
+    GError **error)
 {
-  struct _i_hate_g_hash_table_foreach *data =
-    (struct _i_hate_g_hash_table_foreach *) user_data;
-  TpHandle handle = GPOINTER_TO_UINT (key);
-  gchar *alias = (gchar *) value;
-  GError *error = NULL;
-  TpBaseConnection *base = (TpBaseConnection *) data->conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
+  gboolean ret = TRUE;
 
   g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
 
-  if (!tp_handle_is_valid (contact_handles, handle, &error))
+  if (tp_str_empty (alias))
+    alias = NULL;
+
+  if (!tp_handle_is_valid (contact_handles, handle, error))
     {
-      data->retval = FALSE;
+      ret = FALSE;
     }
   else if (base->self_handle == handle)
     {
       /* only alter the roster if we're already there, e.g. because someone
        * added us with another client
        */
-      if (gabble_roster_handle_has_entry (data->conn->roster, handle)
-          && !gabble_roster_handle_set_name (data->conn->roster, handle,
-                                             alias, data->error))
+      if (gabble_roster_handle_has_entry (conn->roster, handle)
+          && !gabble_roster_handle_set_name (conn->roster, handle,
+                                             alias, error))
         {
-          data->retval = FALSE;
+          ret = FALSE;
         }
     }
-  else if (!gabble_roster_handle_set_name (data->conn->roster, handle, alias,
-        data->error))
+  else
     {
-      data->retval = FALSE;
+      gchar *remote_alias = NULL;
+      GabbleConnectionAliasSource source = GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+
+      if (alias == NULL)
+        {
+          source = _gabble_connection_get_cached_remote_alias (conn, handle,
+              &remote_alias);
+          alias = remote_alias;
+        }
+
+      ret = gabble_roster_handle_set_name (conn->roster, handle, alias, error);
+      g_free (remote_alias);
+
+      /* If we don't have a cached remote alias for this contact, try to ask
+       * for one. (Maybe we haven't seen a PEP update or fetched their vCard in
+       * this session?)
+       */
+      maybe_request_vcard (conn, handle, source);
     }
 
   if (base->self_handle == handle)
     {
-      GList *edits = NULL;
+      GabbleVCardManagerEditInfo *edit;
+      GQueue edits = G_QUEUE_INIT;
 
       /* User has called SetAliases on themselves - patch their vCard.
        * FIXME: because SetAliases is currently synchronous, we ignore errors
        * here, and just let the request happen in the background.
        */
 
-      if (data->conn->features & GABBLE_CONNECTION_FEATURES_PEP)
+      if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
         {
           /* Publish nick using PEP */
           LmMessage *msg;
           WockyNode *item;
 
-          msg = wocky_pep_service_make_publish_stanza (data->conn->pep_nick,
-              &item);
-          wocky_node_add_child_with_content_ns (item, "nick",
-              alias, NS_NICK);
+          msg = wocky_pep_service_make_publish_stanza (conn->pep_nick, &item);
+          /* Does the right thing if alias == NULL. */
+          wocky_node_add_child_with_content_ns (item, "nick", alias, NS_NICK);
 
-          _gabble_connection_send_with_reply (data->conn, msg,
+          _gabble_connection_send_with_reply (conn, msg,
               nick_publish_msg_reply_cb, NULL, NULL, NULL);
 
           lm_message_unref (msg);
         }
 
-      edits = g_list_append (edits, gabble_vcard_manager_edit_info_new (
-            NULL, alias, GABBLE_VCARD_EDIT_SET_ALIAS, NULL));
-      gabble_vcard_manager_edit (data->conn->vcard_manager, 0, NULL,
-          NULL, G_OBJECT (data->conn), edits);
+      if (alias == NULL)
+        /* Deliberately not doing the fall-back-to-FN-on-GTalk dance because
+         * clearing your FN is more serious.
+         */
+        edit = gabble_vcard_manager_edit_info_new ("NICKNAME", NULL,
+            GABBLE_VCARD_EDIT_DELETE, NULL);
+      else
+        edit = gabble_vcard_manager_edit_info_new (NULL, alias,
+            GABBLE_VCARD_EDIT_SET_ALIAS, NULL);
+
+      g_queue_push_head (&edits, edit);
+      /* Yes, gabble_vcard_manager_edit steals the list you pass it. */
+      gabble_vcard_manager_edit (conn->vcard_manager, 0, NULL,
+          NULL, G_OBJECT (conn), edits.head);
     }
 
-  if (NULL != error)
-    {
-      if (NULL == *(data->error))
-        {
-          *(data->error) = error;
-        }
-      else
-        {
-          g_error_free (error);
-        }
-    }
+  return ret;
 }
 
 /**
@@ -604,27 +620,32 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
-  GError *error = NULL;
-  struct _i_hate_g_hash_table_foreach data = { NULL, NULL, TRUE };
+  GHashTableIter iter;
+  gpointer key, value;
+  gboolean retval = TRUE;
+  GError *first_error = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (self));
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
 
-  data.conn = self;
-  data.error = &error;
+  g_hash_table_iter_init (&iter, aliases);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      if (!set_one_alias (self, GPOINTER_TO_UINT (key), value,
+            (first_error == NULL ? &first_error : NULL)))
+        retval = FALSE;
+    }
 
-  g_hash_table_foreach (aliases, setaliases_foreach, &data);
-
-  if (data.retval)
+  if (retval)
     {
       tp_svc_connection_interface_aliasing_return_from_set_aliases (
           context);
     }
   else
     {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
+      dbus_g_method_return_error (context, first_error);
+      g_error_free (first_error);
     }
 }
 
@@ -869,50 +890,18 @@ maybe_set (gchar **target,
     *target = g_strdup (source);
 }
 
-GabbleConnectionAliasSource
-_gabble_connection_get_cached_alias (GabbleConnection *conn,
-                                     TpHandle handle,
-                                     gchar **alias)
+static GabbleConnectionAliasSource
+get_cached_remote_alias (
+    GabbleConnection *conn,
+    TpHandleRepoIface *contact_handles,
+    TpHandle handle,
+    const gchar *jid,
+    gchar **alias)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
   GabblePresence *pres;
-  const gchar *tmp, *jid;
-  gchar *resource = NULL;
-  gboolean roster_alias_was_jid = FALSE;
-
-  g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
-  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
-  g_return_val_if_fail (tp_handle_is_valid (contact_handles, handle, NULL),
-      GABBLE_CONNECTION_ALIAS_NONE);
-
-  jid = tp_handle_inspect (contact_handles, handle);
-  g_assert (NULL != jid);
-
-  tmp = gabble_roster_handle_get_name (conn->roster, handle);
-  if (!tp_strdiff (tmp, jid))
-    {
-      /* Normally, we prefer whatever we've cached on the roster, to avoid
-       * wasting bandwidth checking for aliases by repeatedly fetching the
-       * vCard, and (more importantly) to prefer anything the local user set
-       * over what the contact says their name is.
-       *
-       * However, if the alias stored on the roster is just the contact's JID,
-       * we check for better aliases that we happen to have received from other
-       * sources (maybe a PEP nick update, or a vCard we've fetched for the
-       * avatar, or whatever). If we can't find anything better, we'll use the
-       * JID, and still say that it came from the roster: this means we don't
-       * defeat negative caching for contacts who genuinely don't have an
-       * alias.
-       */
-      roster_alias_was_jid = TRUE;
-    }
-  else if (!tp_str_empty (tmp))
-    {
-      maybe_set (alias, tmp);
-      return GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
-    }
+  const gchar *tmp;
+  gchar *resource;
 
   tmp = tp_handle_get_qdata (contact_handles, handle,
       gabble_conn_aliasing_pep_alias_quark ());
@@ -966,11 +955,106 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
         }
     }
 
+  maybe_set (alias, NULL);
+  return GABBLE_CONNECTION_ALIAS_NONE;
+}
+
+/*
+ * _gabble_connection_get_cached_alias:
+ * @conn: a connection
+ * @handle: a handle
+ * @alias: (allow-none): location at which to store @handle's alias. If
+ *         provided, it will always be set to a non-NULL, non-empty string,
+ *         which the caller must free.
+ *
+ * Gets the best possible alias for @handle, falling back to their JID if
+ * necessary.
+ *
+ * Returns: the source of the alias.
+ */
+GabbleConnectionAliasSource
+_gabble_connection_get_cached_alias (GabbleConnection *conn,
+                                     TpHandle handle,
+                                     gchar **alias)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *tmp, *jid;
+  gboolean roster_alias_was_jid = FALSE;
+  GabbleConnectionAliasSource source;
+
+  g_return_val_if_fail (NULL != conn, GABBLE_CONNECTION_ALIAS_NONE);
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), GABBLE_CONNECTION_ALIAS_NONE);
+  g_return_val_if_fail (tp_handle_is_valid (contact_handles, handle, NULL),
+      GABBLE_CONNECTION_ALIAS_NONE);
+
+  jid = tp_handle_inspect (contact_handles, handle);
+  g_assert (NULL != jid);
+
+  tmp = gabble_roster_handle_get_name (conn->roster, handle);
+  if (!tp_strdiff (tmp, jid))
+    {
+      /* Normally, we prefer whatever we've cached on the roster, to avoid
+       * wasting bandwidth checking for aliases by repeatedly fetching the
+       * vCard, and (more importantly) to prefer anything the local user set
+       * over what the contact says their name is.
+       *
+       * However, if the alias stored on the roster is just the contact's JID,
+       * we check for better aliases that we happen to have received from other
+       * sources (maybe a PEP nick update, or a vCard we've fetched for the
+       * avatar, or whatever). If we can't find anything better, we'll use the
+       * JID, and still say that it came from the roster: this means we don't
+       * defeat negative caching for contacts who genuinely don't have an
+       * alias.
+       */
+      roster_alias_was_jid = TRUE;
+    }
+  else if (!tp_str_empty (tmp))
+    {
+      maybe_set (alias, tmp);
+      return GABBLE_CONNECTION_ALIAS_FROM_ROSTER;
+    }
+
+  source = get_cached_remote_alias (conn, contact_handles, handle, jid, alias);
+  if (source != GABBLE_CONNECTION_ALIAS_NONE)
+    return source;
+
   /* otherwise just take their jid, which may have been specified on the roster
    * as the contact's alias. */
   maybe_set (alias, jid);
   return roster_alias_was_jid ? GABBLE_CONNECTION_ALIAS_FROM_ROSTER
       : GABBLE_CONNECTION_ALIAS_FROM_JID;
+}
+
+/*
+ * _gabble_connection_get_cached_remote_alias:
+ * @conn: a connection
+ * @handle: a handle
+ * @alias: (allow-none): location at which to store @handle's alias. If
+ *         provided, it may be set to %NULL (if @handle has no cached remote
+ *         alias) or a non-empty string which the caller must free.
+ *
+ * Gets the best cached alias for @handle as provided by them (such as via PEP
+ * Nicknames, in their vCard, etc), not considering anything the local user has
+ * specified on their roster.
+ *
+ * Returns: the source of the alias, or GABBLE_CONNECTION_ALIAS_NONE if we have
+ *          no cached remote alias for @handle
+ */
+static GabbleConnectionAliasSource
+_gabble_connection_get_cached_remote_alias (
+    GabbleConnection *conn,
+    TpHandle handle,
+    gchar **alias)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid = tp_handle_inspect (contact_handles, handle);
+
+  g_assert (NULL != jid);
+  return get_cached_remote_alias (conn, contact_handles, handle, jid, alias);
 }
 
 static void

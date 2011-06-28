@@ -23,10 +23,25 @@ def send_pep_nick_reply(stream, stanza, nickname):
     item.addElement('nick', ns.NICK, content=nickname)
     stream.send(result)
 
-def check_roster_write(event, jid, name):
+def check_roster_write(stream, event, jid, name):
     item = event.query.firstChildElement()
     assertEquals(jid, item['jid'])
-    assertEquals(name, item['name'])
+    # This copes with name=None
+    assertEquals(name, item.getAttribute('name'))
+
+    acknowledge_iq(stream, event.stanza)
+    # RFC 3921 requires the server to send a roster push to all connected
+    # resources whenever a resource updates the roster. Gabble depends on this
+    # and pays no attention to its own nick update until the server sends a
+    # push.
+    send_roster_push(stream, jid, 'none', name=name)
+
+def expect_AliasesChanged_and_roster_write(q, stream, handle, jid, nick):
+    roster_write = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
+    check_roster_write(stream, roster_write, jid, nick)
+
+    q.expect('dbus-signal', signal='AliasesChanged',
+        args=[[(handle, nick if nick else jid)]])
 
 def test(q, bus, conn, stream):
     event, event2 = q.expect_many(
@@ -65,7 +80,7 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
         EventPattern('dbus-return', method='RequestAliases',
         value=(['Bobby'],)))
-    check_roster_write(event, 'bob@foo.com', 'Bobby')
+    check_roster_write(stream, event, 'bob@foo.com', 'Bobby')
 
     # We get a roster push for a contact who for some reason has their alias
     # set on our roster to the empty string (maybe a buggy client?). It's never
@@ -89,12 +104,7 @@ def test(q, bus, conn, stream):
     nick = 'Constant Future'
 
     send_pep_nick_reply(stream, event.stanza, nick)
-    _, roster_write = q.expect_many(
-        EventPattern('dbus-signal', signal='AliasesChanged',
-            args=[[(handle, nick)]]),
-        EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
-        )
-    check_roster_write(roster_write, jid, nick)
+    expect_AliasesChanged_and_roster_write(q, stream, handle, jid, nick)
 
     # Here's another contact, whose alias is set on our roster to their JID:
     # because we've cached that they have no alias. Gabble shouldn't make
@@ -114,12 +124,47 @@ def test(q, bus, conn, stream):
     # the new nickname, and write it back to the roster.
     nick = u'The Friendly Faith Plate'
     stream.send(make_pubsub_event(jid, ns.NICK, elem(ns.NICK, 'nick')(nick)))
-    _, roster_write = q.expect_many(
-        EventPattern('dbus-signal', signal='AliasesChanged',
-            args=[[(handle, nick)]]),
-        EventPattern('stream-iq', iq_type='set', query_ns=ns.ROSTER),
-        )
-    check_roster_write(roster_write, jid, nick)
+    expect_AliasesChanged_and_roster_write(q, stream, handle, jid, nick)
+
+    # As an undocumented extension, we treat setting the alias to the empty
+    # string to mean "whatever the contact says their nickname is". (The rest
+    # of this test is a regression test for
+    # <https://bugs.freedesktop.org/show_bug.cgi?id=11321>.)
+    #
+    # So first up, let's change the Friendly Faith Plate's nickname to
+    # something else.
+    custom_nick = u'I saw a deer today'
+    conn.Aliasing.SetAliases({handle: custom_nick})
+    expect_AliasesChanged_and_roster_write(q, stream, handle, jid, custom_nick)
+
+    assertEquals([custom_nick], conn.Aliasing.RequestAliases([handle]))
+
+    # And now set it to the empty string. Since Gabble happens to have a
+    # nickname this contact specified cached, it should switch over to that one.
+    conn.Aliasing.SetAliases({handle: ''})
+    expect_AliasesChanged_and_roster_write(q, stream, handle, jid, nick)
+    assertEquals([nick], conn.Aliasing.RequestAliases([handle]))
+
+    # Here's a contact we haven't seen before, pushed to our roster with a
+    # nickname already there.
+    jid = 'glados@aperture.lit'
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    nick = 'Potato'
+
+    send_roster_push(stream, jid, 'both', name=nick)
+    q.expect('dbus-signal', signal='AliasesChanged', args=[[(handle, nick)]])
+
+    # If the user clears their alias, we should expect Gabble to say over D-Bus
+    # that their nickname is their jid, and send a roster push removing the
+    # name='' attribute...
+    conn.Aliasing.SetAliases({handle: ''})
+    expect_AliasesChanged_and_roster_write(q, stream, handle, jid, None)
+
+    # ...and also send a PEP query to find a better nickname; when the contact
+    # replies, Gabble should update the roster accordingly.
+    event = q.expect('stream-iq', iq_type='get', query_ns=ns.PUBSUB, to=jid)
+    send_pep_nick_reply(stream, event.stanza, 'GLaDOS')
+    expect_AliasesChanged_and_roster_write(q, stream, handle, jid, 'GLaDOS')
 
 if __name__ == '__main__':
     exec_test(test)

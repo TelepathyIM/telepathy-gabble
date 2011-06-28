@@ -63,7 +63,7 @@ struct _GabbleServerTLSChannelPrivate {
   GabbleTLSCertificate *server_cert;
   gchar *server_cert_path;
   gchar *hostname;
-  GPtrArray *reference_identities;
+  GStrv reference_identities;
 
   gboolean dispose_has_run;
 };
@@ -85,7 +85,7 @@ gabble_server_tls_channel_get_property (GObject *object,
       g_value_set_string (value, self->priv->hostname);
       break;
     case PROP_REFERENCE_IDENTITIES:
-      g_value_set_boxed (value, self->priv->reference_identities->pdata);
+      g_value_set_boxed (value, self->priv->reference_identities);
       break;
     case PROP_TLS_SESSION:
       g_value_set_object (value, self->priv->tls_session);
@@ -127,7 +127,7 @@ gabble_server_tls_channel_finalize (GObject *object)
 
   g_free (self->priv->server_cert_path);
   g_free (self->priv->hostname);
-  g_ptr_array_free (self->priv->reference_identities, TRUE);
+  g_strfreev (self->priv->reference_identities);
 
   G_OBJECT_CLASS (gabble_server_tls_channel_parent_class)->finalize (object);
 }
@@ -182,6 +182,7 @@ gabble_server_tls_channel_constructed (GObject *object)
   const gchar *path;
   gchar *cert_object_path;
   GPtrArray *certificates;
+  GPtrArray *identities;
   gchar *connect_server = NULL;
   gchar *explicit_server = NULL;
   gchar **extra_certificate_identities = NULL;
@@ -207,7 +208,8 @@ gabble_server_tls_channel_constructed (GObject *object)
   self->priv->server_cert_path = cert_object_path;
 
   /* Build up the identities we can check against */
-  self->priv->reference_identities = g_ptr_array_new_with_free_func (g_free);
+  identities = g_ptr_array_new ();
+
   g_object_get (tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
       "connect-server", &connect_server,
       "explicit-server", &explicit_server,
@@ -215,15 +217,13 @@ gabble_server_tls_channel_constructed (GObject *object)
       NULL);
 
   /* First the domain part of the JID, which we were initialied with */
-  g_ptr_array_add (self->priv->reference_identities,
-      g_strdup (self->priv->hostname));
+  g_ptr_array_add (identities, g_strdup (self->priv->hostname));
 
   /* And secondly the an explicitly overridden server (if in use) */
   if (!tp_str_empty (explicit_server) &&
       !tp_strdiff (connect_server, explicit_server))
     {
-      g_ptr_array_add (self->priv->reference_identities,
-          g_strdup (explicit_server));
+      g_ptr_array_add (identities, g_strdup (explicit_server));
     }
 
   /* Lastly extra identities added to the account as a result of user choices */
@@ -232,13 +232,16 @@ gabble_server_tls_channel_constructed (GObject *object)
       for (i = 0; extra_certificate_identities[i] != NULL; ++i)
         {
           if (!tp_str_empty (extra_certificate_identities[i]))
-            g_ptr_array_add (self->priv->reference_identities,
+            g_ptr_array_add (identities,
                 g_strdup (extra_certificate_identities[i]));
         }
     }
 
   /* Null terminate, since this is a gchar** */
-  g_ptr_array_add (self->priv->reference_identities, NULL);
+  g_ptr_array_add (identities, NULL);
+
+  self->priv->reference_identities = (GStrv) g_ptr_array_free (identities,
+      FALSE);
 
   g_free (explicit_server);
   g_free (connect_server);

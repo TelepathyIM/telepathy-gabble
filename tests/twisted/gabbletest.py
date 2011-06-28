@@ -699,11 +699,12 @@ def expect_and_handle_get_vcard(q, stream):
     assert vcard.name == 'vCard', vcard.toXml()
 
     # Send back current vCard
-    result = make_result_iq(stream, iq)
+    result = make_result_iq(stream, iq, add_query_node=False)
     result.addChild(current_vcard)
     stream.send(result)
 
 def expect_and_handle_set_vcard(q, stream, check=None):
+    global current_vcard
     set_vcard_event = q.expect('stream-iq', query_ns=ns.VCARD_TEMP,
         query_name='vCard', iq_type='set')
     iq = set_vcard_event.stanza

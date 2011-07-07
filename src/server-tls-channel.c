@@ -63,7 +63,7 @@ struct _GabbleServerTLSChannelPrivate {
   GabbleTLSCertificate *server_cert;
   gchar *server_cert_path;
   gchar *hostname;
-  GPtrArray *reference_identities;
+  GStrv reference_identities;
 
   gboolean dispose_has_run;
 };
@@ -85,7 +85,7 @@ gabble_server_tls_channel_get_property (GObject *object,
       g_value_set_string (value, self->priv->hostname);
       break;
     case PROP_REFERENCE_IDENTITIES:
-      g_value_set_boxed (value, self->priv->reference_identities->pdata);
+      g_value_set_boxed (value, self->priv->reference_identities);
       break;
     case PROP_TLS_SESSION:
       g_value_set_object (value, self->priv->tls_session);
@@ -112,6 +112,9 @@ gabble_server_tls_channel_set_property (GObject *object,
     case PROP_HOSTNAME:
       self->priv->hostname = g_value_dup_string (value);
       break;
+    case PROP_REFERENCE_IDENTITIES:
+      self->priv->reference_identities = g_value_dup_boxed (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -127,7 +130,7 @@ gabble_server_tls_channel_finalize (GObject *object)
 
   g_free (self->priv->server_cert_path);
   g_free (self->priv->hostname);
-  g_ptr_array_free (self->priv->reference_identities, TRUE);
+  g_strfreev (self->priv->reference_identities);
 
   G_OBJECT_CLASS (gabble_server_tls_channel_parent_class)->finalize (object);
 }
@@ -182,10 +185,6 @@ gabble_server_tls_channel_constructed (GObject *object)
   const gchar *path;
   gchar *cert_object_path;
   GPtrArray *certificates;
-  gchar *connect_server = NULL;
-  gchar *explicit_server = NULL;
-  gchar **extra_certificate_identities = NULL;
-  gint i;
 
   if (chain_up != NULL)
     chain_up (object);
@@ -205,44 +204,6 @@ gabble_server_tls_channel_constructed (GObject *object)
       "dbus-daemon", GABBLE_CONNECTION (base_conn)->daemon,
       NULL);
   self->priv->server_cert_path = cert_object_path;
-
-  /* Build up the identities we can check against */
-  self->priv->reference_identities = g_ptr_array_new_with_free_func (g_free);
-  g_object_get (tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
-      "connect-server", &connect_server,
-      "explicit-server", &explicit_server,
-      "extra-certificate_identities", &extra_certificate_identities,
-      NULL);
-
-  /* First the domain part of the JID, which we were initialied with */
-  g_ptr_array_add (self->priv->reference_identities,
-      g_strdup (self->priv->hostname));
-
-  /* And secondly the an explicitly overridden server (if in use) */
-  if (!tp_str_empty (explicit_server) &&
-      !tp_strdiff (connect_server, explicit_server))
-    {
-      g_ptr_array_add (self->priv->reference_identities,
-          g_strdup (explicit_server));
-    }
-
-  /* Lastly extra identities added to the account as a result of user choices */
-  if (extra_certificate_identities != NULL)
-    {
-      for (i = 0; extra_certificate_identities[i] != NULL; ++i)
-        {
-          if (!tp_str_empty (extra_certificate_identities[i]))
-            g_ptr_array_add (self->priv->reference_identities,
-                g_strdup (extra_certificate_identities[i]));
-        }
-    }
-
-  /* Null terminate, since this is a gchar** */
-  g_ptr_array_add (self->priv->reference_identities, NULL);
-
-  g_free (explicit_server);
-  g_free (connect_server);
-  g_strfreev (extra_certificate_identities);
 
   DEBUG ("Server TLS channel constructed at %s", path);
 }
@@ -323,7 +284,7 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
       "The various identities to check the certificate against",
       "The server certificate identity should match one of these identities.",
       G_TYPE_STRV,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_REFERENCE_IDENTITIES, pspec);
 
   pspec = g_param_spec_object ("tls-session", "The WockyTLSSession",

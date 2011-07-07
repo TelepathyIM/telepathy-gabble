@@ -30,11 +30,12 @@ import constants as cs
 
 JID = "test@example.org"
 
-CA_CERT = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-cert.pem'
-CA_KEY  = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-key.pem'
-
 # the certificate is for the domain name 'weasel-juice.org'.
 # the files are copied from wocky/tests/certs/tls-[cert,key].pem
+CA_CERT_HOSTNAME = 'weasel-juice.org'
+
+CA_CERT = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-cert.pem'
+CA_KEY  = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-key.pem'
 
 class TlsAuthenticator(XmppAuthenticator):
     def __init__(self, username, password, resource=None):
@@ -116,7 +117,7 @@ def is_server_tls_chan_event(event):
     path, props = channels[0]
     return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_SERVER_TLS_CONNECTION
 
-def connect_and_get_tls_objects(q, bus, conn):
+def connect_and_get_tls_objects(q, bus, conn, expect_example_jid=True):
     conn.Connect()
 
     q.expect('dbus-signal', signal='StatusChanged',
@@ -133,7 +134,8 @@ def connect_and_get_tls_objects(q, bus, conn):
     hostname = props[cs.TLS_HOSTNAME]
     certificate_path = props[cs.TLS_CERT_PATH]
 
-    assertEquals(hostname, 'example.org')
+    if expect_example_jid:
+        assertEquals(hostname, 'example.org')
 
     return chan, hostname, certificate_path
 
@@ -247,6 +249,38 @@ def test_channel_reference_identity_with_extra_multiple(q, bus, conn, stream):
                    [ "example.org", "hypnotoad.example.org", "localhost", "other.local" ])
     assertEquals(props["Hostname"], "example.org")
 
+def test_channel_accept_hostname(q, bus, conn, stream):
+    chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn, False)
+
+    # close the channel early
+    chan.Close()
+
+    # we expect the fallback verification process to accept the hostname (because
+    # it matches the JID's hostname or because it's in extra-certificate-identities),
+    # but the certificate verification will fail anyway as we don't trust the CA
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'),
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_CERT_UNTRUSTED])
+        )
+
+def test_channel_reject_hostname(q, bus, conn, stream):
+    chan, hostname, certificate_path = connect_and_get_tls_objects(q, bus, conn, False)
+
+    # close the channel early
+    chan.Close()
+
+    # we expect the fallback verification process to not accept the hostname;
+    # it doesn't match the JID's hostname nor the hostnames in the
+    # extra-certificate-identities parameter
+    q.expect_many(
+        EventPattern('dbus-signal', signal='Closed'),
+        EventPattern('dbus-signal', signal='ChannelClosed'),
+        EventPattern('dbus-signal', signal='StatusChanged',
+                     args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_CERT_HOSTNAME_MISMATCH])
+        )
+
 if __name__ == '__main__':
     exec_test(test_connect_success, { 'account' : JID },
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
@@ -275,4 +309,46 @@ if __name__ == '__main__':
     exec_test(test_channel_reference_identity_with_extra_multiple,
               { 'account' : JID,
                 'extra-certificate-identities' : [ 'hypnotoad.example.org', 'other.local', '' ] },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+
+    # Hostname verification
+    exec_test(test_channel_accept_hostname,
+              { 'account' : 'test@' + CA_CERT_HOSTNAME,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+    exec_test(test_channel_accept_hostname,
+              { 'account' : 'test@' + CA_CERT_HOSTNAME,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True,
+                'extra-certificate-identities' : [ 'other.local', CA_CERT_HOSTNAME ] },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+    exec_test(test_channel_accept_hostname,
+              { 'account' : JID,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True,
+                'extra-certificate-identities' : [ 'other.local', CA_CERT_HOSTNAME ] },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+
+    exec_test(test_channel_reject_hostname,
+              { 'account' : 'test@alternative.' + CA_CERT_HOSTNAME,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+    exec_test(test_channel_reject_hostname,
+              { 'account' : JID,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True,
+                'extra-certificate-identities' : [ 'other.local', 'hypnotoad.example.org' ] },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+    exec_test(test_channel_reject_hostname,
+              { 'account' : JID,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True },
+              authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)
+    exec_test(test_channel_reject_hostname,
+              { 'account' : JID,
+                'ignore-ssl-errors' : False,
+                'require-encryption' : True,
+                'extra-certificate-identities' : [ 'alternative.' + CA_CERT_HOSTNAME ] },
               authenticator=TlsAuthenticator(username='test', password='pass'), do_connect=False)

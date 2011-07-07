@@ -52,6 +52,7 @@ struct _GabbleServerTLSManagerPrivate {
   GabbleServerTLSChannel *channel;
 
   gchar *peername;
+  GStrv reference_identities;
   WockyTLSSession *tls_session;
 
   GSimpleAsyncResult *async_result;
@@ -144,8 +145,8 @@ server_tls_channel_closed_cb (GabbleServerTLSChannel *channel,
       WOCKY_TLS_HANDLER_CLASS
         (gabble_server_tls_manager_parent_class)->verify_async_func (
             WOCKY_TLS_HANDLER (self), self->priv->tls_session,
-            self->priv->peername, self->priv->async_callback,
-            self->priv->async_data);
+            self->priv->peername, self->priv->reference_identities,
+            self->priv->async_callback, self->priv->async_data);
     }
 
   tp_clear_object (&self->priv->async_result);
@@ -203,9 +204,73 @@ tls_certificate_rejected_cb (GabbleTLSCertificate *certificate,
 }
 
 static void
+extend_string_ptr_array (GPtrArray *array,
+    GStrv new_elements)
+{
+  gint i;
+
+  if (new_elements != NULL)
+    {
+      for (i = 0; new_elements[i] != NULL; i++)
+        {
+          if (!tp_str_empty (new_elements[i]))
+            g_ptr_array_add (array, g_strdup (new_elements[i]));
+        }
+    }
+}
+
+static void
+fill_reference_identities (GabbleServerTLSManager *self,
+    const gchar *peername,
+    GStrv original_extra_identities)
+{
+  GPtrArray *identities;
+  gchar *connect_server = NULL;
+  gchar *explicit_server = NULL;
+  GStrv extra_certificate_identities = NULL;
+
+  g_return_if_fail (self->priv->reference_identities == NULL);
+
+  g_object_get (self->priv->connection,
+      "connect-server", &connect_server,
+      "explicit-server", &explicit_server,
+      "extra-certificate-identities", &extra_certificate_identities,
+      NULL);
+
+  identities = g_ptr_array_new ();
+
+  /* The peer name, i.e, the domain part of the JID */
+  g_ptr_array_add (identities, g_strdup (peername));
+
+  /* The extra identities that the caller of verify_async() passed */
+  extend_string_ptr_array (identities, original_extra_identities);
+
+  /* The explicitly overridden server (if in use) */
+  if (!tp_str_empty (explicit_server) &&
+      !tp_strdiff (connect_server, explicit_server))
+    {
+      g_ptr_array_add (identities, g_strdup (explicit_server));
+    }
+
+  /* Extra identities added to the account as a result of user choices */
+  extend_string_ptr_array (identities, extra_certificate_identities);
+
+  /* Null terminate, since this is a gchar** */
+  g_ptr_array_add (identities, NULL);
+
+  self->priv->reference_identities = (GStrv) g_ptr_array_free (identities,
+      FALSE);
+
+  g_strfreev (extra_certificate_identities);
+  g_free (explicit_server);
+  g_free (connect_server);
+}
+
+static void
 gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
     WockyTLSSession *tls_session,
     const gchar *peername,
+    GStrv extra_identities,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
@@ -220,19 +285,6 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
 
   self->priv->verify_async_called = TRUE;
 
-  if (!self->priv->interactive_tls)
-    {
-      DEBUG ("ignore-ssl-errors is set, fallback to non-interactive "
-          "verification.");
-
-      WOCKY_TLS_HANDLER_CLASS
-        (gabble_server_tls_manager_parent_class)->verify_async_func (
-            WOCKY_TLS_HANDLER (self), tls_session, peername,
-            callback, user_data);
-
-      return;
-    }
-
   result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, gabble_server_tls_manager_verify_async);
 
@@ -246,6 +298,23 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
       return;
     }
 
+  fill_reference_identities (self, peername, extra_identities);
+
+  if (!self->priv->interactive_tls)
+    {
+      DEBUG ("ignore-ssl-errors is set, fallback to non-interactive "
+          "verification.");
+
+      g_object_unref (result);
+
+      WOCKY_TLS_HANDLER_CLASS
+        (gabble_server_tls_manager_parent_class)->verify_async_func (
+            WOCKY_TLS_HANDLER (self), tls_session, peername,
+            self->priv->reference_identities, callback, user_data);
+
+      return;
+    }
+
   self->priv->async_result = result;
   self->priv->tls_session = g_object_ref (tls_session);
   self->priv->peername = g_strdup (peername);
@@ -256,6 +325,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
       "connection", self->priv->connection,
       "tls-session", tls_session,
       "hostname", peername,
+      "reference-identities", self->priv->reference_identities,
       NULL);
 
   g_signal_connect (self->priv->channel, "closed",
@@ -330,6 +400,7 @@ gabble_server_tls_manager_finalize (GObject *object)
     tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
 
   g_free (self->priv->peername);
+  g_strfreev (self->priv->reference_identities);
 
   G_OBJECT_CLASS (gabble_server_tls_manager_parent_class)->finalize (object);
 }

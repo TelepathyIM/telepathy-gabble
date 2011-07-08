@@ -2700,19 +2700,15 @@ gabble_roster_authorize_publication_async (TpBaseContactList *base,
   TpIntSetFastIter iter;
   TpHandle contact;
   GError *error = NULL;
-#ifdef ENABLE_DEBUG
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
-#endif
 
   tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
 
   while (tp_intset_fast_iter_next (&iter, &contact))
     {
       GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
-#ifdef ENABLE_DEBUG
       const gchar *contact_id = tp_handle_inspect (contact_repo, contact);
-#endif
 
       if (item == NULL || item->publish == TP_SUBSCRIPTION_STATE_NO
           || item->publish == TP_SUBSCRIPTION_STATE_REMOVED_REMOTELY)

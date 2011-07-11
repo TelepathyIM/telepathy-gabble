@@ -5,7 +5,7 @@ Test the debug message interface.
 
 import dbus
 
-from servicetest import assertEquals, sync_dbus
+from servicetest import assertEquals, sync_dbus, call_async
 from gabbletest import exec_test
 import constants as cs
 from config import DEBUGGING
@@ -23,6 +23,13 @@ def test(q, bus, conn, stream):
     debug_iface.connect_to_signal('NewDebugMessage', new_message)
     props_iface = dbus.Interface(debug, cs.PROPERTIES_IFACE)
 
+    if not DEBUGGING:
+        # If we're built with --disable-debug, check that the Debug object
+        # isn't present.
+        call_async(q, debug_iface, 'GetMessages')
+        q.expect('dbus-error', method='GetMessages')
+        return
+
     assert len(debug_iface.GetMessages()) > 0
 
     # Turn signalling on and generate some messages.
@@ -35,10 +42,7 @@ def test(q, bus, conn, stream):
         cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.GetSelfHandle(), True)
     q.expect('dbus-signal', signal='NewChannel')
 
-    if DEBUGGING:
-        assert len(messages) > 0
-    else:
-        assertEquals([], messages)
+    assert len(messages) > 0
 
     # Turn signalling off and check we don't get any more messages.
 

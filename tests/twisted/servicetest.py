@@ -431,7 +431,7 @@ def sync_dbus(bus, q, conn):
     q.expect('dbus-error', method='DummySyncDBus')
 
 class ProxyWrapper:
-    def __init__(self, object, default, others):
+    def __init__(self, object, default, others={}):
         self.object = object
         self.default_interface = dbus.Interface(object, default)
         self.Properties = dbus.Interface(object, dbus.PROPERTIES_IFACE)

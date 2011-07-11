@@ -296,9 +296,7 @@ static void
 call_muc_do_update (GabbleCallMucChannel *self)
 {
   GabbleCallMucChannelPrivate *priv = self->priv;
-#ifdef ENABLE_DEBUG
   MucCallState old = priv->state;
-#endif
 
   switch (priv->state)
     {

@@ -491,6 +491,7 @@ def make_connection(bus, event_func, params=None, suffix=''):
         'server': 'localhost',
         'port': dbus.UInt32(4242),
         'fallback-socks5-proxies': dbus.Array([], signature='s'),
+        'require-encryption': False,
         }
 
     if params:

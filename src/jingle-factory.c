@@ -552,22 +552,16 @@ gabble_jingle_factory_set_property (GObject *object,
   }
 }
 
-static GObject *
-gabble_jingle_factory_constructor (GType type,
-                                   guint n_props,
-                                   GObjectConstructParam *props)
+static void
+gabble_jingle_factory_constructed (GObject *obj)
 {
-  GObject *obj;
-  GabbleJingleFactory *self;
-  GabbleJingleFactoryPrivate *priv;
+  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (obj);
+  GabbleJingleFactoryPrivate *priv = self->priv;
+  GObjectClass *parent = G_OBJECT_CLASS (gabble_jingle_factory_parent_class);
 
-  obj = G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->
-      constructor (type, n_props, props);
+  if (parent->constructed != NULL)
+    parent->constructed (obj);
 
-  self = GABBLE_JINGLE_FACTORY (obj);
-  priv = self->priv;
-
-  /* FIXME: why was this in _constructed in media factory? */
   gabble_signal_connect_weak (priv->conn, "status-changed",
       (GCallback) connection_status_changed_cb, G_OBJECT (self));
 
@@ -576,8 +570,6 @@ gabble_jingle_factory_constructor (GType type,
   jingle_transport_google_register (self);
   jingle_transport_rawudp_register (self);
   jingle_transport_iceudp_register (self);
-
-  return obj;
 }
 
 static void
@@ -588,7 +580,7 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
 
   g_type_class_add_private (cls, sizeof (GabbleJingleFactoryPrivate));
 
-  object_class->constructor = gabble_jingle_factory_constructor;
+  object_class->constructed = gabble_jingle_factory_constructed;
   object_class->get_property = gabble_jingle_factory_get_property;
   object_class->set_property = gabble_jingle_factory_set_property;
   object_class->dispose = gabble_jingle_factory_dispose;

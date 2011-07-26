@@ -864,8 +864,17 @@ store_shared_statuses (GabbleConnection *self,
         }
     }
 
+  /* - status-min-ver == 0 means that at least one resource doesn't support
+   *   Google shared status, so we fallback to "dnd".
+   * - status-min-ver == 1 means that all the resources support shared
+   *   status, but at least one doesn't support invisibility; we have to fall
+   *   fall back to "dnd".
+   * - status-miv-ver == 2 means that all the resources support shared status
+   *   with invisibility.
+   * - any other value means that the other resources will have to fall back
+   *   to version 2 for us. */
   priv->shared_status_compat =
-    g_strcmp0 (min_version, GOOGLE_SHARED_STATUS_VERSION) == 0;
+    (g_strcmp0 (min_version, "0") != 0 && g_strcmp0 (min_version, "1") != 0);
 
   if (invisible)
     {

@@ -1,5 +1,15 @@
-telepathy-gabble 0.12.4 (UNRELEASED)
+telepathy-gabble 0.12.4 (2011-07-27)
 ====================================
+
+The “excuse me but water you doin?” release.
+
+Fixes:
+
+• If telepathy-yell is installed to /usr/include, the included copy will still
+  be used. (Vincent Penquerc'h, fd.o#37492)
+
+• With GnuTLS 2.12, sending very large amounts of data will no longer cause the
+  connection to stall. (Sjoerd Simons, fd.o#36077)
 
 telepathy-gabble 0.12.3 (2011-06-24)
 ====================================

@@ -25,7 +25,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky-c2s-porter.h>
 #include <libsoup/soup.h>
 

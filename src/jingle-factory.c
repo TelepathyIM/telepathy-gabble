@@ -64,7 +64,7 @@ enum
 struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
-  LmMessageHandler *jingle_cb;
+  guint jingle_handler_id;
   LmMessageHandler *jingle_info_cb;
   GHashTable *content_types;
   GHashTable *transports;
@@ -88,8 +88,10 @@ struct _GabbleJingleFactoryPrivate
   gboolean dispose_has_run;
 };
 
-static LmHandlerResult jingle_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *message, gpointer user_data);
+static gboolean jingle_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid,
     TpHandle peer,
@@ -104,6 +106,10 @@ static void session_terminated_cb (GabbleJingleSession *sess,
 
 static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleJingleFactory *self);
+static void connection_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data);
 
 #define RELAY_HTTP_TIMEOUT 5
 
@@ -131,8 +137,6 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
 
   priv->content_types = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
-
-  priv->jingle_cb = NULL;
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
@@ -564,6 +568,8 @@ gabble_jingle_factory_constructed (GObject *obj)
 
   gabble_signal_connect_weak (priv->conn, "status-changed",
       (GCallback) connection_status_changed_cb, G_OBJECT (self));
+  gabble_signal_connect_weak (priv->conn, "porter-available",
+      (GCallback) connection_porter_available_cb, G_OBJECT (self));
 
   jingle_share_register (self);
   jingle_media_rtp_register (self);
@@ -617,22 +623,12 @@ connection_status_changed_cb (GabbleConnection *conn,
     {
     case TP_CONNECTION_STATUS_CONNECTING:
       g_assert (priv->conn != NULL);
-
-      g_assert (priv->jingle_cb == NULL);
       g_assert (priv->jingle_info_cb == NULL);
-
-      priv->jingle_cb = lm_message_handler_new (jingle_cb,
-          self, NULL);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->jingle_cb, LM_MESSAGE_TYPE_IQ,
-          LM_HANDLER_PRIORITY_NORMAL);
-
       priv->jingle_info_cb = lm_message_handler_new (
           jingle_info_cb, self, NULL);
       lm_connection_register_message_handler (priv->conn->lmconn,
           priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ,
           LM_HANDLER_PRIORITY_NORMAL);
-
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
@@ -673,18 +669,41 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (priv->jingle_cb != NULL)
+      if (priv->jingle_handler_id != 0)
         {
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
+          WockyPorter *p = wocky_session_get_porter (priv->conn->session);
+
+          wocky_porter_unregister_handler (p, priv->jingle_handler_id);
+          priv->jingle_handler_id = 0;
+        }
+
+      if (priv->jingle_info_cb != NULL)
+        {
           lm_connection_unregister_message_handler (priv->conn->lmconn,
               priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
         }
 
-      tp_clear_pointer (&priv->jingle_cb, lm_message_handler_unref);
       tp_clear_pointer (&priv->jingle_info_cb, lm_message_handler_unref);
       break;
     }
+}
+
+static void
+connection_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
+  GabbleJingleFactoryPrivate *priv = self->priv;
+
+  g_assert (priv->jingle_handler_id == 0);
+
+  /* TODO: we could match different dialects here maybe? */
+  priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_cb, self,
+      NULL);
 }
 
 /* The 'session' map is keyed by:
@@ -778,11 +797,11 @@ ensure_session (GabbleJingleFactory *self,
   return sess;
 }
 
-static LmHandlerResult
-jingle_cb (LmMessageHandler *handler,
-           LmConnection *lmconn,
-           LmMessage *msg,
-           gpointer user_data)
+static gboolean
+jingle_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
   GabbleJingleFactoryPrivate *priv = self->priv;
@@ -795,10 +814,10 @@ jingle_cb (LmMessageHandler *handler,
 
   /* see if it's a jingle message and detect dialect */
   sid = gabble_jingle_session_detect (msg, &action, &dialect);
-  from = lm_message_node_get_attribute (lm_message_get_node (msg), "from");
+  from = wocky_stanza_get_from (msg);
 
   if (sid == NULL || from == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return FALSE;
 
   sess = ensure_session (self, sid, from, action, dialect, &new_session,
       &error);
@@ -816,7 +835,7 @@ jingle_cb (LmMessageHandler *handler,
   /* all went well, we can acknowledge the IQ */
   _gabble_connection_acknowledge_set_iq (priv->conn, msg);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 
 REQUEST_ERROR:
   g_assert (error != NULL);
@@ -830,7 +849,7 @@ REQUEST_ERROR:
   if (sess != NULL && new_session)
     gabble_jingle_session_terminate (sess, JINGLE_REASON_UNKNOWN, NULL, NULL);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 /*

@@ -26,11 +26,13 @@
 #include <glib.h>
 
 #include <loudmouth/loudmouth.h>
+#include <wocky/wocky-c2s-porter.h>
 #include <libsoup/soup.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
+#include "conn-util.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "jingle-share.h"
@@ -65,7 +67,7 @@ struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
   guint jingle_handler_id;
-  LmMessageHandler *jingle_info_cb;
+  guint jingle_info_handler_id;
   GHashTable *content_types;
   GHashTable *transports;
 
@@ -256,70 +258,27 @@ take_stun_server (GabbleJingleFactory *self,
 }
 
 
-static LmHandlerResult
-got_jingle_info_stanza (GabbleJingleFactory *fac,
-    LmMessage *message)
+static void
+got_jingle_info_stanza (
+    GabbleJingleFactory *fac,
+    WockyStanza *stanza)
 {
-  GabbleJingleFactoryPrivate *priv = fac->priv;
-  LmMessageSubType sub_type;
-  LmMessageNode *query_node, *node;
-  const gchar *from = wocky_stanza_get_from (message);
+  WockyNode *node, *query_node;
 
-  if (from != NULL)
-    {
-      TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
-      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          base_conn, TP_HANDLE_TYPE_CONTACT);
-      TpHandle sender = tp_handle_lookup (contact_repo, from, NULL, NULL);
-
-      if (sender != base_conn->self_handle)
-        {
-          DEBUG ("ignoring jingleinfo from '%s', not ourself nor the server",
-              from);
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-    }
-
-  query_node = lm_message_node_get_child_with_namespace (
-      wocky_stanza_get_top_node (message), "query", NS_GOOGLE_JINGLE_INFO);
+  query_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (stanza), "query", NS_GOOGLE_JINGLE_INFO);
 
   if (query_node == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  sub_type = lm_message_get_sub_type (message);
-
-  if (sub_type == LM_MESSAGE_SUB_TYPE_ERROR)
-    {
-      GabbleXmppError xmpp_error = XMPP_ERROR_UNDEFINED_CONDITION;
-
-      node = lm_message_node_get_child (wocky_stanza_get_top_node (message),
-          "error");
-      if (node != NULL)
-        {
-          xmpp_error = gabble_xmpp_error_from_node (node, NULL);
-        }
-
-      DEBUG ("jingle info error: %s", gabble_xmpp_error_string (xmpp_error));
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
-      sub_type != LM_MESSAGE_SUB_TYPE_SET)
-    {
-      DEBUG ("jingle info: unexpected IQ type, ignoring");
-
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
+    return;
 
   if (fac->priv->get_stun_from_jingle)
-    node = lm_message_node_get_child (query_node, "stun");
+    node = wocky_node_get_child (query_node, "stun");
   else
     node = NULL;
 
   if (node != NULL)
     {
-      node = lm_message_node_get_child (node, "server");
+      node = wocky_node_get_child (node, "server");
 
       if (node != NULL)
         {
@@ -327,8 +286,8 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
           const gchar *port_attr;
           guint port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
 
-          server = lm_message_node_get_attribute (node, "host");
-          port_attr = lm_message_node_get_attribute (node, "udp");
+          server = wocky_node_get_attribute (node, "host");
+          port_attr = wocky_node_get_attribute (node, "udp");
 
           if (port_attr != NULL)
             port = atoi (port_attr);
@@ -342,19 +301,16 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
         }
     }
 
-  node = lm_message_node_get_child (query_node, "relay");
+  node = wocky_node_get_child (query_node, "relay");
 
   if (node != NULL)
     {
-      LmMessageNode *subnode;
-
-      subnode = lm_message_node_get_child (node, "token");
+      WockyNode *subnode = wocky_node_get_child (node, "token");
 
       if (subnode != NULL)
         {
-          const gchar *token;
+          const gchar *token = subnode->content;
 
-          token = lm_message_node_get_value (subnode);
           if (token != NULL)
             {
               DEBUG ("jingle info: got Google relay token %s", token);
@@ -363,14 +319,14 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
             }
         }
 
-      subnode = lm_message_node_get_child (node, "server");
+      subnode = wocky_node_get_child (node, "server");
 
       if (subnode != NULL)
         {
           const gchar *server;
           const gchar *port;
 
-          server = lm_message_node_get_attribute (subnode, "host");
+          server = wocky_node_get_attribute (subnode, "host");
 
           if (server != NULL)
             {
@@ -383,7 +339,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
             {
               /* this is not part of the real protocol, but we can't listen on
                * port 80 in an unprivileged regression test */
-              port = lm_message_node_get_attribute (subnode,
+              port = wocky_node_get_attribute (subnode,
                   "gabble-test-http-port");
 
               if (port != NULL)
@@ -397,7 +353,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
           /* FIXME: these are not really actually used anywhere at
            * the moment, because we get the same info when creating
            * relay session. */
-          port = lm_message_node_get_attribute (subnode, "udp");
+          port = wocky_node_get_attribute (subnode, "udp");
 
           if (port != NULL)
             {
@@ -405,7 +361,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
               fac->priv->relay_udp = atoi (port);
             }
 
-          port = lm_message_node_get_attribute (subnode, "tcp");
+          port = wocky_node_get_attribute (subnode, "tcp");
 
           if (port != NULL)
             {
@@ -413,7 +369,7 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
               fac->priv->relay_tcp = atoi (port);
             }
 
-          port = lm_message_node_get_attribute (subnode, "tcpssl");
+          port = wocky_node_get_attribute (subnode, "tcpssl");
 
           if (port != NULL)
             {
@@ -424,74 +380,59 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
         }
 
     }
-
-  if (sub_type == LM_MESSAGE_SUB_TYPE_SET)
-    {
-      _gabble_connection_acknowledge_set_iq (priv->conn, message);
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-/*
- * jingle_info_cb
- *
- * Called by loudmouth when we get an incoming <iq>. This handler
- * is concerned only with Jingle info queries.
- */
-static LmHandlerResult
-jingle_info_cb (LmMessageHandler *handler,
-                LmConnection *lmconn,
-                LmMessage *message,
-                gpointer user_data)
+static gboolean
+jingle_info_cb (
+    WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
 {
   GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
 
-  return got_jingle_info_stanza (fac, message);
+  got_jingle_info_stanza (fac, stanza);
+  wocky_porter_acknowledge_iq (porter, stanza, NULL);
+
+  return TRUE;
 }
 
-static LmHandlerResult
-jingle_info_reply_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
-    GObject *factory_obj,
+static void
+jingle_info_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
     gpointer user_data)
 {
-  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (factory_obj);
+  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
+  WockyStanza *reply = NULL;
+  GError *error = NULL;
 
-  return got_jingle_info_stanza (fac, reply_msg);
+  if (conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, &reply,
+          &error))
+    {
+      got_jingle_info_stanza (fac, reply);
+    }
+  else
+    {
+      DEBUG ("jingle info request failed: %s", error->message);
+      g_clear_error (&error);
+    }
+
+  tp_clear_object (&reply);
 }
 
 static void
 jingle_info_send_request (GabbleJingleFactory *fac)
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
-  TpBaseConnection *base = (TpBaseConnection *) priv->conn;
-  LmMessage *msg;
-  LmMessageNode *node;
-  const gchar *jid;
-  GError *error = NULL;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid = conn_util_get_bare_self_jid (priv->conn);
+  WockyStanza *stanza = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET, NULL, jid,
+      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
 
-  jid = tp_handle_inspect (contact_handles, base->self_handle);
-  msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_GET);
+  conn_util_send_iq_async (priv->conn, stanza, NULL, jingle_info_reply_cb, fac);
 
-  node = lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_GOOGLE_JINGLE_INFO);
-
-  if (!_gabble_connection_send_with_reply (priv->conn, msg,
-        jingle_info_reply_cb, G_OBJECT (fac), fac, &error))
-    {
-      DEBUG ("jingle info send failed: %s\n", error->message);
-      g_error_free (error);
-    }
-
-  lm_message_unref (msg);
+  g_object_unref (stanza);
 }
-
 
 static void
 gabble_jingle_factory_dispose (GObject *object)
@@ -623,12 +564,6 @@ connection_status_changed_cb (GabbleConnection *conn,
     {
     case TP_CONNECTION_STATUS_CONNECTING:
       g_assert (priv->conn != NULL);
-      g_assert (priv->jingle_info_cb == NULL);
-      priv->jingle_info_cb = lm_message_handler_new (
-          jingle_info_cb, self, NULL);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ,
-          LM_HANDLER_PRIORITY_NORMAL);
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
@@ -674,16 +609,11 @@ connection_status_changed_cb (GabbleConnection *conn,
           WockyPorter *p = wocky_session_get_porter (priv->conn->session);
 
           wocky_porter_unregister_handler (p, priv->jingle_handler_id);
+          wocky_porter_unregister_handler (p, priv->jingle_info_handler_id);
           priv->jingle_handler_id = 0;
+          priv->jingle_info_handler_id = 0;
         }
 
-      if (priv->jingle_info_cb != NULL)
-        {
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
-        }
-
-      tp_clear_pointer (&priv->jingle_info_cb, lm_message_handler_unref);
       break;
     }
 }
@@ -704,6 +634,12 @@ connection_porter_available_cb (
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
       WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_cb, self,
       NULL);
+
+  priv->jingle_info_handler_id = wocky_c2s_porter_register_handler_from_server (
+      WOCKY_C2S_PORTER (porter),
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_info_cb, self,
+      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
 }
 
 /* The 'session' map is keyed by:

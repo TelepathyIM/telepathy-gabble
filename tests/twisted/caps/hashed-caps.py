@@ -24,7 +24,9 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test, make_result_iq, make_presence, sync_stream
+from gabbletest import (
+    exec_test, make_result_iq, make_presence, sync_stream, elem,
+)
 from servicetest import sync_dbus, EventPattern, assertLength
 import constants as cs
 import ns
@@ -290,6 +292,37 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     sync_dbus(bus, q, conn)
     assert caps_changed_flag == False
 
+def test_39464(q, bus, conn, stream):
+    """
+    Regression test for an issue where a form with no type='' attribute on the
+    <x/> node would crash Gabble.
+    """
+    client = 'fake:qutim'
+    hash = 'blahblah'
+    contact = 'bug-39464@example.com/foo'
+    caps = {
+        'node': client,
+        'ver': hash,
+        'hash': 'sha-1',
+        }
+    presence = make_presence(contact, status='hello', caps=caps)
+    stream.send(presence)
+
+    # Gabble looks up our capabilities
+    event = q.expect('stream-iq', to=contact, query_ns=ns.DISCO_INFO)
+
+    # Send a reply with a form without a type=''
+    result = make_result_iq(stream, event.stanza, add_query_node=False)
+    result.addChild(
+        elem(ns.DISCO_INFO, 'query', node='%s#%s' % (client, hash))(
+          # NB. no type='' attribute
+          elem(ns.X_DATA, 'x')
+        )
+      )
+    stream.send(result)
+    # We don't really care what Gabble does, as long as it doesn't crash.
+    sync_stream(q, stream)
+
 def test(q, bus, conn, stream):
     # be notified when the signal CapabilitiesChanged is fired
     conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CAPS)
@@ -304,6 +337,8 @@ def test(q, bus, conn, stream):
     test_two_clients(q, bus, conn, stream, 'user3@example.com/Res',
             'user4@example.com/Res', 6L, 7L,
             'http://telepathy.freedesktop.org/fake-client4', 1)
+
+    test_39464(q, bus, conn, stream)
 
 if __name__ == '__main__':
     exec_test(test)

@@ -1315,7 +1315,13 @@ _caps_disco_cb (GabbleDisco *disco,
 
       computed_hash = wocky_caps_hash_compute_from_node (query_result);
 
-      if (g_str_equal (waiter_self->ver, computed_hash))
+      if (computed_hash == NULL)
+        {
+          DEBUG ("Unable to compute caps hash for '%s'.", jid);
+          trust = 0;
+          bad_hash = TRUE;
+        }
+      else if (g_str_equal (waiter_self->ver, computed_hash))
         {
           trust = capability_info_recvd (cache, node, handle, cap_set,
               CAPABILITY_BUNDLE_ENOUGH_TRUST, client_types);

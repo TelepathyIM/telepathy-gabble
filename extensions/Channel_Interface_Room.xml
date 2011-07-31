@@ -40,7 +40,9 @@
           href="http://xmpp.org/extensions/xep-0045.html#createroom-unique"><acronym
           title="XMPP Extension Protocol">XEP</acronym>-0045 §10.1.4
         <q>Requesting a Unique Room Name</q></a> defines a protocol for
-        requesting a unique, opaque room name on the server.</p>
+        requesting a unique, opaque room name on the server. Note that
+        this interface is not restricted to Text channels, and can
+        also be used on Call channels.</p>
 
       <p>This interface intends to support and differentiate these mechanisms
         more clearly than the <tp:dbus-ref
@@ -295,7 +297,7 @@
     </tp:docstring>
 
     <property name="RoomName" tp:name-for-bindings="Room_Name" type="s"
-              access="read">
+              access="read" tp:immutable="yes" tp:requestable="yes">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>The human-readable identifier of a chat room. Note that if
           non-empty, this property (and perhaps also
@@ -314,7 +316,7 @@
     </property>
 
     <property name="Server" tp:name-for-bindings="Server" type="s"
-              access="read">
+              access="read" tp:immutable="yes" tp:requestable="yes">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>For protocols with a concept of chatrooms on multiple servers with
           different DNS names (like XMPP), the DNS name of the server hosting

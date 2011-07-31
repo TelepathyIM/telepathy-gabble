@@ -136,7 +136,12 @@ enum
   PROP_ORIGINAL_CHANNELS,
   PROP_ROOM_NAME,
   PROP_SERVER,
+
   PROP_SUBJECT,
+  PROP_SUBJECT_ACTOR,
+  PROP_SUBJECT_TIMESTAMP,
+  PROP_CAN_SET_SUBJECT,
+
   LAST_PROPERTY
 };
 
@@ -253,7 +258,12 @@ struct _GabbleMucChannelPrivate
   /* Room interface */
   gchar *room_name;
   gchar *server;
-  GValueArray *subject;
+
+  /* Subject interface */
+  gchar *subject;
+  gchar *subject_actor;
+  gint64 subject_timestamp;
+  gboolean can_set_subject;
 
   gboolean ready;
   gboolean dispose_has_run;
@@ -506,12 +516,11 @@ gabble_muc_channel_constructed (GObject *obj)
    * checked so we know it's valid. */
   g_assert (ok);
 
-  priv->subject = tp_value_array_build (4,
-      G_TYPE_STRING, "",
-      G_TYPE_STRING, "",
-      G_TYPE_INT64, (gint64) 0,
-      G_TYPE_UINT, GABBLE_ROOM_SUBJECT_FLAG_PRESENT,
-      G_TYPE_INVALID);
+  priv->subject = NULL;
+  priv->subject_actor = NULL;
+  priv->subject_timestamp = 0;
+  /* FIXME: We always assume we can set the subject if we're in a room. */
+  priv->can_set_subject = TRUE;
 
   if (priv->invited)
     {
@@ -931,7 +940,16 @@ gabble_muc_channel_get_property (GObject    *object,
       g_value_set_string (value, priv->server);
       break;
     case PROP_SUBJECT:
-      g_value_set_boxed (value, priv->subject);
+      g_value_set_string (value, priv->subject);
+      break;
+    case PROP_SUBJECT_ACTOR:
+      g_value_set_string (value, priv->subject_actor);
+      break;
+    case PROP_SUBJECT_TIMESTAMP:
+      g_value_set_int64 (value, priv->subject_timestamp);
+      break;
+    case PROP_CAN_SET_SUBJECT:
+      g_value_set_boolean (value, priv->can_set_subject);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -1040,6 +1058,9 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   };
   static TpDBusPropertiesMixinPropImpl subject_props[] = {
       { "Subject", "subject", NULL },
+      { "Actor", "subject-actor", NULL },
+      { "Timestamp", "subject-timestamp", NULL },
+      { "CanSet", "can-set-subject", NULL },
       { NULL }
   };
 
@@ -1164,12 +1185,32 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_install_property (object_class, PROP_SERVER,
       param_spec);
 
-  param_spec = g_param_spec_boxed ("subject",
-      "Subject",
-      "The room name.",
-      GABBLE_STRUCT_TYPE_ROOM_SUBJECT,
-      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_SUBJECT,
+  param_spec = g_param_spec_string ("subject",
+      "Subject.Subject", "The subject of the room",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBJECT, param_spec);
+
+  param_spec = g_param_spec_string ("subject-actor",
+      "Subject.Actor", "The JID of the contact who last changed the subject",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBJECT_ACTOR,
+      param_spec);
+
+  param_spec = g_param_spec_int64 ("subject-timestamp",
+      "Subject.Timestamp",
+      "The UNIX timestamp at which the subject was last changed",
+      G_MININT64, G_MAXINT64, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBJECT_TIMESTAMP,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("can-set-subject",
+      "Subject.CanSet", "Whether we believe we can set the subject",
+      TRUE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CAN_SET_SUBJECT,
       param_spec);
 
   signals[READY] =
@@ -1319,7 +1360,8 @@ gabble_muc_channel_finalize (GObject *object)
 
   g_free (priv->room_name);
   g_free (priv->server);
-  g_value_array_free (priv->subject);
+  g_free (priv->subject);
+  g_free (priv->subject_actor);
 
   tp_properties_mixin_finalize (object);
   tp_group_mixin_finalize (object);
@@ -1738,12 +1780,16 @@ static void
 emit_subject_changed (GabbleMucChannel *chan)
 {
   GabbleMucChannelPrivate *priv = chan->priv;
+  GHashTable *changed_properties = tp_asv_new (
+      "Subject", G_TYPE_STRING, priv->subject,
+      "Actor", G_TYPE_STRING, priv->subject_actor,
+      "Timestamp", G_TYPE_INT64, priv->subject_timestamp,
+      NULL);
+  static const gchar *invalidated[] = { NULL };
 
-  gabble_svc_channel_interface_subject_emit_subject_changed (chan,
-      g_value_get_string (g_value_array_get_nth (priv->subject, 0)),
-      g_value_get_string (g_value_array_get_nth (priv->subject, 1)),
-      g_value_get_int64 (g_value_array_get_nth (priv->subject, 2)),
-      g_value_get_uint (g_value_array_get_nth (priv->subject, 3)));
+  tp_svc_dbus_properties_emit_properties_changed (chan,
+      GABBLE_IFACE_CHANNEL_INTERFACE_SUBJECT, changed_properties, invalidated);
+  g_hash_table_unref (changed_properties);
 }
 
 static void
@@ -1754,7 +1800,6 @@ update_permissions (GabbleMucChannel *chan)
   TpChannelGroupFlags grp_flags_add, grp_flags_rem;
   TpPropertyFlags prop_flags_add, prop_flags_rem;
   TpIntSet *changed_props_val, *changed_props_flags;
-  GabbleRoomSubjectFlags room_subject_flags = 0;
 
   /*
    * Update group flags.
@@ -1796,24 +1841,16 @@ update_permissions (GabbleMucChannel *chan)
     {
       prop_flags_add = TP_PROPERTY_FLAG_WRITE;
       prop_flags_rem = 0;
-      room_subject_flags = GABBLE_ROOM_SUBJECT_FLAG_CAN_SET |
-        GABBLE_ROOM_SUBJECT_FLAG_PRESENT;
     }
   else
     {
       prop_flags_add = 0;
       prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
-      room_subject_flags = GABBLE_ROOM_SUBJECT_FLAG_PRESENT;
     }
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
       changed_props_flags);
-
-  g_value_set_uint (g_value_array_get_nth (priv->subject, 3),
-      room_subject_flags);
-
-  emit_subject_changed (chan);
 
   /* The room properties below are part of the "room definition", so are
    * defined by the XEP to be editable only by owners. */
@@ -2725,7 +2762,6 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
   TpIntSet *changed_values, *changed_flags;
   GValue val = { 0, };
   const gchar *actor;
-  GabbleRoomSubjectFlags room_subject_flags = 0;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2822,11 +2858,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   g_value_unset (&val);
 
-  /* Room properties */
-  room_subject_flags = g_value_get_uint (
-      g_value_array_get_nth (priv->subject, 3));
-  g_value_array_free (priv->subject);
-
+  /* Channel.Interface.Subject properties */
   if (handle_type == TP_HANDLE_TYPE_CONTACT)
     {
       TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
@@ -2840,12 +2872,11 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       actor = "";
     }
 
-  priv->subject = tp_value_array_build (4,
-      G_TYPE_STRING, subject,
-      G_TYPE_STRING, actor,
-      G_TYPE_INT64, (gint64) timestamp,
-      G_TYPE_UINT, room_subject_flags,
-      G_TYPE_INVALID);
+  g_free (priv->subject);
+  g_free (priv->subject_actor);
+  priv->subject = g_strdup (subject);
+  priv->subject_actor = g_strdup (actor);
+  priv->subject_timestamp = timestamp;
 
   /* Emit signals */
   emit_subject_changed (chan);
@@ -4100,19 +4131,7 @@ gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceSubject *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (tp_base_channel_get_connection (
           TP_BASE_CHANNEL (self)));
   GError *error = NULL;
-  GabbleRoomSubjectFlags flags;
   LmMessage *msg;
-
-  flags = g_value_get_uint (g_value_array_get_nth (priv->subject, 3));
-
-  if (!(flags & GABBLE_ROOM_SUBJECT_FLAG_CAN_SET))
-    {
-      GError *error2 = g_error_new_literal (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-          "User does not have permission to set subject");
-      dbus_g_method_return_error (context, error2);
-      g_clear_error (&error2);
-      return;
-    }
 
   msg = lm_message_new_with_sub_type (priv->jid,
       LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
@@ -4132,6 +4151,7 @@ gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceSubject *iface,
     }
   else
     {
+      /* FIXME: don't return until the subject changes or we get an error. */
       gabble_svc_channel_interface_subject_return_from_set_subject (context);
     }
 

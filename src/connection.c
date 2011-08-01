@@ -1836,7 +1836,10 @@ connector_connected (GabbleConnection *self,
 
   self->session = wocky_session_new_with_connection (conn, jid);
   priv->porter = wocky_session_get_porter (self->session);
-  priv->pinger = wocky_ping_new (priv->porter, priv->keepalive_interval);
+
+  g_assert (WOCKY_IS_C2S_PORTER (priv->porter));
+  priv->pinger = wocky_ping_new (WOCKY_C2S_PORTER (priv->porter),
+      priv->keepalive_interval);
 
   g_signal_connect (priv->porter, "remote-closed",
       G_CALLBACK (remote_closed_cb), self);

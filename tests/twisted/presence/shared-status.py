@@ -230,10 +230,13 @@ def test(q, bus, conn, stream):
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (cs.PRESENCE_BUSY, 'dnd', "Peekabo")}]))
 
-def _test_on_connect(q, bus, conn, stream, shared_status, show, msg, expected_show=None):
+def _test_on_connect(q, bus, conn, stream, shared_status, show, msg,
+                     expected_show=None, min_version=None):
     expected_show = expected_show or show
     _status, _show, _invisible = shared_status
     stream.shared_status = shared_status
+    if min_version is not None:
+        stream.min_version = min_version
 
     forbidden_event_patterns = [EventPattern('stream-presence'),
                                 EventPattern('stream-iq', query_ns=ns.PRIVACY,
@@ -285,6 +288,10 @@ def test_connect_dnd(q, bus, conn, stream):
 def test_connect_hidden(q, bus, conn, stream):
     _test_on_connect(q, bus, conn, stream,  ("Chat with me.", 'default', 'false'),
                      'hidden', "I see, but I can't be seen")
+
+def test_connect_hidden_future_version(q, bus, conn, stream):
+    _test_on_connect(q, bus, conn, stream,  ("Chat with me.", 'default', 'false'),
+                     'hidden', "I see, but I can't be seen", min_version='42')
 
 def test_connect_hidden_not_available(q, bus, conn, stream):
     """Fall back to DND if you try to connect while invisible, but shared status is not
@@ -389,6 +396,7 @@ if __name__ == '__main__':
     exec_test(test_connect_chat, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_connect_dnd, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_connect_hidden, protocol=SharedStatusStream, do_connect=False)
+    exec_test(test_connect_hidden_future_version, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_connect_hidden_not_available, protocol=SharedStatusStream, do_connect=False)
     exec_test(test_shared_status_list, protocol=SharedStatusStream)
     exec_test(test_shared_status_away, protocol=SharedStatusStream)

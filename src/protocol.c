@@ -151,7 +151,7 @@ static TpCMParamSpec jabber_params[] = {
     DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT |
     TP_CONN_MGR_PARAM_FLAG_DBUS_PROPERTY,
-    GINT_TO_POINTER (FALSE),
+    GINT_TO_POINTER (TRUE),
     0 /* unused */, NULL, NULL },
 
   { "fallback-servers", "as", 0,

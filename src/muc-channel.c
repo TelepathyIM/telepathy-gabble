@@ -1784,17 +1784,10 @@ OUT:
 static void
 emit_subject_changed (GabbleMucChannel *chan)
 {
-  GabbleMucChannelPrivate *priv = chan->priv;
-  GHashTable *changed_properties = tp_asv_new (
-      "Subject", G_TYPE_STRING, priv->subject,
-      "Actor", G_TYPE_STRING, priv->subject_actor,
-      "Timestamp", G_TYPE_INT64, priv->subject_timestamp,
-      NULL);
-  static const gchar *invalidated[] = { NULL };
+  const gchar *changed[] = { "Subject", "Actor", "Timestamp", NULL };
 
-  tp_svc_dbus_properties_emit_properties_changed (chan,
-      TP_IFACE_CHANNEL_INTERFACE_SUBJECT, changed_properties, invalidated);
-  g_hash_table_unref (changed_properties);
+  tp_dbus_properties_mixin_emit_properties_changed (G_OBJECT (chan),
+      TP_IFACE_CHANNEL_INTERFACE_SUBJECT, changed);
 }
 
 static void

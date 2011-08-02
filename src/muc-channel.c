@@ -238,7 +238,7 @@ struct _GabbleMucChannelPrivate
   guint poll_timer_id;
   guint leave_timer_id;
 
-  TpChannelPasswordFlags password_flags;
+  gboolean must_provide_password;
   DBusGMethodInvocation *password_ctx;
 
   const gchar *jid;
@@ -1405,9 +1405,9 @@ clear_leave_timer (GabbleMucChannel *chan)
 }
 
 static void
-change_password_flags (GabbleMucChannel *chan,
-                       TpChannelPasswordFlags add,
-                       TpChannelPasswordFlags del)
+change_must_provide_password (
+    GabbleMucChannel *chan,
+    gboolean must_provide_password)
 {
   GabbleMucChannelPrivate *priv;
   TpChannelPasswordFlags added, removed;
@@ -1416,20 +1416,27 @@ change_password_flags (GabbleMucChannel *chan,
 
   priv = chan->priv;
 
-  added = add & ~priv->password_flags;
-  priv->password_flags |= added;
+  if (priv->must_provide_password == !!must_provide_password)
+    return;
 
-  removed = del & priv->password_flags;
-  priv->password_flags &= ~removed;
+  priv->must_provide_password = !!must_provide_password;
 
-  if (add != 0 || del != 0)
+  if (must_provide_password)
     {
-      DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
-              added, removed);
-
-      tp_svc_channel_interface_password_emit_password_flags_changed (
-          chan, added, removed);
+      added = TP_CHANNEL_PASSWORD_FLAG_PROVIDE;
+      removed = 0;
     }
+  else
+    {
+      added = 0;
+      removed = TP_CHANNEL_PASSWORD_FLAG_PROVIDE;
+    }
+
+  DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
+          added, removed);
+
+  tp_svc_channel_interface_password_emit_password_flags_changed (
+      chan, added, removed);
 }
 
 static void
@@ -1445,7 +1452,7 @@ provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
 
   if (success)
     {
-      change_password_flags (chan, 0, TP_CHANNEL_PASSWORD_FLAG_PROVIDE);
+      change_must_provide_password (chan, FALSE);
     }
 }
 
@@ -2020,8 +2027,8 @@ handle_error (GObject *source,
           return;
         }
 
-      DEBUG ("password required to join, changing password flags");
-      change_password_flags (gmuc, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
+      DEBUG ("password required to join; signalling");
+      change_must_provide_password (gmuc, TRUE);
       g_object_set (gmuc, "state", MUC_STATE_AUTH, NULL);
     }
   else
@@ -3073,7 +3080,7 @@ gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
   priv = self->priv;
 
   tp_svc_channel_interface_password_return_from_get_password_flags (context,
-      priv->password_flags);
+      priv->must_provide_password ? TP_CHANNEL_PASSWORD_FLAG_PROVIDE : 0);
 }
 
 
@@ -3098,7 +3105,7 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
 
   priv = self->priv;
 
-  if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0 ||
+  if (!priv->must_provide_password ||
       priv->password_ctx != NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,

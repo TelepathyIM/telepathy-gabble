@@ -51,8 +51,6 @@
 #include "call-muc-channel.h"
 #include "gabble-signals-marshal.h"
 
-#include "extensions/extensions.h"
-
 #define DEFAULT_JOIN_TIMEOUT 180
 #define DEFAULT_LEAVE_TIMEOUT 180
 #define MAX_NICK_RETRIES 3
@@ -84,8 +82,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       chat_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT,
       subject_iface_init);
     )
 
@@ -100,8 +98,8 @@ static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
-    GABBLE_IFACE_CHANNEL_INTERFACE_ROOM,
-    GABBLE_IFACE_CHANNEL_INTERFACE_SUBJECT,
+    TP_IFACE_CHANNEL_INTERFACE_ROOM,
+    TP_IFACE_CHANNEL_INTERFACE_SUBJECT,
     NULL
 };
 
@@ -1034,8 +1032,8 @@ gabble_muc_channel_fill_immutable_properties (
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessageTypes",
-      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM, "RoomName",
-      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM, "Server",
+      TP_IFACE_CHANNEL_INTERFACE_ROOM, "RoomName",
+      TP_IFACE_CHANNEL_INTERFACE_ROOM, "Server",
       NULL);
 }
 
@@ -1070,12 +1068,12 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       NULL,
       conference_props,
     },
-    { GABBLE_IFACE_CHANNEL_INTERFACE_ROOM,
+    { TP_IFACE_CHANNEL_INTERFACE_ROOM,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       room_props,
     },
-    { GABBLE_IFACE_CHANNEL_INTERFACE_SUBJECT,
+    { TP_IFACE_CHANNEL_INTERFACE_SUBJECT,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       subject_props,
@@ -1788,7 +1786,7 @@ emit_subject_changed (GabbleMucChannel *chan)
   static const gchar *invalidated[] = { NULL };
 
   tp_svc_dbus_properties_emit_properties_changed (chan,
-      GABBLE_IFACE_CHANNEL_INTERFACE_SUBJECT, changed_properties, invalidated);
+      TP_IFACE_CHANNEL_INTERFACE_SUBJECT, changed_properties, invalidated);
   g_hash_table_unref (changed_properties);
 }
 
@@ -4122,7 +4120,7 @@ gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
 }
 
 static void
-gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceSubject *iface,
+gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
     const gchar *subject,
     DBusGMethodInvocation *context)
 {
@@ -4152,7 +4150,7 @@ gabble_muc_channel_set_subject (GabbleSvcChannelInterfaceSubject *iface,
   else
     {
       /* FIXME: don't return until the subject changes or we get an error. */
-      gabble_svc_channel_interface_subject_return_from_set_subject (context);
+      tp_svc_channel_interface_subject_return_from_set_subject (context);
     }
 
   lm_message_unref (msg);
@@ -4186,10 +4184,10 @@ chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 subject_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleSvcChannelInterfaceSubjectClass *klass =
-    (GabbleSvcChannelInterfaceSubjectClass *) g_iface;
+  TpSvcChannelInterfaceSubjectClass *klass =
+    (TpSvcChannelInterfaceSubjectClass *) g_iface;
 
-#define IMPLEMENT(x) gabble_svc_channel_interface_subject_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_interface_subject_implement_##x (\
     klass, gabble_muc_channel_##x)
   IMPLEMENT(set_subject);
 #undef IMPLEMENT

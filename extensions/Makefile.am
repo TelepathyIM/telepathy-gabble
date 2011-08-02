@@ -9,8 +9,7 @@ EXTRA_DIST = \
     Gabble_Plugin_Test.xml \
     OLPC_Activity_Properties.xml \
     OLPC_Buddy_Info.xml \
-    Channel_Interface_Room.xml \
-    Channel_Interface_Subject.xml
+    $(NULL)
 
 noinst_LTLIBRARIES = libgabble-extensions.la
 

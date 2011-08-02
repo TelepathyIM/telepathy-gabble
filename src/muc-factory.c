@@ -1117,8 +1117,8 @@ static const gchar * const muc_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage",
-    GABBLE_IFACE_CHANNEL_INTERFACE_ROOM ".RoomName",
-    GABBLE_IFACE_CHANNEL_INTERFACE_ROOM ".Server",
+    TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME,
+    TP_PROP_CHANNEL_INTERFACE_ROOM_SERVER,
     NULL
 };
 
@@ -1251,9 +1251,9 @@ handle_text_channel_request (GabbleMucFactory *self,
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
 
   room_name = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM ".RoomName");
+      TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME);
   server_prop = tp_asv_get_string (request_properties,
-      GABBLE_IFACE_CHANNEL_INTERFACE_ROOM ".Server");
+      TP_PROP_CHANNEL_INTERFACE_ROOM_SERVER);
 
   handles = tp_handle_set_new (contact_handles);
   continue_handles = tp_intset_new ();
@@ -1875,7 +1875,7 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   room = (handle_type == TP_HANDLE_TYPE_NONE
       && !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT)
       && g_hash_table_lookup (request_properties,
-          GABBLE_IFACE_CHANNEL_INTERFACE_ROOM ".RoomName") != NULL);
+          TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME));
 
   /* the channel must either be a room, or a new conference */
   if (handle_type != TP_HANDLE_TYPE_ROOM && !conference && !room)

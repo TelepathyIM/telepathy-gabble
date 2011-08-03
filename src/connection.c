@@ -1139,7 +1139,7 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (
-      object_class, PROP_DECLOAK_AUTOMATICALLY,
+      object_class, PROP_POWER_SAVING,
       g_param_spec_boolean (
           "power-saving", "Power saving active?",
           "Queue remote presence updates server-side for less network chatter",

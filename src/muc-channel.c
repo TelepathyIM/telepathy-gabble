@@ -4120,6 +4120,35 @@ gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
 }
 
 static void
+sent_subject_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  DBusGMethodInvocation *context = user_data;
+  GError *error = NULL;
+
+  if (wocky_porter_send_finish (WOCKY_PORTER (source), result, &error))
+    {
+      /* FIXME: don't return until the subject changes or we get an error. This
+       * is a pain to implement, though: you have to match up subject messages
+       * you happen to receive from the MUC with the message we sent (it's not
+       * an IQ); deal with disconnecting before getting a reply; etc etc.
+       */
+      tp_svc_channel_interface_subject_return_from_set_subject (context);
+    }
+  else
+    {
+      GError *tp_error = NULL;
+
+      gabble_set_tp_error_from_wocky (error, &tp_error);
+      dbus_g_method_return_error (context, tp_error);
+      g_clear_error (&tp_error);
+      g_clear_error (&error);
+    }
+}
+
+static void
 gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
     const gchar *subject,
     DBusGMethodInvocation *context)
@@ -4128,32 +4157,17 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
   GabbleMucChannelPrivate *priv = self->priv;
   GabbleConnection *conn = GABBLE_CONNECTION (tp_base_channel_get_connection (
           TP_BASE_CHANNEL (self)));
-  GError *error = NULL;
-  LmMessage *msg;
+  WockyPorter *porter = wocky_session_get_porter (conn->session);
+  WockyStanza *stanza = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_GROUPCHAT,
+      NULL, priv->jid,
+      '(', "subject", '$', subject, ')',
+      NULL);
 
-  msg = lm_message_new_with_sub_type (priv->jid,
-      LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-  lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "subject", subject);
+  wocky_porter_send_async (porter, stanza, NULL, sent_subject_cb, context);
 
-  if (!_gabble_connection_send (conn, msg, &error))
-    {
-      GError *error2;
-      DEBUG ("Failed to send message: %s", error->message);
+  g_object_unref (stanza);
 
-      error2 = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-          "Failed to set subject: %s", error->message);
-      dbus_g_method_return_error (context, error2);
-      g_clear_error (&error);
-      g_clear_error (&error2);
-    }
-  else
-    {
-      /* FIXME: don't return until the subject changes or we get an error. */
-      tp_svc_channel_interface_subject_return_from_set_subject (context);
-    }
-
-  lm_message_unref (msg);
 }
 
 static void

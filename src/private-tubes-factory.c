@@ -565,7 +565,7 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
 
   /* capabilities mean being able to RECEIVE said kinds of tubes. hence,
    * skip Requested=true (locally initiated) channel classes */
-  if (tp_asv_get_boolean (cap, TP_PROP_CHANNEL_REQUESTED, FALSE) == TRUE)
+  if (tp_asv_get_boolean (cap, TP_PROP_CHANNEL_REQUESTED, FALSE))
     return;
 
   channel_type = tp_asv_get_string (cap,

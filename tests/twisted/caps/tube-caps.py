@@ -22,10 +22,14 @@ is correct, and ask Gabble for its caps using D-Bus method
 GetContactCapabilities. Also check that GetContactAttributes gives the same
 results.
 
+Ensure that just a Requested=True channel class in a client filter doesn't
+make a tube service advertised as a cap.
+
 - no tube cap at all
+- 1 Requested=True stream tube cap
 - 1 stream tube cap
-- 1 D-Bus tube cap
-- 1 stream tube + 1 D-Bus tube caps
+- 1 D-Bus tube cap + 1 Requested=True cap
+- 1 stream tube + 1 D-Bus tube caps + 1 Requested=True cap
 - 2 stream tube + 2 D-Bus tube caps
 - 1 stream tube + 1 D-Bus tube caps, again, just for the fun
 
@@ -49,9 +53,16 @@ import ns
 specialized_tube_allowed_properties = dbus.Array([cs.TARGET_HANDLE,
     cs.TARGET_ID])
 
-daap_fixed_properties = dbus.Dictionary({
+outgoing_daap_fixed_properties = dbus.Dictionary({
     cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
     cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+    cs.REQUESTED : True,
+    cs.STREAM_TUBE_SERVICE: 'daap'
+    })
+incoming_daap_fixed_properties = dbus.Dictionary({
+    cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+    cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+    cs.REQUESTED : False,
     cs.STREAM_TUBE_SERVICE: 'daap'
     })
 http_fixed_properties = dbus.Dictionary({
@@ -160,7 +171,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
             [(text_fixed_properties, text_allowed_properties),
              (stream_tube_fixed_properties, stream_tube_allowed_properties),
              (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-             (daap_fixed_properties, specialized_tube_allowed_properties)]})
+             (incoming_daap_fixed_properties, specialized_tube_allowed_properties)]})
     receive_caps(q, conn, stream, contact, contact_handle,
         [ns.TUBES + '/stream#daap'], daap_caps)
 
@@ -178,7 +189,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (daap_fixed_properties, specialized_tube_allowed_properties),
+        (incoming_daap_fixed_properties, specialized_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties)]})
     receive_caps(q, conn, stream, contact, contact_handle,
         [ns.TUBES + '/dbus#com.example.Xiangqi',
@@ -190,7 +201,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (daap_fixed_properties, specialized_tube_allowed_properties),
+        (incoming_daap_fixed_properties, specialized_tube_allowed_properties),
         (http_fixed_properties, specialized_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties),
         (go_fixed_properties, specialized_tube_allowed_properties)]})
@@ -250,7 +261,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (daap_fixed_properties, specialized_tube_allowed_properties),
+        (incoming_daap_fixed_properties, specialized_tube_allowed_properties),
         (ft_fixed_properties, ft_allowed_properties)]})
     xiangqi_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
@@ -262,14 +273,14 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (daap_fixed_properties, specialized_tube_allowed_properties),
+        (incoming_daap_fixed_properties, specialized_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties),
         (ft_fixed_properties, ft_allowed_properties)]})
     all_tubes_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),
         (stream_tube_fixed_properties, stream_tube_allowed_properties),
         (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-        (daap_fixed_properties, specialized_tube_allowed_properties),
+        (incoming_daap_fixed_properties, specialized_tube_allowed_properties),
         (http_fixed_properties, specialized_tube_allowed_properties),
         (xiangqi_fixed_properties, specialized_tube_allowed_properties),
         (go_fixed_properties, specialized_tube_allowed_properties),
@@ -302,8 +313,25 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
 
     sync_stream(q, stream)
 
+    # Advertise a Requested=True tube cap
+    conn.ContactCapabilities.UpdateCapabilities(
+            [(cs.CLIENT + '.Foo', [outgoing_daap_fixed_properties], [])])
+
+    # Check our own caps
+    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    assertLength(1, caps)
+    assertEquals(basic_caps, caps)
+
+    # check the Contacts interface give the same caps
+    caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle][cs.ATTR_CONTACT_CAPABILITIES]
+    assertEquals(caps[self_handle], caps_via_contacts_iface)
+
+    sync_stream(q, stream)
+
     advertise_caps(q, conn, stream,
-        [daap_fixed_properties],
+        [incoming_daap_fixed_properties],
         [ns.TUBES + '/stream#daap'],
         [ns.TUBES + '/stream#http',
          ns.TUBES + '/dbus#com.example.Go',
@@ -312,7 +340,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         daap_caps)
 
     advertise_caps(q, conn, stream,
-        [xiangqi_fixed_properties],
+        [outgoing_daap_fixed_properties, xiangqi_fixed_properties],
         [ns.TUBES + '/dbus#com.example.Xiangqi'],
         [ns.TUBES + '/stream#daap',
          ns.TUBES + '/stream#http',
@@ -321,7 +349,8 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         xiangqi_caps)
 
     advertise_caps(q, conn, stream,
-        [daap_fixed_properties, xiangqi_fixed_properties],
+        [incoming_daap_fixed_properties, outgoing_daap_fixed_properties,
+         xiangqi_fixed_properties],
         [ns.TUBES + '/dbus#com.example.Xiangqi',
          ns.TUBES + '/stream#daap',
         ],
@@ -331,7 +360,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         daap_xiangqi_caps)
 
     advertise_caps(q, conn, stream,
-        [daap_fixed_properties, http_fixed_properties,
+        [incoming_daap_fixed_properties, http_fixed_properties,
          go_fixed_properties, xiangqi_fixed_properties],
         [ns.TUBES + '/dbus#com.example.Xiangqi',
          ns.TUBES + '/stream#daap',
@@ -343,7 +372,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
 
     # test daap + xiangqi again for some reason
     advertise_caps(q, conn, stream,
-        [daap_fixed_properties, xiangqi_fixed_properties],
+        [incoming_daap_fixed_properties, xiangqi_fixed_properties],
         [ns.TUBES + '/dbus#com.example.Xiangqi',
          ns.TUBES + '/stream#daap',
         ],

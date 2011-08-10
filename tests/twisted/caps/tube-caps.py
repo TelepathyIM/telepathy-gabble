@@ -53,6 +53,11 @@ import ns
 specialized_tube_allowed_properties = dbus.Array([cs.TARGET_HANDLE,
     cs.TARGET_ID])
 
+bidir_daap_fixed_properties = dbus.Dictionary({
+    cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+    cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+    cs.STREAM_TUBE_SERVICE: 'daap'
+    })
 outgoing_daap_fixed_properties = dbus.Dictionary({
     cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
     cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
@@ -331,7 +336,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
     sync_stream(q, stream)
 
     advertise_caps(q, conn, stream,
-        [incoming_daap_fixed_properties],
+        [bidir_daap_fixed_properties],
         [ns.TUBES + '/stream#daap'],
         [ns.TUBES + '/stream#http',
          ns.TUBES + '/dbus#com.example.Go',

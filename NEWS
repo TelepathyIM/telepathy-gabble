@@ -1,6 +1,13 @@
 telepathy-gabble 0.13.4 (UNRELEASED)
 ====================================
 
+Fixes:
+
+• StreamTube services are now only advertised to the network, if a Client
+  filter has a channel class with Requested=false (incoming tube) or no
+  Requested property at all (tube with any direction) (Olli Salli,
+  fd.o#39933)
+
 telepathy-gabble 0.13.3 (2011-07-27)
 ====================================
 

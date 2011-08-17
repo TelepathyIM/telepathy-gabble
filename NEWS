@@ -1,6 +1,23 @@
 telepathy-gabble 0.12.5 (UNRELEASED)
 ====================================
 
+The “thousand nights gone” release.
+
+Fixes:
+
+• Invisibility now works on Google Talk again, following a server-side
+  change. (Marco Barisione, fd.o#38706)
+
+• The DecloakAutomatically and PowerSavingActive properties are now
+  decoupled, rather than being erroneously linked. (Will Thompson)
+
+• Only certain known PEP events are now queued when power saving is
+  active, as opposed to all PEP events. (Siraj Rasick)
+
+Enhancements:
+
+• A pony.
+
 telepathy-gabble 0.12.4 (2011-07-27)
 ====================================
 

@@ -1,12 +1,39 @@
 telepathy-gabble 0.13.4 (UNRELEASED)
 ====================================
 
+The “giant iris of the wide blue sky” release. This contains all the
+fixes from telepathy-gabble 0.12.5, and other exciting things.
+
+Enhancements:
+
+• XEP-0012 (Last Activity) is implemented at long last. (Michael
+  Scherer, fd.o#11688)
+
+• DecloakAutomatically is now enabled by default. This means that any
+  contact who can IM you can also call you (if they're using Gabble).
+  (Will Thompson)
+
 Fixes:
 
 • StreamTube services are now only advertised to the network, if a Client
   filter has a channel class with Requested=false (incoming tube) or no
   Requested property at all (tube with any direction) (Olli Salli,
   fd.o#39933)
+
+• Gabble no longer crashes if a peer advertises malformed capabilities.
+  (David Laban)
+
+• The test suite's fake XMPP server now listens exclusively on localhost
+  (Paul Seidler, fd.o#35968)
+
+• Invisibility now works on Google Talk again, following a server-side
+  change. (Marco Barisione, fd.o#38706)
+
+• The DecloakAutomatically and PowerSavingActive properties are now
+  decoupled, rather than being erroneously linked. (Will Thompson)
+
+• Only certain known PEP events are now queued when power saving is
+  active, as opposed to all PEP events. (Siraj Rasick)
 
 telepathy-gabble 0.13.3 (2011-07-27)
 ====================================

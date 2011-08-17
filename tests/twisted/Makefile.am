@@ -20,6 +20,7 @@ TWISTED_TESTS = \
 	client-types.py \
 	cm/protocol.py \
 	gateways.py \
+	last-activity.py \
 	muc/avatars.py \
 	muc/banned.py \
 	muc/conference.py \

@@ -27,8 +27,6 @@
 void
 olpc_buddy_info_iface_init (gpointer g_iface, gpointer iface_data);
 
-void gabble_connection_connected_olpc (GabbleConnection *conn);
-
 void
 olpc_activity_properties_iface_init (gpointer g_iface, gpointer iface_data);
 

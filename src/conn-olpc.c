@@ -409,7 +409,7 @@ invitees_quark (void)
   return q;
 }
 
-void
+static void
 gabble_connection_connected_olpc (GabbleConnection *conn)
 {
   GHashTable *preload = g_object_steal_qdata ((GObject *) conn,
@@ -2203,6 +2203,8 @@ connection_status_changed_cb (GabbleConnection *conn,
           DEBUG ("Failed to send PEP activity props reset in response to "
               "initial connection");
         }
+
+      gabble_connection_connected_olpc (conn);
     }
 }
 

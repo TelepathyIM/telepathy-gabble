@@ -218,6 +218,7 @@ void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
     LmMessage *iq);
 void _gabble_connection_send_iq_error (GabbleConnection *conn,
     LmMessage *message, GabbleXmppError error, const gchar *errmsg);
+void gabble_connection_update_last_use (GabbleConnection *conn);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,

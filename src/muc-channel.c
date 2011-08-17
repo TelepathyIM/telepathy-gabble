@@ -3097,14 +3097,14 @@ gabble_muc_channel_send (GObject *obj,
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
   GabbleConnection *gabble_conn =
-      GABBLE_CONNECTION(tp_base_channel_get_connection (base));
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
   _GabbleMUCSendMessageCtx *context = NULL;
   WockyStanza *stanza = NULL;
   WockyPorter *porter = NULL;
   GError *error = NULL;
   gchar *id = NULL;
 
-  stanza = gabble_message_util_build_stanza (message,gabble_conn,
+  stanza = gabble_message_util_build_stanza (message, gabble_conn,
       LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
       priv->jid, FALSE, &id, &error);
 

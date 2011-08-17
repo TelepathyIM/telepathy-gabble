@@ -22,6 +22,7 @@
 #include "connection.h"
 #include "gabble.h"
 
+#include <stdio.h>
 #include <string.h>
 
 #define DBUS_API_SUBJECT_TO_CHANGE
@@ -236,6 +237,10 @@ struct _GabbleConnectionPrivate
 
   /* serial number of current advertised caps */
   guint caps_serial;
+  /* Last activity time for XEP-0012 purposes, where "activity" is defined to
+   * mean "sending a message".
+   */
+  time_t last_activity_time;
 
   /* capabilities from various sources: */
   /* subscriptions on behalf of the Connection, like PEP "+notify"
@@ -518,6 +523,7 @@ gabble_connection_init (GabbleConnection *self)
   self->lmconn = lm_connection_new ();
 
   priv->caps_serial = 1;
+  priv->last_activity_time = time (NULL);
   priv->port = 5222;
 
   gabble_capabilities_init (self);
@@ -800,14 +806,6 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
           conn);
 }
 
-static void
-base_connected_cb (TpBaseConnection *base_conn)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
-
-  gabble_connection_connected_olpc (conn);
-}
-
 #define TWICE(x) (x), (x)
 
 static const gchar *implemented_interfaces[] = {
@@ -925,7 +923,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->create_channel_factories = NULL;
   parent_class->create_channel_managers =
     _gabble_connection_create_channel_managers;
-  parent_class->connected = base_connected_cb;
   parent_class->shut_down = connection_shut_down;
   parent_class->start_connecting = _gabble_connection_connect;
   parent_class->interfaces_always_present = interfaces_always_present;
@@ -1386,6 +1383,18 @@ _gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
 
   wocky_porter_send (conn->priv->porter, msg);
   return TRUE;
+}
+
+void
+gabble_connection_update_last_use (GabbleConnection *conn)
+{
+  conn->priv->last_activity_time = time (NULL);
+}
+
+static gdouble
+gabble_connection_get_last_use (GabbleConnection *conn)
+{
+  return difftime (time (NULL), conn->priv->last_activity_time);
 }
 
 typedef struct {
@@ -1982,6 +1991,41 @@ connector_register_cb (GObject *source,
   g_free (jid);
 }
 
+static gboolean
+connection_iq_last_cb (
+    WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (user_data);
+  const gchar *from = wocky_stanza_get_from (stanza);
+  /* Aside from 21 being an appropriate number, 2 ^ 64 is 20 digits long. */
+  char seconds[21];
+
+  /* Check if the peer, if any, is authorized to receive our presence. */
+  if (from != NULL)
+    {
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          (TpBaseConnection *) self, TP_HANDLE_TYPE_CONTACT);
+      TpHandle handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
+
+      /* If there's no handle for them, they're certainly not on the roster. */
+      if (handle == 0 ||
+          !gabble_roster_handle_gets_presence_from_us (self->roster, handle))
+        {
+          wocky_porter_send_iq_error (porter, stanza,
+              WOCKY_XMPP_ERROR_FORBIDDEN, NULL);
+          return TRUE;
+        }
+    }
+
+  sprintf (seconds, "%.0f", gabble_connection_get_last_use (self));
+  wocky_porter_acknowledge_iq (porter, stanza,
+      '(', "query", ':', NS_LAST, '@', "seconds", seconds, ')',
+      NULL);
+  return TRUE;
+}
+
 static void
 connect_iq_callbacks (GabbleConnection *conn)
 {
@@ -1998,6 +2042,12 @@ connect_iq_callbacks (GabbleConnection *conn)
       WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
       iq_version_cb, conn,
       '(', "query", ':', NS_VERSION, ')', NULL);
+
+  wocky_porter_register_handler_from_anyone (priv->porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+      connection_iq_last_cb, conn,
+      '(', "query", ':', NS_LAST, ')', NULL);
 
   /* FIXME: the porter should do this for us. */
   wocky_porter_register_handler_from_anyone (priv->porter,

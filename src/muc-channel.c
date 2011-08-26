@@ -152,29 +152,6 @@ static const gchar *muc_states[] =
   "MUC_STATE_ENDED",
 };
 
-/* role and affiliation enums */
-typedef enum {
-    ROLE_NONE = 0,
-    ROLE_VISITOR,
-    ROLE_PARTICIPANT,
-    ROLE_MODERATOR,
-
-    NUM_ROLES,
-
-    INVALID_ROLE,
-} GabbleMucRole;
-
-typedef enum {
-    AFFILIATION_NONE = 0,
-    AFFILIATION_MEMBER,
-    AFFILIATION_ADMIN,
-    AFFILIATION_OWNER,
-
-    NUM_AFFILIATIONS,
-
-    INVALID_AFFILIATION,
-} GabbleMucAffiliation;
-
 /* room properties */
 enum
 {
@@ -231,8 +208,8 @@ struct _GabbleMucChannelPrivate
 
   guint nick_retry_count;
   GString *self_jid;
-  GabbleMucRole self_role;
-  GabbleMucAffiliation self_affil;
+  WockyMucRole self_role;
+  WockyMucAffiliation self_affil;
 
   guint recv_id;
 
@@ -429,8 +406,8 @@ gabble_muc_channel_constructed (GObject *obj)
    * at the end of this function */
 
   /* initialize our own role and affiliation */
-  priv->self_role = ROLE_NONE;
-  priv->self_affil = AFFILIATION_NONE;
+  priv->self_role = WOCKY_MUC_ROLE_NONE;
+  priv->self_affil = WOCKY_MUC_AFFILIATION_NONE;
 
   /* initialise the wocky muc object */
   {
@@ -1761,7 +1738,7 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     }
 
   /* just in case our affiliation has changed in the meantime */
-  if (priv->self_affil != AFFILIATION_OWNER)
+  if (priv->self_affil != WOCKY_MUC_AFFILIATION_OWNER)
     goto OUT;
 
   form_node = config_form_get_form_node (reply_msg);
@@ -1827,7 +1804,7 @@ update_permissions (GabbleMucChannel *chan)
                   TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
   grp_flags_rem = 0;
 
-  if (priv->self_role == ROLE_MODERATOR)
+  if (priv->self_role == WOCKY_MUC_ROLE_MODERATOR)
     {
       grp_flags_add |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                        TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
@@ -1852,7 +1829,7 @@ update_permissions (GabbleMucChannel *chan)
   /* The room properties below are part of the "room definition", so are
    * defined by the XEP to be editable only by owners. */
 
-  if (priv->self_affil == AFFILIATION_OWNER)
+  if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {
       prop_flags_add = TP_PROPERTY_FLAG_WRITE;
       prop_flags_rem = 0;
@@ -1899,7 +1876,7 @@ update_permissions (GabbleMucChannel *chan)
       ROOM_PROP_PRIVATE, prop_flags_add, prop_flags_rem,
       changed_props_flags);
 
-  if (priv->self_affil == AFFILIATION_OWNER)
+  if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {
       /* request the configuration form purely to see if the description
        * is writable by us in this room. sigh. GO MUC!!! */
@@ -1948,44 +1925,6 @@ update_permissions (GabbleMucChannel *chan)
 
 /* ************************************************************************* */
 /* wocky MUC implementation */
-static GabbleMucRole
-get_role_from_backend (WockyMucRole role)
-{
-  switch (role)
-    {
-      case WOCKY_MUC_ROLE_NONE:
-        return ROLE_NONE;
-      case WOCKY_MUC_ROLE_VISITOR:
-        return ROLE_VISITOR;
-      case WOCKY_MUC_ROLE_PARTICIPANT:
-        return ROLE_PARTICIPANT;
-      case WOCKY_MUC_ROLE_MODERATOR:
-        return ROLE_MODERATOR;
-      default:
-        DEBUG ("unknown role '%d' -- defaulting to ROLE_VISITOR", role);
-        return ROLE_VISITOR;
-    }
-}
-
-static GabbleMucAffiliation
-get_aff_from_backend (WockyMucAffiliation aff)
-{
-  switch (aff)
-    {
-      case WOCKY_MUC_AFFILIATION_OUTCAST:
-      case WOCKY_MUC_AFFILIATION_NONE:
-        return AFFILIATION_NONE;
-      case WOCKY_MUC_AFFILIATION_MEMBER:
-        return AFFILIATION_MEMBER;
-      case WOCKY_MUC_AFFILIATION_ADMIN:
-        return AFFILIATION_ADMIN;
-      case WOCKY_MUC_AFFILIATION_OWNER:
-        return AFFILIATION_OWNER;
-      default:
-        DEBUG ("unknown affiliation %d -- defaulting to AFFILIATION_NONE", aff);
-        return AFFILIATION_NONE;
-    }
-}
 
 /* connect to wocky-muc:SIG_PRESENCE_ERROR */
 static void
@@ -2313,8 +2252,8 @@ handle_perms (GObject *source,
   GabbleMucChannelPrivate *priv = gmuc->priv;
   TpHandle myself = TP_GROUP_MIXIN (gmuc)->self_handle;
 
-  priv->self_role = get_role_from_backend (wocky_muc_role (wmuc));
-  priv->self_affil = get_aff_from_backend (wocky_muc_affiliation (wmuc));
+  priv->self_role = wocky_muc_role (wmuc);
+  priv->self_affil = wocky_muc_affiliation (wmuc);
 
   room_properties_update (gmuc);
   update_permissions (gmuc);

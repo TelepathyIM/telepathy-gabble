@@ -2806,17 +2806,15 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     const gchar *subject,
                                     LmMessage *msg)
 {
-  gboolean is_error;
   GabbleMucChannelPrivate *priv;
   TpIntSet *changed_values, *changed_flags;
   GValue val = { 0, };
   const gchar *actor;
+  GError *error = NULL;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = chan->priv;
-
-  is_error = lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_ERROR;
 
   if (priv->properties_ctx)
     {
@@ -2824,40 +2822,32 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           ROOM_PROP_SUBJECT);
     }
 
-  if (is_error)
+  if (wocky_stanza_extract_errors (msg, NULL, &error, NULL, NULL))
     {
-      LmMessageNode *node;
-      const gchar *err_desc = NULL;
-
-      node = lm_message_node_get_child (
-          wocky_stanza_get_top_node (msg), "error");
-      if (node)
-        {
-          GabbleXmppError xmpp_error = gabble_xmpp_error_from_node (node,
-              NULL);
-          err_desc = gabble_xmpp_error_description (xmpp_error);
-        }
-
       if (priv->properties_ctx != NULL || priv->set_subject_context != NULL)
         {
-          GError *error = NULL;
+          GError *tp_error = NULL;
 
-          error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-              "%s", (err_desc) ? err_desc : "failed to change subject");
+          gabble_set_tp_error_from_wocky (error, &tp_error);
+          if (tp_str_empty (tp_error->message))
+            g_prefix_error (&tp_error, "failed to change subject");
 
           if (priv->set_subject_context != NULL)
-            return_from_set_subject (chan, error);
+            return_from_set_subject (chan, tp_error);
 
           if (priv->properties_ctx != NULL)
             {
-              tp_properties_context_return (priv->properties_ctx, error);
+              tp_properties_context_return (priv->properties_ctx, tp_error);
               priv->properties_ctx = NULL;
             }
+
+          g_clear_error (&tp_error);
 
           /* Get the properties into a consistent state. */
           room_properties_update (chan);
         }
 
+      g_clear_error (&error);
       return;
     }
 

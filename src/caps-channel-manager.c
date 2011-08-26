@@ -71,7 +71,7 @@ gabble_caps_channel_manager_get_contact_capabilities (
     {
       method (caps_manager, handle, caps, arr);
     }
-  /* ... else assume there is not caps for this kind of channels */
+  /* ... else assume there are no caps for this kind of channel */
 }
 
 /**

@@ -1,6 +1,5 @@
-
 """
-Test MUC support.
+Test Channel.Interface.Subject on MUC channels
 """
 
 import dbus
@@ -9,7 +8,7 @@ from twisted.words.xish import domish
 
 from gabbletest import exec_test, make_result_iq
 from servicetest import (EventPattern, assertEquals, assertLength,
-        assertContains)
+        assertContains, call_async)
 import constants as cs
 import ns
 
@@ -150,7 +149,7 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         check_subject_props(chan, 'lalala', room + '/bob', True)
 
     # test changing the subject
-    chan.SetSubject('le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+    call_async(q, chan, 'SetSubject', 'le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
 
     e = q.expect('stream-message', to=room)
     elem = e.stanza
@@ -159,11 +158,49 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     assertEquals(elem.children[0].name, 'subject')
     assertEquals(str(elem.children[0]), 'le lolz')
 
+    elem['from'] = room + '/test'
+    stream.send(elem)
+
+    q.expect_many(EventPattern('dbus-signal', signal='PropertiesChanged',
+                               predicate=lambda e: (props['subject'], 'le lolz') in e.args[0]),
+                  # FIXME
+                  #  EventPattern('dbus-signal', interface=cs.PROPERTIES_IFACE,
+                  #               signal='PropertiesChanged',
+                  #               predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT),
+                  EventPattern('dbus-return', method='SetSubject'),
+                 )
+
+    check_subject_props(chan, 'le lolz', room + '/test', True)
+
+    # Test changing the subject and getting an error back.
+    call_async(q, chan, 'SetSubject', 'CHICKEN MAN', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+
+    e = q.expect('stream-message', to=room)
+    elem = e.stanza
+    elem['from'] = room
+    elem['type'] = 'error'
+    error = elem.addElement((None, 'error'))
+    error['type'] = 'auth'
+    error.addElement((ns.STANZA, 'forbidden'))
+    stream.send(elem)
+    q.expect('dbus-error', method='SetSubject', name=cs.PERMISSION_DENIED)
+
+    # Test changing the subject just before we leave the room (and hence not
+    # getting a reply). While we're here, check that you can't have more than
+    # one call in flight at a time.
+    call_async(q, chan, 'SetSubject', 'le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+    e = q.expect('stream-message', to=room)
+
+    call_async(q, chan, 'SetSubject', 'le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+    q.expect('dbus-error', method='SetSubject', name=cs.NOT_AVAILABLE)
+
     chan.Close()
 
     event = q.expect('stream-presence', to=room + '/test')
     elem = event.stanza
     assertEquals('unavailable', elem['type'])
+
+    q.expect('dbus-error', method='SetSubject', name=cs.CANCELLED)
 
 if __name__ == '__main__':
     exec_test(test)

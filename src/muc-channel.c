@@ -262,6 +262,7 @@ struct _GabbleMucChannelPrivate
   gchar *subject_actor;
   gint64 subject_timestamp;
   gboolean can_set_subject;
+  DBusGMethodInvocation *set_subject_context;
 
   gboolean ready;
   gboolean dispose_has_run;
@@ -1546,6 +1547,21 @@ channel_state_changed (GabbleMucChannel *chan,
     }
 }
 
+static void
+return_from_set_subject (
+    GabbleMucChannel *self,
+    const GError *error)
+{
+  GabbleMucChannelPrivate *priv = self->priv;
+
+  if (error == NULL)
+    tp_svc_channel_interface_subject_return_from_set_subject (
+        priv->set_subject_context);
+  else
+    dbus_g_method_return_error (priv->set_subject_context, error);
+
+  priv->set_subject_context = NULL;
+}
 
 static void
 close_channel (GabbleMucChannel *chan, const gchar *reason,
@@ -1600,6 +1616,9 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   gabble_presence_cache_update_many (conn->presence_cache, handles,
     NULL, GABBLE_PRESENCE_UNKNOWN, NULL, 0);
   g_array_free (handles, TRUE);
+
+  if (priv->set_subject_context != NULL)
+    return_from_set_subject (chan, &error);
 
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
   g_object_unref (chan);
@@ -2809,15 +2828,21 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           err_desc = gabble_xmpp_error_description (xmpp_error);
         }
 
-      if (priv->properties_ctx)
+      if (priv->properties_ctx != NULL || priv->set_subject_context != NULL)
         {
           GError *error = NULL;
 
           error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
               "%s", (err_desc) ? err_desc : "failed to change subject");
 
-          tp_properties_context_return (priv->properties_ctx, error);
-          priv->properties_ctx = NULL;
+          if (priv->set_subject_context != NULL)
+            return_from_set_subject (chan, error);
+
+          if (priv->properties_ctx != NULL)
+            {
+              tp_properties_context_return (priv->properties_ctx, error);
+              priv->properties_ctx = NULL;
+            }
 
           /* Get the properties into a consistent state. */
           room_properties_update (chan);
@@ -2913,6 +2938,9 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           priv->properties_ctx = NULL;
         }
     }
+
+  if (priv->set_subject_context != NULL)
+    return_from_set_subject (chan, NULL);
 }
 
 /**
@@ -4129,27 +4157,29 @@ sent_subject_cb (
     GAsyncResult *result,
     gpointer user_data)
 {
-  DBusGMethodInvocation *context = user_data;
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = self->priv;
   GError *error = NULL;
 
-  if (wocky_porter_send_finish (WOCKY_PORTER (source), result, &error))
+  if (!wocky_porter_send_finish (WOCKY_PORTER (source), result, &error))
     {
-      /* FIXME: don't return until the subject changes or we get an error. This
-       * is a pain to implement, though: you have to match up subject messages
-       * you happen to receive from the MUC with the message we sent (it's not
-       * an IQ); deal with disconnecting before getting a reply; etc etc.
-       */
-      tp_svc_channel_interface_subject_return_from_set_subject (context);
-    }
-  else
-    {
-      GError *tp_error = NULL;
+      DEBUG ("buh, failed to send a <message> to change the subject: %s",
+          error->message);
 
-      gabble_set_tp_error_from_wocky (error, &tp_error);
-      dbus_g_method_return_error (context, tp_error);
-      g_clear_error (&tp_error);
+      if (priv->set_subject_context != NULL)
+        {
+          GError *tp_error = NULL;
+
+          gabble_set_tp_error_from_wocky (error, &tp_error);
+          return_from_set_subject (self, tp_error);
+          g_clear_error (&tp_error);
+        }
+
       g_clear_error (&error);
     }
+  /* otherwise, we wait for a reply! */
+
+  g_object_unref (self);
 }
 
 static void
@@ -4162,16 +4192,28 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
   GabbleConnection *conn = GABBLE_CONNECTION (tp_base_channel_get_connection (
           TP_BASE_CHANNEL (self)));
   WockyPorter *porter = wocky_session_get_porter (conn->session);
-  WockyStanza *stanza = wocky_stanza_build (
-      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_GROUPCHAT,
-      NULL, priv->jid,
-      '(', "subject", '$', subject, ')',
-      NULL);
 
-  wocky_porter_send_async (porter, stanza, NULL, sent_subject_cb, context);
+  if (priv->set_subject_context != NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Hey! Stop changing the subject! (Your last request is still in "
+          "flight.)" };
 
-  g_object_unref (stanza);
+      dbus_g_method_return_error (context, &error);
+    }
+  else
+    {
+      WockyStanza *stanza = wocky_stanza_build (
+          WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_GROUPCHAT,
+          NULL, priv->jid,
+          '(', "subject", '$', subject, ')',
+          NULL);
 
+      priv->set_subject_context = context;
+      wocky_porter_send_async (porter, stanza, NULL, sent_subject_cb,
+          g_object_ref (self));
+      g_object_unref (stanza);
+    }
 }
 
 static void

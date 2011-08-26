@@ -6,7 +6,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, sync_stream
 from servicetest import (EventPattern, assertEquals, assertLength,
         assertContains, call_async)
 import constants as cs
@@ -62,18 +62,7 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
                 query_name='query', query_ns=ns.DISCO_INFO, to=room)],
             role=(moderator and 'moderator' or 'participant'))
 
-    # Until the disco returns, we appear to have no properties except subject.
-
-    prop_list = chan.TpProperties.ListProperties()
-    props = dict([(name, id) for id, name, sig, flags in prop_list])
-    prop_flags = dict([(name, flags) for id, name, sig, flags in prop_list])
-
-    for name in props:
-        if name == 'subject':
-            # subject can always be changed, until fd.o#13157 is fixed
-            assertEquals(cs.PROPERTY_FLAG_WRITE, prop_flags[name])
-        else:
-            assertEquals(0, prop_flags[name])
+    assert chan.Properties.Get(cs.CHANNEL_IFACE_SUBJECT, "CanSet")
 
     if send_first:
         # Someone sets a subject.
@@ -83,22 +72,12 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         message.addElement('subject', content='Testing')
         stream.send(message)
 
-        _, e = q.expect_many(EventPattern('dbus-signal', signal='PropertiesChanged',
-                                          predicate=lambda e: (props['subject'], 'Testing') in e.args[0]),
-                                EventPattern('dbus-signal', signal='PropertyFlagsChanged',
-                                             predicate=lambda e:
-                                                 (props['subject'], cs.PROPERTY_FLAGS_RW) in e.args[0]),
-                                # FIXME
-                                # EventPattern('dbus-signal', interface=cs.PROPERTIES_IFACE,
-                                #              signal='PropertiesChanged',
-                                #              predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
-                            )
-
-        assertContains((props['subject-contact'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
-        assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
-
+        # FIXME: DBus.Properties.PropertiesChanged doesn't work; syncing the
+        # stream in the meantime.
+        # q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
+        #          signal='PropertiesChanged',
+        #          predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
+        sync_stream(q, stream)
         check_subject_props(chan, 'Testing', room + '/bob', True)
 
     # Reply to the disco
@@ -126,27 +105,13 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     message.addElement('subject', content='lalala')
     stream.send(message)
 
-    _ = q.expect_many(EventPattern('dbus-signal', signal='PropertiesChanged',
-                                      predicate=lambda e: (props['subject'], 'lalala') in e.args[0]),
-                      # FIXME
-                      #  EventPattern('dbus-signal', interface=cs.PROPERTIES_IFACE,
-                      #               signal='PropertiesChanged',
-                      #               predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
-                     )
-
+    # FIXME: DBus.Properties.PropertiesChanged doesn't work; syncing the
+    # stream in the meantime.
+    # q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
+    #          signal='PropertiesChanged',
+    #          predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
+    sync_stream(q, stream)
     check_subject_props(chan, 'lalala', room + '/bob', True)
-
-    # if send_first was true, then we already got this
-    if not send_first:
-        e = q.expect('dbus-signal', signal='PropertyFlagsChanged',
-                predicate=lambda e:
-                    (props['subject'], cs.PROPERTY_FLAGS_RW) in e.args[0])
-        assertContains((props['subject-contact'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
-        assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
-
-        check_subject_props(chan, 'lalala', room + '/bob', True)
 
     # test changing the subject
     call_async(q, chan, 'SetSubject', 'le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
@@ -161,9 +126,7 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     elem['from'] = room + '/test'
     stream.send(elem)
 
-    q.expect_many(EventPattern('dbus-signal', signal='PropertiesChanged',
-                               predicate=lambda e: (props['subject'], 'le lolz') in e.args[0]),
-                  # FIXME
+    q.expect_many(# FIXME: DBus.Properties.PropertiesChanged doesn't work
                   #  EventPattern('dbus-signal', interface=cs.PROPERTIES_IFACE,
                   #               signal='PropertiesChanged',
                   #               predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT),

@@ -94,9 +94,5 @@ def test(q, bus, conn, stream):
         [(props['password'], True), (props['password-required'], 'foo')])
     q.expect('dbus-error', name=cs.NOT_AVAILABLE)
 
-    call_async(q, text_chan.TpProperties, 'SetProperties',
-        [(props['subject-contact'], 42)])
-    q.expect('dbus-error', name=cs.PERMISSION_DENIED)
-
 if __name__ == '__main__':
     exec_test(test)

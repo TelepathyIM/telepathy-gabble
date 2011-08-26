@@ -188,9 +188,6 @@ enum
   ROOM_PROP_PASSWORD_REQUIRED,
   ROOM_PROP_PERSISTENT,
   ROOM_PROP_PRIVATE,
-  ROOM_PROP_SUBJECT,
-  ROOM_PROP_SUBJECT_CONTACT,
-  ROOM_PROP_SUBJECT_TIMESTAMP,
 
   NUM_ROOM_PROPS,
 
@@ -214,18 +211,6 @@ const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
       { "password-required", G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "private",           G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-
-    /* fd.o#13157: currently assumed to be modifiable by everyone in the
-     * room (role >= VISITOR). When that bug is fixed, it will be: */
-    /* Modifiable via special <message/>s, if the user's role is high enough;
-     * "high enough" is defined by the muc#roominfo_changesubject and
-     * muc#roomconfig_changesubject settings. */
-      { "subject",           G_TYPE_STRING },   /* impl: READ, WRITE */
-
-    /* Special: implicitly set to "myself" and "now", respectively, by
-     * changing subject. */
-      { "subject-contact",   G_TYPE_UINT },     /* impl: READ */
-      { "subject-timestamp", G_TYPE_UINT },     /* impl: READ */
 };
 
 /* private structures */
@@ -530,7 +515,11 @@ gabble_muc_channel_constructed (GObject *obj)
   priv->subject = NULL;
   priv->subject_actor = NULL;
   priv->subject_timestamp = 0;
-  /* FIXME: We always assume we can set the subject if we're in a room. */
+  /* fd.o#13157: The subject is currently assumed to be modifiable by everyone
+   * in the room (role >= VISITOR). When that bug is fixed, it will be: */
+  /* Modifiable via special <message/>s, if the user's role is high enough;
+   * "high enough" is defined by the muc#roominfo_changesubject and
+   * muc#roomconfig_changesubject settings. */
   priv->can_set_subject = TRUE;
 
   if (priv->invited)
@@ -1860,28 +1849,6 @@ update_permissions (GabbleMucChannel *chan)
   changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
   changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
 
-  /*
-   * Subject
-   *
-   * FIXME: this might be allowed for participants/moderators only,
-   *        so for now just rely on the server making that call.
-   */
-
-  if (priv->self_role >= ROLE_VISITOR)
-    {
-      prop_flags_add = TP_PROPERTY_FLAG_WRITE;
-      prop_flags_rem = 0;
-    }
-  else
-    {
-      prop_flags_add = 0;
-      prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
-    }
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
   /* The room properties below are part of the "room definition", so are
    * defined by the XEP to be editable only by owners. */
 
@@ -2807,8 +2774,6 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     LmMessage *msg)
 {
   GabbleMucChannelPrivate *priv;
-  TpIntSet *changed_values, *changed_flags;
-  GValue val = { 0, };
   const gchar *actor;
   GError *error = NULL;
 
@@ -2816,15 +2781,9 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   priv = chan->priv;
 
-  if (priv->properties_ctx)
-    {
-      tp_properties_context_remove (priv->properties_ctx,
-          ROOM_PROP_SUBJECT);
-    }
-
   if (wocky_stanza_extract_errors (msg, NULL, &error, NULL, NULL))
     {
-      if (priv->properties_ctx != NULL || priv->set_subject_context != NULL)
+      if (priv->set_subject_context != NULL)
         {
           GError *tp_error = NULL;
 
@@ -2832,15 +2791,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           if (tp_str_empty (tp_error->message))
             g_prefix_error (&tp_error, "failed to change subject");
 
-          if (priv->set_subject_context != NULL)
-            return_from_set_subject (chan, tp_error);
-
-          if (priv->properties_ctx != NULL)
-            {
-              tp_properties_context_return (priv->properties_ctx, tp_error);
-              priv->properties_ctx = NULL;
-            }
-
+          return_from_set_subject (chan, tp_error);
           g_clear_error (&tp_error);
 
           /* Get the properties into a consistent state. */
@@ -2851,57 +2802,6 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       return;
     }
 
-  DEBUG ("updating new property value for subject");
-
-  changed_values = tp_intset_sized_new (NUM_ROOM_PROPS);
-  changed_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
-
-  /* ROOM_PROP_SUBJECT */
-  g_value_init (&val, G_TYPE_STRING);
-  g_value_set_string (&val, subject);
-
-  tp_properties_mixin_change_value (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, &val, changed_values);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ, 0,
-      changed_flags);
-
-  g_value_unset (&val);
-
-  /* ROOM_PROP_SUBJECT_CONTACT */
-  g_value_init (&val, G_TYPE_UINT);
-
-  if (handle_type == TP_HANDLE_TYPE_CONTACT)
-    {
-      g_value_set_uint (&val, sender);
-    }
-  else
-    {
-      g_value_set_uint (&val, 0);
-    }
-
-  tp_properties_mixin_change_value (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_CONTACT, &val, changed_values);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
-      changed_flags);
-
-  g_value_unset (&val);
-
-  /* ROOM_PROP_SUBJECT_TIMESTAMP */
-  g_value_init (&val, G_TYPE_UINT);
-  g_value_set_uint (&val, timestamp);
-
-  tp_properties_mixin_change_value (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_TIMESTAMP, &val, changed_values);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_TIMESTAMP, TP_PROPERTY_FLAG_READ, 0,
-      changed_flags);
-
-  g_value_unset (&val);
 
   /* Channel.Interface.Subject properties */
   if (handle_type == TP_HANDLE_TYPE_CONTACT)
@@ -2923,21 +2823,11 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
   priv->subject_actor = g_strdup (actor);
   priv->subject_timestamp = timestamp;
 
+  DEBUG ("Subject changed to '%s' by '%s' at %" G_GINT64_FORMAT "",
+      subject, actor, timestamp);
+
   /* Emit signals */
   emit_subject_changed (chan);
-
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_flags);
-  tp_intset_destroy (changed_values);
-  tp_intset_destroy (changed_flags);
-
-  if (priv->properties_ctx)
-    {
-      if (tp_properties_context_return_if_done (priv->properties_ctx))
-        {
-          priv->properties_ctx = NULL;
-        }
-    }
 
   if (priv->set_subject_context != NULL)
     return_from_set_subject (chan, NULL);
@@ -3440,45 +3330,20 @@ gabble_muc_channel_do_set_properties (GObject *obj,
 
   g_assert (priv->properties_ctx == NULL);
 
-  /* Changing subject? */
-  if (tp_properties_context_has (ctx, ROOM_PROP_SUBJECT))
-    {
-      const gchar *str;
+  msg = lm_message_new_with_sub_type (priv->jid,
+      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
+  node = lm_message_node_add_child (
+      wocky_stanza_get_top_node (msg), "query", NULL);
+  lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
 
-      str = g_value_get_string (tp_properties_context_get (ctx,
-            ROOM_PROP_SUBJECT));
+  success = _gabble_connection_send_with_reply (conn, msg,
+      request_config_form_reply_cb, G_OBJECT (obj), NULL,
+      error);
 
-      msg = lm_message_new_with_sub_type (priv->jid,
-          LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-      lm_message_node_add_child (
-          wocky_stanza_get_top_node (msg), "subject", str);
+  lm_message_unref (msg);
 
-      success = _gabble_connection_send (conn, msg, error);
-
-      lm_message_unref (msg);
-
-      if (!success)
-        return FALSE;
-    }
-
-  /* Changing any other properties? */
-  if (tp_properties_context_has_other_than (ctx, ROOM_PROP_SUBJECT))
-    {
-      msg = lm_message_new_with_sub_type (priv->jid,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = lm_message_node_add_child (
-          wocky_stanza_get_top_node (msg), "query", NULL);
-      lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
-
-      success = _gabble_connection_send_with_reply (conn, msg,
-          request_config_form_reply_cb, G_OBJECT (obj), NULL,
-          error);
-
-      lm_message_unref (msg);
-
-      if (!success)
-        return FALSE;
-    }
+  if (!success)
+    return FALSE;
 
   priv->properties_ctx = ctx;
   return TRUE;
@@ -3539,9 +3404,6 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   props_left = 0;
   for (i = 0; i < NUM_ROOM_PROPS; i++)
     {
-      if (i == ROOM_PROP_SUBJECT)
-        continue;
-
       if (tp_properties_context_has (ctx, i))
         props_left |= 1 << i;
     }
@@ -3781,9 +3643,7 @@ request_config_form_submit_reply_cb (GabbleConnection *conn,
 {
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = chan->priv;
-  TpPropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
-  gboolean returned;
 
   if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
     {
@@ -3791,29 +3651,11 @@ request_config_form_submit_reply_cb (GabbleConnection *conn,
                            "submitted configuration form was rejected");
     }
 
-  if (!error)
-    {
-      guint i;
+  tp_properties_context_return (priv->properties_ctx, error);
+  priv->properties_ctx = NULL;
 
-      for (i = 0; i < NUM_ROOM_PROPS; i++)
-        {
-          if (i != ROOM_PROP_SUBJECT)
-            tp_properties_context_remove (ctx, i);
-        }
-
-      returned = tp_properties_context_return_if_done (ctx);
-    }
-  else
-    {
-      tp_properties_context_return (ctx, error);
-      returned = TRUE;
-
-      /* Get the properties into a consistent state. */
-      room_properties_update (chan);
-    }
-
-  if (returned)
-    priv->properties_ctx = NULL;
+  /* Get the properties into a consistent state. */
+  room_properties_update (chan);
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

@@ -386,7 +386,7 @@ static void handle_errmsg (GObject *source,
 /* Signatures for some other stuff. */
 
 static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-    TpChannelTextMessageType msg_type, TpHandleType handle_type,
+    TpHandleType handle_type,
     TpHandle sender, time_t timestamp, const gchar *subject, LmMessage *msg);
 static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
     TpChannelTextMessageType msg_type, TpHandleType handle_type,
@@ -2692,7 +2692,7 @@ handle_message (GObject *source,
     }
 
   if (subject != NULL)
-    _gabble_muc_channel_handle_subject (gmuc, msg_type, handle_type, from,
+    _gabble_muc_channel_handle_subject (gmuc, handle_type, from,
         stamp, subject, stanza);
 
   tp_handle_unref (repo, from);
@@ -2761,7 +2761,6 @@ handle_errmsg (GObject *source,
  */
 void
 _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-                                    TpChannelTextMessageType msg_type,
                                     TpHandleType handle_type,
                                     TpHandle sender,
                                     time_t timestamp,

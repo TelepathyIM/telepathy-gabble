@@ -383,6 +383,17 @@ static void handle_errmsg (GObject *source,
     WockyXmppErrorType etype,
     gpointer data);
 
+/* Signatures for some other stuff. */
+
+static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
+    TpChannelTextMessageType msg_type, TpHandleType handle_type,
+    TpHandle sender, time_t timestamp, const gchar *subject, LmMessage *msg);
+static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
+    TpChannelTextMessageType msg_type, TpHandleType handle_type,
+    TpHandle sender, time_t timestamp, const gchar *id, const gchar *text,
+    LmMessage *msg, TpChannelTextSendError send_error,
+    TpDeliveryStatus delivery_status);
+
 static void
 gabble_muc_channel_constructed (GObject *obj)
 {
@@ -2675,7 +2686,9 @@ handle_message (GObject *source,
           default:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
         }
-      _gabble_muc_channel_state_receive (gmuc, tp_msg_state, from);
+
+      tp_svc_channel_interface_chat_state_emit_chat_state_changed (gmuc,
+          from, tp_msg_state);
     }
 
   if (subject != NULL)
@@ -3026,24 +3039,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       tp_message_mixin_take_received (G_OBJECT (chan), message);
     }
-}
-
-/**
- * _gabble_muc_channel_state_receive
- *
- * Send the D-BUS signal ChatStateChanged
- * on org.freedesktop.Telepathy.Channel.Interface.ChatState
- */
-void
-_gabble_muc_channel_state_receive (GabbleMucChannel *chan,
-                                   guint state,
-                                   guint from_handle)
-{
-  g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  tp_svc_channel_interface_chat_state_emit_chat_state_changed (chan,
-      from_handle, state);
 }
 
 static void

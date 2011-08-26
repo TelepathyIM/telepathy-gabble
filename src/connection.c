@@ -3022,6 +3022,17 @@ _emit_capabilities_changed (GabbleConnection *conn,
   g_hash_table_destroy (hash);
 }
 
+static const GabbleCapabilitySet *
+empty_caps_set (void)
+{
+  static GabbleCapabilitySet *empty = NULL;
+
+  if (G_UNLIKELY (empty == NULL))
+    empty = gabble_capability_set_new ();
+
+  return empty;
+}
+
 /**
  * gabble_connection_get_handle_contact_capabilities:
  *
@@ -3036,7 +3047,6 @@ gabble_connection_get_handle_contact_capabilities (
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
   GabblePresence *p;
   const GabbleCapabilitySet *caps;
-  GPtrArray *arr;
 
   if (handle == base_conn->self_handle)
     p = self->self_presence;
@@ -3044,20 +3054,11 @@ gabble_connection_get_handle_contact_capabilities (
     p = gabble_presence_cache_get (self->presence_cache, handle);
 
   if (p == NULL)
-    {
-      DEBUG ("don't know %u's presence; assuming text chat caps.", handle);
+    caps = empty_caps_set ();
+  else
+    caps = gabble_presence_peek_caps (p);
 
-      arr = g_ptr_array_new ();
-      gabble_caps_channel_manager_get_contact_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (self->priv->im_factory),
-          handle, NULL, arr);
-
-      return arr;
-    }
-
-  caps = gabble_presence_peek_caps (p);
-  arr = gabble_connection_build_contact_caps (self, handle, caps);
-  return arr;
+  return gabble_connection_build_contact_caps (self, handle, caps);
 }
 
 static void

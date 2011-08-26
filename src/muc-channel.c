@@ -2719,6 +2719,7 @@ handle_errmsg (GObject *source,
   TpHandleRepoIface *repo = NULL;
   TpHandleType handle_type;
   TpHandle from = 0;
+  const gchar *subject;
 
   if (from_member)
     {
@@ -2751,6 +2752,15 @@ handle_errmsg (GObject *source,
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
         handle_type, from, stamp, xmpp_id, text, stanza, tp_err, ds);
+
+  /* FIXME: this is stupid. WockyMuc gives us the subject for non-errors, but
+   * doesn't bother for errors.
+   */
+  subject = wocky_node_get_content_from_child (
+      wocky_stanza_get_top_node (stanza), "subject");
+  if (subject != NULL)
+    _gabble_muc_channel_handle_subject (gmuc,
+        handle_type, from, stamp, subject, stanza);
 
   tp_handle_unref (repo, from);
 }

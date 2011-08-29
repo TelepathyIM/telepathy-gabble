@@ -547,6 +547,7 @@ gabble_muc_channel_constructed (GObject *obj)
 typedef struct {
     const gchar *var;
     guint prop_id;
+    const gchar *config_property_name;
     gboolean value;
 } FeatureMapping;
 
@@ -554,25 +555,25 @@ static FeatureMapping *
 lookup_feature (const gchar *var)
 {
   static FeatureMapping features[] = {
-      { "muc_nonanonymous", ROOM_PROP_ANONYMOUS, FALSE },
-      { "muc_semianonymous", ROOM_PROP_ANONYMOUS, TRUE },
-      { "muc_anonymous", ROOM_PROP_ANONYMOUS, TRUE },
+      { "muc_nonanonymous", ROOM_PROP_ANONYMOUS, "anonymous", FALSE },
+      { "muc_semianonymous", ROOM_PROP_ANONYMOUS, "anonymous", TRUE },
+      { "muc_anonymous", ROOM_PROP_ANONYMOUS, "anonymous", TRUE },
 
-      { "muc_open", ROOM_PROP_INVITE_ONLY, FALSE },
-      { "muc_membersonly", ROOM_PROP_INVITE_ONLY, TRUE },
+      { "muc_open", ROOM_PROP_INVITE_ONLY, "invite-only", FALSE },
+      { "muc_membersonly", ROOM_PROP_INVITE_ONLY, "invite-only", TRUE },
 
-      { "muc_unmoderated", ROOM_PROP_MODERATED, FALSE },
-      { "muc_moderated", ROOM_PROP_MODERATED, TRUE },
+      { "muc_unmoderated", ROOM_PROP_MODERATED, "moderated", FALSE },
+      { "muc_moderated", ROOM_PROP_MODERATED, "moderated", TRUE },
 
-      { "muc_unsecure", ROOM_PROP_PASSWORD_REQUIRED, FALSE },
-      { "muc_unsecured", ROOM_PROP_PASSWORD_REQUIRED, FALSE },
-      { "muc_passwordprotected", ROOM_PROP_PASSWORD_REQUIRED, TRUE },
+      { "muc_unsecure", ROOM_PROP_PASSWORD_REQUIRED, "password-protected", FALSE },
+      { "muc_unsecured", ROOM_PROP_PASSWORD_REQUIRED, "password-protected", FALSE },
+      { "muc_passwordprotected", ROOM_PROP_PASSWORD_REQUIRED, "password-protected", TRUE },
 
-      { "muc_temporary", ROOM_PROP_PERSISTENT, FALSE },
-      { "muc_persistent", ROOM_PROP_PERSISTENT, TRUE },
+      { "muc_temporary", ROOM_PROP_PERSISTENT, "persistent", FALSE },
+      { "muc_persistent", ROOM_PROP_PERSISTENT, "persistent", TRUE },
 
-      { "muc_public", ROOM_PROP_PRIVATE, FALSE },
-      { "muc_hidden", ROOM_PROP_PRIVATE, TRUE },
+      { "muc_public", ROOM_PROP_PRIVATE, "private", FALSE },
+      { "muc_hidden", ROOM_PROP_PRIVATE, "private", TRUE },
 
       /* The MUC namespace is included as a feature in disco results. We ignore
        * it here.
@@ -593,7 +594,8 @@ lookup_feature (const gchar *var)
 static guint
 map_feature (
     WockyNode *feature,
-    GValue *value)
+    GValue *value,
+    const gchar **config_property_name)
 {
   const gchar *var = wocky_node_get_attribute (feature, "var");
   FeatureMapping *f;
@@ -613,6 +615,7 @@ map_feature (
     {
       g_value_init (value, G_TYPE_BOOLEAN);
       g_value_set_boolean (value, f->value);
+      *config_property_name = f->config_property_name;
     }
 
   return f->prop_id;
@@ -621,7 +624,8 @@ map_feature (
 static guint
 handle_form (
     WockyNode *x,
-    GValue *value)
+    GValue *value,
+    const gchar **config_property_name)
 {
   WockyNodeIter j;
   WockyNode *field;
@@ -638,6 +642,7 @@ handle_form (
       description = wocky_node_get_content_from_child (field, "value");
       g_value_init (value, G_TYPE_STRING);
       g_value_set_string (value, description != NULL ? description : "");
+      *config_property_name = "description";
       return ROOM_PROP_DESCRIPTION;
     }
 
@@ -654,6 +659,7 @@ properties_disco_cb (GabbleDisco *disco,
                      gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
+  GabbleMucChannelPrivate *priv = chan->priv;
   TpIntSet *changed_props_val, *changed_props_flags;
   LmMessageNode *lm_node;
   GValue val = { 0, };
@@ -697,6 +703,8 @@ properties_disco_cb (GabbleDisco *disco,
           tp_properties_mixin_change_flags (G_OBJECT (chan), ROOM_PROP_NAME,
                                                 TP_PROPERTY_FLAG_READ,
                                                 0, changed_props_flags);
+          g_object_set_property ((GObject *) priv->room_config,
+              "title", &val);
 
           g_value_unset (&val);
         }
@@ -705,16 +713,17 @@ properties_disco_cb (GabbleDisco *disco,
   for (i = node_iter (query_result); i; i = node_iter_next (i))
     {
       guint prop_id = INVALID_ROOM_PROP;
+      const gchar *config_property_name = NULL;
       LmMessageNode *child = node_iter_data (i);
 
       if (strcmp (child->name, "feature") == 0)
         {
-          prop_id = map_feature (child, &val);
+          prop_id = map_feature (child, &val, &config_property_name);
         }
       else if (strcmp (child->name, "x") == 0 &&
                lm_message_node_has_namespace (child, NS_X_DATA, NULL))
         {
-          prop_id = handle_form (child, &val);
+          prop_id = handle_form (child, &val, &config_property_name);
         }
 
       if (prop_id != INVALID_ROOM_PROP)
@@ -725,6 +734,7 @@ properties_disco_cb (GabbleDisco *disco,
           tp_properties_mixin_change_flags (G_OBJECT (chan), prop_id,
                                                 TP_PROPERTY_FLAG_READ,
                                                 0, changed_props_flags);
+          g_object_set_property ((GObject *) priv->room_config, config_property_name, &val);
 
           g_value_unset (&val);
         }

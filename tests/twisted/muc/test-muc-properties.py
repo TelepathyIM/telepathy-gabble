@@ -1,4 +1,4 @@
-
+# vim: fileencoding=utf-8 :
 """
 Test MUC properties support.
 """
@@ -13,13 +13,19 @@ from servicetest import call_async, wrap_channel, EventPattern, assertEquals
 import constants as cs
 import ns
 
+ROOM_NAME = "A place to bury strangers"
+ROOM_DESCRIPTION = "I hate noise-rock."
+
 def add_field(elem, type, var, value):
     field = elem.addElement('field')
-    field['type'] = type
+
+    if type is not None:
+        field['type'] = type
+
     field['var'] = var
     value = field.addElement('value', content=value)
 
-def handle_muc_get_iq(stream, stanza):
+def handle_muc_owner_get_iq(stream, stanza):
     iq = make_result_iq(stream, stanza)
     query = iq.firstChildElement()
     x = query.addElement(('jabber:x:data', 'x'))
@@ -36,7 +42,40 @@ def handle_muc_get_iq(stream, stanza):
         field.addElement('option', content=v)
 
     stream.send(iq)
-    return True
+
+def handle_disco_info_iq(stream, stanza):
+    iq = make_result_iq(stream, stanza)
+
+    query = iq.firstChildElement()
+
+    # Title
+    identity = query.addElement('identity')
+    identity['category'] = 'conference'
+    identity['type'] = 'text'
+    identity['name'] = ROOM_NAME
+
+    for var in [ns.MUC,
+                'muc_anonymous', # Anonymous
+                'muc_open', # ¬InviteOnly
+                # Limit lives in the data form
+                'muc_moderated', # Moderated
+                # Title is above
+                # Description is below
+                'muc_temporary', # ¬Persistent
+                'muc_hidden', # Private
+                'muc_unsecure', # ¬PasswordProtected
+                # Password is in the owner form.
+               ]:
+        f = query.addElement('feature')
+        f['var'] = var
+
+    # Description
+    x = query.addElement((ns.X_DATA, 'x'))
+    x['type'] = 'result'
+    add_field(x, 'hidden', 'FORM_TYPE', ns.MUC_ROOMINFO)
+    add_field(x, None, 'muc#roominfo_description', ROOM_DESCRIPTION)
+
+    stream.send(iq)
 
 def test(q, bus, conn, stream):
     muc_handle = request_muc_handle(q, conn, stream, 'chat@conf.localhost')
@@ -50,14 +89,41 @@ def test(q, bus, conn, stream):
     stream.send(
         make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
-    iq, ret = q.expect_many(
+    disco_iq, owner_iq, ret = q.expect_many(
+        EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
+            query_ns=ns.DISCO_INFO),
         EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
             query_ns=ns.MUC_OWNER),
         EventPattern('dbus-return', method='RequestChannel'))
-    handle_muc_get_iq(stream, iq.stanza)
+    handle_muc_owner_get_iq(stream, owner_iq.stanza)
+    handle_disco_info_iq(stream, disco_iq.stanza)
+
+    # FIXME: add a ConfigRetrieved signal/property to RoomConfig, listen for
+    # that instead.  We have to listen for this signal twice because of the
+    # two-signals-called-PropertiesChanged issue... otherwise later on in the
+    # test we pick up a second copy of this emission.
+    q.expect('dbus-signal', signal='PropertiesChanged')
+    q.expect('dbus-signal', signal='PropertiesChanged')
 
     text_chan = wrap_channel(
         bus.get_object(conn.bus_name, ret.value[0]), 'Text')
+    config = text_chan.Properties.GetAll(cs.CHANNEL_IFACE_ROOM_CONFIG)
+
+    # Verify that all of the config properties (besides the password ones)
+    # correspond to the flags set in handle_disco_info_iq().
+    assertEquals(True, config['Anonymous'])
+    assertEquals(False, config['InviteOnly'])
+    assertEquals(0, config['Limit'])
+    assertEquals(True, config['Moderated'])
+    assertEquals(ROOM_NAME, config['Title'])
+    assertEquals(ROOM_DESCRIPTION, config['Description'])
+    assertEquals(False, config['Persistent'])
+    assertEquals(True, config['Private'])
+    # This is affirmed to be false both by the disco reply and by the muc#owner
+    # reply.
+    assertEquals(False, config['PasswordProtected'])
+    # This comes from the muc#owner reply.
+    assertEquals('', config['Password'])
 
     props = dict([(name, id)
         for id, name, sig, flags in text_chan.TpProperties.ListProperties()])
@@ -66,7 +132,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', to='chat@conf.localhost', iq_type='get',
         query_ns=ns.MUC_OWNER)
-    handle_muc_get_iq(stream, event.stanza)
+    handle_muc_owner_get_iq(stream, event.stanza)
 
     event = q.expect('stream-iq', to='chat@conf.localhost', iq_type='set',
         query_ns=ns.MUC_OWNER)

@@ -1639,17 +1639,14 @@ handle_nick_conflict (GabbleMucChannel *chan,
   return TRUE;
 }
 
-static LmHandlerResult
-room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                              LmMessage *reply_msg, GObject *object,
-                              gpointer user_data)
+static void
+room_created_submit_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
-    {
-      DEBUG ("failed to submit room config");
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  if (conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, NULL, NULL))
+    DEBUG ("failed to submit room config");
 }
 
 static WockyNode *
@@ -2354,8 +2351,6 @@ handle_join (WockyMuc *muc,
   /* accept the config of the room if it was created for us: */
   if (codes & WOCKY_MUC_CODE_NEW_ROOM)
     {
-      GError *error = NULL;
-      gboolean sent = FALSE;
       WockyStanza *accept = wocky_stanza_build (
           WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
           NULL, NULL,
@@ -2365,29 +2360,13 @@ handle_join (WockyMuc *muc,
               ')',
             ')',
           NULL);
-
-      sent = _gabble_connection_send_with_reply (
-          GABBLE_CONNECTION (base_conn), accept,
-          room_created_submit_reply_cb, data, NULL, &error);
-
+      conn_util_send_iq_async (GABBLE_CONNECTION (base_conn), accept, NULL,
+          room_created_submit_reply_cb, NULL);
       g_object_unref (accept);
-
-      if (!sent)
-        {
-          DEBUG ("failed to send submit message: %s", error->message);
-          g_error_free (error);
-
-          g_object_unref (accept);
-          close_channel (gmuc, NULL, TRUE, 0,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-          goto out;
-        }
     }
 
   g_object_set (gmuc, "state", MUC_STATE_JOINED, NULL);
 
- out:
   tp_handle_unref (contact_repo, myself);
   tp_handle_set_destroy (members);
   tp_handle_set_destroy (owners);

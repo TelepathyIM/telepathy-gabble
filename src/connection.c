@@ -2322,8 +2322,10 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   if (voice_v1)
     g_string_append (ext, " " BUNDLE_VOICE_V1);
 
-  if (video_v1)
+  if (video_v1) {
     g_string_append (ext, " " BUNDLE_VIDEO_V1);
+    g_string_append (ext, " " BUNDLE_CAMERA_V1);
+  }
 
   lm_message_node_set_attribute (node, "ext", ext->str);
   g_string_free (ext, TRUE);

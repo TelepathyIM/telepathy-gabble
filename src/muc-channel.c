@@ -538,6 +538,80 @@ gabble_muc_channel_constructed (GObject *obj)
   tp_handle_unref (contact_handles, self_handle);
 }
 
+typedef struct {
+    const gchar *var;
+    guint prop_id;
+    gboolean value;
+} FeatureMapping;
+
+static FeatureMapping *
+lookup_feature (const gchar *var)
+{
+  static FeatureMapping features[] = {
+      { "muc_nonanonymous", ROOM_PROP_ANONYMOUS, FALSE },
+      { "muc_semianonymous", ROOM_PROP_ANONYMOUS, TRUE },
+      { "muc_anonymous", ROOM_PROP_ANONYMOUS, TRUE },
+
+      { "muc_open", ROOM_PROP_INVITE_ONLY, FALSE },
+      { "muc_membersonly", ROOM_PROP_INVITE_ONLY, TRUE },
+
+      { "muc_unmoderated", ROOM_PROP_MODERATED, FALSE },
+      { "muc_moderated", ROOM_PROP_MODERATED, TRUE },
+
+      { "muc_unsecure", ROOM_PROP_PASSWORD_REQUIRED, FALSE },
+      { "muc_unsecured", ROOM_PROP_PASSWORD_REQUIRED, FALSE },
+      { "muc_passwordprotected", ROOM_PROP_PASSWORD_REQUIRED, TRUE },
+
+      { "muc_temporary", ROOM_PROP_PERSISTENT, FALSE },
+      { "muc_persistent", ROOM_PROP_PERSISTENT, TRUE },
+
+      { "muc_public", ROOM_PROP_PRIVATE, FALSE },
+      { "muc_hidden", ROOM_PROP_PRIVATE, TRUE },
+
+      /* The MUC namespace is included as a feature in disco results. We ignore
+       * it here.
+       */
+      { NS_MUC, INVALID_ROOM_PROP },
+
+      { NULL }
+  };
+  FeatureMapping *f;
+
+  for (f = features; f->var != NULL; f++)
+    if (strcmp (var, f->var) == 0)
+      return f;
+
+  return NULL;
+}
+
+static guint
+map_feature (
+    WockyNode *feature,
+    GValue *value)
+{
+  const gchar *var = wocky_node_get_attribute (feature, "var");
+  FeatureMapping *f;
+
+  if (var == NULL)
+    return INVALID_ROOM_PROP;
+
+  f = lookup_feature (var);
+
+  if (f == NULL)
+    {
+      DEBUG ("unhandled feature '%s'", var);
+      return INVALID_ROOM_PROP;
+    }
+
+  if (f->prop_id != INVALID_ROOM_PROP)
+    {
+      g_value_init (value, G_TYPE_BOOLEAN);
+      g_value_set_boolean (value, f->value);
+    }
+
+  return f->prop_id;
+}
+
 static void
 properties_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
@@ -604,106 +678,7 @@ properties_disco_cb (GabbleDisco *disco,
 
       if (strcmp (child->name, "feature") == 0)
         {
-          str = lm_message_node_get_attribute (child, "var");
-          if (str == NULL)
-            continue;
-
-          /* ROOM_PROP_ANONYMOUS */
-          if (strcmp (str, "muc_nonanonymous") == 0)
-            {
-              prop_id = ROOM_PROP_ANONYMOUS;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_semianonymous") == 0 ||
-                   strcmp (str, "muc_anonymous") == 0)
-            {
-              prop_id = ROOM_PROP_ANONYMOUS;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_INVITE_ONLY */
-          else if (strcmp (str, "muc_open") == 0)
-            {
-              prop_id = ROOM_PROP_INVITE_ONLY;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_membersonly") == 0)
-            {
-              prop_id = ROOM_PROP_INVITE_ONLY;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_MODERATED */
-          else if (strcmp (str, "muc_unmoderated") == 0)
-            {
-              prop_id = ROOM_PROP_MODERATED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_moderated") == 0)
-            {
-              prop_id = ROOM_PROP_MODERATED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_PASSWORD_REQUIRED */
-          else if (strcmp (str, "muc_unsecure") == 0 ||
-                   strcmp (str, "muc_unsecured") == 0)
-            {
-              prop_id = ROOM_PROP_PASSWORD_REQUIRED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_passwordprotected") == 0)
-            {
-              prop_id = ROOM_PROP_PASSWORD_REQUIRED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_PERSISTENT */
-          else if (strcmp (str, "muc_temporary") == 0)
-            {
-              prop_id = ROOM_PROP_PERSISTENT;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_persistent") == 0)
-            {
-              prop_id = ROOM_PROP_PERSISTENT;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_PRIVATE */
-          else if (strcmp (str, "muc_public") == 0)
-            {
-              prop_id = ROOM_PROP_PRIVATE;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_hidden") == 0)
-            {
-              prop_id = ROOM_PROP_PRIVATE;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* Ignored */
-          else if (strcmp (str, NS_MUC) == 0)
-            {
-            }
-
-          /* Unhandled */
-          else
-            {
-              DEBUG ("unhandled feature '%s'", str);
-            }
+          prop_id = map_feature (child, &val);
         }
       else if (strcmp (child->name, "x") == 0)
         {

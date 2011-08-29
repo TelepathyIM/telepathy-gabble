@@ -612,6 +612,32 @@ map_feature (
   return f->prop_id;
 }
 
+static guint
+handle_form (
+    WockyNode *x,
+    GValue *value)
+{
+  WockyNodeIter j;
+  WockyNode *field;
+
+  wocky_node_iter_init (&j, x, "field", NULL);
+  while (wocky_node_iter_next (&j, &field))
+    {
+      const gchar *var = wocky_node_get_attribute (field, "var");
+      const gchar *description;
+
+      if (tp_strdiff (var, "muc#roominfo_description"))
+        continue;
+
+      description = wocky_node_get_content_from_child (field, "value");
+      g_value_init (value, G_TYPE_STRING);
+      g_value_set_string (value, description != NULL ? description : "");
+      return ROOM_PROP_DESCRIPTION;
+    }
+
+  return INVALID_ROOM_PROP;
+}
+
 static void
 properties_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
@@ -624,7 +650,6 @@ properties_disco_cb (GabbleDisco *disco,
   GabbleMucChannel *chan = user_data;
   TpIntSet *changed_props_val, *changed_props_flags;
   LmMessageNode *lm_node;
-  const gchar *str;
   GValue val = { 0, };
   NodeIter i;
 
@@ -680,42 +705,10 @@ properties_disco_cb (GabbleDisco *disco,
         {
           prop_id = map_feature (child, &val);
         }
-      else if (strcmp (child->name, "x") == 0)
+      else if (strcmp (child->name, "x") == 0 &&
+               lm_message_node_has_namespace (child, NS_X_DATA, NULL))
         {
-          if (lm_message_node_has_namespace (child, NS_X_DATA, NULL))
-            {
-              NodeIter j;
-
-              for (j = node_iter (child); j; j = node_iter_next (j))
-                {
-                  LmMessageNode *field = node_iter_data (j);
-                  LmMessageNode *value_node;
-
-                  if (strcmp (field->name, "field") != 0)
-                    continue;
-
-                  str = lm_message_node_get_attribute (field, "var");
-                  if (str == NULL)
-                    continue;
-
-                  if (strcmp (str, "muc#roominfo_description") != 0)
-                    continue;
-
-                  value_node = lm_message_node_get_child (field, "value");
-                  if (value_node == NULL)
-                    continue;
-
-                  str = lm_message_node_get_value (value_node);
-                  if (str == NULL)
-                    {
-                      str = "";
-                    }
-
-                  prop_id = ROOM_PROP_DESCRIPTION;
-                  g_value_init (&val, G_TYPE_STRING);
-                  g_value_set_string (&val, str);
-                }
-            }
+          prop_id = handle_form (child, &val);
         }
 
       if (prop_id != INVALID_ROOM_PROP)

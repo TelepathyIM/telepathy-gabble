@@ -2353,7 +2353,7 @@ handle_join (WockyMuc *muc,
     {
       WockyStanza *accept = wocky_stanza_build (
           WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
-          NULL, NULL,
+          NULL, gmuc->priv->jid,
             '(', "query", ':', WOCKY_NS_MUC_OWNER,
               '(', "x", ':', WOCKY_XMPP_NS_DATA,
                 '@', "type", "submit",

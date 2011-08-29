@@ -152,6 +152,8 @@ libgabble_convenience_la_SOURCES = \
     request-pipeline.c \
     roster.h \
     roster.c \
+    room-config.h \
+    room-config.c \
     roomlist-channel.h \
     roomlist-channel.c \
     roomlist-manager.h \

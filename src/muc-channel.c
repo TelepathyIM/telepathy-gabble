@@ -45,6 +45,7 @@
 #include "disco.h"
 #include "error.h"
 #include "message-util.h"
+#include "room-config.h"
 #include "namespaces.h"
 #include "presence.h"
 #include "util.h"
@@ -84,6 +85,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       chat_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG,
+      gabble_room_config_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT,
       subject_iface_init);
     )
@@ -100,6 +103,7 @@ static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
     TP_IFACE_CHANNEL_INTERFACE_ROOM,
+    TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG,
     TP_IFACE_CHANNEL_INTERFACE_SUBJECT,
     NULL
 };
@@ -213,6 +217,7 @@ struct _GabbleMucChannelPrivate
   guint recv_id;
 
   TpPropertiesContext *properties_ctx;
+  GabbleRoomConfig *room_config;
 
   /* Room interface */
   gchar *room_name;
@@ -497,6 +502,8 @@ gabble_muc_channel_constructed (GObject *obj)
    * "high enough" is defined by the muc#roominfo_changesubject and
    * muc#roomconfig_changesubject settings. */
   priv->can_set_subject = TRUE;
+
+  priv->room_config = gabble_room_config_new ((TpBaseChannel *) self);
 
   if (priv->invited)
     {
@@ -1232,6 +1239,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
 
   tp_message_mixin_init_dbus_properties (object_class);
+  gabble_room_config_register_class (base_class);
 
   tp_group_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
@@ -1264,6 +1272,7 @@ gabble_muc_channel_dispose (GObject *object)
 
   tp_clear_object (&priv->wmuc);
   tp_clear_object (&priv->requests_cancellable);
+  tp_clear_object (&priv->room_config);
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);

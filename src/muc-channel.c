@@ -40,6 +40,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 #include "connection.h"
 #include "conn-aliasing.h"
+#include "conn-util.h"
 #include "debug.h"
 #include "disco.h"
 #include "error.h"
@@ -1651,56 +1652,43 @@ room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
-static LmMessageNode *
-config_form_get_form_node (LmMessage *msg)
+static WockyNode *
+config_form_get_form_node (WockyStanza *stanza)
 {
-  LmMessageNode *node;
-  NodeIter i;
+  WockyNode *query, *x;
+  WockyNodeIter i;
 
   /* find the query node */
-  node = lm_message_node_get_child (wocky_stanza_get_top_node (msg), "query");
-  if (node == NULL)
+  query = wocky_node_get_child (wocky_stanza_get_top_node (stanza), "query");
+  if (query == NULL)
     return NULL;
 
   /* then the form node */
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query, "x", NS_X_DATA);
+  while (wocky_node_iter_next (&i, &x))
     {
-      LmMessageNode *child = node_iter_data (i);
-
-      if (tp_strdiff (child->name, "x"))
-        {
-          continue;
-        }
-
-      if (!lm_message_node_has_namespace (child, NS_X_DATA, NULL))
-        {
-          continue;
-        }
-
-      if (tp_strdiff (lm_message_node_get_attribute (child, "type"), "form"))
-        {
-          continue;
-        }
-
-      return child;
+      if (!tp_strdiff (wocky_node_get_attribute (x, "type"), "form"))
+        return x;
     }
 
   return NULL;
 }
 
-static LmHandlerResult
-perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                            LmMessage *reply_msg, GObject *object,
-                            gpointer user_data)
+static void
+perms_config_form_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = chan->priv;
-  LmMessageNode *form_node;
-  NodeIter i;
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = self->priv;
+  WockyStanza *reply = NULL;
+  WockyNode *form_node, *field;
+  WockyNodeIter i;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, &reply, NULL))
     {
-      DEBUG ("request for config form denied, property permissions "
+      DEBUG ("request for config form failed, property permissions "
                  "will be inaccurate");
       goto OUT;
     }
@@ -1709,32 +1697,25 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   if (priv->self_affil != WOCKY_MUC_AFFILIATION_OWNER)
     goto OUT;
 
-  form_node = config_form_get_form_node (reply_msg);
+  form_node = config_form_get_form_node (reply);
   if (form_node == NULL)
     {
-      DEBUG ("form node node found, property permissions will be inaccurate");
+      DEBUG ("form node not found, property permissions will be inaccurate");
       goto OUT;
     }
 
-  for (i = node_iter (form_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, form_node, "field", NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      const gchar *var;
-      LmMessageNode *node = node_iter_data (i);
+      const gchar *var = wocky_node_get_attribute (field, "var");
 
-      if (strcmp (node->name, "field") != 0)
-        continue;
-
-      var = lm_message_node_get_attribute (node, "var");
-      if (var == NULL)
-        continue;
-
-      if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
-          strcmp (var, "muc#owner_roomdesc") == 0)
+      if (!tp_strdiff (var, "muc#roomconfig_roomdesc") ||
+          !tp_strdiff (var, "muc#owner_roomdesc"))
         {
-          if (tp_properties_mixin_is_readable (G_OBJECT (chan),
+          if (tp_properties_mixin_is_readable (G_OBJECT (self),
                                                    ROOM_PROP_DESCRIPTION))
             {
-              tp_properties_mixin_change_flags (G_OBJECT (chan),
+              tp_properties_mixin_change_flags (G_OBJECT (self),
                   ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
                   NULL);
 
@@ -1744,7 +1725,8 @@ perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
     }
 
 OUT:
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  tp_clear_object (&reply);
+  g_object_unref (self);
 }
 
 static void
@@ -1848,29 +1830,15 @@ update_permissions (GabbleMucChannel *chan)
     {
       /* request the configuration form purely to see if the description
        * is writable by us in this room. sigh. GO MUC!!! */
-      LmMessage *msg;
-      LmMessageNode *node;
-      GError *error = NULL;
-      gboolean success;
+      GabbleConnection *conn = GABBLE_CONNECTION (
+          tp_base_channel_get_connection (base));
+      WockyStanza *stanza = wocky_stanza_build (
+          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET, NULL, priv->jid,
+          '(', "query", ':', WOCKY_NS_MUC_OWNER, ')', NULL);
 
-      msg = lm_message_new_with_sub_type (priv->jid,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = lm_message_node_add_child (
-          wocky_stanza_get_top_node (msg), "query", NULL);
-      lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
-
-      success = _gabble_connection_send_with_reply (
-          GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg,
-          perms_config_form_reply_cb, G_OBJECT (chan), NULL,
-          &error);
-
-      lm_message_unref (msg);
-
-      if (!success)
-        {
-          DEBUG ("failed to request config form: %s", error->message);
-          g_error_free (error);
-        }
+      conn_util_send_iq_async (conn, stanza, NULL, perms_config_form_reply_cb,
+          g_object_ref (chan));
+      g_object_unref (stanza);
     }
   else
     {

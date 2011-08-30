@@ -125,6 +125,9 @@ def test(q, bus, conn, stream):
     # This comes from the muc#owner reply.
     assertEquals('', config['Password'])
 
+    # We're a room owner, so we should be able to modify the room configuration
+    assertEquals(True, config['CanUpdateConfiguration'])
+
     props = dict([(name, id)
         for id, name, sig, flags in text_chan.TpProperties.ListProperties()])
     call_async(q, text_chan.TpProperties, 'SetProperties',

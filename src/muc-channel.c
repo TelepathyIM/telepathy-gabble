@@ -1797,11 +1797,15 @@ update_permissions (GabbleMucChannel *chan)
     {
       prop_flags_add = TP_PROPERTY_FLAG_WRITE;
       prop_flags_rem = 0;
+
+      gabble_room_config_set_can_update_configuration (priv->room_config, TRUE);
     }
   else
     {
       prop_flags_add = 0;
       prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
+
+      gabble_room_config_set_can_update_configuration (priv->room_config, FALSE);
     }
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),

@@ -52,6 +52,8 @@ struct _GabbleRoomConfigPrivate {
     gboolean private;
     gboolean password_protected;
     gchar *password;
+
+    gboolean can_update_configuration;
 };
 
 enum {
@@ -68,6 +70,8 @@ enum {
     PROP_PRIVATE,
     PROP_PASSWORD_PROTECTED,
     PROP_PASSWORD,
+
+    PROP_CAN_UPDATE_CONFIGURATION,
 };
 
 G_DEFINE_TYPE (GabbleRoomConfig, gabble_room_config, G_TYPE_OBJECT)
@@ -123,6 +127,9 @@ gabble_room_config_get_property (
         break;
       case PROP_PASSWORD:
         g_value_set_string (value, priv->password);
+        break;
+      case PROP_CAN_UPDATE_CONFIGURATION:
+        g_value_set_boolean (value, priv->can_update_configuration);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -195,6 +202,9 @@ gabble_room_config_set_property (
       case PROP_PASSWORD:
         g_free (priv->password);
         priv->password = g_value_dup_string (value);
+        break;
+      case PROP_CAN_UPDATE_CONFIGURATION:
+        priv->can_update_configuration = g_value_get_boolean (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -353,6 +363,15 @@ gabble_room_config_class_init (GabbleRoomConfigClass *klass)
       "",
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PASSWORD, param_spec);
+
+  param_spec = g_param_spec_boolean ("can-update-configuration",
+      "CanUpdateConfiguration",
+      "If True, the user may call UpdateConfiguration to change the values of "
+      "the properties listed in MutableProperties.",
+      FALSE,
+      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CAN_UPDATE_CONFIGURATION,
+      param_spec);
 }
 
 /* room_config_getter:
@@ -377,6 +396,7 @@ room_config_getter (
 }
 
 static TpDBusPropertiesMixinPropImpl room_config_properties[] = {
+  /* Configuration */
   { "Anonymous", "anonymous", NULL, },
   { "InviteOnly", "invite-only", NULL },
   { "Limit", "limit", NULL },
@@ -387,6 +407,10 @@ static TpDBusPropertiesMixinPropImpl room_config_properties[] = {
   { "Private", "private", NULL },
   { "PasswordProtected", "password-protected", NULL },
   { "Password", "password", NULL },
+
+  /* Meta-data */
+  { "CanUpdateConfiguration", "can-update-configuration", NULL },
+
   { NULL }
 };
 
@@ -445,5 +469,29 @@ gabble_room_config_new (
 
   return g_object_new (GABBLE_TYPE_ROOM_CONFIG,
       "channel", channel,
+      NULL);
+}
+
+/**
+ * gabble_room_config_set_can_update_configuration:
+ * @self: a #GabbleRoomConfig object.
+ * @can_update_configuration: %TRUE if the local user has permission to modify
+ *  properties marked as mutable.
+ *
+ * Specify whether or not the local user currently has permission to modify the
+ * room configuration.
+ *
+ * Changes made by calling this function are not signalled over D-Bus until
+ * gabble_room_config_emit_properties_changed() is next called.
+ */
+void
+gabble_room_config_set_can_update_configuration (
+    GabbleRoomConfig *self,
+    gboolean can_update_configuration)
+{
+  g_return_if_fail (GABBLE_IS_ROOM_CONFIG (self));
+
+  g_object_set (self,
+      "can-update-configuration", can_update_configuration,
       NULL);
 }

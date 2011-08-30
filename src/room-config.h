@@ -47,6 +47,10 @@ void gabble_room_config_iface_init (
 GabbleRoomConfig *gabble_room_config_new (
     TpBaseChannel *channel);
 
+void gabble_room_config_set_can_update_configuration (
+    GabbleRoomConfig *self,
+    gboolean can_update_configuration);
+
 /* TYPE MACROS */
 GType gabble_room_config_get_type (void);
 

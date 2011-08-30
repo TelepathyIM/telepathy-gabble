@@ -158,7 +158,6 @@ enum
 {
   ROOM_PROP_ANONYMOUS = 0,
   ROOM_PROP_INVITE_ONLY,
-  ROOM_PROP_INVITE_RESTRICTED,
   ROOM_PROP_MODERATED,
   ROOM_PROP_NAME,
   ROOM_PROP_DESCRIPTION,
@@ -176,7 +175,6 @@ const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
     /* Part of the room definition: modifiable by owners only */
       { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "invite-restricted", G_TYPE_BOOLEAN },  /* impl: WRITE */
       { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
       { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
 
@@ -1796,10 +1794,6 @@ update_permissions (GabbleMucChannel *chan)
       changed_props_flags);
 
   tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_INVITE_RESTRICTED, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
       ROOM_PROP_MODERATED, prop_flags_add, prop_flags_rem,
       changed_props_flags);
 
@@ -3235,8 +3229,6 @@ static ConfigFormMapping form_mappings[] = {
     { "members_only", ROOM_PROP_INVITE_ONLY, map_bool },
     { "muc#roomconfig_membersonly", ROOM_PROP_INVITE_ONLY, map_bool },
     { "muc#owner_inviteonly", ROOM_PROP_INVITE_ONLY, map_bool },
-
-    { "muc#roomconfig_allowinvites", ROOM_PROP_INVITE_RESTRICTED, map_bool_inverted },
 
     { "moderated", ROOM_PROP_MODERATED, map_bool },
     { "muc#roomconfig_moderatedroom", ROOM_PROP_MODERATED, map_bool },

@@ -3164,8 +3164,9 @@ gabble_muc_channel_remove_member (GObject *obj,
 }
 
 
-static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn,
-    LmMessage *sent_msg, LmMessage *reply_msg, GObject *object,
+static void request_config_form_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
     gpointer user_data);
 
 static gboolean
@@ -3178,26 +3179,17 @@ gabble_muc_channel_do_set_properties (GObject *obj,
   TpBaseChannel *base = TP_BASE_CHANNEL (obj);
   GabbleConnection *conn =
       GABBLE_CONNECTION (tp_base_channel_get_connection (base));
-  LmMessage *msg;
-  LmMessageNode *node;
-  gboolean success;
+  WockyStanza *stanza;
 
   g_assert (priv->properties_ctx == NULL);
 
-  msg = lm_message_new_with_sub_type (priv->jid,
-      LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-  node = lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
-
-  success = _gabble_connection_send_with_reply (conn, msg,
-      request_config_form_reply_cb, G_OBJECT (obj), NULL,
-      error);
-
-  lm_message_unref (msg);
-
-  if (!success)
-    return FALSE;
+  stanza = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, priv->jid,
+      '(', "query", ':', WOCKY_NS_MUC_OWNER, ')', NULL);
+  conn_util_send_iq_async (conn, stanza, NULL,
+      request_config_form_reply_cb, g_object_ref (self));
+  g_object_unref (stanza);
 
   priv->properties_ctx = ctx;
   return TRUE;
@@ -3290,50 +3282,54 @@ lookup_config_form_field (const gchar *var)
   return NULL;
 }
 
-static LmHandlerResult request_config_form_submit_reply_cb (
-    GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
-    GObject *object, gpointer user_data);
+static void request_config_form_submit_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data);
 
-static LmHandlerResult
-request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                              LmMessage *reply_msg, GObject *object,
-                              gpointer user_data)
+static void
+request_config_form_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  TpBaseChannel *base = TP_BASE_CHANNEL (chan);
+  GabbleConnection *conn = GABBLE_CONNECTION (source);
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (user_data);
   GabbleMucChannelPrivate *priv = chan->priv;
   TpPropertiesContext *ctx = priv->properties_ctx;
+  WockyStanza *reply = NULL;
+  WockyStanza *submit_iq = NULL;
+  WockyNode *form_node, *submit_node, *child;
   GError *error = NULL;
-  LmMessage *msg = NULL;
-  LmMessageNode *submit_node, *form_node, *node;
   guint i, props_left;
-  NodeIter j;
+  WockyNodeIter j;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!conn_util_send_iq_finish (conn, result, &reply, &error))
     {
-      error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                           "request for configuration form denied");
-
+      g_prefix_error (&error, "failed to request configuration form: ");
       goto OUT;
     }
 
-  form_node = config_form_get_form_node (reply_msg);
+  form_node = config_form_get_form_node (reply);
   if (form_node == NULL)
-    goto PARSE_ERROR;
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_SERVICE_CONFUSED,
+          "MUC configuration form didn't actually contain a form");
+      goto OUT;
+    }
 
   /* initialize */
-  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_SET);
-
-  node = lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (node, "xmlns", NS_MUC_OWNER);
-
-  submit_node = lm_message_node_add_child (node, "x", NULL);
-  lm_message_node_set_attributes (submit_node,
-                                  "xmlns", NS_X_DATA,
-                                  "type", "submit",
-                                  NULL);
+  submit_iq = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->jid,
+      '(',
+        "query", ':', WOCKY_NS_MUC_OWNER,
+        '(',
+          "x", ':', WOCKY_XMPP_NS_DATA,
+          '@', "type", "submit",
+          '*', &submit_node,
+        ')',
+      ')', NULL);
 
   /* we assume that the number of props will fit in a guint on all supported
    * platforms, so fail at compile time if this is no longer the case
@@ -3349,20 +3345,14 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         props_left |= 1 << i;
     }
 
-  for (j = node_iter (form_node); j; j = node_iter_next (j))
+  wocky_node_iter_init (&j, form_node, "field", NULL);
+  while (wocky_node_iter_next (&j, &child))
     {
       const gchar *var, *type_str;
       LmMessageNode *field_node;
-      LmMessageNode *child = node_iter_data (j);
       ConfigFormMapping *f;
 
-      if (strcmp (child->name, "field") != 0)
-        {
-          DEBUG ("skipping node '%s'", child->name);
-          continue;
-        }
-
-      var = lm_message_node_get_attribute (child, "var");
+      var = wocky_node_get_attribute (child, "var");
       if (var == NULL) {
         DEBUG ("skipping node '%s' because of lacking var attribute",
                child->name);
@@ -3372,13 +3362,13 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
       f = lookup_config_form_field (var);
 
       /* add the corresponding field node to the reply message */
-      field_node = lm_message_node_add_child (submit_node, "field", NULL);
-      lm_message_node_set_attribute (field_node, "var", var);
+      field_node = wocky_node_add_child (submit_node, "field");
+      wocky_node_set_attribute (field_node, "var", var);
 
-      type_str = lm_message_node_get_attribute (child, "type");
-      if (type_str)
+      type_str = wocky_node_get_attribute (child, "type");
+      if (type_str != NULL)
         {
-          lm_message_node_set_attribute (field_node, "type", type_str);
+          wocky_node_set_attribute (field_node, "type", type_str);
         }
 
       if (f != NULL && tp_properties_context_has (ctx, f->prop_id))
@@ -3392,31 +3382,27 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
           /* add the corresponding value node(s) to the reply message */
           DEBUG ("Setting value %s for %s", val_str, var);
-          lm_message_node_add_child (field_node, "value", val_str);
+          wocky_node_add_child_with_content (field_node, "value", val_str);
 
           props_left &= ~(1 << f->prop_id);
         }
       else
         {
           /* Copy all the <value> nodes */
-          NodeIter k;
+          WockyNodeIter k;
+          WockyNode *value_node;
 
-          for (k = node_iter (child); k; k = node_iter_next (k))
-            {
-              LmMessageNode *value_node = node_iter_data (k);
-
-              if (tp_strdiff (value_node->name, "value"))
-                /* Not a value, skip it */
-                continue;
-
-              lm_message_node_add_child (field_node, "value",
-                  lm_message_node_get_value (value_node));
-            }
+          wocky_node_iter_init (&k, child, "value", NULL);
+          while (wocky_node_iter_next (&k, &value_node))
+            wocky_node_add_child_with_content (field_node, "value",
+                value_node->content);
         }
     }
 
   if (props_left != 0)
     {
+      GString *unsubstituted = g_string_new ("");
+
       printf (TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE TP_ANSI_BG_RED
               "\n%s: the following properties were not substituted:\n",
               G_STRFUNC);
@@ -3426,58 +3412,55 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           if ((props_left & (1 << i)) != 0)
             {
               printf ("  %s\n", room_property_signatures[i].name);
+
+              if (unsubstituted->len > 0)
+                g_string_append (unsubstituted, ", ");
+
+              g_string_append (unsubstituted, room_property_signatures[i].name);
             }
         }
 
       printf ("\nthis is a MUC server compatibility bug in gabble, please "
               "report it with a full debug log attached (running gabble "
-              "with LM_DEBUG=net)" TP_ANSI_RESET "\n\n");
+              "with WOCKY_DEBUG=xmpp)" TP_ANSI_RESET "\n\n");
       fflush (stdout);
 
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                           "not all properties were substituted");
+      error = g_error_new (TP_ERRORS, TP_ERROR_SERVICE_CONFUSED,
+          "Couldn't find fields corresponding to %s in the muc#owner form. "
+          "This is a MUC server compatibility bug in Gabble.",
+          unsubstituted->str);
+      g_string_free (unsubstituted, TRUE);
       goto OUT;
     }
 
-  _gabble_connection_send_with_reply (
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg,
-      request_config_form_submit_reply_cb, G_OBJECT (object),
-      NULL, &error);
-
-  goto OUT;
-
-PARSE_ERROR:
-  error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                       "error parsing reply from server");
+  conn_util_send_iq_async (conn, submit_iq, NULL,
+      request_config_form_submit_reply_cb, g_object_ref (chan));
 
 OUT:
-  if (error)
+  if (error != NULL)
     {
       tp_properties_context_return (ctx, error);
       priv->properties_ctx = NULL;
     }
 
-  if (msg)
-    lm_message_unref (msg);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  tp_clear_object (&reply);
+  tp_clear_object (&submit_iq);
+  g_object_unref (chan);
 }
 
-static LmHandlerResult
-request_config_form_submit_reply_cb (GabbleConnection *conn,
-                                     LmMessage *sent_msg,
-                                     LmMessage *reply_msg,
-                                     GObject *object,
-                                     gpointer user_data)
+static void
+request_config_form_submit_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (user_data);
   GabbleMucChannelPrivate *priv = chan->priv;
   GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, NULL, &error))
     {
-      error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                           "submitted configuration form was rejected");
+      g_prefix_error (&error, "submitted configuration form was rejected: ");
     }
 
   tp_properties_context_return (priv->properties_ctx, error);
@@ -3486,7 +3469,7 @@ request_config_form_submit_reply_cb (GabbleConnection *conn,
   /* Get the properties into a consistent state. */
   room_properties_update (chan);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  g_object_unref (chan);
 }
 
 /**

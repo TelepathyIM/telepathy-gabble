@@ -8,7 +8,7 @@ from twisted.words.xish import xpath
 from gabbletest import (
     exec_test, make_result_iq, acknowledge_iq, make_muc_presence,
     request_muc_handle)
-from servicetest import call_async, wrap_channel, EventPattern
+from servicetest import call_async, wrap_channel, EventPattern, assertEquals
 
 import constants as cs
 import ns
@@ -75,14 +75,21 @@ def test(q, bus, conn, stream):
     for field in fields:
         values = xpath.queryForNodes('/field/value', field)
         form[field['var']] = [str(v) for v in values]
-    assert form == {'password': ['foo'], 'password_protected': ['1'],
-            'muc#roomconfig_presencebroadcast' :
-            ['moderator', 'participant', 'visitor']}
+    # Check that Gabble echoed back the fields it didn't understand (or want to
+    # change) with their previous values.
+    assertEquals(
+        {'password': ['foo'],
+         'password_protected': ['1'],
+         'muc#roomconfig_presencebroadcast':
+            ['moderator', 'participant', 'visitor'],
+        }, form)
     acknowledge_iq(stream, event.stanza)
 
     event = q.expect('dbus-signal', signal='PropertiesChanged')
-    assert event.args == [[(props['password'], 'foo'),
-        (props['password-required'], True)]]
+    assertEquals(
+        [[(props['password'], 'foo'),
+          (props['password-required'], True),
+        ]], event.args)
 
     q.expect('dbus-return', method='SetProperties', value=())
 

@@ -503,7 +503,22 @@ gabble_muc_channel_constructed (GObject *obj)
    * muc#roomconfig_changesubject settings. */
   priv->can_set_subject = TRUE;
 
-  priv->room_config = gabble_room_config_new ((TpBaseChannel *) self);
+  {
+    GabbleRoomConfigProperty mutable_properties[] = {
+        GABBLE_ROOM_CONFIG_ANONYMOUS,
+        GABBLE_ROOM_CONFIG_INVITE_ONLY,
+        GABBLE_ROOM_CONFIG_MODERATED,
+        GABBLE_ROOM_CONFIG_TITLE,
+        GABBLE_ROOM_CONFIG_PERSISTENT,
+        GABBLE_ROOM_CONFIG_PRIVATE,
+    };
+    guint i;
+
+    priv->room_config = gabble_room_config_new ((TpBaseChannel *) self);
+    for (i = 0; i < G_N_ELEMENTS (mutable_properties); i++)
+      gabble_room_config_set_property_mutable (priv->room_config,
+          mutable_properties[i], TRUE);
+  }
 
   if (priv->invited)
     {
@@ -1726,6 +1741,9 @@ perms_config_form_reply_cb (
       if (!tp_strdiff (var, "muc#roomconfig_roomdesc") ||
           !tp_strdiff (var, "muc#owner_roomdesc"))
         {
+          gabble_room_config_set_property_mutable (priv->room_config,
+              GABBLE_ROOM_CONFIG_DESCRIPTION, TRUE);
+
           if (tp_properties_mixin_is_readable (G_OBJECT (self),
                                                    ROOM_PROP_DESCRIPTION))
             {

@@ -8,7 +8,9 @@ from twisted.words.xish import xpath
 from gabbletest import (
     exec_test, make_result_iq, acknowledge_iq, make_muc_presence,
     request_muc_handle)
-from servicetest import call_async, wrap_channel, EventPattern, assertEquals
+from servicetest import (
+    call_async, wrap_channel, EventPattern, assertEquals, assertSameSets,
+)
 
 import constants as cs
 import ns
@@ -32,6 +34,11 @@ def handle_muc_owner_get_iq(stream, stanza):
     x['type'] = 'form'
     add_field(x, 'text', 'password', '')
     add_field(x, 'boolean', 'password_protected', '0')
+
+    # We have to include this field here to convince Gabble that the
+    # description can be modified by owners. As far as wjt can determine, this
+    # is a question of uneven server support: see 6f20080.
+    add_field(x, 'text-single', 'muc#roomconfig_roomdesc', ROOM_DESCRIPTION)
 
     # add a multi values setting
     field = x.addElement('field')
@@ -127,7 +134,17 @@ def test(q, bus, conn, stream):
 
     # We're a room owner, so we should be able to modify the room configuration
     assertEquals(True, config['CanUpdateConfiguration'])
-    assertEquals([], config['MutableProperties'])
+    assertSameSets(
+        ['Anonymous',
+         'InviteOnly',
+        # TODO: when we understand member limit fields, add Limit
+         'Moderated',
+         'Title',
+         'Description',
+         'Persistent',
+         'Private',
+        ],
+        config['MutableProperties'])
 
     props = dict([(name, id)
         for id, name, sig, flags in text_chan.TpProperties.ListProperties()])
@@ -152,6 +169,7 @@ def test(q, bus, conn, stream):
          'password_protected': ['1'],
          'muc#roomconfig_presencebroadcast':
             ['moderator', 'participant', 'visitor'],
+         'muc#roomconfig_roomdesc': [ROOM_DESCRIPTION],
         }, form)
     acknowledge_iq(stream, event.stanza)
 

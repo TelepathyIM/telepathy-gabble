@@ -22,8 +22,15 @@
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/interfaces.h>
 
+/* For wocky_enum_to_nick. If we move this to tp-glib, I guess we get to copy
+ * that function over there…
+ */
+#include <wocky/wocky-utils.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 #include "debug.h"
+
+#include "gabble-enumtypes.h"
 
 /**
  * GabbleRoomConfigClass:
@@ -37,6 +44,25 @@
  * An object representing the configuration of a multi-user chat room.
  *
  * There are no public fields.
+ */
+
+/**
+ * GabbleRoomConfigProperty:
+ * @GABBLE_ROOM_CONFIG_ANONYMOUS: corresponds to #GabbleRoomConfig:anonymous
+ * @GABBLE_ROOM_CONFIG_INVITE_ONLY: corresponds to #GabbleRoomConfig:invite-only
+ * @GABBLE_ROOM_CONFIG_LIMIT: corresponds to #GabbleRoomConfig:limit
+ * @GABBLE_ROOM_CONFIG_MODERATED: corresponds to #GabbleRoomConfig:moderated
+ * @GABBLE_ROOM_CONFIG_TITLE: corresponds to #GabbleRoomConfig:title
+ * @GABBLE_ROOM_CONFIG_DESCRIPTION: corresponds to #GabbleRoomConfig:description
+ * @GABBLE_ROOM_CONFIG_PERSISTENT: corresponds to #GabbleRoomConfig:persistent
+ * @GABBLE_ROOM_CONFIG_PRIVATE: corresponds to #GabbleRoomConfig:private
+ * @GABBLE_ROOM_CONFIG_PASSWORD_PROTECTED: corresponds to #GabbleRoomConfig:password-protected
+ * @GABBLE_ROOM_CONFIG_PASSWORD: corresponds to #GabbleRoomConfig:Password
+ * @GABBLE_NUM_ROOM_CONFIG_PROPERTIES: the number of configuration properties
+ *  currently defined.
+ *
+ * An enumeration of room configuration fields, corresponding to GObject
+ * properties and, in turn, to D-Bus properties.
  */
 
 struct _GabbleRoomConfigPrivate {
@@ -54,6 +80,7 @@ struct _GabbleRoomConfigPrivate {
     gchar *password;
 
     gboolean can_update_configuration;
+    TpIntset *mutable_properties;
 };
 
 enum {
@@ -72,6 +99,7 @@ enum {
     PROP_PASSWORD,
 
     PROP_CAN_UPDATE_CONFIGURATION,
+    PROP_MUTABLE_PROPERTIES,
 };
 
 G_DEFINE_TYPE (GabbleRoomConfig, gabble_room_config, G_TYPE_OBJECT)
@@ -79,8 +107,13 @@ G_DEFINE_TYPE (GabbleRoomConfig, gabble_room_config, G_TYPE_OBJECT)
 static void
 gabble_room_config_init (GabbleRoomConfig *self)
 {
+  GabbleRoomConfigPrivate *priv;
+
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_ROOM_CONFIG,
       GabbleRoomConfigPrivate);
+  priv = self->priv;
+
+  priv->mutable_properties = tp_intset_new ();
 }
 
 static void
@@ -131,6 +164,28 @@ gabble_room_config_get_property (
       case PROP_CAN_UPDATE_CONFIGURATION:
         g_value_set_boolean (value, priv->can_update_configuration);
         break;
+      case PROP_MUTABLE_PROPERTIES:
+      {
+        GPtrArray *property_names = g_ptr_array_new ();
+        TpIntsetFastIter iter;
+        guint i;
+
+        tp_intset_fast_iter_init (&iter, priv->mutable_properties);
+        while (tp_intset_fast_iter_next (&iter, &i))
+          {
+            const gchar *property_name = wocky_enum_to_nick (
+                GABBLE_TYPE_ROOM_CONFIG_PROPERTY, i);
+
+            g_assert (property_name != NULL);
+            g_ptr_array_add (property_names, (gchar *) property_name);
+          }
+
+        g_ptr_array_add (property_names, NULL);
+        g_value_take_boxed (value,
+            g_strdupv ((gchar **) property_names->pdata));
+        g_ptr_array_free (property_names, TRUE);
+        break;
+      }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -270,6 +325,7 @@ gabble_room_config_finalize (GObject *object)
   g_free (priv->title);
   g_free (priv->description);
   g_free (priv->password);
+  tp_intset_destroy (priv->mutable_properties);
 
   if (parent_class->finalize != NULL)
     parent_class->finalize (object);
@@ -372,6 +428,15 @@ gabble_room_config_class_init (GabbleRoomConfigClass *klass)
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CAN_UPDATE_CONFIGURATION,
       param_spec);
+
+  param_spec = g_param_spec_boxed ("mutable-properties", "MutableProperties",
+      "A list of (unqualified) property names on this interface which may be "
+      "modified using UpdateConfiguration (if CanUpdateConfiguration is "
+      "True). Properties not listed here cannot be modified.",
+      G_TYPE_STRV,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_MUTABLE_PROPERTIES,
+      param_spec);
 }
 
 /* room_config_getter:
@@ -410,6 +475,7 @@ static TpDBusPropertiesMixinPropImpl room_config_properties[] = {
 
   /* Meta-data */
   { "CanUpdateConfiguration", "can-update-configuration", NULL },
+  { "MutableProperties", "mutable-properties", NULL },
 
   { NULL }
 };
@@ -494,4 +560,58 @@ gabble_room_config_set_can_update_configuration (
   g_object_set (self,
       "can-update-configuration", can_update_configuration,
       NULL);
+}
+
+/**
+ * gabble_room_config_set_property_mutable:
+ * @self: a #GabbleRoomConfig object.
+ * @property_id: a property identifier (not including
+ *  %GABBLE_NUM_ROOM_CONFIG_PROPERTIES)
+ * @is_mutable: %TRUE if it is possible for Telepathy clients to modify
+ *  @property_id when #GabbleRoomConfig:can-update-configuration is %TRUE.
+ *
+ * Specify whether it is possible for room members to modify the value of
+ * @property_id (possibly dependent on them having channel-operator powers), or
+ * whether @property_id's value is an intrinsic fact about the protocol.
+ *
+ * For example, on IRC it is impossible to configure a channel to hide the
+ * identities of participants from others, so %GABBLE_ROOM_CONFIG_ANONYMOUS
+ * should be marked as immutable on IRC; whereas channel operators can mark
+ * rooms as invite-only, so %GABBLE_ROOM_CONFIG_INVITE_ONLY should be marked as
+ * mutable on IRC.
+ *
+ * By default, all properties are considered immutable.
+ *
+ * Call gabble_room_config_set_can_update_configuration() to specify whether or
+ * not it is currently possible for the local user to alter properties marked
+ * as mutable.
+ *
+ * Changes made by calling this function are not signalled over D-Bus until
+ * gabble_room_config_emit_properties_changed() is next called.
+ */
+void
+gabble_room_config_set_property_mutable (
+    GabbleRoomConfig *self,
+    GabbleRoomConfigProperty property_id,
+    gboolean is_mutable)
+{
+  GabbleRoomConfigPrivate *priv = self->priv;
+  gboolean changed = FALSE;
+
+  g_return_if_fail (GABBLE_IS_ROOM_CONFIG (self));
+  g_return_if_fail (property_id < GABBLE_NUM_ROOM_CONFIG_PROPERTIES);
+
+  /* Grr. Damn _add and _remove functions for being asymmetrical. */
+  if (!is_mutable)
+    {
+      changed = tp_intset_remove (priv->mutable_properties, property_id);
+    }
+  else if (!tp_intset_is_member (priv->mutable_properties, property_id))
+    {
+      tp_intset_add (priv->mutable_properties, property_id);
+      changed = TRUE;
+    }
+
+  if (changed)
+    g_object_notify ((GObject *) self, "mutable-properties");
 }

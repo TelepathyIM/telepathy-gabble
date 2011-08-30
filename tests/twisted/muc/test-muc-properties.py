@@ -127,6 +127,7 @@ def test(q, bus, conn, stream):
 
     # We're a room owner, so we should be able to modify the room configuration
     assertEquals(True, config['CanUpdateConfiguration'])
+    assertEquals([], config['MutableProperties'])
 
     props = dict([(name, id)
         for id, name, sig, flags in text_chan.TpProperties.ListProperties()])

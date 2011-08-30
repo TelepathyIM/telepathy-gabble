@@ -3203,6 +3203,93 @@ gabble_muc_channel_do_set_properties (GObject *obj,
   return TRUE;
 }
 
+typedef const gchar * (*MapFieldFunc) (const GValue *value);
+
+typedef struct {
+    const gchar *var;
+    guint prop_id;
+    MapFieldFunc map;
+} ConfigFormMapping;
+
+static const gchar *
+map_bool (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "1" : "0";
+}
+
+static const gchar *
+map_bool_inverted (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "0" : "1";
+}
+
+static const gchar *
+map_roomconfig_whois (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "moderators" : "anyone";
+}
+
+static const gchar *
+map_owner_whois (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "admins" : "anyone";
+}
+
+static ConfigFormMapping form_mappings[] = {
+    { "anonymous", ROOM_PROP_ANONYMOUS, map_bool },
+    { "muc#roomconfig_whois", ROOM_PROP_ANONYMOUS, map_roomconfig_whois },
+    { "muc#owner_whois", ROOM_PROP_ANONYMOUS, map_owner_whois },
+
+    { "members_only", ROOM_PROP_INVITE_ONLY, map_bool },
+    { "muc#roomconfig_membersonly", ROOM_PROP_INVITE_ONLY, map_bool },
+    { "muc#owner_inviteonly", ROOM_PROP_INVITE_ONLY, map_bool },
+
+    { "muc#roomconfig_allowinvites", ROOM_PROP_INVITE_RESTRICTED, map_bool_inverted },
+
+    { "moderated", ROOM_PROP_MODERATED, map_bool },
+    { "muc#roomconfig_moderatedroom", ROOM_PROP_MODERATED, map_bool },
+    { "muc#owner_moderatedroom", ROOM_PROP_MODERATED, map_bool },
+
+    { "title", ROOM_PROP_NAME, g_value_get_string },
+    { "muc#roomconfig_roomname", ROOM_PROP_NAME, g_value_get_string },
+    { "muc#owner_roomname", ROOM_PROP_NAME, g_value_get_string },
+
+    { "muc#roomconfig_roomdesc", ROOM_PROP_DESCRIPTION, g_value_get_string },
+    { "muc#owner_roomdesc", ROOM_PROP_DESCRIPTION, g_value_get_string },
+
+    { "password", ROOM_PROP_PASSWORD, g_value_get_string },
+    { "muc#roomconfig_roomsecret", ROOM_PROP_PASSWORD, g_value_get_string },
+    { "muc#owner_roomsecret", ROOM_PROP_PASSWORD, g_value_get_string },
+
+    { "password_protected", ROOM_PROP_PASSWORD_REQUIRED, map_bool },
+    { "muc#roomconfig_passwordprotectedroom", ROOM_PROP_PASSWORD_REQUIRED, map_bool },
+    { "muc#owner_passwordprotectedroom", ROOM_PROP_PASSWORD_REQUIRED, map_bool },
+
+    { "persistent", ROOM_PROP_PERSISTENT, map_bool },
+    { "muc#roomconfig_persistentroom", ROOM_PROP_PERSISTENT, map_bool },
+    { "muc#owner_persistentroom", ROOM_PROP_PERSISTENT, map_bool },
+
+    { "public", ROOM_PROP_PRIVATE, map_bool_inverted },
+    { "muc#roomconfig_publicroom", ROOM_PROP_PRIVATE, map_bool_inverted },
+    { "muc#owner_publicroom", ROOM_PROP_PRIVATE, map_bool_inverted },
+
+    { NULL }
+};
+
+static ConfigFormMapping *
+lookup_config_form_field (const gchar *var)
+{
+  ConfigFormMapping *f;
+
+  for (f = form_mappings; f->var != NULL; f++)
+    if (strcmp (var, f->var) == 0)
+      return f;
+
+  DEBUG ("unknown field %s", var);
+
+  return NULL;
+}
+
 static LmHandlerResult request_config_form_submit_reply_cb (
     GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
     GObject *object, gpointer user_data);
@@ -3264,14 +3351,10 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   for (j = node_iter (form_node); j; j = node_iter_next (j))
     {
-      const gchar *var;
+      const gchar *var, *type_str;
       LmMessageNode *field_node;
       LmMessageNode *child = node_iter_data (j);
-      guint id;
-      GType type;
-      gboolean invert;
-      const gchar *val_str = NULL, *type_str;
-      gboolean val_bool;
+      ConfigFormMapping *f;
 
       if (strcmp (child->name, "field") != 0)
         {
@@ -3286,96 +3369,7 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         continue;
       }
 
-      id = INVALID_ROOM_PROP;
-      type = G_TYPE_BOOLEAN;
-      invert = FALSE;
-
-      if (strcmp (var, "anonymous") == 0)
-        {
-          id = ROOM_PROP_ANONYMOUS;
-        }
-      else if (strcmp (var, "muc#roomconfig_whois") == 0)
-        {
-          id = ROOM_PROP_ANONYMOUS;
-
-          if (tp_properties_context_has (ctx, id))
-            {
-              val_bool = g_value_get_boolean (
-                  tp_properties_context_get (ctx, id));
-              val_str = (val_bool) ? "moderators" : "anyone";
-            }
-        }
-      else if (strcmp (var, "muc#owner_whois") == 0)
-        {
-          id = ROOM_PROP_ANONYMOUS;
-
-          if (tp_properties_context_has (ctx, id))
-            {
-              val_bool = g_value_get_boolean (
-                  tp_properties_context_get (ctx, id));
-              val_str = (val_bool) ? "admins" : "anyone";
-            }
-        }
-      else if (strcmp (var, "members_only") == 0 ||
-               strcmp (var, "muc#roomconfig_membersonly") == 0 ||
-               strcmp (var, "muc#owner_inviteonly") == 0)
-        {
-          id = ROOM_PROP_INVITE_ONLY;
-        }
-      else if (strcmp (var, "muc#roomconfig_allowinvites") == 0)
-        {
-          id = ROOM_PROP_INVITE_RESTRICTED;
-          invert = TRUE;
-        }
-      else if (strcmp (var, "moderated") == 0 ||
-               strcmp (var, "muc#roomconfig_moderatedroom") == 0 ||
-               strcmp (var, "muc#owner_moderatedroom") == 0)
-        {
-          id = ROOM_PROP_MODERATED;
-        }
-      else if (strcmp (var, "title") == 0 ||
-               strcmp (var, "muc#roomconfig_roomname") == 0 ||
-               strcmp (var, "muc#owner_roomname") == 0)
-        {
-          id = ROOM_PROP_NAME;
-          type = G_TYPE_STRING;
-        }
-      else if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
-               strcmp (var, "muc#owner_roomdesc") == 0)
-        {
-          id = ROOM_PROP_DESCRIPTION;
-          type = G_TYPE_STRING;
-        }
-      else if (strcmp (var, "password") == 0 ||
-               strcmp (var, "muc#roomconfig_roomsecret") == 0 ||
-               strcmp (var, "muc#owner_roomsecret") == 0)
-        {
-          id = ROOM_PROP_PASSWORD;
-          type = G_TYPE_STRING;
-        }
-      else if (strcmp (var, "password_protected") == 0 ||
-               strcmp (var, "muc#roomconfig_passwordprotectedroom") == 0 ||
-               strcmp (var, "muc#owner_passwordprotectedroom") == 0)
-        {
-          id = ROOM_PROP_PASSWORD_REQUIRED;
-        }
-      else if (strcmp (var, "persistent") == 0 ||
-               strcmp (var, "muc#roomconfig_persistentroom") == 0 ||
-               strcmp (var, "muc#owner_persistentroom") == 0)
-        {
-          id = ROOM_PROP_PERSISTENT;
-        }
-      else if (strcmp (var, "public") == 0 ||
-               strcmp (var, "muc#roomconfig_publicroom") == 0 ||
-               strcmp (var, "muc#owner_publicroom") == 0)
-        {
-          id = ROOM_PROP_PRIVATE;
-          invert = TRUE;
-        }
-      else
-        {
-          DEBUG ("ignoring field '%s'", var);
-        }
+      f = lookup_config_form_field (var);
 
       /* add the corresponding field node to the reply message */
       field_node = lm_message_node_add_child (submit_node, "field", NULL);
@@ -3387,39 +3381,20 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
           lm_message_node_set_attribute (field_node, "type", type_str);
         }
 
-      if (id != INVALID_ROOM_PROP && tp_properties_context_has (ctx, id))
+      if (f != NULL && tp_properties_context_has (ctx, f->prop_id))
         {
+          const gchar *val_str;
+
           /* Known property and we have a value to set */
-          DEBUG ("looking up %s... has=%d", room_property_signatures[id].name,
-              tp_properties_context_has (ctx, id));
-
-          if (!val_str)
-            {
-              const GValue *provided_value;
-
-              provided_value = tp_properties_context_get (ctx, id);
-
-              switch (type) {
-                case G_TYPE_BOOLEAN:
-                  val_bool = g_value_get_boolean (provided_value);
-                  if (invert)
-                    val_bool = !val_bool;
-                  val_str = val_bool ? "1" : "0";
-                  break;
-                case G_TYPE_STRING:
-                  val_str = g_value_get_string (provided_value);
-                  break;
-                default:
-                  g_assert_not_reached ();
-              }
-            }
-
-          DEBUG ("Setting value %s for %s", val_str, var);
-
-          props_left &= ~(1 << id);
+          DEBUG ("looking up %s...", room_property_signatures[f->prop_id].name);
+          g_assert (f->map != NULL);
+          val_str = f->map (tp_properties_context_get (ctx, f->prop_id));
 
           /* add the corresponding value node(s) to the reply message */
+          DEBUG ("Setting value %s for %s", val_str, var);
           lm_message_node_add_child (field_node, "value", val_str);
+
+          props_left &= ~(1 << f->prop_id);
         }
       else
         {

@@ -36,6 +36,7 @@
 #include <wocky/wocky-tls-handler.h>
 #include <wocky/wocky-ping.h>
 #include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky-data-form.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
@@ -260,6 +261,10 @@ struct _GabbleConnectionPrivate
   /* the union of the above */
   GabbleCapabilitySet *all_caps;
 
+  /* data forms provided via UpdateCapabilities()
+   * gchar * (client name) => GPtrArray<owned WockyDataForm> */
+  GHashTable *client_data_forms;
+
   /* auth manager */
   GabbleAuthManager *auth_manager;
 
@@ -445,6 +450,9 @@ gabble_connection_constructor (GType type,
   priv->sidecar_caps = gabble_capability_set_new ();
   priv->client_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, (GDestroyNotify) gabble_capability_set_free);
+
+  priv->client_data_forms = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, (GDestroyNotify) g_object_unref);
 
   /* Historically, the optional Jingle transports were in our initial
    * presence, but could be removed by AdvertiseCapabilities(). Emulate
@@ -1223,6 +1231,8 @@ gabble_connection_dispose (GObject *object)
   gabble_capability_set_free (priv->legacy_caps);
   gabble_capability_set_free (priv->sidecar_caps);
   gabble_capability_set_free (priv->bonus_caps);
+
+  g_hash_table_destroy (priv->client_data_forms);
 
   if (priv->disconnect_timer != 0)
     {
@@ -3237,8 +3247,10 @@ gabble_connection_update_capabilities (
       const GPtrArray *filters = g_value_get_boxed (va->values + 1);
       const gchar * const * cap_tokens = g_value_get_boxed (va->values + 2);
       GabbleCapabilitySet *cap_set;
+      GPtrArray *data_forms;
 
       g_hash_table_remove (self->priv->client_caps, client_name);
+      g_hash_table_remove (self->priv->client_data_forms, client_name);
 
       if ((cap_tokens == NULL || cap_tokens[0] != NULL) &&
           filters->len == 0)
@@ -3249,6 +3261,8 @@ gabble_connection_update_capabilities (
         }
 
       cap_set = gabble_capability_set_new ();
+      data_forms = g_ptr_array_new_with_free_func (
+          (GDestroyNotify) g_object_unref);
 
       tp_base_connection_channel_manager_iter_init (&iter, base);
 
@@ -3258,16 +3272,12 @@ gabble_connection_update_capabilities (
             {
               gabble_caps_channel_manager_represent_client (
                   GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
-                  cap_tokens, cap_set, NULL); /* TODO: dataforms */
+                  cap_tokens, cap_set, data_forms);
             }
         }
 
-      if (gabble_capability_set_size (cap_set) == 0)
-        {
-          DEBUG ("client %s has no interesting capabilities", client_name);
-          gabble_capability_set_free (cap_set);
-        }
-      else
+      /* first deal with normal caps */
+      if (gabble_capability_set_size (cap_set) > 0)
         {
           if (DEBUGGING)
             {
@@ -3279,6 +3289,36 @@ gabble_connection_update_capabilities (
 
           g_hash_table_insert (self->priv->client_caps, g_strdup (client_name),
               cap_set);
+        }
+      else
+        {
+          DEBUG ("client %s has no interesting capabilities", client_name);
+          gabble_capability_set_free (cap_set);
+        }
+
+      /* now data forms */
+      if (data_forms->len > 0)
+        {
+          if (DEBUGGING)
+            {
+              guint j;
+
+              DEBUG ("client %s contributes data forms:", client_name);
+
+              for (j = 0; j < data_forms->len; j++)
+                {
+                  WockyDataForm *form = g_ptr_array_index (data_forms, j);
+                  DEBUG ("  %s", wocky_data_form_get_title (form));
+                }
+            }
+
+          g_hash_table_insert (self->priv->client_data_forms,
+              g_strdup (client_name), data_forms);
+        }
+      else
+        {
+          DEBUG ("client %s has no interesting data forms", client_name);
+          g_ptr_array_unref (data_forms);
         }
     }
 

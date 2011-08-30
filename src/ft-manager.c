@@ -824,7 +824,8 @@ gabble_ft_manager_represent_client (
     const gchar *client_name,
     const GPtrArray *filters,
     const gchar * const *cap_tokens G_GNUC_UNUSED,
-    GabbleCapabilitySet *cap_set)
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms G_GNUC_UNUSED)
 {
   guint i;
 

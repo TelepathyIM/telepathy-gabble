@@ -3258,7 +3258,7 @@ gabble_connection_update_capabilities (
             {
               gabble_caps_channel_manager_represent_client (
                   GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
-                  cap_tokens, cap_set);
+                  cap_tokens, cap_set, NULL); /* TODO: dataforms */
             }
         }
 

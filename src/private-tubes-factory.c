@@ -612,7 +612,8 @@ gabble_private_tubes_factory_represent_client (
     const gchar *client_name,
     const GPtrArray *filters,
     const gchar * const *cap_tokens,
-    GabbleCapabilitySet *cap_set)
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms)
 {
   guint i;
 

@@ -2315,7 +2315,8 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
 
   /* Ensure this set of capabilities is in the cache. */
   gabble_presence_cache_add_own_caps (self->presence_cache, caps_hash,
-      gabble_presence_peek_caps (presence), NULL);
+      gabble_presence_peek_caps (presence), NULL,
+      gabble_presence_peek_data_forms (presence));
 
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
@@ -3775,7 +3776,7 @@ gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
   ver = gabble_caps_hash_compute (cap_set, identities_copy);
 
   gabble_presence_cache_add_own_caps (self->presence_cache, ver,
-      cap_set, identities_copy);
+      cap_set, identities_copy, NULL);
 
   wocky_disco_identity_array_free (identities_copy);
 

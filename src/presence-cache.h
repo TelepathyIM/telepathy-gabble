@@ -65,6 +65,9 @@ struct _GabbleCapabilityInfo
   /* array of GabbleDiscoIdentity or NULL */
   GPtrArray *identities;
 
+  /* array of WockyDataForm or NULL */
+  GPtrArray *data_forms;
+
   TpIntSet *guys;
   guint trust;
 
@@ -107,7 +110,8 @@ void gabble_presence_cache_maybe_remove (GabblePresenceCache *cache,
 void gabble_presence_cache_add_own_caps (GabblePresenceCache *cache,
     const gchar *ver,
     const GabbleCapabilitySet *cap_set,
-    const GPtrArray *identities);
+    const GPtrArray *identities,
+    GPtrArray *data_forms);
 const GabbleCapabilityInfo *gabble_presence_cache_peek_own_caps (
     GabblePresenceCache *cache,
     const gchar *ver);

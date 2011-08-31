@@ -287,6 +287,9 @@ static void
 extend_and_dup (GPtrArray *target,
     GPtrArray *source)
 {
+  if (source == NULL)
+    return;
+
   g_ptr_array_foreach (source, (GFunc) g_object_ref, NULL);
   tp_g_ptr_array_extend (target, source);
 }

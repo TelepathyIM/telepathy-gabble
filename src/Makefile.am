@@ -90,6 +90,8 @@ libgabble_convenience_la_SOURCES = \
     ft-manager.h \
     gabble.c \
     gabble.h \
+    google-relay.c \
+    google-relay.h \
     gtalk-file-collection.h \
     gtalk-file-collection.c \
     im-channel.h \

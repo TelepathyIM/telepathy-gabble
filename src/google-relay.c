@@ -18,10 +18,15 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
 #include "google-relay.h"
 
 #include <string.h>
+
+#ifdef ENABLE_GOOGLE_RELAY
 #include <libsoup/soup.h>
+#endif
+
 #include <telepathy-glib/util.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
@@ -31,7 +36,9 @@
 #define RELAY_HTTP_TIMEOUT 5
 
 struct _GabbleGoogleRelayResolver {
+#ifdef ENABLE_GOOGLE_RELAY
   SoupSession *soup;
+#endif
 };
 
 typedef struct
@@ -83,6 +90,8 @@ relay_session_data_destroy (gpointer p)
 
   g_slice_free (RelaySessionData, rsd);
 }
+
+#ifdef ENABLE_GOOGLE_RELAY
 
 static void
 translate_relay_info (GPtrArray *relays,
@@ -234,11 +243,15 @@ on_http_response (SoupSession *soup,
     }
 }
 
+#endif  /* ENABLE_GOOGLE_RELAY */
+
 GabbleGoogleRelayResolver *
 gabble_google_relay_resolver_new (void)
 {
   GabbleGoogleRelayResolver *resolver =
       g_slice_new0 (GabbleGoogleRelayResolver);
+
+#ifdef ENABLE_GOOGLE_RELAY
 
   resolver->soup = soup_session_async_new ();
 
@@ -246,13 +259,17 @@ gabble_google_relay_resolver_new (void)
    * us much help anyways. */
   g_object_set (resolver->soup, "timeout", RELAY_HTTP_TIMEOUT, NULL);
 
+#endif
+
   return resolver;
 }
 
 void
 gabble_google_relay_resolver_destroy (GabbleGoogleRelayResolver *self)
 {
+#ifdef ENABLE_GOOGLE_RELAY
   tp_clear_object (&self->soup);
+#endif
 
   g_slice_free (GabbleGoogleRelayResolver, self);
 }
@@ -266,11 +283,13 @@ gabble_google_relay_resolver_resolve (GabbleGoogleRelayResolver *self,
     GabbleJingleFactoryRelaySessionCb callback,
     gpointer user_data)
 {
-  RelaySessionData *rsd;
+  RelaySessionData *rsd =
+      relay_session_data_new (components, callback, user_data);
+
+#ifdef ENABLE_GOOGLE_RELAY
+
   gchar *url;
   guint i;
-
-  rsd = relay_session_data_new (components, callback, user_data);
 
   if (server == NULL)
     {
@@ -306,4 +325,13 @@ gabble_google_relay_resolver_resolve (GabbleGoogleRelayResolver *self,
     }
 
   g_free (url);
+
+#else  /* !ENABLE_GOOGLE_RELAY */
+
+  DEBUG ("Google relay service is not supported");
+
+  g_idle_add_full (G_PRIORITY_DEFAULT, relay_session_data_call, rsd,
+      relay_session_data_destroy);
+
+#endif
 }

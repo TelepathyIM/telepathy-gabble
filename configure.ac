@@ -325,8 +325,20 @@ PKG_CHECK_MODULES(TP_YELL, telepathy-yell)
 AC_SUBST(TP_YELL_CFLAGS)
 AC_SUBST(TP_YELL_LIBS)
 
-dnl Check for libsoup
-PKG_CHECK_MODULES(SOUP, libsoup-2.4)
+AC_ARG_ENABLE(google-relay,
+  AC_HELP_STRING([--disable-google-relay],
+                 [disable Google Jingle relay support]),
+    [enable_google_relay=$enableval], [enable_google_relay=yes])
+
+if test x$enable_google_relay = xyes; then
+  AC_DEFINE(ENABLE_GOOGLE_RELAY, [], [Enable Google Jingle relay support])
+
+  dnl Check for libsoup
+  PKG_CHECK_MODULES(SOUP, libsoup-2.4)
+else
+  SOUP_CFLAGS=
+  SOUP_LIBS=
+fi
 AC_SUBST(SOUP_CFLAGS)
 AC_SUBST(SOUP_LIBS)
 
@@ -379,4 +391,5 @@ Configure summary:
         Plugin support..............:  ${enable_plugins}
         Plugin headers installed....:  ${enable_plugin_api}
         Channel.Type.Call support...:  ${enable_channel_type_call}
+        Google relay support........:  ${enable_google_relay}
 "

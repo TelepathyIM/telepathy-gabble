@@ -131,8 +131,9 @@ def test_inital_roster(q, bus, conn, stream):
 
 def test_flickering(q, bus, conn, stream, subscribe):
     """
-    Google's server is buggy, and subscription state transitions "flicker"
-    sometimes. Here, we test that Gabble is suppressing the flickers.
+    Google's server is buggy; when asking to subscribe to somebody, the
+    subscription state transitions "flicker" sometimes. Here, we test that
+    Gabble is suppressing the flickers.
     """
 
     self_handle = conn.GetSelfHandle()
@@ -263,6 +264,41 @@ def test_flickering(q, bus, conn, stream, subscribe):
     sync_stream(q, stream)
     sync_dbus(bus, q, conn)
     q.unforbid_events(change_events)
+
+def test_local_pending(q, bus, conn, stream, subscribe):
+    """
+    When somebody asks to subscribe to us, Google sends the subscription
+    request and then a roster update saying there is no subscription.
+    This causes the contact to appear in local pending and then disappear.
+    Here, we test that Gabble is suppressing the flickers.
+    """
+
+    self_handle = conn.GetSelfHandle()
+    contact = 'alice@foo.com'
+    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+
+    # We add Alice
+    presence = domish.Element(('jabber:client', 'presence'))
+    presence['from'] = contact
+    presence['type'] = 'subscribe'
+    stream.send(presence)
+
+    q.expect('dbus-signal', signal='ContactsChanged',
+            args=[{handle: (cs.SUBSCRIPTION_STATE_NO,
+                cs.SUBSCRIPTION_STATE_ASK, '')}, []])
+
+    # Now we send the spurious roster update with subscribe="none" and verify
+    # that nothing happens in reaction to that
+    change_event = EventPattern('dbus-signal', signal='MembersChanged')
+    q.forbid_events([change_event])
+
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
+            "none", False)
+    stream.send(iq)
+
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.unforbid_events([change_event])
 
 # This event is forbidden in all of the deny tests!
 remove_events = [
@@ -520,6 +556,7 @@ def test(q, bus, conn, stream):
     publish, subscribe, stored, deny = test_inital_roster(q, bus, conn, stream)
 
     test_flickering(q, bus, conn, stream, subscribe)
+    test_local_pending(q, bus, conn, stream, subscribe)
     test_deny_simple(q, bus, conn, stream, stored, deny)
     test_deny_overlap_one(q, bus, conn, stream, subscribe, stored, deny)
     test_deny_overlap_two(q, bus, conn, stream,

@@ -2598,6 +2598,7 @@ iq_disco_cb (WockyPorter *porter,
   const GabbleCapabilityInfo *info = NULL;
   const GabbleCapabilitySet *features = NULL;
   const GPtrArray *identities = NULL;
+  const GPtrArray *data_forms = NULL;
 
   /* query's existence is checked by WockyPorter before this function is called */
   query = wocky_node_get_child (wocky_stanza_get_top_node (stanza), "query");
@@ -2627,19 +2628,25 @@ iq_disco_cb (WockyPorter *porter,
     wocky_node_set_attribute (result_query, "node", node);
 
   if (node == NULL)
-    features = gabble_presence_peek_caps (self->self_presence);
+    {
+      features = gabble_presence_peek_caps (self->self_presence);
+      data_forms = gabble_presence_peek_data_forms (self->self_presence);
   /* If node is not NULL, it can be either a caps bundle as defined in the
    * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
    * 1.5. Let's see if it's a verification string we've told the cache about.
    */
+    }
   else
-    info = gabble_presence_cache_peek_own_caps (self->presence_cache,
-        suffix);
+    {
+      info = gabble_presence_cache_peek_own_caps (self->presence_cache,
+          suffix);
+    }
 
   if (info)
     {
       features = info->cap_set;
       identities = info->identities;
+      data_forms = info->data_forms;
     }
 
   if (identities && identities->len != 0)
@@ -2676,6 +2683,18 @@ iq_disco_cb (WockyPorter *porter,
 
       if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
         features = gabble_capabilities_get_bundle_video_v1 ();
+    }
+
+  if (data_forms != NULL)
+    {
+      guint i;
+
+      for (i = 0; i < data_forms->len; i++)
+        {
+          WockyDataForm *form = g_ptr_array_index (data_forms, i);
+
+          wocky_data_form_add_to_node (form, result_query);
+        }
     }
 
   if (features == NULL && tp_strdiff (suffix, BUNDLE_PMUC_V1))

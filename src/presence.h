@@ -96,11 +96,13 @@ gboolean gabble_presence_update (GabblePresence *presence,
 void gabble_presence_set_capabilities (GabblePresence *presence,
     const gchar *resource,
     const GabbleCapabilitySet *cap_set,
+    const GPtrArray *data_forms,
     guint serial);
 
 gboolean gabble_presence_has_cap (GabblePresence *presence, const gchar *ns);
 GabbleCapabilitySet *gabble_presence_dup_caps (GabblePresence *presence);
 const GabbleCapabilitySet *gabble_presence_peek_caps (GabblePresence *presence);
+GPtrArray *gabble_presence_peek_data_forms (GabblePresence *presence);
 
 gboolean gabble_presence_has_resources (GabblePresence *self);
 

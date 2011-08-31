@@ -1007,13 +1007,15 @@ _parse_node (GabblePresence *presence,
   if (!tp_strdiff (node, "http://mail.google.com/xmpp/client/caps"))
     {
       GabbleCapabilitySet *cap_set = gabble_capability_set_new ();
+      GPtrArray *tmp = g_ptr_array_new ();
 
       DEBUG ("Client is Google Web Client");
 
       gabble_capability_set_add (cap_set, QUIRK_GOOGLE_WEBMAIL_CLIENT);
       gabble_capability_set_add (cap_set, QUIRK_OMITS_CONTENT_CREATORS);
-      gabble_presence_set_capabilities (presence, resource, cap_set, serial);
+      gabble_presence_set_capabilities (presence, resource, cap_set, tmp, serial); /* TODO */
       gabble_capability_set_free (cap_set);
+      g_ptr_array_unref (tmp);
     }
 }
 
@@ -1148,6 +1150,7 @@ set_caps_for (DiscoWaiter *waiter,
   GabblePresence *presence = gabble_presence_cache_get (cache, waiter->handle);
   GabbleCapabilitySet *old_cap_set;
   const GabbleCapabilitySet *new_cap_set;
+  GPtrArray *tmp = g_ptr_array_new ();
 
   if (presence == NULL)
     return;
@@ -1158,10 +1161,11 @@ set_caps_for (DiscoWaiter *waiter,
       waiter->handle, responder_handle, responder_jid);
 
   gabble_presence_set_capabilities (presence, waiter->resource, cap_set,
-      waiter->serial);
+      tmp, waiter->serial); /* TODO */
   new_cap_set = gabble_presence_peek_caps (presence);
   emit_capabilities_update (cache, waiter->handle, old_cap_set, new_cap_set);
   gabble_capability_set_free (old_cap_set);
+  g_ptr_array_unref (tmp);
 
   if (gabble_presence_update_client_types (presence, waiter->resource,
         client_types))
@@ -1499,9 +1503,12 @@ _process_caps_uri (GabblePresenceCache *cache,
       if (presence)
         {
           guint types;
+          GPtrArray *tmp = g_ptr_array_new ();
 
           gabble_presence_set_capabilities (
-              presence, resource, cap_set, serial);
+              presence, resource, cap_set, tmp, serial);
+
+          g_ptr_array_unref (tmp);
 
           /* We can only get this information from actual disco replies,
            * so we depend on having this information from the caps cache. */

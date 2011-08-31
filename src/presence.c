@@ -44,6 +44,7 @@ struct _Resource {
     gchar *name;
     guint client_type;
     GabbleCapabilitySet *cap_set;
+    GPtrArray *data_forms;
     guint caps_serial;
     GabblePresenceId status;
     gchar *status_message;
@@ -57,6 +58,9 @@ struct _Resource {
 struct _GabblePresencePrivate {
     /* The aggregated caps of all the contacts' resources. */
     GabbleCapabilitySet *cap_set;
+
+    /* The aggregated data forms of all the contacts' resources */
+    GPtrArray *data_forms;
 
     gchar *no_resource_status_message;
     GSList *resources;
@@ -72,6 +76,8 @@ _resource_new (gchar *name)
   new->name = name;
   new->client_type = 0;
   new->cap_set = gabble_capability_set_new ();
+  new->data_forms = g_ptr_array_new_with_free_func (
+      (GDestroyNotify) g_object_unref);
   new->status = GABBLE_PRESENCE_OFFLINE;
   new->status_message = NULL;
   new->priority = 0;
@@ -87,6 +93,7 @@ _resource_free (Resource *resource)
   g_free (resource->name);
   g_free (resource->status_message);
   gabble_capability_set_free (resource->cap_set);
+  g_ptr_array_unref (resource->data_forms);
 
   g_slice_free (Resource, resource);
 }
@@ -103,6 +110,7 @@ gabble_presence_finalize (GObject *object)
 
   g_slist_free (priv->resources);
   gabble_capability_set_free (priv->cap_set);
+  g_ptr_array_unref (priv->data_forms);
 
   g_free (presence->nickname);
   g_free (presence->avatar_sha1);
@@ -128,6 +136,8 @@ gabble_presence_init (GabblePresence *self)
 
   priv = self->priv;
   priv->cap_set = gabble_capability_set_new ();
+  priv->data_forms = g_ptr_array_new_with_free_func (
+      (GDestroyNotify) g_object_unref);
   priv->resources = NULL;
 
   self->status = GABBLE_PRESENCE_UNKNOWN;
@@ -198,6 +208,13 @@ gabble_presence_peek_caps (GabblePresence *presence)
   return presence->priv->cap_set;
 }
 
+GPtrArray *
+gabble_presence_peek_data_forms (GabblePresence *presence)
+{
+  g_return_val_if_fail (presence != NULL, NULL);
+  return presence->priv->data_forms;
+}
+
 gboolean
 gabble_presence_has_resources (GabblePresence *self)
 {
@@ -266,10 +283,19 @@ gabble_presence_resource_has_caps (GabblePresence *presence,
   return FALSE;
 }
 
+static void
+extend_and_dup (GPtrArray *target,
+    GPtrArray *source)
+{
+  g_ptr_array_foreach (source, (GFunc) g_object_ref, NULL);
+  tp_g_ptr_array_extend (target, source);
+}
+
 void
 gabble_presence_set_capabilities (GabblePresence *presence,
                                   const gchar *resource,
                                   const GabbleCapabilitySet *cap_set,
+                                  const GPtrArray *data_forms,
                                   guint serial)
 {
   GabblePresencePrivate *priv = presence->priv;
@@ -288,11 +314,13 @@ gabble_presence_set_capabilities (GabblePresence *presence,
     }
 
   gabble_capability_set_clear (priv->cap_set);
+  g_ptr_array_set_size (priv->data_forms, 0);
 
   if (resource == NULL)
     {
       DEBUG ("Setting capabilities for bare JID");
       gabble_capability_set_update (priv->cap_set, cap_set);
+      extend_and_dup (priv->data_forms, (GPtrArray *) data_forms);
       return;
     }
 
@@ -315,6 +343,7 @@ gabble_presence_set_capabilities (GabblePresence *presence,
                 tmp->caps_serial);
               tmp->caps_serial = serial;
               gabble_capability_set_clear (tmp->cap_set);
+              g_ptr_array_set_size (tmp->data_forms, 0);
             }
 
           if (serial >= tmp->caps_serial)
@@ -322,10 +351,16 @@ gabble_presence_set_capabilities (GabblePresence *presence,
               DEBUG ("updating caps for resource %s", resource);
 
               gabble_capability_set_update (tmp->cap_set, cap_set);
+
+              /* TODO: deal with duplicates */
+              extend_and_dup (tmp->data_forms, (GPtrArray *) data_forms);
             }
         }
 
       gabble_capability_set_update (priv->cap_set, tmp->cap_set);
+
+      /* TODO: deal with duplicates */
+      extend_and_dup (priv->data_forms, tmp->data_forms);
     }
 }
 

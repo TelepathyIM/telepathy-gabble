@@ -452,7 +452,7 @@ gabble_connection_constructor (GType type,
       g_free, (GDestroyNotify) gabble_capability_set_free);
 
   priv->client_data_forms = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, (GDestroyNotify) g_object_unref);
+      g_free, (GDestroyNotify) g_ptr_array_unref);
 
   /* Historically, the optional Jingle transports were in our initial
    * presence, but could be removed by AdvertiseCapabilities(). Emulate
@@ -2411,9 +2411,12 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   GHashTableIter iter;
   gpointer k, v;
   GabbleCapabilitySet *save_set;
+  GPtrArray *data_forms;
 
   save_set = self->priv->all_caps;
   self->priv->all_caps = gabble_capability_set_new ();
+
+  data_forms = g_ptr_array_new ();
 
   gabble_capability_set_update (self->priv->all_caps,
       gabble_capabilities_get_fixed_caps ());
@@ -2422,6 +2425,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   gabble_capability_set_update (self->priv->all_caps, self->priv->sidecar_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
 
+  /* first, normal caps */
   g_hash_table_iter_init (&iter, self->priv->client_caps);
 
   while (g_hash_table_iter_next (&iter, &k, &v))
@@ -2437,13 +2441,22 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
       gabble_capability_set_update (self->priv->all_caps, v);
     }
 
+  /* now data forms */
+  g_hash_table_iter_init (&iter, self->priv->client_data_forms);
+
+  /* just borrow the ref, data_forms doesn't have a free func */
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    tp_g_ptr_array_extend (data_forms, v);
+
   if (self->self_presence != NULL)
     gabble_presence_set_capabilities (self->self_presence,
-        self->priv->resource, self->priv->all_caps, self->priv->caps_serial++);
+        self->priv->resource, self->priv->all_caps, data_forms,
+        self->priv->caps_serial++);
 
   if (gabble_capability_set_equals (self->priv->all_caps, save_set))
     {
       gabble_capability_set_free (save_set);
+      g_ptr_array_unref (data_forms);
       DEBUG ("nothing to do");
       return FALSE;
     }
@@ -2452,6 +2465,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   if (base->status != TP_CONNECTION_STATUS_CONNECTED)
     {
       gabble_capability_set_free (save_set);
+      g_ptr_array_unref (data_forms);
       DEBUG ("not emitting self-presence stanza: not connected yet");
       return FALSE;
     }
@@ -2459,6 +2473,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   if (!conn_presence_signal_own_presence (self, NULL, &error))
     {
       gabble_capability_set_free (save_set);
+      g_ptr_array_unref (data_forms);
       DEBUG ("error sending presence: %s", error->message);
       g_error_free (error);
       return FALSE;
@@ -2468,6 +2483,8 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
     gabble_capability_set_free (save_set);
   else
     *old_out = save_set;
+
+  g_ptr_array_unref (data_forms);
 
   return TRUE;
 }

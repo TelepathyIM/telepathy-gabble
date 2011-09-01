@@ -73,8 +73,6 @@ static void muc_call_channel_finish_requests (GabbleMucChannel *self,
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
-      tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD,
@@ -100,7 +98,6 @@ static void gabble_muc_channel_close (TpBaseChannel *base);
 static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
-    TP_IFACE_PROPERTIES_INTERFACE,
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
@@ -157,42 +154,6 @@ static const gchar *muc_states[] =
   "MUC_STATE_AUTH",
   "MUC_STATE_JOINED",
   "MUC_STATE_ENDED",
-};
-
-/* room properties */
-enum
-{
-  ROOM_PROP_ANONYMOUS = 0,
-  ROOM_PROP_INVITE_ONLY,
-  ROOM_PROP_MODERATED,
-  ROOM_PROP_NAME,
-  ROOM_PROP_DESCRIPTION,
-  ROOM_PROP_PASSWORD,
-  ROOM_PROP_PASSWORD_REQUIRED,
-  ROOM_PROP_PERSISTENT,
-  ROOM_PROP_PRIVATE,
-
-  NUM_ROOM_PROPS,
-
-  INVALID_ROOM_PROP,
-};
-
-const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
-    /* Part of the room definition: modifiable by owners only */
-      { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
-
-    /* Part of the room definition: might be modifiable by the owner, or
-     * not at all */
-      { "description",       G_TYPE_STRING },   /* impl: READ, WRITE */
-
-    /* Part of the room definition: modifiable by owners only */
-      { "password",          G_TYPE_STRING },   /* impl: WRITE */
-      { "password-required", G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "private",           G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
 };
 
 /* private structures */
@@ -465,10 +426,6 @@ gabble_muc_channel_constructed (GObject *obj)
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       0);
 
-  /* initialize properties mixin */
-  tp_properties_mixin_init (obj, G_STRUCT_OFFSET (
-        GabbleMucChannel, properties));
-
   /* initialize message mixin */
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, message_mixin),
       base_conn);
@@ -565,7 +522,6 @@ gabble_muc_channel_constructed (GObject *obj)
 
 typedef struct {
     const gchar *var;
-    guint prop_id;
     const gchar *config_property_name;
     gboolean value;
 } FeatureMapping;
@@ -574,30 +530,30 @@ static FeatureMapping *
 lookup_feature (const gchar *var)
 {
   static FeatureMapping features[] = {
-      { "muc_nonanonymous", ROOM_PROP_ANONYMOUS, "anonymous", FALSE },
-      { "muc_semianonymous", ROOM_PROP_ANONYMOUS, "anonymous", TRUE },
-      { "muc_anonymous", ROOM_PROP_ANONYMOUS, "anonymous", TRUE },
+      { "muc_nonanonymous", "anonymous", FALSE },
+      { "muc_semianonymous", "anonymous", TRUE },
+      { "muc_anonymous", "anonymous", TRUE },
 
-      { "muc_open", ROOM_PROP_INVITE_ONLY, "invite-only", FALSE },
-      { "muc_membersonly", ROOM_PROP_INVITE_ONLY, "invite-only", TRUE },
+      { "muc_open", "invite-only", FALSE },
+      { "muc_membersonly", "invite-only", TRUE },
 
-      { "muc_unmoderated", ROOM_PROP_MODERATED, "moderated", FALSE },
-      { "muc_moderated", ROOM_PROP_MODERATED, "moderated", TRUE },
+      { "muc_unmoderated", "moderated", FALSE },
+      { "muc_moderated", "moderated", TRUE },
 
-      { "muc_unsecure", ROOM_PROP_PASSWORD_REQUIRED, "password-protected", FALSE },
-      { "muc_unsecured", ROOM_PROP_PASSWORD_REQUIRED, "password-protected", FALSE },
-      { "muc_passwordprotected", ROOM_PROP_PASSWORD_REQUIRED, "password-protected", TRUE },
+      { "muc_unsecure", "password-protected", FALSE },
+      { "muc_unsecured", "password-protected", FALSE },
+      { "muc_passwordprotected", "password-protected", TRUE },
 
-      { "muc_temporary", ROOM_PROP_PERSISTENT, "persistent", FALSE },
-      { "muc_persistent", ROOM_PROP_PERSISTENT, "persistent", TRUE },
+      { "muc_temporary", "persistent", FALSE },
+      { "muc_persistent", "persistent", TRUE },
 
-      { "muc_public", ROOM_PROP_PRIVATE, "private", FALSE },
-      { "muc_hidden", ROOM_PROP_PRIVATE, "private", TRUE },
+      { "muc_public", "private", FALSE },
+      { "muc_hidden", "private", TRUE },
 
       /* The MUC namespace is included as a feature in disco results. We ignore
        * it here.
        */
-      { NS_MUC, INVALID_ROOM_PROP },
+      { NS_MUC, NULL, FALSE },
 
       { NULL }
   };
@@ -610,41 +566,38 @@ lookup_feature (const gchar *var)
   return NULL;
 }
 
-static guint
+static const gchar *
 map_feature (
     WockyNode *feature,
-    GValue *value,
-    const gchar **config_property_name)
+    GValue *value)
 {
   const gchar *var = wocky_node_get_attribute (feature, "var");
   FeatureMapping *f;
 
   if (var == NULL)
-    return INVALID_ROOM_PROP;
+    return NULL;
 
   f = lookup_feature (var);
 
   if (f == NULL)
     {
       DEBUG ("unhandled feature '%s'", var);
-      return INVALID_ROOM_PROP;
+      return NULL;
     }
 
-  if (f->prop_id != INVALID_ROOM_PROP)
+  if (f->config_property_name != NULL)
     {
       g_value_init (value, G_TYPE_BOOLEAN);
       g_value_set_boolean (value, f->value);
-      *config_property_name = f->config_property_name;
     }
 
-  return f->prop_id;
+  return f->config_property_name;
 }
 
-static guint
+static const gchar *
 handle_form (
     WockyNode *x,
-    GValue *value,
-    const gchar **config_property_name)
+    GValue *value)
 {
   WockyNodeIter j;
   WockyNode *field;
@@ -661,11 +614,10 @@ handle_form (
       description = wocky_node_get_content_from_child (field, "value");
       g_value_init (value, G_TYPE_STRING);
       g_value_set_string (value, description != NULL ? description : "");
-      *config_property_name = "description";
-      return ROOM_PROP_DESCRIPTION;
+      return "description";
     }
 
-  return INVALID_ROOM_PROP;
+  return NULL;
 }
 
 static void
@@ -679,9 +631,7 @@ properties_disco_cb (GabbleDisco *disco,
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv = chan->priv;
-  TpIntSet *changed_props_val, *changed_props_flags;
   LmMessageNode *lm_node;
-  GValue val = { 0, };
   NodeIter i;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
@@ -691,9 +641,6 @@ properties_disco_cb (GabbleDisco *disco,
       DEBUG ("got error %s", error->message);
       return;
     }
-
-  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
-  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
 
   /*
    * Update room definition.
@@ -713,59 +660,33 @@ properties_disco_cb (GabbleDisco *disco,
           !tp_strdiff (type, "text") &&
           name != NULL)
         {
-          g_value_init (&val, G_TYPE_STRING);
-          g_value_set_string (&val, name);
-
-          tp_properties_mixin_change_value (G_OBJECT (chan), ROOM_PROP_NAME,
-                                                &val, changed_props_val);
-
-          tp_properties_mixin_change_flags (G_OBJECT (chan), ROOM_PROP_NAME,
-                                                TP_PROPERTY_FLAG_READ,
-                                                0, changed_props_flags);
-          g_object_set_property ((GObject *) priv->room_config,
-              "title", &val);
-
-          g_value_unset (&val);
+          g_object_set (priv->room_config, "title", name, NULL);
         }
     }
 
   for (i = node_iter (query_result); i; i = node_iter_next (i))
     {
-      guint prop_id = INVALID_ROOM_PROP;
       const gchar *config_property_name = NULL;
       LmMessageNode *child = node_iter_data (i);
+      GValue val = { 0, };
 
       if (strcmp (child->name, "feature") == 0)
         {
-          prop_id = map_feature (child, &val, &config_property_name);
+          config_property_name = map_feature (child, &val);
         }
       else if (strcmp (child->name, "x") == 0 &&
                lm_message_node_has_namespace (child, NS_X_DATA, NULL))
         {
-          prop_id = handle_form (child, &val, &config_property_name);
+          config_property_name = handle_form (child, &val);
         }
 
-      if (prop_id != INVALID_ROOM_PROP)
+      if (config_property_name != NULL)
         {
-          tp_properties_mixin_change_value (G_OBJECT (chan), prop_id, &val,
-                                                changed_props_val);
-
-          tp_properties_mixin_change_flags (G_OBJECT (chan), prop_id,
-                                                TP_PROPERTY_FLAG_READ,
-                                                0, changed_props_flags);
           g_object_set_property ((GObject *) priv->room_config, config_property_name, &val);
 
           g_value_unset (&val);
         }
     }
-
-  /*
-   * Emit signals.
-   */
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
-  tp_intset_destroy (changed_props_val);
-  tp_intset_destroy (changed_props_flags);
 }
 
 static void
@@ -1259,13 +1180,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   GABBLE_TYPE_CALL_MUC_CHANNEL,
                   G_TYPE_POINTER);
 
-  tp_properties_mixin_class_init (object_class,
-                                      G_STRUCT_OFFSET (GabbleMucChannelClass,
-                                        properties_class),
-                                      room_property_signatures, NUM_ROOM_PROPS,
-                                      NULL);
-
-
   gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
@@ -1356,7 +1270,6 @@ gabble_muc_channel_finalize (GObject *object)
   g_free (priv->subject);
   g_free (priv->subject_actor);
 
-  tp_properties_mixin_finalize (object);
   tp_group_mixin_finalize (object);
   tp_message_mixin_finalize (object);
 
@@ -1758,16 +1671,7 @@ perms_config_form_reply_cb (
         {
           gabble_room_config_set_property_mutable (priv->room_config,
               GABBLE_ROOM_CONFIG_DESCRIPTION, TRUE);
-
-          if (tp_properties_mixin_is_readable (G_OBJECT (self),
-                                                   ROOM_PROP_DESCRIPTION))
-            {
-              tp_properties_mixin_change_flags (G_OBJECT (self),
-                  ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
-                  NULL);
-
-              goto OUT;
-            }
+          break;
         }
     }
 
@@ -1791,8 +1695,6 @@ update_permissions (GabbleMucChannel *chan)
   GabbleMucChannelPrivate *priv = chan->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpChannelGroupFlags grp_flags_add, grp_flags_rem;
-  TpPropertyFlags prop_flags_add, prop_flags_rem;
-  TpIntSet *changed_props_val, *changed_props_flags;
 
   /*
    * Update group flags.
@@ -1814,64 +1716,18 @@ update_permissions (GabbleMucChannel *chan)
 
   tp_group_mixin_change_flags ((GObject *) chan, grp_flags_add, grp_flags_rem);
 
+  /* Update RoomConfig.CanUpdateConfiguration */
 
-  /*
-   * Update write capabilities based on room configuration
-   * and own role and affiliation.
-   */
-
-  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
-  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
-
-  /* The room properties below are part of the "room definition", so are
-   * defined by the XEP to be editable only by owners. */
-
+  /* The room configuration is part of the "room definition", so is defined by
+   * the XEP to be editable only by owners. */
   if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {
-      prop_flags_add = TP_PROPERTY_FLAG_WRITE;
-      prop_flags_rem = 0;
-
       gabble_room_config_set_can_update_configuration (priv->room_config, TRUE);
     }
   else
     {
-      prop_flags_add = 0;
-      prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
-
       gabble_room_config_set_can_update_configuration (priv->room_config, FALSE);
     }
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_ANONYMOUS, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_INVITE_ONLY, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_MODERATED, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_NAME, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PASSWORD, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PASSWORD_REQUIRED, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PERSISTENT, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PRIVATE, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
 
   if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {
@@ -1887,21 +1743,6 @@ update_permissions (GabbleMucChannel *chan)
           g_object_ref (chan));
       g_object_unref (stanza);
     }
-  else
-    {
-      /* mark description unwritable if we're no longer an owner */
-      tp_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_DESCRIPTION, 0, TP_PROPERTY_FLAG_WRITE,
-          changed_props_flags);
-    }
-
-  /*
-   * Emit signals.
-   */
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
-  tp_intset_destroy (changed_props_val);
-  tp_intset_destroy (changed_props_flags);
 }
 
 

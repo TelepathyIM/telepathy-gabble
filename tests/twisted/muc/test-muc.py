@@ -8,7 +8,10 @@ import dbus
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test
-from servicetest import EventPattern, assertEquals, assertLength, assertContains
+from servicetest import (
+    EventPattern, assertEquals, assertLength, assertContains,
+    assertDoesNotContain,
+    )
 import constants as cs
 import ns
 
@@ -28,7 +31,7 @@ def test(q, bus, conn, stream):
     interfaces = channel_props.get('Interfaces')
     assertContains(cs.CHANNEL_IFACE_GROUP, interfaces)
     assertContains(cs.CHANNEL_IFACE_PASSWORD, interfaces)
-    assertContains(cs.TP_AWKWARD_PROPERTIES, interfaces)
+    assertDoesNotContain(cs.TP_AWKWARD_PROPERTIES, interfaces)
     assertContains(cs.CHANNEL_IFACE_CHAT_STATE, interfaces)
     assertContains(cs.CHANNEL_IFACE_MESSAGES, interfaces)
 

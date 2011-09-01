@@ -8,7 +8,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import (
     exec_test, make_result_iq, acknowledge_iq, make_muc_presence,
-    request_muc_handle)
+    request_muc_handle, sync_stream)
 from servicetest import (
     call_async, wrap_channel, EventPattern, assertEquals, assertSameSets,
 )
@@ -107,11 +107,8 @@ def test(q, bus, conn, stream):
     handle_disco_info_iq(stream, disco_iq.stanza)
 
     # FIXME: add a ConfigRetrieved signal/property to RoomConfig, listen for
-    # that instead.  We have to listen for this signal twice because of the
-    # two-signals-called-PropertiesChanged issue... otherwise later on in the
-    # test we pick up a second copy of this emission.
-    q.expect('dbus-signal', signal='PropertiesChanged')
-    q.expect('dbus-signal', signal='PropertiesChanged')
+    # that instead of just syncing the stream.
+    sync_stream(q, stream)
 
     text_chan = wrap_channel(
         bus.get_object(conn.bus_name, ret.value[0]), 'Text', ['RoomConfig1'])

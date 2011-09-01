@@ -18,6 +18,7 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
 #include "jingle-factory.h"
 
 #include <stdio.h>
@@ -299,6 +300,7 @@ got_jingle_info_stanza (
         }
     }
 
+#ifdef ENABLE_GOOGLE_RELAY
   node = wocky_node_get_child (query_node, "relay");
 
   if (node != NULL)
@@ -378,6 +380,7 @@ got_jingle_info_stanza (
         }
 
     }
+#endif  /* ENABLE_GOOGLE_RELAY */
 }
 
 static gboolean

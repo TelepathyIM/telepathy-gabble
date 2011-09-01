@@ -118,6 +118,7 @@
 #define NS_VERSION              "jabber:iq:version"
 #define NS_GEOLOC               "http://jabber.org/protocol/geoloc"
 #define NS_GOOGLE_MAIL_NOTIFY   "google:mail:notify"
+#define NS_GOOGLE_SETTING       "google:setting"
 
 #define NS_TEMPPRES "urn:xmpp:temppres:0"
 #define NS_GOOGLE_SHARED_STATUS "google:shared-status"

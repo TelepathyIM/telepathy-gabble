@@ -2847,6 +2847,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS;
               else if (0 == strcmp (var, NS_GOOGLE_QUEUE))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE;
+              else if (0 == strcmp (var, NS_GOOGLE_SETTING))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_SETTING;
             }
         }
 

@@ -593,32 +593,19 @@ find_prop_info (
 }
 
 static gboolean
-validate_property (
-    GabbleRoomConfig *self,
-    TpDBusPropertiesMixinIfaceInfo *iface_info,
-    GHashTable *validated_properties,
+validate_property_type (
     const gchar *property_name,
-    GValue *value,
+    const GValue *value,
     GError **error)
 {
-  GabbleRoomConfigPrivate *priv = self->priv;
-  gint property_id;
+  static TpDBusPropertiesMixinIfaceInfo *iface_info = NULL;
   TpDBusPropertiesMixinPropInfo *prop_info;
 
-  if (!wocky_enum_from_nick (GABBLE_TYPE_ROOM_CONFIG_PROPERTY,
-          property_name, &property_id))
-    {
-      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-          "'%s' is not a known RoomConfig property.", property_name);
-      return FALSE;
-    }
+  if (G_UNLIKELY (iface_info == NULL))
+    iface_info = tp_svc_interface_get_dbus_properties_info (
+          TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG);
 
-  if (!tp_intset_is_member (priv->mutable_properties, property_id))
-    {
-      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
-          "'%s' cannot be changed on this protocol", property_name);
-      return FALSE;
-    }
+  g_return_val_if_fail (iface_info != NULL, FALSE);
 
   /* If we recognise the property name, but it's not registered with
    * TpDBusPropertiesMixin, then something is really screw-y.
@@ -639,6 +626,38 @@ validate_property (
       return FALSE;
     }
 
+  return TRUE;
+}
+
+static gboolean
+validate_property (
+    GabbleRoomConfig *self,
+    GHashTable *validated_properties,
+    const gchar *property_name,
+    GValue *value,
+    GError **error)
+{
+  GabbleRoomConfigPrivate *priv = self->priv;
+  gint property_id;
+
+  if (!wocky_enum_from_nick (GABBLE_TYPE_ROOM_CONFIG_PROPERTY,
+          property_name, &property_id))
+    {
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a known RoomConfig property.", property_name);
+      return FALSE;
+    }
+
+  if (!tp_intset_is_member (priv->mutable_properties, property_id))
+    {
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
+          "'%s' cannot be changed on this protocol", property_name);
+      return FALSE;
+    }
+
+  if (!validate_property_type (property_name, value, error))
+    return FALSE;
+
   g_hash_table_insert (validated_properties,
       GUINT_TO_POINTER (property_id), tp_g_value_slice_dup (value));
   return TRUE;
@@ -650,21 +669,15 @@ validate_properties (
     GHashTable *properties,
     GError **error)
 {
-  TpDBusPropertiesMixinIfaceInfo *iface_info =
-      tp_svc_interface_get_dbus_properties_info (
-          TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG);
   GHashTable *validated_properties = g_hash_table_new_full (
       NULL, NULL, NULL, (GDestroyNotify) tp_g_value_slice_free);
   GHashTableIter iter;
   gpointer k, v;
 
-  g_return_val_if_fail (iface_info != NULL, FALSE);
-
   g_hash_table_iter_init (&iter, properties);
   while (g_hash_table_iter_next (&iter, &k, &v))
     {
-      if (!validate_property (self, iface_info, validated_properties, k, v,
-              error))
+      if (!validate_property (self, validated_properties, k, v, error))
         {
           g_hash_table_unref (validated_properties);
           return NULL;

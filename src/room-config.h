@@ -27,9 +27,23 @@ typedef struct _GabbleRoomConfig GabbleRoomConfig;
 typedef struct _GabbleRoomConfigClass GabbleRoomConfigClass;
 typedef struct _GabbleRoomConfigPrivate GabbleRoomConfigPrivate;
 
+typedef void (*GabbleRoomConfigUpdateAsync) (
+    TpBaseChannel *channel,
+    GHashTable *validated_properties,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
+typedef gboolean (*GabbleRoomConfigUpdateFinish) (
+    TpBaseChannel *channel,
+    GAsyncResult *result,
+    GError **error);
+
 struct _GabbleRoomConfigClass {
     /*< private >*/
     GObjectClass parent_class;
+
+    /*< public >*/
+    GabbleRoomConfigUpdateAsync update_async;
+    GabbleRoomConfigUpdateFinish update_finish;
 };
 
 struct _GabbleRoomConfig {

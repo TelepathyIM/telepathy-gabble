@@ -20,7 +20,10 @@
 #include "room-config.h"
 
 #include <telepathy-glib/dbus-properties-mixin.h>
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/svc-channel.h>
+#include <telepathy-glib/util.h>
 
 /* For wocky_enum_to_nick. If we move this to tp-glib, I guess we get to copy
  * that function over there…
@@ -34,8 +37,13 @@
 
 /**
  * GabbleRoomConfigClass:
+ * @update_async: begins a request to modify the room's configuration.
+ * @update_finish: completes a call to @update_async; the default
+ *  implementation may be used if @update_async uses #GSimpleAsyncResult
  *
- * Class structure for #GabbleRoomConfig.
+ * Class structure for #GabbleRoomConfig. By default, @update_async is %NULL,
+ * indicating that updating room configuration is not implemented; subclasses
+ * should override it if they wish to support updating room configuration.
  */
 
 /**
@@ -44,6 +52,37 @@
  * An object representing the configuration of a multi-user chat room.
  *
  * There are no public fields.
+ */
+
+/**
+ * GabbleRoomConfigUpdateAsync:
+ * @channel: a channel instance which uses #GabbleRoomConfig
+ * @validated_properties: a mapping from #GabbleRoomConfigProperty to #GValue,
+ *  whose types have already been validated. The function should not modify
+ *  this hash table.
+ * @callback: a callback to call on success, failure or disconnection
+ * @user_data: user data for the callback
+ *
+ * Signature for a function to begin a network request to update the room
+ * configuration. It is guaranteed that @validated_properties will only contain
+ * properties which were marked as mutable when the D-Bus method invocation
+ * arrived.
+ *
+ * Note that #GabbleRoomConfig will take care of applying the property updates
+ * to itself if the operation succeeds.
+ */
+
+/**
+ * GabbleRoomConfigUpdateFinish:
+ * @channel: a channel instance which uses #GabbleRoomConfig
+ * @result: the result passed to the callback
+ * @error: used to return an error if %FALSE is returned.
+ *
+ * Signature for a function to complete a call to a corresponding
+ * implementation of #GabbleRoomConfigUpdateAsync.
+ *
+ * Returns: %TRUE if the room configuration update was accepted by the server;
+ *  %FALSE, with @error set, otherwise.
  */
 
 /**
@@ -81,6 +120,12 @@ struct _GabbleRoomConfigPrivate {
 
     gboolean can_update_configuration;
     TpIntset *mutable_properties;
+
+    /* Details of a pending update, or both NULL if no call to
+     * UpdateConfiguration is in progress.
+     */
+    DBusGMethodInvocation *update_configuration_ctx;
+    GHashTable *validated_properties;
 };
 
 enum {
@@ -103,6 +148,11 @@ enum {
 };
 
 G_DEFINE_TYPE (GabbleRoomConfig, gabble_room_config, G_TYPE_OBJECT)
+
+static gboolean gabble_room_config_update_finish (
+    TpBaseChannel *channel,
+    GAsyncResult *result,
+    GError **error);
 
 static void
 gabble_room_config_init (GabbleRoomConfig *self)
@@ -327,6 +377,14 @@ gabble_room_config_finalize (GObject *object)
   g_free (priv->password);
   tp_intset_destroy (priv->mutable_properties);
 
+  if (priv->update_configuration_ctx != NULL)
+    {
+      CRITICAL ("finalizing (GabbleRoomConfig *) %p with a pending "
+          "UpdateConfiguration() call; this should not be possible",
+          object);
+    }
+  g_warn_if_fail (priv->validated_properties == NULL);
+
   if (parent_class->finalize != NULL)
     parent_class->finalize (object);
 }
@@ -345,6 +403,8 @@ gabble_room_config_class_init (GabbleRoomConfigClass *klass)
 
   g_type_class_add_private (klass, sizeof (GabbleRoomConfigPrivate));
   find_myself_q = g_quark_from_static_string ("GabbleRoomConfig pointer");
+
+  klass->update_finish = gabble_room_config_update_finish;
 
   param_spec = g_param_spec_object ("channel", "Channel",
       "Parent TpBaseChannel",
@@ -460,6 +520,8 @@ room_config_getter (
   g_object_get_property ((GObject *) self, getter_data, value);
 }
 
+/* The GabbleRoomConfigProperty enum is used to index into this array: be
+ * careful! */
 static TpDBusPropertiesMixinPropImpl room_config_properties[] = {
   /* Configuration */
   { "Anonymous", "anonymous", NULL, },
@@ -505,6 +567,253 @@ gabble_room_config_register_class (
       room_config_getter, NULL, room_config_properties);
 }
 
+/* This is almost copy-pasta from _tp_dbus_properties_mixin_find_prop_impl,
+ * except this operates on the IfaceInfo structure…
+ */
+static TpDBusPropertiesMixinPropInfo *
+find_prop_info (
+    TpDBusPropertiesMixinIfaceInfo *iface_info,
+    const gchar *property_name)
+{
+  GQuark prop_quark = g_quark_try_string (property_name);
+  TpDBusPropertiesMixinPropInfo *prop_info;
+
+  if (prop_quark == 0)
+    return NULL;
+
+  for (prop_info = iface_info->props;
+       prop_info->name != 0;
+       prop_info++)
+    {
+      if (prop_info->name == prop_quark)
+        return prop_info;
+    }
+
+  return NULL;
+}
+
+static gboolean
+validate_property (
+    GabbleRoomConfig *self,
+    TpDBusPropertiesMixinIfaceInfo *iface_info,
+    GHashTable *validated_properties,
+    const gchar *property_name,
+    GValue *value,
+    GError **error)
+{
+  GabbleRoomConfigPrivate *priv = self->priv;
+  gint property_id;
+  TpDBusPropertiesMixinPropInfo *prop_info;
+
+  if (!wocky_enum_from_nick (GABBLE_TYPE_ROOM_CONFIG_PROPERTY,
+          property_name, &property_id))
+    {
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a known RoomConfig property.", property_name);
+      return FALSE;
+    }
+
+  if (!tp_intset_is_member (priv->mutable_properties, property_id))
+    {
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
+          "'%s' cannot be changed on this protocol", property_name);
+      return FALSE;
+    }
+
+  /* If we recognise the property name, but it's not registered with
+   * TpDBusPropertiesMixin, then something is really screw-y.
+   */
+  prop_info = find_prop_info (iface_info, property_name);
+  g_return_val_if_fail (prop_info != NULL, FALSE);
+
+  /* TODO: transform types just like TpDBusPropertiesMixin does. We only
+   * have one property that isn't a boolean or a string, so this is not a
+   * pressing concern, and it would be nice to be able to reuse more of
+   * TpDBusPropertiesMixin's validation code.
+   */
+  if (!G_VALUE_HOLDS (value, prop_info->type))
+    {
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' has type '%s', not '%s'", property_name,
+          prop_info->dbus_signature, G_VALUE_TYPE_NAME (value));
+      return FALSE;
+    }
+
+  g_hash_table_insert (validated_properties,
+      GUINT_TO_POINTER (property_id), tp_g_value_slice_dup (value));
+  return TRUE;
+}
+
+static GHashTable *
+validate_properties (
+    GabbleRoomConfig *self,
+    GHashTable *properties,
+    GError **error)
+{
+  TpDBusPropertiesMixinIfaceInfo *iface_info =
+      tp_svc_interface_get_dbus_properties_info (
+          TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG);
+  GHashTable *validated_properties = g_hash_table_new_full (
+      NULL, NULL, NULL, (GDestroyNotify) tp_g_value_slice_free);
+  GHashTableIter iter;
+  gpointer k, v;
+
+  g_return_val_if_fail (iface_info != NULL, FALSE);
+
+  g_hash_table_iter_init (&iter, properties);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      if (!validate_property (self, iface_info, validated_properties, k, v,
+              error))
+        {
+          g_hash_table_unref (validated_properties);
+          return NULL;
+        }
+    }
+
+  return validated_properties;
+}
+
+static void
+update_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  TpBaseChannel *channel = TP_BASE_CHANNEL (source);
+  GabbleRoomConfig *self = GABBLE_ROOM_CONFIG (user_data);
+  GabbleRoomConfigPrivate *priv = self->priv;
+  GError *error = NULL;
+
+  g_return_if_fail (priv->update_configuration_ctx != NULL);
+  g_return_if_fail (priv->validated_properties != NULL);
+
+  if (GABBLE_ROOM_CONFIG_GET_CLASS (self)->update_finish (
+        channel, result, &error))
+    {
+      GHashTableIter iter;
+      gpointer k, v;
+
+      g_hash_table_iter_init (&iter, priv->validated_properties);
+      while (g_hash_table_iter_next (&iter, &k, &v))
+        {
+          GabbleRoomConfigProperty property_id = GPOINTER_TO_UINT (k);
+          GValue *value = v;
+          const gchar *g_property_name;
+
+          g_assert_cmpuint (property_id, <, GABBLE_NUM_ROOM_CONFIG_PROPERTIES);
+          g_property_name = room_config_properties[property_id].getter_data;
+          g_assert_cmpstr (NULL, !=, g_property_name);
+
+          g_object_set_property ((GObject *) self, g_property_name, value);
+        }
+
+      tp_svc_channel_interface_room_config_return_from_update_configuration (
+          priv->update_configuration_ctx);
+    }
+  else
+    {
+      dbus_g_method_return_error (priv->update_configuration_ctx, error);
+      g_clear_error (&error);
+    }
+
+  priv->update_configuration_ctx = NULL;
+  tp_clear_pointer (&priv->validated_properties, g_hash_table_unref);
+  g_object_unref (self);
+}
+
+static gboolean
+gabble_room_config_update_finish (
+    TpBaseChannel *channel,
+    GAsyncResult *result,
+    GError **error)
+{
+  GabbleRoomConfig *config = GABBLE_ROOM_CONFIG (
+      g_async_result_get_user_data (result));
+  gpointer source_tag = GABBLE_ROOM_CONFIG_GET_CLASS (config)->update_async;
+
+  wocky_implement_finish_void (channel, source_tag);
+}
+
+static void
+gabble_room_config_update_configuration (
+    TpSvcChannelInterfaceRoomConfig *iface,
+    GHashTable *properties,
+    DBusGMethodInvocation *context)
+{
+  GabbleRoomConfig *self = find_myself ((GObject *) iface);
+  GabbleRoomConfigPrivate *priv;
+  GabbleRoomConfigUpdateAsync update_async;
+  GError *error = NULL;
+
+  if (self == NULL)
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_CONFUSED,
+          "Internal error: couldn't find GabbleRoomConfig object "
+          "attached to (TpBaseChannel *) %p at %s",
+          iface,
+          tp_base_channel_get_object_path (TP_BASE_CHANNEL (iface)));
+
+      CRITICAL ("%s", error->message);
+      goto err;
+    }
+
+  priv = self->priv;
+  update_async = GABBLE_ROOM_CONFIG_GET_CLASS (self)->update_async;
+
+  if (update_async == NULL)
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
+          "This protocol does not implement updating the room configuration");
+      goto err;
+    }
+
+  if (priv->update_configuration_ctx != NULL)
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+          "Another UpdateConfiguration() call is still in progress");
+      goto err;
+    }
+
+  /* If update_configuration_ctx == NULL, then validated_properties should be,
+   * too.
+   */
+  g_warn_if_fail (priv->validated_properties == NULL);
+
+  if (!priv->can_update_configuration)
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_PERMISSION_DENIED,
+          "The user doesn't have permission to modify this room's "
+          "configuration (maybe they're not an op/admin/owner?)");
+      goto err;
+    }
+
+  if (g_hash_table_size (properties) == 0)
+    {
+      tp_svc_channel_interface_room_config_return_from_update_configuration (
+          context);
+      return;
+    }
+
+  priv->validated_properties = validate_properties (self, properties, &error);
+
+  if (priv->validated_properties == NULL)
+    goto err;
+
+  priv->update_configuration_ctx = context;
+  /* This means the CM could modify validated_properties if it wanted. This is
+   * good in some ways: it means it can further sanitize the values if it
+   * wants, for instance. But I guess it's also possible for the CM to mess up.
+   */
+  update_async (priv->channel, priv->validated_properties, update_cb,
+      g_object_ref (self));
+  return;
+
+err:
+  dbus_g_method_return_error (context, error);
+  g_clear_error (&error);
+}
+
 /**
  * gabble_room_config_iface_init:
  * @g_iface: a pointer to a #TpSvcChannelInterfaceRoomConfigClass structure
@@ -523,7 +832,7 @@ gabble_room_config_iface_init (
 {
 #define IMPLEMENT(x) tp_svc_channel_interface_room_config_implement_##x (\
     g_iface, gabble_room_config_##x)
-/*  IMPLEMENT (update_configuration); */
+  IMPLEMENT (update_configuration);
 #undef IMPLEMENT
 }
 

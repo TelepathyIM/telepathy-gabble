@@ -240,8 +240,25 @@ def disco_caps(q, stream, presence):
     for feature in xpath.queryForNodes('/iq/query/feature', event.stanza):
         features.append(feature['var'])
 
+    # a quick and ugly data form extractor
+    x_nodes = xpath.queryForNodes('/iq/query/x', event.stanza) or []
+    dataforms = {}
+    for form in x_nodes:
+        name = None
+        fields = {}
+        for field in xpath.queryForNodes('/x/field', form):
+            if field['var'] == 'FORM_TYPE':
+                name = str(field.firstChildElement())
+            else:
+                values = [str(x) for x in xpath.queryForNodes('/field/value', field)]
+
+                fields[field['var']] = values
+
+        if name is not None:
+            dataforms[name] = fields
+
     # Check if the hash matches the announced capabilities
-    assertEquals(compute_caps_hash([identity], features, {}), ver)
+    assertEquals(compute_caps_hash([identity], features, dataforms), ver)
 
     return (event, features)
 

@@ -72,6 +72,7 @@ struct _GabbleConnectionMailNotificationPrivate
   guint poll_timeout_id;
   guint poll_count;
   GList *inbox_url_requests; /* list of DBusGMethodInvocation */
+  gboolean should_set_google_settings;
 };
 
 
@@ -463,6 +464,24 @@ store_unread_mails (GabbleConnection *conn,
   g_ptr_array_free (mails_removed, TRUE);
 }
 
+static void
+set_settings_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GError *error = NULL;
+  WockyPorter *porter = WOCKY_PORTER (source_object);
+  WockyStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
+
+  if (reply == NULL ||
+      wocky_stanza_extract_errors (reply, NULL, &error, NULL, NULL))
+    {
+      DEBUG ("Failed to set google user settings: %s", error->message);
+      g_error_free (error);
+    }
+
+  tp_clear_object (&reply);
+}
 
 static void
 query_unread_mails_cb (GObject *source_object,
@@ -579,6 +598,40 @@ new_mail_handler (WockyPorter *porter,
   return TRUE;
 }
 
+/* Make sure google knows we want mail notifications. According to
+ * Google clients should set 'mailnotifications' to true when needed
+ * but never to false, for compatibility reasons:
+ * https://code.google.com/apis/talk/jep_extensions/usersettings.html#3 */
+static void
+ensure_google_settings (GabbleConnection *self)
+{
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
+  WockyStanza *query;
+  WockyPorter *porter;
+
+  if (!self->mail_priv->should_set_google_settings)
+    return;
+
+  if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED)
+    return;
+
+  porter = wocky_session_get_porter (self->session);
+  query = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+                              WOCKY_STANZA_SUB_TYPE_SET, NULL, NULL,
+                              '@', "id", "user-setting-3",
+                              '(', "usersetting",
+                                ':', NS_GOOGLE_SETTING,
+                                '(', "mailnotifications",
+                                  '@', "value", "true",
+                                ')',
+                              ')',
+                              NULL);
+  wocky_porter_send_iq_async (porter, query, NULL,
+                              set_settings_cb, self);
+  self->mail_priv->should_set_google_settings = FALSE;
+
+  g_object_unref (query);
+}
 
 static void
 connection_status_changed (GabbleConnection *conn,
@@ -602,10 +655,14 @@ connection_status_changed (GabbleConnection *conn,
             ')',
             NULL);
 
+      if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_SETTING)
+        conn->mail_priv->should_set_google_settings = TRUE;
+
       if (conn->mail_priv->interested)
         {
           DEBUG ("Someone is already interested in MailNotification");
           update_unread_mails (conn);
+          ensure_google_settings (conn);
         }
     }
 }
@@ -620,6 +677,7 @@ mail_clients_interested_cb (GabbleConnection *self,
   self->mail_priv->interested = TRUE;
 
   update_unread_mails (self);
+  ensure_google_settings (self);
 }
 
 /* called on transition from 1 to 0 interested clients */

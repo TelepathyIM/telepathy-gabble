@@ -30,7 +30,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 #include "connection.h"
 #include "conn-presence.h"
 #include "debug.h"

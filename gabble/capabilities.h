@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "gabble/capabilities-set.h"
+#include <gabble/capabilities-set.h>
 
 /* Pseudo-capabilities for buggy or strange implementations, represented as
  * strings starting with a character not allowed in XML (the ASCII beep :-) */

@@ -36,8 +36,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
-#include "caps-channel-manager.h"
-#include "capabilities.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "muc-channel.h"

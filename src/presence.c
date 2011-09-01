@@ -25,7 +25,7 @@
 #include <telepathy-glib/channel-manager.h>
 #include <wocky/wocky-utils.h>
 
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 #include "conn-presence.h"
 #include "presence-cache.h"
 #include "namespaces.h"

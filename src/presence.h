@@ -24,7 +24,7 @@
 
 #include <glib-object.h>
 
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 #include "connection.h"
 #include "types.h"
 

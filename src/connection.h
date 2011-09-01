@@ -34,7 +34,7 @@
 #include <wocky/wocky-pep-service.h>
 
 #include "gabble/connection.h"
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 #include "error.h"
 #include "ft-manager.h"
 #include "jingle-factory.h"

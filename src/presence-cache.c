@@ -46,8 +46,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
-#include "capabilities.h"
-#include "caps-channel-manager.h"
+#include "gabble/capabilities.h"
+#include "gabble/caps-channel-manager.h"
 #include "conn-presence.h"
 #include "debug.h"
 #include "disco.h"

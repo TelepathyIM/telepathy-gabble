@@ -30,7 +30,7 @@
 
 #include "jingle-session.h"
 #include "jingle-share.h"
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "ft-manager.h"
 #include "error.h"

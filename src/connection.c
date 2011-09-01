@@ -51,8 +51,8 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
 #include "bytestream-factory.h"
-#include "capabilities.h"
-#include "caps-channel-manager.h"
+#include "gabble/capabilities.h"
+#include "gabble/caps-channel-manager.h"
 #include "caps-hash.h"
 #include "auth-manager.h"
 #include "conn-aliasing.h"

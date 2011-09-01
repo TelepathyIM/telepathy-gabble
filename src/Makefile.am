@@ -44,12 +44,12 @@ libgabble_convenience_la_SOURCES = \
     call-stream.h \
     call-stream.c \
     $(top_srcdir)/gabble/capabilities-set.h \
-    capabilities.h \
+    $(top_srcdir)/gabble/capabilities.h \
     capabilities.c \
     $(top_srcdir)/gabble/caps-hash.h \
     caps-hash.h \
     caps-hash.c \
-    caps-channel-manager.h \
+    $(top_srcdir)/gabble/caps-channel-manager.h \
     caps-channel-manager.c \
     conn-aliasing.h \
     conn-aliasing.c \

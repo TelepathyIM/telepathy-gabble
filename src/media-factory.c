@@ -36,7 +36,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "jingle-factory.h"

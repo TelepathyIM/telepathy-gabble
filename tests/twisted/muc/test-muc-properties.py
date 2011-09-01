@@ -3,6 +3,7 @@
 Test MUC properties support.
 """
 
+import dbus
 from twisted.words.xish import xpath
 
 from gabbletest import (
@@ -113,7 +114,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='PropertiesChanged')
 
     text_chan = wrap_channel(
-        bus.get_object(conn.bus_name, ret.value[0]), 'Text')
+        bus.get_object(conn.bus_name, ret.value[0]), 'Text', ['RoomConfig1'])
     config = text_chan.Properties.GetAll(cs.CHANNEL_IFACE_ROOM_CONFIG)
 
     # Verify that all of the config properties (besides the password ones)
@@ -143,13 +144,16 @@ def test(q, bus, conn, stream):
          'Description',
          'Persistent',
          'Private',
+         'PasswordProtected',
+         'Password',
         ],
         config['MutableProperties'])
 
-    props = dict([(name, id)
-        for id, name, sig, flags in text_chan.TpProperties.ListProperties()])
-    call_async(q, text_chan.TpProperties, 'SetProperties',
-        [(props['password'], 'foo'), (props['password-required'], True)])
+    props = dbus.Dictionary(
+        { 'Password': 'foo',
+          'PasswordProtected': True,
+        }, signature='sv')
+    call_async(q, text_chan.RoomConfig1, 'UpdateConfiguration', props)
 
     event = q.expect('stream-iq', to='chat@conf.localhost', iq_type='get',
         query_ns=ns.MUC_OWNER)
@@ -173,21 +177,34 @@ def test(q, bus, conn, stream):
         }, form)
     acknowledge_iq(stream, event.stanza)
 
-    event = q.expect('dbus-signal', signal='PropertiesChanged')
-    assertEquals(
-        [[(props['password'], 'foo'),
-          (props['password-required'], True),
-        ]], event.args)
+    # FIXME: verify this signal
+    # q.expect('dbus-signal', signal='PropertiesChanged')
 
-    q.expect('dbus-return', method='SetProperties', value=())
+    q.expect('dbus-return', method='UpdateConfiguration')
 
-    call_async(q, text_chan.TpProperties, 'SetProperties',
-        [(31337, 'foo'), (props['password-required'], True)])
+    config = text_chan.Properties.GetAll(cs.CHANNEL_IFACE_ROOM_CONFIG)
+    assertEquals(True, config['PasswordProtected'])
+    assertEquals('foo', config['Password'])
+
+    # Check unknown fields are rejected.
+    props = dbus.Dictionary(
+        { 'PasswordProtected': True,
+          'Riding on a donkey': True,
+        }, signature='sv')
+    call_async(q, text_chan.RoomConfig1, 'UpdateConfiguration', props)
     q.expect('dbus-error', name=cs.INVALID_ARGUMENT)
 
-    call_async(q, text_chan.TpProperties, 'SetProperties',
-        [(props['password'], True), (props['password-required'], 'foo')])
-    q.expect('dbus-error', name=cs.NOT_AVAILABLE)
+    # Check that mis-typed fields are rejected.
+    props = dbus.Dictionary(
+        { 'PasswordProtected': 'foo',
+          'Password': True,
+        }, signature='sv')
+    call_async(q, text_chan.RoomConfig1, 'UpdateConfiguration', props)
+    q.expect('dbus-error', name=cs.INVALID_ARGUMENT)
+
+    # Updating no fields should be a no-op, and not wait on any network
+    # traffic.
+    text_chan.RoomConfig1.UpdateConfiguration({})
 
 if __name__ == '__main__':
     exec_test(test)

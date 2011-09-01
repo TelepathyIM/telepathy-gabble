@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include <wocky/wocky-muc.h>
+#include <wocky/wocky-utils.h>
 #include <wocky/wocky-xmpp-error.h>
 
 #include <dbus/dbus-glib.h>
@@ -52,6 +53,7 @@
 #include "presence-cache.h"
 #include "call-muc-channel.h"
 #include "gabble-signals-marshal.h"
+#include "gabble-enumtypes.h"
 
 #define DEFAULT_JOIN_TIMEOUT 180
 #define DEFAULT_LEAVE_TIMEOUT 180
@@ -216,8 +218,8 @@ struct _GabbleMucChannelPrivate
 
   guint recv_id;
 
-  TpPropertiesContext *properties_ctx;
   GabbleRoomConfig *room_config;
+  GHashTable *properties_being_updated;
 
   /* Room interface */
   gchar *room_name;
@@ -511,6 +513,8 @@ gabble_muc_channel_constructed (GObject *obj)
         GABBLE_ROOM_CONFIG_TITLE,
         GABBLE_ROOM_CONFIG_PERSISTENT,
         GABBLE_ROOM_CONFIG_PRIVATE,
+        GABBLE_ROOM_CONFIG_PASSWORD_PROTECTED,
+        GABBLE_ROOM_CONFIG_PASSWORD,
     };
     guint i;
 
@@ -989,8 +993,11 @@ static gboolean gabble_muc_channel_add_member (GObject *obj, TpHandle handle,
     const gchar *message, GError **error);
 static gboolean gabble_muc_channel_remove_member (GObject *obj,
     TpHandle handle, const gchar *message, GError **error);
-static gboolean gabble_muc_channel_do_set_properties (GObject *obj,
-    TpPropertiesContext *ctx, GError **error);
+static void gabble_muc_channel_update_configuration_async (
+    TpBaseChannel *base,
+    GHashTable *validated_properties,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
 
 static void
 gabble_muc_channel_fill_immutable_properties (
@@ -1256,7 +1263,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                                       G_STRUCT_OFFSET (GabbleMucChannelClass,
                                         properties_class),
                                       room_property_signatures, NUM_ROOM_PROPS,
-                                      gabble_muc_channel_do_set_properties);
+                                      NULL);
 
 
   gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
@@ -1272,6 +1279,14 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       gabble_muc_channel_remove_member);
   tp_group_mixin_init_dbus_properties (object_class);
   tp_group_mixin_class_allow_self_removal (object_class);
+
+  {
+    /* TODO: monkeypatching is Bad And Wrong! */
+    GabbleRoomConfigClass *config_class = g_type_class_ref (GABBLE_TYPE_ROOM_CONFIG);
+
+    config_class->update_async = gabble_muc_channel_update_configuration_async;
+    g_type_class_unref (config_class);
+  }
 }
 
 static void clear_join_timer (GabbleMucChannel *chan);
@@ -3204,37 +3219,39 @@ static void request_config_form_reply_cb (
     GAsyncResult *result,
     gpointer user_data);
 
-static gboolean
-gabble_muc_channel_do_set_properties (GObject *obj,
-                                      TpPropertiesContext *ctx,
-                                      GError **error)
+static void
+gabble_muc_channel_update_configuration_async (
+    TpBaseChannel *base,
+    GHashTable *validated_properties,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
 {
-  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (base);
   GabbleMucChannelPrivate *priv = self->priv;
-  TpBaseChannel *base = TP_BASE_CHANNEL (obj);
   GabbleConnection *conn =
       GABBLE_CONNECTION (tp_base_channel_get_connection (base));
   WockyStanza *stanza;
+  GSimpleAsyncResult *result = g_simple_async_result_new ((GObject *) self,
+      callback, user_data, gabble_muc_channel_update_configuration_async);
 
-  g_assert (priv->properties_ctx == NULL);
+  g_assert (priv->properties_being_updated == NULL);
 
   stanza = wocky_stanza_build (
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
       NULL, priv->jid,
       '(', "query", ':', WOCKY_NS_MUC_OWNER, ')', NULL);
   conn_util_send_iq_async (conn, stanza, NULL,
-      request_config_form_reply_cb, g_object_ref (self));
+      request_config_form_reply_cb, result);
   g_object_unref (stanza);
 
-  priv->properties_ctx = ctx;
-  return TRUE;
+  priv->properties_being_updated = validated_properties;
 }
 
 typedef const gchar * (*MapFieldFunc) (const GValue *value);
 
 typedef struct {
     const gchar *var;
-    guint prop_id;
+    GabbleRoomConfigProperty prop_id;
     MapFieldFunc map;
 } ConfigFormMapping;
 
@@ -3263,40 +3280,40 @@ map_owner_whois (const GValue *value)
 }
 
 static ConfigFormMapping form_mappings[] = {
-    { "anonymous", ROOM_PROP_ANONYMOUS, map_bool },
-    { "muc#roomconfig_whois", ROOM_PROP_ANONYMOUS, map_roomconfig_whois },
-    { "muc#owner_whois", ROOM_PROP_ANONYMOUS, map_owner_whois },
+    { "anonymous", GABBLE_ROOM_CONFIG_ANONYMOUS, map_bool },
+    { "muc#roomconfig_whois", GABBLE_ROOM_CONFIG_ANONYMOUS, map_roomconfig_whois },
+    { "muc#owner_whois", GABBLE_ROOM_CONFIG_ANONYMOUS, map_owner_whois },
 
-    { "members_only", ROOM_PROP_INVITE_ONLY, map_bool },
-    { "muc#roomconfig_membersonly", ROOM_PROP_INVITE_ONLY, map_bool },
-    { "muc#owner_inviteonly", ROOM_PROP_INVITE_ONLY, map_bool },
+    { "members_only", GABBLE_ROOM_CONFIG_INVITE_ONLY, map_bool },
+    { "muc#roomconfig_membersonly", GABBLE_ROOM_CONFIG_INVITE_ONLY, map_bool },
+    { "muc#owner_inviteonly", GABBLE_ROOM_CONFIG_INVITE_ONLY, map_bool },
 
-    { "moderated", ROOM_PROP_MODERATED, map_bool },
-    { "muc#roomconfig_moderatedroom", ROOM_PROP_MODERATED, map_bool },
-    { "muc#owner_moderatedroom", ROOM_PROP_MODERATED, map_bool },
+    { "moderated", GABBLE_ROOM_CONFIG_MODERATED, map_bool },
+    { "muc#roomconfig_moderatedroom", GABBLE_ROOM_CONFIG_MODERATED, map_bool },
+    { "muc#owner_moderatedroom", GABBLE_ROOM_CONFIG_MODERATED, map_bool },
 
-    { "title", ROOM_PROP_NAME, g_value_get_string },
-    { "muc#roomconfig_roomname", ROOM_PROP_NAME, g_value_get_string },
-    { "muc#owner_roomname", ROOM_PROP_NAME, g_value_get_string },
+    { "title", GABBLE_ROOM_CONFIG_TITLE, g_value_get_string },
+    { "muc#roomconfig_roomname", GABBLE_ROOM_CONFIG_TITLE, g_value_get_string },
+    { "muc#owner_roomname", GABBLE_ROOM_CONFIG_TITLE, g_value_get_string },
 
-    { "muc#roomconfig_roomdesc", ROOM_PROP_DESCRIPTION, g_value_get_string },
-    { "muc#owner_roomdesc", ROOM_PROP_DESCRIPTION, g_value_get_string },
+    { "muc#roomconfig_roomdesc", GABBLE_ROOM_CONFIG_DESCRIPTION, g_value_get_string },
+    { "muc#owner_roomdesc", GABBLE_ROOM_CONFIG_DESCRIPTION, g_value_get_string },
 
-    { "password", ROOM_PROP_PASSWORD, g_value_get_string },
-    { "muc#roomconfig_roomsecret", ROOM_PROP_PASSWORD, g_value_get_string },
-    { "muc#owner_roomsecret", ROOM_PROP_PASSWORD, g_value_get_string },
+    { "password", GABBLE_ROOM_CONFIG_PASSWORD, g_value_get_string },
+    { "muc#roomconfig_roomsecret", GABBLE_ROOM_CONFIG_PASSWORD, g_value_get_string },
+    { "muc#owner_roomsecret", GABBLE_ROOM_CONFIG_PASSWORD, g_value_get_string },
 
-    { "password_protected", ROOM_PROP_PASSWORD_REQUIRED, map_bool },
-    { "muc#roomconfig_passwordprotectedroom", ROOM_PROP_PASSWORD_REQUIRED, map_bool },
-    { "muc#owner_passwordprotectedroom", ROOM_PROP_PASSWORD_REQUIRED, map_bool },
+    { "password_protected", GABBLE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
+    { "muc#roomconfig_passwordprotectedroom", GABBLE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
+    { "muc#owner_passwordprotectedroom", GABBLE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
 
-    { "persistent", ROOM_PROP_PERSISTENT, map_bool },
-    { "muc#roomconfig_persistentroom", ROOM_PROP_PERSISTENT, map_bool },
-    { "muc#owner_persistentroom", ROOM_PROP_PERSISTENT, map_bool },
+    { "persistent", GABBLE_ROOM_CONFIG_PERSISTENT, map_bool },
+    { "muc#roomconfig_persistentroom", GABBLE_ROOM_CONFIG_PERSISTENT, map_bool },
+    { "muc#owner_persistentroom", GABBLE_ROOM_CONFIG_PERSISTENT, map_bool },
 
-    { "public", ROOM_PROP_PRIVATE, map_bool_inverted },
-    { "muc#roomconfig_publicroom", ROOM_PROP_PRIVATE, map_bool_inverted },
-    { "muc#owner_publicroom", ROOM_PROP_PRIVATE, map_bool_inverted },
+    { "public", GABBLE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
+    { "muc#roomconfig_publicroom", GABBLE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
+    { "muc#owner_publicroom", GABBLE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
 
     { NULL }
 };
@@ -3327,9 +3344,11 @@ request_config_form_reply_cb (
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (source);
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (user_data);
+  GSimpleAsyncResult *update_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (
+      g_async_result_get_source_object ((GAsyncResult *) update_result));
   GabbleMucChannelPrivate *priv = chan->priv;
-  TpPropertiesContext *ctx = priv->properties_ctx;
+  GHashTable *properties = priv->properties_being_updated;
   WockyStanza *reply = NULL;
   WockyStanza *submit_iq = NULL;
   WockyNode *form_node, *submit_node, *child;
@@ -3367,14 +3386,14 @@ request_config_form_reply_cb (
   /* we assume that the number of props will fit in a guint on all supported
    * platforms, so fail at compile time if this is no longer the case
    */
-#if NUM_ROOM_PROPS > 32
+#if GABBLE_NUM_ROOM_CONFIG_PROPERTIES > 32
 #error GabbleMUCChannel request_config_form_reply_cb needs porting to TpIntSet
 #endif
 
   props_left = 0;
-  for (i = 0; i < NUM_ROOM_PROPS; i++)
+  for (i = 0; i < GABBLE_NUM_ROOM_CONFIG_PROPERTIES; i++)
     {
-      if (tp_properties_context_has (ctx, i))
+      if (g_hash_table_lookup (properties, GUINT_TO_POINTER (i)) != NULL)
         props_left |= 1 << i;
     }
 
@@ -3384,6 +3403,7 @@ request_config_form_reply_cb (
       const gchar *var, *type_str;
       LmMessageNode *field_node;
       ConfigFormMapping *f;
+      GValue *value = NULL;
 
       var = wocky_node_get_attribute (child, "var");
       if (var == NULL) {
@@ -3404,14 +3424,19 @@ request_config_form_reply_cb (
           wocky_node_set_attribute (field_node, "type", type_str);
         }
 
-      if (f != NULL && tp_properties_context_has (ctx, f->prop_id))
+      if (f != NULL)
+        value = g_hash_table_lookup (properties, GUINT_TO_POINTER (f->prop_id));
+
+      if (value != NULL)
         {
           const gchar *val_str;
 
           /* Known property and we have a value to set */
-          DEBUG ("looking up %s...", room_property_signatures[f->prop_id].name);
+          DEBUG ("transforming %s...",
+              wocky_enum_to_nick (GABBLE_TYPE_ROOM_CONFIG_PROPERTY,
+                  f->prop_id));
           g_assert (f->map != NULL);
-          val_str = f->map (tp_properties_context_get (ctx, f->prop_id));
+          val_str = f->map (value);
 
           /* add the corresponding value node(s) to the reply message */
           DEBUG ("Setting value %s for %s", val_str, var);
@@ -3440,16 +3465,18 @@ request_config_form_reply_cb (
               "\n%s: the following properties were not substituted:\n",
               G_STRFUNC);
 
-      for (i = 0; i < NUM_ROOM_PROPS; i++)
+      for (i = 0; i < GABBLE_NUM_ROOM_CONFIG_PROPERTIES; i++)
         {
           if ((props_left & (1 << i)) != 0)
             {
-              printf ("  %s\n", room_property_signatures[i].name);
+              const gchar *name = wocky_enum_to_nick (
+                  GABBLE_TYPE_ROOM_CONFIG_PROPERTY, i);
+              printf ("  %s\n", name);
 
               if (unsubstituted->len > 0)
                 g_string_append (unsubstituted, ", ");
 
-              g_string_append (unsubstituted, room_property_signatures[i].name);
+              g_string_append (unsubstituted, name);
             }
         }
 
@@ -3467,13 +3494,16 @@ request_config_form_reply_cb (
     }
 
   conn_util_send_iq_async (conn, submit_iq, NULL,
-      request_config_form_submit_reply_cb, g_object_ref (chan));
+      request_config_form_submit_reply_cb, update_result);
 
 OUT:
   if (error != NULL)
     {
-      tp_properties_context_return (ctx, error);
-      priv->properties_ctx = NULL;
+      g_simple_async_result_set_from_error (update_result, error);
+      g_simple_async_result_complete (update_result);
+      g_object_unref (update_result);
+      priv->properties_being_updated = NULL;
+      g_clear_error (&error);
     }
 
   tp_clear_object (&reply);
@@ -3487,22 +3517,27 @@ request_config_form_submit_reply_cb (
     GAsyncResult *result,
     gpointer user_data)
 {
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (user_data);
+  GSimpleAsyncResult *update_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (
+      g_async_result_get_source_object ((GAsyncResult *) update_result));
   GabbleMucChannelPrivate *priv = chan->priv;
   GError *error = NULL;
 
   if (!conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, NULL, &error))
     {
       g_prefix_error (&error, "submitted configuration form was rejected: ");
+      g_simple_async_result_set_from_error (update_result, error);
+      g_clear_error (&error);
     }
 
-  tp_properties_context_return (priv->properties_ctx, error);
-  priv->properties_ctx = NULL;
+  g_simple_async_result_complete (update_result);
+  priv->properties_being_updated = NULL;
 
   /* Get the properties into a consistent state. */
   room_properties_update (chan);
 
   g_object_unref (chan);
+  g_object_unref (update_result);
 }
 
 /**

@@ -38,6 +38,8 @@
 struct _GabbleGoogleRelayResolver {
 #ifdef ENABLE_GOOGLE_RELAY
   SoupSession *soup;
+#else
+  GObject *soup;
 #endif
 };
 
@@ -267,9 +269,7 @@ gabble_google_relay_resolver_new (void)
 void
 gabble_google_relay_resolver_destroy (GabbleGoogleRelayResolver *self)
 {
-#ifdef ENABLE_GOOGLE_RELAY
   tp_clear_object (&self->soup);
-#endif
 
   g_slice_free (GabbleGoogleRelayResolver, self);
 }

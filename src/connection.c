@@ -2292,7 +2292,7 @@ connection_shut_down (TpBaseConnection *base)
   tp_base_connection_finish_shutdown (base);
 }
 
-void
+gboolean
 gabble_connection_fill_in_caps (GabbleConnection *self,
     LmMessage *presence_message)
 {
@@ -2300,10 +2300,13 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   LmMessageNode *node = lm_message_get_node (presence_message);
   gchar *caps_hash;
   gboolean share_v1, voice_v1, video_v1;
-  GString *ext = g_string_new ("");
+  GString *ext;
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
   caps_hash = caps_hash_compute_from_self_presence (self);
+  if (caps_hash == NULL)
+    return FALSE;
+
   node = lm_message_node_add_child (node, "c", NULL);
   lm_message_node_set_attributes (
     node,
@@ -2321,6 +2324,7 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
 
+  ext = g_string_new ("");
   g_string_append (ext, BUNDLE_PMUC_V1);
 
   share_v1 = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_SHARE);
@@ -2339,6 +2343,8 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   lm_message_node_set_attribute (node, "ext", ext->str);
   g_string_free (ext, TRUE);
   g_free (caps_hash);
+
+  return TRUE;
 }
 
 gboolean
@@ -2366,9 +2372,16 @@ gabble_connection_send_capabilities (GabbleConnection *self,
   message = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_PRESENCE,
       LM_MESSAGE_SUB_TYPE_AVAILABLE);
 
-  gabble_connection_fill_in_caps (self, message);
-
-  ret = _gabble_connection_send (self, message, error);
+  if (!gabble_connection_fill_in_caps (self, message))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unable to fill in caps on presence stanza");
+      ret = FALSE;
+    }
+  else
+    {
+      ret = _gabble_connection_send (self, message, error);
+    }
 
   lm_message_unref (message);
 
@@ -2386,7 +2399,13 @@ gabble_connection_request_decloak (GabbleConnection *self,
   LmMessageNode *decloak;
   gboolean ret;
 
-  gabble_connection_fill_in_caps (self, message);
+  if (!gabble_connection_fill_in_caps (self, message))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unable to fill in caps on presence stanza");
+      lm_message_unref (message);
+      return FALSE;
+    }
 
   decloak = lm_message_node_add_child (lm_message_get_node (message),
       "temppres", NULL);

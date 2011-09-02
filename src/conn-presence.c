@@ -1605,9 +1605,16 @@ conn_presence_signal_own_presence (GabbleConnection *self,
        * <show>away</show>? */
     }
 
-  gabble_connection_fill_in_caps (self, message);
-
-  ret = _gabble_connection_send (self, message, error);
+  if (!gabble_connection_fill_in_caps (self, message))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Unable to fill in caps on presence stanza");
+      ret = FALSE;
+    }
+  else
+    {
+      ret = _gabble_connection_send (self, message, error);
+    }
 
   lm_message_unref (message);
 

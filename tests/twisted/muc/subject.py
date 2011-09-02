@@ -6,7 +6,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test, make_result_iq, sync_stream
+from gabbletest import exec_test, make_result_iq
 from servicetest import (EventPattern, assertEquals, assertLength,
         assertContains, call_async)
 import constants as cs
@@ -72,12 +72,9 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         message.addElement('subject', content='Testing')
         stream.send(message)
 
-        # FIXME: DBus.Properties.PropertiesChanged doesn't work; syncing the
-        # stream in the meantime.
-        # q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
-        #          signal='PropertiesChanged',
-        #          predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
-        sync_stream(q, stream)
+        q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
+                 signal='PropertiesChanged',
+                 predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
         check_subject_props(chan, 'Testing', room + '/bob', True)
 
     # Reply to the disco
@@ -105,12 +102,9 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     message.addElement('subject', content='lalala')
     stream.send(message)
 
-    # FIXME: DBus.Properties.PropertiesChanged doesn't work; syncing the
-    # stream in the meantime.
-    # q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
-    #          signal='PropertiesChanged',
-    #          predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
-    sync_stream(q, stream)
+    q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
+             signal='PropertiesChanged',
+             predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
     check_subject_props(chan, 'lalala', room + '/bob', True)
 
     # test changing the subject
@@ -126,10 +120,9 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     elem['from'] = room + '/test'
     stream.send(elem)
 
-    q.expect_many(# FIXME: DBus.Properties.PropertiesChanged doesn't work
-                  #  EventPattern('dbus-signal', interface=cs.PROPERTIES_IFACE,
-                  #               signal='PropertiesChanged',
-                  #               predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT),
+    q.expect_many(EventPattern('dbus-signal', interface=cs.PROPERTIES_IFACE,
+                               signal='PropertiesChanged',
+                               predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT),
                   EventPattern('dbus-return', method='SetSubject'),
                  )
 

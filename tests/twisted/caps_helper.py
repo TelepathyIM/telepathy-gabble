@@ -265,7 +265,7 @@ def disco_caps(q, stream, presence):
     # Check if the hash matches the announced capabilities
     assertEquals(compute_caps_hash(identities, features, dataforms), ver)
 
-    return (event, features)
+    return (event, features, dataforms)
 
 def caps_contain(event, cap):
     node = xpath.queryForNodes('/iq/query/feature[@var="%s"]'

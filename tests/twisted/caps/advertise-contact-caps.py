@@ -46,7 +46,7 @@ def run_test(q, bus, conn, stream,
                 args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
             EventPattern('stream-presence'),
             )
-    (disco_response, namespaces) = disco_caps(q, stream, initial_presence)
+    (disco_response, namespaces, _) = disco_caps(q, stream, initial_presence)
     check_caps(namespaces, [ns.TUBES + '/stream#x-abiword'])
 
     conn.ContactCapabilities.UpdateCapabilities([
@@ -70,7 +70,7 @@ def run_test(q, bus, conn, stream,
             media_interface + '/video/h264',
             ]),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, JINGLE_CAPS + [ns.TUBES + '/stream#x-abiword'])
 
@@ -87,7 +87,7 @@ def run_test(q, bus, conn, stream,
             media_interface + '/ice-udp',
             ]),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces,
             JINGLE_CAPS_EXCEPT_GVIDEO + [ns.TUBES + '/stream#x-abiword'])
@@ -96,7 +96,7 @@ def run_test(q, bus, conn, stream,
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.AbiWord', [], []),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, JINGLE_CAPS_EXCEPT_GVIDEO)
 
@@ -104,7 +104,7 @@ def run_test(q, bus, conn, stream,
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.KCall', [], []),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, [])
 
@@ -124,7 +124,7 @@ def run_test(q, bus, conn, stream,
             media_interface + '/video/h264',
             ]),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, [ns.TUBES + '/stream#x-abiword'])
 
@@ -132,7 +132,7 @@ def run_test(q, bus, conn, stream,
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.AbiWord', [], []),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, [])
 
@@ -148,7 +148,7 @@ def run_test(q, bus, conn, stream,
             initial_audio: True},
         ], [media_interface + '/gtalk-p2p']),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces,
             [ns.GOOGLE_P2P, ns.JINGLE_TRANSPORT_RAWUDP, ns.JINGLE,
@@ -164,7 +164,7 @@ def run_test(q, bus, conn, stream,
             initial_audio: True},
         ], [])
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces,
             [ns.JINGLE_TRANSPORT_RAWUDP, ns.JINGLE,
@@ -183,7 +183,7 @@ def run_test(q, bus, conn, stream,
             media_interface + '/video/theora',
             ]),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces,
             [ns.JINGLE_TRANSPORT_ICEUDP, ns.JINGLE_TRANSPORT_RAWUDP, ns.JINGLE,
@@ -194,7 +194,7 @@ def run_test(q, bus, conn, stream,
     conn.ContactCapabilities.UpdateCapabilities([
         (cs.CLIENT + '.KCall', [], []),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, [])
 
@@ -205,7 +205,7 @@ def run_test(q, bus, conn, stream,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             }], []),
         ])
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, [ns.FILE_TRANSFER])
 
@@ -235,7 +235,7 @@ def run_mixed_test (q, bus, conn, stream):
             ]),
         ])
 
-    (disco_response, namespaces, _) = receive_presence_and_ask_caps(q, stream,
+    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
             False)
     check_caps(namespaces, JINGLE_CAPS)
 

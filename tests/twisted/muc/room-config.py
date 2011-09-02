@@ -1,6 +1,6 @@
 # vim: fileencoding=utf-8 :
 """
-Test MUC properties support.
+Test the RoomConfig interface on MUC channels.
 """
 
 import dbus

@@ -88,6 +88,9 @@ void gabble_room_config_set_property_mutable (
     GabbleRoomConfigProperty property_id,
     gboolean is_mutable);
 
+void gabble_room_config_emit_properties_changed (
+    GabbleRoomConfig *self);
+
 /* TYPE MACROS */
 GType gabble_room_config_get_type (void);
 

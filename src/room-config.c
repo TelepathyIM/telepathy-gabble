@@ -121,6 +121,16 @@ struct _GabbleRoomConfigPrivate {
     gboolean can_update_configuration;
     TpIntset *mutable_properties;
 
+    /* Contains elements of GabbleRoomConfigProperty which are known to have
+     * changed since we last emitted PropertiesChanged.
+     */
+    TpIntset *changed_properties;
+    /* These two properties are not elements of GabbleRoomConfigProperty; we
+     * track 'em separately.
+     */
+    gboolean can_update_configuration_changed;
+    gboolean mutable_properties_changed;
+
     /* Details of a pending update, or both NULL if no call to
      * UpdateConfiguration is in progress.
      */
@@ -164,6 +174,26 @@ gabble_room_config_init (GabbleRoomConfig *self)
   priv = self->priv;
 
   priv->mutable_properties = tp_intset_new ();
+  priv->changed_properties = tp_intset_new ();
+}
+
+static void
+add_properties_from_intset (
+    GPtrArray *property_names,
+    TpIntset *properties)
+{
+  TpIntsetFastIter iter;
+  guint i;
+
+  tp_intset_fast_iter_init (&iter, properties);
+  while (tp_intset_fast_iter_next (&iter, &i))
+    {
+      const gchar *property_name = wocky_enum_to_nick (
+          GABBLE_TYPE_ROOM_CONFIG_PROPERTY, i);
+
+      g_assert (property_name != NULL);
+      g_ptr_array_add (property_names, (gchar *) property_name);
+    }
 }
 
 static void
@@ -217,19 +247,8 @@ gabble_room_config_get_property (
       case PROP_MUTABLE_PROPERTIES:
       {
         GPtrArray *property_names = g_ptr_array_new ();
-        TpIntsetFastIter iter;
-        guint i;
 
-        tp_intset_fast_iter_init (&iter, priv->mutable_properties);
-        while (tp_intset_fast_iter_next (&iter, &i))
-          {
-            const gchar *property_name = wocky_enum_to_nick (
-                GABBLE_TYPE_ROOM_CONFIG_PROPERTY, i);
-
-            g_assert (property_name != NULL);
-            g_ptr_array_add (property_names, (gchar *) property_name);
-          }
-
+        add_properties_from_intset (property_names, priv->mutable_properties);
         g_ptr_array_add (property_names, NULL);
         g_value_take_boxed (value,
             g_strdupv ((gchar **) property_names->pdata));
@@ -275,42 +294,72 @@ gabble_room_config_set_property (
             priv->channel, self);
         break;
 
-      case PROP_ANONYMOUS:
-        priv->anonymous = g_value_get_boolean (value);
-        break;
-      case PROP_INVITE_ONLY:
-        priv->invite_only = g_value_get_boolean (value);
-        break;
+/* We track changed-ness of all the configuration field-flavoured properties in
+ * priv->changed_properties. The setters can be mechanically generated: we need
+ * the property name in uppercase to build PROP_FOO and GABBLE_ROOM_CONFIG_FOO,
+ * and in lowercase to assign to priv->foo.
+ */
+#define CASE_BOOL(uppercase, lowercase) \
+      case PROP_ ## uppercase: \
+      { \
+        gboolean lowercase = g_value_get_boolean (value); \
+        if (!priv->lowercase != !lowercase) \
+          tp_intset_add (priv->changed_properties, \
+              GABBLE_ROOM_CONFIG_ ## uppercase); \
+        priv->lowercase = lowercase; \
+        break; \
+      }
+#define CASE_STRING(uppercase, lowercase) \
+      case PROP_ ## uppercase: \
+      { \
+        gchar *lowercase = g_value_dup_string (value); \
+        if (tp_strdiff (priv->lowercase, lowercase)) \
+          tp_intset_add (priv->changed_properties, \
+              GABBLE_ROOM_CONFIG_ ## uppercase); \
+        g_free (priv->lowercase); \
+        priv->lowercase = lowercase; \
+        break; \
+      }
+CASE_BOOL (ANONYMOUS, anonymous)
+CASE_BOOL (INVITE_ONLY, invite_only)
+/* LIMIT is the only non-string or -boolean property, so there's no macro for
+ * it. It's interspersed with the others because they're in the same order as
+ * in the spec.
+ */
       case PROP_LIMIT:
-        priv->limit = g_value_get_uint (value);
+      {
+        guint limit = g_value_get_uint (value);
+
+        if (limit != priv->limit)
+          tp_intset_add (priv->changed_properties,
+              GABBLE_ROOM_CONFIG_LIMIT);
+
+        priv->limit = limit;
         break;
-      case PROP_MODERATED:
-        priv->moderated = g_value_get_boolean (value);
-        break;
-      case PROP_TITLE:
-        g_free (priv->title);
-        priv->title = g_value_dup_string (value);
-        break;
-      case PROP_DESCRIPTION:
-        g_free (priv->description);
-        priv->description = g_value_dup_string (value);
-        break;
-      case PROP_PERSISTENT:
-        priv->persistent = g_value_get_boolean (value);
-        break;
-      case PROP_PRIVATE:
-        priv->private = g_value_get_boolean (value);
-        break;
-      case PROP_PASSWORD_PROTECTED:
-        priv->password_protected = g_value_get_boolean (value);
-        break;
-      case PROP_PASSWORD:
-        g_free (priv->password);
-        priv->password = g_value_dup_string (value);
-        break;
+      }
+CASE_BOOL (MODERATED, moderated)
+CASE_STRING (TITLE, title);
+CASE_STRING (DESCRIPTION, description)
+CASE_BOOL (PERSISTENT, persistent)
+CASE_BOOL (PRIVATE, private)
+CASE_BOOL (PASSWORD_PROTECTED, password_protected)
+CASE_STRING (PASSWORD, password)
+#undef CASE_BOOL
+#undef CASE_STRING
+
+/* This is not a member of GabbleRoomConfigProperty, so we track its
+ * changed-ness separately.
+ */
       case PROP_CAN_UPDATE_CONFIGURATION:
-        priv->can_update_configuration = g_value_get_boolean (value);
+      {
+        gboolean can_update_configuration = g_value_get_boolean (value);
+
+        if (!priv->can_update_configuration != !can_update_configuration)
+          priv->can_update_configuration_changed = TRUE;
+
+        priv->can_update_configuration = can_update_configuration;
         break;
+      }
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -376,6 +425,7 @@ gabble_room_config_finalize (GObject *object)
   g_free (priv->description);
   g_free (priv->password);
   tp_intset_destroy (priv->mutable_properties);
+  tp_intset_destroy (priv->changed_properties);
 
   if (priv->update_configuration_ctx != NULL)
     {
@@ -721,6 +771,7 @@ update_cb (
           g_object_set_property ((GObject *) self, g_property_name, value);
         }
 
+      gabble_room_config_emit_properties_changed (self);
       tp_svc_channel_interface_room_config_return_from_update_configuration (
           priv->update_configuration_ctx);
     }
@@ -935,5 +986,67 @@ gabble_room_config_set_property_mutable (
     }
 
   if (changed)
-    g_object_notify ((GObject *) self, "mutable-properties");
+    {
+      g_object_notify ((GObject *) self, "mutable-properties");
+      priv->mutable_properties_changed = TRUE;
+   }
+}
+
+/**
+ * gabble_room_config_emit_properties_changed:
+ * @self: a #GabbleRoomConfig object.
+ *
+ * Signal the new values of properties which have been modified since the last
+ * call to this method, if any. This includes changes made by calling
+ * gabble_room_config_set_can_update_configuration() and
+ * gabble_room_config_set_property_mutable(), as well as changes to any of the
+ * (writeable) GObject properties on this object.
+ */
+void
+gabble_room_config_emit_properties_changed (
+    GabbleRoomConfig *self)
+{
+  GabbleRoomConfigPrivate *priv;
+
+  g_return_if_fail (GABBLE_IS_ROOM_CONFIG (self));
+  priv = self->priv;
+
+  if (priv->channel == NULL)
+    {
+      CRITICAL ("the channel associated with (GabbleRoomConfig *)%p has died",
+          self);
+      g_return_if_reached ();
+    }
+  else
+    {
+      GPtrArray *changed = g_ptr_array_new ();
+
+      add_properties_from_intset (changed, priv->changed_properties);
+      tp_intset_clear (priv->changed_properties);
+
+      if (priv->mutable_properties_changed)
+        {
+          g_ptr_array_add (changed, "MutableProperties");
+          priv->mutable_properties_changed = FALSE;
+        }
+
+      if (priv->can_update_configuration_changed)
+        {
+          g_ptr_array_add (changed, "CanUpdateConfiguration");
+          priv->can_update_configuration_changed = FALSE;
+        }
+
+      if (changed->len > 0)
+        {
+          g_ptr_array_add (changed, NULL);
+          DEBUG ("emitting PropertiesChanged for %s",
+              g_strjoinv (", ", (gchar **) changed->pdata));
+          tp_dbus_properties_mixin_emit_properties_changed (
+              G_OBJECT (priv->channel),
+              TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG,
+              (const gchar * const *) changed->pdata);
+        }
+
+      g_ptr_array_unref (changed);
+    }
 }

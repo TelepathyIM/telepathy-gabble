@@ -126,10 +126,13 @@ def test(q, bus, conn, stream):
     assertContains('Description', changed['MutableProperties'])
 
     handle_disco_info_iq(stream, disco_iq.stanza)
-    # FIXME: add a ConfigRetrieved signal/property to RoomConfig, listen for
-    # that instead of (just) waiting for PropertiesChanged.
     pc = q.expect('dbus-signal', signal='PropertiesChanged',
         predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_ROOM_CONFIG)
+    q.expect('dbus-signal', signal='PropertiesChanged',
+        args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
+              {'ConfigurationRetrieved': True},
+              []
+             ])
     _, changed, invalidated = pc.args
     assertEquals(
         { 'Anonymous': True,

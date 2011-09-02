@@ -691,7 +691,10 @@ properties_disco_cb (GabbleDisco *disco,
         }
     }
 
-  gabble_room_config_emit_properties_changed (priv->room_config);
+  /* This could be the first time we've fetched the room properties, or it
+   * could be a later time; either way, this method does the right thing.
+   */
+  gabble_room_config_set_retrieved (priv->room_config);
 }
 
 static void

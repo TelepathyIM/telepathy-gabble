@@ -479,6 +479,9 @@ gabble_muc_channel_constructed (GObject *obj)
     for (i = 0; i < G_N_ELEMENTS (mutable_properties); i++)
       gabble_room_config_set_property_mutable (priv->room_config,
           mutable_properties[i], TRUE);
+
+    /* Just to get those mutable properties out there. */
+    gabble_room_config_emit_properties_changed (priv->room_config);
   }
 
   if (priv->invited)
@@ -687,6 +690,8 @@ properties_disco_cb (GabbleDisco *disco,
           g_value_unset (&val);
         }
     }
+
+  gabble_room_config_emit_properties_changed (priv->room_config);
 }
 
 static void
@@ -1671,6 +1676,7 @@ perms_config_form_reply_cb (
         {
           gabble_room_config_set_property_mutable (priv->room_config,
               GABBLE_ROOM_CONFIG_DESCRIPTION, TRUE);
+          gabble_room_config_emit_properties_changed (priv->room_config);
           break;
         }
     }
@@ -1728,6 +1734,8 @@ update_permissions (GabbleMucChannel *chan)
     {
       gabble_room_config_set_can_update_configuration (priv->room_config, FALSE);
     }
+
+  gabble_room_config_emit_properties_changed (priv->room_config);
 
   if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {

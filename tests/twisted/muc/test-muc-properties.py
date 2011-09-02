@@ -11,6 +11,7 @@ from gabbletest import (
     request_muc_handle, sync_stream)
 from servicetest import (
     call_async, wrap_channel, EventPattern, assertEquals, assertSameSets,
+    assertContains,
 )
 
 import constants as cs
@@ -97,18 +98,48 @@ def test(q, bus, conn, stream):
     stream.send(
         make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
-    disco_iq, owner_iq, ret = q.expect_many(
+    disco_iq, owner_iq, ret, _ = q.expect_many(
         EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
             query_ns=ns.DISCO_INFO),
         EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
             query_ns=ns.MUC_OWNER),
-        EventPattern('dbus-return', method='RequestChannel'))
-    handle_muc_owner_get_iq(stream, owner_iq.stanza)
-    handle_disco_info_iq(stream, disco_iq.stanza)
+        EventPattern('dbus-return', method='RequestChannel'),
+        # We discovered that we're an owner. Emitting a signal seems
+        # acceptable, although technically this happens before the channel
+        # request finishes so the channel could just as well not be on the bus.
+        EventPattern('dbus-signal', signal='PropertiesChanged',
+            args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
+                  {'CanUpdateConfiguration': True},
+                  []
+                 ]),
+        )
 
+    # This tells Gabble that the MUC is well-behaved and lets owners modify the
+    # room description. Technically we could also pull the description out of
+    # here, but as an implementation detail we only read configuration out of
+    # the disco reply.
+    handle_muc_owner_get_iq(stream, owner_iq.stanza)
+    pc = q.expect('dbus-signal', signal='PropertiesChanged',
+        predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_ROOM_CONFIG)
+    _, changed, invalidated = pc.args
+    assertEquals(['MutableProperties'], changed.keys())
+    assertContains('Description', changed['MutableProperties'])
+
+    handle_disco_info_iq(stream, disco_iq.stanza)
     # FIXME: add a ConfigRetrieved signal/property to RoomConfig, listen for
-    # that instead of just syncing the stream.
-    sync_stream(q, stream)
+    # that instead of (just) waiting for PropertiesChanged.
+    pc = q.expect('dbus-signal', signal='PropertiesChanged',
+        predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_ROOM_CONFIG)
+    _, changed, invalidated = pc.args
+    assertEquals(
+        { 'Anonymous': True,
+          'Moderated': True,
+          'Title': ROOM_NAME,
+          'Description': ROOM_DESCRIPTION,
+          'Private': True,
+        }, changed)
+
+    assertEquals([], invalidated)
 
     text_chan = wrap_channel(
         bus.get_object(conn.bus_name, ret.value[0]), 'Text', ['RoomConfig1'])
@@ -174,10 +205,16 @@ def test(q, bus, conn, stream):
         }, form)
     acknowledge_iq(stream, event.stanza)
 
-    # FIXME: verify this signal
-    # q.expect('dbus-signal', signal='PropertiesChanged')
+    pc, _ = q.expect_many(
+        EventPattern('dbus-signal', signal='PropertiesChanged',
+            predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_ROOM_CONFIG),
+        EventPattern('dbus-return', method='UpdateConfiguration'),
+        )
 
-    q.expect('dbus-return', method='UpdateConfiguration')
+    _, changed, invalidated = pc.args
+
+    assertEquals(props, changed)
+    assertEquals([], invalidated)
 
     config = text_chan.Properties.GetAll(cs.CHANNEL_IFACE_ROOM_CONFIG)
     assertEquals(True, config['PasswordProtected'])

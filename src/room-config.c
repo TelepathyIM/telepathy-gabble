@@ -120,6 +120,7 @@ struct _GabbleRoomConfigPrivate {
 
     gboolean can_update_configuration;
     TpIntset *mutable_properties;
+    gboolean configuration_retrieved;
 
     /* Contains elements of GabbleRoomConfigProperty which are known to have
      * changed since we last emitted PropertiesChanged.
@@ -155,6 +156,7 @@ enum {
 
     PROP_CAN_UPDATE_CONFIGURATION,
     PROP_MUTABLE_PROPERTIES,
+    PROP_CONFIGURATION_RETRIEVED,
 };
 
 G_DEFINE_TYPE (GabbleRoomConfig, gabble_room_config, G_TYPE_OBJECT)
@@ -255,6 +257,9 @@ gabble_room_config_get_property (
         g_ptr_array_free (property_names, TRUE);
         break;
       }
+      case PROP_CONFIGURATION_RETRIEVED:
+        g_value_set_boolean (value, priv->configuration_retrieved);
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
     }
@@ -547,6 +552,14 @@ gabble_room_config_class_init (GabbleRoomConfigClass *klass)
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MUTABLE_PROPERTIES,
       param_spec);
+
+  param_spec = g_param_spec_boolean ("configuration-retrieved",
+      "ConfigurationRetrieved",
+      "Becomes True once the room config has been fetched from the network",
+      FALSE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CONFIGURATION_RETRIEVED,
+      param_spec);
 }
 
 /* room_config_getter:
@@ -588,6 +601,7 @@ static TpDBusPropertiesMixinPropImpl room_config_properties[] = {
   /* Meta-data */
   { "CanUpdateConfiguration", "can-update-configuration", NULL },
   { "MutableProperties", "mutable-properties", NULL },
+  { "ConfigurationRetrieved", "configuration-retrieved", NULL },
 
   { NULL }
 };
@@ -1048,5 +1062,45 @@ gabble_room_config_emit_properties_changed (
         }
 
       g_ptr_array_unref (changed);
+    }
+}
+
+/**
+ * gabble_room_config_set_retrieved:
+ * @self: a #GabbleRoomConfig object
+ *
+ * Signal that the room's configuration has been retrieved, as well as
+ * signalling any queued property changes. This function should be called once
+ * all properties have been set to meaningful values.
+ *
+ * It is safe to call this function more than once; second and subsequent calls
+ * are equivalent to calling gabble_room_config_emit_properties_changed().
+ */
+void
+gabble_room_config_set_retrieved (
+    GabbleRoomConfig *self)
+{
+  GabbleRoomConfigPrivate *priv;
+
+  g_return_if_fail (GABBLE_IS_ROOM_CONFIG (self));
+  priv = self->priv;
+
+  if (priv->channel == NULL)
+    {
+      CRITICAL ("the channel associated with (GabbleRoomConfig *)%p has died",
+          self);
+      g_return_if_reached ();
+    }
+
+  /* Flush any pending property changes */
+  gabble_room_config_emit_properties_changed (self);
+
+  if (!priv->configuration_retrieved)
+    {
+      priv->configuration_retrieved = TRUE;
+      tp_dbus_properties_mixin_emit_properties_changed_varargs (
+          G_OBJECT (priv->channel),
+          TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG,
+          "ConfigurationRetrieved", NULL);
     }
 }

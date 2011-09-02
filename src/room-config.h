@@ -91,6 +91,9 @@ void gabble_room_config_set_property_mutable (
 void gabble_room_config_emit_properties_changed (
     GabbleRoomConfig *self);
 
+void gabble_room_config_set_retrieved (
+    GabbleRoomConfig *self);
+
 /* TYPE MACROS */
 GType gabble_room_config_get_type (void);
 

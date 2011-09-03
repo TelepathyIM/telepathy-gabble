@@ -44,7 +44,7 @@ def test(q, bus, conn, stream):
     el = domish.Element(('jabber:client', 'presence'))
     el['from'] = 'bob@example.com/Bar'
     stream.send(el.toXml())
-    q.expect('dbus-signal', signal='PresenceUpdate')
+    q.expect('dbus-signal', signal='PresencesChanged')
     # OK, now we can continue. End of hack
 
 

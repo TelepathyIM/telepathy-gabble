@@ -13,7 +13,7 @@ def test(q, bus, conn, stream):
     handle, tubes_chan, tubes_iface = get_muc_tubes_channel(q, bus, conn,
         stream, 'chat@conf.localhost')
 
-    conn.Presence.SetStatus({'away':{'message':'Christmas lunch!'}})
+    conn.SimplePresence.SetPresence('away', 'Christmas lunch!')
 
 if __name__ == '__main__':
     exec_test(test)

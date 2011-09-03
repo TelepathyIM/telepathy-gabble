@@ -2042,13 +2042,6 @@ conn_presence_finalize (GabbleConnection *conn)
   tp_presence_mixin_finalize ((GObject *) conn);
 }
 
-
-void
-conn_presence_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  tp_presence_mixin_iface_init (g_iface, iface_data);
-}
-
 static void
 conn_presence_send_directed_presence (
     GabbleSvcConnectionInterfaceGabbleDecloak *conn,

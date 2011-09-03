@@ -40,8 +40,6 @@ def test_invisible_on_connect_fails(q, bus, conn, stream):
 
     # Darn! At least we should have our presence set to DND.
     q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     args=[{1: (0, {'dnd': {}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (6, 'dnd', '')}]),
@@ -59,12 +57,9 @@ def test_invisible(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
 
     # When that's returned successfully, we can signal the change on D-Bus.
-    q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     args=[{1: (0, {'hidden': {}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
+    q.expect('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (5, 'hidden', '')}]))
+                     args=[{1: (5, 'hidden', '')}])
 
     conn.SimplePresence.SetPresence("away", "gone")
 
@@ -77,8 +72,6 @@ def test_invisible(q, bus, conn, stream):
     # on D-Bus.
     q.expect_many(
         EventPattern('stream-presence', to=None),
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     args=[{1: (0, {'away': {'message': 'gone'}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (3, 'away', 'gone')}]))
@@ -94,12 +87,9 @@ def test_invisible_fails(q, bus, conn, stream):
     send_error_reply(stream, event.stanza)
 
     # When that fails, we should expect our status to change to dnd.
-    q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     args=[{1: (0, {'dnd': {}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
+    q.expect('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (6, 'dnd', '')}]))
+                     args=[{1: (6, 'dnd', '')}])
 
 
 if __name__ == '__main__':

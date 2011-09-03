@@ -277,13 +277,9 @@ def send_presence(q, conn, stream, contact, caps, initial=True, show=None):
     if initial:
         stream.send(make_presence(contact, status='hello'))
 
-        q.expect_many(
-            EventPattern('dbus-signal', signal='PresenceUpdate',
+        q.expect('dbus-signal', signal='PresencesChanged',
                 args=[{h:
-                   (0L, {u'available': {'message': 'hello'}})}]),
-            EventPattern('dbus-signal', signal='PresencesChanged',
-                args=[{h:
-                   (2, u'available', 'hello')}]))
+                   (2, u'available', 'hello')}])
 
         # no special capabilities
         assertEquals([(h, cs.CHANNEL_TYPE_TEXT, 3, 0)],

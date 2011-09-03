@@ -59,13 +59,9 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     presence = make_presence(contact, status='hello')
     stream.send(presence)
 
-    q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
+    q.expect('dbus-signal', signal='PresencesChanged',
             args=[{contact_handle:
-                (0L, {u'available': {'message': 'hello'}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
-            args=[{contact_handle:
-                (2, u'available', 'hello')}]))
+                (2, u'available', 'hello')}])
 
     # no special capabilities
     basic_caps = [(contact_handle, cs.CHANNEL_TYPE_TEXT, 3, 0)]
@@ -201,24 +197,16 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     presence = make_presence(contact1, status='hello')
     stream.send(presence)
 
-    event = q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
+    q.expect('dbus-signal', signal='PresencesChanged',
             args=[{contact_handle1:
-                (0L, {u'available': {'message': 'hello'}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
-            args=[{contact_handle1:
-                (2, u'available', 'hello')}]))
+                (2, u'available', 'hello')}])
 
     presence = make_presence(contact2, status='hello')
     stream.send(presence)
 
-    event = q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
+    q.expect('dbus-signal', signal='PresencesChanged',
             args=[{contact_handle2:
-                (0L, {u'available': {'message': 'hello'}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
-            args=[{contact_handle2:
-                (2, u'available', 'hello')}]))
+                (2, u'available', 'hello')}])
 
     # no special capabilities
     basic_caps = [(contact_handle1, cs.CHANNEL_TYPE_TEXT, 3, 0)]

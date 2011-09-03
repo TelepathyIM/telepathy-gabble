@@ -70,7 +70,7 @@ def test_local_queueing(q, bus, conn, stream):
             query_name='vCard')
     acknowledge_iq(stream, event.stanza)
 
-    presence_update = [EventPattern('dbus-signal', signal='PresenceUpdate')]
+    presence_update = [EventPattern('dbus-signal', signal='PresencesChanged')]
     q.forbid_events(presence_update)
 
     call_async(q, conn.PowerSaving, 'SetPowerSaving', True)
@@ -139,7 +139,7 @@ def test_local_queueing(q, bus, conn, stream):
     # Disable powersaving, flushing the queue
     conn.PowerSaving.SetPowerSaving(False)
 
-    q.expect('dbus-signal', signal='PresenceUpdate')
+    q.expect('dbus-signal', signal='PresencesChanged')
 
 
 def test(q, bus, conn, stream):

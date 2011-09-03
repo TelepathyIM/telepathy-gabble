@@ -625,8 +625,8 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                 queue.expect('dbus-signal', signal='StatusChanged',
                     args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
                 queue.expect('stream-authenticated')
-                queue.expect('dbus-signal', signal='PresenceUpdate',
-                    args=[{1L: (0L, {u'available': {}})}])
+                queue.expect('dbus-signal', signal='PresencesChanged',
+                    args=[{1L: (cs.PRESENCE_AVAILABLE, u'available', '')}])
                 queue.expect('dbus-signal', signal='StatusChanged',
                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 

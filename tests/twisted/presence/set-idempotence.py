@@ -1,4 +1,3 @@
-
 """
 Test that redundant calls to SetPresence don't cause anything to happen.
 """
@@ -11,37 +10,17 @@ import constants as cs
 from invisible_helper import Xep0186Stream, ValidInvisibleListStream, \
     Xep0186AndValidInvisibleListStream
 
-def test_presence(q, bus, conn, stream):
+def run_test(q, bus, conn, stream):
+    # Expect an initial presence push from the client.
     q.expect('stream-presence')
 
-    iface = dbus.Interface (conn,
-        u'org.freedesktop.Telepathy.Connection.Interface.Presence')
-
-    def set_presence (status, message = None):
-        if message:
-          iface.SetStatus({status: {'message': message}})
-        else:
-          iface.SetStatus({status: {}})
-
-    run_test(q, bus, conn, stream, set_presence)
-
-def test_simple_presence(q, bus, conn, stream):
-    q.expect('stream-presence')
-
-    iface = dbus.Interface (conn, cs.CONN_IFACE_SIMPLE_PRESENCE)
-    run_test(q, bus, conn, stream,
-      (lambda status, message = "": iface.SetPresence (status, message)))
-
-def run_test(q, bus, conn, stream, set_status_func):
-    # Set presence to away. This should cause PresenceUpdate to be emitted,
+    # Set presence to away. This should cause PresencesChanged to be emitted,
     # and a new <presence> stanza to be sent to the server.
-    set_status_func('away', 'gone')
+    conn.SimplePresence.SetPresence('away', 'gone')
 
-    signal, simple_signal, presence = q.expect_many (
-        EventPattern('dbus-signal', signal='PresenceUpdate'),
+    simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
-    assert signal.args == [{1L: (0L, {u'away': {u'message': u'gone'}})}]
     assert simple_signal.args == [{1L: (3L, u'away',  u'gone')}]
     assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
       { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
@@ -55,8 +34,8 @@ def run_test(q, bus, conn, stream, set_status_func):
     assert str(children[1]) == 'gone'
 
     # Set presence a second time. Since this call is redundant, there should
-    # be no PresenceUpdate or <presence> sent to the server.
-    set_status_func('away', 'gone')
+    # be no PresencesChanged or <presence> sent to the server.
+    conn.SimplePresence.SetPresence('away', 'gone')
     assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
       { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
         'org.freedesktop.Telepathy.Connection/contact-id':
@@ -64,14 +43,12 @@ def run_test(q, bus, conn, stream, set_status_func):
 
     # Set presence a third time. This call is not redundant, and should
     # generate a signal/message.
-    set_status_func('available', 'yo')
+    conn.SimplePresence.SetPresence('available', 'yo')
 
-    signal, simple_signal, presence = q.expect_many (
-        EventPattern('dbus-signal', signal='PresenceUpdate'),
+    simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
 
-    assert signal.args == [{1L: (0L, {u'available': {u'message': u'yo'}})}]
     assert simple_signal.args == [{1L: (2L, u'available',  u'yo')}]
     children = list(presence.stanza.elements())
     assert children[0].name == 'status'
@@ -81,15 +58,13 @@ def run_test(q, bus, conn, stream, set_status_func):
         'org.freedesktop.Telepathy.Connection/contact-id':
             'test@localhost'}}
 
-    # call SetPresence with no optional arguments, as this used to cause a
+    # call SetPresence with an empty message, as this used to cause a
     # crash in tp-glib
-    set_status_func('available')
+    conn.SimplePresence.SetPresence('available', '')
 
-    signal, simple_signal, presence = q.expect_many (
-        EventPattern('dbus-signal', signal='PresenceUpdate'),
+    simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
-    assert signal.args == [{1L: (0L, {u'available': {}})}]
     assert simple_signal.args == [{1L: (2L, u'available',  u'')}]
     assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
       { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (2L, u'available', u''),
@@ -97,8 +72,7 @@ def run_test(q, bus, conn, stream, set_status_func):
             'test@localhost'}}
 
 if __name__ == '__main__':
-    exec_test(test_simple_presence)
-    exec_test(test_presence)
+    exec_test(run_test)
     # Run this test against some invisibility-capable servers, even though we
     # don't use invisibility, to check that invisibility support doesn't break
     # us. This is a regression test for
@@ -107,6 +81,6 @@ if __name__ == '__main__':
     # signalled.
     for protocol in [Xep0186AndValidInvisibleListStream, Xep0186Stream,
                      ValidInvisibleListStream]:
-        exec_test(test_simple_presence, protocol=protocol)
-        exec_test(test_simple_presence, protocol=protocol)
+        exec_test(run_test, protocol=protocol)
+        exec_test(run_test, protocol=protocol)
 

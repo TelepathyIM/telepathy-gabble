@@ -63,8 +63,8 @@ def test(q, bus, conn, stream):
     assertEquals('test-busy-list', list_node['name'])
     acknowledge_iq(stream, get_list.stanza)
 
-    q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{1L: (0L, {u'testbusy': {}})}])
+    q.expect('dbus-signal', signal='PresencesChanged',
+        args=[{1L: (cs.PRESENCE_BUSY, u'testbusy', '')}])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
@@ -99,8 +99,8 @@ def test_with_xep0186(q, bus, conn, stream):
     assertEquals('test-busy-list', list_node['name'])
     acknowledge_iq(stream, get_list.stanza)
 
-    q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{1L: (0L, {u'testbusy': {}})}])
+    q.expect('dbus-signal', signal='PresencesChanged',
+        args=[{1L: (cs.PRESENCE_BUSY, u'testbusy', '')}])
     q.expect('dbus-signal', signal='StatusChanged',
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 

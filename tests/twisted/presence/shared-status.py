@@ -51,10 +51,7 @@ def _test_remote_status(q, bus, conn, stream, msg, show, list_attrs):
         _test_remote_status_not_away(q, stream, msg, show, list_attrs)
 
 def _test_remote_status_away(q, bus, conn, stream, msg, show, list_attrs):
-    events = [EventPattern('dbus-signal', signal='PresenceUpdate',
-                           interface=cs.CONN_IFACE_PRESENCE,
-                           args=[{1: (0, {show: {'message': msg}})}]),
-              EventPattern('dbus-signal', signal='PresencesChanged',
+    events = [EventPattern('dbus-signal', signal='PresencesChanged',
                            interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                            args=[{1: (presence_types[show], show, msg)}])]
     q.forbid_events(events)
@@ -73,14 +70,9 @@ def _test_remote_status_not_away(q, stream, msg, show, list_attrs):
     stream.set_shared_status_lists(**list_attrs)
 
     q.expect('stream-iq', iq_type='result')
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     interface=cs.CONN_IFACE_PRESENCE,
-                     args=[{1: (0, {show: {'message': msg}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
+    q.expect('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (presence_types[show], show, msg)}]))
+                     args=[{1: (presence_types[show], show, msg)}])
 
 def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     expected_show = expected_show or show
@@ -139,15 +131,10 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     else:
         q.expect('stream-presence')
 
-    q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     interface=cs.CONN_IFACE_PRESENCE,
-                     args=[{1: (0, {expected_show: {'message':
-                            msg[:max_status_message_length]}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
+    q.expect('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (presence_types[expected_show], expected_show,
-                            msg[:max_status_message_length])}]))
+                            msg[:max_status_message_length])}])
 
     if wrong_presence_pattern:
         q.unforbid_events([wrong_presence_pattern])
@@ -222,13 +209,9 @@ def test(q, bus, conn, stream):
     stream.set_shared_status_lists(min_version="1")
     q.expect('stream-iq', iq_type='result')
 
-    q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     interface=cs.CONN_IFACE_PRESENCE,
-                     args=[{1: (0, {'dnd': {'message': "Peekabo"}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
+    q.expect('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
-                     args=[{1: (cs.PRESENCE_BUSY, 'dnd', "Peekabo")}]))
+                     args=[{1: (cs.PRESENCE_BUSY, 'dnd', "Peekabo")}])
 
 def _test_on_connect(q, bus, conn, stream, shared_status, show, msg,
                      expected_show=None, min_version=None):
@@ -261,9 +244,6 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg,
     assertEquals(shared_invisible, _invisible.getAttribute('value'))
 
     q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     interface=cs.CONN_IFACE_PRESENCE,
-                     args=[{1: (0, {expected_show: {'message': msg}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (presence_types[expected_show],
@@ -322,9 +302,6 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
     assertEquals("false", _invisible.getAttribute('value'))
 
     q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-                     interface=cs.CONN_IFACE_PRESENCE,
-                     args=[{1: (0, {"dnd": {'message': msg}})}]),
         EventPattern('dbus-signal', signal='PresencesChanged',
                      interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
                      args=[{1: (cs.PRESENCE_BUSY, "dnd", msg)}]),

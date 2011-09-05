@@ -233,7 +233,6 @@ struct _GabbleMucChannelPrivate
 
   TpChannelPasswordFlags password_flags;
   DBusGMethodInvocation *password_ctx;
-  gchar *password;
 
   const gchar *jid;
   gboolean requested;
@@ -840,12 +839,10 @@ create_room_identity (GabbleMucChannel *chan)
 }
 
 static void
-send_join_request (GabbleMucChannel *gmuc,
-                   const gchar *password)
+send_join_request (GabbleMucChannel *gmuc)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
 
-  g_object_set (priv->wmuc, "password", password, NULL);
   wocky_muc_join (priv->wmuc, NULL);
 }
 
@@ -1289,8 +1286,6 @@ gabble_muc_channel_finalize (GObject *object)
       g_string_free (priv->self_jid, TRUE);
     }
 
-  g_free (priv->password);
-
   if (priv->initial_channels != NULL)
     {
       g_boxed_free (TP_ARRAY_TYPE_OBJECT_PATH_LIST, priv->initial_channels);
@@ -1464,10 +1459,6 @@ channel_state_changed (GabbleMucChannel *chan,
 
       priv->poll_timer_id =
           g_timeout_add_seconds (interval, timeout_poll, chan);
-
-      /* no need to keep this around any longer, if it's set */
-      g_free (priv->password);
-      priv->password = NULL;
     }
   else if (new_state == MUC_STATE_ENDED)
     {
@@ -1617,7 +1608,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
   tp_handle_unref (contact_repo, self_handle);
 
   priv->nick_retry_count++;
-  send_join_request (chan, priv->password);
+  send_join_request (chan);
   return TRUE;
 }
 
@@ -3047,7 +3038,8 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
     }
   else
     {
-      send_join_request (self, password);
+      g_object_set (priv->wmuc, "password", password, NULL);
+      send_join_request (self);
       priv->password_ctx = context;
     }
 }
@@ -3229,7 +3221,7 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_destroy (set_remote_pending);
 
       /* seek to enter the room */
-      send_join_request (self, NULL);
+      send_join_request (self);
       g_object_set (obj, "state", MUC_STATE_INITIATED, NULL);
 
       /* deny adding */

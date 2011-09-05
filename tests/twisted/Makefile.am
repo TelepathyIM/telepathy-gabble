@@ -27,6 +27,7 @@ TWISTED_TESTS = \
 	muc/chat-states.py \
 	muc/kicked.py \
 	muc/name-conflict.py \
+	muc/password.py \
 	muc/presence-before-closing.py \
 	muc/renamed.py \
 	muc/room.py \

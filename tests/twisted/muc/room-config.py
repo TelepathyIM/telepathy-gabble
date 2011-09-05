@@ -20,6 +20,28 @@ import ns
 ROOM_NAME = "A place to bury strangers"
 ROOM_DESCRIPTION = "I hate noise-rock."
 
+def get_default_form():
+    return { 'password': [''],
+             'password_protected': ['0'],
+             # We have to include this field here to convince Gabble that the
+             # description can be modified by owners. As far as wjt can
+             # determine, this is a question of uneven server support: see
+             # 6f20080.
+             'muc#roomconfig_roomdesc': [ROOM_DESCRIPTION],
+             # Gabble doesn't understand this field; we include it to verify
+             # that Gabble can correctly echo multi-value fields.
+             'muc#roomconfig_presencebroadcast':
+                ['moderator', 'participant', 'visitor'],
+           }
+
+def parse_form(stanza):
+    fields = xpath.queryForNodes('/iq/query/x/field', stanza)
+    form = {}
+    for field in fields:
+        values = xpath.queryForNodes('/field/value', field)
+        form[field['var']] = [str(v) for v in values]
+    return form
+
 def add_field(elem, type, var, value):
     field = elem.addElement('field')
 
@@ -34,23 +56,30 @@ def handle_muc_owner_get_iq(stream, stanza):
     query = iq.firstChildElement()
     x = query.addElement(('jabber:x:data', 'x'))
     x['type'] = 'form'
-    add_field(x, 'text', 'password', '')
-    add_field(x, 'boolean', 'password_protected', '0')
 
-    # We have to include this field here to convince Gabble that the
-    # description can be modified by owners. As far as wjt can determine, this
-    # is a question of uneven server support: see 6f20080.
-    add_field(x, 'text-single', 'muc#roomconfig_roomdesc', ROOM_DESCRIPTION)
-
-    # add a multi values setting
-    field = x.addElement('field')
-    field['type'] = 'list-multi'
-    field['var'] = 'muc#roomconfig_presencebroadcast'
-    for v in ['moderator', 'participant', 'visitor']:
-        field.addElement('value', content=v)
-        field.addElement('option', content=v)
+    for var, values in get_default_form().iteritems():
+        if len(values) > 1:
+            field = x.addElement('field')
+            field['type'] = 'list-multi'
+            field['var'] = var
+            for v in values:
+                field.addElement('value', content=v)
+                field.addElement('option', content=v)
+        elif values[0] == '0' or values[0] == '1':
+            add_field(x, 'boolean', var, values[0])
+        else:
+            add_field(x, 'text', var, values[0])
 
     stream.send(iq)
+
+def handle_muc_owner_set_iq(stream, stanza, fields):
+    form = parse_form(stanza)
+    # Check that Gabble echoed back the fields it didn't understand (or want to
+    # change) with their previous values.
+    expected_form = get_default_form()
+    expected_form.update(fields)
+    assertEquals(expected_form, form)
+    acknowledge_iq(stream, stanza)
 
 def handle_disco_info_iq(stream, stanza):
     iq = make_result_iq(stream, stanza)
@@ -192,21 +221,10 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', to='chat@conf.localhost', iq_type='set',
         query_ns=ns.MUC_OWNER)
-    fields = xpath.queryForNodes('/iq/query/x/field', event.stanza)
-    form = {}
-    for field in fields:
-        values = xpath.queryForNodes('/field/value', field)
-        form[field['var']] = [str(v) for v in values]
-    # Check that Gabble echoed back the fields it didn't understand (or want to
-    # change) with their previous values.
-    assertEquals(
+    handle_muc_owner_set_iq(stream, event.stanza,
         {'password': ['foo'],
          'password_protected': ['1'],
-         'muc#roomconfig_presencebroadcast':
-            ['moderator', 'participant', 'visitor'],
-         'muc#roomconfig_roomdesc': [ROOM_DESCRIPTION],
-        }, form)
-    acknowledge_iq(stream, event.stanza)
+        })
 
     pc, _ = q.expect_many(
         EventPattern('dbus-signal', signal='PropertiesChanged',

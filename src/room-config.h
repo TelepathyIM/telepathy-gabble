@@ -21,78 +21,24 @@
 #define GABBLE_ROOM_CONFIG_H
 
 #include <glib-object.h>
-#include <telepathy-glib/base-channel.h>
+#include <telepathy-glib/base-room-config.h>
 
 typedef struct _GabbleRoomConfig GabbleRoomConfig;
 typedef struct _GabbleRoomConfigClass GabbleRoomConfigClass;
 typedef struct _GabbleRoomConfigPrivate GabbleRoomConfigPrivate;
 
-typedef void (*GabbleRoomConfigUpdateAsync) (
-    TpBaseChannel *channel,
-    GHashTable *validated_properties,
-    GAsyncReadyCallback callback,
-    gpointer user_data);
-typedef gboolean (*GabbleRoomConfigUpdateFinish) (
-    TpBaseChannel *channel,
-    GAsyncResult *result,
-    GError **error);
-
 struct _GabbleRoomConfigClass {
-    /*< private >*/
-    GObjectClass parent_class;
-
-    /*< public >*/
-    GabbleRoomConfigUpdateAsync update_async;
-    GabbleRoomConfigUpdateFinish update_finish;
+    TpBaseRoomConfigClass parent_class;
 };
 
 struct _GabbleRoomConfig {
-    /*< private >*/
-    GObject parent;
+    TpBaseRoomConfig parent;
+
     GabbleRoomConfigPrivate *priv;
 };
 
-/* By an astonishing coincidence, the nicknames for this enum are the names of
- * corresponding D-Bus properties.
- */
-typedef enum {
-    GABBLE_ROOM_CONFIG_ANONYMOUS = 0, /*< nick=Anonymous >*/
-    GABBLE_ROOM_CONFIG_INVITE_ONLY, /*< nick=InviteOnly >*/
-    GABBLE_ROOM_CONFIG_LIMIT, /*< nick=Limit >*/
-    GABBLE_ROOM_CONFIG_MODERATED, /*< nick=Moderated >*/
-    GABBLE_ROOM_CONFIG_TITLE, /*< nick=Title >*/
-    GABBLE_ROOM_CONFIG_DESCRIPTION, /*< nick=Description >*/
-    GABBLE_ROOM_CONFIG_PERSISTENT, /*< nick=Persistent >*/
-    GABBLE_ROOM_CONFIG_PRIVATE, /*< nick=Private >*/
-    GABBLE_ROOM_CONFIG_PASSWORD_PROTECTED, /*< nick=PasswordProtected >*/
-    GABBLE_ROOM_CONFIG_PASSWORD, /*< nick=Password >*/
-
-    GABBLE_NUM_ROOM_CONFIG_PROPERTIES /*< skip >*/
-} GabbleRoomConfigProperty;
-
-void gabble_room_config_register_class (
-    TpBaseChannelClass *base_channel_class);
-void gabble_room_config_iface_init (
-    gpointer g_iface,
-    gpointer iface_data);
-
 GabbleRoomConfig *gabble_room_config_new (
     TpBaseChannel *channel);
-
-void gabble_room_config_set_can_update_configuration (
-    GabbleRoomConfig *self,
-    gboolean can_update_configuration);
-
-void gabble_room_config_set_property_mutable (
-    GabbleRoomConfig *self,
-    GabbleRoomConfigProperty property_id,
-    gboolean is_mutable);
-
-void gabble_room_config_emit_properties_changed (
-    GabbleRoomConfig *self);
-
-void gabble_room_config_set_retrieved (
-    GabbleRoomConfig *self);
 
 /* TYPE MACROS */
 GType gabble_room_config_get_type (void);

@@ -80,11 +80,11 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     # Reply to the disco
     iq = make_result_iq(stream, disco.stanza)
     query = iq.firstChildElement()
+    feat = query.addElement('feature')
+    feat['var'] = 'muc_public'
+
     x = query.addElement((ns.X_DATA, 'x'))
     x['type'] = 'result'
-
-    feat = x.addElement('feature')
-    feat['var'] = 'muc_public'
 
     if change_subject is not None:
         # When fd.o #13157 has been fixed, this will actually do something.

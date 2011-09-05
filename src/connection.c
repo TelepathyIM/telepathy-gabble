@@ -3022,11 +3022,21 @@ _emit_capabilities_changed (GabbleConnection *conn,
   g_hash_table_destroy (hash);
 }
 
-/**
+static const GabbleCapabilitySet *
+empty_caps_set (void)
+{
+  static GabbleCapabilitySet *empty = NULL;
+
+  if (G_UNLIKELY (empty == NULL))
+    empty = gabble_capability_set_new ();
+
+  return empty;
+}
+
+/*
  * gabble_connection_get_handle_contact_capabilities:
  *
- * Returns: a set of channel classes representing @handle's capabilities, or
- *          %NULL if unknown.
+ * Returns: an array of channel classes representing @handle's capabilities
  */
 static GPtrArray *
 gabble_connection_get_handle_contact_capabilities (
@@ -3036,7 +3046,6 @@ gabble_connection_get_handle_contact_capabilities (
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self);
   GabblePresence *p;
   const GabbleCapabilitySet *caps;
-  GPtrArray *arr;
 
   if (handle == base_conn->self_handle)
     p = self->self_presence;
@@ -3044,20 +3053,11 @@ gabble_connection_get_handle_contact_capabilities (
     p = gabble_presence_cache_get (self->presence_cache, handle);
 
   if (p == NULL)
-    {
-      DEBUG ("don't know %u's presence; assuming text chat caps.", handle);
+    caps = empty_caps_set ();
+  else
+    caps = gabble_presence_peek_caps (p);
 
-      arr = g_ptr_array_new ();
-      gabble_caps_channel_manager_get_contact_capabilities (
-          GABBLE_CAPS_CHANNEL_MANAGER (self->priv->im_factory),
-          handle, NULL, arr);
-
-      return arr;
-    }
-
-  caps = gabble_presence_peek_caps (p);
-  arr = gabble_connection_build_contact_caps (self, handle, caps);
-  return arr;
+  return gabble_connection_build_contact_caps (self, handle, caps);
 }
 
 static void
@@ -3423,21 +3423,14 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
   for (i = 0; i < contacts->len; i++)
     {
       TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GPtrArray *array;
+      GValue *val = tp_g_value_slice_new_take_boxed (
+          TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST,
+          gabble_connection_get_handle_contact_capabilities (self, handle));
 
-      array = gabble_connection_get_handle_contact_capabilities (self, handle);
-
-      if (array != NULL)
-        {
-          GValue *val =  tp_g_value_slice_new (
-            TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST);
-
-          g_value_take_boxed (val, array);
-          tp_contacts_mixin_set_contact_attribute (attributes_hash,
-              handle,
-              TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/capabilities",
-              val);
-        }
+      tp_contacts_mixin_set_contact_attribute (attributes_hash,
+          handle,
+          TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/capabilities",
+          val);
     }
 }
 
@@ -3524,13 +3517,11 @@ gabble_connection_get_contact_capabilities (
 
   for (i = 0; i < handles->len; i++)
     {
-      GPtrArray *arr;
       TpHandle handle = g_array_index (handles, TpHandle, i);
+      GPtrArray *arr;
 
       arr = gabble_connection_get_handle_contact_capabilities (self, handle);
-
-      if (arr != NULL)
-        g_hash_table_insert (ret, GUINT_TO_POINTER (handle), arr);
+      g_hash_table_insert (ret, GUINT_TO_POINTER (handle), arr);
     }
 
   tp_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities

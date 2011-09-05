@@ -8,7 +8,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import (
     exec_test, make_result_iq, acknowledge_iq, make_muc_presence,
-    request_muc_handle, sync_stream)
+    request_muc_handle, sync_stream, disconnect_conn)
 from servicetest import (
     call_async, wrap_channel, EventPattern, assertEquals, assertSameSets,
     assertContains,
@@ -343,10 +343,46 @@ def test_broken_server(q, bus, conn, stream):
     # room is private or not.
     q.expect('dbus-error', method='UpdateConfiguration', name=cs.SERVICE_CONFUSED)
 
+def test_disconnect_during_update_configuration(q, bus, conn, stream):
+    """
+    Test disconnecting while a pair of UpdateConfiguration requests are in
+    flight: one waiting for the muc#owner form, and the other waiting for its
+    changes to be acked.
+    """
+    def join_me_up_buttercup(muc):
+        _, chan, _, _ = join_muc(q, bus, conn, stream, muc, affiliation='owner')
+        # Gabble grabs the owner configuration form to see whether it's
+        # possible to change the room description.
+        owner_iq = q.expect('stream-iq', to=muc, iq_type='get',
+            query_ns=ns.MUC_OWNER)
+        handle_muc_owner_get_iq(stream, owner_iq.stanza)
+        call_async(q, chan.RoomConfig1, 'UpdateConfiguration',
+            {'Persistent': True})
+        e = q.expect('stream-iq', to=muc, iq_type='get', query_ns=ns.MUC_OWNER)
+        return chan, e
+
+    ONE = '1@ttt'
+    one, _ = join_me_up_buttercup(ONE)
+
+    TWO = '2@ttt'
+    two, e = join_me_up_buttercup(TWO)
+    handle_muc_owner_get_iq(stream, e.stanza)
+    q.expect('stream-iq', to=TWO, iq_type='set', query_ns=ns.MUC_OWNER)
+
+    disconnect_conn(q, conn, stream, expected_after=[
+        # Buh. We can't match on paths or on message serials … but we know
+        # there are two of them!
+        EventPattern('dbus-error', method='UpdateConfiguration',
+            name=cs.CANCELLED),
+        EventPattern('dbus-error', method='UpdateConfiguration',
+            name=cs.CANCELLED),
+        ])
+
 def test(q, bus, conn, stream):
     test_some_stuff(q, bus, conn, stream)
     test_role_changes(q, bus, conn, stream)
     test_broken_server(q, bus, conn, stream)
+    test_disconnect_during_update_configuration(q, bus, conn, stream)
 
 if __name__ == '__main__':
     exec_test(test)

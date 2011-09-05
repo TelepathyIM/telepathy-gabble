@@ -13,6 +13,7 @@ from servicetest import (
     call_async, wrap_channel, EventPattern, assertEquals, assertSameSets,
     assertContains,
 )
+from mucutil import join_muc
 
 import constants as cs
 import ns
@@ -23,6 +24,7 @@ ROOM_DESCRIPTION = "I hate noise-rock."
 def get_default_form():
     return { 'password': [''],
              'password_protected': ['0'],
+             'muc#roomconfig_persistentroom': ['0'],
              # We have to include this field here to convince Gabble that the
              # description can be modified by owners. As far as wjt can
              # determine, this is a question of uneven server support: see
@@ -115,33 +117,23 @@ def handle_disco_info_iq(stream, stanza):
 
     stream.send(iq)
 
-def test(q, bus, conn, stream):
-    muc_handle = request_muc_handle(q, conn, stream, 'chat@conf.localhost')
-
-    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
-        muc_handle, True)
-
-    q.expect('stream-presence', to='chat@conf.localhost/test')
-
-    # Send presence for own membership of room.
-    stream.send(
-        make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
-
-    disco_iq, owner_iq, ret, _ = q.expect_many(
-        EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
-            query_ns=ns.DISCO_INFO),
-        EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
-            query_ns=ns.MUC_OWNER),
-        EventPattern('dbus-return', method='RequestChannel'),
-        # We discovered that we're an owner. Emitting a signal seems
-        # acceptable, although technically this happens before the channel
-        # request finishes so the channel could just as well not be on the bus.
-        EventPattern('dbus-signal', signal='PropertiesChanged',
-            args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
-                  {'CanUpdateConfiguration': True},
-                  []
-                 ]),
-        )
+def test_some_stuff(q, bus, conn, stream):
+    _, text_chan, _, _, disco_iq, owner_iq, _ = join_muc(q, bus, conn, stream,
+        'chat@conf.localhost', role='moderator', affiliation='owner',
+        also_capture=[
+            EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
+                query_ns=ns.DISCO_INFO),
+            EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
+                query_ns=ns.MUC_OWNER),
+            # We discovered that we're an owner. Emitting a signal seems
+            # acceptable, although technically this happens before the channel
+            # request finishes so the channel could just as well not be on the bus.
+            EventPattern('dbus-signal', signal='PropertiesChanged',
+                args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
+                      {'CanUpdateConfiguration': True},
+                      []
+                     ]),
+        ])
 
     # This tells Gabble that the MUC is well-behaved and lets owners modify the
     # room description. Technically we could also pull the description out of
@@ -173,8 +165,6 @@ def test(q, bus, conn, stream):
 
     assertEquals([], invalidated)
 
-    text_chan = wrap_channel(
-        bus.get_object(conn.bus_name, ret.value[0]), 'Text', ['RoomConfig1'])
     config = text_chan.Properties.GetAll(cs.CHANNEL_IFACE_ROOM_CONFIG)
 
     # Verify that all of the config properties (besides the password ones)
@@ -260,6 +250,103 @@ def test(q, bus, conn, stream):
     # Updating no fields should be a no-op, and not wait on any network
     # traffic.
     text_chan.RoomConfig1.UpdateConfiguration({})
+
+def test_role_changes(q, bus, conn, stream):
+    # The test user joins a room. Bob is an owner (and moderator); the test
+    # user starts out with no affiliation and the rôle of participant.
+    MUC = 'aoeu@snth'
+    _, chan, _, immutable_props, disco = join_muc(q, bus, conn, stream,
+        MUC, role='participant',
+        also_capture=[
+            EventPattern('stream-iq', to=MUC, iq_type='get',
+                query_ns=ns.DISCO_INFO),
+        ])
+    assertContains(cs.CHANNEL_IFACE_ROOM_CONFIG, immutable_props[cs.INTERFACES])
+
+    handle_disco_info_iq(stream, disco.stanza)
+    q.expect('dbus-signal', signal='PropertiesChanged',
+        args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
+              {'ConfigurationRetrieved': True},
+              []
+             ])
+
+    # If we try to change the configuration, Gabble should say no: it knows
+    # we're not allowed to do that.
+    call_async(q, chan.RoomConfig1, 'UpdateConfiguration', {})
+    q.expect('dbus-error', name=cs.PERMISSION_DENIED)
+
+    config = chan.Properties.GetAll(cs.CHANNEL_IFACE_ROOM_CONFIG)
+    assert not config['CanUpdateConfiguration'], config
+
+    # If we acquire affiliation='owner', this should be signalled as our
+    # becoming able to modify the channel configuration.
+    stream.send(make_muc_presence('owner', 'moderator', MUC, 'test'))
+    q.expect('dbus-signal', signal='PropertiesChanged',
+        args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
+              {'CanUpdateConfiguration': True},
+              []
+             ])
+
+    # Due to silliness, Gabble has to grab the owner configuration form to see
+    # whether it's possible to change the room description.
+    owner_iq = q.expect('stream-iq', to=MUC, iq_type='get', query_ns=ns.MUC_OWNER)
+    handle_muc_owner_get_iq(stream, owner_iq.stanza)
+
+    # Bob's ownership rights being taken away should have no effect.
+    stream.send(make_muc_presence('none', 'participant', MUC, 'bob'))
+
+    # So now we're an owner, and CanUpdateConfiguration is True, we should be
+    # able to change some configuration.
+    props = dbus.Dictionary(
+        { 'Persistent': True,
+        }, signature='sv')
+    call_async(q, chan.RoomConfig1, 'UpdateConfiguration', props)
+
+    owner_iq = q.expect('stream-iq', to=MUC, iq_type='get', query_ns=ns.MUC_OWNER)
+    handle_muc_owner_get_iq(stream, owner_iq.stanza)
+
+    event = q.expect('stream-iq', to=MUC, iq_type='set', query_ns=ns.MUC_OWNER)
+    handle_muc_owner_set_iq(stream, event.stanza,
+        {'muc#roomconfig_persistentroom': ['1']})
+
+    q.expect_many(
+        EventPattern('dbus-return', method='UpdateConfiguration'),
+        EventPattern('dbus-signal', signal='PropertiesChanged',
+            args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
+                  {'Persistent': True},
+                  []
+                 ]))
+
+    # If we lose our affiliation, that should be signalled too.
+    stream.send(make_muc_presence('none', 'participant', MUC, 'test'))
+    q.expect('dbus-signal', signal='PropertiesChanged',
+        args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
+              {'CanUpdateConfiguration': False},
+              []
+             ])
+
+    # Gabble should once again reject attempts to change the configuration
+    call_async(q, chan.RoomConfig1, 'UpdateConfiguration', {})
+    q.expect('dbus-error', name=cs.PERMISSION_DENIED)
+
+def test_broken_server(q, bus, conn, stream):
+    MUC = 'bro@ken'
+    _, chan, _ , _ = join_muc(q, bus, conn, stream, MUC, affiliation='owner')
+    owner_iq = q.expect('stream-iq', to=MUC, iq_type='get', query_ns=ns.MUC_OWNER)
+    handle_muc_owner_get_iq(stream, owner_iq.stanza)
+
+    call_async(q, chan.RoomConfig1, 'UpdateConfiguration', {'Private': False})
+    e = q.expect('stream-iq', to=MUC, iq_type='get', query_ns=ns.MUC_OWNER)
+    handle_muc_owner_get_iq(stream, e.stanza)
+
+    # The server doesn't actually have a form field for configuring whether the
+    # room is private or not.
+    q.expect('dbus-error', method='UpdateConfiguration', name=cs.SERVICE_CONFUSED)
+
+def test(q, bus, conn, stream):
+    test_some_stuff(q, bus, conn, stream)
+    test_role_changes(q, bus, conn, stream)
+    test_broken_server(q, bus, conn, stream)
 
 if __name__ == '__main__':
     exec_test(test)

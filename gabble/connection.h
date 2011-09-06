@@ -26,6 +26,8 @@
 #include <gabble/capabilities-set.h>
 #include <gabble/types.h>
 
+#include <wocky/wocky-xep-0115-capabilities.h>
+
 G_BEGIN_DECLS
 
 #define GABBLE_TYPE_CONNECTION (gabble_connection_get_type ())
@@ -59,6 +61,9 @@ WockySession *gabble_connection_get_session (
     GabbleConnection *connection);
 
 gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
+
+const gchar * gabble_connection_get_jid_for_caps (GabbleConnection *conn,
+    WockyXep0115Capabilities *caps);
 
 G_END_DECLS
 

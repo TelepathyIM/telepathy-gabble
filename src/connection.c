@@ -3828,3 +3828,32 @@ gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
 
   return ver;
 }
+
+const gchar *
+gabble_connection_get_jid_for_caps (GabbleConnection *conn,
+    WockyXep0115Capabilities *caps)
+{
+  TpHandle handle;
+  TpBaseConnection *base;
+  TpHandleRepoIface *contact_handles;
+
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
+  g_return_val_if_fail (GABBLE_IS_PRESENCE (caps), NULL);
+
+  base = (TpBaseConnection *) conn;
+
+  if ((GabblePresence *) caps == conn->self_presence)
+    {
+      handle = tp_base_connection_get_self_handle (base);
+    }
+  else
+    {
+      handle = gabble_presence_cache_get_handle (conn->presence_cache,
+          (GabblePresence *) caps);
+    }
+
+  contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  return tp_handle_inspect (contact_handles, handle);
+}

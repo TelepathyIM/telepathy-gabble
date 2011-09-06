@@ -144,6 +144,9 @@ GHashTable* gabble_presence_cache_get_location (GabblePresenceCache *cache,
 gboolean gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
     TpHandle handle, const gchar *resource);
 
+TpHandle gabble_presence_cache_get_handle (GabblePresenceCache *cache,
+    GabblePresence *presence);
+
 G_END_DECLS
 
 #endif /* __GABBLE_PRESENCE_CACHE_H__ */

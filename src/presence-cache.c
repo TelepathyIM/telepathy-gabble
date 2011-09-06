@@ -2549,3 +2549,30 @@ gabble_presence_cache_disco_in_progress (GabblePresenceCache *cache,
 
   return in_progress;
 }
+
+typedef struct {
+  GabblePresence *presence;
+  TpHandle handle;
+} GetJidData;
+
+static void
+find_presence (gpointer key,
+    gpointer value,
+    gpointer user_data)
+{
+  GetJidData *data = user_data;
+
+  if (data->presence == value)
+    data->handle = GPOINTER_TO_UINT (key);
+}
+
+TpHandle
+gabble_presence_cache_get_handle (GabblePresenceCache *cache,
+    GabblePresence *presence)
+{
+  GetJidData data = { presence, 0 };
+
+  g_hash_table_foreach (cache->priv->presence, find_presence, &data);
+
+  return data.handle;
+}

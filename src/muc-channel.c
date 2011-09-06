@@ -263,6 +263,7 @@ struct _GabbleMucChannelPrivate
   gint64 subject_timestamp;
   gboolean can_set_subject;
   DBusGMethodInvocation *set_subject_context;
+  gchar *set_subject_stanza_id;
 
   gboolean ready;
   gboolean dispose_has_run;
@@ -1561,6 +1562,7 @@ return_from_set_subject (
     dbus_g_method_return_error (priv->set_subject_context, error);
 
   priv->set_subject_context = NULL;
+  tp_clear_pointer (&priv->set_subject_stanza_id, g_free);
 }
 
 static void
@@ -2730,6 +2732,7 @@ handle_errmsg (GObject *source,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   TpBaseConnection *conn = tp_base_channel_get_connection (base);
   gboolean from_member = (who != NULL);
@@ -2777,7 +2780,14 @@ handle_errmsg (GObject *source,
    */
   subject = wocky_node_get_content_from_child (
       wocky_stanza_get_top_node (stanza), "subject");
-  if (subject != NULL)
+
+  /* The server is under no obligation to echo the <subject> element back if it
+   * sends us an error. Fortunately, it should preserve the id='' element so we
+   * can check for that instead.
+   */
+  if (subject != NULL ||
+      (priv->set_subject_stanza_id != NULL &&
+       !tp_strdiff (xmpp_id, priv->set_subject_stanza_id)))
     _gabble_muc_channel_handle_subject (gmuc,
         handle_type, from, stamp, subject, stanza);
 
@@ -4203,9 +4213,20 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
     }
   else
     {
-      WockyStanza *stanza = wocky_stanza_build (
+      WockyXmppConnection *xmpp_conn;
+      WockyStanza *stanza;
+
+      g_assert (priv->set_subject_stanza_id == NULL);
+      g_object_get (porter,
+          "connection", &xmpp_conn,
+          NULL);
+      priv->set_subject_stanza_id = wocky_xmpp_connection_new_id (xmpp_conn);
+      g_object_unref (xmpp_conn);
+
+      stanza = wocky_stanza_build (
           WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_GROUPCHAT,
           NULL, priv->jid,
+          '@', "id", priv->set_subject_stanza_id,
           '(', "subject", '$', subject, ')',
           NULL);
 

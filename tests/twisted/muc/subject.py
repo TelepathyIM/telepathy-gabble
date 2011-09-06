@@ -185,6 +185,21 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     stream.send(elem)
     q.expect('dbus-error', method='SetSubject', name=cs.PERMISSION_DENIED)
 
+    # Test changing the subject and getting an error back which doesn't echo
+    # the <subject> element.
+    call_async(q, chan, 'SetSubject', 'CHICKEN MAN', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+
+    e = q.expect('stream-message', to=room)
+    message = domish.Element((None, 'message'))
+    message['from'] = room
+    message['id'] = e.stanza['id']
+    message['type'] = 'error'
+    error = message.addElement((None, 'error'))
+    error.addElement((ns.STANZA, 'forbidden'))
+    stream.send(message)
+
+    q.expect('dbus-error', method='SetSubject', name=cs.PERMISSION_DENIED)
+
     # Test changing the subject just before we leave the room (and hence not
     # getting a reply). While we're here, check that you can't have more than
     # one call in flight at a time.

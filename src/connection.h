@@ -203,8 +203,6 @@ typedef enum {
     GABBLE_CONNECTION_ALIAS_FROM_ROSTER
 } GabbleConnectionAliasSource;
 
-gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
-
 WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn);
 
 gboolean _gabble_connection_set_properties_from_account (

@@ -65,6 +65,12 @@ gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
 const gchar * gabble_connection_get_jid_for_caps (GabbleConnection *conn,
     WockyXep0115Capabilities *caps);
 
+const gchar * gabble_connection_pick_best_resource_for_caps (
+    GabbleConnection *connection,
+    const gchar *jid,
+    GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data);
+
 G_END_DECLS
 
 #endif

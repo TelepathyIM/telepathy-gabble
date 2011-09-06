@@ -3857,3 +3857,37 @@ gabble_connection_get_jid_for_caps (GabbleConnection *conn,
 
   return tp_handle_inspect (contact_handles, handle);
 }
+
+const gchar *
+gabble_connection_pick_best_resource_for_caps (GabbleConnection *connection,
+    const gchar *jid,
+    GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data)
+{
+  TpBaseConnection *base;
+  TpHandleRepoIface *contact_handles;
+  TpHandle handle;
+  GabblePresence *presence;
+
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+  g_return_val_if_fail (!tp_str_empty (jid), NULL);
+
+  base = (TpBaseConnection *) connection;
+  contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  handle = tp_handle_ensure (contact_handles, jid,
+      NULL, NULL);
+
+  if (handle == 0)
+    return NULL;
+
+  presence = gabble_presence_cache_get (connection->presence_cache,
+      handle);
+
+  if (presence == NULL)
+    return NULL;
+
+  return gabble_presence_pick_resource_by_caps (presence, 0,
+      predicate, user_data);
+}

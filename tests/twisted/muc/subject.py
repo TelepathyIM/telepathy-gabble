@@ -6,7 +6,7 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, make_muc_presence
 from servicetest import (EventPattern, assertEquals, assertLength,
         assertContains, call_async)
 import constants as cs
@@ -42,19 +42,9 @@ def check_subject_props(chan, subject_str, actor, flags, signal=None):
     subject_actor = props['Actor']
     subject_can_set = props['CanSet']
 
-counter = 0
-
 def test_subject(q, bus, conn, stream, change_subject, send_first,
         moderator):
-    # FIXME: fd.o#21152: using many different rooms here because the join_muc()
-    # utility function (via request_muc_handle()) only copes with requesting
-    # the handle for the first time, due to having to expect the disco#info
-    # query to the server and reply to it. Fixing fd.o#21152 will remove the
-    # distinction between the first and nth time, at which point we can just
-    # join the same room repeatedly.
-    global counter
-    room = 'test%d@conf.localhost' % counter
-    counter += 1
+    room = 'test@conf.localhost'
 
     room_handle, chan, path, props, disco = join_muc(q, bus, conn, stream,
             room,
@@ -172,6 +162,12 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     assertEquals('unavailable', elem['type'])
 
     q.expect('dbus-error', method='SetSubject', name=cs.CANCELLED)
+
+    # The MUC confirms that we've left the room.
+    echo = make_muc_presence('member', 'none', room, 'test')
+    echo['type'] = 'unavailable'
+    stream.send(echo)
+    q.expect('dbus-signal', signal='ChannelClosed')
 
 if __name__ == '__main__':
     exec_test(test)

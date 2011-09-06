@@ -55,6 +55,9 @@ gchar *gabble_connection_add_sidecar_own_caps (
     const GabbleCapabilitySet *cap_set,
     const GPtrArray *identities) G_GNUC_WARN_UNUSED_RESULT;
 
+WockySession *gabble_connection_get_session (
+    GabbleConnection *connection);
+
 gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
 
 G_END_DECLS

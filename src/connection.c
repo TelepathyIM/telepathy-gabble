@@ -1374,6 +1374,14 @@ WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn)
   return NULL;
 }
 
+WockySession *
+gabble_connection_get_session (GabbleConnection *connection)
+{
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+
+  return connection->session;
+}
+
 /**
  * _gabble_connection_send
  *

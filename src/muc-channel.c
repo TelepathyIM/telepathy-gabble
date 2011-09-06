@@ -923,11 +923,6 @@ static gboolean gabble_muc_channel_add_member (GObject *obj, TpHandle handle,
     const gchar *message, GError **error);
 static gboolean gabble_muc_channel_remove_member (GObject *obj,
     TpHandle handle, const gchar *message, GError **error);
-static void gabble_muc_channel_update_configuration_async (
-    TpBaseChannel *base,
-    GHashTable *validated_properties,
-    GAsyncReadyCallback callback,
-    gpointer user_data);
 
 static void
 gabble_muc_channel_fill_immutable_properties (
@@ -1202,14 +1197,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       gabble_muc_channel_remove_member);
   tp_group_mixin_init_dbus_properties (object_class);
   tp_group_mixin_class_allow_self_removal (object_class);
-
-  {
-    /* TODO: monkeypatching is Bad And Wrong! */
-    TpBaseRoomConfigClass *config_class = g_type_class_ref (GABBLE_TYPE_ROOM_CONFIG);
-
-    config_class->update_async = gabble_muc_channel_update_configuration_async;
-    g_type_class_unref (config_class);
-  }
 }
 
 static void clear_join_timer (GabbleMucChannel *chan);
@@ -3072,15 +3059,15 @@ static void request_config_form_reply_cb (
     GAsyncResult *result,
     gpointer user_data);
 
-static void
+void
 gabble_muc_channel_update_configuration_async (
-    TpBaseChannel *base,
+    GabbleMucChannel *self,
     GHashTable *validated_properties,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
-  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (base);
   GabbleMucChannelPrivate *priv = self->priv;
+  TpBaseChannel *base = (TpBaseChannel *) self;
   GabbleConnection *conn =
       GABBLE_CONNECTION (tp_base_channel_get_connection (base));
   WockyStanza *stanza;
@@ -3098,6 +3085,16 @@ gabble_muc_channel_update_configuration_async (
   g_object_unref (stanza);
 
   priv->properties_being_updated = validated_properties;
+}
+
+gboolean
+gabble_muc_channel_update_configuration_finish (
+    GabbleMucChannel *self,
+    GAsyncResult *result,
+    GError **error)
+{
+  wocky_implement_finish_void (self,
+      gabble_muc_channel_update_configuration_async);
 }
 
 typedef const gchar * (*MapFieldFunc) (const GValue *value);

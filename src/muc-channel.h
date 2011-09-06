@@ -112,6 +112,16 @@ gboolean gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
 gboolean gabble_muc_channel_handle_jingle_session (GabbleMucChannel *channel,
     GabbleJingleSession *session);
 
+void gabble_muc_channel_update_configuration_async (
+    GabbleMucChannel *self,
+    GHashTable *validated_properties,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
+gboolean gabble_muc_channel_update_configuration_finish (
+    GabbleMucChannel *self,
+    GAsyncResult *result,
+    GError **error);
+
 void gabble_muc_channel_teardown (GabbleMucChannel *gmuc);
 void gabble_muc_channel_close_tube (GabbleMucChannel *gmuc);
 

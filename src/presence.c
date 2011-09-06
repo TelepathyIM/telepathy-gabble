@@ -24,6 +24,7 @@
 #include <string.h>
 #include <telepathy-glib/channel-manager.h>
 #include <wocky/wocky-utils.h>
+#include <wocky/wocky-xep-0115-capabilities.h>
 
 #include "gabble/capabilities.h"
 #include "conn-presence.h"
@@ -36,7 +37,12 @@
 
 #include "debug.h"
 
-G_DEFINE_TYPE (GabblePresence, gabble_presence, G_TYPE_OBJECT);
+static void xep_0115_capabilities_iface_init (gpointer, gpointer);
+
+G_DEFINE_TYPE_WITH_CODE (GabblePresence, gabble_presence, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (WOCKY_TYPE_XEP_0115_CAPABILITIES,
+        xep_0115_capabilities_iface_init);
+)
 
 typedef struct _Resource Resource;
 
@@ -365,6 +371,8 @@ gabble_presence_set_capabilities (GabblePresence *presence,
       /* TODO: deal with duplicates */
       extend_and_dup (priv->data_forms, tmp->data_forms);
     }
+
+  g_signal_emit_by_name (presence, "capabilities-changed");
 }
 
 static Resource *
@@ -892,4 +900,21 @@ gabble_presence_get_client_types_array (GabblePresence *presence,
     *resource_name = presence->priv->active_resource;
 
   return (gchar **) g_ptr_array_free (array, FALSE);
+}
+
+static const GPtrArray *
+gabble_presence_get_data_forms (WockyXep0115Capabilities *caps)
+{
+  GabblePresence *presence = GABBLE_PRESENCE (caps);
+
+  return presence->priv->data_forms;
+}
+
+static void
+xep_0115_capabilities_iface_init (gpointer g_iface,
+    gpointer iface_data)
+{
+  WockyXep0115CapabilitiesInterface *iface = g_iface;
+
+  iface->get_data_forms = gabble_presence_get_data_forms;
 }

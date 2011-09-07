@@ -3316,7 +3316,7 @@ gabble_connection_update_capabilities (
       g_hash_table_remove (self->priv->client_caps, client_name);
       g_hash_table_remove (self->priv->client_data_forms, client_name);
 
-      if ((cap_tokens == NULL || cap_tokens[0] != NULL) &&
+      if ((cap_tokens == NULL || cap_tokens[0] == NULL) &&
           filters->len == 0)
         {
           /* no capabilities */

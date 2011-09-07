@@ -3363,18 +3363,9 @@ gabble_connection_update_capabilities (
       /* now data forms */
       if (data_forms->len > 0)
         {
-          if (DEBUGGING)
-            {
-              guint j;
-
-              DEBUG ("client %s contributes data forms:", client_name);
-
-              for (j = 0; j < data_forms->len; j++)
-                {
-                  WockyDataForm *form = g_ptr_array_index (data_forms, j);
-                  DEBUG ("  %s", wocky_data_form_get_title (form));
-                }
-            }
+          DEBUG ("client %s contributes %u data form%s", client_name,
+              data_forms->len,
+              data_forms->len > 1 ? "s" : "");
 
           g_hash_table_insert (self->priv->client_data_forms,
               g_strdup (client_name), data_forms);

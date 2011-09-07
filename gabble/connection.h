@@ -22,6 +22,7 @@
 #define GABBLE_PLUGINS_CONNECTION_H
 
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/base-contact-list.h>
 
 #include <gabble/capabilities-set.h>
 #include <gabble/types.h>
@@ -70,6 +71,12 @@ const gchar * gabble_connection_pick_best_resource_for_caps (
     const gchar *jid,
     GabbleCapabilitySetPredicate predicate,
     gconstpointer user_data);
+
+TpBaseContactList * gabble_connection_get_contact_list (
+    GabbleConnection *connection);
+
+WockyXep0115Capabilities * gabble_connection_get_caps (
+    GabbleConnection *connection, TpHandle handle);
 
 G_END_DECLS
 

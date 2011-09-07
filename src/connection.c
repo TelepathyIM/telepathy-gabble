@@ -3882,3 +3882,26 @@ gabble_connection_pick_best_resource_for_caps (GabbleConnection *connection,
   return gabble_presence_pick_resource_by_caps (presence, 0,
       predicate, user_data);
 }
+
+TpBaseContactList *
+gabble_connection_get_contact_list (GabbleConnection *connection)
+{
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+
+  return (TpBaseContactList *) connection->roster;
+}
+
+WockyXep0115Capabilities *
+gabble_connection_get_caps (GabbleConnection *connection,
+    TpHandle handle)
+{
+  GabblePresence *presence;
+
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+  g_return_val_if_fail (handle > 0, NULL);
+
+  presence = gabble_presence_cache_get (connection->presence_cache,
+      handle);
+
+  return (WockyXep0115Capabilities *) presence;
+}

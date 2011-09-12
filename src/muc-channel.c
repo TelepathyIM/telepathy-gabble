@@ -3765,7 +3765,21 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
           TP_BASE_CHANNEL (self)));
   WockyPorter *porter = wocky_session_get_porter (conn->session);
 
-  if (priv->set_subject_context != NULL)
+  if (priv->state < MUC_STATE_JOINED)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Steady on. You're not in the room yet" };
+
+      dbus_g_method_return_error (context, &error);
+    }
+  else if (priv->state > MUC_STATE_JOINED || priv->closing)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Already left/leaving the room" };
+
+      dbus_g_method_return_error (context, &error);
+    }
+  else if (priv->set_subject_context != NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Hey! Stop changing the subject! (Your last request is still in "

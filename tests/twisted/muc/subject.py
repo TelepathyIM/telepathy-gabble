@@ -163,6 +163,10 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
 
     q.expect('dbus-error', method='SetSubject', name=cs.CANCELLED)
 
+    call_async(q, chan, 'SetSubject', 'how about now?',
+        dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+    q.expect('dbus-error', method='SetSubject', name=cs.NOT_AVAILABLE)
+
     # The MUC confirms that we've left the room.
     echo = make_muc_presence('member', 'none', room, 'test')
     echo['type'] = 'unavailable'

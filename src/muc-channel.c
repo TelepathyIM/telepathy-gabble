@@ -3084,7 +3084,7 @@ gabble_muc_channel_update_configuration_async (
       request_config_form_reply_cb, result);
   g_object_unref (stanza);
 
-  priv->properties_being_updated = validated_properties;
+  priv->properties_being_updated = g_hash_table_ref (validated_properties);
 }
 
 gboolean
@@ -3352,7 +3352,7 @@ OUT:
       g_simple_async_result_set_from_error (update_result, error);
       g_simple_async_result_complete (update_result);
       g_object_unref (update_result);
-      priv->properties_being_updated = NULL;
+      tp_clear_pointer (&priv->properties_being_updated, g_hash_table_unref);
       g_clear_error (&error);
     }
 
@@ -3381,7 +3381,7 @@ request_config_form_submit_reply_cb (
     }
 
   g_simple_async_result_complete (update_result);
-  priv->properties_being_updated = NULL;
+  tp_clear_pointer (&priv->properties_being_updated, g_hash_table_unref);
 
   /* Get the properties into a consistent state. */
   room_properties_update (chan);

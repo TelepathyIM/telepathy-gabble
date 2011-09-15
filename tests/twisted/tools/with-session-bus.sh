@@ -44,6 +44,10 @@ while test "z$1" != "z--"; do
     dbus_daemon_args="$dbus_daemon_args $1"
     shift
     ;;
+  --also-for-system)
+    with_system_bus=1
+    shift
+    ;;
   *)
     usage
     ;;
@@ -79,6 +83,11 @@ fi
 e=0
 DBUS_SESSION_BUS_ADDRESS="`cat $me-$$.address`"
 export DBUS_SESSION_BUS_ADDRESS
+
+if [ -n "$with_system_bus" ] ; then
+  DBUS_SYSTEM_BUS_ADDRESS="$DBUS_SESSION_BUS_ADDRESS"
+  export DBUS_SYSTEM_BUS_ADDRESS
+fi
 
 if [ -n "$WITH_SESSION_BUS_FORK_DBUS_MONITOR" ] ; then
   echo "Forking dbus-monitor $WITH_SESSION_BUS_FORK_DBUS_MONITOR_OPT" >&2

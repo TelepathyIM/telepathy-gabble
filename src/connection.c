@@ -311,8 +311,8 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   GPtrArray *tmp;
 
   self->roster = gabble_roster_new (self);
-  g_signal_connect (self->roster, "nickname-update", G_CALLBACK
-      (gabble_conn_aliasing_nickname_updated), self);
+  g_signal_connect (self->roster, "nicknames-update", G_CALLBACK
+      (gabble_conn_aliasing_nicknames_updated), self);
   g_ptr_array_add (channel_managers, self->roster);
 
   self->priv->im_factory = g_object_new (GABBLE_TYPE_IM_FACTORY,

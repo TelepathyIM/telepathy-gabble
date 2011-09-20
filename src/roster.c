@@ -1317,7 +1317,7 @@ process_roster (
       _gabble_roster_item_maybe_remove (roster, handle);
     }
 
-  if (updates_nicknames)
+  if (updates_nicknames->len > 0)
     g_signal_emit (roster, signals[NICKNAMES_UPDATE], 0, updates_nicknames);
 
   tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,

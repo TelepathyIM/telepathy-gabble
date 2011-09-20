@@ -2,6 +2,7 @@
 Test getting relay from Google jingleinfo
 """
 
+from functools import partial
 from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream, disconnect_conn
 from servicetest import make_channel_proxy, \
@@ -367,8 +368,7 @@ def test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow):
 
 def exec_relay_test(incoming, too_slow=None):
     exec_test(
-        lambda q, b, c, s:
-            test(q, b, c, s, incoming=incoming, too_slow=too_slow),
+        partial(test, incoming=incoming, too_slow=too_slow),
         protocol=GoogleXmlStream)
 
 if __name__ == '__main__':

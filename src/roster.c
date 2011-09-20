@@ -1094,7 +1094,7 @@ process_roster (
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
-  GArray *updates_nicknames = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  GArray *updated_nicknames = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
   /* asymmetry is because we don't get locally pending subscription
    * requests via <roster>, we get it via <presence> */
@@ -1142,7 +1142,7 @@ process_roster (
 #endif
 
       if (nickname_updated)
-        g_array_append_val (updates_nicknames, handle);
+        g_array_append_val (updated_nicknames, handle);
 
       /* handle publish list changes */
       switch (item->subscription)
@@ -1317,8 +1317,8 @@ process_roster (
       _gabble_roster_item_maybe_remove (roster, handle);
     }
 
-  if (updates_nicknames->len > 0)
-    g_signal_emit (roster, signals[NICKNAMES_UPDATE], 0, updates_nicknames);
+  if (updated_nicknames->len > 0)
+    g_signal_emit (roster, signals[NICKNAMES_UPDATE], 0, updated_nicknames);
 
   tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
       changed, removed);
@@ -1330,7 +1330,7 @@ process_roster (
       tp_handle_set_destroy (blocking_changed);
     }
 
-  g_array_free (updates_nicknames, TRUE);
+  g_array_free (updated_nicknames, TRUE);
   tp_handle_set_destroy (changed);
   tp_handle_set_destroy (removed);
   tp_handle_set_destroy (referenced_handles);

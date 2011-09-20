@@ -176,9 +176,17 @@ static void
 google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
-  TpyBaseMediaCallStream *stream = TPY_BASE_MEDIA_CALL_STREAM (user_data);
+  TpWeakRef *weak_ref = user_data;
+  TpyBaseMediaCallStream *stream = TPY_BASE_MEDIA_CALL_STREAM (
+      tp_weak_ref_dup_object (weak_ref));
 
-  tpy_base_media_call_stream_set_relay_info (stream, relays);
+  if (stream != NULL)
+    {
+      tpy_base_media_call_stream_set_relay_info (stream, relays);
+      g_object_unref (stream);
+    }
+
+  tp_weak_ref_destroy (weak_ref);
 }
 
 static void
@@ -343,7 +351,7 @@ gabble_call_stream_constructed (GObject *obj)
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
       gabble_jingle_factory_create_google_relay_session (conn->jingle_factory,
-          2, google_relay_session_cb, obj);
+          2, google_relay_session_cb, tp_weak_ref_new (self, NULL, NULL));
     }
   else
     {

@@ -12,6 +12,7 @@ import gabbletest
 import constants as cs
 import dbus
 import ns
+import config
 from twisted.words.protocols.jabber.client import IQ
 
 from twisted.web import http
@@ -69,11 +70,28 @@ TOO_SLOW_CLOSE = 1
 TOO_SLOW_REMOVE_SELF = 2
 TOO_SLOW_DISCONNECT = 3
 
-def test(q, bus, conn, stream, incoming=True, too_slow=None):
+def test(q, bus, conn, stream, incoming=True, too_slow=None, use_call=False):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
 
-    # If we need to override remote caps, feats, codecs or caps,
-    # this is a good time to do it
+    if use_call:
+        # wjt only updated just about enough of this test for Call to check for
+        # one specific crash, not to verify that it all works...
+        assert incoming
+        assert too_slow in [TOO_SLOW_CLOSE, TOO_SLOW_DISCONNECT]
+
+        # Tell Gabble we want to use Call.
+        conn.ContactCapabilities.UpdateCapabilities([
+            (cs.CLIENT + ".CallHandler", [
+                { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+                    cs.CALL_INITIAL_AUDIO: True},
+                { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+                    cs.CALL_INITIAL_VIDEO: True},
+                ], [
+                    cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
+                    cs.CHANNEL_TYPE_CALL + '/ice-udp',
+                    cs.CHANNEL_TYPE_CALL + '/video/h264',
+                ]),
+            ])
 
     # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
     ji_event = q.expect('stream-iq', query_ns='google:jingleinfo',
@@ -163,24 +181,33 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
         # Remote end calls us
         jt.incoming_call()
 
-        # FIXME: these signals are not observable by real clients, since they
-        #        happen before NewChannels.
-        # The caller is in members
-        # We're pending because of remote_handle
-        mc, _, e, req1, req2 = q.expect_many(
-            EventPattern('dbus-signal', signal='MembersChanged',
-                 args=[u'', [remote_handle], [], [], [], 0, 0]),
-            EventPattern('dbus-signal', signal='MembersChanged',
-                 args=[u'', [], [], [self_handle], [], remote_handle,
-                       cs.GC_REASON_INVITED]),
-            EventPattern('dbus-signal', signal='NewSessionHandler'),
-            req_pattern,
-            req_pattern)
+        if use_call:
+            def looks_like_a_call_to_me(event):
+                channels, = event.args
+                path, props = channels[0]
+                return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CALL
+            new_channels = q.expect('dbus-signal', signal='NewChannels',
+                predicate=looks_like_a_call_to_me)
 
-        media_chan = make_channel_proxy(conn, mc.path,
-            'Channel.Interface.Group')
-        media_iface = make_channel_proxy(conn, mc.path,
-            'Channel.Type.StreamedMedia')
+            path = new_channels.args[0][0][0]
+            media_chan = bus.get_object(conn.bus_name, path)
+        else:
+            # FIXME: these signals are not observable by real clients, since they
+            #        happen before NewChannels.
+            # The caller is in members
+            # We're pending because of remote_handle
+            mc, _, e = q.expect_many(
+                EventPattern('dbus-signal', signal='MembersChanged',
+                     args=[u'', [remote_handle], [], [], [], 0, 0]),
+                EventPattern('dbus-signal', signal='MembersChanged',
+                     args=[u'', [], [], [self_handle], [], remote_handle,
+                           cs.GC_REASON_INVITED]),
+                EventPattern('dbus-signal', signal='NewSessionHandler'))
+
+            media_chan = make_channel_proxy(conn, mc.path,
+                'Channel.Interface.Group')
+            media_iface = make_channel_proxy(conn, mc.path,
+                'Channel.Type.StreamedMedia')
     else:
         call_async(q, conn.Requests, 'CreateChannel',
                 { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -203,13 +230,10 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None):
                 'Channel.Type.StreamedMedia')
         call_async(q, media_iface, 'RequestStreams',
                 remote_handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
-        e, req1, req2 = q.expect_many(
-            EventPattern('dbus-signal', signal='NewSessionHandler'),
-            req_pattern,
-            req_pattern)
+        e = q.expect('dbus-signal', signal='NewSessionHandler')
 
-    # S-E gets notified about new session handler, and calls Ready on it
-    assert e.args[1] == 'rtp'
+    req1 = q.expect('http-request', method='GET', path='/create_session')
+    req2 = q.expect('http-request', method='GET', path='/create_session')
 
     if too_slow is not None:
         test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow)
@@ -366,9 +390,9 @@ def test_too_slow(q, bus, conn, stream, req1, req2, media_chan, too_slow):
     # Make a misc method call to check that Gabble's still alive.
     sync_dbus(bus, q, conn)
 
-def exec_relay_test(incoming, too_slow=None):
+def exec_relay_test(incoming, too_slow=None, use_call=False):
     exec_test(
-        partial(test, incoming=incoming, too_slow=too_slow),
+        partial(test, incoming=incoming, too_slow=too_slow, use_call=use_call),
         protocol=GoogleXmlStream)
 
 if __name__ == '__main__':
@@ -380,4 +404,8 @@ if __name__ == '__main__':
     exec_relay_test(False, TOO_SLOW_REMOVE_SELF)
     exec_relay_test(True,  TOO_SLOW_DISCONNECT)
     exec_relay_test(False, TOO_SLOW_DISCONNECT)
+
+    if config.CHANNEL_TYPE_CALL_ENABLED:
+        exec_relay_test(True,  TOO_SLOW_CLOSE,      use_call=True)
+        exec_relay_test(True,  TOO_SLOW_DISCONNECT, use_call=True)
 

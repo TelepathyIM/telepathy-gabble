@@ -52,7 +52,7 @@
 /* signal enum */
 enum
 {
-  NICKNAME_UPDATE,
+  NICKNAMES_UPDATE,
   LAST_SIGNAL
 };
 
@@ -529,7 +529,8 @@ static GabbleRosterItem *
 _gabble_roster_item_update (GabbleRoster *roster,
                             TpHandle contact_handle,
                             WockyNode *node,
-                            gboolean google_roster_mode)
+                            gboolean google_roster_mode,
+                            gboolean *nickname_updated)
 {
   GabbleRosterPrivate *priv = roster->priv;
   GabbleRosterItem *item;
@@ -576,8 +577,12 @@ _gabble_roster_item_update (GabbleRoster *roster,
 
       DEBUG ("name for contact#%u changed to %s", contact_handle,
           name);
-      g_signal_emit (G_OBJECT (roster), signals[NICKNAME_UPDATE], 0,
-          contact_handle);
+
+      *nickname_updated = TRUE;
+    }
+  else
+    {
+      *nickname_updated = FALSE;
     }
 
   new_groups_handle_set = _parse_item_groups (node,
@@ -1089,6 +1094,7 @@ process_roster (
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
+  GArray *updates_nicknames = g_array_new (FALSE, FALSE, sizeof (TpHandle));
 
   /* asymmetry is because we don't get locally pending subscription
    * requests via <roster>, we get it via <presence> */
@@ -1113,6 +1119,7 @@ process_roster (
       const char *jid;
       TpHandle handle;
       GabbleRosterItem *item;
+      gboolean nickname_updated;
 
       handle = validate_roster_item (contact_repo, item_node, &jid);
 
@@ -1124,7 +1131,7 @@ process_roster (
       tp_handle_unref (contact_repo, handle);
 
       item = _gabble_roster_item_update (roster, handle, item_node,
-                                         google_roster);
+                                         google_roster, &nickname_updated);
 #ifdef ENABLE_DEBUG
       if (DEBUGGING)
         {
@@ -1133,6 +1140,9 @@ process_roster (
           g_free (dump);
         }
 #endif
+
+      if (nickname_updated)
+        g_array_append_val (updates_nicknames, handle);
 
       /* handle publish list changes */
       switch (item->subscription)
@@ -1307,6 +1317,9 @@ process_roster (
       _gabble_roster_item_maybe_remove (roster, handle);
     }
 
+  if (updates_nicknames)
+    g_signal_emit (roster, signals[NICKNAMES_UPDATE], 0, updates_nicknames);
+
   tp_base_contact_list_contacts_changed ((TpBaseContactList *) roster,
       changed, removed);
 
@@ -1317,6 +1330,7 @@ process_roster (
       tp_handle_set_destroy (blocking_changed);
     }
 
+  g_array_free (updates_nicknames, TRUE);
   tp_handle_set_destroy (changed);
   tp_handle_set_destroy (removed);
   tp_handle_set_destroy (referenced_handles);
@@ -3508,13 +3522,13 @@ gabble_roster_class_init (GabbleRosterClass *cls)
   base_class->dup_states = gabble_roster_dup_states;
   base_class->dup_contacts = gabble_roster_dup_contacts;
 
-  signals[NICKNAME_UPDATE] = g_signal_new (
-    "nickname-update",
+  signals[NICKNAMES_UPDATE] = g_signal_new (
+    "nicknames-update",
     G_TYPE_FROM_CLASS (cls),
     G_SIGNAL_RUN_LAST,
     0,
     NULL, NULL,
-    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, G_TYPE_UINT);
+    g_cclosure_marshal_VOID__BOXED, G_TYPE_NONE, 1, DBUS_TYPE_G_UINT_ARRAY);
 }
 
 gboolean

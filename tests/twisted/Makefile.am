@@ -64,6 +64,7 @@ TWISTED_TESTS = \
 	roster/ensure.py \
 	roster/groups.py \
 	roster/groups-12791.py \
+	roster/initial-aliases.py \
 	roster/push-from-contact.py \
 	roster/push-without-id.py \
 	roster/removed-from-rp-subscribe.py \

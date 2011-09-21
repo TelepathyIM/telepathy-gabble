@@ -42,6 +42,9 @@ CONN_FUTURE_IFACE = "org.freedesktop.Telepathy.Connection.FUTURE"
 CONSOLE_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
 
 class Window(Gtk.Window):
+    REPLY_PAGE = 0
+    SPINNER_PAGE = 1
+
     def __init__(self, bus, connection_bus_name):
         Gtk.Window.__init__(self)
 
@@ -105,7 +108,19 @@ class Window(Gtk.Window):
 
         sw = Gtk.ScrolledWindow()
         sw.add(tv)
-        self.grid.attach_next_to(sw, reply_label, Gtk.PositionType.BOTTOM, 2, 1)
+
+        self.result_nb = Gtk.Notebook()
+        self.result_nb.set_show_tabs(False)
+        self.result_nb.insert_page(sw, None, self.REPLY_PAGE)
+
+        self.spinner = Gtk.Spinner()
+        self.spinner.set_property('halign', Gtk.Align.CENTER)
+        self.spinner.set_property('valign', Gtk.Align.CENTER)
+        self.spinner.set_property('width-request', 32)
+        self.spinner.set_property('height-request', 32)
+        self.result_nb.insert_page(self.spinner, None, self.SPINNER_PAGE)
+
+        self.grid.attach_next_to(self.result_nb, reply_label, Gtk.PositionType.BOTTOM, 2, 1)
 
         body_entry.connect('activate', self.send_iq)
         body_entry.connect('icon-release', self.send_iq)
@@ -147,14 +162,20 @@ class Window(Gtk.Window):
         to = self.recipient_entry.get_text()
         body = self.body_entry.get_text()
 
+        self.console_proxy.SendIQ('(sss)', type, to, body, result_handler=self.send_iq_cb)
+        self.result_nb.set_current_page(self.SPINNER_PAGE)
+        self.spinner.start()
+
+    def send_iq_cb(self, proxy, result, user_data):
         try:
-            reply_type, reply = self.console_proxy.SendIQ(
-                '(sss)', type, to, body)
+            reply_type, reply = result
             pretty_reply = xml.dom.minidom.parseString(reply).toprettyxml()
             self.b.set_text(pretty_reply)
         except Exception, e:
             self.b.set_text("<!-- error:\n%s\n-->" % e)
 
+        self.spinner.stop()
+        self.result_nb.set_current_page(self.REPLY_PAGE)
 
 if __name__ == '__main__':
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)

@@ -24,6 +24,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
 
 import sys
+import re
 import xml.dom.minidom
 
 import pygtk
@@ -54,10 +55,19 @@ class Window(Gtk.Window):
         conn_future_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
             connection_bus_name, pathify(connection_bus_name),
             CONN_FUTURE_IFACE, None)
-        sidecar_path, _ = conn_future_proxy.EnsureSidecar('(s)', CONSOLE_IFACE)
+        try:
+            sidecar_path, _ = conn_future_proxy.EnsureSidecar('(s)', CONSOLE_IFACE)
+        except Exception, e:
+            print """
+Couldn't connect to the XMPP console interface on '%(connection_bus_name)s':
+  %(e)s
+Check that it's a running Jabber connection, and that you have the console
+plugin installed.""" % locals()
+
+            raise SystemExit(2)
 
         self.console_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
-            tp_conn_bus_name, sidecar_path, CONSOLE_IFACE, None)
+            connection_bus_name, sidecar_path, CONSOLE_IFACE, None)
 
         # Build up the UI
         self.grid = Gtk.Grid()
@@ -179,9 +189,16 @@ class Window(Gtk.Window):
 
 if __name__ == '__main__':
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-    tp_conn_bus_name = sys.argv[1]
 
-    win = Window(bus, tp_conn_bus_name)
+    PREFIX = 'org.freedesktop.Telepathy.Connection.gabble.jabber.'
+
+    if len(sys.argv) != 2 or \
+       not re.match('^%s[a-zA-Z0-9_]+$' % PREFIX, sys.argv[1]):
+        print "Usage: %s %ssomething" % (sys.argv[0], PREFIX)
+        print "  (the argument should be the bus name of a Jabber connection)"
+        raise SystemExit(1)
+
+    win = Window(bus, sys.argv[1])
     win.show_all()
     win.connect('destroy', Gtk.main_quit)
 

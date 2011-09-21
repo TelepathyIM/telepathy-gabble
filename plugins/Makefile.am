@@ -30,10 +30,16 @@ endif
 
 if ENABLE_PLUGINS
 plugin_LTLIBRARIES = $(installable_plugins)
+
+dist_bin_SCRIPTS = \
+	telepathy-gabble-xmpp-console
 else
 # we still compile the plugin (just to make sure it compiles!) but we don't
 # install it
 noinst_LTLIBRARIES += $(installable_plugins)
+
+EXTRA_DIST = \
+	telepathy-gabble-xmpp-console
 endif
 
 AM_LDFLAGS = -module -avoid-version -shared

@@ -1,0 +1,155 @@
+#!/usr/bin/env python
+# vim: set fileencoding=utf-8 sts=4 sw=4 et :
+"""
+The world's worst XMPP console user interface.
+
+Pass it the bus name of a Gabble connection; type some words; get minimalistic
+error reporting.
+
+Copyright © 2011 Collabora Ltd. <http://www.collabora.co.uk/>
+
+This library is free software; you can redistribute it and/or
+modify it under the terms of the GNU Lesser General Public
+License as published by the Free Software Foundation; either
+version 2.1 of the License, or (at your option) any later version.
+
+This library is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+Lesser General Public License for more details.
+
+You should have received a copy of the GNU Lesser General Public
+License along with this library; if not, write to the Free Software
+Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+"""
+
+import sys
+import xml.dom.minidom
+
+import pygtk
+pygtk.require('2.0')
+
+from gi.repository import Gtk
+from gi.repository import Gio
+from gi.repository import GtkSource
+
+PADDING = 6
+
+def pathify(name):
+    return '/' + name.replace('.', '/')
+
+CONN_FUTURE_IFACE = "org.freedesktop.Telepathy.Connection.FUTURE"
+CONSOLE_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
+
+class Window(Gtk.Window):
+    def __init__(self, bus, connection_bus_name):
+        Gtk.Window.__init__(self)
+
+        self.set_title('XMPP Console')
+        self.set_default_size(600, 371)
+
+        conn_future_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
+            connection_bus_name, pathify(connection_bus_name),
+            CONN_FUTURE_IFACE, None)
+        sidecar_path, _ = conn_future_proxy.EnsureSidecar('(s)', CONSOLE_IFACE)
+
+        self.console_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
+            tp_conn_bus_name, sidecar_path, CONSOLE_IFACE, None)
+
+        # Build up the UI
+        self.grid = Gtk.Grid()
+        self.grid.set_column_spacing(PADDING)
+        self.grid.set_row_spacing(PADDING)
+
+        request_label = self.add_title("Request")
+
+        recipient_label, recipient_entry = self.add_label_entry_pair(
+            'To:', below=request_label)
+        self.recipient_entry = recipient_entry
+
+        type_label, type_entry = self.add_label_entry_pair(
+            'IQ Type:', below=recipient_label)
+        type_entry.set_text('get')
+        self.type_entry = type_entry
+
+        body_label, body_entry = self.add_label_entry_pair(
+            'Body:', below=type_label)
+        body_entry.set_text(
+            "<query xmlns='http://jabber.org/protocol/disco#info'/>")
+        body_entry.set_icon_from_stock(
+            Gtk.EntryIconPosition.SECONDARY, Gtk.STOCK_GO_FORWARD)
+        body_entry.set_icon_tooltip_text(
+            Gtk.EntryIconPosition.SECONDARY, "Send this IQ")
+        self.body_entry = body_entry
+
+        reply_label = self.add_title("Reply", below=body_label)
+
+        self.b = GtkSource.Buffer()
+        tv = GtkSource.View.new_with_buffer(self.b)
+        self.b.set_language(
+            GtkSource.LanguageManager.get_default().get_language('xml'))
+        self.b.set_highlight_matching_brackets(False)
+        tv.set_editable(False)
+        tv.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        tv.set_property('expand', True)
+        tv.get_buffer().set_text(
+            "<!-- send a request to see the reply here -->")
+
+        sw = Gtk.ScrolledWindow()
+        sw.add(tv)
+        self.grid.attach_next_to(sw, reply_label, Gtk.PositionType.BOTTOM, 2, 1)
+
+        body_entry.connect('activate', self.send_iq)
+        body_entry.connect('icon-release', self.send_iq)
+
+        self.add(self.grid)
+
+    def add_title(self, title, below=None):
+        label = Gtk.Label()
+        label.set_markup("<b>%s</b>" % title)
+        label.set_property('xalign', 0)
+
+        if below is None:
+            self.grid.attach(label, 0, 0, 2, 1)
+        else:
+            self.grid.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 2, 1)
+
+        return label
+
+    def add_label_entry_pair(self, title, below):
+        label = Gtk.Label(title)
+        label.set_property('margin-left', PADDING)
+        label.set_property('xalign', 0)
+        self.grid.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 1, 1)
+
+        entry = Gtk.Entry()
+        entry.set_property('margin-right', PADDING)
+        entry.set_property('hexpand', True)
+
+        self.grid.attach_next_to(entry, label, Gtk.PositionType.RIGHT, 1, 1)
+
+        return label, entry
+
+    def send_iq(self, *misc):
+        type = self.type_entry.get_text()
+        to = self.recipient_entry.get_text()
+        body = self.body_entry.get_text()
+
+        try:
+            reply_type, reply = self.console_proxy.SendIQ(
+                '(sss)', type, to, body)
+            pretty_reply = xml.dom.minidom.parseString(reply).toprettyxml()
+            self.b.set_text(pretty_reply)
+        except Exception, e:
+            self.b.set_text("<!-- error:\n%s\n-->" % e)
+
+
+if __name__ == '__main__':
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    tp_conn_bus_name = sys.argv[1]
+
+    win = Window(bus, tp_conn_bus_name)
+    win.show_all()
+    win.connect('destroy', Gtk.main_quit)
+
+    Gtk.main()

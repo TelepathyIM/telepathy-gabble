@@ -67,10 +67,18 @@ class Window(Gtk.Window):
             'To:', below=request_label)
         self.recipient_entry = recipient_entry
 
-        type_label, type_entry = self.add_label_entry_pair(
-            'IQ Type:', below=recipient_label)
-        type_entry.set_text('get')
-        self.type_entry = type_entry
+        type_label = self.add_label('IQ Type:', below=recipient_label)
+        self.get_button = Gtk.RadioButton.new_with_label([], "get")
+        self.get_button.set_active(True)
+        self.set_button = Gtk.RadioButton.new_with_label_from_widget(
+            self.get_button, "set")
+
+        box = Gtk.ButtonBox.new(Gtk.Orientation.HORIZONTAL)
+        box.set_layout(Gtk.ButtonBoxStyle.START)
+        box.add(self.get_button)
+        box.add(self.set_button)
+        self.grid.attach_next_to(box, type_label,
+            Gtk.PositionType.RIGHT, 1, 1)
 
         body_label, body_entry = self.add_label_entry_pair(
             'Body:', below=type_label)
@@ -135,7 +143,7 @@ class Window(Gtk.Window):
         return label, entry
 
     def send_iq(self, *misc):
-        type = self.type_entry.get_text()
+        type = 'get' if self.get_button.get_active() else 'set'
         to = self.recipient_entry.get_text()
         body = self.body_entry.get_text()
 

@@ -116,11 +116,15 @@ class Window(Gtk.Window):
 
         return label
 
-    def add_label_entry_pair(self, title, below):
+    def add_label(self, title, below):
         label = Gtk.Label(title)
         label.set_property('margin-left', PADDING)
         label.set_property('xalign', 0)
         self.grid.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 1, 1)
+        return label
+
+    def add_label_entry_pair(self, title, below):
+        label = self.add_label(title, below)
 
         entry = Gtk.Entry()
         entry.set_property('margin-right', PADDING)

@@ -341,6 +341,7 @@ else
 fi
 AC_SUBST(SOUP_CFLAGS)
 AC_SUBST(SOUP_LIBS)
+AM_CONDITIONAL([ENABLE_GOOGLE_RELAY], [test "x$enable_google_relay" = xyes])
 
 dnl Check for libnice
 PKG_CHECK_MODULES(NICE, nice >= 0.0.11)

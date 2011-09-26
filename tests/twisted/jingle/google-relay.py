@@ -2,7 +2,14 @@
 Test getting relay from Google jingleinfo
 """
 
+import config
+
+if not config.GOOGLE_RELAY_ENABLED:
+    print "NOTE: built with --disable-google-relay"
+    raise SystemExit(77)
+
 from functools import partial
+
 from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream, disconnect_conn
 from servicetest import make_channel_proxy, \

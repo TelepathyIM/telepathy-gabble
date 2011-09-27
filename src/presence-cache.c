@@ -272,7 +272,6 @@ capability_info_recvd (GabblePresenceCache *cache,
     GPtrArray *data_forms)
 {
   GabbleCapabilityInfo *info = capability_info_get (cache, node);
-  GPtrArray *forms;
 
   if (info->cap_set == NULL ||
       !gabble_capability_set_equals (cap_set, info->cap_set))
@@ -301,11 +300,13 @@ capability_info_recvd (GabblePresenceCache *cache,
 
   info->client_types = client_types;
 
-  forms = info->data_forms;
-  if (data_forms != NULL)
-    info->data_forms = g_ptr_array_ref (data_forms);
-  if (forms != NULL)
-    g_ptr_array_unref (forms);
+  if (data_forms != info->data_forms)
+    {
+      tp_clear_pointer (&info->data_forms, g_ptr_array_unref);
+
+      if (data_forms != NULL)
+        info->data_forms = g_ptr_array_ref (data_forms);
+    }
 
   return info->trust;
 }
@@ -2149,7 +2150,6 @@ gabble_presence_cache_add_own_caps (
 {
   gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
   GabbleCapabilityInfo *info = capability_info_get (cache, uri);
-  GPtrArray *forms;
 
   if (info->complete)
     goto out;
@@ -2181,11 +2181,13 @@ gabble_presence_cache_add_own_caps (
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
 
-  forms = info->data_forms;
-  if (data_forms != NULL)
-    info->data_forms = g_ptr_array_ref (data_forms);
-  if (forms != NULL)
-    g_ptr_array_unref (forms);
+  if (data_forms != info->data_forms)
+    {
+      tp_clear_pointer (&info->data_forms, g_ptr_array_unref);
+
+      if (data_forms != NULL)
+        info->data_forms = g_ptr_array_ref (data_forms);
+    }
 
   /* FIXME: we should satisfy any waiters for this node now. fd.o bug #24619. */
 

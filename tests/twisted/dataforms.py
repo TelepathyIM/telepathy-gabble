@@ -11,9 +11,11 @@ from caps_helper import receive_presence_and_ask_caps
 def test(q, bus, conn, stream):
     q.expect('stream-presence')
 
+    # gabble won't try to represent the client if doesn't have any
+    # RCCs or HCTs, so let's add some
     conn.ContactCapabilities.UpdateCapabilities(
         [
-            ('dataformtest', [], [])
+            ('dataformtest', [], ['banan', 'hi'])
         ])
 
     _, _, forms, _ = receive_presence_and_ask_caps(q, stream)

@@ -262,6 +262,19 @@ capability_info_free (GabbleCapabilityInfo *info)
   g_slice_free (GabbleCapabilityInfo, info);
 }
 
+static void
+replace_data_forms (GabbleCapabilityInfo *info,
+    GPtrArray *data_forms)
+{
+  if (data_forms == info->data_forms)
+    return;
+
+  tp_clear_pointer (&info->data_forms, g_ptr_array_unref);
+
+  if (data_forms != NULL)
+    info->data_forms = g_ptr_array_ref (data_forms);
+}
+
 static guint
 capability_info_recvd (GabblePresenceCache *cache,
     const gchar *node,
@@ -300,13 +313,7 @@ capability_info_recvd (GabblePresenceCache *cache,
 
   info->client_types = client_types;
 
-  if (data_forms != info->data_forms)
-    {
-      tp_clear_pointer (&info->data_forms, g_ptr_array_unref);
-
-      if (data_forms != NULL)
-        info->data_forms = g_ptr_array_ref (data_forms);
-    }
+  replace_data_forms (info, data_forms);
 
   return info->trust;
 }
@@ -2181,13 +2188,7 @@ gabble_presence_cache_add_own_caps (
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
   tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
 
-  if (data_forms != info->data_forms)
-    {
-      tp_clear_pointer (&info->data_forms, g_ptr_array_unref);
-
-      if (data_forms != NULL)
-        info->data_forms = g_ptr_array_ref (data_forms);
-    }
+  replace_data_forms (info, data_forms);
 
   /* FIXME: we should satisfy any waiters for this node now. fd.o bug #24619. */
 

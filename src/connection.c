@@ -2658,13 +2658,13 @@ iq_disco_cb (WockyPorter *porter,
     {
       features = gabble_presence_peek_caps (self->self_presence);
       data_forms = gabble_presence_peek_data_forms (self->self_presence);
-  /* If node is not NULL, it can be either a caps bundle as defined in the
-   * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
-   * 1.5. Let's see if it's a verification string we've told the cache about.
-   */
     }
   else
     {
+      /* If node is not NULL, it can be either a caps bundle as defined in the
+       * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
+       * 1.5. Let's see if it's a verification string we've told the cache about.
+       */
       info = gabble_presence_cache_peek_own_caps (self->presence_cache,
           suffix);
     }

@@ -21,7 +21,7 @@
  */
 
 #include "config.h"
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/channel-manager.h>
@@ -82,6 +82,7 @@ gabble_caps_channel_manager_get_contact_capabilities (
  *  GHashTable with string keys and GValue values
  * @cap_tokens: the handler capability tokens supported by the client
  * @cap_set: a set into which to merge additional XMPP capabilities
+ * @data_forms: a #GPtrArray of #WockyDataForm objects
  *
  * Convert the capabilities of a Telepathy client into XMPP capabilities to be
  * advertised.
@@ -95,7 +96,8 @@ gabble_caps_channel_manager_represent_client (
     const gchar *client_name,
     const GPtrArray *filters,
     const gchar * const *cap_tokens,
-    GabbleCapabilitySet *cap_set)
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms)
 {
   GabbleCapsChannelManagerInterface *iface =
     GABBLE_CAPS_CHANNEL_MANAGER_GET_INTERFACE (caps_manager);
@@ -103,6 +105,6 @@ gabble_caps_channel_manager_represent_client (
 
   if (method != NULL)
     {
-      method (caps_manager, client_name, filters, cap_tokens, cap_set);
+      method (caps_manager, client_name, filters, cap_tokens, cap_set, data_forms);
     }
 }

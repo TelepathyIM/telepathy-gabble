@@ -36,6 +36,7 @@
 #include <wocky/wocky-tls-handler.h>
 #include <wocky/wocky-ping.h>
 #include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky-data-form.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
@@ -50,8 +51,8 @@
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
 #include "bytestream-factory.h"
-#include "capabilities.h"
-#include "caps-channel-manager.h"
+#include "gabble/capabilities.h"
+#include "gabble/caps-channel-manager.h"
 #include "caps-hash.h"
 #include "auth-manager.h"
 #include "conn-aliasing.h"
@@ -258,6 +259,10 @@ struct _GabbleConnectionPrivate
   /* the union of the above */
   GabbleCapabilitySet *all_caps;
 
+  /* data forms provided via UpdateCapabilities()
+   * gchar * (client name) => GPtrArray<owned WockyDataForm> */
+  GHashTable *client_data_forms;
+
   /* auth manager */
   GabbleAuthManager *auth_manager;
 
@@ -443,6 +448,9 @@ gabble_connection_constructor (GType type,
   priv->sidecar_caps = gabble_capability_set_new ();
   priv->client_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, (GDestroyNotify) gabble_capability_set_free);
+
+  priv->client_data_forms = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, (GDestroyNotify) g_ptr_array_unref);
 
   /* Historically, the optional Jingle transports were in our initial
    * presence, but could be removed by AdvertiseCapabilities(). Emulate
@@ -1222,6 +1230,8 @@ gabble_connection_dispose (GObject *object)
   gabble_capability_set_free (priv->sidecar_caps);
   gabble_capability_set_free (priv->bonus_caps);
 
+  g_hash_table_destroy (priv->client_data_forms);
+
   if (priv->disconnect_timer != 0)
     {
       g_source_remove (priv->disconnect_timer);
@@ -1360,6 +1370,14 @@ WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn)
     return g_object_ref (priv->porter);
 
   return NULL;
+}
+
+WockySession *
+gabble_connection_get_session (GabbleConnection *connection)
+{
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+
+  return connection->session;
 }
 
 /**
@@ -2303,7 +2321,8 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
 
   /* Ensure this set of capabilities is in the cache. */
   gabble_presence_cache_add_own_caps (self->presence_cache, caps_hash,
-      gabble_presence_peek_caps (presence), NULL);
+      gabble_presence_peek_caps (presence), NULL,
+      gabble_presence_peek_data_forms (presence));
 
   /* XEP-0115 deprecates 'ext' feature bundles. But we still need
    * BUNDLE_VOICE_V1 it for backward-compatibility with Gabble 0.2 */
@@ -2401,9 +2420,12 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   GHashTableIter iter;
   gpointer k, v;
   GabbleCapabilitySet *save_set;
+  GPtrArray *data_forms;
 
   save_set = self->priv->all_caps;
   self->priv->all_caps = gabble_capability_set_new ();
+
+  data_forms = g_ptr_array_new ();
 
   gabble_capability_set_update (self->priv->all_caps,
       gabble_capabilities_get_fixed_caps ());
@@ -2412,6 +2434,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   gabble_capability_set_update (self->priv->all_caps, self->priv->sidecar_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
 
+  /* first, normal caps */
   g_hash_table_iter_init (&iter, self->priv->client_caps);
 
   while (g_hash_table_iter_next (&iter, &k, &v))
@@ -2427,13 +2450,22 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
       gabble_capability_set_update (self->priv->all_caps, v);
     }
 
+  /* now data forms */
+  g_hash_table_iter_init (&iter, self->priv->client_data_forms);
+
+  /* just borrow the ref, data_forms doesn't have a free func */
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    tp_g_ptr_array_extend (data_forms, v);
+
   if (self->self_presence != NULL)
     gabble_presence_set_capabilities (self->self_presence,
-        self->priv->resource, self->priv->all_caps, self->priv->caps_serial++);
+        self->priv->resource, self->priv->all_caps, data_forms,
+        self->priv->caps_serial++);
 
   if (gabble_capability_set_equals (self->priv->all_caps, save_set))
     {
       gabble_capability_set_free (save_set);
+      g_ptr_array_unref (data_forms);
       DEBUG ("nothing to do");
       return FALSE;
     }
@@ -2442,6 +2474,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   if (base->status != TP_CONNECTION_STATUS_CONNECTED)
     {
       gabble_capability_set_free (save_set);
+      g_ptr_array_unref (data_forms);
       DEBUG ("not emitting self-presence stanza: not connected yet");
       return FALSE;
     }
@@ -2449,6 +2482,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   if (!conn_presence_signal_own_presence (self, NULL, &error))
     {
       gabble_capability_set_free (save_set);
+      g_ptr_array_unref (data_forms);
       DEBUG ("error sending presence: %s", error->message);
       g_error_free (error);
       return FALSE;
@@ -2458,6 +2492,8 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
     gabble_capability_set_free (save_set);
   else
     *old_out = save_set;
+
+  g_ptr_array_unref (data_forms);
 
   return TRUE;
 }
@@ -2570,6 +2606,7 @@ iq_disco_cb (WockyPorter *porter,
   const GabbleCapabilityInfo *info = NULL;
   const GabbleCapabilitySet *features = NULL;
   const GPtrArray *identities = NULL;
+  const GPtrArray *data_forms = NULL;
 
   /* query's existence is checked by WockyPorter before this function is called */
   query = wocky_node_get_child (wocky_stanza_get_top_node (stanza), "query");
@@ -2599,19 +2636,25 @@ iq_disco_cb (WockyPorter *porter,
     wocky_node_set_attribute (result_query, "node", node);
 
   if (node == NULL)
-    features = gabble_presence_peek_caps (self->self_presence);
-  /* If node is not NULL, it can be either a caps bundle as defined in the
-   * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
-   * 1.5. Let's see if it's a verification string we've told the cache about.
-   */
+    {
+      features = gabble_presence_peek_caps (self->self_presence);
+      data_forms = gabble_presence_peek_data_forms (self->self_presence);
+    }
   else
-    info = gabble_presence_cache_peek_own_caps (self->presence_cache,
-        suffix);
+    {
+      /* If node is not NULL, it can be either a caps bundle as defined in the
+       * legacy XEP-0115 version 1.3 or an hash as defined in XEP-0115 version
+       * 1.5. Let's see if it's a verification string we've told the cache about.
+       */
+      info = gabble_presence_cache_peek_own_caps (self->presence_cache,
+          suffix);
+    }
 
   if (info)
     {
       features = info->cap_set;
       identities = info->identities;
+      data_forms = info->data_forms;
     }
 
   if (identities && identities->len != 0)
@@ -2648,6 +2691,18 @@ iq_disco_cb (WockyPorter *porter,
 
       if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
         features = gabble_capabilities_get_bundle_video_v1 ();
+    }
+
+  if (data_forms != NULL)
+    {
+      guint i;
+
+      for (i = 0; i < data_forms->len; i++)
+        {
+          WockyDataForm *form = g_ptr_array_index (data_forms, i);
+
+          wocky_data_form_add_to_node (form, result_query);
+        }
     }
 
   if (features == NULL && tp_strdiff (suffix, BUNDLE_PMUC_V1))
@@ -3193,6 +3248,111 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   g_ptr_array_free (ret, TRUE);
 }
 
+static const gchar *
+get_form_type (WockyDataForm *form)
+{
+  WockyDataFormField *field;
+
+  field = g_hash_table_lookup (form->fields,
+      "FORM_TYPE");
+  g_assert (field != NULL);
+
+  return field->raw_value_contents[0];
+}
+
+static const gchar *
+check_form_is_unique (GabbleConnection *self,
+    const gchar *form_type)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, self->priv->client_data_forms);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const gchar *manager = key;
+      GPtrArray *data_forms = value;
+      guint i;
+
+      if (data_forms == NULL || data_forms->len == 0)
+        continue;
+
+      for (i = 0; i < data_forms->len; i++)
+        {
+          WockyDataForm *form = g_ptr_array_index (data_forms, i);
+
+          if (!tp_strdiff (get_form_type (form), form_type))
+            return manager;
+        }
+    }
+
+  return NULL;
+}
+
+static gboolean
+check_data_form_in_list (GPtrArray *array,
+    const gchar *form_type)
+{
+  guint i;
+
+  for (i = 0; i < array->len; i++)
+    {
+      WockyDataForm *form = g_ptr_array_index (array, i);
+
+      if (!tp_strdiff (get_form_type (form), form_type))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+static gboolean
+check_data_form_is_valid (GabbleConnection *self,
+    WockyDataForm *form,
+    GPtrArray *existing_forms)
+{
+  WockyDataFormField *field;
+  const gchar *form_type, *other_client;
+
+  /* We want rid of forms with no FORM_TYPE quickly. */
+  field = g_hash_table_lookup (form->fields, "FORM_TYPE");
+
+  if (field == NULL || tp_str_empty (field->raw_value_contents[0]))
+    {
+      WARNING ("data form with no FORM_TYPE field; ignoring");
+      return FALSE;
+    }
+
+  form_type = field->raw_value_contents[0];
+
+  /* We'll get warnings (potentially bad) if two clients cause a
+   * channel manager to create two data forms with the same FORM_TYPE,
+   * or if multiple channel managers create two data forms with the
+   * same FORM_TYPE, for the same client. This is probably not a
+   * problem in practice given hardly anyone uses data forms in entity
+   * capabilities anyway.  */
+
+  /* We don't want the same data form from another caps channel
+   * manager for this client either */
+  if (check_data_form_in_list (existing_forms, form_type))
+    {
+      WARNING ("duplicate data form '%s' from another channel "
+          "manager; ignoring", form_type);
+      return FALSE;
+    }
+
+  /* And lastly we don't want a form we're already advertising. */
+  other_client = check_form_is_unique (self, form_type);
+  if (other_client != NULL)
+    {
+      WARNING ("Data form '%s' already provided by client "
+          "%s; ignoring", form_type, other_client);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 /**
  * gabble_connection_update_capabilities
  *
@@ -3239,10 +3399,12 @@ gabble_connection_update_capabilities (
       const GPtrArray *filters = g_value_get_boxed (va->values + 1);
       const gchar * const * cap_tokens = g_value_get_boxed (va->values + 2);
       GabbleCapabilitySet *cap_set;
+      GPtrArray *data_forms;
 
       g_hash_table_remove (self->priv->client_caps, client_name);
+      g_hash_table_remove (self->priv->client_data_forms, client_name);
 
-      if ((cap_tokens == NULL || cap_tokens[0] != NULL) &&
+      if ((cap_tokens == NULL || cap_tokens[0] == NULL) &&
           filters->len == 0)
         {
           /* no capabilities */
@@ -3251,6 +3413,8 @@ gabble_connection_update_capabilities (
         }
 
       cap_set = gabble_capability_set_new ();
+      data_forms = g_ptr_array_new_with_free_func (
+          (GDestroyNotify) g_object_unref);
 
       tp_base_connection_channel_manager_iter_init (&iter, base);
 
@@ -3258,18 +3422,30 @@ gabble_connection_update_capabilities (
         {
           if (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
             {
+              GPtrArray *forms = g_ptr_array_new_with_free_func (
+                  (GDestroyNotify) g_object_unref);
+              guint j;
+
+              /* First, represent the client... */
               gabble_caps_channel_manager_represent_client (
                   GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
-                  cap_tokens, cap_set);
+                  cap_tokens, cap_set, forms);
+
+              /* Now check the forms... */
+              for (j = 0; j < forms->len; j++)
+                {
+                  WockyDataForm *form = g_ptr_array_index (forms, j);
+
+                  if (check_data_form_is_valid (self, form, data_forms))
+                    g_ptr_array_add (data_forms, g_object_ref (form));
+                }
+
+              g_ptr_array_unref (forms);
             }
         }
 
-      if (gabble_capability_set_size (cap_set) == 0)
-        {
-          DEBUG ("client %s has no interesting capabilities", client_name);
-          gabble_capability_set_free (cap_set);
-        }
-      else
+      /* first deal with normal caps */
+      if (gabble_capability_set_size (cap_set) > 0)
         {
           if (DEBUGGING)
             {
@@ -3281,6 +3457,33 @@ gabble_connection_update_capabilities (
 
           g_hash_table_insert (self->priv->client_caps, g_strdup (client_name),
               cap_set);
+        }
+      else
+        {
+          DEBUG ("client %s has no interesting capabilities", client_name);
+          gabble_capability_set_free (cap_set);
+        }
+
+      /* now data forms */
+      if (data_forms->len > 0)
+        {
+          guint j;
+
+          /* now print out what forms we have here */
+          DEBUG ("client %s contributes %u data form%s:", client_name,
+              data_forms->len,
+              data_forms->len > 1 ? "s" : "");
+
+          for (j = 0; j < data_forms->len; j++)
+            DEBUG (" - %s", get_form_type (g_ptr_array_index (data_forms, i)));
+
+          g_hash_table_insert (self->priv->client_data_forms,
+              g_strdup (client_name), data_forms);
+        }
+      else
+        {
+          DEBUG ("client %s has no interesting data forms", client_name);
+          g_ptr_array_unref (data_forms);
         }
     }
 
@@ -3711,9 +3914,95 @@ gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
   ver = gabble_caps_hash_compute (cap_set, identities_copy);
 
   gabble_presence_cache_add_own_caps (self->presence_cache, ver,
-      cap_set, identities_copy);
+      cap_set, identities_copy, NULL);
 
   wocky_disco_identity_array_free (identities_copy);
 
   return ver;
+}
+
+const gchar *
+gabble_connection_get_jid_for_caps (GabbleConnection *conn,
+    WockyXep0115Capabilities *caps)
+{
+  TpHandle handle;
+  TpBaseConnection *base;
+  TpHandleRepoIface *contact_handles;
+
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
+  g_return_val_if_fail (GABBLE_IS_PRESENCE (caps), NULL);
+
+  base = (TpBaseConnection *) conn;
+
+  if ((GabblePresence *) caps == conn->self_presence)
+    {
+      handle = tp_base_connection_get_self_handle (base);
+    }
+  else
+    {
+      handle = gabble_presence_cache_get_handle (conn->presence_cache,
+          (GabblePresence *) caps);
+    }
+
+  contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  return tp_handle_inspect (contact_handles, handle);
+}
+
+const gchar *
+gabble_connection_pick_best_resource_for_caps (GabbleConnection *connection,
+    const gchar *jid,
+    GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data)
+{
+  TpBaseConnection *base;
+  TpHandleRepoIface *contact_handles;
+  TpHandle handle;
+  GabblePresence *presence;
+
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+  g_return_val_if_fail (!tp_str_empty (jid), NULL);
+
+  base = (TpBaseConnection *) connection;
+  contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  handle = tp_handle_ensure (contact_handles, jid,
+      NULL, NULL);
+
+  if (handle == 0)
+    return NULL;
+
+  presence = gabble_presence_cache_get (connection->presence_cache,
+      handle);
+
+  if (presence == NULL)
+    return NULL;
+
+  return gabble_presence_pick_resource_by_caps (presence, 0,
+      predicate, user_data);
+}
+
+TpBaseContactList *
+gabble_connection_get_contact_list (GabbleConnection *connection)
+{
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+
+  return (TpBaseContactList *) connection->roster;
+}
+
+WockyXep0115Capabilities *
+gabble_connection_get_caps (GabbleConnection *connection,
+    TpHandle handle)
+{
+  GabblePresence *presence;
+
+  g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
+  g_return_val_if_fail (handle > 0, NULL);
+
+  presence = gabble_presence_cache_get (connection->presence_cache,
+      handle);
+
+  return (WockyXep0115Capabilities *) presence;
 }

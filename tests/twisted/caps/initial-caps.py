@@ -15,7 +15,7 @@ import ns
 def run_test(q, bus, conn, stream):
     initial_presence = q.expect('stream-presence')
 
-    _, namespaces = disco_caps(q, stream, initial_presence)
+    _, namespaces, _ = disco_caps(q, stream, initial_presence)
 
     # For some reason, until we advertise any capabilities, these caps turn
     # up in our presence

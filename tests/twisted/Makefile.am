@@ -98,6 +98,7 @@ TWISTED_TESTS = \
 	text/test-text.py \
 	tls/server-tls-channel.py \
 	version.py \
+	dataforms.py \
 	$(NULL)
 
 TWISTED_TUBE_TESTS = \

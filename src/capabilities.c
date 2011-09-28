@@ -19,7 +19,7 @@
  */
 
 #include "config.h"
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 
 #include <stdlib.h>
 #include <string.h>

@@ -28,7 +28,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_AUTH
 
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "server-sasl-channel.h"
 #include "connection.h"
 #include "debug.h"

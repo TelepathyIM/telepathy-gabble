@@ -29,7 +29,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"

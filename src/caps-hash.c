@@ -35,7 +35,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include "base64.h"
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 #include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
@@ -61,6 +61,7 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   const GabbleCapabilitySet *cap_set;
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities = wocky_disco_identity_array_new ();
+  GPtrArray *data_forms;
   gchar *str;
 
   /* XEP-0030 requires at least 1 identity. We don't need more. */
@@ -71,7 +72,9 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
   cap_set = gabble_presence_peek_caps (presence);
   gabble_capability_set_foreach (cap_set, ptr_array_add_str, features);
 
-  str = wocky_caps_hash_compute_from_lists (features, identities, NULL);
+  data_forms = gabble_presence_peek_data_forms (presence);
+
+  str = wocky_caps_hash_compute_from_lists (features, identities, data_forms);
 
   g_ptr_array_free (features, TRUE);
   wocky_disco_identity_array_free (identities);

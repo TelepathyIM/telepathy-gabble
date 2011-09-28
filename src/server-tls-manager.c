@@ -23,7 +23,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_TLS
 #include "debug.h"
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "server-tls-channel.h"
 #include "util.h"

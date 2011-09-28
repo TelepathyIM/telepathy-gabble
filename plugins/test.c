@@ -5,10 +5,12 @@
 #include <telepathy-glib/telepathy-glib.h>
 
 #include <wocky/wocky-disco-identity.h>
+#include <wocky/wocky-data-form.h>
 
 #include "extensions/extensions.h"
 
 #include <gabble/plugin.h>
+#include <gabble/caps-channel-manager.h>
 
 #define DEBUG(msg, ...) \
   g_debug ("%s: " msg, G_STRFUNC, ##__VA_ARGS__)
@@ -484,11 +486,15 @@ async_initable_iface_init (
  * TestChannelManager implementation *
  ***********************************/
 static void channel_manager_iface_init (gpointer, gpointer);
+static void caps_channel_manager_iface_init (gpointer g_iface,
+    gpointer iface_data);
 
 G_DEFINE_TYPE_WITH_CODE (TestChannelManager, test_channel_manager,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_MANAGER,
-        channel_manager_iface_init));
+        channel_manager_iface_init)
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER,
+        caps_channel_manager_iface_init));
 
 static void
 test_channel_manager_init (TestChannelManager *self)
@@ -593,8 +599,65 @@ test_channel_manager_type_foreach_channel_class (GType type,
 }
 
 static void
+test_channel_manager_represent_client (
+    GabbleCapsChannelManager *manager,
+    const gchar *client_name,
+    const GPtrArray *filters,
+    const gchar * const *cap_tokens,
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms)
+{
+  WockyStanza *stanza;
+  WockyDataForm *form;
+
+  if (tp_strdiff (client_name, "dataformtest"))
+    return;
+
+  stanza = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+      WOCKY_STANZA_SUB_TYPE_NONE, NULL, "badger",
+      '(', "x",
+        ':', "jabber:x:data",
+        '@', "type", "result",
+        '(', "field",
+          '@', "var", "FORM_TYPE",
+          '@', "type", "hidden",
+          '(', "value", '$', "gabble:test:channel:manager:data:form", ')',
+        ')',
+        '(', "field",
+          '@', "var", "animal",
+          '(', "value", '$', "badger", ')',
+          '(', "value", '$', "snake", ')',
+          '(', "value", '$', "weasel", ')',
+        ')',
+        '(', "field",
+          '@', "var", "cheese",
+          '(', "value", '$', "omgnothorriblecheese", ')',
+        ')',
+        '(', "field",
+          '@', "var", "favourite_crane",
+          '(', "value", '$', "a tall one", ')',
+          '(', "value", '$', "a short one", ')',
+        ')',
+        '(', "field",
+          '@', "var", "running_out_of",
+          '(', "value", '$', "ideas", ')',
+          '(', "value", '$', "cake", ')',
+        ')',
+      ')',
+      NULL);
+
+  form = wocky_data_form_new_from_node (
+      wocky_node_get_first_child (wocky_stanza_get_top_node (stanza)),
+      NULL);
+
+  g_ptr_array_add (data_forms, form);
+
+  g_object_unref (stanza);
+}
+
+static void
 channel_manager_iface_init (gpointer g_iface,
-                            gpointer iface_data)
+    gpointer iface_data)
 {
   TpChannelManagerIface *iface = g_iface;
 
@@ -605,4 +668,13 @@ channel_manager_iface_init (gpointer g_iface,
   iface->create_channel = NULL;
   iface->request_channel = NULL;
   iface->foreach_channel_class = NULL;
+}
+
+static void
+caps_channel_manager_iface_init (gpointer g_iface,
+    gpointer iface_data)
+{
+  GabbleCapsChannelManagerInterface *iface = g_iface;
+
+  iface->represent_client = test_channel_manager_represent_client;
 }

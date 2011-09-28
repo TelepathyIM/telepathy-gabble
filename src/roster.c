@@ -37,7 +37,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "conn-aliasing.h"
 #include "conn-presence.h"
 #include "conn-util.h"

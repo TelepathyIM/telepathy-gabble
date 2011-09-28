@@ -205,6 +205,41 @@ def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
 
     return disco_caps(q, stream, presence) + (signaled_caps,)
 
+def extract_disco_parts(stanza):
+    identity_nodes = xpath.queryForNodes('/iq/query/identity', stanza)
+    assertLength(1, identity_nodes)
+    identity_node = identity_nodes[0]
+
+    assertEquals('client', identity_node['category'])
+    assertEquals(config.CLIENT_TYPE, identity_node['type'])
+    assertEquals(config.PACKAGE_STRING, identity_node['name'])
+    assertDoesNotContain('xml:lang', identity_node.attributes)
+
+    identity = 'client/%s//%s' % (config.CLIENT_TYPE, config.PACKAGE_STRING)
+
+    features = []
+    for feature in xpath.queryForNodes('/iq/query/feature', stanza):
+        features.append(feature['var'])
+
+    # a quick and ugly data form extractor
+    x_nodes = xpath.queryForNodes('/iq/query/x', stanza) or []
+    dataforms = {}
+    for form in x_nodes:
+        name = None
+        fields = {}
+        for field in xpath.queryForNodes('/x/field', form):
+            if field['var'] == 'FORM_TYPE':
+                name = str(field.firstChildElement())
+            else:
+                values = [str(x) for x in xpath.queryForNodes('/field/value', field)]
+
+                fields[field['var']] = values
+
+        if name is not None:
+            dataforms[name] = fields
+
+    return ([identity], features, dataforms)
+
 def disco_caps(q, stream, presence):
     c_nodes = xpath.queryForNodes('/presence/c', presence.stanza)
     assert c_nodes is not None
@@ -225,25 +260,12 @@ def disco_caps(q, stream, presence):
     event = q.expect('stream-iq', query_ns=ns.DISCO_INFO, iq_id=request['id'])
 
     # Check that Gabble's announcing the identity we think it should be.
-    identity_nodes = xpath.queryForNodes('/iq/query/identity', event.stanza)
-    assertLength(1, identity_nodes)
-    identity_node = identity_nodes[0]
-
-    assertEquals('client', identity_node['category'])
-    assertEquals(config.CLIENT_TYPE, identity_node['type'])
-    assertEquals(config.PACKAGE_STRING, identity_node['name'])
-    assertDoesNotContain('xml:lang', identity_node.attributes)
-
-    identity = 'client/%s//%s' % (config.CLIENT_TYPE, config.PACKAGE_STRING)
-
-    features = []
-    for feature in xpath.queryForNodes('/iq/query/feature', event.stanza):
-        features.append(feature['var'])
+    (identities, features, dataforms) = extract_disco_parts(event.stanza)
 
     # Check if the hash matches the announced capabilities
-    assertEquals(compute_caps_hash([identity], features, {}), ver)
+    assertEquals(compute_caps_hash(identities, features, dataforms), ver)
 
-    return (event, features)
+    return (event, features, dataforms)
 
 def caps_contain(event, cap):
     node = xpath.queryForNodes('/iq/query/feature[@var="%s"]'

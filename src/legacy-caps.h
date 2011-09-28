@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 
 typedef void (*TypeFlagsToCapsFunc) (guint typeflags, GabbleCapabilitySet *caps);
 typedef guint (*CapsToTypeFlagsFunc) (const GabbleCapabilitySet *caps);

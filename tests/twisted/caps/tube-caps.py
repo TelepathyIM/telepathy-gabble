@@ -232,7 +232,7 @@ def advertise_caps(q, conn, stream, filters, expected_features, unexpected_featu
             [(cs.CLIENT + '.Foo', filters, [])])
 
     # Expect Gabble to reply with the correct caps
-    event, namespaces, signaled_caps = receive_presence_and_ask_caps(q, stream)
+    event, namespaces, _, signaled_caps = receive_presence_and_ask_caps(q, stream)
 
     assertSameElements(expected_caps, signaled_caps)
 

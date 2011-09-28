@@ -36,8 +36,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
-#include "caps-channel-manager.h"
-#include "capabilities.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "muc-channel.h"
@@ -612,7 +611,8 @@ gabble_private_tubes_factory_represent_client (
     const gchar *client_name,
     const GPtrArray *filters,
     const gchar * const *cap_tokens,
-    GabbleCapabilitySet *cap_set)
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms)
 {
   guint i;
 

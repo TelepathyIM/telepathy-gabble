@@ -1,6 +1,28 @@
 telepathy-gabble 0.13.6 (UNRELEASED)
 ====================================
 
+The “grab yourself a bottle” release.
+
+Enhancements:
+
+• Video-capable Android phones are now considered to be video-capable by
+  Gabble. (fd.o#36996, Olivier Crête)
+
+• Gabble now informs Google UIs that we have a camera connected if we
+  have any video-capable user interfaces. While this is not strictly
+  accurate, it's an improvement: they now show a little camera icon for
+  us. (fd.o#40471, Olivier Crête)
+
+• Google proxy support—and hence the libsoup dependency—is now optional.
+  (fd.o#40537, Mikhail Zabaluev)
+
+• Gabble no longer support the legacy Presence API. This reduces D-Bus
+  traffic, particularly during login. (fd.o#40598, Will Thompson)
+
+• Gabble now signals all aliases from the roster in a single
+  AliasesChanged signal. This *dramatically* reduces D-Bus traffic
+  during login on services like Facebook. (fd.o#40943, Marco Barisione)
+
 Fixes:
 
 • Joining a password-protected chat room where someone else already has

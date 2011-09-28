@@ -1,3 +1,20 @@
+telepathy-gabble 0.13.6 (UNRELEASED)
+====================================
+
+Fixes:
+
+• Joining a password-protected chat room where someone else already has
+  the nickname you wanted to use—a pretty obscure scenario—now works
+  again. (fd.o#39790, Will Thompson)
+
+• Closing a Call channel immediately after it is created—specifically,
+  before the Google relay server has had a chance to reply—no longer
+  crashes Gabble. (fd.o#39768, Will Thompson)
+
+• The Google Talk setting controlling the sending of mail notifications
+  is now explicitly enabled if a client is interested in mail
+  notifications. (fd.o#40565, Jussi Kukkonen)
+
 telepathy-gabble 0.13.5 (2011-08-17)
 ====================================
 

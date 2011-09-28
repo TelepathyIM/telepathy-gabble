@@ -3246,6 +3246,105 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
   g_ptr_array_free (ret, TRUE);
 }
 
+static const gchar *
+get_form_type (WockyDataForm *form)
+{
+  WockyDataFormField *field;
+
+  field = g_hash_table_lookup (form->fields,
+      "FORM_TYPE");
+  g_assert (field != NULL);
+
+  return field->raw_value_contents[0];
+}
+
+static const gchar *
+check_form_is_unique (GabbleConnection *self,
+    const gchar *form_type)
+{
+  GHashTableIter iter;
+  gpointer key, value;
+
+  g_hash_table_iter_init (&iter, self->priv->client_data_forms);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const gchar *manager = key;
+      GPtrArray *data_forms = value;
+      guint i;
+
+      if (data_forms == NULL || data_forms->len == 0)
+        continue;
+
+      for (i = 0; i < data_forms->len; i++)
+        {
+          WockyDataForm *form = g_ptr_array_index (data_forms, i);
+
+          if (!tp_strdiff (get_form_type (form), form_type))
+            return manager;
+        }
+    }
+
+  return NULL;
+}
+
+static gboolean
+check_data_form_in_list (GPtrArray *array,
+    const gchar *form_type)
+{
+  guint i;
+
+  for (i = 0; i < array->len; i++)
+    {
+      WockyDataForm *form = g_ptr_array_index (array, i);
+
+      if (!tp_strdiff (get_form_type (form), form_type))
+        return TRUE;
+    }
+
+  return FALSE;
+}
+
+static gboolean
+check_data_form_is_valid (GabbleConnection *self,
+    WockyDataForm *form,
+    GPtrArray *existing_forms)
+{
+  WockyDataFormField *field;
+  const gchar *form_type, *other_client;
+
+  /* We want rid of forms with no FORM_TYPE quickly. */
+  field = g_hash_table_lookup (form->fields, "FORM_TYPE");
+
+  if (field == NULL || tp_str_empty (field->raw_value_contents[0]))
+    {
+      WARNING ("data form with no FORM_TYPE field; ignoring");
+      return FALSE;
+    }
+
+  form_type = field->raw_value_contents[0];
+
+  /* We don't want the same data form from another
+   * caps channel manager for this client either */
+  if (check_data_form_in_list (existing_forms, form_type))
+    {
+      WARNING ("duplicate data form '%s' from another channel "
+          "manager; ignoring", form_type);
+      return FALSE;
+    }
+
+  /* And lastly we don't want a form we're already
+   * advertising. */
+  other_client = check_form_is_unique (self, form_type);
+  if (other_client != NULL)
+    {
+      WARNING ("Data form '%s' already provided by client "
+          "%s; ignoring", form_type, other_client);
+      return FALSE;
+    }
+
+  return TRUE;
+}
+
 /**
  * gabble_connection_update_capabilities
  *
@@ -3315,9 +3414,25 @@ gabble_connection_update_capabilities (
         {
           if (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
             {
+              GPtrArray *forms = g_ptr_array_new_with_free_func (
+                  (GDestroyNotify) g_object_unref);
+              guint j;
+
+              /* First, represent the client... */
               gabble_caps_channel_manager_represent_client (
                   GABBLE_CAPS_CHANNEL_MANAGER (manager), client_name, filters,
-                  cap_tokens, cap_set, data_forms);
+                  cap_tokens, cap_set, forms);
+
+              /* Now check the forms... */
+              for (j = 0; j < forms->len; j++)
+                {
+                  WockyDataForm *form = g_ptr_array_index (forms, j);
+
+                  if (check_data_form_is_valid (self, form, data_forms))
+                    g_ptr_array_add (data_forms, g_object_ref (form));
+                }
+
+              g_ptr_array_unref (forms);
             }
         }
 
@@ -3346,20 +3461,13 @@ gabble_connection_update_capabilities (
         {
           guint j;
 
+          /* now print out what forms we have here */
           DEBUG ("client %s contributes %u data form%s:", client_name,
               data_forms->len,
               data_forms->len > 1 ? "s" : "");
 
           for (j = 0; j < data_forms->len; j++)
-            {
-              WockyDataForm *form = g_ptr_array_index (data_forms, j);
-              WockyDataFormField *field;
-
-              field = g_hash_table_lookup (form->fields, "FORM_TYPE");
-              g_assert (field != NULL);
-
-              DEBUG (" - %s", field->raw_value_contents[0]);
-            }
+            DEBUG (" - %s", get_form_type (g_ptr_array_index (data_forms, i)));
 
           g_hash_table_insert (self->priv->client_data_forms,
               g_strdup (client_name), data_forms);

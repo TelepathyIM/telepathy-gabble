@@ -235,7 +235,7 @@ gboolean gabble_connection_send_capabilities (GabbleConnection *self,
 gboolean gabble_connection_request_decloak (GabbleConnection *self,
     const gchar *to, const gchar *reason, GError **error);
 
-gboolean gabble_connection_fill_in_caps (GabbleConnection *self,
+void gabble_connection_fill_in_caps (GabbleConnection *self,
     LmMessage *presence_message);
 
 gboolean _gabble_connection_invisible_privacy_list_set_active (

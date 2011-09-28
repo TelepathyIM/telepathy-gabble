@@ -3323,8 +3323,15 @@ check_data_form_is_valid (GabbleConnection *self,
 
   form_type = field->raw_value_contents[0];
 
-  /* We don't want the same data form from another
-   * caps channel manager for this client either */
+  /* We'll get warnings (potentially bad) if two clients cause a
+   * channel manager to create two data forms with the same FORM_TYPE,
+   * or if multiple channel managers create two data forms with the
+   * same FORM_TYPE, for the same client. This is probably not a
+   * problem in practice given hardly anyone uses data forms in entity
+   * capabilities anyway.  */
+
+  /* We don't want the same data form from another caps channel
+   * manager for this client either */
   if (check_data_form_in_list (existing_forms, form_type))
     {
       WARNING ("duplicate data form '%s' from another channel "
@@ -3332,8 +3339,7 @@ check_data_form_is_valid (GabbleConnection *self,
       return FALSE;
     }
 
-  /* And lastly we don't want a form we're already
-   * advertising. */
+  /* And lastly we don't want a form we're already advertising. */
   other_client = check_form_is_unique (self, form_type);
   if (other_client != NULL)
     {

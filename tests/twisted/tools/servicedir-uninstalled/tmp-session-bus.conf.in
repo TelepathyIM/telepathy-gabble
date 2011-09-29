@@ -10,7 +10,7 @@
 
   <listen>unix:tmpdir=/tmp</listen>
 
-  <servicedir>@abs_top_builddir@/tests/twisted/tools</servicedir>
+  <servicedir>@abs_top_builddir@/tests/twisted/tools/servicedir-uninstalled</servicedir>
 
   <policy context="default">
     <!-- Allow everything to be sent -->
@@ -23,8 +23,5 @@
 
   <!-- This is included last so local configuration can override what's 
        in this standard file -->
-  
-
-  
 
 </busconfig>

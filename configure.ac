@@ -165,6 +165,20 @@ AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
+AC_ARG_ENABLE([installed-tests],
+  AC_HELP_STRING([--enable-installed-tests],
+    [make tests installable]),
+    [installed_tests=$enableval], [installed_tests=no])
+
+if test x$installed_tests = xyes; then
+  AC_DEFINE(ENABLE_INSTALLED_TESTS, [],
+      [Make tests installable])
+fi
+AM_CONDITIONAL([ENABLE_INSTALLED_TESTS], [test "x$installed_tests" = xyes])
+
+gabbletestsdir=${libdir}/telepathy-gabble-tests
+AC_SUBST(gabbletestsdir)
+
 AC_ARG_ENABLE([is-a-phone],
   AC_HELP_STRING([--enable-is-a-phone],
     [advertise that we are a phone, not a PC]),
@@ -387,6 +401,7 @@ Configure summary:
         Coding style checks.........:  ${ENABLE_CODING_STYLE_CHECKS}
         Enable debug................:  ${enable_debug}
         Python tests................:  ${tests_enabled}
+        Install unit tests..........:  ${installed_tests}
 
     Features:
 

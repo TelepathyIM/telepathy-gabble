@@ -1,6 +1,6 @@
 SUBDIRS = twisted suppressions
 
-noinst_PROGRAMS = \
+tests_list = \
 	test-base64 \
 	test-dtube-unique-names \
 	test-gabble-idle-weak \
@@ -10,6 +10,17 @@ noinst_PROGRAMS = \
 	test-presence \
 	test-tp-error-from-wocky
 
+gabble-C-tests.list:
+	$(AM_V_GEN)echo $(tests_list) > $@
+
+if ENABLE_INSTALLED_TESTS
+gabbletestsdir = @gabbletestsdir@
+gabbletests_PROGRAMS = $(tests_list)
+gabbletests_DATA = gabble-C-tests.list
+else
+noinst_PROGRAMS = $(tests_list)
+endif
+
 LDADD = $(top_builddir)/src/libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
@@ -17,13 +28,13 @@ AM_CFLAGS = $(ERROR_CFLAGS) @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
     -I $(top_srcdir) -I $(top_builddir) \
     -I $(top_srcdir)/lib -I $(top_builddir)/lib
 
-TESTS = $(noinst_PROGRAMS)
+TESTS = $(tests_list)
 
 TESTS_ENVIRONMENT = \
   abs_top_builddir=@abs_top_builddir@ \
   G_DEBUG=fatal-warnings,fatal-criticals \
   sh $(top_srcdir)/tests/twisted/tools/with-session-bus.sh \
-    --config-file=$(top_builddir)/tests/twisted/tools/tmp-session-bus.conf --
+    --config-file=$(top_builddir)/tests/twisted/tools/servicedir-uninstalled/tmp-session-bus.conf --
 
 
 check-valgrind: $(TESTS)

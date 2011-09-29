@@ -237,6 +237,59 @@ TWISTED_FT_TESTS = \
 	jingle-share/test-send-file-wait-to-provide.py \
 	$(NULL)
 
+# other files used by the twisted tests, but are not tests and are not built
+# source
+TWISTED_OTHER_FILES = \
+	bytestream.py \
+	connect/torture.py \
+	constants.py \
+	file-transfer/file_transfer_helper.py \
+	gabbletest.py \
+	httptest.py \
+	jingle/callutils.py \
+	jingle/__init__.py \
+	jingle/jingletest2.py \
+	jingle/jingletest.py \
+	jingle-share/file_transfer_helper.py \
+	jingle-share/jingleshareutils.py \
+	mucutil.py \
+	ns.py \
+	olpc/util.py \
+	presence/invisible_helper.py \
+	rostertest.py \
+	sasl/saslutil.py \
+	search/search_helper.py \
+	test-helper.py \
+	tls-cert.pem \
+	tls-key.pem \
+	tubes/muctubeutil.py \
+	tubes/tubetestutil.py \
+	$(NULL)
+
+if ENABLE_INSTALLED_TESTS
+# Install files in each directory. They could be tests, pristine data files,
+# scripts or built source
+twistedtestsdir = @gabbletestsdir@/twisted
+nobase_nodist_twistedtests_SCRIPTS = \
+	run-test.sh \
+	tools/exec-with-log.sh \
+	tools/run-gabble.sh \
+	$(NULL)
+nobase_dist_twistedtests_SCRIPTS = \
+	tools/with-session-bus.sh \
+	$(NULL)
+nobase_dist_twistedtests_DATA = \
+	$(TWISTED_TESTS) \
+	$(TWISTED_OTHER_FILES) \
+	$(NULL)
+nobase_nodist_twistedtests_DATA = \
+	config.py \
+	gabble-twisted-tests.list \
+	$(installed_conf_files) \
+	$(service_files)
+	$(NULL)
+endif
+
 TESTS =
 
 TESTS_ENVIRONMENT = \
@@ -262,7 +315,7 @@ if WANT_TWISTED_TESTS
 	failed=0; \
 	sh $(srcdir)/tools/with-session-bus.sh \
 		--sleep=$$sleep \
-		--config-file=tools/tmp-session-bus.conf \
+		--config-file=tools/servicedir-uninstalled/tmp-session-bus.conf \
 		-- $(MAKE) check-TESTS \
 		TESTS="$(TWISTED_TESTS)" \
 		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) $(TEST_PYTHON) -u" || \
@@ -319,37 +372,17 @@ config.py: Makefile
 
 BUILT_SOURCES = config.py
 
-EXTRA_DIST = \
-	$(TWISTED_TESTS) \
-	bytestream.py \
-	connect/torture.py \
-	constants.py \
-	gabbletest.py \
-	httptest.py \
-	rostertest.py \
-	jingle-share/file_transfer_helper.py \
-	jingle-share/jingleshareutils.py \
-	jingle/__init__.py \
-	jingle/callutils.py \
-	jingle/jingletest.py \
-	jingle/jingletest2.py \
-	mucutil.py \
-	ns.py \
-	olpc/util.py \
-	tubes/muctubeutil.py \
-	tubes/tubetestutil.py \
-	sasl/saslutil.py \
-	search/search_helper.py \
-	file-transfer/file_transfer_helper.py \
-	presence/invisible_helper.py \
-	tls-cert.pem \
-	tls-key.pem
-
 TWISTED_TESTS += $(TWISTED_FT_TESTS) $(TWISTED_TUBE_TESTS)
 TWISTED_TESTS += $(TWISTED_JINGLE_TESTS) $(TWISTED_VCARD_TESTS)
 
+if ENABLE_INSTALLED_TESTS
+gabbledebugdir = @gabbletestsdir@/twisted
+gabbledebug_PROGRAMS = \
+	telepathy-gabble-debug
+else
 noinst_PROGRAMS = \
 	telepathy-gabble-debug
+endif
 
 telepathy_gabble_debug_SOURCES = \
     main-debug.c \
@@ -376,38 +409,77 @@ check_misc_sources = $(TESTS)
 # the following used to be in tools/
 include $(top_srcdir)/tools/check-coding-style.mk
 
+gabble-twisted-tests.list:
+	$(AM_V_GEN)echo $(TWISTED_TESTS) > $@
+
+run-test.sh: run-test.sh.in
+	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
+		-e "s|[@]PYTHON[@]|$(PYTHON)|g" \
+		 $< > $@
+	@chmod +x $@
+
+tools/run-gabble.sh: tools/run-gabble.sh.in
+	@mkdir -p tools
+	$(AM_V_GEN)sed \
+		-e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
+		-e "s|[@]libdir[@]|$(libdir)|g" \
+		$< > $@
+	@chmod +x $@
+
 tools/exec-with-log.sh: tools/exec-with-log.sh.in
 	$(MKDIR_P) tools
 	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" \
 		-e "s|[@]abs_top_srcdir[@]|@abs_top_srcdir@|g" $< > $@
 	@chmod +x $@
 
+# The wildcard % matches both config files!
 tools/%.conf: tools/%.conf.in
 	$(MKDIR_P) tools
-	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
+	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
+		-e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 # We don't use the full filename for the .in because > 99 character filenames
 # in tarballs are non-portable (and automake 1.8 doesn't let us build
 # non-archaic tarballs)
-tools/org.freedesktop.Telepathy.ConnectionManager.%.service: tools/%.service.in
-	$(MKDIR_P) tools
+tools/servicedir/org.freedesktop.Telepathy.ConnectionManager.%.service: tools/servicedir/%.service.in
+	$(MKDIR_P) tools/servicedir
+	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" $< > $@
+
+tools/servicedir-uninstalled/org.freedesktop.Telepathy.ConnectionManager.%.service: tools/servicedir-uninstalled/%.service.in
+	$(MKDIR_P) tools/servicedir-uninstalled
 	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 # D-Bus service file for testing
-service_in_files = tools/gabble.service.in
-service_files = tools/org.freedesktop.Telepathy.ConnectionManager.gabble.service
+installed_service_in_files = tools/servicedir/gabble.service.in
+service_files = tools/servicedir/org.freedesktop.Telepathy.ConnectionManager.gabble.service
+uninstalled_service_in_files = tools/servicedir-uninstalled/gabble.service.in
+uninstalled_service_files = tools/servicedir-uninstalled/org.freedesktop.Telepathy.ConnectionManager.gabble.service
 
 # D-Bus config file for testing
-conf_in_files = tools/tmp-session-bus.conf.in
-conf_files = $(conf_in_files:.conf.in=.conf)
+installed_conf_in_files = tools/servicedir/tmp-session-bus.conf.in
+installed_conf_files = $(installed_conf_in_files:.conf.in=.conf)
+uninstalled_conf_in_files = tools/servicedir-uninstalled/tmp-session-bus.conf.in
+uninstalled_conf_files = $(uninstalled_conf_in_files:.conf.in=.conf)
 
-BUILT_SOURCES += $(service_files) $(conf_files) tools/exec-with-log.sh
+BUILT_SOURCES += \
+	$(service_files) \
+	$(installed_conf_files) \
+	$(uninstalled_service_files) \
+	$(uninstalled_conf_files) \
+	run-test.sh \
+	tools/exec-with-log.sh \
+	tools/run-gabble.sh \
+	$(NULL)
 
-EXTRA_DIST += \
-	$(service_in_files) \
-	$(conf_in_files) \
+EXTRA_DIST = \
+	$(installed_service_in_files) \
+	$(uninstalled_service_in_files) \
+	$(installed_conf_in_files) \
+	$(uninstalled_conf_in_files) \
 	tools/exec-with-log.sh.in \
-	tools/with-session-bus.sh
+	tools/run-gabble.sh.in \
+	run-test.sh.in \
+	$(NULL)
 
 CLEANFILES += \
     $(BUILT_SOURCES) \

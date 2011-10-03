@@ -22,8 +22,6 @@
 #include "config.h"
 #include "roster.h"
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
 #include <string.h>
 
 #include <dbus/dbus-glib.h>

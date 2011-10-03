@@ -459,13 +459,9 @@ gabble_server_tls_manager_foreach_channel (TpChannelManager *manager,
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (manager);
 
-  DEBUG ("Foreach channel");
-
-  if (self->priv->channel == NULL)
-    return;
-
   /* there's only one channel of this kind */
-  func (TP_EXPORTABLE_CHANNEL (self->priv->channel), user_data);
+  if (self->priv->channel != NULL)
+    func (TP_EXPORTABLE_CHANNEL (self->priv->channel), user_data);
 }
 
 static void

@@ -384,9 +384,27 @@ _gabble_im_channel_send_message (GObject *object,
     priv->send_nick = FALSE;
 }
 
-/**
- * _gabble_im_channel_receive
+/*
+ * _gabble_im_channel_receive:
+ * @chan: a channel
+ * @type: the message type
+ * @sender: the sender of the message (which may not be 0)
+ * @from: the full JID we received the message from
+ * @timestamp: the time at which the message was sent (not the time it was
+ *             received)
+ * @id: the id='' attribute from the <message/> stanza, if any
+ * @text: the plaintext body of the message
+ * @send_error: the reason why sending @text to @sender failed, or
+ *              GABBLE_TEXT_CHANNEL_SEND_NO_ERROR if this call is not to report
+ *              a failure to send.
+ * @delivery_status: if @send_error is GABBLE_TEXT_CHANNEL_SEND_NO_ERROR,
+ *                   ignored; else the delivery status to attach to the report.
+ * @state: a #TpChannelChatState, or -1 if there was no chat state in the
+ *         message.
  *
+ * Shoves an incoming message into @chan, possibly updating the chat state at
+ * the same time; or maybe this is a delivery report? Who knows! It's a magical
+ * adventure.
  */
 void
 _gabble_im_channel_receive (GabbleIMChannel *chan,

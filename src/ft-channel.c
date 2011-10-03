@@ -1471,7 +1471,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   gboolean jingle_share = FALSE;
   const gchar *si_resource = NULL;
   const gchar *share_resource = NULL;
-  g_assert (!CHECK_STR_EMPTY (self->priv->filename));
+  g_assert (!tp_str_empty (self->priv->filename));
   g_assert (self->priv->size != GABBLE_UNDEFINED_FILE_SIZE);
   g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
   g_return_val_if_fail (self->priv->gtalk_file_collection == NULL, FALSE);

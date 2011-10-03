@@ -847,7 +847,7 @@ observe_vcard (GabbleConnection *conn,
         {
           const gchar *fn = lm_message_node_get_value (fn_node);
 
-          if (!CHECK_STR_EMPTY(fn))
+          if (!tp_str_empty (fn))
             {
               field = "<FN>";
               alias = g_strdup (fn);

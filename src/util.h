@@ -35,8 +35,6 @@
 
 #include "types.h"
 
-#define CHECK_STR_EMPTY(x) ((x) == NULL || (x)[0] == '\0')
-
 typedef GSList * NodeIter;
 #define node_iter(node) (node->children)
 #define node_iter_next(i) (g_slist_next (i))

@@ -93,18 +93,17 @@ static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleImFactory *self);
 
 
-static GObject *
-gabble_im_factory_constructor (GType type, guint n_props,
-                               GObjectConstructParam *props)
+static void
+gabble_im_factory_constructed (GObject *obj)
 {
-  GObject *obj = G_OBJECT_CLASS (gabble_im_factory_parent_class)->
-           constructor (type, n_props, props);
   GabbleImFactory *self = GABBLE_IM_FACTORY (obj);
+  GObjectClass *parent_class = gabble_im_factory_parent_class;
+
+  if (parent_class->constructed != NULL)
+    parent_class->constructed (obj);
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
-
-  return obj;
 }
 
 
@@ -177,7 +176,7 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
   g_type_class_add_private (gabble_im_factory_class,
       sizeof (GabbleImFactoryPrivate));
 
-  object_class->constructor = gabble_im_factory_constructor;
+  object_class->constructed = gabble_im_factory_constructed;
   object_class->dispose = gabble_im_factory_dispose;
 
   object_class->get_property = gabble_im_factory_get_property;

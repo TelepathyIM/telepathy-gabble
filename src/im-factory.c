@@ -193,9 +193,6 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 static GabbleIMChannel *new_im_channel (GabbleImFactory *fac,
     TpHandle handle, TpHandle initiator, gpointer request_token);
 
-static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
-
-
 /**
  * im_factory_message_cb:
  *

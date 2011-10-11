@@ -185,8 +185,10 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 
 }
 
-static GabbleIMChannel *new_im_channel (GabbleImFactory *fac,
-    TpHandle handle, gpointer request_token);
+static GabbleIMChannel *get_channel_for_incoming_message (
+    GabbleImFactory *self,
+    const gchar *jid,
+    gboolean create_if_missing);
 
 /**
  * im_factory_message_cb:
@@ -200,18 +202,14 @@ im_factory_message_cb (LmMessageHandler *handler,
                        gpointer user_data)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
-  GabbleImFactoryPrivate *priv = fac->priv;
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
   const gchar *from, *body, *id;
   time_t stamp;
   TpChannelTextMessageType msgtype;
-  TpHandle handle;
   GabbleIMChannel *chan;
   gint state;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  gboolean create_if_missing;
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status))
@@ -222,54 +220,34 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
-  if (handle == 0)
-    {
-      STANZA_DEBUG (message, "ignoring message node from malformed jid");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
-
+  /* We don't want to open up a channel for the sole purpose of reporting a
+   * send error, nor if this is just a chat state notification.
+   */
+  create_if_missing =
+      (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR) &&
+      (body != NULL);
+  chan = get_channel_for_incoming_message (fac, from, create_if_missing);
   if (chan == NULL)
     {
-      if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-        {
-          DEBUG ("ignoring message error; no sending channel");
-          tp_handle_unref (contact_repo, handle);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
+      if (create_if_missing)
+        STANZA_DEBUG (message, "ignoring message from non-contact JID");
+      else
+        DEBUG ("ignoring message error or chat state notification from '%s': "
+            "no existing channel", from);
 
-      if (body == NULL)
-        {
-          /* don't create a new channel if all we have is a chat state */
-          DEBUG ("ignoring message without body; no existing channel");
-          tp_handle_unref (contact_repo, handle);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-
-      DEBUG ("found no IM channel, creating one");
-
-      chan = new_im_channel (fac, handle, NULL);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
-
-  g_assert (chan != NULL);
-
-  /* now the channel is referencing the handle, so if we unref it, that's
-   * not a problem */
-  tp_handle_unref (contact_repo, handle);
 
   if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       if (body == NULL)
         {
-          DEBUG ("ignoring error sending chat state to %s (handle %u)", from,
-              handle);
+          DEBUG ("ignoring error sending chat state to %s", from);
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
 
-      DEBUG ("got error sending to %s (handle %u), msgtype %u, body:\n%s",
-         from, handle, msgtype, body);
+      DEBUG ("got error sending to %s, msgtype %u, body:\n%s",
+         from, msgtype, body);
     }
 
   if (body != NULL)
@@ -380,6 +358,48 @@ new_im_channel (GabbleImFactory *fac,
   g_slist_free (request_tokens);
 
   return chan;
+}
+
+/*
+ * get_channel_for_incoming_message:
+ * @self: a factory
+ * @jid: a contact's JID
+ * @create_if_missing: if %TRUE, a new channel will be created if there is no
+ *                     existing channel to @jid
+ *
+ * Retrieves a 1-1 text channel to a particular contact. If no channel is open
+ * to @jid, it will be created only if @create_if_missing is %TRUE. If @jid is
+ * not of the form 'user@domain' (optionally with a resource), no channel will
+ * be opened.
+ *
+ * Returns: an IM channel to @jid, or %NULL
+ */
+static GabbleIMChannel *
+get_channel_for_incoming_message (
+    GabbleImFactory *self,
+    const gchar *jid,
+    gboolean create_if_missing)
+{
+  GabbleImFactoryPrivate *priv = self->priv;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandle handle;
+  GabbleIMChannel *chan;
+
+  g_return_val_if_fail (jid != NULL, NULL);
+
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  if (handle == 0)
+    return NULL;
+
+  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+  if (chan != NULL)
+    return chan;
+  else if (create_if_missing)
+    return new_im_channel (self, handle, NULL);
+  else
+    return NULL;
 }
 
 static void

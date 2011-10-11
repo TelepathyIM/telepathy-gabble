@@ -68,11 +68,6 @@ struct _GabbleImFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_IM_FACTORY_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_FACTORY,\
-                                GabbleImFactoryPrivate))
-
-
 static void
 gabble_im_factory_init (GabbleImFactory *self)
 {
@@ -114,7 +109,7 @@ static void
 gabble_im_factory_dispose (GObject *object)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (object);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactoryPrivate *priv = fac->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -136,7 +131,7 @@ gabble_im_factory_get_property (GObject    *object,
                                  GParamSpec *pspec)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (object);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -155,7 +150,7 @@ gabble_im_factory_set_property (GObject      *object,
                                  GParamSpec   *pspec)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (object);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -205,7 +200,7 @@ im_factory_message_cb (LmMessageHandler *handler,
                        gpointer user_data)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -299,7 +294,7 @@ static void
 im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (self);
+  GabbleImFactoryPrivate *priv = self->priv;
   TpHandle contact_handle;
   gboolean really_destroyed;
 
@@ -358,7 +353,7 @@ new_im_channel (GabbleImFactory *fac,
   g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
 
-  priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  priv = fac->priv;
   conn = (TpBaseConnection *) priv->conn;
 
   if (request_token != NULL)

@@ -332,8 +332,19 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
     }
 }
 
-/**
- * new_im_channel
+/*
+ * new_im_channel:
+ * @fac: the factory
+ * @handle: a contact handle, for whom a channel must not yet exist
+ * @initiator: the initiator of the channel, which should in practice be either
+ *             the self handle or @handle.
+ * @request_token: if the channel is being created in response to a channel
+ *                 request, the associated request token; otherwise, NULL.
+ *
+ * Creates a new 1-1 text channel to a contact. Must only be called when no 1-1
+ * text channel is already open to that contact.
+ *
+ * Returns: (transfer none): a freshly-constructed channel
  */
 static GabbleIMChannel *
 new_im_channel (GabbleImFactory *fac,

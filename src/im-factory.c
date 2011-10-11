@@ -344,17 +344,13 @@ new_im_channel (GabbleImFactory *fac,
                 TpHandle handle,
                 gpointer request_token)
 {
-  GabbleImFactoryPrivate *priv;
-  TpBaseConnection *conn;
+  GabbleImFactoryPrivate *priv = fac->priv;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   GabbleIMChannel *chan;
   GSList *request_tokens;
   TpHandle initiator;
 
-  g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
-
-  priv = fac->priv;
-  conn = (TpBaseConnection *) priv->conn;
 
   if (request_token != NULL)
     initiator = conn->self_handle;

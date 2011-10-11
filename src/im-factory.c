@@ -191,7 +191,7 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 }
 
 static GabbleIMChannel *new_im_channel (GabbleImFactory *fac,
-    TpHandle handle, TpHandle initiator, gpointer request_token);
+    TpHandle handle, gpointer request_token);
 
 /**
  * im_factory_message_cb:
@@ -255,7 +255,7 @@ im_factory_message_cb (LmMessageHandler *handler,
 
       DEBUG ("found no IM channel, creating one");
 
-      chan = new_im_channel (fac, handle, handle, NULL);
+      chan = new_im_channel (fac, handle, NULL);
     }
 
   g_assert (chan != NULL);
@@ -336,8 +336,6 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
  * new_im_channel:
  * @fac: the factory
  * @handle: a contact handle, for whom a channel must not yet exist
- * @initiator: the initiator of the channel, which should in practice be either
- *             the self handle or @handle.
  * @request_token: if the channel is being created in response to a channel
  *                 request, the associated request token; otherwise, NULL.
  *
@@ -349,7 +347,6 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 static GabbleIMChannel *
 new_im_channel (GabbleImFactory *fac,
                 TpHandle handle,
-                TpHandle initiator,
                 gpointer request_token)
 {
   GabbleImFactoryPrivate *priv;
@@ -357,13 +354,18 @@ new_im_channel (GabbleImFactory *fac,
   GabbleIMChannel *chan;
   char *object_path;
   GSList *request_tokens;
+  TpHandle initiator;
 
   g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
-  g_return_val_if_fail (initiator != 0, NULL);
 
   priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
   conn = (TpBaseConnection *) priv->conn;
+
+  if (request_token != NULL)
+    initiator = conn->self_handle;
+  else
+    initiator = handle;
 
   object_path = g_strdup_printf ("%s/ImChannel%u",
       conn->object_path, handle);
@@ -575,7 +577,6 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
                                 GHashTable *request_properties,
                                 gboolean require_new)
 {
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->conn;
   TpHandle handle;
   GError *error = NULL;
   TpExportableChannel *channel;
@@ -603,7 +604,7 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
 
   if (channel == NULL)
     {
-      new_im_channel (self, handle, base_conn->self_handle, request_token);
+      new_im_channel (self, handle, request_token);
       return TRUE;
     }
 

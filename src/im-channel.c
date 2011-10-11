@@ -176,6 +176,13 @@ gabble_im_channel_fill_immutable_properties (TpBaseChannel *chan,
       NULL);
 }
 
+static gchar *
+gabble_im_channel_get_object_path_suffix (TpBaseChannel *chan)
+{
+  return g_strdup_printf ("ImChannel%u",
+      tp_base_channel_get_target_handle (chan));
+}
+
 static void
 gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 {
@@ -196,6 +203,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   base_class->close = gabble_im_channel_close;
   base_class->fill_immutable_properties =
     gabble_im_channel_fill_immutable_properties;
+  base_class->get_object_path_suffix = gabble_im_channel_get_object_path_suffix;
 
   tp_message_mixin_init_dbus_properties (object_class);
 }

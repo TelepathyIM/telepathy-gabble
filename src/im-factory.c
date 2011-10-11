@@ -352,7 +352,6 @@ new_im_channel (GabbleImFactory *fac,
   GabbleImFactoryPrivate *priv;
   TpBaseConnection *conn;
   GabbleIMChannel *chan;
-  char *object_path;
   GSList *request_tokens;
   TpHandle initiator;
 
@@ -367,18 +366,13 @@ new_im_channel (GabbleImFactory *fac,
   else
     initiator = handle;
 
-  object_path = g_strdup_printf ("%s/ImChannel%u",
-      conn->object_path, handle);
   chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
                        "connection", priv->conn,
-                       "object-path", object_path,
                        "handle", handle,
                        "initiator-handle", initiator,
                        "requested", (handle != initiator),
                        NULL);
-  DEBUG ("object path %s", object_path);
   tp_base_channel_register ((TpBaseChannel *) chan);
-  g_free (object_path);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
 

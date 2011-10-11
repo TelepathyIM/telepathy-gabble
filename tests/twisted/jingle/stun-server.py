@@ -13,7 +13,7 @@ from servicetest import (
 import jingletest
 import constants as cs
 
-from config import CHANNEL_TYPE_CALL_ENABLED
+from config import CHANNEL_TYPE_CALL_ENABLED, GOOGLE_RELAY_ENABLED
 
 def test_stun_server(stun_server_prop,
         expected_stun_server=None, expected_stun_port=None):
@@ -279,27 +279,40 @@ if __name__ == '__main__':
     exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
         google=False), do_connect=False)
     exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-        google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
-        protocol=GoogleXmlStream, do_connect=False)
-    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-        google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
-        protocol=GoogleXmlStream,
-        params={'stun-server': 'resolves-to-5.4.3.2',
-            'stun-port': dbus.UInt16(54321)}, do_connect=False)
-    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-        google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
-        protocol=GoogleXmlStream,
-        params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-            'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
-    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
         google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+
+    if GOOGLE_RELAY_ENABLED:
+        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+            google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
+            protocol=GoogleXmlStream, do_connect=False)
+        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+            google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
+            protocol=GoogleXmlStream,
+            params={'stun-server': 'resolves-to-5.4.3.2',
+                'stun-port': dbus.UInt16(54321)}, do_connect=False)
+        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+            google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
+            protocol=GoogleXmlStream,
+            params={'fallback-stun-server': 'resolves-to-5.4.3.2',
+                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+    else:
+        print "NOTE: built with --disable-google-relay; omitting StreamedMedia tests with Google relay"
 
     # Call tests
     if CHANNEL_TYPE_CALL_ENABLED:
         exec_test(lambda q, b, c, s: test_call(q, b, c, s,
             google=False), do_connect=False)
+        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+            google=False, expected_stun_server='5.4.3.2',
+            expected_stun_port=54321),
+            params={'fallback-stun-server': 'resolves-to-5.4.3.2',
+                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+    else:
+        print "NOTE: built with --disable-channel-type-call; omitting Call tests"
+
+    if CHANNEL_TYPE_CALL_ENABLED and GOOGLE_RELAY_ENABLED:
         exec_test(lambda q, b, c, s: test_call(q, b, c, s,
             google=True, expected_stun_server='1.2.3.4',
             expected_stun_port=12345),
@@ -316,10 +329,6 @@ if __name__ == '__main__':
             protocol=GoogleXmlStream,
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
                 'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-            google=False, expected_stun_server='5.4.3.2',
-            expected_stun_port=54321),
-            params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
     else:
-        print "NOTE: built with --disable-channel-type-call; omitting Call tests"
+        print "NOTE: built with --disable-channel-type-call or with --disable-google-relay; omitting Call tests with Google relay"
+

@@ -152,6 +152,8 @@ libgabble_convenience_la_SOURCES = \
     request-pipeline.c \
     roster.h \
     roster.c \
+    room-config.h \
+    room-config.c \
     roomlist-channel.h \
     roomlist-channel.c \
     roomlist-manager.h \
@@ -188,6 +190,7 @@ libgabble_convenience_la_SOURCES = \
 enumtype_sources = \
     $(top_srcdir)/src/connection.h \
     $(top_srcdir)/src/jingle-factory.h \
+    $(top_srcdir)/src/room-config.h \
     $(top_srcdir)/src/presence.h
 
 libgabble_convenience_la_LIBADD = \

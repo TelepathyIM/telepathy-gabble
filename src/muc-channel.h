@@ -30,7 +30,6 @@
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/message-mixin.h>
-#include <telepathy-glib/properties-mixin.h>
 
 #include "types.h"
 #include "tubes-channel.h"
@@ -53,7 +52,6 @@ struct _GabbleMucChannelClass {
     TpBaseChannelClass parent_class;
 
     TpGroupMixinClass group_class;
-    TpPropertiesMixinClass properties_class;
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
@@ -61,7 +59,6 @@ struct _GabbleMucChannel {
     TpBaseChannel parent;
 
     TpGroupMixin group;
-    TpPropertiesMixin properties;
     TpMessageMixin message_mixin;
 
     GabbleMucChannelPrivate *priv;
@@ -87,22 +84,6 @@ GType gabble_muc_channel_get_type (void);
                               GabbleMucChannelClass))
 
 gboolean _gabble_muc_channel_is_ready (GabbleMucChannel *chan);
-void _gabble_muc_channel_presence_error (GabbleMucChannel *chan,
-    const gchar *jid, LmMessageNode *pres_node);
-void _gabble_muc_channel_member_presence_updated (GabbleMucChannel *chan,
-    TpHandle handle, LmMessage *message, LmMessageNode *x_node,
-    LmMessageNode *item_node);
-void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-    TpChannelTextMessageType msg_type, TpHandleType handle_type,
-    TpHandle sender, time_t timestamp, const gchar *subject, LmMessage *msg);
-void _gabble_muc_channel_receive (GabbleMucChannel *chan,
-    TpChannelTextMessageType msg_type, TpHandleType handle_type,
-    TpHandle sender, time_t timestamp, const gchar *id, const gchar *text,
-    LmMessage *msg, TpChannelTextSendError send_error,
-    TpDeliveryStatus delivery_status);
-
-void _gabble_muc_channel_state_receive (GabbleMucChannel *chan,
-    guint state, guint from_handle);
 
 void gabble_muc_channel_send_presence (GabbleMucChannel *chan);
 
@@ -130,6 +111,16 @@ gboolean gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
 
 gboolean gabble_muc_channel_handle_jingle_session (GabbleMucChannel *channel,
     GabbleJingleSession *session);
+
+void gabble_muc_channel_update_configuration_async (
+    GabbleMucChannel *self,
+    GHashTable *validated_properties,
+    GAsyncReadyCallback callback,
+    gpointer user_data);
+gboolean gabble_muc_channel_update_configuration_finish (
+    GabbleMucChannel *self,
+    GAsyncResult *result,
+    GError **error);
 
 void gabble_muc_channel_teardown (GabbleMucChannel *gmuc);
 void gabble_muc_channel_close_tube (GabbleMucChannel *gmuc);

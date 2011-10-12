@@ -54,7 +54,7 @@ def try_to_join_muc(q, bus, conn, stream, muc, request=None):
     return join_event
 
 def join_muc(q, bus, conn, stream, muc, request=None,
-        also_capture=[], role='participant'):
+        also_capture=[], role='participant', affiliation='none'):
     """
     Joins 'muc', returning the muc's handle, a proxy object for the channel,
     its path and its immutable properties just after the CreateChannel event
@@ -67,14 +67,14 @@ def join_muc(q, bus, conn, stream, muc, request=None,
     stream.send(make_muc_presence('owner', 'moderator', muc, 'bob'))
 
     # Send presence for own membership of room.
-    stream.send(make_muc_presence('none', role, muc, 'test'))
+    stream.send(make_muc_presence(affiliation, role, muc, 'test'))
 
     captured = q.expect_many(
             EventPattern('dbus-return', method='CreateChannel'),
             *also_capture)
     path, props = captured[0].value
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['Messages'])
+        ['Messages', 'Subject.DRAFT', 'RoomConfig1'])
 
     return (muc_handle, chan, path, props) + tuple(captured[1:])
 

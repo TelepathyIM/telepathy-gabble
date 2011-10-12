@@ -8,7 +8,10 @@ import dbus
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test
-from servicetest import EventPattern, assertEquals, assertLength
+from servicetest import (
+    EventPattern, assertEquals, assertLength, assertContains,
+    assertDoesNotContain,
+    )
 import constants as cs
 import ns
 
@@ -21,28 +24,17 @@ def test(q, bus, conn, stream):
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = chan.Properties.GetAll(cs.CHANNEL)
-    assert channel_props.get('TargetHandle') == room_handle,\
-            (channel_props.get('TargetHandle'), room_handle)
-    assert channel_props.get('TargetHandleType') == cs.HT_ROOM,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            cs.CHANNEL_TYPE_TEXT,\
-            channel_props.get('ChannelType')
-    assert cs.CHANNEL_IFACE_GROUP in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.CHANNEL_IFACE_PASSWORD in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.TP_AWKWARD_PROPERTIES in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.CHANNEL_IFACE_CHAT_STATE in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.CHANNEL_IFACE_MESSAGES in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
+    assertEquals(room_handle, channel_props.get('TargetHandle'))
+    assertEquals(cs.HT_ROOM, channel_props.get('TargetHandleType'))
+    assertEquals(cs.CHANNEL_TYPE_TEXT, channel_props.get('ChannelType'))
+
+    interfaces = channel_props.get('Interfaces')
+    assertContains(cs.CHANNEL_IFACE_GROUP, interfaces)
+    assertContains(cs.CHANNEL_IFACE_PASSWORD, interfaces)
+    assertDoesNotContain(cs.TP_AWKWARD_PROPERTIES, interfaces)
+    assertContains(cs.CHANNEL_IFACE_CHAT_STATE, interfaces)
+    assertContains(cs.CHANNEL_IFACE_MESSAGES, interfaces)
+
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'

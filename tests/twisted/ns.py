@@ -36,6 +36,7 @@ LAST = "jabber:iq:last"
 MUC = 'http://jabber.org/protocol/muc'
 MUC_BYTESTREAM = 'http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream'
 MUC_OWNER = '%s#owner' % MUC
+MUC_ROOMINFO = '%s#roominfo' % MUC
 MUC_USER = '%s#user' % MUC
 NICK = "http://jabber.org/protocol/nick"
 NS_XMPP_SASL = 'urn:ietf:params:xml:ns:xmpp-sasl'

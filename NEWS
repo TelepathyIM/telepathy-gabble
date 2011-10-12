@@ -1,3 +1,38 @@
+telepathy-gabble 0.13.7 (UNRELEASED)
+====================================
+
+The “toast the air” release.
+
+Dependencies:
+
+• telepathy-glib 0.15.9 is now required.
+
+Enhancements:
+
+• fd.o#32611: Gabble now implements the Room, Subject and RoomConfig
+  interfaces. It no longer implements old-style Telepathy.Properties on
+  text channels. Applications which used those will need to be updated
+  to use Subject and RoomConfig instead; they should be pleasantly
+  surprised at how much easier the new APIs are to use. (Jonny, Will)
+
+• Plugins which implement channel managers may now expose capabilities
+  from them, using the GabbleCapsChannelManager interface; other,
+  less dramatic pieces of API for plugins have also been added. (Jonny)
+
+Fixes:
+
+• fd.o#41388: SASL authentication channels no longer claim that
+  X-TELEPATHY-PASSWORD authentication is supported on servers that don't
+  actually support authenticating with a password (such as the WLM
+  server). (Xavier)
+
+• Wocky no longer confuses the realm and the server (which are usually,
+  but not always, the same) when performing DIGEST-MD5 authentication.
+  (Marco)
+
+• We now correctly submit the default configuration form to the MUC we
+  have just created, rather than to the user's own server. (Will)
+
 telepathy-gabble 0.13.6 (2011-09-28)
 ====================================
 

@@ -8,7 +8,7 @@ This serves as a regression test for
 <https://bugs.freedesktop.org/show_bug.cgi?id=38603>, among other bugs.
 """
 
-from gabbletest import exec_test, make_presence, sync_stream
+from gabbletest import exec_test, make_presence, sync_stream, elem
 from servicetest import assertEquals, EventPattern, sync_dbus
 
 import constants as cs
@@ -57,6 +57,16 @@ def test(q, bus, conn, stream):
     # this presence should behave normally.
     stream.send(make_presence('eve@foo.com'))
     q.expect('dbus-signal', signal='PresencesChanged', args=[{eve: AVAILABLE}])
+
+    # We also get a message from a contact before we get the roster (presumably
+    # they sent this while we were offline?). This shouldn't affect the contact
+    # being reported as offline when we finally do get the roster, but it used
+    # to: <https://bugs.freedesktop.org/show_bug.cgi?id=41743>.
+    stream.send(
+        elem('message', from_='amy@foo.com', type='chat')(
+          elem('body')(u'why are you never online?')
+        ))
+    q.expect('dbus-signal', signal='MessageReceived')
 
     event.stanza['type'] = 'result'
     event.query.addChild(make_roster_item('amy@foo.com', 'both'))

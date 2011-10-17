@@ -2568,7 +2568,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
   priv->subject_timestamp = timestamp;
 
   DEBUG ("Subject changed to '%s' by '%s' at %" G_GINT64_FORMAT "",
-      subject, actor, timestamp);
+      subject, actor, (gint64) timestamp);
 
   /* Emit signals */
   emit_subject_changed (chan);

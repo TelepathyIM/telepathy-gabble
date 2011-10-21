@@ -377,20 +377,20 @@ check_misc_sources = $(TESTS)
 include $(top_srcdir)/tools/check-coding-style.mk
 
 tools/exec-with-log.sh: tools/exec-with-log.sh.in
-	@mkdir -p tools
+	$(MKDIR_P) tools
 	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" \
 		-e "s|[@]abs_top_srcdir[@]|@abs_top_srcdir@|g" $< > $@
 	@chmod +x $@
 
 tools/%.conf: tools/%.conf.in
-	@mkdir -p tools
+	$(MKDIR_P) tools
 	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 # We don't use the full filename for the .in because > 99 character filenames
 # in tarballs are non-portable (and automake 1.8 doesn't let us build
 # non-archaic tarballs)
 tools/org.freedesktop.Telepathy.ConnectionManager.%.service: tools/%.service.in
-	@mkdir -p tools
+	$(MKDIR_P) tools
 	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 # D-Bus service file for testing

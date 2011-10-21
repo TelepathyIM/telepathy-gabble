@@ -1,16 +1,15 @@
 TWISTED_TESTS = \
-	caps_helper.py \
-	servicetest.py \
 	avatar-requirements.py \
 	caps/advertise-contact-caps.py \
 	caps/advertise-legacy.py \
 	caps/caps-cache.py \
 	caps/caps-persistent-cache.py \
 	caps/compat-bundles.py \
-	caps/double-disco.py \
 	caps/disco-without-node.py \
+	caps/double-disco.py \
 	caps/from-bare-jid.py \
 	caps/hashed-caps.py \
+	caps_helper.py \
 	caps/initial-caps.py \
 	caps/jingle-caps.py \
 	caps/offline.py \
@@ -19,20 +18,21 @@ TWISTED_TESTS = \
 	caps/tube-caps.py \
 	client-types.py \
 	cm/protocol.py \
+	dataforms.py \
 	gateways.py \
 	last-activity.py \
 	muc/avatars.py \
 	muc/banned.py \
-	muc/conference.py \
 	muc/chat-states.py \
+	muc/conference.py \
 	muc/kicked.py \
 	muc/name-conflict.py \
 	muc/password.py \
 	muc/presence-before-closing.py \
 	muc/renamed.py \
-	muc/room.py \
 	muc/room-config.py \
 	muc/roomlist.py \
+	muc/room.py \
 	muc/scrollback.py \
 	muc/send-error.py \
 	muc/subject.py \
@@ -41,12 +41,12 @@ TWISTED_TESTS = \
 	muc/test-muc-invitation.py \
 	muc/test-muc-ownership.py \
 	muc/test-muc.py \
+	olpc/change-notifications.py \
 	olpc/current-activity.py \
 	olpc/olpc-muc-invitation.py \
 	olpc/olpc-muc-prop-change.py \
 	olpc/test-olpc-bundle.py \
 	olpc/test-olpc-set-props-preload.py \
-	olpc/change-notifications.py \
 	pep-support.py \
 	plugin-channel-managers.py \
 	power-save.py \
@@ -55,40 +55,41 @@ TWISTED_TESTS = \
 	presence/initial-presence.py \
 	presence/invisible_xep_0126.py \
 	presence/invisible_xep_0186.py \
-	presence/presence.py \
 	presence/plugins.py \
+	presence/presence.py \
 	presence/set-idempotence.py \
 	presence/shared-status.py \
 	roster/authorize.py \
 	roster/edit-before-roster.py \
 	roster/ensure.py \
-	roster/groups.py \
 	roster/groups-12791.py \
+	roster/groups.py \
 	roster/initial-aliases.py \
 	roster/push-from-contact.py \
 	roster/push-without-id.py \
 	roster/removed-from-rp-subscribe.py \
-	roster/request-group-before-roster.py \
 	roster/request-group-after-roster.py \
+	roster/request-group-before-roster.py \
 	roster/test-google-roster.py \
-	roster/test-roster.py \
 	roster/test-roster-item-deletion.py \
+	roster/test-roster.py \
 	roster/test-roster-subscribe.py \
 	roster/test-save-alias-to-roster.py \
 	sasl/abort.py \
 	sasl/close.py \
+	sasl/complex.py \
 	sasl/jabber_auth.py \
 	sasl/plain.py \
-	sasl/complex.py \
 	sasl/telepathy-password.py \
 	search/ceci-nest-pas-un-serveur.py \
 	search/extended.py \
 	search/no-server-property.py \
 	search/unextended.py \
-	text/initiate.py \
-	text/initiate-requestotron.py \
+	servicetest.py \
 	text/destroy.py \
 	text/ensure.py \
+	text/initiate.py \
+	text/initiate-requestotron.py \
 	text/respawn.py \
 	text/send-error.py \
 	text/send-to-correct-resource.py \
@@ -98,7 +99,6 @@ TWISTED_TESTS = \
 	text/test-text.py \
 	tls/server-tls-channel.py \
 	version.py \
-	dataforms.py \
 	$(NULL)
 
 TWISTED_TUBE_TESTS = \
@@ -137,10 +137,10 @@ TWISTED_VCARD_TESTS = \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \
 	vcard/test-avatar-async.py \
+	vcard/test-avatar-multiple-resources.py \
 	vcard/test-avatar.py \
 	vcard/test-avatar-retrieved.py \
 	vcard/test-avatar-tokens.py \
-	vcard/test-avatar-multiple-resources.py \
 	vcard/test-save-alias-to-vcard.py \
 	vcard/test-set-alias.py \
 	vcard/test-vcard-cache.py \
@@ -154,13 +154,13 @@ TWISTED_JINGLE_TESTS = \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
 	jingle/call-dtmf.py \
-	jingle/call-muc.py \
 	jingle/call-muc-cancel.py \
+	jingle/call-muc.py \
 	jingle/call-muc-re-re-request.py \
 	jingle/call-state.py \
 	jingle/decloak-peer.py \
-	jingle/dtmf.py \
 	jingle/dtmf-no-audio.py \
+	jingle/dtmf.py \
 	jingle/google-relay.py \
 	jingle/hold-audio.py \
 	jingle/hold-av.py \
@@ -169,40 +169,29 @@ TWISTED_JINGLE_TESTS = \
 	jingle/incoming-gmail-modern-jingle.py \
 	jingle/initial-audio-video.py \
 	jingle/misuse.py \
-	jingle/stun-server.py \
-	jingle/transport-info-parsing.py \
 	jingle/outgoing-basics.py \
 	jingle/outgoing-ensure.py \
 	jingle/outgoing-many-streams.py \
 	jingle/payload-types.py \
 	jingle/preload-caps-crash.py \
 	jingle/session-id-collision.py \
-	jingle/stream-errors-on-terminate.py \
 	jingle/stream-errors-on-content-reject.py \
+	jingle/stream-errors-on-terminate.py \
 	jingle/stream-handler-error.py \
+	jingle/stun-server.py \
 	jingle/test-content-adding-removal.py \
+	jingle/test-content-complex.py \
 	jingle/test-description-info.py \
 	jingle/test-incoming-call-reject.py \
 	jingle/test-incoming-iceudp.py \
 	jingle/test-outgoing-call-rejected.py \
 	jingle/test-outgoing-iceudp.py \
-	jingle/test-content-complex.py \
-	jingle/test-wait-for-caps.py \
 	jingle/test-wait-for-caps-incomplete.py \
+	jingle/test-wait-for-caps.py \
+	jingle/transport-info-parsing.py \
 	$(NULL)
 
 TWISTED_FT_TESTS = \
-	jingle-share/test-caps-file-transfer.py \
-	jingle-share/test-send-file.py \
-	jingle-share/test-send-file-send-before-accept.py \
-	jingle-share/test-receive-file-and-close-socket-while-receiving.py \
-	jingle-share/test-receive-file-and-disconnect.py \
-	jingle-share/test-receive-file-and-sender-disconnect-while-pending.py \
-	jingle-share/test-receive-file-and-sender-disconnect-while-transfering.py \
-	jingle-share/test-receive-file-decline.py \
-	jingle-share/test-send-file-and-cancel-immediately.py \
-	jingle-share/test-send-file-wait-to-provide.py \
-	jingle-share/test-multift.py \
 	file-transfer/test-caps-file-transfer.py \
 	file-transfer/test-ibb-too-early.py \
 	file-transfer/test-receive-file-and-close-socket-while-receiving.py \
@@ -214,30 +203,41 @@ TWISTED_FT_TESTS = \
 	file-transfer/test-send-file-and-cancel-immediately.py \
 	file-transfer/test-send-file-declined.py \
 	file-transfer/test-send-file-provide-immediately.py \
+	file-transfer/test-send-file-send-before-accept.py \
 	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
-	file-transfer/test-send-file-send-before-accept.py \
 	file-transfer/test-uri.py \
+	jingle-share/test-caps-file-transfer.py \
+	jingle-share/test-multift.py \
+	jingle-share/test-receive-file-and-close-socket-while-receiving.py \
+	jingle-share/test-receive-file-and-disconnect.py \
+	jingle-share/test-receive-file-and-sender-disconnect-while-pending.py \
+	jingle-share/test-receive-file-and-sender-disconnect-while-transfering.py \
+	jingle-share/test-receive-file-decline.py \
+	jingle-share/test-send-file-and-cancel-immediately.py \
+	jingle-share/test-send-file.py \
+	jingle-share/test-send-file-send-before-accept.py \
+	jingle-share/test-send-file-wait-to-provide.py \
 	$(NULL)
 
 TWISTED_TESTS += \
-	test-debug.py \
 	connect/disco-error-from-bare-jid.py \
-	connect/disco-no-reply.py \
 	connect/disconnect-timeout.py \
+	connect/disco-no-reply.py \
+	connect/network-error.py \
+	connect/stream-closed.py \
 	connect/test-fail.py \
+	connect/test-nonblocking-tls.py \
 	connect/test-success.py \
 	connect/test-twice.py \
-	connect/test-nonblocking-tls.py \
-	connect/stream-closed.py \
-	connect/network-error.py \
-	test-fallback-socks5-proxy.py \
-	test-register.py \
-	test-location.py \
+	mail-notification.py \
 	pubsub.py \
 	sidecar-own-caps.py \
 	sidecars.py \
-	mail-notification.py \
+	test-debug.py \
+	test-fallback-socks5-proxy.py \
+	test-location.py \
+	test-register.py \
 	$(NULL)
 
 TESTS =

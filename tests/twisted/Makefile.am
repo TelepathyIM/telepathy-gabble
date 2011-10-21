@@ -18,9 +18,19 @@ TWISTED_TESTS = \
 	caps/tube-caps.py \
 	client-types.py \
 	cm/protocol.py \
+	connect/disco-error-from-bare-jid.py \
+	connect/disconnect-timeout.py \
+	connect/disco-no-reply.py \
+	connect/network-error.py \
+	connect/stream-closed.py \
+	connect/test-fail.py \
+	connect/test-nonblocking-tls.py \
+	connect/test-success.py \
+	connect/test-twice.py \
 	dataforms.py \
 	gateways.py \
 	last-activity.py \
+	mail-notification.py \
 	muc/avatars.py \
 	muc/banned.py \
 	muc/chat-states.py \
@@ -59,6 +69,7 @@ TWISTED_TESTS = \
 	presence/presence.py \
 	presence/set-idempotence.py \
 	presence/shared-status.py \
+	pubsub.py \
 	roster/authorize.py \
 	roster/edit-before-roster.py \
 	roster/ensure.py \
@@ -86,6 +97,12 @@ TWISTED_TESTS = \
 	search/no-server-property.py \
 	search/unextended.py \
 	servicetest.py \
+	sidecar-own-caps.py \
+	sidecars.py \
+	test-debug.py \
+	test-fallback-socks5-proxy.py \
+	test-location.py \
+	test-register.py \
 	text/destroy.py \
 	text/ensure.py \
 	text/initiate.py \
@@ -218,26 +235,6 @@ TWISTED_FT_TESTS = \
 	jingle-share/test-send-file.py \
 	jingle-share/test-send-file-send-before-accept.py \
 	jingle-share/test-send-file-wait-to-provide.py \
-	$(NULL)
-
-TWISTED_TESTS += \
-	connect/disco-error-from-bare-jid.py \
-	connect/disconnect-timeout.py \
-	connect/disco-no-reply.py \
-	connect/network-error.py \
-	connect/stream-closed.py \
-	connect/test-fail.py \
-	connect/test-nonblocking-tls.py \
-	connect/test-success.py \
-	connect/test-twice.py \
-	mail-notification.py \
-	pubsub.py \
-	sidecar-own-caps.py \
-	sidecars.py \
-	test-debug.py \
-	test-fallback-socks5-proxy.py \
-	test-location.py \
-	test-register.py \
 	$(NULL)
 
 TESTS =

@@ -1848,6 +1848,16 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
   return ret;
 }
 
+/* FIXME: this scrapes nicknames out of <messages>, and relies on im-channel.c
+ * setting keep_unavailable back to FALSE to make nicknames random peers send
+ * us disappear once we close the accompanying messages. As a side effect, it
+ * makes specifying <nick> in MUC messages work, which is questionable
+ * behaviour. See vcard/test-alias-message.py.
+ *
+ * It would be cleaner to make the IM channel stash the nickname if we want it
+ * to go away when the channel closes, rather than relying on this
+ * spooky-action-at-a-distance.
+ */
 static LmHandlerResult
 _parse_message_message (GabblePresenceCache *cache,
                         TpHandle handle,

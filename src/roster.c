@@ -1398,11 +1398,29 @@ got_roster_iq (GabbleRoster *roster,
         {
           GabbleRosterItem *item = v;
           TpHandle contact = GPOINTER_TO_UINT (k);
+          GabblePresence *presence = gabble_presence_cache_get (
+              priv->conn->presence_cache, contact);
 
           if (item->subscribe == TP_SUBSCRIPTION_STATE_YES &&
-              gabble_presence_cache_get (roster->priv->conn->presence_cache,
-                  contact) == NULL)
-            g_array_append_val (members, contact);
+              (presence == NULL || presence->status == GABBLE_PRESENCE_UNKNOWN))
+            {
+              /* The contact might be in the presence cache with UNKNOWN
+               * presence if we've received a message from them before the
+               * roster arrived: an item is forcibly added to stash the
+               * nickname which might have been included in the <message/> in
+               * the presence cache. (This seems like a rather illogical place
+               * to stash such nicknames—if anything, they should live in
+               * GabbleImFactory—but there we go.)
+               *
+               * So if this is the case, we flip their status to OFFLINE. We
+               * don't use gabble_presence_update() because we want to signal
+               * all the unknown→offline transitions together.
+               */
+              if (presence != NULL)
+                presence->status = GABBLE_PRESENCE_OFFLINE;
+
+              g_array_append_val (members, contact);
+            }
 
           if (item->unsent_edits != NULL)
             edited_items = g_slist_prepend (edited_items, item);

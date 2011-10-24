@@ -133,6 +133,7 @@ TWISTED_VCARD_TESTS = \
 	vcard/set-set-disconnect.py \
 	vcard/supported-fields.py \
 	vcard/test-alias-empty-vcard.py \
+	vcard/test-alias-message.py \
 	vcard/test-alias-pep.py \
 	vcard/test-alias.py \
 	vcard/test-avatar-async.py \

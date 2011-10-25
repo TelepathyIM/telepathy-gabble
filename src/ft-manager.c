@@ -443,9 +443,10 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       tp_base_connection_get_handles (base_connection, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   const gchar *content_type, *filename, *content_hash, *description;
-  const gchar *file_uri;
+  const gchar *file_uri, *service_name;
   guint64 size, date, initial_offset;
   TpFileHashType content_hash_type;
+  const GHashTable *metadata;
   GError *error = NULL;
   gboolean valid;
 
@@ -550,6 +551,13 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   file_uri = tp_asv_get_string (request_properties,
       TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_URI);
 
+  service_name = tp_asv_get_string (request_properties,
+      GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME);
+
+  metadata = tp_asv_get_boxed (request_properties,
+      GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
+      TP_HASH_TYPE_STRING_STRING_MAP);
+
   DEBUG ("Requested outgoing channel with contact: %s",
       tp_handle_inspect (contact_repo, handle));
 
@@ -557,7 +565,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
       description, date, initial_offset, TRUE, NULL, NULL, NULL, file_uri,
-      NULL, NULL);
+      service_name, metadata);
 
   if (!gabble_file_transfer_channel_offer_file (chan, &error))
     {

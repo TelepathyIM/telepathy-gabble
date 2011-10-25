@@ -2314,7 +2314,9 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   GabbleBytestreamIface *bytestream,
                                   GTalkFileCollection *gtalk_file_collection,
                                   const gchar *file_collection,
-                                  const gchar *uri)
+                                  const gchar *uri,
+                                  const gchar *service_name,
+                                  const GHashTable *metadata)
 
 {
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
@@ -2335,5 +2337,7 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "bytestream", bytestream,
       "gtalk-file-collection", gtalk_file_collection,
       "uri", uri,
+      "service-name", service_name,
+      "metadata", metadata,
       NULL);
 }

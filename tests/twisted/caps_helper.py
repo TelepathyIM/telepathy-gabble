@@ -108,7 +108,9 @@ ft_allowed_properties = dbus.Array([
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.ContentHash',
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description',
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date',
-    cs.FT_URI])
+    cs.FT_URI,
+    cs.FT_SERVICE_NAME,
+    cs.FT_METADATA])
 
 fake_client_dataforms = {
     'urn:xmpp:dataforms:softwareinfo':

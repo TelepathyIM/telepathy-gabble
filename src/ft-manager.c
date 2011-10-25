@@ -713,7 +713,7 @@ find_data_form (WockyNode *file,
 static gchar *
 extract_service_name (WockyNode *file)
 {
-  WockyDataForm *form = find_data_form (file, "TODO");
+  WockyDataForm *form = find_data_form (file, NS_TP_FT_METADATA_SERVICE);
   WockyDataFormField *field;
   gchar *service_name = NULL;
 
@@ -738,7 +738,7 @@ out:
 static GHashTable *
 extract_metadata (WockyNode *file)
 {
-  WockyDataForm *form = find_data_form (file, "TODO");
+  WockyDataForm *form = find_data_form (file, NS_TP_FT_METADATA);
   GHashTable *metadata;
   GHashTableIter iter;
   gpointer key, value;

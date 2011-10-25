@@ -80,6 +80,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel
                            file_transfer_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_FILETRANSFER_FUTURE,
                            NULL);
+    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+                           NULL);
 );
 
 #define GABBLE_UNDEFINED_FILE_SIZE G_MAXUINT64
@@ -122,7 +124,14 @@ enum
 
   PROP_CONNECTION,
   PROP_BYTESTREAM,
+
+  /* Chan.Type.FileTransfer.FUTURE */
   PROP_GTALK_FILE_COLLECTION,
+
+  /* Chan.Iface.FileTransfer.Metadata */
+  PROP_SERVICE_NAME,
+  PROP_METADATA,
+
   LAST_PROPERTY
 };
 
@@ -160,6 +169,8 @@ struct _GabbleFileTransferChannelPrivate {
   guint64 date;
   gchar *file_collection;
   gchar *uri;
+  gchar *service_name;
+  GHashTable *metadata;
   gboolean channel_opened;
 };
 
@@ -335,6 +346,24 @@ gabble_file_transfer_channel_get_property (GObject *object,
       case PROP_GTALK_FILE_COLLECTION:
         g_value_set_object (value, self->priv->gtalk_file_collection);
         break;
+      case PROP_SERVICE_NAME:
+        g_value_set_string (value, self->priv->service_name);
+        break;
+      case PROP_METADATA:
+        {
+          /* We're fine with priv->metadata being NULL but dbus-glib
+           * doesn't like iterating NULL as if it was a hash table. */
+          if (self->priv->metadata == NULL)
+            {
+              g_value_take_boxed (value,
+                  g_hash_table_new (g_str_hash, g_str_equal));
+            }
+          else
+            {
+              g_value_set_boxed (value, self->priv->metadata);
+            }
+        }
+        break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
         break;
@@ -422,6 +451,12 @@ gabble_file_transfer_channel_set_property (GObject *object,
       case PROP_GTALK_FILE_COLLECTION:
         set_gtalk_file_collection (self,
             GTALK_FILE_COLLECTION (g_value_get_object (value)));
+        break;
+      case PROP_SERVICE_NAME:
+        self->priv->service_name = g_value_dup_string (value);
+        break;
+      case PROP_METADATA:
+        self->priv->metadata = g_value_dup_boxed (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -647,6 +682,12 @@ gabble_file_transfer_channel_class_init (
     { NULL }
   };
 
+  static TpDBusPropertiesMixinPropImpl file_metadata_props[] = {
+    { "ServiceName", "service-name", NULL },
+    { "Metadata", "metadata", NULL },
+    { NULL }
+  };
+
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
     { TP_IFACE_CHANNEL,
       tp_dbus_properties_mixin_getter_gobject_properties,
@@ -662,6 +703,11 @@ gabble_file_transfer_channel_class_init (
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       file_future_props
+    },
+    { GABBLE_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      file_metadata_props
     },
     { NULL }
   };
@@ -891,6 +937,22 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_URI,
       param_spec);
 
+  param_spec = g_param_spec_string ("service-name",
+      "ServiceName",
+      "The Metadata.ServiceName property of this channel",
+      "",
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SERVICE_NAME,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("metadata",
+      "Metadata",
+      "The Metadata.Metadata property of this channel",
+      TP_HASH_TYPE_STRING_STRING_MAP,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_METADATA,
+      param_spec);
+
   gabble_file_transfer_channel_class->dbus_props_class.interfaces =
       prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -967,6 +1029,9 @@ gabble_file_transfer_channel_finalize (GObject *object)
   g_hash_table_destroy (self->priv->available_socket_types);
   g_free (self->priv->file_collection);
   g_free (self->priv->uri);
+  g_free (self->priv->service_name);
+  if (self->priv->metadata != NULL)
+    g_hash_table_unref (self->priv->metadata);
 
   G_OBJECT_CLASS (gabble_file_transfer_channel_parent_class)->finalize (object);
 }

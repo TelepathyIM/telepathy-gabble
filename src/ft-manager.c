@@ -33,13 +33,14 @@
 #include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "ft-manager.h"
+#include "ft-channel.h"
 #include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "util.h"
 
-#include "ft-channel.h"
+#include <wocky/wocky-data-form.h>
 
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/channel-factory-iface.h>
@@ -669,6 +670,103 @@ hyvaa_vappua (
 #undef die_if_null
 }
 
+static WockyDataForm *
+find_data_form (WockyNode *file,
+    const gchar *form_type)
+{
+  WockyNodeIter iter;
+  WockyNode *x;
+
+  wocky_node_iter_init (&iter, file, "x", NS_X_DATA);
+  while (wocky_node_iter_next (&iter, &x))
+    {
+      GError *error = NULL;
+      WockyDataForm *form = wocky_data_form_new_from_node (x, &error);
+      WockyDataFormField *field;
+
+      if (form == NULL)
+        {
+          DEBUG ("Failed to parse data form: %s", error->message);
+          g_clear_error (&error);
+          continue;
+        }
+
+      field = g_hash_table_lookup (form->fields, "FORM_TYPE");
+
+      if (field == NULL)
+        {
+          DEBUG ("Data form doesn't have FORM_TYPE field!");
+          g_object_unref (form);
+          continue;
+        }
+
+      /* found it! */
+      if (!tp_strdiff (field->raw_value_contents[0], form_type))
+        return form;
+
+      g_object_unref (form);
+    }
+
+  return NULL;
+}
+
+static gchar *
+extract_service_name (WockyNode *file)
+{
+  WockyDataForm *form = find_data_form (file, "TODO");
+  WockyDataFormField *field;
+  gchar *service_name = NULL;
+
+  if (form == NULL)
+    return NULL;
+
+  field = g_hash_table_lookup (form->fields, "ServiceName");
+
+  if (field == NULL)
+    {
+      DEBUG ("ServiceName propery not present in data form; odd...");
+      goto out;
+    }
+
+  service_name = g_strdup (field->raw_value_contents[0]);
+
+out:
+  g_object_unref (form);
+  return service_name;
+}
+
+static GHashTable *
+extract_metadata (WockyNode *file)
+{
+  WockyDataForm *form = find_data_form (file, "TODO");
+  GHashTable *metadata;
+  GHashTableIter iter;
+  gpointer key, value;
+
+  if (form == NULL)
+    return NULL;
+
+  metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, g_free);
+
+  g_hash_table_iter_init (&iter, form->fields);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      const gchar *var = key;
+      WockyDataFormField *field = value;
+
+      if (!tp_strdiff (var, "FORM_TYPE"))
+        continue;
+
+      g_hash_table_insert (metadata,
+          g_strdup (var),
+          g_strdup (field->raw_value_contents[0]));
+    }
+
+  g_object_unref (form);
+  return metadata;
+}
+
 void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
                                           GabbleBytestreamIface *bytestream,
                                           TpHandle handle,
@@ -678,6 +776,8 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   LmMessageNode *si_node, *file_node, *desc_node;
   const gchar *filename, *size_str, *content_type, *content_hash, *description;
   const gchar *date_str;
+  gchar *service_name;
+  GHashTable *metadata;
   guint64 size;
   guint64 date = 0;
   TpFileHashType content_hash_type;
@@ -730,13 +830,21 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
 
   resume_supported = (lm_message_node_get_child (file_node, "range") != NULL);
 
+  /* metadata */
+  service_name = extract_service_name (file_node);
+  metadata = extract_metadata (file_node);
+
   chan = gabble_file_transfer_channel_new (self->priv->connection,
       handle, handle, TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
       description, date, 0, resume_supported, bytestream, NULL, NULL, NULL,
-      NULL, NULL);
+      service_name, metadata);
 
   gabble_ft_manager_channel_created (self, chan, NULL);
+
+  g_free (service_name);
+  if (metadata != NULL)
+    g_hash_table_unref (metadata);
 }
 
 static void

@@ -44,7 +44,36 @@ class SendFileBadProps(SendFileTest):
 
         return True
 
+class SendFileBadContact(SendFileTest):
+    def announce_contact(self):
+        SendFileTest.announce_contact(self, metadata=False)
+
+    def request_ft_channel(self):
+        requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
+
+        request = { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+            cs.TARGET_HANDLE: self.handle,
+            cs.FT_CONTENT_TYPE: self.file.content_type,
+            cs.FT_FILENAME: self.file.name,
+            cs.FT_SIZE: self.file.size,
+            cs.FT_CONTENT_HASH_TYPE: self.file.hash_type,
+            cs.FT_CONTENT_HASH: self.file.hash,
+            cs.FT_DESCRIPTION: self.file.description,
+            cs.FT_DATE:  self.file.date,
+            cs.FT_INITIAL_OFFSET: 0,
+            cs.FT_SERVICE_NAME: self.service_name,
+            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='ss')}
+
+        call_async(self.q, requests_iface, 'CreateChannel', request)
+
+        # no support for metadata, soz
+        self.q.expect('dbus-error', method='CreateChannel', name=cs.NOT_CAPABLE)
+
+        return True
+
 if __name__ == '__main__':
     exec_file_transfer_test(SendFileNoMetadata, True)
     exec_file_transfer_test(ReceiveFileNoMetadata, True)
     exec_file_transfer_test(SendFileBadProps, True)
+    exec_file_transfer_test(SendFileBadContact, True)

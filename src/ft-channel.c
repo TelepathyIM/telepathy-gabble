@@ -1631,6 +1631,21 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       return FALSE;
     }
 
+  if (self->priv->service_name != NULL || self->priv->metadata != NULL)
+    {
+      if (!gabble_presence_has_cap (presence, NS_TP_FT_METADATA))
+        {
+          DEBUG ("trying to use Metadata properties on a contact "
+              "who doesn't support it");
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+              "The specified contact does not support the "
+              "Metadata extension; you should ensure both ServiceName and "
+              "Metadata properties are not present in the channel "
+              "request");
+          return FALSE;
+        }
+    }
+
   contact_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_CONTACT);
   room_repo = tp_base_connection_get_handles (

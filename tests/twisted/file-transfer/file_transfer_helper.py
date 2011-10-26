@@ -91,7 +91,7 @@ class FileTransferTest(object):
         self.self_handle = self.conn.GetSelfHandle()
         self.self_handle_name =  self.conn.InspectHandles(cs.HT_CONTACT, [self.self_handle])[0]
 
-    def announce_contact(self, name=CONTACT_NAME):
+    def announce_contact(self, name=CONTACT_NAME, metadata=True):
         self.contact_name = name
         self.contact_full_jid = '%s/Telepathy' % name
         self.handle = self.conn.RequestHandles(cs.HT_CONTACT, [name])[0]
@@ -117,8 +117,9 @@ class FileTransferTest(object):
         query = result.firstChildElement()
         feature = query.addElement('feature')
         feature['var'] = ns.FILE_TRANSFER
-        feature = query.addElement('feature')
-        feature['var'] = ns.TP_FT_METADATA
+        if metadata:
+            feature = query.addElement('feature')
+            feature['var'] = ns.TP_FT_METADATA
         self.stream.send(result)
 
         sync_stream(self.q, self.stream)

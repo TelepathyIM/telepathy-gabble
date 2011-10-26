@@ -559,6 +559,13 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
       TP_HASH_TYPE_STRING_STRING_MAP);
 
+  if (metadata != NULL && g_hash_table_lookup ((GHashTable *) metadata, "FORM_TYPE"))
+    {
+      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Metadata cannot contain an item with key 'FORM_TYPE'");
+      goto error;
+    }
+
   DEBUG ("Requested outgoing channel with contact: %s",
       tp_handle_inspect (contact_repo, handle));
 

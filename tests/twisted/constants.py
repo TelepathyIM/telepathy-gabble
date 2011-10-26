@@ -137,6 +137,7 @@ CONN_IFACE_CONTACT_LIST = CONN + '.Interface.ContactList'
 CONN_IFACE_CONTACT_GROUPS = CONN + '.Interface.ContactGroups'
 CONN_IFACE_CLIENT_TYPES = CONN + '.Interface.ClientTypes'
 CONN_IFACE_POWER_SAVING = CONN + '.Interface.PowerSaving'
+CONN_IFACE_CONTACT_BLOCKING = CONN + '.Interface.ContactBlocking'
 
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 

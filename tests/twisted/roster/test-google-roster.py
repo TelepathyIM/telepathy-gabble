@@ -295,6 +295,9 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
         EventPattern('dbus-return', method='RemoveMembers'),
         )
 
+    assertContains(cs.CONN_IFACE_CONTACT_BLOCKING,
+        conn.Properties.Get(cs.CONN, "Interfaces"))
+
     # Our server sends roster pushes in response to our unsubscribe and
     # unsubscribed commands.
     stream.send(make_set_roster_iq(stream, 'test@localhost/Resource', contact,

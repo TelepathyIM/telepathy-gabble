@@ -2815,6 +2815,14 @@ set_status_to_connected (GabbleConnection *conn)
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
 
+  if (tp_base_contact_list_can_block (gabble_connection_get_contact_list (conn)))
+    {
+      const gchar *ifaces[] =
+        { TP_IFACE_CONNECTION_INTERFACE_CONTACT_BLOCKING, NULL };
+
+      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+    }
+
   /* go go gadget on-line */
   tp_base_connection_change_status (base,
       TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_REQUESTED);

@@ -600,22 +600,31 @@ static const gchar * const file_transfer_channel_fixed_properties[] = {
     NULL
 };
 
+   /* ContentHashType has to be first so we can easily skip it when needed */
+#define STANDARD_PROPERTIES \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_HASH_TYPE, \
+   TP_PROP_CHANNEL_TARGET_HANDLE, \
+   TP_PROP_CHANNEL_TARGET_ID, \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_TYPE, \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_FILENAME, \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_SIZE, \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_HASH, \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_DESCRIPTION, \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_DATE, \
+   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_URI
+
 static const gchar * const file_transfer_channel_allowed_properties[] =
 {
-   /* ContentHashType has to be first so we can easily skip it when needed */
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_HASH_TYPE,
-   TP_PROP_CHANNEL_TARGET_HANDLE,
-   TP_PROP_CHANNEL_TARGET_ID,
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_TYPE,
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_FILENAME,
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_SIZE,
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_HASH,
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_DESCRIPTION,
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_DATE,
-   TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_URI,
-   GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME,
-   GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
-   NULL
+  STANDARD_PROPERTIES,
+  NULL
+};
+
+static const gchar * const file_transfer_channel_allowed_properties_with_metadata[] =
+{
+  STANDARD_PROPERTIES,
+  GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME,
+  GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
+  NULL
 };
 
 static void
@@ -635,7 +644,7 @@ gabble_ft_manager_type_foreach_channel_class (GType type,
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
       tp_g_value_slice_new_uint (TP_HANDLE_TYPE_CONTACT));
 
-  func (type, table, file_transfer_channel_allowed_properties,
+  func (type, table, file_transfer_channel_allowed_properties_with_metadata,
       user_data);
 
   /* MD5 HashType class */
@@ -644,7 +653,7 @@ gabble_ft_manager_type_foreach_channel_class (GType type,
       tp_g_value_slice_new_uint (TP_FILE_HASH_TYPE_MD5));
 
   /* skip ContentHashType in allowed properties */
-  func (type, table, file_transfer_channel_allowed_properties + 1,
+  func (type, table, file_transfer_channel_allowed_properties_with_metadata + 1,
       user_data);
 
   g_hash_table_destroy (table);
@@ -897,12 +906,14 @@ gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
 #endif
 
 static void
-add_file_transfer_channel_class (GPtrArray *arr)
+add_file_transfer_channel_class (GPtrArray *arr,
+    gboolean metadata)
 {
   GValue monster = {0, };
   GHashTable *fixed_properties;
   GValue *channel_type_value;
   GValue *target_handle_type_value;
+  const gchar * const *allowed_properties;
 
   g_value_init (&monster, TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS);
   g_value_take_boxed (&monster,
@@ -923,9 +934,13 @@ add_file_transfer_channel_class (GPtrArray *arr)
   g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetHandleType",
       target_handle_type_value);
 
+  allowed_properties = metadata
+    ? file_transfer_channel_allowed_properties_with_metadata
+    : file_transfer_channel_allowed_properties;
+
   dbus_g_type_struct_set (&monster,
       0, fixed_properties,
-      1, file_transfer_channel_allowed_properties,
+      1, allowed_properties,
       G_MAXUINT);
 
   g_hash_table_destroy (fixed_properties);
@@ -942,7 +957,10 @@ gabble_ft_manager_get_contact_caps (
 {
   if (gabble_capability_set_has (caps, NS_FILE_TRANSFER) ||
       gabble_capability_set_has (caps, NS_GOOGLE_FEAT_SHARE))
-    add_file_transfer_channel_class (arr);
+    {
+      add_file_transfer_channel_class (arr,
+          gabble_capability_set_has (caps, NS_TP_FT_METADATA));
+    }
 }
 
 static void

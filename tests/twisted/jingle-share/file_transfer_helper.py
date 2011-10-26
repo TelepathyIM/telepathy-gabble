@@ -11,7 +11,7 @@ import ns
 from caps_helper import text_fixed_properties, text_allowed_properties, \
     stream_tube_fixed_properties, stream_tube_allowed_properties, \
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, \
-    ft_fixed_properties, ft_allowed_properties, compute_caps_hash, \
+    ft_fixed_properties, ft_allowed_properties_with_metadata, compute_caps_hash, \
     extract_disco_parts
 
 from twisted.words.xish import domish, xpath
@@ -50,7 +50,7 @@ generic_ft_caps = [(text_fixed_properties, text_allowed_properties),
                    (stream_tube_fixed_properties, \
                         stream_tube_allowed_properties),
                    (dbus_tube_fixed_properties, dbus_tube_allowed_properties),
-                   (ft_fixed_properties, ft_allowed_properties)]
+                   (ft_fixed_properties, ft_allowed_properties_with_metadata)]
 
 generic_caps = [(text_fixed_properties, text_allowed_properties),
                    (stream_tube_fixed_properties, \

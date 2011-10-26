@@ -117,6 +117,8 @@ class FileTransferTest(object):
         query = result.firstChildElement()
         feature = query.addElement('feature')
         feature['var'] = ns.FILE_TRANSFER
+        feature = query.addElement('feature')
+        feature['var'] = ns.TP_FT_METADATA
         self.stream.send(result)
 
         sync_stream(self.q, self.stream)

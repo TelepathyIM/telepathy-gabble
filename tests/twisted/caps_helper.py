@@ -207,6 +207,24 @@ def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
 
     return disco_caps(q, stream, presence) + (signaled_caps,)
 
+def extract_data_forms(x_nodes):
+    dataforms = {}
+    for form in x_nodes:
+        name = None
+        fields = {}
+        for field in xpath.queryForNodes('/x/field', form):
+            if field['var'] == 'FORM_TYPE':
+                name = str(field.firstChildElement())
+            else:
+                values = [str(x) for x in xpath.queryForNodes('/field/value', field)]
+
+                fields[field['var']] = values
+
+        if name is not None:
+            dataforms[name] = fields
+
+    return dataforms
+
 def extract_disco_parts(stanza):
     identity_nodes = xpath.queryForNodes('/iq/query/identity', stanza)
     assertLength(1, identity_nodes)
@@ -225,21 +243,7 @@ def extract_disco_parts(stanza):
 
     # a quick and ugly data form extractor
     x_nodes = xpath.queryForNodes('/iq/query/x', stanza) or []
-    dataforms = {}
-    for form in x_nodes:
-        name = None
-        fields = {}
-        for field in xpath.queryForNodes('/x/field', form):
-            if field['var'] == 'FORM_TYPE':
-                name = str(field.firstChildElement())
-            else:
-                values = [str(x) for x in xpath.queryForNodes('/field/value', field)]
-
-                fields[field['var']] = values
-
-        if name is not None:
-            dataforms[name] = fields
-
+    dataforms = extract_data_forms(x_nodes)
     return ([identity], features, dataforms)
 
 def disco_caps(q, stream, presence):

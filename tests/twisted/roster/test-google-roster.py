@@ -295,9 +295,6 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
         EventPattern('dbus-return', method='RemoveMembers'),
         )
 
-    assertContains(cs.CONN_IFACE_CONTACT_BLOCKING,
-        conn.Properties.Get(cs.CONN, "Interfaces"))
-
     # Our server sends roster pushes in response to our unsubscribe and
     # unsubscribed commands.
     stream.send(make_set_roster_iq(stream, 'test@localhost/Resource', contact,
@@ -518,6 +515,15 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
         args=['', [], [handle], [], [], 0, cs.GC_REASON_NONE],
         predicate=is_stored)
 
+def test_contact_blocking(q, bus, conn, stream, stored, deny):
+    """test ContactBlocking API"""
+    assertContains(cs.CONN_IFACE_CONTACT_BLOCKING,
+        conn.Properties.Get(cs.CONN, "Interfaces"))
+
+    # 3 contacts are blocked
+    blocked = conn.RequestBlockedContacts(dbus_interface=cs.CONN_IFACE_CONTACT_BLOCKING)
+
+    assertLength(3, blocked)
 
 def test(q, bus, conn, stream):
     publish, subscribe, stored, deny = test_inital_roster(q, bus, conn, stream)
@@ -528,6 +534,7 @@ def test(q, bus, conn, stream):
     test_deny_overlap_two(q, bus, conn, stream,
         subscribe, publish, stored, deny)
     test_deny_unblock_remove(q, bus, conn, stream, stored, deny)
+    test_contact_blocking(q, bus, conn, stream, stored, deny)
 
 if __name__ == '__main__':
     exec_test(test, protocol=GoogleXmlStream)

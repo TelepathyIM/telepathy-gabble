@@ -219,6 +219,7 @@ TWISTED_FT_TESTS = \
 	file-transfer/test-send-file-send-before-accept.py \
 	file-transfer/test-uri.py \
 	file-transfer/metadata.py \
+	file-transfer/ft-client-caps.py \
 	$(NULL)
 
 TWISTED_TESTS += \

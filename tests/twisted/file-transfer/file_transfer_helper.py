@@ -11,7 +11,7 @@ import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
 import bytestream
 
-from caps_helper import extract_data_forms
+from caps_helper import extract_data_forms, add_data_forms
 
 from twisted.words.xish import domish, xpath
 
@@ -49,6 +49,10 @@ class File(object):
 class FileTransferTest(object):
     CONTACT_NAME = 'test-ft@localhost'
     CONTACT_FULL_JID = 'test-ft@localhost/Telepathy'
+
+    service_name = 'a.wacky.service.name'
+    metadata = {'loads': 'of',
+                'mental': 'data'}
 
     def __init__(self, bytestream_cls, file, address_type, access_control, access_control_param):
         self.file = file
@@ -177,6 +181,17 @@ class ReceiveFileTest(FileTransferTest):
         file_node.addElement('desc', content=self.file.description)
         # we support range transfer
         file_node.addElement('range')
+
+        # Metadata
+        if self.service_name:
+            service_form = {ns.TP_FT_METADATA_SERVICE: {'ServiceName': [self.service_name]}}
+            add_data_forms(file_node, service_form)
+
+        if self.metadata:
+            metadata_form = {ns.TP_FT_METADATA: {k: [v] for k, v in self.metadata.items()}}
+            add_data_forms(file_node, metadata_form)
+
+        # so... lunch?
         iq.send()
 
     def check_new_channel(self):
@@ -222,6 +237,9 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.FT_INITIAL_OFFSET] == 0
 
         self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
+
+        assertEquals(self.service_name, props[cs.FT_SERVICE_NAME])
+        assertEquals(self.metadata, props[cs.FT_METADATA])
 
         self.ft_path = path
 
@@ -334,10 +352,6 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
 class SendFileTest(FileTransferTest):
-    service_name = 'a.wacky.service.name'
-    metadata = {'loads': 'of',
-                'mental': 'data'}
-
     def __init__(self, bytestream_cls, file, address_type, access_control, acces_control_param):
         FileTransferTest.__init__(self, bytestream_cls, file, address_type, access_control, acces_control_param)
 

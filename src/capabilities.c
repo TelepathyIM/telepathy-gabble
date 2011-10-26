@@ -60,6 +60,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_FIXED, NS_TUBES },
   { FEATURE_FIXED, NS_BYTESTREAMS },
   { FEATURE_FIXED, NS_VERSION },
+  { FEATURE_FIXED, NS_TP_FT_METADATA },
 
   { FEATURE_OPTIONAL, NS_FILE_TRANSFER },
 

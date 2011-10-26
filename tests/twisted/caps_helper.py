@@ -157,6 +157,23 @@ def compute_caps_hash(identities, features, dataforms):
     m.update(S.encode('utf-8'))
     return base64.b64encode(m.digest())
 
+def add_data_forms(root, dataforms):
+    for type, fields in dataforms.iteritems():
+        x = root.addElement((ns.X_DATA, 'x'))
+        x['type'] = 'result'
+
+        field = x.addElement('field')
+        field['var'] = 'FORM_TYPE'
+        field['type'] = 'hidden'
+        field.addElement('value', content=type)
+
+        for var, values in fields.iteritems():
+            field = x.addElement('field')
+            field['var'] = var
+
+            for value in values:
+                field.addElement('value', content=value)
+
 def make_caps_disco_reply(stream, req, identities, features, dataforms={}):
     iq = make_result_iq(stream, req)
     query = iq.firstChildElement()
@@ -174,21 +191,7 @@ def make_caps_disco_reply(stream, req, identities, features, dataforms={}):
         el['var'] = f
         query.addChild(el)
 
-    for type, fields in dataforms.iteritems():
-        x = query.addElement((ns.X_DATA, 'x'))
-        x['type'] = 'result'
-
-        field = x.addElement('field')
-        field['var'] = 'FORM_TYPE'
-        field['type'] = 'hidden'
-        field.addElement('value', content=type)
-
-        for var, values in fields.iteritems():
-            field = x.addElement('field')
-            field['var'] = var
-
-            for value in values:
-                field.addElement('value', content=value)
+    add_data_forms(query, dataforms)
 
     return iq
 

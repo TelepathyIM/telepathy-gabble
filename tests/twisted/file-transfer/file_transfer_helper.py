@@ -332,6 +332,10 @@ class ReceiveFileTest(FileTransferTest):
         assert reason == cs.FT_STATE_CHANGE_REASON_NONE
 
 class SendFileTest(FileTransferTest):
+    service_name = 'a.wacky.service.name'
+    metadata = {'loads': 'of',
+                'mental': 'data'}
+
     def __init__(self, bytestream_cls, file, address_type, access_control, acces_control_param):
         FileTransferTest.__init__(self, bytestream_cls, file, address_type, access_control, acces_control_param)
 
@@ -376,7 +380,9 @@ class SendFileTest(FileTransferTest):
             cs.FT_CONTENT_HASH: self.file.hash,
             cs.FT_DESCRIPTION: self.file.description,
             cs.FT_DATE:  self.file.date,
-            cs.FT_INITIAL_OFFSET: 0 }
+            cs.FT_INITIAL_OFFSET: 0,
+            cs.FT_SERVICE_NAME: self.service_name,
+            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='ss')}
 
         if uri:
             request[cs.FT_URI] = self.file.uri
@@ -404,6 +410,8 @@ class SendFileTest(FileTransferTest):
         assertEquals(self.file.date, props[cs.FT_DATE])
         assertEquals(0, props[cs.FT_TRANSFERRED_BYTES])
         assertEquals(0, props[cs.FT_INITIAL_OFFSET])
+        assertEquals(self.service_name, props[cs.FT_SERVICE_NAME])
+        assertEquals(self.metadata, props[cs.FT_METADATA])
         if uri:
             assertEquals(self.file.uri, props[cs.FT_URI])
         else:

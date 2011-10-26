@@ -328,6 +328,8 @@ gabble_file_transfer_channel_get_property (GObject *object,
               TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
               TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
               GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
+              GABBLE_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
+              GABBLE_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
               NULL);
 
           /* URI is immutable only for outgoing transfers */

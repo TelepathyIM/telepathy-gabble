@@ -1362,6 +1362,80 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
 
 }
 
+static void
+add_metadata_forms (GabbleFileTransferChannel *self,
+    WockyNode *file)
+{
+  if (!tp_str_empty (self->priv->service_name))
+    {
+      WockyStanza *tmp = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+          WOCKY_STANZA_SUB_TYPE_RESULT, NULL, NULL,
+          '(', "x",
+            ':', NS_X_DATA,
+            '@', "type", "result",
+            '(', "field",
+              '@', "var", "FORM_TYPE",
+              '@', "type", "hidden",
+              '(', "value",
+                '$', NS_TP_FT_METADATA_SERVICE,
+              ')',
+            ')',
+            '(', "field",
+              '@', "var", "ServiceName",
+              '(', "value",
+                '$', self->priv->service_name,
+              ')',
+            ')',
+          ')',
+          NULL);
+      WockyNode *x = wocky_node_get_first_child (wocky_stanza_get_top_node (tmp));
+      WockyNodeTree *tree = wocky_node_tree_new_from_node (x);
+
+      wocky_node_add_node_tree (file, tree);
+      g_object_unref (tree);
+      g_object_unref (tmp);
+    }
+
+  if (self->priv->metadata != NULL
+      && g_hash_table_size (self->priv->metadata) > 0)
+    {
+      WockyStanza *tmp = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+          WOCKY_STANZA_SUB_TYPE_RESULT, NULL, NULL,
+          '(', "x",
+            ':', NS_X_DATA,
+            '@', "type", "result",
+            '(', "field",
+              '@', "var", "FORM_TYPE",
+              '@', "type", "hidden",
+              '(', "value",
+                '$', NS_TP_FT_METADATA,
+              ')',
+            ')',
+          ')',
+          NULL);
+      WockyNode *x = wocky_node_get_first_child (wocky_stanza_get_top_node (tmp));
+      WockyNodeTree *tree;
+      GHashTableIter iter;
+      gpointer key, val;
+
+      g_hash_table_iter_init (&iter, self->priv->metadata);
+      while (g_hash_table_iter_next (&iter, &key, &val))
+        {
+          WockyNode *field = wocky_node_add_child (x, "field");
+
+          wocky_node_set_attribute (field, "var", (const gchar *) key);
+
+          wocky_node_add_child_with_content (field, "value",
+              (const gchar *) val);
+        }
+
+      tree = wocky_node_tree_new_from_node (x);
+      wocky_node_add_node_tree (file, tree);
+      g_object_unref (tree);
+      g_object_unref (tmp);
+    }
+}
+
 static gboolean
 offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
                   const gchar *resource, GError **error)
@@ -1401,6 +1475,8 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
       "size", size_str,
       "mime-type", self->priv->content_type,
       NULL);
+
+  add_metadata_forms (self, file_node);
 
   if (self->priv->content_hash != NULL)
     lm_message_node_set_attribute (file_node, "hash", self->priv->content_hash);

@@ -11,6 +11,8 @@ import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
 import bytestream
 
+from caps_helper import extract_data_forms
+
 from twisted.words.xish import domish, xpath
 
 import constants as cs
@@ -448,6 +450,23 @@ class SendFileTest(FileTransferTest):
         # Gabble supports resume
         range = xpath.queryForNodes('/iq/si/file/range', self.iq)[0]
         assert range is not None
+
+        # Metadata forms
+        forms = extract_data_forms(xpath.queryForNodes('/iq/si/file/x', self.iq))
+
+        if self.service_name:
+            assertEquals({'ServiceName': [self.service_name]},
+                         forms[ns.TP_FT_METADATA_SERVICE])
+        else:
+            assert ns.TP_FT_METADATA_SERVICE not in forms
+
+        if self.metadata:
+            # the dataform isn't such a simple a{ss} because it can
+            # have multiple values
+            expected = {k:[v] for k,v in self.metadata.items()}
+            assertEquals(expected, forms[ns.TP_FT_METADATA])
+        else:
+            assert ns.TP_FT_METADATA not in forms
 
     def provide_file(self):
         try:

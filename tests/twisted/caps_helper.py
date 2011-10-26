@@ -209,6 +209,10 @@ def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
 
 def extract_data_forms(x_nodes):
     dataforms = {}
+
+    if not x_nodes:
+        return dataforms
+
     for form in x_nodes:
         name = None
         fields = {}

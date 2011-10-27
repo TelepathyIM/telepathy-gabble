@@ -1035,6 +1035,7 @@ gabble_ft_manager_represent_client (
       DEBUG ("client %s supports file transfer", client_name);
       gabble_capability_set_add (cap_set, NS_FILE_TRANSFER);
       gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_SHARE);
+      gabble_capability_set_add (cap_set, NS_TP_FT_METADATA);
 
       /* now look at service names */
 

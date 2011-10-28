@@ -1359,6 +1359,16 @@ got_roster_iq (GabbleRoster *roster,
       return FALSE;
     }
 
+  if (sub_type == WOCKY_STANZA_SUB_TYPE_RESULT && priv->received)
+    {
+      /* <https://bugs.freedesktop.org/show_bug.cgi?id=42186>: some super-buggy
+       * XMPP server running on vk.com sends its reply to our roster query twice.
+       */
+      DEBUG ("The server sent replied to our roster query more than once! "
+          "Ignoring this reply");
+      return FALSE;
+    }
+
   process_roster (roster, query_node);
 
   if (sub_type == WOCKY_STANZA_SUB_TYPE_RESULT)

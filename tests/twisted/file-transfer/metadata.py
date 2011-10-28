@@ -13,7 +13,7 @@ class SendFileNoMetadata(SendFileTest):
     service_name = ''
     metadata = {}
 
-class ReceiveFileNoMetadata(SendFileTest):
+class ReceiveFileNoMetadata(ReceiveFileTest):
     service_name = ''
     metadata = {}
 

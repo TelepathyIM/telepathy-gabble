@@ -1421,12 +1421,13 @@ add_metadata_forms (GabbleFileTransferChannel *self,
       g_hash_table_iter_init (&iter, self->priv->metadata);
       while (g_hash_table_iter_next (&iter, &key, &val))
         {
-          WockyNode *field = wocky_node_add_child (x, "field");
-
-          wocky_node_set_attribute (field, "var", (const gchar *) key);
-
-          wocky_node_add_child_with_content (field, "value",
-              (const gchar *) val);
+          wocky_node_add_build (x,
+              '(', "field",
+                '@', "var", key,
+                '(', "value",
+                  '$', val,
+                ')',
+              ')', NULL);
         }
 
       tree = wocky_node_tree_new_from_node (x);

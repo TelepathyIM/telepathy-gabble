@@ -922,7 +922,7 @@ gabble_ft_manager_get_tmp_dir (GabbleFtManager *self)
 
 static void
 add_file_transfer_channel_class (GPtrArray *arr,
-    gboolean metadata,
+    gboolean include_metadata_properties,
     const gchar *service_name_str)
 {
   GValue monster = {0, };
@@ -960,7 +960,7 @@ add_file_transfer_channel_class (GPtrArray *arr,
           service_name_value);
     }
 
-  if (metadata)
+  if (include_metadata_properties)
     {
       if (service_name_str == NULL)
         allowed_properties = file_transfer_channel_allowed_properties_with_both_metadata_props;

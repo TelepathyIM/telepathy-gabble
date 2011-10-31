@@ -1746,6 +1746,8 @@ roster_received_cb (GObject *source_object,
             result, &response, &error))
         {
           got_roster_iq (self, response);
+
+          g_object_unref (response);
         }
       else
         {

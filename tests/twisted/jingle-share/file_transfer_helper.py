@@ -409,9 +409,7 @@ class SendFileTest(FileTransferTest):
                      properties['RequestableChannelClasses']
 
     def request_ft_channel(self):
-        requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
-
-        self.ft_path, props = requests_iface.CreateChannel({
+        self.ft_path, props = self.conn.Requests.CreateChannel({
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,

@@ -387,8 +387,6 @@ class SendFileTest(FileTransferTest):
                      properties['RequestableChannelClasses']
 
     def request_ft_channel(self, uri=True):
-        requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
-
         request = { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,
@@ -406,7 +404,7 @@ class SendFileTest(FileTransferTest):
         if uri:
             request[cs.FT_URI] = self.file.uri
 
-        self.ft_path, props = requests_iface.CreateChannel(request)
+        self.ft_path, props = self.conn.Requests.CreateChannel(request)
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
         assertEquals(cs.CHANNEL_TYPE_FILE_TRANSFER, props[cs.CHANNEL_TYPE])

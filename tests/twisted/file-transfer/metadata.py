@@ -21,8 +21,6 @@ class SendFileBadProps(SendFileTest):
     metadata = {'FORM_TYPE': 'this shouldnt be allowed'}
 
     def request_ft_channel(self):
-        requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
-
         request = { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,
@@ -37,7 +35,7 @@ class SendFileBadProps(SendFileTest):
             cs.FT_SERVICE_NAME: self.service_name,
             cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='ss')}
 
-        call_async(self.q, requests_iface, 'CreateChannel', request)
+        call_async(self.q, self.conn.Requests, 'CreateChannel', request)
 
         # FORM_TYPE is not allowed, soz
         self.q.expect('dbus-error', method='CreateChannel', name=cs.INVALID_ARGUMENT)
@@ -49,8 +47,6 @@ class SendFileBadContact(SendFileTest):
         SendFileTest.announce_contact(self, metadata=False)
 
     def request_ft_channel(self):
-        requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
-
         request = { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,
@@ -65,7 +61,7 @@ class SendFileBadContact(SendFileTest):
             cs.FT_SERVICE_NAME: self.service_name,
             cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='ss')}
 
-        call_async(self.q, requests_iface, 'CreateChannel', request)
+        call_async(self.q, self.conn.Requests, 'CreateChannel', request)
 
         # no support for metadata, soz
         self.q.expect('dbus-error', method='CreateChannel', name=cs.NOT_CAPABLE)

@@ -46,7 +46,8 @@ import constants as cs
 from caps_helper import compute_caps_hash, text_fixed_properties,\
     text_allowed_properties, stream_tube_fixed_properties, stream_tube_allowed_properties,\
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, receive_presence_and_ask_caps,\
-    caps_contain, ft_fixed_properties, ft_allowed_properties, ft_allowed_properties_with_metadata
+    caps_contain, ft_fixed_properties, ft_allowed_properties, ft_allowed_properties_with_metadata, \
+    presence_and_disco
 import ns
 
 no_service_fixed_properties = dbus.Dictionary({
@@ -85,32 +86,13 @@ def assertSameElements(a, b):
 
 def receive_caps(q, conn, stream, contact, contact_handle, features,
                  expected_caps, expect_disco=True, expect_ccc=True):
-    presence = make_presence(contact, status='hello')
-    c = presence.addElement((ns.CAPS, 'c'))
-    c['node'] = client
-    c['ver'] = compute_caps_hash([],
-        features if features is not None else [],
-        {})
-    c['hash'] = 'sha-1'
-    stream.send(presence)
 
-    if expect_disco:
-        # Gabble looks up our capabilities
-        event = q.expect('stream-iq', to=contact, query_ns=ns.DISCO_INFO)
-        query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
-        assert query_node.attributes['node'] == \
-            client + '#' + c['ver']
+    caps = {'node': client,
+            'ver': compute_caps_hash([], features, {}),
+            'hash': 'sha-1'}
 
-        # send good reply
-        result = make_result_iq(stream, event.stanza)
-        query = result.firstChildElement()
-        query['node'] = client + '#' + c['ver']
-
-        for f in features:
-            feature = query.addElement('feature')
-            feature['var'] = f
-
-        stream.send(result)
+    presence_and_disco(q, conn, stream, contact, expect_disco,
+                       client, caps, features, initial=False)
 
     if expect_ccc:
         event = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')

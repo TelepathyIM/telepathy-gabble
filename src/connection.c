@@ -3378,12 +3378,10 @@ gabble_connection_update_capabilities (
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
-  GabbleCapabilitySet *old_caps;
+  GabbleCapabilitySet *old_caps = NULL;
   TpChannelManagerIter iter;
   TpChannelManager *manager;
   guint i;
-
-  old_caps = gabble_capability_set_copy (self->priv->all_caps);
 
   /* Now that someone has told us our *actual* capabilities, we can stop
    * advertising spurious caps in initial presence */

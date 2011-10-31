@@ -2039,6 +2039,8 @@ conn_presence_finalize (GabbleConnection *conn)
   if (priv->iq_list_push_cb != NULL)
     lm_message_handler_unref (priv->iq_list_push_cb);
 
+  g_slice_free (GabbleConnectionPresencePrivate, priv);
+
   tp_presence_mixin_finalize ((GObject *) conn);
 }
 

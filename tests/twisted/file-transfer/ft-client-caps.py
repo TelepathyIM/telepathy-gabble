@@ -76,7 +76,7 @@ go_fixed_properties = dict_union(no_service_fixed_properties, {
         cs.FT_SERVICE_NAME: 'com.example.Go',
         })
 
-client = 'http://telepathy.freedesktop.org/fake-client'
+client = 'http://telepathy.freedesktop.org/another-fake-client'
 
 def assertSameElements(a, b):
     assertEquals(sorted(a), sorted(b))

@@ -940,21 +940,18 @@ add_file_transfer_channel_class (GPtrArray *arr,
   fixed_properties = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
       (GDestroyNotify) tp_g_value_slice_free);
 
-  channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (channel_type_value,
+  channel_type_value = tp_g_value_slice_new_static_string (
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER);
   g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
       channel_type_value);
 
-  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  target_handle_type_value = tp_g_value_slice_new_uint (TP_HANDLE_TYPE_CONTACT);
   g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetHandleType",
       target_handle_type_value);
 
   if (service_name_str != NULL)
     {
-      service_name_value = tp_g_value_slice_new (G_TYPE_STRING);
-      g_value_set_string (service_name_value, service_name_str);
+      service_name_value = tp_g_value_slice_new_string (service_name_str);
       g_hash_table_insert (fixed_properties,
           GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME,
           service_name_value);

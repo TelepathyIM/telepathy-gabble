@@ -50,34 +50,31 @@ from caps_helper import compute_caps_hash, text_fixed_properties,\
     presence_and_disco
 import ns
 
-no_service_fixed_properties = dbus.Dictionary({
+def dict_union(a, b):
+    return dbus.Dictionary(a.items() + b.items(), signature='sv')
+
+no_service_fixed_properties = {
     cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
     cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
-    })
-bidir_daap_fixed_properties = dbus.Dictionary(
-    no_service_fixed_properties.items() + {
-    cs.FT_SERVICE_NAME: 'daap'
-    }.items())
-outgoing_daap_fixed_properties = dbus.Dictionary(
-    bidir_daap_fixed_properties.items() + {
-    cs.REQUESTED : True,
-    }.items())
-incoming_daap_fixed_properties = dbus.Dictionary(
-    bidir_daap_fixed_properties.items() + {
-    cs.REQUESTED : False,
-    }.items())
-http_fixed_properties = dbus.Dictionary(
-    no_service_fixed_properties.items() + {
-    cs.FT_SERVICE_NAME: 'http'
-    }.items())
-xiangqi_fixed_properties = dbus.Dictionary(
-    no_service_fixed_properties.items() + {
-    cs.FT_SERVICE_NAME: 'com.example.Xiangqi'
-    }.items())
-go_fixed_properties = dbus.Dictionary(
-    no_service_fixed_properties.items() + {
-    cs.FT_SERVICE_NAME: 'com.example.Go'
-    }.items())
+    }
+bidir_daap_fixed_properties = dict_union(no_service_fixed_properties, {
+        cs.FT_SERVICE_NAME: 'daap'
+        })
+outgoing_daap_fixed_properties = dict_union(bidir_daap_fixed_properties, {
+        cs.REQUESTED : True,
+        })
+incoming_daap_fixed_properties = dict_union(bidir_daap_fixed_properties, {
+        cs.REQUESTED : False,
+        })
+http_fixed_properties = dict_union(no_service_fixed_properties, {
+        cs.FT_SERVICE_NAME: 'http',
+        })
+xiangqi_fixed_properties = dict_union(no_service_fixed_properties, {
+        cs.FT_SERVICE_NAME: 'com.example.Xiangqi',
+        })
+go_fixed_properties = dict_union(no_service_fixed_properties, {
+        cs.FT_SERVICE_NAME: 'com.example.Go',
+        })
 
 client = 'http://telepathy.freedesktop.org/fake-client'
 

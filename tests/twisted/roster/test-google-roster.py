@@ -273,7 +273,6 @@ def test_local_pending(q, bus, conn, stream, subscribe):
     Here, we test that Gabble is suppressing the flickers.
     """
 
-    self_handle = conn.GetSelfHandle()
     contact = 'alice@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
 

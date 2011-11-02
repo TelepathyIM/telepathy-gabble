@@ -276,7 +276,7 @@ def test_local_pending(q, bus, conn, stream, subscribe):
     contact = 'alice@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
 
-    # We add Alice
+    # Alice asks to subscribes to us
     presence = domish.Element(('jabber:client', 'presence'))
     presence['from'] = contact
     presence['type'] = 'subscribe'

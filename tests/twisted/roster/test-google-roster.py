@@ -282,13 +282,19 @@ def test_local_pending(q, bus, conn, stream, subscribe):
     presence['type'] = 'subscribe'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='ContactsChanged',
+    q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [], [], [handle], [], handle, cs.GC_REASON_NONE],
+            predicate=is_publish),
+        EventPattern('dbus-signal', signal='ContactsChanged',
             args=[{handle: (cs.SUBSCRIPTION_STATE_NO,
-                cs.SUBSCRIPTION_STATE_ASK, '')}, []])
+                cs.SUBSCRIPTION_STATE_ASK, '')}, []]),
+        )
 
     # Now we send the spurious roster update with subscribe="none" and verify
-    # that nothing happens in reaction to that
-    change_event = EventPattern('dbus-signal', signal='MembersChanged')
+    # that nothing happens to her publish state in reaction to that
+    change_event = EventPattern('dbus-signal', signal='MembersChanged',
+        predicate=is_publish)
     q.forbid_events([change_event])
 
     iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,

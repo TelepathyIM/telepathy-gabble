@@ -305,6 +305,35 @@ def test_local_pending(q, bus, conn, stream, subscribe):
     sync_dbus(bus, q, conn)
     q.unforbid_events([change_event])
 
+    # Now we cancel alice's subscription request and verify that if the
+    # redundant IQ is sent again, it's safely handled
+    presence = domish.Element(('jabber:client', 'presence'))
+    presence['from'] = contact
+    presence['type'] = 'unsubscribe'
+    stream.send(presence)
+
+    q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChanged',
+            args=['', [], [handle], [], [], handle, cs.GC_REASON_NONE],
+            predicate=is_publish),
+        EventPattern('dbus-signal', signal='ContactsChanged',
+            args=[{handle: (cs.SUBSCRIPTION_STATE_NO,
+                cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY, '')}, []]),
+        )
+
+    # Now we send a roster roster update with subscribe="none" again (which
+    # doesn't change anything, it just confirms what we already knew) and
+    # verify that nothing happens to her publish state in reaction to that.
+    q.forbid_events([change_event])
+
+    iq = make_set_roster_iq(stream, 'test@localhost/Resource', contact,
+            "none", False)
+    stream.send(iq)
+
+    sync_stream(q, stream)
+    sync_dbus(bus, q, conn)
+    q.unforbid_events([change_event])
+
 # This event is forbidden in all of the deny tests!
 remove_events = [
     EventPattern('stream-iq', query_ns=ns.ROSTER,

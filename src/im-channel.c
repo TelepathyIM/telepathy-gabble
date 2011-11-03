@@ -396,7 +396,6 @@ _gabble_im_channel_send_message (GObject *object,
  * _gabble_im_channel_receive:
  * @chan: a channel
  * @type: the message type
- * @sender: the sender of the message (which may not be 0)
  * @from: the full JID we received the message from
  * @timestamp: the time at which the message was sent (not the time it was
  *             received)
@@ -417,7 +416,6 @@ _gabble_im_channel_send_message (GObject *object,
 void
 _gabble_im_channel_receive (GabbleIMChannel *chan,
                             TpChannelTextMessageType type,
-                            TpHandle sender,
                             const char *from,
                             time_t timestamp,
                             const gchar *id,
@@ -429,6 +427,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   GabbleIMChannelPrivate *priv;
   TpBaseChannel *base_chan;
   TpBaseConnection *base_conn;
+  TpHandle peer;
   TpMessage *msg;
   gchar *tmp;
 
@@ -436,6 +435,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   priv = chan->priv;
   base_chan = (TpBaseChannel *) chan;
   base_conn = tp_base_channel_get_connection (base_chan);
+  peer = tp_base_channel_get_target_handle (base_chan);
 
   if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
@@ -481,7 +481,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
   if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
-      tp_cm_message_set_sender (msg, sender);
+      tp_cm_message_set_sender (msg, peer);
       tp_message_set_int64 (msg, 0, "message-received", time (NULL));
 
       if (id != NULL)
@@ -495,7 +495,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
-      tp_cm_message_set_sender (delivery_report, sender);
+      tp_cm_message_set_sender (delivery_report, peer);
       tp_message_set_int64 (delivery_report, 0, "message-received",
           time (NULL));
 

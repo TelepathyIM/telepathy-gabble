@@ -273,7 +273,7 @@ im_factory_message_cb (LmMessageHandler *handler,
     }
 
   if (body != NULL)
-    _gabble_im_channel_receive (chan, msgtype, handle, from, stamp, id, body,
+    _gabble_im_channel_receive (chan, msgtype, from, stamp, id, body,
         send_error, delivery_status, state);
   else if (state != -1 && send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);

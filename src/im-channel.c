@@ -392,6 +392,30 @@ _gabble_im_channel_send_message (GObject *object,
     priv->send_nick = FALSE;
 }
 
+static TpMessage *
+build_message (
+    GabbleIMChannel *self,
+    TpChannelTextMessageType type,
+    time_t timestamp,
+    const char *text)
+{
+  TpBaseChannel *base_chan = (TpBaseChannel *) self;
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base_chan);
+  TpMessage *msg = tp_cm_message_new (base_conn, 2);
+
+  if (type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
+    tp_message_set_uint32 (msg, 0, "message-type", type);
+
+  if (timestamp != 0)
+    tp_message_set_int64 (msg, 0, "message-sent", timestamp);
+
+  /* Body */
+  tp_message_set_string (msg, 1, "content-type", "text/plain");
+  tp_message_set_string (msg, 1, "content", text);
+
+  return msg;
+}
+
 /*
  * _gabble_im_channel_receive:
  * @chan: a channel
@@ -466,18 +490,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
       priv->chat_states_supported = CHAT_STATES_UNKNOWN;
     }
 
-  msg = tp_cm_message_new (base_conn, 2);
-
-  /* Header */
-  if (type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
-    tp_message_set_uint32 (msg, 0, "message-type", type);
-
-  if (timestamp != 0)
-    tp_message_set_int64 (msg, 0, "message-sent", timestamp);
-
-  /* Body */
-  tp_message_set_string (msg, 1, "content-type", "text/plain");
-  tp_message_set_string (msg, 1, "content", text);
+  msg = build_message (chan, type, timestamp, text);
 
   if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {

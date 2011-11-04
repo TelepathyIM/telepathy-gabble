@@ -105,6 +105,7 @@ TWISTED_TESTS = \
 	test-register.py \
 	text/destroy.py \
 	text/ensure.py \
+	text/facebook-own-message.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
 	text/respawn.py \

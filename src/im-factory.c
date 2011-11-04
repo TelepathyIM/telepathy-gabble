@@ -29,6 +29,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
+#include <wocky/wocky-c2s-porter.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
@@ -40,6 +41,7 @@
 #include "disco.h"
 #include "im-channel.h"
 #include "message-util.h"
+#include "namespaces.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
 static void caps_channel_manager_iface_init (gpointer, gpointer);
@@ -86,7 +88,10 @@ gabble_im_factory_init (GabbleImFactory *self)
 
 static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleImFactory *self);
-
+static void porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data);
 
 static void
 gabble_im_factory_constructed (GObject *obj)
@@ -99,6 +104,8 @@ gabble_im_factory_constructed (GObject *obj)
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
+  tp_g_signal_connect_object (self->priv->conn,
+      "porter-available", (GCallback) porter_available_cb, obj, 0);
 }
 
 
@@ -456,6 +463,92 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
     }
 }
+
+static gboolean
+im_factory_own_message_cb (
+    WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
+{
+  GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
+  WockyNode *own_message, *body;
+  const gchar *to;
+  gboolean sent_locally;
+  GabbleIMChannel *chan;
+
+  /* Our stanza filter should guarantee that these are present. */
+  own_message = wocky_node_get_child (wocky_stanza_get_top_node (stanza),
+      "own-message");
+  g_return_val_if_fail (own_message != NULL, FALSE);
+  body = wocky_node_get_child (own_message, "body");
+  g_return_val_if_fail (body != NULL, FALSE);
+
+  to = wocky_node_get_attribute (own_message, "to");
+  if (to == NULL)
+    {
+      DEBUG ("own-message missing to='' attribute; ignoring");
+      return FALSE;
+    }
+
+  /* If self='true', the message was sent by the local user on this machine,
+   * rather than by the local user on some other machine. We don't really have
+   * a good way to show this in Messages. Also we don't get told the id='' of
+   * the original message, which is annoying.
+   */
+  sent_locally = !tp_strdiff ("true",
+      wocky_node_get_attribute (own_message, "self"));
+  DEBUG ("this report is for a message to '%s', sent %s",
+      to, sent_locally ? "locally" : "remotely");
+
+  /* Don't create a channel for the sole purpose of reporting an own-message.
+   * This is consistent with not creating a channel to report send errors
+   * (given that both are delivery reports).
+   */
+  chan = get_channel_for_incoming_message (self, to, FALSE);
+  if (chan != NULL)
+    _gabble_im_channel_report_delivery (chan,
+        TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL, 0, NULL, body->content,
+        GABBLE_TEXT_CHANNEL_SEND_NO_ERROR, TP_DELIVERY_STATUS_ACCEPTED);
+  else
+    DEBUG ("no channel for '%s'; not spawning one just for the delivery report",
+        to);
+
+  wocky_porter_acknowledge_iq (porter, stanza, NULL);
+  return TRUE;
+}
+
+static void
+porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
+  gchar *stream_server;
+
+  g_object_get (conn, "stream-server", &stream_server, NULL);
+
+  if (!tp_strdiff (stream_server, "chat.facebook.com"))
+    {
+      wocky_porter_register_handler_from (
+          porter, WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+          /* We could use _from_server() if that accepted messages from our
+           * JID's domain, not just from bare JID, full JID, or no sender
+           * specified—which would allow the extension to work on other servers
+           * too—but it doesn't.
+           */
+          stream_server,
+          WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+          im_factory_own_message_cb, self,
+          '(',
+            "own-message", ':', NS_FACEBOOK_MESSAGES,
+            '(', "body", ')',
+          ')', NULL);
+    }
+
+  g_free (stream_server);
+}
+
 
 static void
 gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,

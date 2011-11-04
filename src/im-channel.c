@@ -456,35 +456,26 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   base_chan = (TpBaseChannel *) chan;
   peer = tp_base_channel_get_target_handle (base_chan);
 
+  /* update peer's full JID if it's changed */
+  if (tp_strdiff (from, priv->peer_jid))
     {
-      /* update peer's full JID if it's changed */
-      if (tp_strdiff (from, priv->peer_jid))
-        {
-          g_free (priv->peer_jid);
-          priv->peer_jid = g_strdup (from);
-        }
-
-      if (state == -1)
-        {
-          priv->chat_states_supported = CHAT_STATES_NOT_SUPPORTED;
-        }
-      else
-        {
-          _gabble_im_channel_state_receive (chan, state);
-        }
+      g_free (priv->peer_jid);
+      priv->peer_jid = g_strdup (from);
     }
+
+  if (state == -1)
+    priv->chat_states_supported = CHAT_STATES_NOT_SUPPORTED;
+  else
+    _gabble_im_channel_state_receive (chan, state);
 
   msg = build_message (chan, type, timestamp, text);
+  tp_cm_message_set_sender (msg, peer);
+  tp_message_set_int64 (msg, 0, "message-received", time (NULL));
 
-    {
-      tp_cm_message_set_sender (msg, peer);
-      tp_message_set_int64 (msg, 0, "message-received", time (NULL));
+  if (id != NULL)
+    tp_message_set_string (msg, 0, "message-token", id);
 
-      if (id != NULL)
-        tp_message_set_string (msg, 0, "message-token", id);
-
-      tp_message_mixin_take_received (G_OBJECT (chan), msg);
-    }
+  tp_message_mixin_take_received (G_OBJECT (chan), msg);
 }
 
 void
@@ -501,7 +492,8 @@ _gabble_im_channel_report_delivery (
   TpBaseChannel *base_chan = (TpBaseChannel *) self;
   TpBaseConnection *base_conn;
   TpHandle peer;
-  TpMessage *msg;
+  TpMessage *msg, *delivery_report;
+  gchar *tmp;
 
   g_return_if_fail (GABBLE_IS_IM_CHANNEL (self));
   priv = self->priv;
@@ -520,40 +512,34 @@ _gabble_im_channel_report_delivery (
     }
 
   msg = build_message (self, type, timestamp, text);
+  delivery_report = tp_cm_message_new (base_conn, 1);
+  tp_message_set_uint32 (delivery_report, 0, "message-type",
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
+  tp_cm_message_set_sender (delivery_report, peer);
+  tp_message_set_int64 (delivery_report, 0, "message-received",
+      time (NULL));
 
-    {
-      TpMessage *delivery_report = tp_cm_message_new (base_conn, 1);
-      gchar *tmp;
+  tmp = gabble_generate_id ();
+  tp_message_set_string (delivery_report, 0, "message-token", tmp);
+  g_free (tmp);
 
-      tp_message_set_uint32 (delivery_report, 0, "message-type",
-          TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
-      tp_cm_message_set_sender (delivery_report, peer);
-      tp_message_set_int64 (delivery_report, 0, "message-received",
-          time (NULL));
+  tp_message_set_uint32 (delivery_report, 0, "delivery-status",
+      delivery_status);
+  tp_message_set_uint32 (delivery_report, 0, "delivery-error", send_error);
 
-      tmp = gabble_generate_id ();
-      tp_message_set_string (delivery_report, 0, "message-token", tmp);
-      g_free (tmp);
+  if (id != NULL)
+    tp_message_set_string (delivery_report, 0, "delivery-token", id);
 
-      tp_message_set_uint32 (delivery_report, 0, "delivery-status",
-          delivery_status);
-      tp_message_set_uint32 (delivery_report, 0, "delivery-error", send_error);
+  /* This is a delivery report, so the original sender of the echoed message
+   * must be us! */
+  tp_cm_message_set_sender (msg, base_conn->self_handle);
 
-      if (id != NULL)
-        tp_message_set_string (delivery_report, 0, "delivery-token", id);
+  /* Since this is a delivery report, we can trust the id on the message. */
+  if (id != NULL)
+    tp_message_set_string (msg, 0, "message-token", id);
 
-      /* We're getting a send error, so the original sender of the echoed
-       * message must be us! */
-      tp_cm_message_set_sender (msg, base_conn->self_handle);
-
-      /* Since this is a send error, we can trust the id on the message. */
-      if (id != NULL)
-        tp_message_set_string (msg, 0, "message-token", id);
-
-      tp_cm_message_take_message (delivery_report, 0, "delivery-echo", msg);
-
-      tp_message_mixin_take_received (G_OBJECT (self), delivery_report);
-    }
+  tp_cm_message_take_message (delivery_report, 0, "delivery-echo", msg);
+  tp_message_mixin_take_received (G_OBJECT (self), delivery_report);
 }
 
 /**

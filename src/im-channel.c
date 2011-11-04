@@ -444,24 +444,18 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
                             time_t timestamp,
                             const gchar *id,
                             const char *text,
-                            TpChannelTextSendError send_error,
-                            TpDeliveryStatus delivery_status,
                             gint state)
 {
   GabbleIMChannelPrivate *priv;
   TpBaseChannel *base_chan;
-  TpBaseConnection *base_conn;
   TpHandle peer;
   TpMessage *msg;
-  gchar *tmp;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = chan->priv;
   base_chan = (TpBaseChannel *) chan;
-  base_conn = tp_base_channel_get_connection (base_chan);
   peer = tp_base_channel_get_target_handle (base_chan);
 
-  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       /* update peer's full JID if it's changed */
       if (tp_strdiff (from, priv->peer_jid))
@@ -479,7 +473,42 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
           _gabble_im_channel_state_receive (chan, state);
         }
     }
-  else
+
+  msg = build_message (chan, type, timestamp, text);
+
+    {
+      tp_cm_message_set_sender (msg, peer);
+      tp_message_set_int64 (msg, 0, "message-received", time (NULL));
+
+      if (id != NULL)
+        tp_message_set_string (msg, 0, "message-token", id);
+
+      tp_message_mixin_take_received (G_OBJECT (chan), msg);
+    }
+}
+
+void
+_gabble_im_channel_report_delivery (
+    GabbleIMChannel *self,
+    TpChannelTextMessageType type,
+    time_t timestamp,
+    const gchar *id,
+    const char *text,
+    TpChannelTextSendError send_error,
+    TpDeliveryStatus delivery_status)
+{
+  GabbleIMChannelPrivate *priv;
+  TpBaseChannel *base_chan = (TpBaseChannel *) self;
+  TpBaseConnection *base_conn;
+  TpHandle peer;
+  TpMessage *msg;
+
+  g_return_if_fail (GABBLE_IS_IM_CHANNEL (self));
+  priv = self->priv;
+  peer = tp_base_channel_get_target_handle (base_chan);
+  base_conn = tp_base_channel_get_connection (base_chan);
+
+  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       /* strip off the resource (if any), since we just failed to send to it */
       char *slash = strchr (priv->peer_jid, '/');
@@ -490,21 +519,11 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
       priv->chat_states_supported = CHAT_STATES_UNKNOWN;
     }
 
-  msg = build_message (chan, type, timestamp, text);
+  msg = build_message (self, type, timestamp, text);
 
-  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-    {
-      tp_cm_message_set_sender (msg, peer);
-      tp_message_set_int64 (msg, 0, "message-received", time (NULL));
-
-      if (id != NULL)
-        tp_message_set_string (msg, 0, "message-token", id);
-
-      tp_message_mixin_take_received (G_OBJECT (chan), msg);
-    }
-  else
     {
       TpMessage *delivery_report = tp_cm_message_new (base_conn, 1);
+      gchar *tmp;
 
       tp_message_set_uint32 (delivery_report, 0, "message-type",
           TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
@@ -533,7 +552,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
       tp_cm_message_take_message (delivery_report, 0, "delivery-echo", msg);
 
-      tp_message_mixin_take_received (G_OBJECT (chan), delivery_report);
+      tp_message_mixin_take_received (G_OBJECT (self), delivery_report);
     }
 }
 

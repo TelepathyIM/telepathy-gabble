@@ -248,14 +248,18 @@ im_factory_message_cb (LmMessageHandler *handler,
 
       DEBUG ("got error sending to %s, msgtype %u, body:\n%s",
          from, msgtype, body);
+
+      _gabble_im_channel_report_delivery (chan, msgtype, stamp, id, body,
+          send_error, delivery_status);
     }
-
-  if (body != NULL)
-    _gabble_im_channel_receive (chan, msgtype, from, stamp, id, body,
-        send_error, delivery_status, state);
-  else if (state != -1 && send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-    _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);
-
+  else if (body != NULL)
+    {
+      _gabble_im_channel_receive (chan, msgtype, from, stamp, id, body, state);
+    }
+  else if (state != -1)
+    {
+      _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }

@@ -20,8 +20,6 @@
 #include "config.h"
 #include "im-factory.h"
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
 #include <string.h>
 
 #include <dbus/dbus-glib.h>
@@ -31,6 +29,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
+#include <wocky/wocky-c2s-porter.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 
@@ -42,6 +41,7 @@
 #include "disco.h"
 #include "im-channel.h"
 #include "message-util.h"
+#include "namespaces.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
 static void caps_channel_manager_iface_init (gpointer, gpointer);
@@ -70,11 +70,6 @@ struct _GabbleImFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_IM_FACTORY_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_IM_FACTORY,\
-                                GabbleImFactoryPrivate))
-
-
 static void
 gabble_im_factory_init (GabbleImFactory *self)
 {
@@ -93,20 +88,24 @@ gabble_im_factory_init (GabbleImFactory *self)
 
 static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleImFactory *self);
+static void porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data);
 
-
-static GObject *
-gabble_im_factory_constructor (GType type, guint n_props,
-                               GObjectConstructParam *props)
+static void
+gabble_im_factory_constructed (GObject *obj)
 {
-  GObject *obj = G_OBJECT_CLASS (gabble_im_factory_parent_class)->
-           constructor (type, n_props, props);
   GabbleImFactory *self = GABBLE_IM_FACTORY (obj);
+  GObjectClass *parent_class = gabble_im_factory_parent_class;
+
+  if (parent_class->constructed != NULL)
+    parent_class->constructed (obj);
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
-
-  return obj;
+  tp_g_signal_connect_object (self->priv->conn,
+      "porter-available", (GCallback) porter_available_cb, obj, 0);
 }
 
 
@@ -117,7 +116,7 @@ static void
 gabble_im_factory_dispose (GObject *object)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (object);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactoryPrivate *priv = fac->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -139,7 +138,7 @@ gabble_im_factory_get_property (GObject    *object,
                                  GParamSpec *pspec)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (object);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -158,7 +157,7 @@ gabble_im_factory_set_property (GObject      *object,
                                  GParamSpec   *pspec)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (object);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
+  GabbleImFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -179,7 +178,7 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
   g_type_class_add_private (gabble_im_factory_class,
       sizeof (GabbleImFactoryPrivate));
 
-  object_class->constructor = gabble_im_factory_constructor;
+  object_class->constructed = gabble_im_factory_constructed;
   object_class->dispose = gabble_im_factory_dispose;
 
   object_class->get_property = gabble_im_factory_get_property;
@@ -193,11 +192,10 @@ gabble_im_factory_class_init (GabbleImFactoryClass *gabble_im_factory_class)
 
 }
 
-static GabbleIMChannel *new_im_channel (GabbleImFactory *fac,
-    TpHandle handle, TpHandle initiator, gpointer request_token);
-
-static void im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data);
-
+static GabbleIMChannel *get_channel_for_incoming_message (
+    GabbleImFactory *self,
+    const gchar *jid,
+    gboolean create_if_missing);
 
 /**
  * im_factory_message_cb:
@@ -211,18 +209,14 @@ im_factory_message_cb (LmMessageHandler *handler,
                        gpointer user_data)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
   const gchar *from, *body, *id;
   time_t stamp;
   TpChannelTextMessageType msgtype;
-  TpHandle handle;
   GabbleIMChannel *chan;
   gint state;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  gboolean create_if_missing;
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status))
@@ -233,62 +227,46 @@ im_factory_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
-  if (handle == 0)
-    {
-      STANZA_DEBUG (message, "ignoring message node from malformed jid");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
-
+  /* We don't want to open up a channel for the sole purpose of reporting a
+   * send error, nor if this is just a chat state notification.
+   */
+  create_if_missing =
+      (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR) &&
+      (body != NULL);
+  chan = get_channel_for_incoming_message (fac, from, create_if_missing);
   if (chan == NULL)
     {
-      if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-        {
-          DEBUG ("ignoring message error; no sending channel");
-          tp_handle_unref (contact_repo, handle);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
+      if (create_if_missing)
+        STANZA_DEBUG (message, "ignoring message from non-contact JID");
+      else
+        DEBUG ("ignoring message error or chat state notification from '%s': "
+            "no existing channel", from);
 
-      if (body == NULL)
-        {
-          /* don't create a new channel if all we have is a chat state */
-          DEBUG ("ignoring message without body; no existing channel");
-          tp_handle_unref (contact_repo, handle);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-        }
-
-      DEBUG ("found no IM channel, creating one");
-
-      chan = new_im_channel (fac, handle, handle, NULL);
+      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
     }
-
-  g_assert (chan != NULL);
-
-  /* now the channel is referencing the handle, so if we unref it, that's
-   * not a problem */
-  tp_handle_unref (contact_repo, handle);
 
   if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       if (body == NULL)
         {
-          DEBUG ("ignoring error sending chat state to %s (handle %u)", from,
-              handle);
+          DEBUG ("ignoring error sending chat state to %s", from);
           return LM_HANDLER_RESULT_REMOVE_MESSAGE;
         }
 
-      DEBUG ("got error sending to %s (handle %u), msgtype %u, body:\n%s",
-         from, handle, msgtype, body);
+      DEBUG ("got error sending to %s, msgtype %u, body:\n%s",
+         from, msgtype, body);
+
+      _gabble_im_channel_report_delivery (chan, msgtype, stamp, id, body,
+          send_error, delivery_status);
     }
-
-  if (body != NULL)
-    _gabble_im_channel_receive (chan, msgtype, handle, from, stamp, id, body,
-        send_error, delivery_status, state);
-  else if (state != -1 && send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-    _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);
-
+  else if (body != NULL)
+    {
+      _gabble_im_channel_receive (chan, msgtype, from, stamp, id, body, state);
+    }
+  else if (state != -1)
+    {
+      _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);
+    }
 
   return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
@@ -305,7 +283,7 @@ static void
 im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
-  GabbleImFactoryPrivate *priv = GABBLE_IM_FACTORY_GET_PRIVATE (self);
+  GabbleImFactoryPrivate *priv = self->priv;
   TpHandle contact_handle;
   gboolean really_destroyed;
 
@@ -338,40 +316,43 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
     }
 }
 
-/**
- * new_im_channel
+/*
+ * new_im_channel:
+ * @fac: the factory
+ * @handle: a contact handle, for whom a channel must not yet exist
+ * @request_token: if the channel is being created in response to a channel
+ *                 request, the associated request token; otherwise, NULL.
+ *
+ * Creates a new 1-1 text channel to a contact. Must only be called when no 1-1
+ * text channel is already open to that contact.
+ *
+ * Returns: (transfer none): a freshly-constructed channel
  */
 static GabbleIMChannel *
 new_im_channel (GabbleImFactory *fac,
                 TpHandle handle,
-                TpHandle initiator,
                 gpointer request_token)
 {
-  GabbleImFactoryPrivate *priv;
-  TpBaseConnection *conn;
+  GabbleImFactoryPrivate *priv = fac->priv;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   GabbleIMChannel *chan;
-  char *object_path;
   GSList *request_tokens;
+  TpHandle initiator;
 
-  g_return_val_if_fail (GABBLE_IS_IM_FACTORY (fac), NULL);
   g_return_val_if_fail (handle != 0, NULL);
-  g_return_val_if_fail (initiator != 0, NULL);
 
-  priv = GABBLE_IM_FACTORY_GET_PRIVATE (fac);
-  conn = (TpBaseConnection *) priv->conn;
+  if (request_token != NULL)
+    initiator = conn->self_handle;
+  else
+    initiator = handle;
 
-  object_path = g_strdup_printf ("%s/ImChannel%u",
-      conn->object_path, handle);
   chan = g_object_new (GABBLE_TYPE_IM_CHANNEL,
                        "connection", priv->conn,
-                       "object-path", object_path,
                        "handle", handle,
                        "initiator-handle", initiator,
                        "requested", (handle != initiator),
                        NULL);
-  DEBUG ("object path %s", object_path);
   tp_base_channel_register ((TpBaseChannel *) chan);
-  g_free (object_path);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
 
@@ -388,6 +369,48 @@ new_im_channel (GabbleImFactory *fac,
   g_slist_free (request_tokens);
 
   return chan;
+}
+
+/*
+ * get_channel_for_incoming_message:
+ * @self: a factory
+ * @jid: a contact's JID
+ * @create_if_missing: if %TRUE, a new channel will be created if there is no
+ *                     existing channel to @jid
+ *
+ * Retrieves a 1-1 text channel to a particular contact. If no channel is open
+ * to @jid, it will be created only if @create_if_missing is %TRUE. If @jid is
+ * not of the form 'user@domain' (optionally with a resource), no channel will
+ * be opened.
+ *
+ * Returns: an IM channel to @jid, or %NULL
+ */
+static GabbleIMChannel *
+get_channel_for_incoming_message (
+    GabbleImFactory *self,
+    const gchar *jid,
+    gboolean create_if_missing)
+{
+  GabbleImFactoryPrivate *priv = self->priv;
+  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
+      TP_HANDLE_TYPE_CONTACT);
+  TpHandle handle;
+  GabbleIMChannel *chan;
+
+  g_return_val_if_fail (jid != NULL, NULL);
+
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  if (handle == 0)
+    return NULL;
+
+  chan = g_hash_table_lookup (priv->channels, GUINT_TO_POINTER (handle));
+  if (chan != NULL)
+    return chan;
+  else if (create_if_missing)
+    return new_im_channel (self, handle, NULL);
+  else
+    return NULL;
 }
 
 static void
@@ -440,6 +463,92 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
     }
 }
+
+static gboolean
+im_factory_own_message_cb (
+    WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
+{
+  GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
+  WockyNode *own_message, *body;
+  const gchar *to;
+  gboolean sent_locally;
+  GabbleIMChannel *chan;
+
+  /* Our stanza filter should guarantee that these are present. */
+  own_message = wocky_node_get_child (wocky_stanza_get_top_node (stanza),
+      "own-message");
+  g_return_val_if_fail (own_message != NULL, FALSE);
+  body = wocky_node_get_child (own_message, "body");
+  g_return_val_if_fail (body != NULL, FALSE);
+
+  to = wocky_node_get_attribute (own_message, "to");
+  if (to == NULL)
+    {
+      DEBUG ("own-message missing to='' attribute; ignoring");
+      return FALSE;
+    }
+
+  /* If self='true', the message was sent by the local user on this machine,
+   * rather than by the local user on some other machine. We don't really have
+   * a good way to show this in Messages. Also we don't get told the id='' of
+   * the original message, which is annoying.
+   */
+  sent_locally = !tp_strdiff ("true",
+      wocky_node_get_attribute (own_message, "self"));
+  DEBUG ("this report is for a message to '%s', sent %s",
+      to, sent_locally ? "locally" : "remotely");
+
+  /* Don't create a channel for the sole purpose of reporting an own-message.
+   * This is consistent with not creating a channel to report send errors
+   * (given that both are delivery reports).
+   */
+  chan = get_channel_for_incoming_message (self, to, FALSE);
+  if (chan != NULL)
+    _gabble_im_channel_report_delivery (chan,
+        TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL, 0, NULL, body->content,
+        GABBLE_TEXT_CHANNEL_SEND_NO_ERROR, TP_DELIVERY_STATUS_ACCEPTED);
+  else
+    DEBUG ("no channel for '%s'; not spawning one just for the delivery report",
+        to);
+
+  wocky_porter_acknowledge_iq (porter, stanza, NULL);
+  return TRUE;
+}
+
+static void
+porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
+  gchar *stream_server;
+
+  g_object_get (conn, "stream-server", &stream_server, NULL);
+
+  if (!tp_strdiff (stream_server, "chat.facebook.com"))
+    {
+      wocky_porter_register_handler_from (
+          porter, WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+          /* We could use _from_server() if that accepted messages from our
+           * JID's domain, not just from bare JID, full JID, or no sender
+           * specified—which would allow the extension to work on other servers
+           * too—but it doesn't.
+           */
+          stream_server,
+          WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+          im_factory_own_message_cb, self,
+          '(',
+            "own-message", ':', NS_FACEBOOK_MESSAGES,
+            '(', "body", ')',
+          ')', NULL);
+    }
+
+  g_free (stream_server);
+}
+
 
 static void
 gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
@@ -570,7 +679,6 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
                                 GHashTable *request_properties,
                                 gboolean require_new)
 {
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->conn;
   TpHandle handle;
   GError *error = NULL;
   TpExportableChannel *channel;
@@ -598,7 +706,7 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
 
   if (channel == NULL)
     {
-      new_im_channel (self, handle, base_conn->self_handle, request_token);
+      new_im_channel (self, handle, request_token);
       return TRUE;
     }
 

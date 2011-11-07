@@ -20,8 +20,6 @@
 #include "config.h"
 #include "media-factory.h"
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
 #include <stdlib.h>
 #include <string.h>
 

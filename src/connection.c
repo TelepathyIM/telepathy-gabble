@@ -25,8 +25,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
@@ -3814,7 +3812,7 @@ gabble_connection_send_presence (GabbleConnection *conn,
     lm_message_node_add_own_nick (
         wocky_stanza_get_top_node (message), conn);
 
-  if (!CHECK_STR_EMPTY(status))
+  if (!tp_str_empty (status))
     lm_message_node_add_child (
         wocky_stanza_get_top_node (message), "status", status);
 

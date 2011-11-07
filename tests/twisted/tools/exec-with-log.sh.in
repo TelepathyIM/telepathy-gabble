@@ -2,8 +2,10 @@
 
 cd "@abs_top_builddir@/tests/twisted/tools"
 
-GABBLE_DEBUG=all LM_DEBUG=net GIBBER_DEBUG=all WOCKY_DEBUG=all
+GABBLE_DEBUG=all GIBBER_DEBUG=all WOCKY_DEBUG=all
 export GABBLE_DEBUG
+export GIBBER_DEBUG
+export WOCKY_DEBUG
 GABBLE_TIMING=1
 export GABBLE_TIMING
 GABBLE_PLUGIN_DIR="@abs_top_builddir@/plugins/.libs"

@@ -20,8 +20,6 @@
 #include "config.h"
 #include "muc-factory.h"
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
 #include <string.h>
 
 #include <dbus/dbus-glib.h>
@@ -99,17 +97,14 @@ struct _GabbleMucFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_MUC_FACTORY_GET_PRIVATE(o) \
-  (G_TYPE_INSTANCE_GET_PRIVATE ((o), GABBLE_TYPE_MUC_FACTORY, \
-                                GabbleMucFactoryPrivate))
-
 static GObject *gabble_muc_factory_constructor (GType type, guint n_props,
     GObjectConstructParam *props);
 
 static void
 gabble_muc_factory_init (GabbleMucFactory *fac)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (fac,
+      GABBLE_TYPE_MUC_FACTORY, GabbleMucFactoryPrivate);
 
   fac->priv = priv;
 
@@ -150,7 +145,7 @@ static void
 gabble_muc_factory_dispose (GObject *object)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (object);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -179,7 +174,7 @@ gabble_muc_factory_get_property (GObject    *object,
                                  GParamSpec *pspec)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (object);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -198,7 +193,7 @@ gabble_muc_factory_set_property (GObject      *object,
                                  GParamSpec   *pspec)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (object);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   switch (property_id) {
     case PROP_CONNECTION:
@@ -242,7 +237,7 @@ static void
 muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandle room_handle;
 
   tp_channel_manager_emit_channel_closed_for_object (fac,
@@ -265,7 +260,7 @@ muc_ready_cb (GabbleMucChannel *text_chan,
               gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   GabbleTubesChannel *tubes_chan;
   GSList *requests_satisfied_text, *requests_satisfied_tubes = NULL;
   gboolean text_requested;
@@ -354,7 +349,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
                    gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   GabbleTubesChannel *tubes_chan;
   GSList *requests_satisfied;
   GSList *iter;
@@ -455,7 +450,7 @@ new_muc_channel (GabbleMucFactory *fac,
                  char **initial_ids,
                  const char *room_name)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   GabbleMucChannel *chan;
   char *object_path;
@@ -531,7 +526,7 @@ do_invite (GabbleMucFactory *fac,
            TpHandle inviter_handle,
            const gchar *reason)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room_handle;
@@ -583,7 +578,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   struct DiscoInviteData *data = (struct DiscoInviteData *) user_data;
 
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data->factory);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   LmMessageNode *identity;
@@ -628,7 +623,7 @@ process_muc_invite (GabbleMucFactory *fac,
                     const gchar *from,
                     TpChannelTextSendError send_error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -702,7 +697,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
                          const gchar *body,
                          TpChannelTextSendError send_error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
@@ -790,7 +785,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
                         gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
 
   const gchar *from, *body, *id;
   time_t stamp;
@@ -826,7 +821,7 @@ muc_factory_message_cb (LmMessageHandler *handler,
 void
 gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   GHashTableIter iter;
   gpointer channel = NULL;
 
@@ -844,7 +839,7 @@ gabble_muc_factory_associate_request (GabbleMucFactory *self,
                                       gpointer channel,
                                       gpointer request)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   GSList *list = g_hash_table_lookup (priv->queued_requests, channel);
 
   g_assert (TP_IS_EXPORTABLE_CHANNEL (channel));
@@ -882,7 +877,7 @@ cancel_queued_requests (gpointer k,
 static void
 gabble_muc_factory_close_all (GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   DEBUG ("closing channels");
 
@@ -937,7 +932,7 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   switch (status)
     {
@@ -966,7 +961,7 @@ gabble_muc_factory_constructor (GType type, guint n_props,
   GObject *obj = G_OBJECT_CLASS (gabble_muc_factory_parent_class)->
            constructor (type, n_props, props);
   GabbleMucFactory *self = GABBLE_MUC_FACTORY (obj);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   priv->status_changed_id = g_signal_connect (priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
@@ -1011,7 +1006,7 @@ gabble_muc_factory_foreach_channel (TpChannelManager *manager,
                                     gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (manager);
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (fac);
+  GabbleMucFactoryPrivate *priv = fac->priv;
   struct _ForeachData data;
 
   data.user_data = user_data;
@@ -1065,7 +1060,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
                                              const gchar *stream_id,
                                              LmMessage *msg)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleMucChannel *gmuc = NULL;
@@ -1095,15 +1090,15 @@ GabbleMucChannel *
 gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
                                       TpHandle handle)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
 
   return g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 }
 
 
 static const gchar * const muc_channel_fixed_properties[] = {
-    TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
+    TP_PROP_CHANNEL_CHANNEL_TYPE,
+    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
     NULL
 };
 
@@ -1111,20 +1106,20 @@ static const gchar * const * muc_tubes_channel_fixed_properties =
     muc_channel_fixed_properties;
 
 static const gchar * const muc_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage",
+    TP_PROP_CHANNEL_TARGET_HANDLE,
+    TP_PROP_CHANNEL_TARGET_ID,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INVITATION_MESSAGE,
     TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME,
     TP_PROP_CHANNEL_INTERFACE_ROOM_SERVER,
     NULL
 };
 
 static const gchar * const muc_tubes_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
+    TP_PROP_CHANNEL_TARGET_HANDLE,
+    TP_PROP_CHANNEL_TARGET_ID,
     NULL
 };
 
@@ -1139,12 +1134,12 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
 
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   /* no string value yet - we'll change it for each channel class */
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType",
+  g_hash_table_insert (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
 
   handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
   g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_ROOM);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
+  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
       handle_type_value);
 
   /* Channel.Type.Text */
@@ -1186,7 +1181,7 @@ ensure_tubes_channel (GabbleMucFactory *self,
                       GabbleTubesChannel **tubes_chan,
                       gboolean requested)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
   GabbleMucChannel *text_chan;
   TpHandle initiator = base_conn->self_handle;
@@ -1212,7 +1207,7 @@ handle_text_channel_request (GabbleMucFactory *self,
                             TpHandle room,
                             GError **error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpBaseConnection *conn = TP_BASE_CONNECTION (priv->conn);
   GabbleMucChannel *text_chan;
   TpHandleSet *handles;
@@ -1239,16 +1234,16 @@ handle_text_channel_request (GabbleMucFactory *self,
     return FALSE;
 
   initial_channels = tp_asv_get_boxed (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels",
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS,
       TP_ARRAY_TYPE_OBJECT_PATH_LIST);
   initial_handles = tp_asv_get_boxed (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles",
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES,
       DBUS_TYPE_G_UINT_ARRAY);
   initial_ids = tp_asv_get_boxed (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs",
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS,
       G_TYPE_STRV);
   invite_msg = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InvitationMessage");
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INVITATION_MESSAGE);
 
   room_name = tp_asv_get_string (request_properties,
       TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME);
@@ -1558,7 +1553,7 @@ handle_tubes_channel_request (GabbleMucFactory *self,
                               TpHandle handle,
                               GError **error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   GabbleTubesChannel *tube = NULL;
   GabbleMucChannel *gmuc = NULL;
 
@@ -1615,7 +1610,7 @@ handle_tube_channel_request (GabbleMucFactory *self,
                              GError **error)
 
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   gboolean can_announce_now = TRUE;
   gboolean tubes_channel_created = FALSE;
   GabbleTubesChannel *tube = NULL;
@@ -1703,12 +1698,12 @@ handle_stream_tube_channel_request (GabbleMucFactory *self,
 
   /* "Service" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-            TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+            TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
   if (service == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+          TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
       return FALSE;
     }
 
@@ -1734,12 +1729,12 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
 
   /* "ServiceName" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+      TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
   if (service == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+          TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
       return FALSE;
     }
 
@@ -1781,7 +1776,7 @@ handle_call_channel_request (GabbleMucFactory *self,
     TpHandle handle,
     GError **error)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   gboolean initial_audio, initial_video;
   GabbleMucChannel *muc;
   GabbleCallMucChannel *call;
@@ -1844,6 +1839,27 @@ error:
   return FALSE;
 }
 
+typedef gboolean (*ChannelTypeHandlerFunc) (
+    GabbleMucFactory *self,
+    gpointer request_token,
+    GHashTable *request_properties,
+    gboolean require_new,
+    TpHandle room,
+    GError **error);
+
+typedef struct {
+    const gchar *channel_type;
+    ChannelTypeHandlerFunc f;
+} ChannelTypeHandler;
+
+static ChannelTypeHandler channel_type_handlers[] = {
+    { TP_IFACE_CHANNEL_TYPE_TEXT, handle_text_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_TUBES, handle_tubes_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, handle_stream_tube_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, handle_dbus_tube_channel_request },
+    { TPY_IFACE_CHANNEL_TYPE_CALL, handle_call_channel_request },
+    { NULL }
+};
 
 static gboolean
 gabble_muc_factory_request (GabbleMucFactory *self,
@@ -1856,21 +1872,22 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   TpHandle handle;
   gboolean conference, room;
   const gchar *channel_type;
+  ChannelTypeHandler *h;
 
   handle_type = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandleType", NULL);
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
   channel_type = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL ".ChannelType");
+      TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   /* Conference channels can be anonymous (HandleTypeNone) */
   conference = (handle_type == TP_HANDLE_TYPE_NONE &&
       !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
       (g_hash_table_lookup (request_properties,
-         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialChannels") ||
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS) ||
        g_hash_table_lookup (request_properties,
-         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeHandles") ||
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES) ||
        g_hash_table_lookup (request_properties,
-         TP_IFACE_CHANNEL_INTERFACE_CONFERENCE ".InitialInviteeIDs")));
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS)));
 
   room = (handle_type == TP_HANDLE_TYPE_NONE
       && !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT)
@@ -1881,58 +1898,29 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   if (handle_type != TP_HANDLE_TYPE_ROOM && !conference && !room)
     return FALSE;
 
-  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE) &&
-      tp_strdiff (channel_type, TPY_IFACE_CHANNEL_TYPE_CALL))
-    return FALSE;
-
   /* validity already checked by TpBaseConnection */
   handle = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+      TP_PROP_CHANNEL_TARGET_HANDLE, NULL);
   g_assert (conference || room || handle != 0);
 
-  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT))
+  for (h = channel_type_handlers; h->channel_type != NULL; h++)
     {
-      if (handle_text_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES))
-    {
-      if (handle_tubes_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
-    {
-      if (handle_stream_tube_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
-    {
-      if (handle_dbus_tube_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else if (!tp_strdiff (channel_type, TPY_IFACE_CHANNEL_TYPE_CALL))
-    {
-      if (handle_call_channel_request (self, request_token,
-          request_properties, require_new, handle, &error))
-        return TRUE;
-    }
-  else
-    {
-      g_assert_not_reached ();
+      if (tp_strdiff (channel_type, h->channel_type))
+        continue;
+
+      if (!h->f (self, request_token, request_properties, require_new,
+            handle, &error))
+        {
+          tp_channel_manager_emit_request_failed (self, request_token,
+              error->domain, error->code, error->message);
+          g_error_free (error);
+        }
+
+      /* We've handled the request one way or another. */
+      return TRUE;
     }
 
-  /* Something failed */
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
-  g_error_free (error);
-  return TRUE;
+  return FALSE;
 }
 
 
@@ -1975,7 +1963,7 @@ gboolean
 gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
   GabbleJingleSession *session)
 {
-  GabbleMucFactoryPrivate *priv = GABBLE_MUC_FACTORY_GET_PRIVATE (self);
+  GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   TpHandle room;

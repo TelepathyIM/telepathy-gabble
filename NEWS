@@ -1,9 +1,22 @@
-telepathy-gabble 0.13.8 (UNRELEASED)
+telepathy-gabble 0.14.0 (UNRELEASED)
 ====================================
 
-The “Ironically, downforeveryoneorjustme.com is down.” release.
+The “Ironically, downforeveryoneorjustme.com is down.” release. This is
+the start of a glorious new stable series of Gabble!
 
-Enhancements:
+Major changes since 0.12.x which might disrupt your life:
+
+• Gabble implements the new Room, Subject and RoomConfig interfaces, and
+  no longer supports the old, crummy Telepathy.Properties interface.
+
+• Gabble no longer supports the legacy Presence interace.
+
+• require-encryption is now enabled by default.
+
+• The plugin API has been extended; plugins for 0.12.x may need updating
+  to compile and run with 0.14.x.
+
+Enhancements since 0.13.7:
 
 • It's now possible to install Gabble's test suite. (albanc)
 
@@ -11,7 +24,7 @@ Enhancements:
   'accepted' delivery reports when the user sends a message to a contact
   using another device. (wjt)
 
-Fixes:
+Fixes since 0.13.7:
 
 • Compile against unstable GLib, where including glib/gtypes.h directly
   (instead of glib.h) is forbidden. (cosimoc)

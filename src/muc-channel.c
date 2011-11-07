@@ -455,7 +455,7 @@ gabble_muc_channel_constructed (GObject *obj)
 
   priv->subject = NULL;
   priv->subject_actor = NULL;
-  priv->subject_timestamp = 0;
+  priv->subject_timestamp = G_MAXINT64;
   /* fd.o#13157: The subject is currently assumed to be modifiable by everyone
    * in the room (role >= VISITOR). When that bug is fixed, it will be: */
   /* Modifiable via special <message/>s, if the user's role is high enough;
@@ -2521,7 +2521,8 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
   GabbleMucChannelPrivate *priv;
   const gchar *actor;
   GError *error = NULL;
-  gint64 timestamp = g_date_time_to_unix (datetime);
+  gint64 timestamp = datetime != NULL ?
+    g_date_time_to_unix (datetime) : G_MAXINT64;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2601,7 +2602,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   gboolean is_echo;
   gboolean is_error;
   gchar *tmp;
-  gint64 timestamp = g_date_time_to_unix (datetime);
+  gint64 timestamp = datetime != NULL ?  g_date_time_to_unix (datetime): 0;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 

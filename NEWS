@@ -1,7 +1,38 @@
 telepathy-gabble 0.13.8 (UNRELEASED)
 ====================================
 
-…
+The “Ironically, downforeveryoneorjustme.com is down.” release.
+
+Enhancements:
+
+• It's now possible to install Gabble's test suite. (albanc)
+
+• fd.o#41417: when connected to Facebook, text channels now produce
+  'accepted' delivery reports when the user sends a message to a contact
+  using another device. (wjt)
+
+Fixes:
+
+• Compile against unstable GLib, where including glib/gtypes.h directly
+  (instead of glib.h) is forbidden. (cosimoc)
+
+• Correct type mismatches for timestamps in muc-channel.c, which lead to
+  Gabble not compiling correctly on 32-bit. (danni)
+
+• fd.o#41743: Offline contacts to whom we have a presence subscription
+  and also a channel open at the time the roster arrives are now
+  correctly shown as offline, rather than unknown. (wjt)
+
+• fd.o#42281: Actually implement the ContactBlocking interface.
+  (cassidy)
+
+• fd.o#42186: Gabble no longer crashes if the server replies to its
+  roster query IQ twice (as vk.com's XMPP server does). (wjt)
+
+• Various memory leak fixes. (andrunko)
+
+• Gabble now returns MAXINT64 for the subject timestamp when it is
+  unknown, as per the latest spec. (danni)
 
 telepathy-gabble 0.13.7 (2011-10-12)
 ====================================

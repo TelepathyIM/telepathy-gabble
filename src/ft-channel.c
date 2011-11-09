@@ -950,7 +950,7 @@ gabble_file_transfer_channel_class_init (
   param_spec = g_param_spec_boxed ("metadata",
       "Metadata",
       "The Metadata.Metadata property of this channel",
-      TP_HASH_TYPE_STRING_STRING_MAP,
+      GABBLE_HASH_TYPE_METADATA,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_METADATA,
       param_spec);
@@ -1421,13 +1421,15 @@ add_metadata_forms (GabbleFileTransferChannel *self,
       g_hash_table_iter_init (&iter, self->priv->metadata);
       while (g_hash_table_iter_next (&iter, &key, &val))
         {
-          wocky_node_add_build (x,
-              '(', "field",
-                '@', "var", key,
-                '(', "value",
-                  '$', val,
-                ')',
-              ')', NULL);
+          const gchar * const *values = val;
+
+          WockyNode *field = wocky_node_add_child (x, "field");
+          wocky_node_set_attribute (field, "var", key);
+
+          for (; values != NULL && *values != NULL; values++)
+            {
+              wocky_node_add_child_with_content (field, "value", *values);
+            }
         }
 
       tree = wocky_node_tree_new_from_node (x);

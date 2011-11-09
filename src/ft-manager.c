@@ -557,7 +557,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
 
   metadata = tp_asv_get_boxed (request_properties,
       GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
-      TP_HASH_TYPE_STRING_STRING_MAP);
+      GABBLE_HASH_TYPE_METADATA);
 
   if (metadata != NULL && g_hash_table_lookup ((GHashTable *) metadata, "FORM_TYPE"))
     {
@@ -778,7 +778,7 @@ extract_metadata (WockyNode *file)
     return NULL;
 
   metadata = g_hash_table_new_full (g_str_hash, g_str_equal,
-      g_free, g_free);
+      g_free, (GDestroyNotify) g_strfreev);
 
   g_hash_table_iter_init (&iter, form->fields);
   while (g_hash_table_iter_next (&iter, &key, &value))
@@ -791,7 +791,7 @@ extract_metadata (WockyNode *file)
 
       g_hash_table_insert (metadata,
           g_strdup (var),
-          g_strdup (field->raw_value_contents[0]));
+          g_strdupv (field->raw_value_contents));
     }
 
   g_object_unref (form);

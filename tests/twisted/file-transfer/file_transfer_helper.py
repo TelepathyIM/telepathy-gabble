@@ -51,8 +51,8 @@ class FileTransferTest(object):
     CONTACT_FULL_JID = 'test-ft@localhost/Telepathy'
 
     service_name = 'a.wacky.service.name'
-    metadata = {'loads': 'of',
-                'mental': 'data'}
+    metadata = {'loads': ['of'],
+                'mental': ['data']}
 
     def __init__(self, bytestream_cls, file, address_type, access_control, access_control_param):
         self.file = file
@@ -191,7 +191,7 @@ class ReceiveFileTest(FileTransferTest):
             add_data_forms(file_node, service_form)
 
         if self.metadata:
-            metadata_form = {ns.TP_FT_METADATA: {k: [v] for k, v in self.metadata.items()}}
+            metadata_form = {ns.TP_FT_METADATA: self.metadata}
             add_data_forms(file_node, metadata_form)
 
         # so... lunch?
@@ -399,7 +399,7 @@ class SendFileTest(FileTransferTest):
             cs.FT_DATE:  self.file.date,
             cs.FT_INITIAL_OFFSET: 0,
             cs.FT_SERVICE_NAME: self.service_name,
-            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='ss')}
+            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='sas')}
 
         if uri:
             request[cs.FT_URI] = self.file.uri
@@ -476,10 +476,7 @@ class SendFileTest(FileTransferTest):
             assert ns.TP_FT_METADATA_SERVICE not in forms
 
         if self.metadata:
-            # the dataform isn't such a simple a{ss} because it can
-            # have multiple values
-            expected = {k:[v] for k,v in self.metadata.items()}
-            assertEquals(expected, forms[ns.TP_FT_METADATA])
+            assertEquals(self.metadata, forms[ns.TP_FT_METADATA])
         else:
             assert ns.TP_FT_METADATA not in forms
 

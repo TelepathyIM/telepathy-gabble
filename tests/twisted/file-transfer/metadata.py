@@ -18,7 +18,7 @@ class ReceiveFileNoMetadata(ReceiveFileTest):
     metadata = {}
 
 class SendFileBadProps(SendFileTest):
-    metadata = {'FORM_TYPE': 'this shouldnt be allowed'}
+    metadata = {'FORM_TYPE': ['this shouldnt be allowed']}
 
     def request_ft_channel(self):
         request = { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
@@ -33,7 +33,7 @@ class SendFileBadProps(SendFileTest):
             cs.FT_DATE:  self.file.date,
             cs.FT_INITIAL_OFFSET: 0,
             cs.FT_SERVICE_NAME: self.service_name,
-            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='ss')}
+            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='sas')}
 
         call_async(self.q, self.conn.Requests, 'CreateChannel', request)
 
@@ -59,7 +59,7 @@ class SendFileBadContact(SendFileTest):
             cs.FT_DATE:  self.file.date,
             cs.FT_INITIAL_OFFSET: 0,
             cs.FT_SERVICE_NAME: self.service_name,
-            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='ss')}
+            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='sas')}
 
         call_async(self.q, self.conn.Requests, 'CreateChannel', request)
 

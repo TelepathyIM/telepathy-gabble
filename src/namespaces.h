@@ -123,7 +123,7 @@
 #define NS_TEMPPRES "urn:xmpp:temppres:0"
 #define NS_GOOGLE_SHARED_STATUS "google:shared-status"
 
-#define NS_TP_FT_METADATA_SERVICE "http://telepathy.im/file-transfer/service"
-#define NS_TP_FT_METADATA       "http://telepathy.im/file-transfer/metadata"
+#define NS_TP_FT_METADATA_SERVICE "http://telepathy.freedesktop.org/xmpp/file-transfer-service"
+#define NS_TP_FT_METADATA       "http://telepathy.freedesktop.org/xmpp/file-transfer-metadata"
 
 #endif /* __GABBLE_NAMESPACES__H__ */

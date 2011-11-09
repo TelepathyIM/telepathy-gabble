@@ -3481,7 +3481,7 @@ gabble_connection_update_capabilities (
               data_forms->len > 1 ? "s" : "");
 
           for (j = 0; j < data_forms->len; j++)
-            DEBUG (" - %s", get_form_type (g_ptr_array_index (data_forms, i)));
+            DEBUG (" - %s", get_form_type (g_ptr_array_index (data_forms, j)));
 
           g_hash_table_insert (self->priv->client_data_forms,
               g_strdup (client_name), data_forms);

@@ -57,7 +57,7 @@
     </property>
 
     <property name="Metadata" tp:name-for-bindings="Metadata"
-      type="a{ss}" tp:type="String_String_Map" access="readwrite"
+      type="a{sas}" tp:type="Metadata" access="readwrite"
       tp:immutable="sì" tp:requestable="naturalmente">
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>Additional information about the file transfer set by the
@@ -65,6 +65,18 @@
           this property will be empty.</p>
       </tp:docstring>
     </property>
+
+    <tp:mapping name="Metadata" type="a{ua{sv}}">
+      <tp:docstring>
+        A mapping from string key to a list of strings, used in the
+        <tp:member-ref>Metadata</tp:member-ref> property. To emulate a
+        simple string → string hash table one should have exactly one
+        member in the value string list. A string list is used instead
+        of a single string so one can transfer RDF triples.
+      </tp:docstring>
+      <tp:member name="Key" type="s"/>
+      <tp:member name="Values" type="as"/>
+    </tp:mapping>
 
   </interface>
 </node>

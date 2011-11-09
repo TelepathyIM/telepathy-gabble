@@ -14,7 +14,6 @@ gabble-C-tests.list:
 	$(AM_V_GEN)echo $(tests_list) > $@
 
 if ENABLE_INSTALLED_TESTS
-gabbletestsdir = @gabbletestsdir@
 gabbletests_PROGRAMS = $(tests_list)
 gabbletests_DATA = gabble-C-tests.list
 else

@@ -20,7 +20,7 @@ def test_protocol(q, bus, conn, stream):
 
     addr_props = proto.Properties.GetAll(cs.PROTOCOL_IFACE_ADDRESSING)
 
-    assertEquals(["x-jabber"], addr_props["AddressableVCardFields"])
+    assertEquals(sorted(["x-jabber", "x-facebook-id"]), sorted(addr_props["AddressableVCardFields"]))
 
     assertEquals(["xmpp"], addr_props["AddressableURISchemes"])
 
@@ -30,6 +30,16 @@ def test_protocol(q, bus, conn, stream):
         "X-JABBER", "eitan@EXAMPLE.com/somewhere")
 
     assertEquals("eitan@example.com", normalized_address)
+
+    normalized_address = proto.Addressing.NormalizeVCardAddress(
+        "X-FACEBOOK-ID", "-12345@chat.facebook.com")
+
+    assertEquals("12345", normalized_address)
+
+    normalized_address = proto.Addressing.NormalizeVCardAddress(
+        "x-facebook-id", "-12345@chat.facebook.com")
+
+    assertEquals("12345", normalized_address)
 
     call_async(q, proto.Addressing, "NormalizeVCardAddress",
                "X-WEIRD-FIELD", "eitan@example.com")

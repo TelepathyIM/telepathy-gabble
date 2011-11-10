@@ -301,6 +301,7 @@ mgr_file_contents (const char *busname,
       const gchar * const *c_ifaces;
       const gchar * const *addr_vcard_fields;
       const gchar * const *addr_uri_schemes;
+      const gchar * const *auth_types;
 
       g_object_get (G_OBJECT (protocol), "immutable-properties", &props, NULL);
 
@@ -310,7 +311,7 @@ mgr_file_contents (const char *busname,
       ifaces = tp_asv_get_strv (props, TP_PROP_PROTOCOL_INTERFACES);
       c_ifaces = tp_asv_get_strv (props,
           TP_PROP_PROTOCOL_CONNECTION_INTERFACES);
-      const gchar * const *auth_types = tp_asv_get_strv (props,
+      auth_types = tp_asv_get_strv (props,
           TP_PROP_PROTOCOL_AUTHENTICATION_TYPES);
       addr_vcard_fields = tp_asv_get_strv (props,
           TP_PROP_PROTOCOL_INTERFACE_ADDRESSING_ADDRESSABLE_VCARD_FIELDS);

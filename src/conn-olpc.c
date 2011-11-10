@@ -3025,7 +3025,7 @@ find_activity_by_id (GabbleConnection *self,
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
       GabbleOlpcActivity *activity = GABBLE_OLPC_ACTIVITY (value);
-      if (strcmp (activity->id, activity_id) == 0)
+      if (!tp_strdiff (activity->id, activity_id))
         return activity;
     }
 

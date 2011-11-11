@@ -17,6 +17,14 @@ class ReceiveFileNoMetadata(ReceiveFileTest):
     service_name = ''
     metadata = {}
 
+class SendFileOddMetadata(SendFileTest):
+    service_name = ''
+    metadata = {'loldongs': []}
+
+class ReceiveFileOddMetadata(ReceiveFileTest):
+    service_name = ''
+    metadata = {'loldongs': []}
+
 class SendFileBadProps(SendFileTest):
     metadata = {'FORM_TYPE': ['this shouldnt be allowed']}
 
@@ -71,5 +79,7 @@ class SendFileBadContact(SendFileTest):
 if __name__ == '__main__':
     exec_file_transfer_test(SendFileNoMetadata, True)
     exec_file_transfer_test(ReceiveFileNoMetadata, True)
+    exec_file_transfer_test(SendFileOddMetadata, True)
+    exec_file_transfer_test(ReceiveFileOddMetadata, True)
     exec_file_transfer_test(SendFileBadProps, True)
     exec_file_transfer_test(SendFileBadContact, True)

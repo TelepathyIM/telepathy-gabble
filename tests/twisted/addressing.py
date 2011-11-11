@@ -118,5 +118,5 @@ def test_connection(q, bus, conn, stream):
         assertContains(req_uri.lower(), c[cs.CONN_IFACE_ADDRESSING + '/uris'])
 
 if __name__ == '__main__':
-    #exec_test(test_protocol)
+    exec_test(test_protocol)
     exec_test(test_connection)

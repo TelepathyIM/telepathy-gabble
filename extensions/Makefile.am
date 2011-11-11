@@ -80,7 +80,7 @@ _gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
 
 _gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
 	Makefile.am
-	$(AM_V_GEN)$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< > $@
+	$(AM_V_GEN)$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< _gen/enums
 
 _gen/interfaces.h _gen/interfaces-body.h: _gen/all.xml \
 	$(tools_dir)/glib-interfaces-gen.py \

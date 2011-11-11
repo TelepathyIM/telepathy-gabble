@@ -163,7 +163,7 @@ gabble_uris_for_handle (TpHandleRepoIface *contact_repo,
   guint i;
   gchar **uris = g_new0 (gchar *, len + 1);
 
-  for (i=0;i<len;i++)
+  for (i = 0; i < len; i++)
     uris[i] = gabble_uri_for_handle (contact_repo, addressable_uri_schemes[i], contact);
 
   return uris;
@@ -177,7 +177,7 @@ gabble_vcard_addresses_for_handle (TpHandleRepoIface *contact_repo,
   GHashTable *addresses = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) g_free);
 
-  for (field=addressable_vcard_fields;*field!=NULL;field++)
+  for (field = addressable_vcard_fields; *field != NULL; field++)
     g_hash_table_insert (addresses, (gpointer) *field,
         gabble_vcard_address_for_handle (contact_repo, *field, contact));
 

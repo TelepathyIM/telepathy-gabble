@@ -225,7 +225,8 @@ def extract_data_forms(x_nodes):
             if field['var'] == 'FORM_TYPE':
                 name = str(field.firstChildElement())
             else:
-                values = [str(x) for x in xpath.queryForNodes('/field/value', field)]
+                value_nodes = xpath.queryForNodes('/field/value', field) or []
+                values = [str(x) for x in value_nodes]
 
                 fields[field['var']] = values
 

@@ -77,7 +77,7 @@ gabble_parse_uri (const gchar *uri,
   jid = gabble_normalize_contact (NULL, tokenized_uri[1],
       GUINT_TO_POINTER (GABBLE_JID_GLOBAL), error);
 
-  if (normalized_uri != NULL)
+  if (jid && normalized_uri != NULL)
     *normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme, jid);
 
  OUT:

@@ -379,7 +379,7 @@ dup_authentication_types (TpBaseProtocol *self)
 }
 
 static GStrv
-get_supported_uri_schemes (TpBaseProtocol *self)
+dup_supported_uri_schemes (TpBaseProtocol *self)
 {
   const gchar * const addressing_uri_schemes[] = {"xmpp", NULL};
 
@@ -387,7 +387,7 @@ get_supported_uri_schemes (TpBaseProtocol *self)
 }
 
 static GStrv
-get_supported_vcard_fields (TpBaseProtocol *self)
+dup_supported_vcard_fields (TpBaseProtocol *self)
 {
   const gchar * const addressing_vcard_fields[] = {"x-jabber", NULL};
 
@@ -501,8 +501,8 @@ gabble_jabber_protocol_new (void)
 static void
 addressing_iface_init (TpProtocolAddressingInterface *iface)
 {
-  iface->get_supported_vcard_fields = get_supported_vcard_fields;
-  iface->get_supported_uri_schemes = get_supported_uri_schemes;
+  iface->dup_supported_vcard_fields = dup_supported_vcard_fields;
+  iface->dup_supported_uri_schemes = dup_supported_uri_schemes;
   iface->normalize_vcard_address = addressing_normalize_vcard_address;
   iface->normalize_uri = addressing_normalize_uri;
 }

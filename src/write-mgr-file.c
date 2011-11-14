@@ -303,7 +303,9 @@ mgr_file_contents (const char *busname,
       const gchar * const *addr_uri_schemes;
       const gchar * const *auth_types;
 
-      g_object_get (G_OBJECT (protocol), "immutable-properties", &props, NULL);
+      g_object_get (G_OBJECT (protocol),
+          "immutable-properties", &props,
+          NULL);
 
       section_name = g_strdup_printf ("Protocol %s",
           tp_base_protocol_get_name (TP_BASE_PROTOCOL (protocol)));

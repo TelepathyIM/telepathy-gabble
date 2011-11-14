@@ -24,8 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "util.h"
 #include "connection.h"
+#include "util.h"
 
 static const gchar *addressable_vcard_fields[] = {"x-jabber", NULL};
 static const gchar *addressable_uri_schemes[] = {"xmpp", NULL};

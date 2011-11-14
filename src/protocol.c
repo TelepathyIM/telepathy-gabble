@@ -399,12 +399,7 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
 {
   gchar *normalized_address = NULL;
 
-  if (g_ascii_strcasecmp (vcard_field, "x-jabber") != 0)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "'x-jabber' is the only vCard field supported by this protocol");
-    }
-  else
+  if (g_ascii_strcasecmp (vcard_field, "x-jabber") == 0)
     {
       GError *gabble_error = NULL;
       normalized_address = gabble_normalize_contact (NULL,
@@ -418,6 +413,11 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
               gabble_error->message);
           g_error_free (gabble_error);
         }
+    }
+  else
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'x-jabber' is the only vCard field supported by this protocol");
     }
 
   return normalized_address;

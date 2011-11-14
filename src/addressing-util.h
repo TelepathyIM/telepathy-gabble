@@ -20,7 +20,6 @@
 #ifndef __GABBLE_UTIL_ADDRESSING_H__
 #define __GABBLE_UTIL_ADDRESSING_H__
 
-#include "config.h"
 #include <telepathy-glib/handle-repo-dynamic.h>
 
 const gchar * const * gabble_get_addressable_uri_schemes (void);

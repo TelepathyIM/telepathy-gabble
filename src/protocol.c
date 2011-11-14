@@ -26,8 +26,6 @@
 
 #include "conn-presence.h"
 
-#define DEBUG_FLAG GABBLE_DEBUG_PROTOCOL
-
 #include "connection.h"
 #include "connection-manager.h"
 #include "im-factory.h"
@@ -36,7 +34,6 @@
 #include "roomlist-manager.h"
 #include "search-manager.h"
 #include "util.h"
-#include "debug.h"
 
 #define PROTOCOL_NAME "jabber"
 #define ICON_NAME "im-" PROTOCOL_NAME

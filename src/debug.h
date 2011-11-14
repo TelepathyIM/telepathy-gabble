@@ -39,7 +39,6 @@ typedef enum
   GABBLE_DEBUG_SHARE         = 1 << 25,
   GABBLE_DEBUG_TLS           = 1 << 26,
   GABBLE_DEBUG_CLIENT_TYPES  = 1 << 27,
-  GABBLE_DEBUG_PROTOCOL      = 1 << 28,
 } GabbleDebugFlags;
 
 void gabble_debug_set_flags_from_env (void);

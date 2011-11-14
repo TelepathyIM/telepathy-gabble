@@ -50,7 +50,6 @@ static GDebugKey keys[] = {
   { "share",          GABBLE_DEBUG_SHARE },
   { "tls",            GABBLE_DEBUG_TLS },
   { "client-types",   GABBLE_DEBUG_CLIENT_TYPES },
-  { "protocol",       GABBLE_DEBUG_PROTOCOL },
   { 0, },
 };
 

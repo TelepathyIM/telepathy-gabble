@@ -436,12 +436,7 @@ addressing_normalize_uri (TpBaseProtocol *self,
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid URI", uri);
     }
-  else if (g_ascii_strcasecmp (scheme, "xmpp") != 0)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
-          "'xmpp' is the only URI scheme supported by this protocol");
-    }
-  else
+  else if (g_ascii_strcasecmp (scheme, "xmpp") == 0)
     {
       GError *gabble_error = NULL;
       const gchar *address = uri + strlen (scheme) + 1; /* Strip the scheme */
@@ -464,6 +459,11 @@ addressing_normalize_uri (TpBaseProtocol *self,
           g_free (normalized_scheme);
           g_free (normalized_address);
         }
+    }
+  else
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'xmpp' is the only URI scheme supported by this protocol");
     }
 
   g_free (scheme);

@@ -416,8 +416,7 @@ MT_DELIVERY_REPORT = 4
 
 PROTOCOL = 'org.freedesktop.Telepathy.Protocol'
 PROTOCOL_IFACE_PRESENCES = PROTOCOL + '.Interface.Presence'
-PROTOCOL_IFACE_ADDRESSING = \
-    'org.freedesktop.Telepathy.Protocol.Interface.Addressing'
+PROTOCOL_IFACE_ADDRESSING = PROTOCOL + '.Interface.Addressing'
 
 PARAM_REQUIRED = 1
 PARAM_REGISTER = 2

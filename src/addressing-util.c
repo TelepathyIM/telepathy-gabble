@@ -23,9 +23,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#define DEBUG_FLAG GABBLE_DEBUG_JID
 
-#include "debug.h"
 #include "util.h"
 #include "connection.h"
 

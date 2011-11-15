@@ -133,10 +133,6 @@ AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )
 
-AC_ARG_ENABLE(handle-leak-debug,
-  AC_HELP_STRING([--enable-handle-leak-debug],[compile with -rdynamic so telepathy-glib handle leak debugging code will work]),
-    enable_handle_leak_debug=$enableval, enable_handle_leak_debug=no )
-
 ifelse(gabble_nano_version, 0,
     [ # Gabble is version x.y.z - disable coding style checks by default
 AC_ARG_ENABLE(coding-style-checks,
@@ -155,13 +151,6 @@ if test x$enable_debug = xyes; then
   AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
 fi
 AM_CONDITIONAL([ENABLE_DEBUG], [test "x$enable_debug" = xyes])
-
-if test x$enable_handle_leak_debug = xyes; then
-  AC_DEFINE(ENABLE_HANDLE_LEAK_DEBUG, [], [Enable handle leak debug code])
-  HANDLE_LEAK_DEBUG_CFLAGS="-rdynamic"
-fi
-
-AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 

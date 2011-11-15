@@ -39,7 +39,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="Channel_Type_FileTransfer_Future.xml"/>
 <xi:include href="Connection_Interface_Gabble_Decloak.xml"/>
 <xi:include href="Connection_Future.xml"/>
-<xi:include href="Channel_Interface_File_Transfer_Metadata.xml"/>
 
 <xi:include href="Gabble_Plugin_Gateways.xml"/>
 <xi:include href="Gabble_Plugin_Test.xml"/>

@@ -80,7 +80,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel
                            file_transfer_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_FILETRANSFER_FUTURE,
                            NULL);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
                            NULL);
 );
 
@@ -328,8 +328,8 @@ gabble_file_transfer_channel_get_property (GObject *object,
               TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
               TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
               GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
-              GABBLE_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
-              GABBLE_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
+              TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
+              TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
               NULL);
 
           /* URI is immutable only for outgoing transfers */
@@ -706,7 +706,7 @@ gabble_file_transfer_channel_class_init (
       NULL,
       file_future_props
     },
-    { GABBLE_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+    { TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       file_metadata_props
@@ -950,7 +950,7 @@ gabble_file_transfer_channel_class_init (
   param_spec = g_param_spec_boxed ("metadata",
       "Metadata",
       "The Metadata.Metadata property of this channel",
-      GABBLE_HASH_TYPE_METADATA,
+      TP_HASH_TYPE_METADATA,
       G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_METADATA,
       param_spec);

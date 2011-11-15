@@ -553,11 +553,11 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_URI);
 
   service_name = tp_asv_get_string (request_properties,
-      GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME);
+      TP_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME);
 
   metadata = tp_asv_get_boxed (request_properties,
-      GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
-      GABBLE_HASH_TYPE_METADATA);
+      TP_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
+      TP_HASH_TYPE_METADATA);
 
   if (metadata != NULL && g_hash_table_lookup ((GHashTable *) metadata, "FORM_TYPE"))
     {
@@ -622,15 +622,15 @@ static const gchar * const file_transfer_channel_allowed_properties[] =
 static const gchar * const file_transfer_channel_allowed_properties_with_metadata_prop[] =
 {
   STANDARD_PROPERTIES,
-  GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
+  TP_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
   NULL
 };
 
 static const gchar * const file_transfer_channel_allowed_properties_with_both_metadata_props[] =
 {
   STANDARD_PROPERTIES,
-  GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME,
-  GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
+  TP_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME,
+  TP_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_METADATA,
   NULL
 };
 
@@ -953,7 +953,7 @@ add_file_transfer_channel_class (GPtrArray *arr,
     {
       service_name_value = tp_g_value_slice_new_string (service_name_str);
       g_hash_table_insert (fixed_properties,
-          GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME,
+          TP_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME,
           service_name_value);
     }
 
@@ -1052,7 +1052,7 @@ gabble_ft_manager_represent_client (
         continue;
 
       service_name = tp_asv_get_string (channel_class,
-          GABBLE_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME);
+          TP_PROP_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA_SERVICE_NAME);
 
       if (service_name == NULL)
         continue;

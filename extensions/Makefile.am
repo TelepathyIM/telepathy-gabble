@@ -97,3 +97,14 @@ _gen/gtypes.h _gen/gtypes-body.h: _gen/all.xml \
 	$(tools_dir)/glib-gtypes-generator.py Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-gtypes-generator.py \
 		$< _gen/gtypes Gabble
+
+Android.mk: Makefile.am $(BUILT_SOURCES)
+	androgenizer -:PROJECT telepathy-gabble -:STATIC gabble-extensions -:TAGS eng debug \
+	 -:REL_TOP $(top_srcdir) -:ABS_TOP $(abs_top_srcdir) \
+	 -:SOURCES $(libgabble_extensions_la_SOURCES) \
+	  $(nodist_libgabble_extensions_la_SOURCES) \
+	 -:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	  $(AM_CFLAGS) \
+	 -:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) \
+	 -:LDFLAGS $(libgabble_extensions_la_LIBADD) \
+	> $@

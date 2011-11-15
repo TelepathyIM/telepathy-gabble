@@ -21,7 +21,12 @@
 #include "gabble.h"
 
 int
-main (int argc,
+#ifdef BUILD_AS_ANDROID_SERVICE
+telepathy_gabble_main
+#else
+main
+#endif
+      (int argc,
       char **argv)
 {
   gabble_init ();

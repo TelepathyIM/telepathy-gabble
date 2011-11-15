@@ -16,6 +16,7 @@
 .deps
 .libs
 .svn
+Android.mk
 FIXME.out
 /INSTALL
 Makefile

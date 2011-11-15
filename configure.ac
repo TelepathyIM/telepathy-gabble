@@ -204,11 +204,13 @@ AC_ARG_ENABLE(gtk-doc,
 AM_CONDITIONAL([ENABLE_GTK_DOC], [test "x$enable_gtk_doc" = xyes])
 
 dnl Check for Glib
-PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24])
+PKG_CHECK_MODULES(GLIB,
+    [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24, gio-2.0])
 PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.24])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
+
 
 GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
@@ -317,15 +319,25 @@ ac_top_build_prefix=$prev_top_build_prefix
 
 ac_configure_args=$prev_ac_configure_args
 
+dnl Check if Android build
+AC_ARG_ENABLE(submodules,
+              AS_HELP_STRING([--disable-submodules],[Use system versions of Wocky and Telepathy-Yell, rather than submodules]),
+              build_submodules=$enableval, build_submodules=yes )
+
 dnl Check for Wocky
 # re-enable once Wocky has been released as a lib
-export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/wocky/wocky
+if test x$build_submodules = xyes; then
+    export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/wocky/wocky
+fi
+
 PKG_CHECK_MODULES(WOCKY, wocky >= 0.0.0)
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)
 
 dnl Check for tp-yell
-export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/telepathy-yell/telepathy-yell
+if test x$build_submodules = xyes; then
+    export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/telepathy-yell/telepathy-yell
+fi
 PKG_CHECK_MODULES(TP_YELL, telepathy-yell)
 AC_SUBST(TP_YELL_CFLAGS)
 AC_SUBST(TP_YELL_LIBS)

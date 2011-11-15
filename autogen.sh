@@ -16,23 +16,36 @@ fi
 
 autoreconf -i -f
 
-# Fetch submodules if needed
-if test ! -f lib/ext/wocky/autogen.sh -o ! -f lib/ext/telepathy-yell/autogen.sh;
-then
-  echo "+ Setting up submodules"
-  git submodule init
+#Check if submodules should be enabled
+enable_submodules=true
+for arg in $*; do
+    case $arg in
+        --disable-submodules)
+            enable_submodules=false
+            ;;
+        *)
+            ;;
+    esac
+done
+
+if test $enable_submodules = true; then
+    # Fetch submodules if needed
+    if test ! -f lib/ext/wocky/autogen.sh -o ! -f lib/ext/telepathy-yell/autogen.sh; then
+        echo "+ Setting up submodules"
+        git submodule init
+    fi
+    git submodule update
+
+    # launch Wocky's autogen.sh
+    cd lib/ext/wocky
+    sh autogen.sh --no-configure
+    cd ../../..
+
+    # launch tp-yell's autogen.sh
+    cd lib/ext/telepathy-yell
+    sh autogen.sh --no-configure
+    cd ../../..
 fi
-git submodule update
-
-# launch Wocky's autogen.sh
-cd lib/ext/wocky
-sh autogen.sh --no-configure
-cd ../../..
-
-# launch tp-yell's autogen.sh
-cd lib/ext/telepathy-yell
-sh autogen.sh --no-configure
-cd ../../..
 
 # Honor NOCONFIGURE for compatibility with gnome-autogen.sh
 if test x"$NOCONFIGURE" = x; then

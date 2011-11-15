@@ -1245,12 +1245,17 @@ process_roster (
         case GABBLE_ROSTER_SUBSCRIPTION_FROM:
         case GABBLE_ROSTER_SUBSCRIPTION_BOTH:
           if (google_roster &&
-              /* Don't hide contacts from stored if they're remote pending.
-               * This works around Google Talk flickering ask="subscribe"
-               * when you try to subscribe to someone; see
-               * test-google-roster.py.
+              /* Don't hide contacts from stored if they're pending.
+               * This works around two Google Talk issues:
+               * - When you try to subscribe to someone, you get a flickering
+               *   ask="subscribe";
+               * - When somebody tries to subscribe to you, you get a presence
+               *   with type="subscribe" followed by a roster update with
+               *   subscribe="none".
+               * See test-google-roster.py for more details.
                */
               item->subscribe != TP_SUBSCRIPTION_STATE_ASK &&
+              item->publish != TP_SUBSCRIPTION_STATE_ASK &&
               !_google_roster_item_should_keep (jid, item))
             {
               tp_handle_set_remove (changed, handle);

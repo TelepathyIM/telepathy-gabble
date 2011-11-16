@@ -82,7 +82,7 @@
           <p>A mapping of requested vCard addresses and the corresponding
             contact handles.</p>
 
-          <p>Requested addresses that cannot be satisfied MUST be ommitted
+          <p>Requested addresses that cannot be satisfied MUST be omitted
             from the mapping.</p>
         </tp:docstring>
       </arg>
@@ -97,7 +97,7 @@
             the attribute should either be omitted from the result or
             replaced with a default value.</p>
 
-          <p>Requested addresses that cannot be satisfied MUST be ommitted
+          <p>Requested addresses that cannot be satisfied MUST be omitted
             from the mapping.</p>
 
           <p>Each contact's attributes will always include at least the
@@ -157,7 +157,7 @@
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           <p>A mapping of requested URIs and the corresponding contact handles.</p>
 
-          <p>Requested URIs that cannot be satisfied MUST be ommitted
+          <p>Requested URIs that cannot be satisfied MUST be omitted
             from the mapping.</p>
         </tp:docstring>
       </arg>
@@ -172,7 +172,7 @@
             the attribute should either be omitted from the result or
             replaced with a default value.</p>
 
-          <p>Requested URIs that cannot be satisfied MUST be ommitted
+          <p>Requested URIs that cannot be satisfied MUST be omitted
             from the mapping.</p>
 
           <p>Each contact's attributes will always include at least the

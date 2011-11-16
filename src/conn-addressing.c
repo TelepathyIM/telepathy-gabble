@@ -19,8 +19,6 @@
 
 #include "conn-addressing.h"
 
-#define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
-#include "debug.h"
 #include "namespaces.h"
 #include "util.h"
 #include "addressing-util.h"

@@ -69,8 +69,8 @@ conn_addressing_fill_contact_attributes (GObject *obj,
 
 static void
 conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *iface,
-    const gchar **in_URIs,
-    const gchar **in_Interfaces,
+    const gchar **uris,
+    const gchar **interfaces,
     DBusGMethodInvocation *context)
 {
   const gchar **uri;
@@ -79,12 +79,12 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
   GHashTable *result;
   GHashTable *requested = g_hash_table_new (g_direct_hash, g_direct_equal);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
-      g_strv_length ((gchar **) in_URIs));
+      g_strv_length ((gchar **) uris));
   gchar *sender = dbus_g_method_get_sender (context);
   GList *contacts;
   GList *contact;
 
-  for (uri = in_URIs; *uri != NULL; uri++)
+  for (uri = uris; *uri != NULL; uri++)
     {
       TpHandle h = gabble_ensure_handle_from_uri (contact_repo, *uri, NULL);
 
@@ -96,7 +96,7 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
     }
 
   result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
-      in_Interfaces, assumed_interfaces, sender);
+      interfaces, assumed_interfaces, sender);
 
   contacts = g_hash_table_get_keys (result);
 
@@ -122,9 +122,9 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
 
 static void
 conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddressing *iface,
-    const gchar *in_Field,
-    const gchar **in_Addresses,
-    const gchar **in_Interfaces,
+    const gchar *field,
+    const gchar **addresses,
+    const gchar **interfaces,
     DBusGMethodInvocation *context)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -134,14 +134,14 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
   GHashTable *result;
   GHashTable *requested = g_hash_table_new (g_direct_hash, g_direct_equal);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
-      g_strv_length ((gchar **) in_Addresses));
+      g_strv_length ((gchar **) addresses));
   GList *contacts;
   GList *contact;
 
-  for (address = in_Addresses; *address != NULL; address++)
+  for (address = addresses; *address != NULL; address++)
     {
       GError *error = NULL;
-      TpHandle h = gabble_ensure_handle_from_vcard_address (contact_repo, in_Field,
+      TpHandle h = gabble_ensure_handle_from_vcard_address (contact_repo, field,
           *address, &error);
 
       if (h == 0)
@@ -165,7 +165,7 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
     }
 
   result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
-      in_Interfaces, assumed_interfaces, sender);
+      interfaces, assumed_interfaces, sender);
 
   contacts = g_hash_table_get_keys (result);
 
@@ -173,7 +173,7 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
     {
       TpHandle h = GPOINTER_TO_UINT (contact->data);
       GValueArray *req_address = tp_value_array_build (2,
-          G_TYPE_STRING, in_Field,
+          G_TYPE_STRING, field,
           G_TYPE_STRING, g_hash_table_lookup (requested, contact->data),
           G_TYPE_INVALID);
       GValue *val = tp_g_value_slice_new_take_boxed (

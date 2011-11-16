@@ -1,7 +1,24 @@
 telepathy-gabble 0.15.0 (UNRELEASED)
 ====================================
 
-…
+This is the start of a new development branch that will lead to 0.16
+in roughly six months.
+
+Dependencies:
+
+• telepathy-glib 0.17.1 is now required.
+
+Enhancements:
+
+• fd.o#42288: the Chan.I.FileTransfer.Metadata interface has been
+  implemented. (jonny)
+
+Bug fixes:
+
+• fd.o#42706: fix a typo when indexing a pointer array by using the
+  wrong counter! (jonny)
+
+• fd.o#32050: fix a crasher when using OLPC activities. (wjt)
 
 telepathy-gabble 0.14.0 (2011-11-07)
 ====================================

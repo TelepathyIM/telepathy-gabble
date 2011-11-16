@@ -113,6 +113,30 @@ def test_connection(q, bus, conn, stream):
     assertSameSets(normalized_buddies, addresses)
     assertSameSets(buddies, requested.keys());
 
+    normalized_buddies = ['12345', '54321']
+    buddies = ['-12345@chat.facebook.com', '-54321@CHAT.facebook.com']
+    bad_jid_buddies = ['-12345!CHAT.facebook.com', '12345@chat.facebook.com']
+
+    for buddy in buddies:
+        item = event.query.addElement('item')
+        item['jid'] = buddy
+        item['subscription'] = 'both'
+
+    stream.send(event.stanza)
+
+    requested, attributes = conn.Addressing.GetContactsByVCardField(
+        "X-FACEBOOK-ID", buddies + bad_jid_buddies, [])
+
+    addresses = []
+
+    for attr in attributes.values():
+        assertContains(cs.CONN_IFACE_ADDRESSING + '/addresses', attr.keys())
+        assertContains('x-facebook-id', attr[cs.CONN_IFACE_ADDRESSING + '/addresses'].keys())
+        addresses.append(attr[cs.CONN_IFACE_ADDRESSING + '/addresses']['x-facebook-id'])
+
+    assertSameSets(normalized_buddies, addresses)
+    assertSameSets(buddies, requested.keys());
+
     normalized_buddies = ['amy%3F@foo.com', 'bob@foo.com', 'che@foo.com']
     buddies = ['AMY?@foo.com', 'bob@FOO.com', 'che@foo.com/resource']
 

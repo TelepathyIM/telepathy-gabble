@@ -404,8 +404,10 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
   if (normalized_address == NULL)
     {
       /* InvalidHandle makes no sense in Protocol */
-      if ((*error)->code == TP_ERROR_INVALID_HANDLE)
-        (*error)->code = TP_ERROR_INVALID_ARGUMENT;
+      if (error != NULL && g_error_matches (*error, TP_ERROR, TP_ERROR_INVALID_HANDLE))
+        {
+          (*error)->code = TP_ERROR_INVALID_ARGUMENT;
+        }
     }
 
   return normalized_address;
@@ -424,8 +426,10 @@ addressing_normalize_contact_uri (TpBaseProtocol *self,
   if (jid == NULL)
     {
       /* InvalidHandle makes no sense in Protocol */
-      if ((*error)->code == TP_ERROR_INVALID_HANDLE)
-        (*error)->code = TP_ERROR_INVALID_ARGUMENT;
+      if (error != NULL && g_error_matches (*error, TP_ERROR, TP_ERROR_INVALID_HANDLE))
+        {
+          (*error)->code = TP_ERROR_INVALID_ARGUMENT;
+        }
     }
   else
     {

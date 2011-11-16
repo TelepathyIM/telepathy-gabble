@@ -25,7 +25,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 import sys
 import re
-import xml.dom.minidom
+from xml.dom import minidom
 
 import pygtk
 pygtk.require('2.0')
@@ -42,10 +42,34 @@ def pathify(name):
 CONN_FUTURE_IFACE = "org.freedesktop.Telepathy.Connection.FUTURE"
 CONSOLE_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
 
-class IQPage(Gtk.Grid):
-    REPLY_PAGE = 0
-    SPINNER_PAGE = 1
+class StanzaViewer(Gtk.ScrolledWindow):
+    def __init__(self):
+        Gtk.ScrolledWindow.__init__(self)
 
+        self.b = GtkSource.Buffer()
+        self.view = GtkSource.View.new_with_buffer(self.b)
+        self.b.set_language(
+            GtkSource.LanguageManager.get_default().get_language('xml'))
+        self.b.set_highlight_matching_brackets(False)
+        self.view.set_editable(False)
+        self.view.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
+        self.view.set_property('expand', True)
+
+        self.add(self.view)
+
+    def clear(self):
+        self.b.set_text("")
+
+    def append_stanza(self, xml):
+        pretty = minidom.parseString(xml).toprettyxml()
+        i = self.b.get_end_iter()
+        self.b.insert(i, pretty + '\n')
+
+    def append_comment(self, text):
+        i = self.b.get_end_iter()
+        self.b.insert(i, '<!-- %s -->\n' % text)
+
+class Page(Gtk.Grid):
     def __init__(self, console_proxy):
         Gtk.Grid.__init__(self)
 
@@ -53,6 +77,37 @@ class IQPage(Gtk.Grid):
 
         self.set_column_spacing(PADDING)
         self.set_row_spacing(PADDING)
+
+    def add_title(self, title, below=None):
+        label = Gtk.Label()
+        label.set_markup("<b>%s</b>" % title)
+        label.set_property('xalign', 0)
+
+        if below is None:
+            self.attach(label, 0, 0, 2, 1)
+        else:
+            self.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 2, 1)
+
+        return label
+
+    def add_label(self, title, below=None):
+        label = Gtk.Label(title)
+        label.set_property('margin-left', PADDING)
+        label.set_property('xalign', 0)
+
+        if below is None:
+            self.attach(label, 0, 0, 1, 1)
+        else:
+            self.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 1, 1)
+
+        return label
+
+class IQPage(Page):
+    REPLY_PAGE = 0
+    SPINNER_PAGE = 1
+
+    def __init__(self, console_proxy):
+        Page.__init__(self, console_proxy)
 
         request_label = self.add_title("Request")
 
@@ -85,23 +140,12 @@ class IQPage(Gtk.Grid):
 
         reply_label = self.add_title("Reply", below=body_label)
 
-        self.b = GtkSource.Buffer()
-        tv = GtkSource.View.new_with_buffer(self.b)
-        self.b.set_language(
-            GtkSource.LanguageManager.get_default().get_language('xml'))
-        self.b.set_highlight_matching_brackets(False)
-        tv.set_editable(False)
-        tv.set_wrap_mode(Gtk.WrapMode.WORD_CHAR)
-        tv.set_property('expand', True)
-        tv.get_buffer().set_text(
-            "<!-- send a request to see the reply here -->")
-
-        sw = Gtk.ScrolledWindow()
-        sw.add(tv)
+        self.stanza_viewer = StanzaViewer()
+        self.stanza_viewer.append_comment("send a request to see the reply here")
 
         self.result_nb = Gtk.Notebook()
         self.result_nb.set_show_tabs(False)
-        self.result_nb.insert_page(sw, None, self.REPLY_PAGE)
+        self.result_nb.insert_page(self.stanza_viewer, None, self.REPLY_PAGE)
 
         self.spinner = Gtk.Spinner()
         self.spinner.set_property('halign', Gtk.Align.CENTER)
@@ -114,25 +158,6 @@ class IQPage(Gtk.Grid):
 
         body_entry.connect('activate', self.send_iq)
         body_entry.connect('icon-release', self.send_iq)
-
-    def add_title(self, title, below=None):
-        label = Gtk.Label()
-        label.set_markup("<b>%s</b>" % title)
-        label.set_property('xalign', 0)
-
-        if below is None:
-            self.attach(label, 0, 0, 2, 1)
-        else:
-            self.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 2, 1)
-
-        return label
-
-    def add_label(self, title, below):
-        label = Gtk.Label(title)
-        label.set_property('margin-left', PADDING)
-        label.set_property('xalign', 0)
-        self.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 1, 1)
-        return label
 
     def add_label_entry_pair(self, title, below):
         label = self.add_label(title, below)
@@ -155,12 +180,13 @@ class IQPage(Gtk.Grid):
         self.spinner.start()
 
     def send_iq_cb(self, proxy, result, user_data):
+        self.stanza_viewer.clear()
+
         try:
             reply_type, reply = result
-            pretty_reply = xml.dom.minidom.parseString(reply).toprettyxml()
-            self.b.set_text(pretty_reply)
+            self.stanza_viewer.append_stanza(reply)
         except Exception, e:
-            self.b.set_text("<!-- error:\n%s\n-->" % e)
+            self.stanza_viewer.append_comment("error:\n%s" % e)
 
         self.spinner.stop()
         self.result_nb.set_current_page(self.REPLY_PAGE)

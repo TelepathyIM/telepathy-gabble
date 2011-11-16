@@ -297,14 +297,8 @@ gabble_vcard_address_for_handle (TpHandleRepoIface *contact_repo,
     const gchar *vcard_field,
     TpHandle contact)
 {
-  if (g_ascii_strcasecmp (vcard_field, "x-jabber") == 0)
-    {
-      return g_strdup (tp_handle_inspect (contact_repo, contact));
-    }
-  else
-    {
-      return NULL;
-    }
+  const gchar *identifier = tp_handle_inspect (contact_repo, contact);
+  return gabble_parse_vcard_address (vcard_field, identifier, NULL);
 }
 
 gchar *
@@ -312,13 +306,6 @@ gabble_uri_for_handle (TpHandleRepoIface *contact_repo,
     const gchar *scheme,
     TpHandle contact)
 {
-  if (g_ascii_strcasecmp (scheme, "xmpp") == 0)
-    {
-      const gchar *identifier = tp_handle_inspect (contact_repo, contact);
-      return gabble_jid_to_uri (scheme, identifier, NULL);
-    }
-  else
-    {
-      return NULL;
-    }
+  const gchar *identifier = tp_handle_inspect (contact_repo, contact);
+  return gabble_jid_to_uri (scheme, identifier, NULL);
 }

@@ -31,6 +31,7 @@ import pygtk
 pygtk.require('2.0')
 
 from gi.repository import Gtk
+from gi.repository import GLib
 from gi.repository import Gio
 from gi.repository import GtkSource
 
@@ -191,9 +192,53 @@ class IQPage(Page):
         self.spinner.stop()
         self.result_nb.set_current_page(self.REPLY_PAGE)
 
+class SnoopyPage(Page):
+    def __init__(self, console_proxy):
+        Page.__init__(self, console_proxy)
+
+        label = self.add_label("Stanza monitor:")
+        label.set_property('hexpand', True)
+
+        switch = Gtk.Switch()
+        self.attach_next_to(switch, label, Gtk.PositionType.RIGHT, 1, 1)
+
+        self.stanza_viewer = StanzaViewer()
+        self.attach_next_to(self.stanza_viewer, label, Gtk.PositionType.BOTTOM, 2, 1)
+
+        switch.set_active(self.get_remote_active())
+        switch.connect('notify::active', self.__switch_switched_cb)
+
+        self.console_proxy.connect('g-signal', self.__g_signal_cb)
+
+    def get_remote_active(self):
+        return self.console_proxy.get_cached_property('SpewStanzas').get_boolean()
+
+    def __switch_switched_cb(self, switch, pspec):
+        remote = self.get_remote_active()
+        new_local = switch.get_active()
+
+        if new_local != remote:
+            args = GLib.Variant("(ssv)", (CONSOLE_IFACE, "SpewStanzas",
+                GLib.Variant.new_boolean(new_local)))
+            self.console_proxy.call_sync(
+                "org.freedesktop.DBus.Properties.Set",
+                args,
+                0, -1, None)
+
+            self.stanza_viewer.append_comment(
+                'started monitoring' if new_local else 'stopped monitoring')
+
+    def __g_signal_cb(self, console_proxy, sender_name, signal_name, parameters):
+        if signal_name in ['StanzaSent', 'StanzaReceived']:
+            outgoing = (signal_name == 'StanzaSent')
+            xml, = parameters
+
+            self.stanza_viewer.append_comment('sent' if outgoing else 'received')
+            self.stanza_viewer.append_stanza(xml)
 
 class Window(Gtk.Window):
     IQ_PAGE = 0
+    SNOOPY_PAGE = 1
 
     def __init__(self, bus, connection_bus_name):
         Gtk.Window.__init__(self)
@@ -222,10 +267,15 @@ plugin installed.""" % locals()
         self.nb = Gtk.Notebook()
         self.add(self.nb)
 
-        self.grid = IQPage(self.console_proxy)
-        self.nb.insert_page(self.grid,
+        self.iq = IQPage(self.console_proxy)
+        self.nb.insert_page(self.iq,
             Gtk.Label.new_with_mnemonic("_IQ console"),
             self.IQ_PAGE)
+
+        self.snoopy = SnoopyPage(self.console_proxy)
+        self.nb.insert_page(self.snoopy,
+            Gtk.Label.new_with_mnemonic("_Monitor network traffic"),
+            self.SNOOPY_PAGE)
 
 if __name__ == '__main__':
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)

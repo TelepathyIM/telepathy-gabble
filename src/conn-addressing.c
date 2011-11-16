@@ -77,7 +77,7 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) iface, TP_HANDLE_TYPE_CONTACT);
   GHashTable *attributes;
-  GHashTable *requested = g_hash_table_new (g_direct_hash, g_direct_equal);
+  GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) uris));
   gchar *sender = dbus_g_method_get_sender (context);
@@ -89,7 +89,7 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
       if (h == 0)
         continue;
 
-      g_hash_table_insert (requested, (gpointer) *uri, GUINT_TO_POINTER (h));
+      g_hash_table_insert (requested, (gpointer) g_strdup (*uri), GUINT_TO_POINTER (h));
       g_array_append_val (handles, h);
     }
 
@@ -116,7 +116,7 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) iface, TP_HANDLE_TYPE_CONTACT);
   GHashTable *attributes;
-  GHashTable *requested = g_hash_table_new (g_direct_hash, g_direct_equal);
+  GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) addresses));
   gchar *sender = dbus_g_method_get_sender (context);
@@ -129,7 +129,7 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
       if (h == 0)
         continue;
 
-      g_hash_table_insert (requested, (gpointer) *address, GUINT_TO_POINTER (h));
+      g_hash_table_insert (requested, (gpointer) g_strdup (*address), GUINT_TO_POINTER (h));
       g_array_append_val (handles, h);
     }
 

@@ -197,13 +197,18 @@ GHashTable *
 gabble_vcard_addresses_for_handle (TpHandleRepoIface *contact_repo,
     TpHandle contact)
 {
-  const gchar **field;
   GHashTable *addresses = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) g_free);
 
-  for (field = addressable_vcard_fields; *field != NULL; field++)
-    g_hash_table_insert (addresses, (gpointer) *field,
-        gabble_vcard_address_for_handle (contact_repo, *field, contact));
+  for (const gchar * const *field = addressable_vcard_fields; *field != NULL; field++)
+    {
+      gchar *vcard_address = gabble_vcard_address_for_handle (contact_repo, *field, contact);
+
+      if (vcard_address != NULL)
+        {
+          g_hash_table_insert (addresses, (gpointer) *field, vcard_address);
+        }
+    }
 
   return addresses;
 }

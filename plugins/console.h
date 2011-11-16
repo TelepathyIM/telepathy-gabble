@@ -21,6 +21,7 @@
 
 #include <gio/gio.h>
 #include <wocky/wocky-session.h>
+#include <telepathy-glib/dbus-properties-mixin.h>
 
 typedef struct _GabbleConsolePlugin GabbleConsolePlugin;
 typedef struct _GabbleConsolePluginClass GabbleConsolePluginClass;
@@ -64,6 +65,8 @@ struct _GabbleConsoleSidecar {
 
 struct _GabbleConsoleSidecarClass {
     GObjectClass parent;
+
+    TpDBusPropertiesMixinClass props_class;
 };
 
 GType gabble_console_sidecar_get_type (void);

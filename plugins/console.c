@@ -144,7 +144,8 @@ gabble_plugin_create (void)
 enum {
     PROP_0,
     PROP_CONNECTION,
-    PROP_SESSION
+    PROP_SESSION,
+    PROP_SPEW
 };
 
 struct _GabbleConsoleSidecarPrivate
@@ -153,21 +154,35 @@ struct _GabbleConsoleSidecarPrivate
   TpBaseConnection *connection;
   WockyXmppReader *reader;
   WockyXmppWriter *writer;
+
+  /* %TRUE if we should emit signals when sending or receiving stanzas */
+  gboolean spew;
+  /* 0 if spew is FALSE; or a WockyPorter handler id for all incoming stanzas
+   * if spew is TRUE. */
+  guint incoming_handler;
+  /* 0 if spew is FALSE; a GLib signal handler id for WockyPorter::sending if
+   * spew is TRUE.
+   */
+  gulong sending_id;
 };
 
 static void sidecar_iface_init (
     gpointer g_iface,
     gpointer data);
-
 static void console_iface_init (
     gpointer g_iface,
     gpointer data);
+static void gabble_console_sidecar_set_spew (
+    GabbleConsoleSidecar *self,
+    gboolean spew);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleConsoleSidecar, gabble_console_sidecar,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SIDECAR, sidecar_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_GABBLE_PLUGIN_CONSOLE,
       console_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
+      tp_dbus_properties_mixin_iface_init);
     )
 
 static void
@@ -177,6 +192,26 @@ gabble_console_sidecar_init (GabbleConsoleSidecar *self)
       GabbleConsoleSidecarPrivate);
   self->priv->reader = wocky_xmpp_reader_new_no_stream ();
   self->priv->writer = wocky_xmpp_writer_new_no_stream ();
+}
+
+static void
+gabble_console_sidecar_get_property (
+    GObject *object,
+    guint property_id,
+    GValue *value,
+    GParamSpec *pspec)
+{
+  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+
+  switch (property_id)
+    {
+      case PROP_SPEW:
+        g_value_set_boolean (value, self->priv->spew);
+        break;
+
+      default:
+        G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
+    }
 }
 
 static void
@@ -200,6 +235,10 @@ gabble_console_sidecar_set_property (
         self->priv->session = g_value_dup_object (value);
         break;
 
+      case PROP_SPEW:
+        gabble_console_sidecar_set_spew (self, g_value_get_boolean (value));
+        break;
+
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID(object, property_id, pspec);
     }
@@ -211,6 +250,8 @@ gabble_console_sidecar_dispose (GObject *object)
   void (*chain_up) (GObject *) =
     G_OBJECT_CLASS (gabble_console_sidecar_parent_class)->dispose;
   GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+
+  gabble_console_sidecar_set_spew (self, FALSE);
 
   tp_clear_object (&self->priv->connection);
   tp_clear_object (&self->priv->reader);
@@ -225,7 +266,20 @@ static void
 gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  static TpDBusPropertiesMixinPropImpl console_props[] = {
+      { "SpewStanzas", "spew-stanzas", "spew-stanzas" },
+      { NULL },
+  };
+  static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
+      { GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE,
+        tp_dbus_properties_mixin_getter_gobject_properties,
+        tp_dbus_properties_mixin_setter_gobject_properties,
+        console_props
+      },
+      { NULL },
+  };
 
+  object_class->get_property = gabble_console_sidecar_get_property;
   object_class->set_property = gabble_console_sidecar_set_property;
   object_class->dispose = gabble_console_sidecar_dispose;
 
@@ -242,6 +296,16 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
           "Wocky session",
           WOCKY_TYPE_SESSION,
           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (object_class, PROP_SPEW,
+      g_param_spec_boolean ("spew-stanzas", "SpewStanzas",
+          "If %TRUE, someone wants us to spit out a tonne of stanzas",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  klass->props_class.interfaces = interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleConsoleSidecarClass, props_class));
 }
 
 static void sidecar_iface_init (
@@ -252,6 +316,82 @@ static void sidecar_iface_init (
 
   iface->interface = GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE;
   iface->get_immutable_properties = NULL;
+}
+
+static gboolean
+incoming_cb (
+    WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
+{
+  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (user_data);
+  const guint8 *body;
+  gsize length;
+
+  wocky_xmpp_writer_write_stanza (self->priv->writer, stanza, &body, &length);
+  gabble_svc_gabble_plugin_console_emit_stanza_received (self,
+      (const gchar *) body);
+  return FALSE;
+}
+
+static void
+sending_cb (
+    WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
+{
+  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (user_data);
+
+  if (stanza != NULL)
+    {
+      const guint8 *body;
+      gsize length;
+
+      wocky_xmpp_writer_write_stanza (self->priv->writer, stanza, &body,
+          &length);
+      gabble_svc_gabble_plugin_console_emit_stanza_sent (self,
+          (const gchar *) body);
+    }
+}
+
+static void
+gabble_console_sidecar_set_spew (
+    GabbleConsoleSidecar *self,
+    gboolean spew)
+{
+  GabbleConsoleSidecarPrivate *priv = self->priv;
+
+  if (!spew != !priv->spew)
+    {
+      WockyPorter *porter = wocky_session_get_porter (self->priv->session);
+      const gchar *props[] = { "SpewStanzas", NULL };
+
+      priv->spew = spew;
+      tp_dbus_properties_mixin_emit_properties_changed (G_OBJECT (self),
+          GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE, props);
+
+      if (spew)
+        {
+          g_return_if_fail (priv->incoming_handler == 0);
+          priv->incoming_handler = wocky_porter_register_handler_from_anyone (
+              porter, WOCKY_STANZA_TYPE_NONE, WOCKY_STANZA_SUB_TYPE_NONE,
+              WOCKY_PORTER_HANDLER_PRIORITY_MAX, incoming_cb, self, NULL);
+
+          g_return_if_fail (priv->sending_id == 0);
+          priv->sending_id = g_signal_connect (porter, "sending",
+              (GCallback) sending_cb, self);
+        }
+      else
+        {
+          g_return_if_fail (priv->incoming_handler != 0);
+          wocky_porter_unregister_handler (porter, priv->incoming_handler);
+          priv->incoming_handler = 0;
+
+          g_return_if_fail (priv->sending_id != 0);
+          g_signal_handler_disconnect (porter, priv->sending_id);
+          priv->sending_id = 0;
+        }
+    }
 }
 
 static void

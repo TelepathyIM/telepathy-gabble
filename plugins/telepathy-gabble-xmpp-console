@@ -167,6 +167,8 @@ class IQPage(Gtk.Grid):
 
 
 class Window(Gtk.Window):
+    IQ_PAGE = 0
+
     def __init__(self, bus, connection_bus_name):
         Gtk.Window.__init__(self)
 
@@ -191,8 +193,13 @@ plugin installed.""" % locals()
             connection_bus_name, sidecar_path, CONSOLE_IFACE, None)
 
         # Build up the UI
+        self.nb = Gtk.Notebook()
+        self.add(self.nb)
+
         self.grid = IQPage(self.console_proxy)
-        self.add(self.grid)
+        self.nb.insert_page(self.grid,
+            Gtk.Label.new_with_mnemonic("_IQ console"),
+            self.IQ_PAGE)
 
 if __name__ == '__main__':
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)

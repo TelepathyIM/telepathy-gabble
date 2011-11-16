@@ -215,9 +215,16 @@ gabble_vcard_address_for_handle (TpHandleRepoIface *contact_repo,
 
 gchar *
 gabble_uri_for_handle (TpHandleRepoIface *contact_repo,
-    const gchar *uri_scheme,
+    const gchar *scheme,
     TpHandle contact)
 {
-  const gchar *identifier = tp_handle_inspect (contact_repo, contact);
-  return g_strdup_printf ("%s:%s", uri_scheme, identifier);
+  if (g_ascii_strcasecmp (scheme, "xmpp") == 0)
+    {
+      const gchar *identifier = tp_handle_inspect (contact_repo, contact);
+      return g_strdup_printf ("%s:%s", scheme, identifier);
+    }
+  else
+    {
+      return NULL;
+    }
 }

@@ -134,7 +134,7 @@ gabble_tls_certificate_finalize (GObject *object)
 
   g_free (self->priv->object_path);
   g_free (self->priv->cert_type);
-  g_ptr_array_free (self->priv->cert_data, TRUE);
+  g_ptr_array_unref (self->priv->cert_data);
 
   G_OBJECT_CLASS (gabble_tls_certificate_parent_class)->finalize (object);
 }

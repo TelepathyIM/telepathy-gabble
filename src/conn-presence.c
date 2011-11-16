@@ -226,7 +226,7 @@ construct_contact_statuses_cb (GObject *obj,
         }
 
       contact_status = tp_presence_status_new (status, parameters);
-      g_hash_table_destroy (parameters);
+      g_hash_table_unref (parameters);
 
       g_hash_table_insert (contact_statuses, GUINT_TO_POINTER (handle),
           contact_status);
@@ -254,7 +254,7 @@ conn_presence_emit_presence_update (
   contact_statuses = construct_contact_statuses_cb ((GObject *) self,
       contact_handles, NULL);
   tp_presence_mixin_emit_presence_update ((GObject *) self, contact_statuses);
-  g_hash_table_destroy (contact_statuses);
+  g_hash_table_unref (contact_statuses);
 }
 
 
@@ -273,7 +273,7 @@ emit_presences_changed_for_self (GabbleConnection *self)
 
   g_array_insert_val (handles, 0, base->self_handle);
   conn_presence_emit_presence_update (self, handles);
-  g_array_free (handles, TRUE);
+  g_array_unref (handles);
 }
 
 static WockyStanza *
@@ -821,7 +821,7 @@ store_shared_statuses (GabbleConnection *self,
         NULL);
 
   if (priv->shared_statuses != NULL)
-    g_hash_table_destroy (priv->shared_statuses);
+    g_hash_table_unref (priv->shared_statuses);
 
   priv->shared_statuses = g_hash_table_new_full (
       g_str_hash, g_str_equal, g_free, (GDestroyNotify) g_strfreev);
@@ -2031,10 +2031,10 @@ conn_presence_finalize (GabbleConnection *conn)
   g_free (priv->invisible_list_name);
 
   if (priv->privacy_statuses != NULL)
-      g_hash_table_destroy (priv->privacy_statuses);
+      g_hash_table_unref (priv->privacy_statuses);
 
   if (priv->shared_statuses != NULL)
-      g_hash_table_destroy (priv->shared_statuses);
+      g_hash_table_unref (priv->shared_statuses);
 
   if (priv->iq_list_push_cb != NULL)
     lm_message_handler_unref (priv->iq_list_push_cb);

@@ -242,7 +242,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
 
   /* The strings in both arrays are borrowed, so we just need to free the
    * arrays themselves. */
-  g_ptr_array_free (field_params, TRUE);
+  g_ptr_array_unref (field_params);
   g_free (field_values);
 }
 
@@ -335,7 +335,7 @@ _parse_vcard (WockyNode *vcard_node,
               _insert_contact_field (contact_info, "org", NULL,
                   (const gchar * const *) field_values->pdata);
 
-              g_ptr_array_free (field_values, TRUE);
+              g_ptr_array_unref (field_values);
             }
           break;
 

@@ -487,7 +487,7 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
       decloak_context_free);
 
   priv->location = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-      (GDestroyNotify) g_hash_table_destroy);
+      (GDestroyNotify) g_hash_table_unref);
 }
 
 static void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
@@ -585,7 +585,7 @@ gabble_presence_cache_dispose (GObject *object)
       priv->unsure_id = 0;
     }
 
-  tp_clear_pointer (&priv->decloak_requests, g_hash_table_destroy);
+  tp_clear_pointer (&priv->decloak_requests, g_hash_table_unref);
   tp_clear_pointer (&priv->decloak_handles, tp_handle_set_destroy);
 
   g_assert (priv->lm_message_cb == NULL);
@@ -593,11 +593,11 @@ gabble_presence_cache_dispose (GObject *object)
 
   g_signal_handler_disconnect (priv->conn, priv->status_changed_cb);
 
-  tp_clear_pointer (&priv->presence, g_hash_table_destroy);
-  tp_clear_pointer (&priv->capabilities, g_hash_table_destroy);
-  tp_clear_pointer (&priv->disco_pending, g_hash_table_destroy);
+  tp_clear_pointer (&priv->presence, g_hash_table_unref);
+  tp_clear_pointer (&priv->capabilities, g_hash_table_unref);
+  tp_clear_pointer (&priv->disco_pending, g_hash_table_unref);
   tp_clear_pointer (&priv->presence_handles, tp_handle_set_destroy);
-  tp_clear_pointer (&priv->location, g_hash_table_destroy);
+  tp_clear_pointer (&priv->location, g_hash_table_unref);
 
   if (G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_presence_cache_parent_class)->dispose (object);
@@ -1277,7 +1277,7 @@ _signal_presences_updated (GabblePresenceCache *cache,
   handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
   g_array_append_val (handles, handle);
   g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, handles);
-  g_array_free (handles, TRUE);
+  g_array_unref (handles);
 }
 
 static void
@@ -2126,7 +2126,7 @@ gabble_presence_cache_update_many (
   if (updated->len > 0)
     g_signal_emit (cache, signals[PRESENCES_UPDATED], 0, updated);
 
-  g_array_free (updated, TRUE);
+  g_array_unref (updated);
 
   for (i = 0 ; i < contact_handles->len ; i++)
     {
@@ -2294,8 +2294,8 @@ gabble_presence_cache_contacts_added_to_olpc_view (GabblePresenceCache *self,
       g_signal_emit (self, signals[PRESENCES_UPDATED], 0, changed);
     }
 
-  g_array_free (tmp, TRUE);
-  g_array_free (changed, TRUE);
+  g_array_unref (tmp);
+  g_array_unref (changed);
 }
 
 void
@@ -2335,8 +2335,8 @@ gabble_presence_cache_contacts_removed_from_olpc_view (
       g_signal_emit (self, signals[PRESENCES_UPDATED], 0, changed);
     }
 
-  g_array_free (tmp, TRUE);
-  g_array_free (changed, TRUE);
+  g_array_unref (tmp);
+  g_array_unref (changed);
 }
 
 static gboolean

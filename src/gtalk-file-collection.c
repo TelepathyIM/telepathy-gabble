@@ -256,9 +256,9 @@ gtalk_file_collection_dispose (GObject *object)
 
   set_current_channel (self, NULL);
 
-  tp_clear_pointer (&self->priv->channels_reading, g_hash_table_destroy);
-  tp_clear_pointer (&self->priv->channels_usable, g_hash_table_destroy);
-  tp_clear_pointer (&self->priv->share_channels, g_hash_table_destroy);
+  tp_clear_pointer (&self->priv->channels_reading, g_hash_table_unref);
+  tp_clear_pointer (&self->priv->channels_usable, g_hash_table_unref);
+  tp_clear_pointer (&self->priv->share_channels, g_hash_table_unref);
 
   for (i = self->priv->channels; i; i = i->next)
     {

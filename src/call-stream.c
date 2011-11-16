@@ -357,7 +357,7 @@ gabble_call_stream_constructed (GObject *obj)
     {
       GPtrArray *relays = g_ptr_array_new ();
       tpy_base_media_call_stream_set_relay_info (media_base, relays);
-      g_ptr_array_free (relays, TRUE);
+      g_ptr_array_unref (relays);
     }
 
   stun_servers = get_stun_servers (self);

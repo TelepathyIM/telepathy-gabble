@@ -218,10 +218,10 @@ gabble_jingle_session_dispose (GObject *object)
   g_assert ((priv->state == JINGLE_STATE_PENDING_CREATED) ||
       (priv->state == JINGLE_STATE_ENDED));
 
-  g_hash_table_destroy (priv->initiator_contents);
+  g_hash_table_unref (priv->initiator_contents);
   priv->initiator_contents = NULL;
 
-  g_hash_table_destroy (priv->responder_contents);
+  g_hash_table_unref (priv->responder_contents);
   priv->responder_contents = NULL;
 
   tp_handle_unref (contact_repo, sess->peer);

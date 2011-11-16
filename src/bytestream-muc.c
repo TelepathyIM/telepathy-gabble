@@ -129,7 +129,7 @@ gabble_bytestream_muc_finalize (GObject *object)
 
   if (priv->buffers != NULL)
     {
-      g_hash_table_destroy (priv->buffers);
+      g_hash_table_unref (priv->buffers);
       priv->buffers = NULL;
     }
 

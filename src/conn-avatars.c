@@ -303,7 +303,7 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
 
   tp_svc_connection_interface_avatars_return_from_get_known_avatar_tokens (
       context->invocation, context->ret);
-  g_hash_table_destroy (context->ret);
+  g_hash_table_unref (context->ret);
 
   g_slice_free (GetKnownAvatarTokensContext, context);
 }
@@ -403,7 +403,7 @@ gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *ifac
   tp_svc_connection_interface_avatars_return_from_get_known_avatar_tokens (
       invocation, ret);
 
-  g_hash_table_destroy (ret);
+  g_hash_table_unref (ret);
 }
 
 
@@ -569,7 +569,7 @@ _request_avatar_cb (GabbleVCardManager *self,
   g_array_append_vals (arr, avatar->str, avatar->len);
   tp_svc_connection_interface_avatars_return_from_request_avatar (
       context, arr, mime_type);
-  g_array_free (arr, TRUE);
+  g_array_unref (arr);
 
 out:
   if (avatar != NULL)
@@ -640,7 +640,7 @@ emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
   g_array_append_vals (arr, avatar_str->str, avatar_str->len);
   tp_svc_connection_interface_avatars_emit_avatar_retrieved (iface, contact,
       sha1, arr, mime_type);
-  g_array_free (arr, TRUE);
+  g_array_unref (arr);
   g_free (sha1);
   g_string_free (avatar_str, TRUE);
 }

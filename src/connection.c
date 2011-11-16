@@ -370,7 +370,7 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   g_object_unref (loader);
 
   g_ptr_array_foreach (tmp, add_to_array, channel_managers);
-  g_ptr_array_free (tmp, TRUE);
+  g_ptr_array_unref (tmp);
 
   return channel_managers;
 }
@@ -1209,8 +1209,8 @@ gabble_connection_dispose (GObject *object)
 
   conn_olpc_activity_properties_dispose (self);
 
-  g_hash_table_destroy (self->avatar_requests);
-  g_hash_table_destroy (self->vcard_requests);
+  g_hash_table_unref (self->avatar_requests);
+  g_hash_table_unref (self->vcard_requests);
 
   conn_presence_dispose (self);
 
@@ -1223,14 +1223,14 @@ gabble_connection_dispose (GObject *object)
   priv->porter = NULL;
   tp_clear_pointer (&self->lmconn, lm_connection_unref);
 
-  g_hash_table_destroy (priv->client_caps);
+  g_hash_table_unref (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
   gabble_capability_set_free (priv->notify_caps);
   gabble_capability_set_free (priv->legacy_caps);
   gabble_capability_set_free (priv->sidecar_caps);
   gabble_capability_set_free (priv->bonus_caps);
 
-  g_hash_table_destroy (priv->client_data_forms);
+  g_hash_table_unref (priv->client_data_forms);
 
   if (priv->disconnect_timer != 0)
     {
@@ -3072,7 +3072,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
       g_boxed_free (TP_STRUCT_TYPE_CAPABILITY_CHANGE,
           g_ptr_array_index (caps_arr, i));
     }
-  g_ptr_array_free (caps_arr, TRUE);
+  g_ptr_array_unref (caps_arr);
 
   /* o.f.T.C.ContactCapabilities */
   caps_arr = gabble_connection_build_contact_caps (conn, handle, new_set);
@@ -3084,7 +3084,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
   tp_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
       conn, hash);
 
-  g_hash_table_destroy (hash);
+  g_hash_table_unref (hash);
 }
 
 static const GabbleCapabilitySet *
@@ -3253,7 +3253,7 @@ gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *
       context, ret);
 
   g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
-  g_ptr_array_free (ret, TRUE);
+  g_ptr_array_unref (ret);
 }
 
 static const gchar *
@@ -3621,7 +3621,7 @@ conn_capabilities_fill_contact_attributes (GObject *obj,
     }
 
     if (array != NULL)
-      g_ptr_array_free (array, TRUE);
+      g_ptr_array_unref (array);
 }
 
 static void
@@ -3690,7 +3690,7 @@ gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
       g_value_array_free (g_ptr_array_index (ret, i));
     }
 
-  g_ptr_array_free (ret, TRUE);
+  g_ptr_array_unref (ret);
 }
 
 /**
@@ -3738,7 +3738,7 @@ gabble_connection_get_contact_capabilities (
   tp_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities
       (context, ret);
 
-  g_hash_table_destroy (ret);
+  g_hash_table_unref (ret);
 }
 
 

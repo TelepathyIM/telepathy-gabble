@@ -110,7 +110,7 @@ gabble_jingle_transport_google_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  g_hash_table_destroy (priv->component_names);
+  g_hash_table_unref (priv->component_names);
   priv->component_names = NULL;
 
   jingle_transport_free_candidates (priv->remote_candidates);

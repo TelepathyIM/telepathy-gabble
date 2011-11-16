@@ -141,7 +141,7 @@ aliases_request_free (AliasesRequest *request)
       (TpBaseConnection *) request->conn, TP_HANDLE_TYPE_CONTACT);
   tp_handles_unref (contact_handles, request->contacts);
 
-  g_array_free (request->contacts, TRUE);
+  g_array_unref (request->contacts);
   g_free (request->vcard_requests);
   g_free (request->pep_requests);
   g_strfreev (request->aliases);
@@ -806,7 +806,7 @@ gabble_conn_aliasing_nickname_updated (GObject *object,
 
   gabble_conn_aliasing_nicknames_updated (object, handles, user_data);
 
-  g_array_free (handles, TRUE);
+  g_array_unref (handles);
 }
 
 void
@@ -895,7 +895,7 @@ gabble_conn_aliasing_nicknames_updated (GObject *object,
   for (i = 0; i < aliases->len; i++)
     g_boxed_free (TP_STRUCT_TYPE_ALIAS_PAIR, g_ptr_array_index (aliases, i));
 
-  g_ptr_array_free (aliases, TRUE);
+  g_ptr_array_unref (aliases);
 }
 
 static void
@@ -1190,7 +1190,7 @@ gabble_connection_get_aliases (TpSvcConnectionInterfaceAliasing *iface,
   tp_svc_connection_interface_aliasing_return_from_get_aliases (context,
     result);
 
-  g_hash_table_destroy (result);
+  g_hash_table_unref (result);
 }
 
 

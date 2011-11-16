@@ -76,7 +76,7 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
 
   str = wocky_caps_hash_compute_from_lists (features, identities, data_forms);
 
-  g_ptr_array_free (features, TRUE);
+  g_ptr_array_unref (features);
   wocky_disco_identity_array_free (identities);
 
   return str;
@@ -101,7 +101,7 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
 
   str = wocky_caps_hash_compute_from_lists (features, identities_copy, NULL);
 
-  g_ptr_array_free (features, TRUE);
+  g_ptr_array_unref (features);
   wocky_disco_identity_array_free (identities_copy);
 
   return str;

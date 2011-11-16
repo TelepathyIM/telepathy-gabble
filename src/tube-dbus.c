@@ -591,8 +591,8 @@ gabble_tube_dbus_dispose (GObject *object)
           contact_repo);
     }
 
-  tp_clear_pointer (&priv->dbus_names, g_hash_table_destroy);
-  tp_clear_pointer (&priv->dbus_name_to_handle, g_hash_table_destroy);
+  tp_clear_pointer (&priv->dbus_names, g_hash_table_unref);
+  tp_clear_pointer (&priv->dbus_name_to_handle, g_hash_table_unref);
 
   if (priv->reassembly_buffer)
     g_string_free (priv->reassembly_buffer, TRUE);
@@ -612,8 +612,8 @@ gabble_tube_dbus_finalize (GObject *object)
   g_free (priv->object_path);
   g_free (priv->stream_id);
   g_free (priv->service);
-  g_hash_table_destroy (priv->parameters);
-  g_array_free (priv->supported_access_controls, TRUE);
+  g_hash_table_unref (priv->parameters);
+  g_array_unref (priv->supported_access_controls);
 
   if (priv->muc != NULL)
     {
@@ -841,7 +841,7 @@ gabble_tube_dbus_set_property (GObject *object,
         break;
       case PROP_PARAMETERS:
         if (priv->parameters != NULL)
-          g_hash_table_destroy (priv->parameters);
+          g_hash_table_unref (priv->parameters);
         priv->parameters = g_value_dup_boxed (value);
         break;
       case PROP_MUC:
@@ -1712,8 +1712,8 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   tp_svc_channel_type_dbus_tube_emit_dbus_names_changed (self, added,
       removed);
 
-  g_hash_table_destroy (added);
-  g_array_free (removed, TRUE);
+  g_hash_table_unref (added);
+  g_array_unref (removed);
 
   return TRUE;
 }
@@ -1750,8 +1750,8 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   tp_svc_channel_type_dbus_tube_emit_dbus_names_changed (self, added,
       removed);
 
-  g_hash_table_destroy (added);
-  g_array_free (removed, TRUE);
+  g_hash_table_unref (added);
+  g_array_unref (removed);
   tp_handle_unref (contact_repo, handle);
   return TRUE;
 }

@@ -189,7 +189,7 @@ gabble_media_stream_new (const gchar *object_path,
       NULL);
 
   if (empty != NULL)
-    g_ptr_array_free (empty, TRUE);
+    g_ptr_array_unref (empty);
 
   return result;
 }
@@ -1681,7 +1681,7 @@ new_remote_candidates_cb (GabbleJingleContent *content,
 
       g_free (candidate_id);
       g_value_unset (&transport);
-      g_ptr_array_free (transports, TRUE);
+      g_ptr_array_unref (transports);
 
       g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
     }

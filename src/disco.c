@@ -237,7 +237,7 @@ gabble_disco_dispose (GObject *object)
       g_free ((char *) item->name);
       g_free ((char *) item->category);
       g_free ((char *) item->type);
-      g_hash_table_destroy (item->features);
+      g_hash_table_unref (item->features);
       g_free (item);
     }
 
@@ -662,7 +662,7 @@ item_info_cb (GabbleDisco *disco,
   item.features = keys;
 
   pipeline->callback (pipeline, &item, pipeline->user_data);
-  g_hash_table_destroy (keys);
+  g_hash_table_unref (keys);
 
 done:
   gabble_disco_fill_pipeline (disco, pipeline);
@@ -847,8 +847,8 @@ gabble_disco_pipeline_destroy (gpointer self)
       gabble_disco_cancel_request (pipeline->disco, request);
     }
 
-  g_hash_table_destroy (pipeline->remaining_items);
-  g_ptr_array_free (pipeline->disco_pipeline, TRUE);
+  g_hash_table_unref (pipeline->remaining_items);
+  g_ptr_array_unref (pipeline->disco_pipeline);
   g_free (pipeline);
 }
 

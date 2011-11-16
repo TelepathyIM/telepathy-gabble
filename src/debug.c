@@ -114,7 +114,7 @@ gabble_debug_free (void)
   if (flag_to_domains == NULL)
     return;
 
-  g_hash_table_destroy (flag_to_domains);
+  g_hash_table_unref (flag_to_domains);
   flag_to_domains = NULL;
 }
 

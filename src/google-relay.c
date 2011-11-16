@@ -87,8 +87,8 @@ relay_session_data_destroy (gpointer p)
 {
   RelaySessionData *rsd = p;
 
-  g_ptr_array_foreach (rsd->relays, (GFunc) g_hash_table_destroy, NULL);
-  g_ptr_array_free (rsd->relays, TRUE);
+  g_ptr_array_foreach (rsd->relays, (GFunc) g_hash_table_unref, NULL);
+  g_ptr_array_unref (rsd->relays);
 
   g_slice_free (RelaySessionData, rsd);
 }
@@ -233,7 +233,7 @@ on_http_response (SoupSession *soup,
         }
 
       g_strfreev (lines);
-      g_hash_table_destroy (map);
+      g_hash_table_unref (map);
     }
 
   rsd->component++;

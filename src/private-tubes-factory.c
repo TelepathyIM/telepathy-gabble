@@ -372,7 +372,7 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
   /* Use a temporary variable (the macro does this) because we don't want
    * tubes_channel_closed_cb to remove the channel from the hash table a
    * second time */
-  tp_clear_pointer (&priv->tubes_channels, g_hash_table_destroy);
+  tp_clear_pointer (&priv->tubes_channels, g_hash_table_unref);
 }
 
 static void
@@ -433,7 +433,7 @@ add_service_to_array (const gchar *service,
       1, tube_allowed_properties,
       G_MAXUINT);
 
-  g_hash_table_destroy (fixed_properties);
+  g_hash_table_unref (fixed_properties);
 
   g_ptr_array_add (arr, g_value_get_boxed (&monster));
 }
@@ -472,7 +472,7 @@ add_generic_tube_caps (GPtrArray *arr)
       1, gabble_tube_stream_channel_get_allowed_properties (),
       G_MAXUINT);
 
-  g_hash_table_destroy (fixed_properties);
+  g_hash_table_unref (fixed_properties);
   g_ptr_array_add (arr, g_value_get_boxed (&monster1));
 
   /* DBusTube */
@@ -501,7 +501,7 @@ add_generic_tube_caps (GPtrArray *arr)
       1, gabble_tube_dbus_channel_get_allowed_properties (),
       G_MAXUINT);
 
-  g_hash_table_destroy (fixed_properties);
+  g_hash_table_unref (fixed_properties);
   g_ptr_array_add (arr, g_value_get_boxed (&monster2));
 }
 
@@ -820,7 +820,7 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
 
   func (type, table, old_tubes_channel_allowed_properties, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 
   /* 1-1 Channel.Type.StreamTube */
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
@@ -839,7 +839,7 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
   func (type, table, gabble_tube_stream_channel_get_allowed_properties (),
       user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 
   /* 1-1 Channel.Type.DBusTube */
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
@@ -858,7 +858,7 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
   func (type, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 }
 
 
@@ -1019,7 +1019,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
           g_hash_table_insert (channels, new_channel, request_tokens);
           tp_channel_manager_emit_new_channels (self, channels);
 
-          g_hash_table_destroy (channels);
+          g_hash_table_unref (channels);
           g_slist_free (request_tokens);
         }
       else

@@ -320,7 +320,7 @@ mgr_file_contents (const char *busname,
       WRITE_STR (TP_PROP_PROTOCOL_ICON, "Icon");
 
       g_free (section_name);
-      g_hash_table_destroy (props);
+      g_hash_table_unref (props);
       protocols = protocols->next;
     }
 

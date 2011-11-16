@@ -366,7 +366,7 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
   tp_svc_channel_interface_call_state_return_from_get_call_states (context,
       states);
 
-  g_hash_table_destroy (states);
+  g_hash_table_unref (states);
 }
 
 

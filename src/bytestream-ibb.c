@@ -166,7 +166,7 @@ gabble_bytestream_ibb_finalize (GObject *object)
   if (priv->write_buffer != NULL)
     g_string_free (priv->write_buffer, TRUE);
 
-  g_hash_table_destroy (priv->sent_stanzas_not_acked);
+  g_hash_table_unref (priv->sent_stanzas_not_acked);
 
   G_OBJECT_CLASS (gabble_bytestream_ibb_parent_class)->finalize (object);
 }

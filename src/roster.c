@@ -236,7 +236,7 @@ gabble_roster_finalize (GObject *object)
   DEBUG ("called with %p", object);
 
   g_hash_table_foreach (priv->items, item_handle_unref_foreach, priv);
-  g_hash_table_destroy (priv->items);
+  g_hash_table_unref (priv->items);
 
   G_OBJECT_CLASS (gabble_roster_parent_class)->finalize (object);
 }
@@ -623,7 +623,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
           tp_base_contact_list_groups_created ((TpBaseContactList *) roster,
               (const gchar * const *) strv->pdata, strv->len);
 
-          g_ptr_array_free (strv, TRUE);
+          g_ptr_array_unref (strv);
         }
 
       tp_clear_pointer (&created_groups, tp_intset_destroy);
@@ -1333,7 +1333,7 @@ process_roster (
       tp_handle_set_destroy (blocking_changed);
     }
 
-  g_array_free (updated_nicknames, TRUE);
+  g_array_unref (updated_nicknames);
   tp_handle_set_destroy (changed);
   tp_handle_set_destroy (removed);
   tp_handle_set_destroy (referenced_handles);
@@ -1440,7 +1440,7 @@ got_roster_iq (GabbleRoster *roster,
         }
 
       conn_presence_emit_presence_update (priv->conn, members);
-      g_array_free (members, TRUE);
+      g_array_unref (members);
 
       /* The roster is now complete and we can emit signals... */
       tp_base_contact_list_set_list_received ((TpBaseContactList *) roster);
@@ -3197,7 +3197,7 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
           (const gchar * const *) groups_created->pdata, groups_created->len);
     }
 
-  g_ptr_array_free (groups_created, TRUE);
+  g_ptr_array_unref (groups_created);
 
   if (item->unsent_edits == NULL)
     item->unsent_edits = item_edit_new (contact_repo, contact);

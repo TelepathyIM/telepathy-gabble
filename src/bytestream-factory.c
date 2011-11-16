@@ -679,16 +679,16 @@ gabble_bytestream_factory_dispose (GObject *object)
       priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ);
   lm_message_handler_unref (priv->iq_socks5_cb);
 
-  g_hash_table_destroy (priv->ibb_bytestreams);
+  g_hash_table_unref (priv->ibb_bytestreams);
   priv->ibb_bytestreams = NULL;
 
-  g_hash_table_destroy (priv->muc_bytestreams);
+  g_hash_table_unref (priv->muc_bytestreams);
   priv->muc_bytestreams = NULL;
 
-  g_hash_table_destroy (priv->socks5_bytestreams);
+  g_hash_table_unref (priv->socks5_bytestreams);
   priv->socks5_bytestreams = NULL;
 
-  g_hash_table_destroy (priv->multiple_bytestreams);
+  g_hash_table_unref (priv->multiple_bytestreams);
   priv->multiple_bytestreams = NULL;
 
   proxies = g_slist_concat (priv->socks5_proxies,

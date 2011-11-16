@@ -595,7 +595,7 @@ test_channel_manager_type_foreach_channel_class (GType type,
 
   func (type, table, chock_a_block_full_of_strings, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 }
 
 static void

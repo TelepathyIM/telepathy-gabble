@@ -1037,7 +1037,7 @@ tube_stream_open (GabbleTubeStream *self,
       priv->address = tp_g_value_slice_new (DBUS_TYPE_G_UCHAR_ARRAY);
       g_value_set_boxed (priv->address, array);
 
-      g_array_free (array, TRUE);
+      g_array_unref (array);
 
       ret = gibber_listener_listen_socket (priv->local_listener, path, FALSE,
           error);
@@ -1209,9 +1209,9 @@ gabble_tube_stream_dispose (GObject *object)
       g_string_free (path, TRUE);
     }
 
-  tp_clear_pointer (&priv->transport_to_bytestream, g_hash_table_destroy);
-  tp_clear_pointer (&priv->bytestream_to_transport, g_hash_table_destroy);
-  tp_clear_pointer (&priv->transport_to_id, g_hash_table_destroy);
+  tp_clear_pointer (&priv->transport_to_bytestream, g_hash_table_unref);
+  tp_clear_pointer (&priv->bytestream_to_transport, g_hash_table_unref);
+  tp_clear_pointer (&priv->transport_to_id, g_hash_table_unref);
 
   tp_handle_unref (contact_repo, priv->initiator);
 
@@ -1236,7 +1236,7 @@ gabble_tube_stream_finalize (GObject *object)
 
   g_free (priv->object_path);
   g_free (priv->service);
-  g_hash_table_destroy (priv->parameters);
+  g_hash_table_unref (priv->parameters);
 
   if (priv->address != NULL)
     {
@@ -1448,7 +1448,7 @@ gabble_tube_stream_set_property (GObject *object,
         break;
       case PROP_PARAMETERS:
         if (priv->parameters != NULL)
-          g_hash_table_destroy (priv->parameters);
+          g_hash_table_unref (priv->parameters);
         priv->parameters = g_value_dup_boxed (value);
         break;
       case PROP_ADDRESS_TYPE:
@@ -2329,7 +2329,7 @@ static void
 destroy_socket_control_list (gpointer data)
 {
   GArray *tab = data;
-  g_array_free (tab, TRUE);
+  g_array_unref (tab);
 }
 
 /**

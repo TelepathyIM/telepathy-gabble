@@ -679,13 +679,13 @@ gabble_media_factory_type_foreach_channel_class (GType type,
 
   func (type, table, named_channel_allowed_properties, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 
   table = gabble_media_factory_call_channel_class ();
 
   func (type, table, call_channel_allowed_properties, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 }
 
 

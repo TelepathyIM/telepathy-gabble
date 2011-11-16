@@ -419,7 +419,7 @@ gabble_im_factory_close_all (GabbleImFactory *self)
   /* Use a temporary variable (the macro does this) because we don't want
    * im_channel_closed_cb to remove the channel from the hash table a
    * second time */
-  tp_clear_pointer (&self->priv->channels, g_hash_table_destroy);
+  tp_clear_pointer (&self->priv->channels, g_hash_table_unref);
 
   if (self->priv->status_changed_id != 0)
     {
@@ -600,7 +600,7 @@ gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
       1, text_allowed_properties,
       G_MAXUINT);
 
-  g_hash_table_destroy (fixed_properties);
+  g_hash_table_unref (fixed_properties);
 
   g_ptr_array_add (arr, g_value_get_boxed (&monster));
 }
@@ -669,7 +669,7 @@ gabble_im_factory_type_foreach_channel_class (GType type,
 
   func (type, table, im_channel_allowed_properties, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 }
 
 

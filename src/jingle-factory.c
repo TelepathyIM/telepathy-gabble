@@ -448,9 +448,9 @@ gabble_jingle_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   tp_clear_pointer (&priv->google_resolver, gabble_google_relay_resolver_destroy);
-  tp_clear_pointer (&priv->sessions, g_hash_table_destroy);
-  tp_clear_pointer (&priv->content_types, g_hash_table_destroy);
-  tp_clear_pointer (&priv->transports, g_hash_table_destroy);
+  tp_clear_pointer (&priv->sessions, g_hash_table_unref);
+  tp_clear_pointer (&priv->content_types, g_hash_table_unref);
+  tp_clear_pointer (&priv->transports, g_hash_table_unref);
   tp_clear_pointer (&priv->stun_server, g_free);
   tp_clear_pointer (&priv->fallback_stun_server, g_free);
   tp_clear_pointer (&priv->relay_token, g_free);

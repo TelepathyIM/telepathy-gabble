@@ -399,22 +399,16 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
     const gchar *vcard_address,
     GError **error)
 {
-  gchar *jid;
+  gchar *normalized_address = gabble_parse_vcard_address (vcard_field, vcard_address, error);
 
-  jid = gabble_parse_vcard_address (vcard_field, vcard_address, NULL, error);
-
-  if (jid == NULL)
+  if (normalized_address == NULL)
     {
       /* InvalidHandle makes no sense in Protocol */
       if ((*error)->code == TP_ERROR_INVALID_HANDLE)
         (*error)->code = TP_ERROR_INVALID_ARGUMENT;
     }
-  else
-    {
-      g_assert (jid != NULL);
-    }
 
-  return jid;
+  return normalized_address;
 }
 
 static gchar *

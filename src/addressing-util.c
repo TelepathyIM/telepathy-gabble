@@ -122,33 +122,36 @@ gabble_ensure_handle_from_uri (TpHandleRepoIface *repo,
 gchar *
 gabble_parse_vcard_address (const gchar *vcard_field,
     const gchar *vcard_address,
-    gchar **normalized_field,
     GError **error)
 {
-  gchar *jid = NULL;
-  gchar *_normalized_field;
+  gchar *normalized_address = NULL;
 
   g_return_val_if_fail (vcard_field != NULL, NULL);
   g_return_val_if_fail (vcard_address != NULL, NULL);
 
-  _normalized_field = g_ascii_strdown (vcard_field, -1);
+  if (g_ascii_strcasecmp (vcard_field, "x-jabber") == 0)
+    {
+      GError *gabble_error = NULL;
 
-  if (!tp_strv_contains (addressable_vcard_fields, _normalized_field))
+      normalized_address = gabble_normalize_contact (NULL,
+          vcard_address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL),
+          &gabble_error);
+
+      if (gabble_error != NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid address: %s", vcard_address,
+              gabble_error->message);
+          g_error_free (gabble_error);
+        }
+    }
+  else
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "'%s' vCard field is not supported by this protocol", vcard_field);
-      goto OUT;
     }
 
-  jid = gabble_normalize_contact (NULL, vcard_address,
-      GUINT_TO_POINTER (GABBLE_JID_GLOBAL), error);
-
-  if (normalized_field != NULL)
-    *normalized_field = g_strdup (_normalized_field);
-
- OUT:
-  g_free (_normalized_field);
-  return jid;
+  return normalized_address;
 }
 
 TpHandle
@@ -158,7 +161,7 @@ gabble_ensure_handle_from_vcard_address (TpHandleRepoIface *repo,
     GError **error)
 {
   TpHandle handle;
-  gchar *jid = gabble_parse_vcard_address (vcard_field, vcard_address, NULL, error);
+  gchar *jid = gabble_parse_vcard_address (vcard_field, vcard_address, error);
 
   if (jid == NULL)
     return 0;

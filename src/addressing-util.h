@@ -36,7 +36,6 @@ TpHandle gabble_ensure_handle_from_uri (TpHandleRepoIface *repo,
 
 gchar * gabble_parse_vcard_address (const gchar *vcard_field,
     const gchar *vcard_address,
-    gchar **normalized_field,
     GError **error);
 
 TpHandle gabble_ensure_handle_from_vcard_address (TpHandleRepoIface *repo,

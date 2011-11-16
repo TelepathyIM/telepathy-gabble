@@ -48,40 +48,57 @@ gabble_parse_uri (const gchar *uri,
     gchar **normalized_uri,
     GError **error)
 {
-  /* excuse the poor man's URI parsing, couldn't find a GLib helper */
-  gchar **tokenized_uri = g_strsplit (uri, ":", 2);
-  gchar *jid = NULL;
-  gchar *normalized_scheme = NULL;
+  gchar *normalized_jid = NULL;
+  gchar *scheme;
 
   g_return_val_if_fail (uri != NULL, NULL);
 
-  if (g_strv_length (tokenized_uri) != 2)
+  scheme = g_uri_parse_scheme (uri);
+
+  if (scheme == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid URI", uri);
       goto OUT;
     }
+  else if (g_ascii_strcasecmp (scheme, "xmpp") == 0)
+    {
+      const gchar *jid = uri + strlen (scheme) + 1; /* Strip the scheme */
+      GError *gabble_error = NULL;
 
-  normalized_scheme = g_ascii_strdown (tokenized_uri[0], -1);
+      normalized_jid = gabble_normalize_contact (NULL, jid,
+          GUINT_TO_POINTER (GABBLE_JID_GLOBAL), &gabble_error);
 
-  if (!tp_strv_contains (addressable_uri_schemes, normalized_scheme))
+      if (gabble_error != NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid address: %s", jid,
+              gabble_error->message);
+          g_error_free (gabble_error);
+          goto OUT;
+        }
+    }
+  else
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
           "'%s' URI scheme is not supported by this protocol",
-          normalized_scheme);
+          scheme);
       goto OUT;
     }
 
-  jid = gabble_normalize_contact (NULL, tokenized_uri[1],
-      GUINT_TO_POINTER (GABBLE_JID_GLOBAL), error);
+  if (normalized_uri)
+    {
+      gchar *normalized_scheme = g_ascii_strdown (scheme, -1);
 
-  if (jid && normalized_uri != NULL)
-    *normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme, jid);
+      *normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme, normalized_jid);
 
- OUT:
-  g_free (normalized_scheme);
-  g_strfreev (tokenized_uri);
-  return jid;
+      g_free (normalized_scheme);
+    }
+
+OUT:
+  g_free (scheme);
+
+  return normalized_jid;
 }
 
 TpHandle

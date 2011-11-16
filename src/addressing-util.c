@@ -29,7 +29,7 @@
 #include "connection.h"
 #include "util.h"
 
-static const gchar *addressable_vcard_fields[] = {"x-jabber", NULL};
+static const gchar *addressable_vcard_fields[] = {"x-jabber", "x-facebook-id", NULL};
 static const gchar *addressable_uri_schemes[] = {"xmpp", NULL};
 
 
@@ -214,6 +214,28 @@ gabble_parse_vcard_address (const gchar *vcard_field,
               gabble_error->message);
           g_error_free (gabble_error);
         }
+    }
+  else if (g_ascii_strcasecmp (vcard_field, "x-facebook-id") == 0)
+    {
+      gchar *address = g_ascii_strdown (vcard_address, -1);
+
+      if (address[0] == '-' &&
+          g_str_has_suffix (address, "@chat.facebook.com"))
+        {
+          const gchar *at = index (address, '@');
+          const gchar *start_of_number = address + 1;
+
+          g_assert (at != NULL);
+
+          normalized_address = g_strndup (start_of_number, (int) (at - start_of_number));
+        }
+      else
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid facebook chat address", vcard_address);
+        }
+
+      g_free (address);
     }
   else
     {

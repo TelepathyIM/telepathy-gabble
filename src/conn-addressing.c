@@ -98,6 +98,7 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
   result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
       interfaces, assumed_interfaces, sender);
 
+  /* copy the keys, because we'll be modifying the hash table while we iterate over them */
   contacts = g_hash_table_get_keys (result);
 
   for (contact = contacts; contact != NULL; contact = contact->next)
@@ -167,6 +168,7 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
   result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
       interfaces, assumed_interfaces, sender);
 
+  /* copy the keys, because we'll be modifying the hash table while we iterate over them */
   contacts = g_hash_table_get_keys (result);
 
   for (contact = contacts; contact != NULL; contact = contact->next)

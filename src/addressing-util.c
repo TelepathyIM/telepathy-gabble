@@ -239,14 +239,15 @@ gabble_ensure_handle_from_vcard_address (TpHandleRepoIface *repo,
     GError **error)
 {
   TpHandle handle;
-  gchar *jid = gabble_parse_vcard_address (vcard_field, vcard_address, error);
 
-  if (jid == NULL)
+  gchar *normalized_address = gabble_parse_vcard_address (vcard_field, vcard_address, error);
+
+  if (normalized_address == NULL)
     return 0;
 
-  handle = tp_handle_ensure (repo, jid, NULL, error);
+  handle = tp_handle_ensure (repo, vcard_address, NULL, error);
 
-  g_free (jid);
+  g_free (normalized_address);
 
   return handle;
 }

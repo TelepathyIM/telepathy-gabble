@@ -51,8 +51,8 @@ class FileTransferTest(object):
     CONTACT_FULL_JID = 'test-ft@localhost/Telepathy'
 
     service_name = 'a.wacky.service.name'
-    metadata = {'loads': ['of'],
-                'mental': ['data']}
+    metadata = {'loads': ['of', 'blahblah', 'stuff'],
+                'mental': ['data', 'sidf']}
 
     def __init__(self, bytestream_cls, file, address_type, access_control, access_control_param):
         self.file = file

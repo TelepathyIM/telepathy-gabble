@@ -42,37 +42,17 @@ def pathify(name):
 CONN_FUTURE_IFACE = "org.freedesktop.Telepathy.Connection.FUTURE"
 CONSOLE_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
 
-class Window(Gtk.Window):
+class IQPage(Gtk.Grid):
     REPLY_PAGE = 0
     SPINNER_PAGE = 1
 
-    def __init__(self, bus, connection_bus_name):
-        Gtk.Window.__init__(self)
+    def __init__(self, console_proxy):
+        Gtk.Grid.__init__(self)
 
-        self.set_title('XMPP Console')
-        self.set_default_size(600, 371)
+        self.console_proxy = console_proxy
 
-        conn_future_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
-            connection_bus_name, pathify(connection_bus_name),
-            CONN_FUTURE_IFACE, None)
-        try:
-            sidecar_path, _ = conn_future_proxy.EnsureSidecar('(s)', CONSOLE_IFACE)
-        except Exception, e:
-            print """
-Couldn't connect to the XMPP console interface on '%(connection_bus_name)s':
-  %(e)s
-Check that it's a running Jabber connection, and that you have the console
-plugin installed.""" % locals()
-
-            raise SystemExit(2)
-
-        self.console_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
-            connection_bus_name, sidecar_path, CONSOLE_IFACE, None)
-
-        # Build up the UI
-        self.grid = Gtk.Grid()
-        self.grid.set_column_spacing(PADDING)
-        self.grid.set_row_spacing(PADDING)
+        self.set_column_spacing(PADDING)
+        self.set_row_spacing(PADDING)
 
         request_label = self.add_title("Request")
 
@@ -90,7 +70,7 @@ plugin installed.""" % locals()
         box.set_layout(Gtk.ButtonBoxStyle.START)
         box.add(self.get_button)
         box.add(self.set_button)
-        self.grid.attach_next_to(box, type_label,
+        self.attach_next_to(box, type_label,
             Gtk.PositionType.RIGHT, 1, 1)
 
         body_label, body_entry = self.add_label_entry_pair(
@@ -130,12 +110,10 @@ plugin installed.""" % locals()
         self.spinner.set_property('height-request', 32)
         self.result_nb.insert_page(self.spinner, None, self.SPINNER_PAGE)
 
-        self.grid.attach_next_to(self.result_nb, reply_label, Gtk.PositionType.BOTTOM, 2, 1)
+        self.attach_next_to(self.result_nb, reply_label, Gtk.PositionType.BOTTOM, 2, 1)
 
         body_entry.connect('activate', self.send_iq)
         body_entry.connect('icon-release', self.send_iq)
-
-        self.add(self.grid)
 
     def add_title(self, title, below=None):
         label = Gtk.Label()
@@ -143,9 +121,9 @@ plugin installed.""" % locals()
         label.set_property('xalign', 0)
 
         if below is None:
-            self.grid.attach(label, 0, 0, 2, 1)
+            self.attach(label, 0, 0, 2, 1)
         else:
-            self.grid.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 2, 1)
+            self.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 2, 1)
 
         return label
 
@@ -153,7 +131,7 @@ plugin installed.""" % locals()
         label = Gtk.Label(title)
         label.set_property('margin-left', PADDING)
         label.set_property('xalign', 0)
-        self.grid.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 1, 1)
+        self.attach_next_to(label, below, Gtk.PositionType.BOTTOM, 1, 1)
         return label
 
     def add_label_entry_pair(self, title, below):
@@ -163,7 +141,7 @@ plugin installed.""" % locals()
         entry.set_property('margin-right', PADDING)
         entry.set_property('hexpand', True)
 
-        self.grid.attach_next_to(entry, label, Gtk.PositionType.RIGHT, 1, 1)
+        self.attach_next_to(entry, label, Gtk.PositionType.RIGHT, 1, 1)
 
         return label, entry
 
@@ -186,6 +164,35 @@ plugin installed.""" % locals()
 
         self.spinner.stop()
         self.result_nb.set_current_page(self.REPLY_PAGE)
+
+
+class Window(Gtk.Window):
+    def __init__(self, bus, connection_bus_name):
+        Gtk.Window.__init__(self)
+
+        self.set_title('XMPP Console')
+        self.set_default_size(600, 371)
+
+        conn_future_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
+            connection_bus_name, pathify(connection_bus_name),
+            CONN_FUTURE_IFACE, None)
+        try:
+            sidecar_path, _ = conn_future_proxy.EnsureSidecar('(s)', CONSOLE_IFACE)
+        except Exception, e:
+            print """
+Couldn't connect to the XMPP console interface on '%(connection_bus_name)s':
+  %(e)s
+Check that it's a running Jabber connection, and that you have the console
+plugin installed.""" % locals()
+
+            raise SystemExit(2)
+
+        self.console_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
+            connection_bus_name, sidecar_path, CONSOLE_IFACE, None)
+
+        # Build up the UI
+        self.grid = IQPage(self.console_proxy)
+        self.add(self.grid)
 
 if __name__ == '__main__':
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)

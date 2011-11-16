@@ -26,8 +26,12 @@ const gchar * const * gabble_get_addressable_uri_schemes (void);
 
 const gchar * const * gabble_get_addressable_vcard_fields (void);
 
-gchar * gabble_parse_uri (const gchar *uri,
-    gchar **normalized_uri,
+gchar * gabble_normalize_uri (const gchar *uri,
+    GError **error);
+gchar * gabble_uri_to_jid (const gchar *uri,
+    GError **error);
+gchar * gabble_jid_to_uri (const gchar *scheme,
+    const gchar *jid,
     GError **error);
 
 TpHandle gabble_ensure_handle_from_uri (TpHandleRepoIface *repo,

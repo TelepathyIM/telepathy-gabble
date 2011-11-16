@@ -419,11 +419,10 @@ addressing_normalize_contact_uri (TpBaseProtocol *self,
     GError **error)
 {
   gchar *normalized_address = NULL;
-  gchar *jid;
 
-  jid = gabble_parse_uri (uri, &normalized_address, error);
+  normalized_address = gabble_normalize_uri (uri, error);
 
-  if (jid == NULL)
+  if (normalized_address == NULL)
     {
       /* InvalidHandle makes no sense in Protocol */
       if (error != NULL && g_error_matches (*error, TP_ERROR, TP_ERROR_INVALID_HANDLE))
@@ -431,12 +430,6 @@ addressing_normalize_contact_uri (TpBaseProtocol *self,
           (*error)->code = TP_ERROR_INVALID_ARGUMENT;
         }
     }
-  else
-    {
-      g_assert (normalized_address != NULL);
-    }
-
-  g_free (jid);
 
   return normalized_address;
 }

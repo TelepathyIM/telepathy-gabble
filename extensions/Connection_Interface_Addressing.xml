@@ -79,11 +79,11 @@
       <arg direction="out" type="a{su}" name="Requested"
            tp:type="Addressing_Normalization_Map">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          <p>A mapping of requested vCard addresses and the corresponding
+          <p>A mapping from requested vCard addresses and the corresponding
             contact handles.</p>
 
-          <p>Requested addresses that cannot be satisfied MUST be omitted
-            from the mapping.</p>
+          <p>Requested addresses that are not valid or understood for this protocol
+            MUST be omitted from the mapping.</p>
         </tp:docstring>
       </arg>
 
@@ -97,8 +97,8 @@
             the attribute should either be omitted from the result or
             replaced with a default value.</p>
 
-          <p>Requested addresses that cannot be satisfied MUST be omitted
-            from the mapping.</p>
+          <p>Requested addresses that are not valid or understood for this protocol
+            MUST be omitted from the mapping.</p>
 
           <p>Each contact's attributes will always include at least the
             identifier that would be obtained by inspecting the handle
@@ -157,8 +157,8 @@
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
           <p>A mapping of requested URIs and the corresponding contact handles.</p>
 
-          <p>Requested URIs that cannot be satisfied MUST be omitted
-            from the mapping.</p>
+          <p>Requested URIs that are not valid or understood for this protocol
+            MUST be omitted from the mapping.</p>
         </tp:docstring>
       </arg>
 
@@ -172,8 +172,8 @@
             the attribute should either be omitted from the result or
             replaced with a default value.</p>
 
-          <p>Requested URIs that cannot be satisfied MUST be omitted
-            from the mapping.</p>
+          <p>Requested URIs that are not valid or understood for this protocol
+            MUST be omitted from the mapping.</p>
 
           <p>Each contact's attributes will always include at least the
             identifier that would be obtained by inspecting the handle

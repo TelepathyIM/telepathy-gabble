@@ -380,17 +380,13 @@ dup_authentication_types (TpBaseProtocol *self)
 static GStrv
 dup_supported_uri_schemes (TpBaseProtocol *self)
 {
-  const gchar * const addressing_uri_schemes[] = {"xmpp", NULL};
-
-  return g_strdupv ((GStrv) addressing_uri_schemes);
+  return g_strdupv ((gchar **) gabble_get_addressable_uri_schemes ());
 }
 
 static GStrv
 dup_supported_vcard_fields (TpBaseProtocol *self)
 {
-  const gchar * const addressing_vcard_fields[] = {"x-jabber", NULL};
-
-  return g_strdupv ((GStrv) addressing_vcard_fields);
+  return g_strdupv ((gchar **) gabble_get_addressable_vcard_fields ());
 }
 
 static gchar *

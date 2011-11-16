@@ -147,7 +147,7 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
 
       if (h == 0)
         {
-          if (error->code == TP_ERROR_NOT_IMPLEMENTED)
+          if (g_error_matches (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED))
             {
               error->code = TP_ERROR_INVALID_ARGUMENT;
               dbus_g_method_return_error (context, error);

@@ -44,6 +44,19 @@ if grep -En '^ *(static |const |)* *[[:alnum:]_]+\*+([[:alnum:]_]|;|$)' \
   fail=1
 fi
 
+if grep -n 'g_hash_table_destroy' "$@"; then
+  echo "^^^ Our coding style is to use g_hash_table_unref"
+  fail=1
+fi
+
+for p in "" "ptr_" "byte_"; do
+  if grep -En "g_${p}array_free \(([^ ,]+), TRUE\)" "$@"; then
+    echo "^^^ Our coding style is to use g_${p}array_unref in the case "
+    echo "    the underlying C array is not used"
+    fail=1
+  fi
+done
+
 if test -n "$CHECK_FOR_LONG_LINES"
 then
   if egrep -n '.{80,}' "$@"

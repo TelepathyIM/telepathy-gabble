@@ -20,6 +20,8 @@
   </tp:license>
 
   <interface name="org.freedesktop.Telepathy.Gabble.Plugin.Console">
+    <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal"
+                value="true"/>
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>A sidecar interface providing an XMPP console.</p>
     </tp:docstring>
@@ -60,6 +62,43 @@
         Hai.
       </tp:docstring>
     </method>
+
+    <signal name="StanzaSent" tp:name-for-bindings="Stanza_Sent">
+      <arg name="Stanza" type="s">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          The stanza, in glorious XML.
+        </tp:docstring>
+      </arg>
+
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        Emitted whenever a stanza is sent and
+        <tp:member-ref>SpewStanzas</tp:member-ref> is
+        <code>True</code>.
+      </tp:docstring>
+    </signal>
+
+    <signal name="StanzaReceived" tp:name-for-bindings="Stanza_Received">
+      <arg name="Stanza" type="s">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          The stanza, in glorious XML.
+        </tp:docstring>
+      </arg>
+
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        Emitted whenever a stanza is received and
+        <tp:member-ref>SpewStanzas</tp:member-ref> is
+        <code>True</code>.
+      </tp:docstring>
+    </signal>
+
+    <property name="SpewStanzas" type="b" access="readwrite"
+              tp:name-for-bindings="Spew_Stanzas">
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        If <code>True</code>, <tp:member-ref>StanzaReceived</tp:member-ref> and
+        <tp:member-ref>StanzaSent</tp:member-ref> will be emitted, drowning
+        your session bus in a sea of XML.
+      </tp:docstring>
+    </property>
 
   </interface>
 </node>

@@ -11,6 +11,8 @@ import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
 import bytestream
 
+from caps_helper import extract_data_forms, add_data_forms
+
 from twisted.words.xish import domish, xpath
 
 import constants as cs
@@ -47,6 +49,10 @@ class File(object):
 class FileTransferTest(object):
     CONTACT_NAME = 'test-ft@localhost'
     CONTACT_FULL_JID = 'test-ft@localhost/Telepathy'
+
+    service_name = 'a.wacky.service.name'
+    metadata = {'loads': ['of'],
+                'mental': ['data']}
 
     def __init__(self, bytestream_cls, file, address_type, access_control, access_control_param):
         self.file = file
@@ -85,7 +91,7 @@ class FileTransferTest(object):
         self.self_handle = self.conn.GetSelfHandle()
         self.self_handle_name =  self.conn.InspectHandles(cs.HT_CONTACT, [self.self_handle])[0]
 
-    def announce_contact(self, name=CONTACT_NAME):
+    def announce_contact(self, name=CONTACT_NAME, metadata=True):
         self.contact_name = name
         self.contact_full_jid = '%s/Telepathy' % name
         self.handle = self.conn.RequestHandles(cs.HT_CONTACT, [name])[0]
@@ -111,6 +117,9 @@ class FileTransferTest(object):
         query = result.firstChildElement()
         feature = query.addElement('feature')
         feature['var'] = ns.FILE_TRANSFER
+        if metadata:
+            feature = query.addElement('feature')
+            feature['var'] = ns.TP_FT_METADATA
         self.stream.send(result)
 
         sync_stream(self.q, self.stream)
@@ -175,6 +184,17 @@ class ReceiveFileTest(FileTransferTest):
         file_node.addElement('desc', content=self.file.description)
         # we support range transfer
         file_node.addElement('range')
+
+        # Metadata
+        if self.service_name:
+            service_form = {ns.TP_FT_METADATA_SERVICE: {'ServiceName': [self.service_name]}}
+            add_data_forms(file_node, service_form)
+
+        if self.metadata:
+            metadata_form = {ns.TP_FT_METADATA: self.metadata}
+            add_data_forms(file_node, metadata_form)
+
+        # so... lunch?
         iq.send()
 
     def check_new_channel(self):
@@ -220,6 +240,9 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.FT_INITIAL_OFFSET] == 0
 
         self.check_platform_socket_types(props[cs.FT_AVAILABLE_SOCKET_TYPES])
+
+        assertEquals(self.service_name, props[cs.FT_SERVICE_NAME])
+        assertEquals(self.metadata, props[cs.FT_METADATA])
 
         self.ft_path = path
 
@@ -348,7 +371,8 @@ class SendFileTest(FileTransferTest):
         assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT},
                 [cs.FT_CONTENT_HASH_TYPE, cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE,
-                 cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE, cs.FT_URI]
+                 cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE,
+                 cs.FT_URI, cs.FT_SERVICE_NAME, cs.FT_METADATA]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -358,13 +382,11 @@ class SendFileTest(FileTransferTest):
                  cs.FT_CONTENT_HASH_TYPE: cs.FILE_HASH_TYPE_MD5},
                 [cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE, cs.FT_FILENAME,
                  cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE,
-                 cs.FT_URI]
+                 cs.FT_URI, cs.FT_SERVICE_NAME, cs.FT_METADATA]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     def request_ft_channel(self, uri=True):
-        requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
-
         request = { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,
@@ -375,12 +397,14 @@ class SendFileTest(FileTransferTest):
             cs.FT_CONTENT_HASH: self.file.hash,
             cs.FT_DESCRIPTION: self.file.description,
             cs.FT_DATE:  self.file.date,
-            cs.FT_INITIAL_OFFSET: 0 }
+            cs.FT_INITIAL_OFFSET: 0,
+            cs.FT_SERVICE_NAME: self.service_name,
+            cs.FT_METADATA: dbus.Dictionary(self.metadata, signature='sas')}
 
         if uri:
             request[cs.FT_URI] = self.file.uri
 
-        self.ft_path, props = requests_iface.CreateChannel(request)
+        self.ft_path, props = self.conn.Requests.CreateChannel(request)
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
         assertEquals(cs.CHANNEL_TYPE_FILE_TRANSFER, props[cs.CHANNEL_TYPE])
@@ -403,6 +427,8 @@ class SendFileTest(FileTransferTest):
         assertEquals(self.file.date, props[cs.FT_DATE])
         assertEquals(0, props[cs.FT_TRANSFERRED_BYTES])
         assertEquals(0, props[cs.FT_INITIAL_OFFSET])
+        assertEquals(self.service_name, props[cs.FT_SERVICE_NAME])
+        assertEquals(self.metadata, props[cs.FT_METADATA])
         if uri:
             assertEquals(self.file.uri, props[cs.FT_URI])
         else:
@@ -439,6 +465,20 @@ class SendFileTest(FileTransferTest):
         # Gabble supports resume
         range = xpath.queryForNodes('/iq/si/file/range', self.iq)[0]
         assert range is not None
+
+        # Metadata forms
+        forms = extract_data_forms(xpath.queryForNodes('/iq/si/file/x', self.iq))
+
+        if self.service_name:
+            assertEquals({'ServiceName': [self.service_name]},
+                         forms[ns.TP_FT_METADATA_SERVICE])
+        else:
+            assert ns.TP_FT_METADATA_SERVICE not in forms
+
+        if self.metadata:
+            assertEquals(self.metadata, forms[ns.TP_FT_METADATA])
+        else:
+            assert ns.TP_FT_METADATA not in forms
 
     def provide_file(self):
         try:

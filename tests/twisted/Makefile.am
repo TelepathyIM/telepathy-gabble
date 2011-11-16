@@ -225,6 +225,8 @@ TWISTED_FT_TESTS = \
 	file-transfer/test-send-file-to-unknown-contact.py \
 	file-transfer/test-send-file-wait-to-provide.py \
 	file-transfer/test-uri.py \
+	file-transfer/metadata.py \
+	file-transfer/ft-client-caps.py \
 	jingle-share/test-caps-file-transfer.py \
 	jingle-share/test-multift.py \
 	jingle-share/test-receive-file-and-close-socket-while-receiving.py \

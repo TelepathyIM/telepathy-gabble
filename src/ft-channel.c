@@ -80,6 +80,8 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel
                            file_transfer_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_FILETRANSFER_FUTURE,
                            NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+                           NULL);
 );
 
 #define GABBLE_UNDEFINED_FILE_SIZE G_MAXUINT64
@@ -122,7 +124,14 @@ enum
 
   PROP_CONNECTION,
   PROP_BYTESTREAM,
+
+  /* Chan.Type.FileTransfer.FUTURE */
   PROP_GTALK_FILE_COLLECTION,
+
+  /* Chan.Iface.FileTransfer.Metadata */
+  PROP_SERVICE_NAME,
+  PROP_METADATA,
+
   LAST_PROPERTY
 };
 
@@ -160,6 +169,8 @@ struct _GabbleFileTransferChannelPrivate {
   guint64 date;
   gchar *file_collection;
   gchar *uri;
+  gchar *service_name;
+  GHashTable *metadata;
   gboolean channel_opened;
 };
 
@@ -317,6 +328,8 @@ gabble_file_transfer_channel_get_property (GObject *object,
               TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
               TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
               GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
+              TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
+              TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
               NULL);
 
           /* URI is immutable only for outgoing transfers */
@@ -334,6 +347,24 @@ gabble_file_transfer_channel_get_property (GObject *object,
         break;
       case PROP_GTALK_FILE_COLLECTION:
         g_value_set_object (value, self->priv->gtalk_file_collection);
+        break;
+      case PROP_SERVICE_NAME:
+        g_value_set_string (value, self->priv->service_name);
+        break;
+      case PROP_METADATA:
+        {
+          /* We're fine with priv->metadata being NULL but dbus-glib
+           * doesn't like iterating NULL as if it was a hash table. */
+          if (self->priv->metadata == NULL)
+            {
+              g_value_take_boxed (value,
+                  g_hash_table_new (g_str_hash, g_str_equal));
+            }
+          else
+            {
+              g_value_set_boxed (value, self->priv->metadata);
+            }
+        }
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -422,6 +453,12 @@ gabble_file_transfer_channel_set_property (GObject *object,
       case PROP_GTALK_FILE_COLLECTION:
         set_gtalk_file_collection (self,
             GTALK_FILE_COLLECTION (g_value_get_object (value)));
+        break;
+      case PROP_SERVICE_NAME:
+        self->priv->service_name = g_value_dup_string (value);
+        break;
+      case PROP_METADATA:
+        self->priv->metadata = g_value_dup_boxed (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -647,6 +684,12 @@ gabble_file_transfer_channel_class_init (
     { NULL }
   };
 
+  static TpDBusPropertiesMixinPropImpl file_metadata_props[] = {
+    { "ServiceName", "service-name", NULL },
+    { "Metadata", "metadata", NULL },
+    { NULL }
+  };
+
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
     { TP_IFACE_CHANNEL,
       tp_dbus_properties_mixin_getter_gobject_properties,
@@ -662,6 +705,11 @@ gabble_file_transfer_channel_class_init (
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       file_future_props
+    },
+    { TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      file_metadata_props
     },
     { NULL }
   };
@@ -891,6 +939,22 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_URI,
       param_spec);
 
+  param_spec = g_param_spec_string ("service-name",
+      "ServiceName",
+      "The Metadata.ServiceName property of this channel",
+      "",
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SERVICE_NAME,
+      param_spec);
+
+  param_spec = g_param_spec_boxed ("metadata",
+      "Metadata",
+      "The Metadata.Metadata property of this channel",
+      TP_HASH_TYPE_METADATA,
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_METADATA,
+      param_spec);
+
   gabble_file_transfer_channel_class->dbus_props_class.interfaces =
       prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -967,6 +1031,9 @@ gabble_file_transfer_channel_finalize (GObject *object)
   g_hash_table_destroy (self->priv->available_socket_types);
   g_free (self->priv->file_collection);
   g_free (self->priv->uri);
+  g_free (self->priv->service_name);
+  if (self->priv->metadata != NULL)
+    g_hash_table_unref (self->priv->metadata);
 
   G_OBJECT_CLASS (gabble_file_transfer_channel_parent_class)->finalize (object);
 }
@@ -1295,6 +1362,83 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
 
 }
 
+static void
+add_metadata_forms (GabbleFileTransferChannel *self,
+    WockyNode *file)
+{
+  if (!tp_str_empty (self->priv->service_name))
+    {
+      WockyStanza *tmp = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+          WOCKY_STANZA_SUB_TYPE_RESULT, NULL, NULL,
+          '(', "x",
+            ':', NS_X_DATA,
+            '@', "type", "result",
+            '(', "field",
+              '@', "var", "FORM_TYPE",
+              '@', "type", "hidden",
+              '(', "value",
+                '$', NS_TP_FT_METADATA_SERVICE,
+              ')',
+            ')',
+            '(', "field",
+              '@', "var", "ServiceName",
+              '(', "value",
+                '$', self->priv->service_name,
+              ')',
+            ')',
+          ')',
+          NULL);
+      WockyNode *x = wocky_node_get_first_child (wocky_stanza_get_top_node (tmp));
+      WockyNodeTree *tree = wocky_node_tree_new_from_node (x);
+
+      wocky_node_add_node_tree (file, tree);
+      g_object_unref (tree);
+      g_object_unref (tmp);
+    }
+
+  if (self->priv->metadata != NULL
+      && g_hash_table_size (self->priv->metadata) > 0)
+    {
+      WockyStanza *tmp = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+          WOCKY_STANZA_SUB_TYPE_RESULT, NULL, NULL,
+          '(', "x",
+            ':', NS_X_DATA,
+            '@', "type", "result",
+            '(', "field",
+              '@', "var", "FORM_TYPE",
+              '@', "type", "hidden",
+              '(', "value",
+                '$', NS_TP_FT_METADATA,
+              ')',
+            ')',
+          ')',
+          NULL);
+      WockyNode *x = wocky_node_get_first_child (wocky_stanza_get_top_node (tmp));
+      WockyNodeTree *tree;
+      GHashTableIter iter;
+      gpointer key, val;
+
+      g_hash_table_iter_init (&iter, self->priv->metadata);
+      while (g_hash_table_iter_next (&iter, &key, &val))
+        {
+          const gchar * const *values = val;
+
+          WockyNode *field = wocky_node_add_child (x, "field");
+          wocky_node_set_attribute (field, "var", key);
+
+          for (; values != NULL && *values != NULL; values++)
+            {
+              wocky_node_add_child_with_content (field, "value", *values);
+            }
+        }
+
+      tree = wocky_node_tree_new_from_node (x);
+      wocky_node_add_node_tree (file, tree);
+      g_object_unref (tree);
+      g_object_unref (tmp);
+    }
+}
+
 static gboolean
 offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
                   const gchar *resource, GError **error)
@@ -1334,6 +1478,8 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
       "size", size_str,
       "mime-type", self->priv->content_type,
       NULL);
+
+  add_metadata_forms (self, file_node);
 
   if (self->priv->content_hash != NULL)
     lm_message_node_set_attribute (file_node, "hash", self->priv->content_hash);
@@ -1486,6 +1632,21 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
           "can't find contact's presence");
 
       return FALSE;
+    }
+
+  if (self->priv->service_name != NULL || self->priv->metadata != NULL)
+    {
+      if (!gabble_presence_has_cap (presence, NS_TP_FT_METADATA))
+        {
+          DEBUG ("trying to use Metadata properties on a contact "
+              "who doesn't support it");
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+              "The specified contact does not support the "
+              "Metadata extension; you should ensure both ServiceName and "
+              "Metadata properties are not present in the channel "
+              "request");
+          return FALSE;
+        }
     }
 
   contact_repo = tp_base_connection_get_handles (
@@ -2249,7 +2410,9 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   GabbleBytestreamIface *bytestream,
                                   GTalkFileCollection *gtalk_file_collection,
                                   const gchar *file_collection,
-                                  const gchar *uri)
+                                  const gchar *uri,
+                                  const gchar *service_name,
+                                  const GHashTable *metadata)
 
 {
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
@@ -2270,5 +2433,7 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "bytestream", bytestream,
       "gtalk-file-collection", gtalk_file_collection,
       "uri", uri,
+      "service-name", service_name,
+      "metadata", metadata,
       NULL);
 }

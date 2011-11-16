@@ -109,6 +109,10 @@ ft_allowed_properties = dbus.Array([
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.Description',
     cs.CHANNEL_TYPE_FILE_TRANSFER + '.Date',
     cs.FT_URI])
+ft_allowed_properties_with_metadata = dbus.Array(
+    ft_allowed_properties +
+    [cs.FT_SERVICE_NAME,
+    cs.FT_METADATA])
 
 fake_client_dataforms = {
     'urn:xmpp:dataforms:softwareinfo':
@@ -155,6 +159,23 @@ def compute_caps_hash(identities, features, dataforms):
     m.update(S.encode('utf-8'))
     return base64.b64encode(m.digest())
 
+def add_data_forms(root, dataforms):
+    for type, fields in dataforms.iteritems():
+        x = root.addElement((ns.X_DATA, 'x'))
+        x['type'] = 'result'
+
+        field = x.addElement('field')
+        field['var'] = 'FORM_TYPE'
+        field['type'] = 'hidden'
+        field.addElement('value', content=type)
+
+        for var, values in fields.iteritems():
+            field = x.addElement('field')
+            field['var'] = var
+
+            for value in values:
+                field.addElement('value', content=value)
+
 def make_caps_disco_reply(stream, req, identities, features, dataforms={}):
     iq = make_result_iq(stream, req)
     query = iq.firstChildElement()
@@ -172,21 +193,7 @@ def make_caps_disco_reply(stream, req, identities, features, dataforms={}):
         el['var'] = f
         query.addChild(el)
 
-    for type, fields in dataforms.iteritems():
-        x = query.addElement((ns.X_DATA, 'x'))
-        x['type'] = 'result'
-
-        field = x.addElement('field')
-        field['var'] = 'FORM_TYPE'
-        field['type'] = 'hidden'
-        field.addElement('value', content=type)
-
-        for var, values in fields.iteritems():
-            field = x.addElement('field')
-            field['var'] = var
-
-            for value in values:
-                field.addElement('value', content=value)
+    add_data_forms(query, dataforms)
 
     return iq
 
@@ -204,6 +211,29 @@ def receive_presence_and_ask_caps(q, stream, expect_dbus=True):
         signaled_caps = None
 
     return disco_caps(q, stream, presence) + (signaled_caps,)
+
+def extract_data_forms(x_nodes):
+    dataforms = {}
+
+    if not x_nodes:
+        return dataforms
+
+    for form in x_nodes:
+        name = None
+        fields = {}
+        for field in xpath.queryForNodes('/x/field', form):
+            if field['var'] == 'FORM_TYPE':
+                name = str(field.firstChildElement())
+            else:
+                value_nodes = xpath.queryForNodes('/field/value', field) or []
+                values = [str(x) for x in value_nodes]
+
+                fields[field['var']] = values
+
+        if name is not None:
+            dataforms[name] = fields
+
+    return dataforms
 
 def extract_disco_parts(stanza):
     identity_nodes = xpath.queryForNodes('/iq/query/identity', stanza)
@@ -223,21 +253,7 @@ def extract_disco_parts(stanza):
 
     # a quick and ugly data form extractor
     x_nodes = xpath.queryForNodes('/iq/query/x', stanza) or []
-    dataforms = {}
-    for form in x_nodes:
-        name = None
-        fields = {}
-        for field in xpath.queryForNodes('/x/field', form):
-            if field['var'] == 'FORM_TYPE':
-                name = str(field.firstChildElement())
-            else:
-                values = [str(x) for x in xpath.queryForNodes('/field/value', field)]
-
-                fields[field['var']] = values
-
-        if name is not None:
-            dataforms[name] = fields
-
+    dataforms = extract_data_forms(x_nodes)
     return ([identity], features, dataforms)
 
 def disco_caps(q, stream, presence):

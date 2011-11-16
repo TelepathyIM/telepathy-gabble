@@ -174,14 +174,20 @@ gchar **
 gabble_uris_for_handle (TpHandleRepoIface *contact_repo,
     TpHandle contact)
 {
-  guint len = g_strv_length ((gchar **) addressable_uri_schemes);
-  guint i;
-  gchar **uris = g_new0 (gchar *, len + 1);
+  GPtrArray *uris = g_ptr_array_new ();
 
-  for (i = 0; i < len; i++)
-    uris[i] = gabble_uri_for_handle (contact_repo, addressable_uri_schemes[i], contact);
+  for (const gchar * const *scheme = addressable_uri_schemes; *scheme != NULL; scheme++)
+    {
+      gchar *uri = gabble_uri_for_handle (contact_repo, *scheme, contact);
 
-  return uris;
+      if (uri != NULL)
+        {
+          g_ptr_array_add (uris, uri);
+        }
+    }
+
+  g_ptr_array_add (uris, NULL);
+  return (gchar **) g_ptr_array_free (uris, FALSE);
 }
 
 GHashTable *

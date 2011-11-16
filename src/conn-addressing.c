@@ -19,13 +19,13 @@
 
 #include "conn-addressing.h"
 
-#include "namespaces.h"
-#include "util.h"
-#include "addressing-util.h"
+#include <dbus/dbus-glib-lowlevel.h>
 
 #include "extensions/extensions.h"
 
-#include <dbus/dbus-glib-lowlevel.h>
+#include "addressing-util.h"
+#include "namespaces.h"
+#include "util.h"
 
 static const char *assumed_interfaces[] = {
     TP_IFACE_CONNECTION,

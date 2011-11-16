@@ -69,53 +69,50 @@ def test_protocol(q, bus, conn, stream):
              name=cs.INVALID_ARGUMENT)
 
 def test_connection(q, bus, conn, stream):
-    conn.Connect()
-
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
 
-    buddies = ['amy@foo.com', 'bob@foo.com', 'che@foo.com']
-    not_normal_buddies = ['AMY@foo.com', 'bob@FOO.com', 'che@foo.com/resource']
+    normalized_buddies = ['amy@foo.com', 'bob@foo.com', 'che@foo.com']
+    buddies = ['AMY@foo.com', 'bob@FOO.com', 'che@foo.com/resource']
 
-    for buddy in buddies:
+    for buddy in normalized_buddies:
         item = event.query.addElement('item')
         item['jid'] = buddy
         item['subscription'] = 'both'
 
     stream.send(event.stanza)
 
-    contacts = conn.Addressing.GetContactsByVCardField(
-        "X-JABBER", not_normal_buddies[:2] + ['bad!jid'] + not_normal_buddies[2:], [])
+    requested, attributes = conn.Addressing.GetContactsByVCardField(
+        "X-JABBER", buddies[:2] + ['bad!jid'] + buddies[2:], [])
 
-    req_addresses = []
     addresses = []
 
-    for c in contacts.values():
-        assertContains(cs.CONN_IFACE_ADDRESSING + '/requested-address', c.keys())
-        req_addresses.append(c[cs.CONN_IFACE_ADDRESSING + '/requested-address'][1])
-        assertEquals("X-JABBER", c[cs.CONN_IFACE_ADDRESSING + '/requested-address'][0])
-        assertContains(cs.CONN_IFACE_ADDRESSING + '/addresses', c.keys())
-        assertContains('x-jabber', c[cs.CONN_IFACE_ADDRESSING + '/addresses'].keys())
-        addresses.append(c[cs.CONN_IFACE_ADDRESSING + '/addresses']['x-jabber'])
+    assertEquals(3, len(attributes))
+    assertEquals(3, len(requested))
 
-    assertSameSets(buddies, addresses)
-    assertSameSets(not_normal_buddies, req_addresses)
+    for attr in attributes.values():
+        assertContains(cs.CONN_IFACE_ADDRESSING + '/addresses', attr.keys())
+        assertContains('x-jabber', attr[cs.CONN_IFACE_ADDRESSING + '/addresses'].keys())
+        addresses.append(attr[cs.CONN_IFACE_ADDRESSING + '/addresses']['x-jabber'])
+
+    assertSameSets(normalized_buddies, addresses)
+    assertSameSets(buddies, requested.keys());
 
     schemes = ["xmpp", "XMPP", "http"]
+    valid_schemes = ["xmpp", "XMPP"]
 
-    get_uris = [a + ":" + b for a,b in zip(schemes, not_normal_buddies)]
+    request_uris = [a + ":" + b for a, b in zip(schemes, buddies)]
+    valid_uris = [a + ":" + b for a, b in zip(valid_schemes, buddies)]
 
-    contacts = conn.Addressing.GetContactsByURI(get_uris, [])
+    requested, attributes = conn.Addressing.GetContactsByURI(request_uris, [])
 
-    # Only two of the schemes we provided are valid.
-    assertEquals(2, len(contacts))
+    assertEquals(2, len(attributes))
+    assertEquals(2, len(requested))
 
-    for c in contacts.values():
-        assertContains(cs.CONN_IFACE_ADDRESSING + '/requested-uri', c.keys())
-        req_uri = c[cs.CONN_IFACE_ADDRESSING + '/requested-uri']
-        assertDoesNotContain("http", req_uri)
-        assertContains(cs.CONN_IFACE_ADDRESSING + '/uris', c.keys())
-        assertContains(req_uri.lower(), c[cs.CONN_IFACE_ADDRESSING + '/uris'])
+    for attr in attributes.values():
+        assertContains(cs.CONN_IFACE_ADDRESSING + '/uris', attr.keys())
+
+    assertSameSets(valid_uris, requested.keys())
 
 if __name__ == '__main__':
     exec_test(test_protocol)

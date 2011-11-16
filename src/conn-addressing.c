@@ -76,13 +76,11 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
   const gchar **uri;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) iface, TP_HANDLE_TYPE_CONTACT);
-  GHashTable *result;
+  GHashTable *attributes;
   GHashTable *requested = g_hash_table_new (g_direct_hash, g_direct_equal);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) uris));
   gchar *sender = dbus_g_method_get_sender (context);
-  GList *contacts;
-  GList *contact;
 
   for (uri = uris; *uri != NULL; uri++)
     {
@@ -91,33 +89,19 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
       if (h == 0)
         continue;
 
-      g_hash_table_insert (requested, GUINT_TO_POINTER (h), (gpointer) *uri);
+      g_hash_table_insert (requested, (gpointer) *uri, GUINT_TO_POINTER (h));
       g_array_append_val (handles, h);
     }
 
-  result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
+  attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
       interfaces, assumed_interfaces, sender);
 
-  /* copy the keys, because we'll be modifying the hash table while we iterate over them */
-  contacts = g_hash_table_get_keys (result);
-
-  for (contact = contacts; contact != NULL; contact = contact->next)
-    {
-      GValue *val = tp_g_value_slice_new_string (g_hash_table_lookup (requested,
-              contact->data));
-      TpHandle h = GPOINTER_TO_UINT (contact->data);
-
-      tp_contacts_mixin_set_contact_attribute (result, h,
-          GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING"/requested-uri", val);
-    }
-
-  gabble_svc_connection_interface_addressing_return_from_get_contacts_by_uri (context,
-      result);
+  gabble_svc_connection_interface_addressing_return_from_get_contacts_by_uri (
+      context, requested, attributes);
 
   tp_handles_unref (contact_repo, handles);
-  g_list_free (contacts);
-  g_hash_table_destroy (requested);
-  g_hash_table_unref (result);
+  g_hash_table_unref (requested);
+  g_hash_table_unref (attributes);
   g_free (sender);
 }
 
@@ -128,70 +112,36 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
     const gchar **interfaces,
     DBusGMethodInvocation *context)
 {
+  const gchar **address;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) iface, TP_HANDLE_TYPE_CONTACT);
-  const gchar **address;
-  gchar *sender = dbus_g_method_get_sender (context);
-  GHashTable *result;
+  GHashTable *attributes;
   GHashTable *requested = g_hash_table_new (g_direct_hash, g_direct_equal);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) addresses));
-  GList *contacts;
-  GList *contact;
+  gchar *sender = dbus_g_method_get_sender (context);
 
   for (address = addresses; *address != NULL; address++)
     {
-      GError *error = NULL;
       TpHandle h = gabble_ensure_handle_from_vcard_address (contact_repo, field,
-          *address, &error);
+          *address, NULL);
 
       if (h == 0)
-        {
-          if (g_error_matches (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED))
-            {
-              error->code = TP_ERROR_INVALID_ARGUMENT;
-              dbus_g_method_return_error (context, error);
-              g_error_free (error);
-              return;
-            }
-          else
-            {
-              g_error_free (error);
-              continue;
-            }
-        }
+        continue;
 
-      g_hash_table_insert (requested, GUINT_TO_POINTER (h), (gpointer) *address);
+      g_hash_table_insert (requested, (gpointer) *address, GUINT_TO_POINTER (h));
       g_array_append_val (handles, h);
     }
 
-  result = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
+  attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
       interfaces, assumed_interfaces, sender);
 
-  /* copy the keys, because we'll be modifying the hash table while we iterate over them */
-  contacts = g_hash_table_get_keys (result);
-
-  for (contact = contacts; contact != NULL; contact = contact->next)
-    {
-      TpHandle h = GPOINTER_TO_UINT (contact->data);
-      GValueArray *req_address = tp_value_array_build (2,
-          G_TYPE_STRING, field,
-          G_TYPE_STRING, g_hash_table_lookup (requested, contact->data),
-          G_TYPE_INVALID);
-      GValue *val = tp_g_value_slice_new_take_boxed (
-          GABBLE_STRUCT_TYPE_REQUESTED_ADDRESS, req_address);
-
-      tp_contacts_mixin_set_contact_attribute (result, h,
-          GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING"/requested-address", val);
-    }
-
   gabble_svc_connection_interface_addressing_return_from_get_contacts_by_vcard_field (
-      context, result);
+      context, requested, attributes);
 
   tp_handles_unref (contact_repo, handles);
-  g_list_free (contacts);
-  g_hash_table_destroy (requested);
-  g_hash_table_unref (result);
+  g_hash_table_unref (requested);
+  g_hash_table_unref (attributes);
   g_free (sender);
 }
 

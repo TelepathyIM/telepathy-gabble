@@ -218,7 +218,14 @@ gabble_vcard_address_for_handle (TpHandleRepoIface *contact_repo,
     const gchar *vcard_field,
     TpHandle contact)
 {
-  return g_strdup (tp_handle_inspect (contact_repo, contact));
+  if (g_ascii_strcasecmp (vcard_field, "x-jabber") == 0)
+    {
+      return g_strdup (tp_handle_inspect (contact_repo, contact));
+    }
+  else
+    {
+      return NULL;
+    }
 }
 
 gchar *

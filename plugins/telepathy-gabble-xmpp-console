@@ -63,12 +63,16 @@ class StanzaViewer(Gtk.ScrolledWindow):
 
     def append_stanza(self, xml):
         pretty = minidom.parseString(xml).toprettyxml()
+        pretty = pretty.replace('<?xml version="1.0" ?>\n', '')
         i = self.b.get_end_iter()
         self.b.insert(i, pretty + '\n')
 
     def append_comment(self, text):
         i = self.b.get_end_iter()
         self.b.insert(i, '<!-- %s -->\n' % text)
+
+    def tell_me_everything(self):
+        return self.b.get_property('text')
 
 class SpinWrapper(Gtk.Notebook):
     PRIMARY_PAGE = 0
@@ -204,6 +208,45 @@ class IQPage(Page):
 
         self.result_nb.stop_spinning()
 
+class StanzaPage(Page):
+    def __init__(self, console_proxy):
+        Page.__init__(self, console_proxy)
+
+        title = self.add_title("Enter a complete stanza:")
+
+        self.sv = StanzaViewer()
+        self.sv.view.set_editable(True)
+        self.sv.append_stanza("<message to='t-pain@test.collabora.co.uk' type='chat'><body>Been on any nice boats recently?</body></message>")
+
+        self.spin_wrapper = SpinWrapper(self.sv)
+        self.attach_next_to(self.spin_wrapper, title, Gtk.PositionType.BOTTOM,
+            2, 1)
+
+        self.result_label = self.add_label('', self.spin_wrapper)
+        self.result_label.set_property('hexpand', True)
+        self.result_label.set_line_wrap(True)
+
+        b = Gtk.Button.new_with_mnemonic("_Send")
+        b.connect('clicked', self.__send_stanza)
+        b.set_property('hexpand', False)
+        self.attach_next_to(b, self.result_label, Gtk.PositionType.RIGHT, 1, 1)
+
+    def __send_stanza(self, button):
+        self.console_proxy.SendStanza('(s)', self.sv.tell_me_everything(),
+            result_handler=self.__send_stanza_cb)
+        self.spin_wrapper.start_spinning()
+
+    def __send_stanza_cb(self, proxy, result, user_data):
+        if isinstance(result, Exception):
+            # FIXME: this sucks. You can't just get the free text bit without
+            # the D-Bus error bit.
+            t = result.message
+        else:
+            t = "yes sir, captain tightpants"
+
+        self.result_label.set_text(t)
+        self.spin_wrapper.stop_spinning()
+
 class SnoopyPage(Page):
     def __init__(self, console_proxy):
         Page.__init__(self, console_proxy)
@@ -250,7 +293,8 @@ class SnoopyPage(Page):
 
 class Window(Gtk.Window):
     IQ_PAGE = 0
-    SNOOPY_PAGE = 1
+    STANZA_PAGE = 1
+    SNOOPY_PAGE = 2
 
     def __init__(self, bus, connection_bus_name):
         Gtk.Window.__init__(self)
@@ -283,6 +327,11 @@ plugin installed.""" % locals()
         self.nb.insert_page(self.iq,
             Gtk.Label.new_with_mnemonic("_IQ console"),
             self.IQ_PAGE)
+
+        self.stanza = StanzaPage(self.console_proxy)
+        self.nb.insert_page(self.stanza,
+            Gtk.Label.new_with_mnemonic("Send a s_tanza"),
+            self.STANZA_PAGE)
 
         self.snoopy = SnoopyPage(self.console_proxy)
         self.nb.insert_page(self.snoopy,

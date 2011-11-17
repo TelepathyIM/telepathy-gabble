@@ -4,7 +4,7 @@ Test Gabble's different addressing interfaces.
 
 import dbus
 from servicetest import unwrap, tp_path_prefix, assertEquals, ProxyWrapper, \
-    assertContains, assertSameSets, assertDoesNotContain
+    assertContains, assertSameSets, assertDoesNotContain, pretty
 from gabbletest import exec_test, call_async
 import constants as cs
 import ns
@@ -32,12 +32,12 @@ def test_protocol(q, bus, conn, stream):
     assertEquals("eitan@example.com", normalized_address)
 
     normalized_address = proto.Addressing.NormalizeVCardAddress(
-        "X-FACEBOOK-ID", "-12345@chat.facebook.com")
+        "X-FACEBOOK-ID", "12345")
 
     assertEquals("12345", normalized_address)
 
     normalized_address = proto.Addressing.NormalizeVCardAddress(
-        "x-facebook-id", "-12345@chat.facebook.com")
+        "x-facebook-id", "12345")
 
     assertEquals("12345", normalized_address)
 
@@ -49,6 +49,42 @@ def test_protocol(q, bus, conn, stream):
 
     call_async(q, proto.Addressing, "NormalizeVCardAddress",
                "X-JABBER", "eitan!example.com")
+
+    q.expect('dbus-error', method="NormalizeVCardAddress",
+             name=cs.INVALID_ARGUMENT)
+
+    call_async(q, proto.Addressing, "NormalizeVCardAddress",
+               "X-FACEBOOK-ID", "-12345!chat.facebook.com")
+
+    q.expect('dbus-error', method="NormalizeVCardAddress",
+             name=cs.INVALID_ARGUMENT)
+
+    call_async(q, proto.Addressing, "NormalizeVCardAddress",
+               "X-FACEBOOK-ID", "12345@chat.facebook.com")
+
+    q.expect('dbus-error', method="NormalizeVCardAddress",
+             name=cs.INVALID_ARGUMENT)
+
+    call_async(q, proto.Addressing, "NormalizeVCardAddress",
+               "X-FACEBOOK-ID", "-12345@chat.facebook.com")
+
+    q.expect('dbus-error', method="NormalizeVCardAddress",
+             name=cs.INVALID_ARGUMENT)
+
+    call_async(q, proto.Addressing, "NormalizeVCardAddress",
+               "X-FACEBOOK-ID", "-12345@example.com")
+
+    q.expect('dbus-error', method="NormalizeVCardAddress",
+             name=cs.INVALID_ARGUMENT)
+
+    call_async(q, proto.Addressing, "NormalizeVCardAddress",
+               "X-FACEBOOK-ID", "12345@example.com")
+
+    q.expect('dbus-error', method="NormalizeVCardAddress",
+             name=cs.INVALID_ARGUMENT)
+
+    call_async(q, proto.Addressing, "NormalizeVCardAddress",
+               "X-FACEBOOK-ID", "-12345@example.com")
 
     q.expect('dbus-error', method="NormalizeVCardAddress",
              name=cs.INVALID_ARGUMENT)
@@ -114,7 +150,7 @@ def test_connection(q, bus, conn, stream):
     assertSameSets(buddies, requested.keys());
 
     normalized_buddies = ['12345', '54321']
-    buddies = ['-12345@chat.facebook.com', '-54321@CHAT.facebook.com']
+    buddies = ['12345', '54321']
     bad_jid_buddies = ['-12345!CHAT.facebook.com', '12345@chat.facebook.com']
 
     for buddy in buddies:
@@ -132,7 +168,9 @@ def test_connection(q, bus, conn, stream):
     for attr in attributes.values():
         assertContains(cs.CONN_IFACE_ADDRESSING + '/addresses', attr.keys())
         assertContains('x-facebook-id', attr[cs.CONN_IFACE_ADDRESSING + '/addresses'].keys())
-        addresses.append(attr[cs.CONN_IFACE_ADDRESSING + '/addresses']['x-facebook-id'])
+        addr = attr[cs.CONN_IFACE_ADDRESSING + '/addresses']['x-facebook-id']
+        addresses.append(addr)
+        assertEquals(attr[cs.CONN + '/contact-id'], "-" + addr + "@chat.facebook.com")
 
     assertSameSets(normalized_buddies, addresses)
     assertSameSets(buddies, requested.keys());

@@ -75,17 +75,13 @@ gabble_uri_to_jid (const gchar *uri,
     GError **error)
 {
   gchar *scheme;
-  gchar *unescaped_uri;
   gchar *normalized_jid = NULL;
 
   g_return_val_if_fail (uri != NULL, NULL);
 
   scheme = g_uri_parse_scheme (uri);
 
-  /* convert from "xmpp:foo%3F@example.com" to "xmpp:foo?@example.com" */
-  unescaped_uri = g_uri_unescape_string (uri, NULL);
-
-  if (scheme == NULL || unescaped_uri == NULL)
+  if (scheme == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid URI", uri);
@@ -93,20 +89,18 @@ gabble_uri_to_jid (const gchar *uri,
     }
   else if (g_ascii_strcasecmp (scheme, "xmpp") == 0)
     {
-      const gchar *jid = unescaped_uri + strlen (scheme) + 1; /* Strip the scheme */
-      GError *gabble_error = NULL;
+      gchar *node = NULL;
+      gchar *domain = NULL;
+      gchar *resource = NULL;
 
-      normalized_jid = gabble_normalize_contact (NULL, jid,
-          GUINT_TO_POINTER (GABBLE_JID_GLOBAL), &gabble_error);
+      if (!gabble_parse_xmpp_uri (uri, &node, &domain, &resource, error))
+        goto OUT;
 
-      if (gabble_error != NULL)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "'%s' is an invalid address: %s", jid,
-              gabble_error->message);
-          g_error_free (gabble_error);
-          goto OUT;
-        }
+      normalized_jid = gabble_encode_jid (node, domain, resource);
+
+      g_free (node);
+      g_free (domain);
+      g_free (resource);
     }
   else
     {
@@ -118,7 +112,6 @@ gabble_uri_to_jid (const gchar *uri,
 
 OUT:
   g_free (scheme);
-  g_free (unescaped_uri);
 
   return normalized_jid;
 }

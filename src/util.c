@@ -375,35 +375,6 @@ lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
 }
 
 /**
- * gabble_decode_jid
- *
- * Parses a JID which may be one of the following forms:
- *
- *  domain
- *  domain/resource
- *  node@domain
- *  node@domain/resource
- *
- * If the JID is valid, returns TRUE and sets the caller's
- * node/domain/resource pointers if they are not NULL. The node and resource
- * pointers will be set to NULL if the respective part is not present in the
- * JID. The node and domain are lower-cased because the Jabber protocol treats
- * them case-insensitively.
- *
- * XXX: Do nodeprep/resourceprep and length checking.
- *
- * See RFC 3920 §3.
- */
-gboolean
-gabble_decode_jid (const gchar *jid,
-                   gchar **node,
-                   gchar **domain,
-                   gchar **resource)
-{
-  return wocky_decode_jid (jid, node, domain, resource);
-}
-
-/**
  * gabble_get_room_handle_from_jid:
  * @room_repo: The %TP_HANDLE_TYPE_ROOM handle repository
  * @jid: A JID
@@ -468,7 +439,7 @@ gabble_normalize_room (TpHandleRepoIface *repo,
       qualified_name = g_strdup (jid);
     }
 
-  if (!gabble_decode_jid (qualified_name, NULL, NULL, &resource))
+  if (!wocky_decode_jid (qualified_name, NULL, NULL, &resource))
     {
       INVALID_HANDLE (error, "room JID %s is invalid", qualified_name);
       return NULL;
@@ -551,7 +522,7 @@ gabble_normalize_contact (TpHandleRepoIface *repo,
   gchar *username = NULL, *server = NULL, *resource = NULL;
   gchar *ret = NULL;
 
-  if (!gabble_decode_jid (jid, &username, &server, &resource) || !username)
+  if (!wocky_decode_jid (jid, &username, &server, &resource) || !username)
     {
       INVALID_HANDLE (error,
           "JID %s is invalid or has no node part", jid);

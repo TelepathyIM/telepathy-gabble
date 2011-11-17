@@ -24,6 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <wocky/wocky-utils.h>
+
 #include "connection.h"
 #include "util.h"
 
@@ -133,7 +135,7 @@ gabble_jid_to_uri (const gchar *scheme,
 
   g_return_val_if_fail (scheme != NULL, NULL);
 
-  if (!gabble_decode_jid (jid, &node, &domain, &resource))
+  if (!wocky_decode_jid (jid, &node, &domain, &resource))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid JID", jid);
@@ -334,7 +336,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
 
   jid = uri + strlen (scheme) + 1; /* Strip the scheme */
 
-  if (!gabble_decode_jid (jid, &tmp_node, &tmp_domain, &tmp_resource))
+  if (!wocky_decode_jid (jid, &tmp_node, &tmp_domain, &tmp_resource))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid XMPP URI", uri);
@@ -387,7 +389,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
       goto OUT;
     }
 
-  if (!gabble_decode_jid (normalized_jid, node, domain, resource))
+  if (!wocky_decode_jid (normalized_jid, node, domain, resource))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid XMPP URI", uri);

@@ -142,35 +142,13 @@ gabble_jid_to_uri (const gchar *scheme,
 
   /* convert from "foo?" to "foo%3F" */
   if (node)
-    {
-      escaped_node = g_uri_escape_string (node, NULL, TRUE);
-      if (escaped_node == NULL)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "'%s' is not a valid JID", jid);
-          goto OUT;
-        }
-    }
+    escaped_node = g_uri_escape_string (node, NULL, TRUE);
 
   g_assert (domain != NULL);
   escaped_domain = g_uri_escape_string (domain, NULL, TRUE);
-  if (escaped_domain == NULL)
-    {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-          "'%s' is not a valid JID", jid);
-      goto OUT;
-    }
 
   if (resource)
-    {
-      escaped_resource = g_uri_escape_string (resource, NULL, TRUE);
-      if (escaped_resource == NULL)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "'%s' is not a valid JID", jid);
-          goto OUT;
-        }
-    }
+    escaped_resource = g_uri_escape_string (resource, NULL, TRUE);
 
   escaped_jid = gabble_encode_jid (escaped_node, escaped_domain, escaped_resource);
 
@@ -178,7 +156,6 @@ gabble_jid_to_uri (const gchar *scheme,
 
   normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme, escaped_jid);
 
-OUT:
   g_free (node);
   g_free (domain);
   g_free (resource);

@@ -42,6 +42,12 @@ def test_protocol(q, bus, conn, stream):
     assertEquals("12345", normalized_address)
 
     call_async(q, proto.Addressing, "NormalizeVCardAddress",
+               "x-facebook-id", "abcde")
+
+    q.expect('dbus-error', method="NormalizeVCardAddress",
+             name=cs.INVALID_ARGUMENT)
+
+    call_async(q, proto.Addressing, "NormalizeVCardAddress",
                "X-WEIRD-FIELD", "eitan@example.com")
 
     q.expect('dbus-error', method="NormalizeVCardAddress",

@@ -245,7 +245,8 @@ gabble_vcard_address_to_jid (const gchar *vcard_field,
       const gchar *s;
 
       s = vcard_address;
-      while (*s && (g_ascii_isalnum (*s))) s++;
+      while (*s && (g_ascii_isdigit (*s)))
+        s++;
       if (G_UNLIKELY (*s != '\0'))
         {
           g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
@@ -307,7 +308,8 @@ gabble_jid_to_vcard_address (const gchar *vcard_field,
           normalized_address = g_strndup (start_of_number, (int) (at - start_of_number));
 
           s = normalized_address;
-          while (*s && (g_ascii_isalnum (*s))) s++;
+          while (*s && (g_ascii_isdigit (*s)))
+            s++;
           if (G_UNLIKELY (*s != '\0'))
             {
               g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,

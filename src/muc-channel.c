@@ -444,9 +444,9 @@ gabble_muc_channel_constructed (GObject *obj)
       NULL);
 
   if (priv->room_name != NULL)
-    ok = gabble_decode_jid (tmp, NULL, &(priv->server), NULL);
+    ok = wocky_decode_jid (tmp, NULL, &(priv->server), NULL);
   else
-    ok = gabble_decode_jid (tmp, &(priv->room_name), &(priv->server), NULL);
+    ok = wocky_decode_jid (tmp, &(priv->room_name), &(priv->server), NULL);
   g_free (tmp);
 
   /* Asserting here is fine because the target ID has already been
@@ -746,7 +746,7 @@ create_room_identity (GabbleMucChannel *chan)
        */
       gchar *local_part;
 
-      g_assert (gabble_decode_jid (alias, &local_part, NULL, NULL));
+      g_assert (wocky_decode_jid (alias, &local_part, NULL, NULL));
       g_assert (local_part != NULL);
       g_free (alias);
 

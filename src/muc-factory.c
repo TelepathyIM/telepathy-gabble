@@ -25,6 +25,7 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
+#include <wocky/wocky-utils.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
@@ -1418,7 +1419,7 @@ handle_text_channel_request (GabbleMucFactory *self,
       gboolean ok;
 
       /* JIDs that are handles must already be valid. */
-      ok = gabble_decode_jid (target_id, &target_room, NULL, NULL);
+      ok = wocky_decode_jid (target_id, &target_room, NULL, NULL);
       g_assert (ok);
 
       ok = !tp_strdiff (target_room, room_name);
@@ -1445,7 +1446,7 @@ handle_text_channel_request (GabbleMucFactory *self,
       gboolean ok = TRUE;
 
       /* JIDs that are handles must already be valid. */
-      ok = gabble_decode_jid (target_id, NULL, &target_server, NULL);
+      ok = wocky_decode_jid (target_id, NULL, &target_server, NULL);
       g_assert (ok);
 
       if (target_server != NULL)

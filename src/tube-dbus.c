@@ -27,7 +27,7 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <loudmouth/loudmouth.h>
-
+#include <wocky/wocky-utils.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/exportable-channel.h>
@@ -904,7 +904,7 @@ gabble_tube_dbus_constructor (GType type,
       priv->dbus_name_to_handle = g_hash_table_new_full (g_str_hash,
          g_str_equal, NULL, NULL);
 
-      g_assert (gabble_decode_jid (
+      g_assert (wocky_decode_jid (
           tp_handle_inspect (contact_repo, priv->self_handle),
           NULL, NULL, &nick));
       g_assert (nick != NULL);
@@ -1681,7 +1681,7 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
       const gchar *jid;
 
       jid = tp_handle_inspect (contact_repo, handle);
-      g_assert (gabble_decode_jid (jid, NULL, NULL, &nick));
+      g_assert (wocky_decode_jid (jid, NULL, NULL, &nick));
       supposed_name = _gabble_generate_dbus_unique_name (nick);
       g_free (nick);
 

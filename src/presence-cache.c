@@ -1337,7 +1337,7 @@ _caps_disco_cb (GabbleDisco *disco,
     }
 
   /* If tp_handle_ensure () was happy with the jid, it's valid. */
-  jid_is_valid = gabble_decode_jid (jid, NULL, NULL, &resource);
+  jid_is_valid = wocky_decode_jid (jid, NULL, NULL, &resource);
   g_assert (jid_is_valid);
   waiter_self = find_matching_waiter (waiters, handle, resource);
   g_free (resource);

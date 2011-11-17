@@ -368,7 +368,7 @@ gabble_jingle_session_constructed (GObject *object)
     {
       /* The peer jid isn't exactly what is in the contact repo so it will have
        * a resource */
-      if (gabble_decode_jid (priv->peer_jid, NULL, NULL,
+      if (wocky_decode_jid (priv->peer_jid, NULL, NULL,
           &priv->peer_resource))
         {
           /* fake for gcc */;

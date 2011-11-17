@@ -21,6 +21,7 @@
 #include "config.h"
 #include "conn-aliasing.h"
 
+#include <wocky/wocky-utils.h>
 #include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
@@ -962,7 +963,7 @@ get_cached_remote_alias (
     }
 
   /* MUC handles have the nickname in the resource */
-  if (gabble_decode_jid (jid, NULL, NULL, &resource) &&
+  if (wocky_decode_jid (jid, NULL, NULL, &resource) &&
       NULL != resource)
     {
       set_or_clear (alias, resource);

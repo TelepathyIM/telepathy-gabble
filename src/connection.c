@@ -33,6 +33,7 @@
 #include <wocky/wocky-disco-identity.h>
 #include <wocky/wocky-tls-handler.h>
 #include <wocky/wocky-ping.h>
+#include <wocky/wocky-utils.h>
 #include <wocky/wocky-xmpp-error.h>
 #include <wocky/wocky-data-form.h>
 #include <telepathy-glib/channel-manager.h>
@@ -1313,7 +1314,7 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
   username = server = resource = NULL;
   result = TRUE;
 
-  if (!gabble_decode_jid (account, &username, &server, &resource))
+  if (!wocky_decode_jid (account, &username, &server, &resource))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "unable to extract JID from account name");

@@ -47,60 +47,24 @@ gchar *
 gabble_normalize_uri (const gchar *uri,
     GError **error)
 {
-  gchar *normalized_jid;
+  gchar *scheme = NULL;
+  gchar *normalized_jid = NULL;
   gchar *normalized_uri = NULL;
 
   g_return_val_if_fail (uri != NULL, NULL);
 
-  /* get the normalized jid from the uri */
   normalized_jid = gabble_uri_to_jid (uri, error);
-
-  if (normalized_jid != NULL)
+  if (normalized_jid == NULL)
     {
-      gchar *node = NULL;
-      gchar *domain = NULL;
-      gchar *resource = NULL;
-      gchar *escaped_node = NULL;
-      gchar *escaped_domain = NULL;
-      gchar *escaped_resource = NULL;
-      gchar *escaped_jid = NULL;
-      gchar *scheme;
-      gchar *normalized_scheme;
-
-      if (!gabble_decode_jid (normalized_jid, &node, &domain, &resource))
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-              "'%s' is not a valid URI", uri);
-          goto OUT;
-        }
-
-      /* convert from "foo?" to "foo%3F" */
-      if (node)
-        escaped_node = g_uri_escape_string (node, NULL, TRUE);
-      escaped_domain = g_uri_escape_string (domain, NULL, TRUE);
-      if (resource)
-        escaped_resource = g_uri_escape_string (resource, NULL, TRUE);
-
-      escaped_jid = gabble_encode_jid (escaped_node, escaped_domain, escaped_resource);
-
-      g_free (node);
-      g_free (domain);
-      g_free (resource);
-      g_free (escaped_node);
-      g_free (escaped_domain);
-      g_free (escaped_resource);
-
-      scheme = g_uri_parse_scheme (uri);
-      normalized_scheme = g_ascii_strdown (scheme, -1);
-
-      normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme, escaped_jid);
-
-      g_free (escaped_jid);
-      g_free (scheme);
-      g_free (normalized_scheme);
+      goto OUT;
     }
 
+  scheme = g_uri_parse_scheme (uri);
+
+  normalized_uri = gabble_jid_to_uri (scheme, normalized_jid, error);
+
 OUT:
+  g_free (scheme);
   g_free (normalized_jid);
 
   return normalized_uri;
@@ -164,16 +128,72 @@ gabble_jid_to_uri (const gchar *scheme,
     const gchar *jid,
     GError **error)
 {
-  gchar *normalized_uri;
-  gchar *uri;
+  gchar *normalized_uri = NULL;
+  gchar *node = NULL;
+  gchar *domain = NULL;
+  gchar *resource = NULL;
+  gchar *escaped_node = NULL;
+  gchar *escaped_domain = NULL;
+  gchar *escaped_resource = NULL;
+  gchar *escaped_jid = NULL;
+  gchar *normalized_scheme = NULL;
 
   g_return_val_if_fail (scheme != NULL, NULL);
 
-  uri = g_strdup_printf ("%s:%s", scheme, jid);
+  if (!gabble_decode_jid (jid, &node, &domain, &resource))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid JID", jid);
+      return NULL;
+    }
 
-  normalized_uri = gabble_normalize_uri (uri, error);
+  /* convert from "foo?" to "foo%3F" */
+  if (node)
+    {
+      escaped_node = g_uri_escape_string (node, NULL, TRUE);
+      if (escaped_node == NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is not a valid JID", jid);
+          goto OUT;
+        }
+    }
 
-  g_free (uri);
+  g_assert (domain != NULL);
+  escaped_domain = g_uri_escape_string (domain, NULL, TRUE);
+  if (escaped_domain == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid JID", jid);
+      goto OUT;
+    }
+
+  if (resource)
+    {
+      escaped_resource = g_uri_escape_string (resource, NULL, TRUE);
+      if (escaped_resource == NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is not a valid JID", jid);
+          goto OUT;
+        }
+    }
+
+  escaped_jid = gabble_encode_jid (escaped_node, escaped_domain, escaped_resource);
+
+  normalized_scheme = g_ascii_strdown (scheme, -1);
+
+  normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme, escaped_jid);
+
+OUT:
+  g_free (node);
+  g_free (domain);
+  g_free (resource);
+  g_free (escaped_node);
+  g_free (escaped_domain);
+  g_free (escaped_resource);
+  g_free (escaped_jid);
+  g_free (normalized_scheme);
 
   return normalized_uri;
 }

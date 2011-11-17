@@ -61,4 +61,10 @@ gchar *gabble_vcard_address_for_handle (TpHandleRepoIface *contact_repo,
     const gchar *vcard_field,
     TpHandle contact);
 
+gboolean gabble_parse_xmpp_uri (const gchar *uri,
+    gchar **node,
+    gchar **domain,
+    gchar **resource,
+    GError **error);
+
 #endif /* __GABBLE_UTIL_ADDRESSING_H__ */

@@ -329,3 +329,112 @@ gabble_uri_for_handle (TpHandleRepoIface *contact_repo,
   const gchar *identifier = tp_handle_inspect (contact_repo, contact);
   return gabble_jid_to_uri (scheme, identifier, NULL);
 }
+
+gboolean
+gabble_parse_xmpp_uri (const gchar *uri,
+    gchar **node,
+    gchar **domain,
+    gchar **resource,
+    GError **error)
+{
+  gboolean ret = FALSE;
+  gchar *scheme;
+  const gchar *jid;
+  gchar *tmp_node = NULL;
+  gchar *tmp_domain = NULL;
+  gchar *tmp_resource = NULL;
+  gchar *unescaped_node = NULL;
+  gchar *unescaped_domain = NULL;
+  gchar *unescaped_resource = NULL;
+  gchar *unescaped_jid = NULL;
+  gchar *normalized_jid = NULL;
+  GError *gabble_error = NULL;
+
+  g_return_val_if_fail (uri != NULL, FALSE);
+  g_return_val_if_fail (domain != NULL, FALSE);
+
+  scheme = g_uri_parse_scheme (uri);
+
+  if (scheme == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid URI", uri);
+      goto OUT;
+    }
+
+  jid = uri + strlen (scheme) + 1; /* Strip the scheme */
+
+  if (!gabble_decode_jid (jid, &tmp_node, &tmp_domain, &tmp_resource))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid XMPP URI", uri);
+      goto OUT;
+    }
+
+  /* convert from "foo%3F" to "foo?" */
+  if (tmp_node)
+    {
+      unescaped_node = g_uri_unescape_string (tmp_node, NULL);
+      if (unescaped_node == NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is not a valid XMPP URI", uri);
+          goto OUT;
+        }
+    }
+
+  g_assert (tmp_domain);
+  unescaped_domain = g_uri_unescape_string (tmp_domain, NULL);
+  if (unescaped_domain == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid XMPP URI", uri);
+      goto OUT;
+    }
+
+  if (tmp_resource)
+    {
+      unescaped_resource = g_uri_unescape_string (tmp_resource, NULL);
+      if (unescaped_resource == NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is not a valid XMPP URI", uri);
+          goto OUT;
+        }
+    }
+
+  unescaped_jid = gabble_encode_jid (unescaped_node, unescaped_domain, unescaped_resource);
+
+  normalized_jid = gabble_normalize_contact (NULL, unescaped_jid,
+      GUINT_TO_POINTER (GABBLE_JID_GLOBAL), &gabble_error);
+
+  if (gabble_error != NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid XMPP URI: %s", uri,
+          gabble_error->message);
+      g_error_free (gabble_error);
+      goto OUT;
+    }
+
+  if (!gabble_decode_jid (normalized_jid, node, domain, resource))
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid XMPP URI", uri);
+      goto OUT;
+    }
+
+  ret = TRUE;
+
+OUT:
+  g_free (scheme);
+  g_free (tmp_node);
+  g_free (tmp_domain);
+  g_free (tmp_resource);
+  g_free (unescaped_node);
+  g_free (unescaped_domain);
+  g_free (unescaped_resource);
+  g_free (unescaped_jid);
+  g_free (normalized_jid);
+  return ret;
+}

@@ -50,6 +50,11 @@ def test_protocol(q, bus, conn, stream):
 
     assertEquals("xmpp:eitan%3F@example.com", normalized_uri)
 
+    normalized_uri = proto.Addressing.NormalizeContactURI(
+        "xmpp:EITAN?@example.COM/resourc?e")
+
+    assertEquals("xmpp:eitan%3F@example.com", normalized_uri)
+
     call_async(q, proto.Addressing, "NormalizeContactURI",
                "Something that is far from a URI")
 

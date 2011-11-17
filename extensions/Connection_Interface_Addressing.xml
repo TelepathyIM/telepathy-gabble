@@ -79,7 +79,7 @@
       <arg direction="out" type="a{su}" name="Requested"
            tp:type="Addressing_Normalization_Map">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          <p>A mapping from requested vCard addresses and the corresponding
+          <p>A mapping from requested vCard addresses to the corresponding
             contact handles.</p>
 
           <p>Requested addresses that are not valid or understood for this protocol
@@ -155,7 +155,7 @@
       <arg direction="out" type="a{su}" name="Requested"
            tp:type="Addressing_Normalization_Map">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-          <p>A mapping of requested URIs and the corresponding contact handles.</p>
+          <p>A mapping of requested URIs to the corresponding contact handles.</p>
 
           <p>Requested URIs that are not valid or understood for this protocol
             MUST be omitted from the mapping.</p>

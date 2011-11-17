@@ -70,6 +70,31 @@ class StanzaViewer(Gtk.ScrolledWindow):
         i = self.b.get_end_iter()
         self.b.insert(i, '<!-- %s -->\n' % text)
 
+class SpinWrapper(Gtk.Notebook):
+    PRIMARY_PAGE = 0
+    SPINNER_PAGE = 1
+
+    def __init__(self, main_widget):
+        Gtk.Notebook.__init__(self)
+        self.set_show_tabs(False)
+        self.set_show_border(False)
+        self.insert_page(main_widget, None, self.PRIMARY_PAGE)
+
+        self.spinner = Gtk.Spinner()
+        self.spinner.set_property('halign', Gtk.Align.CENTER)
+        self.spinner.set_property('valign', Gtk.Align.CENTER)
+        self.spinner.set_property('width-request', 32)
+        self.spinner.set_property('height-request', 32)
+        self.insert_page(self.spinner, None, self.SPINNER_PAGE)
+
+    def start_spinning(self):
+        self.set_current_page(self.SPINNER_PAGE)
+        self.spinner.start()
+
+    def stop_spinning(self):
+        self.spinner.stop()
+        self.set_current_page(self.PRIMARY_PAGE)
+
 class Page(Gtk.Grid):
     def __init__(self, console_proxy):
         Gtk.Grid.__init__(self)
@@ -104,9 +129,6 @@ class Page(Gtk.Grid):
         return label
 
 class IQPage(Page):
-    REPLY_PAGE = 0
-    SPINNER_PAGE = 1
-
     def __init__(self, console_proxy):
         Page.__init__(self, console_proxy)
 
@@ -144,16 +166,7 @@ class IQPage(Page):
         self.stanza_viewer = StanzaViewer()
         self.stanza_viewer.append_comment("send a request to see the reply here")
 
-        self.result_nb = Gtk.Notebook()
-        self.result_nb.set_show_tabs(False)
-        self.result_nb.insert_page(self.stanza_viewer, None, self.REPLY_PAGE)
-
-        self.spinner = Gtk.Spinner()
-        self.spinner.set_property('halign', Gtk.Align.CENTER)
-        self.spinner.set_property('valign', Gtk.Align.CENTER)
-        self.spinner.set_property('width-request', 32)
-        self.spinner.set_property('height-request', 32)
-        self.result_nb.insert_page(self.spinner, None, self.SPINNER_PAGE)
+        self.result_nb = SpinWrapper(self.stanza_viewer)
 
         self.attach_next_to(self.result_nb, reply_label, Gtk.PositionType.BOTTOM, 2, 1)
 
@@ -176,9 +189,9 @@ class IQPage(Page):
         to = self.recipient_entry.get_text()
         body = self.body_entry.get_text()
 
-        self.console_proxy.SendIQ('(sss)', type, to, body, result_handler=self.send_iq_cb)
-        self.result_nb.set_current_page(self.SPINNER_PAGE)
-        self.spinner.start()
+        self.console_proxy.SendIQ('(sss)', type, to, body,
+            result_handler=self.send_iq_cb)
+        self.result_nb.start_spinning()
 
     def send_iq_cb(self, proxy, result, user_data):
         self.stanza_viewer.clear()
@@ -189,8 +202,7 @@ class IQPage(Page):
         except Exception, e:
             self.stanza_viewer.append_comment("error:\n%s" % e)
 
-        self.spinner.stop()
-        self.result_nb.set_current_page(self.REPLY_PAGE)
+        self.result_nb.stop_spinning()
 
 class SnoopyPage(Page):
     def __init__(self, console_proxy):

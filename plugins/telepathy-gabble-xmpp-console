@@ -200,11 +200,11 @@ class IQPage(Page):
     def send_iq_cb(self, proxy, result, user_data):
         self.stanza_viewer.clear()
 
-        try:
+        if isinstance(result, Exception):
+            self.stanza_viewer.append_comment("error:\n%s" % result)
+        else:
             reply_type, reply = result
             self.stanza_viewer.append_stanza(reply)
-        except Exception, e:
-            self.stanza_viewer.append_comment("error:\n%s" % e)
 
         self.result_nb.stop_spinning()
 

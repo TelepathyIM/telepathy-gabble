@@ -63,6 +63,18 @@
       </tp:docstring>
     </method>
 
+    <method name="SendStanza" tp:name-for-bindings="Send_Stanza">
+      <arg direction="in" name="Stanza" type="s">
+        <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+          A complete stanza.
+        </tp:docstring>
+      </arg>
+
+      <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
+        Sends a stanza, yo.
+      </tp:docstring>
+    </method>
+
     <signal name="StanzaSent" tp:name-for-bindings="Stanza_Sent">
       <arg name="Stanza" type="s">
         <tp:docstring xmlns="http://www.w3.org/1999/xhtml">

@@ -4,13 +4,14 @@ A smoketest for the XMPP console API.
 
 from servicetest import (
     ProxyWrapper, EventPattern,
-    call_async, assertEquals, assertContains, sync_dbus,
+    call_async, assertEquals, assertContains, assertNotEquals, sync_dbus,
 )
 from gabbletest import exec_test, acknowledge_iq, elem, elem_iq
 from config import PLUGINS_ENABLED
 from twisted.words.xish import domish
 
 CONSOLE_PLUGIN_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
+STACY = 'stacy@pilgrim.lit'
 
 if not PLUGINS_ENABLED:
     print "NOTE: built without --enable-plugins, not testing XMPP console"
@@ -36,7 +37,7 @@ def test(q, bus, conn, stream):
         ]
     q.forbid_events(es)
 
-    call_async(q, console, 'SendIQ', 'get', 'stacy@pilgrim.lit',
+    call_async(q, console, 'SendIQ', 'get', STACY,
         '<coffee xmlns="urn:unimaginative"/>')
     e = q.expect('stream-iq', iq_type='get', query_ns='urn:unimaginative',
         query_name='coffee')
@@ -66,6 +67,20 @@ def test(q, bus, conn, stream):
     q.forbid_events(es)
     send_unrecognised_get(q, stream)
     sync_dbus(bus, q, conn)
+
+    # Try sending just any old stanza
+    console.SendStanza('''
+        <message to='%(stacy)s' type='headline'>
+          <body>
+            Hi sis.
+          </body>
+        </message>''' % { 'stacy': STACY })
+
+    e = q.expect('stream-message', to=STACY, message_type='headline')
+    # Wocky fills in xmlns='' for us if we don't specify a namespace... great.
+    # So this means <message/> gets sent as <message xmlns=''/> and the server
+    # kicks us off.
+    assertNotEquals('', e.stanza.uri)
 
 if __name__ == '__main__':
     exec_test(test)

@@ -29,6 +29,7 @@
 #include <wocky/wocky-utils.h>
 #include <wocky/wocky-xmpp-reader.h>
 #include <wocky/wocky-xmpp-writer.h>
+#include <wocky/wocky-namespaces.h>
 
 #include "extensions/extensions.h"
 
@@ -492,18 +493,22 @@ validate_jid (const gchar **to,
   return FALSE;
 }
 
+/*
+ * @xml: doesn't actually have to be a top-level stanza. It can be the body of
+ *  an IQ or whatever.
+ */
 static gboolean
-parse_body_fragment (
+parse_me_a_stanza (
     GabbleConsoleSidecar *self,
-    const gchar *body,
-    WockyNodeTree **fragment_out,
+    const gchar *xml,
+    WockyStanza **stanza_out,
     GError **error)
 {
   GabbleConsoleSidecarPrivate *priv = self->priv;
   WockyStanza *stanza;
 
   wocky_xmpp_reader_reset (priv->reader);
-  wocky_xmpp_reader_push (priv->reader, (const guint8 *) body, strlen (body));
+  wocky_xmpp_reader_push (priv->reader, (const guint8 *) xml, strlen (xml));
 
   *error = wocky_xmpp_reader_get_error (priv->reader);
 
@@ -519,7 +524,7 @@ parse_body_fragment (
       return FALSE;
     }
 
-  *fragment_out = (WockyNodeTree *) stanza;
+  *stanza_out = stanza;
   return TRUE;
 }
 
@@ -534,19 +539,20 @@ console_send_iq (
   GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (sidecar);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
   WockyStanzaSubType sub_type;
-  WockyNodeTree *fragment;
+  WockyStanza *fragment;
   GError *error = NULL;
 
   if (get_iq_type (type_str, &sub_type, &error) &&
       validate_jid (&to, &error) &&
-      parse_body_fragment (self, body, &fragment, &error))
+      parse_me_a_stanza (self, body, &fragment, &error))
     {
       GSimpleAsyncResult *simple = g_simple_async_result_new (G_OBJECT (self),
           return_from_send_iq, context, console_send_iq);
       WockyStanza *stanza = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, sub_type,
           NULL, to, NULL);
 
-      wocky_node_add_node_tree (wocky_stanza_get_top_node (stanza), fragment);
+      wocky_node_add_node_tree (wocky_stanza_get_top_node (stanza),
+          WOCKY_NODE_TREE (fragment));
       wocky_porter_send_iq_async (porter, stanza, NULL, console_iq_reply_cb, simple);
       g_object_unref (fragment);
     }
@@ -559,6 +565,90 @@ console_send_iq (
 }
 
 static void
+console_stanza_sent_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  WockyPorter *porter = WOCKY_PORTER (source);
+  DBusGMethodInvocation *context = user_data;
+  GError *error = NULL;
+
+  if (wocky_porter_send_finish (porter, result, &error))
+    {
+      gabble_svc_gabble_plugin_console_return_from_send_stanza (context);
+    }
+  else
+    {
+      dbus_g_method_return_error (context, error);
+      g_clear_error (&error);
+    }
+}
+
+static gboolean
+stanza_looks_coherent (
+    WockyStanza *stanza,
+    GError **error)
+{
+  WockyNode *top_node = wocky_stanza_get_top_node (stanza);
+  WockyStanzaType t;
+  WockyStanzaSubType st;
+
+  wocky_stanza_get_type_info (stanza, &t, &st);
+
+  if (t == WOCKY_STANZA_TYPE_UNKNOWN)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "I don't know what a <%s/> is", top_node->name);
+      return FALSE;
+    }
+  else if (st == WOCKY_STANZA_SUB_TYPE_UNKNOWN)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "I don't know what type='%s' means",
+          wocky_node_get_attribute (top_node, "type"));
+      return FALSE;
+    }
+  else
+    {
+      if (top_node->ns == g_quark_from_static_string (""))
+        {
+          /* So... Wocky puts an empty string in as the namespace. Greaaat. */
+          top_node->ns = g_quark_from_static_string (WOCKY_XMPP_NS_JABBER_CLIENT);
+        }
+
+      return TRUE;
+    }
+}
+
+static void
+console_send_stanza (
+    GabbleSvcGabblePluginConsole *sidecar,
+    const gchar *xml,
+    DBusGMethodInvocation *context)
+{
+  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (sidecar);
+  WockyPorter *porter = wocky_session_get_porter (self->priv->session);
+  WockyStanza *stanza = NULL;
+  GError *error = NULL;
+
+  if (parse_me_a_stanza (self, xml, &stanza, &error) &&
+      stanza_looks_coherent (stanza, &error))
+    {
+      wocky_porter_send_async (porter, stanza, NULL, console_stanza_sent_cb,
+          context);
+    }
+  else
+    {
+      DEBUG ("%s", error->message);
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+    }
+
+  tp_clear_object (&stanza);
+}
+
+static void
 console_iface_init (
     gpointer klass,
     gpointer data G_GNUC_UNUSED)
@@ -566,5 +656,6 @@ console_iface_init (
 #define IMPLEMENT(x) gabble_svc_gabble_plugin_console_implement_##x (\
     klass, console_##x)
   IMPLEMENT (send_iq);
+  IMPLEMENT (send_stanza);
 #undef IMPLEMENT
 }

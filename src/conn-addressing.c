@@ -89,7 +89,7 @@ conn_addressing_get_contacts_by_uri (GabbleSvcConnectionInterfaceAddressing *ifa
       if (h == 0)
         continue;
 
-      g_hash_table_insert (requested, (gpointer) g_strdup (*uri), GUINT_TO_POINTER (h));
+      g_hash_table_insert (requested, g_strdup (*uri), GUINT_TO_POINTER (h));
       g_array_append_val (handles, h);
     }
 
@@ -129,7 +129,7 @@ conn_addressing_get_contacts_by_vcard_field (GabbleSvcConnectionInterfaceAddress
       if (h == 0)
         continue;
 
-      g_hash_table_insert (requested, (gpointer) g_strdup (*address), GUINT_TO_POINTER (h));
+      g_hash_table_insert (requested, g_strdup (*address), GUINT_TO_POINTER (h));
       g_array_append_val (handles, h);
     }
 

@@ -40,6 +40,9 @@ PADDING = 6
 def pathify(name):
     return '/' + name.replace('.', '/')
 
+def nameify(path):
+    return (path[1:]).replace('/', '.')
+
 CONN_FUTURE_IFACE = "org.freedesktop.Telepathy.Connection.FUTURE"
 CONSOLE_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
 
@@ -265,6 +268,18 @@ class SnoopyPage(Page):
 
         self.console_proxy.connect('g-signal', self.__g_signal_cb)
 
+    def teardown(self):
+        """Turn off the monitor when we quit."""
+        self.__set_spew(False)
+
+    def __set_spew(self, spew):
+        args = GLib.Variant("(ssv)", (CONSOLE_IFACE, "SpewStanzas",
+            GLib.Variant.new_boolean(spew)))
+        self.console_proxy.call_sync(
+            "org.freedesktop.DBus.Properties.Set",
+            args,
+            0, -1, None)
+
     def get_remote_active(self):
         return self.console_proxy.get_cached_property('SpewStanzas').get_boolean()
 
@@ -273,13 +288,7 @@ class SnoopyPage(Page):
         new_local = switch.get_active()
 
         if new_local != remote:
-            args = GLib.Variant("(ssv)", (CONSOLE_IFACE, "SpewStanzas",
-                GLib.Variant.new_boolean(new_local)))
-            self.console_proxy.call_sync(
-                "org.freedesktop.DBus.Properties.Set",
-                args,
-                0, -1, None)
-
+            self.__set_spew(new_local)
             self.stanza_viewer.append_comment(
                 'started monitoring' if new_local else 'stopped monitoring')
 
@@ -338,6 +347,12 @@ plugin installed.""" % locals()
             Gtk.Label.new_with_mnemonic("_Monitor network traffic"),
             self.SNOOPY_PAGE)
 
+        self.connect('destroy', Window.__destroy_cb)
+
+    def __destroy_cb(self):
+        self.snoopy.teardown()
+        Gtk.main_quit()
+
 GABBLE_PREFIX = 'org.freedesktop.Telepathy.Connection.gabble.jabber.'
 
 AM_BUS_NAME = 'org.freedesktop.Telepathy.AccountManager'
@@ -383,7 +398,6 @@ if __name__ == '__main__':
 
     win = Window(bus, thing)
     win.show_all()
-    win.connect('destroy', Gtk.main_quit)
 
     Gtk.main()
 

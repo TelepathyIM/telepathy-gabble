@@ -338,18 +338,50 @@ plugin installed.""" % locals()
             Gtk.Label.new_with_mnemonic("_Monitor network traffic"),
             self.SNOOPY_PAGE)
 
+GABBLE_PREFIX = 'org.freedesktop.Telepathy.Connection.gabble.jabber.'
+
+AM_BUS_NAME = 'org.freedesktop.Telepathy.AccountManager'
+ACCOUNT_PREFIX = '/org/freedesktop/Telepathy/Account'
+ACCOUNT_IFACE = 'org.freedesktop.Telepathy.Account'
+
+def usage():
+    print """
+Usage:
+
+  %(arg0)s gabble/jabber/blahblah
+  %(arg0)s %(prefix)sblahblah
+
+List account identifiers using `mc-tool list | grep gabble`.
+List connection bus names using `qdbus | grep gabble`.
+""" % { 'arg0': sys.argv[0],
+        'prefix': GABBLE_PREFIX,
+      }
+    raise SystemExit(1)
+
 if __name__ == '__main__':
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 
-    PREFIX = 'org.freedesktop.Telepathy.Connection.gabble.jabber.'
+    if len(sys.argv) != 2:
+        usage()
 
-    if len(sys.argv) != 2 or \
-       not re.match('^%s[a-zA-Z0-9_]+$' % PREFIX, sys.argv[1]):
-        print "Usage: %s %ssomething" % (sys.argv[0], PREFIX)
-        print "  (the argument should be the bus name of a Jabber connection)"
-        raise SystemExit(1)
+    thing = sys.argv[1]
 
-    win = Window(bus, sys.argv[1])
+    if re.match('^gabble/jabber/[a-zA-Z0-9_]+$', thing):
+        # Looks like an account path to me.
+        account_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
+            AM_BUS_NAME, '%s/%s' % (ACCOUNT_PREFIX, thing),
+            ACCOUNT_IFACE, None)
+        path = account_proxy.get_cached_property('Connection').get_string()
+        if path == '/':
+            print "%s is not online" % thing
+            raise SystemExit(1)
+        else:
+            thing = nameify(path)
+
+    if not re.match('^%s[a-zA-Z0-9_]+$' % GABBLE_PREFIX, thing):
+        usage()
+
+    win = Window(bus, thing)
     win.show_all()
     win.connect('destroy', Gtk.main_quit)
 

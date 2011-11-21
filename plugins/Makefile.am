@@ -1,6 +1,7 @@
 plugindir = $(libdir)/telepathy/gabble-0
 
 installable_plugins = \
+	console.la \
 	gateways.la
 
 test_only_plugins = \
@@ -29,10 +30,16 @@ endif
 
 if ENABLE_PLUGINS
 plugin_LTLIBRARIES = $(installable_plugins)
+
+dist_bin_SCRIPTS = \
+	telepathy-gabble-xmpp-console
 else
 # we still compile the plugin (just to make sure it compiles!) but we don't
 # install it
 noinst_LTLIBRARIES += $(installable_plugins)
+
+EXTRA_DIST = \
+	telepathy-gabble-xmpp-console
 endif
 
 AM_LDFLAGS = -module -avoid-version -shared
@@ -44,6 +51,10 @@ test_la_SOURCES = \
 gateways_la_SOURCES = \
 	gateways.c \
 	gateways.h
+
+console_la_SOURCES = \
+	console.c \
+	console.h
 
 AM_CFLAGS = $(ERROR_CFLAGS) \
     -I $(top_srcdir) -I $(top_builddir) \

@@ -27,6 +27,7 @@ TWISTED_TESTS = \
 	connect/test-nonblocking-tls.py \
 	connect/test-success.py \
 	connect/test-twice.py \
+	console.py \
 	dataforms.py \
 	gateways.py \
 	last-activity.py \

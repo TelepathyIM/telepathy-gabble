@@ -5,6 +5,7 @@ EXTRA_DIST = \
     Channel_Type_FileTransfer_Future.xml \
     Connection_Future.xml \
     Connection_Interface_Gabble_Decloak.xml \
+    Gabble_Plugin_Console.xml \
     Gabble_Plugin_Gateways.xml \
     Gabble_Plugin_Test.xml \
     OLPC_Activity_Properties.xml \
@@ -79,7 +80,7 @@ _gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
 
 _gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
 	Makefile.am
-	$(AM_V_GEN)$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< > $@
+	$(AM_V_GEN)$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< _gen/enums
 
 _gen/interfaces.h _gen/interfaces-body.h: _gen/all.xml \
 	$(tools_dir)/glib-interfaces-gen.py \

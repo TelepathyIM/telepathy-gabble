@@ -23,12 +23,17 @@ nodist_libgabble_extensions_la_SOURCES = \
     _gen/signals-marshal.h \
     _gen/signals-marshal.list \
     _gen/enums.h \
+    _gen/enums-gtk-doc.h \
     _gen/gtypes.h \
     _gen/gtypes-body.h \
+    _gen/gtypes-gtk-doc.h \
     _gen/interfaces.h \
     _gen/interfaces-body.h \
+    _gen/interfaces-gtk-doc.h \
     _gen/svc.h \
-    _gen/svc.c
+    _gen/svc.c \
+    _gen/svc-gtk-doc.h \
+    $(NULL)
 
 BUILT_SOURCES = \
     _gen/all.xml \

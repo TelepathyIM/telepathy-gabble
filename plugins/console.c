@@ -274,6 +274,13 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
   static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
       { GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE,
         tp_dbus_properties_mixin_getter_gobject_properties,
+        /* FIXME: if we were feeling clever, we'd override the setter so that
+         * we can monitor the bus name of any application which sets
+         * SpewStanzas to TRUE and flip it back to false when that application
+         * dies.
+         *
+         * Alternatively, we could just replace this sidecar with a channel.
+         */
         tp_dbus_properties_mixin_setter_gobject_properties,
         console_props
       },

@@ -416,7 +416,7 @@ addressing_normalize_contact_uri (TpBaseProtocol *self,
 {
   gchar *normalized_address = NULL;
 
-  normalized_address = gabble_normalize_uri (uri, error);
+  normalized_address = gabble_normalize_contact_uri (uri, error);
 
   if (normalized_address == NULL)
     {

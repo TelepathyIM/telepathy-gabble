@@ -46,7 +46,7 @@ gabble_get_addressable_vcard_fields ()
 }
 
 gchar *
-gabble_normalize_uri (const gchar *uri,
+gabble_normalize_contact_uri (const gchar *uri,
     GError **error)
 {
   gchar *scheme = NULL;

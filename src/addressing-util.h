@@ -26,7 +26,7 @@ const gchar * const * gabble_get_addressable_uri_schemes (void);
 
 const gchar * const * gabble_get_addressable_vcard_fields (void);
 
-gchar * gabble_normalize_uri (const gchar *uri,
+gchar * gabble_normalize_contact_uri (const gchar *uri,
     GError **error);
 gchar * gabble_uri_to_jid (const gchar *uri,
     GError **error);

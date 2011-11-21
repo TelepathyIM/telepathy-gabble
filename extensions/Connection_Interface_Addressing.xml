@@ -39,7 +39,7 @@
           <p>The vCard field of the addresses we are requesting. The
             field name SHOULD be in lower case. Supported
             fields can be found in
-            <tp:dbus-ref namespace="org.freedesktop.Telepathy.Protocol.Interface.Addressing.DRAFT">AddressableVCardFields</tp:dbus-ref>.</p>
+            <tp:dbus-ref namespace="org.freedesktop.Telepathy.Protocol.Interface.Addressing">AddressableVCardFields</tp:dbus-ref>.</p>
 
           <p>The <code>url</code> vCard field MUST NOT appear here; see
             <tp:member-ref>GetContactsByURI</tp:member-ref> instead.</p>
@@ -130,7 +130,7 @@
         <tp:docstring>
           The URI addresses to get contact handles for. Supported
           schemes can be found in
-          <tp:dbus-ref namespace="org.freedesktop.Telepathy.Protocol.Interface.Addressing.DRAFT">AddressableURISchemes</tp:dbus-ref>.
+          <tp:dbus-ref namespace="org.freedesktop.Telepathy.Protocol.Interface.Addressing">AddressableURISchemes</tp:dbus-ref>.
         </tp:docstring>
       </arg>
       <arg direction="in" name="Interfaces" type="as"

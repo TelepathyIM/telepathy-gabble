@@ -41,29 +41,29 @@ def test(q, bus, conn, stream):
     q.expect('dbus-error', method="NormalizeVCardAddress",
              name=cs.INVALID_ARGUMENT)
 
-    # NormalizeURI
+    # NormalizeContactURI
 
-    normalized_uri = proto.Addressing.NormalizeURI(
+    normalized_uri = proto.Addressing.NormalizeContactURI(
         "xmpp:EITAN@example.COM/resource")
 
     assertEquals("xmpp:eitan@example.com", normalized_uri)
 
-    call_async(q, proto.Addressing, "NormalizeURI",
+    call_async(q, proto.Addressing, "NormalizeContactURI",
                "Something that is far from a URI")
 
-    q.expect('dbus-error', method="NormalizeURI",
+    q.expect('dbus-error', method="NormalizeContactURI",
              name=cs.INVALID_ARGUMENT)
 
-    call_async(q, proto.Addressing, "NormalizeURI",
+    call_async(q, proto.Addressing, "NormalizeContactURI",
                "http://this@isnotawebbrowser")
 
-    q.expect('dbus-error', method="NormalizeURI",
+    q.expect('dbus-error', method="NormalizeContactURI",
              name=cs.NOT_IMPLEMENTED)
 
-    call_async(q, proto.Addressing, "NormalizeURI",
+    call_async(q, proto.Addressing, "NormalizeContactURI",
                "xmpp:something")
 
-    q.expect('dbus-error', method="NormalizeURI",
+    q.expect('dbus-error', method="NormalizeContactURI",
              name=cs.INVALID_ARGUMENT)
 
 if __name__ == '__main__':

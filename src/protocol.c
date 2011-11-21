@@ -424,7 +424,7 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
 }
 
 static gchar *
-addressing_normalize_uri (TpBaseProtocol *self,
+addressing_normalize_contact_uri (TpBaseProtocol *self,
     const gchar *uri,
     GError **error)
 {
@@ -501,5 +501,5 @@ addressing_iface_init (TpProtocolAddressingInterface *iface)
   iface->dup_supported_vcard_fields = dup_supported_vcard_fields;
   iface->dup_supported_uri_schemes = dup_supported_uri_schemes;
   iface->normalize_vcard_address = addressing_normalize_vcard_address;
-  iface->normalize_uri = addressing_normalize_uri;
+  iface->normalize_contact_uri = addressing_normalize_contact_uri;
 }

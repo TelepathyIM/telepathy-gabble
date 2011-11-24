@@ -151,7 +151,13 @@ def worker(jp, q, bus, conn, stream, variant, peer):
         expected_flags = base_flags | cs.GF_CAN_ADD
     else:
         expected_flags = base_flags
-    assertEquals(expected_flags, group_props['GroupFlags'])
+
+    # Knock out MembersChangedDetailed flag if it's there. Versions of
+    # telepathy-glib newer than 0.16.2 always set it. We don't really care here
+    # whether it's set or not, so knocking it out of the reported flags makes
+    # this test pass either way.
+    assertEquals(expected_flags,
+        group_props['GroupFlags'] & ~cs.GF_MEMBERS_CHANGED_DETAILED)
     assertEquals({}, group_props['HandleOwners'])
 
     assertEquals([], chan.StreamedMedia.ListStreams())

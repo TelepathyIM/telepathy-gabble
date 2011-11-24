@@ -13,6 +13,8 @@ libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
+    addressing-util.h \
+    addressing-util.c \
     auth-manager.h \
     auth-manager.c \
     base64.h \
@@ -51,6 +53,8 @@ libgabble_convenience_la_SOURCES = \
     caps-hash.c \
     $(top_srcdir)/gabble/caps-channel-manager.h \
     caps-channel-manager.c \
+    conn-addressing.h \
+    conn-addressing.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \

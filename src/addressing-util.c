@@ -29,7 +29,7 @@
 #include "connection.h"
 #include "util.h"
 
-static const gchar *addressable_vcard_fields[] = {"x-jabber", NULL};
+static const gchar *addressable_vcard_fields[] = {"x-jabber", "x-facebook-id", NULL};
 static const gchar *addressable_uri_schemes[] = {"xmpp", NULL};
 
 
@@ -190,11 +190,36 @@ gabble_ensure_handle_from_uri (TpHandleRepoIface *repo,
 }
 
 gchar *
-gabble_parse_vcard_address (const gchar *vcard_field,
+gabble_normalize_vcard_address (const gchar *vcard_field,
     const gchar *vcard_address,
     GError **error)
 {
+  gchar *normalized_jid = NULL;
   gchar *normalized_address = NULL;
+
+  g_return_val_if_fail (vcard_field != NULL, NULL);
+  g_return_val_if_fail (vcard_address != NULL, NULL);
+
+  normalized_jid = gabble_vcard_address_to_jid (vcard_field, vcard_address, error);
+  if (normalized_jid == NULL)
+    {
+      goto OUT;
+    }
+
+  normalized_address = gabble_jid_to_vcard_address (vcard_field, normalized_jid, error);
+
+OUT:
+  g_free (normalized_jid);
+
+  return normalized_address;
+}
+
+gchar *
+gabble_vcard_address_to_jid (const gchar *vcard_field,
+    const gchar *vcard_address,
+    GError **error)
+{
+  gchar *normalized_jid = NULL;
 
   g_return_val_if_fail (vcard_field != NULL, NULL);
   g_return_val_if_fail (vcard_address != NULL, NULL);
@@ -203,7 +228,7 @@ gabble_parse_vcard_address (const gchar *vcard_field,
     {
       GError *gabble_error = NULL;
 
-      normalized_address = gabble_normalize_contact (NULL,
+      normalized_jid = gabble_normalize_contact (NULL,
           vcard_address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL),
           &gabble_error);
 
@@ -214,6 +239,90 @@ gabble_parse_vcard_address (const gchar *vcard_field,
               gabble_error->message);
           g_error_free (gabble_error);
         }
+    }
+  else if (g_ascii_strcasecmp (vcard_field, "x-facebook-id") == 0)
+    {
+      const gchar *s;
+
+      s = vcard_address;
+      while (*s && (g_ascii_isdigit (*s)))
+        s++;
+      if (G_UNLIKELY (*s != '\0'))
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid facebook chat address", vcard_address);
+          goto OUT;
+        }
+
+      normalized_jid = g_strdup_printf ("-%s@chat.facebook.com", vcard_address);
+    }
+  else
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'%s' vCard field is not supported by this protocol", vcard_field);
+    }
+
+OUT:
+  return normalized_jid;
+}
+
+gchar *
+gabble_jid_to_vcard_address (const gchar *vcard_field,
+    const gchar *jid,
+    GError **error)
+{
+  gchar *normalized_address = NULL;
+
+  g_return_val_if_fail (vcard_field != NULL, NULL);
+  g_return_val_if_fail (jid != NULL, NULL);
+
+  if (g_ascii_strcasecmp (vcard_field, "x-jabber") == 0)
+    {
+      GError *gabble_error = NULL;
+
+      normalized_address = gabble_normalize_contact (NULL,
+          jid, GUINT_TO_POINTER (GABBLE_JID_GLOBAL),
+          &gabble_error);
+
+      if (gabble_error != NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid address: %s", jid,
+              gabble_error->message);
+          g_error_free (gabble_error);
+        }
+    }
+  else if (g_ascii_strcasecmp (vcard_field, "x-facebook-id") == 0)
+    {
+      gchar *address = g_ascii_strdown (jid, -1);
+
+      if (address[0] == '-' &&
+          g_str_has_suffix (address, "@chat.facebook.com"))
+        {
+          const gchar *at = index (address, '@');
+          const gchar *start_of_number = address + 1;
+          const gchar *s;
+
+          g_assert (at != NULL);
+
+          normalized_address = g_strndup (start_of_number, (int) (at - start_of_number));
+
+          s = normalized_address;
+          while (*s && (g_ascii_isdigit (*s)))
+            s++;
+          if (G_UNLIKELY (*s != '\0'))
+            {
+              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  "'%s' is an invalid facebook chat address", jid);
+            }
+        }
+      else
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid facebook chat address", jid);
+        }
+
+      g_free (address);
     }
   else
     {
@@ -230,16 +339,16 @@ gabble_ensure_handle_from_vcard_address (TpHandleRepoIface *repo,
     const gchar *vcard_address,
     GError **error)
 {
+  gchar *normalized_jid;
   TpHandle handle;
 
-  gchar *normalized_address = gabble_parse_vcard_address (vcard_field, vcard_address, error);
-
-  if (normalized_address == NULL)
+  normalized_jid = gabble_vcard_address_to_jid (vcard_field, vcard_address, error);
+  if (normalized_jid == NULL)
     return 0;
 
-  handle = tp_handle_ensure (repo, vcard_address, NULL, error);
+  handle = tp_handle_ensure (repo, normalized_jid, NULL, error);
 
-  g_free (normalized_address);
+  g_free (normalized_jid);
 
   return handle;
 }
@@ -290,7 +399,7 @@ gabble_vcard_address_for_handle (TpHandleRepoIface *contact_repo,
     TpHandle contact)
 {
   const gchar *identifier = tp_handle_inspect (contact_repo, contact);
-  return gabble_parse_vcard_address (vcard_field, identifier, NULL);
+  return gabble_jid_to_vcard_address (vcard_field, identifier, NULL);
 }
 
 gchar *

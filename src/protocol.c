@@ -395,7 +395,7 @@ addressing_normalize_vcard_address (TpBaseProtocol *self,
     const gchar *vcard_address,
     GError **error)
 {
-  gchar *normalized_address = gabble_parse_vcard_address (vcard_field, vcard_address, error);
+  gchar *normalized_address = gabble_normalize_vcard_address (vcard_field, vcard_address, error);
 
   if (normalized_address == NULL)
     {

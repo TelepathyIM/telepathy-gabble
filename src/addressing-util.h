@@ -38,8 +38,14 @@ TpHandle gabble_ensure_handle_from_uri (TpHandleRepoIface *repo,
     const gchar *uri,
     GError **error);
 
-gchar * gabble_parse_vcard_address (const gchar *vcard_field,
+gchar * gabble_normalize_vcard_address (const gchar *vcard_field,
     const gchar *vcard_address,
+    GError **error);
+gchar * gabble_vcard_address_to_jid (const gchar *vcard_field,
+    const gchar *vcard_address,
+    GError **error);
+gchar * gabble_jid_to_vcard_address (const gchar *vcard_field,
+    const gchar *jid,
     GError **error);
 
 TpHandle gabble_ensure_handle_from_vcard_address (TpHandleRepoIface *repo,

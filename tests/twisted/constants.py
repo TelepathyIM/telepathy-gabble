@@ -139,7 +139,7 @@ CONN_IFACE_CONTACT_GROUPS = CONN + '.Interface.ContactGroups'
 CONN_IFACE_CLIENT_TYPES = CONN + '.Interface.ClientTypes'
 CONN_IFACE_POWER_SAVING = CONN + '.Interface.PowerSaving'
 CONN_IFACE_CONTACT_BLOCKING = CONN + '.Interface.ContactBlocking'
-CONN_IFACE_ADDRESSING = CONN + '.Interface.Addressing.DRAFT'
+CONN_IFACE_ADDRESSING = CONN + '.Interface.Addressing1'
 
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 

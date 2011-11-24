@@ -61,7 +61,7 @@ extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
 		$(tools_dir)/doc-generator.xsl \
 		$< > $@
 
-_gen/svc.c _gen/svc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py \
+_gen/svc.c _gen/svc.h _gen/svc-gtk-doc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py \
 	Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-ginterface-gen.py \
 		--filename=_gen/svc --signal-marshal-prefix=_gabble_ext \
@@ -83,17 +83,17 @@ _gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
 	$(AM_V_GEN){ echo '#include "_gen/signals-marshal.h"' && \
 	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< ; } > $@
 
-_gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
+_gen/enums.h _gen/enums-gtk-doc.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
 	Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< _gen/enums
 
-_gen/interfaces.h _gen/interfaces-body.h: _gen/all.xml \
+_gen/interfaces.h _gen/interfaces-body.h _gen/interfaces-gtk-doc.h: _gen/all.xml \
 	$(tools_dir)/glib-interfaces-gen.py \
 	Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-interfaces-gen.py \
 		Gabble _gen/interfaces-body.h _gen/interfaces.h $<
 
-_gen/gtypes.h _gen/gtypes-body.h: _gen/all.xml \
+_gen/gtypes.h _gen/gtypes-body.h _gen/gtypes-gtk-doc.h: _gen/all.xml \
 	$(tools_dir)/glib-gtypes-generator.py Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-gtypes-generator.py \
 		$< _gen/gtypes Gabble

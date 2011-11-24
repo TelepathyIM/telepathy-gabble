@@ -1,7 +1,30 @@
 telepathy-gabble 0.15.1 (UNRELEASED)
 ====================================
 
-omg new features here lol!!1
+Dependencies:
+
+• telepathy-glib 0.17.2 is now required.
+
+Enhancements:
+
+• fd.o#38568: Ladies and gentlemen, prepare your angle brackets: Gabble
+  now ships with an XMPP console interface! You can send IQs and get
+  their replies, send arbitrary stanzas, or monitor all incoming and
+  outgoing stanzas, all with beautiful GtkSourceView syntax
+  highlighting. UI love and caring welcome. (wjt)
+
+• fd.o#32692, fd.o#30296, fd.o#41789: Gabble now implements the
+  freshly-undrafted Protocol.Interface.Addressing and the still-unstable
+  Connection.Interface.Addressing1, and uses them to expose Facebook
+  contacts' integer IDs. (andrunko, eeejay)
+
+• fd.o#42446: Gabble can now be built on Android, using Androgenizer.
+  (Derek Foreman, Alvaro Soliverez)
+
+Fixes:
+
+• capabilities.h and caps-channel-manager.h are no longer erroneously
+  omitted. (albanc)
 
 telepathy-gabble 0.15.0 (2011-11-16)
 ====================================

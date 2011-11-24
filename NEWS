@@ -1,5 +1,7 @@
-telepathy-gabble 0.15.1 (UNRELEASED)
+telepathy-gabble 0.15.1 (2011-11-24)
 ====================================
+
+The “goodbye desolate railyard” release.
 
 Dependencies:
 
@@ -11,7 +13,9 @@ Enhancements:
   now ships with an XMPP console interface! You can send IQs and get
   their replies, send arbitrary stanzas, or monitor all incoming and
   outgoing stanzas, all with beautiful GtkSourceView syntax
-  highlighting. UI love and caring welcome. (wjt)
+  highlighting. UI love and caring welcome. Anyone want to make a
+  version of the Telepathy “heads” icon with stanzas in place of the
+  thought balloons? (wjt)
 
 • fd.o#32692, fd.o#30296, fd.o#41789: Gabble now implements the
   freshly-undrafted Protocol.Interface.Addressing and the still-unstable

@@ -19,11 +19,13 @@
 
 #include "protocol.h"
 
+#include <string.h>
 #include <telepathy-glib/base-connection-manager.h>
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>
 
 #include "conn-presence.h"
+
 #include "connection.h"
 #include "connection-manager.h"
 #include "im-factory.h"
@@ -38,9 +40,11 @@
 #define VCARD_FIELD_NAME "x-" PROTOCOL_NAME
 #define ENGLISH_NAME "Jabber"
 
-G_DEFINE_TYPE (GabbleJabberProtocol,
-    gabble_jabber_protocol,
-    TP_TYPE_BASE_PROTOCOL)
+static void addressing_iface_init (TpProtocolAddressingInterface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (GabbleJabberProtocol, gabble_jabber_protocol,
+    TP_TYPE_BASE_PROTOCOL,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_PROTOCOL_ADDRESSING, addressing_iface_init))
 
 static TpCMParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
@@ -303,6 +307,7 @@ get_interfaces (TpBaseProtocol *self)
 {
   const gchar * const interfaces[] = {
     TP_IFACE_PROTOCOL_INTERFACE_PRESENCE,
+    TP_IFACE_PROTOCOL_INTERFACE_ADDRESSING,
     NULL };
 
   return g_strdupv ((GStrv) interfaces);
@@ -370,6 +375,102 @@ dup_authentication_types (TpBaseProtocol *self)
   return g_strdupv ((GStrv) types);
 }
 
+static GStrv
+dup_supported_uri_schemes (TpBaseProtocol *self)
+{
+  const gchar * const addressing_uri_schemes[] = {"xmpp", NULL};
+
+  return g_strdupv ((GStrv) addressing_uri_schemes);
+}
+
+static GStrv
+dup_supported_vcard_fields (TpBaseProtocol *self)
+{
+  const gchar * const addressing_vcard_fields[] = {"x-jabber", NULL};
+
+  return g_strdupv ((GStrv) addressing_vcard_fields);
+}
+
+static gchar *
+addressing_normalize_vcard_address (TpBaseProtocol *self,
+    const gchar *vcard_field,
+    const gchar *vcard_address,
+    GError **error)
+{
+  gchar *normalized_address = NULL;
+
+  if (g_ascii_strcasecmp (vcard_field, "x-jabber") == 0)
+    {
+      GError *gabble_error = NULL;
+      normalized_address = gabble_normalize_contact (NULL,
+          vcard_address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL),
+          &gabble_error);
+
+      if (gabble_error != NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid address: %s", vcard_address,
+              gabble_error->message);
+          g_error_free (gabble_error);
+        }
+    }
+  else
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'x-jabber' is the only vCard field supported by this protocol");
+    }
+
+  return normalized_address;
+}
+
+static gchar *
+addressing_normalize_contact_uri (TpBaseProtocol *self,
+    const gchar *uri,
+    GError **error)
+{
+  gchar *scheme = g_uri_parse_scheme (uri);
+  gchar *normalized_uri = NULL;
+
+  if (scheme == NULL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "'%s' is not a valid URI", uri);
+    }
+  else if (g_ascii_strcasecmp (scheme, "xmpp") == 0)
+    {
+      GError *gabble_error = NULL;
+      const gchar *address = uri + strlen (scheme) + 1; /* Strip the scheme */
+      gchar *normalized_address = gabble_normalize_contact (NULL,
+          address, GUINT_TO_POINTER (GABBLE_JID_GLOBAL), &gabble_error);
+
+      if (gabble_error != NULL)
+        {
+          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              "'%s' is an invalid address: %s", address,
+              gabble_error->message);
+          g_error_free (gabble_error);
+        }
+      else
+        {
+          gchar *normalized_scheme = g_ascii_strdown (scheme, -1);
+          normalized_uri = g_strdup_printf ("%s:%s", normalized_scheme,
+              normalized_address);
+
+          g_free (normalized_scheme);
+          g_free (normalized_address);
+        }
+    }
+  else
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "'xmpp' is the only URI scheme supported by this protocol");
+    }
+
+  g_free (scheme);
+
+  return normalized_uri;
+}
+
 static void
 gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
 {
@@ -394,3 +495,11 @@ gabble_jabber_protocol_new (void)
       NULL);
 }
 
+static void
+addressing_iface_init (TpProtocolAddressingInterface *iface)
+{
+  iface->dup_supported_vcard_fields = dup_supported_vcard_fields;
+  iface->dup_supported_uri_schemes = dup_supported_uri_schemes;
+  iface->normalize_vcard_address = addressing_normalize_vcard_address;
+  iface->normalize_contact_uri = addressing_normalize_contact_uri;
+}

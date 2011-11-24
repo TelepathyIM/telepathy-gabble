@@ -1,4 +1,5 @@
 TWISTED_TESTS = \
+	addressing.py \
 	avatar-requirements.py \
 	caps/advertise-contact-caps.py \
 	caps/advertise-legacy.py \

@@ -1,7 +1,24 @@
 telepathy-gabble 0.14.1 (UNRELEASED)
 ====================================
 
-…
+The “mispronouncing a vowel in the word ‘panini’” release. This is a
+bugfix release.
+
+Fixes:
+
+• No longer crashes on startup if an Ytstenut service is running.
+  (fd.o#42706, jonathan)
+
+• Hopefully no longer crashes in somewhat unknown Sugar-related
+  circumstances. (fd.o#32050, wjt)
+
+• Contacts with subscription='none' and a locally-pending subscription
+  request are no longer hidden from the contact list. This works around
+  another “flickering” bug with the Google Talk server. (fd.o#40518,
+  Marco & Cosimo)
+
+• The capabilities.h and caps-channel-manager.h headers are now
+  distributed and installed correctly. (Alban)
 
 telepathy-gabble 0.14.0 (2011-11-07)
 ====================================

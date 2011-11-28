@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include <telepathy-yell/base-media-call-content.h>
+#include <telepathy-glib/base-media-call-content.h>
 
 #include "jingle-content.h"
 #include "call-member-content.h"
@@ -35,11 +35,11 @@ typedef struct _GabbleCallContentPrivate GabbleCallContentPrivate;
 typedef struct _GabbleCallContentClass GabbleCallContentClass;
 
 struct _GabbleCallContentClass {
-    TpyBaseMediaCallContentClass parent_class;
+    TpBaseMediaCallContentClass parent_class;
 };
 
 struct _GabbleCallContent {
-    TpyBaseMediaCallContent parent;
+    TpBaseMediaCallContent parent;
 
     GabbleCallContentPrivate *priv;
 };

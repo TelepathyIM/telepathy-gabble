@@ -28,11 +28,6 @@
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/util.h>
 
-#include <telepathy-yell/enums.h>
-#include <telepathy-yell/gtypes.h>
-#include <telepathy-yell/interfaces.h>
-#include <telepathy-yell/call-stream-endpoint.h>
-
 #include "call-stream.h"
 #include "connection.h"
 #include "jingle-session.h"
@@ -45,15 +40,15 @@
 
 static void call_stream_update_member_states (GabbleCallStream *self);
 static GPtrArray *gabble_call_stream_add_candidates (
-    TpyBaseMediaCallStream *stream,
+    TpBaseMediaCallStream *stream,
     const GPtrArray *candidates,
     GError **error);
-static gboolean gabble_call_stream_set_sending (TpyBaseCallStream *stream,
+static gboolean gabble_call_stream_set_sending (TpBaseCallStream *stream,
     gboolean sending,
     GError **error);
 
 G_DEFINE_TYPE(GabbleCallStream, gabble_call_stream,
-    TPY_TYPE_BASE_MEDIA_CALL_STREAM)
+    TP_TYPE_BASE_MEDIA_CALL_STREAM)
 
 /* properties */
 enum
@@ -108,7 +103,7 @@ get_stun_servers (GabbleCallStream *self)
   gchar *stun_server;
   guint stun_port;
 
-  arr = g_ptr_array_sized_new (1);
+  arr = g_ptr_array_new_with_free_func ((GDestroyNotify) g_value_array_free);
 
   g_object_get (self->priv->content,
       "connection", &connection,
@@ -177,12 +172,12 @@ google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
   TpWeakRef *weak_ref = user_data;
-  TpyBaseMediaCallStream *stream = TPY_BASE_MEDIA_CALL_STREAM (
+  TpBaseMediaCallStream *stream = TP_BASE_MEDIA_CALL_STREAM (
       tp_weak_ref_dup_object (weak_ref));
 
   if (stream != NULL)
     {
-      tpy_base_media_call_stream_set_relay_info (stream, relays);
+      tp_base_media_call_stream_set_relay_info (stream, relays);
       g_object_unref (stream);
     }
 
@@ -217,8 +212,8 @@ jingle_factory_stun_server_changed_cb (GabbleJingleFactory *factory,
 {
   GPtrArray *stun_servers = get_stun_servers (self);
 
-  tpy_base_media_call_stream_set_stun_servers (
-    TPY_BASE_MEDIA_CALL_STREAM (self), stun_servers);
+  tp_base_media_call_stream_set_stun_servers (
+    TP_BASE_MEDIA_CALL_STREAM (self), stun_servers);
   g_ptr_array_unref (stun_servers);
 }
 
@@ -227,7 +222,7 @@ static void
 _new_candidates_cb (
     GabbleJingleContent *content,
     GList *candidates,
-    TpyCallStreamEndpoint *endpoint)
+    TpCallStreamEndpoint *endpoint)
 {
   GPtrArray *tp_candidates;
 
@@ -235,13 +230,13 @@ _new_candidates_cb (
     return;
 
   tp_candidates = gabble_call_candidates_to_array (candidates);
-  tpy_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
-  g_boxed_free (TPY_ARRAY_TYPE_CANDIDATE_LIST, tp_candidates);
+  tp_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
+  g_boxed_free (TP_ARRAY_TYPE_CANDIDATE_LIST, tp_candidates);
 }
 
 static void
 _stream_state_changed_cb (
-    TpyCallStreamEndpoint *endpoint,
+    TpCallStreamEndpoint *endpoint,
     GParamSpec *spec,
     GabbleJingleContent *content)
 {
@@ -252,41 +247,42 @@ _stream_state_changed_cb (
     state);
 }
 
-static TpyCallStreamEndpoint *
+static TpCallStreamEndpoint *
 _hook_up_endpoint (GabbleCallStream *self,
     const gchar *path,
     GabbleJingleContent *content)
 {
-  TpyBaseCallStream *base = (TpyBaseCallStream *) self;
-  TpBaseConnection *conn = tpy_base_call_stream_get_connection (base);
+  TpBaseCallStream *base = (TpBaseCallStream *) self;
+  TpBaseConnection *conn = tp_base_call_stream_get_connection (base);
   TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (conn);
-  TpyCallStreamEndpoint *endpoint;
-  TpyStreamTransportType type = 0;
+  TpCallStreamEndpoint *endpoint;
+  TpStreamTransportType type = 0;
   GPtrArray *tp_candidates;
   GList *candidates;
 
   switch (gabble_jingle_content_get_transport_type (content))
     {
     case JINGLE_TRANSPORT_GOOGLE_P2P:
-      type = TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P;
+      type = TP_STREAM_TRANSPORT_TYPE_GTALK_P2P;
       break;
     case JINGLE_TRANSPORT_RAW_UDP:
-      type = TPY_STREAM_TRANSPORT_TYPE_RAW_UDP;
+      type = TP_STREAM_TRANSPORT_TYPE_RAW_UDP;
       break;
     case JINGLE_TRANSPORT_ICE_UDP:
-      type = TPY_STREAM_TRANSPORT_TYPE_ICE;
+      type = TP_STREAM_TRANSPORT_TYPE_ICE;
       break;
     case JINGLE_TRANSPORT_UNKNOWN:
     default:
       g_assert_not_reached ();
     }
 
-  endpoint = tpy_call_stream_endpoint_new (bus, path, type);
+  /* FIXME: ice??? */
+  endpoint = tp_call_stream_endpoint_new (bus, path, type, FALSE);
 
   candidates = gabble_jingle_content_get_remote_candidates (content);
   tp_candidates = gabble_call_candidates_to_array (candidates);
-  tpy_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
-  g_boxed_free (TPY_ARRAY_TYPE_CANDIDATE_LIST, tp_candidates);
+  tp_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
+  g_boxed_free (TP_ARRAY_TYPE_CANDIDATE_LIST, tp_candidates);
 
   tp_g_signal_connect_object (content, "new-candidates",
       G_CALLBACK (_new_candidates_cb), endpoint, 0);
@@ -297,31 +293,15 @@ _hook_up_endpoint (GabbleCallStream *self,
   return endpoint;
 }
 
-static TpyStreamTransportType
-_jingle_to_tp_transport (JingleTransportType jt)
-{
-  switch (jt)
-  {
-    case JINGLE_TRANSPORT_GOOGLE_P2P:
-      return TPY_STREAM_TRANSPORT_TYPE_GTALK_P2P;
-    case JINGLE_TRANSPORT_RAW_UDP:
-      return TPY_STREAM_TRANSPORT_TYPE_RAW_UDP;
-    case JINGLE_TRANSPORT_ICE_UDP:
-      return TPY_STREAM_TRANSPORT_TYPE_ICE;
-    default:
-      g_return_val_if_reached (G_MAXUINT);
-  }
-}
-
 static void
 gabble_call_stream_constructed (GObject *obj)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (obj);
-  TpyBaseCallStream *base = (TpyBaseCallStream *) self;
-  TpyBaseMediaCallStream *media_base = (TpyBaseMediaCallStream *) self;
+  TpBaseCallStream *base = (TpBaseCallStream *) self;
+  TpBaseMediaCallStream *media_base = (TpBaseMediaCallStream *) self;
   GabbleCallStreamPrivate *priv = self->priv;
   GabbleConnection *conn;
-  TpyCallStreamEndpoint *endpoint;
+  TpCallStreamEndpoint *endpoint;
   gchar *path;
   JingleTransportType transport;
   GPtrArray *stun_servers;
@@ -329,19 +309,17 @@ gabble_call_stream_constructed (GObject *obj)
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
 
-  conn = GABBLE_CONNECTION (tpy_base_call_stream_get_connection (base));
+  conn = GABBLE_CONNECTION (tp_base_call_stream_get_connection (base));
 
   /* Currently we'll only have one endpoint we know right away */
   path = g_strdup_printf ("%s/Endpoint",
-      tpy_base_call_stream_get_object_path (base));
+      tp_base_call_stream_get_object_path (base));
   endpoint = _hook_up_endpoint (self, path, priv->content);
-  tpy_base_media_call_stream_take_endpoint (media_base, endpoint);
+  tp_base_media_call_stream_add_endpoint (media_base, endpoint);
+  g_object_unref (endpoint);
   g_free (path);
 
   transport = gabble_jingle_content_get_transport_type (priv->content);
-
-  tpy_base_media_call_stream_set_transport (media_base,
-      _jingle_to_tp_transport (transport));
 
   if (transport == JINGLE_TRANSPORT_GOOGLE_P2P)
     {
@@ -356,13 +334,13 @@ gabble_call_stream_constructed (GObject *obj)
   else
     {
       GPtrArray *relays = g_ptr_array_new ();
-      tpy_base_media_call_stream_set_relay_info (media_base, relays);
+      tp_base_media_call_stream_set_relay_info (media_base, relays);
       g_ptr_array_unref (relays);
     }
 
   stun_servers = get_stun_servers (self);
-  tpy_base_media_call_stream_set_stun_servers (
-    TPY_BASE_MEDIA_CALL_STREAM (self), stun_servers);
+  tp_base_media_call_stream_set_stun_servers (
+    TP_BASE_MEDIA_CALL_STREAM (self), stun_servers);
   g_ptr_array_unref (stun_servers);
 
   call_stream_update_member_states (GABBLE_CALL_STREAM (obj));
@@ -377,12 +355,12 @@ gabble_call_stream_constructed (GObject *obj)
 static void
 call_stream_update_member_states (GabbleCallStream *self)
 {
-  TpyBaseCallStream *base = TPY_BASE_CALL_STREAM (self);
+  TpBaseCallStream *base = TP_BASE_CALL_STREAM (self);
   GabbleCallStreamPrivate *priv = self->priv;
   gboolean created_by_us;
   JingleContentState state;
-  TpySendingState local_state = 0;
-  TpySendingState remote_state = 0;
+  TpSendingState local_state = 0;
+  TpSendingState remote_state = 0;
 
   g_object_get (priv->content, "state", &state, NULL);
 
@@ -396,22 +374,24 @@ call_stream_update_member_states (GabbleCallStream *self)
   if (gabble_jingle_content_sending (priv->content))
     {
       if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        local_state = TPY_SENDING_STATE_SENDING;
+        local_state = TP_SENDING_STATE_SENDING;
       else
-        local_state = TPY_SENDING_STATE_PENDING_SEND;
+        local_state = TP_SENDING_STATE_PENDING_SEND;
     }
 
   if (gabble_jingle_content_receiving (priv->content))
     {
       if (created_by_us && state != JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        remote_state = TPY_SENDING_STATE_PENDING_SEND;
+        remote_state = TP_SENDING_STATE_PENDING_SEND;
       else
-        remote_state = TPY_SENDING_STATE_SENDING;
+        remote_state = TP_SENDING_STATE_SENDING;
     }
 
-  tpy_base_call_stream_update_local_sending_state (base, local_state);
-  tpy_base_call_stream_remote_member_update_state (base,
-        priv->content->session->peer, remote_state);
+  tp_base_call_stream_update_local_sending_state (base, local_state,
+      0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
+  tp_base_call_stream_update_remote_sending_state (base,
+        priv->content->session->peer, remote_state,
+        0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
 }
 
 
@@ -419,10 +399,10 @@ static void
 gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_stream_class);
-  TpyBaseCallStreamClass *bcs_class =
-      TPY_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
-  TpyBaseMediaCallStreamClass *bmcs_class =
-      TPY_BASE_MEDIA_CALL_STREAM_CLASS (gabble_call_stream_class);
+  TpBaseCallStreamClass *bcs_class =
+      TP_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
+  TpBaseMediaCallStreamClass *bmcs_class =
+      TP_BASE_MEDIA_CALL_STREAM_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_call_stream_class,
@@ -470,7 +450,7 @@ gabble_call_stream_finalize (GObject *object)
 }
 
 static GPtrArray *
-gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
+gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
     const GPtrArray *candidates,
     GError **error)
 {
@@ -517,11 +497,11 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
 
       username = tp_asv_get_string (info, "Username");
       if (username == NULL)
-        username = tpy_base_media_call_stream_get_username (stream);
+        username = tp_base_media_call_stream_get_username (stream);
 
       password = tp_asv_get_string (info, "Password");
       if (password == NULL)
-        password = tpy_base_media_call_stream_get_password (stream);
+        password = tp_base_media_call_stream_get_password (stream);
 
       foundation = tp_asv_get_string (info, "Foundation");
       if (foundation == NULL)
@@ -551,21 +531,23 @@ gabble_call_stream_add_candidates (TpyBaseMediaCallStream *stream,
         0);
 
       l = g_list_append (l, c);
-      g_ptr_array_add (accepted_candidates,
-          g_boxed_copy (TPY_STRUCT_TYPE_CANDIDATE, va));
+      g_ptr_array_add (accepted_candidates, va);
     }
 
   gabble_jingle_content_add_candidates (priv->content, l);
 
   if (accepted_candidates->len == 0 && candidates->len != 0)
-    g_set_error_literal (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-        "All candidates had the wrong Type");
+    {
+      g_set_error_literal (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "All candidates had the wrong Type");
+      tp_clear_pointer (&accepted_candidates, g_ptr_array_unref);
+    }
 
   return accepted_candidates;
 }
 
 static gboolean
-gabble_call_stream_set_sending (TpyBaseCallStream *stream,
+gabble_call_stream_set_sending (TpBaseCallStream *stream,
     gboolean sending,
     GError **error)
 {

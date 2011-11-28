@@ -23,10 +23,8 @@
 
 #include <glib-object.h>
 
-#include <telepathy-yell/enums.h>
-
 #include <telepathy-glib/base-channel.h>
-#include <telepathy-yell/base-call-channel.h>
+#include <telepathy-glib/base-call-channel.h>
 
 #include "jingle-content.h"
 #include "call-member.h"
@@ -39,11 +37,11 @@ typedef struct _GabbleBaseCallChannelPrivate GabbleBaseCallChannelPrivate;
 typedef struct _GabbleBaseCallChannelClass GabbleBaseCallChannelClass;
 
 struct _GabbleBaseCallChannelClass {
-    TpyBaseCallChannelClass parent_class;
+    TpBaseCallChannelClass parent_class;
 };
 
 struct _GabbleBaseCallChannel {
-    TpyBaseCallChannel parent;
+    TpBaseCallChannel parent;
 
     GabbleBaseCallChannelPrivate *priv;
 };
@@ -86,7 +84,7 @@ GabbleCallContent * gabble_base_call_channel_add_content (
     GabbleBaseCallChannel *self,
     const gchar *name,
     JingleMediaType mtype,
-    TpyCallContentDisposition disposition);
+    TpCallContentDisposition disposition);
 
 void gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,
     GabbleCallContent *content);

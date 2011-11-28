@@ -30,7 +30,7 @@ done
 
 if test $enable_submodules = true; then
     # Fetch submodules if needed
-    if test ! -f lib/ext/wocky/autogen.sh -o ! -f lib/ext/telepathy-yell/autogen.sh; then
+    if test ! -f lib/ext/wocky/autogen.sh; then
         echo "+ Setting up submodules"
         git submodule init
     fi
@@ -38,11 +38,6 @@ if test $enable_submodules = true; then
 
     # launch Wocky's autogen.sh
     cd lib/ext/wocky
-    sh autogen.sh --no-configure
-    cd ../../..
-
-    # launch tp-yell's autogen.sh
-    cd lib/ext/telepathy-yell
     sh autogen.sh --no-configure
     cd ../../..
 fi

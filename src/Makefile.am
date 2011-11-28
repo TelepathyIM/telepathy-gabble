@@ -213,7 +213,6 @@ libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la \
    $(top_builddir)/lib/gibber/libgibber.la \
    $(top_builddir)/lib/loudmouth/libloudmouth.la \
-   $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
    $(ALL_LIBS)
 
 nodist_libgabble_convenience_la_SOURCES = \
@@ -240,7 +239,6 @@ telepathy_gabble_LDFLAGS = -export-dynamic
 noinst_LTLIBRARIES = libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
-	    @TP_YELL_CFLAGS@ \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
 	    @TP_GLIB_CFLAGS@ \
 	    @SOUP_CFLAGS@ @NICE_CFLAGS@ @GMODULE_CFLAGS@ \

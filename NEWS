@@ -3,6 +3,11 @@ telepathy-gabble 0.15.2 (UNRELEASED)
 
 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃
 
+Enhancements:
+
+• fd.o#42462: Update wocky snapshot to fix gabble getting kicked from D-Bus
+  when non-character utf-8 is used by remote clients
+
 telepathy-gabble 0.15.1 (2011-11-24)
 ====================================
 

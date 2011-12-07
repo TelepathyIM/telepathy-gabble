@@ -57,6 +57,11 @@ gchar *gabble_connection_add_sidecar_own_caps (
     GabbleConnection *connection,
     const GabbleCapabilitySet *cap_set,
     const GPtrArray *identities) G_GNUC_WARN_UNUSED_RESULT;
+gchar *gabble_connection_add_sidecar_own_caps_full (
+    GabbleConnection *connection,
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities,
+    GPtrArray *data_forms) G_GNUC_WARN_UNUSED_RESULT;
 
 WockySession *gabble_connection_get_session (
     GabbleConnection *connection);

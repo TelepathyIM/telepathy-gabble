@@ -3908,9 +3908,10 @@ gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
 
 /* identities is actually a WockyDiscoIdentityArray */
 gchar *
-gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
+gabble_connection_add_sidecar_own_caps_full (GabbleConnection *self,
     const GabbleCapabilitySet *cap_set,
-    const GPtrArray *identities)
+    const GPtrArray *identities,
+    GPtrArray *data_forms)
 {
   GPtrArray *identities_copy = ((identities == NULL) ?
       wocky_disco_identity_array_new () :
@@ -3926,11 +3927,20 @@ gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
   ver = gabble_caps_hash_compute (cap_set, identities_copy);
 
   gabble_presence_cache_add_own_caps (self->presence_cache, ver,
-      cap_set, identities_copy, NULL);
+      cap_set, identities_copy, data_forms);
 
   wocky_disco_identity_array_free (identities_copy);
 
   return ver;
+}
+
+gchar *
+gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities)
+{
+  return gabble_connection_add_sidecar_own_caps_full (self, cap_set,
+      identities, NULL);
 }
 
 const gchar *

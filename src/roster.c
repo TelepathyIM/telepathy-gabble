@@ -1795,19 +1795,28 @@ connection_status_changed_cb (GabbleConnection *conn,
     case TP_CONNECTION_STATUS_CONNECTED:
         {
           WockyStanza *stanza;
+          TpBaseContactList *base = TP_BASE_CONTACT_LIST (self);
 
           self->priv->cancel_on_disconnect = g_cancellable_new ();
 
-          DEBUG ("requesting roster");
+          if (tp_base_contact_list_get_download_at_connection (base))
+            {
+              DEBUG ("requesting roster");
 
-          stanza = _gabble_roster_message_new (self, WOCKY_STANZA_SUB_TYPE_GET,
-              NULL);
+              stanza = _gabble_roster_message_new (self, WOCKY_STANZA_SUB_TYPE_GET,
+                  NULL);
 
-          conn_util_send_iq_async (conn, stanza,
-              self->priv->cancel_on_disconnect,
-              roster_received_cb, tp_weak_ref_new (self, NULL, NULL));
+              conn_util_send_iq_async (conn, stanza,
+                  self->priv->cancel_on_disconnect,
+                  roster_received_cb, tp_weak_ref_new (self, NULL, NULL));
 
-          g_object_unref (stanza);
+              g_object_unref (stanza);
+            }
+          else
+            {
+              DEBUG ("don't request the roster because the property"
+                     " ContactList.DownloadAtConnection is FALSE");
+            }
         }
       break;
 
@@ -2957,6 +2966,40 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
   tp_handle_set_destroy (removed);
 }
 
+static void
+gabble_roster_download_async (TpBaseContactList *base,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GError *error = NULL;
+
+  if (!tp_base_contact_list_get_download_at_connection (base))
+    {
+      WockyStanza *stanza;
+
+      DEBUG ("Downloading roster requested");
+
+      stanza = _gabble_roster_message_new (self, WOCKY_STANZA_SUB_TYPE_GET,
+          NULL);
+
+      conn_util_send_iq_async (self->priv->conn, stanza,
+          self->priv->cancel_on_disconnect,
+          roster_received_cb, tp_weak_ref_new (self, NULL, NULL));
+
+      g_object_unref (stanza);
+    }
+  else
+    {
+      DEBUG ("Downloading roster requested but it is already requested at "
+             "connection. Just do nothing and return.");
+    }
+
+  gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
+      gabble_roster_download_async, error);
+  g_clear_error (&error);
+}
+
 static TpHandleSet *
 gabble_roster_dup_blocked_contacts (TpBaseContactList *base)
 {
@@ -3541,6 +3584,7 @@ gabble_roster_class_init (GabbleRosterClass *cls)
 
   base_class->dup_states = gabble_roster_dup_states;
   base_class->dup_contacts = gabble_roster_dup_contacts;
+  base_class->download_async = gabble_roster_download_async;
 
   signals[NICKNAMES_UPDATE] = g_signal_new (
     "nicknames-update",

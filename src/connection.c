@@ -183,6 +183,7 @@ enum
     PROP_FALLBACK_SERVERS,
     PROP_EXTRA_CERTIFICATE_IDENTITIES,
     PROP_POWER_SAVING,
+    PROP_DOWNLOAD_AT_CONNECTION,
 
     LAST_PROPERTY
 };
@@ -679,6 +680,23 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_boolean (value, priv->power_saving);
       break;
 
+    case PROP_DOWNLOAD_AT_CONNECTION:
+      {
+        gboolean download_at_connection = TRUE;
+        if (self->roster != NULL)
+          {
+            g_object_get (self->roster,
+                "download-at-connection", &download_at_connection,
+                NULL);
+          }
+        else
+          {
+            g_warn_if_reached ();
+          }
+        g_value_set_boolean (value, download_at_connection);
+        break;
+      }
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -818,6 +836,16 @@ gabble_connection_set_property (GObject      *object,
 
     case PROP_POWER_SAVING:
       priv->power_saving = g_value_get_boolean (value);
+      break;
+
+    case PROP_DOWNLOAD_AT_CONNECTION:
+      /* Connection parameters are set by TpBaseProtocolClass->new_connection
+       * after the channel managers are created. So at this step self->roster
+       * is not NULL and we pass the property.
+       */
+      if (self->roster != NULL)
+        g_object_set (self->roster, "download-at-connection",
+            g_value_get_boolean (value), NULL);
       break;
 
     default:
@@ -1176,6 +1204,15 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           "Leak presence and capabilities when requested",
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_DOWNLOAD_AT_CONNECTION,
+      g_param_spec_boolean (
+          "download-roster-at-connection",
+          "Download the contact list at connection?",
+          "Download the contact list at connection?",
+          TRUE,
+          G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_FALLBACK_SERVERS,
       g_param_spec_boxed (

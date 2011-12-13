@@ -83,8 +83,7 @@ def test_content_addition (jt2, jp, q, bus, conn, chan, remote_handle):
 
     q.expect('stream-iq', predicate=jp.action_predicate('content-add'))
 
-    content.Remove(1, "org.freedesktop.Telepathy.Reason.UserRequested", "Removed",
-        dbus_interface=cs.CALL_CONTENT)
+    content.Remove(dbus_interface=cs.CALL_CONTENT)
     q.expect('stream-iq', predicate=jp.action_predicate('content-remove'))
 
 def run_test(jp, q, bus, conn, stream, incoming):

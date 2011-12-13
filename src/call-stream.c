@@ -235,16 +235,16 @@ _new_candidates_cb (
 }
 
 static void
-_stream_state_changed_cb (
+_endpoint_state_changed_cb (
     TpCallStreamEndpoint *endpoint,
     GParamSpec *spec,
     GabbleJingleContent *content)
 {
-  TpMediaStreamState state = 0;
+  TpMediaStreamState state;
 
-  g_object_get (endpoint, "stream-state", &state, NULL);
-  gabble_jingle_content_set_transport_state (content,
-    state);
+  /* We only care about connecting RTP, RTCP is optional */
+  state = tp_call_stream_endpoint_get_state (endpoint, 1);
+  gabble_jingle_content_set_transport_state (content, state);
 }
 
 static TpCallStreamEndpoint *
@@ -287,8 +287,8 @@ _hook_up_endpoint (GabbleCallStream *self,
   tp_g_signal_connect_object (content, "new-candidates",
       G_CALLBACK (_new_candidates_cb), endpoint, 0);
 
-  tp_g_signal_connect_object (endpoint, "notify::stream-state",
-      G_CALLBACK(_stream_state_changed_cb), content, 0);
+  tp_g_signal_connect_object (endpoint, "notify::endpoint-state",
+      G_CALLBACK(_endpoint_state_changed_cb), content, 0);
 
   return endpoint;
 }

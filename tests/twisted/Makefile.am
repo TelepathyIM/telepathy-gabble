@@ -25,6 +25,7 @@ TWISTED_TESTS = \
 	connect/disco-no-reply.py \
 	connect/network-error.py \
 	connect/stream-closed.py \
+	connect/test-connection-params.py \
 	connect/test-fail.py \
 	connect/test-nonblocking-tls.py \
 	connect/test-success.py \

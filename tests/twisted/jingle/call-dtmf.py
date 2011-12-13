@@ -70,13 +70,13 @@ def run_test(jp, q, bus, conn, stream):
     chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
 
     # Setup codecs
-    codecs = jt2.get_call_audio_codecs_dbus()
+    md = jt2.get_call_audio_md_dbus()
 
 
     [path, _, _] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
-                "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
+                "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
     offer = bus.get_object (conn.bus_name, path)
-    offer.Accept (codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
+    offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
 
     # Add candidates
     candidates = jt2.get_call_remote_transports_dbus ()
@@ -88,18 +88,16 @@ def run_test(jp, q, bus, conn, stream):
     ret = q.expect('stream-iq', predicate=jp.action_predicate('session-initiate'))
     jt2.parse_session_initiate(ret.query)
 
-    cstream.CandidatesPrepared (dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
+    cstream.FinishInitialCandidates (dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
     endpoints = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA,
         "Endpoints", dbus_interface=dbus.PROPERTIES_IFACE)
     endpoint = bus.get_object (conn.bus_name, endpoints[0])
 
-    endpoint.SetSelectedCandidate (jt2.get_call_remote_transports_dbus()[0],
-        dbus_interface=cs.CALL_STREAM_ENDPOINT)
-    endpoint.SetStreamState (cs.MEDIA_STREAM_STATE_CONNECTED,
+    endpoint.SetEndpointState (1, cs.CALL_STREAM_ENDPOINT_STATE_FULLY_CONNECTED,
         dbus_interface=cs.CALL_STREAM_ENDPOINT)
 
-    q.expect('dbus-signal', signal='StreamStateChanged',
+    q.expect('dbus-signal', signal='EndpointStateChanged',
         interface=cs.CALL_STREAM_ENDPOINT)
 
     if jp.is_modern_jingle():
@@ -115,12 +113,12 @@ def run_test(jp, q, bus, conn, stream):
     jt2.accept()
 
     # accept codec offer
-    o = q.expect ('dbus-signal', signal='NewCodecOffer')
+    o = q.expect ('dbus-signal', signal='NewMediaDescriptionOffer')
 
-    [_, path, _ ] = o.args
-    codecs = jt2.get_call_audio_codecs_dbus()
+    [path, _ , _ ] = o.args
+    md = jt2.get_call_audio_md_dbus()
     offer = bus.get_object (conn.bus_name, path)
-    offer.Accept (codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
+    offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
 
     # accepted, finally
 

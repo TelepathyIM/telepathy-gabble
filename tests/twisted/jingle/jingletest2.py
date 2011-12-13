@@ -795,9 +795,9 @@ class JingleTest2:
         return self.dbusify_codecs(self.video_codecs)
 
     def dbusify_call_codecs(self, codecs):
-        dbussed_codecs = [ (id, name, rate, 0, params)
+        dbussed_codecs = [ (id, name, rate, 0, False, params)
                             for (name, id, rate, params) in codecs ]
-        return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
+        return dbus.Array(dbussed_codecs, signature='(usuuba{ss})')
 
     def dbusify_call_codecs_with_params(self, codecs):
         return dbusify_call_codecs (self, codecs)

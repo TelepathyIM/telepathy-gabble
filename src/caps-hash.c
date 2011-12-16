@@ -88,8 +88,8 @@ caps_hash_compute_from_self_presence (GabbleConnection *self)
  * Returns: the hash. The called must free the returned hash with g_free().
  */
 gchar *
-gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
-    const GPtrArray *identities)
+gabble_caps_hash_compute_full (const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities, GPtrArray *data_forms)
 {
   GPtrArray *features = g_ptr_array_new ();
   GPtrArray *identities_copy = ((identities == NULL) ?
@@ -99,10 +99,23 @@ gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
 
   gabble_capability_set_foreach (cap_set, ptr_array_add_str, features);
 
-  str = wocky_caps_hash_compute_from_lists (features, identities_copy, NULL);
+  str = wocky_caps_hash_compute_from_lists (features, identities_copy,
+                                            data_forms);
 
   g_ptr_array_unref (features);
   wocky_disco_identity_array_free (identities_copy);
 
   return str;
+}
+
+/**
+ * Compute the hash as defined by the XEP-0115 from a received GabbleCapabilitySet
+ *
+ * Returns: the hash. The called must free the returned hash with g_free().
+ */
+gchar *
+gabble_caps_hash_compute (const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities)
+{
+  return gabble_caps_hash_compute_full (cap_set, identities, NULL);
 }

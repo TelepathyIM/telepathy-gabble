@@ -3932,7 +3932,7 @@ gabble_connection_add_sidecar_own_caps_full (GabbleConnection *self,
         wocky_disco_identity_new ("client", CLIENT_TYPE,
             NULL, PACKAGE_STRING));
 
-  ver = gabble_caps_hash_compute (cap_set, identities_copy);
+  ver = gabble_caps_hash_compute_full (cap_set, identities_copy, data_forms);
 
   gabble_presence_cache_add_own_caps (self->presence_cache, ver,
       cap_set, identities_copy, data_forms);

@@ -550,18 +550,18 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
 }
 
 static const gchar * const media_channel_fixed_properties[] = {
-    TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
+    TP_PROP_CHANNEL_CHANNEL_TYPE,
+    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
     NULL
 };
 
 /* If you change this at all, you'll probably also need to change both_allowed
  * and video_allowed */
 static const gchar * const named_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
+    TP_PROP_CHANNEL_TARGET_HANDLE,
+    TP_PROP_CHANNEL_TARGET_ID,
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_AUDIO,
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_VIDEO,
     NULL
 };
 
@@ -569,61 +569,61 @@ static const gchar * const * both_allowed =
     named_channel_allowed_properties + 2;
 
 static const gchar * const audio_allowed[] = {
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".ImmutableStreams",
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_AUDIO,
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_IMMUTABLE_STREAMS,
     NULL
 };
 
 static const gchar * const video_allowed[] = {
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".ImmutableStreams",
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_VIDEO,
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_IMMUTABLE_STREAMS,
     NULL
 };
 
 static const gchar * const both_allowed_immutable[] = {
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio",
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo",
-    TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".ImmutableStreams",
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_AUDIO,
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_VIDEO,
+    TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_IMMUTABLE_STREAMS,
     NULL
 };
 
 static const gchar * const call_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL ".TargetHandle",
-    TP_IFACE_CHANNEL ".TargetID",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
-    TP_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
+    TP_PROP_CHANNEL_TARGET_HANDLE,
+    TP_PROP_CHANNEL_TARGET_ID,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO_NAME,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO_NAME,
+    TP_PROP_CHANNEL_TYPE_CALL_MUTABLE_CONTENTS,
     NULL
 };
 
 static const gchar * const call_audio_allowed[] = {
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO_NAME,
     NULL
 };
 
 static const gchar * const call_video_allowed[] = {
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO_NAME,
     NULL
 };
 
 static const gchar * const call_both_allowed[] = {
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
-    TP_IFACE_CHANNEL_TYPE_CALL ".MutableContents",
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO_NAME,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO_NAME,
+    TP_PROP_CHANNEL_TYPE_CALL_MUTABLE_CONTENTS,
     NULL
 };
 
 static const gchar * const call_both_allowed_immutable[] = {
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudio",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudioName",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideo",
-    TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideoName",
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO_NAME,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO,
+    TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO_NAME,
     NULL
 };
 
@@ -643,12 +643,12 @@ static GHashTable *
 gabble_media_factory_streamed_media_channel_class (void)
 {
   GHashTable *table = tp_asv_new (
-      TP_IFACE_CHANNEL ".TargetHandleType", G_TYPE_UINT,
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, G_TYPE_UINT,
           TP_HANDLE_TYPE_CONTACT,
       NULL);
 
   tp_asv_set_static_string (table,
-      TP_IFACE_CHANNEL ".ChannelType",
+      TP_PROP_CHANNEL_CHANNEL_TYPE,
       TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA);
 
   return table;
@@ -658,12 +658,11 @@ static GHashTable *
 gabble_media_factory_call_channel_class (void)
 {
   GHashTable *table = tp_asv_new (
-      TP_IFACE_CHANNEL ".TargetHandleType", G_TYPE_UINT,
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, G_TYPE_UINT,
           TP_HANDLE_TYPE_CONTACT,
       NULL);
 
-  tp_asv_set_static_string (table,
-      TP_IFACE_CHANNEL ".ChannelType",
+  tp_asv_set_static_string (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
       TP_IFACE_CHANNEL_TYPE_CALL);
 
   return table;
@@ -745,20 +744,20 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
     }
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL ".ChannelType"),
+          TP_PROP_CHANNEL_CHANNEL_TYPE),
         TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA))
     return FALSE;
 
   handle_type = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandleType", NULL);
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
 
   handle = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+      TP_PROP_CHANNEL_TARGET_HANDLE, NULL);
 
   initial_audio = tp_asv_get_boolean (request_properties,
-      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL);
+      TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_AUDIO, NULL);
   initial_video = tp_asv_get_boolean (request_properties,
-      TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL);
+      TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_VIDEO, NULL);
 
   switch (handle_type)
     {
@@ -853,7 +852,7 @@ gabble_media_factory_create_call (TpChannelManager *manager,
   DEBUG ("Creating a new call channel");
 
   if (tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
+      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL) != TP_HANDLE_TYPE_CONTACT)
     return FALSE;
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
@@ -862,7 +861,7 @@ gabble_media_factory_create_call (TpChannelManager *manager,
         goto error;
 
   target  = tp_asv_get_uint32 (request_properties,
-      TP_IFACE_CHANNEL ".TargetHandle", NULL);
+      TP_PROP_CHANNEL_TARGET_HANDLE, NULL);
 
   if (method == METHOD_ENSURE)
     {
@@ -904,9 +903,9 @@ gabble_media_factory_create_call (TpChannelManager *manager,
     }
 
   initial_audio = tp_asv_get_boolean (request_properties,
-      TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL);
+      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
   initial_video = tp_asv_get_boolean (request_properties,
-      TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL);
+      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
 
   if (!initial_audio && !initial_video)
     {
@@ -921,9 +920,9 @@ gabble_media_factory_create_call (TpChannelManager *manager,
    */
 
   initial_audio_name = tp_asv_get_string (request_properties,
-    TP_IFACE_CHANNEL_TYPE_CALL "InitialAudioName");
+      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO_NAME);
   initial_video_name = tp_asv_get_string (request_properties,
-    TP_IFACE_CHANNEL_TYPE_CALL "InitialVideoName");
+      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO_NAME);
 
   new_call_channel (self, NULL, target,
     initial_audio, initial_audio_name,
@@ -955,7 +954,7 @@ gabble_media_factory_create_channel (TpChannelManager *manager,
                                      GHashTable *request_properties)
 {
   if (!tp_strdiff (tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL ".ChannelType"),
+          TP_PROP_CHANNEL_CHANNEL_TYPE),
         TP_IFACE_CHANNEL_TYPE_CALL))
     return gabble_media_factory_create_call (manager, request_token,
       request_properties, METHOD_CREATE);
@@ -971,7 +970,7 @@ gabble_media_factory_ensure_channel (TpChannelManager *manager,
                                      GHashTable *request_properties)
 {
   if (!tp_strdiff (tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL ".ChannelType"),
+          TP_PROP_CHANNEL_CHANNEL_TYPE),
         TP_IFACE_CHANNEL_TYPE_CALL))
     return gabble_media_factory_create_call (manager, request_token,
         request_properties, METHOD_ENSURE);
@@ -1270,10 +1269,10 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
         }
 
       if (tp_strdiff (tp_asv_get_string (filter,
-              TP_IFACE_CHANNEL ".ChannelType"),
+              TP_PROP_CHANNEL_CHANNEL_TYPE),
             TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA)
           && tp_strdiff (tp_asv_get_string (filter,
-              TP_IFACE_CHANNEL ".ChannelType"),
+              TP_PROP_CHANNEL_CHANNEL_TYPE),
             TP_IFACE_CHANNEL_TYPE_CALL))
         {
           /* not interesting to this channel manager */
@@ -1284,7 +1283,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
       /* If there is a handler that can support Call channels, use those for
        * incoming channels */
       if (!tp_strdiff (tp_asv_get_string (filter,
-            TP_IFACE_CHANNEL ".ChannelType"),
+            TP_PROP_CHANNEL_CHANNEL_TYPE),
             TP_IFACE_CHANNEL_TYPE_CALL))
         {
           GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
@@ -1292,9 +1291,9 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
         }
 #endif
 
-      if (tp_asv_lookup (filter, TP_IFACE_CHANNEL ".TargetHandleType")
+      if (tp_asv_lookup (filter, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE)
           != NULL &&
-          tp_asv_get_uint32 (filter, TP_IFACE_CHANNEL ".TargetHandleType",
+          tp_asv_get_uint32 (filter, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
             NULL) != TP_HANDLE_TYPE_CONTACT)
         {
           /* not interesting to this channel manager: we only care about
@@ -1304,15 +1303,15 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
         }
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialAudio", NULL)
+            TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_AUDIO, NULL)
           || tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_CALL ".InitialAudio", NULL))
+            TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL))
         audio = TRUE;
 
       if (tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_STREAMED_MEDIA ".InitialVideo", NULL)
+            TP_PROP_CHANNEL_TYPE_STREAMED_MEDIA_INITIAL_VIDEO, NULL)
           || tp_asv_get_boolean (filter,
-            TP_IFACE_CHANNEL_TYPE_CALL ".InitialVideo", NULL))
+            TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL))
         video = TRUE;
 
       /* If we've picked up all the capabilities we're ever going to, then

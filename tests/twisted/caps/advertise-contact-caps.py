@@ -13,6 +13,8 @@ from caps_helper import caps_contain, receive_presence_and_ask_caps, \
 import constants as cs
 import ns
 
+from config import FILE_TRANSFER_ENABLED
+
 def noop_presence_update(q, stream):
     # At the moment Gabble does not optimize away presence updates that
     # have no effect. When it does, we can forbid those events here.
@@ -199,15 +201,16 @@ def run_test(q, bus, conn, stream,
     check_caps(namespaces, [])
 
     # Support file transfer
-    conn.ContactCapabilities.UpdateCapabilities([
-        (cs.CLIENT + '.FileReceiver', [{
-            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
-            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-            }], []),
-        ])
-    (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
-            False)
-    check_caps(namespaces, [ns.FILE_TRANSFER])
+    if FILE_TRANSFER_ENABLED:
+        conn.ContactCapabilities.UpdateCapabilities([
+            (cs.CLIENT + '.FileReceiver', [{
+                cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
+                cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+                }], []),
+            ])
+        (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
+                False)
+        check_caps(namespaces, [ns.FILE_TRANSFER])
 
 def run_mixed_test (q, bus, conn, stream):
     conn.Connect()

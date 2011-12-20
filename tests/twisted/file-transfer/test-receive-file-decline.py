@@ -4,6 +4,12 @@ from twisted.words.xish import xpath
 import constants as cs
 from file_transfer_helper import ReceiveFileTest, exec_file_transfer_test
 
+from config import FILE_TRANSFER_ENABLED
+
+if not FILE_TRANSFER_ENABLED:
+    print "NOTE: built with --disable-file-transfer"
+    raise SystemExit(77)
+
 class ReceiveFileDeclineTest(ReceiveFileTest):
     def accept_file(self):
         # decline FT

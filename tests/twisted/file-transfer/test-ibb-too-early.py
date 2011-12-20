@@ -6,6 +6,12 @@ from servicetest import EventPattern
 
 import constants as cs
 
+from config import FILE_TRANSFER_ENABLED
+
+if not FILE_TRANSFER_ENABLED:
+    print "NOTE: built with --disable-file-transfer"
+    raise SystemExit(77)
+
 class IbbTooEarlyTest (ReceiveFileTest):
     def __init__ (self):
         ReceiveFileTest.__init__ (self,

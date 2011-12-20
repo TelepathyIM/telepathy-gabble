@@ -18,7 +18,6 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "config.h"
 #include "connection.h"
 #include "gabble.h"
 
@@ -365,8 +364,10 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
         "connection", self,
         NULL));
 
+#ifdef ENABLE_FILE_TRANSFER
   self->ft_manager = gabble_ft_manager_new (self);
   g_ptr_array_add (channel_managers, self->ft_manager);
+#endif
 
   /* plugin channel managers */
   loader = gabble_plugin_loader_dup ();

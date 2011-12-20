@@ -50,6 +50,12 @@ from caps_helper import compute_caps_hash, text_fixed_properties,\
     presence_and_disco
 import ns
 
+from config import FILE_TRANSFER_ENABLED
+
+if not FILE_TRANSFER_ENABLED:
+    print "NOTE: built with --disable-file-transfer"
+    raise SystemExit(77)
+
 def dict_union(a, b):
     return dbus.Dictionary(a.items() + b.items(), signature='sv')
 

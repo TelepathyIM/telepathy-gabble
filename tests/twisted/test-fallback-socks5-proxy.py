@@ -17,6 +17,8 @@ from twisted.words.xish import xpath
 
 import dbus
 
+from config import FILE_TRANSFER_ENABLED
+
 proxy_query_events = [
     EventPattern('stream-iq', to='fallback1-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS),
     EventPattern('stream-iq', to='fallback2-proxy.localhost', iq_type='get', query_ns=ns.BYTESTREAMS)]
@@ -346,16 +348,18 @@ if __name__ == '__main__':
     params = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost']}
     exec_test(offer_dbus_tube, params=params)
     exec_test(accept_stream_tube, params=params)
-    exec_test(send_file, params=params)
-    exec_test(double_server, params=params)
 
-    params6 = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost',
-        'fallback3-proxy.localhost', 'fallback4-proxy.localhost', 'fallback5-proxy.localhost',
-        'fallback6-proxy.localhost']}
-    exec_test(cache_full, params=params6)
+    if FILE_TRANSFER_ENABLED:
+        exec_test(send_file, params=params)
+        exec_test(double_server, params=params)
 
-    params4 = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost',
-        'fallback3-proxy.localhost', 'fallback4-proxy.localhost']}
-    exec_test(proxy_error, params=params4)
+        params6 = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost',
+            'fallback3-proxy.localhost', 'fallback4-proxy.localhost', 'fallback5-proxy.localhost',
+            'fallback6-proxy.localhost']}
+        exec_test(cache_full, params=params6)
 
-    exec_test(proxies_telepathy_im, params={})
+        params4 = {'fallback-socks5-proxies': ['fallback1-proxy.localhost', 'fallback2-proxy.localhost',
+            'fallback3-proxy.localhost', 'fallback4-proxy.localhost']}
+        exec_test(proxy_error, params=params4)
+
+        exec_test(proxies_telepathy_im, params={})

@@ -349,5 +349,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'))
 
+    t.cleanup()
+
 if __name__ == '__main__':
     t.exec_stream_tube_test(test)

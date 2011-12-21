@@ -6,6 +6,7 @@ import errno
 import os
 import socket
 import sys
+import tempfile
 
 import dbus
 
@@ -20,6 +21,16 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.error import CannotListenError
 from twisted.internet import tcp
+
+_to_cleanup = []
+
+def cleanup():
+    for f in _to_cleanup:
+        try:
+            os.remove(f)
+        except OSError:
+            pass # worse things have happened
+    _to_cleanup = []
 
 def check_tube_in_tubes(tube, tubes):
     """
@@ -279,13 +290,16 @@ def create_server(q, address_type, factory=None, block_reading=False,
     if factory is None:
         factory = EventProtocolFactory(q, block_reading)
     if address_type == cs.SOCKET_ADDRESS_TYPE_UNIX:
-        path = os.getcwd() + '/' + streamfile
+        # don't use os.getcwd() here because it can be quite long and
+        # can easily hit the AF_UNIX max path length.
+        path = tempfile.mkstemp(suffix=streamfile)[1]
         try:
             os.remove(path)
         except OSError, e:
             if e.errno != errno.ENOENT:
                 raise
         reactor.listenUNIX(path, factory)
+        _to_cleanup.append(path)
 
         return dbus.ByteArray(path)
 

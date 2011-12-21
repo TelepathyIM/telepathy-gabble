@@ -1,12 +1,18 @@
-telepathy-gabble 0.15.2 (UNRELEASED)
+telepathy-gabble 0.15.2 (2011-12-21)
 ====================================
-
-💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃 💃
 
 Enhancements:
 
+• fd.o#43588, fd.o#43889: Add public
+  gabble_connection_add_sidecar_own_caps_full() function which
+  includes data forms. (Alban)
+
+Fixes:
+
 • fd.o#42462: Update wocky snapshot to fix gabble getting kicked from D-Bus
-  when non-character utf-8 is used by remote clients
+  when non-character utf-8 is used by remote clients (Sjoerd)
+
+• Fix the build when using GLib 2.32. (Xavier)
 
 telepathy-gabble 0.15.1 (2011-11-24)
 ====================================

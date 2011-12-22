@@ -3,6 +3,10 @@ telepathy-gabble 0.15.4 (UNRELEASED)
 
 Go go go
 
+Enhancements:
+
+* fd.o#41790 - Make file transfer support optional (andrunko)
+
 telepathy-gabble 0.15.3 (2011-12-22)
 ====================================
 

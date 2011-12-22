@@ -1,7 +1,9 @@
 telepathy-gabble 0.15.3 (UNRELEASED)
 ====================================
 
-hurry up.
+Fixes:
+
+• fd.o#43891: Update wocky snapshot to fix wocky_data_form_set_type() (Alban)
 
 telepathy-gabble 0.15.2 (2011-12-21)
 ====================================

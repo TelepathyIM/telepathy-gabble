@@ -7,6 +7,12 @@ from servicetest import assertEquals, call_async
 
 import constants as cs
 
+from config import FILE_TRANSFER_ENABLED
+
+if not FILE_TRANSFER_ENABLED:
+    print "NOTE: built with --disable-file-transfer"
+    raise SystemExit(77)
+
 class SendFileNoMetadata(SendFileTest):
     # this is basically the equivalent of calling CreateChannel
     # without these two properties

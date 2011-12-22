@@ -24,7 +24,9 @@
 #include "vcard-manager.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
+#ifdef ENABLE_FILE_TRANSFER
 #include "gtalk-file-collection.h"
+#endif
 
 #include "test-resolver.h"
 
@@ -61,7 +63,9 @@ main (int argc,
       "stun.telepathy.im", "6.7.8.9");
 
   gabble_jingle_factory_set_test_mode ();
+#ifdef ENABLE_FILE_TRANSFER
   gtalk_file_collection_set_test_mode ();
+#endif
 
   ret = gabble_main (argc, argv);
 

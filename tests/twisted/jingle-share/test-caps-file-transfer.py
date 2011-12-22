@@ -15,6 +15,12 @@ from caps_helper import compute_caps_hash, \
 import ns
 from jingleshareutils import test_ft_caps_from_contact
 
+from config import FILE_TRANSFER_ENABLED
+
+if not FILE_TRANSFER_ENABLED:
+    print "NOTE: built with --disable-file-transfer"
+    raise SystemExit(77)
+
 def test(q, bus, conn, stream):
     client = 'http://telepathy.freedesktop.org/fake-client'
 

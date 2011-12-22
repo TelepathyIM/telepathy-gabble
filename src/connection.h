@@ -21,6 +21,8 @@
 #ifndef __GABBLE_CONNECTION_H__
 #define __GABBLE_CONNECTION_H__
 
+#include "config.h"
+
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
@@ -36,7 +38,9 @@
 #include "gabble/connection.h"
 #include "gabble/capabilities.h"
 #include "error.h"
+#ifdef ENABLE_FILE_TRANSFER
 #include "ft-manager.h"
+#endif
 #include "jingle-factory.h"
 #include "muc-factory.h"
 #include "types.h"
@@ -167,8 +171,10 @@ struct _GabbleConnection {
     /* jingle factory */
     GabbleJingleFactory *jingle_factory;
 
+#ifdef ENABLE_FILE_TRANSFER
     /* file transfer manager */
     GabbleFtManager *ft_manager;
+#endif
 
     /* PEP */
     WockyPepService *pep_nick;

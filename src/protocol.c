@@ -24,6 +24,8 @@
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>
 
+#include "extensions/extensions.h"
+
 #include "conn-presence.h"
 
 #include "connection.h"
@@ -338,7 +340,9 @@ get_connection_details (TpBaseProtocol *self,
   if (channel_managers != NULL)
     {
       GType types[] = {
+#ifdef ENABLE_FILE_TRANSFER
           GABBLE_TYPE_FT_MANAGER,
+#endif
           GABBLE_TYPE_IM_FACTORY,
           GABBLE_TYPE_MEDIA_FACTORY,
           GABBLE_TYPE_MUC_FACTORY,

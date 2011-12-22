@@ -88,16 +88,10 @@ libgabble_convenience_la_SOURCES = \
     disco.c \
     error.c \
     error.h \
-    ft-channel.c \
-    ft-channel.h \
-    ft-manager.c \
-    ft-manager.h \
     gabble.c \
     gabble.h \
     google-relay.c \
     google-relay.h \
-    gtalk-file-collection.h \
-    gtalk-file-collection.c \
     im-channel.h \
     im-channel.c \
     im-factory.h \
@@ -190,6 +184,24 @@ libgabble_convenience_la_SOURCES = \
     util.c \
     vcard-manager.h \
     vcard-manager.c
+
+if ENABLE_FILE_TRANSFER
+libgabble_convenience_la_SOURCES += \
+    ft-channel.c \
+    ft-channel.h \
+    ft-manager.c \
+    ft-manager.h \
+    gtalk-file-collection.h \
+    gtalk-file-collection.c
+else
+EXTRA_DIST += \
+    ft-channel.c \
+    ft-channel.h \
+    ft-manager.c \
+    ft-manager.h \
+    gtalk-file-collection.h \
+    gtalk-file-collection.c
+endif
 
 enumtype_sources = \
     $(top_srcdir)/src/connection.h \

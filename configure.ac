@@ -360,10 +360,23 @@ AC_SUBST(SOUP_CFLAGS)
 AC_SUBST(SOUP_LIBS)
 AM_CONDITIONAL([ENABLE_GOOGLE_RELAY], [test "x$enable_google_relay" = xyes])
 
-dnl Check for libnice
-PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
+AC_ARG_ENABLE(file-transfer,
+  AC_HELP_STRING([--disable-file-transfer],
+                 [disable file transfer support]),
+    [enable_ft=$enableval], [enable_ft=yes])
+
+if test x$enable_ft = xyes; then
+    AC_DEFINE(ENABLE_FILE_TRANSFER, [], [Enable file transfer])
+
+    dnl Check for libnice
+    PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
+else
+    NICE_CFLAGS=
+    NICE_LIBS=
+fi
 AC_SUBST(NICE_CFLAGS)
 AC_SUBST(NICE_LIBS)
+AM_CONDITIONAL([ENABLE_FILE_TRANSFER], [test "x$enable_ft" = xyes])
 
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
@@ -411,4 +424,6 @@ Configure summary:
         Plugin headers installed....:  ${enable_plugin_api}
         Channel.Type.Call support...:  ${enable_channel_type_call}
         Google relay support........:  ${enable_google_relay}
+        File transfer support.......:  ${enable_ft}
+
 "

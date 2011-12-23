@@ -46,6 +46,8 @@ static GPtrArray *gabble_call_stream_add_candidates (
 static gboolean gabble_call_stream_set_sending (TpBaseCallStream *stream,
     gboolean sending,
     GError **error);
+static void gabble_call_stream_request_receiving (TpBaseMediaCallStream *stream,
+    TpHandle contact, gboolean receive);
 
 G_DEFINE_TYPE(GabbleCallStream, gabble_call_stream,
     TP_TYPE_BASE_MEDIA_CALL_STREAM)
@@ -366,8 +368,8 @@ call_stream_update_member_states (GabbleCallStream *self)
   GabbleCallStreamPrivate *priv = self->priv;
   gboolean created_by_us;
   JingleContentState state;
-  TpSendingState local_state = 0;
-  TpSendingState remote_state = 0;
+  TpSendingState local_state;
+  TpSendingState remote_state;
 
   g_object_get (priv->content, "state", &state, NULL);
 
@@ -376,14 +378,20 @@ call_stream_update_member_states (GabbleCallStream *self)
 
   created_by_us = gabble_jingle_content_is_created_by_us (priv->content);
 
+  local_state = tp_base_call_stream_get_local_sending_state (base);
+  remote_state = tp_base_call_stream_get_remote_sending_state (base, 0);
+
   DEBUG ("Created by us?: %d, State: %d", created_by_us, state);
 
   if (gabble_jingle_content_sending (priv->content))
     {
-      if (state == JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        local_state = TP_SENDING_STATE_SENDING;
-      else
+      if (local_state != TP_SENDING_STATE_SENDING)
         local_state = TP_SENDING_STATE_PENDING_SEND;
+    }
+  else
+    {
+      if (local_state != TP_SENDING_STATE_NONE)
+        local_state = TP_SENDING_STATE_PENDING_STOP_SENDING;
     }
 
   if (gabble_jingle_content_receiving (priv->content))
@@ -406,8 +414,6 @@ static void
 gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_stream_class);
-  TpBaseCallStreamClass *bcs_class =
-      TP_BASE_CALL_STREAM_CLASS (gabble_call_stream_class);
   TpBaseMediaCallStreamClass *bmcs_class =
       TP_BASE_MEDIA_CALL_STREAM_CLASS (gabble_call_stream_class);
   GParamSpec *param_spec;
@@ -429,8 +435,9 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
       param_spec);
 
-  bcs_class->set_sending = gabble_call_stream_set_sending;
   bmcs_class->add_local_candidates = gabble_call_stream_add_candidates;
+  bmcs_class->set_sending = gabble_call_stream_set_sending;
+  bmcs_class->request_receiving = gabble_call_stream_request_receiving;
 }
 
 void
@@ -563,6 +570,14 @@ gabble_call_stream_set_sending (TpBaseCallStream *stream,
   gabble_jingle_content_set_sending (self->priv->content, sending);
 
   return TRUE;
+}
+
+static void gabble_call_stream_request_receiving (TpBaseMediaCallStream *stream,
+    TpHandle contact, gboolean receive)
+{
+  GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
+
+  gabble_jingle_content_request_receiving (self->priv->content, receive);
 }
 
 GabbleJingleContent *

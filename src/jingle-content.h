@@ -154,7 +154,9 @@ gboolean gabble_jingle_content_sending (GabbleJingleContent *self);
 gboolean gabble_jingle_content_receiving (GabbleJingleContent *self);
 
 void gabble_jingle_content_set_sending (GabbleJingleContent *self,
-  gboolean send);
+    gboolean send);
+void gabble_jingle_content_request_receiving (GabbleJingleContent *self,
+    gboolean receive);
 
 void gabble_jingle_content_send_complete (GabbleJingleContent *self);
 

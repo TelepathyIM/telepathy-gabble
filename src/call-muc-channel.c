@@ -40,7 +40,7 @@
 
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
-static void call_muc_channel_accept (TpBaseCallChannel *channel);
+static void call_muc_channel_accept (TpBaseMediaCallChannel *channel);
 static TpBaseCallContent * call_muc_channel_add_content (
     TpBaseCallChannel *base,
     const gchar *name,
@@ -203,6 +203,8 @@ gabble_call_muc_channel_class_init (
     GabbleCallMucChannelClass *gabble_call_muc_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_muc_channel_class);
+  TpBaseMediaCallChannelClass *base_media_call_class =
+    TP_BASE_MEDIA_CALL_CHANNEL_CLASS (gabble_call_muc_channel_class);
   TpBaseCallChannelClass *base_call_class =
     TP_BASE_CALL_CHANNEL_CLASS (gabble_call_muc_channel_class);
   TpBaseChannelClass *base_channel_class =
@@ -222,9 +224,10 @@ gabble_call_muc_channel_class_init (
   base_channel_class->target_handle_type = TP_HANDLE_TYPE_ROOM;
   base_channel_class->close = call_muc_channel_close;
 
-  base_call_class->accept = call_muc_channel_accept;
   base_call_class->add_content = call_muc_channel_add_content;
   base_call_class->hangup = call_muc_channel_hangup;
+
+  base_media_call_class->accept = call_muc_channel_accept;
 
   param_spec = g_param_spec_object ("muc", "GabbleMuc object",
       "The muc to which this call is related",
@@ -1126,7 +1129,7 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
 }
 
 static void
-call_muc_channel_accept (TpBaseCallChannel *channel)
+call_muc_channel_accept (TpBaseMediaCallChannel *channel)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (channel);
 

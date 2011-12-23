@@ -25,6 +25,7 @@
 
 #include <telepathy-glib/base-channel.h>
 #include <telepathy-glib/base-call-channel.h>
+#include <telepathy-glib/base-media-call-channel.h>
 
 #include "jingle-content.h"
 #include "call-member.h"
@@ -37,11 +38,11 @@ typedef struct _GabbleBaseCallChannelPrivate GabbleBaseCallChannelPrivate;
 typedef struct _GabbleBaseCallChannelClass GabbleBaseCallChannelClass;
 
 struct _GabbleBaseCallChannelClass {
-    TpBaseCallChannelClass parent_class;
+    TpBaseMediaCallChannelClass parent_class;
 };
 
 struct _GabbleBaseCallChannel {
-    TpBaseCallChannel parent;
+    TpBaseMediaCallChannel parent;
 
     GabbleBaseCallChannelPrivate *priv;
 };

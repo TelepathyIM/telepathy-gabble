@@ -46,7 +46,7 @@
 #include "debug.h"
 
 G_DEFINE_TYPE(GabbleBaseCallChannel, gabble_base_call_channel,
-  TP_TYPE_BASE_CALL_CHANNEL);
+  TP_TYPE_BASE_MEDIA_CALL_CHANNEL);
 
 static void gabble_base_call_channel_hangup (
     TpBaseCallChannel *base,

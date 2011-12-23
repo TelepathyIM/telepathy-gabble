@@ -52,7 +52,7 @@ static void call_session_state_changed_cb (GabbleJingleSession *session,
 static void call_member_content_added_cb (GabbleCallMember *member,
     GabbleCallMemberContent *content, GabbleCallChannel *self);
 
-static void call_channel_accept (TpBaseCallChannel *channel);
+static void call_channel_accept (TpBaseMediaCallChannel *channel);
 static TpBaseCallContent * call_channel_add_content (
     TpBaseCallChannel *base,
     const gchar *name,
@@ -184,6 +184,8 @@ gabble_call_channel_class_init (
     GabbleCallChannelClass *gabble_call_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_channel_class);
+  TpBaseMediaCallChannelClass *tp_base_media_call_class =
+      TP_BASE_MEDIA_CALL_CHANNEL_CLASS (gabble_call_channel_class);
   TpBaseCallChannelClass *tp_base_call_class =
       TP_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
   TpBaseChannelClass *base_channel_class =
@@ -203,8 +205,9 @@ gabble_call_channel_class_init (
 
   base_channel_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
 
-  tp_base_call_class->accept = call_channel_accept;
   tp_base_call_class->add_content = call_channel_add_content;
+
+  tp_base_media_call_class->accept = call_channel_accept;
 
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session associated with this media channel object.",
@@ -536,7 +539,7 @@ async_initable_iface_init (GAsyncInitableIface *iface)
 }
 
 static void
-call_channel_accept (TpBaseCallChannel *channel)
+call_channel_accept (TpBaseMediaCallChannel *channel)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (channel);
   gabble_jingle_session_accept (self->priv->session);

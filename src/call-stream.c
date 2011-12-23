@@ -225,9 +225,13 @@ _new_candidates_cb (
     TpCallStreamEndpoint *endpoint)
 {
   GPtrArray *tp_candidates;
+  gchar *ufrag, *pwd;
 
   if (candidates == NULL)
     return;
+
+  if (gabble_jingle_content_get_credentials (content, &ufrag, &pwd))
+    tp_call_stream_endpoint_set_remote_credentials (endpoint, ufrag, pwd);
 
   tp_candidates = gabble_call_candidates_to_array (candidates);
   tp_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
@@ -259,6 +263,7 @@ _hook_up_endpoint (GabbleCallStream *self,
   TpStreamTransportType type = 0;
   GPtrArray *tp_candidates;
   GList *candidates;
+  gchar *ufrag, *pwd;
 
   switch (gabble_jingle_content_get_transport_type (content))
     {
@@ -279,6 +284,8 @@ _hook_up_endpoint (GabbleCallStream *self,
   /* FIXME: ice??? */
   endpoint = tp_call_stream_endpoint_new (bus, path, type, FALSE);
 
+  if (gabble_jingle_content_get_credentials (content, &ufrag, &pwd))
+    tp_call_stream_endpoint_set_remote_credentials (endpoint, ufrag, pwd);
   candidates = gabble_jingle_content_get_remote_candidates (content);
   tp_candidates = gabble_call_candidates_to_array (candidates);
   tp_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);

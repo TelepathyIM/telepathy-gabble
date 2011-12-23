@@ -1134,6 +1134,15 @@ gabble_jingle_content_get_local_candidates (GabbleJingleContent *c)
 }
 
 gboolean
+gabble_jingle_content_get_credentials (GabbleJingleContent *c,
+    gchar **ufrag, gchar **pwd)
+{
+  GabbleJingleContentPrivate *priv = c->priv;
+
+  return jingle_transport_get_credentials (priv->transport, ufrag, pwd);
+}
+
+gboolean
 gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders)
 {

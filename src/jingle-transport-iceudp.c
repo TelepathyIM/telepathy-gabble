@@ -78,6 +78,9 @@ struct _GabbleJingleTransportIceUdpPrivate
   GList *pending_candidates;
   GList *remote_candidates;
 
+  gchar *ufrag;
+  gchar *pwd;
+
   /* next ID to send with a candidate */
   int id_sequence;
 
@@ -116,6 +119,12 @@ gabble_jingle_transport_iceudp_dispose (GObject *object)
 
   g_free (priv->transport_ns);
   priv->transport_ns = NULL;
+
+  g_free (priv->ufrag);
+  priv->ufrag = NULL;
+
+  g_free (priv->pwd);
+  priv->pwd = NULL;
 
   if (G_OBJECT_CLASS (gabble_jingle_transport_iceudp_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_transport_iceudp_parent_class)->dispose (object);
@@ -368,6 +377,18 @@ parse_candidates (GabbleJingleTransportIface *obj,
         }
       component = atoi (str);
 
+      if (priv->ufrag == NULL || strcmp (priv->ufrag, user))
+        {
+          g_free (priv->ufrag);
+          priv->ufrag = g_strdup (user);
+        }
+
+      if (priv->pwd == NULL || strcmp (priv->pwd, pass))
+        {
+          g_free (priv->pwd);
+          priv->pwd = g_strdup (pass);
+        }
+
       c = jingle_candidate_new (proto, ctype, id, component,
           address, port, gen, pref, user, pass, net);
 
@@ -553,6 +574,26 @@ get_transport_type (void)
   return JINGLE_TRANSPORT_ICE_UDP;
 }
 
+static gboolean
+get_credentials (GabbleJingleTransportIface *iface,
+      gchar **ufrag, gchar **pwd)
+{
+  GabbleJingleTransportIceUdp *transport =
+    GABBLE_JINGLE_TRANSPORT_ICEUDP (iface);
+  GabbleJingleTransportIceUdpPrivate *priv = transport->priv;
+
+  if (!priv->ufrag || !priv->pwd)
+    return FALSE;
+
+  if (ufrag)
+    *ufrag = priv->ufrag;
+  if (pwd)
+    *pwd = priv->pwd;
+
+  return TRUE;
+}
+
+
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data)
 {
@@ -567,6 +608,7 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
   klass->get_remote_candidates = get_remote_candidates;
   klass->get_local_candidates = get_local_candidates;
   klass->get_transport_type = get_transport_type;
+  klass->get_credentials = get_credentials;
 }
 
 void

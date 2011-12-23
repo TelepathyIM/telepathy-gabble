@@ -136,6 +136,19 @@ gabble_jingle_transport_iface_get_local_candidates (
   return virtual_method (self);
 }
 
+gboolean
+jingle_transport_get_credentials (GabbleJingleTransportIface *self,
+    gchar **ufrag, gchar **pwd)
+{
+  GabbleJingleTransportIfaceClass *klass =
+      GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS (self);
+
+  if (klass->get_credentials)
+    return klass->get_credentials (self, ufrag, pwd);
+  else
+    return FALSE;
+}
+
 JingleTransportType
 gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *self)
 {

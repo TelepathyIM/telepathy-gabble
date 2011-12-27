@@ -383,13 +383,16 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
     }
   else
     {
-    if (local_state != TP_SENDING_STATE_NONE)
-        local_state = TP_SENDING_STATE_PENDING_STOP_SENDING;
+      local_state = TP_SENDING_STATE_NONE;
     }
 
   if (gabble_jingle_content_receiving (priv->content))
     {
       remote_state = TP_SENDING_STATE_SENDING;
+    }
+  else
+    {
+      remote_state = TP_SENDING_STATE_NONE;
     }
 
   DEBUG ("State: %d Local: %d Remote: %d", state, local_state, remote_state);

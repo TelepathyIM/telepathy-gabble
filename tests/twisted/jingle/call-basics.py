@@ -589,6 +589,66 @@ def run_test(jp, q, bus, conn, stream, incoming):
                   stream_props["RemoteMembers"])
     assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
 
+
+    # Turn receiving off and on again
+    cstream.RequestReceiving (remote_handle, False,
+        dbus_interface = cs.CALL_STREAM)
+    ret = q.expect_many(
+        EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+        EventPattern('dbus-signal', signal='RemoteMembersChanged'))
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, ret[0].args[0])
+    assert ret[1].args[0].has_key(remote_handle)
+
+    # o = q.expect('dbus-signal', signal='RemoteMembersChanged')
+    # assert o.args[0].has_key(remote_handle)
+    # assertEquals(cs.CALL_SENDING_STATE_NONE, o.args[0][remote_handle])
+
+    cstream.CompleteReceivingStateChange(
+        cs.CALL_STREAM_FLOW_STATE_STOPPED,
+        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+    o = q.expect ('dbus-signal', signal='ReceivingStateChanged',
+        interface = cs.CALL_STREAM_IFACE_MEDIA)
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED, o.args[0])
+
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals({remote_handle: cs.CALL_SENDING_STATE_NONE},
+                 stream_props["RemoteMembers"])
+    assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                 stream_props["LocalSendingState"])
+
+    cstream.RequestReceiving (remote_handle, True,
+        dbus_interface = cs.CALL_STREAM)
+
+    ret = q.expect_many (
+        EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+        EventPattern('dbus-signal', signal='RemoteMembersChanged'))
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[0].args[0])
+    assert ret[1].args[0].has_key(remote_handle)
+    assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND,
+                 ret[1].args[0][remote_handle])
+
+    cstream.CompleteReceivingStateChange(
+        cs.CALL_STREAM_FLOW_STATE_STARTED,
+        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+    ret = q.expect_many (
+        EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+        EventPattern('dbus-signal', signal='RemoteMembersChanged'))
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, ret[0].args[0])
+    assert ret[1].args[0].has_key(remote_handle)
+    assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                 ret[1].args[0][remote_handle])
+ 
+
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals ({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+                  stream_props["RemoteMembers"])
+    assertEquals (cs.CALL_SENDING_STATE_SENDING,
+                  stream_props["LocalSendingState"])
+
+    
+
     try:
         test_content_addition (jt2, jp, q, bus, conn, chan, remote_handle)
     except DBusException, e:

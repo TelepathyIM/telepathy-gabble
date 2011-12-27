@@ -209,6 +209,8 @@ def run_test(jp, q, bus, conn, stream, incoming):
         assertEquals (cs.CALL_SENDING_STATE_SENDING,
             stream_props["LocalSendingState"])
 
+    can_change_direction = (jp.dialect not in ['gtalk-v0.3','gtalk-v0.4'])
+    assertEquals(can_change_direction, stream_props["CanRequestReceiving"])
 
     # Media type should audio
     assertEquals (cs.CALL_MEDIA_TYPE_AUDIO, content_properties["Type"])
@@ -512,9 +514,8 @@ def run_test(jp, q, bus, conn, stream, incoming):
         interface = cs.CALL_STREAM_IFACE_MEDIA)
     assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, o.args[0])
     
+
     # Lets try disconnecting one
-
-
 
     endpoint.SetEndpointState (1, cs.CALL_STREAM_ENDPOINT_STATE_CONNECTING,
         dbus_interface=cs.CALL_STREAM_ENDPOINT)
@@ -591,53 +592,73 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
 
     # Turn receiving off and on again
-    cstream.RequestReceiving (remote_handle, False,
-        dbus_interface = cs.CALL_STREAM)
-    ret = q.expect_many(
-        EventPattern('dbus-signal', signal='ReceivingStateChanged'),
-        EventPattern('dbus-signal', signal='RemoteMembersChanged'))
-    assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, ret[0].args[0])
-    assert ret[1].args[0].has_key(remote_handle)
+    
+    try:
+        cstream.RequestReceiving (remote_handle, False,
+            dbus_interface = cs.CALL_STREAM)
+        assert can_change_direction
+    except dbus.DBusException, e:
+        assert not can_change_direction
 
-    # o = q.expect('dbus-signal', signal='RemoteMembersChanged')
-    # assert o.args[0].has_key(remote_handle)
-    # assertEquals(cs.CALL_SENDING_STATE_NONE, o.args[0][remote_handle])
+    if can_change_direction:
+        ret = q.expect_many(
+            EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+            EventPattern('dbus-signal', signal='RemoteMembersChanged'),
+            EventPattern('stream-iq',
+                         predicate=jp.action_predicate('content-modify')))
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, ret[0].args[0])
+        assert ret[1].args[0].has_key(remote_handle)
 
-    cstream.CompleteReceivingStateChange(
-        cs.CALL_STREAM_FLOW_STATE_STOPPED,
-        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
-    o = q.expect ('dbus-signal', signal='ReceivingStateChanged',
-        interface = cs.CALL_STREAM_IFACE_MEDIA)
-    assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED, o.args[0])
+        cstream.CompleteReceivingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STOPPED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+        o = q.expect('dbus-signal', signal='ReceivingStateChanged',
+                         interface = cs.CALL_STREAM_IFACE_MEDIA)
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED, o.args[0])
 
-    stream_props = cstream.GetAll (cs.CALL_STREAM,
-        dbus_interface = dbus.PROPERTIES_IFACE)
-    assertEquals({remote_handle: cs.CALL_SENDING_STATE_NONE},
-                 stream_props["RemoteMembers"])
-    assertEquals(cs.CALL_SENDING_STATE_SENDING,
-                 stream_props["LocalSendingState"])
+        stream_props = cstream.GetAll (cs.CALL_STREAM,
+            dbus_interface = dbus.PROPERTIES_IFACE)
+        assertEquals({remote_handle: cs.CALL_SENDING_STATE_NONE},
+                     stream_props["RemoteMembers"])
+        assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                     stream_props["LocalSendingState"])
+    else:
+        stream_props = cstream.GetAll (cs.CALL_STREAM,
+            dbus_interface = dbus.PROPERTIES_IFACE)
+        assertEquals({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+                     stream_props["RemoteMembers"])
+        assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                     stream_props["LocalSendingState"])
+ 
 
-    cstream.RequestReceiving (remote_handle, True,
-        dbus_interface = cs.CALL_STREAM)
+    try:
+        cstream.RequestReceiving (remote_handle, True,
+            dbus_interface = cs.CALL_STREAM)
+        assert can_change_direction
+    except dbus.DBusException, e:
+        assert not can_change_direction
 
-    ret = q.expect_many (
-        EventPattern('dbus-signal', signal='ReceivingStateChanged'),
-        EventPattern('dbus-signal', signal='RemoteMembersChanged'))
-    assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[0].args[0])
-    assert ret[1].args[0].has_key(remote_handle)
-    assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND,
-                 ret[1].args[0][remote_handle])
+    if can_change_direction:
+        ret = q.expect_many (
+            EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+            EventPattern('dbus-signal', signal='RemoteMembersChanged'),
+            EventPattern('stream-iq',
+                predicate=jp.action_predicate('content-modify')))
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[0].args[0])
+        assert ret[1].args[0].has_key(remote_handle)
+        assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND,
+                     ret[1].args[0][remote_handle])
 
-    cstream.CompleteReceivingStateChange(
-        cs.CALL_STREAM_FLOW_STATE_STARTED,
-        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
-    ret = q.expect_many (
-        EventPattern('dbus-signal', signal='ReceivingStateChanged'),
-        EventPattern('dbus-signal', signal='RemoteMembersChanged'))
-    assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, ret[0].args[0])
-    assert ret[1].args[0].has_key(remote_handle)
-    assertEquals(cs.CALL_SENDING_STATE_SENDING,
-                 ret[1].args[0][remote_handle])
+        cstream.CompleteReceivingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STARTED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+        ret = q.expect_many (
+            EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+            EventPattern('dbus-signal', signal='RemoteMembersChanged'))
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, ret[0].args[0])
+        assert ret[1].args[0].has_key(remote_handle)
+        assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                     ret[1].args[0][remote_handle])
  
 
     stream_props = cstream.GetAll (cs.CALL_STREAM,

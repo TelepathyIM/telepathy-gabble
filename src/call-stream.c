@@ -63,6 +63,7 @@ enum
   PROP_STUN_SERVERS,
   PROP_RELAY_INFO,
   PROP_HAS_SERVER_INFO,
+  PROP_CAN_REQUEST_RECEIVING
 };
 
 #if 0
@@ -141,6 +142,13 @@ gabble_call_stream_get_property (GObject    *object,
     {
       case PROP_JINGLE_CONTENT:
         g_value_set_object (value, priv->content);
+        break;
+      case PROP_CAN_REQUEST_RECEIVING:
+        {
+          JingleDialect dialect =
+              gabble_jingle_session_get_dialect (priv->content->session);
+          g_value_set_boolean (value, !JINGLE_IS_GOOGLE_DIALECT (dialect));
+        }
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -429,6 +437,9 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
       param_spec);
+
+  g_object_class_override_property (object_class, PROP_CAN_REQUEST_RECEIVING,
+      "can-request-receiving");
 
   bmcs_class->add_local_candidates = gabble_call_stream_add_candidates;
   bmcs_class->set_sending = gabble_call_stream_set_sending;

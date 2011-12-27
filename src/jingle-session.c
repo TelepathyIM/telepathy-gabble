@@ -1146,6 +1146,11 @@ on_session_accept (GabbleJingleSession *sess, LmMessageNode *node,
 
   set_state (sess, JINGLE_STATE_ACTIVE, JINGLE_REASON_UNKNOWN, NULL);
 
+  /* Make sure each content knows the session is active */
+  g_list_foreach (gabble_jingle_session_get_contents (sess),
+      (GFunc) g_object_notify, "state");
+
+
   if (priv->dialect != JINGLE_DIALECT_V032)
     {
       /* If this is a dialect that doesn't support <active/>, we treat

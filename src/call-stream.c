@@ -38,7 +38,6 @@
 
 #include "debug.h"
 
-static void call_stream_update_member_states (GabbleCallStream *self);
 static GPtrArray *gabble_call_stream_add_candidates (
     TpBaseMediaCallStream *stream,
     const GPtrArray *candidates,
@@ -193,7 +192,7 @@ content_state_changed_cb (GabbleJingleContent *content,
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
 
-  call_stream_update_member_states (self);
+  gabble_call_stream_update_member_states (self);
 }
 
 static void
@@ -203,7 +202,7 @@ content_remote_members_changed_cb (GabbleJingleContent *content,
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (user_data);
 
-  call_stream_update_member_states (self);
+  gabble_call_stream_update_member_states (self);
 }
 
 static void
@@ -352,7 +351,7 @@ gabble_call_stream_constructed (GObject *obj)
     TP_BASE_MEDIA_CALL_STREAM (self), stun_servers);
   g_ptr_array_unref (stun_servers);
 
-  call_stream_update_member_states (GABBLE_CALL_STREAM (obj));
+  gabble_call_stream_update_member_states (GABBLE_CALL_STREAM (obj));
   gabble_signal_connect_weak (priv->content, "notify::state",
     G_CALLBACK (content_state_changed_cb), obj);
   gabble_signal_connect_weak (priv->content, "notify::senders",
@@ -361,12 +360,11 @@ gabble_call_stream_constructed (GObject *obj)
     G_CALLBACK (jingle_factory_stun_server_changed_cb), obj);
 }
 
-static void
-call_stream_update_member_states (GabbleCallStream *self)
+void
+gabble_call_stream_update_member_states (GabbleCallStream *self)
 {
   TpBaseCallStream *base = TP_BASE_CALL_STREAM (self);
   GabbleCallStreamPrivate *priv = self->priv;
-  gboolean created_by_us;
   JingleContentState state;
   TpSendingState local_state;
   TpSendingState remote_state;
@@ -376,31 +374,25 @@ call_stream_update_member_states (GabbleCallStream *self)
   if (state == JINGLE_CONTENT_STATE_REMOVING)
     return;
 
-  created_by_us = gabble_jingle_content_is_created_by_us (priv->content);
-
   local_state = tp_base_call_stream_get_local_sending_state (base);
   remote_state = tp_base_call_stream_get_remote_sending_state (base, 0);
 
-  DEBUG ("Created by us?: %d, State: %d", created_by_us, state);
-
   if (gabble_jingle_content_sending (priv->content))
     {
-      if (local_state != TP_SENDING_STATE_SENDING)
-        local_state = TP_SENDING_STATE_PENDING_SEND;
+      local_state = TP_SENDING_STATE_SENDING;
     }
   else
     {
-      if (local_state != TP_SENDING_STATE_NONE)
+    if (local_state != TP_SENDING_STATE_NONE)
         local_state = TP_SENDING_STATE_PENDING_STOP_SENDING;
     }
 
   if (gabble_jingle_content_receiving (priv->content))
     {
-      if (created_by_us && state != JINGLE_CONTENT_STATE_ACKNOWLEDGED)
-        remote_state = TP_SENDING_STATE_PENDING_SEND;
-      else
-        remote_state = TP_SENDING_STATE_SENDING;
+      remote_state = TP_SENDING_STATE_SENDING;
     }
+
+  DEBUG ("State: %d Local: %d Remote: %d", state, local_state, remote_state);
 
   tp_base_call_stream_update_local_sending_state (base, local_state,
       0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
@@ -566,8 +558,15 @@ gabble_call_stream_set_sending (TpBaseCallStream *stream,
     GError **error)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
+  TpBaseMediaCallStream *bmcs = TP_BASE_MEDIA_CALL_STREAM (stream);
+  TpStreamFlowState flowstate = tp_base_media_call_stream_get_sending_state (
+      bmcs);
 
   gabble_jingle_content_set_sending (self->priv->content, sending);
+
+  if (sending && flowstate != TP_STREAM_FLOW_STATE_STARTED)
+    tp_base_media_call_stream_set_sending_state (bmcs,
+        TP_STREAM_FLOW_STATE_PENDING_START);
 
   return TRUE;
 }

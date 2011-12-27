@@ -252,10 +252,9 @@ call_session_state_changed_cb (GabbleJingleSession *session,
 
   g_object_get (session, "state", &state, NULL);
 
-  if (state == JINGLE_STATE_ACTIVE && cstate != TP_CALL_STATE_ACCEPTED)
+  if (state == JINGLE_STATE_ACTIVE && !tp_base_call_channel_is_accepted (cbase))
     {
-      tp_base_call_channel_set_state (cbase, TP_CALL_STATE_ACCEPTED,
-          0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
+      tp_base_call_channel_remote_accept (cbase);
       return;
     }
 

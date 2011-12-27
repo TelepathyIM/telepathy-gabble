@@ -37,7 +37,7 @@ def check_and_accept_offer (q, bus, conn,
         content, md, remote_handle, offer_path = None,
         md_changed = True):
 
-    [path, handle, remote_md ] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+    [path, remote_md] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     if offer_path != None:
@@ -59,7 +59,7 @@ def check_and_accept_offer (q, bus, conn,
 
     if md_changed:
         o = q.expect ('dbus-signal', signal='LocalMediaDescriptionChanged')
-        assertEquals ([remote_handle, md], o.args)
+        assertEquals ([md], o.args)
 
 def test_content_addition (jt2, jp, q, bus, conn, chan, remote_handle):
     path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,
@@ -206,7 +206,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     else:
         assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
             stream_props["RemoteMembers"][remote_handle])
-        assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND,
+        assertEquals (cs.CALL_SENDING_STATE_SENDING,
             stream_props["LocalSendingState"])
 
 
@@ -219,10 +219,47 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (cs.CALL_CONTENT_PACKETIZATION_RTP,
         content_media_properties["Packetization"])
 
+    # Check for the directions
+    stream_media_properties = cstream.GetAll (cs.CALL_STREAM_IFACE_MEDIA,
+        dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_STREAM_FLOW_STATE_STOPPED,
+        stream_media_properties["SendingState"])
+    assertEquals (cs.CALL_STREAM_FLOW_STATE_STOPPED,
+        stream_media_properties["ReceivingState"])
+    assertEquals (False,  stream_media_properties["ICERestartPending"])
+
     # Check if the channel is in the right pending state
     if not incoming:
         check_state (q, chan, cs.CALL_STATE_PENDING_INITIATOR)
         chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
+
+        recv_state = cstream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
+                                    dbus_interface=dbus.PROPERTIES_IFACE)["ReceivingState"]
+        assertEquals (cs.CALL_STREAM_FLOW_STATE_PENDING_START, recv_state)
+        cstream.CompleteReceivingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STARTED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+        assertEquals (cs.CALL_STREAM_FLOW_STATE_PENDING_START, 
+            recv_state)
+
+    # Don't start sending before the call is accepted locally or remotely
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
+                 cstream.Get(cs.CALL_STREAM_IFACE_MEDIA, "SendingState",
+                             dbus_interface=dbus.PROPERTIES_IFACE))
+
+
+    # All Direction should be both now for outgoing
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+
+    if incoming:
+        assertEquals ({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+                      stream_props["RemoteMembers"])
+        assertEquals (cs.CALL_SENDING_STATE_PENDING_SEND, stream_props["LocalSendingState"])
+    else:
+        assertEquals ({remote_handle: cs.CALL_SENDING_STATE_PENDING_SEND},
+                      stream_props["RemoteMembers"])
+        assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
 
     check_state (q, chan, cs.CALL_STATE_INITIALISING,
         wait = not incoming)
@@ -232,7 +269,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     # make sure this fails with NotAvailable
     try:
-        content.UpdateLocalMediaDescription(remote_handle, md, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
+        content.UpdateLocalMediaDescription(md, dbus_interface=cs.CALL_CONTENT_IFACE_MEDIA)
     except DBusException, e:
         if e.get_dbus_name() != cs.NOT_AVAILABLE:
             raise e
@@ -402,6 +439,10 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     check_state (q, chan, cs.CALL_STATE_INITIALISED)
 
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
+        cstream.Get (cs.CALL_STREAM_IFACE_MEDIA, "SendingState",
+        dbus_interface = dbus.PROPERTIES_IFACE))
+
     if incoming:
         # Act as if we're ringing
         chan.SetRinging (dbus_interface=cs.CHANNEL_TYPE_CALL)
@@ -411,12 +452,22 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
         # And now pickup the call
         chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
+        recv_state = cstream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
+                                    dbus_interface=dbus.PROPERTIES_IFACE)["ReceivingState"]
+        assertEquals (cs.CALL_STREAM_FLOW_STATE_PENDING_START, recv_state)
+        cstream.CompleteReceivingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STARTED,
+                    dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
         ret = q.expect_many (
             EventPattern('dbus-signal', signal='CallStateChanged'),
+            EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+            EventPattern('dbus-signal', signal='SendingStateChanged'),
             EventPattern('stream-iq',
                 predicate=jp.action_predicate('session-accept')),
             )
         assertEquals(0, ret[0].args[1] & cs.CALL_FLAG_LOCALLY_RINGING)
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[1].args[0])
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[2].args[0])
     else:
         if jp.is_modern_jingle():
             # The other person's client starts ringing, and tells us so!
@@ -430,34 +481,53 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
         jt2.accept()
 
-        o = q.expect ('dbus-signal', signal='NewMediaDescriptionOffer')
+        ret = q.expect_many (
+            EventPattern('dbus-signal', signal='NewMediaDescriptionOffer'),
+            EventPattern('dbus-signal', signal='SendingStateChanged'))
 
-        [path, _, _ ] = o.args
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[1].args[0])
+        [path, _ ] = ret[0].args
         md = jt2.get_call_audio_md_dbus()
 
         check_and_accept_offer (q, bus, conn, content, md, remote_handle, path,
             md_changed = False )
 
-    check_state (q, chan, cs.CALL_STATE_ACCEPTED)
-
-    o = q.expect ('dbus-signal', signal='LocalSendingStateChanged',
-        interface = cs.CALL_STREAM)
-    assertEquals(cs.CALL_SENDING_STATE_SENDING, o.args[0])
+    check_state (q, chan, cs.CALL_STATE_ACTIVE)
 
     # All Direction should be both now
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
     assertEquals ({remote_handle: cs.CALL_SENDING_STATE_SENDING},
-        stream_props["RemoteMembers"])
+                  stream_props["RemoteMembers"])
     assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
+
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START,
+        cstream.Get (cs.CALL_STREAM_IFACE_MEDIA, "SendingState",
+        dbus_interface = dbus.PROPERTIES_IFACE))
+
+    cstream.CompleteSendingStateChange(
+        cs.CALL_STREAM_FLOW_STATE_STARTED,
+        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+    o = q.expect ('dbus-signal', signal='SendingStateChanged',
+        interface = cs.CALL_STREAM_IFACE_MEDIA)
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, o.args[0])
+    
 
     # Turn sending off and on again
     cstream.SetSending (False,
         dbus_interface = cs.CALL_STREAM)
+    ret = q.expect_many (
+        EventPattern('dbus-signal', signal='SendingStateChanged'),
+        EventPattern('dbus-signal', signal='LocalSendingStateChanged'))
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, ret[0].args[0])
+    assertEquals(cs.CALL_SENDING_STATE_NONE, ret[1].args[0])
 
-    o = q.expect ('dbus-signal', signal='LocalSendingStateChanged',
-        interface = cs.CALL_STREAM)
-    assertEquals(cs.CALL_SENDING_STATE_NONE, o.args[0])
+    cstream.CompleteSendingStateChange(
+        cs.CALL_STREAM_FLOW_STATE_STOPPED,
+        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+    o = q.expect ('dbus-signal', signal='SendingStateChanged',
+        interface = cs.CALL_STREAM_IFACE_MEDIA)
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED, o.args[0])
 
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)
@@ -468,9 +538,16 @@ def run_test(jp, q, bus, conn, stream, incoming):
     cstream.SetSending (True,
         dbus_interface = cs.CALL_STREAM)
 
-    o = q.expect ('dbus-signal', signal='LocalSendingStateChanged',
-        interface = cs.CALL_STREAM)
-    assertEquals(cs.CALL_SENDING_STATE_SENDING, o.args[0])
+
+    ret = q.expect_many (
+        EventPattern('dbus-signal', signal='SendingStateChanged'),
+        EventPattern('dbus-signal', signal='LocalSendingStateChanged'))
+    assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[0].args[0])
+    assertEquals(cs.CALL_SENDING_STATE_SENDING, ret[1].args[0])
+
+    cstream.CompleteSendingStateChange(
+        cs.CALL_STREAM_FLOW_STATE_STARTED,
+        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
 
     stream_props = cstream.GetAll (cs.CALL_STREAM,
         dbus_interface = dbus.PROPERTIES_IFACE)

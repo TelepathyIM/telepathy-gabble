@@ -63,6 +63,8 @@ GType gabble_call_stream_get_type (void);
 GabbleJingleContent *gabble_call_stream_get_jingle_content (
     GabbleCallStream *stream);
 
+void gabble_call_stream_update_member_states (GabbleCallStream *self);
+
 G_END_DECLS
 
 #endif /* #ifndef __GABBLE_CALL_STREAM_H__*/

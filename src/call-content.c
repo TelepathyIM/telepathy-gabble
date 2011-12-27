@@ -165,8 +165,6 @@ gabble_call_content_new_offer (GabbleCallContent *self,
         {
           JingleCodec *c = l->data;
 
-          g_assert (c->params != NULL);
-
           tp_call_content_media_description_append_codec (md,
               c->id, c->name, c->clockrate, c->channels,
               FALSE, /* FIXME: updated?? */
@@ -328,6 +326,7 @@ call_content_setup_jingle (GabbleCallContent *self,
     jingle_media_description_free (md);
 
   tp_base_call_content_add_stream (base, TP_BASE_CALL_STREAM (stream));
+  gabble_call_stream_update_member_states (stream);
   g_object_unref (stream);
 }
 

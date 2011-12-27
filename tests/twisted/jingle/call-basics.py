@@ -189,6 +189,8 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     assertContains ("Name", content_properties.keys())
 
+    content_name = content_properties["Name"]
+
     cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
 
     stream_props = cstream.GetAll (cs.CALL_STREAM,
@@ -455,7 +457,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         # And now pickup the call
         chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
         recv_state = cstream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
-                                    dbus_interface=dbus.PROPERTIES_IFACE)["ReceivingState"]
+            dbus_interface=dbus.PROPERTIES_IFACE)["ReceivingState"]
         assertEquals (cs.CALL_STREAM_FLOW_STATE_PENDING_START, recv_state)
         cstream.CompleteReceivingStateChange(
             cs.CALL_STREAM_FLOW_STATE_STARTED,
@@ -470,6 +472,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         assertEquals(0, ret[0].args[1] & cs.CALL_FLAG_LOCALLY_RINGING)
         assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[1].args[0])
         assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[2].args[0])
+        jt2.result_iq(ret[3])
     else:
         if jp.is_modern_jingle():
             # The other person's client starts ringing, and tells us so!
@@ -547,8 +550,65 @@ def run_test(jp, q, bus, conn, stream, incoming):
         "EndpointState",  dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals (cs.CALL_STREAM_ENDPOINT_STATE_FULLY_CONNECTED, state[1])
 
+    # All Direction should still be both now
+    stream_props = cstream.GetAll (cs.CALL_STREAM,
+        dbus_interface = dbus.PROPERTIES_IFACE)
+    assertEquals ({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+                  stream_props["RemoteMembers"])
+    assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
+
 
     # Turn sending off and on again
+
+    # but first, let's try direction changes requested by the other side
+
+    if can_change_direction:
+        if incoming:
+            jt2.content_modify(content_name, "initiator", "initiator")
+        else:
+            jt2.content_modify(content_name, "initiator", "responder")
+        o = q.expect('dbus-signal', signal='LocalSendingStateChanged')
+        assertEquals(cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, o.args[0])
+
+        cstream.SetSending (False,
+                            dbus_interface = cs.CALL_STREAM)
+        o = q.expect ('dbus-signal', signal='SendingStateChanged')
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, o.args[0])
+
+        cstream.CompleteSendingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STOPPED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+        o = q.expect ('dbus-signal', signal='SendingStateChanged',
+                      interface = cs.CALL_STREAM_IFACE_MEDIA)
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED, o.args[0])
+
+        jt2.content_modify(content_name, "initiator", "both")
+        o = q.expect('dbus-signal', signal='LocalSendingStateChanged')
+        assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND, o.args[0])
+
+        cstream.SetSending (True,
+            dbus_interface = cs.CALL_STREAM)
+
+        ret = q.expect_many (
+            EventPattern('dbus-signal', signal='SendingStateChanged'),
+            EventPattern('dbus-signal', signal='LocalSendingStateChanged'))
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[0].args[0])
+        assertEquals(cs.CALL_SENDING_STATE_SENDING, ret[1].args[0])
+
+        cstream.CompleteSendingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STARTED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+        o = q.expect ('dbus-signal', signal='SendingStateChanged',
+                      interface = cs.CALL_STREAM_IFACE_MEDIA)
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, o.args[0])
+
+        stream_props = cstream.GetAll (cs.CALL_STREAM,
+            dbus_interface = dbus.PROPERTIES_IFACE)
+        assertEquals ({remote_handle: cs.CALL_SENDING_STATE_SENDING},
+                      stream_props["RemoteMembers"])
+        assertEquals (cs.CALL_SENDING_STATE_SENDING,
+                      stream_props["LocalSendingState"])
+
     cstream.SetSending (False,
         dbus_interface = cs.CALL_STREAM)
     ret = q.expect_many (
@@ -569,6 +629,26 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals({remote_handle: cs.CALL_SENDING_STATE_SENDING},
                  stream_props["RemoteMembers"])
     assertEquals(cs.CALL_SENDING_STATE_NONE, stream_props["LocalSendingState"])
+
+    # If possible, test the other side asking us to start then stop sending
+
+    if can_change_direction:
+        jt2.content_modify(content_name, "initiator", "both")
+        o = q.expect('dbus-signal', signal='LocalSendingStateChanged')
+        assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND, o.args[0])
+
+        if incoming:
+            jt2.content_modify(content_name, "initiator", "initiator")
+        else:
+            jt2.content_modify(content_name, "initiator", "responder")
+        o = q.expect('dbus-signal', signal='LocalSendingStateChanged')
+        assertEquals(cs.CALL_SENDING_STATE_NONE, o.args[0])
+
+        jt2.content_modify(content_name, "initiator", "both")
+        o = q.expect('dbus-signal', signal='LocalSendingStateChanged')
+        assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND, o.args[0])
+
+
 
     cstream.SetSending (True,
         dbus_interface = cs.CALL_STREAM)
@@ -598,6 +678,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
             dbus_interface = cs.CALL_STREAM)
         assert can_change_direction
     except dbus.DBusException, e:
+        assertEquals (cs.NOT_CAPABLE, e.get_dbus_name ())
         assert not can_change_direction
 
     if can_change_direction:
@@ -636,6 +717,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
             dbus_interface = cs.CALL_STREAM)
         assert can_change_direction
     except dbus.DBusException, e:
+        assertEquals (cs.NOT_CAPABLE, e.get_dbus_name ())
         assert not can_change_direction
 
     if can_change_direction:

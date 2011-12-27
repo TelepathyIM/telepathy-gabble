@@ -739,6 +739,16 @@ class JingleTest2:
                 jp.TransportGoogleP2P()) ]) ])
         self.stream.send(jp.xml(node))
 
+    def content_modify(self, name, creator, senders):
+        jp = self.jp
+
+        assert jp.separate_contents()
+        node = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'content-modify', [
+                jp.Content(name, creator, senders)])])
+        self.stream.send(jp.xml(node))
+
+
     def terminate(self, reason=None, text=""):
         jp = self.jp
 
@@ -754,6 +764,13 @@ class JingleTest2:
         iq = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
         self.stream.send(jp.xml(iq))
+
+    def result_iq(self, iniq, children = []):
+        jp = self.jp
+        iq = jp.ResultIq(self.peer, {'id': iniq.iq_id, 'to': self.peer},
+                         children)
+        self.stream.send(jp.xml(iq))
+   
 
     def send_remote_candidates_call_xmpp(self, name, creator, candidates=None):
         jp = self.jp

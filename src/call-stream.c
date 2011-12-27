@@ -82,6 +82,8 @@ struct _GabbleCallStreamPrivate
 {
   gboolean dispose_has_run;
 
+  gboolean want_send;
+
   GabbleJingleContent *content;
 };
 
@@ -92,6 +94,8 @@ gabble_call_stream_init (GabbleCallStream *self)
       GABBLE_TYPE_CALL_STREAM, GabbleCallStreamPrivate);
 
   self->priv = priv;
+
+  self->priv->want_send = TRUE;
 }
 
 static void gabble_call_stream_dispose (GObject *object);
@@ -387,11 +391,17 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
 
   if (gabble_jingle_content_sending (priv->content))
     {
-      local_state = TP_SENDING_STATE_SENDING;
+      if (self->priv->want_send)
+        local_state = TP_SENDING_STATE_SENDING;
+      else
+        local_state = TP_SENDING_STATE_PENDING_SEND;
     }
   else
     {
-      local_state = TP_SENDING_STATE_NONE;
+      if (!self->priv->want_send)
+        local_state = TP_SENDING_STATE_NONE;
+      else
+        local_state = TP_SENDING_STATE_PENDING_STOP_SENDING;
     }
 
   if (gabble_jingle_content_receiving (priv->content))
@@ -575,6 +585,8 @@ gabble_call_stream_set_sending (TpBaseCallStream *stream,
   TpBaseMediaCallStream *bmcs = TP_BASE_MEDIA_CALL_STREAM (stream);
   TpStreamFlowState flowstate = tp_base_media_call_stream_get_sending_state (
       bmcs);
+
+  self->priv->want_send = sending;
 
   gabble_jingle_content_set_sending (self->priv->content, sending);
 

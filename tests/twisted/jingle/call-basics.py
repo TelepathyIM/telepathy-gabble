@@ -512,6 +512,40 @@ def run_test(jp, q, bus, conn, stream, incoming):
         interface = cs.CALL_STREAM_IFACE_MEDIA)
     assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, o.args[0])
     
+    # Lets try disconnecting one
+
+
+
+    endpoint.SetEndpointState (1, cs.CALL_STREAM_ENDPOINT_STATE_CONNECTING,
+        dbus_interface=cs.CALL_STREAM_ENDPOINT)
+    ret = q.expect_many (
+        EventPattern('dbus-signal', signal='EndpointStateChanged'),
+        EventPattern('dbus-signal', signal='CallStateChanged'))
+    assertEquals(1, ret[0].args[0])
+    assertEquals(cs.CALL_STREAM_ENDPOINT_STATE_CONNECTING, ret[0].args[1])
+    assertEquals(cs.CALL_STATE_ACCEPTED, ret[1].args[0])
+
+    state = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
+        "EndpointState",  dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_STREAM_ENDPOINT_STATE_CONNECTING, state[1])
+
+    # And reconnecting it
+
+    endpoint.SetEndpointState (1, cs.CALL_STREAM_ENDPOINT_STATE_FULLY_CONNECTED,
+        dbus_interface=cs.CALL_STREAM_ENDPOINT)
+
+    ret = q.expect_many (
+        EventPattern('dbus-signal', signal='EndpointStateChanged'),
+        EventPattern('dbus-signal', signal='CallStateChanged'))
+    assertEquals(1,ret[0].args[0])
+    assertEquals(cs.CALL_STREAM_ENDPOINT_STATE_FULLY_CONNECTED,
+                 ret[0].args[1])
+    assertEquals(cs.CALL_STATE_ACTIVE, ret[1].args[0])
+
+    state = endpoint.Get (cs.CALL_STREAM_ENDPOINT,
+        "EndpointState",  dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_STREAM_ENDPOINT_STATE_FULLY_CONNECTED, state[1])
+
 
     # Turn sending off and on again
     cstream.SetSending (False,

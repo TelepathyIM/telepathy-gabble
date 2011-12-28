@@ -750,7 +750,40 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (cs.CALL_SENDING_STATE_SENDING,
                   stream_props["LocalSendingState"])
 
-    
+    if can_change_direction:
+        if incoming:
+            jt2.content_modify(content_name, "initiator", "responder")
+        else:
+            jt2.content_modify(content_name, "initiator", "initiator")
+        ret = q.expect_many (
+            EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+            EventPattern('dbus-signal', signal='RemoteMembersChanged'))
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_STOP, ret[0].args[0])
+        assert ret[1].args[0].has_key(remote_handle)
+        assertEquals(cs.CALL_SENDING_STATE_NONE,
+                     ret[1].args[0][remote_handle])
+
+        cstream.CompleteReceivingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STOPPED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+        o = q.expect ('dbus-signal', signal='ReceivingStateChanged')
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED, o.args[0])
+
+        jt2.content_modify(content_name, "initiator", "both")
+        ret = q.expect_many (
+            EventPattern('dbus-signal', signal='ReceivingStateChanged'),
+            EventPattern('dbus-signal', signal='RemoteMembersChanged'))
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START, ret[0].args[0])
+        assert ret[1].args[0].has_key(remote_handle)
+        assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                     ret[1].args[0][remote_handle])
+
+        cstream.CompleteReceivingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STARTED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+        o = q.expect ('dbus-signal', signal='ReceivingStateChanged')
+        assertEquals(cs.CALL_STREAM_FLOW_STATE_STARTED, o.args[0])
+
 
     try:
         test_content_addition (jt2, jp, q, bus, conn, chan, remote_handle)

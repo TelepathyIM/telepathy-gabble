@@ -583,16 +583,13 @@ gabble_call_stream_set_sending (TpBaseCallStream *stream,
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
   TpBaseMediaCallStream *bmcs = TP_BASE_MEDIA_CALL_STREAM (stream);
-  TpStreamFlowState flowstate = tp_base_media_call_stream_get_sending_state (
-      bmcs);
 
   self->priv->want_send = sending;
 
   gabble_jingle_content_set_sending (self->priv->content, sending);
 
-  if (sending && flowstate != TP_STREAM_FLOW_STATE_STARTED)
-    tp_base_media_call_stream_set_sending_state (bmcs,
-        TP_STREAM_FLOW_STATE_PENDING_START);
+  if (sending)
+    tp_base_media_call_stream_set_local_sending (bmcs, TRUE);
 
   return TRUE;
 }

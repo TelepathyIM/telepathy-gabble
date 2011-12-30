@@ -233,11 +233,21 @@ check_c_sources = \
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style
 
+if WINDOWS
+telepathy_gabble_LDADD = -lgabble-runtime
+else
 telepathy_gabble_LDADD = libgabble-convenience.la
-
 telepathy_gabble_LDFLAGS = -export-dynamic
+endif
 
 noinst_LTLIBRARIES = libgabble-convenience.la
+
+if WINDOWS
+lib_LTLIBRARIES = libgabble-runtime.la
+libgabble_runtime_la_LIBADD = libgabble-convenience.la
+libgabble_runtime_la_LDFLAGS = -no-undefined
+libgabble_runtime_la_SOURCES =
+endif
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @TP_YELL_CFLAGS@ \
@@ -248,13 +258,18 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    -DG_LOG_DOMAIN=\"gabble\" \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 
+#on windows we need to avoid adding wocky static library twice
+#if not it results in a linker error.
+ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @TP_GLIB_LIBS@ \
+	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@
+
 # following flag is requied to make getnameinfo work
 if WINDOWS
-  AM_CFLAGS += -D_WIN32_WINNT=0x0501
+AM_CFLAGS += -D_WIN32_WINNT=0x0501
+else
+ALL_LIBS += @WOCKY_LIBS@
 endif
 
-ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@ \
-	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@
 
 # build gibber first
 all: gibber

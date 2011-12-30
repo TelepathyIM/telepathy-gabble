@@ -58,6 +58,9 @@ static TpBaseCallContent * call_channel_add_content (
     const gchar *name,
     TpMediaStreamType type,
     GError **error);
+static void call_channel_hold_state_changed (TpBaseMediaCallChannel *self,
+    TpLocalHoldState hold_state, TpLocalHoldStateReason hold_state_reason);
+
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   GABBLE_TYPE_BASE_CALL_CHANNEL,
@@ -208,6 +211,8 @@ gabble_call_channel_class_init (
   tp_base_call_class->add_content = call_channel_add_content;
 
   tp_base_media_call_class->accept = call_channel_accept;
+  tp_base_media_call_class->hold_state_changed =
+      call_channel_hold_state_changed;
 
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session associated with this media channel object.",
@@ -567,4 +572,26 @@ call_channel_add_content (TpBaseCallChannel *base,
     }
 
   return TP_BASE_CALL_CONTENT (content);
+}
+
+static void
+call_channel_hold_state_changed (TpBaseMediaCallChannel *bmcc,
+    TpLocalHoldState hold_state, TpLocalHoldStateReason hold_state_reason)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (bmcc);
+
+  switch (hold_state)
+    {
+    case TP_LOCAL_HOLD_STATE_HELD:
+    case TP_LOCAL_HOLD_STATE_PENDING_HOLD:
+      gabble_jingle_session_set_local_hold (self->priv->session, TRUE);
+      break;
+    case TP_LOCAL_HOLD_STATE_UNHELD:
+      gabble_jingle_session_set_local_hold (self->priv->session, FALSE);
+      break;
+    case TP_LOCAL_HOLD_STATE_PENDING_UNHOLD:
+      break;
+    default:
+      g_assert_not_reached ();
+    }
 }

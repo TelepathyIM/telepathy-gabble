@@ -174,6 +174,7 @@ TWISTED_JINGLE_TESTS = \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
 	jingle/call-dtmf.py \
+	jingle/call-hold-audio.py \
 	jingle/call-muc-cancel.py \
 	jingle/call-muc.py \
 	jingle/call-muc-re-re-request.py \

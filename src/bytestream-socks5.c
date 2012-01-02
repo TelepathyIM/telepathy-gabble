@@ -1649,7 +1649,7 @@ get_local_interfaces_ips (void)
   GSList *ips = NULL;
 
   /* FIXME: add IPv6 addresses */
-  if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) == INVALID_SOCKET)
+  if ((sockfd = socket (AF_INET, SOCK_DGRAM, IPPROTO_IP)) == (int) INVALID_SOCKET)
     {
       DEBUG ("Cannot open socket to retrieve interface list");
       return NULL;
@@ -1669,7 +1669,7 @@ get_local_interfaces_ips (void)
         }
 
         ret = WSAIoctl (sockfd, SIO_GET_INTERFACE_LIST, NULL, 0, iflist,
-                        size, &bytes, NULL, NULL);
+                        size, (LPDWORD) &bytes, NULL, NULL);
         error = WSAGetLastError ();
 
         if (ret == SOCKET_ERROR && error != WSAEFAULT)

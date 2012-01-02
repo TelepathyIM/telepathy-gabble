@@ -31,6 +31,10 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
+#ifdef G_OS_WIN32
+#undef ERROR
+#endif
+
 #include "debug.h"
 
 #define RELAY_HTTP_TIMEOUT 5

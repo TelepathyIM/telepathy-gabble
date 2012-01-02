@@ -248,6 +248,11 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    -DG_LOG_DOMAIN=\"gabble\" \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
 
+# following flag is requied to make getnameinfo work
+if WINDOWS
+  AM_CFLAGS += -D_WIN32_WINNT=0x0501
+endif
+
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@ \
 	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@
 

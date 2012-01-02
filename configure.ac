@@ -96,6 +96,25 @@ TP_COMPILER_WARNINGS([ERROR_CFLAGS], [test "x$official_release" = xno],
    unused-parameter])
 AC_SUBST([ERROR_CFLAGS])
 
+
+#------------------------------------------------------------
+# Detect Operating system based on $host
+#------------------------------------------------------------
+AC_MSG_CHECKING([operating system])
+
+case "$host" in
+  *-*-*mingw*|*-*-*cygwin*)
+    platform=win32
+    AC_MSG_RESULT($platform)
+    ;;
+  *)
+    platform=unix
+    AC_MSG_RESULT($platform)
+    ;;
+esac
+
+AM_CONDITIONAL([WINDOWS], [test "$platform" = "win32"])
+
 # -----------------------------------------------------------
 # Make CA certificates path configurable
 # Stolen from GIO's TLS

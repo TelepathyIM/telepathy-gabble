@@ -32,9 +32,14 @@
 
 #include <stdio.h>
 #include <glib.h>
+
+#ifdef G_OS_WIN32
+#include <windows.h>
+#else
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#endif
 
 #include "test-resolver.h"
 

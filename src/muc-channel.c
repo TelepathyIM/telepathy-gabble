@@ -1557,7 +1557,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
    */
   g_assert (from != NULL);
 
-  if (index (from, '/') != NULL && tp_strdiff (from, priv->self_jid->str))
+  if (strchr (from, '/') != NULL && tp_strdiff (from, priv->self_jid->str))
     {
       DEBUG ("ignoring spurious conflict message for %s", from);
       return TRUE;

@@ -1493,7 +1493,11 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
       t = (time_t) self->priv->date;
       tm = gmtime (&t);
 
+#ifdef G_OS_WIN32
+      strftime (date_str, sizeof (date_str), "%Y-%m-%dT%H:%M:%SZ", tm);
+#else
       strftime (date_str, sizeof (date_str), "%FT%H:%M:%SZ", tm);
+#endif
 
       lm_message_node_set_attribute (file_node, "date", date_str);
     }

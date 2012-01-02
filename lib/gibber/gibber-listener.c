@@ -259,7 +259,7 @@ add_listener (GibberListener *self, int family, int type, int protocol,
       goto error;
     }
 
-  ret = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof (int));
+  ret = setsockopt (fd, SOL_SOCKET, SO_REUSEADDR, (char *) &yes, sizeof (int));
   if (ret == -1)
     {
       gibber_socket_set_error (error, "setsockopt failed",

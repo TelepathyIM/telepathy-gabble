@@ -63,6 +63,11 @@ gibber-signals-marshal.list: $(OUR_SOURCES) Makefile.am
 
 AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@ @GMODULE_CFLAGS@ -fno-strict-aliasing
 
+# following flag is requied to make getnameinfo work
+if WINDOWS
+  AM_CFLAGS += -D_WIN32_WINNT=0x0501
+endif
+
 AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@
 
 Android.mk: Makefile.am $(BUILT_SOURCES)

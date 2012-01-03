@@ -42,7 +42,7 @@ static GPtrArray *gabble_call_stream_add_candidates (
     TpBaseMediaCallStream *stream,
     const GPtrArray *candidates,
     GError **error);
-static gboolean gabble_call_stream_set_sending (TpBaseCallStream *stream,
+static gboolean gabble_call_stream_set_sending (TpBaseMediaCallStream *stream,
     gboolean sending,
     GError **error);
 static void gabble_call_stream_request_receiving (TpBaseMediaCallStream *stream,
@@ -577,19 +577,18 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
 }
 
 static gboolean
-gabble_call_stream_set_sending (TpBaseCallStream *stream,
+gabble_call_stream_set_sending (TpBaseMediaCallStream *stream,
     gboolean sending,
     GError **error)
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
-  TpBaseMediaCallStream *bmcs = TP_BASE_MEDIA_CALL_STREAM (stream);
 
   self->priv->want_send = sending;
 
   gabble_jingle_content_set_sending (self->priv->content, sending);
 
   if (sending)
-    tp_base_media_call_stream_set_local_sending (bmcs, TRUE);
+    tp_base_media_call_stream_set_local_sending (stream, TRUE);
 
   return TRUE;
 }

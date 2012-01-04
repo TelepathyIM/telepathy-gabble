@@ -123,7 +123,11 @@ gabble_plugin_loader_probe (GabblePluginLoader *self)
   if (directory_names == NULL)
     directory_names = PLUGIN_DIR;
 
+#ifdef G_OS_WIN32
+  dir_array = g_strsplit (directory_names, ";", 0);
+#else
   dir_array = g_strsplit (directory_names, ":", 0);
+#endif
 
   for (ptr = dir_array ; *ptr != NULL ; ptr++)
     {

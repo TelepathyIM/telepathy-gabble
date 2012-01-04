@@ -1267,12 +1267,12 @@ gabble_call_candidates_to_array (GList *candidates)
         GHashTable *info;
 
         info = tp_asv_new (
-          "Protocol", G_TYPE_UINT, cand->protocol,
-          "Type", G_TYPE_UINT, cand->type,
-          "Foundation", G_TYPE_STRING, cand->id,
-          "Priority", G_TYPE_UINT, cand->preference,
-          "Username", G_TYPE_STRING, cand->username,
-          "Password", G_TYPE_STRING, cand->password,
+          "protocol", G_TYPE_UINT, cand->protocol,
+          "type", G_TYPE_UINT, cand->type,
+          "foundation", G_TYPE_STRING, cand->id,
+          "priority", G_TYPE_UINT, cand->preference,
+          "username", G_TYPE_STRING, cand->username,
+          "password", G_TYPE_STRING, cand->password,
           NULL);
 
          a = tp_value_array_build (4,

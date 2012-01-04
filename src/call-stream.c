@@ -525,21 +525,21 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
           continue;
         }
 
-      username = tp_asv_get_string (info, "Username");
+      username = tp_asv_get_string (info, "username");
       if (username == NULL)
         username = tp_base_media_call_stream_get_username (stream);
 
-      password = tp_asv_get_string (info, "Password");
+      password = tp_asv_get_string (info, "password");
       if (password == NULL)
         password = tp_base_media_call_stream_get_password (stream);
 
-      foundation = tp_asv_get_string (info, "Foundation");
+      foundation = tp_asv_get_string (info, "foundation");
       if (foundation == NULL)
         foundation = "1";
 
       c = jingle_candidate_new (
         /* transport protocol */
-        tp_asv_get_uint32 (info, "Protocol", NULL),
+        tp_asv_get_uint32 (info, "protocol", NULL),
         /* Candidate type */
         type,
         /* id/foundation */
@@ -553,7 +553,7 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
         /* generation */
         0,
         /* preference */
-        tp_asv_get_uint32 (info, "Priority", NULL),
+        tp_asv_get_uint32 (info, "priority", NULL),
         /* username, password */
         username,
         password,

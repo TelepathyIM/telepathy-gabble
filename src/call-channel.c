@@ -245,29 +245,93 @@ gabble_call_channel_finalize (GObject *object)
 }
 
 static void
+call_session_terminated_cb (GabbleJingleSession *session,
+    gboolean locally_terminated, JingleReason termination_reason,
+    gchar *reason_text, GabbleCallChannel *self)
+{
+  TpHandle actor;
+  TpCallStateChangeReason call_reason;
+  const gchar *dbus_detail = "";
+
+  if (tp_base_call_channel_get_state (TP_BASE_CALL_CHANNEL (self)) ==
+      TP_CALL_STATE_ENDED)
+    return;
+
+  if (reason_text == NULL)
+    reason_text = "";
+
+  if (locally_terminated)
+    actor = tp_base_channel_get_self_handle (TP_BASE_CHANNEL (self));
+  else
+    actor = tp_base_channel_get_target_handle (TP_BASE_CHANNEL (self));
+
+  switch (termination_reason)
+    {
+    case JINGLE_REASON_UNKNOWN:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    case JINGLE_REASON_BUSY:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_BUSY;
+      break;
+    case JINGLE_REASON_CANCEL:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
+      break;
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
+      break;
+    case JINGLE_REASON_DECLINE:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
+      break;
+    case JINGLE_REASON_FAILED_APPLICATION:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      dbus_detail = TP_ERROR_STR_MEDIA_CODECS_INCOMPATIBLE;
+      break;
+    case JINGLE_REASON_GENERAL_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_SERVICE_ERROR;
+      break;
+    case JINGLE_REASON_GONE:
+      /* This one is only in the media channel, we don't have a
+       * Call reason to match */
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    case JINGLE_REASON_MEDIA_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      break;
+    case JINGLE_REASON_SUCCESS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
+      break;
+    case JINGLE_REASON_TIMEOUT:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_NO_ANSWER;
+      break;
+    case JINGLE_REASON_ALTERNATIVE_SESSION:
+    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+    case JINGLE_REASON_FAILED_TRANSPORT:
+    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+    case JINGLE_REASON_SECURITY_ERROR:
+    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+    case JINGLE_REASON_EXPIRED:
+      /* FIXME: what are these */
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    }
+
+  tp_base_call_channel_set_state (TP_BASE_CALL_CHANNEL (self),
+      TP_CALL_STATE_ENDED, actor, call_reason, dbus_detail, reason_text);
+}
+
+static void
 call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param,
   GabbleCallChannel *self)
 {
   TpBaseCallChannel *cbase = TP_BASE_CALL_CHANNEL (self);
   JingleState state;
-  TpCallState cstate;
-
-  cstate = tp_base_call_channel_get_state (cbase);
 
   g_object_get (session, "state", &state, NULL);
 
   if (state == JINGLE_STATE_ACTIVE && !tp_base_call_channel_is_accepted (cbase))
     {
       tp_base_call_channel_remote_accept (cbase);
-      return;
-    }
-
-  if (state == JINGLE_STATE_ENDED && cstate < TP_CALL_STATE_ENDED)
-    {
-      tp_base_call_channel_set_state (cbase, TP_CALL_STATE_ENDED,
-          0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
-      return;
     }
 }
 
@@ -407,6 +471,8 @@ call_channel_continue_init (GabbleCallChannel *self,
       priv->session = g_object_ref (gabble_call_member_get_session (member));
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), G_OBJECT (self));
+      gabble_signal_connect_weak (priv->session, "terminated",
+        G_CALLBACK (call_session_terminated_cb), G_OBJECT (self));
 
       contents = gabble_call_member_get_contents (member);
 

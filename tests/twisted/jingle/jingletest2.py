@@ -93,13 +93,13 @@ class JingleProtocol:
                 "address": host,
                 "port": str(port),
                 "protocol": "udp",
-                "preference": str(props["Priority"] / 65536.0),
-                "type":  ["local", "stun", "relay"][props["Type"]],
+                "preference": str(props["priority"] / 65536.0),
+                "type":  ["local", "stun", "relay"][props["type"]],
                 "network": "0",
                 "generation": "0",# Increment this yourself if you care.
                 "component": str(component), # 1 is rtp, 2 is rtcp
-                "username": props.get("Username", username),
-                "password": props.get("Password", password),
+                "username": props.get("username", username),
+                "password": props.get("password", password),
                 }, [])) #NOTE: subtype and profile are unused
         return ('transport', ns.GOOGLE_P2P, {}, candidates)
 
@@ -516,58 +516,52 @@ class JingleTest2:
     # Default candidates for the remote end
     remote_call_candidates = [# Local candidates
                          (1, "192.168.0.1", 666,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 10000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 10000,
+                             #"base-ip":
                              }),
                          (2, "192.168.0.1", 667,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 10000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 10000,
+                             #"base-ip":
                              }),
                          # STUN candidates have their own ufrag
                          (1, "168.192.0.1", 10666,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 100,
-                             #"BaseIP":,
-                             "Username": "STUNRTPUfrag",
-                             "Password": "STUNRTPPwd",
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 100,
+                             #"base-ip":,
+                             "username": "STUNRTPUfrag",
+                             "password": "STUNRTPPwd"
                              }),
                          (2, "168.192.0.1", 10667,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 100,
-                             #"BaseIP":,
-                             "Username": "STUNRTCPUfrag",
-                             "Password": "STUNRTCPPwd",
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 100,
+                             #"base-ip":,
+                             "username": "STUNRTCPUfrag",
+                             "password": "STUNRTCPPwd"
                              }),
                          # Candidates found using UPnP or somesuch?
                          (1, "131.111.12.50", 10666,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 1000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 1000,
+                             #"base-ip":
                              }),
                          (2, "131.111.12.50", 10667,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 1000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 1000,
+                             #"base-ip":
                              }),
                              ]
     remote_transports = [

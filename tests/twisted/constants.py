@@ -73,6 +73,8 @@ CALL_MUTABLE_CONTENTS = CHANNEL_TYPE_CALL + '.MutableContents'
 CALL_CONTENT = 'org.freedesktop.Telepathy.Call1.Content'
 CALL_CONTENT_IFACE_MEDIA = \
     'org.freedesktop.Telepathy.Call1.Content.Interface.Media'
+CALL_CONTENT_IFACE_DTMF = \
+    'org.freedesktop.Telepathy.Call1.Content.Interface.DTMF'
 
 CALL_CONTENT_MEDIADESCRIPTION = \
     'org.freedesktop.Telepathy.Call1.Content.MediaDescription'

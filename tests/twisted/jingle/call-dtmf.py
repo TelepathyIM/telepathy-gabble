@@ -9,7 +9,7 @@ from twisted.words.xish import xpath
 
 from gabbletest import exec_test
 from servicetest import (
-    make_channel_proxy, wrap_channel,
+    make_channel_proxy, wrap_content,
     EventPattern, call_async,
     assertEquals, assertContains, assertLength, assertNotEquals
     )
@@ -56,24 +56,41 @@ def run_test(jp, q, bus, conn, stream):
                 cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values())
 
     chan_path = ret[0]
-    chan = wrap_channel(bus.get_object(conn.bus_name, chan_path),
-            'Call.DRAFT', ['DTMF'])
+    chan = bus.get_object(conn.bus_name, chan_path)
 
     properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
         dbus_interface=dbus.PROPERTIES_IFACE)
 
-    content = bus.get_object (conn.bus_name, properties["Contents"][0])
+    content = wrap_content(bus.get_object (conn.bus_name, properties["Contents"][0]), ["DTMF", "Media"])
 
     content_properties = content.GetAll (cs.CALL_CONTENT,
         dbus_interface=dbus.PROPERTIES_IFACE)
 
     chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
 
+    cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
+
+    send_state = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA, "SendingState",
+                             dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_STREAM_FLOW_STATE_STOPPED, send_state)
+
+    ret = q.expect ('dbus-signal', signal='CallStateChanged')
+    assertEquals(cs.CALL_STATE_INITIALISING, ret.args[0])
+
+    recv_state = cstream.Get(cs.CALL_STREAM_IFACE_MEDIA, "ReceivingState",
+                             dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (cs.CALL_STREAM_FLOW_STATE_PENDING_START, recv_state)
+    cstream.CompleteReceivingStateChange(
+        cs.CALL_STREAM_FLOW_STATE_STARTED,
+        dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+    assertEquals (cs.CALL_STREAM_FLOW_STATE_PENDING_START, 
+        recv_state)
+
     # Setup codecs
     md = jt2.get_call_audio_md_dbus()
 
 
-    [path, _, _] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+    [path, _] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
     offer = bus.get_object (conn.bus_name, path)
     offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
@@ -81,7 +98,6 @@ def run_test(jp, q, bus, conn, stream):
     # Add candidates
     candidates = jt2.get_call_remote_transports_dbus ()
 
-    cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
     cstream.AddCandidates (candidates,
         dbus_interface=cs.CALL_STREAM_IFACE_MEDIA)
 
@@ -107,15 +123,15 @@ def run_test(jp, q, bus, conn, stream):
                 ('ringing', ns.JINGLE_RTP_INFO_1, {}, []) ]) ])
         stream.send(jp.xml(node))
 
-        q.expect ('dbus-signal', signal="CallMembersChanged",
-            args = [{ remote_handle: cs.CALL_MEMBER_FLAG_RINGING }, []])
+        o = q.expect ('dbus-signal', signal="CallMembersChanged")
+        assertEquals({ remote_handle: cs.CALL_MEMBER_FLAG_RINGING }, o.args[0])
 
     jt2.accept()
 
     # accept codec offer
     o = q.expect ('dbus-signal', signal='NewMediaDescriptionOffer')
 
-    [path, _ , _ ] = o.args
+    [path, _ ] = o.args
     md = jt2.get_call_audio_md_dbus()
     offer = bus.get_object (conn.bus_name, path)
     offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
@@ -123,47 +139,92 @@ def run_test(jp, q, bus, conn, stream):
     # accepted, finally
 
     # The Stream_ID is specified to be ignored; we use 666 here.
-    call_async(q, chan.DTMF, 'StartTone', 666, 3)
+    call_async(q, content.DTMF, 'StartTone', 3)
     q.expect_many(
-            EventPattern('dbus-signal', signal='SendingTones', args=['3'],
-                path=chan_path),
+            EventPattern('dbus-signal', signal='SendingTones', args=['3']),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_SEND, 3]),
             EventPattern('dbus-return', method='StartTone'),
             )
 
-    call_async(q, chan.DTMF, 'StopTone', 666)
+    content.Media.AcknowledgeDTMFChange(3, cs.CALL_SENDING_STATE_SENDING)
+
+    call_async(q, content.DTMF, 'StopTone')
     q.expect_many(
-            EventPattern('dbus-signal', signal='StoppedTones', args=[True],
-                path=chan_path),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 3]),
             EventPattern('dbus-return', method='StopTone'),
             )
 
-    call_async(q, chan.DTMF, 'MultipleTones', '123')
+    call_async(q, content.Media, 'AcknowledgeDTMFChange', 3,
+               cs.CALL_SENDING_STATE_NONE)
     q.expect_many(
-            EventPattern('dbus-signal', signal='SendingTones', args=['123'],
-                path=chan_path),
+        EventPattern('dbus-signal', signal='StoppedTones', args=[True]),
+        EventPattern('dbus-return', method='AcknowledgeDTMFChange'),
+        )
+
+    call_async(q, content.DTMF, 'MultipleTones', '123')
+    q.expect_many(
+            EventPattern('dbus-signal', signal='SendingTones', args=['123']),
+            EventPattern('dbus-return', method='MultipleTones'),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_SEND, 1]),
+            )
+    content.Media.AcknowledgeDTMFChange(1, cs.CALL_SENDING_STATE_SENDING)
+
+    q.expect('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 1])
+    content.Media.AcknowledgeDTMFChange(1, cs.CALL_SENDING_STATE_NONE)
+
+    q.expect_many(
+            EventPattern('dbus-signal', signal='SendingTones', args=['23']),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_SEND, 2]),
+            )
+    content.Media.AcknowledgeDTMFChange(2, cs.CALL_SENDING_STATE_SENDING)
+    q.expect('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 2])
+    content.Media.AcknowledgeDTMFChange(2, cs.CALL_SENDING_STATE_NONE)
+
+    q.expect_many(
+            EventPattern('dbus-signal', signal='SendingTones', args=['3']),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_SEND, 3]),
+            )
+    content.Media.AcknowledgeDTMFChange(3, cs.CALL_SENDING_STATE_SENDING)
+    q.expect('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 3])
+    content.Media.AcknowledgeDTMFChange(3, cs.CALL_SENDING_STATE_NONE)
+
+    q.expect_many(
+            EventPattern('dbus-signal', signal='StoppedTones', args=[False])
+            )
+
+    call_async(q, content.DTMF, 'MultipleTones',
+            '1,1' * 100)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='SendingTones'),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_SEND, 1]),
             EventPattern('dbus-return', method='MultipleTones'),
             )
-    q.expect_many(
-            EventPattern('dbus-signal', signal='StoppedTones', args=[False],
-                path=chan_path),
-            )
-
-    # This is technically a race condition, but this dialstring is almost
-    # certainly long enough that the Python script will win the race, i.e.
-    # cancel before Gabble processes the whole dialstring.
-    call_async(q, chan.DTMF, 'MultipleTones',
-            '1,1' * 100)
-    q.expect('dbus-return', method='MultipleTones')
-    call_async(q, chan.DTMF, 'MultipleTones', '9')
+    call_async(q, content.DTMF, 'MultipleTones', '9')
     q.expect('dbus-error', method='MultipleTones',
             name=cs.SERVICE_BUSY)
-    call_async(q, chan.DTMF, 'StartTone', 666, 9)
+    call_async(q, content.DTMF, 'StartTone', 9)
     q.expect('dbus-error', method='StartTone', name=cs.SERVICE_BUSY)
-    call_async(q, chan.DTMF, 'StopTone', 666)
+
+    call_async(q, content.DTMF, 'StopTone')
     q.expect_many(
-            EventPattern('dbus-signal', signal='StoppedTones', args=[True],
-                path=chan_path),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 1]),
             EventPattern('dbus-return', method='StopTone'),
+            )
+    call_async(q, content.Media, 'AcknowledgeDTMFChange',
+               1, cs.CALL_SENDING_STATE_NONE)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='StoppedTones', args=[True]),
+            EventPattern('dbus-return', method='AcknowledgeDTMFChange'),
             )
 
     chan.Hangup (0, "", "",

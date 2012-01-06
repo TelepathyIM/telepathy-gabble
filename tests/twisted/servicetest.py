@@ -481,6 +481,17 @@ def wrap_channel(chan, type_, extra=None):
 
     return ProxyWrapper(chan, tp_name_prefix + '.Channel', interfaces)
 
+
+def wrap_content(chan, extra=None):
+    interfaces = { }
+
+    if extra:
+        interfaces.update(dict([
+            (name, tp_name_prefix + '.Call1.Content.Interface.' + name)
+            for name in extra]))
+
+    return ProxyWrapper(chan, tp_name_prefix + '.Call1.Content', interfaces)
+
 def make_connection(bus, event_func, name, proto, params):
     cm = bus.get_object(
         tp_name_prefix + '.ConnectionManager.%s' % name,

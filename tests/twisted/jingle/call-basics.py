@@ -179,7 +179,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         content_properties["Disposition"])
 
     # Implements Content.Interface.Media
-    assertEquals([cs.CALL_CONTENT_IFACE_MEDIA],
+    assertEquals([cs.CALL_CONTENT_IFACE_MEDIA, cs.CALL_CONTENT_IFACE_DTMF],
         content_properties["Interfaces"])
 
     #if incoming:
@@ -243,9 +243,10 @@ def run_test(jp, q, bus, conn, stream, incoming):
         cstream.CompleteReceivingStateChange(
             cs.CALL_STREAM_FLOW_STATE_STARTED,
             dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
-        assertEquals (cs.CALL_STREAM_FLOW_STATE_PENDING_START, 
-            recv_state)
-
+        q.expect('dbus-signal', signal='ReceivingStateChanged',
+                 args = [cs.CALL_STREAM_FLOW_STATE_STARTED],
+                 interface = cs.CALL_STREAM_IFACE_MEDIA)
+ 
     # Don't start sending before the call is accepted locally or remotely
     assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
                  cstream.Get(cs.CALL_STREAM_IFACE_MEDIA, "SendingState",
@@ -266,7 +267,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
 
     check_state (q, chan, cs.CALL_STATE_INITIALISING,
-        wait = not incoming)
+        wait = False)
 
     # Setup media description
     md = jt2.get_call_audio_md_dbus()

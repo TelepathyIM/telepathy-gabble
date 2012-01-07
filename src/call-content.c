@@ -172,6 +172,7 @@ gabble_call_content_new_offer (GabbleCallContent *self,
         }
     }
 
+  /* FIXME: We have to handle cases where the new codecs are rejected */
   tp_base_media_call_content_offer_media_description_async (
       TP_BASE_MEDIA_CALL_CONTENT (self), md, NULL, NULL);
 

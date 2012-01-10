@@ -274,13 +274,13 @@ call_session_terminated_cb (GabbleJingleSession *session,
       call_reason = TP_CALL_STATE_CHANGE_REASON_BUSY;
       break;
     case JINGLE_REASON_CANCEL:
-      call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
+      if (locally_terminated)
+        call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
+      else
+        call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
       break;
     case JINGLE_REASON_CONNECTIVITY_ERROR:
       call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
-      break;
-    case JINGLE_REASON_DECLINE:
-      call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
       break;
     case JINGLE_REASON_FAILED_APPLICATION:
       call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
@@ -303,6 +303,7 @@ call_session_terminated_cb (GabbleJingleSession *session,
     case JINGLE_REASON_TIMEOUT:
       call_reason = TP_CALL_STATE_CHANGE_REASON_NO_ANSWER;
       break;
+    case JINGLE_REASON_DECLINE:
     case JINGLE_REASON_ALTERNATIVE_SESSION:
     case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
     case JINGLE_REASON_FAILED_TRANSPORT:

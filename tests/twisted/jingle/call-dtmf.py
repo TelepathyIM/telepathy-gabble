@@ -139,6 +139,10 @@ def run_test(jp, q, bus, conn, stream):
     # accepted, finally
 
     # The Stream_ID is specified to be ignored; we use 666 here.
+
+    assertEquals(False, content.Get(cs.CALL_CONTENT_IFACE_DTMF,
+      'CurrentlySendingTones', dbus_interface=dbus.PROPERTIES_IFACE));
+
     call_async(q, content.DTMF, 'StartTone', 3)
     q.expect_many(
             EventPattern('dbus-signal', signal='SendingTones', args=['3']),
@@ -146,6 +150,9 @@ def run_test(jp, q, bus, conn, stream):
                          args = [cs.CALL_SENDING_STATE_PENDING_SEND, 3]),
             EventPattern('dbus-return', method='StartTone'),
             )
+
+    assertEquals(True, content.Get(cs.CALL_CONTENT_IFACE_DTMF,
+      'CurrentlySendingTones', dbus_interface=dbus.PROPERTIES_IFACE));
 
     content.Media.AcknowledgeDTMFChange(3, cs.CALL_SENDING_STATE_SENDING)
 
@@ -162,6 +169,9 @@ def run_test(jp, q, bus, conn, stream):
         EventPattern('dbus-signal', signal='StoppedTones', args=[True]),
         EventPattern('dbus-return', method='AcknowledgeDTMFChange'),
         )
+
+    assertEquals(False, content.Get(cs.CALL_CONTENT_IFACE_DTMF,
+      'CurrentlySendingTones', dbus_interface=dbus.PROPERTIES_IFACE));
 
     call_async(q, content.DTMF, 'MultipleTones', '123')
     q.expect_many(

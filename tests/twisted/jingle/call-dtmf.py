@@ -227,6 +227,29 @@ def run_test(jp, q, bus, conn, stream):
             EventPattern('dbus-return', method='AcknowledgeDTMFChange'),
             )
 
+    call_async(q, content.DTMF, 'MultipleTones',
+            '1w2')
+    q.expect_many(
+            EventPattern('dbus-signal', signal='SendingTones', args=['1w2']),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_SEND, 1]),
+            EventPattern('dbus-return', method='MultipleTones'),
+            )
+
+    content.Media.AcknowledgeDTMFChange(1, cs.CALL_SENDING_STATE_SENDING)
+
+    q.expect('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 1])
+
+    call_async(q, content.Media, 'AcknowledgeDTMFChange',
+               1, cs.CALL_SENDING_STATE_NONE)
+    ret = q.expect_many(
+            EventPattern('dbus-signal', signal='TonesDeferred'),
+            EventPattern('dbus-signal', signal='StoppedTones', args=[False]),
+            EventPattern('dbus-return', method='AcknowledgeDTMFChange'),
+            )
+    assertEquals(['2'], ret[0].args);
+
     chan.Hangup (0, "", "",
         dbus_interface=cs.CHANNEL_TYPE_CALL)
 

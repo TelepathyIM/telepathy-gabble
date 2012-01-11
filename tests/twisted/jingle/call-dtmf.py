@@ -253,13 +253,26 @@ def run_test(jp, q, bus, conn, stream):
 
     call_async(q, content.Media, 'AcknowledgeDTMFChange',
                1, cs.CALL_SENDING_STATE_NONE)
-    ret = q.expect_many(
-            EventPattern('dbus-signal', signal='TonesDeferred'),
+    q.expect_many(
+            EventPattern('dbus-signal', signal='TonesDeferred', args=['2']),
             EventPattern('dbus-signal', signal='StoppedTones', args=[False]),
             EventPattern('dbus-return', method='AcknowledgeDTMFChange'),
             )
-    assertEquals(['2'], ret[0].args);
+    assertEquals('2', content.Get(cs.CALL_CONTENT_IFACE_DTMF,
+      'DeferredTones', dbus_interface=dbus.PROPERTIES_IFACE));
 
+    call_async(q, content.DTMF, 'StartTone', 7)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='SendingTones', args=['7']),
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                         args = [cs.CALL_SENDING_STATE_PENDING_SEND, 7]),
+            EventPattern('dbus-return', method='StartTone'),
+            )
+
+    # Checked that DeferredTones is properly reset
+    assertEquals('', content.Get(cs.CALL_CONTENT_IFACE_DTMF,
+      'DeferredTones', dbus_interface=dbus.PROPERTIES_IFACE));
+    
     chan.Hangup (0, "", "",
         dbus_interface=cs.CHANNEL_TYPE_CALL)
 

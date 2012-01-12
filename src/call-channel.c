@@ -250,7 +250,7 @@ call_session_terminated_cb (GabbleJingleSession *session,
     gchar *reason_text, GabbleCallChannel *self)
 {
   TpHandle actor;
-  TpCallStateChangeReason call_reason;
+  TpCallStateChangeReason call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
   const gchar *dbus_detail = "";
 
   if (tp_base_call_channel_get_state (TP_BASE_CALL_CHANNEL (self)) ==

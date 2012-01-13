@@ -28,7 +28,7 @@
 #include <telepathy-glib/presence-mixin.h>
 #include <wocky/wocky.h>
 
-#include <gabble/connection.h>
+#include <gabble/plugin-connection.h>
 #include <gabble/sidecar.h>
 #include <gabble/types.h>
 
@@ -48,7 +48,7 @@ typedef struct _GabblePluginInterface GabblePluginInterface;
 typedef void (*GabblePluginCreateSidecarImpl) (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    GabbleConnection *connection,
+    GabblePluginConnection *plugin_connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
@@ -58,6 +58,7 @@ typedef void (*GabblePluginCreateSidecarImpl) (
  * not have a free function. */
 typedef GPtrArray * (*GabblePluginCreateChannelManagersImpl) (
     GabblePlugin *plugin,
+    GabblePluginConnection *plugin_connection,
     TpBaseConnection *connection);
 
 typedef GabbleSidecar * (*GabblePluginCreateSidecarFinishImpl) (
@@ -133,7 +134,7 @@ gboolean gabble_plugin_implements_sidecar (
 void gabble_plugin_create_sidecar_async (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    GabbleConnection *connection,
+    GabblePluginConnection *plugin_connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data);
@@ -155,6 +156,7 @@ const gchar *gabble_plugin_presence_status_for_privacy_list (
     const gchar *list_name);
 
 GPtrArray * gabble_plugin_create_channel_managers (GabblePlugin *plugin,
+    GabblePluginConnection *plugin_connection,
     TpBaseConnection *connection);
 
 /**

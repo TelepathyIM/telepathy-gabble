@@ -508,7 +508,7 @@ class JingleTest2:
 
     # Default video codecs for the remote end. I have no idea what's
     # a suitable value here...
-    video_codecs = [ ('WTF', 42, 80000, {}) ]
+    video_codecs = [ ('WTF', 96, 90000, {}) ]
 
 
     ufrag = "SessionUfrag"

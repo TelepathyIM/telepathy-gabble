@@ -507,7 +507,9 @@ gabble_presence_cache_add_bundles (GabblePresenceCache *cache)
   gabble_presence_cache_add_bundle_caps (cache, \
       "http://talk.google.com/xmpp/client/caps#" cap, features); \
   gabble_presence_cache_add_bundle_caps (cache, \
-      "http://www.android.com/gtalk/client/caps#" cap, features);
+      "http://www.android.com/gtalk/client/caps#" cap, features); \
+  gabble_presence_cache_add_bundle_caps (cache, \
+      "http://talk.google.com/xmpp/bot/caps#" cap, features);
 
   /* Cache various bundle from the Google Talk clients as trusted.  Some old
    * versions of Google Talk do not reply correctly to discovery requests.

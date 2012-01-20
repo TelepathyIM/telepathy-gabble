@@ -593,7 +593,7 @@ def test(jp, q, bus, conn, stream):
 
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
-            args=[cs.HS_HELD, cs.HSR_RESOURCE_NOT_AVAILABLE]),
+            args=[cs.HS_PENDING_HOLD, cs.HSR_RESOURCE_NOT_AVAILABLE]),
         EventPattern('dbus-signal', signal='SendingStateChanged',
                      args = [cs.CALL_STREAM_FLOW_STATE_STOPPED],
                      interface = cs.CALL_STREAM_IFACE_MEDIA),
@@ -602,7 +602,18 @@ def test(jp, q, bus, conn, stream):
                      interface = cs.CALL_STREAM_IFACE_MEDIA), 
         )
 
-    # ---- Test 11: attempting to unhold fails in the sending bit ----
+    cstream.CompleteReceivingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STOPPED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='HoldStateChanged',
+                args=[cs.HS_HELD, cs.HSR_RESOURCE_NOT_AVAILABLE]),
+            EventPattern('dbus-signal', signal='ReceivingStateChanged',
+                args = [cs.CALL_STREAM_FLOW_STATE_STOPPED],
+                interface = cs.CALL_STREAM_IFACE_MEDIA),
+            )
+
+    # ---- Test 11: attempting to unhold fails in the receiving bit ----
 
     
     call_async(q, chan.Hold, 'RequestHold', False)
@@ -623,9 +634,25 @@ def test(jp, q, bus, conn, stream):
 
     q.expect_many(
         EventPattern('dbus-signal', signal='HoldStateChanged',
-            args=[cs.HS_HELD, cs.HSR_RESOURCE_NOT_AVAILABLE]),
+            args=[cs.HS_PENDING_HOLD, cs.HSR_RESOURCE_NOT_AVAILABLE]),
+        EventPattern('dbus-signal', signal='SendingStateChanged',
+                     args = [cs.CALL_STREAM_FLOW_STATE_PENDING_STOP],
+                     interface = cs.CALL_STREAM_IFACE_MEDIA),
+        EventPattern('dbus-signal', signal='ReceivingStateChanged',
+                     args = [cs.CALL_STREAM_FLOW_STATE_STOPPED],
+                     interface = cs.CALL_STREAM_IFACE_MEDIA), 
         )
 
+    cstream.CompleteSendingStateChange(
+            cs.CALL_STREAM_FLOW_STATE_STOPPED,
+            dbus_interface = cs.CALL_STREAM_IFACE_MEDIA)
+    q.expect_many(
+            EventPattern('dbus-signal', signal='HoldStateChanged',
+                args=[cs.HS_HELD, cs.HSR_RESOURCE_NOT_AVAILABLE]),
+            EventPattern('dbus-signal', signal='SendingStateChanged',
+                args = [cs.CALL_STREAM_FLOW_STATE_STOPPED],
+                interface = cs.CALL_STREAM_IFACE_MEDIA),
+            )
 
     sync_stream(q, stream)
     q.unforbid_events(unhold_event + hold_event)

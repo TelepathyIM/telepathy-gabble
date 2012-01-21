@@ -304,14 +304,33 @@ call_session_terminated_cb (GabbleJingleSession *session,
       call_reason = TP_CALL_STATE_CHANGE_REASON_NO_ANSWER;
       break;
     case JINGLE_REASON_DECLINE:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
+      break;
     case JINGLE_REASON_ALTERNATIVE_SESSION:
+      break;
     case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_NETWORK_ERROR;
+      break;
     case JINGLE_REASON_FAILED_TRANSPORT:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
+      dbus_detail = TP_ERROR_STR_CONNECTION_FAILED;
+      break;
     case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      dbus_detail = TP_ERROR_STR_MEDIA_CODECS_INCOMPATIBLE;
+      break;
     case JINGLE_REASON_SECURITY_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
+      break;
     case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      dbus_detail = TP_ERROR_STR_MEDIA_UNSUPPORTED_TYPE;
+      break;
     case JINGLE_REASON_EXPIRED:
-      /* FIXME: what are these */
+      /* No matching error in our spec */
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    default:
       call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
       break;
     }

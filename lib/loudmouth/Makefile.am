@@ -62,7 +62,7 @@ loudmouth-signals-marshal.list: $(OUR_SOURCES) Makefile.am
 
 AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@ @WOCKY_CFLAGS@
 
-AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@ @WOCKY_LIBS@
+AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@
 
 Android.mk: Makefile.am $(BUILT_SOURCES)
 	androgenizer -:PROJECT telepathy-gabble -:STATIC loudmouth -:TAGS eng debug \

@@ -371,7 +371,7 @@ gabble_xmpp_error_from_node (LmMessageNode *error_node,
        * numbers; the >= 0 test is OK because i is signed */
       for (i = NUM_XMPP_ERRORS - 1; i >= 0; i--)
         {
-          if (lm_message_node_get_child_with_namespace (error_node,
+          if (wocky_node_get_child_ns (error_node,
                 xmpp_errors[i].name, xmpp_errors[i].namespace))
             {
               return i;

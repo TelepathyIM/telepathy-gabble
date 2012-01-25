@@ -51,6 +51,12 @@ static void call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param, GabbleCallChannel *self);
 static void call_member_content_added_cb (GabbleCallMember *member,
     GabbleCallMemberContent *content, GabbleCallChannel *self);
+static void call_member_content_removed_cb (GabbleCallMember *member,
+    GabbleCallMemberContent *mcontent,
+    GabbleBaseCallChannel *self);
+static void call_session_terminated_cb (GabbleJingleSession *session,
+    gboolean locally_terminated, JingleReason termination_reason,
+    gchar *reason_text, GabbleCallChannel *self);
 
 static void call_channel_accept (TpBaseMediaCallChannel *channel);
 static TpBaseCallContent * call_channel_add_content (
@@ -105,8 +111,12 @@ gabble_call_channel_constructed (GObject *obj)
 
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), obj);
+      gabble_signal_connect_weak (priv->session, "terminated",
+        G_CALLBACK (call_session_terminated_cb), G_OBJECT (self));
       gabble_signal_connect_weak (member, "content-added",
         G_CALLBACK (call_member_content_added_cb), G_OBJECT (self));
+      gabble_signal_connect_weak (member, "content-removed",
+        G_CALLBACK (call_member_content_removed_cb), G_OBJECT (self));
 
       contents = gabble_call_member_get_contents (member);
 

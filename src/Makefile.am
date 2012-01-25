@@ -135,8 +135,6 @@ libgabble_convenience_la_SOURCES = \
     olpc-activity.c \
     plugin-loader.h \
     plugin-loader.c \
-    $(top_srcdir)/gabble/plugin.h \
-    plugin.c \
     presence.h \
     presence.c \
     presence-cache.h \
@@ -240,19 +238,26 @@ noinst_LTLIBRARIES = libgabble-convenience.la
 
 lib_LTLIBRARIES = libgabble-plugins.la
 
+libgabble_plugins_la_LDFLAGS = -shared -no-undefined -avoid-version
+
 libgabble_plugins_la_LIBADD = \
    $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
    $(ALL_LIBS)
-		
-libgabble_plugins_la_SOURCES = $(top_srcdir)/gabble/plugin.h \
+
+libgabble_plugins_la_SOURCES = \
+   (top_srcdir)/gabble/capabilities.h \
+   capabilities.c \
    $(top_srcdir)/gabble/caps-channel-manager.h \
-   $(top_srcdir)/gabble/plugin-connection.h  \
-	 plugin-connection.c \
-	 caps-channel-manager.c \
-	 plugin.c \
-	 capabilities.c \
-	 debug.c \
-	 sidecar.c
+   caps-channel-manager.c \
+   $(top_srcdir)/gabble/debug.h \
+   debug.c \
+   $(top_srcdir)/gabble/error.h \
+   error.c \
+   $(top_srcdir)/gabble/plugin.h \
+   plugin.c \
+   $(top_srcdir)/gabble/plugin-connection.h \
+   plugin-connection.c \
+   sidecar.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @TP_YELL_CFLAGS@ \

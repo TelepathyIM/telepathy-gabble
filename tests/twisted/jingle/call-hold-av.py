@@ -9,6 +9,7 @@ from servicetest import (
     make_channel_proxy, call_async, EventPattern, wrap_channel, assertLength
     )
 import constants as cs
+import callutils as cu
 
 from jingletest2 import JingleTest2, test_all_dialects
 
@@ -108,19 +109,7 @@ def test(jp, q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, [remote_jid])[0]
 
-    # Advertise that we can do new style calls
-    conn.ContactCapabilities.UpdateCapabilities([
-        (cs.CLIENT + ".CallHandler", [
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_AUDIO: True},
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_VIDEO: True},
-            ], [
-                cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
-                cs.CHANNEL_TYPE_CALL + '/ice-udp',
-                cs.CHANNEL_TYPE_CALL + '/video/h264',
-            ]),
-        ])
+    cu.advertise_call(conn)
 
     try:
         ret = conn.Requests.CreateChannel(

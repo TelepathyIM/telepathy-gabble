@@ -82,19 +82,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 
-    # Advertise that we can do new style calls
-    conn.ContactCapabilities.UpdateCapabilities([
-        (cs.CLIENT + ".CallHandler", [
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_AUDIO: True},
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_VIDEO: True},
-            ], [
-                cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
-                cs.CHANNEL_TYPE_CALL + '/ice-udp',
-                cs.CHANNEL_TYPE_CALL + '/video/h264',
-            ]),
-        ])
+    cu.advertise_call(conn)
 
     # Ensure a channel that doesn't exist yet.
     if incoming:

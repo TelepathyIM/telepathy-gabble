@@ -16,6 +16,7 @@ import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 import ns
 from config import CHANNEL_TYPE_CALL_ENABLED
+import callutils as cu
 
 if not CHANNEL_TYPE_CALL_ENABLED:
     print "NOTE: built with --disable-channel-type-call"
@@ -28,19 +29,7 @@ def run_test(jp, q, bus, conn, stream):
     self_handle = conn.GetSelfHandle()
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 
-    # Advertise that we can do new style calls
-    conn.ContactCapabilities.UpdateCapabilities([
-        (cs.CLIENT + ".CallHandler", [
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_AUDIO: True},
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_VIDEO: True},
-            ], [
-                cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
-                cs.CHANNEL_TYPE_CALL + '/ice-udp',
-                cs.CHANNEL_TYPE_CALL + '/video/h264',
-            ]),
-        ])
+    cu.advertise_call(conn)
 
     # Ensure a channel that doesn't exist yet.
     ret = conn.Requests.CreateChannel(

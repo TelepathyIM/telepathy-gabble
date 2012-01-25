@@ -16,21 +16,11 @@ import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 import ns
 from config import CHANNEL_TYPE_CALL_ENABLED
+import callutils as cu
 
 if not CHANNEL_TYPE_CALL_ENABLED:
     print "NOTE: built with --disable-channel-type-call"
     raise SystemExit(77)
-
-def check_state (q, chan, state, wait = False):
-    if wait:
-        q.expect('dbus-signal', signal='CallStateChanged',
-            interface = cs.CHANNEL_TYPE_CALL,
-            predicate = lambda e: e.args[0] == state)
-
-    properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
-            dbus_interface=dbus.PROPERTIES_IFACE)
-
-    assertEquals (state, properties["CallState"])
 
 def check_and_accept_offer (q, bus, conn,
         content, md, remote_handle, offer_path = None,
@@ -233,7 +223,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
 
     # Check if the channel is in the right pending state
     if not incoming:
-        check_state (q, chan, cs.CALL_STATE_PENDING_INITIATOR)
+        cu.check_state (q, chan, cs.CALL_STATE_PENDING_INITIATOR)
         chan.Accept (dbus_interface=cs.CHANNEL_TYPE_CALL)
 
         recv_state = cstream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
@@ -265,7 +255,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
                       stream_props["RemoteMembers"])
         assertEquals (cs.CALL_SENDING_STATE_SENDING, stream_props["LocalSendingState"])
 
-    check_state (q, chan, cs.CALL_STATE_INITIALISING,
+    cu.check_state (q, chan, cs.CALL_STATE_INITIALISING,
         wait = False)
 
     # Setup media description
@@ -441,7 +431,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
     assertEquals (cs.CALL_STREAM_ENDPOINT_STATE_FULLY_CONNECTED, state[1])
     assertEquals (cs.CALL_STREAM_ENDPOINT_STATE_FULLY_CONNECTED, state[2])
 
-    check_state (q, chan, cs.CALL_STATE_INITIALISED)
+    cu.check_state (q, chan, cs.CALL_STATE_INITIALISED)
 
     assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
         cstream.Get (cs.CALL_STREAM_IFACE_MEDIA, "SendingState",
@@ -497,7 +487,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         check_and_accept_offer (q, bus, conn, content, md, remote_handle, path,
             md_changed = False )
 
-    check_state (q, chan, cs.CALL_STATE_ACTIVE)
+    cu.check_state (q, chan, cs.CALL_STATE_ACTIVE)
 
     # All Direction should be both now
     stream_props = cstream.GetAll (cs.CALL_STREAM,
@@ -797,7 +787,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         chan.Hangup (0, "", "",
             dbus_interface=cs.CHANNEL_TYPE_CALL)
 
-    check_state (q, chan, cs.CALL_STATE_ENDED, wait = True)
+    cu.check_state (q, chan, cs.CALL_STATE_ENDED, wait = True)
 
 if __name__ == '__main__':
     test_all_dialects(lambda jp, q, bus, conn, stream:

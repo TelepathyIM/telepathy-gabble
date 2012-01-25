@@ -7,7 +7,6 @@ from dbus.exceptions import DBusException
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test
 from servicetest import (
     make_channel_proxy, wrap_content,
     EventPattern, call_async,

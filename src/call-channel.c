@@ -255,7 +255,10 @@ call_session_terminated_cb (GabbleJingleSession *session,
 
   if (tp_base_call_channel_get_state (TP_BASE_CALL_CHANNEL (self)) ==
       TP_CALL_STATE_ENDED)
-    return;
+    {
+      DEBUG ("ignoring jingle session terminate, already in ENDED state");
+      return;
+    }
 
   if (reason_text == NULL)
     reason_text = "";
@@ -335,6 +338,7 @@ call_session_terminated_cb (GabbleJingleSession *session,
       break;
     }
 
+  DEBUG ("Moving to ENDED state");
   tp_base_call_channel_set_state (TP_BASE_CALL_CHANNEL (self),
       TP_CALL_STATE_ENDED, actor, call_reason, dbus_detail, reason_text);
 }

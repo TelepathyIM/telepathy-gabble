@@ -33,6 +33,9 @@ void conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data);
 void gabble_conn_aliasing_nickname_updated (GObject *object,
     TpHandle handle, gpointer user_data);
 
+void gabble_conn_aliasing_nicknames_updated (GObject *object,
+    GArray *handles, gpointer user_data);
+
 GabbleConnectionAliasSource _gabble_connection_get_cached_alias (
     GabbleConnection *, TpHandle, gchar **);
 

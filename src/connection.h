@@ -21,6 +21,8 @@
 #ifndef __GABBLE_CONNECTION_H__
 #define __GABBLE_CONNECTION_H__
 
+#include "config.h"
+
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
 #include <loudmouth/loudmouth.h>
@@ -34,8 +36,10 @@
 #include <wocky/wocky-pep-service.h>
 
 #include "gabble/connection.h"
-#include "capabilities.h"
+#include "gabble/capabilities.h"
+#ifdef ENABLE_FILE_TRANSFER
 #include "ft-manager.h"
+#endif
 #include "jingle-factory.h"
 #include "muc-factory.h"
 #include "types.h"
@@ -51,21 +55,23 @@ G_BEGIN_DECLS
 
 /* order must match array of statuses in conn-presence.c */
 /* in increasing order of presence */
+/*< prefix=GABBLE_PRESENCE >*/
 typedef enum
 {
   GABBLE_PRESENCE_OFFLINE = 0,
   GABBLE_PRESENCE_UNKNOWN,
   GABBLE_PRESENCE_ERROR,
-  GABBLE_PRESENCE_LAST_UNAVAILABLE = GABBLE_PRESENCE_ERROR,
+  GABBLE_PRESENCE_LAST_UNAVAILABLE = GABBLE_PRESENCE_ERROR, /*< skip >*/
   GABBLE_PRESENCE_HIDDEN,
   GABBLE_PRESENCE_XA,
   GABBLE_PRESENCE_AWAY,
   GABBLE_PRESENCE_DND,
   GABBLE_PRESENCE_AVAILABLE,
   GABBLE_PRESENCE_CHAT,
-  NUM_GABBLE_PRESENCES
+  NUM_GABBLE_PRESENCES /*< skip >*/
 } GabblePresenceId;
 
+/*< flags >*/
 typedef enum
 {
   GABBLE_CONNECTION_FEATURES_NONE = 0,
@@ -78,6 +84,7 @@ typedef enum
   GABBLE_CONNECTION_FEATURES_INVISIBLE = 1 << 6,
   GABBLE_CONNECTION_FEATURES_GOOGLE_SHARED_STATUS = 1 << 7,
   GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE = 1 << 8,
+  GABBLE_CONNECTION_FEATURES_GOOGLE_SETTING = 1 << 9,
 } GabbleConnectionFeatures;
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
@@ -163,8 +170,10 @@ struct _GabbleConnection {
     /* jingle factory */
     GabbleJingleFactory *jingle_factory;
 
+#ifdef ENABLE_FILE_TRANSFER
     /* file transfer manager */
     GabbleFtManager *ft_manager;
+#endif
 
     /* PEP */
     WockyPepService *pep_nick;
@@ -200,8 +209,6 @@ typedef enum {
     GABBLE_CONNECTION_ALIAS_FROM_ROSTER
 } GabbleConnectionAliasSource;
 
-gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
-
 WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn);
 
 gboolean _gabble_connection_set_properties_from_account (
@@ -213,6 +220,7 @@ gboolean _gabble_connection_send_with_reply (GabbleConnection *conn,
     gpointer user_data, GError **error);
 void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
     LmMessage *iq);
+void gabble_connection_update_last_use (GabbleConnection *conn);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
 gchar *gabble_connection_get_canonical_room_name (GabbleConnection *conn,

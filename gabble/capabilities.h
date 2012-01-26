@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "gabble/capabilities-set.h"
+#include <gabble/capabilities-set.h>
 
 /* Pseudo-capabilities for buggy or strange implementations, represented as
  * strings starting with a character not allowed in XML (the ASCII beep :-) */
@@ -57,6 +57,7 @@ const GabbleCapabilitySet *gabble_capabilities_get_olpc_notify (void);
 #define BUNDLE_SHARE_V1         "share-v1"
 #define BUNDLE_VOICE_V1         "voice-v1"
 #define BUNDLE_VIDEO_V1         "video-v1"
+#define BUNDLE_CAMERA_V1        "camera-v1"
 #define BUNDLE_PMUC_V1          "pmuc-v1"
 
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_share_v1 (void);

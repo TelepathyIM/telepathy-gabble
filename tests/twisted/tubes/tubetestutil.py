@@ -292,7 +292,7 @@ def create_server(q, address_type, factory=None, block_reading=False,
     elif address_type == cs.SOCKET_ADDRESS_TYPE_IPV4:
         for port in range(5000,6000):
             try:
-                reactor.listenTCP(port, factory)
+                reactor.listenTCP(port, factory, interface='localhost')
             except CannotListenError:
                 continue
             else:

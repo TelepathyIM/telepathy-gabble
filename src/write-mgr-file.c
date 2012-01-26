@@ -27,6 +27,7 @@
 #include <dbus/dbus-protocol.h>
 #include <telepathy-glib/telepathy-glib.h>
 
+#include "extensions/extensions.h"
 #include "protocol.h"
 
 
@@ -293,19 +294,33 @@ mgr_file_contents (const char *busname,
 
   while (protocols != NULL)
     {
-      TpBaseProtocol *protocol = protocols->data;
-      GHashTable *props =
-          tp_base_protocol_get_immutable_properties (protocol);
-      gchar *section_name = g_strdup_printf ("Protocol %s",
-          tp_base_protocol_get_name (protocol));
-      const gchar * const *ifaces = tp_asv_get_strv (props,
-          TP_PROP_PROTOCOL_INTERFACES);
-      const gchar * const *c_ifaces = tp_asv_get_strv (props,
-          TP_PROP_PROTOCOL_CONNECTION_INTERFACES);
-      const gchar * const *auth_types = tp_asv_get_strv (props,
-          TP_PROP_PROTOCOL_AUTHENTICATION_TYPES);
+      GabbleJabberProtocol *protocol = protocols->data;
+      gchar *section_name;
+      GHashTable *props;
+      const gchar * const *ifaces;
+      const gchar * const *c_ifaces;
+      const gchar * const *addr_vcard_fields;
+      const gchar * const *addr_uri_schemes;
+      const gchar * const *auth_types;
 
-      write_parameters (f, section_name, protocol);
+      g_object_get (G_OBJECT (protocol),
+          "immutable-properties", &props,
+          NULL);
+
+      section_name = g_strdup_printf ("Protocol %s",
+          tp_base_protocol_get_name (TP_BASE_PROTOCOL (protocol)));
+
+      ifaces = tp_asv_get_strv (props, TP_PROP_PROTOCOL_INTERFACES);
+      c_ifaces = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_CONNECTION_INTERFACES);
+      auth_types = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_AUTHENTICATION_TYPES);
+      addr_vcard_fields = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_INTERFACE_ADDRESSING_ADDRESSABLE_VCARD_FIELDS);
+      addr_uri_schemes = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_INTERFACE_ADDRESSING_ADDRESSABLE_URI_SCHEMES);
+
+      write_parameters (f, section_name, TP_BASE_PROTOCOL (protocol));
       write_rccs (f, section_name, props);
 
       g_key_file_set_string_list (f, section_name, "Interfaces",
@@ -314,13 +329,17 @@ mgr_file_contents (const char *busname,
           c_ifaces, g_strv_length ((gchar **) c_ifaces));
       g_key_file_set_string_list (f, section_name, "AuthenticationTypes",
           auth_types, g_strv_length ((gchar **) auth_types));
+      g_key_file_set_string_list (f, section_name, "AddressableVCardFields",
+          addr_vcard_fields, g_strv_length ((gchar **) addr_vcard_fields));
+      g_key_file_set_string_list (f, section_name, "AddressableURISchemes",
+          addr_uri_schemes, g_strv_length ((gchar **) addr_uri_schemes));
 
       WRITE_STR (TP_PROP_PROTOCOL_VCARD_FIELD, "VCardField");
       WRITE_STR (TP_PROP_PROTOCOL_ENGLISH_NAME, "EnglishName");
       WRITE_STR (TP_PROP_PROTOCOL_ICON, "Icon");
 
       g_free (section_name);
-      g_hash_table_destroy (props);
+      g_hash_table_unref (props);
       protocols = protocols->next;
     }
 

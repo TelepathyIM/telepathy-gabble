@@ -1,15 +1,14 @@
-
 """
-Test MUC support.
+Test Channel.Interface.Subject on MUC channels
 """
 
 import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test, make_result_iq
+from gabbletest import exec_test, make_result_iq, make_muc_presence
 from servicetest import (EventPattern, assertEquals, assertLength,
-        assertContains)
+        assertContains, call_async)
 import constants as cs
 import ns
 
@@ -31,19 +30,21 @@ def test(q, bus, conn, stream):
     test_subject(q, bus, conn, stream, False, True, False)
     test_subject(q, bus, conn, stream, False, False, True)
 
-counter = 0
+def check_subject_props(chan, subject_str, actor, flags, signal=None):
+    if signal is not None:
+        assertEquals(subject_str, signal.args[0])
+        assertEquals(actor, signal.args[1])
+        assertEquals(flags, signal.args[3])
+
+    props = chan.GetAll(cs.CHANNEL_IFACE_SUBJECT,
+                        dbus_interface=dbus.PROPERTIES_IFACE)
+    subject = props['Subject']
+    subject_actor = props['Actor']
+    subject_can_set = props['CanSet']
 
 def test_subject(q, bus, conn, stream, change_subject, send_first,
         moderator):
-    # FIXME: fd.o#21152: using many different rooms here because the join_muc()
-    # utility function (via request_muc_handle()) only copes with requesting
-    # the handle for the first time, due to having to expect the disco#info
-    # query to the server and reply to it. Fixing fd.o#21152 will remove the
-    # distinction between the first and nth time, at which point we can just
-    # join the same room repeatedly.
-    global counter
-    room = 'test%d@conf.localhost' % counter
-    counter += 1
+    room = 'test@conf.localhost'
 
     room_handle, chan, path, props, disco = join_muc(q, bus, conn, stream,
             room,
@@ -51,18 +52,7 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
                 query_name='query', query_ns=ns.DISCO_INFO, to=room)],
             role=(moderator and 'moderator' or 'participant'))
 
-    # Until the disco returns, we appear to have no properties except subject.
-
-    prop_list = chan.TpProperties.ListProperties()
-    props = dict([(name, id) for id, name, sig, flags in prop_list])
-    prop_flags = dict([(name, flags) for id, name, sig, flags in prop_list])
-
-    for name in props:
-        if name == 'subject':
-            # subject can always be changed, until fd.o#13157 is fixed
-            assertEquals(cs.PROPERTY_FLAG_WRITE, prop_flags[name])
-        else:
-            assertEquals(0, prop_flags[name])
+    assert chan.Properties.Get(cs.CHANNEL_IFACE_SUBJECT, "CanSet")
 
     if send_first:
         # Someone sets a subject.
@@ -72,24 +62,19 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         message.addElement('subject', content='Testing')
         stream.send(message)
 
-        q.expect('dbus-signal', signal='PropertiesChanged',
-                predicate=lambda e: (props['subject'], 'Testing') in e.args[0])
-        e = q.expect('dbus-signal', signal='PropertyFlagsChanged',
-                predicate=lambda e:
-                    (props['subject'], cs.PROPERTY_FLAGS_RW) in e.args[0])
-        assertContains((props['subject-contact'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
-        assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
+        q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
+                 signal='PropertiesChanged',
+                 predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
+        check_subject_props(chan, 'Testing', room + '/bob', True)
 
     # Reply to the disco
     iq = make_result_iq(stream, disco.stanza)
     query = iq.firstChildElement()
+    feat = query.addElement('feature')
+    feat['var'] = 'muc_public'
+
     x = query.addElement((ns.X_DATA, 'x'))
     x['type'] = 'result'
-
-    feat = x.addElement('feature')
-    feat['var'] = 'muc_public'
 
     if change_subject is not None:
         # When fd.o #13157 has been fixed, this will actually do something.
@@ -107,24 +92,86 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
     message.addElement('subject', content='lalala')
     stream.send(message)
 
-    q.expect('dbus-signal', signal='PropertiesChanged',
-            predicate=lambda e: (props['subject'], 'lalala') in e.args[0])
+    q.expect('dbus-signal', interface=cs.PROPERTIES_IFACE,
+             signal='PropertiesChanged',
+             predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT)
+    check_subject_props(chan, 'lalala', room + '/bob', True)
 
-    # if send_first was true, then we already got this
-    if not send_first:
-        e = q.expect('dbus-signal', signal='PropertyFlagsChanged',
-                predicate=lambda e:
-                    (props['subject'], cs.PROPERTY_FLAGS_RW) in e.args[0])
-        assertContains((props['subject-contact'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
-        assertContains((props['subject-timestamp'], cs.PROPERTY_FLAG_READ),
-                e.args[0])
+    # test changing the subject
+    call_async(q, chan, 'SetSubject', 'le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+
+    e = q.expect('stream-message', to=room)
+    elem = e.stanza
+    assertEquals('groupchat', elem['type'])
+    assertEquals(1, len(elem.children))
+    assertEquals(elem.children[0].name, 'subject')
+    assertEquals(str(elem.children[0]), 'le lolz')
+
+    elem['from'] = room + '/test'
+    stream.send(elem)
+
+    q.expect_many(EventPattern('dbus-signal', interface=cs.PROPERTIES_IFACE,
+                               signal='PropertiesChanged',
+                               predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_SUBJECT),
+                  EventPattern('dbus-return', method='SetSubject'),
+                 )
+
+    check_subject_props(chan, 'le lolz', room + '/test', True)
+
+    # Test changing the subject and getting an error back.
+    call_async(q, chan, 'SetSubject', 'CHICKEN MAN', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+
+    e = q.expect('stream-message', to=room)
+    elem = e.stanza
+    elem['from'] = room
+    elem['type'] = 'error'
+    error = elem.addElement((None, 'error'))
+    error['type'] = 'auth'
+    error.addElement((ns.STANZA, 'forbidden'))
+    stream.send(elem)
+    q.expect('dbus-error', method='SetSubject', name=cs.PERMISSION_DENIED)
+
+    # Test changing the subject and getting an error back which doesn't echo
+    # the <subject> element.
+    call_async(q, chan, 'SetSubject', 'CHICKEN MAN', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+
+    e = q.expect('stream-message', to=room)
+    message = domish.Element((None, 'message'))
+    message['from'] = room
+    message['id'] = e.stanza['id']
+    message['type'] = 'error'
+    error = message.addElement((None, 'error'))
+    error.addElement((ns.STANZA, 'forbidden'))
+    stream.send(message)
+
+    q.expect('dbus-error', method='SetSubject', name=cs.PERMISSION_DENIED)
+
+    # Test changing the subject just before we leave the room (and hence not
+    # getting a reply). While we're here, check that you can't have more than
+    # one call in flight at a time.
+    call_async(q, chan, 'SetSubject', 'le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+    e = q.expect('stream-message', to=room)
+
+    call_async(q, chan, 'SetSubject', 'le lolz', dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+    q.expect('dbus-error', method='SetSubject', name=cs.NOT_AVAILABLE)
 
     chan.Close()
 
     event = q.expect('stream-presence', to=room + '/test')
     elem = event.stanza
     assertEquals('unavailable', elem['type'])
+
+    q.expect('dbus-error', method='SetSubject', name=cs.CANCELLED)
+
+    call_async(q, chan, 'SetSubject', 'how about now?',
+        dbus_interface=cs.CHANNEL_IFACE_SUBJECT)
+    q.expect('dbus-error', method='SetSubject', name=cs.NOT_AVAILABLE)
+
+    # The MUC confirms that we've left the room.
+    echo = make_muc_presence('member', 'none', room, 'test')
+    echo['type'] = 'unavailable'
+    stream.send(echo)
+    q.expect('dbus-signal', signal='ChannelClosed')
 
 if __name__ == '__main__':
     exec_test(test)

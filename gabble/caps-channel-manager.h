@@ -70,7 +70,8 @@ typedef void (*GabbleCapsChannelManagerRepresentClientFunc) (
     const gchar *client_name,
     const GPtrArray *filters,
     const gchar * const *cap_tokens,
-    GabbleCapabilitySet *cap_set);
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms);
 
 void gabble_caps_channel_manager_reset_capabilities (
     GabbleCapsChannelManager *caps_manager);
@@ -86,7 +87,8 @@ void gabble_caps_channel_manager_represent_client (
     const gchar *client_name,
     const GPtrArray *filters,
     const gchar * const *cap_tokens,
-    GabbleCapabilitySet *cap_set);
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms);
 
 struct _GabbleCapsChannelManagerInterface {
     GTypeInterface parent;

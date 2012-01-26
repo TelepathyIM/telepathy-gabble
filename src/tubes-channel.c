@@ -353,8 +353,8 @@ d_bus_names_changed_added (GabbleTubesChannel *self,
 
   for (i = 0; i < added->len; i++)
     g_boxed_free (TP_STRUCT_TYPE_DBUS_TUBE_MEMBER, added->pdata[i]);
-  g_ptr_array_free (added, TRUE);
-  g_array_free (removed, TRUE);
+  g_ptr_array_unref (added);
+  g_array_unref (removed);
 }
 
 static void
@@ -377,8 +377,8 @@ d_bus_names_changed_removed (GabbleTubesChannel *self,
   tp_svc_channel_type_tubes_emit_d_bus_names_changed (self,
       tube_id, added, removed);
 
-  g_ptr_array_free (added, TRUE);
-  g_array_free (removed, TRUE);
+  g_ptr_array_unref (added);
+  g_array_unref (removed);
 }
 
 static void
@@ -532,7 +532,7 @@ tube_offered_cb (GabbleTubeIface *tube,
   update_tubes_presence (self);
 
   g_free (service);
-  g_hash_table_destroy (parameters);
+  g_hash_table_unref (parameters);
 }
 
 static GabbleTubeIface *
@@ -781,10 +781,8 @@ contact_left_muc (GabbleTubesChannel *self,
                   TpHandle contact)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
-#ifdef ENABLE_DEBUG
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-#endif
   GHashTable *old_dbus_tubes;
   struct _add_in_old_dbus_tubes_data add_data;
   struct _emit_d_bus_names_changed_foreach_data emit_data;
@@ -805,7 +803,7 @@ contact_left_muc (GabbleTubesChannel *self,
   g_hash_table_foreach (old_dbus_tubes, emit_d_bus_names_changed_foreach,
       &emit_data);
 
-  g_hash_table_destroy (old_dbus_tubes);
+  g_hash_table_unref (old_dbus_tubes);
 }
 
 /* Called when we receive a presence from a contact who is
@@ -916,7 +914,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 
               /* the tube has reffed its initiator, no need to keep a ref */
               tp_handle_unref (contact_repo, initiator_handle);
-              g_hash_table_destroy (parameters);
+              g_hash_table_unref (parameters);
             }
         }
       else
@@ -963,7 +961,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
   g_hash_table_foreach (old_dbus_tubes, emit_d_bus_names_changed_foreach,
       &emit_data);
 
-  g_hash_table_destroy (old_dbus_tubes);
+  g_hash_table_unref (old_dbus_tubes);
 }
 
 static void
@@ -1053,7 +1051,7 @@ gabble_tubes_channel_get_available_tube_types (TpSvcChannelTypeTubes *iface,
   tp_svc_channel_type_tubes_return_from_get_available_tube_types (context,
       ret);
 
-  g_array_free (ret, TRUE);
+  g_array_unref (ret);
 }
 
 /**
@@ -1081,7 +1079,7 @@ gabble_tubes_channel_list_tubes (TpSvcChannelTypeTubes *iface,
   for (i = 0; i < ret->len; i++)
     g_boxed_free (TP_STRUCT_TYPE_TUBE_INFO, ret->pdata[i]);
 
-  g_ptr_array_free (ret, TRUE);
+  g_ptr_array_unref (ret);
 }
 
 struct _i_hate_g_hash_table_foreach
@@ -1216,7 +1214,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
 
       NODE_DEBUG (tube_node, e.message);
       gabble_bytestream_iface_close (bytestream, &e);
-      g_hash_table_destroy (parameters);
+      g_hash_table_unref (parameters);
       return;
     }
 
@@ -1237,7 +1235,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   tp_channel_manager_emit_new_channel (priv->conn->private_tubes_factory,
       TP_EXPORTABLE_CHANNEL (tube), NULL);
 
-  g_hash_table_destroy (parameters);
+  g_hash_table_unref (parameters);
 }
 
 /* Called when we receive a SI request,
@@ -1415,7 +1413,7 @@ tube_msg_offered (GabbleTubesChannel *self,
   tp_channel_manager_emit_new_channel (priv->conn->private_tubes_factory,
       TP_EXPORTABLE_CHANNEL (tube), NULL);
 
-  g_hash_table_destroy (parameters);
+  g_hash_table_unref (parameters);
 }
 
 static void
@@ -1550,7 +1548,7 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
   tube = create_new_tube (self, type, priv->self_handle, service,
       parameters, stream_id, tube_id, NULL, TRUE);
   g_free (stream_id);
-  g_hash_table_destroy (parameters);
+  g_hash_table_unref (parameters);
 
   return tube;
 }
@@ -2020,7 +2018,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
   for (i = 0; i < ret->len; i++)
     g_boxed_free (TP_STRUCT_TYPE_DBUS_TUBE_MEMBER, ret->pdata[i]);
   g_hash_table_unref (names);
-  g_ptr_array_free (ret, TRUE);
+  g_ptr_array_unref (ret);
 }
 
 /**
@@ -2100,7 +2098,7 @@ gabble_tubes_channel_get_available_stream_tube_types (TpSvcChannelTypeTubes *ifa
   tp_svc_channel_type_tubes_return_from_get_available_stream_tube_types (
       context, ret);
 
-  g_hash_table_destroy (ret);
+  g_hash_table_unref (ret);
 }
 
 static void
@@ -2133,7 +2131,7 @@ gabble_tubes_channel_close (GabbleTubesChannel *self)
   priv->closed = TRUE;
 
   g_hash_table_foreach (priv->tubes, emit_tube_closed_signal, self);
-  g_hash_table_destroy (priv->tubes);
+  g_hash_table_unref (priv->tubes);
 
   priv->tubes = NULL;
 

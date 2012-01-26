@@ -20,8 +20,6 @@
 #include "config.h"
 #include "media-factory.h"
 
-#define DBUS_API_SUBJECT_TO_CHANGE
-
 #include <stdlib.h>
 #include <string.h>
 
@@ -36,7 +34,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "jingle-factory.h"
@@ -681,13 +679,13 @@ gabble_media_factory_type_foreach_channel_class (GType type,
 
   func (type, table, named_channel_allowed_properties, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 
   table = gabble_media_factory_call_channel_class ();
 
   func (type, table, call_channel_allowed_properties, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 }
 
 
@@ -1208,7 +1206,8 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     const gchar *client_name,
     const GPtrArray *filters,
     const gchar * const *cap_tokens,
-    GabbleCapabilitySet *cap_set)
+    GabbleCapabilitySet *cap_set,
+    GPtrArray *data_forms)
 {
   static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
   static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;

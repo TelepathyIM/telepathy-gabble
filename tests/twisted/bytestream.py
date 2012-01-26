@@ -145,7 +145,7 @@ class Bytestream(object):
 def listen_socks5(q):
     for port in range(5000, 5100):
         try:
-            reactor.listenTCP(port, S5BFactory(q.append))
+            reactor.listenTCP(port, S5BFactory(q.append), interface='localhost')
         except CannotListenError:
             continue
         else:

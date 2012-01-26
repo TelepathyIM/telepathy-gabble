@@ -3,6 +3,8 @@
 
 #include <string.h>
 
+#include <wocky/wocky-utils.h>
+
 #include "src/util.h"
 
 static void
@@ -16,7 +18,7 @@ test_pass (
   gchar *domain = NULL;
   gchar *resource = NULL;
 
-  g_assert (gabble_decode_jid (jid, &node, &domain, &resource));
+  g_assert (wocky_decode_jid (jid, &node, &domain, &resource));
   g_assert (!tp_strdiff (expected_node, node));
   g_assert (!tp_strdiff (expected_domain, domain));
   g_assert (!tp_strdiff (expected_resource, resource));
@@ -32,7 +34,7 @@ test_fail (const gchar *jid)
   gchar *domain = NULL;
   gchar *resource = NULL;
 
-  g_assert (!gabble_decode_jid (jid, &node, &domain, &resource));
+  g_assert (!wocky_decode_jid (jid, &node, &domain, &resource));
   g_assert (node == NULL);
   g_assert (domain == NULL);
   g_assert (resource == NULL);

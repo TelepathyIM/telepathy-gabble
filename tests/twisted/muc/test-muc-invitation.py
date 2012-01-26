@@ -58,8 +58,8 @@ def test(q, bus, conn, stream):
 
     # set ourselves to away and back again, to check that we don't send any
     # presence to the MUC before the invite has been accepted
-    conn.Presence.SetStatus({'away':{'message':'failure'}})
-    conn.Presence.SetStatus({'available':{'message':'success'}})
+    conn.SimplePresence.SetPresence('away', 'failure')
+    conn.SimplePresence.SetPresence('available', 'success')
 
     # accept the invitation
     call_async(q, group_iface, 'AddMembers', [room_self_handle], 'Oh, OK then')

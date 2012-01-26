@@ -35,8 +35,6 @@
 
 #include "types.h"
 
-#define CHECK_STR_EMPTY(x) ((x) == NULL || (x)[0] == '\0')
-
 typedef GSList * NodeIter;
 #define node_iter(node) (node->children)
 #define node_iter_next(i) (g_slist_next (i))
@@ -62,7 +60,6 @@ G_GNUC_NULL_TERMINATED LmMessage * lm_message_build_with_sub_type (
     guint spec, ...);
 
 G_GNUC_WARN_UNUSED_RESULT
-gboolean gabble_decode_jid (const gchar *jid, gchar **a, gchar **b, gchar **c);
 gchar *gabble_encode_jid (const gchar *node, const gchar *domain,
     const gchar *resource);
 

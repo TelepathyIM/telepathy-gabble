@@ -19,6 +19,7 @@ class HTTPFactory(http.HTTPFactory):
     protocol = HTTPChannel
 
     def __init__(self, queue):
+        http.HTTPFactory.__init__(self)
         self.queue = queue
 
     def buildProtocol(self, addr):
@@ -27,5 +28,5 @@ class HTTPFactory(http.HTTPFactory):
         return protocol
 
 def listen_http(q, port=0):
-    return reactor.listenTCP(port, HTTPFactory(q))
+    return reactor.listenTCP(port, HTTPFactory(q), interface='localhost')
 

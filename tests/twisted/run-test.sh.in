@@ -1,0 +1,25 @@
+#!/bin/sh
+
+script_fullname=`readlink -e "@gabbletestsdir@/twisted/run-test.sh"`
+if [ `readlink -e "$0"` != "$script_fullname" ] ; then
+  echo "This script is meant to be installed at $script_fullname"
+  exit 1
+fi
+
+PYTHONPATH=@gabbletestsdir@/twisted
+export PYTHONPATH
+
+if [ -n "$1" ] ; then
+  list="$1"
+else
+  list=$(cat @gabbletestsdir@/twisted/gabble-twisted-tests.list)
+fi
+
+for i in $list ; do 
+  echo "Testing $i"
+  sh @gabbletestsdir@/twisted/tools/with-session-bus.sh \
+    --config-file=@gabbletestsdir@/twisted/tools/servicedir/tmp-session-bus.conf \
+    -- \
+    @PYTHON@ @gabbletestsdir@/twisted/$i
+done
+

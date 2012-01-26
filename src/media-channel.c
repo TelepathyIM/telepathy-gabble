@@ -450,9 +450,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   /* If this is a Google session, let's set ImmutableStreams */
   if (priv->session != NULL)
     {
-      JingleDialect d = gabble_jingle_session_get_dialect (priv->session);
-
-      priv->immutable_streams = JINGLE_IS_GOOGLE_DIALECT (d);
+      priv->immutable_streams = !gabble_jingle_session_can_modify_contents (priv->session);
     }
   /* If there's no session yet, but we know who the peer will be, and we have
    * presence for them, we can set ImmutableStreams using the same algorithm as
@@ -980,7 +978,7 @@ gabble_media_channel_dispose (GObject *object)
     {
       g_ptr_array_foreach (priv->delayed_request_streams,
           (GFunc) destroy_request, NULL);
-      g_ptr_array_free (priv->delayed_request_streams, TRUE);
+      g_ptr_array_unref (priv->delayed_request_streams);
       priv->delayed_request_streams = NULL;
     }
 
@@ -997,7 +995,7 @@ gabble_media_channel_dispose (GObject *object)
    * removed when the call ended.
    */
   g_assert (priv->streams->len == 0);
-  g_ptr_array_free (priv->streams, TRUE);
+  g_ptr_array_unref (priv->streams);
   priv->streams = NULL;
 
   if (G_OBJECT_CLASS (gabble_media_channel_parent_class)->dispose)
@@ -1162,7 +1160,7 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
   tp_svc_channel_interface_media_signalling_return_from_get_session_handlers (
       context, ret);
   g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
-  g_ptr_array_free (ret, TRUE);
+  g_ptr_array_unref (ret);
 }
 
 /**
@@ -1255,7 +1253,7 @@ gabble_media_channel_list_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   tp_svc_channel_type_streamed_media_return_from_list_streams (context, ret);
   g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
-  g_ptr_array_free (ret, TRUE);
+  g_ptr_array_unref (ret);
 }
 
 
@@ -1391,7 +1389,7 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
     }
 
 OUT:
-  g_ptr_array_free (stream_objs, TRUE);
+  g_ptr_array_unref (stream_objs);
 
   if (error)
     {
@@ -1551,7 +1549,7 @@ pending_stream_request_maybe_satisfy (PendingStreamRequest *p,
 
               p->succeeded_cb (p->context, ret);
               g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
-              g_ptr_array_free (ret, TRUE);
+              g_ptr_array_unref (ret);
               p->context = NULL;
               return TRUE;
             }
@@ -1799,7 +1797,7 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
       g_error_free (error);
     }
 
-  g_array_free (ctx->types, TRUE);
+  g_array_unref (ctx->types);
   g_slice_free (struct _delayed_request_streams_ctx, ctx);
 }
 
@@ -1897,7 +1895,7 @@ media_channel_request_streams (GabbleMediaChannel *self,
 
       DEBUG ("no streams to request");
       succeeded_cb (context, empty);
-      g_ptr_array_free (empty, TRUE);
+      g_ptr_array_unref (empty);
 
       return;
     }
@@ -1943,7 +1941,7 @@ media_channel_request_streams (GabbleMediaChannel *self,
       context);
   priv->pending_stream_requests = g_list_prepend (priv->pending_stream_requests,
       psr);
-  g_ptr_array_free (contents, TRUE);
+  g_ptr_array_unref (contents);
 
   /* signal acceptance */
   gabble_jingle_session_accept (priv->session);
@@ -2043,7 +2041,7 @@ gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
   media_channel_request_streams (chan, priv->initial_peer, types,
       succeeded_cb, failed_cb, user_data);
 
-  g_array_free (types, TRUE);
+  g_array_unref (types);
 }
 
 static gboolean
@@ -2442,7 +2440,7 @@ session_terminated_cb (GabbleJingleSession *session,
     /* All the streams should have closed. */
     g_assert (priv->streams->len == 0);
 
-    g_ptr_array_free (tmp, TRUE);
+    g_ptr_array_unref (tmp);
   }
 
   /* remove the session */
@@ -3072,7 +3070,7 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
       gabble_media_stream_error (stream, errno, message, NULL);
     }
 
-  g_ptr_array_free (tmp, TRUE);
+  g_ptr_array_unref (tmp);
 
   tp_svc_media_session_handler_return_from_error (context);
 }

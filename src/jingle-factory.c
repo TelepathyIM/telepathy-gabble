@@ -18,20 +18,20 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
 #include "jingle-factory.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
-#include <libsoup/soup.h>
+#include <wocky/wocky-c2s-porter.h>
 #include <wocky/wocky-utils.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
+#include "conn-util.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "jingle-share.h"
@@ -42,6 +42,8 @@
 #include "jingle-transport-iceudp.h"
 #include "namespaces.h"
 #include "util.h"
+
+#include "google-relay.h"
 
 G_DEFINE_TYPE(GabbleJingleFactory, gabble_jingle_factory, G_TYPE_OBJECT);
 
@@ -65,14 +67,15 @@ enum
 struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
-  LmMessageHandler *jingle_cb;
-  LmMessageHandler *jingle_info_cb;
+  guint jingle_handler_id;
+  guint jingle_info_handler_id;
   GHashTable *content_types;
   GHashTable *transports;
 
   /* instances of SESSION_MAP_KEY_FORMAT => GabbleJingleSession. */
   GHashTable *sessions;
-  SoupSession *soup;
+
+  GabbleGoogleRelayResolver *google_resolver;
 
   gchar *stun_server;
   guint16 stun_port;
@@ -89,8 +92,10 @@ struct _GabbleJingleFactoryPrivate
   gboolean dispose_has_run;
 };
 
-static LmHandlerResult jingle_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *message, gpointer user_data);
+static gboolean jingle_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid,
     TpHandle peer,
@@ -105,8 +110,10 @@ static void session_terminated_cb (GabbleJingleSession *sess,
 
 static void connection_status_changed_cb (GabbleConnection *conn,
     guint status, guint reason, GabbleJingleFactory *self);
-
-#define RELAY_HTTP_TIMEOUT 5
+static void connection_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data);
 
 static gboolean test_mode = FALSE;
 
@@ -132,8 +139,6 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
 
   priv->content_types = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
-
-  priv->jingle_cb = NULL;
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
@@ -253,54 +258,18 @@ take_stun_server (GabbleJingleFactory *self,
 }
 
 
-static LmHandlerResult
-got_jingle_info_stanza (GabbleJingleFactory *fac,
-    LmMessage *message)
+static void
+got_jingle_info_stanza (
+    GabbleJingleFactory *fac,
+    WockyStanza *stanza)
 {
-  GabbleJingleFactoryPrivate *priv = fac->priv;
-  LmMessageSubType sub_type;
-  WockyNode *query_node, *node;
-  const gchar *from = wocky_stanza_get_from (message);
-  GError *error = NULL;
+  WockyNode *node, *query_node;
 
-  if (from != NULL)
-    {
-      TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
-      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          base_conn, TP_HANDLE_TYPE_CONTACT);
-      TpHandle sender = tp_handle_lookup (contact_repo, from, NULL, NULL);
-
-      if (sender != base_conn->self_handle)
-        {
-          DEBUG ("ignoring jingleinfo from '%s', not ourself nor the server",
-              from);
-          return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-        }
-    }
-
-  query_node = lm_message_node_get_child_with_namespace (
-      wocky_stanza_get_top_node (message), "query", NS_GOOGLE_JINGLE_INFO);
+  query_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (stanza), "query", NS_GOOGLE_JINGLE_INFO);
 
   if (query_node == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  sub_type = lm_message_get_sub_type (message);
-
-  if (wocky_stanza_extract_errors (message, NULL, &error, NULL, NULL))
-    {
-      DEBUG ("jingle info error: %s",
-          wocky_xmpp_stanza_error_to_string (error));
-      g_error_free (error);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-    }
-
-  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
-      sub_type != LM_MESSAGE_SUB_TYPE_SET)
-    {
-      DEBUG ("jingle info: unexpected IQ type, ignoring");
-
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
+    return;
 
   if (fac->priv->get_stun_from_jingle)
     node = wocky_node_get_child (query_node, "stun");
@@ -332,19 +301,17 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
         }
     }
 
+#ifdef ENABLE_GOOGLE_RELAY
   node = wocky_node_get_child (query_node, "relay");
 
   if (node != NULL)
     {
-      WockyNode *subnode;
-
-      subnode = wocky_node_get_child (node, "token");
+      WockyNode *subnode = wocky_node_get_child (node, "token");
 
       if (subnode != NULL)
         {
-          const gchar *token;
+          const gchar *token = subnode->content;
 
-          token = subnode->content;
           if (token != NULL)
             {
               DEBUG ("jingle info: got Google relay token %s", token);
@@ -414,74 +381,60 @@ got_jingle_info_stanza (GabbleJingleFactory *fac,
         }
 
     }
-
-  if (sub_type == LM_MESSAGE_SUB_TYPE_SET)
-    {
-      _gabble_connection_acknowledge_set_iq (priv->conn, message);
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+#endif  /* ENABLE_GOOGLE_RELAY */
 }
 
-/*
- * jingle_info_cb
- *
- * Called by loudmouth when we get an incoming <iq>. This handler
- * is concerned only with Jingle info queries.
- */
-static LmHandlerResult
-jingle_info_cb (LmMessageHandler *handler,
-                LmConnection *lmconn,
-                LmMessage *message,
-                gpointer user_data)
+static gboolean
+jingle_info_cb (
+    WockyPorter *porter,
+    WockyStanza *stanza,
+    gpointer user_data)
 {
   GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
 
-  return got_jingle_info_stanza (fac, message);
+  got_jingle_info_stanza (fac, stanza);
+  wocky_porter_acknowledge_iq (porter, stanza, NULL);
+
+  return TRUE;
 }
 
-static LmHandlerResult
-jingle_info_reply_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
-    GObject *factory_obj,
+static void
+jingle_info_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
     gpointer user_data)
 {
-  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (factory_obj);
+  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
+  WockyStanza *reply = NULL;
+  GError *error = NULL;
 
-  return got_jingle_info_stanza (fac, reply_msg);
+  if (conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, &reply,
+          &error))
+    {
+      got_jingle_info_stanza (fac, reply);
+    }
+  else
+    {
+      DEBUG ("jingle info request failed: %s", error->message);
+      g_clear_error (&error);
+    }
+
+  tp_clear_object (&reply);
 }
 
 static void
 jingle_info_send_request (GabbleJingleFactory *fac)
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
-  TpBaseConnection *base = (TpBaseConnection *) priv->conn;
-  LmMessage *msg;
-  WockyNode *node;
-  const gchar *jid;
-  GError *error = NULL;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid = conn_util_get_bare_self_jid (priv->conn);
+  WockyStanza *stanza = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET, NULL, jid,
+      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
 
-  jid = tp_handle_inspect (contact_handles, base->self_handle);
-  msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_GET);
+  conn_util_send_iq_async (priv->conn, stanza, NULL, jingle_info_reply_cb, fac);
 
-  node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  node->ns = g_quark_from_string (NS_GOOGLE_JINGLE_INFO);
-
-  if (!_gabble_connection_send_with_reply (priv->conn, msg,
-        jingle_info_reply_cb, G_OBJECT (fac), fac, &error))
-    {
-      DEBUG ("jingle info send failed: %s\n", error->message);
-      g_error_free (error);
-    }
-
-  lm_message_unref (msg);
+  g_object_unref (stanza);
 }
-
 
 static void
 gabble_jingle_factory_dispose (GObject *object)
@@ -495,10 +448,10 @@ gabble_jingle_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  tp_clear_object (&priv->soup);
-  tp_clear_pointer (&priv->sessions, g_hash_table_destroy);
-  tp_clear_pointer (&priv->content_types, g_hash_table_destroy);
-  tp_clear_pointer (&priv->transports, g_hash_table_destroy);
+  tp_clear_pointer (&priv->google_resolver, gabble_google_relay_resolver_destroy);
+  tp_clear_pointer (&priv->sessions, g_hash_table_unref);
+  tp_clear_pointer (&priv->content_types, g_hash_table_unref);
+  tp_clear_pointer (&priv->transports, g_hash_table_unref);
   tp_clear_pointer (&priv->stun_server, g_free);
   tp_clear_pointer (&priv->fallback_stun_server, g_free);
   tp_clear_pointer (&priv->relay_token, g_free);
@@ -546,32 +499,26 @@ gabble_jingle_factory_set_property (GObject *object,
   }
 }
 
-static GObject *
-gabble_jingle_factory_constructor (GType type,
-                                   guint n_props,
-                                   GObjectConstructParam *props)
+static void
+gabble_jingle_factory_constructed (GObject *obj)
 {
-  GObject *obj;
-  GabbleJingleFactory *self;
-  GabbleJingleFactoryPrivate *priv;
+  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (obj);
+  GabbleJingleFactoryPrivate *priv = self->priv;
+  GObjectClass *parent = G_OBJECT_CLASS (gabble_jingle_factory_parent_class);
 
-  obj = G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->
-      constructor (type, n_props, props);
+  if (parent->constructed != NULL)
+    parent->constructed (obj);
 
-  self = GABBLE_JINGLE_FACTORY (obj);
-  priv = self->priv;
-
-  /* FIXME: why was this in _constructed in media factory? */
   gabble_signal_connect_weak (priv->conn, "status-changed",
       (GCallback) connection_status_changed_cb, G_OBJECT (self));
+  gabble_signal_connect_weak (priv->conn, "porter-available",
+      (GCallback) connection_porter_available_cb, G_OBJECT (self));
 
   jingle_share_register (self);
   jingle_media_rtp_register (self);
   jingle_transport_google_register (self);
   jingle_transport_rawudp_register (self);
   jingle_transport_iceudp_register (self);
-
-  return obj;
 }
 
 static void
@@ -582,7 +529,7 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
 
   g_type_class_add_private (cls, sizeof (GabbleJingleFactoryPrivate));
 
-  object_class->constructor = gabble_jingle_factory_constructor;
+  object_class->constructed = gabble_jingle_factory_constructed;
   object_class->get_property = gabble_jingle_factory_get_property;
   object_class->set_property = gabble_jingle_factory_set_property;
   object_class->dispose = gabble_jingle_factory_dispose;
@@ -619,22 +566,6 @@ connection_status_changed_cb (GabbleConnection *conn,
     {
     case TP_CONNECTION_STATUS_CONNECTING:
       g_assert (priv->conn != NULL);
-
-      g_assert (priv->jingle_cb == NULL);
-      g_assert (priv->jingle_info_cb == NULL);
-
-      priv->jingle_cb = lm_message_handler_new (jingle_cb,
-          self, NULL);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->jingle_cb, LM_MESSAGE_TYPE_IQ,
-          LM_HANDLER_PRIORITY_NORMAL);
-
-      priv->jingle_info_cb = lm_message_handler_new (
-          jingle_info_cb, self, NULL);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ,
-          LM_HANDLER_PRIORITY_NORMAL);
-
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
@@ -675,18 +606,42 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (priv->jingle_cb != NULL)
+      if (priv->jingle_handler_id != 0)
         {
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_cb, LM_MESSAGE_TYPE_IQ);
-          lm_connection_unregister_message_handler (priv->conn->lmconn,
-              priv->jingle_info_cb, LM_MESSAGE_TYPE_IQ);
+          WockyPorter *p = wocky_session_get_porter (priv->conn->session);
+
+          wocky_porter_unregister_handler (p, priv->jingle_handler_id);
+          wocky_porter_unregister_handler (p, priv->jingle_info_handler_id);
+          priv->jingle_handler_id = 0;
+          priv->jingle_info_handler_id = 0;
         }
 
-      tp_clear_pointer (&priv->jingle_cb, lm_message_handler_unref);
-      tp_clear_pointer (&priv->jingle_info_cb, lm_message_handler_unref);
       break;
     }
+}
+
+static void
+connection_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
+  GabbleJingleFactoryPrivate *priv = self->priv;
+
+  g_assert (priv->jingle_handler_id == 0);
+
+  /* TODO: we could match different dialects here maybe? */
+  priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_cb, self,
+      NULL);
+
+  priv->jingle_info_handler_id = wocky_c2s_porter_register_handler_from_server (
+      WOCKY_C2S_PORTER (porter),
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_info_cb, self,
+      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
 }
 
 /* The 'session' map is keyed by:
@@ -781,11 +736,11 @@ ensure_session (GabbleJingleFactory *self,
   return sess;
 }
 
-static LmHandlerResult
-jingle_cb (LmMessageHandler *handler,
-           LmConnection *lmconn,
-           LmMessage *msg,
-           gpointer user_data)
+static gboolean
+jingle_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
   GabbleJingleFactoryPrivate *priv = self->priv;
@@ -798,10 +753,10 @@ jingle_cb (LmMessageHandler *handler,
 
   /* see if it's a jingle message and detect dialect */
   sid = gabble_jingle_session_detect (msg, &action, &dialect);
-  from = wocky_node_get_attribute (lm_message_get_node (msg), "from");
+  from = wocky_stanza_get_from (msg);
 
   if (sid == NULL || from == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return FALSE;
 
   sess = ensure_session (self, sid, from, action, dialect, &new_session,
       &error);
@@ -819,7 +774,7 @@ jingle_cb (LmMessageHandler *handler,
   /* all went well, we can acknowledge the IQ */
   _gabble_connection_acknowledge_set_iq (priv->conn, msg);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 
 REQUEST_ERROR:
   g_assert (error != NULL);
@@ -831,7 +786,7 @@ REQUEST_ERROR:
   if (sess != NULL && new_session)
     gabble_jingle_session_terminate (sess, JINGLE_REASON_UNKNOWN, NULL, NULL);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 /*
@@ -987,204 +942,6 @@ gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
   return TRUE;
 }
 
-typedef struct
-{
-  GPtrArray *relays;
-  guint component;
-  guint requests_to_do;
-  GabbleJingleFactoryRelaySessionCb callback;
-  gpointer user_data;
-} RelaySessionData;
-
-static RelaySessionData *
-relay_session_data_new (guint requests_to_do,
-                        GabbleJingleFactoryRelaySessionCb callback,
-                        gpointer user_data)
-{
-  RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
-
-  rsd->relays = g_ptr_array_sized_new (requests_to_do);
-  rsd->component = 1;
-  rsd->requests_to_do = requests_to_do;
-  rsd->callback = callback;
-  rsd->user_data = user_data;
-
-  return rsd;
-}
-
-/* This is a GSourceFunc */
-static gboolean
-relay_session_data_call (gpointer p)
-{
-  RelaySessionData *rsd = p;
-
-  g_assert (rsd->callback != NULL);
-
-  rsd->callback (rsd->relays, rsd->user_data);
-
-  return FALSE;
-}
-
-/* This is a GDestroyNotify */
-static void
-relay_session_data_destroy (gpointer p)
-{
-  RelaySessionData *rsd = p;
-
-  g_ptr_array_foreach (rsd->relays, (GFunc) g_hash_table_destroy, NULL);
-  g_ptr_array_free (rsd->relays, TRUE);
-
-  g_slice_free (RelaySessionData, rsd);
-}
-
-static void
-translate_relay_info (GPtrArray *relays,
-                      const gchar *relay_ip,
-                      const gchar *username,
-                      const gchar *password,
-                      const gchar *static_type,
-                      const gchar *port_string,
-                      guint component)
-{
-  GHashTable *asv;
-  guint port = 0;
-
-  if (port_string == NULL)
-    {
-      DEBUG ("no relay port for %s found", static_type);
-      return;
-    }
-
-  port = atoi (port_string);
-
-  if (port == 0 || port > G_MAXUINT16)
-    {
-      DEBUG ("failed to parse relay port '%s' for %s", port_string,
-          static_type);
-      return;
-    }
-
-  DEBUG ("type=%s ip=%s port=%u username=%s password=%s component=%u",
-      static_type, relay_ip, port, username, password, component);
-  /* keys are static, values are slice-allocated */
-  asv = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
-  g_hash_table_insert (asv, "ip",
-      tp_g_value_slice_new_string (relay_ip));
-  g_hash_table_insert (asv, "type",
-      tp_g_value_slice_new_static_string (static_type));
-  g_hash_table_insert (asv, "port",
-      tp_g_value_slice_new_uint (port));
-  g_hash_table_insert (asv, "username",
-      tp_g_value_slice_new_string (username));
-  g_hash_table_insert (asv, "password",
-      tp_g_value_slice_new_string (password));
-  g_hash_table_insert (asv, "component",
-      tp_g_value_slice_new_uint (component));
-
-  g_ptr_array_add (relays, asv);
-}
-
-static void
-on_http_response (SoupSession *soup,
-                  SoupMessage *msg,
-                  gpointer user_data)
-{
-  RelaySessionData *rsd = user_data;
-
-  if (msg->status_code != 200)
-    {
-      DEBUG ("Google session creation failed, relaying not used: %d %s",
-          msg->status_code, msg->reason_phrase);
-    }
-  else
-    {
-      /* parse a=b lines into GHashTable
-       * (key, value both borrowed from items of the strv 'lines') */
-      GHashTable *map = g_hash_table_new (g_str_hash, g_str_equal);
-      gchar **lines;
-      guint i;
-      const gchar *relay_ip;
-      const gchar *relay_udp_port;
-      const gchar *relay_tcp_port;
-      const gchar *relay_ssltcp_port;
-      const gchar *username;
-      const gchar *password;
-      gchar *escaped_str;
-
-      escaped_str = g_strescape (msg->response_body->data, "\r\n");
-      DEBUG ("Response from Google:\n====\n%s\n====", escaped_str);
-      g_free (escaped_str);
-
-      lines = g_strsplit (msg->response_body->data, "\n", 0);
-
-      if (lines != NULL)
-        {
-          for (i = 0; lines[i] != NULL; i++)
-            {
-              gchar *delim = strchr (lines[i], '=');
-              size_t len;
-
-              if (delim == NULL || delim == lines[i])
-                {
-                  /* ignore empty keys or lines without '=' */
-                  continue;
-                }
-
-              len = strlen (lines[i]);
-
-              if (lines[i][len - 1] == '\r')
-                {
-                  lines[i][len - 1] = '\0';
-                }
-
-              *delim = '\0';
-              g_hash_table_insert (map, lines[i], delim + 1);
-            }
-        }
-
-      relay_ip = g_hash_table_lookup (map, "relay.ip");
-      relay_udp_port = g_hash_table_lookup (map, "relay.udp_port");
-      relay_tcp_port = g_hash_table_lookup (map, "relay.tcp_port");
-      relay_ssltcp_port = g_hash_table_lookup (map, "relay.ssltcp_port");
-      username = g_hash_table_lookup (map, "username");
-      password = g_hash_table_lookup (map, "password");
-
-      if (relay_ip == NULL)
-        {
-          DEBUG ("No relay.ip found");
-        }
-      else if (username == NULL)
-        {
-          DEBUG ("No username found");
-        }
-      else if (password == NULL)
-        {
-          DEBUG ("No password found");
-        }
-      else
-        {
-          translate_relay_info (rsd->relays, relay_ip, username, password,
-              "udp", relay_udp_port, rsd->component);
-          translate_relay_info (rsd->relays, relay_ip, username, password,
-              "tcp", relay_tcp_port, rsd->component);
-          translate_relay_info (rsd->relays, relay_ip, username, password,
-              "tls", relay_ssltcp_port, rsd->component);
-        }
-
-      g_strfreev (lines);
-      g_hash_table_destroy (map);
-    }
-
-  rsd->component++;
-
-  if ((--rsd->requests_to_do) == 0)
-    {
-      relay_session_data_call (rsd);
-      relay_session_data_destroy (rsd);
-    }
-}
-
 void
 gabble_jingle_factory_create_google_relay_session (
     GabbleJingleFactory *fac,
@@ -1193,56 +950,15 @@ gabble_jingle_factory_create_google_relay_session (
     gpointer user_data)
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
-  gchar *url;
-  guint i;
-  RelaySessionData *rsd;
 
   g_return_if_fail (callback != NULL);
 
-  rsd = relay_session_data_new (components, callback, user_data);
-
-  if (fac->priv->relay_server == NULL)
+  if (priv->google_resolver == NULL)
     {
-      DEBUG ("No relay server provided, not creating google relay session");
-      g_idle_add_full (G_PRIORITY_DEFAULT, relay_session_data_call, rsd,
-          relay_session_data_destroy);
-      return;
+      priv->google_resolver = gabble_google_relay_resolver_new ();
     }
 
-  if (fac->priv->relay_token == NULL)
-    {
-      DEBUG ("No relay token provided, not creating google relay session");
-      g_idle_add_full (G_PRIORITY_DEFAULT, relay_session_data_call, rsd,
-          relay_session_data_destroy);
-      return;
-    }
-
-  if (priv->soup == NULL)
-    {
-      priv->soup = soup_session_async_new ();
-
-      /* If we don't get answer in a few seconds, relay won't do
-       * us much help anyways. */
-      g_object_set (priv->soup, "timeout", RELAY_HTTP_TIMEOUT, NULL);
-    }
-
-  url = g_strdup_printf ("http://%s:%d/create_session",
-      fac->priv->relay_server, fac->priv->relay_http_port);
-
-  for (i = 0; i < components; i++)
-    {
-      SoupMessage *msg = soup_message_new ("GET", url);
-
-      DEBUG ("Trying to create a new relay session on %s", url);
-
-      /* libjingle sets both headers, so shall we */
-      soup_message_headers_append (msg->request_headers,
-          "X-Talk-Google-Relay-Auth", fac->priv->relay_token);
-      soup_message_headers_append (msg->request_headers,
-          "X-Google-Relay-Auth", fac->priv->relay_token);
-
-      soup_session_queue_message (priv->soup, msg, on_http_response, rsd);
-    }
-
-  g_free (url);
+  gabble_google_relay_resolver_resolve (priv->google_resolver,
+      components, priv->relay_server, priv->relay_http_port, priv->relay_token,
+      callback, user_data);
 }

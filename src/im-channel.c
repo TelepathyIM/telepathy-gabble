@@ -95,6 +95,12 @@ struct _GabbleIMChannelPrivate
   gboolean dispose_has_run;
 };
 
+typedef struct {
+  GabbleIMChannel *channel;
+  TpMessage *message;
+  gchar *token;
+} _GabbleIMSendMessageCtx;
+
 static void
 gabble_im_channel_init (GabbleIMChannel *self)
 {
@@ -170,6 +176,13 @@ gabble_im_channel_fill_immutable_properties (TpBaseChannel *chan,
       NULL);
 }
 
+static gchar *
+gabble_im_channel_get_object_path_suffix (TpBaseChannel *chan)
+{
+  return g_strdup_printf ("ImChannel%u",
+      tp_base_channel_get_target_handle (chan));
+}
+
 static void
 gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 {
@@ -190,6 +203,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   base_class->close = gabble_im_channel_close;
   base_class->fill_immutable_properties =
     gabble_im_channel_fill_immutable_properties;
+  base_class->get_object_path_suffix = gabble_im_channel_get_object_path_suffix;
 
   tp_message_mixin_init_dbus_properties (object_class);
 }
@@ -292,6 +306,33 @@ gabble_im_channel_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
 
+static void
+_gabble_im_channel_message_sent_cb (GObject *source,
+                                    GAsyncResult *res,
+                                    gpointer user_data)
+{
+    WockyPorter *porter = WOCKY_PORTER (source);
+    GError *error = NULL;
+    _GabbleIMSendMessageCtx *context = user_data;
+    GabbleIMChannel *chan = context->channel;
+    TpMessage *message = context->message;
+
+    if (wocky_porter_send_finish (porter, res, &error))
+      {
+        tp_message_mixin_sent ((GObject *) chan, message, 0,
+            context->token, NULL);
+      }
+    else
+      {
+        tp_message_mixin_sent ((GObject *) chan, context->message,
+            0, NULL, error);
+      }
+
+    g_object_unref (context->channel);
+    g_object_unref (context->message);
+    g_free (context->token);
+    g_slice_free (_GabbleIMSendMessageCtx, context);
+}
 
 static void
 _gabble_im_channel_send_message (GObject *object,
@@ -300,8 +341,14 @@ _gabble_im_channel_send_message (GObject *object,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   TpBaseChannel *base = (TpBaseChannel *) self;
+  GabbleConnection *gabble_conn;
   GabbleIMChannelPrivate *priv;
   gint state = -1;
+  WockyStanza *stanza = NULL;
+  gchar *id = NULL;
+  GError *error = NULL;
+  WockyPorter *porter;
+  _GabbleIMSendMessageCtx *context;
 
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = self->priv;
@@ -314,74 +361,48 @@ _gabble_im_channel_send_message (GObject *object,
 
   /* We don't support providing successful delivery reports. */
   flags = 0;
+  gabble_conn =
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
 
-  gabble_message_util_send_message (object,
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-      message, flags, 0, state, priv->peer_jid, priv->send_nick);
+  stanza = gabble_message_util_build_stanza (message,
+      gabble_conn, 0, state, priv->peer_jid,
+      priv->send_nick, &id, &error);
+
+
+  if (stanza != NULL)
+    {
+      porter = gabble_connection_dup_porter (gabble_conn);
+      context = g_slice_new0 (_GabbleIMSendMessageCtx);
+      context->channel = g_object_ref (base);
+      context->message = g_object_ref (message);
+      context->token = id;
+      wocky_porter_send_async (porter, stanza, NULL,
+          _gabble_im_channel_message_sent_cb, context);
+      g_object_unref (porter);
+      g_object_unref (stanza);
+    }
+  else
+    {
+      tp_message_mixin_sent (object, message, flags, NULL, error);
+      g_error_free (error);
+    }
+
 
   if (priv->send_nick)
     priv->send_nick = FALSE;
 }
 
-/**
- * _gabble_im_channel_receive
- *
- */
-void
-_gabble_im_channel_receive (GabbleIMChannel *chan,
-                            TpChannelTextMessageType type,
-                            TpHandle sender,
-                            const char *from,
-                            time_t timestamp,
-                            const gchar *id,
-                            const char *text,
-                            TpChannelTextSendError send_error,
-                            TpDeliveryStatus delivery_status,
-                            gint state)
+static TpMessage *
+build_message (
+    GabbleIMChannel *self,
+    TpChannelTextMessageType type,
+    time_t timestamp,
+    const char *text)
 {
-  GabbleIMChannelPrivate *priv;
-  TpBaseChannel *base_chan;
-  TpBaseConnection *base_conn;
-  TpMessage *msg;
-  gchar *tmp;
+  TpBaseChannel *base_chan = (TpBaseChannel *) self;
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base_chan);
+  TpMessage *msg = tp_cm_message_new (base_conn, 2);
 
-  g_assert (GABBLE_IS_IM_CHANNEL (chan));
-  priv = chan->priv;
-  base_chan = (TpBaseChannel *) chan;
-  base_conn = tp_base_channel_get_connection (base_chan);
-
-  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
-    {
-      /* update peer's full JID if it's changed */
-      if (tp_strdiff (from, priv->peer_jid))
-        {
-          g_free (priv->peer_jid);
-          priv->peer_jid = g_strdup (from);
-        }
-
-      if (state == -1)
-        {
-          priv->chat_states_supported = CHAT_STATES_NOT_SUPPORTED;
-        }
-      else
-        {
-          _gabble_im_channel_state_receive (chan, state);
-        }
-    }
-  else
-    {
-      /* strip off the resource (if any), since we just failed to send to it */
-      char *slash = strchr (priv->peer_jid, '/');
-
-      if (slash != NULL)
-        *slash = '\0';
-
-      priv->chat_states_supported = CHAT_STATES_UNKNOWN;
-    }
-
-  msg = tp_cm_message_new (base_conn, 2);
-
-  /* Header */
   if (type != TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL)
     tp_message_set_uint32 (msg, 0, "message-type", type);
 
@@ -392,49 +413,133 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   tp_message_set_string (msg, 1, "content-type", "text/plain");
   tp_message_set_string (msg, 1, "content", text);
 
-  if (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
+  return msg;
+}
+
+/*
+ * _gabble_im_channel_receive:
+ * @chan: a channel
+ * @type: the message type
+ * @from: the full JID we received the message from
+ * @timestamp: the time at which the message was sent (not the time it was
+ *             received)
+ * @id: the id='' attribute from the <message/> stanza, if any
+ * @text: the plaintext body of the message
+ * @send_error: the reason why sending @text to @sender failed, or
+ *              GABBLE_TEXT_CHANNEL_SEND_NO_ERROR if this call is not to report
+ *              a failure to send.
+ * @delivery_status: if @send_error is GABBLE_TEXT_CHANNEL_SEND_NO_ERROR,
+ *                   ignored; else the delivery status to attach to the report.
+ * @state: a #TpChannelChatState, or -1 if there was no chat state in the
+ *         message.
+ *
+ * Shoves an incoming message into @chan, possibly updating the chat state at
+ * the same time; or maybe this is a delivery report? Who knows! It's a magical
+ * adventure.
+ */
+void
+_gabble_im_channel_receive (GabbleIMChannel *chan,
+                            TpChannelTextMessageType type,
+                            const char *from,
+                            time_t timestamp,
+                            const gchar *id,
+                            const char *text,
+                            gint state)
+{
+  GabbleIMChannelPrivate *priv;
+  TpBaseChannel *base_chan;
+  TpHandle peer;
+  TpMessage *msg;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (chan));
+  priv = chan->priv;
+  base_chan = (TpBaseChannel *) chan;
+  peer = tp_base_channel_get_target_handle (base_chan);
+
+  /* update peer's full JID if it's changed */
+  if (tp_strdiff (from, priv->peer_jid))
     {
-      tp_cm_message_set_sender (msg, sender);
-      tp_message_set_int64 (msg, 0, "message-received", time (NULL));
-
-      if (id != NULL)
-        tp_message_set_string (msg, 0, "message-token", id);
-
-      tp_message_mixin_take_received (G_OBJECT (chan), msg);
+      g_free (priv->peer_jid);
+      priv->peer_jid = g_strdup (from);
     }
+
+  if (state == -1)
+    priv->chat_states_supported = CHAT_STATES_NOT_SUPPORTED;
   else
+    _gabble_im_channel_state_receive (chan, state);
+
+  msg = build_message (chan, type, timestamp, text);
+  tp_cm_message_set_sender (msg, peer);
+  tp_message_set_int64 (msg, 0, "message-received", time (NULL));
+
+  if (id != NULL)
+    tp_message_set_string (msg, 0, "message-token", id);
+
+  tp_message_mixin_take_received (G_OBJECT (chan), msg);
+}
+
+void
+_gabble_im_channel_report_delivery (
+    GabbleIMChannel *self,
+    TpChannelTextMessageType type,
+    time_t timestamp,
+    const gchar *id,
+    const char *text,
+    TpChannelTextSendError send_error,
+    TpDeliveryStatus delivery_status)
+{
+  GabbleIMChannelPrivate *priv;
+  TpBaseChannel *base_chan = (TpBaseChannel *) self;
+  TpBaseConnection *base_conn;
+  TpHandle peer;
+  TpMessage *msg, *delivery_report;
+  gchar *tmp;
+
+  g_return_if_fail (GABBLE_IS_IM_CHANNEL (self));
+  priv = self->priv;
+  peer = tp_base_channel_get_target_handle (base_chan);
+  base_conn = tp_base_channel_get_connection (base_chan);
+
+  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
-      TpMessage *delivery_report = tp_cm_message_new (base_conn, 1);
+      /* strip off the resource (if any), since we just failed to send to it */
+      char *slash = strchr (priv->peer_jid, '/');
 
-      tp_message_set_uint32 (delivery_report, 0, "message-type",
-          TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
-      tp_cm_message_set_sender (delivery_report, sender);
-      tp_message_set_int64 (delivery_report, 0, "message-received",
-          time (NULL));
+      if (slash != NULL)
+        *slash = '\0';
 
-      tmp = gabble_generate_id ();
-      tp_message_set_string (delivery_report, 0, "message-token", tmp);
-      g_free (tmp);
-
-      tp_message_set_uint32 (delivery_report, 0, "delivery-status",
-          delivery_status);
-      tp_message_set_uint32 (delivery_report, 0, "delivery-error", send_error);
-
-      if (id != NULL)
-        tp_message_set_string (delivery_report, 0, "delivery-token", id);
-
-      /* We're getting a send error, so the original sender of the echoed
-       * message must be us! */
-      tp_cm_message_set_sender (msg, base_conn->self_handle);
-
-      /* Since this is a send error, we can trust the id on the message. */
-      if (id != NULL)
-        tp_message_set_string (msg, 0, "message-token", id);
-
-      tp_cm_message_take_message (delivery_report, 0, "delivery-echo", msg);
-
-      tp_message_mixin_take_received (G_OBJECT (chan), delivery_report);
+      priv->chat_states_supported = CHAT_STATES_UNKNOWN;
     }
+
+  msg = build_message (self, type, timestamp, text);
+  delivery_report = tp_cm_message_new (base_conn, 1);
+  tp_message_set_uint32 (delivery_report, 0, "message-type",
+      TP_CHANNEL_TEXT_MESSAGE_TYPE_DELIVERY_REPORT);
+  tp_cm_message_set_sender (delivery_report, peer);
+  tp_message_set_int64 (delivery_report, 0, "message-received",
+      time (NULL));
+
+  tmp = gabble_generate_id ();
+  tp_message_set_string (delivery_report, 0, "message-token", tmp);
+  g_free (tmp);
+
+  tp_message_set_uint32 (delivery_report, 0, "delivery-status",
+      delivery_status);
+  tp_message_set_uint32 (delivery_report, 0, "delivery-error", send_error);
+
+  if (id != NULL)
+    tp_message_set_string (delivery_report, 0, "delivery-token", id);
+
+  /* This is a delivery report, so the original sender of the echoed message
+   * must be us! */
+  tp_cm_message_set_sender (msg, base_conn->self_handle);
+
+  /* Since this is a delivery report, we can trust the id on the message. */
+  if (id != NULL)
+    tp_message_set_string (msg, 0, "message-token", id);
+
+  tp_cm_message_take_message (delivery_report, 0, "delivery-echo", msg);
+  tp_message_mixin_take_received (G_OBJECT (self), delivery_report);
 }
 
 /**

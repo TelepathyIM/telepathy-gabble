@@ -627,7 +627,7 @@ gabble_vcard_manager_dispose (GObject *object)
   g_hash_table_foreach (priv->cache, disconnect_entry_foreach, NULL);
 
   tp_heap_destroy (priv->timed_cache);
-  g_hash_table_destroy (priv->cache);
+  g_hash_table_unref (priv->cache);
 
   if (priv->edit_pipeline_item)
       gabble_request_pipeline_item_cancel (priv->edit_pipeline_item);
@@ -884,7 +884,7 @@ observe_vcard (GabbleConnection *conn,
         {
           const gchar *fn = fn_node->content;
 
-          if (!CHECK_STR_EMPTY(fn))
+          if (!tp_str_empty (fn))
             {
               field = "<FN>";
               alias = g_strdup (fn);

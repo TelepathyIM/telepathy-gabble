@@ -75,8 +75,8 @@ def test(q, bus, conn1, conn2, stream1, stream2):
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
     q.expect('stream-authenticated')
-    q.expect('dbus-signal', signal='PresenceUpdate',
-        args=[{1L: (0L, {u'available': {}})}])
+    q.expect('dbus-signal', signal='PresencesChanged',
+        args=[{1L: (cs.PRESENCE_AVAILABLE, 'available', '')}])
     q.expect('dbus-signal', signal='StatusChanged',
             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
 
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda:stream1
-    port1 = reactor.listenTCP(4242, factory)
+    port1 = reactor.listenTCP(4242, factory, interface='localhost')
 
     params = {
         'account': 'test2@localhost/Resource',
@@ -119,7 +119,7 @@ if __name__ == '__main__':
 
     factory = twisted.internet.protocol.Factory()
     factory.protocol = lambda:stream2
-    port1 = reactor.listenTCP(4343, factory)
+    port1 = reactor.listenTCP(4343, factory, interface='localhost')
 
 
     bus.add_signal_receiver(

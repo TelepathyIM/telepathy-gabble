@@ -20,8 +20,20 @@ big_test_of_doom (void)
   GabblePresence *presence;
   GabbleCapabilitySet *cap_set;
   time_t now = time (NULL);
+  GPtrArray *data_forms = g_ptr_array_new ();
 
+  /* When we create a new presence, we know nothing about the contact in
+   * question's presence.
+   */
   presence = gabble_presence_new ();
+  g_assert (GABBLE_PRESENCE_UNKNOWN == presence->status);
+  g_assert (NULL == presence->status_message);
+
+  /* offline presence from no resource: we now know something about this
+   * contact's presence.
+   */
+  g_assert (TRUE == gabble_presence_update (presence, NULL,
+    GABBLE_PRESENCE_OFFLINE, NULL, 0, NULL, now));
   g_assert (GABBLE_PRESENCE_OFFLINE == presence->status);
   g_assert (NULL == presence->status_message);
 
@@ -127,7 +139,7 @@ big_test_of_doom (void)
     GABBLE_PRESENCE_AVAILABLE, "dingoes", -1, NULL, now));
   cap_set = gabble_capability_set_new ();
   gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_VOICE);
-  gabble_presence_set_capabilities (presence, "bar", cap_set, 0);
+  gabble_presence_set_capabilities (presence, "bar", cap_set, data_forms, 0);
   gabble_capability_set_free (cap_set);
 
   /* no resource with non-negative priority has the Google voice cap */
@@ -138,7 +150,7 @@ big_test_of_doom (void)
   /* give voice cap to first resource */
   cap_set = gabble_capability_set_new ();
   gabble_capability_set_add (cap_set, NS_GOOGLE_FEAT_VOICE);
-  gabble_presence_set_capabilities (presence, "foo", cap_set, 0);
+  gabble_presence_set_capabilities (presence, "foo", cap_set, data_forms, 0);
   gabble_capability_set_free (cap_set);
 
   /* resource has voice cap */
@@ -158,6 +170,7 @@ big_test_of_doom (void)
       gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_VOICE);
   g_assert (NULL == resource);
 
+  g_ptr_array_unref (data_forms);
   g_object_unref (presence);
 }
 

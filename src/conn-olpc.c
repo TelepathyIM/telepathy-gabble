@@ -263,7 +263,7 @@ get_properties_reply_cb (GObject *source,
 
   gabble_svc_olpc_buddy_info_return_from_get_properties (ctx->context,
       properties);
-  g_hash_table_destroy (properties);
+  g_hash_table_unref (properties);
 
 out:
   pubsub_query_ctx_free (ctx);
@@ -382,7 +382,7 @@ invitees_quark (void)
   return q;
 }
 
-void
+static void
 gabble_connection_connected_olpc (GabbleConnection *conn)
 {
   GHashTable *preload = g_object_steal_qdata ((GObject *) conn,
@@ -391,7 +391,7 @@ gabble_connection_connected_olpc (GabbleConnection *conn)
   if (preload != NULL)
     {
       transmit_properties (conn, preload, NULL);
-      g_hash_table_destroy (preload);
+      g_hash_table_unref (preload);
     }
 }
 
@@ -427,7 +427,7 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
           preload = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
                (GDestroyNotify) tp_g_value_slice_free);
           g_object_set_qdata_full ((GObject *) conn, preload_quark, preload,
-              (GDestroyNotify) g_hash_table_destroy);
+              (GDestroyNotify) g_hash_table_unref);
         }
 
       tp_g_hash_table_update (preload, properties,
@@ -469,7 +469,7 @@ olpc_buddy_props_pep_node_changed (WockyPepService *pep,
   properties = lm_message_node_extract_properties (node, "property");
   gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
       properties);
-  g_hash_table_destroy (properties);
+  g_hash_table_unref (properties);
 out:
   tp_handle_unref (contact_repo, handle);
 }
@@ -722,7 +722,7 @@ free_activities (GPtrArray *activities)
   for (i = 0; i < activities->len; i++)
     g_boxed_free (GABBLE_STRUCT_TYPE_ACTIVITY, activities->pdata[i]);
 
-  g_ptr_array_free (activities, TRUE);
+  g_ptr_array_unref (activities);
 }
 
 static void
@@ -1941,7 +1941,7 @@ olpc_activity_properties_get_properties (GabbleSvcOLPCActivityProperties *iface,
       properties);
 
   if (not_prop)
-    g_hash_table_destroy (properties);
+    g_hash_table_unref (properties);
 }
 
 struct _i_hate_g_hash_table_foreach
@@ -2072,7 +2072,7 @@ update_activity_properties (GabbleConnection *conn,
 
   if (g_hash_table_size (new_properties) == 0)
     {
-      g_hash_table_destroy (new_properties);
+      g_hash_table_unref (new_properties);
       return;
     }
 
@@ -2176,6 +2176,8 @@ connection_status_changed_cb (GabbleConnection *conn,
           DEBUG ("Failed to send PEP activity props reset in response to "
               "initial connection");
         }
+
+      gabble_connection_connected_olpc (conn);
     }
 }
 
@@ -2868,7 +2870,7 @@ connection_presence_do_update (GabblePresenceCache *cache,
 
       gabble_svc_olpc_buddy_info_emit_activities_changed (conn, handle,
           empty);
-      g_ptr_array_free (empty, TRUE);
+      g_ptr_array_unref (empty);
     }
 }
 
@@ -2968,20 +2970,20 @@ unref_activities_in_each_set (TpHandle handle,
 void
 conn_olpc_activity_properties_dispose (GabbleConnection *self)
 {
-  g_hash_table_destroy (self->olpc_current_act);
+  g_hash_table_unref (self->olpc_current_act);
   self->olpc_current_act = NULL;
 
   g_hash_table_foreach (self->olpc_pep_activities,
       (GHFunc) unref_activities_in_each_set, self);
-  g_hash_table_destroy (self->olpc_pep_activities);
+  g_hash_table_unref (self->olpc_pep_activities);
   self->olpc_pep_activities = NULL;
 
   g_hash_table_foreach (self->olpc_invited_activities,
       (GHFunc) unref_activities_in_each_set, self);
-  g_hash_table_destroy (self->olpc_invited_activities);
+  g_hash_table_unref (self->olpc_invited_activities);
   self->olpc_invited_activities = NULL;
 
-  g_hash_table_destroy (self->olpc_activities_info);
+  g_hash_table_unref (self->olpc_activities_info);
   self->olpc_activities_info = NULL;
 }
 
@@ -2996,7 +2998,7 @@ find_activity_by_id (GabbleConnection *self,
   while (g_hash_table_iter_next (&iter, &key, &value))
     {
       GabbleOlpcActivity *activity = GABBLE_OLPC_ACTIVITY (value);
-      if (strcmp (activity->id, activity_id) == 0)
+      if (!tp_strdiff (activity->id, activity_id))
         return activity;
     }
 

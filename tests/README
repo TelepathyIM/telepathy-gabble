@@ -38,7 +38,7 @@ To run an individual Twisted test:
 or:
 
   cd tests/twisted
-  sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf \
+  sh tools/with-session-bus.sh --config-file=tools/servicedir-uninstalled/tmp-session-bus.conf \
         -- python connect/test-success.py
 
 To run with debug information:
@@ -49,7 +49,7 @@ To run with debug information:
 or:
 
   cd tests/twisted
-  sh tools/with-session-bus.sh --config-file=tools/tmp-session-bus.conf \
+  sh tools/with-session-bus.sh --config-file=tools/servicedir-uninstalled/tmp-session-bus.conf \
         -- python connect/test-success.py -v
 
 To debug an individual test you can set one of the following env variable:

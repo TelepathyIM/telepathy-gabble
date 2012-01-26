@@ -4,6 +4,8 @@
 #include "config.h"
 
 #include <glib.h>
+#include <wocky/wocky-stanza.h>
+#include <loudmouth/loudmouth.h>
 
 G_BEGIN_DECLS
 
@@ -89,10 +91,30 @@ G_END_DECLS
     } G_STMT_END
 
 #else /* !defined (ENABLE_DEBUG) */
-#   define DEBUG(format, ...) G_STMT_START { } G_STMT_END
+static inline void
+DEBUG (
+    const gchar *format,
+    ...)
+{
+}
+
 #   define DEBUGGING 0
-#   define STANZA_DEBUG(st, s) G_STMT_START { } G_STMT_END
-#   define NODE_DEBUG(n, s) G_STMT_START { } G_STMT_END
+
+static inline void
+STANZA_DEBUG (
+    WockyStanza *stanza,
+    const gchar *format,
+    ...)
+{
+}
+
+static inline void
+NODE_DEBUG (
+    LmMessageNode *node,
+    const gchar *format,
+    ...)
+{
+}
 #endif /* !defined (ENABLE_DEBUG) */
 
 #endif /* DEBUG_FLAG */

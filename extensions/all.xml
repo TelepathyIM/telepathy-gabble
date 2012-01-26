@@ -33,6 +33,8 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     from="Telepathy specification"/>
 </tp:generic-types>
 
+<xi:include href="Connection_Interface_Addressing.xml"/>
+
 <xi:include href="OLPC_Buddy_Info.xml"/>
 <xi:include href="OLPC_Activity_Properties.xml"/>
 
@@ -40,6 +42,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 <xi:include href="Connection_Interface_Gabble_Decloak.xml"/>
 <xi:include href="Connection_Future.xml"/>
 
+<xi:include href="Gabble_Plugin_Console.xml"/>
 <xi:include href="Gabble_Plugin_Gateways.xml"/>
 <xi:include href="Gabble_Plugin_Test.xml"/>
 
@@ -70,7 +73,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
     from="Telepathy specification"/>
   <tp:external-type name="Rich_Presence_Access_Control" type="(uv)"
     from="Telepathy specification"/>
-  <tp:external-type name="Unix_Timestamp64" type="t"
+  <tp:external-type name="Unix_Timestamp64" type="x"
     from="Telepathy specification"/>
   <tp:external-type name="Unix_Timestamp" type="u"
     from="Telepathy specification"/>
@@ -79,6 +82,10 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
 
   <tp:external-type name="String_Variant_Map" type="a{sv}"
     from="Telepathy specification"/>
+
+  <!-- use types from Connection_Interface_Contacts -->
+  <tp:external-type name="Contact_Attributes_Map" type="a{ua{sv}}"
+                    from="Telepathy specification"/>
 
   <!-- use types from Connection_Interface_Requests -->
   <tp:external-type name="Channel_Class" type="a{sv}"

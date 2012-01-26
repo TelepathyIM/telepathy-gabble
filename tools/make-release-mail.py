@@ -6,6 +6,15 @@
 # to <telepathy@lists.freedesktop.org>. I hope that you enjoy your stay.
 
 import sys
+import re
+
+def looks_like_a_header(line, package, version=None):
+    if version is None:
+        pattern = "^%s .* \(.*\)$" % package
+    else:
+        pattern = "^%s %s \(.*\)$" % (package, version)
+
+    return re.match(pattern, line) is not None
 
 def extract_description(package, version, news_path):
     release_name = []
@@ -15,7 +24,7 @@ def extract_description(package, version, news_path):
         lines = (line for line in f.readlines())
         for line in lines:
             # Find the 'telepathy-foo 0.1.2' header
-            if line.startswith("%s %s" % (package, version)):
+            if looks_like_a_header(line, package, version):
                 break
 
         # Skip the ====== line, and the first blank line
@@ -27,7 +36,7 @@ def extract_description(package, version, news_path):
         for line in lines:
             line = line.rstrip()
             # If we hit the next version header, we're done
-            if line.startswith(package):
+            if looks_like_a_header(line, package):
                 break
             # Else, if we hit a blank line and we're still reading the release
             # name, we're done with the release name.
@@ -45,6 +54,7 @@ def extract_description(package, version, news_path):
     return ('\n'.join(release_name), '\n'.join(details).rstrip())
 
 BASE_URL = 'http://telepathy.freedesktop.org/releases'
+GIT_URL = 'http://cgit.freedesktop.org/telepathy'
 
 def main(package, version, news_path):
     release_name, details = extract_description(package, version, news_path)
@@ -54,9 +64,11 @@ def main(package, version, news_path):
 
 tarball: %(base_url)s/%(package)s/%(package)s-%(version)s.tar.gz
 signature: %(base_url)s/%(package)s/%(package)s-%(version)s.tar.gz.asc
+git: %(git_url)s/%(package)s
 
 %(details)s""".strip().rstrip() % {
         'base_url': BASE_URL,
+        'git_url': GIT_URL,
         'package': package,
         'version': version,
         'release_name': release_name,

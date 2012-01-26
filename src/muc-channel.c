@@ -26,6 +26,7 @@
 #include <string.h>
 
 #include <wocky/wocky-muc.h>
+#include <wocky/wocky-utils.h>
 #include <wocky/wocky-xmpp-error.h>
 
 #include <dbus/dbus-glib.h>
@@ -40,17 +41,19 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 #include "connection.h"
 #include "conn-aliasing.h"
+#include "conn-util.h"
 #include "debug.h"
 #include "disco.h"
+#include "error.h"
 #include "message-util.h"
+#include "room-config.h"
 #include "namespaces.h"
 #include "presence.h"
 #include "util.h"
 #include "presence-cache.h"
-
 #include "call-muc-channel.h"
-
 #include "gabble-signals-marshal.h"
+#include "gabble-enumtypes.h"
 
 #define DEFAULT_JOIN_TIMEOUT 180
 #define DEFAULT_LEAVE_TIMEOUT 180
@@ -61,6 +64,7 @@
 
 static void password_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
+static void subject_iface_init (gpointer, gpointer);
 static void gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
     GHashTable *request);
 static void muc_call_channel_finish_requests (GabbleMucChannel *self,
@@ -69,8 +73,6 @@ static void muc_call_channel_finish_requests (GabbleMucChannel *self,
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_PROPERTIES_INTERFACE,
-      tp_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
       tp_group_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD,
@@ -80,8 +82,13 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
       tp_message_mixin_messages_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
-      chat_state_iface_init)
+      chat_state_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG,
+      tp_base_room_config_iface_init);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT,
+      subject_iface_init);
     )
 
 static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
@@ -91,10 +98,12 @@ static void gabble_muc_channel_close (TpBaseChannel *base);
 static const gchar *gabble_muc_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_GROUP,
     TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
-    TP_IFACE_PROPERTIES_INTERFACE,
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
     TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
     TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
+    TP_IFACE_CHANNEL_INTERFACE_ROOM,
+    TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG,
+    TP_IFACE_CHANNEL_INTERFACE_SUBJECT,
     NULL
 };
 
@@ -127,10 +136,17 @@ enum
   PROP_INITIAL_INVITEE_HANDLES,
   PROP_INITIAL_INVITEE_IDS,
   PROP_ORIGINAL_CHANNELS,
+  PROP_ROOM_NAME,
+  PROP_SERVER,
+
+  PROP_SUBJECT,
+  PROP_SUBJECT_ACTOR,
+  PROP_SUBJECT_TIMESTAMP,
+  PROP_CAN_SET_SUBJECT,
+
   LAST_PROPERTY
 };
 
-#ifdef ENABLE_DEBUG
 static const gchar *muc_states[] =
 {
   "MUC_STATE_CREATED",
@@ -138,83 +154,6 @@ static const gchar *muc_states[] =
   "MUC_STATE_AUTH",
   "MUC_STATE_JOINED",
   "MUC_STATE_ENDED",
-};
-#endif
-
-/* role and affiliation enums */
-typedef enum {
-    ROLE_NONE = 0,
-    ROLE_VISITOR,
-    ROLE_PARTICIPANT,
-    ROLE_MODERATOR,
-
-    NUM_ROLES,
-
-    INVALID_ROLE,
-} GabbleMucRole;
-
-typedef enum {
-    AFFILIATION_NONE = 0,
-    AFFILIATION_MEMBER,
-    AFFILIATION_ADMIN,
-    AFFILIATION_OWNER,
-
-    NUM_AFFILIATIONS,
-
-    INVALID_AFFILIATION,
-} GabbleMucAffiliation;
-
-/* room properties */
-enum
-{
-  ROOM_PROP_ANONYMOUS = 0,
-  ROOM_PROP_INVITE_ONLY,
-  ROOM_PROP_INVITE_RESTRICTED,
-  ROOM_PROP_MODERATED,
-  ROOM_PROP_NAME,
-  ROOM_PROP_DESCRIPTION,
-  ROOM_PROP_PASSWORD,
-  ROOM_PROP_PASSWORD_REQUIRED,
-  ROOM_PROP_PERSISTENT,
-  ROOM_PROP_PRIVATE,
-  ROOM_PROP_SUBJECT,
-  ROOM_PROP_SUBJECT_CONTACT,
-  ROOM_PROP_SUBJECT_TIMESTAMP,
-
-  NUM_ROOM_PROPS,
-
-  INVALID_ROOM_PROP,
-};
-
-const TpPropertySignature room_property_signatures[NUM_ROOM_PROPS] = {
-    /* Part of the room definition: modifiable by owners only */
-      { "anonymous",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "invite-only",       G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "invite-restricted", G_TYPE_BOOLEAN },  /* impl: WRITE */
-      { "moderated",         G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "name",              G_TYPE_STRING },   /* impl: READ, WRITE */
-
-    /* Part of the room definition: might be modifiable by the owner, or
-     * not at all */
-      { "description",       G_TYPE_STRING },   /* impl: READ, WRITE */
-
-    /* Part of the room definition: modifiable by owners only */
-      { "password",          G_TYPE_STRING },   /* impl: WRITE */
-      { "password-required", G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "persistent",        G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-      { "private",           G_TYPE_BOOLEAN },  /* impl: READ, WRITE */
-
-    /* fd.o#13157: currently assumed to be modifiable by everyone in the
-     * room (role >= VISITOR). When that bug is fixed, it will be: */
-    /* Modifiable via special <message/>s, if the user's role is high enough;
-     * "high enough" is defined by the muc#roominfo_changesubject and
-     * muc#roomconfig_changesubject settings. */
-      { "subject",           G_TYPE_STRING },   /* impl: READ, WRITE */
-
-    /* Special: implicitly set to "myself" and "now", respectively, by
-     * changing subject. */
-      { "subject-contact",   G_TYPE_UINT },     /* impl: READ */
-      { "subject-timestamp", G_TYPE_UINT },     /* impl: READ */
 };
 
 /* private structures */
@@ -227,21 +166,33 @@ struct _GabbleMucChannelPrivate
   guint poll_timer_id;
   guint leave_timer_id;
 
-  TpChannelPasswordFlags password_flags;
+  gboolean must_provide_password;
   DBusGMethodInvocation *password_ctx;
-  gchar *password;
 
   const gchar *jid;
   gboolean requested;
 
   guint nick_retry_count;
   GString *self_jid;
-  GabbleMucRole self_role;
-  GabbleMucAffiliation self_affil;
+  WockyMucRole self_role;
+  WockyMucAffiliation self_affil;
 
   guint recv_id;
 
-  TpPropertiesContext *properties_ctx;
+  TpBaseRoomConfig *room_config;
+  GHashTable *properties_being_updated;
+
+  /* Room interface */
+  gchar *room_name;
+  gchar *server;
+
+  /* Subject interface */
+  gchar *subject;
+  gchar *subject_actor;
+  gint64 subject_timestamp;
+  gboolean can_set_subject;
+  DBusGMethodInvocation *set_subject_context;
+  gchar *set_subject_stanza_id;
 
   gboolean ready;
   gboolean dispose_has_run;
@@ -268,6 +219,12 @@ struct _GabbleMucChannelPrivate
   char **initial_ids;
 };
 
+typedef struct {
+  GabbleMucChannel *channel;
+  TpMessage *message;
+  gchar *token;
+} _GabbleMUCSendMessageCtx;
+
 static void
 gabble_muc_channel_init (GabbleMucChannel *self)
 {
@@ -290,7 +247,7 @@ static void handle_fill_presence (WockyMuc *muc,
 
 static void handle_renamed (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data);
 
 static void handle_error (GObject *source,
@@ -301,12 +258,12 @@ static void handle_error (GObject *source,
 
 static void handle_join (WockyMuc *muc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data);
 
 static void handle_parted (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     const gchar *actor_jid,
     const gchar *why,
     const gchar *msg,
@@ -314,7 +271,7 @@ static void handle_parted (GObject *source,
 
 static void handle_left (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     const gchar *actor_jid,
     const gchar *why,
@@ -323,7 +280,7 @@ static void handle_left (GObject *source,
 
 static void handle_presence (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     gpointer data);
 
@@ -339,7 +296,7 @@ static void handle_message (GObject *source,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
-    time_t stamp,
+    GDateTime *datetime,
     WockyMucMember *who,
     const gchar *text,
     const gchar *subject,
@@ -350,12 +307,24 @@ static void handle_errmsg (GObject *source,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
-    time_t stamp,
+    GDateTime *datetime,
     WockyMucMember *who,
     const gchar *text,
     WockyXmppError error,
     WockyXmppErrorType etype,
     gpointer data);
+
+/* Signatures for some other stuff. */
+
+static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
+    TpHandleType handle_type,
+    TpHandle sender, GDateTime *datetime, const gchar *subject,
+    LmMessage *msg);
+static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
+    TpChannelTextMessageType msg_type, TpHandleType handle_type,
+    TpHandle sender, GDateTime *datetime, const gchar *id, const gchar *text,
+    LmMessage *msg, TpChannelTextSendError send_error,
+    TpDeliveryStatus delivery_status);
 
 static void
 gabble_muc_channel_constructed (GObject *obj)
@@ -366,6 +335,7 @@ gabble_muc_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle target, initiator, self_handle;
+  gchar *tmp;
   TpChannelTextMessageType types[] = {
       TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL,
       TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION,
@@ -377,6 +347,7 @@ gabble_muc_channel_constructed (GObject *obj)
   };
   void (*chain_up) (GObject *) =
     ((GObjectClass *) gabble_muc_channel_parent_class)->constructed;
+  gboolean ok;
 
   if (chain_up != NULL)
     chain_up (obj);
@@ -403,8 +374,8 @@ gabble_muc_channel_constructed (GObject *obj)
    * at the end of this function */
 
   /* initialize our own role and affiliation */
-  priv->self_role = ROLE_NONE;
-  priv->self_affil = AFFILIATION_NONE;
+  priv->self_role = WOCKY_MUC_ROLE_NONE;
+  priv->self_affil = WOCKY_MUC_AFFILIATION_NONE;
 
   /* initialise the wocky muc object */
   {
@@ -456,10 +427,6 @@ gabble_muc_channel_constructed (GObject *obj)
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,
       0);
 
-  /* initialize properties mixin */
-  tp_properties_mixin_init (obj, G_STRUCT_OFFSET (
-        GabbleMucChannel, properties));
-
   /* initialize message mixin */
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleMucChannel, message_mixin),
       base_conn);
@@ -470,6 +437,54 @@ gabble_muc_channel_constructed (GObject *obj)
       supported_content_types);
 
   tp_group_mixin_add_handle_owner (obj, self_handle, base_conn->self_handle);
+
+  /* Room interface */
+  g_object_get (self,
+      "target-id", &tmp,
+      NULL);
+
+  if (priv->room_name != NULL)
+    ok = wocky_decode_jid (tmp, NULL, &(priv->server), NULL);
+  else
+    ok = wocky_decode_jid (tmp, &(priv->room_name), &(priv->server), NULL);
+  g_free (tmp);
+
+  /* Asserting here is fine because the target ID has already been
+   * checked so we know it's valid. */
+  g_assert (ok);
+
+  priv->subject = NULL;
+  priv->subject_actor = NULL;
+  priv->subject_timestamp = G_MAXINT64;
+  /* fd.o#13157: The subject is currently assumed to be modifiable by everyone
+   * in the room (role >= VISITOR). When that bug is fixed, it will be: */
+  /* Modifiable via special <message/>s, if the user's role is high enough;
+   * "high enough" is defined by the muc#roominfo_changesubject and
+   * muc#roomconfig_changesubject settings. */
+  priv->can_set_subject = TRUE;
+
+  {
+    TpBaseRoomConfigProperty mutable_properties[] = {
+        TP_BASE_ROOM_CONFIG_ANONYMOUS,
+        TP_BASE_ROOM_CONFIG_INVITE_ONLY,
+        TP_BASE_ROOM_CONFIG_MODERATED,
+        TP_BASE_ROOM_CONFIG_TITLE,
+        TP_BASE_ROOM_CONFIG_PERSISTENT,
+        TP_BASE_ROOM_CONFIG_PRIVATE,
+        TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED,
+        TP_BASE_ROOM_CONFIG_PASSWORD,
+    };
+    guint i;
+
+    priv->room_config =
+        (TpBaseRoomConfig *) gabble_room_config_new ((TpBaseChannel *) self);
+    for (i = 0; i < G_N_ELEMENTS (mutable_properties); i++)
+      tp_base_room_config_set_property_mutable (priv->room_config,
+          mutable_properties[i], TRUE);
+
+    /* Just to get those mutable properties out there. */
+    tp_base_room_config_emit_properties_changed (priv->room_config);
+  }
 
   if (priv->invited)
     {
@@ -504,10 +519,110 @@ gabble_muc_channel_constructed (GObject *obj)
       g_array_append_val (members, self_handle);
       tp_group_mixin_add_members (obj, members, "", &error);
       g_assert (error == NULL);
-      g_array_free (members, TRUE);
+      g_array_unref (members);
     }
 
   tp_handle_unref (contact_handles, self_handle);
+}
+
+typedef struct {
+    const gchar *var;
+    const gchar *config_property_name;
+    gboolean value;
+} FeatureMapping;
+
+static FeatureMapping *
+lookup_feature (const gchar *var)
+{
+  static FeatureMapping features[] = {
+      { "muc_nonanonymous", "anonymous", FALSE },
+      { "muc_semianonymous", "anonymous", TRUE },
+      { "muc_anonymous", "anonymous", TRUE },
+
+      { "muc_open", "invite-only", FALSE },
+      { "muc_membersonly", "invite-only", TRUE },
+
+      { "muc_unmoderated", "moderated", FALSE },
+      { "muc_moderated", "moderated", TRUE },
+
+      { "muc_unsecure", "password-protected", FALSE },
+      { "muc_unsecured", "password-protected", FALSE },
+      { "muc_passwordprotected", "password-protected", TRUE },
+
+      { "muc_temporary", "persistent", FALSE },
+      { "muc_persistent", "persistent", TRUE },
+
+      { "muc_public", "private", FALSE },
+      { "muc_hidden", "private", TRUE },
+
+      /* The MUC namespace is included as a feature in disco results. We ignore
+       * it here.
+       */
+      { NS_MUC, NULL, FALSE },
+
+      { NULL }
+  };
+  FeatureMapping *f;
+
+  for (f = features; f->var != NULL; f++)
+    if (strcmp (var, f->var) == 0)
+      return f;
+
+  return NULL;
+}
+
+static const gchar *
+map_feature (
+    WockyNode *feature,
+    GValue *value)
+{
+  const gchar *var = wocky_node_get_attribute (feature, "var");
+  FeatureMapping *f;
+
+  if (var == NULL)
+    return NULL;
+
+  f = lookup_feature (var);
+
+  if (f == NULL)
+    {
+      DEBUG ("unhandled feature '%s'", var);
+      return NULL;
+    }
+
+  if (f->config_property_name != NULL)
+    {
+      g_value_init (value, G_TYPE_BOOLEAN);
+      g_value_set_boolean (value, f->value);
+    }
+
+  return f->config_property_name;
+}
+
+static const gchar *
+handle_form (
+    WockyNode *x,
+    GValue *value)
+{
+  WockyNodeIter j;
+  WockyNode *field;
+
+  wocky_node_iter_init (&j, x, "field", NULL);
+  while (wocky_node_iter_next (&j, &field))
+    {
+      const gchar *var = wocky_node_get_attribute (field, "var");
+      const gchar *description;
+
+      if (tp_strdiff (var, "muc#roominfo_description"))
+        continue;
+
+      description = wocky_node_get_content_from_child (field, "value");
+      g_value_init (value, G_TYPE_STRING);
+      g_value_set_string (value, description != NULL ? description : "");
+      return "description";
+    }
+
+  return NULL;
 }
 
 static void
@@ -520,10 +635,8 @@ properties_disco_cb (GabbleDisco *disco,
                      gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
-  TpIntSet *changed_props_val, *changed_props_flags;
+  GabbleMucChannelPrivate *priv = chan->priv;
   WockyNode *lm_node;
-  const gchar *str;
-  GValue val = { 0, };
   NodeIter i;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
@@ -533,9 +646,6 @@ properties_disco_cb (GabbleDisco *disco,
       DEBUG ("got error %s", error->message);
       return;
     }
-
-  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
-  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
 
   /*
    * Update room definition.
@@ -555,186 +665,38 @@ properties_disco_cb (GabbleDisco *disco,
           !tp_strdiff (type, "text") &&
           name != NULL)
         {
-          g_value_init (&val, G_TYPE_STRING);
-          g_value_set_string (&val, name);
-
-          tp_properties_mixin_change_value (G_OBJECT (chan), ROOM_PROP_NAME,
-                                                &val, changed_props_val);
-
-          tp_properties_mixin_change_flags (G_OBJECT (chan), ROOM_PROP_NAME,
-                                                TP_PROPERTY_FLAG_READ,
-                                                0, changed_props_flags);
-
-          g_value_unset (&val);
+          g_object_set (priv->room_config, "title", name, NULL);
         }
     }
 
   for (i = node_iter (query_result); i; i = node_iter_next (i))
     {
-      guint prop_id = INVALID_ROOM_PROP;
+      const gchar *config_property_name = NULL;
       WockyNode *child = node_iter_data (i);
+      GValue val = { 0, };
 
       if (strcmp (child->name, "feature") == 0)
         {
-          str = wocky_node_get_attribute (child, "var");
-          if (str == NULL)
-            continue;
-
-          /* ROOM_PROP_ANONYMOUS */
-          if (strcmp (str, "muc_nonanonymous") == 0)
-            {
-              prop_id = ROOM_PROP_ANONYMOUS;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_semianonymous") == 0 ||
-                   strcmp (str, "muc_anonymous") == 0)
-            {
-              prop_id = ROOM_PROP_ANONYMOUS;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_INVITE_ONLY */
-          else if (strcmp (str, "muc_open") == 0)
-            {
-              prop_id = ROOM_PROP_INVITE_ONLY;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_membersonly") == 0)
-            {
-              prop_id = ROOM_PROP_INVITE_ONLY;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_MODERATED */
-          else if (strcmp (str, "muc_unmoderated") == 0)
-            {
-              prop_id = ROOM_PROP_MODERATED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_moderated") == 0)
-            {
-              prop_id = ROOM_PROP_MODERATED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_PASSWORD_REQUIRED */
-          else if (strcmp (str, "muc_unsecure") == 0 ||
-                   strcmp (str, "muc_unsecured") == 0)
-            {
-              prop_id = ROOM_PROP_PASSWORD_REQUIRED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_passwordprotected") == 0)
-            {
-              prop_id = ROOM_PROP_PASSWORD_REQUIRED;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_PERSISTENT */
-          else if (strcmp (str, "muc_temporary") == 0)
-            {
-              prop_id = ROOM_PROP_PERSISTENT;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_persistent") == 0)
-            {
-              prop_id = ROOM_PROP_PERSISTENT;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* ROOM_PROP_PRIVATE */
-          else if (strcmp (str, "muc_public") == 0)
-            {
-              prop_id = ROOM_PROP_PRIVATE;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, FALSE);
-            }
-          else if (strcmp (str, "muc_hidden") == 0)
-            {
-              prop_id = ROOM_PROP_PRIVATE;
-              g_value_init (&val, G_TYPE_BOOLEAN);
-              g_value_set_boolean (&val, TRUE);
-            }
-
-          /* Ignored */
-          else if (strcmp (str, NS_MUC) == 0)
-            {
-            }
-
-          /* Unhandled */
-          else
-            {
-              DEBUG ("unhandled feature '%s'", str);
-            }
+          config_property_name = map_feature (child, &val);
         }
-      else if (strcmp (child->name, "x") == 0)
+      else if (strcmp (child->name, "x") == 0 &&
+               wocky_node_has_ns (child, NS_X_DATA))
         {
-          if (wocky_node_has_ns (child, NS_X_DATA))
-            {
-              NodeIter j;
-
-              for (j = node_iter (child); j; j = node_iter_next (j))
-                {
-                  WockyNode *field = node_iter_data (j);
-                  WockyNode *value_node;
-
-                  if (strcmp (field->name, "field") != 0)
-                    continue;
-
-                  str = wocky_node_get_attribute (field, "var");
-                  if (str == NULL)
-                    continue;
-
-                  if (strcmp (str, "muc#roominfo_description") != 0)
-                    continue;
-
-                  value_node = wocky_node_get_child (field, "value");
-                  if (value_node == NULL)
-                    continue;
-
-                  str = value_node->content;
-                  if (str == NULL)
-                    {
-                      str = "";
-                    }
-
-                  prop_id = ROOM_PROP_DESCRIPTION;
-                  g_value_init (&val, G_TYPE_STRING);
-                  g_value_set_string (&val, str);
-                }
-            }
+          config_property_name = handle_form (child, &val);
         }
 
-      if (prop_id != INVALID_ROOM_PROP)
+      if (config_property_name != NULL)
         {
-          tp_properties_mixin_change_value (G_OBJECT (chan), prop_id, &val,
-                                                changed_props_val);
-
-          tp_properties_mixin_change_flags (G_OBJECT (chan), prop_id,
-                                                TP_PROPERTY_FLAG_READ,
-                                                0, changed_props_flags);
+          g_object_set_property ((GObject *) priv->room_config, config_property_name, &val);
 
           g_value_unset (&val);
         }
     }
 
-  /*
-   * Emit signals.
+  /* This could be the first time we've fetched the room properties, or it
+   * could be a later time; either way, this method does the right thing.
    */
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
-  tp_intset_destroy (changed_props_val);
-  tp_intset_destroy (changed_props_flags);
+  tp_base_room_config_set_retrieved (priv->room_config);
 }
 
 static void
@@ -784,7 +746,7 @@ create_room_identity (GabbleMucChannel *chan)
        */
       gchar *local_part;
 
-      g_assert (gabble_decode_jid (alias, &local_part, NULL, NULL));
+      g_assert (wocky_decode_jid (alias, &local_part, NULL, NULL));
       g_assert (local_part != NULL);
       g_free (alias);
 
@@ -802,12 +764,10 @@ create_room_identity (GabbleMucChannel *chan)
 }
 
 static void
-send_join_request (GabbleMucChannel *gmuc,
-                   const gchar *password)
+send_join_request (GabbleMucChannel *gmuc)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
 
-  g_object_set (priv->wmuc, "password", password, NULL);
   wocky_muc_join (priv->wmuc, NULL);
 }
 
@@ -884,6 +844,24 @@ gabble_muc_channel_get_property (GObject    *object,
        * which we can't do anyway in XMPP. */
       g_value_take_boxed (value, g_hash_table_new (NULL, NULL));
       break;
+    case PROP_ROOM_NAME:
+      g_value_set_string (value, priv->room_name);
+      break;
+    case PROP_SERVER:
+      g_value_set_string (value, priv->server);
+      break;
+    case PROP_SUBJECT:
+      g_value_set_string (value, priv->subject);
+      break;
+    case PROP_SUBJECT_ACTOR:
+      g_value_set_string (value, priv->subject_actor);
+      break;
+    case PROP_SUBJECT_TIMESTAMP:
+      g_value_set_int64 (value, priv->subject_timestamp);
+      break;
+    case PROP_CAN_SET_SUBJECT:
+      g_value_set_boolean (value, priv->can_set_subject);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -931,6 +909,9 @@ gabble_muc_channel_set_property (GObject     *object,
     case PROP_INITIAL_INVITEE_IDS:
       priv->initial_ids = g_value_dup_boxed (value);
       break;
+    case PROP_ROOM_NAME:
+      priv->room_name = g_value_dup_string (value);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -943,8 +924,6 @@ static gboolean gabble_muc_channel_add_member (GObject *obj, TpHandle handle,
     const gchar *message, GError **error);
 static gboolean gabble_muc_channel_remove_member (GObject *obj,
     TpHandle handle, const gchar *message, GError **error);
-static gboolean gabble_muc_channel_do_set_properties (GObject *obj,
-    TpPropertiesContext *ctx, GError **error);
 
 static void
 gabble_muc_channel_fill_immutable_properties (
@@ -964,6 +943,8 @@ gabble_muc_channel_fill_immutable_properties (
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
       TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessageTypes",
+      TP_IFACE_CHANNEL_INTERFACE_ROOM, "RoomName",
+      TP_IFACE_CHANNEL_INTERFACE_ROOM, "Server",
       NULL);
 }
 
@@ -979,6 +960,38 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { "OriginalChannels", "original-channels", NULL },
       { NULL }
   };
+  static TpDBusPropertiesMixinPropImpl room_props[] = {
+      { "RoomName", "room-name", NULL, },
+      { "Server", "server", NULL },
+      { NULL }
+  };
+  static TpDBusPropertiesMixinPropImpl subject_props[] = {
+      { "Subject", "subject", NULL },
+      { "Actor", "subject-actor", NULL },
+      { "Timestamp", "subject-timestamp", NULL },
+      { "CanSet", "can-set-subject", NULL },
+      { NULL }
+  };
+
+  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
+    { TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      conference_props,
+    },
+    { TP_IFACE_CHANNEL_INTERFACE_ROOM,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      room_props,
+    },
+    { TP_IFACE_CHANNEL_INTERFACE_SUBJECT,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      NULL,
+      subject_props,
+    },
+    { NULL }
+  };
+
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
   TpBaseChannelClass *base_class = TP_BASE_CHANNEL_CLASS (object_class);
   GParamSpec *param_spec;
@@ -1065,6 +1078,50 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   g_object_class_install_property (object_class, PROP_ORIGINAL_CHANNELS,
       param_spec);
 
+  param_spec = g_param_spec_string ("room-name",
+      "RoomName",
+      "The human-readable identifier of a chat room.",
+      "",
+      G_PARAM_READWRITE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_ROOM_NAME,
+      param_spec);
+
+  param_spec = g_param_spec_string ("server",
+      "Server",
+      "the DNS name of the server hosting this channel",
+      "",
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SERVER,
+      param_spec);
+
+  param_spec = g_param_spec_string ("subject",
+      "Subject.Subject", "The subject of the room",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBJECT, param_spec);
+
+  param_spec = g_param_spec_string ("subject-actor",
+      "Subject.Actor", "The JID of the contact who last changed the subject",
+      NULL,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBJECT_ACTOR,
+      param_spec);
+
+  param_spec = g_param_spec_int64 ("subject-timestamp",
+      "Subject.Timestamp",
+      "The UNIX timestamp at which the subject was last changed",
+      G_MININT64, G_MAXINT64, 0,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SUBJECT_TIMESTAMP,
+      param_spec);
+
+  param_spec = g_param_spec_boolean ("can-set-subject",
+      "Subject.CanSet", "Whether we believe we can set the subject",
+      TRUE,
+      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_CAN_SET_SUBJECT,
+      param_spec);
+
   signals[READY] =
     g_signal_new ("ready",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
@@ -1128,19 +1185,12 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   GABBLE_TYPE_CALL_MUC_CHANNEL,
                   G_TYPE_POINTER);
 
-  tp_properties_mixin_class_init (object_class,
-                                      G_STRUCT_OFFSET (GabbleMucChannelClass,
-                                        properties_class),
-                                      room_property_signatures, NUM_ROOM_PROPS,
-                                      gabble_muc_channel_do_set_properties);
-
-
-  tp_dbus_properties_mixin_implement_interface (object_class,
-      TP_IFACE_QUARK_CHANNEL_INTERFACE_CONFERENCE,
-      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
-      conference_props);
+  gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
+  tp_dbus_properties_mixin_class_init (object_class,
+      G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
 
   tp_message_mixin_init_dbus_properties (object_class);
+  tp_base_room_config_register_class (base_class);
 
   tp_group_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
@@ -1173,6 +1223,7 @@ gabble_muc_channel_dispose (GObject *object)
 
   tp_clear_object (&priv->wmuc);
   tp_clear_object (&priv->requests_cancellable);
+  tp_clear_object (&priv->room_config);
 
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
@@ -1193,8 +1244,6 @@ gabble_muc_channel_finalize (GObject *object)
       g_string_free (priv->self_jid, TRUE);
     }
 
-  g_free (priv->password);
-
   if (priv->initial_channels != NULL)
     {
       g_boxed_free (TP_ARRAY_TYPE_OBJECT_PATH_LIST, priv->initial_channels);
@@ -1213,7 +1262,11 @@ gabble_muc_channel_finalize (GObject *object)
       priv->initial_ids = NULL;
     }
 
-  tp_properties_mixin_finalize (object);
+  g_free (priv->room_name);
+  g_free (priv->server);
+  g_free (priv->subject);
+  g_free (priv->subject_actor);
+
   tp_group_mixin_finalize (object);
   tp_message_mixin_finalize (object);
 
@@ -1257,9 +1310,9 @@ clear_leave_timer (GabbleMucChannel *chan)
 }
 
 static void
-change_password_flags (GabbleMucChannel *chan,
-                       TpChannelPasswordFlags add,
-                       TpChannelPasswordFlags del)
+change_must_provide_password (
+    GabbleMucChannel *chan,
+    gboolean must_provide_password)
 {
   GabbleMucChannelPrivate *priv;
   TpChannelPasswordFlags added, removed;
@@ -1268,20 +1321,27 @@ change_password_flags (GabbleMucChannel *chan,
 
   priv = chan->priv;
 
-  added = add & ~priv->password_flags;
-  priv->password_flags |= added;
+  if (priv->must_provide_password == !!must_provide_password)
+    return;
 
-  removed = del & priv->password_flags;
-  priv->password_flags &= ~removed;
+  priv->must_provide_password = !!must_provide_password;
 
-  if (add != 0 || del != 0)
+  if (must_provide_password)
     {
-      DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
-              added, removed);
-
-      tp_svc_channel_interface_password_emit_password_flags_changed (
-          chan, added, removed);
+      added = TP_CHANNEL_PASSWORD_FLAG_PROVIDE;
+      removed = 0;
     }
+  else
+    {
+      added = 0;
+      removed = TP_CHANNEL_PASSWORD_FLAG_PROVIDE;
+    }
+
+  DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
+          added, removed);
+
+  tp_svc_channel_interface_password_emit_password_flags_changed (
+      chan, added, removed);
 }
 
 static void
@@ -1297,7 +1357,7 @@ provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
 
   if (success)
     {
-      change_password_flags (chan, 0, TP_CHANNEL_PASSWORD_FLAG_PROVIDE);
+      change_must_provide_password (chan, FALSE);
     }
 }
 
@@ -1364,10 +1424,6 @@ channel_state_changed (GabbleMucChannel *chan,
 
       priv->poll_timer_id =
           g_timeout_add_seconds (interval, timeout_poll, chan);
-
-      /* no need to keep this around any longer, if it's set */
-      g_free (priv->password);
-      priv->password = NULL;
     }
   else if (new_state == MUC_STATE_ENDED)
     {
@@ -1384,6 +1440,22 @@ channel_state_changed (GabbleMucChannel *chan,
     }
 }
 
+static void
+return_from_set_subject (
+    GabbleMucChannel *self,
+    const GError *error)
+{
+  GabbleMucChannelPrivate *priv = self->priv;
+
+  if (error == NULL)
+    tp_svc_channel_interface_subject_return_from_set_subject (
+        priv->set_subject_context);
+  else
+    dbus_g_method_return_error (priv->set_subject_context, error);
+
+  priv->set_subject_context = NULL;
+  tp_clear_pointer (&priv->set_subject_stanza_id, g_free);
+}
 
 static void
 close_channel (GabbleMucChannel *chan, const gchar *reason,
@@ -1437,7 +1509,10 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   handles = tp_handle_set_to_array (chan->group.members);
   gabble_presence_cache_update_many (conn->presence_cache, handles,
     NULL, GABBLE_PRESENCE_UNKNOWN, NULL, 0);
-  g_array_free (handles, TRUE);
+  g_array_unref (handles);
+
+  if (priv->set_subject_context != NULL)
+    return_from_set_subject (chan, &error);
 
   g_object_set (chan, "state", MUC_STATE_ENDED, NULL);
   g_object_unref (chan);
@@ -1482,7 +1557,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
    */
   g_assert (from != NULL);
 
-  if (index (from, '/') != NULL && tp_strdiff (from, priv->self_jid->str))
+  if (strchr (from, '/') != NULL && tp_strdiff (from, priv->self_jid->str))
     {
       DEBUG ("ignoring spurious conflict message for %s", from);
       return TRUE;
@@ -1517,117 +1592,99 @@ handle_nick_conflict (GabbleMucChannel *chan,
   tp_handle_unref (contact_repo, self_handle);
 
   priv->nick_retry_count++;
-  send_join_request (chan, priv->password);
+  send_join_request (chan);
   return TRUE;
 }
 
-static LmHandlerResult
-room_created_submit_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                              LmMessage *reply_msg, GObject *object,
-                              gpointer user_data)
+static void
+room_created_submit_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
-    {
-      DEBUG ("failed to submit room config");
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  if (conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, NULL, NULL))
+    DEBUG ("failed to submit room config");
 }
 
 static WockyNode *
-config_form_get_form_node (LmMessage *msg)
+config_form_get_form_node (WockyStanza *stanza)
 {
-  WockyNode *node;
-  NodeIter i;
+  WockyNode *query, *x;
+  WockyNodeIter i;
 
   /* find the query node */
-  node = wocky_node_get_child (wocky_stanza_get_top_node (msg), "query");
-  if (node == NULL)
+  query = wocky_node_get_child (wocky_stanza_get_top_node (stanza), "query");
+  if (query == NULL)
     return NULL;
 
   /* then the form node */
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query, "x", NS_X_DATA);
+  while (wocky_node_iter_next (&i, &x))
     {
-      WockyNode *child = node_iter_data (i);
-
-      if (tp_strdiff (child->name, "x"))
-        {
-          continue;
-        }
-
-      if (!wocky_node_has_ns (child, NS_X_DATA))
-        {
-          continue;
-        }
-
-      if (tp_strdiff (wocky_node_get_attribute (child, "type"), "form"))
-        {
-          continue;
-        }
-
-      return child;
+      if (!tp_strdiff (wocky_node_get_attribute (x, "type"), "form"))
+        return x;
     }
 
   return NULL;
 }
 
-static LmHandlerResult
-perms_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                            LmMessage *reply_msg, GObject *object,
-                            gpointer user_data)
+static void
+perms_config_form_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  GabbleMucChannelPrivate *priv = chan->priv;
-  WockyNode *form_node;
-  NodeIter i;
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = self->priv;
+  WockyStanza *reply = NULL;
+  WockyNode *form_node, *field;
+  WockyNodeIter i;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, &reply, NULL))
     {
-      DEBUG ("request for config form denied, property permissions "
+      DEBUG ("request for config form failed, property permissions "
                  "will be inaccurate");
       goto OUT;
     }
 
   /* just in case our affiliation has changed in the meantime */
-  if (priv->self_affil != AFFILIATION_OWNER)
+  if (priv->self_affil != WOCKY_MUC_AFFILIATION_OWNER)
     goto OUT;
 
-  form_node = config_form_get_form_node (reply_msg);
+  form_node = config_form_get_form_node (reply);
   if (form_node == NULL)
     {
-      DEBUG ("form node node found, property permissions will be inaccurate");
+      DEBUG ("form node not found, property permissions will be inaccurate");
       goto OUT;
     }
 
-  for (i = node_iter (form_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, form_node, "field", NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      const gchar *var;
-      WockyNode *node = node_iter_data (i);
+      const gchar *var = wocky_node_get_attribute (field, "var");
 
-      if (strcmp (node->name, "field") != 0)
-        continue;
-
-      var = wocky_node_get_attribute (node, "var");
-      if (var == NULL)
-        continue;
-
-      if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
-          strcmp (var, "muc#owner_roomdesc") == 0)
+      if (!tp_strdiff (var, "muc#roomconfig_roomdesc") ||
+          !tp_strdiff (var, "muc#owner_roomdesc"))
         {
-          if (tp_properties_mixin_is_readable (G_OBJECT (chan),
-                                                   ROOM_PROP_DESCRIPTION))
-            {
-              tp_properties_mixin_change_flags (G_OBJECT (chan),
-                  ROOM_PROP_DESCRIPTION, TP_PROPERTY_FLAG_WRITE, 0,
-                  NULL);
-
-              goto OUT;
-            }
+          tp_base_room_config_set_property_mutable (priv->room_config,
+              TP_BASE_ROOM_CONFIG_DESCRIPTION, TRUE);
+          tp_base_room_config_emit_properties_changed (priv->room_config);
+          break;
         }
     }
 
 OUT:
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  tp_clear_object (&reply);
+  g_object_unref (self);
+}
+
+static void
+emit_subject_changed (GabbleMucChannel *chan)
+{
+  const gchar *changed[] = { "Subject", "Actor", "Timestamp", NULL };
+
+  tp_dbus_properties_mixin_emit_properties_changed (G_OBJECT (chan),
+      TP_IFACE_CHANNEL_INTERFACE_SUBJECT, changed);
 }
 
 static void
@@ -1636,8 +1693,6 @@ update_permissions (GabbleMucChannel *chan)
   GabbleMucChannelPrivate *priv = chan->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpChannelGroupFlags grp_flags_add, grp_flags_rem;
-  TpPropertyFlags prop_flags_add, prop_flags_rem;
-  TpIntSet *changed_props_val, *changed_props_flags;
 
   /*
    * Update group flags.
@@ -1646,7 +1701,7 @@ update_permissions (GabbleMucChannel *chan)
                   TP_CHANNEL_GROUP_FLAG_MESSAGE_ADD;
   grp_flags_rem = 0;
 
-  if (priv->self_role == ROLE_MODERATOR)
+  if (priv->self_role == WOCKY_MUC_ROLE_MODERATOR)
     {
       grp_flags_add |= TP_CHANNEL_GROUP_FLAG_CAN_REMOVE |
                        TP_CHANNEL_GROUP_FLAG_MESSAGE_REMOVE;
@@ -1659,172 +1714,34 @@ update_permissions (GabbleMucChannel *chan)
 
   tp_group_mixin_change_flags ((GObject *) chan, grp_flags_add, grp_flags_rem);
 
+  /* Update RoomConfig.CanUpdateConfiguration */
 
-  /*
-   * Update write capabilities based on room configuration
-   * and own role and affiliation.
-   */
-
-  changed_props_val = tp_intset_sized_new (NUM_ROOM_PROPS);
-  changed_props_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
-
-  /*
-   * Subject
-   *
-   * FIXME: this might be allowed for participants/moderators only,
-   *        so for now just rely on the server making that call.
-   */
-
-  if (priv->self_role >= ROLE_VISITOR)
+  /* The room configuration is part of the "room definition", so is defined by
+   * the XEP to be editable only by owners. */
+  if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {
-      prop_flags_add = TP_PROPERTY_FLAG_WRITE;
-      prop_flags_rem = 0;
+      tp_base_room_config_set_can_update_configuration (priv->room_config, TRUE);
     }
   else
     {
-      prop_flags_add = 0;
-      prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
+      tp_base_room_config_set_can_update_configuration (priv->room_config, FALSE);
     }
 
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
+  tp_base_room_config_emit_properties_changed (priv->room_config);
 
-  /* The room properties below are part of the "room definition", so are
-   * defined by the XEP to be editable only by owners. */
-
-  if (priv->self_affil == AFFILIATION_OWNER)
-    {
-      prop_flags_add = TP_PROPERTY_FLAG_WRITE;
-      prop_flags_rem = 0;
-    }
-  else
-    {
-      prop_flags_add = 0;
-      prop_flags_rem = TP_PROPERTY_FLAG_WRITE;
-    }
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_ANONYMOUS, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_INVITE_ONLY, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_INVITE_RESTRICTED, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_MODERATED, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_NAME, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PASSWORD, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PASSWORD_REQUIRED, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PERSISTENT, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_PRIVATE, prop_flags_add, prop_flags_rem,
-      changed_props_flags);
-
-  if (priv->self_affil == AFFILIATION_OWNER)
+  if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {
       /* request the configuration form purely to see if the description
        * is writable by us in this room. sigh. GO MUC!!! */
-      LmMessage *msg;
-      WockyNode *node;
-      GError *error = NULL;
-      gboolean success;
+      GabbleConnection *conn = GABBLE_CONNECTION (
+          tp_base_channel_get_connection (base));
+      WockyStanza *stanza = wocky_stanza_build (
+          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET, NULL, priv->jid,
+          '(', "query", ':', WOCKY_NS_MUC_OWNER, ')', NULL);
 
-      msg = lm_message_new_with_sub_type (priv->jid,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = wocky_node_add_child_with_content (
-          wocky_stanza_get_top_node (msg), "query", NULL);
-      node->ns = g_quark_from_string (NS_MUC_OWNER);
-
-      success = _gabble_connection_send_with_reply (
-          GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg,
-          perms_config_form_reply_cb, G_OBJECT (chan), NULL,
-          &error);
-
-      lm_message_unref (msg);
-
-      if (!success)
-        {
-          DEBUG ("failed to request config form: %s", error->message);
-          g_error_free (error);
-        }
-    }
-  else
-    {
-      /* mark description unwritable if we're no longer an owner */
-      tp_properties_mixin_change_flags (G_OBJECT (chan),
-          ROOM_PROP_DESCRIPTION, 0, TP_PROPERTY_FLAG_WRITE,
-          changed_props_flags);
-    }
-
-  /*
-   * Emit signals.
-   */
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_props_val);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_props_flags);
-  tp_intset_destroy (changed_props_val);
-  tp_intset_destroy (changed_props_flags);
-}
-
-
-
-/* ************************************************************************* */
-/* wocky MUC implementation */
-static GabbleMucRole
-get_role_from_backend (WockyMucRole role)
-{
-  switch (role)
-    {
-      case WOCKY_MUC_ROLE_NONE:
-        return ROLE_NONE;
-      case WOCKY_MUC_ROLE_VISITOR:
-        return ROLE_VISITOR;
-      case WOCKY_MUC_ROLE_PARTICIPANT:
-        return ROLE_PARTICIPANT;
-      case WOCKY_MUC_ROLE_MODERATOR:
-        return ROLE_MODERATOR;
-      default:
-        DEBUG ("unknown role '%d' -- defaulting to ROLE_VISITOR", role);
-        return ROLE_VISITOR;
-    }
-}
-
-static GabbleMucAffiliation
-get_aff_from_backend (WockyMucAffiliation aff)
-{
-  switch (aff)
-    {
-      case WOCKY_MUC_AFFILIATION_OUTCAST:
-      case WOCKY_MUC_AFFILIATION_NONE:
-        return AFFILIATION_NONE;
-      case WOCKY_MUC_AFFILIATION_MEMBER:
-        return AFFILIATION_MEMBER;
-      case WOCKY_MUC_AFFILIATION_ADMIN:
-        return AFFILIATION_ADMIN;
-      case WOCKY_MUC_AFFILIATION_OWNER:
-        return AFFILIATION_OWNER;
-      default:
-        DEBUG ("unknown affiliation %d -- defaulting to AFFILIATION_NONE", aff);
-        return AFFILIATION_NONE;
+      conn_util_send_iq_async (conn, stanza, NULL, perms_config_form_reply_cb,
+          g_object_ref (chan));
+      g_object_unref (stanza);
     }
 }
 
@@ -1860,8 +1777,8 @@ handle_error (GObject *source,
           return;
         }
 
-      DEBUG ("password required to join, changing password flags");
-      change_password_flags (gmuc, TP_CHANNEL_PASSWORD_FLAG_PROVIDE, 0);
+      DEBUG ("password required to join; signalling");
+      change_must_provide_password (gmuc, TRUE);
       g_object_set (gmuc, "state", MUC_STATE_AUTH, NULL);
     }
   else
@@ -1991,13 +1908,27 @@ handle_tube_presence (GabbleMucChannel *gmuc,
   gabble_tubes_channel_presence_updated (priv->tube, from, node);
 }
 
+static TpChannelGroupChangeReason
+muc_status_codes_to_change_reason (guint codes)
+{
+  if ((codes & WOCKY_MUC_CODE_BANNED) != 0)
+    return TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
+  else if ((codes & ( WOCKY_MUC_CODE_KICKED
+                    | WOCKY_MUC_CODE_KICKED_AFFILIATION
+                    | WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED
+                    | WOCKY_MUC_CODE_KICKED_SHUTDOWN
+                    )) != 0)
+    return TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
+  else
+    return TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
+}
 
 /* connect to wocky-muc:SIG_PARTED, which we will receive when the MUC tells *
  * us that we have left the channel                                          */
 static void
 handle_parted (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     const gchar *actor_jid,
     const gchar *why,
     const gchar *msg,
@@ -2014,14 +1945,6 @@ handle_parted (GObject *source,
   TpIntSet *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
-  int x = 0;
-  static const gpointer banned = GUINT_TO_POINTER (WOCKY_MUC_CODE_BANNED);
-  static const gpointer const kicked[] =
-    { GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_AFFILIATION),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_SHUTDOWN),
-      NULL };
   const char *jid = wocky_muc_jid (wmuc);
 
   DEBUG ("called with jid='%s'", jid);
@@ -2060,14 +1983,7 @@ handle_parted (GObject *source,
         DEBUG ("ignoring invalid actor JID %s", actor_jid);
     }
 
-  if (g_hash_table_lookup (code, banned) != NULL)
-    reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-  else
-    for (x = 0; kicked[x] != NULL; x++)
-      {
-        if (g_hash_table_lookup (code, kicked[x]) != NULL)
-          reason = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
-      }
+  reason = muc_status_codes_to_change_reason (codes);
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
   if (priv->tube != NULL)
@@ -2088,7 +2004,7 @@ handle_parted (GObject *source,
 static void
 handle_left (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     const gchar *actor_jid,
     const gchar *why,
@@ -2105,14 +2021,6 @@ handle_left (GObject *source,
   TpIntSet *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
-  int x = 0;
-  static const gpointer banned = GUINT_TO_POINTER (WOCKY_MUC_CODE_BANNED);
-  static const gpointer const kicked[] =
-    { GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_AFFILIATION),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_ROOM_PRIVATISED),
-      GUINT_TO_POINTER (WOCKY_MUC_CODE_KICKED_SHUTDOWN),
-      NULL };
 
   member = tp_handle_ensure (contact_repo, who->from, NULL, NULL);
 
@@ -2132,14 +2040,7 @@ handle_left (GObject *source,
         DEBUG ("ignoring invalid actor JID %s", actor_jid);
     }
 
-  if (g_hash_table_lookup (code, banned) != NULL)
-    reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
-  else
-    for (x = 0; kicked[x] != NULL; x++)
-      {
-        if (g_hash_table_lookup (code, kicked[x]) != NULL)
-          reason = TP_CHANNEL_GROUP_CHANGE_REASON_KICKED;
-      }
+  reason = muc_status_codes_to_change_reason (codes);
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
   if (priv->tube != NULL)
@@ -2170,8 +2071,8 @@ handle_perms (GObject *source,
   GabbleMucChannelPrivate *priv = gmuc->priv;
   TpHandle myself = TP_GROUP_MIXIN (gmuc)->self_handle;
 
-  priv->self_role = get_role_from_backend (wocky_muc_role (wmuc));
-  priv->self_affil = get_aff_from_backend (wocky_muc_affiliation (wmuc));
+  priv->self_role = wocky_muc_role (wmuc);
+  priv->self_affil = wocky_muc_affiliation (wmuc);
 
   room_properties_update (gmuc);
   update_permissions (gmuc);
@@ -2218,7 +2119,7 @@ handle_fill_presence (WockyMuc *muc,
 static void
 handle_renamed (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data)
 {
   WockyMuc *wmuc = WOCKY_MUC (source);
@@ -2300,7 +2201,7 @@ update_roster_presence (GabbleMucChannel *gmuc,
 static void
 handle_join (WockyMuc *muc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
@@ -2334,42 +2235,24 @@ handle_join (WockyMuc *muc,
       tp_handle_set_peek (members), NULL, NULL, NULL, 0, 0);
 
   /* accept the config of the room if it was created for us: */
-  if (g_hash_table_lookup (code, (gpointer) WOCKY_MUC_CODE_NEW_ROOM))
+  if (codes & WOCKY_MUC_CODE_NEW_ROOM)
     {
-      GError *error = NULL;
-      gboolean sent = FALSE;
       WockyStanza *accept = wocky_stanza_build (
           WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
-          NULL, NULL,
+          NULL, gmuc->priv->jid,
             '(', "query", ':', WOCKY_NS_MUC_OWNER,
               '(', "x", ':', WOCKY_XMPP_NS_DATA,
                 '@', "type", "submit",
               ')',
             ')',
           NULL);
-
-      sent = _gabble_connection_send_with_reply (
-          GABBLE_CONNECTION (base_conn), accept,
-          room_created_submit_reply_cb, data, NULL, &error);
-
+      conn_util_send_iq_async (GABBLE_CONNECTION (base_conn), accept, NULL,
+          room_created_submit_reply_cb, NULL);
       g_object_unref (accept);
-
-      if (!sent)
-        {
-          DEBUG ("failed to send submit message: %s", error->message);
-          g_error_free (error);
-
-          g_object_unref (accept);
-          close_channel (gmuc, NULL, TRUE, 0,
-              TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
-
-          goto out;
-        }
     }
 
   g_object_set (gmuc, "state", MUC_STATE_JOINED, NULL);
 
- out:
   tp_handle_unref (contact_repo, myself);
   tp_handle_set_destroy (members);
   tp_handle_set_destroy (owners);
@@ -2382,7 +2265,7 @@ handle_join (WockyMuc *muc,
 static void
 handle_presence (GObject *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint codes,
     WockyMucMember *who,
     gpointer data)
 {
@@ -2456,7 +2339,7 @@ handle_message (GObject *source,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
-    time_t stamp,
+    GDateTime *datetime,
     WockyMucMember *who,
     const gchar *text,
     const gchar *subject,
@@ -2508,7 +2391,7 @@ handle_message (GObject *source,
 
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc,
-        msg_type, handle_type, from, stamp, xmpp_id, text, stanza,
+        msg_type, handle_type, from, datetime, xmpp_id, text, stanza,
         GABBLE_TEXT_CHANNEL_SEND_NO_ERROR, TP_DELIVERY_STATUS_DELIVERED);
 
   if (from_member && state != WOCKY_MUC_MSG_STATE_NONE)
@@ -2531,12 +2414,14 @@ handle_message (GObject *source,
           default:
             tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
         }
-      _gabble_muc_channel_state_receive (gmuc, tp_msg_state, from);
+
+      tp_svc_channel_interface_chat_state_emit_chat_state_changed (gmuc,
+          from, tp_msg_state);
     }
 
   if (subject != NULL)
-    _gabble_muc_channel_handle_subject (gmuc, msg_type, handle_type, from,
-        stamp, subject, stanza);
+    _gabble_muc_channel_handle_subject (gmuc, handle_type, from,
+        datetime, subject, stanza);
 
   tp_handle_unref (repo, from);
 }
@@ -2546,7 +2431,7 @@ handle_errmsg (GObject *source,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
-    time_t stamp,
+    GDateTime *datetime,
     WockyMucMember *who,
     const gchar *text,
     WockyXmppError error,
@@ -2554,6 +2439,7 @@ handle_errmsg (GObject *source,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   TpBaseConnection *conn = tp_base_channel_get_connection (base);
   gboolean from_member = (who != NULL);
@@ -2562,6 +2448,7 @@ handle_errmsg (GObject *source,
   TpHandleRepoIface *repo = NULL;
   TpHandleType handle_type;
   TpHandle from = 0;
+  const gchar *subject;
 
   if (from_member)
     {
@@ -2593,7 +2480,23 @@ handle_errmsg (GObject *source,
 
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
-        handle_type, from, stamp, xmpp_id, text, stanza, tp_err, ds);
+        handle_type, from, datetime, xmpp_id, text, stanza, tp_err, ds);
+
+  /* FIXME: this is stupid. WockyMuc gives us the subject for non-errors, but
+   * doesn't bother for errors.
+   */
+  subject = wocky_node_get_content_from_child (
+      wocky_stanza_get_top_node (stanza), "subject");
+
+  /* The server is under no obligation to echo the <subject> element back if it
+   * sends us an error. Fortunately, it should preserve the id='' element so we
+   * can check for that instead.
+   */
+  if (subject != NULL ||
+      (priv->set_subject_stanza_id != NULL &&
+       !tp_strdiff (xmpp_id, priv->set_subject_stanza_id)))
+    _gabble_muc_channel_handle_subject (gmuc,
+        handle_type, from, datetime, subject, stanza);
 
   tp_handle_unref (repo, from);
 }
@@ -2604,43 +2507,34 @@ handle_errmsg (GObject *source,
  */
 void
 _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-                                    TpChannelTextMessageType msg_type,
                                     TpHandleType handle_type,
                                     TpHandle sender,
-                                    time_t timestamp,
+                                    GDateTime *datetime,
                                     const gchar *subject,
                                     LmMessage *msg)
 {
   GabbleMucChannelPrivate *priv;
-  TpIntSet *changed_values, *changed_flags;
-  GValue val = { 0, };
+  const gchar *actor;
   GError *error = NULL;
+  gint64 timestamp = datetime != NULL ?
+    g_date_time_to_unix (datetime) : G_MAXINT64;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
   priv = chan->priv;
 
-  if (priv->properties_ctx)
-    {
-      tp_properties_context_remove (priv->properties_ctx,
-          ROOM_PROP_SUBJECT);
-    }
-
   if (wocky_stanza_extract_errors (msg, NULL, &error, NULL, NULL))
     {
-      if (priv->properties_ctx)
+      if (priv->set_subject_context != NULL)
         {
-          error->domain = TP_ERRORS;
-          error->code = TP_ERROR_PERMISSION_DENIED;
+          GError *tp_error = NULL;
 
-          if (tp_str_empty (error->message))
-            {
-              g_free (error->message);
-              error->message = g_strdup ("failed to change subject");
-            }
+          gabble_set_tp_error_from_wocky (error, &tp_error);
+          if (tp_str_empty (tp_error->message))
+            g_prefix_error (&tp_error, "failed to change subject");
 
-          tp_properties_context_return (priv->properties_ctx, error);
-          priv->properties_ctx = NULL;
+          return_from_set_subject (chan, tp_error);
+          g_clear_error (&tp_error);
 
           /* Get the properties into a consistent state. */
           room_properties_update (chan);
@@ -2650,71 +2544,35 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
       return;
     }
 
-  DEBUG ("updating new property value for subject");
 
-  changed_values = tp_intset_sized_new (NUM_ROOM_PROPS);
-  changed_flags = tp_intset_sized_new (NUM_ROOM_PROPS);
-
-  /* ROOM_PROP_SUBJECT */
-  g_value_init (&val, G_TYPE_STRING);
-  g_value_set_string (&val, subject);
-
-  tp_properties_mixin_change_value (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, &val, changed_values);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT, TP_PROPERTY_FLAG_READ, 0,
-      changed_flags);
-
-  g_value_unset (&val);
-
-  /* ROOM_PROP_SUBJECT_CONTACT */
-  g_value_init (&val, G_TYPE_UINT);
-
+  /* Channel.Interface.Subject properties */
   if (handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      g_value_set_uint (&val, sender);
+      TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
+          tp_base_channel_get_connection (TP_BASE_CHANNEL (chan)),
+          handle_type);
+
+      actor = tp_handle_inspect (contact_handles, sender);
     }
   else
     {
-      g_value_set_uint (&val, 0);
+      actor = "";
     }
 
-  tp_properties_mixin_change_value (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_CONTACT, &val, changed_values);
+  g_free (priv->subject);
+  g_free (priv->subject_actor);
+  priv->subject = g_strdup (subject);
+  priv->subject_actor = g_strdup (actor);
+  priv->subject_timestamp = timestamp;
 
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_CONTACT, TP_PROPERTY_FLAG_READ, 0,
-      changed_flags);
-
-  g_value_unset (&val);
-
-  /* ROOM_PROP_SUBJECT_TIMESTAMP */
-  g_value_init (&val, G_TYPE_UINT);
-  g_value_set_uint (&val, timestamp);
-
-  tp_properties_mixin_change_value (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_TIMESTAMP, &val, changed_values);
-
-  tp_properties_mixin_change_flags (G_OBJECT (chan),
-      ROOM_PROP_SUBJECT_TIMESTAMP, TP_PROPERTY_FLAG_READ, 0,
-      changed_flags);
-
-  g_value_unset (&val);
+  DEBUG ("Subject changed to '%s' by '%s' at %" G_GINT64_FORMAT "",
+      subject, actor, timestamp);
 
   /* Emit signals */
-  tp_properties_mixin_emit_changed (G_OBJECT (chan), changed_values);
-  tp_properties_mixin_emit_flags (G_OBJECT (chan), changed_flags);
-  tp_intset_destroy (changed_values);
-  tp_intset_destroy (changed_flags);
+  emit_subject_changed (chan);
 
-  if (priv->properties_ctx)
-    {
-      if (tp_properties_context_return_if_done (priv->properties_ctx))
-        {
-          priv->properties_ctx = NULL;
-        }
-    }
+  if (priv->set_subject_context != NULL)
+    return_from_set_subject (chan, NULL);
 }
 
 /**
@@ -2725,7 +2583,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              TpChannelTextMessageType msg_type,
                              TpHandleType sender_handle_type,
                              TpHandle sender,
-                             time_t timestamp,
+                             GDateTime *datetime,
                              const gchar *id,
                              const gchar *text,
                              LmMessage *msg,
@@ -2739,6 +2597,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   gboolean is_echo;
   gboolean is_error;
   gchar *tmp;
+  gint64 timestamp = datetime != NULL ?  g_date_time_to_unix (datetime): 0;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -2852,24 +2711,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     }
 }
 
-/**
- * _gabble_muc_channel_state_receive
- *
- * Send the D-BUS signal ChatStateChanged
- * on org.freedesktop.Telepathy.Channel.Interface.ChatState
- */
-void
-_gabble_muc_channel_state_receive (GabbleMucChannel *chan,
-                                   guint state,
-                                   guint from_handle)
-{
-  g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
-  g_assert (GABBLE_IS_MUC_CHANNEL (chan));
-
-  tp_svc_channel_interface_chat_state_emit_chat_state_changed (chan,
-      from_handle, state);
-}
-
 static void
 gabble_muc_channel_close (TpBaseChannel *base)
 {
@@ -2897,7 +2738,7 @@ gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
   priv = self->priv;
 
   tp_svc_channel_interface_password_return_from_get_password_flags (context,
-      priv->password_flags);
+      priv->must_provide_password ? TP_CHANNEL_PASSWORD_FLAG_PROVIDE : 0);
 }
 
 
@@ -2922,7 +2763,7 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
 
   priv = self->priv;
 
-  if ((priv->password_flags & TP_CHANNEL_PASSWORD_FLAG_PROVIDE) == 0 ||
+  if (!priv->must_provide_password ||
       priv->password_ctx != NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -2931,11 +2772,40 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
     }
   else
     {
-      send_join_request (self, password);
+      g_object_set (priv->wmuc, "password", password, NULL);
+      send_join_request (self);
       priv->password_ctx = context;
     }
 }
 
+static void
+_gabble_muc_channel_message_sent_cb (GObject *source,
+                                     GAsyncResult *res,
+                                     gpointer user_data)
+{
+  WockyPorter *porter = WOCKY_PORTER (source);
+  _GabbleMUCSendMessageCtx *context = user_data;
+  GabbleMucChannel *chan = context->channel;
+  TpMessage *message = context->message;
+  GError *error = NULL;
+
+  if (wocky_porter_send_finish (porter, res, &error))
+    {
+      tp_message_mixin_sent ((GObject *) chan, message,
+          TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY, context->token, NULL);
+    }
+  else
+    {
+      tp_message_mixin_sent ((GObject *) chan, context->message,
+          TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY, NULL, error);
+      g_free (error);
+    }
+
+  g_object_unref (context->channel);
+  g_object_unref (context->message);
+  g_free (context->token);
+  g_slice_free (_GabbleMUCSendMessageCtx, context);
+}
 
 /**
  * gabble_muc_channel_send
@@ -2952,14 +2822,35 @@ gabble_muc_channel_send (GObject *obj,
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
+  GabbleConnection *gabble_conn =
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
+  _GabbleMUCSendMessageCtx *context = NULL;
+  WockyStanza *stanza = NULL;
+  WockyPorter *porter = NULL;
+  GError *error = NULL;
+  gchar *id = NULL;
 
-  flags &= TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
-
-  gabble_message_util_send_message (obj,
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-      message, flags,
+  stanza = gabble_message_util_build_stanza (message, gabble_conn,
       LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
-      priv->jid, FALSE /* send nick */);
+      priv->jid, FALSE, &id, &error);
+
+  if (stanza != NULL)
+    {
+      context = g_slice_new0 (_GabbleMUCSendMessageCtx);
+      context->channel = g_object_ref (obj);
+      context->message = g_object_ref (message);
+      context->token = id;
+      porter = gabble_connection_dup_porter (gabble_conn);
+      wocky_porter_send_async (porter, stanza, NULL,
+          _gabble_muc_channel_message_sent_cb, context);
+      g_object_unref (stanza);
+      g_object_unref (porter);
+   }
+  else
+   {
+     tp_message_mixin_sent (obj, message, flags, NULL, error);
+     g_error_free (error);
+   }
 }
 
 gboolean
@@ -3048,7 +2939,7 @@ gabble_muc_channel_add_member (GObject *obj,
           tp_intset_add (set_remove_members,
               g_array_index (arr_members, guint, 0));
         }
-      g_array_free (arr_members, TRUE);
+      g_array_unref (arr_members);
 
       tp_intset_add (set_remote_pending, handle);
 
@@ -3064,7 +2955,7 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_destroy (set_remote_pending);
 
       /* seek to enter the room */
-      send_join_request (self, NULL);
+      send_join_request (self);
       g_object_set (obj, "state", MUC_STATE_INITIATED, NULL);
 
       /* deny adding */
@@ -3162,147 +3053,206 @@ gabble_muc_channel_remove_member (GObject *obj,
 }
 
 
-static LmHandlerResult request_config_form_reply_cb (GabbleConnection *conn,
-    LmMessage *sent_msg, LmMessage *reply_msg, GObject *object,
+static void request_config_form_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
     gpointer user_data);
 
-static gboolean
-gabble_muc_channel_do_set_properties (GObject *obj,
-                                      TpPropertiesContext *ctx,
-                                      GError **error)
+void
+gabble_muc_channel_update_configuration_async (
+    GabbleMucChannel *self,
+    GHashTable *validated_properties,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
 {
-  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   GabbleMucChannelPrivate *priv = self->priv;
-  TpBaseChannel *base = TP_BASE_CHANNEL (obj);
+  TpBaseChannel *base = (TpBaseChannel *) self;
   GabbleConnection *conn =
       GABBLE_CONNECTION (tp_base_channel_get_connection (base));
-  LmMessage *msg;
-  WockyNode *node;
-  gboolean success;
+  WockyStanza *stanza;
+  GSimpleAsyncResult *result = g_simple_async_result_new ((GObject *) self,
+      callback, user_data, gabble_muc_channel_update_configuration_async);
 
-  g_assert (priv->properties_ctx == NULL);
+  g_assert (priv->properties_being_updated == NULL);
 
-  /* Changing subject? */
-  if (tp_properties_context_has (ctx, ROOM_PROP_SUBJECT))
-    {
-      const gchar *str;
+  stanza = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, priv->jid,
+      '(', "query", ':', WOCKY_NS_MUC_OWNER, ')', NULL);
+  conn_util_send_iq_async (conn, stanza, NULL,
+      request_config_form_reply_cb, result);
+  g_object_unref (stanza);
 
-      str = g_value_get_string (tp_properties_context_get (ctx,
-            ROOM_PROP_SUBJECT));
-
-      msg = lm_message_new_with_sub_type (priv->jid,
-          LM_MESSAGE_TYPE_MESSAGE, LM_MESSAGE_SUB_TYPE_GROUPCHAT);
-      wocky_node_add_child_with_content (
-          wocky_stanza_get_top_node (msg), "subject", str);
-
-      success = _gabble_connection_send (conn, msg, error);
-
-      lm_message_unref (msg);
-
-      if (!success)
-        return FALSE;
-    }
-
-  /* Changing any other properties? */
-  if (tp_properties_context_has_other_than (ctx, ROOM_PROP_SUBJECT))
-    {
-      msg = lm_message_new_with_sub_type (priv->jid,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET);
-      node = wocky_node_add_child_with_content (
-          wocky_stanza_get_top_node (msg), "query", NULL);
-      node->ns = g_quark_from_string (NS_MUC_OWNER);
-
-      success = _gabble_connection_send_with_reply (conn, msg,
-          request_config_form_reply_cb, G_OBJECT (obj), NULL,
-          error);
-
-      lm_message_unref (msg);
-
-      if (!success)
-        return FALSE;
-    }
-
-  priv->properties_ctx = ctx;
-  return TRUE;
+  priv->properties_being_updated = g_hash_table_ref (validated_properties);
 }
 
-static LmHandlerResult request_config_form_submit_reply_cb (
-    GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
-    GObject *object, gpointer user_data);
-
-static LmHandlerResult
-request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                              LmMessage *reply_msg, GObject *object,
-                              gpointer user_data)
+gboolean
+gabble_muc_channel_update_configuration_finish (
+    GabbleMucChannel *self,
+    GAsyncResult *result,
+    GError **error)
 {
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
-  TpBaseChannel *base = TP_BASE_CHANNEL (chan);
+  wocky_implement_finish_void (self,
+      gabble_muc_channel_update_configuration_async);
+}
+
+typedef const gchar * (*MapFieldFunc) (const GValue *value);
+
+typedef struct {
+    const gchar *var;
+    TpBaseRoomConfigProperty prop_id;
+    MapFieldFunc map;
+} ConfigFormMapping;
+
+static const gchar *
+map_bool (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "1" : "0";
+}
+
+static const gchar *
+map_bool_inverted (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "0" : "1";
+}
+
+static const gchar *
+map_roomconfig_whois (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "moderators" : "anyone";
+}
+
+static const gchar *
+map_owner_whois (const GValue *value)
+{
+  return g_value_get_boolean (value) ? "admins" : "anyone";
+}
+
+static ConfigFormMapping form_mappings[] = {
+    { "anonymous", TP_BASE_ROOM_CONFIG_ANONYMOUS, map_bool },
+    { "muc#roomconfig_whois", TP_BASE_ROOM_CONFIG_ANONYMOUS, map_roomconfig_whois },
+    { "muc#owner_whois", TP_BASE_ROOM_CONFIG_ANONYMOUS, map_owner_whois },
+
+    { "members_only", TP_BASE_ROOM_CONFIG_INVITE_ONLY, map_bool },
+    { "muc#roomconfig_membersonly", TP_BASE_ROOM_CONFIG_INVITE_ONLY, map_bool },
+    { "muc#owner_inviteonly", TP_BASE_ROOM_CONFIG_INVITE_ONLY, map_bool },
+
+    { "moderated", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
+    { "muc#roomconfig_moderatedroom", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
+    { "muc#owner_moderatedroom", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
+
+    { "title", TP_BASE_ROOM_CONFIG_TITLE, g_value_get_string },
+    { "muc#roomconfig_roomname", TP_BASE_ROOM_CONFIG_TITLE, g_value_get_string },
+    { "muc#owner_roomname", TP_BASE_ROOM_CONFIG_TITLE, g_value_get_string },
+
+    { "muc#roomconfig_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, g_value_get_string },
+    { "muc#owner_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, g_value_get_string },
+
+    { "password", TP_BASE_ROOM_CONFIG_PASSWORD, g_value_get_string },
+    { "muc#roomconfig_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, g_value_get_string },
+    { "muc#owner_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, g_value_get_string },
+
+    { "password_protected", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
+    { "muc#roomconfig_passwordprotectedroom", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
+    { "muc#owner_passwordprotectedroom", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
+
+    { "persistent", TP_BASE_ROOM_CONFIG_PERSISTENT, map_bool },
+    { "muc#roomconfig_persistentroom", TP_BASE_ROOM_CONFIG_PERSISTENT, map_bool },
+    { "muc#owner_persistentroom", TP_BASE_ROOM_CONFIG_PERSISTENT, map_bool },
+
+    { "public", TP_BASE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
+    { "muc#roomconfig_publicroom", TP_BASE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
+    { "muc#owner_publicroom", TP_BASE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
+
+    { NULL }
+};
+
+static ConfigFormMapping *
+lookup_config_form_field (const gchar *var)
+{
+  ConfigFormMapping *f;
+
+  for (f = form_mappings; f->var != NULL; f++)
+    if (strcmp (var, f->var) == 0)
+      return f;
+
+  DEBUG ("unknown field %s", var);
+
+  return NULL;
+}
+
+static void request_config_form_submit_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data);
+
+static void
+request_config_form_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (source);
+  GSimpleAsyncResult *update_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (
+      g_async_result_get_source_object ((GAsyncResult *) update_result));
   GabbleMucChannelPrivate *priv = chan->priv;
-  TpPropertiesContext *ctx = priv->properties_ctx;
+  GHashTable *properties = priv->properties_being_updated;
+  WockyStanza *reply = NULL;
+  WockyStanza *submit_iq = NULL;
+  WockyNode *form_node, *submit_node, *child;
   GError *error = NULL;
-  LmMessage *msg = NULL;
-  WockyNode *submit_node, *form_node, *node;
   guint i, props_left;
-  NodeIter j;
+  WockyNodeIter j;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!conn_util_send_iq_finish (conn, result, &reply, &error))
     {
-      error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                           "request for configuration form denied");
-
+      g_prefix_error (&error, "failed to request configuration form: ");
       goto OUT;
     }
 
-  form_node = config_form_get_form_node (reply_msg);
+  form_node = config_form_get_form_node (reply);
   if (form_node == NULL)
-    goto PARSE_ERROR;
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_SERVICE_CONFUSED,
+          "MUC configuration form didn't actually contain a form");
+      goto OUT;
+    }
 
   /* initialize */
-  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_SET);
-
-  node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  node->ns = g_quark_from_string (NS_MUC_OWNER);
-
-  submit_node = wocky_node_add_child_with_content (node, "x", NULL);
-  submit_node->ns = g_quark_from_static_string (NS_X_DATA);
-  wocky_node_set_attribute (submit_node,
-      "type", "submit");
+  submit_iq = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->jid,
+      '(',
+        "query", ':', WOCKY_NS_MUC_OWNER,
+        '(',
+          "x", ':', WOCKY_XMPP_NS_DATA,
+          '@', "type", "submit",
+          '*', &submit_node,
+        ')',
+      ')', NULL);
 
   /* we assume that the number of props will fit in a guint on all supported
    * platforms, so fail at compile time if this is no longer the case
    */
-#if NUM_ROOM_PROPS > 32
+#if TP_NUM_BASE_ROOM_CONFIG_PROPERTIES > 32
 #error GabbleMUCChannel request_config_form_reply_cb needs porting to TpIntSet
 #endif
 
   props_left = 0;
-  for (i = 0; i < NUM_ROOM_PROPS; i++)
+  for (i = 0; i < TP_NUM_BASE_ROOM_CONFIG_PROPERTIES; i++)
     {
-      if (i == ROOM_PROP_SUBJECT)
-        continue;
-
-      if (tp_properties_context_has (ctx, i))
+      if (g_hash_table_lookup (properties, GUINT_TO_POINTER (i)) != NULL)
         props_left |= 1 << i;
     }
 
-  for (j = node_iter (form_node); j; j = node_iter_next (j))
+  wocky_node_iter_init (&j, form_node, "field", NULL);
+  while (wocky_node_iter_next (&j, &child))
     {
-      const gchar *var;
+      const gchar *var, *type_str;
       WockyNode *field_node;
-      WockyNode *child = node_iter_data (j);
-      guint id;
-      GType type;
-      gboolean invert;
-      const gchar *val_str = NULL, *type_str;
-      gboolean val_bool;
-
-      if (strcmp (child->name, "field") != 0)
-        {
-          DEBUG ("skipping node '%s'", child->name);
-          continue;
-        }
+      ConfigFormMapping *f;
+      GValue *value = NULL;
 
       var = wocky_node_get_attribute (child, "var");
       if (var == NULL) {
@@ -3311,252 +3261,132 @@ request_config_form_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
         continue;
       }
 
-      id = INVALID_ROOM_PROP;
-      type = G_TYPE_BOOLEAN;
-      invert = FALSE;
-
-      if (strcmp (var, "anonymous") == 0)
-        {
-          id = ROOM_PROP_ANONYMOUS;
-        }
-      else if (strcmp (var, "muc#roomconfig_whois") == 0)
-        {
-          id = ROOM_PROP_ANONYMOUS;
-
-          if (tp_properties_context_has (ctx, id))
-            {
-              val_bool = g_value_get_boolean (
-                  tp_properties_context_get (ctx, id));
-              val_str = (val_bool) ? "moderators" : "anyone";
-            }
-        }
-      else if (strcmp (var, "muc#owner_whois") == 0)
-        {
-          id = ROOM_PROP_ANONYMOUS;
-
-          if (tp_properties_context_has (ctx, id))
-            {
-              val_bool = g_value_get_boolean (
-                  tp_properties_context_get (ctx, id));
-              val_str = (val_bool) ? "admins" : "anyone";
-            }
-        }
-      else if (strcmp (var, "members_only") == 0 ||
-               strcmp (var, "muc#roomconfig_membersonly") == 0 ||
-               strcmp (var, "muc#owner_inviteonly") == 0)
-        {
-          id = ROOM_PROP_INVITE_ONLY;
-        }
-      else if (strcmp (var, "muc#roomconfig_allowinvites") == 0)
-        {
-          id = ROOM_PROP_INVITE_RESTRICTED;
-          invert = TRUE;
-        }
-      else if (strcmp (var, "moderated") == 0 ||
-               strcmp (var, "muc#roomconfig_moderatedroom") == 0 ||
-               strcmp (var, "muc#owner_moderatedroom") == 0)
-        {
-          id = ROOM_PROP_MODERATED;
-        }
-      else if (strcmp (var, "title") == 0 ||
-               strcmp (var, "muc#roomconfig_roomname") == 0 ||
-               strcmp (var, "muc#owner_roomname") == 0)
-        {
-          id = ROOM_PROP_NAME;
-          type = G_TYPE_STRING;
-        }
-      else if (strcmp (var, "muc#roomconfig_roomdesc") == 0 ||
-               strcmp (var, "muc#owner_roomdesc") == 0)
-        {
-          id = ROOM_PROP_DESCRIPTION;
-          type = G_TYPE_STRING;
-        }
-      else if (strcmp (var, "password") == 0 ||
-               strcmp (var, "muc#roomconfig_roomsecret") == 0 ||
-               strcmp (var, "muc#owner_roomsecret") == 0)
-        {
-          id = ROOM_PROP_PASSWORD;
-          type = G_TYPE_STRING;
-        }
-      else if (strcmp (var, "password_protected") == 0 ||
-               strcmp (var, "muc#roomconfig_passwordprotectedroom") == 0 ||
-               strcmp (var, "muc#owner_passwordprotectedroom") == 0)
-        {
-          id = ROOM_PROP_PASSWORD_REQUIRED;
-        }
-      else if (strcmp (var, "persistent") == 0 ||
-               strcmp (var, "muc#roomconfig_persistentroom") == 0 ||
-               strcmp (var, "muc#owner_persistentroom") == 0)
-        {
-          id = ROOM_PROP_PERSISTENT;
-        }
-      else if (strcmp (var, "public") == 0 ||
-               strcmp (var, "muc#roomconfig_publicroom") == 0 ||
-               strcmp (var, "muc#owner_publicroom") == 0)
-        {
-          id = ROOM_PROP_PRIVATE;
-          invert = TRUE;
-        }
-      else
-        {
-          DEBUG ("ignoring field '%s'", var);
-        }
+      f = lookup_config_form_field (var);
 
       /* add the corresponding field node to the reply message */
-      field_node = wocky_node_add_child_with_content (submit_node, "field", NULL);
+      field_node = wocky_node_add_child (submit_node, "field");
       wocky_node_set_attribute (field_node, "var", var);
 
       type_str = wocky_node_get_attribute (child, "type");
-      if (type_str)
+      if (type_str != NULL)
         {
           wocky_node_set_attribute (field_node, "type", type_str);
         }
 
-      if (id != INVALID_ROOM_PROP && tp_properties_context_has (ctx, id))
+      if (f != NULL)
+        value = g_hash_table_lookup (properties, GUINT_TO_POINTER (f->prop_id));
+
+      if (value != NULL)
         {
+          const gchar *val_str;
+
           /* Known property and we have a value to set */
-          DEBUG ("looking up %s... has=%d", room_property_signatures[id].name,
-              tp_properties_context_has (ctx, id));
-
-          if (!val_str)
-            {
-              const GValue *provided_value;
-
-              provided_value = tp_properties_context_get (ctx, id);
-
-              switch (type) {
-                case G_TYPE_BOOLEAN:
-                  val_bool = g_value_get_boolean (provided_value);
-                  if (invert)
-                    val_bool = !val_bool;
-                  val_str = val_bool ? "1" : "0";
-                  break;
-                case G_TYPE_STRING:
-                  val_str = g_value_get_string (provided_value);
-                  break;
-                default:
-                  g_assert_not_reached ();
-              }
-            }
-
-          DEBUG ("Setting value %s for %s", val_str, var);
-
-          props_left &= ~(1 << id);
+          DEBUG ("transforming %s...",
+              wocky_enum_to_nick (TP_TYPE_BASE_ROOM_CONFIG_PROPERTY,
+                  f->prop_id));
+          g_assert (f->map != NULL);
+          val_str = f->map (value);
 
           /* add the corresponding value node(s) to the reply message */
+          DEBUG ("Setting value %s for %s", val_str, var);
           wocky_node_add_child_with_content (field_node, "value", val_str);
+
+          props_left &= ~(1 << f->prop_id);
         }
       else
         {
           /* Copy all the <value> nodes */
-          NodeIter k;
+          WockyNodeIter k;
+          WockyNode *value_node;
 
-          for (k = node_iter (child); k; k = node_iter_next (k))
-            {
-              WockyNode *value_node = node_iter_data (k);
-
-              if (tp_strdiff (value_node->name, "value"))
-                /* Not a value, skip it */
-                continue;
-
-              wocky_node_add_child_with_content (field_node, "value",
-                  value_node->content);
-            }
+          wocky_node_iter_init (&k, child, "value", NULL);
+          while (wocky_node_iter_next (&k, &value_node))
+            wocky_node_add_child_with_content (field_node, "value",
+                value_node->content);
         }
     }
 
   if (props_left != 0)
     {
+      GString *unsubstituted = g_string_new ("");
+
       printf (TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE TP_ANSI_BG_RED
               "\n%s: the following properties were not substituted:\n",
               G_STRFUNC);
 
-      for (i = 0; i < NUM_ROOM_PROPS; i++)
+      for (i = 0; i < TP_NUM_BASE_ROOM_CONFIG_PROPERTIES; i++)
         {
           if ((props_left & (1 << i)) != 0)
             {
-              printf ("  %s\n", room_property_signatures[i].name);
+              const gchar *name = wocky_enum_to_nick (
+                  TP_TYPE_BASE_ROOM_CONFIG_PROPERTY, i);
+              printf ("  %s\n", name);
+
+              if (unsubstituted->len > 0)
+                g_string_append (unsubstituted, ", ");
+
+              g_string_append (unsubstituted, name);
             }
         }
 
       printf ("\nthis is a MUC server compatibility bug in gabble, please "
               "report it with a full debug log attached (running gabble "
-              "with LM_DEBUG=net)" TP_ANSI_RESET "\n\n");
+              "with WOCKY_DEBUG=xmpp)" TP_ANSI_RESET "\n\n");
       fflush (stdout);
 
-      error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
-                           "not all properties were substituted");
+      error = g_error_new (TP_ERRORS, TP_ERROR_SERVICE_CONFUSED,
+          "Couldn't find fields corresponding to %s in the muc#owner form. "
+          "This is a MUC server compatibility bug in Gabble.",
+          unsubstituted->str);
+      g_string_free (unsubstituted, TRUE);
       goto OUT;
     }
 
-  _gabble_connection_send_with_reply (
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg,
-      request_config_form_submit_reply_cb, G_OBJECT (object),
-      NULL, &error);
-
-  goto OUT;
-
-PARSE_ERROR:
-  error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                       "error parsing reply from server");
+  conn_util_send_iq_async (conn, submit_iq, NULL,
+      request_config_form_submit_reply_cb, update_result);
 
 OUT:
-  if (error)
+  if (error != NULL)
     {
-      tp_properties_context_return (ctx, error);
-      priv->properties_ctx = NULL;
+      g_simple_async_result_set_from_error (update_result, error);
+      g_simple_async_result_complete (update_result);
+      g_object_unref (update_result);
+      tp_clear_pointer (&priv->properties_being_updated, g_hash_table_unref);
+      g_clear_error (&error);
     }
 
-  if (msg)
-    lm_message_unref (msg);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  tp_clear_object (&reply);
+  tp_clear_object (&submit_iq);
+  g_object_unref (chan);
 }
 
-static LmHandlerResult
-request_config_form_submit_reply_cb (GabbleConnection *conn,
-                                     LmMessage *sent_msg,
-                                     LmMessage *reply_msg,
-                                     GObject *object,
-                                     gpointer user_data)
+static void
+request_config_form_submit_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (object);
+  GSimpleAsyncResult *update_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (
+      g_async_result_get_source_object ((GAsyncResult *) update_result));
   GabbleMucChannelPrivate *priv = chan->priv;
-  TpPropertiesContext *ctx = priv->properties_ctx;
   GError *error = NULL;
-  gboolean returned;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, NULL, &error))
     {
-      error = g_error_new (TP_ERRORS, TP_ERROR_PERMISSION_DENIED,
-                           "submitted configuration form was rejected");
+      g_prefix_error (&error, "submitted configuration form was rejected: ");
+      g_simple_async_result_set_from_error (update_result, error);
+      g_clear_error (&error);
     }
 
-  if (!error)
-    {
-      guint i;
+  g_simple_async_result_complete (update_result);
+  tp_clear_pointer (&priv->properties_being_updated, g_hash_table_unref);
 
-      for (i = 0; i < NUM_ROOM_PROPS; i++)
-        {
-          if (i != ROOM_PROP_SUBJECT)
-            tp_properties_context_remove (ctx, i);
-        }
+  /* Get the properties into a consistent state. */
+  room_properties_update (chan);
 
-      returned = tp_properties_context_return_if_done (ctx);
-    }
-  else
-    {
-      tp_properties_context_return (ctx, error);
-      returned = TRUE;
-
-      /* Get the properties into a consistent state. */
-      room_properties_update (chan);
-    }
-
-  if (returned)
-    priv->properties_ctx = NULL;
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  g_object_unref (chan);
+  g_object_unref (update_result);
 }
 
 /**
@@ -3893,6 +3723,96 @@ gabble_muc_channel_teardown (GabbleMucChannel *gmuc)
 }
 
 static void
+sent_subject_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = self->priv;
+  GError *error = NULL;
+
+  if (!wocky_porter_send_finish (WOCKY_PORTER (source), result, &error))
+    {
+      DEBUG ("buh, failed to send a <message> to change the subject: %s",
+          error->message);
+
+      if (priv->set_subject_context != NULL)
+        {
+          GError *tp_error = NULL;
+
+          gabble_set_tp_error_from_wocky (error, &tp_error);
+          return_from_set_subject (self, tp_error);
+          g_clear_error (&tp_error);
+        }
+
+      g_clear_error (&error);
+    }
+  /* otherwise, we wait for a reply! */
+
+  g_object_unref (self);
+}
+
+static void
+gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
+    const gchar *subject,
+    DBusGMethodInvocation *context)
+{
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
+  GabbleMucChannelPrivate *priv = self->priv;
+  GabbleConnection *conn = GABBLE_CONNECTION (tp_base_channel_get_connection (
+          TP_BASE_CHANNEL (self)));
+  WockyPorter *porter = wocky_session_get_porter (conn->session);
+
+  if (priv->state < MUC_STATE_JOINED)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Steady on. You're not in the room yet" };
+
+      dbus_g_method_return_error (context, &error);
+    }
+  else if (priv->state > MUC_STATE_JOINED || priv->closing)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Already left/leaving the room" };
+
+      dbus_g_method_return_error (context, &error);
+    }
+  else if (priv->set_subject_context != NULL)
+    {
+      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "Hey! Stop changing the subject! (Your last request is still in "
+          "flight.)" };
+
+      dbus_g_method_return_error (context, &error);
+    }
+  else
+    {
+      WockyXmppConnection *xmpp_conn;
+      WockyStanza *stanza;
+
+      g_assert (priv->set_subject_stanza_id == NULL);
+      g_object_get (porter,
+          "connection", &xmpp_conn,
+          NULL);
+      priv->set_subject_stanza_id = wocky_xmpp_connection_new_id (xmpp_conn);
+      g_object_unref (xmpp_conn);
+
+      stanza = wocky_stanza_build (
+          WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_GROUPCHAT,
+          NULL, priv->jid,
+          '@', "id", priv->set_subject_stanza_id,
+          '(', "subject", '$', subject, ')',
+          NULL);
+
+      priv->set_subject_context = context;
+      wocky_porter_send_async (porter, stanza, NULL, sent_subject_cb,
+          g_object_ref (self));
+      g_object_unref (stanza);
+    }
+}
+
+static void
 password_iface_init (gpointer g_iface, gpointer iface_data)
 {
   TpSvcChannelInterfacePasswordClass *klass =
@@ -3914,5 +3834,17 @@ chat_state_iface_init (gpointer g_iface, gpointer iface_data)
 #define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
     klass, gabble_muc_channel_##x)
   IMPLEMENT(set_chat_state);
+#undef IMPLEMENT
+}
+
+static void
+subject_iface_init (gpointer g_iface, gpointer iface_data)
+{
+  TpSvcChannelInterfaceSubjectClass *klass =
+    (TpSvcChannelInterfaceSubjectClass *) g_iface;
+
+#define IMPLEMENT(x) tp_svc_channel_interface_subject_implement_##x (\
+    klass, gabble_muc_channel_##x)
+  IMPLEMENT(set_subject);
 #undef IMPLEMENT
 }

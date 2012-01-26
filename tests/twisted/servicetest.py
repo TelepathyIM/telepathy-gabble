@@ -40,16 +40,19 @@ class DictionarySupersetOf (object):
         except TypeError: # other is not iterable
             return False
 
-class Event:
+class Event(object):
     def __init__(self, type, **kw):
         self.__dict__.update(kw)
         self.type = type
         (self.subqueue, self.subtype) = type.split ("-", 1)
 
+    def __str__(self):
+        return '\n'.join([ str(type(self)) ] + format_event(self))
+
 def format_event(event):
     ret = ['- type %s' % event.type]
 
-    for key in dir(event):
+    for key in sorted(dir(event)):
         if key != 'type' and not key.startswith('_'):
             ret.append('- %s: %s' % (
                 key, pprint.pformat(getattr(event, key))))
@@ -428,7 +431,7 @@ def sync_dbus(bus, q, conn):
     q.expect('dbus-error', method='DummySyncDBus')
 
 class ProxyWrapper:
-    def __init__(self, object, default, others):
+    def __init__(self, object, default, others={}):
         self.object = object
         self.default_interface = dbus.Interface(object, default)
         self.Properties = dbus.Interface(object, dbus.PROPERTIES_IFACE)
@@ -452,7 +455,7 @@ def wrap_connection(conn):
         dict([
             (name, tp_name_prefix + '.Connection.Interface.' + name)
             for name in ['Aliasing', 'Avatars', 'Capabilities', 'Contacts',
-              'Presence', 'SimplePresence', 'Requests']] +
+              'SimplePresence', 'Requests']] +
         [('Peer', 'org.freedesktop.DBus.Peer'),
          ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),
          ('ContactInfo', cs.CONN_IFACE_CONTACT_INFO),
@@ -462,6 +465,7 @@ def wrap_connection(conn):
          ('ContactList', cs.CONN_IFACE_CONTACT_LIST),
          ('ContactGroups', cs.CONN_IFACE_CONTACT_GROUPS),
          ('PowerSaving', cs.CONN_IFACE_POWER_SAVING),
+         ('Addressing', cs.CONN_IFACE_ADDRESSING),
         ]))
 
 def wrap_channel(chan, type_, extra=None):

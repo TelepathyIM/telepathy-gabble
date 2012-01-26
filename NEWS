@@ -1,27 +1,389 @@
-telepathy-gabble 0.12.1 (UNRELEASED but inevitable)
-===================================================
+telepathy-gabble 0.15.4 (UNRELEASED)
+====================================
 
-             *     ,MMM8&&&.            *
-                  MMMM88&&&&&    .
-                 MMMM88&&&&&&&
-     *           MMM88&&&&&&&&
-                 MMM88&&&&&&&&
-                 'MMM88&&&&&&'
-                   'MMM8&&&'      *    _
-          |\___/|                      \\
-         =) ^Y^ (=   |\_/|              ||    '
-          \  ^  /    )a a '._.-""""-.  //
-           )=*=(    =\T_= /    ~  ~  \//
-          /     \     `"`\   ~   / ~  /
-          |     |         |~   \ |  ~/
-         /| | | |\         \  ~/- \ ~\
-         \| | |_|/|        || |  // /`
-  jgs_/\_//_// __//\_/\_/\_((_|\((_//\_/\_/\_
-  |  |  |  | \_) |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
-  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+Go go go
+
+Enhancements:
+
+* fd.o#41790 - Make file transfer support optional (andrunko)
+
+telepathy-gabble 0.15.3 (2011-12-22)
+====================================
+
+Fixes:
+
+• fd.o#43891: Update wocky snapshot to fix wocky_data_form_set_type() (Alban)
+
+telepathy-gabble 0.15.2 (2011-12-21)
+====================================
+
+Enhancements:
+
+• fd.o#43588, fd.o#43889: Add public
+  gabble_connection_add_sidecar_own_caps_full() function which
+  includes data forms. (Alban)
+
+Fixes:
+
+• fd.o#42462: Update wocky snapshot to fix gabble getting kicked from D-Bus
+  when non-character utf-8 is used by remote clients (Sjoerd)
+
+• Fix the build when using GLib 2.32. (Xavier)
+
+telepathy-gabble 0.15.1 (2011-11-24)
+====================================
+
+The “goodbye desolate railyard” release.
+
+Dependencies:
+
+• telepathy-glib 0.17.2 is now required.
+
+Enhancements:
+
+• fd.o#38568: Ladies and gentlemen, prepare your angle brackets: Gabble
+  now ships with an XMPP console interface! You can send IQs and get
+  their replies, send arbitrary stanzas, or monitor all incoming and
+  outgoing stanzas, all with beautiful GtkSourceView syntax
+  highlighting. UI love and caring welcome. Anyone want to make a
+  version of the Telepathy “heads” icon with stanzas in place of the
+  thought balloons? (wjt)
+
+• fd.o#32692, fd.o#30296, fd.o#41789: Gabble now implements the
+  freshly-undrafted Protocol.Interface.Addressing and the still-unstable
+  Connection.Interface.Addressing1, and uses them to expose Facebook
+  contacts' integer IDs. (andrunko, eeejay)
+
+• fd.o#42446: Gabble can now be built on Android, using Androgenizer.
+  (Derek Foreman, Alvaro Soliverez)
+
+Fixes:
+
+• capabilities.h and caps-channel-manager.h are no longer erroneously
+  omitted. (albanc)
+
+telepathy-gabble 0.15.0 (2011-11-16)
+====================================
+
+This is the start of a new development branch that will lead to 0.16
+in roughly six months.
+
+Dependencies:
+
+• telepathy-glib 0.17.1 is now required.
+
+Enhancements:
+
+• fd.o#42288: the Chan.I.FileTransfer.Metadata interface has been
+  implemented. (jonny)
+
+• Updated Wocky:
+  · The SASL auth server test now builds with new and old versions of
+    libsasl2.
+
+Bug fixes:
+
+• fd.o#42706: fix a typo when indexing a pointer array by using the
+  wrong counter! (jonny)
+
+• fd.o#32050: fix a crasher when using OLPC activities. (wjt)
+
+• Wocky:
+  · fd.o#41719: don't bail on hashing caps if there's no
+    FORM_TYPE. (jonny)
+  · fdo#39057: Accept from="server.com" as stanzas coming from
+    server. (xclaesse)
+
+telepathy-gabble 0.14.0 (2011-11-07)
+====================================
+
+The “Ironically, downforeveryoneorjustme.com is down.” release. This is
+the start of a glorious new stable series of Gabble!
+
+Major changes since 0.12.x which might disrupt your life:
+
+• Gabble implements the new Room, Subject and RoomConfig interfaces, and
+  no longer supports the old, crummy Telepathy.Properties interface.
+
+• Gabble no longer supports the legacy Presence interace.
+
+• require-encryption is now enabled by default.
+
+• The plugin API has been extended; plugins for 0.12.x may need updating
+  to compile and run with 0.14.x.
+
+Enhancements since 0.13.7:
+
+• It's now possible to install Gabble's test suite. (albanc)
+
+• fd.o#41417: when connected to Facebook, text channels now produce
+  'accepted' delivery reports when the user sends a message to a contact
+  using another device. (wjt)
+
+Fixes since 0.13.7:
+
+• Compile against unstable GLib, where including glib/gtypes.h directly
+  (instead of glib.h) is forbidden. (cosimoc)
+
+• Correct type mismatches for timestamps in muc-channel.c, which lead to
+  Gabble not compiling correctly on 32-bit. (danni)
+
+• fd.o#41743: Offline contacts to whom we have a presence subscription
+  and also a channel open at the time the roster arrives are now
+  correctly shown as offline, rather than unknown. (wjt)
+
+• fd.o#42281: Actually implement the ContactBlocking interface.
+  (cassidy)
+
+• fd.o#42186: Gabble no longer crashes if the server replies to its
+  roster query IQ twice (as vk.com's XMPP server does). (wjt)
+
+• Various memory leak fixes. (andrunko)
+
+• Gabble now returns MAXINT64 for the subject timestamp when it is
+  unknown, as per the latest spec. (danni)
+
+telepathy-gabble 0.13.7 (2011-10-12)
+====================================
+
+The “toast the air” release.
+
+Dependencies:
+
+• telepathy-glib 0.15.9 is now required.
+
+Enhancements:
+
+• fd.o#32611: Gabble now implements the Room, Subject and RoomConfig
+  interfaces. It no longer implements old-style Telepathy.Properties on
+  text channels. Applications which used those will need to be updated
+  to use Subject and RoomConfig instead; they should be pleasantly
+  surprised at how much easier the new APIs are to use. (Jonny, Will)
+
+• Plugins which implement channel managers may now expose capabilities
+  from them, using the GabbleCapsChannelManager interface; other,
+  less dramatic pieces of API for plugins have also been added. (Jonny)
+
+Fixes:
+
+• fd.o#41388: SASL authentication channels no longer claim that
+  X-TELEPATHY-PASSWORD authentication is supported on servers that don't
+  actually support authenticating with a password (such as the WLM
+  server). (Xavier)
+
+• Wocky no longer confuses the realm and the server (which are usually,
+  but not always, the same) when performing DIGEST-MD5 authentication.
+  (Marco)
+
+• We now correctly submit the default configuration form to the MUC we
+  have just created, rather than to the user's own server. (Will)
+
+telepathy-gabble 0.13.6 (2011-09-28)
+====================================
+
+The “grab yourself a bottle” release.
+
+Enhancements:
+
+• Video-capable Android phones are now considered to be video-capable by
+  Gabble. (fd.o#36996, Olivier Crête)
+
+• Gabble now informs Google UIs that we have a camera connected if we
+  have any video-capable user interfaces. While this is not strictly
+  accurate, it's an improvement: they now show a little camera icon for
+  us. (fd.o#40471, Olivier Crête)
+
+• Google proxy support—and hence the libsoup dependency—is now optional.
+  (fd.o#40537, Mikhail Zabaluev)
+
+• Gabble no longer support the legacy Presence API. This reduces D-Bus
+  traffic, particularly during login. (fd.o#40598, Will Thompson)
+
+• Gabble now signals all aliases from the roster in a single
+  AliasesChanged signal. This *dramatically* reduces D-Bus traffic
+  during login on services like Facebook. (fd.o#40943, Marco Barisione)
+
+Fixes:
+
+• Joining a password-protected chat room where someone else already has
+  the nickname you wanted to use—a pretty obscure scenario—now works
+  again. (fd.o#39790, Will Thompson)
+
+• Closing a Call channel immediately after it is created—specifically,
+  before the Google relay server has had a chance to reply—no longer
+  crashes Gabble. (fd.o#39768, Will Thompson)
+
+• The Google Talk setting controlling the sending of mail notifications
+  is now explicitly enabled if a client is interested in mail
+  notifications. (fd.o#40565, Jussi Kukkonen)
+
+telepathy-gabble 0.13.5 (2011-08-17)
+====================================
+
+This is a fixed version of the botched 0.13.4 release.
+
+telepathy-gabble 0.13.4 (2011-08-17)
+====================================
+
+The “giant iris of the wide blue sky” release. This contains all the
+fixes from telepathy-gabble 0.12.5, and other exciting things.
+
+Enhancements:
+
+• XEP-0012 (Last Activity) is implemented at long last. (Michael
+  Scherer, fd.o#11688)
+
+• DecloakAutomatically is now enabled by default. This means that any
+  contact who can IM you can also call you (if they're using Gabble).
+  (Will Thompson)
+
+Fixes:
+
+• StreamTube services are now only advertised to the network, if a Client
+  filter has a channel class with Requested=false (incoming tube) or no
+  Requested property at all (tube with any direction) (Olli Salli,
+  fd.o#39933)
+
+• Gabble no longer crashes if a peer advertises malformed capabilities.
+  (David Laban)
+
+• The test suite's fake XMPP server now listens exclusively on localhost
+  (Paul Seidler, fd.o#35968)
+
+• Invisibility now works on Google Talk again, following a server-side
+  change. (Marco Barisione, fd.o#38706)
+
+• The DecloakAutomatically and PowerSavingActive properties are now
+  decoupled, rather than being erroneously linked. (Will Thompson)
+
+• Only certain known PEP events are now queued when power saving is
+  active, as opposed to all PEP events. (Siraj Rasick)
+
+telepathy-gabble 0.13.3 (2011-07-27)
+====================================
+
+The “I got 99 poplars” release. This contains all the fixes from
+telepathy-gabble 0.12.4, and more.
+
+Changes:
+
+• 'require-encryption' is now enabled by default. This seems like a
+  reasonable thing to do in 2011. It will obviously cause connection
+  errors if any of the user's configured Jabber servers do not support
+  encryption. It may also cause problems if the user is connecting to
+  servers with untrustworthy SSL certificates.
+
+  When Gabble encounters a certificate it does not trust, it creates a
+  ServerTLSConnection channel, in the hope that it will be handled by an
+  application which can prompt the user. Empathy has a handler for such
+  channels.
+
+  On other platforms where no handler is available, if
+  require-encryption is disabled, Gabble falls back to accepting those
+  certificates (on the basis that encryption was being used
+  opportunistically), but if it is enabled, Gabble falls back to
+  rejecting them.
+
+• Relatedly, Gabble will itself accept certificates for domains listed
+  in 'extra-certificate-identities' if they have no other problems.
+  Previously it would include these identities in a property on the
+  ServerTLSConnection channel, but do nothing with them itself. (Marco
+  Barisione, fd.o#38749)
+
+Fixes:
+
+• If telepathy-yell is installed to /usr/include, the included copy will
+  still be used. (Vincent Penquerc'h, fd.o#37492)
+
+• With GnuTLS 2.12, sending very large amounts of data will no longer
+  cause the connection to stall. (Sjoerd Simons, fd.o#36077)
+
+• File transfer channels should now work on Windows. (Thomas Flüeli,
+  fd.o#31621)
+
+
+telepathy-gabble 0.13.2 (2011-06-24)
+====================================
+
+The “Minotaur Shock” release. This includes all of the fixes from the
+0.12.3 release (and no other changes since 0.13.1).
+
+Enhancements:
+
+• autogen.sh now honours the NOCONFIGURE environment variable, for
+  compatibility with gnome-autogen.sh. (Colin Walters)
+
+Fixes:
+
+• Empty aliases stored on the roster are now ignored. Additionally, if
+  we've cached a contact's JID as their alias on our roster (because we
+  couldn't find a better alias), and we come across a better alias for
+  the contact (via a PEP nickname push, or by fetching their vCard for
+  some other reason), we now replace the JID with that better alias.
+  (fd.o#27361, Will)
+
+• We now handle receiving unavailable presence from our contacts before
+  we receive the roster correctly. Previously, this would cause those
+  contacts to be stuck in state 'unknown' rather than 'offline' until
+  they next came online. (fd.o#38603, Will)
+
+• Don't make assertions about TpChannelIface:handle-type's value in
+  GabbleFileTransferChannel's set_property implementation. The
+  property's not really writeable—the getter returns a constant value
+  for it anyway—and this fixes a crash with telepathy-glib 0.15.2, in
+  which the default value has changed from NONE to UNKNOWN. (Will)
+
+telepathy-gabble 0.13.1 (2011-06-16)
+====================================
+
+The “old piano” release. This includes all of the fixes from the 0.12.2
+release (and no other changes since 0.13.0).
+
+Fixes:
+
+• We now interoperate with Google Mail's brand new implementation of
+  Jingle.  Some of the workarounds added are temporary, and some are
+  not. (fd.o#38352, Will)
+
+• Compare codec names case-insensitively. (fd.o#38264, Olivier)
+
+telepathy-gabble 0.13.0 (2011-06-02)
+====================================
+
+The “Belgian Wake-Up Drill” release. This is the first release in an
+all-new unstable series of Gabble.
+
+Enhancements:
+
+• The draft Channel.Interface.Room is implemented. (Jonny)
+
+• IM and MUC channels now signal failure to send messages in some
+  situations. (fd.o#33460, Siraj)
+
+telepathy-gabble 0.12.1 (2011-06-02)
+====================================
+
+The “Have you seen this cat?” release.
+
+Enhancements:
+
+• Spurious server-generated messages sent by the Google Mail client's
+  “reply to email over chat” feature are now filtered out. (fd.o#36647,
+  Chandni)
+
+Fixes:
+
+• No longer crashes if Disconnect() is called just before a connection
+  declares itself Connected. (fd.o#37078, Simon)
+
+• No longer assumes Google's Queue extension is supported if Google's
+  Roster extension is supported. (fd.o#36260, Will)
+
+• Many corner cases of the transitions to and from Away and Invisible
+  when using Google's Shared Status extension have been fixed.
+  (fd.o#37069, fd.o#36058, fd.o#37283, Marco)
+
+• You can now see your own avatar in MUCs. (fd.o#32017, Will)
 
 telepathy-gabble 0.12.0 (2011-04-21)
 ====================================

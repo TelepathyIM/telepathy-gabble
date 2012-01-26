@@ -231,7 +231,7 @@ gabble_roomlist_channel_dispose (GObject *object)
 
   g_assert (priv->pending_room_signals != NULL);
   g_assert (priv->pending_room_signals->len == 0);
-  g_ptr_array_free (priv->pending_room_signals, TRUE);
+  g_ptr_array_unref (priv->pending_room_signals);
   priv->pending_room_signals = NULL;
 
   if (G_OBJECT_CLASS (gabble_roomlist_channel_parent_class)->dispose)
@@ -429,7 +429,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 
   DEBUG ("adding new room signal data to pending: %s", jid);
   g_ptr_array_add (priv->pending_room_signals, g_value_get_boxed (&room));
-  g_hash_table_destroy (keys);
+  g_hash_table_unref (keys);
 }
 
 static void

@@ -84,6 +84,7 @@
 /* Jingle ICE-UDP transport */
 #define NS_JINGLE_TRANSPORT_ICEUDP "urn:xmpp:jingle:transports:ice-udp:1"
 
+#define NS_LAST                 "jabber:iq:last"
 #define NS_MUC                  "http://jabber.org/protocol/muc"
 #define NS_MUC_BYTESTREAM       "http://telepathy.freedesktop.org/xmpp/protocol/muc-bytestream"
 #define NS_MUC_USER             "http://jabber.org/protocol/muc#user"
@@ -117,8 +118,20 @@
 #define NS_VERSION              "jabber:iq:version"
 #define NS_GEOLOC               "http://jabber.org/protocol/geoloc"
 #define NS_GOOGLE_MAIL_NOTIFY   "google:mail:notify"
+#define NS_GOOGLE_SETTING       "google:setting"
 
 #define NS_TEMPPRES "urn:xmpp:temppres:0"
 #define NS_GOOGLE_SHARED_STATUS "google:shared-status"
+
+/* This is used by the extension Facebook uses to push you messages you send
+ * using other devices (or the website).
+ *
+ * http://www.youtube.com/watch?v=rSnXE2791yg is not the song I was looking
+ * for, but it's not bad.
+ */
+#define NS_FACEBOOK_MESSAGES "http://www.facebook.com/xmpp/messages"
+
+#define NS_TP_FT_METADATA_SERVICE "http://telepathy.freedesktop.org/xmpp/file-transfer-service"
+#define NS_TP_FT_METADATA       "http://telepathy.freedesktop.org/xmpp/file-transfer-metadata"
 
 #endif /* __GABBLE_NAMESPACES__H__ */

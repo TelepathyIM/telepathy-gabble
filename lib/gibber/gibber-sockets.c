@@ -27,14 +27,13 @@
 #include "gibber-debug.h"
 
 gboolean
-gibber_connect_errno_requires_retry (void)
+gibber_connect_errno_requires_retry (int err)
 {
 #ifdef G_OS_WIN32
-  int err = WSAGetLastError ();
-
-  return (err == WSAEINPROGRESS || err == WSAEALREADY);
+  return (err == WSAEINPROGRESS || err == WSAEALREADY ||
+    err == WSAEWOULDBLOCK || err == WSAEINVAL);
 #else
-  return (errno == EINPROGRESS || errno == EALREADY);
+  return (err == EINPROGRESS || err == EALREADY);
 #endif
 }
 

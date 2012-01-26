@@ -189,7 +189,7 @@ gabble_media_stream_new (const gchar *object_path,
       NULL);
 
   if (empty != NULL)
-    g_ptr_array_free (empty, TRUE);
+    g_ptr_array_unref (empty);
 
   return result;
 }
@@ -743,15 +743,15 @@ gabble_media_stream_codec_choice (TpSvcMediaStreamHandler *iface,
 
 gboolean
 gabble_media_stream_error (GabbleMediaStream *self,
-                           guint errno,
+                           guint errnum,
                            const gchar *message,
                            GError **error)
 {
   g_assert (GABBLE_IS_MEDIA_STREAM (self));
 
   DEBUG ( "Media.StreamHandler::Error called, error %u (%s) -- emitting signal",
-      errno, message);
-  g_signal_emit (self, signals[ERROR], 0, errno, message);
+      errnum, message);
+  g_signal_emit (self, signals[ERROR], 0, errnum, message);
 
   return TRUE;
 }
@@ -765,14 +765,14 @@ gabble_media_stream_error (GabbleMediaStream *self,
  */
 static void
 gabble_media_stream_error_async (TpSvcMediaStreamHandler *iface,
-                                 guint errno,
+                                 guint errnum,
                                  const gchar *message,
                                  DBusGMethodInvocation *context)
 {
   GabbleMediaStream *self = GABBLE_MEDIA_STREAM (iface);
   GError *error = NULL;
 
-  if (gabble_media_stream_error (self, errno, message, &error))
+  if (gabble_media_stream_error (self, errnum, message, &error))
     {
       tp_svc_media_stream_handler_return_from_error (context);
     }
@@ -1681,7 +1681,7 @@ new_remote_candidates_cb (GabbleJingleContent *content,
 
       g_free (candidate_id);
       g_value_unset (&transport);
-      g_ptr_array_free (transports, TRUE);
+      g_ptr_array_unref (transports);
 
       g_ptr_array_add (candidates, g_value_get_boxed (&candidate));
     }

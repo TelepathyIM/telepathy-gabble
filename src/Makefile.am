@@ -13,6 +13,8 @@ libexec_PROGRAMS=telepathy-gabble
 noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
+    addressing-util.h \
+    addressing-util.c \
     auth-manager.h \
     auth-manager.c \
     base64.h \
@@ -44,13 +46,15 @@ libgabble_convenience_la_SOURCES = \
     call-stream.h \
     call-stream.c \
     $(top_srcdir)/gabble/capabilities-set.h \
-    capabilities.h \
+    $(top_srcdir)/gabble/capabilities.h \
     capabilities.c \
     $(top_srcdir)/gabble/caps-hash.h \
     caps-hash.h \
     caps-hash.c \
-    caps-channel-manager.h \
+    $(top_srcdir)/gabble/caps-channel-manager.h \
     caps-channel-manager.c \
+    conn-addressing.h \
+    conn-addressing.c \
     conn-aliasing.h \
     conn-aliasing.c \
     conn-avatars.h \
@@ -84,14 +88,10 @@ libgabble_convenience_la_SOURCES = \
     disco.c \
     error.c \
     error.h \
-    ft-channel.c \
-    ft-channel.h \
-    ft-manager.c \
-    ft-manager.h \
     gabble.c \
     gabble.h \
-    gtalk-file-collection.h \
-    gtalk-file-collection.c \
+    google-relay.c \
+    google-relay.h \
     im-channel.h \
     im-channel.c \
     im-factory.h \
@@ -150,6 +150,8 @@ libgabble_convenience_la_SOURCES = \
     request-pipeline.c \
     roster.h \
     roster.c \
+    room-config.h \
+    room-config.c \
     roomlist-channel.h \
     roomlist-channel.c \
     roomlist-manager.h \
@@ -183,8 +185,28 @@ libgabble_convenience_la_SOURCES = \
     vcard-manager.h \
     vcard-manager.c
 
+if ENABLE_FILE_TRANSFER
+libgabble_convenience_la_SOURCES += \
+    ft-channel.c \
+    ft-channel.h \
+    ft-manager.c \
+    ft-manager.h \
+    gtalk-file-collection.h \
+    gtalk-file-collection.c
+else
+EXTRA_DIST += \
+    ft-channel.c \
+    ft-channel.h \
+    ft-manager.c \
+    ft-manager.h \
+    gtalk-file-collection.h \
+    gtalk-file-collection.c
+endif
+
 enumtype_sources = \
+    $(top_srcdir)/src/connection.h \
     $(top_srcdir)/src/jingle-factory.h \
+    $(top_srcdir)/src/room-config.h \
     $(top_srcdir)/src/presence.h
 
 libgabble_convenience_la_LIBADD = \
@@ -218,13 +240,18 @@ telepathy_gabble_LDFLAGS = -export-dynamic
 noinst_LTLIBRARIES = libgabble-convenience.la
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
-	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
-	    @HANDLE_LEAK_DEBUG_CFLAGS@ @TP_GLIB_CFLAGS@ \
-	    @SOUP_CFLAGS@ @NICE_CFLAGS@ @GMODULE_CFLAGS@ \
 	    @TP_YELL_CFLAGS@ \
+	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
+	    @TP_GLIB_CFLAGS@ \
+	    @SOUP_CFLAGS@ @NICE_CFLAGS@ @GMODULE_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
 	    -DG_LOG_DOMAIN=\"gabble\" \
 	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
+
+# following flag is requied to make getnameinfo work
+if WINDOWS
+  AM_CFLAGS += -D_WIN32_WINNT=0x0501
+endif
 
 ALL_LIBS =  @DBUS_LIBS@ @GLIB_LIBS@ @WOCKY_LIBS@ @TP_GLIB_LIBS@ \
 	    @SOUP_LIBS@ @NICE_LIBS@ @GMODULE_LIBS@
@@ -271,3 +298,14 @@ gabble-enumtypes.c: $(enumtype_sources) Makefile.in
 	--vprod "      { @VALUENAME@, \"@VALUENAME@\", \"@valuenick@\" }," \
 	--vtail "      { 0, NULL, NULL }\n    };\n    etype = g_@type@_register_static (\"@EnumName@\", values);\n  }\n  return etype;\n}\n" \
 	$(enumtype_sources) > $@
+
+Android.mk: Makefile.am $(BUILT_SOURCES)
+	androgenizer -:PROJECT telepathy-gabble -:SHARED telepathy-gabble -:TAGS eng debug \
+	 -:REL_TOP $(top_srcdir) -:ABS_TOP $(abs_top_srcdir) \
+	 -:SOURCES $(libgabble_convenience_la_SOURCES) \
+	  $(nodist_libgabble_convenience_la_SOURCES) main.c \
+	 -:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	  $(AM_CFLAGS) -DBUILD_AS_ANDROID_SERVICE \
+	  -:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) $(telepathy_gabble_LDFLAGS) \
+	  -:LDFLAGS $(telepathy_gabble_LDADD) $(libgabble_convenience_la_LIBADD) \
+	> $@

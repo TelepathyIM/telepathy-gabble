@@ -95,7 +95,7 @@ gabble_olpc_activity_finalize (GObject *object)
 
   if (self->properties != NULL)
     {
-      g_hash_table_destroy (self->properties);
+      g_hash_table_unref (self->properties);
       self->properties = NULL;
     }
 
@@ -154,7 +154,7 @@ gabble_olpc_activity_set_property (GObject *object,
         break;
       case PROP_PROPERTIES:
         if (self->properties != NULL)
-          g_hash_table_destroy (self->properties);
+          g_hash_table_unref (self->properties);
 
         self->properties = g_value_get_boxed (value);
         break;

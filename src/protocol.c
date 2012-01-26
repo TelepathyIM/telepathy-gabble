@@ -19,11 +19,15 @@
 
 #include "protocol.h"
 
+#include <string.h>
 #include <telepathy-glib/base-connection-manager.h>
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>
 
+#include "extensions/extensions.h"
+
 #include "conn-presence.h"
+
 #include "connection.h"
 #include "connection-manager.h"
 #include "im-factory.h"
@@ -32,15 +36,19 @@
 #include "roomlist-manager.h"
 #include "search-manager.h"
 #include "util.h"
+#include "addressing-util.h"
 
 #define PROTOCOL_NAME "jabber"
 #define ICON_NAME "im-" PROTOCOL_NAME
 #define VCARD_FIELD_NAME "x-" PROTOCOL_NAME
 #define ENGLISH_NAME "Jabber"
 
-G_DEFINE_TYPE (GabbleJabberProtocol,
-    gabble_jabber_protocol,
-    TP_TYPE_BASE_PROTOCOL)
+static void addressing_iface_init (TpProtocolAddressingInterface *iface);
+
+G_DEFINE_TYPE_WITH_CODE (GabbleJabberProtocol, gabble_jabber_protocol,
+    TP_TYPE_BASE_PROTOCOL,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_PROTOCOL_ADDRESSING, addressing_iface_init);
+    )
 
 static TpCMParamSpec jabber_params[] = {
   { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
@@ -76,7 +84,7 @@ static TpCMParamSpec jabber_params[] = {
     0 /* unused */, NULL, NULL },
 
   { "require-encryption", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(TRUE),
     0 /* unused */, NULL, NULL },
 
   { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
@@ -149,7 +157,9 @@ static TpCMParamSpec jabber_params[] = {
 
   { GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
     DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER (FALSE),
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT |
+    TP_CONN_MGR_PARAM_FLAG_DBUS_PROPERTY,
+    GINT_TO_POINTER (TRUE),
     0 /* unused */, NULL, NULL },
 
   { "fallback-servers", "as", 0,
@@ -301,6 +311,7 @@ get_interfaces (TpBaseProtocol *self)
 {
   const gchar * const interfaces[] = {
     TP_IFACE_PROTOCOL_INTERFACE_PRESENCE,
+    TP_IFACE_PROTOCOL_INTERFACE_ADDRESSING,
     NULL };
 
   return g_strdupv ((GStrv) interfaces);
@@ -329,7 +340,9 @@ get_connection_details (TpBaseProtocol *self,
   if (channel_managers != NULL)
     {
       GType types[] = {
+#ifdef ENABLE_FILE_TRANSFER
           GABBLE_TYPE_FT_MANAGER,
+#endif
           GABBLE_TYPE_IM_FACTORY,
           GABBLE_TYPE_MEDIA_FACTORY,
           GABBLE_TYPE_MUC_FACTORY,
@@ -368,6 +381,59 @@ dup_authentication_types (TpBaseProtocol *self)
   return g_strdupv ((GStrv) types);
 }
 
+static GStrv
+dup_supported_uri_schemes (TpBaseProtocol *self)
+{
+  return g_strdupv ((gchar **) gabble_get_addressable_uri_schemes ());
+}
+
+static GStrv
+dup_supported_vcard_fields (TpBaseProtocol *self)
+{
+  return g_strdupv ((gchar **) gabble_get_addressable_vcard_fields ());
+}
+
+static gchar *
+addressing_normalize_vcard_address (TpBaseProtocol *self,
+    const gchar *vcard_field,
+    const gchar *vcard_address,
+    GError **error)
+{
+  gchar *normalized_address = gabble_normalize_vcard_address (vcard_field, vcard_address, error);
+
+  if (normalized_address == NULL)
+    {
+      /* InvalidHandle makes no sense in Protocol */
+      if (error != NULL && g_error_matches (*error, TP_ERROR, TP_ERROR_INVALID_HANDLE))
+        {
+          (*error)->code = TP_ERROR_INVALID_ARGUMENT;
+        }
+    }
+
+  return normalized_address;
+}
+
+static gchar *
+addressing_normalize_contact_uri (TpBaseProtocol *self,
+    const gchar *uri,
+    GError **error)
+{
+  gchar *normalized_address = NULL;
+
+  normalized_address = gabble_normalize_contact_uri (uri, error);
+
+  if (normalized_address == NULL)
+    {
+      /* InvalidHandle makes no sense in Protocol */
+      if (error != NULL && g_error_matches (*error, TP_ERROR, TP_ERROR_INVALID_HANDLE))
+        {
+          (*error)->code = TP_ERROR_INVALID_ARGUMENT;
+        }
+    }
+
+  return normalized_address;
+}
+
 static void
 gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
 {
@@ -392,3 +458,11 @@ gabble_jabber_protocol_new (void)
       NULL);
 }
 
+static void
+addressing_iface_init (TpProtocolAddressingInterface *iface)
+{
+  iface->dup_supported_vcard_fields = dup_supported_vcard_fields;
+  iface->dup_supported_uri_schemes = dup_supported_uri_schemes;
+  iface->normalize_vcard_address = addressing_normalize_vcard_address;
+  iface->normalize_contact_uri = addressing_normalize_contact_uri;
+}

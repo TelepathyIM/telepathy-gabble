@@ -22,8 +22,8 @@
 
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#include <Windows.h>
-#include <Winbase.h>
+#include <windows.h>
+#include <winbase.h>
 /* Winsock makes some inappropriately-namespaced definitions */
 #undef ERROR
 #undef interface

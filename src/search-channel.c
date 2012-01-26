@@ -237,7 +237,7 @@ parse_unextended_field_response (
           g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
               "server is broken: %s is not a field defined in XEP 0055",
               field->name);
-          g_ptr_array_free (search_keys, TRUE);
+          g_ptr_array_unref (search_keys);
           return NULL;
         }
     }
@@ -350,7 +350,7 @@ parse_data_form (
   return search_keys;
 
 fail:
-  g_ptr_array_free (search_keys, TRUE);
+  g_ptr_array_unref (search_keys);
   return NULL;
 }
 
@@ -661,7 +661,7 @@ parse_result_item (GabbleSearchChannel *chan,
     }
 
   add_search_result (chan, info);
-  g_hash_table_destroy (info);
+  g_hash_table_unref (info);
 }
 
 static void
@@ -714,7 +714,7 @@ parse_extended_result_item (GabbleSearchChannel *chan,
       add_search_result (chan, info);
     }
 
-  g_hash_table_destroy (info);
+  g_hash_table_unref (info);
 }
 
 static gboolean
@@ -1059,7 +1059,7 @@ gabble_search_channel_finalize (GObject *obj)
   g_free (priv->server);
 
   tp_handle_set_destroy (priv->result_handles);
-  g_hash_table_destroy (chan->priv->tp_to_xmpp);
+  g_hash_table_unref (chan->priv->tp_to_xmpp);
 
   g_free (chan->priv->available_search_keys);
 
@@ -1067,9 +1067,9 @@ gabble_search_channel_finalize (GObject *obj)
     {
       g_free (g_ptr_array_index (priv->boolean_keys, i));
     }
-  g_ptr_array_free (priv->boolean_keys, TRUE);
+  g_ptr_array_unref (priv->boolean_keys);
 
-  g_hash_table_destroy (chan->priv->results);
+  g_hash_table_unref (chan->priv->results);
 
   if (G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_channel_parent_class)->finalize (obj);

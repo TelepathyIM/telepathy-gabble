@@ -29,7 +29,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
 #include "disco.h"
@@ -230,7 +230,7 @@ gabble_search_manager_finalize (GObject *object)
 
   /* close_all removed all the channels from the hash table */
   g_assert_cmpuint (g_hash_table_size (priv->channels), ==, 0);
-  g_hash_table_destroy (priv->channels);
+  g_hash_table_unref (priv->channels);
 
   if (G_OBJECT_CLASS (gabble_search_manager_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_search_manager_parent_class)->finalize (object);
@@ -341,7 +341,7 @@ gabble_search_manager_type_foreach_channel_class (GType type,
 
   func (type, table, search_channel_allowed_properties, user_data);
 
-  g_hash_table_destroy (table);
+  g_hash_table_unref (table);
 }
 
 static void

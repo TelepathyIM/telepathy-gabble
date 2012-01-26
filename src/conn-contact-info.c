@@ -57,7 +57,10 @@ typedef enum {
     /* in Telepathy, one multi-line value; in XMPP, a sequence of <LINE>s */
     FIELD_LABEL,
     /* same as FIELD_STRUCTURED except the last element may repeat n times */
-    FIELD_ORG
+    FIELD_ORG,
+
+    /* a field we intentionally ignore */
+    FIELD_IGNORED
 } FieldBehaviour;
 
 typedef struct {
@@ -128,7 +131,8 @@ static VCardField known_fields[] = {
 
     /* Things we don't handle: */
 
-      /* PHOTO: we treat it as the avatar instead */
+      /* PHOTO is handled by the Avatar code */
+      { "PHOTO", NULL, FIELD_IGNORED },
 
       /* KEY: is Base64 (perhaps? hard to tell from the XEP) */
       /* LOGO: can be base64 or a URL */
@@ -238,7 +242,7 @@ _create_contact_field_extended (GPtrArray *contact_info,
 
   /* The strings in both arrays are borrowed, so we just need to free the
    * arrays themselves. */
-  g_ptr_array_free (field_params, TRUE);
+  g_ptr_array_unref (field_params);
   g_free (field_values);
 }
 
@@ -331,7 +335,7 @@ _parse_vcard (WockyNode *vcard_node,
               _insert_contact_field (contact_info, "org", NULL,
                   (const gchar * const *) field_values->pdata);
 
-              g_ptr_array_free (field_values, TRUE);
+              g_ptr_array_unref (field_values);
             }
           break;
 
@@ -369,6 +373,9 @@ _parse_vcard (WockyNode *vcard_node,
                   (const gchar * const *) field_values);
               g_free (field_values[0]);
             }
+          break;
+
+        case FIELD_IGNORED:
           break;
 
         default:
@@ -970,6 +977,9 @@ conn_contact_info_build_supported_fields (GabbleConnection *conn,
       guint max_times;
       guint i;
       TpContactInfoFieldFlags tp_flags = field->tp_flags;
+
+      if (field->behaviour == FIELD_IGNORED)
+        continue;
 
       /* Shorthand to avoid having to put it in the struct initialization:
        * on XMPP, there is no field that supports arbitrary type-parameters.

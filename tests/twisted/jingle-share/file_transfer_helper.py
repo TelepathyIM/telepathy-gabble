@@ -11,7 +11,8 @@ import ns
 from caps_helper import text_fixed_properties, text_allowed_properties, \
     stream_tube_fixed_properties, stream_tube_allowed_properties, \
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, \
-    ft_fixed_properties, ft_allowed_properties, compute_caps_hash
+    ft_fixed_properties, ft_allowed_properties, compute_caps_hash, \
+    extract_disco_parts
 
 from twisted.words.xish import domish, xpath
 
@@ -59,6 +60,7 @@ generic_caps = [(text_fixed_properties, text_allowed_properties),
 class FileTransferTest(object):
     caps_identities = None
     caps_features = None
+    caps_dataforms = None
     caps_ft = None
 
     def __init__(self, file, address_type, access_control, access_control_param):
@@ -141,12 +143,13 @@ class FileTransferTest(object):
         c = nodes[0]
         if 'share-v1' in c.getAttribute('ext'):
             assert FileTransferTest.caps_identities is not None and \
-                FileTransferTest.caps_features is not None
+                FileTransferTest.caps_features is not None and \
+                FileTransferTest.caps_dataforms is not None
 
             new_hash = compute_caps_hash(FileTransferTest.caps_identities,
                                          FileTransferTest.caps_features + \
                                              [ns.GOOGLE_FEAT_SHARE],
-                                         {})
+                                         FileTransferTest.caps_dataforms)
             # Replace ver hash from one with file-transfer ns to one without
             FileTransferTest.caps_ft = c.attributes['ver']
             c.attributes['ver'] = new_hash
@@ -173,7 +176,9 @@ class FileTransferTest(object):
         if iq.getAttribute('type') == 'result':
 
             if FileTransferTest.caps_identities is None or \
-                    FileTransferTest.caps_features is None:
+                    FileTransferTest.caps_features is None or \
+                    FileTransferTest.caps_dataforms is None:
+                # create our own identity
                 identity_nodes = xpath.queryForNodes('/iq/query/identity', iq)
                 assertLength(1, identity_nodes)
                 identity_node = identity_nodes[0]
@@ -183,22 +188,23 @@ class FileTransferTest(object):
                 identity_name = identity_node['name']
                 identity = '%s/%s//%s' % (identity_category, identity_type,
                                           identity_name)
-                FileTransferTest.caps_identities = [identity]
 
-                FileTransferTest.caps_features = []
-                for feature in xpath.queryForNodes('/iq/query/feature', iq):
-                    FileTransferTest.caps_features.append(feature['var'])
+                _, features, dataforms = extract_disco_parts(iq)
+
+                FileTransferTest.caps_identities = [identity]
+                FileTransferTest.caps_features = features
+                FileTransferTest.caps_dataforms = dataforms
 
                 # Check if the hash matches the announced capabilities
                 assertEquals(compute_caps_hash(FileTransferTest.caps_identities,
                                                FileTransferTest.caps_features,
-                                               {}), ver)
+                                               FileTransferTest.caps_dataforms), ver)
 
             if ver == FileTransferTest.caps_ft:
                 caps_share = compute_caps_hash(FileTransferTest.caps_identities,
                                                FileTransferTest.caps_features + \
                                                    [ns.GOOGLE_FEAT_SHARE],
-                                               {})
+                                               FileTransferTest.caps_dataforms)
                 n = query.attributes['node'].replace(ver, caps_share)
                 query.attributes['node'] = n
 
@@ -214,7 +220,7 @@ class FileTransferTest(object):
             caps_share = compute_caps_hash(FileTransferTest.caps_identities,
                                            FileTransferTest.caps_features + \
                                                [ns.GOOGLE_FEAT_SHARE],
-                                           {})
+                                           FileTransferTest.caps_dataforms)
 
             if ver == caps_share:
                 n = query.attributes['node'].replace(ver,
@@ -388,7 +394,7 @@ class SendFileTest(FileTransferTest):
                  cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT},
                 [cs.FT_CONTENT_HASH_TYPE, cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE,
                  cs.FT_FILENAME, cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE,
-                 cs.FT_URI]
+                 cs.FT_URI, cs.FT_SERVICE_NAME, cs.FT_METADATA]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
@@ -398,14 +404,12 @@ class SendFileTest(FileTransferTest):
                  cs.FT_CONTENT_HASH_TYPE: cs.FILE_HASH_TYPE_MD5},
                 [cs.TARGET_HANDLE, cs.TARGET_ID, cs.FT_CONTENT_TYPE, cs.FT_FILENAME,
                  cs.FT_SIZE, cs.FT_CONTENT_HASH, cs.FT_DESCRIPTION, cs.FT_DATE,
-                 cs.FT_URI]
+                 cs.FT_URI, cs.FT_SERVICE_NAME, cs.FT_METADATA]
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
     def request_ft_channel(self):
-        requests_iface = dbus.Interface(self.conn, cs.CONN_IFACE_REQUESTS)
-
-        self.ft_path, props = requests_iface.CreateChannel({
+        self.ft_path, props = self.conn.Requests.CreateChannel({
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_FILE_TRANSFER,
             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
             cs.TARGET_HANDLE: self.handle,

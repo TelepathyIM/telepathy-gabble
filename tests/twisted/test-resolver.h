@@ -22,7 +22,7 @@
 #define __TEST_RESOLVER_H__
 
 #include <gio/gio.h>
-#include <glib/gtypes.h>
+#include <glib.h>
 
 G_BEGIN_DECLS
 

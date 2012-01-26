@@ -15,11 +15,8 @@ def test(q, bus, conn, stream):
     presence = make_presence('bob@foo.com/Foo', status='hello')
     stream.send(presence)
 
-    q.expect_many(
-        EventPattern('dbus-signal', signal='PresenceUpdate',
-           args=[{2L: (0L, {u'available': {'message': 'hello'}})}]),
-        EventPattern('dbus-signal', signal='PresencesChanged',
-           args=[{2L: (2, u'available', 'hello')}]))
+    q.expect('dbus-signal', signal='PresencesChanged',
+           args=[{2L: (2, u'available', 'hello')}])
 
     # FIXME: throughout this test, Bob's handle is assumed to be 2.
 

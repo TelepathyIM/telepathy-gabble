@@ -44,8 +44,9 @@ class GTypesGenerator(object):
 
         self.header = open(output + '.h', 'w')
         self.body = open(output + '-body.h', 'w')
+        self.docs = open(output + '-gtk-doc.h', 'w')
 
-        for f in (self.header, self.body):
+        for f in (self.header, self.body, self.docs):
             f.write('/* Auto-generated, do not edit.\n *\n'
                     ' * This file may be distributed under the same terms\n'
                     ' * as the specification from which it was generated.\n'
@@ -70,6 +71,9 @@ class GTypesGenerator(object):
     def c(self, code):
         self.body.write(code.encode("utf-8"))
 
+    def d(self, code):
+        self.docs.write(code.encode('utf-8'))
+
     def do_mapping_header(self, mapping):
         members = mapping.getElementsByTagNameNS(NS_TP, 'member')
         assert len(members) == 2
@@ -85,41 +89,41 @@ class GTypesGenerator(object):
 
         docstring = get_docstring(mapping) or '(Undocumented)'
 
-        self.h('/**\n * %s:\n *\n' % name)
-        self.h(' * %s\n' % xml_escape(docstring))
-        self.h(' *\n')
-        self.h(' * This macro expands to a call to a function\n')
-        self.h(' * that returns the #GType of a #GHashTable\n')
-        self.h(' * appropriate for representing a D-Bus\n')
-        self.h(' * dictionary of signature\n')
-        self.h(' * <literal>a{%s}</literal>.\n' % impl_sig)
-        self.h(' *\n')
+        self.d('/**\n * %s:\n *\n' % name)
+        self.d(' * %s\n' % xml_escape(docstring))
+        self.d(' *\n')
+        self.d(' * This macro expands to a call to a function\n')
+        self.d(' * that returns the #GType of a #GHashTable\n')
+        self.d(' * appropriate for representing a D-Bus\n')
+        self.d(' * dictionary of signature\n')
+        self.d(' * <literal>a{%s}</literal>.\n' % impl_sig)
+        self.d(' *\n')
 
         key, value = members
 
-        self.h(' * Keys (D-Bus type <literal>%s</literal>,\n'
+        self.d(' * Keys (D-Bus type <literal>%s</literal>,\n'
                           % key.getAttribute('type'))
         tp_type = key.getAttributeNS(NS_TP, 'type')
         if tp_type:
-            self.h(' * type <literal>%s</literal>,\n' % tp_type)
-        self.h(' * named <literal>%s</literal>):\n'
+            self.d(' * type <literal>%s</literal>,\n' % tp_type)
+        self.d(' * named <literal>%s</literal>):\n'
                           % key.getAttribute('name'))
         docstring = get_docstring(key) or '(Undocumented)'
-        self.h(' * %s\n' % xml_escape(docstring))
-        self.h(' *\n')
+        self.d(' * %s\n' % xml_escape(docstring))
+        self.d(' *\n')
 
-        self.h(' * Values (D-Bus type <literal>%s</literal>,\n'
+        self.d(' * Values (D-Bus type <literal>%s</literal>,\n'
                           % value.getAttribute('type'))
         tp_type = value.getAttributeNS(NS_TP, 'type')
         if tp_type:
-            self.h(' * type <literal>%s</literal>,\n' % tp_type)
-        self.h(' * named <literal>%s</literal>):\n'
+            self.d(' * type <literal>%s</literal>,\n' % tp_type)
+        self.d(' * named <literal>%s</literal>):\n'
                           % value.getAttribute('name'))
         docstring = get_docstring(value) or '(Undocumented)'
-        self.h(' * %s\n' % xml_escape(docstring))
-        self.h(' *\n')
+        self.d(' * %s\n' % xml_escape(docstring))
+        self.d(' *\n')
 
-        self.h(' */\n')
+        self.d(' */\n')
 
         self.h('#define %s (%s ())\n\n' % (name, impl))
         self.need_mappings[impl_sig] = esc_impl_sig
@@ -130,11 +134,12 @@ class GTypesGenerator(object):
             contents_sig = 'a{' + impl_sig + '}'
             esc_contents_sig = escape_as_identifier(contents_sig)
             impl = self.prefix_ + 'type_dbus_array_of_' + esc_contents_sig
-            self.h('/**\n * %s:\n\n' % gtype_name)
-            self.h(' * Expands to a call to a function\n')
-            self.h(' * that returns the #GType of a #GPtrArray\n')
-            self.h(' * of #%s.\n' % name)
-            self.h(' */\n')
+            self.d('/**\n * %s:\n\n' % gtype_name)
+            self.d(' * Expands to a call to a function\n')
+            self.d(' * that returns the #GType of a #GPtrArray\n')
+            self.d(' * of #%s.\n' % name)
+            self.d(' */\n\n')
+
             self.h('#define %s (%s ())\n\n' % (gtype_name, impl))
             self.need_other_arrays[contents_sig] = esc_contents_sig
 
@@ -157,41 +162,43 @@ class GTypesGenerator(object):
                 docstring = '(Undocumented)'
         else:
             docstring = '(Undocumented)'
-        self.h('/**\n * %s:\n\n' % name)
-        self.h(' * %s\n' % xml_escape(docstring))
-        self.h(' *\n')
-        self.h(' * This macro expands to a call to a function\n')
-        self.h(' * that returns the #GType of a #GValueArray\n')
-        self.h(' * appropriate for representing a D-Bus struct\n')
-        self.h(' * with signature <literal>(%s)</literal>.\n'
+        self.d('/**\n * %s:\n\n' % name)
+        self.d(' * %s\n' % xml_escape(docstring))
+        self.d(' *\n')
+        self.d(' * This macro expands to a call to a function\n')
+        self.d(' * that returns the #GType of a #GValueArray\n')
+        self.d(' * appropriate for representing a D-Bus struct\n')
+        self.d(' * with signature <literal>(%s)</literal>.\n'
                           % impl_sig)
-        self.h(' *\n')
+        self.d(' *\n')
 
         for i, member in enumerate(members):
-            self.h(' * Member %d (D-Bus type '
+            self.d(' * Member %d (D-Bus type '
                               '<literal>%s</literal>,\n'
                               % (i, member.getAttribute('type')))
             tp_type = member.getAttributeNS(NS_TP, 'type')
             if tp_type:
-                self.h(' * type <literal>%s</literal>,\n' % tp_type)
-            self.h(' * named <literal>%s</literal>):\n'
+                self.d(' * type <literal>%s</literal>,\n' % tp_type)
+            self.d(' * named <literal>%s</literal>):\n'
                               % member.getAttribute('name'))
             docstring = get_docstring(member) or '(Undocumented)'
-            self.h(' * %s\n' % xml_escape(docstring))
-            self.h(' *\n')
+            self.d(' * %s\n' % xml_escape(docstring))
+            self.d(' *\n')
 
-        self.h(' */\n')
+        self.d(' */\n\n')
+
         self.h('#define %s (%s ())\n\n' % (name, impl))
 
         array_name = struct.getAttribute('array-name')
         if array_name != '':
             array_name = (self.PREFIX_ + 'ARRAY_TYPE_' + array_name.upper())
             impl = self.prefix_ + 'type_dbus_array_' + esc_impl_sig
-            self.h('/**\n * %s:\n\n' % array_name)
-            self.h(' * Expands to a call to a function\n')
-            self.h(' * that returns the #GType of a #GPtrArray\n')
-            self.h(' * of #%s.\n' % name)
-            self.h(' */\n')
+            self.d('/**\n * %s:\n\n' % array_name)
+            self.d(' * Expands to a call to a function\n')
+            self.d(' * that returns the #GType of a #GPtrArray\n')
+            self.d(' * of #%s.\n' % name)
+            self.d(' */\n\n')
+
             self.h('#define %s (%s ())\n\n' % (array_name, impl))
             self.need_struct_arrays[impl_sig] = esc_impl_sig
 

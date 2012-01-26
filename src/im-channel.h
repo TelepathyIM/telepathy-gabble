@@ -66,16 +66,22 @@ GType gabble_im_channel_get_type (void);
 
 void _gabble_im_channel_receive (GabbleIMChannel *chan,
     TpChannelTextMessageType type,
-    TpHandle sender,
     const char *from,
     time_t timestamp,
     const char *id,
     const char *text,
-    TpChannelTextSendError send_error,
-    TpDeliveryStatus delivery_status,
     gint state);
 void _gabble_im_channel_state_receive (GabbleIMChannel *chan,
     TpChannelChatState state);
+
+void _gabble_im_channel_report_delivery (
+    GabbleIMChannel *self,
+    TpChannelTextMessageType type,
+    time_t timestamp,
+    const gchar *id,
+    const char *text,
+    TpChannelTextSendError send_error,
+    TpDeliveryStatus delivery_status);
 
 G_END_DECLS
 

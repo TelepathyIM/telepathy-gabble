@@ -32,6 +32,11 @@ def test(q, bus, conn, stream):
 
     stream.send(event.stanza)
 
+    # Regression test for <https://bugs.freedesktop.org/show_bug.cgi?id=42186>:
+    # some super-buggy XMPP server running on vk.com sends its reply to our
+    # roster query twice. This used to crash Gabble.
+    stream.send(event.stanza)
+
     # slight implementation detail: TpBaseContactList emits ContactsChanged
     # before it announces its channels
     s = q.expect('dbus-signal', signal='ContactsChanged',

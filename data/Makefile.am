@@ -15,6 +15,10 @@ org.freedesktop.Telepathy.ConnectionManager.gabble.service: gabble.service.in \
 
 CLEANFILES = $(service_DATA) $(manager_DATA)
 
-$(manager_DATA): ../src/connection-manager.c ../src/write-mgr-file.c ../src/connection.h
-	@$(MAKE) -C ../src write-mgr-file
-	$(AM_V_GEN)../src/write-mgr-file > $@
+if WINDOWS
+  ext = ".exe"
+endif
+
+$(manager_DATA): ../src/write-mgr-file.c ../src/protocol.c ../src/protocol.h
+	@$(MAKE) -C ../src write-mgr-file$(ext)
+	$(AM_V_GEN)../src/write-mgr-file$(ext) > $@

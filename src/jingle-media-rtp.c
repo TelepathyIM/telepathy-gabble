@@ -337,7 +337,9 @@ static void transport_created (GabbleJingleContent *content,
       dialect = gabble_jingle_session_get_dialect (content->session);
 
       if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO &&
-          JINGLE_IS_GOOGLE_DIALECT (dialect))
+          (JINGLE_IS_GOOGLE_DIALECT (dialect) ||
+           gabble_jingle_session_peer_has_quirk (content->session,
+               QUIRK_GOOGLE_WEBMAIL_CLIENT)))
         {
           jingle_transport_google_set_component_name (gtrans, "video_rtp", 1);
           jingle_transport_google_set_component_name (gtrans, "video_rtcp", 2);
@@ -613,7 +615,7 @@ codec_update_coherent (const JingleCodec *old_c,
       return FALSE;
     }
 
-  if (tp_strdiff (new_c->name, old_c->name))
+  if (g_ascii_strcasecmp (new_c->name, old_c->name))
     {
       g_set_error (e, domain, code,
           "tried to change codec %u's name from %s to %s",

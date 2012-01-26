@@ -28,7 +28,7 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_AUTH
 
-#include "caps-channel-manager.h"
+#include "gabble/caps-channel-manager.h"
 #include "server-sasl-channel.h"
 #include "connection.h"
 #include "debug.h"
@@ -325,7 +325,10 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
             g_ptr_array_add (mech_array, iter->data);
         }
 
-      g_ptr_array_add (mech_array, X_TELEPATHY_PASSWORD);
+      if (wocky_auth_registry_supports_one_of (registry, mechanisms,
+              allow_plain))
+        g_ptr_array_add (mech_array, X_TELEPATHY_PASSWORD);
+
       g_ptr_array_add (mech_array, NULL);
 
       /* we'll use these if we fall back to the base class to use

@@ -5,6 +5,12 @@ from servicetest import EventPattern
 from file_transfer_helper import SendFileTest, ReceiveFileTest, \
     FileTransferTest, exec_file_transfer_test
 
+from config import FILE_TRANSFER_ENABLED
+
+if not FILE_TRANSFER_ENABLED:
+    print "NOTE: built with --disable-file-transfer"
+    raise SystemExit(77)
+
 class SendFileAndWaitToProvide (SendFileTest):
     def __init__(self, file, address_type,
                  access_control, acces_control_param):

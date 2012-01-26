@@ -22,9 +22,12 @@
 #define GABBLE_PLUGINS_CONNECTION_H
 
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/base-contact-list.h>
 
 #include <gabble/capabilities-set.h>
 #include <gabble/types.h>
+
+#include <wocky/wocky-xep-0115-capabilities.h>
 
 G_BEGIN_DECLS
 
@@ -54,6 +57,31 @@ gchar *gabble_connection_add_sidecar_own_caps (
     GabbleConnection *connection,
     const GabbleCapabilitySet *cap_set,
     const GPtrArray *identities) G_GNUC_WARN_UNUSED_RESULT;
+gchar *gabble_connection_add_sidecar_own_caps_full (
+    GabbleConnection *connection,
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities,
+    GPtrArray *data_forms) G_GNUC_WARN_UNUSED_RESULT;
+
+WockySession *gabble_connection_get_session (
+    GabbleConnection *connection);
+
+gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
+
+const gchar * gabble_connection_get_jid_for_caps (GabbleConnection *conn,
+    WockyXep0115Capabilities *caps);
+
+const gchar * gabble_connection_pick_best_resource_for_caps (
+    GabbleConnection *connection,
+    const gchar *jid,
+    GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data);
+
+TpBaseContactList * gabble_connection_get_contact_list (
+    GabbleConnection *connection);
+
+WockyXep0115Capabilities * gabble_connection_get_caps (
+    GabbleConnection *connection, TpHandle handle);
 
 G_END_DECLS
 

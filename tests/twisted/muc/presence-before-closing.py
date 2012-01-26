@@ -6,7 +6,9 @@ import dbus
 
 from twisted.words.xish import domish
 
-from gabbletest import exec_test, make_result_iq, request_muc_handle, wrap_channel
+from gabbletest import (
+    exec_test, make_result_iq, request_muc_handle, wrap_channel, elem,
+)
 from servicetest import (EventPattern, assertEquals, assertLength,
         assertContains, sync_dbus, call_async)
 import constants as cs
@@ -111,31 +113,27 @@ def test_with_password(q, bus, conn, stream):
             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
             cs.TARGET_HANDLE: handle})
 
-    q.expect('stream-presence', to='chat@conf.localhost/test')
+    expected_muc_jid = '%s/%s' % (room, 'test')
+    q.expect('stream-presence', to=expected_muc_jid)
 
     # tell gabble the room needs a password
-    presence = domish.Element(('jabber:client', 'presence'))
-    presence['from'] = '%s/%s' % (room, 'test')
-    presence['type'] = 'error'
-    x = presence.addElement((ns.MUC, 'x'))
-    error = presence.addElement('error')
-    error['type'] = 'auth'
-    not_authorized = error.addElement((ns.STANZA, 'not-authorized'))
-    stream.send(presence)
+    stream.send(
+        elem('jabber:client', 'presence', from_=expected_muc_jid,
+            type='error')(
+          elem(ns.MUC, 'x'),
+          elem('error', type='auth')(
+            elem(ns.STANZA, 'not-authorized'),
+          ),
+        ))
 
-    cc, _, _ = q.expect_many(EventPattern('dbus-return', method='CreateChannel'),
-                             EventPattern('dbus-signal', signal='NewChannels'),
-                             EventPattern('dbus-signal', signal='PasswordFlagsChanged',
-                                          args=[cs.PASSWORD_FLAG_PROVIDE, 0]))
+    cc, _ = q.expect_many(
+        EventPattern('dbus-return', method='CreateChannel'),
+        EventPattern('dbus-signal', signal='PasswordFlagsChanged',
+            args=[cs.PASSWORD_FLAG_PROVIDE, 0]))
 
-    chan = wrap_channel(bus.get_object(conn.bus_name, cc.value[0]),
-                        'Text', ['Password'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, cc.value[0]), 'Text')
 
-    # ensure gabble knows we need a password
-    flags = chan.Password.GetPasswordFlags()
-    assertEquals(cs.PASSWORD_FLAG_PROVIDE, flags)
-
-    forbidden = [EventPattern('stream-presence', to=room + '/test')]
+    forbidden = [EventPattern('stream-presence', to=expected_muc_jid)]
     q.forbid_events(forbidden)
 
     # we call Close...

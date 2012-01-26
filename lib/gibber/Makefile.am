@@ -20,8 +20,6 @@ OUR_SOURCES =                     \
   gibber-linklocal-transport.h    \
   gibber-listener.c               \
   gibber-listener.h               \
-  gibber-linklocal-transport.c    \
-  gibber-linklocal-transport.h    \
   gibber-sockets.c                \
   gibber-sockets.h                \
   gibber-sockets-unix.h           \
@@ -63,6 +61,21 @@ gibber-signals-marshal.list: $(OUR_SOURCES) Makefile.am
 	} > $@
 
 
-AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@ -fno-strict-aliasing
+AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@ @GMODULE_CFLAGS@ -fno-strict-aliasing
+
+# following flag is requied to make getnameinfo work
+if WINDOWS
+  AM_CFLAGS += -D_WIN32_WINNT=0x0501
+endif
 
 AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@
+
+Android.mk: Makefile.am $(BUILT_SOURCES)
+	androgenizer -:PROJECT telepathy-gabble -:STATIC gibber -:TAGS eng debug \
+	 -:REL_TOP $(top_srcdir) -:ABS_TOP $(abs_top_srcdir) \
+	 -:SOURCES $(libgibber_la_SOURCES) \
+	 -:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	  $(AM_CFLAGS) \
+	 -:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) \
+	 -:LDFLAGS $(AM_LDFLAGS) \
+	> $@

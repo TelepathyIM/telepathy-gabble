@@ -8,8 +8,6 @@ BUILT_SOURCES = \
 OUR_SOURCES =                     \
   loudmouth.h                     \
   lm-types.h                      \
-  lm-connection.c                 \
-  lm-connection.h                 \
   lm-message.c                    \
   lm-message.h                    \
   lm-message-handler.c            \
@@ -63,3 +61,13 @@ loudmouth-signals-marshal.list: $(OUR_SOURCES) Makefile.am
 AM_CFLAGS = $(ERROR_CFLAGS) $(GCOV_CFLAGS) @GLIB_CFLAGS@ @WOCKY_CFLAGS@
 
 AM_LDFLAGS = $(GCOV_LIBS) @GLIB_LIBS@ @WOCKY_LIBS@
+
+Android.mk: Makefile.am $(BUILT_SOURCES)
+	androgenizer -:PROJECT telepathy-gabble -:STATIC loudmouth -:TAGS eng debug \
+	 -:REL_TOP $(top_srcdir) -:ABS_TOP $(abs_top_srcdir) \
+	 -:SOURCES $(libloudmouth_la_SOURCES) \
+	 -:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	  $(AM_CFLAGS) \
+	 -:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) \
+	 -:LDFLAGS $(libloudmouth_la_LIBADD) \
+	> $@

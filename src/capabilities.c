@@ -19,7 +19,7 @@
  */
 
 #include "config.h"
-#include "capabilities.h"
+#include "gabble/capabilities.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -61,7 +61,10 @@ static const Feature self_advertised_features[] =
   { FEATURE_FIXED, NS_BYTESTREAMS },
   { FEATURE_FIXED, NS_VERSION },
 
+#ifdef ENABLE_FILE_TRANSFER
   { FEATURE_OPTIONAL, NS_FILE_TRANSFER },
+  { FEATURE_OPTIONAL, NS_TP_FT_METADATA },
+#endif
 
   { FEATURE_OPTIONAL, NS_GOOGLE_TRANSPORT_P2P },
   { FEATURE_OPTIONAL, NS_JINGLE_TRANSPORT_ICEUDP },

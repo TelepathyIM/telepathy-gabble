@@ -165,6 +165,8 @@ try_to_connect (GibberTCPTransport *self)
   gssize native_size;
   gint fd;
   int ret;
+  int err;
+  gboolean connected = FALSE;
 
   g_assert (priv->channel != NULL);
 
@@ -182,9 +184,17 @@ try_to_connect (GibberTCPTransport *self)
   g_socket_address_to_native (gaddr, &addr, sizeof (addr), NULL);
   ret = connect (fd, (struct sockaddr *)&addr, (gsize) native_size);
 
+#ifdef G_OS_WIN32
+  err = WSAGetLastError ();
+  connected = (ret == 0 || err == WSAEISCONN);
+#else
+  err = errno;
+  connected = (ret == 0);
+#endif
+
   g_object_unref (gaddr);
 
-  if (ret == 0)
+  if (connected)
     {
       DEBUG ("connect succeeded");
 
@@ -193,7 +203,7 @@ try_to_connect (GibberTCPTransport *self)
       return FALSE;
     }
 
-  if (gibber_connect_errno_requires_retry ())
+  if (gibber_connect_errno_requires_retry (err))
     {
       /* We have to wait longer */
       return TRUE;

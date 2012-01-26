@@ -8,8 +8,8 @@ AC_PREREQ([2.59])
 #   set gabble_nano_version to 0.
 
 m4_define([gabble_major_version], [0])
-m4_define([gabble_minor_version], [12])
-m4_define([gabble_micro_version], [0])
+m4_define([gabble_minor_version], [15])
+m4_define([gabble_micro_version], [3])
 m4_define([gabble_nano_version], [1])
 
 # Some magic
@@ -36,6 +36,7 @@ AC_PROG_CC
 AC_PROG_CC_STDC
 AC_PROG_INSTALL
 AC_PROG_LIBTOOL
+AC_PROG_MKDIR_P
 
 AC_CHECK_HEADERS_ONCE([
     arpa/inet.h
@@ -95,6 +96,25 @@ TP_COMPILER_WARNINGS([ERROR_CFLAGS], [test "x$official_release" = xno],
    unused-parameter])
 AC_SUBST([ERROR_CFLAGS])
 
+
+#------------------------------------------------------------
+# Detect Operating system based on $host
+#------------------------------------------------------------
+AC_MSG_CHECKING([operating system])
+
+case "$host" in
+  *-*-*mingw*|*-*-*cygwin*)
+    platform=win32
+    AC_MSG_RESULT($platform)
+    ;;
+  *)
+    platform=unix
+    AC_MSG_RESULT($platform)
+    ;;
+esac
+
+AM_CONDITIONAL([WINDOWS], [test "$platform" = "win32"])
+
 # -----------------------------------------------------------
 # Make CA certificates path configurable
 # Stolen from GIO's TLS
@@ -132,10 +152,6 @@ AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )
 
-AC_ARG_ENABLE(handle-leak-debug,
-  AC_HELP_STRING([--enable-handle-leak-debug],[compile with -rdynamic so telepathy-glib handle leak debugging code will work]),
-    enable_handle_leak_debug=$enableval, enable_handle_leak_debug=no )
-
 ifelse(gabble_nano_version, 0,
     [ # Gabble is version x.y.z - disable coding style checks by default
 AC_ARG_ENABLE(coding-style-checks,
@@ -155,14 +171,21 @@ if test x$enable_debug = xyes; then
 fi
 AM_CONDITIONAL([ENABLE_DEBUG], [test "x$enable_debug" = xyes])
 
-if test x$enable_handle_leak_debug = xyes; then
-  AC_DEFINE(ENABLE_HANDLE_LEAK_DEBUG, [], [Enable handle leak debug code])
-  HANDLE_LEAK_DEBUG_CFLAGS="-rdynamic"
-fi
-
-AC_SUBST(HANDLE_LEAK_DEBUG_CFLAGS)
-
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
+
+AC_ARG_ENABLE([installed-tests],
+  AC_HELP_STRING([--enable-installed-tests],
+    [make tests installable]),
+    [installed_tests=$enableval], [installed_tests=no])
+
+if test x$installed_tests = xyes; then
+  AC_DEFINE(ENABLE_INSTALLED_TESTS, [],
+      [Make tests installable])
+fi
+AM_CONDITIONAL([ENABLE_INSTALLED_TESTS], [test "x$installed_tests" = xyes])
+
+gabbletestsdir=${libdir}/telepathy-gabble-tests
+AC_SUBST(gabbletestsdir)
 
 AC_ARG_ENABLE([is-a-phone],
   AC_HELP_STRING([--enable-is-a-phone],
@@ -200,10 +223,13 @@ AC_ARG_ENABLE(gtk-doc,
 AM_CONDITIONAL([ENABLE_GTK_DOC], [test "x$enable_gtk_doc" = xyes])
 
 dnl Check for Glib
-PKG_CHECK_MODULES(GLIB, [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24])
+PKG_CHECK_MODULES(GLIB,
+    [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24, gio-2.0])
+PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.24])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
+
 
 GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
@@ -252,7 +278,7 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.14.5])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.17.2])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)
@@ -312,28 +338,64 @@ ac_top_build_prefix=$prev_top_build_prefix
 
 ac_configure_args=$prev_ac_configure_args
 
+dnl Check if Android build
+AC_ARG_ENABLE(submodules,
+              AS_HELP_STRING([--disable-submodules],[Use system versions of Wocky and Telepathy-Yell, rather than submodules]),
+              build_submodules=$enableval, build_submodules=yes )
+
 dnl Check for Wocky
 # re-enable once Wocky has been released as a lib
-export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/wocky/wocky
+if test x$build_submodules = xyes; then
+    export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/wocky/wocky
+fi
+
 PKG_CHECK_MODULES(WOCKY, wocky >= 0.0.0)
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)
 
 dnl Check for tp-yell
-export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/telepathy-yell/telepathy-yell
+if test x$build_submodules = xyes; then
+    export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/telepathy-yell/telepathy-yell
+fi
 PKG_CHECK_MODULES(TP_YELL, telepathy-yell)
 AC_SUBST(TP_YELL_CFLAGS)
 AC_SUBST(TP_YELL_LIBS)
 
-dnl Check for libsoup
-PKG_CHECK_MODULES(SOUP, libsoup-2.4)
+AC_ARG_ENABLE(google-relay,
+  AC_HELP_STRING([--disable-google-relay],
+                 [disable Google Jingle relay support]),
+    [enable_google_relay=$enableval], [enable_google_relay=yes])
+
+if test x$enable_google_relay = xyes; then
+  AC_DEFINE(ENABLE_GOOGLE_RELAY, [], [Enable Google Jingle relay support])
+
+  dnl Check for libsoup
+  PKG_CHECK_MODULES(SOUP, libsoup-2.4)
+else
+  SOUP_CFLAGS=
+  SOUP_LIBS=
+fi
 AC_SUBST(SOUP_CFLAGS)
 AC_SUBST(SOUP_LIBS)
+AM_CONDITIONAL([ENABLE_GOOGLE_RELAY], [test "x$enable_google_relay" = xyes])
 
-dnl Check for libnice
-PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
+AC_ARG_ENABLE(file-transfer,
+  AC_HELP_STRING([--disable-file-transfer],
+                 [disable file transfer support]),
+    [enable_ft=$enableval], [enable_ft=yes])
+
+if test x$enable_ft = xyes; then
+    AC_DEFINE(ENABLE_FILE_TRANSFER, [], [Enable file transfer])
+
+    dnl Check for libnice
+    PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
+else
+    NICE_CFLAGS=
+    NICE_LIBS=
+fi
 AC_SUBST(NICE_CFLAGS)
 AC_SUBST(NICE_LIBS)
+AM_CONDITIONAL([ENABLE_FILE_TRANSFER], [test "x$enable_ft" = xyes])
 
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
@@ -356,3 +418,31 @@ AC_OUTPUT( Makefile \
            gabble/telepathy-gabble-uninstalled.pc \
            gabble/telepathy-gabble.pc
 )
+
+if test false != "$TEST_PYTHON"; then
+  tests_enabled=yes
+else
+  tests_enabled=no
+fi
+
+echo "
+Configure summary:
+
+        Compiler....................:  ${CC}
+        Compiler Flags..............:  ${CFLAGS} ${ERROR_CFLAGS}
+        Prefix......................:  ${prefix}
+        Coding style checks.........:  ${ENABLE_CODING_STYLE_CHECKS}
+        Enable debug................:  ${enable_debug}
+        Python tests................:  ${tests_enabled}
+        Install unit tests..........:  ${installed_tests}
+
+    Features:
+
+        Client type.................:  \"${CLIENT_TYPE}\"
+        Plugin support..............:  ${enable_plugins}
+        Plugin headers installed....:  ${enable_plugin_api}
+        Channel.Type.Call support...:  ${enable_channel_type_call}
+        Google relay support........:  ${enable_google_relay}
+        File transfer support.......:  ${enable_ft}
+
+"

@@ -18,7 +18,7 @@ check-local::
 include tools/lcov.am
 LCOV_CHECK_ARGS = CHECK_TWISTED_SLEEP=6
 
-CHANGELOG_RANGE = telepathy-gabble-0.6.0..
+CHANGELOG_RANGE = telepathy-gabble-0.12.0..
 CHECK_FOR_UNRELEASED = \
 	$(srcdir)/NEWS \
 	$(wildcard $(srcdir)/gabble/*.[ch]) \

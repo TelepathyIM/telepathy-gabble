@@ -62,7 +62,7 @@ def request_muc_handle(q, conn, stream, muc_jid):
     event = q.expect('dbus-return', method='RequestHandles')
     return event.value[0][0]
 
-def make_muc_presence(affiliation, role, muc_jid, alias, jid=None):
+def make_muc_presence(affiliation, role, muc_jid, alias, jid=None, photo=None):
     presence = domish.Element((None, 'presence'))
     presence['from'] = '%s/%s' % (muc_jid, alias)
     x = presence.addElement((ns.MUC_USER, 'x'))
@@ -71,6 +71,13 @@ def make_muc_presence(affiliation, role, muc_jid, alias, jid=None):
     item['role'] = role
     if jid is not None:
         item['jid'] = jid
+
+    if photo is not None:
+        presence.addChild(
+            elem(ns.VCARD_TEMP_UPDATE, 'x')(
+              elem('photo')(unicode(photo))
+            ))
+
     return presence
 
 def sync_stream(q, stream):
@@ -248,45 +255,44 @@ class XmppAuthenticator(GabbleAuthenticator):
     def sessionIq(self, iq):
         self.xmlstream.send(make_result_iq(self.xmlstream, iq))
 
-def make_stream_event(type, stanza, stream):
-    event = servicetest.Event(type, stanza=stanza)
-    event.stream = stream
-    event.to = stanza.getAttribute("to")
-    return event
+class StreamEvent(servicetest.Event):
+    def __init__(self, type_, stanza, stream):
+        servicetest.Event.__init__(self, type_, stanza=stanza)
+        self.stream = stream
+        self.to = stanza.getAttribute("to")
 
-def make_iq_event(stream, iq):
-    event = make_stream_event('stream-iq', iq, stream)
-    event.iq_type = iq.getAttribute("type")
-    event.iq_id = iq.getAttribute("id")
-    query = iq.firstChildElement()
+class IQEvent(StreamEvent):
+    def __init__(self, stream, iq):
+        StreamEvent.__init__(self, 'stream-iq', iq, stream)
+        self.iq_type = iq.getAttribute("type")
+        self.iq_id = iq.getAttribute("id")
 
-    if query:
-        event.query = query
-        event.query_ns = query.uri
-        event.query_name = query.name
+        query = iq.firstChildElement()
 
-        if query.getAttribute("node"):
-            event.query_node = query.getAttribute("node")
-    else:
-        event.query = None
+        if query:
+            self.query = query
+            self.query_ns = query.uri
+            self.query_name = query.name
 
-    return event
+            if query.getAttribute("node"):
+                self.query_node = query.getAttribute("node")
+        else:
+            self.query = None
 
-def make_presence_event(stream, stanza):
-    event = make_stream_event('stream-presence', stanza, stream)
-    event.presence_type = stanza.getAttribute('type')
+class PresenceEvent(StreamEvent):
+    def __init__(self, stream, stanza):
+        StreamEvent.__init__(self, 'stream-presence', stanza, stream)
+        self.presence_type = stanza.getAttribute('type')
 
-    statuses = xpath.queryForNodes('/presence/status', stanza)
+        statuses = xpath.queryForNodes('/presence/status', stanza)
 
-    if statuses:
-        event.presence_status = str(statuses[0])
+        if statuses:
+            self.presence_status = str(statuses[0])
 
-    return event
-
-def make_message_event(stream, stanza):
-    event = make_stream_event('stream-message', stanza, stream)
-    event.message_type = stanza.getAttribute('type')
-    return event
+class MessageEvent(StreamEvent):
+    def __init__(self, stream, stanza):
+        StreamEvent.__init__(self, 'stream-message', stanza, stream)
+        self.message_type = stanza.getAttribute('type')
 
 class StreamFactory(twisted.internet.protocol.Factory):
     def __init__(self, streams, jids):
@@ -381,11 +387,11 @@ class BaseXmlStream(xmlstream.XmlStream):
         xmlstream.XmlStream.__init__(self, authenticator)
         self.event_func = event_func
         self.addObserver('//iq', lambda x: event_func(
-            make_iq_event(self, x)))
+            IQEvent(self, x)))
         self.addObserver('//message', lambda x: event_func(
-            make_message_event(self, x)))
+            MessageEvent(self, x)))
         self.addObserver('//presence', lambda x: event_func(
-            make_presence_event(self, x)))
+            PresenceEvent(self, x)))
         self.addObserver('//event/stream/authd', self._cb_authd)
         if self.handle_privacy_lists:
             self.addObserver("/iq/query[@xmlns='%s']" % ns.PRIVACY,
@@ -462,6 +468,7 @@ class GoogleXmlStream(BaseXmlStream):
     disco_features = [ns.GOOGLE_ROSTER,
                       ns.GOOGLE_JINGLE_INFO,
                       ns.GOOGLE_MAIL_NOTIFY,
+                      ns.GOOGLE_QUEUE,
                      ]
 
     def _cb_bare_jid_disco_iq(self, iq):
@@ -484,6 +491,7 @@ def make_connection(bus, event_func, params=None, suffix=''):
         'server': 'localhost',
         'port': dbus.UInt32(4242),
         'fallback-socks5-proxies': dbus.Array([], signature='s'),
+        'require-encryption': False,
         }
 
     if params:
@@ -579,7 +587,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                                    resource=resource, suffix=suffix))
 
     factory = StreamFactory(streams, jids)
-    port = reactor.listenTCP(4242, factory)
+    port = reactor.listenTCP(4242, factory, interface='localhost')
 
     def signal_receiver(*args, **kw):
         if kw['path'] == '/org/freedesktop/DBus' and \
@@ -617,8 +625,8 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
                 queue.expect('dbus-signal', signal='StatusChanged',
                     args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
                 queue.expect('stream-authenticated')
-                queue.expect('dbus-signal', signal='PresenceUpdate',
-                    args=[{1L: (0L, {u'available': {}})}])
+                queue.expect('dbus-signal', signal='PresencesChanged',
+                    args=[{1L: (cs.PRESENCE_AVAILABLE, u'available', '')}])
                 queue.expect('dbus-signal', signal='StatusChanged',
                     args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
@@ -692,11 +700,12 @@ def expect_and_handle_get_vcard(q, stream):
     assert vcard.name == 'vCard', vcard.toXml()
 
     # Send back current vCard
-    result = make_result_iq(stream, iq)
+    result = make_result_iq(stream, iq, add_query_node=False)
     result.addChild(current_vcard)
     stream.send(result)
 
 def expect_and_handle_set_vcard(q, stream, check=None):
+    global current_vcard
     set_vcard_event = q.expect('stream-iq', query_ns=ns.VCARD_TEMP,
         query_name='vCard', iq_type='set')
     iq = set_vcard_event.stanza

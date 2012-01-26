@@ -32,7 +32,7 @@
 
 G_BEGIN_DECLS
 
-gboolean gibber_connect_errno_requires_retry (void);
+gboolean gibber_connect_errno_requires_retry (int err);
 gboolean gibber_socket_errno_is_eafnosupport (void);
 gboolean gibber_socket_errno_is_eaddrinuse (void);
 void gibber_socket_set_error (GError **error, const gchar *context,

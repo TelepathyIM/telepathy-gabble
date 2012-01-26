@@ -29,8 +29,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
@@ -508,7 +506,7 @@ parse_payload_type (GabbleJingleContent *content,
     {
       WockyNode *param = node_iter_data (i);
 
-      if (!tp_strdiff (lm_message_node_get_name (param), "parameter"))
+      if (!tp_strdiff (param->name, "parameter"))
         {
           const gchar *param_name, *param_value;
 
@@ -521,7 +519,7 @@ parse_payload_type (GabbleJingleContent *content,
           g_hash_table_insert (p->params, g_strdup (param_name),
               g_strdup (param_value));
         }
-      else if (!tp_strdiff (lm_message_node_get_name (param), "rtcp-fb"))
+      else if (!tp_strdiff (param->name, "rtcp-fb"))
         {
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
 
@@ -531,7 +529,7 @@ parse_payload_type (GabbleJingleContent *content,
               priv->has_rtcp_fb = TRUE;
             }
         }
-      else if (!tp_strdiff (lm_message_node_get_name (param),
+      else if (!tp_strdiff (param->name,
               "rtcp-fb-trr-int"))
         {
           guint trr_int = parse_rtcp_fb_trr_int (content, param);
@@ -748,7 +746,7 @@ parse_description (GabbleJingleContent *content,
     {
       WockyNode *node = node_iter_data (i);
 
-      if (!tp_strdiff (lm_message_node_get_name (node), "payload-type"))
+      if (!tp_strdiff (node->name, "payload-type"))
         {
 
           if (dialect == JINGLE_DIALECT_GTALK3)
@@ -782,7 +780,7 @@ parse_description (GabbleJingleContent *content,
                 is_avpf = TRUE;
             }
         }
-      else if (!tp_strdiff (lm_message_node_get_name (node), "rtp-hdrext"))
+      else if (!tp_strdiff (node->name, "rtp-hdrext"))
         {
           const gchar *pt_ns = wocky_node_get_ns (node);
           JingleRtpHeaderExtension *hdrext;
@@ -803,7 +801,7 @@ parse_description (GabbleJingleContent *content,
             }
 
         }
-      else if (!tp_strdiff (lm_message_node_get_name (node), "rtcp-fb"))
+      else if (!tp_strdiff (node->name, "rtcp-fb"))
         {
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
 
@@ -818,8 +816,7 @@ parse_description (GabbleJingleContent *content,
               priv->has_rtcp_fb = TRUE;
             }
         }
-      else if (!tp_strdiff (lm_message_node_get_name (node),
-                "rtcp-fb-trr-int"))
+      else if (!tp_strdiff (node->name, "rtcp-fb-trr-int"))
         {
           guint trr_int = parse_rtcp_fb_trr_int (content, node);
 

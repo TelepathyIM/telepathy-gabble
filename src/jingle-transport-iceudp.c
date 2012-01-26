@@ -25,8 +25,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
@@ -248,7 +246,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       JingleCandidateType ctype;
       JingleCandidate *c;
 
-      if (tp_strdiff (lm_message_node_get_name (node), "candidate"))
+      if (tp_strdiff (node->name, "candidate"))
         continue;
 
       node_contains_a_candidate = TRUE;
@@ -492,7 +490,7 @@ send_candidates (GabbleJingleTransportIface *iface,
   while (priv->pending_candidates != NULL)
     {
       WockyNode *trans_node, *sess_node;
-      LmMessage *msg;
+      WockyStanza *msg;
 
       msg = gabble_jingle_session_new_message (priv->content->session,
           JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
@@ -503,7 +501,7 @@ send_candidates (GabbleJingleTransportIface *iface,
 
       _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
           NULL, NULL);
-      lm_message_unref (msg);
+      g_object_unref (msg);
     }
 
   DEBUG ("sent all pending candidates");

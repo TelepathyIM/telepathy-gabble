@@ -25,8 +25,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
@@ -250,7 +248,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       JingleCandidateType ctype;
       JingleCandidate *c;
 
-      if (tp_strdiff (lm_message_node_get_name (node), "candidate"))
+      if (tp_strdiff (node->name, "candidate"))
           continue;
 
       name = wocky_node_get_attribute (node, "name");
@@ -389,7 +387,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
 {
   GabbleJingleTransportGooglePrivate *priv = transport->priv;
   GList *li;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *trans_node, *sess_node;
 
   if (candidates == NULL)
@@ -458,7 +456,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
 
   _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
       NULL, NULL);
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 /* Groups @candidates into rtp and rtcp and sends each group in its own

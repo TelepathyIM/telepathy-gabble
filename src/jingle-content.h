@@ -21,7 +21,6 @@
 #define __JINGLE_CONTENT_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 #include "types.h"
 #include "jingle-factory.h"
 #include "jingle-transport-iface.h"

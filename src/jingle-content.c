@@ -24,8 +24,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
@@ -485,7 +483,7 @@ send_gtalk4_transport_accept (gpointer user_data)
   GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
   GabbleJingleContentPrivate *priv = c->priv;
   WockyNode *sess_node, *tnode;
-  LmMessage *msg = gabble_jingle_session_new_message (c->session,
+  WockyStanza *msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_TRANSPORT_ACCEPT, &sess_node);
 
   DEBUG ("Sending Gtalk4 'transport-accept' message to peer");
@@ -689,7 +687,7 @@ gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
 {
   GabbleJingleContentPrivate *priv = self->priv;
   WockyNode *sess_node, *channel_node;
-  LmMessage *msg = NULL;
+  WockyStanza *msg = NULL;
 
   /* Send the info action before creating the channel, in case candidates need
      to be sent on the signal emit. It doesn't matter if the channel already
@@ -712,7 +710,7 @@ gabble_jingle_content_send_complete (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
   WockyNode *sess_node, *complete_node;
-  LmMessage *msg = NULL;
+  WockyStanza *msg = NULL;
 
   msg = gabble_jingle_session_new_message (self->session,
       JINGLE_ACTION_INFO, &sess_node);
@@ -972,7 +970,7 @@ static void
 send_content_add_or_accept (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *sess_node, *transport_node;
   JingleAction action;
   JingleContentState new_state = JINGLE_CONTENT_STATE_EMPTY;
@@ -1061,7 +1059,7 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
           JINGLE_ACTION_DESCRIPTION_INFO))
     {
       WockyNode *sess_node;
-      LmMessage *msg = gabble_jingle_session_new_message (self->session,
+      WockyStanza *msg = gabble_jingle_session_new_message (self->session,
           JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
 
       gabble_jingle_content_produce_node (self, sess_node, TRUE, FALSE, NULL);
@@ -1139,7 +1137,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders)
 {
   GabbleJingleContentPrivate *priv = c->priv;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *sess_node;
   JingleDialect dialect = gabble_jingle_session_get_dialect (c->session);
 
@@ -1170,7 +1168,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 static void
 _on_remove_reply (GObject *c_as_obj,
     gboolean success,
-    LmMessage *reply)
+    WockyStanza *reply)
 {
   GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (c_as_obj);
   GabbleJingleContentPrivate *priv = c->priv;
@@ -1191,7 +1189,7 @@ _content_remove (GabbleJingleContent *c,
     JingleReason reason)
 {
   GabbleJingleContentPrivate *priv = c->priv;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *sess_node;
 
   DEBUG ("called for %p (%s)", c, priv->name);

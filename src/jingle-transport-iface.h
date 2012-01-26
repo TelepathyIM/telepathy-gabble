@@ -21,7 +21,7 @@
 #define __GABBLE_JINGLE_TRANSPORT_IFACE_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky-node.h>
 
 #include "jingle-factory.h"
 #include "types.h"

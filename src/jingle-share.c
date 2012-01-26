@@ -334,9 +334,9 @@ parse_description (GabbleJingleContent *content,
       const gchar *size;
       GabbleJingleShareManifestEntry *m = NULL;
 
-      if (!tp_strdiff (lm_message_node_get_name (node), "folder"))
+      if (!tp_strdiff (node->name, "folder"))
         folder = TRUE;
-      else if (!tp_strdiff (lm_message_node_get_name (node), "file"))
+      else if (!tp_strdiff (node->name, "file"))
         folder = FALSE;
       else
         continue;
@@ -381,7 +381,7 @@ parse_description (GabbleJingleContent *content,
           WockyNode *node = node_iter_data (i);
           const gchar *name;
 
-          if (tp_strdiff (lm_message_node_get_name (node), "url"))
+          if (tp_strdiff (node->name, "url"))
             continue;
 
           name = wocky_node_get_attribute (node, "name");

@@ -110,7 +110,7 @@ STANZA_DEBUG (
 
 static inline void
 NODE_DEBUG (
-    WockyStanza *stanza,
+    WockyNode *node,
     const gchar *format,
     ...)
 {

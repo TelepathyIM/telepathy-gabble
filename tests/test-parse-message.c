@@ -38,7 +38,7 @@ test1 (void)
   g_assert (body == NULL);
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 
@@ -75,7 +75,7 @@ test2 (void)
   g_assert (0 == strcmp (body, "hello"));
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 
@@ -111,7 +111,7 @@ test3 (void)
   g_assert (0 == strcmp (body, "hello"));
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 
@@ -149,7 +149,7 @@ test_error (void)
   g_assert (state == -1);
   g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN);
   g_assert (delivery_status == TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 
@@ -197,7 +197,7 @@ test_another_error (void)
   g_assert (state == -1);
   g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT);
   g_assert (delivery_status == TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 
@@ -247,7 +247,7 @@ test_yet_another_error (void)
   g_assert (state == -1);
   g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE);
   g_assert (delivery_status == TP_DELIVERY_STATUS_TEMPORARILY_FAILED);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 
@@ -289,7 +289,7 @@ test_google_offline (void)
   g_assert (0 == strcmp (body, "hello"));
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 

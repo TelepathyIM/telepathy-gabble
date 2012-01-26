@@ -1354,7 +1354,7 @@ send_tube_close_msg (GabbleTubesChannel *self,
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static void

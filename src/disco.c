@@ -516,14 +516,14 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
         request_reply_cb, G_OBJECT(self), request, error))
     {
       delete_request (request);
-      lm_message_unref (msg);
+      g_object_unref (msg);
       return NULL;
     }
   else
     {
       request->timer_id =
           g_timeout_add_seconds (timeout, timeout_request, request);
-      lm_message_unref (msg);
+      g_object_unref (msg);
       return request;
     }
 }

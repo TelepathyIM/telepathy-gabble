@@ -2893,7 +2893,7 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 
   result = _gabble_connection_send (
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg, error);
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return result;
 }
@@ -3047,7 +3047,7 @@ gabble_muc_channel_remove_member (GObject *obj,
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
       msg, kick_request_reply_cb, obj, (gpointer) jid, error);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return result;
 }

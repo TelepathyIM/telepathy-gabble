@@ -1190,7 +1190,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
       if (wocky_node_equal (old_vcard, vcard_node))
         {
           /* nothing actually happened, forget it */
-          lm_message_unref (msg);
+          g_object_unref (msg);
           return NULL;
         }
 
@@ -1230,7 +1230,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   if ((!maybe_changed) || wocky_node_equal (old_vcard, vcard_node))
     {
       /* nothing actually happened, forget it */
-      lm_message_unref (msg);
+      g_object_unref (msg);
       return NULL;
     }
 
@@ -1298,7 +1298,7 @@ manager_patch_vcard (GabbleVCardManager *self,
       if (new_msg == NULL)
         continue;
 
-      tp_clear_pointer (&msg, lm_message_unref);
+      tp_clear_pointer (&msg, g_object_unref);
 
       msg = new_msg;
       /* gabble_vcard_manager_edit_info_apply always returns an IQ message
@@ -1325,7 +1325,7 @@ manager_patch_vcard (GabbleVCardManager *self,
       priv->connection->req_pipeline, msg, default_request_timeout,
       replace_reply_cb, self);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
 out:
   /* We've applied those, forget about them */
@@ -1545,7 +1545,7 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
       entry->pipeline_item = gabble_request_pipeline_enqueue (
           conn->req_pipeline, msg, timeout, pipeline_reply_cb, request);
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
 
       DEBUG ("adding request to cache entry %p and queueing the <iq>", entry);
     }

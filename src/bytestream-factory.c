@@ -390,7 +390,7 @@ send_proxy_query (GabbleBytestreamFactory *self,
       socks5_proxy_query_reply_cb, G_OBJECT (self), GINT_TO_POINTER (fallback),
       NULL);
 
-  lm_message_unref (query);
+  g_object_unref (query);
 }
 
 static void

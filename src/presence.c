@@ -670,7 +670,7 @@ gabble_presence_as_message (GabblePresence *presence,
       gchar *priority = g_strdup_printf ("%d", res->priority);
       WockyNode *node;
 
-      node = lm_message_get_node (message);
+      node = wocky_stanza_get_top_node (message);
       wocky_node_add_child_with_content (node, "priority", priority);
       g_free (priority);
     }

@@ -1886,7 +1886,7 @@ _parse_message_message (GabblePresenceCache *cache,
       presence->keep_unavailable = TRUE;
     }
 
-  node = lm_message_get_node (message);
+  node = wocky_stanza_get_top_node (message);
 
   _grab_nickname (cache, handle, from, node);
 

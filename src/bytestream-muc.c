@@ -381,14 +381,14 @@ send_data_to (GabbleBytestreamMuc *self,
         {
           DEBUG ("error sending pseusdo IBB Muc stanza: %s", error->message);
           g_error_free (error);
-          lm_message_unref (msg);
+          g_object_unref (msg);
           return FALSE;
         }
 
       sent += send_now;
       stanza_count++;
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
     }
 
   DEBUG ("finished to send %d bytes (%d stanzas needed)", len, stanza_count);

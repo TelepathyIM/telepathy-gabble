@@ -1283,7 +1283,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       /* We don't create the bytestream of private D-Bus tube yet.
        * It will be when we'll receive the answer of the SI request */
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
       g_free (full_jid);
 
       if (!result)

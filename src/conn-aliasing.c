@@ -384,7 +384,7 @@ gabble_do_pep_request (GabbleConnection *self,
       NULL);
    pep_request = gabble_request_pipeline_enqueue (self->req_pipeline,
       msg, 0, pep_request_cb, ctx);
-   lm_message_unref (msg);
+   g_object_unref (msg);
 
    return pep_request;
 }
@@ -579,7 +579,7 @@ set_one_alias (
           _gabble_connection_send_with_reply (conn, msg,
               nick_publish_msg_reply_cb, NULL, NULL, NULL);
 
-          lm_message_unref (msg);
+          g_object_unref (msg);
         }
 
       if (alias == NULL)

@@ -355,7 +355,7 @@ transmit_properties (GabbleConnection *conn,
         dbus_g_method_return_error (context, &error);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static GQuark
@@ -934,7 +934,7 @@ upload_activities_pep (GabbleConnection *conn,
       g_error_free (e);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return ret;
 }
 
@@ -1493,7 +1493,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
       dbus_g_method_return_error (context, &error);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static void
@@ -1667,7 +1667,7 @@ upload_activity_properties_pep (GabbleConnection *conn,
       g_error_free (e);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return ret;
 }
 
@@ -1777,12 +1777,12 @@ refresh_invitations (GabbleConnection *conn,
             {
               DEBUG ("Unable to re-send activity properties to invitee %s",
                   to);
-              lm_message_unref (msg);
+              g_object_unref (msg);
               return FALSE;
             }
         }
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
     }
 
   return TRUE;
@@ -1868,11 +1868,11 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
         "Failed to send property change notification to chatroom" };
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
       dbus_g_method_return_error (context, &error);
       return;
     }
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   if (!refresh_invitations (conn, muc_channel, activity, &err))
     {
@@ -2492,12 +2492,12 @@ revoke_invitations (GabbleConnection *conn,
             {
               DEBUG ("Unable to send activity invitee revocation %s",
                   to);
-              lm_message_unref (msg);
+              g_object_unref (msg);
               return FALSE;
             }
         }
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
     }
 
   return TRUE;
@@ -2677,7 +2677,7 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
           DEBUG ("Unable to send activity properties to invitee");
         }
     }
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   handle = tp_handle_ensure (contact_repo, jid, NULL, &error);
   if (handle == 0)

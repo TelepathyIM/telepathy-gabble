@@ -73,9 +73,6 @@ LmMessage * lm_message_new_with_sub_type (const gchar *to,
     LmMessageSubType sub_type);
 
 
-LmMessage * lm_message_ref (LmMessage *message);
-void lm_message_unref (LmMessage *message);
-
 LmMessageType lm_message_get_type (LmMessage *message);
 LmMessageSubType lm_message_get_sub_type (LmMessage *message);
 

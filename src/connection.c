@@ -1486,7 +1486,7 @@ message_send_handler_destroy_cb (gpointer data)
 {
   GabbleMsgHandlerData *handler_data = data;
 
-  lm_message_unref (handler_data->sent_msg);
+  g_object_unref (handler_data->sent_msg);
 
   if (handler_data->object != NULL)
     {
@@ -1531,7 +1531,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
       return FALSE;
     }
 
-  lm_message_ref (msg);
+  g_object_ref (msg);
 
   handler_data = g_slice_new (GabbleMsgHandlerData);
   handler_data->reply_func = reply_func;
@@ -2319,7 +2319,7 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
     LmMessage *presence_message)
 {
   GabblePresence *presence = self->self_presence;
-  WockyNode *node = lm_message_get_node (presence_message);
+  WockyNode *node = wocky_stanza_get_top_node (presence_message);
   gchar *caps_hash;
   gboolean share_v1, voice_v1, video_v1;
   GString *ext = g_string_new ("");
@@ -2394,7 +2394,7 @@ gabble_connection_send_capabilities (GabbleConnection *self,
 
   ret = _gabble_connection_send (self, message, error);
 
-  lm_message_unref (message);
+  g_object_unref (message);
 
   return ret;
 }
@@ -2412,7 +2412,7 @@ gabble_connection_request_decloak (GabbleConnection *self,
 
   gabble_connection_fill_in_caps (self, message);
 
-  decloak = wocky_node_add_child_with_content (lm_message_get_node (message),
+  decloak = wocky_node_add_child_with_content (wocky_stanza_get_top_node (message),
       "temppres", NULL);
   decloak->ns = g_quark_from_string (NS_TEMPPRES);
 
@@ -2422,7 +2422,7 @@ gabble_connection_request_decloak (GabbleConnection *self,
     }
 
   ret = _gabble_connection_send (self, message, error);
-  lm_message_unref (message);
+  g_object_unref (message);
 
   return ret;
 }
@@ -3783,7 +3783,7 @@ gabble_connection_send_presence (GabbleConnection *conn,
 
   result = _gabble_connection_send (conn, message, error);
 
-  lm_message_unref (message);
+  g_object_unref (message);
 
   return result;
 }

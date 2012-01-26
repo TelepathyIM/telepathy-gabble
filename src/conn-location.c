@@ -400,7 +400,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
     }
 
 out:
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 void

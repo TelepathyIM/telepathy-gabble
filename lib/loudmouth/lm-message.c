@@ -37,18 +37,6 @@ lm_message_new_with_sub_type (const gchar *to,
       NULL, to, NULL);
 }
 
-LmMessage *
-lm_message_ref (LmMessage *message)
-{
-  return g_object_ref (message);
-}
-
-void
-lm_message_unref (LmMessage *message)
-{
-  g_object_unref (message);
-}
-
 LmMessageType
 lm_message_get_type (LmMessage *message)
 {

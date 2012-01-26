@@ -556,7 +556,7 @@ start_stream_initiation (GabbleTubeStream *self,
       g_object_unref (transport);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   g_free (stream_id);
   g_free (full_jid);
   g_free (id_str);
@@ -1924,7 +1924,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube, gboolean closed_remotely)
 
       _gabble_connection_send (priv->conn, msg, NULL);
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
     }
 
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
@@ -2293,7 +2293,7 @@ send_tube_offer (GabbleTubeStream *self,
       priv->state = TP_TUBE_CHANNEL_STATE_REMOTE_PENDING;
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return TRUE;
 }
 

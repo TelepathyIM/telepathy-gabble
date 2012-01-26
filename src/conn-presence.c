@@ -946,7 +946,7 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
   if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
-  iq = lm_message_get_node (message);
+  iq = wocky_stanza_get_top_node (message);
   list_node = lm_message_node_get_child_with_namespace (iq, "list", NULL);
 
   if (!lm_message_node_get_child_with_namespace (iq, "query", NS_PRIVACY) ||
@@ -1589,7 +1589,7 @@ conn_presence_signal_own_presence (GabbleConnection *self,
   if (presence->status == GABBLE_PRESENCE_HIDDEN && to == NULL)
     {
       if (priv->invisibility_method == INVISIBILITY_METHOD_PRESENCE_INVISIBLE)
-        wocky_node_set_attribute (lm_message_get_node (message),
+        wocky_node_set_attribute (wocky_stanza_get_top_node (message),
             "type", "invisible");
       /* FIXME: or if sending directed presence, should we add
        * <show>away</show>? */
@@ -1599,7 +1599,7 @@ conn_presence_signal_own_presence (GabbleConnection *self,
 
   ret = _gabble_connection_send (self, message, error);
 
-  lm_message_unref (message);
+  g_object_unref (message);
 
   /* FIXME: if sending broadcast presence, should we echo it to everyone we
    * previously sent directed presence to? (Perhaps also GC them after a

@@ -453,7 +453,7 @@ request_search_fields (GabbleSearchChannel *chan)
       g_error_free (error);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 /* Search implementation */
@@ -994,7 +994,7 @@ do_search (GabbleSearchChannel *chan,
       ret = FALSE;
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return ret;
 }
 

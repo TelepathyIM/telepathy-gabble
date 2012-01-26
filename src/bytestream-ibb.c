@@ -142,7 +142,7 @@ gabble_bytestream_ibb_dispose (GObject *object)
   if (priv->close_iq_to_ack != NULL)
     {
       _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
-      lm_message_unref (priv->close_iq_to_ack);
+      g_object_unref (priv->close_iq_to_ack);
       priv->close_iq_to_ack = NULL;
     }
 
@@ -381,7 +381,7 @@ send_close_stanza (GabbleBytestreamIBB *self)
     {
       /* We received a close IQ and just need to ACK it */
       _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
-      lm_message_unref (priv->close_iq_to_ack);
+      g_object_unref (priv->close_iq_to_ack);
       priv->close_iq_to_ack = NULL;
     }
 
@@ -399,7 +399,7 @@ send_close_stanza (GabbleBytestreamIBB *self)
   _gabble_connection_send_with_reply (priv->conn, msg,
       NULL, NULL, NULL, NULL);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static gboolean
@@ -513,7 +513,7 @@ send_data (GabbleBytestreamIBB *self,
 
       g_free (encoded);
       g_free (seq);
-      lm_message_unref (iq);
+      g_object_unref (iq);
 
       if (!ret)
         {
@@ -686,7 +686,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       if (is_iq)
         {
           priv->received_stanzas_not_acked = g_slist_prepend (
-              priv->received_stanzas_not_acked, lm_message_ref (msg));
+              priv->received_stanzas_not_acked, g_object_ref (msg));
         }
 
       return;
@@ -741,7 +741,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static void
@@ -771,7 +771,7 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
@@ -884,11 +884,11 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
     {
       DEBUG ("Error when sending IBB init stanza");
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
       return FALSE;
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return TRUE;
 }
@@ -931,7 +931,7 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
 
           _gabble_connection_acknowledge_set_iq (priv->conn, iq);
 
-          lm_message_unref (iq);
+          g_object_unref (iq);
         }
 
       g_slist_free (priv->received_stanzas_not_acked);
@@ -947,7 +947,7 @@ gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *self,
 
   DEBUG ("received IBB close stanza. Closing bytestream");
 
-  priv->close_iq_to_ack = lm_message_ref (iq);
+  priv->close_iq_to_ack = g_object_ref (iq);
   gabble_bytestream_ibb_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
 }
 

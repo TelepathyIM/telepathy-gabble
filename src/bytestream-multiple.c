@@ -431,7 +431,7 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
           GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 

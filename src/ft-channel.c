@@ -1511,7 +1511,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
       self->priv->connection->bytestream_factory, msg, stream_id,
       bytestream_negotiate_cb, self, G_OBJECT (self), error);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   g_free (stream_id);
   g_free (size_str);
   g_free (full_jid);

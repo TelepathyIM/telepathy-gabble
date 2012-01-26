@@ -210,7 +210,7 @@ gabble_message_util_send_chat_state (GObject *obj,
   gabble_message_util_add_chat_state (msg, state);
 
   result = _gabble_connection_send (conn, msg, error);
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return result;
 }

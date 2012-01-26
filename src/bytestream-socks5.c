@@ -663,7 +663,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
             WOCKY_XMPP_ERROR_ITEM_NOT_FOUND,
             "impossible to connect to any streamhost");
 
-        lm_message_unref (priv->msg_for_acknowledge_connection);
+        g_object_unref (priv->msg_for_acknowledge_connection);
         priv->msg_for_acknowledge_connection = NULL;
         break;
 
@@ -835,7 +835,7 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
 
-  lm_message_unref (iq);
+  g_object_unref (iq);
 }
 
 /* Process the received data and returns the number of bytes that have been
@@ -1324,7 +1324,7 @@ gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  priv->msg_for_acknowledge_connection = lm_message_ref (msg);
+  priv->msg_for_acknowledge_connection = g_object_ref (msg);
 
   socks5_connect (self);
 }
@@ -1427,7 +1427,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static void
@@ -1459,7 +1459,7 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
@@ -1982,11 +1982,11 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
     {
       DEBUG ("Error when sending Socks5 init stanza");
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
       return FALSE;
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return TRUE;
 }

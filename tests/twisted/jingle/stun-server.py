@@ -266,7 +266,7 @@ def test_call(q, bus, conn, stream,
         content_props[0], 'Call.Stream.Interface.Media.Draft')
     stream_props = call_stream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
         dbus_interface=dbus.PROPERTIES_IFACE)
-    assertEquals(cs.CALL_STREAM_TRANSPORT_GOOGLE, stream_props['Transport'])
+    assertEquals(cs.CALL_STREAM_TRANSPORT_GTALK_P2P, stream_props['Transport'])
 
     test_stun_server(stream_props['STUNServers'],
             expected_stun_server, expected_stun_port)

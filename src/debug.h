@@ -110,7 +110,7 @@ STANZA_DEBUG (
 
 static inline void
 NODE_DEBUG (
-    LmMessageNode *node,
+    WockyStanza *stanza,
     const gchar *format,
     ...)
 {

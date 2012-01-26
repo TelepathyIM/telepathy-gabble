@@ -31,11 +31,11 @@ def check_state (q, chan, state, wait = False):
     assertEquals (state,
         properties["CallState"])
 
-def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
-        content, codecs, offer_path = None, check_codecs_changed = True ):
+def check_and_accept_offer (q, bus, conn, content, md, remote_handle,
+        offer_path = None, md_changed = True):
 
-    (path, handle, remote_codecs ) = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
-                "CodecOffer", dbus_interface=dbus.PROPERTIES_IFACE)
+    [path, remote_md] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+                "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
 
     if offer_path != None:
         assertEquals (offer_path, path)
@@ -43,20 +43,20 @@ def check_and_accept_offer (q, bus, conn, self_handle, remote_handle,
     assertNotEquals ("/", path)
 
     offer = bus.get_object (conn.bus_name, path)
-    remote_codecs_property = offer.Get (cs.CALL_CONTENT_CODECOFFER,
-        "RemoteContactCodecs", dbus_interface=dbus.PROPERTIES_IFACE)
+    codecmap_property = offer.Get (cs.CALL_CONTENT_MEDIADESCRIPTION,
+        "Codecs", dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assertEquals (remote_codecs, remote_codecs_property)
+    assertEquals (remote_md[cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs'], codecmap_property)
 
-    offer.Accept (codecs, dbus_interface=cs.CALL_CONTENT_CODECOFFER)
+    offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
 
-    current_codecs = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
-                "ContactCodecMap", dbus_interface=dbus.PROPERTIES_IFACE)
+    current_md = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
+                "LocalMediaDescriptions", dbus_interface=dbus.PROPERTIES_IFACE)
+    assertEquals (md,  current_md[remote_handle])
 
-    assertEquals (codecs,  current_codecs[self_handle])
-
-    if check_codecs_changed:
-        o = q.expect ('dbus-signal', signal='CodecsChanged')
+    if md_changed:
+        o = q.expect ('dbus-signal', signal='LocalMediaDescriptionChanged')
+        assertEquals ([md], o.args)
 
 def no_muji_presences (muc):
     return EventPattern ('stream-presence',

@@ -22,34 +22,6 @@ if not CHANNEL_TYPE_CALL_ENABLED:
     print "NOTE: built with --disable-channel-type-call"
     raise SystemExit(77)
 
-def check_and_accept_offer (q, bus, conn,
-        content, md, remote_handle, offer_path = None,
-        md_changed = True):
-
-    [path, remote_md] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
-                "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
-
-    if offer_path != None:
-        assertEquals (offer_path, path)
-
-    assertNotEquals ("/", path)
-
-    offer = bus.get_object (conn.bus_name, path)
-    codecmap_property = offer.Get (cs.CALL_CONTENT_MEDIADESCRIPTION,
-        "Codecs", dbus_interface=dbus.PROPERTIES_IFACE)
-
-    assertEquals (remote_md[cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs'], codecmap_property)
-
-    offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
-
-    current_md = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
-                "LocalMediaDescriptions", dbus_interface=dbus.PROPERTIES_IFACE)
-    assertEquals (md,  current_md[remote_handle])
-
-    if md_changed:
-        o = q.expect ('dbus-signal', signal='LocalMediaDescriptionChanged')
-        assertEquals ([md], o.args)
-
 def test_content_addition (jt2, jp, q, bus, conn, chan, remote_handle):
     path = chan.AddContent ("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,
         dbus_interface=cs.CHANNEL_TYPE_CALL)
@@ -63,7 +35,7 @@ def test_content_addition (jt2, jp, q, bus, conn, chan, remote_handle):
     assertContains ("Webcam", content_properties["Name"])
 
     md = jt2.get_call_video_md_dbus()
-    check_and_accept_offer (q, bus, conn, content, md, remote_handle)
+    cu.check_and_accept_offer (q, bus, conn, content, md, remote_handle)
 
     cstream = bus.get_object (conn.bus_name, content_properties["Streams"][0])
     candidates = jt2.get_call_remote_transports_dbus ()
@@ -259,7 +231,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         assert false
 
     # We should have a md offer
-    check_and_accept_offer (q, bus, conn, content, md, remote_handle)
+    cu.check_and_accept_offer (q, bus, conn, content, md, remote_handle)
 
     current_md = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "LocalMediaDescriptions", dbus_interface=dbus.PROPERTIES_IFACE)
@@ -472,7 +444,7 @@ def run_test(jp, q, bus, conn, stream, incoming):
         [path, _ ] = ret[0].args
         md = jt2.get_call_audio_md_dbus()
 
-        check_and_accept_offer (q, bus, conn, content, md, remote_handle, path,
+        cu.check_and_accept_offer (q, bus, conn, content, md, remote_handle, path,
             md_changed = False )
 
     cu.check_state (q, chan, cs.CALL_STATE_ACTIVE)

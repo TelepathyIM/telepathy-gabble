@@ -747,7 +747,7 @@ extract_service_name (WockyNode *file)
 
   if (field == NULL)
     {
-      DEBUG ("ServiceName propery not present in data form; odd...");
+      DEBUG ("ServiceName property not present in data form; odd...");
       goto out;
     }
 

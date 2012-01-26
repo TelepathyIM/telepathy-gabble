@@ -587,19 +587,20 @@ class JingleTest2:
         self.stream = stream
         self.sid = 'sess' + str(int(random.random() * 10000))
 
-    def prepare(self, send_presence=True, send_roster=True):
+    def prepare(self, send_presence=True, send_roster=True, events=None):
         # If we need to override remote caps, feats, codecs or caps,
         # we should do it prior to calling this method.
 
-        # Catch events: authentication, our presence update,
-        # status connected, vCard query
-        # If we don't catch the vCard query here, it can trip us up later:
-        # http://bugs.freedesktop.org/show_bug.cgi?id=19161
-        events = self.q.expect_many(
-                EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-                    query_name='vCard'),
-                EventPattern('stream-iq', query_ns=ns.ROSTER),
-                )
+        if events is None:
+            # Catch events: authentication, our presence update,
+            # status connected, vCard query
+            # If we don't catch the vCard query here, it can trip us up later:
+            # http://bugs.freedesktop.org/show_bug.cgi?id=19161
+            events = self.q.expect_many(
+                    EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+                        query_name='vCard'),
+                    EventPattern('stream-iq', query_ns=ns.ROSTER),
+                    )
 
         # some Jingle tests care about our roster relationship to the peer
         if send_roster:
@@ -764,7 +765,7 @@ class JingleTest2:
         iq = jp.ResultIq(self.peer, {'id': iniq.iq_id, 'to': self.peer},
                          children)
         self.stream.send(jp.xml(iq))
-   
+
 
     def send_remote_candidates_call_xmpp(self, name, creator, candidates=None):
         jp = self.jp

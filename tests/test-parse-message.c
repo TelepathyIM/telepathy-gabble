@@ -30,14 +30,14 @@ test1 (void)
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
       &delivery_status);
-  g_assert (ret == TRUE);
-  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
-  g_assert (0 == strcmp (from, "foo@bar.com"));
-  g_assert (stamp == 0);
-  g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
-  g_assert (body == NULL);
-  g_assert (state == -1);
-  g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert (ret);
+  g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
+  g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_cmpuint (stamp, ==, 0);
+  g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
+  g_assert_cmpstr (body, ==, NULL);
+  g_assert_cmpuint (state, ==, -1);
+  g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
 }
 
@@ -66,14 +66,14 @@ test2 (void)
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
       &delivery_status);
-  g_assert (ret == TRUE);
-  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
-  g_assert (0 == strcmp (from, "foo@bar.com"));
-  g_assert (stamp == 0);
-  g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
-  g_assert (0 == strcmp (body, "hello"));
-  g_assert (state == -1);
-  g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert (ret);
+  g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
+  g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_cmpuint (stamp, ==, 0);
+  g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
+  g_assert_cmpstr (body, ==, "hello");
+  g_assert_cmpuint (state, ==, -1);
+  g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
 }
 
@@ -100,14 +100,14 @@ test3 (void)
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
       &delivery_status);
-  g_assert (ret == TRUE);
-  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
-  g_assert (0 == strcmp (from, "foo@bar.com"));
-  g_assert (stamp == 0);
-  g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
-  g_assert (0 == strcmp (body, "hello"));
-  g_assert (state == -1);
-  g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert (ret);
+  g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
+  g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_cmpuint (stamp, ==, 0);
+  g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
+  g_assert_cmpstr (body, ==, "hello");
+  g_assert_cmpuint (state, ==, -1);
+  g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
 }
 
@@ -135,15 +135,15 @@ test_error (void)
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
       &delivery_status);
-  g_assert (ret == TRUE);
-  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
-  g_assert (0 == strcmp (from, "foo@bar.com"));
-  g_assert (stamp == 0);
-  g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
-  g_assert (body == NULL);
-  g_assert (state == -1);
-  g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN);
-  g_assert (delivery_status == TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
+  g_assert (ret);
+  g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
+  g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_cmpuint (stamp, ==, 0);
+  g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
+  g_assert_cmpstr (body, ==, NULL);
+  g_assert_cmpuint (state, ==, -1);
+  g_assert_cmpuint (send_error, ==, TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN);
+  g_assert_cmpuint (delivery_status, ==, TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
   g_object_unref (msg);
 }
 
@@ -180,15 +180,15 @@ test_another_error (void)
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
       &delivery_status);
-  g_assert (ret == TRUE);
-  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
-  g_assert (0 == strcmp (from, "romeo@montague.net/garden"));
-  g_assert (stamp == 0);
-  g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
-  g_assert (!tp_strdiff (body, message));
-  g_assert (state == -1);
-  g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT);
-  g_assert (delivery_status == TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
+  g_assert (ret);
+  g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
+  g_assert_cmpstr (from, ==, "romeo@montague.net/garden");
+  g_assert_cmpuint (stamp, ==, 0);
+  g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
+  g_assert_cmpstr (body, ==, message);
+  g_assert_cmpuint (state, ==, -1);
+  g_assert_cmpuint (send_error, ==, TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT);
+  g_assert_cmpuint (delivery_status, ==, TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
   g_object_unref (msg);
 }
 
@@ -228,15 +228,15 @@ test_yet_another_error (void)
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
       &delivery_status);
-  g_assert (ret == TRUE);
-  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
-  g_assert (0 == strcmp (from, "other@starfleet.us/Enterprise"));
-  g_assert (stamp == 0);
-  g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
-  g_assert (!tp_strdiff (body, message));
-  g_assert (state == -1);
-  g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE);
-  g_assert (delivery_status == TP_DELIVERY_STATUS_TEMPORARILY_FAILED);
+  g_assert (ret);
+  g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
+  g_assert_cmpstr (from, ==, "other@starfleet.us/Enterprise");
+  g_assert_cmpuint (stamp, ==, 0);
+  g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
+  g_assert_cmpstr (body, ==, message);
+  g_assert_cmpuint (state, ==, -1);
+  g_assert_cmpuint (send_error, ==, TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE);
+  g_assert_cmpuint (delivery_status, ==, TP_DELIVERY_STATUS_TEMPORARILY_FAILED);
   g_object_unref (msg);
 }
 
@@ -270,14 +270,14 @@ test_google_offline (void)
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
       &delivery_status);
-  g_assert (ret == TRUE);
-  g_assert (0 == strcmp (id, "a867c060-bd3f-4ecc-a38f-3e306af48e4c"));
-  g_assert (0 == strcmp (from, "foo@bar.com"));
-  g_assert (stamp == 1190899454);
-  g_assert (type == TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
-  g_assert (0 == strcmp (body, "hello"));
-  g_assert (state == -1);
-  g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert (ret);
+  g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
+  g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_cmpuint (stamp, ==, 1190899454);
+  g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
+  g_assert_cmpstr (body, ==, "hello");
+  g_assert_cmpuint (state, ==, -1);
+  g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
 }
 

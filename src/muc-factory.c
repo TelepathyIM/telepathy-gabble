@@ -24,7 +24,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky-utils.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
@@ -76,7 +75,7 @@ struct _GabbleMucFactoryPrivate
   GabbleConnection *conn;
   gulong status_changed_id;
 
-  LmMessageHandler *message_cb;
+  guint message_cb_id;
   /* GUINT_TO_POINTER(room_handle) => (GabbleMucChannel *) */
   GHashTable *text_channels;
   /* Tubes channels which will be considered ready when the corresponding
@@ -121,8 +120,6 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
 
   priv->queued_requests = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, NULL);
-
-  priv->message_cb = NULL;
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
@@ -776,14 +773,14 @@ process_obsolete_invite (GabbleMucFactory *fac,
 /**
  * muc_factory_message_cb:
  *
- * Called by loudmouth when we get an incoming <message>.
+ * Called by Wocky when we get an incoming <message>.
  * We filter only groupchat and MUC messages, ignoring the rest.
  */
-static LmHandlerResult
-muc_factory_message_cb (LmMessageHandler *handler,
-                        LmConnection *connection,
-                        WockyStanza *message,
-                        gpointer user_data)
+static gboolean
+muc_factory_message_cb (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = fac->priv;
@@ -797,26 +794,26 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (conn_olpc_process_activity_properties_message (priv->conn, message,
         from))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (conn_olpc_process_activity_uninvite_message (priv->conn, message,
         from))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (process_muc_invite (fac, message, from, send_error))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (process_obsolete_invite (fac, message, from, body, send_error))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   /* we used to check if a room with the jid exists, instead at this  *
    * point we stop caring: actual MUC messages are handled internally *
    * by the wocky muc implementation                                  */
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  return FALSE;
 }
 
 void
@@ -915,17 +912,30 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
       g_hash_table_unref (tmp);
     }
 
-  if (priv->message_cb != NULL)
+  if (priv->message_cb_id != 0)
     {
-      DEBUG ("removing callbacks");
+      WockyPorter *porter = gabble_connection_dup_porter (priv->conn);
 
-      lm_connection_unregister_message_handler (priv->conn->lmconn,
-          priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE);
+      wocky_porter_unregister_handler (porter, priv->message_cb_id);
+      priv->message_cb_id = 0;
+      g_object_unref (porter);
     }
-
-  tp_clear_pointer (&priv->message_cb, lm_message_handler_unref);
 }
 
+static void
+porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleMucFactory *self = GABBLE_MUC_FACTORY (user_data);
+
+  self->priv->message_cb_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+      muc_factory_message_cb, self,
+      NULL);
+}
 
 static void
 connection_status_changed_cb (GabbleConnection *conn,
@@ -933,21 +943,8 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = self->priv;
-
   switch (status)
     {
-    case TP_CONNECTION_STATUS_CONNECTING:
-      DEBUG ("adding callbacks");
-      g_assert (priv->message_cb == NULL);
-
-      priv->message_cb = lm_message_handler_new (muc_factory_message_cb,
-          self, NULL);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE,
-          LM_HANDLER_PRIORITY_NORMAL);
-      break;
-
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_muc_factory_close_all (self);
       break;
@@ -966,6 +963,8 @@ gabble_muc_factory_constructor (GType type, guint n_props,
 
   priv->status_changed_id = g_signal_connect (priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
+  tp_g_signal_connect_object (priv->conn,
+      "porter-available", (GCallback) porter_available_cb, obj, 0);
 
   return obj;
 }

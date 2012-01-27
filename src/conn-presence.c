@@ -58,7 +58,7 @@ typedef enum {
 
 struct _GabbleConnectionPresencePrivate {
     InvisibilityMethod invisibility_method;
-    LmMessageHandler *iq_list_push_cb;
+    guint iq_list_push_id;
     gchar *invisible_list_name;
 
     /* Mapping between status "show" strings, and shared statuses */
@@ -134,8 +134,10 @@ static LmHandlerResult activate_current_privacy_list_cb (
 static void setup_invisible_privacy_list_async (GabbleConnection *self,
     GAsyncReadyCallback callback, gpointer user_data);
 
-static LmHandlerResult iq_privacy_list_push_cb (LmMessageHandler *handler,
-    LmConnection *connection, WockyStanza *message, gpointer user_data);
+static gboolean iq_privacy_list_push_cb (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data);
 
 static LmHandlerResult verify_invisible_privacy_list_cb (
     GabbleConnection *conn, WockyStanza *sent_msg, WockyStanza *reply_msg,
@@ -934,43 +936,28 @@ iq_shared_status_changed_cb (WockyPorter *porter,
   return TRUE;
 }
 
-static LmHandlerResult
-iq_privacy_list_push_cb (LmMessageHandler *handler,
-    LmConnection *connection,
+static gboolean
+iq_privacy_list_push_cb (
+    WockyPorter *porter,
     WockyStanza *message,
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
-  WockyStanzaSubType sub_type;
-  WockyStanza *result;
-  WockyNode *list_node, *iq;
+  WockyNode *list_node, *query_node, *iq;
   const gchar *list_name;
 
-  wocky_stanza_get_type_info (message, NULL, &sub_type);
-  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  wocky_porter_acknowledge_iq (wocky_session_get_porter (conn->session),
+      message, NULL);
 
   iq = wocky_stanza_get_top_node (message);
-  list_node = lm_message_node_get_child_with_namespace (iq, "list", NULL);
-
-  if (!lm_message_node_get_child_with_namespace (iq, "query", NS_PRIVACY) ||
-      !list_node)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  result = wocky_stanza_build_iq_result (message, NULL);
-
-  if (result != NULL)
-    {
-      wocky_porter_send (wocky_session_get_porter (conn->session), result);
-      g_object_unref (result);
-    }
-
+  query_node = wocky_node_get_first_child (iq);
+  list_node = wocky_node_get_child (query_node, "list");
   list_name = wocky_node_get_attribute (list_node, "name");
 
   if (g_strcmp0 (list_name, conn->presence_priv->invisible_list_name) == 0)
     setup_invisible_privacy_list_async (conn, NULL, NULL);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 /**********************************************************************
@@ -1365,14 +1352,17 @@ initial_presence_setup_cb (GObject *source_object,
       g_error_free (error);
     }
 
-  if (priv->invisibility_method == INVISIBILITY_METHOD_PRIVACY)
+  if (priv->invisibility_method == INVISIBILITY_METHOD_PRIVACY &&
+      self->session != NULL)
     {
-      priv->iq_list_push_cb = lm_message_handler_new (iq_privacy_list_push_cb,
-          self, NULL);
-
-      lm_connection_register_message_handler (self->lmconn,
-          priv->iq_list_push_cb, WOCKY_STANZA_TYPE_IQ,
-          LM_HANDLER_PRIORITY_NORMAL);
+      priv->iq_list_push_id = wocky_c2s_porter_register_handler_from_server (
+          WOCKY_C2S_PORTER (wocky_session_get_porter (self->session)),
+          WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+          WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+          iq_privacy_list_push_cb, self,
+          '(', "query", ':', NS_PRIVACY,
+            '(', "list", ')',
+          ')', NULL);
     }
 
   g_simple_async_result_complete_in_idle (external_result);
@@ -2013,6 +2003,12 @@ conn_presence_dispose (GabbleConnection *self)
       wocky_porter_unregister_handler (porter, priv->iq_shared_status_cb);
       priv->iq_shared_status_cb = 0;
     }
+
+  if (priv->iq_list_push_id != 0)
+    {
+      wocky_porter_unregister_handler (porter, priv->iq_list_push_id);
+      priv->iq_list_push_id = 0;
+    }
 }
 
 void
@@ -2027,9 +2023,6 @@ conn_presence_finalize (GabbleConnection *conn)
 
   if (priv->shared_statuses != NULL)
       g_hash_table_unref (priv->shared_statuses);
-
-  if (priv->iq_list_push_cb != NULL)
-    lm_message_handler_unref (priv->iq_list_push_cb);
 
   g_slice_free (GabbleConnectionPresencePrivate, priv);
 

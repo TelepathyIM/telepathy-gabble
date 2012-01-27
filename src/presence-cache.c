@@ -740,20 +740,8 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
 static GabblePresenceId
 _presence_node_get_status (WockyNode *pres_node)
 {
-  const gchar *presence_show;
-  WockyNode *child_node = wocky_node_get_child (pres_node, "show");
-
-  if (!child_node)
-    {
-      /*
-      NODE_DEBUG (pres_node,
-        "<presence> without <show> received from server, "
-        "setting presence to available");
-      */
-      return GABBLE_PRESENCE_AVAILABLE;
-    }
-
-  presence_show = child_node->content;
+  const gchar *presence_show =
+      wocky_node_get_content_from_child (pres_node, "show");
 
   if (!presence_show)
     {
@@ -1787,10 +1775,11 @@ gabble_presence_parse_presence_message (
     WockyStanza *message)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
+  const gchar *prio;
   gint8 priority = 0;
   const gchar *resource, *status_message = NULL;
   gchar *my_full_jid;
-  WockyNode *presence_node, *child_node;
+  WockyNode *presence_node;
   WockyStanzaSubType sub_type;
   GabblePresenceId presence_id;
   GabblePresence *presence;
@@ -1821,20 +1810,11 @@ gabble_presence_parse_presence_message (
        * presence around when it's unavailable. */
       presence->keep_unavailable = FALSE;
 
-  child_node = wocky_node_get_child (presence_node, "status");
+  status_message = wocky_node_get_content_from_child (presence_node, "status");
+  prio = wocky_node_get_content_from_child (presence_node, "priority");
 
-  if (child_node)
-    status_message = child_node->content;
-
-  child_node = wocky_node_get_child (presence_node, "priority");
-
-  if (child_node)
-    {
-      const gchar *prio = child_node->content;
-
-      if (prio != NULL)
-        priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
-    }
+  if (prio != NULL)
+    priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
 
   presence_cache_check_for_decloak_request (cache, message, handle, from);
 

@@ -6,6 +6,10 @@ could not be established, since the file descriptors were leaked too); it may
 also be useful for profiling the connection process (and test framework).
 """
 from gabbletest import exec_test
+import os
+
+if os.environ.get('REALLY_TORTURE', '') != 'yes':
+    raise SystemExit(77)
 
 def test(q, bus, conn, stream):
     pass

@@ -54,9 +54,3 @@ lm_message_get_sub_type (LmMessage *message)
   wocky_stanza_get_type_info (message, NULL, &sub_type);
   return sub_type;
 }
-
-WockyNode *
-lm_message_get_node (LmMessage *message)
-{
-  return wocky_stanza_get_top_node (message);
-}

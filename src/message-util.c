@@ -311,7 +311,7 @@ _tp_chat_state_from_message (WockyStanza *message)
   WockyNode *node;
 
 #define MAP_TO(str, state) \
-  node = lm_message_node_get_child_with_namespace ( \
+  node = wocky_node_get_child_ns ( \
       wocky_stanza_get_top_node (message), str, \
       NS_CHAT_STATES); \
   if (node != NULL) \
@@ -398,7 +398,7 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
    */
   *stamp = 0;
 
-  node = lm_message_node_get_child_with_namespace (
+  node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (message), "x", NS_X_DELAY);
   if (node != NULL)
     {
@@ -455,7 +455,7 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
 
   if (body != NULL)
     {
-      if (lm_message_node_get_child_with_namespace (
+      if (wocky_node_get_child_ns (
               wocky_stanza_get_top_node (message),
               "google-rbc-announcement", "google:metadata") != NULL)
         {
@@ -464,10 +464,10 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
         }
 
       if (type == NULL &&
-          lm_message_node_get_child_with_namespace (
+          wocky_node_get_child_ns (
               wocky_stanza_get_top_node (message),
               "time", "google:timestamp") != NULL &&
-          lm_message_node_get_child_with_namespace (
+          wocky_node_get_child_ns (
               wocky_stanza_get_top_node (message),
               "x", "jabber:x:delay") != NULL)
         {

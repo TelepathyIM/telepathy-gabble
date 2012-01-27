@@ -314,19 +314,8 @@ send_data_to (GabbleBytestreamMuc *self,
             ':', NS_MUC_BYTESTREAM,
             '@', "sid", priv->stream_id,
           ')',
-          '(', "amp",
-            ':', NS_AMP,
-            '(', "rule",
-              '@', "condition", "deliver-at",
-              '@', "value", "stored",
-              '@', "action", "error",
-            ')',
-            '(', "rule",
-              '@', "condition", "match-resource",
-              '@', "value", "exact",
-              '@', "action", "error",
-            ')',
-          ')', NULL);
+          GABBLE_AMP_DO_NOT_STORE_SPEC,
+          NULL);
 
       g_assert (data != NULL);
 

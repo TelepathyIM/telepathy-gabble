@@ -122,4 +122,35 @@ GSimpleAsyncResult *gabble_simple_async_countdown_new (gpointer self,
 void gabble_simple_async_countdown_inc (GSimpleAsyncResult *simple);
 void gabble_simple_async_countdown_dec (GSimpleAsyncResult *simple);
 
+/* Boilerplate for telling servers which implement XEP-0079 not to store these
+ * messages for delivery later. Include it in your call to wocky_stanza_build()
+ * like so:
+ *
+ *    wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+ *       NULL, jid,
+ *       '(', "close",
+ *         ':', NS_TUBES,
+ *         '@', "tube", id_str,
+ *       ')',
+ *       GABBLE_AMP_DO_NOT_STORE_SPEC,
+ *       NULL);
+ *
+ * Every 1000th user will win a Marshall amplifier!
+ */
+#define GABBLE_AMP_DO_NOT_STORE_SPEC \
+          '(', "amp", \
+            ':', NS_AMP, \
+            '(', "rule", \
+              '@', "condition", "deliver-at", \
+              '@', "value", "stored", \
+              '@', "action", "error", \
+            ')', \
+            '(', "rule", \
+              '@', "condition", "match-resource", \
+              '@', "value", "exact", \
+              '@', "action", "error", \
+            ')', \
+          ')'
+
+
 #endif /* __GABBLE_UTIL_H__ */

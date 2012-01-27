@@ -2863,20 +2863,20 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
   LmMessage *msg;
-  WockyNode *x_node, *invite_node;
+  WockyNode *invite_node;
   gboolean result;
 
   g_signal_emit (self, signals[PRE_INVITE], 0, jid);
 
-  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
-
-  x_node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "x", NULL);
-  x_node->ns = g_quark_from_string (NS_MUC_USER);
-
-  invite_node = wocky_node_add_child_with_content (x_node, "invite", NULL);
-
-  wocky_node_set_attribute (invite_node, "to", jid);
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, priv->jid,
+      '(', "x", ':', NS_MUC_USER,
+        '(', "invite",
+          '@', "to", jid,
+          '*', &invite_node,
+        ')',
+      ')', NULL);
 
   if (message != NULL && *message != '\0')
     {
@@ -3001,7 +3001,7 @@ gabble_muc_channel_remove_member (GObject *obj,
   GabbleMucChannelPrivate *priv = chan->priv;
   TpGroupMixin *group = TP_GROUP_MIXIN (chan);
   LmMessage *msg;
-  WockyNode *query_node, *item_node;
+  WockyNode *item_node;
   const gchar *jid, *nick;
   gboolean result;
 
@@ -3015,14 +3015,13 @@ gabble_muc_channel_remove_member (GObject *obj,
     }
 
   /* Otherwise, the user wants to kick someone. */
-  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_SET);
-
-  query_node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  query_node->ns = g_quark_from_string (NS_MUC_ADMIN);
-
-  item_node = wocky_node_add_child_with_content (query_node, "item", NULL);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->jid,
+      '(', "query", ':', NS_MUC_ADMIN,
+        '(', "item",
+          '*', &item_node,
+        ')',
+      ')', NULL);
 
   jid = tp_handle_inspect (TP_GROUP_MIXIN (obj)->handle_repo, handle);
 

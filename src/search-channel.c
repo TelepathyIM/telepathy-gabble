@@ -437,14 +437,12 @@ request_search_fields (GabbleSearchChannel *chan)
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   LmMessage *msg;
-  WockyNode *lm_node;
   GError *error = NULL;
 
-  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_node->ns = g_quark_from_string (NS_SEARCH);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, chan->priv->server,
+      '(', "query", ':', NS_SEARCH,
+      ')', NULL);
 
   if (! _gabble_connection_send_with_reply (GABBLE_CONNECTION (base_conn), msg,
             query_reply_cb, (GObject *) chan, NULL, &error))
@@ -965,11 +963,11 @@ do_search (GabbleSearchChannel *chan,
   if (!validate_terms (chan, terms, error))
     return FALSE;
 
-  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
-  query = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  query->ns = g_quark_from_string (NS_SEARCH);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, chan->priv->server,
+      '(', "query", ':', NS_SEARCH,
+        '*', &query,
+      ')', NULL);
 
   if (chan->priv->xforms)
     {

@@ -149,13 +149,15 @@ gabble_message_util_build_stanza (TpMessage *message,
         }
     }
 
-  stanza = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
-      subtype);
-  node = wocky_stanza_get_top_node (stanza);
   /* Generate a UUID for the message */
   id = gabble_generate_id ();
-  wocky_node_set_attribute (node, "id", id);
   tp_message_set_string (message, 0, "message-token", id);
+
+  stanza = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, subtype,
+      NULL, recipient,
+      '@', "id", id,
+      '*', &node,
+      NULL);
 
   if (send_nick)
     lm_message_node_add_own_nick (node, conn);
@@ -203,8 +205,8 @@ gabble_message_util_send_chat_state (GObject *obj,
                                      const char *recipient,
                                      GError **error)
 {
-  LmMessage *msg = lm_message_new_with_sub_type (recipient,
-      LM_MESSAGE_TYPE_MESSAGE, subtype);
+  WockyStanza *msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, subtype,
+      NULL, recipient, NULL);
   gboolean result;
 
   gabble_message_util_add_chat_state (msg, state);

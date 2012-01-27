@@ -2370,8 +2370,10 @@ gabble_connection_send_capabilities (GabbleConnection *self,
     }
 
   /* We deliberately don't include anything except the caps here */
-  message = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_PRESENCE,
-      LM_MESSAGE_SUB_TYPE_AVAILABLE);
+  message = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_AVAILABLE,
+      NULL, recipient,
+      NULL);
 
   gabble_connection_fill_in_caps (self, message);
 
@@ -3752,9 +3754,9 @@ gabble_connection_send_presence (GabbleConnection *conn,
   LmMessage *message;
   gboolean result;
 
-  message = lm_message_new_with_sub_type (contact,
-      LM_MESSAGE_TYPE_PRESENCE,
-      sub_type);
+  message = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE, sub_type,
+      NULL, contact,
+      NULL);
 
   if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
     lm_message_node_add_own_nick (

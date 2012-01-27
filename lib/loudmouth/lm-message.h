@@ -65,13 +65,6 @@ typedef WockyStanzaSubType LmMessageSubType;
 #define LM_MESSAGE_SUB_TYPE_RESULT       WOCKY_STANZA_SUB_TYPE_RESULT
 #define LM_MESSAGE_SUB_TYPE_ERROR        WOCKY_STANZA_SUB_TYPE_ERROR
 
-LmMessage * lm_message_new (const gchar *to,
-    LmMessageType type);
-
-LmMessage * lm_message_new_with_sub_type (const gchar *to,
-    LmMessageType type,
-    LmMessageSubType sub_type);
-
 G_END_DECLS
 
 #endif /* #ifndef __LM_MESSAGE_H__ */

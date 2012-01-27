@@ -1764,19 +1764,19 @@ refresh_invitations (GabbleConnection *conn,
 
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
-      LmMessage *msg = lm_message_new (NULL, LM_MESSAGE_TYPE_MESSAGE);
       TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
           (invitees));
-
-      activity_info_contribute_properties (activity,
-          wocky_stanza_get_top_node (msg), FALSE);
 
       while (tp_intset_iter_next (&iter))
         {
           const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+          WockyStanza *msg = wocky_stanza_build (
+              WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+              NULL, to, NULL);
 
-          wocky_node_set_attribute (
-              wocky_stanza_get_top_node (msg), "to", to);
+          activity_info_contribute_properties (activity,
+              wocky_stanza_get_top_node (msg), FALSE);
+
           if (!_gabble_connection_send (conn, msg, error))
             {
               DEBUG ("Unable to re-send activity properties to invitee %s",
@@ -1784,9 +1784,9 @@ refresh_invitations (GabbleConnection *conn,
               g_object_unref (msg);
               return FALSE;
             }
-        }
 
-      g_object_unref (msg);
+          g_object_unref (msg);
+        }
     }
 
   return TRUE;
@@ -1862,9 +1862,9 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   is_visible = gabble_olpc_activity_is_visible (activity);
 
-  msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
-  wocky_node_set_attribute (
-      wocky_stanza_get_top_node (msg), "type", "groupchat");
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_GROUPCHAT,
+      NULL, jid, NULL);
   activity_info_contribute_properties (activity,
     wocky_stanza_get_top_node (msg), FALSE);
   if (!_gabble_connection_send (conn, msg, NULL))
@@ -2471,27 +2471,21 @@ revoke_invitations (GabbleConnection *conn,
 
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
-      LmMessage *msg = lm_message_new (NULL, LM_MESSAGE_TYPE_MESSAGE);
       TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
           (invitees));
-      WockyNode *uninvite_node;
-
-      uninvite_node = wocky_node_add_child_with_content (
-          wocky_stanza_get_top_node (msg), "uninvite", "");
-      uninvite_node->ns = g_quark_from_string (
-          NS_OLPC_ACTIVITY_PROPS);
-      wocky_node_set_attribute (uninvite_node, "room",
-          gabble_olpc_activity_get_room (activity));
-      wocky_node_set_attribute (uninvite_node, "id",
-          activity->id);
 
       DEBUG ("revoke invitations for activity %s", activity->id);
       while (tp_intset_iter_next (&iter))
         {
           const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+          WockyStanza *msg = wocky_stanza_build (
+              WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+              NULL, to,
+              '(', "uninvite", ':', NS_OLPC_ACTIVITY_PROPS,
+                '@', "room", gabble_olpc_activity_get_room (activity),
+                '@', "id", activity->id,
+              ')', NULL);
 
-          wocky_node_set_attribute (
-              wocky_stanza_get_top_node (msg), "to", to);
           if (!_gabble_connection_send (conn, msg, error))
             {
               DEBUG ("Unable to send activity invitee revocation %s",
@@ -2499,9 +2493,9 @@ revoke_invitations (GabbleConnection *conn,
               g_object_unref (msg);
               return FALSE;
             }
-        }
 
-      g_object_unref (msg);
+          g_object_unref (msg);
+        }
     }
 
   return TRUE;
@@ -2669,7 +2663,10 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
-  msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, jid,
+      NULL);
 
   if (activity_info_contribute_properties (activity,
       wocky_stanza_get_top_node (msg), FALSE))

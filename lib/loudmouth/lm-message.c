@@ -17,22 +17,3 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
-
-#include "lm-message.h"
-
-LmMessage *
-lm_message_new (const gchar *to,
-    LmMessageType type)
-{
-  return wocky_stanza_build (type, WOCKY_STANZA_SUB_TYPE_NONE,
-      NULL, to, NULL);
-}
-
-LmMessage *
-lm_message_new_with_sub_type (const gchar *to,
-    LmMessageType type,
-    LmMessageSubType sub_type)
-{
-  return wocky_stanza_build (type, sub_type,
-      NULL, to, NULL);
-}

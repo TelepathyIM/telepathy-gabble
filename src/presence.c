@@ -660,8 +660,8 @@ gabble_presence_as_message (GabblePresence *presence,
   else
     subtype = LM_MESSAGE_SUB_TYPE_AVAILABLE;
 
-  message = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_PRESENCE,
-              subtype);
+  message = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE, subtype,
+      NULL, to, NULL);
 
   gabble_presence_add_status_and_vcard (presence, message);
 

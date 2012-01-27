@@ -1169,8 +1169,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
       return NULL;
     }
 
-  msg = lm_message_new_with_sub_type (NULL, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, NULL, NULL);
 
   if (info->edit_type == GABBLE_VCARD_EDIT_CLEAR)
     {

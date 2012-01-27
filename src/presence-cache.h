@@ -118,8 +118,8 @@ const GabbleCapabilityInfo *gabble_presence_cache_peek_own_caps (
 void gabble_presence_cache_really_remove (GabblePresenceCache *cache,
     TpHandle handle);
 
-LmHandlerResult
-gabble_presence_parse_presence_message (GabblePresenceCache *cache,
+gboolean gabble_presence_parse_presence_message (
+    GabblePresenceCache *cache,
     TpHandle handle,
     const gchar *from,
     WockyStanza *message);

@@ -95,8 +95,8 @@ struct _GabblePresenceCachePrivate
   GabbleConnection *conn;
 
   gulong status_changed_cb;
-  LmMessageHandler *lm_message_cb;
-  LmMessageHandler *lm_presence_cb;
+  guint message_cb;
+  guint presence_cb;
 
   GHashTable *presence;
   TpHandleSet *presence_handles;
@@ -364,10 +364,20 @@ static void gabble_presence_cache_get_property (GObject *object, guint
 static GabblePresence *_cache_insert (GabblePresenceCache *cache,
     TpHandle handle);
 
+static void gabble_presence_cache_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data);
 static void gabble_presence_cache_status_changed_cb (GabbleConnection *,
     TpConnectionStatus, TpConnectionStatusReason, gpointer);
-static LmHandlerResult gabble_presence_cache_lm_message_cb (LmMessageHandler*,
-    LmConnection*, WockyStanza*, gpointer);
+static gboolean _parse_message_message (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data);
+static gboolean gabble_presence_cache_presence_cb (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data);
 
 static void
 gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
@@ -562,6 +572,8 @@ gabble_presence_cache_constructor (GType type, guint n_props,
 
   priv->status_changed_cb = g_signal_connect (priv->conn, "status-changed",
       G_CALLBACK (gabble_presence_cache_status_changed_cb), obj);
+  tp_g_signal_connect_object (priv->conn, "porter-available",
+      G_CALLBACK (gabble_presence_cache_porter_available_cb), obj, 0);
 
   return obj;
 }
@@ -588,8 +600,8 @@ gabble_presence_cache_dispose (GObject *object)
   tp_clear_pointer (&priv->decloak_requests, g_hash_table_unref);
   tp_clear_pointer (&priv->decloak_handles, tp_handle_set_destroy);
 
-  g_assert (priv->lm_message_cb == NULL);
-  g_assert (priv->lm_presence_cb == NULL);
+  g_assert (priv->message_cb == 0);
+  g_assert (priv->presence_cb == 0);
 
   g_signal_handler_disconnect (priv->conn, priv->status_changed_cb);
 
@@ -660,6 +672,27 @@ gabble_presence_cache_set_property (GObject     *object,
 }
 
 static void
+gabble_presence_cache_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
+  GabblePresenceCachePrivate *priv = cache->priv;
+
+  priv->message_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      _parse_message_message, cache,
+      NULL);
+  priv->presence_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MIN,
+      gabble_presence_cache_presence_cb, cache,
+      NULL);
+}
+
+static void
 gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
                                          TpConnectionStatus status,
                                          TpConnectionStatusReason reason,
@@ -673,25 +706,6 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
     case TP_CONNECTION_STATUS_CONNECTING:
-      g_assert (priv->lm_message_cb == NULL);
-      g_assert (priv->lm_presence_cb == NULL);
-
-      /* these are separate despite having the same callback and user_data,
-       * because the Wocky fake-Loudmouth compat layer only lets you register
-       * each handler once */
-      priv->lm_message_cb = lm_message_handler_new (
-          gabble_presence_cache_lm_message_cb, cache, NULL);
-      priv->lm_presence_cb = lm_message_handler_new (
-          gabble_presence_cache_lm_message_cb, cache, NULL);
-
-      lm_connection_register_message_handler (priv->conn->lmconn,
-                                              priv->lm_presence_cb,
-                                              WOCKY_STANZA_TYPE_PRESENCE,
-                                              LM_HANDLER_PRIORITY_LAST);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-                                              priv->lm_message_cb,
-                                              WOCKY_STANZA_TYPE_MESSAGE,
-                                              LM_HANDLER_PRIORITY_FIRST);
       break;
 
     case TP_CONNECTION_STATUS_CONNECTED:
@@ -702,16 +716,20 @@ gabble_presence_cache_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (priv->lm_message_cb != NULL)
-        lm_connection_unregister_message_handler (conn->lmconn,
-            priv->lm_message_cb, WOCKY_STANZA_TYPE_MESSAGE);
+      if (conn->session != NULL)
+        {
+          WockyPorter *porter = wocky_session_get_porter (conn->session);
 
-      if (priv->lm_presence_cb != NULL)
-        lm_connection_unregister_message_handler (conn->lmconn,
-            priv->lm_presence_cb, WOCKY_STANZA_TYPE_PRESENCE);
+          if (priv->message_cb != 0)
+            wocky_porter_unregister_handler (porter, priv->message_cb);
 
-      tp_clear_pointer (&priv->lm_message_cb, lm_message_handler_unref);
-      tp_clear_pointer (&priv->lm_presence_cb, lm_message_handler_unref);
+          if (priv->presence_cb != 0)
+            wocky_porter_unregister_handler (porter, priv->presence_cb);
+
+          priv->message_cb = 0;
+          priv->presence_cb = 0;
+        }
+
       break;
 
     default:
@@ -1710,11 +1728,16 @@ _process_caps (GabblePresenceCache *cache,
   g_slist_free (uris);
 }
 
-LmHandlerResult
-gabble_presence_parse_presence_message (GabblePresenceCache *cache,
-                         TpHandle handle,
-                         const gchar *from,
-                         WockyStanza *message)
+/* FIXME: in a cruel twist of fate, this is called by GabbleMucChannel!
+ * Presumably this is because the handler priority here is MIN, so WockyMuc
+ * steals the presence stanza before we can scrape our information out of it?
+ */
+gboolean
+gabble_presence_parse_presence_message (
+    GabblePresenceCache *cache,
+    TpHandle handle,
+    const gchar *from,
+    WockyStanza *message)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
   gint8 priority = 0;
@@ -1722,7 +1745,6 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
   gchar *my_full_jid;
   WockyNode *presence_node, *child_node;
   WockyStanzaSubType sub_type;
-  LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
   GabblePresenceId presence_id;
   GabblePresence *presence;
 
@@ -1734,7 +1756,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
   if (!tp_strdiff (from, my_full_jid))
     {
       g_free (my_full_jid);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return TRUE;
     }
   g_free (my_full_jid);
 
@@ -1819,16 +1841,14 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
       _grab_avatar_sha1 (cache, handle, from, presence_node);
       _process_caps (cache, presence, handle, from, presence_node);
 
-      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
-      break;
+      return TRUE;
 
     case WOCKY_STANZA_SUB_TYPE_ERROR:
       NODE_DEBUG (presence_node, "Received error presence");
       gabble_presence_cache_update (cache, handle, resource,
           GABBLE_PRESENCE_ERROR, status_message, priority);
 
-      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
-      break;
+      return TRUE;
 
     case WOCKY_STANZA_SUB_TYPE_UNAVAILABLE:
       if (gabble_roster_handle_sends_presence_to_us (priv->conn->roster,
@@ -1840,14 +1860,11 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
       gabble_presence_cache_update (cache, handle, resource,
           presence_id, status_message, priority);
 
-      ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
-      break;
+      return TRUE;
 
     default:
-      break;
+      return FALSE;
     }
-
-  return ret;
 }
 
 /* FIXME: this scrapes nicknames out of <messages>, and relies on im-channel.c
@@ -1860,15 +1877,34 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
  * to go away when the channel closes, rather than relying on this
  * spooky-action-at-a-distance.
  */
-static LmHandlerResult
-_parse_message_message (GabblePresenceCache *cache,
-                        TpHandle handle,
-                        const gchar *from,
-                        WockyStanza *message)
+static gboolean
+_parse_message_message (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data)
 {
+  GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
+  GabblePresenceCachePrivate *priv = cache->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *from = wocky_stanza_get_from (message);
+  TpHandle handle;
   WockyStanzaSubType sub_type;
   WockyNode *node;
   GabblePresence *presence;
+
+  if (NULL == from)
+    {
+      STANZA_DEBUG (message, "message without from attribute, ignoring");
+      return FALSE;
+    }
+
+  handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
+  if (0 == handle)
+    {
+      STANZA_DEBUG (message, "ignoring message from malformed jid");
+      return FALSE;
+    }
 
   wocky_stanza_get_type_info (message, NULL, &sub_type);
   switch (sub_type)
@@ -1879,7 +1915,7 @@ _parse_message_message (GabblePresenceCache *cache,
     case WOCKY_STANZA_SUB_TYPE_GROUPCHAT:
       break;
     default:
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   presence = gabble_presence_cache_get (cache, handle);
@@ -1894,70 +1930,42 @@ _parse_message_message (GabblePresenceCache *cache,
 
   _grab_nickname (cache, handle, from, node);
 
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  return FALSE;
 }
 
 
-/**
- * gabble_presence_cache_lm_message_cb:
- * @handler: #LmMessageHandler for this message
- * @connection: #LmConnection that originated the message
- * @message: the presence message
- * @user_data: callback data
+/*
+ * gabble_presence_cache_presence_cb:
  *
- * Called by loudmouth when we get an incoming <presence>.
+ * Called by Wocky when we get an incoming <presence>.
  */
-static LmHandlerResult
-gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
-                                     LmConnection *lmconn,
-                                     WockyStanza *message,
-                                     gpointer user_data)
+static gboolean
+gabble_presence_cache_presence_cb (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data)
 {
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
   GabblePresenceCachePrivate *priv = cache->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  const char *from;
-  LmHandlerResult ret;
+  const char *from = wocky_stanza_get_from (message);
   TpHandle handle;
-  WockyStanzaType type;
-
-  g_assert (lmconn == priv->conn->lmconn);
-
-  from = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
-      "from");
 
   if (NULL == from)
     {
       STANZA_DEBUG (message, "message without from attribute, ignoring");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
-
   if (0 == handle)
     {
       STANZA_DEBUG (message, "ignoring message from malformed jid");
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
-  wocky_stanza_get_type_info (message, &type, NULL);
-  switch (type)
-    {
-    case WOCKY_STANZA_TYPE_PRESENCE:
-      ret = gabble_presence_parse_presence_message (cache, handle,
-        from, message);
-      break;
-    case WOCKY_STANZA_TYPE_MESSAGE:
-      ret = _parse_message_message (cache, handle, from, message);
-      break;
-    default:
-      ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-      break;
-    }
-
-  tp_handle_unref (contact_repo, handle);
-  return ret;
+  return gabble_presence_parse_presence_message (cache, handle, from, message);
 }
 
 

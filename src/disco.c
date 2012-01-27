@@ -397,7 +397,7 @@ request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
   if (!g_list_find (priv->requests, request))
     return;
 
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg),
       "query", disco_type_to_xmlns (request->type));
 

@@ -1728,6 +1728,53 @@ _process_caps (GabblePresenceCache *cache,
   g_slist_free (uris);
 }
 
+static void
+presence_cache_check_for_decloak_request (
+    GabblePresenceCache *cache,
+    WockyStanza *stanza,
+    TpHandle handle,
+    const gchar *from)
+{
+  GabblePresenceCachePrivate *priv = cache->priv;
+  WockyNode *presence_node = wocky_stanza_get_top_node (stanza);
+  WockyNode *child_node;
+
+  /* If we receive (directed or broadcast) presence of any sort from someone,
+   * it counts as a reply to any pending de-cloak request we might have been
+   * tracking */
+  g_hash_table_remove (priv->decloak_requests, GUINT_TO_POINTER (handle));
+
+  child_node = wocky_node_get_child_ns (presence_node, "temppres",
+      NS_TEMPPRES);
+
+  if (child_node != NULL)
+    {
+      gboolean decloak;
+      const gchar *reason;
+
+      /* this is a request to de-cloak, i.e. leak a minimal version of our
+       * presence to the peer */
+      g_object_get (priv->conn,
+          "decloak-automatically", &decloak,
+          NULL);
+
+      reason = wocky_node_get_attribute (child_node, "reason");
+
+      if (reason == NULL)
+        reason = "";
+
+      DEBUG ("Considering whether to decloak, reason='%s', conclusion=%d",
+          reason, decloak);
+
+      conn_decloak_emit_requested (priv->conn, handle, reason, decloak);
+
+      if (decloak)
+        gabble_connection_send_capabilities (priv->conn, from, NULL);
+    }
+
+}
+
+
 /* FIXME: in a cruel twist of fate, this is called by GabbleMucChannel!
  * Presumably this is because the handler priority here is MIN, so WockyMuc
  * steals the presence stanza before we can scrape our information out of it?
@@ -1774,11 +1821,6 @@ gabble_presence_parse_presence_message (
        * presence around when it's unavailable. */
       presence->keep_unavailable = FALSE;
 
-  /* If we receive (directed or broadcast) presence of any sort from someone,
-   * it counts as a reply to any pending de-cloak request we might have been
-   * tracking */
-  g_hash_table_remove (priv->decloak_requests, GUINT_TO_POINTER (handle));
-
   child_node = wocky_node_get_child (presence_node, "status");
 
   if (child_node)
@@ -1797,33 +1839,7 @@ gabble_presence_parse_presence_message (
         priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
     }
 
-  child_node = wocky_node_get_child_ns (presence_node, "temppres",
-      NS_TEMPPRES);
-
-  if (child_node != NULL)
-    {
-      gboolean decloak;
-      const gchar *reason;
-
-      /* this is a request to de-cloak, i.e. leak a minimal version of our
-       * presence to the peer */
-      g_object_get (priv->conn,
-          "decloak-automatically", &decloak,
-          NULL);
-
-      reason = wocky_node_get_attribute (child_node, "reason");
-
-      if (reason == NULL)
-        reason = "";
-
-      DEBUG ("Considering whether to decloak, reason='%s', conclusion=%d",
-          reason, decloak);
-
-      conn_decloak_emit_requested (priv->conn, handle, reason, decloak);
-
-      if (decloak)
-        gabble_connection_send_capabilities (priv->conn, from, NULL);
-    }
+  presence_cache_check_for_decloak_request (cache, message, handle, from);
 
   wocky_stanza_get_type_info (message, NULL, &sub_type);
   switch (sub_type)

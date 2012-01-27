@@ -24,7 +24,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/gtypes.h>
@@ -62,7 +61,7 @@ enum
 struct _GabbleImFactoryPrivate
 {
   GabbleConnection *conn;
-  LmMessageHandler *message_cb;
+  guint message_cb_id;
   GHashTable *channels;
 
   gulong status_changed_id;
@@ -78,8 +77,6 @@ gabble_im_factory_init (GabbleImFactory *self)
 
   self->priv->channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
                                           NULL, g_object_unref);
-
-  self->priv->message_cb = NULL;
 
   self->priv->conn = NULL;
   self->priv->dispose_has_run = FALSE;
@@ -200,13 +197,13 @@ static GabbleIMChannel *get_channel_for_incoming_message (
 /**
  * im_factory_message_cb:
  *
- * Called by loudmouth when we get an incoming <message>.
+ * Called by Wocky when we get an incoming <message>.
  */
-static LmHandlerResult
-im_factory_message_cb (LmMessageHandler *handler,
-                       LmConnection *lmconn,
-                       WockyStanza *message,
-                       gpointer user_data)
+static gboolean
+im_factory_message_cb (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
   const gchar *from, *body, *id;
@@ -220,11 +217,11 @@ im_factory_message_cb (LmMessageHandler *handler,
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (body == NULL && state == -1)
     {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return FALSE;
     }
 
   /* We don't want to open up a channel for the sole purpose of reporting a
@@ -242,7 +239,7 @@ im_factory_message_cb (LmMessageHandler *handler,
         DEBUG ("ignoring message error or chat state notification from '%s': "
             "no existing channel", from);
 
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return TRUE;
     }
 
   if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
@@ -250,7 +247,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       if (body == NULL)
         {
           DEBUG ("ignoring error sending chat state to %s", from);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+          return TRUE;
         }
 
       DEBUG ("got error sending to %s, msgtype %u, body:\n%s",
@@ -268,7 +265,7 @@ im_factory_message_cb (LmMessageHandler *handler,
       _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);
     }
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 /**
@@ -428,14 +425,14 @@ gabble_im_factory_close_all (GabbleImFactory *self)
       self->priv->status_changed_id = 0;
     }
 
-  if (self->priv->message_cb != NULL)
+  if (self->priv->message_cb_id != 0)
     {
-      DEBUG ("removing callbacks");
-      lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-          self->priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE);
-    }
+      WockyPorter *porter = gabble_connection_dup_porter (self->priv->conn);
 
-  tp_clear_pointer (&self->priv->message_cb, lm_message_handler_unref);
+      wocky_porter_unregister_handler (porter, self->priv->message_cb_id);
+      self->priv->message_cb_id = 0;
+      g_object_unref (porter);
+    }
 }
 
 
@@ -447,17 +444,6 @@ connection_status_changed_cb (GabbleConnection *conn,
 {
   switch (status)
     {
-    case TP_CONNECTION_STATUS_CONNECTING:
-      DEBUG ("adding callbacks");
-      g_assert (self->priv->message_cb == NULL);
-
-      self->priv->message_cb = lm_message_handler_new (im_factory_message_cb,
-          self, NULL);
-      lm_connection_register_message_handler (self->priv->conn->lmconn,
-          self->priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE,
-          LM_HANDLER_PRIORITY_LAST);
-      break;
-
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_im_factory_close_all (self);
       break;
@@ -525,6 +511,12 @@ porter_available_cb (
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
   gchar *stream_server;
+
+  DEBUG ("adding callbacks");
+  self->priv->message_cb_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MIN, im_factory_message_cb, self,
+      NULL);
 
   g_object_get (conn, "stream-server", &stream_server, NULL);
 

@@ -1249,18 +1249,16 @@ static gboolean
 is_valid_invisible_list (WockyNode *list_node)
 {
   WockyNode *top_node = NULL;
-  NodeIter i;
+  WockyNode *child;
+  WockyNodeIter i;
   guint top_order = G_MAXUINT;
 
-  for (i = node_iter (list_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, list_node, "item", NULL);
+  while (wocky_node_iter_next (&i, &child))
     {
-      WockyNode *child = node_iter_data (i);
       const gchar *order_str;
       guint order;
       gchar *end;
-
-      if (g_strcmp0 (lm_message_node_get_name (child), "item") != 0)
-        continue;
 
       order_str = wocky_node_get_attribute (child, "order");
 

@@ -162,12 +162,6 @@ lm_message_node_add_own_nick (WockyNode *node,
   g_free (nick);
 }
 
-const gchar *
-lm_message_node_get_name (WockyNode *node)
-{
-  return node->name;
-}
-
 WockyNode *
 lm_message_node_get_child_with_namespace (WockyNode *node,
                                           const gchar *name,

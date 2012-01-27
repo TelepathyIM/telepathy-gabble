@@ -71,7 +71,6 @@ GHashTable *lm_message_node_extract_properties (WockyNode *node,
 void
 lm_message_node_add_children_from_properties (WockyNode *node,
     GHashTable *properties, const gchar *prop);
-const gchar * lm_message_node_get_name (WockyNode *node);
 
 void gabble_signal_connect_weak (gpointer instance, const gchar *detailed_signal,
     GCallback c_handler, GObject *user_data);

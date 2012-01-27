@@ -209,11 +209,12 @@ parse_unextended_field_response (
     GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *field;
 
-  for (i = node_iter (query_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      WockyNode *field = node_iter_data (i);
       gchar *tp_name;
 
       if (!strcmp (field->name, "instructions"))
@@ -266,7 +267,8 @@ parse_data_form (
     GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *n;
 
   if (tp_strdiff (wocky_node_get_attribute (x_node, "type"), "form"))
     {
@@ -275,9 +277,9 @@ parse_data_form (
       goto fail;
     }
 
-  for (i = node_iter (x_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, x_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &n))
     {
-      WockyNode *n = node_iter_data (i);
       const gchar *type = wocky_node_get_attribute (n, "type");
       const gchar *var = wocky_node_get_attribute (n, "var");
       gchar *tp_name;
@@ -300,8 +302,10 @@ parse_data_form (
 
       if (!strcmp (var, "FORM_TYPE"))
         {
-          if (node_iter (n) == NULL ||
-              strcmp (node_iter_data (node_iter (n))->content, NS_SEARCH))
+          const gchar *form_type = wocky_node_get_content_from_child (n,
+              "value");
+
+          if (tp_strdiff (form_type, NS_SEARCH))
             {
               DEBUG ("<x> form does not have FORM_TYPE %s", NS_SEARCH);
               g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -636,7 +640,8 @@ parse_result_item (GabbleSearchChannel *chan,
 {
   const gchar *jid = wocky_node_get_attribute (item, "jid");
   GHashTable *info;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *n;
 
   if (jid == NULL)
     {
@@ -647,9 +652,9 @@ parse_result_item (GabbleSearchChannel *chan,
   info = g_hash_table_new (g_str_hash, g_str_equal);
   g_hash_table_insert (info, "jid", (gchar *) jid);
 
-  for (i = node_iter (item); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, item, NULL, NULL);
+  while (wocky_node_iter_next (&i, &n))
     {
-      WockyNode *n = node_iter_data (i);
       gchar *value = (gchar *) n->content;
 
       g_hash_table_insert (info, n->name, value);
@@ -663,23 +668,15 @@ static void
 parse_extended_result_item (GabbleSearchChannel *chan,
     WockyNode *item)
 {
-  GHashTable *info;
-  NodeIter i;
+  GHashTable *info = g_hash_table_new (g_str_hash, g_str_equal);
+  WockyNodeIter i;
+  WockyNode *field;
 
-  info = g_hash_table_new (g_str_hash, g_str_equal);
-
-  for (i = node_iter (item); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, item, "field", NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      WockyNode *field = node_iter_data (i);
       WockyNode *value_node;
       const gchar *var, *value;
-
-      if (tp_strdiff (field->name, "field"))
-        {
-          DEBUG ("found <%s/> in <item/> rather than <field/>, skipping",
-              field->name);
-          continue;
-        }
 
       var = wocky_node_get_attribute (field, "var");
       if (var == NULL)
@@ -717,17 +714,13 @@ parse_unextended_search_results (GabbleSearchChannel *chan,
     WockyNode *query_node,
     GError **error)
 {
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *item;
 
-  for (i = node_iter (query_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_node, "item", NULL);
+  while (wocky_node_iter_next (&i, &item))
     {
-      WockyNode *item = node_iter_data (i);
-
-      if (!strcmp (item->name, "item"))
-        parse_result_item (chan, item);
-      else
-        DEBUG ("found <%s/> in <query/> rather than <item/>, skipping",
-            item->name);
+      parse_result_item (chan, item);
     }
 
   return TRUE;
@@ -738,8 +731,8 @@ parse_extended_search_results (GabbleSearchChannel *chan,
     WockyNode *query_node,
     GError **error)
 {
-  WockyNode *x;
-  NodeIter i;
+  WockyNode *x, *item;
+  WockyNodeIter i;
 
   x = wocky_node_get_child_ns (query_node, "x", NS_X_DATA);
   if (x == NULL)
@@ -749,10 +742,9 @@ parse_extended_search_results (GabbleSearchChannel *chan,
       return FALSE;
     }
 
-  for (i = node_iter (x); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, x, NULL, NULL);
+  while (wocky_node_iter_next (&i, &item))
     {
-      WockyNode *item = node_iter_data (i);
-
       if (!tp_strdiff (item->name, "item"))
         parse_extended_result_item (chan, item);
       else if (!tp_strdiff (item->name, "reported"))

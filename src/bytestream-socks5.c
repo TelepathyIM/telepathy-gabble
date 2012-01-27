@@ -776,7 +776,7 @@ socks5_activation_reply_cb (GabbleConnection *conn,
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("Activation failed");
       goto activation_failed;
@@ -1554,7 +1554,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       WockyNode *query, *streamhost = NULL;
       const gchar *jid;

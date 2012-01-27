@@ -317,7 +317,7 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   if (from == NULL)
     goto fail;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     goto fail;
 
   query = lm_message_node_get_child_with_namespace (
@@ -1123,8 +1123,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   gboolean multiple;
   gchar *peer_resource = NULL;
   gchar *self_jid = NULL;
+  WockyStanzaSubType sub_type;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   si = lm_message_node_get_child_with_namespace (
@@ -1310,8 +1312,10 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   const gchar *tmp;
   guint state;
+  WockyStanzaSubType sub_type;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
   open_node = lm_message_node_get_child_with_namespace (
@@ -1386,8 +1390,10 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   GabbleBytestreamIBB *bytestream;
   WockyNode *close_node;
+  WockyStanzaSubType sub_type;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
   close_node = lm_message_node_get_child_with_namespace (
@@ -1444,10 +1450,12 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   GabbleBytestreamIBB *bytestream = NULL;
   WockyNode *data;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
+  WockyStanzaSubType sub_type;
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  if (is_iq && lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (is_iq && sub_type != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
 
   data = lm_message_node_get_child_with_namespace (
@@ -1602,13 +1610,15 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
+  WockyStanzaSubType sub_type;
   GabbleBytestreamSocks5 *bytestream;
   WockyNode *query_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   const gchar *tmp;
   NodeIter i;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (sub_type != LM_MESSAGE_SUB_TYPE_SET)
     return FALSE;
 
   query_node = lm_message_node_get_child_with_namespace (
@@ -2061,7 +2071,7 @@ streaminit_reply_cb (GabbleConnection *conn,
       goto END;
     }
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("stream %s declined", data->stream_id);
       goto END;

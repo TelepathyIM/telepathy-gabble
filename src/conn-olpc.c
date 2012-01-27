@@ -786,6 +786,7 @@ get_activities_reply_cb (GObject *source,
   TpHandle from_handle;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) ctx->conn, TP_HANDLE_TYPE_CONTACT);
+  GError *stanza_error = NULL;
 
   reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
       &err);
@@ -822,12 +823,15 @@ get_activities_reply_cb (GObject *source,
       goto out;
     }
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &stanza_error, NULL, NULL))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Error in pubsub reply: server error" };
+      GError *tp_error = NULL;
 
-      dbus_g_method_return_error (ctx->context, &error);
+      gabble_set_tp_error_from_wocky (stanza_error, &tp_error);
+      g_prefix_error (&tp_error, "Error in pubsub reply: ");
+      dbus_g_method_return_error (ctx->context, tp_error);
+      g_clear_error (&tp_error);
+      g_clear_error (&stanza_error);
       goto out;
     }
 
@@ -1310,7 +1314,7 @@ get_current_activity_reply_cb (GObject *source,
       goto out;
     }
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("Failed to query PEP node. No current activity");
 

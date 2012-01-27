@@ -233,8 +233,9 @@ aliases_request_cache_pep (GabbleConnection *self,
     {
       DEBUG ("Error getting alias from PEP: %s", error->message);
       _cache_negatively (self, handle);
+      return;
     }
-  else if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  else if (wocky_stanza_extract_errors (msg, NULL, NULL, NULL, NULL))
     {
       STANZA_DEBUG (msg, "Error getting alias from PEP");
       _cache_negatively (self, handle);

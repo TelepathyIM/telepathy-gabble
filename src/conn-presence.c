@@ -535,11 +535,12 @@ set_xep0186_invisible_cb (GabbleConnection *conn,
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
       g_simple_async_result_set_error (result,
           CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_SET_INVISIBLE,
-          "error setting XEP-0186 (in)visiblity");
+          "error setting XEP-0186 (in)visiblity: %s", error->message);
+      g_clear_error (&error);
     }
   else
     {
@@ -651,11 +652,12 @@ activate_current_privacy_list_cb (GabbleConnection *conn,
   GSimpleAsyncResult *result = G_SIMPLE_ASYNC_RESULT (user_data);
   GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
       g_simple_async_result_set_error (result,
           CONN_PRESENCE_ERROR, CONN_PRESENCE_ERROR_SET_PRIVACY_LIST,
-          "error setting requested privacy list");
+          "error setting requested privacy list: %s", error->message);
+      g_clear_error (&error);
     }
   else
     {
@@ -939,11 +941,13 @@ iq_privacy_list_push_cb (LmMessageHandler *handler,
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
+  WockyStanzaSubType sub_type;
   LmMessage *result;
   WockyNode *list_node, *iq;
   const gchar *list_name;
 
-  if (lm_message_get_sub_type (message) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (message, NULL, &sub_type);
+  if (sub_type != LM_MESSAGE_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq = wocky_stanza_get_top_node (message);

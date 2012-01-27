@@ -1168,12 +1168,15 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   WockyNode *si_node, *tube_node;
   guint tube_id;
   GabbleTubeIface *tube;
+  WockyStanzaType stanza_type;
+  WockyStanzaSubType sub_type;
 
   /* Caller is expected to have checked that we have a SI node with
    * a stream ID, the TUBES profile and a <tube> element
    */
-  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
-  g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
+  wocky_stanza_get_type_info (msg, &stanza_type, &sub_type);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
+  g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
   si_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_return_if_fail (si_node != NULL);
@@ -1254,12 +1257,15 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   guint tube_id;
   unsigned long tube_id_tmp;
   GabbleTubeIface *tube;
+  WockyStanzaType stanza_type;
+  WockyStanzaSubType sub_type;
 
   /* Caller is expected to have checked that we have a stream or muc-stream
    * node with a stream ID and the TUBES profile
    */
-  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
-  g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
+  wocky_stanza_get_type_info (msg, &stanza_type, &sub_type);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
+  g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
 
   si_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
@@ -1357,8 +1363,10 @@ tube_msg_offered (GabbleTubesChannel *self,
   WockyNode *tube_node;
   guint tube_id;
   GabbleTubeIface *tube;
+  WockyStanzaType stanza_type;
 
-  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_MESSAGE);
+  wocky_stanza_get_type_info (msg, &stanza_type, NULL);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_MESSAGE);
   tube_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
   g_return_if_fail (tube_node != NULL);

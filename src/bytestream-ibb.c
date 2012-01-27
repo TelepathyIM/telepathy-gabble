@@ -834,8 +834,9 @@ ibb_init_reply_cb (GabbleConnection *conn,
                    gpointer user_data)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (obj);
+  GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
       /* yeah, stream initiated */
       DEBUG ("IBB stream initiated");
@@ -843,7 +844,8 @@ ibb_init_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      DEBUG ("error during IBB initiation");
+      DEBUG ("error during IBB initiation: %s", error->message);
+      g_clear_error (&error);
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
 

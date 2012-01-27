@@ -1721,6 +1721,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
   const gchar *resource, *status_message = NULL;
   gchar *my_full_jid;
   WockyNode *presence_node, *child_node;
+  WockyStanzaSubType sub_type;
   LmHandlerResult ret = LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
   GabblePresenceId presence_id;
   GabblePresence *presence;
@@ -1802,10 +1803,11 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
         gabble_connection_send_capabilities (priv->conn, from, NULL);
     }
 
-  switch (lm_message_get_sub_type (message))
+  wocky_stanza_get_type_info (message, NULL, &sub_type);
+  switch (sub_type)
     {
-    case LM_MESSAGE_SUB_TYPE_NOT_SET:
-    case LM_MESSAGE_SUB_TYPE_AVAILABLE:
+    case WOCKY_STANZA_SUB_TYPE_NONE:
+    case WOCKY_STANZA_SUB_TYPE_AVAILABLE:
       presence_id = _presence_node_get_status (presence_node);
       gabble_presence_cache_update (cache, handle, resource, presence_id,
           status_message, priority);
@@ -1820,7 +1822,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
 
-    case LM_MESSAGE_SUB_TYPE_ERROR:
+    case WOCKY_STANZA_SUB_TYPE_ERROR:
       NODE_DEBUG (presence_node, "Received error presence");
       gabble_presence_cache_update (cache, handle, resource,
           GABBLE_PRESENCE_ERROR, status_message, priority);
@@ -1828,7 +1830,7 @@ gabble_presence_parse_presence_message (GabblePresenceCache *cache,
       ret = LM_HANDLER_RESULT_REMOVE_MESSAGE;
       break;
 
-    case LM_MESSAGE_SUB_TYPE_UNAVAILABLE:
+    case WOCKY_STANZA_SUB_TYPE_UNAVAILABLE:
       if (gabble_roster_handle_sends_presence_to_us (priv->conn->roster,
             handle))
         presence_id = GABBLE_PRESENCE_OFFLINE;
@@ -1864,15 +1866,17 @@ _parse_message_message (GabblePresenceCache *cache,
                         const gchar *from,
                         LmMessage *message)
 {
+  WockyStanzaSubType sub_type;
   WockyNode *node;
   GabblePresence *presence;
 
-  switch (lm_message_get_sub_type (message))
+  wocky_stanza_get_type_info (message, NULL, &sub_type);
+  switch (sub_type)
     {
-    case LM_MESSAGE_SUB_TYPE_NOT_SET:
-    case LM_MESSAGE_SUB_TYPE_NORMAL:
-    case LM_MESSAGE_SUB_TYPE_CHAT:
-    case LM_MESSAGE_SUB_TYPE_GROUPCHAT:
+    case WOCKY_STANZA_SUB_TYPE_NONE:
+    case WOCKY_STANZA_SUB_TYPE_NORMAL:
+    case WOCKY_STANZA_SUB_TYPE_CHAT:
+    case WOCKY_STANZA_SUB_TYPE_GROUPCHAT:
       break;
     default:
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
@@ -1916,6 +1920,7 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
   const char *from;
   LmHandlerResult ret;
   TpHandle handle;
+  WockyStanzaType type;
 
   g_assert (lmconn == priv->conn->lmconn);
 
@@ -1936,13 +1941,14 @@ gabble_presence_cache_lm_message_cb (LmMessageHandler *handler,
       return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
     }
 
-  switch (lm_message_get_type (message))
+  wocky_stanza_get_type_info (message, &type, NULL);
+  switch (type)
     {
-    case LM_MESSAGE_TYPE_PRESENCE:
+    case WOCKY_STANZA_TYPE_PRESENCE:
       ret = gabble_presence_parse_presence_message (cache, handle,
         from, message);
       break;
-    case LM_MESSAGE_TYPE_MESSAGE:
+    case WOCKY_STANZA_TYPE_MESSAGE:
       ret = _parse_message_message (cache, handle, from, message);
       break;
     default:

@@ -36,21 +36,3 @@ lm_message_new_with_sub_type (const gchar *to,
   return wocky_stanza_build (type, sub_type,
       NULL, to, NULL);
 }
-
-LmMessageType
-lm_message_get_type (LmMessage *message)
-{
-  WockyStanzaType type;
-
-  wocky_stanza_get_type_info (message, &type, NULL);
-  return type;
-}
-
-LmMessageSubType
-lm_message_get_sub_type (LmMessage *message)
-{
-  WockyStanzaSubType sub_type;
-
-  wocky_stanza_get_type_info (message, NULL, &sub_type);
-  return sub_type;
-}

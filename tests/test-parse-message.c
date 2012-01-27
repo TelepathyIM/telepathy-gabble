@@ -23,9 +23,9 @@ test1 (void)
   const gchar *body;
   gint state;
 
-  msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+        "foo@bar.com", NULL,
         '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
-        '@', "from", "foo@bar.com",
         NULL);
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
@@ -59,10 +59,10 @@ test2 (void)
   const gchar *body;
   gint state;
 
-  msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
-        '@', "from", "foo@bar.com",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+        "foo@bar.com", NULL,
         '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
-        '(', "body", "hello", ')',
+        '(', "body", '$', "hello", ')',
         NULL);
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
@@ -94,11 +94,10 @@ test3 (void)
   const gchar *body;
   gint state;
 
-  msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
-        '@', "from", "foo@bar.com",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_CHAT,
+        "foo@bar.com", NULL,
         '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
-        '@', "type", "chat",
-        '(', "body", "hello", ')',
+        '(', "body", '$', "hello", ')',
         NULL);
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
@@ -130,12 +129,11 @@ test_error (void)
   const gchar *body;
   gint state;
 
-  msg = lm_message_build_with_sub_type (NULL, LM_MESSAGE_TYPE_MESSAGE,
-      LM_MESSAGE_SUB_TYPE_ERROR,
-      '@', "from", "foo@bar.com",
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_ERROR,
+      "foo@bar.com", NULL,
       '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
-      '@', "type", "error",
-      '(', "error", "oops", ')',
+      '(', "error", '$', "oops", ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
       msg, &from, &stamp, &type, &id, &body, &state, &send_error,
@@ -170,17 +168,15 @@ test_another_error (void)
   gint state;
   const gchar *message = "Wherefore art thou, Romeo?";
 
-  msg = lm_message_build_with_sub_type (NULL, LM_MESSAGE_TYPE_MESSAGE,
-      LM_MESSAGE_SUB_TYPE_ERROR,
-      '@', "to", "juliet@capulet.com/balcony",
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_ERROR,
+      "romeo@montague.net/garden", "juliet@capulet.com/balcony",
       '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
-      '@', "from", "romeo@montague.net/garden",
-      '@', "type", "error",
-      '(', "body", message, ')',
-      '(', "error", "",
+      '(', "body", '$', message, ')',
+      '(', "error",
         '@', "code", "404",
         '@', "type", "cancel",
-        '(', "item-not-found", "",
+        '(', "item-not-found",
           ':', "urn:ietf:params:xml:ns:xmpp-stanzas",
         ')',
       ')',
@@ -220,17 +216,16 @@ test_yet_another_error (void)
   const gchar *message = "Its trilling seems to have a tranquilizing effect on "
                          "the human nervous system.";
 
-  msg = lm_message_build_with_sub_type (NULL, LM_MESSAGE_TYPE_MESSAGE,
-      LM_MESSAGE_SUB_TYPE_ERROR,
-      '@', "to", "spock@starfleet.us/Enterprise",
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_ERROR,
+      "other@starfleet.us/Enterprise",
+      "spock@starfleet.us/Enterprise",
       '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
-      '@', "from", "other@starfleet.us/Enterprise",
-      '@', "type", "error",
-      '(', "body", message, ')',
-      '(', "error", "",
+      '(', "body", '$', message, ')',
+      '(', "error",
         '@', "code", "404",
         '@', "type", "wait",
-        '(', "recipient-unavailable", "",
+        '(', "recipient-unavailable",
           ':', "urn:ietf:params:xml:ns:xmpp-stanzas",
         ')',
       ')',
@@ -265,15 +260,15 @@ test_google_offline (void)
   const gchar *body;
   gint state;
 
-  msg = lm_message_build (NULL, LM_MESSAGE_TYPE_MESSAGE,
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      "foo@bar.com", NULL,
       '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
-      '@', "from", "foo@bar.com",
-      '(', "body", "hello", ')',
-      '(', "x", "",
+      '(', "body", '$', "hello", ')',
+      '(', "x",
          ':', "jabber:x:delay",
          '@', "stamp", "20070927T13:24:14",
       ')',
-      '(', "time", "",
+      '(', "time",
          ':', "google:timestamp",
          '@', "ms", "1190899454656",
       ')',

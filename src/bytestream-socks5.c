@@ -813,12 +813,12 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
   DEBUG ("Got CONNECT reply. SOCKS5 negotiation with proxy is done. "
       "Sending activation IQ");
 
-  iq = lm_message_build (priv->proxy_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "query", "",
+  iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->proxy_jid,
+      '(', "query",
         ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
-        '(', "activate", priv->peer_jid, ')',
+        '(', "activate", '$', priv->peer_jid, ')',
       ')', NULL);
 
   priv->socks5_state = SOCKS5_STATE_INITIATOR_ACTIVATION_SENT;
@@ -1441,8 +1441,8 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
   g_return_if_fail (priv->bytestream_state ==
       GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_ERROR,
+      NULL, priv->peer_jid,
       '@', "id", priv->stream_init_id,
       NULL);
 
@@ -1913,9 +1913,9 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   port_num = gibber_listener_get_port (priv->listener);
   port = g_strdup_printf ("%d", port_num);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "query", "",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->peer_jid,
+      '(', "query",
         ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
         '@', "mode", "tcp",

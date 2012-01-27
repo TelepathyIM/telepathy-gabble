@@ -1535,9 +1535,9 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
           DEBUG ("Cache entry %p is not mine, @to = %s", entry, jid);
         }
 
-      msg = lm_message_build_with_sub_type (jid,
-          LM_MESSAGE_TYPE_IQ, LM_MESSAGE_SUB_TYPE_GET,
-          '(', "vCard", "",
+      msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+          NULL, jid,
+          '(', "vCard",
               ':', NS_VCARD_TEMP,
           ')',
           NULL);

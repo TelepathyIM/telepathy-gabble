@@ -356,6 +356,7 @@ gabble_do_pep_request (GabbleConnection *self,
                        gpointer user_data)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
+  const gchar *to;
   LmMessage *msg;
   GabbleRequestPipelineItem *pep_request;
   pep_request_ctx *ctx;
@@ -372,12 +373,12 @@ gabble_do_pep_request (GabbleConnection *self,
   ctx->handle = handle;
 
   tp_handle_ref (contact_handles, handle);
-  msg = lm_message_build (tp_handle_inspect (contact_handles, handle),
-      LM_MESSAGE_TYPE_IQ,
-      '@', "type", "get",
-      '(', "pubsub", "",
+  to = tp_handle_inspect (contact_handles, handle);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, to,
+      '(', "pubsub",
         ':', NS_PUBSUB,
-        '(', "items", "",
+        '(', "items",
           '@', "node", NS_NICK,
         ')',
       ')',

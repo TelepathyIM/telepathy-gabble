@@ -387,9 +387,9 @@ send_close_stanza (GabbleBytestreamIBB *self)
 
   DEBUG ("send IBB close stanza");
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "close", "",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->peer_jid,
+      '(', "close",
         ':', NS_IBB,
         '@', "sid", priv->stream_id,
       ')', NULL);
@@ -500,9 +500,10 @@ send_data (GabbleBytestreamIBB *self,
       encoded = base64_encode (send_now, str + sent, FALSE);
       seq = g_strdup_printf ("%u", priv->seq++);
 
-      iq = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-          '@', "type", "set",
-          '(', "data", encoded,
+      iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+          NULL, priv->peer_jid,
+          '(', "data",
+            '$', encoded,
             ':', NS_IBB,
             '@', "sid", priv->stream_id,
             '@', "seq", seq,
@@ -753,8 +754,8 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
 
   g_return_if_fail (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_ERROR,
+      NULL, priv->peer_jid,
       '@', "id", priv->stream_init_id,
       NULL);
 
@@ -870,9 +871,9 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
     }
 
   block_size = g_strdup_printf ("%u", priv->block_size);
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "open", "",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->peer_jid,
+      '(', "open",
         ':', NS_IBB,
         '@', "sid", priv->stream_id,
         '@', "block-size", block_size,

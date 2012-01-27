@@ -9,7 +9,7 @@
 #include "src/message-util.h"
 
 /* Test the most basic <message> possible. */
-static gboolean
+static void
 test1 (void)
 {
   LmMessage *msg;
@@ -39,13 +39,12 @@ test1 (void)
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
-  return TRUE;
 }
 
 /* A <message> with a simple body. Parsed as a NOTICE because it doesn't have
  * a 'type' attribute.
  */
-static gboolean
+static void
 test2 (void)
 {
   LmMessage *msg;
@@ -76,11 +75,10 @@ test2 (void)
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
-  return TRUE;
 }
 
 /* Simple type="chat" message. */
-static gboolean
+static void
 test3 (void)
 {
   LmMessage *msg;
@@ -111,11 +109,10 @@ test3 (void)
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
-  return TRUE;
 }
 
 /* A simple error. */
-static gboolean
+static void
 test_error (void)
 {
   LmMessage *msg;
@@ -148,12 +145,11 @@ test_error (void)
   g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN);
   g_assert (delivery_status == TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
   g_object_unref (msg);
-  return TRUE;
 }
 
 /* A more complicated error, described in XEP-0086 as a "simple error response".
  */
-static gboolean
+static void
 test_another_error (void)
 {
   LmMessage *msg;
@@ -194,13 +190,12 @@ test_another_error (void)
   g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT);
   g_assert (delivery_status == TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
   g_object_unref (msg);
-  return TRUE;
 }
 
 /* One million, seven hundred seventy-one thousand, five hundred sixty-one
  * errors.
  */
-static gboolean
+static void
 test_yet_another_error (void)
 {
   LmMessage *msg;
@@ -243,10 +238,9 @@ test_yet_another_error (void)
   g_assert (send_error == TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE);
   g_assert (delivery_status == TP_DELIVERY_STATUS_TEMPORARILY_FAILED);
   g_object_unref (msg);
-  return TRUE;
 }
 
-static gboolean
+static void
 test_google_offline (void)
 {
   LmMessage *msg;
@@ -285,22 +279,23 @@ test_google_offline (void)
   g_assert (state == -1);
   g_assert (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
   g_object_unref (msg);
-  return TRUE;
 }
 
 int
-main (void)
+main (
+    int argc,
+    char *argv[])
 {
   g_type_init ();
+  g_test_init (&argc, &argv, NULL);
 
-  g_assert (test1 ());
-  g_assert (test2 ());
-  g_assert (test3 ());
-  g_assert (test_error ());
-  g_assert (test_another_error ());
-  g_assert (test_yet_another_error ());
-  g_assert (test_google_offline ());
-
-  return 0;
+  g_test_add_func ("/parse-message/1", test1);
+  g_test_add_func ("/parse-message/2", test2);
+  g_test_add_func ("/parse-message/3", test3);
+  g_test_add_func ("/parse-message/error", test_error);
+  g_test_add_func ("/parse-message/another-error", test_another_error);
+  g_test_add_func ("/parse-message/yet-another-error", test_yet_another_error);
+  g_test_add_func ("/parse-message/google-offline", test_google_offline);
+  return g_test_run ();
 }
 

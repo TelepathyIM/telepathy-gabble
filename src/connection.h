@@ -126,8 +126,6 @@ struct _GabbleConnection {
     /* DBus daemon instance */
     TpDBusDaemon *daemon;
 
-    /* loudmouth connection */
-    LmConnection *lmconn;
     WockySession *session;
 
     /* channel factories borrowed from TpBaseConnection's list */

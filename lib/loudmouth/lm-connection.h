@@ -29,21 +29,6 @@
 
 G_BEGIN_DECLS
 
-struct _LmConnection
-{
-  WockyPorter *porter;
-  GCancellable *iq_reply_cancellable;
-};
-
-LmConnection * lm_connection_new (void);
-
-void lm_connection_unref (LmConnection *connection);
-
-/* Fake API. This is not part of loudmouth */
-
-void lm_connection_set_porter (LmConnection *connection,
-    WockyPorter *porter);
-
 G_END_DECLS
 
 #endif /* #ifndef __LM_CONNECTION_H__ */

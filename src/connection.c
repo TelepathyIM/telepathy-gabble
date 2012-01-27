@@ -288,6 +288,15 @@ struct _GabbleConnectionPrivate
    * to connected */
   guint waiting_connected;
 
+  /* Used to cancel pending calls to _gabble_connection_send_with_reply(). It
+   * should not be necessary because by the time we get to cancelling this (in
+   * our dispose()) the porter should be long dead and have called back for all
+   * outstanding requests. However... call this paranoia, and a desire to
+   * delete the Loudmouth compatibility layer without spending any more hours
+   * untangling even more old code.
+   */
+  GCancellable *iq_reply_cancellable;
+
   gboolean closing;
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -533,7 +542,7 @@ gabble_connection_init (GabbleConnection *self)
     }
 
   self->priv = priv;
-  self->lmconn = lm_connection_new ();
+  priv->iq_reply_cancellable = g_cancellable_new ();
 
   priv->caps_serial = 1;
   priv->last_activity_time = time (NULL);
@@ -1235,9 +1244,11 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&priv->connector);
   tp_clear_object (&self->session);
 
-  /* ownership of our porter was transferred to the LmConnection */
+  /* The porter was borrowed from the session. */
   priv->porter = NULL;
-  tp_clear_pointer (&self->lmconn, lm_connection_unref);
+  /* Cancel any outstanding _gabble_connection_send_with_reply() requests. */
+  g_cancellable_cancel (priv->iq_reply_cancellable);
+  tp_clear_object (&priv->iq_reply_cancellable);
 
   g_hash_table_unref (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
@@ -1406,7 +1417,7 @@ _gabble_connection_send (GabbleConnection *conn, WockyStanza *msg, GError **erro
 {
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  if (conn->lmconn == NULL || conn->priv->porter == NULL)
+  if (conn->priv->porter == NULL)
     {
       g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
@@ -1523,7 +1534,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
   g_assert (GABBLE_IS_CONNECTION (conn));
   priv = conn->priv;
 
-  if (conn->lmconn == NULL)
+  if (priv->porter == NULL)
     {
       g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
@@ -1548,7 +1559,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
     }
 
   wocky_porter_send_iq_async (priv->porter, msg,
-      conn->lmconn->iq_reply_cancellable, message_send_reply_cb, handler_data);
+      priv->iq_reply_cancellable, message_send_reply_cb, handler_data);
 
   return TRUE;
 }
@@ -1870,7 +1881,6 @@ connector_connected (GabbleConnection *self,
   g_signal_connect (priv->porter, "remote-error",
       G_CALLBACK (remote_error_cb), self);
 
-  lm_connection_set_porter (self->lmconn, priv->porter);
   g_signal_emit (self, sig_id_porter_available, 0, priv->porter);
   connect_iq_callbacks (self);
 

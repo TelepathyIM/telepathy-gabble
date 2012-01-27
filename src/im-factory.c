@@ -205,7 +205,7 @@ static GabbleIMChannel *get_channel_for_incoming_message (
 static LmHandlerResult
 im_factory_message_cb (LmMessageHandler *handler,
                        LmConnection *lmconn,
-                       LmMessage *message,
+                       WockyStanza *message,
                        gpointer user_data)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
@@ -432,7 +432,7 @@ gabble_im_factory_close_all (GabbleImFactory *self)
     {
       DEBUG ("removing callbacks");
       lm_connection_unregister_message_handler (self->priv->conn->lmconn,
-          self->priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
+          self->priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE);
     }
 
   tp_clear_pointer (&self->priv->message_cb, lm_message_handler_unref);
@@ -454,7 +454,7 @@ connection_status_changed_cb (GabbleConnection *conn,
       self->priv->message_cb = lm_message_handler_new (im_factory_message_cb,
           self, NULL);
       lm_connection_register_message_handler (self->priv->conn->lmconn,
-          self->priv->message_cb, LM_MESSAGE_TYPE_MESSAGE,
+          self->priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE,
           LM_HANDLER_PRIORITY_LAST);
       break;
 

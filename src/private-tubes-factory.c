@@ -56,7 +56,7 @@ static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
     gpointer user_data);
 
 static LmHandlerResult private_tubes_factory_msg_tube_cb (
-    LmMessageHandler *handler, LmConnection *lmconn, LmMessage *msg,
+    LmMessageHandler *handler, LmConnection *lmconn, WockyStanza *msg,
     gpointer user_data);
 
 static void channel_manager_iface_init (gpointer, gpointer);
@@ -156,7 +156,7 @@ gabble_private_tubes_factory_constructor (GType type,
   priv->msg_tube_cb = lm_message_handler_new (
       private_tubes_factory_msg_tube_cb, self, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
+      priv->msg_tube_cb, WOCKY_STANZA_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
@@ -365,7 +365,7 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 
   if (priv->msg_tube_cb != NULL)
     lm_connection_unregister_message_handler (priv->conn->lmconn,
-        priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE);
+        priv->msg_tube_cb, WOCKY_STANZA_TYPE_MESSAGE);
 
   tp_clear_pointer (&priv->msg_tube_cb, lm_message_handler_unref);
 
@@ -668,7 +668,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
     GabbleBytestreamIface *bytestream,
     TpHandle handle,
     const gchar *stream_id,
-    LmMessage *msg)
+    WockyStanza *msg)
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
@@ -697,7 +697,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
     GabbleBytestreamIface *bytestream,
     TpHandle handle,
     const gchar *stream_id,
-    LmMessage *msg)
+    WockyStanza *msg)
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
@@ -725,7 +725,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
 static LmHandlerResult
 private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
                                    LmConnection *lmconn,
-                                   LmMessage *msg,
+                                   WockyStanza *msg,
                                    gpointer user_data)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);

@@ -76,7 +76,7 @@ build_mapping_tables (void)
 }
 
 static gboolean update_location_from_msg (GabbleConnection *conn,
-    TpHandle contact, LmMessage *msg);
+    TpHandle contact, WockyStanza *msg);
 
 /*
  * get_cached_location:
@@ -317,8 +317,8 @@ add_to_geoloc_node (const gchar *tp_name,
 
 static LmHandlerResult
 set_location_sent_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
     GObject *object,
     gpointer user_data)
 {
@@ -350,7 +350,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
                        DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *geoloc;
   WockyNode *item;
   GHashTableIter iter;
@@ -520,7 +520,7 @@ conn_location_properties_setter (GObject *object,
 static gboolean
 update_location_from_msg (GabbleConnection *conn,
                           TpHandle contact,
-                          LmMessage *msg)
+                          WockyStanza *msg)
 {
   WockyNode *node;
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal,

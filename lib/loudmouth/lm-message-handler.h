@@ -34,7 +34,7 @@ typedef enum {
 
 typedef LmHandlerResult (*LmHandleMessageFunction) (LmMessageHandler *handler,
     LmConnection *connection,
-    LmMessage *message,
+    WockyStanza *message,
     gpointer user_data);
 
 struct _LmMessageHandler

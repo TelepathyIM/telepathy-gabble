@@ -187,19 +187,19 @@ struct _GabbleBytestreamFactoryPrivate
 
 static LmHandlerResult
 bytestream_factory_msg_data_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *message, gpointer user_data);
+    LmConnection *lmconn, WockyStanza *message, gpointer user_data);
 
 static LmHandlerResult
 bytestream_factory_iq_si_cb (LmMessageHandler *handler, LmConnection *lmconn,
-    LmMessage *message, gpointer user_data);
+    WockyStanza *message, gpointer user_data);
 
 static LmHandlerResult
 bytestream_factory_iq_ibb_cb (LmMessageHandler *handler, LmConnection *lmconn,
-    LmMessage *message, gpointer user_data);
+    WockyStanza *message, gpointer user_data);
 
 static LmHandlerResult
 bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *message, gpointer user_data);
+    LmConnection *lmconn, WockyStanza *message, gpointer user_data);
 
 static void query_proxies (GabbleBytestreamFactory *self,
     guint nb_proxies_needed);
@@ -296,8 +296,8 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
 
 static LmHandlerResult
 socks5_proxy_query_reply_cb (GabbleConnection *conn,
-                             LmMessage *sent_msg,
-                             LmMessage *reply_msg,
+                             WockyStanza *sent_msg,
+                             WockyStanza *reply_msg,
                              GObject *obj,
                              gpointer user_data)
 {
@@ -623,22 +623,22 @@ gabble_bytestream_factory_constructor (GType type,
   priv->msg_data_cb = lm_message_handler_new (bytestream_factory_msg_data_cb,
       self, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->msg_data_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
+      priv->msg_data_cb, WOCKY_STANZA_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
 
   priv->iq_si_cb = lm_message_handler_new (bytestream_factory_iq_si_cb, self,
       NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_si_cb,
-      LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
+      WOCKY_STANZA_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
   priv->iq_ibb_cb = lm_message_handler_new (bytestream_factory_iq_ibb_cb, self,
       NULL);
   lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_ibb_cb,
-      LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
+      WOCKY_STANZA_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
   priv->iq_socks5_cb = lm_message_handler_new (bytestream_factory_iq_socks5_cb,
       self, NULL);
   lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
+      priv->iq_socks5_cb, WOCKY_STANZA_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
 
   /* Track SOCKS5 proxy available on the connection */
   gabble_signal_connect_weak (priv->conn->disco, "item-found",
@@ -665,19 +665,19 @@ gabble_bytestream_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->msg_data_cb, LM_MESSAGE_TYPE_MESSAGE);
+      priv->msg_data_cb, WOCKY_STANZA_TYPE_MESSAGE);
   lm_message_handler_unref (priv->msg_data_cb);
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->iq_si_cb, LM_MESSAGE_TYPE_IQ);
+      priv->iq_si_cb, WOCKY_STANZA_TYPE_IQ);
   lm_message_handler_unref (priv->iq_si_cb);
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->iq_ibb_cb, LM_MESSAGE_TYPE_IQ);
+      priv->iq_ibb_cb, WOCKY_STANZA_TYPE_IQ);
   lm_message_handler_unref (priv->iq_ibb_cb);
 
   lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ);
+      priv->iq_socks5_cb, WOCKY_STANZA_TYPE_IQ);
   lm_message_handler_unref (priv->iq_socks5_cb);
 
   g_hash_table_unref (priv->ibb_bytestreams);
@@ -832,7 +832,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
  * message.
  */
 static gboolean
-streaminit_parse_request (LmMessage *message,
+streaminit_parse_request (WockyStanza *message,
                           WockyNode *si,
                           const gchar **profile,
                           const gchar **from,
@@ -965,7 +965,7 @@ streaminit_parse_request (LmMessage *message,
  * The MIME type is not set - the receiving client will assume
  * application/octet-stream unless the caller sets a MIME type explicitly.
  */
-LmMessage *
+WockyStanza *
 gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
                                                const gchar *stream_id,
                                                const gchar *profile)
@@ -1033,7 +1033,7 @@ static GabbleBytestreamSocks5 *gabble_bytestream_factory_create_socks5 (
 
 static void
 si_tube_received (GabbleBytestreamFactory *self,
-                  LmMessage *msg,
+                  WockyStanza *msg,
                   WockyNode *si,
                   GabbleBytestreamIface *bytestream,
                   TpHandle peer_handle,
@@ -1103,7 +1103,7 @@ si_tube_received (GabbleBytestreamFactory *self,
 static LmHandlerResult
 bytestream_factory_iq_si_cb (LmMessageHandler *handler,
                              LmConnection *lmconn,
-                             LmMessage *msg,
+                             WockyStanza *msg,
                              gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
@@ -1302,7 +1302,7 @@ out:
 
 static gboolean
 handle_ibb_open_iq (GabbleBytestreamFactory *self,
-                    LmMessage *msg)
+                    WockyStanza *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -1382,7 +1382,7 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
 
 static gboolean
 handle_ibb_close_iq (GabbleBytestreamFactory *self,
-                     LmMessage *msg)
+                     WockyStanza *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -1441,7 +1441,7 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
  * Return TRUE if we take responsibility for this message. */
 static gboolean
 handle_ibb_data (GabbleBytestreamFactory *self,
-                 LmMessage *msg,
+                 WockyStanza *msg,
                  gboolean is_iq)
 {
   GabbleBytestreamFactoryPrivate *priv =
@@ -1455,7 +1455,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
   wocky_stanza_get_type_info (msg, NULL, &sub_type);
-  if (is_iq && sub_type != LM_MESSAGE_SUB_TYPE_SET)
+  if (is_iq && sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
   data = lm_message_node_get_child_with_namespace (
@@ -1503,7 +1503,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
 
 static gboolean
 handle_muc_data (GabbleBytestreamFactory *self,
-                 LmMessage *msg)
+                 WockyStanza *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -1563,7 +1563,7 @@ handle_muc_data (GabbleBytestreamFactory *self,
 static LmHandlerResult
 bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
                               LmConnection *lmconn,
-                              LmMessage *msg,
+                              WockyStanza *msg,
                               gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
@@ -1589,7 +1589,7 @@ bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
 static LmHandlerResult
 bytestream_factory_msg_data_cb (LmMessageHandler *handler,
                                 LmConnection *lmconn,
-                                LmMessage *msg,
+                                WockyStanza *msg,
                                 gpointer user_data)
 {
   GabbleBytestreamFactory *self = user_data;
@@ -1605,7 +1605,7 @@ bytestream_factory_msg_data_cb (LmMessageHandler *handler,
 
 static gboolean
 handle_socks5_query_iq (GabbleBytestreamFactory *self,
-                        LmMessage *msg)
+                        WockyStanza *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
@@ -1618,7 +1618,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
   NodeIter i;
 
   wocky_stanza_get_type_info (msg, NULL, &sub_type);
-  if (sub_type != LM_MESSAGE_SUB_TYPE_SET)
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
   query_node = lm_message_node_get_child_with_namespace (
@@ -1688,7 +1688,7 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
 static LmHandlerResult
 bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
                                  LmConnection *lmconn,
-                                 LmMessage *msg,
+                                 WockyStanza *msg,
                                  gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
@@ -1910,7 +1910,7 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
 
 static GabbleBytestreamIface *
 streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
-                                    LmMessage *reply_msg,
+                                    WockyStanza *reply_msg,
                                     WockyNode *si,
                                     const gchar *stream_id,
                                     TpHandle peer_handle,
@@ -1956,7 +1956,7 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
 
 static GabbleBytestreamIface *
 streaminit_get_bytestream (GabbleBytestreamFactory *self,
-                           LmMessage *reply_msg,
+                           WockyStanza *reply_msg,
                            WockyNode *si,
                            const gchar *stream_id,
                            TpHandle peer_handle,
@@ -2036,8 +2036,8 @@ negotiate_stream_object_destroy_notify_cb (gpointer _data,
 /* Called when we receive the reply of a SI request */
 static LmHandlerResult
 streaminit_reply_cb (GabbleConnection *conn,
-                     LmMessage *sent_msg,
-                     LmMessage *reply_msg,
+                     WockyStanza *sent_msg,
+                     WockyStanza *reply_msg,
                      GObject *obj,
                      gpointer user_data)
 {
@@ -2200,7 +2200,7 @@ END:
  */
 gboolean
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
-                                            LmMessage *msg,
+                                            WockyStanza *msg,
                                             const gchar *stream_id,
                                             GabbleBytestreamFactoryNegotiateReplyFunc func,
                                             gpointer user_data,
@@ -2254,7 +2254,7 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
  * a SI request (XEP-0095).
  *
  */
-LmMessage *
+WockyStanza *
 gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
                                           const gchar *stream_init_id,
                                           const gchar *stream_method)
@@ -2289,12 +2289,12 @@ gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
  * a si-multiple SI request.
  *
  */
-LmMessage *
+WockyStanza *
 gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
                                                 const gchar *stream_init_id,
                                                 GList *stream_methods)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *multi_node;
   GList *l;
 

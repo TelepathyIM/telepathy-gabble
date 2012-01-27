@@ -120,7 +120,7 @@ struct _GabbleTubesChannelPrivate
 
 static void update_tubes_presence (GabbleTubesChannel *self);
 
-static void pre_presence_cb (GabbleMucChannel *muc, LmMessage *msg,
+static void pre_presence_cb (GabbleMucChannel *muc, WockyStanza *msg,
     GabbleTubesChannel *self);
 
 static void
@@ -1125,7 +1125,7 @@ publish_tubes_in_node (gpointer key,
 
 static void
 pre_presence_cb (GabbleMucChannel *muc,
-                 LmMessage *msg,
+                 WockyStanza *msg,
                  GabbleTubesChannel *self)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
@@ -1159,7 +1159,7 @@ update_tubes_presence (GabbleTubesChannel *self)
 void
 gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
                                       GabbleBytestreamIface *bytestream,
-                                      LmMessage *msg)
+                                      WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *service, *stream_id;
@@ -1248,7 +1248,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
 void
 gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
                                          GabbleBytestreamIface *bytestream,
-                                         LmMessage *msg)
+                                         WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *stream_id, *tmp;
@@ -1327,7 +1327,7 @@ send_tube_close_msg (GabbleTubesChannel *self,
                      guint tube_id)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
-  LmMessage *msg;
+  WockyStanza *msg;
   const gchar *jid;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -1354,7 +1354,7 @@ send_tube_close_msg (GabbleTubesChannel *self,
 
 static void
 tube_msg_offered (GabbleTubesChannel *self,
-                  LmMessage *msg)
+                  WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *service;
@@ -1415,7 +1415,7 @@ tube_msg_offered (GabbleTubesChannel *self,
 
 static void
 tube_msg_close (GabbleTubesChannel *self,
-                LmMessage *msg)
+                WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   WockyNode *close_node;
@@ -1463,7 +1463,7 @@ tube_msg_close (GabbleTubesChannel *self,
 
 void
 gabble_tubes_channel_tube_msg (GabbleTubesChannel *self,
-                               LmMessage *msg)
+                               WockyStanza *msg)
 {
   WockyNode *node;
 

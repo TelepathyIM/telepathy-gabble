@@ -81,17 +81,17 @@ struct _GabbleBytestreamIBBPrivate
 
   guint16 seq;
   guint16 last_seq_recv;
-  LmMessage *close_iq_to_ack;
+  WockyStanza *close_iq_to_ack;
 
   /* We can't stop receving IBB data so if user wants to block the bytestream
    * we buffer them until he unblocks it. */
   gboolean read_blocked;
   GString *read_buffer;
-  /* list of reffed (LmMessage *) */
+  /* list of reffed (WockyStanza *) */
   GSList *received_stanzas_not_acked;
 
-  /* (LmMessage *) -> TRUE
-   * We don't keep a ref on the LmMessage as we just use this table to track
+  /* (WockyStanza *) -> TRUE
+   * We don't keep a ref on the WockyStanza as we just use this table to track
    * stanzas waiting for reply. The stanza is never used (and so deferenced). */
   GHashTable *sent_stanzas_not_acked;
   GString *write_buffer;
@@ -375,7 +375,7 @@ static void
 send_close_stanza (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
 
   if (priv->close_iq_to_ack != NULL)
     {
@@ -408,8 +408,8 @@ send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
 
 static LmHandlerResult
 iq_acked_cb (GabbleConnection *conn,
-             LmMessage *sent_msg,
-             LmMessage *reply_msg,
+             WockyStanza *sent_msg,
+             WockyStanza *reply_msg,
              GObject *obj,
              gpointer user_data)
 {
@@ -468,7 +468,7 @@ send_data (GabbleBytestreamIBB *self,
   stanza_count = 0;
   while (sent < len)
     {
-      LmMessage *iq;
+      WockyStanza *iq;
       guint send_now, remaining;
       gchar *seq, *encoded;
       GError *error = NULL;
@@ -610,7 +610,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 
 void
 gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
-                               LmMessage *msg,
+                               WockyStanza *msg,
                                gboolean is_iq)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
@@ -714,7 +714,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *si;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
@@ -750,7 +750,7 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
                                GError *error)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
 
   g_return_if_fail (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
@@ -828,8 +828,8 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
 
 static LmHandlerResult
 ibb_init_reply_cb (GabbleConnection *conn,
-                   LmMessage *sent_msg,
-                   LmMessage *reply_msg,
+                   WockyStanza *sent_msg,
+                   WockyStanza *reply_msg,
                    GObject *obj,
                    gpointer user_data)
 {
@@ -862,7 +862,7 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
   gchar *block_size;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_INITIATING)
@@ -930,7 +930,7 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
       for (l = priv->received_stanzas_not_acked; l != NULL;
           l = g_slist_next (l))
         {
-          LmMessage *iq = (LmMessage *) l->data;
+          WockyStanza *iq = (WockyStanza *) l->data;
 
           _gabble_connection_acknowledge_set_iq (priv->conn, iq);
 
@@ -944,7 +944,7 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
 
 void
 gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *self,
-                                      LmMessage *iq)
+                                      WockyStanza *iq)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 

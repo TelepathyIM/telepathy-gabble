@@ -12,7 +12,7 @@
 static void
 test1 (void)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   gboolean ret;
   const gchar *from;
   time_t stamp;
@@ -47,7 +47,7 @@ test1 (void)
 static void
 test2 (void)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   gboolean ret;
   const gchar *from;
   time_t stamp;
@@ -81,7 +81,7 @@ test2 (void)
 static void
 test3 (void)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   gboolean ret;
   const gchar *from;
   time_t stamp;
@@ -115,7 +115,7 @@ test3 (void)
 static void
 test_error (void)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   gboolean ret;
   const gchar *from;
   time_t stamp;
@@ -152,7 +152,7 @@ test_error (void)
 static void
 test_another_error (void)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   gboolean ret;
   const gchar *from;
   time_t stamp;
@@ -198,7 +198,7 @@ test_another_error (void)
 static void
 test_yet_another_error (void)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   gboolean ret;
   const gchar *from;
   time_t stamp;
@@ -243,7 +243,7 @@ test_yet_another_error (void)
 static void
 test_google_offline (void)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   gboolean ret;
   const gchar *from;
   time_t stamp;

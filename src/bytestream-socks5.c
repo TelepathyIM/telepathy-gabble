@@ -178,7 +178,7 @@ struct _GabbleBytestreamSocks5Private
 
   /* Connections to streamhosts are async, so we keep the IQ set message
    * around */
-  LmMessage *msg_for_acknowledge_connection;
+  WockyStanza *msg_for_acknowledge_connection;
 
   Socks5State socks5_state;
   GibberTransport *transport;
@@ -767,8 +767,8 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
 
 static LmHandlerResult
 socks5_activation_reply_cb (GabbleConnection *conn,
-                            LmMessage *sent_msg,
-                            LmMessage *reply_msg,
+                            WockyStanza *sent_msg,
+                            WockyStanza *reply_msg,
                             GObject *obj,
                             gpointer user_data)
 {
@@ -808,7 +808,7 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
-  LmMessage *iq;
+  WockyStanza *iq;
 
   DEBUG ("Got CONNECT reply. SOCKS5 negotiation with proxy is done. "
       "Sending activation IQ");
@@ -1318,7 +1318,7 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
  */
 void
 gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
-                                                LmMessage *msg)
+                                                WockyStanza *msg)
 
 {
   GabbleBytestreamSocks5Private *priv =
@@ -1399,7 +1399,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *si;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
@@ -1436,7 +1436,7 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
 
   g_return_if_fail (priv->bytestream_state ==
       GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
@@ -1545,8 +1545,8 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
 
 static LmHandlerResult
 socks5_init_reply_cb (GabbleConnection *conn,
-                      LmMessage *sent_msg,
-                      LmMessage *reply_msg,
+                      WockyStanza *sent_msg,
+                      WockyStanza *reply_msg,
                       GObject *obj,
                       gpointer user_data)
 {
@@ -1881,7 +1881,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gchar *port;
   gint port_num;
-  LmMessage *msg;
+  WockyStanza *msg;
   GSList *ips, *ip;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)

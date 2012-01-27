@@ -43,12 +43,12 @@ LmConnection * lm_connection_new (void);
 
 void lm_connection_register_message_handler (LmConnection *connection,
     LmMessageHandler *handler,
-    LmMessageType type,
+    WockyStanzaType type,
     LmHandlerPriority priority);
 
 void lm_connection_unregister_message_handler (LmConnection *connection,
     LmMessageHandler *handler,
-    LmMessageType type);
+    WockyStanzaType type);
 
 void lm_connection_unref (LmConnection *connection);
 

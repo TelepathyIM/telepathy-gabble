@@ -40,7 +40,7 @@
 #include "vcard-manager.h"
 
 static void gabble_conn_aliasing_pep_nick_reply_handler (
-    GabbleConnection *conn, LmMessage *msg, TpHandle handle);
+    GabbleConnection *conn, WockyStanza *msg, TpHandle handle);
 static GQuark gabble_conn_aliasing_pep_alias_quark (void);
 
 static GabbleConnectionAliasSource _gabble_connection_get_cached_remote_alias (
@@ -225,7 +225,7 @@ _cache_negatively (GabbleConnection *self,
 /* Cache pep if successful */
 static void
 aliases_request_cache_pep (GabbleConnection *self,
-                           LmMessage *msg,
+                           WockyStanza *msg,
                            TpHandle handle,
                            GError *error)
 {
@@ -250,7 +250,7 @@ aliases_request_cache_pep (GabbleConnection *self,
 
 static void
 aliases_request_basic_pep_cb (GabbleConnection *self,
-                              LmMessage *msg,
+                              WockyStanza *msg,
                               gpointer user_data,
                               GError *error)
 {
@@ -274,7 +274,7 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
 
 static void
 aliases_request_pep_cb (GabbleConnection *self,
-                        LmMessage *msg,
+                        WockyStanza *msg,
                         gpointer user_data,
                         GError *error)
 {
@@ -335,7 +335,7 @@ typedef struct {
 static void
 pep_request_cb (
     GabbleConnection *conn,
-    LmMessage *msg,
+    WockyStanza *msg,
     gpointer user_data,
     GError *error)
 {
@@ -358,7 +358,7 @@ gabble_do_pep_request (GabbleConnection *self,
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
   const gchar *to;
-  LmMessage *msg;
+  WockyStanza *msg;
   GabbleRequestPipelineItem *pep_request;
   pep_request_ctx *ctx;
 
@@ -483,8 +483,8 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
 static LmHandlerResult
 nick_publish_msg_reply_cb (GabbleConnection *conn,
-                           LmMessage *sent_msg,
-                           LmMessage *reply_msg,
+                           WockyStanza *sent_msg,
+                           WockyStanza *reply_msg,
                            GObject *object,
                            gpointer user_data)
 {
@@ -571,7 +571,7 @@ set_one_alias (
       if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
         {
           /* Publish nick using PEP */
-          LmMessage *msg;
+          WockyStanza *msg;
           WockyNode *item;
 
           msg = wocky_pep_service_make_publish_stanza (conn->pep_nick, &item);
@@ -736,7 +736,7 @@ pep_nick_node_changed (WockyPepService *pep,
 
 static void
 gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
-                                             LmMessage *msg,
+                                             WockyStanza *msg,
                                              TpHandle handle)
 {
   WockyNode *pubsub_node, *items_node;

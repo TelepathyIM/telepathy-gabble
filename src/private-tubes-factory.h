@@ -69,12 +69,12 @@ GabblePrivateTubesFactory * gabble_private_tubes_factory_new (
 /* New 1-1 D-Bus tube requested by the remote contact */
 void gabble_private_tubes_factory_handle_si_tube_request (
     GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
-    TpHandle handle, const gchar *stream_id, LmMessage *msg);
+    TpHandle handle, const gchar *stream_id, WockyStanza *msg);
 
 /* New connection requested in a existing 1-1 stream tube */
 void gabble_private_tubes_factory_handle_si_stream_request (
     GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
-    TpHandle handle, const gchar *stream_id, LmMessage *msg);
+    TpHandle handle, const gchar *stream_id, WockyStanza *msg);
 
 G_END_DECLS
 

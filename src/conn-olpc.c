@@ -48,7 +48,7 @@
 
 static gboolean
 update_activities_properties (GabbleConnection *conn, const gchar *contact,
-    LmMessage *msg);
+    WockyStanza *msg);
 
 /* Returns TRUE if it actually contributed something, else FALSE.
  */
@@ -153,7 +153,7 @@ inspect_room (TpBaseConnection *base,
  * connected.
  */
 static gboolean
-check_publish_reply_msg (LmMessage *reply_msg,
+check_publish_reply_msg (WockyStanza *reply_msg,
                          DBusGMethodInvocation *context)
 {
   GError *error = NULL;
@@ -180,7 +180,7 @@ check_publish_reply_msg (LmMessage *reply_msg,
 }
 
 static gboolean
-check_query_reply_msg (LmMessage *reply_msg,
+check_query_reply_msg (WockyStanza *reply_msg,
                        DBusGMethodInvocation *context)
 {
   GError *error = NULL;
@@ -306,8 +306,8 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
 /* context may be NULL. */
 static LmHandlerResult
 set_properties_reply_cb (GabbleConnection *conn,
-                         LmMessage *sent_msg,
-                         LmMessage *reply_msg,
+                         WockyStanza *sent_msg,
+                         WockyStanza *reply_msg,
                          GObject *object,
                          gpointer user_data)
 {
@@ -327,7 +327,7 @@ transmit_properties (GabbleConnection *conn,
                      GHashTable *properties,
                      DBusGMethodInvocation *context)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *item, *props_node;
 
   gabble_connection_ensure_capabilities (conn,
@@ -615,7 +615,7 @@ get_buddy_activities (GabbleConnection *conn,
 
 static void
 extract_activities (GabbleConnection *conn,
-                    LmMessage *msg,
+                    WockyStanza *msg,
                     TpHandle sender)
 {
   WockyNode *activities_node;
@@ -893,7 +893,7 @@ upload_activities_pep (GabbleConnection *conn,
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   WockyNode *item, *activities;
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandleSet *my_activities = g_hash_table_lookup
       (conn->olpc_pep_activities, GUINT_TO_POINTER (base->self_handle));
   GError *e = NULL;
@@ -944,8 +944,8 @@ upload_activities_pep (GabbleConnection *conn,
 
 static LmHandlerResult
 set_activities_reply_cb (GabbleConnection *conn,
-                         LmMessage *sent_msg,
-                         LmMessage *reply_msg,
+                         WockyStanza *sent_msg,
+                         WockyStanza *reply_msg,
                          GObject *object,
                          gpointer user_data)
 {
@@ -1400,8 +1400,8 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 
 static LmHandlerResult
 set_current_activity_reply_cb (GabbleConnection *conn,
-                               LmMessage *sent_msg,
-                               LmMessage *reply_msg,
+                               WockyStanza *sent_msg,
+                               WockyStanza *reply_msg,
                                GObject *object,
                                gpointer user_data)
 {
@@ -1449,7 +1449,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *item, *publish;
   const gchar *room = "";
 
@@ -1551,8 +1551,8 @@ out:
 
 static LmHandlerResult
 add_activity_reply_cb (GabbleConnection *conn,
-                       LmMessage *sent_msg,
-                       LmMessage *reply_msg,
+                       WockyStanza *sent_msg,
+                       WockyStanza *reply_msg,
                        GObject *object,
                        gpointer user_data)
 {
@@ -1637,7 +1637,7 @@ upload_activity_properties_pep (GabbleConnection *conn,
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   WockyNode *publish, *item;
-  LmMessage *msg;
+  WockyStanza *msg;
   GError *e = NULL;
   gboolean ret;
   TpHandleSet *my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
@@ -1683,8 +1683,8 @@ typedef struct {
 
 static LmHandlerResult
 set_activity_properties_activities_reply_cb (GabbleConnection *conn,
-                                             LmMessage *sent_msg,
-                                             LmMessage *reply_msg,
+                                             WockyStanza *sent_msg,
+                                             WockyStanza *reply_msg,
                                              GObject *object,
                                              gpointer user_data)
 {
@@ -1712,8 +1712,8 @@ set_activity_properties_activities_reply_cb (GabbleConnection *conn,
 
 static LmHandlerResult
 set_activity_properties_reply_cb (GabbleConnection *conn,
-                                  LmMessage *sent_msg,
-                                  LmMessage *reply_msg,
+                                  WockyStanza *sent_msg,
+                                  WockyStanza *reply_msg,
                                   GObject *object,
                                   gpointer user_data)
 {
@@ -1800,7 +1800,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  LmMessage *msg;
+  WockyStanza *msg;
   const gchar *jid;
   GHashTable *properties_copied;
   GabbleOlpcActivity *activity;
@@ -2101,7 +2101,7 @@ update_activity_properties (GabbleConnection *conn,
 static gboolean
 update_activities_properties (GabbleConnection *conn,
                               const gchar *contact,
-                              LmMessage *msg)
+                              WockyStanza *msg)
 {
   const gchar *room;
   WockyNode *node;
@@ -2187,8 +2187,8 @@ connection_status_changed_cb (GabbleConnection *conn,
 
 static LmHandlerResult
 pseudo_invite_reply_cb (GabbleConnection *conn,
-                        LmMessage *sent_msg,
-                        LmMessage *reply_msg,
+                        WockyStanza *sent_msg,
+                        WockyStanza *reply_msg,
                         GObject *object,
                         gpointer user_data)
 {
@@ -2203,7 +2203,7 @@ pseudo_invite_reply_cb (GabbleConnection *conn,
 
 gboolean
 conn_olpc_process_activity_properties_message (GabbleConnection *conn,
-                                               LmMessage *msg,
+                                               WockyStanza *msg,
                                                const gchar *from)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
@@ -2440,8 +2440,8 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
 
 static LmHandlerResult
 closed_pep_reply_cb (GabbleConnection *conn,
-                     LmMessage *sent_msg,
-                     LmMessage *reply_msg,
+                     WockyStanza *sent_msg,
+                     WockyStanza *reply_msg,
                      GObject *object,
                      gpointer user_data)
 {
@@ -2503,7 +2503,7 @@ revoke_invitations (GabbleConnection *conn,
 
 gboolean
 conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
-                                             LmMessage *msg,
+                                             WockyStanza *msg,
                                              const gchar *from)
 {
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -2655,7 +2655,7 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   GQuark quark = invitees_quark ();
   TpHandleSet *invitees;
   /* send them the properties */
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandle handle;
   GError *error = NULL;
 

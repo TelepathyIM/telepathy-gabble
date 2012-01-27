@@ -41,14 +41,14 @@ stanza_cb (WockyPorter *self,
 typedef struct
 {
   LmMessageHandler *handler;
-  LmMessageType type;
+  WockyStanzaType type;
   LmHandlerPriority priority;
 } delayed_handler;
 
 void
 lm_connection_register_message_handler (LmConnection *connection,
     LmMessageHandler *handler,
-    LmMessageType type,
+    WockyStanzaType type,
     LmHandlerPriority priority)
 {
   if (connection->porter == NULL)
@@ -84,7 +84,7 @@ lm_connection_register_message_handler (LmConnection *connection,
 void
 lm_connection_unregister_message_handler (LmConnection *connection,
     LmMessageHandler *handler,
-    LmMessageType type)
+    WockyStanzaType type)
 {
   if (handler->handler_id == 0)
     return;

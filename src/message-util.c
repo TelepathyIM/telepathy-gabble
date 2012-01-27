@@ -84,7 +84,7 @@ gabble_message_util_add_chat_state (WockyStanza *stanza,
 WockyStanza *
 gabble_message_util_build_stanza (TpMessage *message,
                                   GabbleConnection *conn,
-                                  LmMessageSubType subtype,
+                                  WockyStanzaSubType subtype,
                                   TpChannelChatState state,
                                   const char *recipient,
                                   gboolean send_nick,
@@ -141,10 +141,10 @@ gabble_message_util_build_stanza (TpMessage *message,
         {
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL:
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION:
-          subtype = LM_MESSAGE_SUB_TYPE_CHAT;
+          subtype = WOCKY_STANZA_SUB_TYPE_CHAT;
           break;
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE:
-          subtype = LM_MESSAGE_SUB_TYPE_NORMAL;
+          subtype = WOCKY_STANZA_SUB_TYPE_NORMAL;
           break;
         }
     }
@@ -200,7 +200,7 @@ gabble_message_util_build_stanza (TpMessage *message,
 gboolean
 gabble_message_util_send_chat_state (GObject *obj,
                                      GabbleConnection *conn,
-                                     LmMessageSubType subtype,
+                                     WockyStanzaSubType subtype,
                                      TpChannelChatState state,
                                      const char *recipient,
                                      GError **error)
@@ -307,7 +307,7 @@ _tp_send_error_from_xmpp_error (
 
 
 static gint
-_tp_chat_state_from_message (LmMessage *message)
+_tp_chat_state_from_message (WockyStanza *message)
 {
   WockyNode *node;
 
@@ -354,7 +354,7 @@ _tp_chat_state_from_message (LmMessage *message)
  *  contained no body, chat state or send error; %FALSE otherwise.
  */
 gboolean
-gabble_message_util_parse_incoming_message (LmMessage *message,
+gabble_message_util_parse_incoming_message (WockyStanza *message,
                                             const gchar **from,
                                             time_t *stamp,
                                             TpChannelTextMessageType *msgtype,

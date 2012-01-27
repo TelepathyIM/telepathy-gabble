@@ -124,21 +124,21 @@ static TpPresenceStatusSpec *gabble_statuses = NULL;
 /* prototypes */
 
 static LmHandlerResult set_xep0186_invisible_cb (GabbleConnection *conn,
-    LmMessage *sent_msg, LmMessage *reply_msg, GObject *obj,
+    WockyStanza *sent_msg, WockyStanza *reply_msg, GObject *obj,
     gpointer user_data);
 
 static LmHandlerResult activate_current_privacy_list_cb (
-    GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
+    GabbleConnection *conn, WockyStanza *sent_msg, WockyStanza *reply_msg,
     GObject *obj, gpointer user_data);
 
 static void setup_invisible_privacy_list_async (GabbleConnection *self,
     GAsyncReadyCallback callback, gpointer user_data);
 
 static LmHandlerResult iq_privacy_list_push_cb (LmMessageHandler *handler,
-    LmConnection *connection, LmMessage *message, gpointer user_data);
+    LmConnection *connection, WockyStanza *message, gpointer user_data);
 
 static LmHandlerResult verify_invisible_privacy_list_cb (
-    GabbleConnection *conn, LmMessage *sent_msg, LmMessage *reply_msg,
+    GabbleConnection *conn, WockyStanza *sent_msg, WockyStanza *reply_msg,
     GObject *obj, gpointer user_data);
 
 static void toggle_presence_visibility_async (GabbleConnection *self,
@@ -512,7 +512,7 @@ set_xep0186_invisible (GabbleConnection *self,
           g_object_unref (result);
         }
     }
-  else if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
+  else if (!_gabble_connection_send_with_reply (self, (WockyStanza *) iq,
           set_xep0186_invisible_cb, NULL, result, &error))
     {
       g_simple_async_result_set_from_error (result, error);
@@ -527,8 +527,8 @@ set_xep0186_invisible (GabbleConnection *self,
 
 static LmHandlerResult
 set_xep0186_invisible_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
     GObject *obj,
     gpointer user_data)
 {
@@ -608,7 +608,7 @@ activate_current_privacy_list (GabbleConnection *self,
   if (base->status == TP_CONNECTION_STATUS_CONNECTED && invisible)
     {
       if (!gabble_connection_send_presence (self,
-              LM_MESSAGE_SUB_TYPE_UNAVAILABLE, NULL, NULL, &error))
+              WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, NULL, NULL, &error))
         goto ERROR;
     }
   /* If we're still connecting and there's no list to be set, we don't
@@ -626,7 +626,7 @@ activate_current_privacy_list (GabbleConnection *self,
       goto OUT;
     }
 
-  _gabble_connection_send_with_reply (self, (LmMessage *) iq,
+  _gabble_connection_send_with_reply (self, (WockyStanza *) iq,
       activate_current_privacy_list_cb, NULL, result, &error);
 
  ERROR:
@@ -644,8 +644,8 @@ activate_current_privacy_list (GabbleConnection *self,
 
 static LmHandlerResult
 activate_current_privacy_list_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
     GObject *obj,
     gpointer user_data)
 {
@@ -700,8 +700,8 @@ disable_invisible_privacy_list (GabbleConnection *self)
 
 static LmHandlerResult
 create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
     GObject *obj,
     gpointer user_data)
 {
@@ -746,7 +746,7 @@ create_invisible_privacy_list_async (GabbleConnection *self,
 
   DEBUG ("Creating '%s'", self->presence_priv->invisible_list_name);
 
-  if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
+  if (!_gabble_connection_send_with_reply (self, (WockyStanza *) iq,
           create_invisible_privacy_list_reply_cb, NULL, result, &error))
     {
       g_simple_async_result_set_from_error (result, error);
@@ -937,17 +937,17 @@ iq_shared_status_changed_cb (WockyPorter *porter,
 static LmHandlerResult
 iq_privacy_list_push_cb (LmMessageHandler *handler,
     LmConnection *connection,
-    LmMessage *message,
+    WockyStanza *message,
     gpointer user_data)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   WockyStanzaSubType sub_type;
-  LmMessage *result;
+  WockyStanza *result;
   WockyNode *list_node, *iq;
   const gchar *list_name;
 
   wocky_stanza_get_type_info (message, NULL, &sub_type);
-  if (sub_type != LM_MESSAGE_SUB_TYPE_SET)
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 
   iq = wocky_stanza_get_top_node (message);
@@ -1100,8 +1100,8 @@ get_shared_status_finish (GabbleConnection *self,
 
 static LmHandlerResult
 get_existing_privacy_lists_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
     GObject *obj,
     gpointer user_data)
 {
@@ -1182,7 +1182,7 @@ get_existing_privacy_lists_async (GabbleConnection *self,
         ')',
       NULL);
 
-  if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
+  if (!_gabble_connection_send_with_reply (self, (WockyStanza *) iq,
           get_existing_privacy_lists_cb, NULL, result, &error))
     {
       g_simple_async_result_set_from_error (result, error);
@@ -1228,7 +1228,7 @@ setup_invisible_privacy_list_async (GabbleConnection *self,
         ')',
       NULL);
 
-  if (!_gabble_connection_send_with_reply (self, (LmMessage *) iq,
+  if (!_gabble_connection_send_with_reply (self, (WockyStanza *) iq,
           verify_invisible_privacy_list_cb, NULL, result, &error))
     {
       g_simple_async_result_set_from_error (result, error);
@@ -1297,8 +1297,8 @@ is_valid_invisible_list (WockyNode *list_node)
 
 static LmHandlerResult
 verify_invisible_privacy_list_cb (GabbleConnection *conn,
-    LmMessage *sent_msg,
-    LmMessage *reply_msg,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
     GObject *obj,
     gpointer user_data)
 {
@@ -1371,7 +1371,7 @@ initial_presence_setup_cb (GObject *source_object,
           self, NULL);
 
       lm_connection_register_message_handler (self->lmconn,
-          priv->iq_list_push_cb, LM_MESSAGE_TYPE_IQ,
+          priv->iq_list_push_cb, WOCKY_STANZA_TYPE_IQ,
           LM_HANDLER_PRIORITY_NORMAL);
     }
 
@@ -1585,7 +1585,7 @@ conn_presence_signal_own_presence (GabbleConnection *self,
   GabbleConnectionPresencePrivate *priv = self->presence_priv;
   GabblePresence *presence = self->self_presence;
   TpBaseConnection *base = (TpBaseConnection *) self;
-  LmMessage *message = gabble_presence_as_message (presence, to);
+  WockyStanza *message = gabble_presence_as_message (presence, to);
   gboolean ret;
 
   if (presence->status == GABBLE_PRESENCE_HIDDEN && to == NULL)

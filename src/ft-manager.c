@@ -802,7 +802,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
                                           GabbleBytestreamIface *bytestream,
                                           TpHandle handle,
                                           const gchar *stream_id,
-                                          LmMessage *msg)
+                                          WockyStanza *msg)
 {
   WockyNode *si_node, *file_node, *desc_node;
   const gchar *filename, *size_str, *content_type, *content_hash, *description;

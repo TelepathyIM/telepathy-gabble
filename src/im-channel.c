@@ -249,7 +249,7 @@ im_channel_send_gone (GabbleIMChannel *self)
       if (chat_states_supported (self, FALSE))
         gabble_message_util_send_chat_state (G_OBJECT (self),
             GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-            LM_MESSAGE_SUB_TYPE_CHAT, TP_CHANNEL_CHAT_STATE_GONE,
+            WOCKY_STANZA_SUB_TYPE_CHAT, TP_CHANNEL_CHAT_STATE_GONE,
             priv->peer_jid, NULL);
 
       priv->send_gone = FALSE;
@@ -650,7 +650,7 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
       if (gabble_message_util_send_chat_state (G_OBJECT (self),
               GABBLE_CONNECTION (base_conn),
-              LM_MESSAGE_SUB_TYPE_CHAT, state, priv->peer_jid, &error))
+              WOCKY_STANZA_SUB_TYPE_CHAT, state, priv->peer_jid, &error))
         {
           priv->send_gone = TRUE;
 

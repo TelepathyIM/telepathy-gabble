@@ -61,10 +61,10 @@ GType gabble_bytestream_ibb_get_type (void);
                               GabbleBytestreamIBBClass))
 
 void gabble_bytestream_ibb_receive (GabbleBytestreamIBB *ibb,
-   LmMessage *msg, gboolean is_iq);
+   WockyStanza *msg, gboolean is_iq);
 
 void gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *ibb,
-    LmMessage *iq);
+    WockyStanza *iq);
 
 G_END_DECLS
 

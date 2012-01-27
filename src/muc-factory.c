@@ -620,7 +620,7 @@ out:
 
 static gboolean
 process_muc_invite (GabbleMucFactory *fac,
-                    LmMessage *message,
+                    WockyStanza *message,
                     const gchar *from,
                     TpChannelTextSendError send_error)
 {
@@ -693,7 +693,7 @@ process_muc_invite (GabbleMucFactory *fac,
 
 static gboolean
 process_obsolete_invite (GabbleMucFactory *fac,
-                         LmMessage *message,
+                         WockyStanza *message,
                          const gchar *from,
                          const gchar *body,
                          TpChannelTextSendError send_error)
@@ -782,7 +782,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
 static LmHandlerResult
 muc_factory_message_cb (LmMessageHandler *handler,
                         LmConnection *connection,
-                        LmMessage *message,
+                        WockyStanza *message,
                         gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
@@ -920,7 +920,7 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
       DEBUG ("removing callbacks");
 
       lm_connection_unregister_message_handler (priv->conn->lmconn,
-          priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
+          priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE);
     }
 
   tp_clear_pointer (&priv->message_cb, lm_message_handler_unref);
@@ -944,7 +944,7 @@ connection_status_changed_cb (GabbleConnection *conn,
       priv->message_cb = lm_message_handler_new (muc_factory_message_cb,
           self, NULL);
       lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->message_cb, LM_MESSAGE_TYPE_MESSAGE,
+          priv->message_cb, WOCKY_STANZA_TYPE_MESSAGE,
           LM_HANDLER_PRIORITY_NORMAL);
       break;
 
@@ -1059,7 +1059,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
                                              GabbleBytestreamIface *bytestream,
                                              TpHandle room_handle,
                                              const gchar *stream_id,
-                                             LmMessage *msg)
+                                             WockyStanza *msg)
 {
   GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (

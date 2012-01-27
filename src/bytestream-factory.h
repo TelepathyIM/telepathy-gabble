@@ -73,7 +73,7 @@ typedef struct {
 } GabbleSocks5Proxy;
 
 typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
-    GabbleBytestreamIface *bytestream, const gchar *stream_id, LmMessage *msg,
+    GabbleBytestreamIface *bytestream, const gchar *stream_id, WockyStanza *msg,
     GObject *object, gpointer user_data);
 
 GabbleBytestreamFactory *gabble_bytestream_factory_new (
@@ -89,18 +89,18 @@ GabbleBytestreamIface *gabble_bytestream_factory_create_from_method (
     const gchar *peer_resource, const gchar *self_jid,
     GabbleBytestreamState state);
 
-LmMessage *gabble_bytestream_factory_make_stream_init_iq (
+WockyStanza *gabble_bytestream_factory_make_stream_init_iq (
     const gchar *full_jid, const gchar *stream_id, const gchar *profile);
 
-LmMessage *gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
+WockyStanza *gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
     const gchar *stream_init_id, const gchar *stream_method);
 
-LmMessage *gabble_bytestream_factory_make_multi_accept_iq (
+WockyStanza *gabble_bytestream_factory_make_multi_accept_iq (
     const gchar *full_jid, const gchar *stream_init_id,
     GList *stream_methods);
 
 gboolean gabble_bytestream_factory_negotiate_stream (
-    GabbleBytestreamFactory *fac, LmMessage *msg, const gchar *stream_id,
+    GabbleBytestreamFactory *fac, WockyStanza *msg, const gchar *stream_id,
     GabbleBytestreamFactoryNegotiateReplyFunc func,
     gpointer user_data, GObject *object, GError **error);
 

@@ -930,7 +930,7 @@ observe_vcard (GabbleConnection *conn,
  */
 static void
 replace_reply_cb (GabbleConnection *conn,
-                  LmMessage *reply_msg,
+                  WockyStanza *reply_msg,
                   gpointer user_data,
                   GError *error)
 {
@@ -1088,12 +1088,12 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
 static WockyNode *vcard_copy (WockyNode *parent, WockyNode *src,
     const gchar *exclude, gboolean *exclude_mattered);
 
-static LmMessage *
+static WockyStanza *
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
     WockyNode *old_vcard,
     GabbleVCardManager *vcard_manager)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *vcard_node;
   WockyNode *node;
   GList *iter;
@@ -1279,7 +1279,7 @@ manager_patch_vcard (GabbleVCardManager *self,
                      WockyNode *vcard_node)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
-  LmMessage *msg = NULL;
+  WockyStanza *msg = NULL;
   GList *li;
 
   /* Bail out if we don't have outstanding edits to make, or if we already
@@ -1291,7 +1291,7 @@ manager_patch_vcard (GabbleVCardManager *self,
   /* Apply any unsent edits to the patched vCard */
   for (li = priv->edits; li != NULL; li = li->next)
     {
-      LmMessage *new_msg = gabble_vcard_manager_edit_info_apply (
+      WockyStanza *new_msg = gabble_vcard_manager_edit_info_apply (
           li->data, vcard_node, self);
 
       /* edit_info_apply returns NULL if nothing happened */
@@ -1365,7 +1365,7 @@ is_item_not_found (const GError *error)
 /* Called when a GET request in the pipeline has either succeeded or failed. */
 static void
 pipeline_reply_cb (GabbleConnection *conn,
-                   LmMessage *reply_msg,
+                   WockyStanza *reply_msg,
                    gpointer user_data,
                    GError *error)
 {
@@ -1519,7 +1519,7 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
   else
     {
       const char *jid;
-      LmMessage *msg;
+      WockyStanza *msg;
 
       request->timer_id =
           g_timeout_add_seconds (request->timeout, timeout_request, request);

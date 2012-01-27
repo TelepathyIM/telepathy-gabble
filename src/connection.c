@@ -1399,10 +1399,10 @@ gabble_connection_get_session (GabbleConnection *connection)
 /**
  * _gabble_connection_send
  *
- * Send an LmMessage and trap network errors appropriately.
+ * Send an WockyStanza and trap network errors appropriately.
  */
 gboolean
-_gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
+_gabble_connection_send (GabbleConnection *conn, WockyStanza *msg, GError **error)
 {
   g_assert (GABBLE_IS_CONNECTION (conn));
 
@@ -1433,7 +1433,7 @@ typedef struct {
     GabbleConnectionMsgReplyFunc reply_func;
 
     GabbleConnection *conn;
-    LmMessage *sent_msg;
+    WockyStanza *sent_msg;
     gpointer user_data;
 
     GObject *object;
@@ -1501,7 +1501,7 @@ message_send_reply_cb (
 /**
  * _gabble_connection_send_with_reply
  *
- * Send a tracked LmMessage and trap network errors appropriately.
+ * Send a tracked WockyStanza and trap network errors appropriately.
  *
  * If object is non-NULL the handler will follow the lifetime of that object,
  * which means that if the object is destroyed the callback will not be invoked.
@@ -1511,7 +1511,7 @@ message_send_reply_cb (
  */
 gboolean
 _gabble_connection_send_with_reply (GabbleConnection *conn,
-                                    LmMessage *msg,
+                                    WockyStanza *msg,
                                     GabbleConnectionMsgReplyFunc reply_func,
                                     GObject *object,
                                     gpointer user_data,
@@ -2299,7 +2299,7 @@ connection_shut_down (TpBaseConnection *base)
 
 void
 gabble_connection_fill_in_caps (GabbleConnection *self,
-    LmMessage *presence_message)
+    WockyStanza *presence_message)
 {
   GabblePresence *presence = self->self_presence;
   WockyNode *node = wocky_stanza_get_top_node (presence_message);
@@ -2355,7 +2355,7 @@ gabble_connection_send_capabilities (GabbleConnection *self,
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self, TP_HANDLE_TYPE_CONTACT);
-  LmMessage *message;
+  WockyStanza *message;
   gboolean ret;
   TpHandle handle;
 
@@ -2391,7 +2391,7 @@ gabble_connection_request_decloak (GabbleConnection *self,
     GError **error)
 {
   GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence, to);
+  WockyStanza *message = gabble_presence_as_message (presence, to);
   WockyNode *decloak;
   gboolean ret;
 
@@ -2506,7 +2506,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
  */
 void
 _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
-                                       LmMessage *iq)
+                                       WockyStanza *iq)
 {
   wocky_porter_acknowledge_iq (wocky_session_get_porter (conn->session),
       iq, NULL);
@@ -3746,19 +3746,19 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
 
 gboolean
 gabble_connection_send_presence (GabbleConnection *conn,
-                                 LmMessageSubType sub_type,
+                                 WockyStanzaSubType sub_type,
                                  const gchar *contact,
                                  const gchar *status,
                                  GError **error)
 {
-  LmMessage *message;
+  WockyStanza *message;
   gboolean result;
 
   message = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE, sub_type,
       NULL, contact,
       NULL);
 
-  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
+  if (WOCKY_STANZA_SUB_TYPE_SUBSCRIBE == sub_type)
     lm_message_node_add_own_nick (
         wocky_stanza_get_top_node (message), conn);
 

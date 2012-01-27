@@ -44,7 +44,7 @@ G_DEFINE_TYPE (GabbleRequestPipeline, gabble_request_pipeline, G_TYPE_OBJECT);
 struct _GabbleRequestPipelineItem
 {
   GabbleRequestPipeline *pipeline;
-  LmMessage *message;
+  WockyStanza *message;
   guint timer_id;
   guint timeout;
   gboolean in_flight;
@@ -292,8 +292,8 @@ gabble_request_pipeline_finalize (GObject *object)
 
 static LmHandlerResult
 response_cb (GabbleConnection *conn,
-             LmMessage *sent,
-             LmMessage *reply,
+             WockyStanza *sent,
+             WockyStanza *reply,
              GObject *object,
              gpointer user_data)
 {
@@ -406,7 +406,7 @@ delayed_run_pipeline (gpointer user_data)
 
 GabbleRequestPipelineItem *
 gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
-                                 LmMessage *msg,
+                                 WockyStanza *msg,
                                  guint timeout,
                                  GabbleRequestPipelineCb callback,
                                  gpointer user_data)

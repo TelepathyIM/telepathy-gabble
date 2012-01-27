@@ -383,8 +383,8 @@ disco_type_to_xmlns (GabbleDiscoType type)
 }
 
 static LmHandlerResult
-request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                  LmMessage *reply_msg, GObject *object, gpointer user_data)
+request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
+                  WockyStanza *reply_msg, GObject *object, gpointer user_data)
 {
   GabbleDiscoRequest *request = (GabbleDiscoRequest *) user_data;
   GabbleDisco *disco = GABBLE_DISCO (object);
@@ -480,7 +480,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
 {
   GabbleDiscoPrivate *priv = self->priv;
   GabbleDiscoRequest *request;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *lm_node;
 
   request = g_slice_new0 (GabbleDiscoRequest);

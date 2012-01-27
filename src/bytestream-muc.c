@@ -304,7 +304,7 @@ send_data_to (GabbleBytestreamMuc *self,
       gchar *encoded;
       guint send_now;
       GError *error = NULL;
-      LmMessage *msg;
+      WockyStanza *msg;
       WockyNode *data = NULL;
 
       msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
@@ -404,7 +404,7 @@ gabble_bytestream_muc_send (GabbleBytestreamIface *iface,
 
 void
 gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
-                               LmMessage *msg)
+                               WockyStanza *msg)
 {
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (

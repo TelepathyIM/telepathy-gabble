@@ -395,8 +395,8 @@ parse_search_field_response (GabbleSearchChannel *chan,
 
 static LmHandlerResult
 query_reply_cb (GabbleConnection *conn,
-                LmMessage *sent_msg,
-                LmMessage *reply_msg,
+                WockyStanza *sent_msg,
+                WockyStanza *reply_msg,
                 GObject *object,
                 gpointer user_data)
 {
@@ -436,7 +436,7 @@ request_search_fields (GabbleSearchChannel *chan)
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
-  LmMessage *msg;
+  WockyStanza *msg;
   GError *error = NULL;
 
   msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
@@ -784,8 +784,8 @@ parse_search_results (GabbleSearchChannel *chan,
 
 static LmHandlerResult
 search_reply_cb (GabbleConnection *conn,
-                 LmMessage *sent_msg,
-                 LmMessage *reply_msg,
+                 WockyStanza *sent_msg,
+                 WockyStanza *reply_msg,
                  GObject *object,
                  gpointer user_data)
 {
@@ -954,7 +954,7 @@ do_search (GabbleSearchChannel *chan,
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *query;
   gboolean ret;
 

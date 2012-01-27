@@ -64,7 +64,7 @@ GabbleMucChannel *gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
 
 void gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
     GabbleBytestreamIface *bytestream, TpHandle room_handle,
-    const gchar *stream_id, LmMessage *msg);
+    const gchar *stream_id, WockyStanza *msg);
 
 void gabble_muc_factory_broadcast_presence (GabbleMucFactory *self);
 

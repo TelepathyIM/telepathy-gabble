@@ -80,12 +80,12 @@ void gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
     TpHandle contact, WockyNode *presence);
 
 void gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *chan,
-    GabbleBytestreamIface *bytestream, LmMessage *msg);
+    GabbleBytestreamIface *bytestream, WockyStanza *msg);
 
 void gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *chan,
-    GabbleBytestreamIface *bytestream, LmMessage *msg);
+    GabbleBytestreamIface *bytestream, WockyStanza *msg);
 
-void gabble_tubes_channel_tube_msg (GabbleTubesChannel *chan, LmMessage *msg);
+void gabble_tubes_channel_tube_msg (GabbleTubesChannel *chan, WockyStanza *msg);
 
 void gabble_tubes_channel_close (GabbleTubesChannel *self);
 

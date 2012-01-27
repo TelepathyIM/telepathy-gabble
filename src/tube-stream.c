@@ -432,7 +432,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 static void
 extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                                const gchar *stream_id,
-                               LmMessage *msg,
+                               WockyStanza *msg,
                                GObject *object,
                                gpointer user_data)
 {
@@ -473,7 +473,7 @@ start_stream_initiation (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv;
   WockyNode *node, *si_node;
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
   gchar *full_jid, *stream_id, *id_str;
@@ -1891,7 +1891,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube, gboolean closed_remotely)
 
   if (!closed_remotely && priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      LmMessage *msg;
+      WockyStanza *msg;
       const gchar *jid;
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
           (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -2214,7 +2214,7 @@ send_tube_offer (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   WockyNode *tube_node = NULL;
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
   gboolean result;

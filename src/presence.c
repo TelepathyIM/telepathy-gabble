@@ -644,21 +644,21 @@ gabble_presence_add_status_and_vcard (GabblePresence *presence,
     }
 }
 
-LmMessage *
+WockyStanza *
 gabble_presence_as_message (GabblePresence *presence,
                             const gchar *to)
 {
   GabblePresencePrivate *priv = presence->priv;
-  LmMessage *message;
-  LmMessageSubType subtype;
+  WockyStanza *message;
+  WockyStanzaSubType subtype;
   Resource *res = priv->resources->data; /* pick first resource */
 
   g_assert (NULL != res);
 
   if (presence->status == GABBLE_PRESENCE_OFFLINE)
-    subtype = LM_MESSAGE_SUB_TYPE_UNAVAILABLE;
+    subtype = WOCKY_STANZA_SUB_TYPE_UNAVAILABLE;
   else
-    subtype = LM_MESSAGE_SUB_TYPE_AVAILABLE;
+    subtype = WOCKY_STANZA_SUB_TYPE_AVAILABLE;
 
   message = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE, subtype,
       NULL, to, NULL);

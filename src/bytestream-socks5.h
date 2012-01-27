@@ -66,7 +66,7 @@ void gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *socks5,
     WockyNode *streamhost_node);
 
 void gabble_bytestream_socks5_connect_to_streamhost (
-    GabbleBytestreamSocks5 *socks5, LmMessage *msg);
+    GabbleBytestreamSocks5 *socks5, WockyStanza *msg);
 
 G_END_DECLS
 

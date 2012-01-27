@@ -363,7 +363,7 @@ parse_search_field_response (GabbleSearchChannel *chan,
 
   g_return_if_fail (query_node != NULL);
 
-  x_node = lm_message_node_get_child_with_namespace (query_node, "x",
+  x_node = wocky_node_get_child_ns (query_node, "x",
       NS_X_DATA);
 
   if (x_node == NULL)
@@ -403,7 +403,7 @@ query_reply_cb (GabbleConnection *conn,
   WockyNode *query_node;
   GError *err = NULL;
 
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
   if (wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
@@ -741,7 +741,7 @@ parse_extended_search_results (GabbleSearchChannel *chan,
   WockyNode *x;
   NodeIter i;
 
-  x = lm_message_node_get_child_with_namespace (query_node, "x", NS_X_DATA);
+  x = wocky_node_get_child_ns (query_node, "x", NS_X_DATA);
   if (x == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -800,7 +800,7 @@ search_reply_cb (GabbleConnection *conn,
       return;
     }
 
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
   if (wocky_stanza_extract_errors (reply_msg, NULL, &stanza_error, NULL, NULL))

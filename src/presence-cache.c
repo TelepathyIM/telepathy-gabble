@@ -1826,9 +1826,6 @@ gabble_presence_parse_presence_message (
   if (child_node)
     status_message = child_node->content;
 
-  if (child_node)
-    status_message = child_node->content;
-
   child_node = wocky_node_get_child (presence_node, "priority");
 
   if (child_node)

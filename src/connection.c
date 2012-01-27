@@ -1440,37 +1440,6 @@ typedef struct {
     gboolean object_alive;
 } GabbleMsgHandlerData;
 
-static LmHandlerResult
-message_send_reply_cb (LmMessageHandler *handler,
-                       LmConnection *connection,
-                       LmMessage *reply_msg,
-                       gpointer user_data)
-{
-  GabbleMsgHandlerData *handler_data = user_data;
-  LmMessageSubType sub_type;
-
-  sub_type = lm_message_get_sub_type (reply_msg);
-
-  /* Is it a reply to this message? If we're talking to another loudmouth,
-   * they can send us messages which have the same ID as ones we send. :-O */
-  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
-      sub_type != LM_MESSAGE_SUB_TYPE_ERROR)
-    {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  if (handler_data->object_alive && handler_data->reply_func != NULL)
-    {
-      return handler_data->reply_func (handler_data->conn,
-                                       handler_data->sent_msg,
-                                       reply_msg,
-                                       handler_data->object,
-                                       handler_data->user_data);
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
-
 static void
 message_send_object_destroy_notify_cb (gpointer data,
                                        GObject *where_the_object_was)
@@ -1482,10 +1451,8 @@ message_send_object_destroy_notify_cb (gpointer data,
 }
 
 static void
-message_send_handler_destroy_cb (gpointer data)
+msg_handler_data_free (GabbleMsgHandlerData *handler_data)
 {
-  GabbleMsgHandlerData *handler_data = data;
-
   g_object_unref (handler_data->sent_msg);
 
   if (handler_data->object != NULL)
@@ -1496,6 +1463,39 @@ message_send_handler_destroy_cb (gpointer data)
     }
 
   g_slice_free (GabbleMsgHandlerData, handler_data);
+}
+
+static void
+message_send_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleMsgHandlerData *handler_data = user_data;
+
+  if (handler_data->object_alive && handler_data->reply_func != NULL)
+    {
+      WockyPorter *porter = WOCKY_PORTER (source);
+      GError *error = NULL;
+      WockyStanza *stanza = wocky_porter_send_iq_finish (porter, result, &error);
+
+      if (stanza != NULL)
+        {
+          handler_data->reply_func (handler_data->conn,
+                                    handler_data->sent_msg,
+                                    stanza,
+                                    handler_data->object,
+                                    handler_data->user_data);
+          g_object_unref (stanza);
+        }
+      else
+        {
+          DEBUG ("send_iq_async failed: %s", error->message);
+          g_error_free (error);
+        }
+    }
+
+  msg_handler_data_free (handler_data);
 }
 
 /**
@@ -1517,12 +1517,11 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
                                     gpointer user_data,
                                     GError **error)
 {
-  LmMessageHandler *handler;
+  GabbleConnectionPrivate *priv;
   GabbleMsgHandlerData *handler_data;
-  gboolean ret;
-  GError *lmerror = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
+  priv = conn->priv;
 
   if (conn->lmconn == NULL)
     {
@@ -1548,26 +1547,10 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
                          handler_data);
     }
 
-  handler = lm_message_handler_new (message_send_reply_cb, handler_data,
-                                    message_send_handler_destroy_cb);
+  wocky_porter_send_iq_async (priv->porter, msg,
+      conn->lmconn->iq_reply_cancellable, message_send_reply_cb, handler_data);
 
-  ret = lm_connection_send_with_reply (conn->lmconn, msg, handler, &lmerror);
-  if (!ret)
-    {
-      DEBUG ("failed: %s", lmerror->message);
-
-      if (error)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-              "message send failed: %s", lmerror->message);
-        }
-
-      g_error_free (lmerror);
-    }
-
-  lm_message_handler_unref (handler);
-
-  return ret;
+  return TRUE;
 }
 
 static void connect_iq_callbacks (GabbleConnection *conn);

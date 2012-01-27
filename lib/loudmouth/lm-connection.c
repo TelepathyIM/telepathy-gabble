@@ -126,50 +126,6 @@ lm_connection_unref (LmConnection *connection)
   g_free (connection);
 }
 
-static void
-iq_reply_cb (GObject *source,
-    GAsyncResult *res,
-    gpointer user_data)
-{
-  LmMessageHandler *handler = (LmMessageHandler *) user_data;
-  WockyStanza *reply;
-  GError *error = NULL;
-
-  reply = wocky_porter_send_iq_finish (WOCKY_PORTER (source), res, &error);
-  if (reply == NULL)
-    {
-      g_debug ("send_iq_async failed: %s", error->message);
-      g_error_free (error);
-      goto out;
-    }
-
-  handler->function (handler, handler->connection, reply,
-      handler->user_data);
-
-  g_object_unref (reply);
-
-out:
-  lm_message_handler_unref (handler);
-}
-
-gboolean
-lm_connection_send_with_reply (LmConnection *connection,
-    LmMessage *message,
-    LmMessageHandler *handler,
-    GError **error)
-{
-  g_assert (connection != NULL);
-  g_assert (connection->porter != NULL);
-
-  handler->connection = connection;
-  lm_message_handler_ref (handler);
-
-  wocky_porter_send_iq_async (connection->porter, message,
-      connection->iq_reply_cancellable, iq_reply_cb, handler);
-
-  return TRUE;
-}
-
 LmConnection *
 lm_connection_new (void)
 {

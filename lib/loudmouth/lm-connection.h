@@ -52,11 +52,6 @@ void lm_connection_unregister_message_handler (LmConnection *connection,
 
 void lm_connection_unref (LmConnection *connection);
 
-gboolean lm_connection_send_with_reply (LmConnection *connection,
-    LmMessage *message,
-    LmMessageHandler *handler,
-    GError **error);
-
 /* Fake API. This is not part of loudmouth */
 
 void lm_connection_set_porter (LmConnection *connection,

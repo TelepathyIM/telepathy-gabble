@@ -475,7 +475,8 @@ parse_payload_type (GabbleJingleContent *content,
   const gchar *name;
   guint clockrate = 0;
   guint channels = 0;
-  NodeIter i;
+  WockyNode *param;
+  WockyNodeIter i;
 
   txt = wocky_node_get_attribute (node, "id");
   if (txt == NULL)
@@ -502,10 +503,9 @@ parse_payload_type (GabbleJingleContent *content,
 
   p = jingle_media_rtp_codec_new (id, name, clockrate, channels, NULL);
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &param))
     {
-      WockyNode *param = node_iter_data (i);
-
       if (!tp_strdiff (param->name, "parameter"))
         {
           const gchar *param_name, *param_value;
@@ -717,7 +717,8 @@ parse_description (GabbleJingleContent *content,
   JingleCodec *p;
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   gboolean video_session = FALSE;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *node;
   gboolean description_error = FALSE;
   gboolean is_avpf = FALSE;
 
@@ -742,13 +743,11 @@ parse_description (GabbleJingleContent *content,
 
   md = jingle_media_description_new ();
 
-  for (i = node_iter (desc_node); i && !description_error; i = node_iter_next (i))
+  wocky_node_iter_init (&i, desc_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &node) && !description_error)
     {
-      WockyNode *node = node_iter_data (i);
-
       if (!tp_strdiff (node->name, "payload-type"))
         {
-
           if (dialect == JINGLE_DIALECT_GTALK3)
             {
               const gchar *pt_ns = wocky_node_get_ns (node);

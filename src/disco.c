@@ -382,7 +382,7 @@ disco_type_to_xmlns (GabbleDiscoType type)
   return NULL;
 }
 
-static LmHandlerResult
+static void
 request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
                   WockyStanza *reply_msg, GObject *object, gpointer user_data)
 {
@@ -395,7 +395,7 @@ request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
   g_assert (request);
 
   if (!g_list_find (priv->requests, request))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return;
 
   query_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (reply_msg),
@@ -417,8 +417,6 @@ request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
 
   if (err)
     g_error_free (err);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void

@@ -406,7 +406,7 @@ static gboolean
 send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
     gboolean *result);
 
-static LmHandlerResult
+static void
 iq_acked_cb (GabbleConnection *conn,
              WockyStanza *sent_msg,
              WockyStanza *reply_msg,
@@ -451,8 +451,6 @@ iq_acked_cb (GabbleConnection *conn,
               priv->write_buffer->len);
         }
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -826,7 +824,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
     }
 }
 
-static LmHandlerResult
+static void
 ibb_init_reply_cb (GabbleConnection *conn,
                    WockyStanza *sent_msg,
                    WockyStanza *reply_msg,
@@ -848,8 +846,6 @@ ibb_init_reply_cb (GabbleConnection *conn,
       g_clear_error (&error);
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /*

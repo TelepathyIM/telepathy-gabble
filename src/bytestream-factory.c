@@ -298,7 +298,7 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
   *list = g_slist_prepend (*list, proxy);
 }
 
-static LmHandlerResult
+static void
 socks5_proxy_query_reply_cb (GabbleConnection *conn,
                              WockyStanza *sent_msg,
                              WockyStanza *reply_msg,
@@ -349,7 +349,7 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 
   add_proxy_to_list (self , proxy, fallback);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return;
 
 fail:
   if (fallback && from != NULL)
@@ -370,7 +370,6 @@ fail:
 
   /* Try to get another proxy as this one failed */
   query_proxies (self, 1);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -2018,7 +2017,7 @@ negotiate_stream_object_destroy_notify_cb (gpointer _data,
 }
 
 /* Called when we receive the reply of a SI request */
-static LmHandlerResult
+static void
 streaminit_reply_cb (GabbleConnection *conn,
                      WockyStanza *sent_msg,
                      WockyStanza *reply_msg,
@@ -2164,8 +2163,6 @@ END:
   g_free (self_jid);
   g_free (data->stream_id);
   g_slice_free (struct _streaminit_reply_cb_data, data);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /*

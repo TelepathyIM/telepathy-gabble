@@ -765,7 +765,7 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
     }
 }
 
-static LmHandlerResult
+static void
 socks5_activation_reply_cb (GabbleConnection *conn,
                             WockyStanza *sent_msg,
                             WockyStanza *reply_msg,
@@ -796,11 +796,10 @@ socks5_activation_reply_cb (GabbleConnection *conn,
   /* We can read data from the sock5 socket now */
   gibber_transport_block_receiving (priv->transport, FALSE);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return;
 activation_failed:
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -1543,7 +1542,7 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
       proxy->port);
 }
 
-static LmHandlerResult
+static void
 socks5_init_reply_cb (GabbleConnection *conn,
                       WockyStanza *sent_msg,
                       WockyStanza *reply_msg,
@@ -1591,7 +1590,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
 
           priv->proxy_jid = g_strdup (jid);
           initiator_connected_to_proxy (self);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+          return;
         }
 
       /* No proxy used */
@@ -1610,7 +1609,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
       /* We can read data from the sock5 socket now */
       gibber_transport_block_receiving (priv->transport, FALSE);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
 socks5_init_error:
@@ -1618,8 +1617,6 @@ socks5_init_error:
 
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 #ifdef G_OS_WIN32

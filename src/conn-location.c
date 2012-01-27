@@ -315,7 +315,7 @@ add_to_geoloc_node (const gchar *tp_name,
   return TRUE;
 }
 
-static LmHandlerResult
+static void
 set_location_sent_cb (GabbleConnection *conn,
     WockyStanza *sent_msg,
     WockyStanza *reply_msg,
@@ -340,8 +340,6 @@ set_location_sent_cb (GabbleConnection *conn,
       g_error_free (tp_error);
       g_error_free (error);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void

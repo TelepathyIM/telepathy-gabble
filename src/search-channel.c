@@ -393,7 +393,7 @@ parse_search_field_response (GabbleSearchChannel *chan,
   supported_fields_discovered (chan);
 }
 
-static LmHandlerResult
+static void
 query_reply_cb (GabbleConnection *conn,
                 WockyStanza *sent_msg,
                 WockyStanza *reply_msg,
@@ -427,8 +427,6 @@ query_reply_cb (GabbleConnection *conn,
       supported_field_discovery_failed (chan, err);
       g_error_free (err);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -782,7 +780,7 @@ parse_search_results (GabbleSearchChannel *chan,
     return parse_unextended_search_results (chan, query_node, error);
 }
 
-static LmHandlerResult
+static void
 search_reply_cb (GabbleConnection *conn,
                  WockyStanza *sent_msg,
                  WockyStanza *reply_msg,
@@ -800,8 +798,7 @@ search_reply_cb (GabbleConnection *conn,
     {
       DEBUG ("state is %s, not in progress; ignoring results",
           states[chan->priv->state]);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
   query_node = lm_message_node_get_child_with_namespace (
@@ -839,8 +836,6 @@ search_reply_cb (GabbleConnection *conn,
           err);
       g_error_free (err);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean

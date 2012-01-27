@@ -481,7 +481,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
     aliases_request_free (request);
 }
 
-static LmHandlerResult
+static void
 nick_publish_msg_reply_cb (GabbleConnection *conn,
                            WockyStanza *sent_msg,
                            WockyStanza *reply_msg,
@@ -499,8 +499,6 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
       g_clear_error (&error);
     }
 #endif
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean

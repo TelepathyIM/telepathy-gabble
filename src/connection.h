@@ -91,11 +91,12 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 typedef struct _GabbleConnectionMailNotificationPrivate GabbleConnectionMailNotificationPrivate;
 typedef struct _GabbleConnectionPresencePrivate GabbleConnectionPresencePrivate;
 
-typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
-                                                         WockyStanza *sent_msg,
-                                                         WockyStanza *reply_msg,
-                                                         GObject *object,
-                                                         gpointer user_data);
+typedef void (*GabbleConnectionMsgReplyFunc) (
+    GabbleConnection *conn,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
+    GObject *object,
+    gpointer user_data);
 
 typedef enum {
     /* The JID could be a "global" JID, or a MUC room member. We'll assume

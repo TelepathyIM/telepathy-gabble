@@ -123,11 +123,11 @@ static TpPresenceStatusSpec *gabble_statuses = NULL;
 
 /* prototypes */
 
-static LmHandlerResult set_xep0186_invisible_cb (GabbleConnection *conn,
+static void set_xep0186_invisible_cb (GabbleConnection *conn,
     WockyStanza *sent_msg, WockyStanza *reply_msg, GObject *obj,
     gpointer user_data);
 
-static LmHandlerResult activate_current_privacy_list_cb (
+static void activate_current_privacy_list_cb (
     GabbleConnection *conn, WockyStanza *sent_msg, WockyStanza *reply_msg,
     GObject *obj, gpointer user_data);
 
@@ -139,7 +139,7 @@ static gboolean iq_privacy_list_push_cb (
     WockyStanza *message,
     gpointer user_data);
 
-static LmHandlerResult verify_invisible_privacy_list_cb (
+static void verify_invisible_privacy_list_cb (
     GabbleConnection *conn, WockyStanza *sent_msg, WockyStanza *reply_msg,
     GObject *obj, gpointer user_data);
 
@@ -527,7 +527,7 @@ set_xep0186_invisible (GabbleConnection *self,
   g_object_unref (iq);
 }
 
-static LmHandlerResult
+static void
 set_xep0186_invisible_cb (GabbleConnection *conn,
     WockyStanza *sent_msg,
     WockyStanza *reply_msg,
@@ -564,8 +564,6 @@ set_xep0186_invisible_cb (GabbleConnection *conn,
 
   g_simple_async_result_complete (result);
   g_object_unref (result);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 
@@ -644,7 +642,7 @@ activate_current_privacy_list (GabbleConnection *self,
   g_object_unref (iq);
 }
 
-static LmHandlerResult
+static void
 activate_current_privacy_list_cb (GabbleConnection *conn,
     WockyStanza *sent_msg,
     WockyStanza *reply_msg,
@@ -678,8 +676,6 @@ activate_current_privacy_list_cb (GabbleConnection *conn,
 
   g_simple_async_result_complete (result);
   g_object_unref (result);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -700,7 +696,7 @@ disable_invisible_privacy_list (GabbleConnection *self)
     }
 }
 
-static LmHandlerResult
+static void
 create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
     WockyStanza *sent_msg,
     WockyStanza *reply_msg,
@@ -719,8 +715,6 @@ create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
   g_simple_async_result_complete_in_idle (result);
 
   g_object_unref (result);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -1085,7 +1079,7 @@ get_shared_status_finish (GabbleConnection *self,
   wocky_implement_finish_void (self, get_shared_status_async);
 }
 
-static LmHandlerResult
+static void
 get_existing_privacy_lists_cb (GabbleConnection *conn,
     WockyStanza *sent_msg,
     WockyStanza *reply_msg,
@@ -1148,8 +1142,6 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
 
   g_simple_async_result_complete_in_idle (result);
   g_object_unref (result);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -1282,7 +1274,7 @@ is_valid_invisible_list (WockyNode *list_node)
   return FALSE;
 }
 
-static LmHandlerResult
+static void
 verify_invisible_privacy_list_cb (GabbleConnection *conn,
     WockyStanza *sent_msg,
     WockyStanza *reply_msg,
@@ -1331,8 +1323,6 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
 
   if (error != NULL)
     g_error_free (error);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void

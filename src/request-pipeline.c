@@ -290,7 +290,7 @@ gabble_request_pipeline_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_request_pipeline_parent_class)->finalize (object);
 }
 
-static LmHandlerResult
+static void
 response_cb (GabbleConnection *conn,
              WockyStanza *sent,
              WockyStanza *reply,
@@ -307,7 +307,7 @@ response_cb (GabbleConnection *conn,
   DEBUG ("got reply for request %p", item);
 
   if (NULL == g_slist_find (priv->items_in_flight, item))
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return;
 
   g_assert (item->in_flight);
 
@@ -328,8 +328,6 @@ response_cb (GabbleConnection *conn,
   delete_item (item);
 
   gabble_request_pipeline_go (pipeline);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean

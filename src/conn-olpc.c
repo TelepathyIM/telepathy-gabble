@@ -304,7 +304,7 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
 }
 
 /* context may be NULL. */
-static LmHandlerResult
+static void
 set_properties_reply_cb (GabbleConnection *conn,
                          WockyStanza *sent_msg,
                          WockyStanza *reply_msg,
@@ -314,11 +314,10 @@ set_properties_reply_cb (GabbleConnection *conn,
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   if (context != NULL)
     gabble_svc_olpc_buddy_info_return_from_set_properties (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /* context may be NULL, in which case it will be NULL in the reply_cb. */
@@ -942,7 +941,7 @@ upload_activities_pep (GabbleConnection *conn,
   return ret;
 }
 
-static LmHandlerResult
+static void
 set_activities_reply_cb (GabbleConnection *conn,
                          WockyStanza *sent_msg,
                          WockyStanza *reply_msg,
@@ -952,12 +951,11 @@ set_activities_reply_cb (GabbleConnection *conn,
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   /* FIXME: emit ActivitiesChanged? */
 
   gabble_svc_olpc_buddy_info_return_from_set_activities (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -1398,7 +1396,7 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   g_object_unref (contact);
 }
 
-static LmHandlerResult
+static void
 set_current_activity_reply_cb (GabbleConnection *conn,
                                WockyStanza *sent_msg,
                                WockyStanza *reply_msg,
@@ -1408,10 +1406,9 @@ set_current_activity_reply_cb (GabbleConnection *conn,
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   gabble_svc_olpc_buddy_info_return_from_set_current_activity (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /* Check if this activity is in our own activities list */
@@ -1549,7 +1546,7 @@ out:
   tp_handle_unref (contact_repo, handle);
 }
 
-static LmHandlerResult
+static void
 add_activity_reply_cb (GabbleConnection *conn,
                        WockyStanza *sent_msg,
                        WockyStanza *reply_msg,
@@ -1559,12 +1556,11 @@ add_activity_reply_cb (GabbleConnection *conn,
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   /* FIXME: emit ActivitiesChanged? */
 
   gabble_svc_olpc_buddy_info_return_from_add_activity (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -1681,7 +1677,7 @@ typedef struct {
     GabbleOlpcActivity *activity;
 } set_properties_ctx;
 
-static LmHandlerResult
+static void
 set_activity_properties_activities_reply_cb (GabbleConnection *conn,
                                              WockyStanza *sent_msg,
                                              WockyStanza *reply_msg,
@@ -1697,7 +1693,7 @@ set_activity_properties_activities_reply_cb (GabbleConnection *conn,
       !check_publish_reply_msg (reply_msg, context->context))
     {
       g_slice_free (set_properties_ctx, context);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
   gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
@@ -1707,10 +1703,10 @@ set_activity_properties_activities_reply_cb (GabbleConnection *conn,
       context->context);
 
   g_slice_free (set_properties_ctx, context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return;
 }
 
-static LmHandlerResult
+static void
 set_activity_properties_reply_cb (GabbleConnection *conn,
                                   WockyStanza *sent_msg,
                                   WockyStanza *reply_msg,
@@ -1726,7 +1722,7 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
       !check_publish_reply_msg (reply_msg, context->context))
     {
       g_slice_free (set_properties_ctx, context);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
   if (context->visibility_changed)
@@ -1747,8 +1743,6 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
       set_activity_properties_activities_reply_cb (conn, NULL, NULL, NULL,
           context);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -2185,7 +2179,7 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
-static LmHandlerResult
+static void
 pseudo_invite_reply_cb (GabbleConnection *conn,
                         WockyStanza *sent_msg,
                         WockyStanza *reply_msg,
@@ -2198,7 +2192,6 @@ pseudo_invite_reply_cb (GabbleConnection *conn,
           "response to pseudo-invitation message");
       STANZA_DEBUG (sent_msg, "The failed request was");
     }
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 gboolean
@@ -2438,7 +2431,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
   return TRUE;
 }
 
-static LmHandlerResult
+static void
 closed_pep_reply_cb (GabbleConnection *conn,
                      WockyStanza *sent_msg,
                      WockyStanza *reply_msg,
@@ -2451,7 +2444,6 @@ closed_pep_reply_cb (GabbleConnection *conn,
           "response to channel closure");
       STANZA_DEBUG (sent_msg, "The failed request was");
     }
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean

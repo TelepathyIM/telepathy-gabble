@@ -2977,7 +2977,7 @@ gabble_muc_channel_add_member (GObject *obj,
   return gabble_muc_channel_send_invite (self, jid, message, FALSE, error);
 }
 
-static LmHandlerResult
+static void
 kick_request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
                        WockyStanza *reply_msg, GObject *object,
                        gpointer user_data)
@@ -2986,8 +2986,6 @@ kick_request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
     {
       DEBUG ("Failed to kick user %s from room", (const char *) user_data);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean

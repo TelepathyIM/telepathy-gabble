@@ -28,11 +28,6 @@
 
 G_BEGIN_DECLS
 
-typedef enum {
-  LM_HANDLER_RESULT_REMOVE_MESSAGE,
-  LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS
-} LmHandlerResult;
-
 G_END_DECLS
 
 #endif /* #ifndef __LM_MESSAGE_HANDLER_H__ */

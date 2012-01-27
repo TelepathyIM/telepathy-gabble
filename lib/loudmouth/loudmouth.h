@@ -22,7 +22,6 @@
 #define __LOUDMOUTH_H__
 
 #include <loudmouth/lm-connection.h>
-#include <loudmouth/lm-message.h>
 #include <loudmouth/lm-message-handler.h>
 
 #endif /* #ifndef __LOUDMOUTH_H__ */

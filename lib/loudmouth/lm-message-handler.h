@@ -21,9 +21,10 @@
 #ifndef __LM_MESSAGE_HANDLER_H__
 #define __LM_MESSAGE_HANDLER_H__
 
+#include <wocky/wocky-stanza.h>
+
 #include "lm-types.h"
 #include "lm-connection.h"
-#include "lm-message.h"
 
 G_BEGIN_DECLS
 

@@ -25,7 +25,6 @@
 #include <wocky/wocky-porter.h>
 
 #include "lm-types.h"
-#include "lm-message.h"
 #include "lm-message-handler.h"
 
 G_BEGIN_DECLS

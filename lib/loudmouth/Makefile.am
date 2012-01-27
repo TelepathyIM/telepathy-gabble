@@ -8,8 +8,6 @@ BUILT_SOURCES = \
 OUR_SOURCES =                     \
   loudmouth.h                     \
   lm-types.h                      \
-  lm-message.c                    \
-  lm-message.h                    \
   lm-message-handler.c            \
   lm-message-handler.h            \
   lm-connection.c                 \

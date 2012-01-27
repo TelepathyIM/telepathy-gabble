@@ -32,22 +32,10 @@ G_BEGIN_DECLS
 struct _LmConnection
 {
   WockyPorter *porter;
-  GSList *delayed_handlers;
   GCancellable *iq_reply_cancellable;
 };
 
-typedef guint LmHandlerPriority;
-
 LmConnection * lm_connection_new (void);
-
-void lm_connection_register_message_handler (LmConnection *connection,
-    LmMessageHandler *handler,
-    WockyStanzaType type,
-    LmHandlerPriority priority);
-
-void lm_connection_unregister_message_handler (LmConnection *connection,
-    LmMessageHandler *handler,
-    WockyStanzaType type);
 
 void lm_connection_unref (LmConnection *connection);
 

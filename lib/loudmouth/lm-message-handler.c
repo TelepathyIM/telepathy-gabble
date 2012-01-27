@@ -19,38 +19,3 @@
  */
 
 #include "lm-message-handler.h"
-
-LmMessageHandler *
-lm_message_handler_new (LmHandleMessageFunction function,
-    gpointer user_data,
-    GDestroyNotify notify)
-{
-  LmMessageHandler *handler = g_slice_new0 (LmMessageHandler);
-  handler->function = function;
-  handler->user_data = user_data;
-  handler->notify = notify;
-  handler->ref_count = 1;
-
-  return handler;
-}
-
-void
-lm_message_handler_unref (LmMessageHandler *handler)
-{
-  handler->ref_count--;
-
-  if (handler->ref_count == 0)
-    {
-      if (handler->notify != NULL)
-        handler->notify (handler->user_data);
-      g_slice_free (LmMessageHandler, handler);
-    }
-}
-
-LmMessageHandler *
-lm_message_handler_ref (LmMessageHandler *handler)
-{
-  handler->ref_count++;
-
-  return handler;
-}

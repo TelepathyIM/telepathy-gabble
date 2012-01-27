@@ -33,33 +33,6 @@ typedef enum {
   LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS
 } LmHandlerResult;
 
-typedef LmHandlerResult (*LmHandleMessageFunction) (LmMessageHandler *handler,
-    LmConnection *connection,
-    WockyStanza *message,
-    gpointer user_data);
-
-struct _LmMessageHandler
-{
-  guint handler_id;
-  LmConnection *connection;
-  LmHandleMessageFunction function;
-  gpointer user_data;
-  GDestroyNotify notify;
-  guint ref_count;
-};
-
-#define LM_HANDLER_PRIORITY_LAST   WOCKY_PORTER_HANDLER_PRIORITY_MIN
-#define LM_HANDLER_PRIORITY_NORMAL WOCKY_PORTER_HANDLER_PRIORITY_NORMAL
-#define LM_HANDLER_PRIORITY_FIRST  WOCKY_PORTER_HANDLER_PRIORITY_MAX
-
-LmMessageHandler *  lm_message_handler_new (LmHandleMessageFunction function,
-    gpointer user_data,
-    GDestroyNotify notify);
-
-void lm_message_handler_unref (LmMessageHandler *handler);
-
-LmMessageHandler * lm_message_handler_ref (LmMessageHandler *handler);
-
 G_END_DECLS
 
 #endif /* #ifndef __LM_MESSAGE_HANDLER_H__ */

@@ -5,7 +5,6 @@
 
 G_BEGIN_DECLS
 
-typedef struct _LmMessageHandler LmMessageHandler;
 typedef struct _LmConnection LmConnection;
 
 G_END_DECLS

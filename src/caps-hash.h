@@ -21,8 +21,6 @@
 #ifndef __CAPS_HASH_H__
 #define __CAPS_HASH_H__
 
-#include <loudmouth/loudmouth.h>
-
 #include "connection.h"
 #include "gabble/caps-hash.h"
 

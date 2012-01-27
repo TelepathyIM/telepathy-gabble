@@ -412,7 +412,6 @@ AC_OUTPUT( Makefile \
            lib/Makefile \
            lib/ext/Makefile \
            lib/gibber/Makefile \
-           lib/loudmouth/Makefile \
            plugins/Makefile \
            gabble/Makefile \
            gabble/telepathy-gabble-uninstalled.pc \

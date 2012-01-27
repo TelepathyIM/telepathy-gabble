@@ -27,7 +27,6 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky-connector.h>
 #include <wocky/wocky-disco-identity.h>
 #include <wocky/wocky-tls-handler.h>

@@ -25,7 +25,7 @@
 #define __GABBLE_DISCO_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky-node.h>
 
 #include "types.h"
 

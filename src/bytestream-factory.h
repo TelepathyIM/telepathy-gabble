@@ -21,8 +21,6 @@
 #define __BYTESTREAM_FACTORY_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
 #include <telepathy-glib/base-connection.h>
 #include "types.h"
 #include "bytestream-iface.h"

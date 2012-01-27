@@ -24,8 +24,6 @@
 
 #include <string.h>
 
-#include <loudmouth/loudmouth.h>
-
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/contacts-mixin.h>

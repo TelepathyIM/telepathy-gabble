@@ -30,7 +30,6 @@
 #include <telepathy-glib/util.h>
 
 #include <wocky/wocky-utils.h>
-#include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 #include <gabble/error.h>

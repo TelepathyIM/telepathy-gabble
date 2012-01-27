@@ -24,7 +24,6 @@
 #include <string.h>
 
 #include <dbus/dbus-glib.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/errors.h>

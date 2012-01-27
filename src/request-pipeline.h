@@ -22,8 +22,7 @@
 #define __GABBLE_REQUEST_PIPELINE_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
+#include <wocky/wocky-stanza.h>
 #include "types.h"
 
 G_BEGIN_DECLS

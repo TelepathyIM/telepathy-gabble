@@ -7,7 +7,6 @@ TELEPATHY_GABBLE_BUILT_SOURCES := \
 	gabble/telepathy-gabble-uninstalled.pc \
 	src/Android.mk \
 	lib/gibber/Android.mk \
-	lib/loudmouth/Android.mk \
 	extensions/Android.mk
 
 telepathy-gabble-configure-real:
@@ -37,5 +36,4 @@ CONFIGURE_TARGETS += telepathy-gabble-configure
 #include all the subdirs...
 -include $(TELEPATHY_GABBLE_TOP)/src/Android.mk
 -include $(TELEPATHY_GABBLE_TOP)/lib/gibber/Android.mk
--include $(TELEPATHY_GABBLE_TOP)/lib/loudmouth/Android.mk
 -include $(TELEPATHY_GABBLE_TOP)/extensions/Android.mk

@@ -25,7 +25,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/presence-mixin.h>

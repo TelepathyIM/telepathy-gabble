@@ -21,8 +21,7 @@
 #define __GABBLE_TUBES_CHANNEL_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
+#include <wocky/wocky-stanza.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/exportable-channel.h>
 

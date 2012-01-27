@@ -26,7 +26,6 @@
 #include <glib/gstdio.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky-utils.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>

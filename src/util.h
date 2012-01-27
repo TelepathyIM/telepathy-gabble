@@ -27,7 +27,6 @@
 #include <glib.h>
 #include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/util.h>
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky-bare-contact.h>
 
 #include "jingle-factory.h"

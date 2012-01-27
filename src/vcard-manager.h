@@ -23,7 +23,7 @@
 #define __GABBLE_VCARD_MANAGER_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky-node.h>
 
 #include "types.h"
 

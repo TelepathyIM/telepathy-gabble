@@ -21,8 +21,7 @@
 #define __GABBLE_BYTESTREAM_IBB_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
+#include <wocky/wocky-stanza.h>
 #include <telepathy-glib/base-connection.h>
 
 G_BEGIN_DECLS

@@ -23,7 +23,6 @@
 
 #include <telepathy-glib/message-mixin.h>
 
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky.h>
 #include <wocky/wocky-xmpp-error.h>
 

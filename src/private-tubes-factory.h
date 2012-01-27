@@ -21,7 +21,6 @@
 #define __PRIVATE_TUBES_FACTORY_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 
 #include <telepathy-glib/base-connection.h>
 #include "connection.h"

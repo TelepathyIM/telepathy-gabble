@@ -37,8 +37,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_FT
 #include "debug.h"
 
-#include <loudmouth/loudmouth.h>
-
 #include <gibber/gibber-listener.h>
 #include <gibber/gibber-transport.h>
 #include <gibber/gibber-unix-transport.h>       /* just for the feature-test */

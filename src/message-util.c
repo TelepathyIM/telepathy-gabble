@@ -27,7 +27,6 @@
 #include <string.h>
 #include <time.h>
 
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus.h>
 #include <wocky/wocky-utils.h>
 

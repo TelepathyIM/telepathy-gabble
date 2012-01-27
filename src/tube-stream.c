@@ -31,7 +31,6 @@
 #endif
 
 #include <glib/gstdio.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/exportable-channel.h>

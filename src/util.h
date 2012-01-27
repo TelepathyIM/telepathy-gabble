@@ -75,10 +75,6 @@ void gabble_signal_connect_weak (gpointer instance, const gchar *detailed_signal
     GCallback c_handler, GObject *user_data);
 guint gabble_idle_add_weak (GSourceFunc function, GObject *object);
 
-const gchar * wocky_node_get_attribute_with_namespace (WockyNode *node,
-    const gchar *attribute,
-    const gchar *ns);
-
 GPtrArray *gabble_g_ptr_array_copy (GPtrArray *source);
 
 WockyBareContact * ensure_bare_contact_from_jid (GabbleConnection *conn,

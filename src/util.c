@@ -786,19 +786,6 @@ gabble_idle_add_weak (GSourceFunc function,
   return ctx->source_id;
 }
 
-typedef struct {
-    gchar *key;
-    gchar *value;
-} Attribute;
-
-const gchar *
-wocky_node_get_attribute_with_namespace (WockyNode *node,
-    const gchar *attribute,
-    const gchar *ns)
-{
-  return wocky_node_get_attribute_ns (node, attribute, ns);
-}
-
 GPtrArray *
 gabble_g_ptr_array_copy (GPtrArray *source)
 {

@@ -526,7 +526,8 @@ update_location_from_msg (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *from = tp_handle_inspect (contact_repo, contact);
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *subloc_node;
   const gchar *lang;
 
   node = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (msg),
@@ -545,9 +546,9 @@ update_location_from_msg (GabbleConnection *conn,
 
   build_mapping_tables ();
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &subloc_node))
     {
-      WockyNode *subloc_node = node_iter_data (i);
       GValue *value = NULL;
       gchar *xmpp_name;
       const gchar *str;

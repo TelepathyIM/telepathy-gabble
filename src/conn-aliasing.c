@@ -737,9 +737,9 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
                                              WockyStanza *msg,
                                              TpHandle handle)
 {
-  WockyNode *pubsub_node, *items_node;
+  WockyNode *pubsub_node, *items_node, *item_node;
   gboolean found = FALSE;
-  NodeIter i;
+  WockyNodeIter i;
 
   pubsub_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB);
@@ -769,10 +769,9 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
       return;
     }
 
-  for (i = node_iter (items_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, items_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &item_node))
     {
-      WockyNode *item_node = node_iter_data (i);
-
       if (_grab_nickname (conn, handle, item_node))
         {
           /* FIXME: does this do the right thing on servers which return

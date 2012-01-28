@@ -741,11 +741,11 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
   gboolean found = FALSE;
   WockyNodeIter i;
 
-  pubsub_node = lm_message_node_get_child_with_namespace (
+  pubsub_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB);
   if (pubsub_node == NULL)
     {
-      pubsub_node = lm_message_node_get_child_with_namespace (
+      pubsub_node = wocky_node_get_child_ns (
         wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB "#event");
 
       if (pubsub_node == NULL)

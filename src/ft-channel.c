@@ -1463,7 +1463,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
       stream_id, NS_FILE_TRANSFER);
 
-  si_node = lm_message_node_get_child_with_namespace (
+  si_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 

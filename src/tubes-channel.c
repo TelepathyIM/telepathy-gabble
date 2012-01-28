@@ -1178,12 +1178,12 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   wocky_stanza_get_type_info (msg, &stanza_type, &sub_type);
   g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
   g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
-  si_node = lm_message_node_get_child_with_namespace (
+  si_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_return_if_fail (si_node != NULL);
   stream_id = wocky_node_get_attribute (si_node, "id");
   g_return_if_fail (stream_id != NULL);
-  tube_node = lm_message_node_get_child_with_namespace (si_node, "tube",
+  tube_node = wocky_node_get_child_ns (si_node, "tube",
       NS_TUBES);
   g_return_if_fail (tube_node != NULL);
 
@@ -1268,15 +1268,15 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
   g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
 
-  si_node = lm_message_node_get_child_with_namespace (
+  si_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_return_if_fail (si_node != NULL);
 
   if (priv->handle_type == TP_HANDLE_TYPE_CONTACT)
-    stream_node = lm_message_node_get_child_with_namespace (si_node,
+    stream_node = wocky_node_get_child_ns (si_node,
         "stream", NS_TUBES);
   else
-    stream_node = lm_message_node_get_child_with_namespace (si_node,
+    stream_node = wocky_node_get_child_ns (si_node,
         "muc-stream", NS_TUBES);
   g_return_if_fail (stream_node != NULL);
 
@@ -1426,7 +1426,7 @@ tube_msg_close (GabbleTubesChannel *self,
   GabbleTubeIface *tube;
   TpTubeType type;
 
-  close_node = lm_message_node_get_child_with_namespace (
+  close_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "close", NS_TUBES);
   g_assert (close_node != NULL);
 
@@ -1476,7 +1476,7 @@ gabble_tubes_channel_tube_msg (GabbleTubesChannel *self,
       return;
     }
 
-  node = lm_message_node_get_child_with_namespace (
+  node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "close", NS_TUBES);
   if (node != NULL)
     {

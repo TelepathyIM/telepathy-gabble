@@ -1409,7 +1409,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_BYTESTREAMS);
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
     wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 
@@ -1558,7 +1558,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
       WockyNode *query, *streamhost = NULL;
       const gchar *jid;
 
-      query = lm_message_node_get_child_with_namespace (
+      query = wocky_node_get_child_ns (
         wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
 
       if (query != NULL)

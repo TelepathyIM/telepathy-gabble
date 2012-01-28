@@ -419,7 +419,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
 
   /* caller must have checked for this in order to know which bytestream to
    * route this packet to */
-  data = lm_message_node_get_child_with_namespace (
+  data = wocky_node_get_child_ns (
     wocky_stanza_get_top_node (msg), "data", NS_MUC_BYTESTREAM);
   g_assert (data != NULL);
 

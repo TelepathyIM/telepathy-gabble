@@ -323,7 +323,7 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     goto fail;
 
-  query = lm_message_node_get_child_with_namespace (
+  query = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
   if (query == NULL)
     goto fail;
@@ -887,7 +887,7 @@ streaminit_parse_request (WockyStanza *message,
     }
 
   /* Parse <feature> */
-  feature = lm_message_node_get_child_with_namespace (si, "feature",
+  feature = wocky_node_get_child_ns (si, "feature",
       NS_FEATURENEG);
   if (feature == NULL)
     {
@@ -895,7 +895,7 @@ streaminit_parse_request (WockyStanza *message,
       return FALSE;
     }
 
-  x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
+  x = wocky_node_get_child_ns (feature, "x", NS_X_DATA);
   if (x == NULL)
     {
       STANZA_DEBUG (message, "got a SI request without a X data field");
@@ -955,8 +955,7 @@ streaminit_parse_request (WockyStanza *message,
       return FALSE;
     }
 
-  si_multiple = lm_message_node_get_child_with_namespace (si, "si-multiple",
-      NS_SI_MULTIPLE);
+  si_multiple = wocky_node_get_child_ns (si, "si-multiple", NS_SI_MULTIPLE);
   if (si_multiple == NULL)
     *multiple = FALSE;
   else
@@ -1060,14 +1059,14 @@ si_tube_received (GabbleBytestreamFactory *self,
    *  - a 1-1 tube extra bytestream offer
    *  - a muc tube extra bytestream offer
    */
-  if (lm_message_node_get_child_with_namespace (si, "tube", NS_TUBES) != NULL)
+  if (wocky_node_get_child_ns (si, "tube", NS_TUBES) != NULL)
     {
       /* The SI request is a tube offer */
        gabble_private_tubes_factory_handle_si_tube_request (
            priv->conn->private_tubes_factory, bytestream, peer_handle,
            stream_id, msg);
     }
-  else if (lm_message_node_get_child_with_namespace (si, "stream", NS_TUBES)
+  else if (wocky_node_get_child_ns (si, "stream", NS_TUBES)
       != NULL)
     {
       /* The SI request is an extra bytestream for a 1-1 tube */
@@ -1075,7 +1074,7 @@ si_tube_received (GabbleBytestreamFactory *self,
           priv->conn->private_tubes_factory, bytestream, peer_handle,
           stream_id, msg);
     }
-  else if (lm_message_node_get_child_with_namespace (si, "muc-stream",
+  else if (wocky_node_get_child_ns (si, "muc-stream",
         NS_TUBES) != NULL)
     {
       /* The SI request is an extra bytestream for a muc tube */
@@ -1135,7 +1134,7 @@ bytestream_factory_iq_si_cb (
   gchar *peer_resource = NULL;
   gchar *self_jid = NULL;
 
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
     wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_return_val_if_fail (si != NULL, FALSE);
 
@@ -1323,7 +1322,7 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
-  open_node = lm_message_node_get_child_with_namespace (
+  open_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "open", NS_IBB);
   if (open_node == NULL)
     return FALSE;
@@ -1401,7 +1400,7 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
-  close_node = lm_message_node_get_child_with_namespace (
+  close_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "close", NS_IBB);
   if (close_node == NULL)
     return FALSE;
@@ -1463,7 +1462,7 @@ handle_ibb_data (GabbleBytestreamFactory *self,
   if (is_iq && sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
-  data = lm_message_node_get_child_with_namespace (
+  data = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "data", NS_IBB);
   if (data == NULL)
     return FALSE;
@@ -1520,7 +1519,7 @@ handle_muc_data (GabbleBytestreamFactory *self,
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  data = lm_message_node_get_child_with_namespace (
+  data = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "data", NS_MUC_BYTESTREAM);
   if (data == NULL)
     return FALSE;
@@ -1622,7 +1621,7 @@ handle_socks5_query_iq (
   const gchar *tmp;
   WockyNodeIter i;
 
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "query", NS_BYTESTREAMS);
   g_return_val_if_fail (query_node != NULL, FALSE);
 
@@ -1902,7 +1901,7 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
   WockyNode *value;
   WockyNodeIter i;
 
-  si_multi = lm_message_node_get_child_with_namespace (si, "si-multiple",
+  si_multi = wocky_node_get_child_ns (si, "si-multiple",
       NS_SI_MULTIPLE);
   if (si_multi == NULL)
     return NULL;
@@ -1942,7 +1941,7 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
   const gchar *stream_method;
   WockyNodeIter i;
 
-  feature = lm_message_node_get_child_with_namespace (si, "feature",
+  feature = wocky_node_get_child_ns (si, "feature",
       NS_FEATURENEG);
   if (feature == NULL)
     {
@@ -1950,7 +1949,7 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
       return NULL;
     }
 
-  x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
+  x = wocky_node_get_child_ns (feature, "x", NS_X_DATA);
   if (x == NULL)
     {
       STANZA_DEBUG (reply_msg, "got a SI reply without a x field");
@@ -2100,7 +2099,7 @@ streaminit_reply_cb (GabbleConnection *conn,
       g_object_get (muc, "self-jid", &self_jid, NULL);
     }
 
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "si", NS_SI);
   if (si == NULL)
     {

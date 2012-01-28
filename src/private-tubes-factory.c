@@ -754,7 +754,7 @@ private_tubes_factory_msg_tube_cb (
 
   tube_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
-  close_node = lm_message_node_get_child_with_namespace (
+  close_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "close", NS_TUBES);
 
   if (tube_node == NULL && close_node == NULL)

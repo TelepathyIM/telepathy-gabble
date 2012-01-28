@@ -178,17 +178,16 @@ lm_message_node_get_child_with_namespace (WockyNode *node,
                                           const gchar *name,
                                           const gchar *ns)
 {
-  WockyNode *found;
-  NodeIter i;
+  WockyNode *found, *child;
+  WockyNodeIter i;
 
   found = wocky_node_get_child_ns (node, name, ns);
   if (found != NULL)
     return found;
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &child))
     {
-      WockyNode *child = node_iter_data (i);
-
       found = lm_message_node_get_child_with_namespace (child, name, ns);
       if (found != NULL)
         return found;
@@ -417,7 +416,8 @@ lm_message_node_extract_properties (WockyNode *node,
                                     const gchar *prop)
 {
   GHashTable *properties;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *child;
 
   properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
@@ -425,26 +425,15 @@ lm_message_node_extract_properties (WockyNode *node,
   if (node == NULL)
     return properties;
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, prop, NULL);
+  while (wocky_node_iter_next (&i, &child))
     {
-      WockyNode *child = node_iter_data (i);
-      const gchar *name;
-      const gchar *type;
-      const gchar *value;
+      const gchar *name = wocky_node_get_attribute (child, "name");
+      const gchar *type = wocky_node_get_attribute (child, "type");
+      const gchar *value = child->content;
       GValue *gvalue;
 
-      if (0 != strcmp (child->name, prop))
-        continue;
-
-      name = wocky_node_get_attribute (child, "name");
-
-      if (!name)
-        continue;
-
-      type = wocky_node_get_attribute (child, "type");
-      value = child->content;
-
-      if (type == NULL || value == NULL)
+      if (name == NULL || type == NULL || value == NULL)
         continue;
 
       if (0 == strcmp (type, "bytes"))

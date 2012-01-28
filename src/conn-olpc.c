@@ -621,79 +621,78 @@ extract_activities (GabbleConnection *conn,
   TpHandleSet *activities_set, *old_activities;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
-  NodeIter i;
+  WockyNodeIter i;
 
   activities_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "activities", NULL);
 
   activities_set = tp_handle_set_new (room_repo);
 
-  for (i = (activities_node != NULL ? node_iter (activities_node) : NULL);
-       i;
-       i = node_iter_next (i))
+  if (activities_node != NULL)
     {
-      const gchar *act_id;
-      const gchar *room;
-      WockyNode *node = node_iter_data (i);
-      GabbleOlpcActivity *activity;
-      TpHandle room_handle;
-
-      if (tp_strdiff (node->name, "activity"))
-        continue;
-
-      act_id = wocky_node_get_attribute (node, "type");
-      if (act_id == NULL)
+      WockyNode *node;
+      wocky_node_iter_init (&i, activities_node, "activity", NULL);
+      while (wocky_node_iter_next (&i, &node))
         {
-          NODE_DEBUG (node, "No activity ID, skipping");
-          continue;
-        }
+          const gchar *act_id;
+          const gchar *room;
+          GabbleOlpcActivity *activity;
+          TpHandle room_handle;
 
-      room = wocky_node_get_attribute (node, "room");
-      if (room == NULL)
-        {
-          NODE_DEBUG (node, "No room name, skipping");
-          continue;
-        }
-
-      room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
-      if (room_handle == 0)
-        {
-          DEBUG ("Invalid room name <%s>, skipping", room);
-          continue;
-        }
-
-      activity = g_hash_table_lookup (conn->olpc_activities_info,
-          GUINT_TO_POINTER (room_handle));
-
-      if (activity == NULL)
-        {
-          activity = add_activity_info (conn, room_handle);
-          g_assert (!tp_handle_set_is_member (activities_set, room_handle));
-        }
-      else
-        {
-          if (tp_handle_set_is_member (activities_set, room_handle))
+          act_id = wocky_node_get_attribute (node, "type");
+          if (act_id == NULL)
             {
-              NODE_DEBUG (node, "Room advertised twice, skipping");
-              tp_handle_unref (room_repo, room_handle);
+              NODE_DEBUG (node, "No activity ID, skipping");
               continue;
             }
 
-          g_object_ref (activity);
+          room = wocky_node_get_attribute (node, "room");
+          if (room == NULL)
+            {
+              NODE_DEBUG (node, "No room name, skipping");
+              continue;
+            }
 
-          DEBUG ("ref: %s (%d) refcount: %d\n",
-              gabble_olpc_activity_get_room (activity),
-              activity->room, G_OBJECT (activity)->ref_count);
-        }
-      /* pass ownership to the activities_set */
-      tp_handle_set_add (activities_set, room_handle);
-      tp_handle_unref (room_repo, room_handle);
+          room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
+          if (room_handle == 0)
+            {
+              DEBUG ("Invalid room name <%s>, skipping", room);
+              continue;
+            }
 
-      if (tp_strdiff (activity->id, act_id))
-        {
-          DEBUG ("Assigning new ID <%s> to room #%u <%s>", act_id, room_handle,
-              room);
-          g_object_set (activity, "id", act_id, NULL);
+          activity = g_hash_table_lookup (conn->olpc_activities_info,
+              GUINT_TO_POINTER (room_handle));
+
+          if (activity == NULL)
+            {
+              activity = add_activity_info (conn, room_handle);
+              g_assert (!tp_handle_set_is_member (activities_set, room_handle));
+            }
+          else
+            {
+              if (tp_handle_set_is_member (activities_set, room_handle))
+                {
+                  NODE_DEBUG (node, "Room advertised twice, skipping");
+                  tp_handle_unref (room_repo, room_handle);
+                  continue;
+                }
+
+              g_object_ref (activity);
+
+              DEBUG ("ref: %s (%d) refcount: %d\n",
+                  gabble_olpc_activity_get_room (activity),
+                  activity->room, G_OBJECT (activity)->ref_count);
+            }
+          /* pass ownership to the activities_set */
+          tp_handle_set_add (activities_set, room_handle);
+          tp_handle_unref (room_repo, room_handle);
+
+          if (tp_strdiff (activity->id, act_id))
+            {
+              DEBUG ("Assigning new ID <%s> to room #%u <%s>", act_id, room_handle,
+                  room);
+              g_object_set (activity, "id", act_id, NULL);
+            }
         }
     }
 
@@ -2099,20 +2098,17 @@ update_activities_properties (GabbleConnection *conn,
 {
   const gchar *room;
   WockyNode *node;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *properties_node;
 
   node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "activities", NULL);
   if (node == NULL)
     return FALSE;
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, "properties", NULL);
+  while (wocky_node_iter_next (&i, &properties_node))
     {
-      WockyNode *properties_node = node_iter_data (i);
-
-      if (strcmp (properties_node->name, "properties") != 0)
-        continue;
-
       room = wocky_node_get_attribute (properties_node, "room");
       if (room == NULL)
         continue;

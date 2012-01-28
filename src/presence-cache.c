@@ -779,7 +779,7 @@ _grab_nickname (GabblePresenceCache *cache,
   const gchar *nickname;
   GabblePresence *presence;
 
-  node = lm_message_node_get_child_with_namespace (node, "nick", NS_NICK);
+  node = wocky_node_get_child_ns (node, "nick", NS_NICK);
 
   if (NULL == node)
     return;

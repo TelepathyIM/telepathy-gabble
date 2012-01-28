@@ -668,7 +668,7 @@ _grab_nickname (GabbleConnection *self,
   GQuark quark = gabble_conn_aliasing_pep_alias_quark ();
   const gchar *old, *nickname;
 
-  node = lm_message_node_get_child_with_namespace (node, "nick", NS_NICK);
+  node = wocky_node_get_child_ns (node, "nick", NS_NICK);
 
   if (NULL == node)
     {

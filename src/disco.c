@@ -401,7 +401,7 @@ request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
       wocky_stanza_get_top_node (reply_msg),
       "query", disco_type_to_xmlns (request->type));
 
-  if (!wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
     {
       /* pass */
     }

@@ -3,6 +3,7 @@ TWISTED_TESTS = \
 	avatar-requirements.py \
 	caps/advertise-contact-caps.py \
 	caps/advertise-legacy.py \
+	caps/broken-reply.py \
 	caps/caps-cache.py \
 	caps/caps-persistent-cache.py \
 	caps/compat-bundles.py \

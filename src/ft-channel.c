@@ -1322,7 +1322,8 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  WockyNode *file;
+  WockyNode *si;
+  WockyNode *file = NULL;
 
   if (bytestream == NULL)
     {
@@ -1334,7 +1335,10 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       return;
     }
 
-  file = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (msg), "file", NULL);
+  si = wocky_node_get_child_ns (wocky_stanza_get_top_node (msg), "si", NS_SI);
+  if (si != NULL)
+    file = wocky_node_get_child_ns (si, "file", NULL);
+
   if (file != NULL)
     {
       WockyNode *range;

@@ -5,10 +5,7 @@ Test basic outgoing and incoming call handling
 import dbus
 from dbus.exceptions import DBusException
 
-from twisted.words.xish import xpath
-
 from servicetest import (
-    make_channel_proxy, wrap_channel,
     EventPattern, call_async,
     assertEquals, assertDoesNotContain, assertContains, assertLength, assertNotEquals,
     DictionarySupersetOf)

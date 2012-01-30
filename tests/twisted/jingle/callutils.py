@@ -31,11 +31,16 @@ def check_state (q, chan, state, wait = False):
     assertEquals (state,
         properties["CallState"])
 
-def check_and_accept_offer (q, bus, conn, content, md, remote_handle,
+def check_and_accept_offer (q, bus, conn, content, md, in_remote_handle = 0,
         offer_path = None, md_changed = True):
 
     [path, remote_md] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
+
+    remote_handle = remote_md[cs.CALL_CONTENT_MEDIADESCRIPTION + '.RemoteContact']
+
+    if in_remote_handle != 0:
+        assertEquals(remote_handle, in_remote_handle)
 
     if offer_path != None:
         assertEquals (offer_path, path)

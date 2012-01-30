@@ -3511,12 +3511,16 @@ gabble_muc_channel_get_call_channels (GabbleMucChannel *self)
 }
 
 static void
-muc_channel_call_ended_cb (GabbleCallMucChannel *muc, gpointer user_data)
+muc_channel_call_state_changed_cb (GabbleCallMucChannel *muc, TpCallState state,
+    TpCallFlags flags, GValueArray *reason, GHashTable *details,
+    GabbleMucChannel *gmuc)
 {
-  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (user_data);
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+  if (state != TP_CALL_STATE_ENDED)
+    return;
 
-  g_assert (self->priv->call == muc);
-  self->priv->call = NULL;
+  if (priv->call == muc)
+    priv->call = NULL;
 }
 
 static void
@@ -3602,8 +3606,8 @@ muc_channel_call_channel_done_cb (GObject *source,
     G_CALLBACK (muc_channel_call_closed_cb),
     gmuc);
 
-  g_signal_connect (priv->call, "ended",
-    G_CALLBACK (muc_channel_call_ended_cb),
+  g_signal_connect (priv->call, "call-state-changed",
+    G_CALLBACK (muc_channel_call_state_changed_cb),
     gmuc);
 
 error:

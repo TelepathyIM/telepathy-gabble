@@ -814,20 +814,20 @@ class JingleTest2:
     def dbusify_call_codecs_with_params(self, codecs):
         return dbusify_call_codecs (self, codecs)
 
-    def get_call_audio_codecs_dbus(self):
+    def __get_call_audio_codecs_dbus(self):
         return self.dbusify_call_codecs(self.audio_codecs)
 
-    def get_call_video_codecs_dbus(self):
+    def __get_call_video_codecs_dbus(self):
         return self.dbusify_call_codecs(self.video_codecs)
 
     def get_call_audio_md_dbus(self):
         return dbus.Dictionary(
-            { cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs': self.get_call_audio_codecs_dbus(),
+            { cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs': self.__get_call_audio_codecs_dbus(),
             }, signature='sv')
 
     def get_call_video_md_dbus(self):
         return dbus.Dictionary(
-            { cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs': self.get_call_video_codecs_dbus(),
+            { cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs': self.__get_call_video_codecs_dbus(),
             }, signature='sv')
 
     def get_remote_transports_dbus(self):

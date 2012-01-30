@@ -594,7 +594,7 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
             }
 
           g_hash_table_iter_init (&iter,
-            g_value_get_boxed (codec->values + 4));
+            g_value_get_boxed (codec->values + 5));
           while (g_hash_table_iter_next (&iter, &key, &value))
               wocky_node_add_build (pt,
                 '(', "parameter",
@@ -1083,6 +1083,7 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
     "connection", connection,
     "handle", target,
     "requested", request != NULL,
+    "mutable-contents", TRUE,
     "initial-audio", initial_audio,
     "initial-audio-name",
        initial_audio_name != NULL ? initial_audio_name : "audio",

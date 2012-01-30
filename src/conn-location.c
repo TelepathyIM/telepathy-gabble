@@ -10,6 +10,7 @@
 
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
+#include <wocky/wocky-namespaces.h>
 
 #include <gabble/gabble.h>
 
@@ -75,8 +76,10 @@ build_mapping_tables (void)
     }
 }
 
-static gboolean update_location_from_msg (GabbleConnection *conn,
-    TpHandle contact, WockyStanza *msg);
+static gboolean update_location_from_item (
+    GabbleConnection *conn,
+    TpHandle contact,
+    WockyNode *item_node);
 
 /*
  * get_cached_location:
@@ -181,9 +184,17 @@ request_location_reply_cb (GObject *source,
     }
   else
     {
+      WockyNode *pubsub_node, *items_node = NULL, *item_node = NULL;
       GHashTable *location;
 
-      if (update_location_from_msg (ctx->self, ctx->handle, reply))
+      pubsub_node = wocky_node_get_child_ns (
+          wocky_stanza_get_top_node (reply), "pubsub", NS_PUBSUB);
+      if (pubsub_node != NULL)
+        items_node = wocky_node_get_child (pubsub_node, "items");
+      if (items_node != NULL)
+        item_node = wocky_node_get_child (items_node, "item");
+
+      if (update_location_from_item (ctx->self, ctx->handle, item_node))
         {
           location = get_cached_location (ctx->self, ctx->handle);
           /* We just cached a location for this contact, so it should be
@@ -516,9 +527,10 @@ conn_location_properties_setter (GObject *object,
 }
 
 static gboolean
-update_location_from_msg (GabbleConnection *conn,
-                          TpHandle contact,
-                          WockyStanza *msg)
+update_location_from_item (
+    GabbleConnection *conn,
+    TpHandle contact,
+    WockyNode *item_node)
 {
   WockyNode *node;
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal,
@@ -530,8 +542,10 @@ update_location_from_msg (GabbleConnection *conn,
   WockyNode *subloc_node;
   const gchar *lang;
 
-  node = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (msg),
-      "geoloc", NULL);
+  if (item_node == NULL)
+    return FALSE;
+
+  node = wocky_node_get_child_ns (item_node, "geoloc", NS_GEOLOC);
   if (node == NULL)
     return FALSE;
 
@@ -625,6 +639,7 @@ location_pep_node_changed (WockyPepService *pep,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandle handle;
   const gchar *jid;
+  WockyNode *event_node, *items_node = NULL, *item_node = NULL;
 
   jid = wocky_bare_contact_get_jid (contact);
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
@@ -638,7 +653,16 @@ location_pep_node_changed (WockyPepService *pep,
     /* Ignore echoed pubsub notifications */
     goto out;
 
-  update_location_from_msg (conn, handle, stanza);
+  /* TODO: WockyPepService should do this for us.
+   * https://bugs.freedesktop.org/show_bug.cgi?id=45400 */
+  event_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (stanza), "event", WOCKY_XMPP_NS_PUBSUB_EVENT);
+  if (event_node != NULL)
+    items_node = wocky_node_get_child (event_node, "items");
+  if (items_node != NULL)
+    item_node = wocky_node_get_child (items_node, "item");
+
+  update_location_from_item (conn, handle, item_node);
 
 out:
   tp_handle_unref (contact_repo, handle);

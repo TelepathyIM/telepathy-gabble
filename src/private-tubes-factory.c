@@ -82,6 +82,7 @@ struct _GabblePrivateTubesFactoryPrivate
   GabbleConnection *conn;
   gulong status_changed_id;
   guint msg_tube_cb;
+  guint msg_close_cb;
 
   GHashTable *tubes_channels;
 
@@ -134,8 +135,14 @@ porter_available_cb (
       WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX,
       private_tubes_factory_msg_tube_cb, self,
-      /* FIXME: pattern-match at least a little bit… */
-      NULL);
+      '(', "tube", ':', NS_TUBES,
+      ')', NULL);
+  priv->msg_close_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      private_tubes_factory_msg_tube_cb, self,
+      '(', "close", ':', NS_TUBES,
+      ')', NULL);
 }
 
 static void
@@ -381,6 +388,8 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 
       wocky_porter_unregister_handler (porter, priv->msg_tube_cb);
       priv->msg_tube_cb = 0;
+      wocky_porter_unregister_handler (porter, priv->msg_close_cb);
+      priv->msg_close_cb = 0;
     }
 
   /* Use a temporary variable (the macro does this) because we don't want
@@ -752,13 +761,12 @@ private_tubes_factory_msg_tube_cb (
   const gchar *from;
   TpHandle handle;
 
-  tube_node = lm_message_node_get_child_with_namespace (
+  tube_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
   close_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "close", NS_TUBES);
 
-  if (tube_node == NULL && close_node == NULL)
-    return FALSE;
+  g_return_val_if_fail (tube_node != NULL || close_node != NULL, FALSE);
 
   from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");

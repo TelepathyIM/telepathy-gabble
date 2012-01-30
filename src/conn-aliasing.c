@@ -709,7 +709,6 @@ pep_nick_node_changed (WockyPepService *pep,
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
-  WockyNode *node;
   TpHandle handle;
   const gchar *jid;
 
@@ -721,15 +720,13 @@ pep_nick_node_changed (WockyPepService *pep,
       return;
     }
 
-  node = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (stanza),
-      "item", NULL);
-  if (NULL == node)
+  if (NULL == item)
     {
       STANZA_DEBUG (stanza, "PEP event without item node, ignoring");
       return;
     }
 
-  _grab_nickname (conn, handle, node);
+  _grab_nickname (conn, handle, item);
 }
 
 

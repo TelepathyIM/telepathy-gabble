@@ -240,8 +240,9 @@ get_properties_reply_cb (GObject *source,
   GHashTable *properties;
   WockyNode *node;
 
+  /* FIXME: can we just pass &node in here to get the <properties/>? */
   reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &error);
+      NULL, &error);
   if (reply_msg == NULL)
     {
       GError err = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -441,6 +442,7 @@ static void
 olpc_buddy_props_pep_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyStanza *stanza,
+    WockyNode *item,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -485,7 +487,7 @@ get_activity_properties_reply_cb (GObject *source,
   GError *error = NULL;
 
   reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &error);
+      NULL, &error);
   if (reply_msg == NULL)
     {
       DEBUG ("Failed to send activity properties request to server: %s",
@@ -787,7 +789,7 @@ get_activities_reply_cb (GObject *source,
   GError *stanza_error = NULL;
 
   reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &err);
+      NULL, &err);
   if (reply_msg == NULL)
     {
       GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -1143,6 +1145,7 @@ static void
 olpc_activities_pep_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyStanza *stanza,
+    WockyNode *item,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -1298,7 +1301,7 @@ get_current_activity_reply_cb (GObject *source,
   GabbleOlpcActivity *activity;
 
   reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &error);
+      NULL, &error);
   if (reply_msg == NULL)
     {
       GError err = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
@@ -1500,6 +1503,7 @@ static void
 olpc_current_act_pep_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyStanza *stanza,
+    WockyNode *item,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -2122,6 +2126,7 @@ static void
 olpc_act_props_pep_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyStanza *stanza,
+    WockyNode *item,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (

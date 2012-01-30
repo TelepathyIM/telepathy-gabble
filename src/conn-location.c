@@ -169,10 +169,11 @@ request_location_reply_cb (GObject *source,
 {
   YetAnotherContextStruct *ctx = user_data;
   WockyStanza *reply;
+  WockyNode *item_node;
   GError *wocky_error = NULL, *tp_error = NULL;
 
   reply = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &wocky_error);
+      &item_node, &wocky_error);
 
   if (reply == NULL ||
       wocky_stanza_extract_errors (reply, NULL, &wocky_error, NULL, NULL))
@@ -184,15 +185,7 @@ request_location_reply_cb (GObject *source,
     }
   else
     {
-      WockyNode *pubsub_node, *items_node = NULL, *item_node = NULL;
       GHashTable *location;
-
-      pubsub_node = wocky_node_get_child_ns (
-          wocky_stanza_get_top_node (reply), "pubsub", NS_PUBSUB);
-      if (pubsub_node != NULL)
-        items_node = wocky_node_get_child (pubsub_node, "items");
-      if (items_node != NULL)
-        item_node = wocky_node_get_child (items_node, "item");
 
       if (update_location_from_item (ctx->self, ctx->handle, item_node))
         {
@@ -632,6 +625,7 @@ static void
 location_pep_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyStanza *stanza,
+    WockyNode *item_node,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -639,7 +633,6 @@ location_pep_node_changed (WockyPepService *pep,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandle handle;
   const gchar *jid;
-  WockyNode *event_node, *items_node = NULL, *item_node = NULL;
 
   jid = wocky_bare_contact_get_jid (contact);
   handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
@@ -652,15 +645,6 @@ location_pep_node_changed (WockyPepService *pep,
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
     goto out;
-
-  /* TODO: WockyPepService should do this for us.
-   * https://bugs.freedesktop.org/show_bug.cgi?id=45400 */
-  event_node = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (stanza), "event", WOCKY_XMPP_NS_PUBSUB_EVENT);
-  if (event_node != NULL)
-    items_node = wocky_node_get_child (event_node, "items");
-  if (items_node != NULL)
-    item_node = wocky_node_get_child (items_node, "item");
 
   update_location_from_item (conn, handle, item_node);
 

@@ -51,9 +51,6 @@ update_activities_properties (GabbleConnection *conn, const gchar *contact,
     WockyStanza *msg);
 
 /*
- * If you are trying to get a direct child of a node in a particular namespace,
- * use wocky_node_get_child_ns(), not this function.
- *
  * This function performs a depth-first search on @node to find any element
  * named @name in namespace @ns. This is usually not what you want because you
  * don't want a depth-first search of the entire hierarchy: you know at what
@@ -62,9 +59,10 @@ update_activities_properties (GabbleConnection *conn, const gchar *contact,
  * wildly misconstructed stanzas. Please think of the kittens.
  */
 static WockyNode *
-lm_message_node_get_child_with_namespace (WockyNode *node,
-                                          const gchar *name,
-                                          const gchar *ns)
+search_for_child (
+    WockyNode *node,
+    const gchar *name,
+    const gchar *ns)
 {
   WockyNode *found, *child;
   WockyNodeIter i;
@@ -76,7 +74,7 @@ lm_message_node_get_child_with_namespace (WockyNode *node,
   wocky_node_iter_init (&i, node, NULL, NULL);
   while (wocky_node_iter_next (&i, &child))
     {
-      found = lm_message_node_get_child_with_namespace (child, name, ns);
+      found = search_for_child (child, name, ns);
       if (found != NULL)
         return found;
     }
@@ -292,7 +290,7 @@ get_properties_reply_cb (GObject *source,
   if (!check_query_reply_msg (reply_msg, ctx->context))
     goto out;
 
-  node = lm_message_node_get_child_with_namespace (
+  node = search_for_child (
       wocky_stanza_get_top_node (reply_msg), "properties", NULL);
   properties = lm_message_node_extract_properties (node, "property");
 
@@ -499,7 +497,7 @@ olpc_buddy_props_pep_node_changed (WockyPepService *pep,
     /* Ignore echoed pubsub notifications */
     goto out;
 
-  node = lm_message_node_get_child_with_namespace (
+  node = search_for_child (
       wocky_stanza_get_top_node (stanza), "properties", NULL);
   properties = lm_message_node_extract_properties (node, "property");
   gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
@@ -659,7 +657,7 @@ extract_activities (GabbleConnection *conn,
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
   WockyNodeIter i;
 
-  activities_node = lm_message_node_get_child_with_namespace (
+  activities_node = search_for_child (
       wocky_stanza_get_top_node (msg), "activities", NULL);
 
   activities_set = tp_handle_set_new (room_repo);
@@ -1360,7 +1358,7 @@ get_current_activity_reply_cb (GObject *source,
 
   from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (reply_msg), "from");
-  node = lm_message_node_get_child_with_namespace (
+  node = search_for_child (
       wocky_stanza_get_top_node (reply_msg), "activity", NULL);
   activity = extract_current_activity (ctx->conn, node, from, TRUE);
   if (activity == NULL)
@@ -1560,7 +1558,7 @@ olpc_current_act_pep_node_changed (WockyPepService *pep,
     /* Ignore echoed pubsub notifications */
     goto out;
 
-  node = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (stanza),
+  node = search_for_child (wocky_stanza_get_top_node (stanza),
       "activity", NULL);
 
   activity = extract_current_activity (conn, node, jid, TRUE);
@@ -2139,7 +2137,7 @@ update_activities_properties (GabbleConnection *conn,
   WockyNodeIter i;
   WockyNode *properties_node;
 
-  node = lm_message_node_get_child_with_namespace (
+  node = search_for_child (
       wocky_stanza_get_top_node (msg), "activities", NULL);
   if (node == NULL)
     return FALSE;
@@ -2239,7 +2237,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
       TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_ROOM);
-  WockyNode *node = lm_message_node_get_child_with_namespace (
+  WockyNode *node = search_for_child (
       wocky_stanza_get_top_node (msg), "properties", NS_OLPC_ACTIVITY_PROPS);
   const gchar *id;
   TpHandle room_handle, contact_handle = 0;
@@ -2542,7 +2540,7 @@ conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
   TpHandle room_handle, from_handle;
   TpHandleSet *rooms;
 
-  node = lm_message_node_get_child_with_namespace (
+  node = search_for_child (
       wocky_stanza_get_top_node (msg), "uninvite", NS_OLPC_ACTIVITY_PROPS);
 
   /* if no <uninvite xmlns=...>, then not for us */

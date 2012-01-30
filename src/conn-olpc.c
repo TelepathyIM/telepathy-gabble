@@ -50,6 +50,40 @@ static gboolean
 update_activities_properties (GabbleConnection *conn, const gchar *contact,
     WockyStanza *msg);
 
+/*
+ * If you are trying to get a direct child of a node in a particular namespace,
+ * use wocky_node_get_child_ns(), not this function.
+ *
+ * This function performs a depth-first search on @node to find any element
+ * named @name in namespace @ns. This is usually not what you want because you
+ * don't want a depth-first search of the entire hierarchy: you know at what
+ * level of nesting you expect to find an element. Using this function rather
+ * than wocky_node_get_child_ns() a couple of times opens you up to accepting
+ * wildly misconstructed stanzas. Please think of the kittens.
+ */
+static WockyNode *
+lm_message_node_get_child_with_namespace (WockyNode *node,
+                                          const gchar *name,
+                                          const gchar *ns)
+{
+  WockyNode *found, *child;
+  WockyNodeIter i;
+
+  found = wocky_node_get_child_ns (node, name, ns);
+  if (found != NULL)
+    return found;
+
+  wocky_node_iter_init (&i, node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &child))
+    {
+      found = lm_message_node_get_child_with_namespace (child, name, ns);
+      if (found != NULL)
+        return found;
+    }
+
+  return NULL;
+}
+
 /* Returns TRUE if it actually contributed something, else FALSE.
  */
 static gboolean

@@ -45,8 +45,6 @@ gchar *gabble_generate_id (void);
 
 void lm_message_node_add_own_nick (WockyNode *node,
     GabbleConnection *conn);
-WockyNode *lm_message_node_get_child_with_namespace (WockyNode *node,
-    const gchar *name, const gchar *ns);
 
 G_GNUC_WARN_UNUSED_RESULT
 gchar *gabble_encode_jid (const gchar *node, const gchar *domain,

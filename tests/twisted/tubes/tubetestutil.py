@@ -30,7 +30,7 @@ def cleanup():
             os.remove(f)
         except OSError:
             pass # worse things have happened
-    _to_cleanup = []
+    del _to_cleanup[:]
 
 def check_tube_in_tubes(tube, tubes):
     """

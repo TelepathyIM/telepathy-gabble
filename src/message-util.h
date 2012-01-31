@@ -23,7 +23,6 @@
 
 #include <telepathy-glib/message-mixin.h>
 
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky.h>
 #include <wocky/wocky-xmpp-error.h>
 
@@ -35,18 +34,18 @@ void gabble_message_util_add_chat_state (WockyStanza *stanza,
     TpChannelChatState state);
 
 WockyStanza * gabble_message_util_build_stanza (TpMessage *message,
-    GabbleConnection *conn, LmMessageSubType subtype,
+    GabbleConnection *conn, WockyStanzaSubType subtype,
     TpChannelChatState state, const char *recipient, gboolean send_nick,
     gchar **token, GError **error);
 
 gboolean gabble_message_util_send_chat_state (GObject *obj,
-    GabbleConnection *conn, LmMessageSubType subtype, TpChannelChatState state,
+    GabbleConnection *conn, WockyStanzaSubType subtype, TpChannelChatState state,
     const char *recipient, GError **error);
 
 
 #define GABBLE_TEXT_CHANNEL_SEND_NO_ERROR ((TpChannelTextSendError)-1)
 
-gboolean gabble_message_util_parse_incoming_message (LmMessage *message,
+gboolean gabble_message_util_parse_incoming_message (WockyStanza *message,
     const gchar **from, time_t *stamp, TpChannelTextMessageType *msgtype,
     const gchar **id, const gchar **body_ret, gint *state,
     TpChannelTextSendError *send_error, TpDeliveryStatus *delivery_status);

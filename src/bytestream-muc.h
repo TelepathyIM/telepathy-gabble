@@ -21,8 +21,7 @@
 #define __GABBLE_BYTESTREAM_MUC_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
+#include <wocky/wocky-stanza.h>
 #include <telepathy-glib/base-connection.h>
 
 G_BEGIN_DECLS
@@ -61,7 +60,7 @@ GType gabble_bytestream_muc_get_type (void);
                               GabbleBytestreamMucClass))
 
 void gabble_bytestream_muc_receive (GabbleBytestreamMuc *bytestream,
-   LmMessage *msg);
+   WockyStanza *msg);
 
 gboolean gabble_bytestream_muc_send_to (GabbleBytestreamMuc *bytestream,
     TpHandle to, guint len, gchar *str);

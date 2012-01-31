@@ -27,7 +27,6 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky-connector.h>
 #include <wocky/wocky-disco-identity.h>
 #include <wocky/wocky-tls-handler.h>
@@ -288,6 +287,15 @@ struct _GabbleConnectionPrivate
    * to connected */
   guint waiting_connected;
 
+  /* Used to cancel pending calls to _gabble_connection_send_with_reply(). It
+   * should not be necessary because by the time we get to cancelling this (in
+   * our dispose()) the porter should be long dead and have called back for all
+   * outstanding requests. However... call this paranoia, and a desire to
+   * delete the Loudmouth compatibility layer without spending any more hours
+   * untangling even more old code.
+   */
+  GCancellable *iq_reply_cancellable;
+
   gboolean closing;
   /* gobject housekeeping */
   gboolean dispose_has_run;
@@ -533,7 +541,7 @@ gabble_connection_init (GabbleConnection *self)
     }
 
   self->priv = priv;
-  self->lmconn = lm_connection_new ();
+  priv->iq_reply_cancellable = g_cancellable_new ();
 
   priv->caps_serial = 1;
   priv->last_activity_time = time (NULL);
@@ -1235,9 +1243,11 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&priv->connector);
   tp_clear_object (&self->session);
 
-  /* ownership of our porter was transferred to the LmConnection */
+  /* The porter was borrowed from the session. */
   priv->porter = NULL;
-  tp_clear_pointer (&self->lmconn, lm_connection_unref);
+  /* Cancel any outstanding _gabble_connection_send_with_reply() requests. */
+  g_cancellable_cancel (priv->iq_reply_cancellable);
+  tp_clear_object (&priv->iq_reply_cancellable);
 
   g_hash_table_unref (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
@@ -1399,14 +1409,14 @@ gabble_connection_get_session (GabbleConnection *connection)
 /**
  * _gabble_connection_send
  *
- * Send an LmMessage and trap network errors appropriately.
+ * Send an WockyStanza and trap network errors appropriately.
  */
 gboolean
-_gabble_connection_send (GabbleConnection *conn, LmMessage *msg, GError **error)
+_gabble_connection_send (GabbleConnection *conn, WockyStanza *msg, GError **error)
 {
   g_assert (GABBLE_IS_CONNECTION (conn));
 
-  if (conn->lmconn == NULL || conn->priv->porter == NULL)
+  if (conn->priv->porter == NULL)
     {
       g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
@@ -1433,43 +1443,12 @@ typedef struct {
     GabbleConnectionMsgReplyFunc reply_func;
 
     GabbleConnection *conn;
-    LmMessage *sent_msg;
+    WockyStanza *sent_msg;
     gpointer user_data;
 
     GObject *object;
     gboolean object_alive;
 } GabbleMsgHandlerData;
-
-static LmHandlerResult
-message_send_reply_cb (LmMessageHandler *handler,
-                       LmConnection *connection,
-                       LmMessage *reply_msg,
-                       gpointer user_data)
-{
-  GabbleMsgHandlerData *handler_data = user_data;
-  LmMessageSubType sub_type;
-
-  sub_type = lm_message_get_sub_type (reply_msg);
-
-  /* Is it a reply to this message? If we're talking to another loudmouth,
-   * they can send us messages which have the same ID as ones we send. :-O */
-  if (sub_type != LM_MESSAGE_SUB_TYPE_RESULT &&
-      sub_type != LM_MESSAGE_SUB_TYPE_ERROR)
-    {
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-    }
-
-  if (handler_data->object_alive && handler_data->reply_func != NULL)
-    {
-      return handler_data->reply_func (handler_data->conn,
-                                       handler_data->sent_msg,
-                                       reply_msg,
-                                       handler_data->object,
-                                       handler_data->user_data);
-    }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-}
 
 static void
 message_send_object_destroy_notify_cb (gpointer data,
@@ -1482,10 +1461,8 @@ message_send_object_destroy_notify_cb (gpointer data,
 }
 
 static void
-message_send_handler_destroy_cb (gpointer data)
+msg_handler_data_free (GabbleMsgHandlerData *handler_data)
 {
-  GabbleMsgHandlerData *handler_data = data;
-
   g_object_unref (handler_data->sent_msg);
 
   if (handler_data->object != NULL)
@@ -1498,10 +1475,43 @@ message_send_handler_destroy_cb (gpointer data)
   g_slice_free (GabbleMsgHandlerData, handler_data);
 }
 
+static void
+message_send_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleMsgHandlerData *handler_data = user_data;
+
+  if (handler_data->object_alive && handler_data->reply_func != NULL)
+    {
+      WockyPorter *porter = WOCKY_PORTER (source);
+      GError *error = NULL;
+      WockyStanza *stanza = wocky_porter_send_iq_finish (porter, result, &error);
+
+      if (stanza != NULL)
+        {
+          handler_data->reply_func (handler_data->conn,
+                                    handler_data->sent_msg,
+                                    stanza,
+                                    handler_data->object,
+                                    handler_data->user_data);
+          g_object_unref (stanza);
+        }
+      else
+        {
+          DEBUG ("send_iq_async failed: %s", error->message);
+          g_error_free (error);
+        }
+    }
+
+  msg_handler_data_free (handler_data);
+}
+
 /**
  * _gabble_connection_send_with_reply
  *
- * Send a tracked LmMessage and trap network errors appropriately.
+ * Send a tracked WockyStanza and trap network errors appropriately.
  *
  * If object is non-NULL the handler will follow the lifetime of that object,
  * which means that if the object is destroyed the callback will not be invoked.
@@ -1511,20 +1521,19 @@ message_send_handler_destroy_cb (gpointer data)
  */
 gboolean
 _gabble_connection_send_with_reply (GabbleConnection *conn,
-                                    LmMessage *msg,
+                                    WockyStanza *msg,
                                     GabbleConnectionMsgReplyFunc reply_func,
                                     GObject *object,
                                     gpointer user_data,
                                     GError **error)
 {
-  LmMessageHandler *handler;
+  GabbleConnectionPrivate *priv;
   GabbleMsgHandlerData *handler_data;
-  gboolean ret;
-  GError *lmerror = NULL;
 
   g_assert (GABBLE_IS_CONNECTION (conn));
+  priv = conn->priv;
 
-  if (conn->lmconn == NULL)
+  if (priv->porter == NULL)
     {
       g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
@@ -1548,26 +1557,10 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
                          handler_data);
     }
 
-  handler = lm_message_handler_new (message_send_reply_cb, handler_data,
-                                    message_send_handler_destroy_cb);
+  wocky_porter_send_iq_async (priv->porter, msg,
+      priv->iq_reply_cancellable, message_send_reply_cb, handler_data);
 
-  ret = lm_connection_send_with_reply (conn->lmconn, msg, handler, &lmerror);
-  if (!ret)
-    {
-      DEBUG ("failed: %s", lmerror->message);
-
-      if (error)
-        {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-              "message send failed: %s", lmerror->message);
-        }
-
-      g_error_free (lmerror);
-    }
-
-  lm_message_handler_unref (handler);
-
-  return ret;
+  return TRUE;
 }
 
 static void connect_iq_callbacks (GabbleConnection *conn);
@@ -1887,7 +1880,6 @@ connector_connected (GabbleConnection *self,
   g_signal_connect (priv->porter, "remote-error",
       G_CALLBACK (remote_error_cb), self);
 
-  lm_connection_set_porter (self->lmconn, priv->porter);
   g_signal_emit (self, sig_id_porter_available, 0, priv->porter);
   connect_iq_callbacks (self);
 
@@ -2316,7 +2308,7 @@ connection_shut_down (TpBaseConnection *base)
 
 void
 gabble_connection_fill_in_caps (GabbleConnection *self,
-    LmMessage *presence_message)
+    WockyStanza *presence_message)
 {
   GabblePresence *presence = self->self_presence;
   WockyNode *node = wocky_stanza_get_top_node (presence_message);
@@ -2372,7 +2364,7 @@ gabble_connection_send_capabilities (GabbleConnection *self,
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self, TP_HANDLE_TYPE_CONTACT);
-  LmMessage *message;
+  WockyStanza *message;
   gboolean ret;
   TpHandle handle;
 
@@ -2387,8 +2379,10 @@ gabble_connection_send_capabilities (GabbleConnection *self,
     }
 
   /* We deliberately don't include anything except the caps here */
-  message = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_PRESENCE,
-      LM_MESSAGE_SUB_TYPE_AVAILABLE);
+  message = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_PRESENCE, WOCKY_STANZA_SUB_TYPE_AVAILABLE,
+      NULL, recipient,
+      NULL);
 
   gabble_connection_fill_in_caps (self, message);
 
@@ -2406,7 +2400,7 @@ gabble_connection_request_decloak (GabbleConnection *self,
     GError **error)
 {
   GabblePresence *presence = self->self_presence;
-  LmMessage *message = gabble_presence_as_message (presence, to);
+  WockyStanza *message = gabble_presence_as_message (presence, to);
   WockyNode *decloak;
   gboolean ret;
 
@@ -2521,7 +2515,7 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
  */
 void
 _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
-                                       LmMessage *iq)
+                                       WockyStanza *iq)
 {
   wocky_porter_acknowledge_iq (wocky_session_get_porter (conn->session),
       iq, NULL);
@@ -3761,19 +3755,19 @@ gabble_connection_ensure_capabilities (GabbleConnection *self,
 
 gboolean
 gabble_connection_send_presence (GabbleConnection *conn,
-                                 LmMessageSubType sub_type,
+                                 WockyStanzaSubType sub_type,
                                  const gchar *contact,
                                  const gchar *status,
                                  GError **error)
 {
-  LmMessage *message;
+  WockyStanza *message;
   gboolean result;
 
-  message = lm_message_new_with_sub_type (contact,
-      LM_MESSAGE_TYPE_PRESENCE,
-      sub_type);
+  message = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE, sub_type,
+      NULL, contact,
+      NULL);
 
-  if (LM_MESSAGE_SUB_TYPE_SUBSCRIBE == sub_type)
+  if (WOCKY_STANZA_SUB_TYPE_SUBSCRIBE == sub_type)
     lm_message_node_add_own_nick (
         wocky_stanza_get_top_node (message), conn);
 

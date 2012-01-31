@@ -212,7 +212,6 @@ enumtype_sources = \
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la \
    $(top_builddir)/lib/gibber/libgibber.la \
-   $(top_builddir)/lib/loudmouth/libloudmouth.la \
    $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
    $(ALL_LIBS)
 

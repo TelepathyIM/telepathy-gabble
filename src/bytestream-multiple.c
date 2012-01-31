@@ -22,7 +22,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
@@ -387,7 +386,7 @@ gabble_bytestream_multiple_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamMultiple *self = GABBLE_BYTESTREAM_MULTIPLE (iface);
   GabbleBytestreamMultiplePrivate *priv =
       GABBLE_BYTESTREAM_MULTIPLE_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *si;
   GList *all_methods;
   gchar *current_method;

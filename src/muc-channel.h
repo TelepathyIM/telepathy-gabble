@@ -25,7 +25,6 @@
 #include <glib-object.h>
 #include <gio/gio.h>
 
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/base-channel.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/group-mixin.h>

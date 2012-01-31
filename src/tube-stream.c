@@ -31,7 +31,6 @@
 #endif
 
 #include <glib/gstdio.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/exportable-channel.h>
@@ -432,7 +431,7 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 static void
 extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                                const gchar *stream_id,
-                               LmMessage *msg,
+                               WockyStanza *msg,
                                GObject *object,
                                gpointer user_data)
 {
@@ -473,7 +472,7 @@ start_stream_initiation (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv;
   WockyNode *node, *si_node;
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
   gchar *full_jid, *stream_id, *id_str;
@@ -1891,7 +1890,7 @@ gabble_tube_stream_close (GabbleTubeIface *tube, gboolean closed_remotely)
 
   if (!closed_remotely && priv->handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      LmMessage *msg;
+      WockyStanza *msg;
       const gchar *jid;
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
           (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -1901,24 +1900,14 @@ gabble_tube_stream_close (GabbleTubeIface *tube, gboolean closed_remotely)
       id_str = g_strdup_printf ("%u", priv->id);
 
       /* Send the close message */
-      msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
-          '(', "close", "",
+      msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE,
+          WOCKY_STANZA_SUB_TYPE_NONE,
+          NULL, jid,
+          '(', "close",
             ':', NS_TUBES,
             '@', "tube", id_str,
           ')',
-          '(', "amp", "",
-            ':', NS_AMP,
-            '(', "rule", "",
-              '@', "condition", "deliver-at",
-              '@', "value", "stored",
-              '@', "action", "error",
-            ')',
-            '(', "rule", "",
-              '@', "condition", "match-resource",
-              '@', "value", "exact",
-              '@', "action", "error",
-            ')',
-          ')',
+          GABBLE_AMP_DO_NOT_STORE_SPEC,
           NULL);
       g_free (id_str);
 
@@ -2224,7 +2213,7 @@ send_tube_offer (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = GABBLE_TUBE_STREAM_GET_PRIVATE (self);
   WockyNode *tube_node = NULL;
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
   gboolean result;
@@ -2261,24 +2250,13 @@ send_tube_offer (GabbleTubeStream *self,
 
   full_jid = g_strdup_printf ("%s/%s", jid, resource);
 
-  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_MESSAGE,
-      '(', "tube", "",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, full_jid,
+      '(', "tube",
         '*', &tube_node,
         ':', NS_TUBES,
       ')',
-      '(', "amp", "",
-        ':', NS_AMP,
-        '(', "rule", "",
-          '@', "condition", "deliver-at",
-          '@', "value", "stored",
-          '@', "action", "error",
-        ')',
-        '(', "rule", "",
-          '@', "condition", "match-resource",
-          '@', "value", "exact",
-          '@', "action", "error",
-        ')',
-      ')',
+      GABBLE_AMP_DO_NOT_STORE_SPEC,
       NULL);
   g_free (full_jid);
 

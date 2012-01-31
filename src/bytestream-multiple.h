@@ -23,9 +23,6 @@
 #include <stdlib.h>
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
-#include <telepathy-glib/base-connection.h>
 
 #include "bytestream-iface.h"
 

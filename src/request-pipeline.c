@@ -44,7 +44,7 @@ G_DEFINE_TYPE (GabbleRequestPipeline, gabble_request_pipeline, G_TYPE_OBJECT);
 struct _GabbleRequestPipelineItem
 {
   GabbleRequestPipeline *pipeline;
-  LmMessage *message;
+  WockyStanza *message;
   guint timer_id;
   guint timeout;
   gboolean in_flight;
@@ -290,10 +290,10 @@ gabble_request_pipeline_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_request_pipeline_parent_class)->finalize (object);
 }
 
-static LmHandlerResult
+static void
 response_cb (GabbleConnection *conn,
-             LmMessage *sent,
-             LmMessage *reply,
+             WockyStanza *sent,
+             WockyStanza *reply,
              GObject *object,
              gpointer user_data)
 {
@@ -307,7 +307,7 @@ response_cb (GabbleConnection *conn,
   DEBUG ("got reply for request %p", item);
 
   if (NULL == g_slist_find (priv->items_in_flight, item))
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return;
 
   g_assert (item->in_flight);
 
@@ -328,8 +328,6 @@ response_cb (GabbleConnection *conn,
   delete_item (item);
 
   gabble_request_pipeline_go (pipeline);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -406,7 +404,7 @@ delayed_run_pipeline (gpointer user_data)
 
 GabbleRequestPipelineItem *
 gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
-                                 LmMessage *msg,
+                                 WockyStanza *msg,
                                  guint timeout,
                                  GabbleRequestPipelineCb callback,
                                  gpointer user_data)

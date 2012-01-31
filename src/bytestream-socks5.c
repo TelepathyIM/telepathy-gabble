@@ -178,7 +178,7 @@ struct _GabbleBytestreamSocks5Private
 
   /* Connections to streamhosts are async, so we keep the IQ set message
    * around */
-  LmMessage *msg_for_acknowledge_connection;
+  WockyStanza *msg_for_acknowledge_connection;
 
   Socks5State socks5_state;
   GibberTransport *transport;
@@ -765,10 +765,10 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
     }
 }
 
-static LmHandlerResult
+static void
 socks5_activation_reply_cb (GabbleConnection *conn,
-                            LmMessage *sent_msg,
-                            LmMessage *reply_msg,
+                            WockyStanza *sent_msg,
+                            WockyStanza *reply_msg,
                             GObject *obj,
                             gpointer user_data)
 {
@@ -776,7 +776,7 @@ socks5_activation_reply_cb (GabbleConnection *conn,
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("Activation failed");
       goto activation_failed;
@@ -796,11 +796,10 @@ socks5_activation_reply_cb (GabbleConnection *conn,
   /* We can read data from the sock5 socket now */
   gibber_transport_block_receiving (priv->transport, FALSE);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return;
 activation_failed:
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -808,17 +807,17 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
-  LmMessage *iq;
+  WockyStanza *iq;
 
   DEBUG ("Got CONNECT reply. SOCKS5 negotiation with proxy is done. "
       "Sending activation IQ");
 
-  iq = lm_message_build (priv->proxy_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "query", "",
+  iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->proxy_jid,
+      '(', "query",
         ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
-        '(', "activate", priv->peer_jid, ')',
+        '(', "activate", '$', priv->peer_jid, ')',
       ')', NULL);
 
   priv->socks5_state = SOCKS5_STATE_INITIATOR_ACTIVATION_SENT;
@@ -1318,7 +1317,7 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
  */
 void
 gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
-                                                LmMessage *msg)
+                                                WockyStanza *msg)
 
 {
   GabbleBytestreamSocks5Private *priv =
@@ -1399,7 +1398,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *si;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
@@ -1436,13 +1435,13 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
 
   g_return_if_fail (priv->bytestream_state ==
       GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_ERROR,
+      NULL, priv->peer_jid,
       '@', "id", priv->stream_init_id,
       NULL);
 
@@ -1543,10 +1542,10 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
       proxy->port);
 }
 
-static LmHandlerResult
+static void
 socks5_init_reply_cb (GabbleConnection *conn,
-                      LmMessage *sent_msg,
-                      LmMessage *reply_msg,
+                      WockyStanza *sent_msg,
+                      WockyStanza *reply_msg,
                       GObject *obj,
                       gpointer user_data)
 {
@@ -1554,7 +1553,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       WockyNode *query, *streamhost = NULL;
       const gchar *jid;
@@ -1591,7 +1590,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
 
           priv->proxy_jid = g_strdup (jid);
           initiator_connected_to_proxy (self);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+          return;
         }
 
       /* No proxy used */
@@ -1610,7 +1609,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
       /* We can read data from the sock5 socket now */
       gibber_transport_block_receiving (priv->transport, FALSE);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
 socks5_init_error:
@@ -1618,8 +1617,6 @@ socks5_init_error:
 
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 #ifdef G_OS_WIN32
@@ -1881,7 +1878,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gchar *port;
   gint port_num;
-  LmMessage *msg;
+  WockyStanza *msg;
   GSList *ips, *ip;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
@@ -1913,9 +1910,9 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   port_num = gibber_listener_get_port (priv->listener);
   port = g_strdup_printf ("%d", port_num);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "query", "",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->peer_jid,
+      '(', "query",
         ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
         '@', "mode", "tcp",

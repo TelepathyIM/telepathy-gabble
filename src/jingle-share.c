@@ -28,7 +28,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_SHARE
 

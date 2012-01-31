@@ -319,11 +319,11 @@ static void handle_errmsg (GObject *source,
 static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
     TpHandleType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *subject,
-    LmMessage *msg);
+    WockyStanza *msg);
 static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
     TpChannelTextMessageType msg_type, TpHandleType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *id, const gchar *text,
-    LmMessage *msg, TpChannelTextSendError send_error,
+    WockyStanza *msg, TpChannelTextSendError send_error,
     TpDeliveryStatus delivery_status);
 
 static void
@@ -2111,7 +2111,7 @@ handle_fill_presence (WockyMuc *muc,
       conn->self_presence->status_message,
       0);
 
-  g_signal_emit (self, signals[PRE_PRESENCE], 0, (LmMessage *) stanza);
+  g_signal_emit (self, signals[PRE_PRESENCE], 0, (WockyStanza *) stanza);
 }
 
 /* connect to wocky-muc:SIG_NICK_CHANGE, which we will receive when the *
@@ -2174,7 +2174,7 @@ update_roster_presence (GabbleMucChannel *gmuc,
     }
 
   gabble_presence_parse_presence_message (conn->presence_cache,
-      handle, member->from, (LmMessage *) member->presence_stanza);
+      handle, member->from, (WockyStanza *) member->presence_stanza);
 
   tp_handle_set_add (members, handle);
   g_hash_table_insert (omap,
@@ -2298,7 +2298,7 @@ handle_presence (GObject *source,
     }
 
   gabble_presence_parse_presence_message (conn->presence_cache,
-    handle, who->from, (LmMessage *) who->presence_stanza);
+    handle, who->from, (WockyStanza *) who->presence_stanza);
 
   /* add the member in quesion */
   tp_handle_set_add (handles, handle);
@@ -2511,7 +2511,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     TpHandle sender,
                                     GDateTime *datetime,
                                     const gchar *subject,
-                                    LmMessage *msg)
+                                    WockyStanza *msg)
 {
   GabbleMucChannelPrivate *priv;
   const gchar *actor;
@@ -2586,7 +2586,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              GDateTime *datetime,
                              const gchar *id,
                              const gchar *text,
-                             LmMessage *msg,
+                             WockyStanza *msg,
                              TpChannelTextSendError send_error,
                              TpDeliveryStatus error_status)
 {
@@ -2831,7 +2831,7 @@ gabble_muc_channel_send (GObject *obj,
   gchar *id = NULL;
 
   stanza = gabble_message_util_build_stanza (message, gabble_conn,
-      LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
+      WOCKY_STANZA_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
       priv->jid, FALSE, &id, &error);
 
   if (stanza != NULL)
@@ -2862,21 +2862,21 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
-  LmMessage *msg;
-  WockyNode *x_node, *invite_node;
+  WockyStanza *msg;
+  WockyNode *invite_node;
   gboolean result;
 
   g_signal_emit (self, signals[PRE_INVITE], 0, jid);
 
-  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
-
-  x_node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "x", NULL);
-  x_node->ns = g_quark_from_string (NS_MUC_USER);
-
-  invite_node = wocky_node_add_child_with_content (x_node, "invite", NULL);
-
-  wocky_node_set_attribute (invite_node, "to", jid);
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, priv->jid,
+      '(', "x", ':', NS_MUC_USER,
+        '(', "invite",
+          '@', "to", jid,
+          '*', &invite_node,
+        ')',
+      ')', NULL);
 
   if (message != NULL && *message != '\0')
     {
@@ -2977,17 +2977,15 @@ gabble_muc_channel_add_member (GObject *obj,
   return gabble_muc_channel_send_invite (self, jid, message, FALSE, error);
 }
 
-static LmHandlerResult
-kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                       LmMessage *reply_msg, GObject *object,
+static void
+kick_request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
+                       WockyStanza *reply_msg, GObject *object,
                        gpointer user_data)
 {
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("Failed to kick user %s from room", (const char *) user_data);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -3000,8 +2998,8 @@ gabble_muc_channel_remove_member (GObject *obj,
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   GabbleMucChannelPrivate *priv = chan->priv;
   TpGroupMixin *group = TP_GROUP_MIXIN (chan);
-  LmMessage *msg;
-  WockyNode *query_node, *item_node;
+  WockyStanza *msg;
+  WockyNode *item_node;
   const gchar *jid, *nick;
   gboolean result;
 
@@ -3015,14 +3013,13 @@ gabble_muc_channel_remove_member (GObject *obj,
     }
 
   /* Otherwise, the user wants to kick someone. */
-  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_SET);
-
-  query_node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  query_node->ns = g_quark_from_string (NS_MUC_ADMIN);
-
-  item_node = wocky_node_add_child_with_content (query_node, "item", NULL);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->jid,
+      '(', "query", ':', NS_MUC_ADMIN,
+        '(', "item",
+          '*', &item_node,
+        ')',
+      ')', NULL);
 
   jid = tp_handle_inspect (TP_GROUP_MIXIN (obj)->handle_repo, handle);
 
@@ -3429,7 +3426,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   if (error != NULL ||
       !gabble_message_util_send_chat_state (G_OBJECT (self),
           GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-          LM_MESSAGE_SUB_TYPE_GROUPCHAT, state, priv->jid, &error))
+          WOCKY_STANZA_SUB_TYPE_GROUPCHAT, state, priv->jid, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

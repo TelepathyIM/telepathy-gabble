@@ -37,8 +37,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_FT
 #include "debug.h"
 
-#include <loudmouth/loudmouth.h>
-
 #include <gibber/gibber-listener.h>
 #include <gibber/gibber-transport.h>
 #include <gibber/gibber-unix-transport.h>       /* just for the feature-test */
@@ -1319,7 +1317,7 @@ set_gtalk_file_collection (
 static void
 bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          const gchar *stream_id,
-                         LmMessage *msg,
+                         WockyStanza *msg,
                          GObject *object,
                          gpointer user_data)
 {
@@ -1444,7 +1442,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
                   const gchar *resource, GError **error)
 {
   gboolean result;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *si_node, *file_node;
   gchar *stream_id, *size_str, *full_jid;
 

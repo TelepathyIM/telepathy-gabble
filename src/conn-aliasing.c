@@ -40,7 +40,7 @@
 #include "vcard-manager.h"
 
 static void gabble_conn_aliasing_pep_nick_reply_handler (
-    GabbleConnection *conn, LmMessage *msg, TpHandle handle);
+    GabbleConnection *conn, WockyStanza *msg, TpHandle handle);
 static GQuark gabble_conn_aliasing_pep_alias_quark (void);
 
 static GabbleConnectionAliasSource _gabble_connection_get_cached_remote_alias (
@@ -225,7 +225,7 @@ _cache_negatively (GabbleConnection *self,
 /* Cache pep if successful */
 static void
 aliases_request_cache_pep (GabbleConnection *self,
-                           LmMessage *msg,
+                           WockyStanza *msg,
                            TpHandle handle,
                            GError *error)
 {
@@ -233,8 +233,9 @@ aliases_request_cache_pep (GabbleConnection *self,
     {
       DEBUG ("Error getting alias from PEP: %s", error->message);
       _cache_negatively (self, handle);
+      return;
     }
-  else if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  else if (wocky_stanza_extract_errors (msg, NULL, NULL, NULL, NULL))
     {
       STANZA_DEBUG (msg, "Error getting alias from PEP");
       _cache_negatively (self, handle);
@@ -249,7 +250,7 @@ aliases_request_cache_pep (GabbleConnection *self,
 
 static void
 aliases_request_basic_pep_cb (GabbleConnection *self,
-                              LmMessage *msg,
+                              WockyStanza *msg,
                               gpointer user_data,
                               GError *error)
 {
@@ -273,7 +274,7 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
 
 static void
 aliases_request_pep_cb (GabbleConnection *self,
-                        LmMessage *msg,
+                        WockyStanza *msg,
                         gpointer user_data,
                         GError *error)
 {
@@ -334,7 +335,7 @@ typedef struct {
 static void
 pep_request_cb (
     GabbleConnection *conn,
-    LmMessage *msg,
+    WockyStanza *msg,
     gpointer user_data,
     GError *error)
 {
@@ -356,7 +357,8 @@ gabble_do_pep_request (GabbleConnection *self,
                        gpointer user_data)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
-  LmMessage *msg;
+  const gchar *to;
+  WockyStanza *msg;
   GabbleRequestPipelineItem *pep_request;
   pep_request_ctx *ctx;
 
@@ -372,12 +374,12 @@ gabble_do_pep_request (GabbleConnection *self,
   ctx->handle = handle;
 
   tp_handle_ref (contact_handles, handle);
-  msg = lm_message_build (tp_handle_inspect (contact_handles, handle),
-      LM_MESSAGE_TYPE_IQ,
-      '@', "type", "get",
-      '(', "pubsub", "",
+  to = tp_handle_inspect (contact_handles, handle);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, to,
+      '(', "pubsub",
         ':', NS_PUBSUB,
-        '(', "items", "",
+        '(', "items",
           '@', "node", NS_NICK,
         ')',
       ')',
@@ -479,10 +481,10 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
     aliases_request_free (request);
 }
 
-static LmHandlerResult
+static void
 nick_publish_msg_reply_cb (GabbleConnection *conn,
-                           LmMessage *sent_msg,
-                           LmMessage *reply_msg,
+                           WockyStanza *sent_msg,
+                           WockyStanza *reply_msg,
                            GObject *object,
                            gpointer user_data)
 {
@@ -497,8 +499,6 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
       g_clear_error (&error);
     }
 #endif
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -569,7 +569,7 @@ set_one_alias (
       if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
         {
           /* Publish nick using PEP */
-          LmMessage *msg;
+          WockyStanza *msg;
           WockyNode *item;
 
           msg = wocky_pep_service_make_publish_stanza (conn->pep_nick, &item);
@@ -734,7 +734,7 @@ pep_nick_node_changed (WockyPepService *pep,
 
 static void
 gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
-                                             LmMessage *msg,
+                                             WockyStanza *msg,
                                              TpHandle handle)
 {
   WockyNode *pubsub_node, *items_node;

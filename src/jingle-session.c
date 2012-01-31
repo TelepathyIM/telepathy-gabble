@@ -1786,7 +1786,7 @@ _fill_content (GabbleJingleSession *sess,
     }
 }
 
-static LmHandlerResult
+static void
 _process_reply (GabbleConnection *conn,
     WockyStanza *sent,
     WockyStanza *reply,
@@ -1798,8 +1798,6 @@ _process_reply (GabbleConnection *conn,
 
   wocky_stanza_get_type_info (reply, NULL, &sub_type);
   cb (obj, sub_type == WOCKY_STANZA_SUB_TYPE_RESULT, reply);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /**

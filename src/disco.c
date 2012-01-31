@@ -382,9 +382,9 @@ disco_type_to_xmlns (GabbleDiscoType type)
   return NULL;
 }
 
-static LmHandlerResult
-request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                  LmMessage *reply_msg, GObject *object, gpointer user_data)
+static void
+request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
+                  WockyStanza *reply_msg, GObject *object, gpointer user_data)
 {
   GabbleDiscoRequest *request = (GabbleDiscoRequest *) user_data;
   GabbleDisco *disco = GABBLE_DISCO (object);
@@ -395,13 +395,13 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
   g_assert (request);
 
   if (!g_list_find (priv->requests, request))
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return;
 
   query_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (reply_msg),
       "query", disco_type_to_xmlns (request->type));
 
-  if (!wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
     {
       /* pass */
     }
@@ -417,8 +417,6 @@ request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
 
   if (err)
     g_error_free (err);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -480,7 +478,7 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
 {
   GabbleDiscoPrivate *priv = self->priv;
   GabbleDiscoRequest *request;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *lm_node;
 
   request = g_slice_new0 (GabbleDiscoRequest);
@@ -500,12 +498,11 @@ gabble_disco_request_with_timeout (GabbleDisco *self, GabbleDiscoType type,
            request, request->jid);
 
   priv->requests = g_list_prepend (priv->requests, request);
-  msg = lm_message_new_with_sub_type (jid, LM_MESSAGE_TYPE_IQ,
-                                           LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-
-  lm_node->ns = g_quark_from_string (disco_type_to_xmlns (type));
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, jid,
+      '(', "query", ':', disco_type_to_xmlns (type),
+        '*', &lm_node,
+      ')', NULL);
 
   if (node)
     {

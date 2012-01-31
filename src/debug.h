@@ -5,7 +5,6 @@
 
 #include <glib.h>
 #include <wocky/wocky-stanza.h>
-#include <loudmouth/loudmouth.h>
 
 G_BEGIN_DECLS
 

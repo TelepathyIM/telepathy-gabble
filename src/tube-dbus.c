@@ -26,7 +26,6 @@
 #include <glib/gstdio.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <wocky/wocky-utils.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
@@ -1193,7 +1192,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 static void
 bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          const gchar *stream_id,
-                         LmMessage *msg,
+                         WockyStanza *msg,
                          GObject *object,
                          gpointer user_data)
 {
@@ -1235,7 +1234,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       gchar *full_jid;
       GabblePresence *presence;
       WockyNode *tube_node, *si_node;
-      LmMessage *msg;
+      WockyStanza *msg;
       gboolean result;
 
       contact_repo = tp_base_connection_get_handles (

@@ -24,7 +24,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
@@ -304,28 +303,18 @@ send_data_to (GabbleBytestreamMuc *self,
       gchar *encoded;
       guint send_now;
       GError *error = NULL;
-      LmMessage *msg;
+      WockyStanza *msg;
       WockyNode *data = NULL;
 
-      msg = lm_message_build (to, LM_MESSAGE_TYPE_MESSAGE,
-          '(', "data", "",
+      msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+          NULL, to,
+          '(', "data",
             '*', &data,
             ':', NS_MUC_BYTESTREAM,
             '@', "sid", priv->stream_id,
           ')',
-          '(', "amp", "",
-            ':', NS_AMP,
-            '(', "rule", "",
-              '@', "condition", "deliver-at",
-              '@', "value", "stored",
-              '@', "action", "error",
-            ')',
-            '(', "rule", "",
-              '@', "condition", "match-resource",
-              '@', "value", "exact",
-              '@', "action", "error",
-            ')',
-          ')', NULL);
+          GABBLE_AMP_DO_NOT_STORE_SPEC,
+          NULL);
 
       g_assert (data != NULL);
 
@@ -414,7 +403,7 @@ gabble_bytestream_muc_send (GabbleBytestreamIface *iface,
 
 void
 gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
-                               LmMessage *msg)
+                               WockyStanza *msg)
 {
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (

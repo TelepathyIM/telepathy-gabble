@@ -120,7 +120,7 @@ struct _GabbleTubesChannelPrivate
 
 static void update_tubes_presence (GabbleTubesChannel *self);
 
-static void pre_presence_cb (GabbleMucChannel *muc, LmMessage *msg,
+static void pre_presence_cb (GabbleMucChannel *muc, WockyStanza *msg,
     GabbleTubesChannel *self);
 
 static void
@@ -1125,7 +1125,7 @@ publish_tubes_in_node (gpointer key,
 
 static void
 pre_presence_cb (GabbleMucChannel *muc,
-                 LmMessage *msg,
+                 WockyStanza *msg,
                  GabbleTubesChannel *self)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
@@ -1159,7 +1159,7 @@ update_tubes_presence (GabbleTubesChannel *self)
 void
 gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
                                       GabbleBytestreamIface *bytestream,
-                                      LmMessage *msg)
+                                      WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *service, *stream_id;
@@ -1168,12 +1168,15 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
   WockyNode *si_node, *tube_node;
   guint tube_id;
   GabbleTubeIface *tube;
+  WockyStanzaType stanza_type;
+  WockyStanzaSubType sub_type;
 
   /* Caller is expected to have checked that we have a SI node with
    * a stream ID, the TUBES profile and a <tube> element
    */
-  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
-  g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
+  wocky_stanza_get_type_info (msg, &stanza_type, &sub_type);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
+  g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
   si_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_return_if_fail (si_node != NULL);
@@ -1245,7 +1248,7 @@ gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *self,
 void
 gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
                                          GabbleBytestreamIface *bytestream,
-                                         LmMessage *msg)
+                                         WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *stream_id, *tmp;
@@ -1254,12 +1257,15 @@ gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *self,
   guint tube_id;
   unsigned long tube_id_tmp;
   GabbleTubeIface *tube;
+  WockyStanzaType stanza_type;
+  WockyStanzaSubType sub_type;
 
   /* Caller is expected to have checked that we have a stream or muc-stream
    * node with a stream ID and the TUBES profile
    */
-  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_IQ);
-  g_return_if_fail (lm_message_get_sub_type (msg) == LM_MESSAGE_SUB_TYPE_SET);
+  wocky_stanza_get_type_info (msg, &stanza_type, &sub_type);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
+  g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
 
   si_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
@@ -1321,7 +1327,7 @@ send_tube_close_msg (GabbleTubesChannel *self,
                      guint tube_id)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
-  LmMessage *msg;
+  WockyStanza *msg;
   const gchar *jid;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
@@ -1331,24 +1337,13 @@ send_tube_close_msg (GabbleTubesChannel *self,
   id_str = g_strdup_printf ("%u", tube_id);
 
   /* Send the close message */
-  msg = lm_message_build (jid, LM_MESSAGE_TYPE_MESSAGE,
-      '(', "close", "",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, jid,
+      '(', "close",
         ':', NS_TUBES,
         '@', "tube", id_str,
       ')',
-      '(', "amp", "",
-        ':', NS_AMP,
-        '(', "rule", "",
-          '@', "condition", "deliver-at",
-          '@', "value", "stored",
-          '@', "action", "error",
-        ')',
-        '(', "rule", "",
-          '@', "condition", "match-resource",
-          '@', "value", "exact",
-          '@', "action", "error",
-        ')',
-      ')',
+      GABBLE_AMP_DO_NOT_STORE_SPEC,
       NULL);
   g_free (id_str);
 
@@ -1359,7 +1354,7 @@ send_tube_close_msg (GabbleTubesChannel *self,
 
 static void
 tube_msg_offered (GabbleTubesChannel *self,
-                  LmMessage *msg)
+                  WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   const gchar *service;
@@ -1368,8 +1363,10 @@ tube_msg_offered (GabbleTubesChannel *self,
   WockyNode *tube_node;
   guint tube_id;
   GabbleTubeIface *tube;
+  WockyStanzaType stanza_type;
 
-  g_return_if_fail (lm_message_get_type (msg) == LM_MESSAGE_TYPE_MESSAGE);
+  wocky_stanza_get_type_info (msg, &stanza_type, NULL);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_MESSAGE);
   tube_node = lm_message_node_get_child_with_namespace (
       wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
   g_return_if_fail (tube_node != NULL);
@@ -1418,7 +1415,7 @@ tube_msg_offered (GabbleTubesChannel *self,
 
 static void
 tube_msg_close (GabbleTubesChannel *self,
-                LmMessage *msg)
+                WockyStanza *msg)
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   WockyNode *close_node;
@@ -1466,7 +1463,7 @@ tube_msg_close (GabbleTubesChannel *self,
 
 void
 gabble_tubes_channel_tube_msg (GabbleTubesChannel *self,
-                               LmMessage *msg)
+                               WockyStanza *msg)
 {
   WockyNode *node;
 

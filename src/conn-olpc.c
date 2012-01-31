@@ -48,7 +48,7 @@
 
 static gboolean
 update_activities_properties (GabbleConnection *conn, const gchar *contact,
-    LmMessage *msg);
+    WockyStanza *msg);
 
 /* Returns TRUE if it actually contributed something, else FALSE.
  */
@@ -153,7 +153,7 @@ inspect_room (TpBaseConnection *base,
  * connected.
  */
 static gboolean
-check_publish_reply_msg (LmMessage *reply_msg,
+check_publish_reply_msg (WockyStanza *reply_msg,
                          DBusGMethodInvocation *context)
 {
   GError *error = NULL;
@@ -180,7 +180,7 @@ check_publish_reply_msg (LmMessage *reply_msg,
 }
 
 static gboolean
-check_query_reply_msg (LmMessage *reply_msg,
+check_query_reply_msg (WockyStanza *reply_msg,
                        DBusGMethodInvocation *context)
 {
   GError *error = NULL;
@@ -304,21 +304,20 @@ olpc_buddy_info_get_properties (GabbleSvcOLPCBuddyInfo *iface,
 }
 
 /* context may be NULL. */
-static LmHandlerResult
+static void
 set_properties_reply_cb (GabbleConnection *conn,
-                         LmMessage *sent_msg,
-                         LmMessage *reply_msg,
+                         WockyStanza *sent_msg,
+                         WockyStanza *reply_msg,
                          GObject *object,
                          gpointer user_data)
 {
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   if (context != NULL)
     gabble_svc_olpc_buddy_info_return_from_set_properties (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /* context may be NULL, in which case it will be NULL in the reply_cb. */
@@ -327,7 +326,7 @@ transmit_properties (GabbleConnection *conn,
                      GHashTable *properties,
                      DBusGMethodInvocation *context)
 {
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *item, *props_node;
 
   gabble_connection_ensure_capabilities (conn,
@@ -615,7 +614,7 @@ get_buddy_activities (GabbleConnection *conn,
 
 static void
 extract_activities (GabbleConnection *conn,
-                    LmMessage *msg,
+                    WockyStanza *msg,
                     TpHandle sender)
 {
   WockyNode *activities_node;
@@ -786,6 +785,7 @@ get_activities_reply_cb (GObject *source,
   TpHandle from_handle;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) ctx->conn, TP_HANDLE_TYPE_CONTACT);
+  GError *stanza_error = NULL;
 
   reply_msg = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
       &err);
@@ -822,12 +822,15 @@ get_activities_reply_cb (GObject *source,
       goto out;
     }
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &stanza_error, NULL, NULL))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
-        "Error in pubsub reply: server error" };
+      GError *tp_error = NULL;
 
-      dbus_g_method_return_error (ctx->context, &error);
+      gabble_set_tp_error_from_wocky (stanza_error, &tp_error);
+      g_prefix_error (&tp_error, "Error in pubsub reply: ");
+      dbus_g_method_return_error (ctx->context, tp_error);
+      g_clear_error (&tp_error);
+      g_clear_error (&stanza_error);
       goto out;
     }
 
@@ -889,7 +892,7 @@ upload_activities_pep (GabbleConnection *conn,
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   WockyNode *item, *activities;
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandleSet *my_activities = g_hash_table_lookup
       (conn->olpc_pep_activities, GUINT_TO_POINTER (base->self_handle));
   GError *e = NULL;
@@ -938,22 +941,21 @@ upload_activities_pep (GabbleConnection *conn,
   return ret;
 }
 
-static LmHandlerResult
+static void
 set_activities_reply_cb (GabbleConnection *conn,
-                         LmMessage *sent_msg,
-                         LmMessage *reply_msg,
+                         WockyStanza *sent_msg,
+                         WockyStanza *reply_msg,
                          GObject *object,
                          gpointer user_data)
 {
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   /* FIXME: emit ActivitiesChanged? */
 
   gabble_svc_olpc_buddy_info_return_from_set_activities (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -1310,7 +1312,7 @@ get_current_activity_reply_cb (GObject *source,
       goto out;
     }
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("Failed to query PEP node. No current activity");
 
@@ -1394,20 +1396,19 @@ olpc_buddy_info_get_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   g_object_unref (contact);
 }
 
-static LmHandlerResult
+static void
 set_current_activity_reply_cb (GabbleConnection *conn,
-                               LmMessage *sent_msg,
-                               LmMessage *reply_msg,
+                               WockyStanza *sent_msg,
+                               WockyStanza *reply_msg,
                                GObject *object,
                                gpointer user_data)
 {
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   gabble_svc_olpc_buddy_info_return_from_set_current_activity (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /* Check if this activity is in our own activities list */
@@ -1445,7 +1446,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *item, *publish;
   const gchar *room = "";
 
@@ -1545,22 +1546,21 @@ out:
   tp_handle_unref (contact_repo, handle);
 }
 
-static LmHandlerResult
+static void
 add_activity_reply_cb (GabbleConnection *conn,
-                       LmMessage *sent_msg,
-                       LmMessage *reply_msg,
+                       WockyStanza *sent_msg,
+                       WockyStanza *reply_msg,
                        GObject *object,
                        gpointer user_data)
 {
   DBusGMethodInvocation *context = user_data;
 
   if (!check_publish_reply_msg (reply_msg, context))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return;
 
   /* FIXME: emit ActivitiesChanged? */
 
   gabble_svc_olpc_buddy_info_return_from_add_activity (context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -1633,7 +1633,7 @@ upload_activity_properties_pep (GabbleConnection *conn,
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   WockyNode *publish, *item;
-  LmMessage *msg;
+  WockyStanza *msg;
   GError *e = NULL;
   gboolean ret;
   TpHandleSet *my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
@@ -1677,10 +1677,10 @@ typedef struct {
     GabbleOlpcActivity *activity;
 } set_properties_ctx;
 
-static LmHandlerResult
+static void
 set_activity_properties_activities_reply_cb (GabbleConnection *conn,
-                                             LmMessage *sent_msg,
-                                             LmMessage *reply_msg,
+                                             WockyStanza *sent_msg,
+                                             WockyStanza *reply_msg,
                                              GObject *object,
                                              gpointer user_data)
 {
@@ -1693,7 +1693,7 @@ set_activity_properties_activities_reply_cb (GabbleConnection *conn,
       !check_publish_reply_msg (reply_msg, context->context))
     {
       g_slice_free (set_properties_ctx, context);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
   gabble_svc_olpc_activity_properties_emit_activity_properties_changed (
@@ -1703,13 +1703,13 @@ set_activity_properties_activities_reply_cb (GabbleConnection *conn,
       context->context);
 
   g_slice_free (set_properties_ctx, context);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return;
 }
 
-static LmHandlerResult
+static void
 set_activity_properties_reply_cb (GabbleConnection *conn,
-                                  LmMessage *sent_msg,
-                                  LmMessage *reply_msg,
+                                  WockyStanza *sent_msg,
+                                  WockyStanza *reply_msg,
                                   GObject *object,
                                   gpointer user_data)
 {
@@ -1722,7 +1722,7 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
       !check_publish_reply_msg (reply_msg, context->context))
     {
       g_slice_free (set_properties_ctx, context);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
   if (context->visibility_changed)
@@ -1743,8 +1743,6 @@ set_activity_properties_reply_cb (GabbleConnection *conn,
       set_activity_properties_activities_reply_cb (conn, NULL, NULL, NULL,
           context);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -1760,19 +1758,19 @@ refresh_invitations (GabbleConnection *conn,
 
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
-      LmMessage *msg = lm_message_new (NULL, LM_MESSAGE_TYPE_MESSAGE);
       TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
           (invitees));
-
-      activity_info_contribute_properties (activity,
-          wocky_stanza_get_top_node (msg), FALSE);
 
       while (tp_intset_iter_next (&iter))
         {
           const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+          WockyStanza *msg = wocky_stanza_build (
+              WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+              NULL, to, NULL);
 
-          wocky_node_set_attribute (
-              wocky_stanza_get_top_node (msg), "to", to);
+          activity_info_contribute_properties (activity,
+              wocky_stanza_get_top_node (msg), FALSE);
+
           if (!_gabble_connection_send (conn, msg, error))
             {
               DEBUG ("Unable to re-send activity properties to invitee %s",
@@ -1780,9 +1778,9 @@ refresh_invitations (GabbleConnection *conn,
               g_object_unref (msg);
               return FALSE;
             }
-        }
 
-      g_object_unref (msg);
+          g_object_unref (msg);
+        }
     }
 
   return TRUE;
@@ -1796,7 +1794,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;
-  LmMessage *msg;
+  WockyStanza *msg;
   const gchar *jid;
   GHashTable *properties_copied;
   GabbleOlpcActivity *activity;
@@ -1858,9 +1856,9 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   is_visible = gabble_olpc_activity_is_visible (activity);
 
-  msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
-  wocky_node_set_attribute (
-      wocky_stanza_get_top_node (msg), "type", "groupchat");
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_GROUPCHAT,
+      NULL, jid, NULL);
   activity_info_contribute_properties (activity,
     wocky_stanza_get_top_node (msg), FALSE);
   if (!_gabble_connection_send (conn, msg, NULL))
@@ -2097,7 +2095,7 @@ update_activity_properties (GabbleConnection *conn,
 static gboolean
 update_activities_properties (GabbleConnection *conn,
                               const gchar *contact,
-                              LmMessage *msg)
+                              WockyStanza *msg)
 {
   const gchar *room;
   WockyNode *node;
@@ -2181,10 +2179,10 @@ connection_status_changed_cb (GabbleConnection *conn,
     }
 }
 
-static LmHandlerResult
+static void
 pseudo_invite_reply_cb (GabbleConnection *conn,
-                        LmMessage *sent_msg,
-                        LmMessage *reply_msg,
+                        WockyStanza *sent_msg,
+                        WockyStanza *reply_msg,
                         GObject *object,
                         gpointer user_data)
 {
@@ -2194,12 +2192,11 @@ pseudo_invite_reply_cb (GabbleConnection *conn,
           "response to pseudo-invitation message");
       STANZA_DEBUG (sent_msg, "The failed request was");
     }
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 gboolean
 conn_olpc_process_activity_properties_message (GabbleConnection *conn,
-                                               LmMessage *msg,
+                                               WockyStanza *msg,
                                                const gchar *from)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
@@ -2434,10 +2431,10 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
   return TRUE;
 }
 
-static LmHandlerResult
+static void
 closed_pep_reply_cb (GabbleConnection *conn,
-                     LmMessage *sent_msg,
-                     LmMessage *reply_msg,
+                     WockyStanza *sent_msg,
+                     WockyStanza *reply_msg,
                      GObject *object,
                      gpointer user_data)
 {
@@ -2447,7 +2444,6 @@ closed_pep_reply_cb (GabbleConnection *conn,
           "response to channel closure");
       STANZA_DEBUG (sent_msg, "The failed request was");
     }
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -2467,27 +2463,21 @@ revoke_invitations (GabbleConnection *conn,
 
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
-      LmMessage *msg = lm_message_new (NULL, LM_MESSAGE_TYPE_MESSAGE);
       TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
           (invitees));
-      WockyNode *uninvite_node;
-
-      uninvite_node = wocky_node_add_child_with_content (
-          wocky_stanza_get_top_node (msg), "uninvite", "");
-      uninvite_node->ns = g_quark_from_string (
-          NS_OLPC_ACTIVITY_PROPS);
-      wocky_node_set_attribute (uninvite_node, "room",
-          gabble_olpc_activity_get_room (activity));
-      wocky_node_set_attribute (uninvite_node, "id",
-          activity->id);
 
       DEBUG ("revoke invitations for activity %s", activity->id);
       while (tp_intset_iter_next (&iter))
         {
           const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+          WockyStanza *msg = wocky_stanza_build (
+              WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+              NULL, to,
+              '(', "uninvite", ':', NS_OLPC_ACTIVITY_PROPS,
+                '@', "room", gabble_olpc_activity_get_room (activity),
+                '@', "id", activity->id,
+              ')', NULL);
 
-          wocky_node_set_attribute (
-              wocky_stanza_get_top_node (msg), "to", to);
           if (!_gabble_connection_send (conn, msg, error))
             {
               DEBUG ("Unable to send activity invitee revocation %s",
@@ -2495,9 +2485,9 @@ revoke_invitations (GabbleConnection *conn,
               g_object_unref (msg);
               return FALSE;
             }
-        }
 
-      g_object_unref (msg);
+          g_object_unref (msg);
+        }
     }
 
   return TRUE;
@@ -2505,7 +2495,7 @@ revoke_invitations (GabbleConnection *conn,
 
 gboolean
 conn_olpc_process_activity_uninvite_message (GabbleConnection *conn,
-                                             LmMessage *msg,
+                                             WockyStanza *msg,
                                              const gchar *from)
 {
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -2657,7 +2647,7 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   GQuark quark = invitees_quark ();
   TpHandleSet *invitees;
   /* send them the properties */
-  LmMessage *msg;
+  WockyStanza *msg;
   TpHandle handle;
   GError *error = NULL;
 
@@ -2665,7 +2655,10 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
   contact_repo = tp_base_connection_get_handles
       ((TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
 
-  msg = lm_message_new (jid, LM_MESSAGE_TYPE_MESSAGE);
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, jid,
+      NULL);
 
   if (activity_info_contribute_properties (activity,
       wocky_stanza_get_top_node (msg), FALSE))

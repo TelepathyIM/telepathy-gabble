@@ -27,7 +27,6 @@
 #include <string.h>
 #include <time.h>
 
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus.h>
 #include <wocky/wocky-utils.h>
 
@@ -84,7 +83,7 @@ gabble_message_util_add_chat_state (WockyStanza *stanza,
 WockyStanza *
 gabble_message_util_build_stanza (TpMessage *message,
                                   GabbleConnection *conn,
-                                  LmMessageSubType subtype,
+                                  WockyStanzaSubType subtype,
                                   TpChannelChatState state,
                                   const char *recipient,
                                   gboolean send_nick,
@@ -141,21 +140,23 @@ gabble_message_util_build_stanza (TpMessage *message,
         {
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL:
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION:
-          subtype = LM_MESSAGE_SUB_TYPE_CHAT;
+          subtype = WOCKY_STANZA_SUB_TYPE_CHAT;
           break;
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE:
-          subtype = LM_MESSAGE_SUB_TYPE_NORMAL;
+          subtype = WOCKY_STANZA_SUB_TYPE_NORMAL;
           break;
         }
     }
 
-  stanza = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
-      subtype);
-  node = wocky_stanza_get_top_node (stanza);
   /* Generate a UUID for the message */
   id = gabble_generate_id ();
-  wocky_node_set_attribute (node, "id", id);
   tp_message_set_string (message, 0, "message-token", id);
+
+  stanza = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, subtype,
+      NULL, recipient,
+      '@', "id", id,
+      '*', &node,
+      NULL);
 
   if (send_nick)
     lm_message_node_add_own_nick (node, conn);
@@ -198,13 +199,13 @@ gabble_message_util_build_stanza (TpMessage *message,
 gboolean
 gabble_message_util_send_chat_state (GObject *obj,
                                      GabbleConnection *conn,
-                                     LmMessageSubType subtype,
+                                     WockyStanzaSubType subtype,
                                      TpChannelChatState state,
                                      const char *recipient,
                                      GError **error)
 {
-  LmMessage *msg = lm_message_new_with_sub_type (recipient,
-      LM_MESSAGE_TYPE_MESSAGE, subtype);
+  WockyStanza *msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, subtype,
+      NULL, recipient, NULL);
   gboolean result;
 
   gabble_message_util_add_chat_state (msg, state);
@@ -305,7 +306,7 @@ _tp_send_error_from_xmpp_error (
 
 
 static gint
-_tp_chat_state_from_message (LmMessage *message)
+_tp_chat_state_from_message (WockyStanza *message)
 {
   WockyNode *node;
 
@@ -352,7 +353,7 @@ _tp_chat_state_from_message (LmMessage *message)
  *  contained no body, chat state or send error; %FALSE otherwise.
  */
 gboolean
-gabble_message_util_parse_incoming_message (LmMessage *message,
+gabble_message_util_parse_incoming_message (WockyStanza *message,
                                             const gchar **from,
                                             time_t *stamp,
                                             TpChannelTextMessageType *msgtype,

@@ -30,7 +30,6 @@
 #include <telepathy-glib/util.h>
 
 #include <wocky/wocky-utils.h>
-#include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
 #include <gabble/error.h>
@@ -393,10 +392,10 @@ parse_search_field_response (GabbleSearchChannel *chan,
   supported_fields_discovered (chan);
 }
 
-static LmHandlerResult
+static void
 query_reply_cb (GabbleConnection *conn,
-                LmMessage *sent_msg,
-                LmMessage *reply_msg,
+                WockyStanza *sent_msg,
+                WockyStanza *reply_msg,
                 GObject *object,
                 gpointer user_data)
 {
@@ -427,8 +426,6 @@ query_reply_cb (GabbleConnection *conn,
       supported_field_discovery_failed (chan, err);
       g_error_free (err);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -436,15 +433,13 @@ request_search_fields (GabbleSearchChannel *chan)
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
-  LmMessage *msg;
-  WockyNode *lm_node;
+  WockyStanza *msg;
   GError *error = NULL;
 
-  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_node->ns = g_quark_from_string (NS_SEARCH);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, chan->priv->server,
+      '(', "query", ':', NS_SEARCH,
+      ')', NULL);
 
   if (! _gabble_connection_send_with_reply (GABBLE_CONNECTION (base_conn), msg,
             query_reply_cb, (GObject *) chan, NULL, &error))
@@ -784,10 +779,10 @@ parse_search_results (GabbleSearchChannel *chan,
     return parse_unextended_search_results (chan, query_node, error);
 }
 
-static LmHandlerResult
+static void
 search_reply_cb (GabbleConnection *conn,
-                 LmMessage *sent_msg,
-                 LmMessage *reply_msg,
+                 WockyStanza *sent_msg,
+                 WockyStanza *reply_msg,
                  GObject *object,
                  gpointer user_data)
 {
@@ -802,8 +797,7 @@ search_reply_cb (GabbleConnection *conn,
     {
       DEBUG ("state is %s, not in progress; ignoring results",
           states[chan->priv->state]);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
   query_node = lm_message_node_get_child_with_namespace (
@@ -841,8 +835,6 @@ search_reply_cb (GabbleConnection *conn,
           err);
       g_error_free (err);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -956,7 +948,7 @@ do_search (GabbleSearchChannel *chan,
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
-  LmMessage *msg;
+  WockyStanza *msg;
   WockyNode *query;
   gboolean ret;
 
@@ -965,11 +957,11 @@ do_search (GabbleSearchChannel *chan,
   if (!validate_terms (chan, terms, error))
     return FALSE;
 
-  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
-  query = wocky_node_add_child_with_content (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  query->ns = g_quark_from_string (NS_SEARCH);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, chan->priv->server,
+      '(', "query", ':', NS_SEARCH,
+        '*', &query,
+      ')', NULL);
 
   if (chan->priv->xforms)
     {

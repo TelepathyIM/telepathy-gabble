@@ -25,7 +25,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/exportable-channel.h>
@@ -55,8 +54,9 @@ static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
 static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
     gpointer user_data);
 
-static LmHandlerResult private_tubes_factory_msg_tube_cb (
-    LmMessageHandler *handler, LmConnection *lmconn, LmMessage *msg,
+static gboolean private_tubes_factory_msg_tube_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
     gpointer user_data);
 
 static void channel_manager_iface_init (gpointer, gpointer);
@@ -81,7 +81,7 @@ struct _GabblePrivateTubesFactoryPrivate
 {
   GabbleConnection *conn;
   gulong status_changed_id;
-  LmMessageHandler *msg_tube_cb;
+  guint msg_tube_cb;
 
   GHashTable *tubes_channels;
 
@@ -110,7 +110,6 @@ gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
 
   self->priv = priv;
 
-  priv->msg_tube_cb = NULL;
   priv->tubes_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_object_unref);
 
@@ -122,6 +121,22 @@ gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
 static void gabble_private_tubes_factory_close_all (
     GabblePrivateTubesFactory *fac);
 
+static void
+porter_available_cb (
+    GabbleConnection *connection,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
+  GabblePrivateTubesFactoryPrivate *priv = self->priv;
+
+  priv->msg_tube_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      private_tubes_factory_msg_tube_cb, self,
+      /* FIXME: pattern-match at least a little bit… */
+      NULL);
+}
 
 static void
 connection_status_changed_cb (GabbleConnection *conn,
@@ -153,13 +168,10 @@ gabble_private_tubes_factory_constructor (GType type,
   self = GABBLE_PRIVATE_TUBES_FACTORY (obj);
   priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
 
-  priv->msg_tube_cb = lm_message_handler_new (
-      private_tubes_factory_msg_tube_cb, self, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
-
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
+  tp_g_signal_connect_object (priv->conn, "porter-available",
+      (GCallback) porter_available_cb, obj, 0);
 
   return obj;
 }
@@ -363,11 +375,13 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
       priv->status_changed_id = 0;
     }
 
-  if (priv->msg_tube_cb != NULL)
-    lm_connection_unregister_message_handler (priv->conn->lmconn,
-        priv->msg_tube_cb, LM_MESSAGE_TYPE_MESSAGE);
+  if (priv->msg_tube_cb != 0)
+    {
+      WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
 
-  tp_clear_pointer (&priv->msg_tube_cb, lm_message_handler_unref);
+      wocky_porter_unregister_handler (porter, priv->msg_tube_cb);
+      priv->msg_tube_cb = 0;
+    }
 
   /* Use a temporary variable (the macro does this) because we don't want
    * tubes_channel_closed_cb to remove the channel from the hash table a
@@ -668,7 +682,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
     GabbleBytestreamIface *bytestream,
     TpHandle handle,
     const gchar *stream_id,
-    LmMessage *msg)
+    WockyStanza *msg)
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
@@ -697,7 +711,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
     GabbleBytestreamIface *bytestream,
     TpHandle handle,
     const gchar *stream_id,
-    LmMessage *msg)
+    WockyStanza *msg)
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
@@ -722,11 +736,11 @@ gabble_private_tubes_factory_handle_si_stream_request (
   gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
 }
 
-static LmHandlerResult
-private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
-                                   LmConnection *lmconn,
-                                   LmMessage *msg,
-                                   gpointer user_data)
+static gboolean
+private_tubes_factory_msg_tube_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
   GabblePrivateTubesFactoryPrivate *priv =
@@ -744,21 +758,21 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
       wocky_stanza_get_top_node (msg), "close", NS_TUBES);
 
   if (tube_node == NULL && close_node == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+    return FALSE;
 
   from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
   if (from == NULL)
     {
       STANZA_DEBUG (msg, "got a message without a from field");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return FALSE;
     }
 
   handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
   if (handle == 0)
     {
       DEBUG ("Invalid from field");
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return FALSE;
     }
 
   /* Tube offer */
@@ -776,13 +790,13 @@ private_tubes_factory_msg_tube_cb (LmMessageHandler *handler,
         {
           DEBUG ("Ignore tube close message as there is no tubes channel"
              " to handle it");
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+          return TRUE;
         }
     }
 
   gabble_tubes_channel_tube_msg (chan, msg);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 GabblePrivateTubesFactory *

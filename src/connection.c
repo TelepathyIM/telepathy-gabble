@@ -1516,8 +1516,7 @@ message_send_reply_cb (
  * If object is non-NULL the handler will follow the lifetime of that object,
  * which means that if the object is destroyed the callback will not be invoked.
  *
- * if reply_func is NULL the reply will be ignored but connection_iq_unknown_cb
- * won't be called.
+ * if reply_func is NULL the reply will be ignored.
  */
 gboolean
 _gabble_connection_send_with_reply (GabbleConnection *conn,

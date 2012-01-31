@@ -1566,7 +1566,6 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 static void connect_iq_callbacks (GabbleConnection *conn);
 static gboolean iq_disco_cb (WockyPorter *, WockyStanza *, gpointer);
 static gboolean iq_version_cb (WockyPorter *, WockyStanza *, gpointer);
-static gboolean iq_unknown_cb (WockyPorter *, WockyStanza *, gpointer);
 static void connection_disco_cb (GabbleDisco *, GabbleDiscoRequest *,
     const gchar *, const gchar *, WockyNode *, GError *, gpointer);
 static void decrement_waiting_connected (GabbleConnection *connection);
@@ -2070,12 +2069,6 @@ connect_iq_callbacks (GabbleConnection *conn)
       WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
       connection_iq_last_cb, conn,
       '(', "query", ':', NS_LAST, ')', NULL);
-
-  /* FIXME: the porter should do this for us. */
-  wocky_porter_register_handler_from_anyone (priv->porter,
-      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_NONE,
-      WOCKY_PORTER_HANDLER_PRIORITY_MIN,
-      iq_unknown_cb, conn, NULL);
 }
 
 /**
@@ -2704,36 +2697,6 @@ iq_version_cb (WockyPorter *porter, WockyStanza *stanza, gpointer user_data)
   g_object_unref ((GObject *) result);
 
   return TRUE;
-}
-
-/**
- * iq_unknown_cb
- *
- * Called by Wocky when we get an incoming <iq>. This handler is
- * at a lower priority than the others, and should reply with an error
- * about unsupported get/set attempts.
- */
-static gboolean
-iq_unknown_cb (WockyPorter *porter,
-    WockyStanza *stanza,
-    gpointer user_data)
-{
-  WockyStanzaSubType subtype;
-
-  wocky_stanza_get_type_info (stanza, NULL, &subtype);
-
-  switch (subtype)
-    {
-    case WOCKY_STANZA_SUB_TYPE_GET:
-    case WOCKY_STANZA_SUB_TYPE_SET:
-      wocky_porter_send_iq_error (porter, stanza,
-          WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE, NULL);
-      return TRUE;
-    default:
-      break;
-    }
-
-  return FALSE;
 }
 
 /**

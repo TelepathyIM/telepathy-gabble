@@ -83,7 +83,7 @@ static void
 test_plugin_create_sidecar_async (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    GabblePluginConnection *plugin_connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -106,7 +106,7 @@ test_plugin_create_sidecar_async (
     {
       g_async_initable_new_async (TEST_TYPE_SIDECAR_IQ, G_PRIORITY_DEFAULT,
           NULL, sidecar_iq_created_cb, result, "session", session,
-          "plugin-connection", plugin_connection, NULL);
+          "connection", connection, NULL);
       return;
     }
   else
@@ -149,16 +149,15 @@ test_plugin_create_sidecar_finish (
 
 static GPtrArray *
 test_plugin_create_channel_managers (GabblePlugin *plugin,
-    GabblePluginConnection *plugin_connection,
     TpBaseConnection *connection)
 {
   GPtrArray *ret = g_ptr_array_new ();
 
-  DEBUG ("plugin %p on connection %p", plugin, plugin_connection);
+  DEBUG ("plugin %p on connection %p", plugin, connection);
 
   g_ptr_array_add (ret,
       g_object_new (TEST_TYPE_CHANNEL_MANAGER,
-          "plugin-connection", plugin_connection,
+          "connection", connection,
           NULL));
 
   return ret;
@@ -361,7 +360,7 @@ test_sidecar_iq_set_property (
               g_ptr_array_add (identities, identity);
 
               /* set own caps so we proper reply to disco#info */
-              hash = gabble_plugin_connection_add_sidecar_own_caps (self->connection,
+              hash = gabble_connection_add_sidecar_own_caps (self->connection,
                   features, identities);
 
               g_free (hash);
@@ -400,9 +399,9 @@ test_sidecar_iq_class_init (TestSidecarIQClass *klass)
           WOCKY_TYPE_SESSION,
           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
   g_object_class_install_property (object_class, PROP_CONNECTION,
-      g_param_spec_object ("plugin-connection", "Gabble Plugin Connection",
-          "Gabble Plugin Connection",
-          GABBLE_TYPE_PLUGIN_CONNECTION,
+      g_param_spec_object ("connection", "Gabble Connection",
+          "Gabble connection",
+          GABBLE_TYPE_CONNECTION,
           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 
@@ -540,7 +539,7 @@ test_channel_manager_set_property (
         /* Not reffing this: the connection owns all channel managers, so it
          * must outlive us. Taking a reference leads to a cycle.
          */
-        self->plugin_connection = g_value_get_object (value);
+        self->connection = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -559,7 +558,7 @@ test_channel_manager_get_property (
   switch (property_id)
     {
       case PROP_CONNECTION:
-        g_value_set_object (value, self->plugin_connection);
+        g_value_set_object (value, self->connection);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -584,8 +583,7 @@ test_channel_manager_constructed (GObject *object)
   if (G_OBJECT_CLASS (test_channel_manager_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (test_channel_manager_parent_class)->constructed (object);
 
-  tp_g_signal_connect_object (self->plugin_connection,
-      "porter-available",
+  tp_g_signal_connect_object (self->connection, "porter-available",
       G_CALLBACK (test_channel_manager_porter_available_cb),
       self, 0);
 }
@@ -600,9 +598,9 @@ test_channel_manager_class_init (TestChannelManagerClass *klass)
   oclass->constructed = test_channel_manager_constructed;
 
   g_object_class_install_property (oclass, PROP_CONNECTION,
-      g_param_spec_object ("plugin-connection", "Gabble Plugin Connection",
-          "Gabble Plugin Connection",
-          GABBLE_TYPE_PLUGIN_CONNECTION,
+      g_param_spec_object ("connection", "Gabble Connection",
+          "Gabble connection",
+          GABBLE_TYPE_CONNECTION,
           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 }
 

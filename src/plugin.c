@@ -99,7 +99,7 @@ void
 gabble_plugin_create_sidecar_async (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    GabblePluginConnection *plugin_connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -122,7 +122,7 @@ gabble_plugin_create_sidecar_async (
         "'%s' is buggy: does not imlement create_sidecar_finish",
         iface->name);
   else
-    iface->create_sidecar_async (plugin, sidecar_interface, plugin_connection, session,
+    iface->create_sidecar_async (plugin, sidecar_interface, connection, session,
         callback, user_data);
 }
 
@@ -211,7 +211,6 @@ gabble_plugin_presence_status_for_privacy_list (
 
 GPtrArray *
 gabble_plugin_create_channel_managers (GabblePlugin *plugin,
-    GabblePluginConnection *plugin_connection,
     TpBaseConnection *connection)
 {
   GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
@@ -219,7 +218,7 @@ gabble_plugin_create_channel_managers (GabblePlugin *plugin,
   GPtrArray *out = NULL;
 
   if (func != NULL)
-    out = func (plugin, plugin_connection, connection);
+    out = func (plugin, connection);
 
   return out;
 }

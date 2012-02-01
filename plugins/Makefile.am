@@ -1,31 +1,31 @@
 plugindir = $(libdir)/telepathy/gabble-0
 
 installable_plugins = \
-	libconsole.la \
-	libgateways.la
+	console.la \
+	gateways.la
 
-libtest_only_plugins = \
-	libtest.la
+test_only_plugins = \
+	test.la
 
-# libtesting-only plugins
+# testing-only plugins
 if ENABLE_INSTALLED_TESTS
 noinst_LTLIBRARIES = \
 	$(NULL)
 
-libtestplugindir = $(gabbletestsdir)/plugins
-libtestplugin_LTLIBRARIES = \
-	$(libtest_only_plugins) \
+testplugindir = $(gabbletestsdir)/plugins
+testplugin_LTLIBRARIES = \
+	$(test_only_plugins) \
 	$(NULL)
 
-libtest_la_LDFLAGS = $(AM_LDFLAGS)
+test_la_LDFLAGS = $(AM_LDFLAGS)
 else
 noinst_LTLIBRARIES = \
-	$(libtest_only_plugins) \
+	$(test_only_plugins) \
 	$(NULL)
 
-# because libtest.la is not installed, libtool will want to compile it as static
+# because test.la is not installed, libtool will want to compile it as static
 # despite -shared (a convenience library), unless we also use -rpath
-libtest_la_LDFLAGS = $(AM_LDFLAGS) -rpath $(plugindir)
+test_la_LDFLAGS = $(AM_LDFLAGS) -rpath $(plugindir)
 endif
 
 if ENABLE_PLUGINS
@@ -42,30 +42,17 @@ EXTRA_DIST = \
 	telepathy-gabble-xmpp-console
 endif
 
-AM_LDFLAGS = -avoid-version -shared -no-undefined
+AM_LDFLAGS = -module -avoid-version -shared
 
-if WINDOWS
-ALL_PLUGIN_LIBS = \
-	@WOCKY_LIBS@ \
-	@GLIB_LIBS@ \
-	@TP_GLIB_LIBS@ \
-	$(top_builddir)/extensions/libgabble-extensions.la \
-	$(top_builddir)/src/libgabble-plugins.la
-
-libtest_la_LIBADD = $(ALL_PLUGIN_LIBS)
-libgateways_la_LIBADD = $(ALL_PLUGIN_LIBS)
-libconsole_la_LIBADD = $(ALL_PLUGIN_LIBS)
-endif
-
-libtest_la_SOURCES = \
+test_la_SOURCES = \
     test.c \
     test.h
 
-libgateways_la_SOURCES = \
+gateways_la_SOURCES = \
 	gateways.c \
 	gateways.h
 
-libconsole_la_SOURCES = \
+console_la_SOURCES = \
 	console.c \
 	console.h
 

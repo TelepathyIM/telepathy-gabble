@@ -28,7 +28,6 @@
 #include <wocky/wocky-session.h>
 
 #include "gabble/sidecar.h"
-#include "gabble/plugin-connection.h"
 
 typedef struct _GabblePluginLoader GabblePluginLoader;
 typedef struct _GabblePluginLoaderClass GabblePluginLoaderClass;
@@ -87,8 +86,6 @@ const gchar *gabble_plugin_loader_presence_status_for_privacy_list (
     const gchar *list_name);
 
 GPtrArray * gabble_plugin_loader_create_channel_managers (
-    GabblePluginLoader *self,
-    GabblePluginConnection *plugin_connection,
-    TpBaseConnection *connection);
+    GabblePluginLoader *self, TpBaseConnection *connection);
 
 #endif /* #ifndef __PLUGIN_LOADER_H__ */

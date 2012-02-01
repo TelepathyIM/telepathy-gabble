@@ -8,7 +8,7 @@ gabbleinclude_HEADERS = \
     capabilities-set.h \
     caps-channel-manager.h \
     caps-hash.h \
-    plugin-connection.h \
+    connection.h \
     error.h \
     gabble.h \
     namespaces.h \

@@ -78,7 +78,7 @@ static void
 gabble_gateway_plugin_create_sidecar_async (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
-    GabblePluginConnection *connection,
+    GabbleConnection *connection,
     WockySession *session,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -353,7 +353,7 @@ gabble_gateway_sidecar_class_init (GabbleGatewaySidecarClass *klass)
   g_object_class_install_property (object_class, PROP_CONNECTION,
       g_param_spec_object ("connection", "Connection",
           "Gabble connection",
-          GABBLE_TYPE_PLUGIN_CONNECTION,
+          GABBLE_TYPE_CONNECTION,
           G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_SESSION,

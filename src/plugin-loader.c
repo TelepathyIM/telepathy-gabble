@@ -290,10 +290,8 @@ gabble_plugin_loader_create_sidecar (
           GSimpleAsyncResult *res = g_simple_async_result_new (G_OBJECT (self),
               callback, user_data, gabble_plugin_loader_create_sidecar);
 
-          GabblePluginConnection *gabble_conn =
-            GABBLE_PLUGIN_CONNECTION (connection);
-          gabble_plugin_create_sidecar_async (p, sidecar_interface,
-              gabble_conn, session, create_sidecar_cb, res);
+          gabble_plugin_create_sidecar_async (p, sidecar_interface, connection, session,
+              create_sidecar_cb, res);
           return;
         }
     }
@@ -385,7 +383,6 @@ copy_to_other_array (gpointer data,
 GPtrArray *
 gabble_plugin_loader_create_channel_managers (
     GabblePluginLoader *self,
-    GabblePluginConnection *plugin_connection,
     TpBaseConnection *connection)
 {
   GPtrArray *out = g_ptr_array_new ();
@@ -396,8 +393,7 @@ gabble_plugin_loader_create_channel_managers (
       GabblePlugin *plugin = g_ptr_array_index (self->priv->plugins, i);
       GPtrArray *managers;
 
-      managers = gabble_plugin_create_channel_managers (plugin,
-          plugin_connection, connection);
+      managers = gabble_plugin_create_channel_managers (plugin, connection);
 
       if (managers == NULL)
         continue;

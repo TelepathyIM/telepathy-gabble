@@ -51,7 +51,6 @@
 #include "bytestream-factory.h"
 #include "gabble/capabilities.h"
 #include "gabble/caps-channel-manager.h"
-#include "gabble/plugin-connection.h"
 #include "caps-hash.h"
 #include "auth-manager.h"
 #include "conn-aliasing.h"
@@ -98,13 +97,6 @@ static void conn_capabilities_fill_contact_attributes (GObject *obj,
   const GArray *contacts, GHashTable *attributes_hash);
 static void conn_contact_capabilities_fill_contact_attributes (GObject *obj,
   const GArray *contacts, GHashTable *attributes_hash);
-static void gabble_plugin_connection_iface_init (
-    GabblePluginConnectionInterface *iface,
-    gpointer conn);
-static gchar *_gabble_plugin_connection_get_full_jid (
-    GabblePluginConnection *conn);
-static TpBaseContactList *_gabble_plugin_connection_get_contact_list (
-    GabblePluginConnection *conn);
 
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     gabble_connection,
@@ -150,8 +142,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_power_saving_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_ADDRESSING,
       conn_addressing_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_PLUGIN_CONNECTION,
-      gabble_plugin_connection_iface_init);
     )
 
 /* properties */
@@ -311,6 +301,8 @@ struct _GabbleConnectionPrivate
   gboolean dispose_has_run;
 };
 
+static guint sig_id_porter_available = 0;
+
 static void connection_capabilities_update_cb (GabblePresenceCache *cache,
     TpHandle handle,
     const GabbleCapabilitySet *old_cap_set,
@@ -331,7 +323,6 @@ static GPtrArray *
 _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
-  GabblePluginConnection *plugin_connection = GABBLE_PLUGIN_CONNECTION (self);
   GPtrArray *channel_managers = g_ptr_array_sized_new (5);
   GabblePluginLoader *loader;
   GPtrArray *tmp;
@@ -389,31 +380,13 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 
   /* plugin channel managers */
   loader = gabble_plugin_loader_dup ();
-  tmp = gabble_plugin_loader_create_channel_managers (loader,
-      plugin_connection, conn);
+  tmp = gabble_plugin_loader_create_channel_managers (loader, conn);
   g_object_unref (loader);
 
   g_ptr_array_foreach (tmp, add_to_array, channel_managers);
   g_ptr_array_unref (tmp);
 
   return channel_managers;
-}
-
-static void
-gabble_plugin_connection_iface_init (
-    GabblePluginConnectionInterface *iface,
-    gpointer conn)
-{
-  iface->add_sidecar_own_caps = gabble_connection_add_sidecar_own_caps;
-  iface->add_sidecar_own_caps_full=
-    gabble_connection_add_sidecar_own_caps_full;
-  iface->get_session = gabble_connection_get_session;
-  iface->get_full_jid = _gabble_plugin_connection_get_full_jid;
-  iface->get_jid_for_caps = gabble_connection_get_jid_for_caps;
-  iface->pick_best_resource_for_caps =
-    gabble_connection_pick_best_resource_for_caps;
-  iface->get_contact_list = _gabble_plugin_connection_get_contact_list;
-  iface->get_caps = gabble_connection_get_caps;
 }
 
 static GObject *
@@ -1200,6 +1173,17 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
+  /**
+   * @self: a connection
+   * @porter: a porter
+   *
+   * Emitted when the WockyPorter becomes available.
+   */
+  sig_id_porter_available = g_signal_new ("porter-available",
+      G_OBJECT_CLASS_TYPE (gabble_connection_class),
+      G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED, 0, NULL, NULL,
+      g_cclosure_marshal_VOID__OBJECT, G_TYPE_NONE, 1, WOCKY_TYPE_PORTER);
+
   gabble_connection_class->properties_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
@@ -1394,13 +1378,6 @@ gabble_connection_get_full_jid (GabbleConnection *conn)
   return g_strconcat (bare_jid, "/", conn->priv->resource, NULL);
 }
 
-static gchar *
-_gabble_plugin_connection_get_full_jid (GabblePluginConnection *plugin_conn)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (plugin_conn);
-  return gabble_connection_get_full_jid (conn);
-}
-
 /**
  * gabble_connection_dup_porter:
  *
@@ -1422,10 +1399,8 @@ WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn)
 }
 
 WockySession *
-gabble_connection_get_session (GabblePluginConnection *plugin_connection)
+gabble_connection_get_session (GabbleConnection *connection)
 {
-  GabbleConnection *connection = GABBLE_CONNECTION (plugin_connection);
-
   g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
 
   return connection->session;
@@ -1901,7 +1876,7 @@ connector_connected (GabbleConnection *self,
   g_signal_connect (priv->porter, "remote-error",
       G_CALLBACK (remote_error_cb), self);
 
-  g_signal_emit_by_name (self, "porter-available", priv->porter);
+  g_signal_emit (self, sig_id_porter_available, 0, priv->porter);
   connect_iq_callbacks (self);
 
   wocky_pep_service_start (self->pep_location, self->session);
@@ -3846,12 +3821,11 @@ gabble_connection_update_sidecar_capabilities (GabbleConnection *self,
 
 /* identities is actually a WockyDiscoIdentityArray */
 gchar *
-gabble_connection_add_sidecar_own_caps_full (GabblePluginConnection *self,
+gabble_connection_add_sidecar_own_caps_full (GabbleConnection *self,
     const GabbleCapabilitySet *cap_set,
     const GPtrArray *identities,
     GPtrArray *data_forms)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (self);
   GPtrArray *identities_copy = ((identities == NULL) ?
       wocky_disco_identity_array_new () :
       wocky_disco_identity_array_copy (identities));
@@ -3865,7 +3839,7 @@ gabble_connection_add_sidecar_own_caps_full (GabblePluginConnection *self,
 
   ver = gabble_caps_hash_compute_full (cap_set, identities_copy, data_forms);
 
-  gabble_presence_cache_add_own_caps (conn->presence_cache, ver,
+  gabble_presence_cache_add_own_caps (self->presence_cache, ver,
       cap_set, identities_copy, data_forms);
 
   wocky_disco_identity_array_free (identities_copy);
@@ -3874,7 +3848,7 @@ gabble_connection_add_sidecar_own_caps_full (GabblePluginConnection *self,
 }
 
 gchar *
-gabble_connection_add_sidecar_own_caps (GabblePluginConnection *self,
+gabble_connection_add_sidecar_own_caps (GabbleConnection *self,
     const GabbleCapabilitySet *cap_set,
     const GPtrArray *identities)
 {
@@ -3883,13 +3857,12 @@ gabble_connection_add_sidecar_own_caps (GabblePluginConnection *self,
 }
 
 const gchar *
-gabble_connection_get_jid_for_caps (GabblePluginConnection *plugin_conn,
+gabble_connection_get_jid_for_caps (GabbleConnection *conn,
     WockyXep0115Capabilities *caps)
 {
   TpHandle handle;
   TpBaseConnection *base;
   TpHandleRepoIface *contact_handles;
-  GabbleConnection *conn = GABBLE_CONNECTION (plugin_conn);
 
   g_return_val_if_fail (GABBLE_IS_CONNECTION (conn), NULL);
   g_return_val_if_fail (GABBLE_IS_PRESENCE (caps), NULL);
@@ -3913,8 +3886,7 @@ gabble_connection_get_jid_for_caps (GabblePluginConnection *plugin_conn,
 }
 
 const gchar *
-gabble_connection_pick_best_resource_for_caps (
-    GabblePluginConnection *plugin_connection,
+gabble_connection_pick_best_resource_for_caps (GabbleConnection *connection,
     const gchar *jid,
     GabbleCapabilitySetPredicate predicate,
     gconstpointer user_data)
@@ -3922,7 +3894,6 @@ gabble_connection_pick_best_resource_for_caps (
   TpBaseConnection *base;
   TpHandleRepoIface *contact_handles;
   TpHandle handle;
-  GabbleConnection *connection = GABBLE_CONNECTION (plugin_connection);
   GabblePresence *presence;
 
   g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
@@ -3956,20 +3927,11 @@ gabble_connection_get_contact_list (GabbleConnection *connection)
   return (TpBaseContactList *) connection->roster;
 }
 
-static TpBaseContactList *
-_gabble_plugin_connection_get_contact_list (
-    GabblePluginConnection *plugin_connection)
-{
-  GabbleConnection *connection = GABBLE_CONNECTION (plugin_connection);
-  return gabble_connection_get_contact_list (connection);
-}
-
 WockyXep0115Capabilities *
-gabble_connection_get_caps (GabblePluginConnection *plugin_connection,
+gabble_connection_get_caps (GabbleConnection *connection,
     TpHandle handle)
 {
   GabblePresence *presence;
-  GabbleConnection *connection = GABBLE_CONNECTION (plugin_connection);
 
   g_return_val_if_fail (GABBLE_IS_CONNECTION (connection), NULL);
   g_return_val_if_fail (handle > 0, NULL);

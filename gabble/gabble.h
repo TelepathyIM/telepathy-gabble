@@ -28,7 +28,7 @@
 #include <gabble/capabilities-set.h>
 #include <gabble/caps-channel-manager.h>
 #include <gabble/caps-hash.h>
-#include <gabble/plugin-connection.h>
+#include <gabble/connection.h>
 #include <gabble/error.h>
 #include <gabble/namespaces.h>
 #include <gabble/plugin.h>

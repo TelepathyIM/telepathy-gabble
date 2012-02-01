@@ -75,7 +75,7 @@ gabble_gateway_plugin_class_init (GabbleGatewayPluginClass *klass)
 }
 
 static void
-gabble_gateway_plugin_create_sidecar_async (
+gabble_gateway_plugin_create_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
     GabbleConnection *connection,
@@ -85,7 +85,10 @@ gabble_gateway_plugin_create_sidecar_async (
 {
   GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (plugin),
       callback, user_data,
-      gabble_gateway_plugin_create_sidecar_async);
+      /* sic: all plugins share gabble_plugin_create_sidecar_finish() so we
+       * need to use the same source tag.
+       */
+      gabble_plugin_create_sidecar);
   GabbleSidecar *sidecar = NULL;
 
   if (!tp_strdiff (sidecar_interface, GABBLE_IFACE_GABBLE_PLUGIN_GATEWAYS))
@@ -109,27 +112,6 @@ gabble_gateway_plugin_create_sidecar_async (
   g_object_unref (result);
 }
 
-static GabbleSidecar *
-gabble_gateway_plugin_create_sidecar_finish (
-    GabblePlugin *plugin,
-    GAsyncResult *result,
-    GError **error)
-{
-  GabbleSidecar *sidecar;
-
-  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
-        error))
-    return NULL;
-
-  g_return_val_if_fail (g_simple_async_result_is_valid (result,
-        G_OBJECT (plugin), gabble_gateway_plugin_create_sidecar_async), NULL);
-
-  sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
-        G_SIMPLE_ASYNC_RESULT (result)));
-
-  return g_object_ref (sidecar);
-}
-
 static void
 plugin_iface_init (
     gpointer g_iface,
@@ -140,8 +122,7 @@ plugin_iface_init (
   iface->name = "Gateway registration plugin";
   iface->version = PACKAGE_VERSION;
   iface->sidecar_interfaces = sidecar_interfaces;
-  iface->create_sidecar_async = gabble_gateway_plugin_create_sidecar_async;
-  iface->create_sidecar_finish = gabble_gateway_plugin_create_sidecar_finish;
+  iface->create_sidecar = gabble_gateway_plugin_create_sidecar;
 }
 
 GabblePlugin *

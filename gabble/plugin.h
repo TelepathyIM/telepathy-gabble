@@ -60,11 +60,6 @@ typedef GPtrArray * (*GabblePluginCreateChannelManagersImpl) (
     GabblePlugin *plugin,
     TpBaseConnection *connection);
 
-typedef GabbleSidecar * (*GabblePluginCreateSidecarFinishImpl) (
-     GabblePlugin *plugin,
-     GAsyncResult *result,
-     GError **error);
-
 struct _GabblePluginPrivacyListMap {
     const gchar *presence_status_name;
     const gchar *privacy_list_name;
@@ -86,14 +81,9 @@ struct _GabblePluginInterface {
     const gchar * const *sidecar_interfaces;
 
     /**
-     * An implementation of gabble_plugin_create_sidecar_async().
+     * An implementation of gabble_plugin_create_sidecar().
      */
-    GabblePluginCreateSidecarImpl create_sidecar_async;
-
-    /**
-     * An implementation of gabble_plugin_create_sidecar_finish().
-     */
-    GabblePluginCreateSidecarFinishImpl create_sidecar_finish;
+    GabblePluginCreateSidecarImpl create_sidecar;
 
     /**
      * The plugin's version, conventionally a "."-separated sequence of
@@ -130,7 +120,7 @@ gboolean gabble_plugin_implements_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface);
 
-void gabble_plugin_create_sidecar_async (
+void gabble_plugin_create_sidecar (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
     GabbleConnection *connection,

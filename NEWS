@@ -14,6 +14,11 @@ Enhancements:
   It's possible this will cause regressions in weird edge cases but it
   should make the code base more maintainable. (Jonny, Will)
 
+• fd.o#45491 - Error messages provided by the server in <presence
+  type='error'/> stanzas are now exposed via the SimplePresence API.
+  This makes it easier for users to distinguish contacts being offline
+  from contacts' servers being broken. (Will)
+
 API changes to Wocky snapshot:
 
 • fd.o#45400 - WockyPepService's API has changed a little bit.

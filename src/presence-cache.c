@@ -43,6 +43,7 @@
 #include <wocky/wocky-utils.h>
 #include <wocky/wocky-namespaces.h>
 #include <wocky/wocky-data-form.h>
+#include <wocky/wocky-xmpp-error-enumtypes.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
@@ -1837,11 +1838,29 @@ gabble_presence_parse_presence_message (
       return TRUE;
 
     case WOCKY_STANZA_SUB_TYPE_ERROR:
+    {
+      GError *error = NULL;
+      gboolean ret;
+
       NODE_DEBUG (presence_node, "Received error presence");
+
+      ret = wocky_stanza_extract_errors (message, NULL, &error, NULL, NULL);
+      g_assert (ret);
+
+      /* If there's a <status/> in this presence, it's our own echoed back at
+       * us. So we don't want to use that. Instead, we use the <error><text> if
+       * there is any, or the name of the error condition if not. */
+      if (tp_str_empty (error->message))
+        status_message = wocky_enum_to_nick (WOCKY_TYPE_XMPP_ERROR,
+            error->code);
+      else
+        status_message = error->message;
+
       gabble_presence_cache_update (cache, handle, resource,
           GABBLE_PRESENCE_ERROR, status_message, priority);
 
       return TRUE;
+    }
 
     case WOCKY_STANZA_SUB_TYPE_UNAVAILABLE:
       if (gabble_roster_handle_sends_presence_to_us (priv->conn->roster,

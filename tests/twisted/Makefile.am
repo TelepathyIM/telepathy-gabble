@@ -64,6 +64,7 @@ TWISTED_TESTS = \
 	plugin-channel-managers.py \
 	power-save.py \
 	presence/decloak.py \
+	presence/error.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
 	presence/invisible_xep_0126.py \

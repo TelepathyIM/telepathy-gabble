@@ -1,7 +1,7 @@
 /*
  * gabble-connection.h - Header for GabbleConnection
- * Copyright (C) 2005 Collabora Ltd.
- * Copyright (C) 2005 Nokia Corporation
+ * Copyright © 2005-2012 Collabora Ltd.
+ * Copyright © 2005-2010 Nokia Corporation
  *
  * This library is free software; you can redistribute it and/or
  * modify it under the terms of the GNU Lesser General Public
@@ -34,7 +34,6 @@
 #include <wocky/wocky-session.h>
 #include <wocky/wocky-pep-service.h>
 
-#include "gabble/connection.h"
 #include "gabble/capabilities.h"
 #ifdef ENABLE_FILE_TRANSFER
 #include "ft-manager.h"
@@ -43,7 +42,68 @@
 #include "muc-factory.h"
 #include "types.h"
 
+#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/base-contact-list.h>
+
+#include <gabble/capabilities-set.h>
+#include <gabble/types.h>
+#include <gabble/plugin-connection.h>
+
+#include <wocky/wocky-xep-0115-capabilities.h>
+
 G_BEGIN_DECLS
+
+#define GABBLE_TYPE_CONNECTION (gabble_connection_get_type ())
+#define GABBLE_CONNECTION(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_CONNECTION, GabbleConnection))
+#define GABBLE_CONNECTION_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_CONNECTION, \
+                           GabbleConnectionClass))
+#define GABBLE_IS_CONNECTION(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_CONNECTION))
+#define GABBLE_IS_CONNECTION_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_CONNECTION))
+#define GABBLE_CONNECTION_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONNECTION, \
+                              GabbleConnectionClass))
+
+typedef struct _GabbleConnectionClass GabbleConnectionClass;
+
+GType gabble_connection_get_type (void);
+
+void gabble_connection_update_sidecar_capabilities (
+    GabbleConnection *connection,
+    const GabbleCapabilitySet *add_set,
+    const GabbleCapabilitySet *remove_set);
+gchar *gabble_connection_add_sidecar_own_caps (
+    GabblePluginConnection *connection,
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities) G_GNUC_WARN_UNUSED_RESULT;
+gchar *gabble_connection_add_sidecar_own_caps_full (
+    GabblePluginConnection *connection,
+    const GabbleCapabilitySet *cap_set,
+    const GPtrArray *identities,
+    GPtrArray *data_forms) G_GNUC_WARN_UNUSED_RESULT;
+
+WockySession *gabble_connection_get_session (
+    GabblePluginConnection *connection);
+
+gchar *gabble_connection_get_full_jid (GabbleConnection *conn);
+
+const gchar * gabble_connection_get_jid_for_caps (GabblePluginConnection *conn,
+    WockyXep0115Capabilities *caps);
+
+const gchar * gabble_connection_pick_best_resource_for_caps (
+    GabblePluginConnection *connection,
+    const gchar *jid,
+    GabbleCapabilitySetPredicate predicate,
+    gconstpointer user_data);
+
+TpBaseContactList * gabble_connection_get_contact_list (
+    GabbleConnection *connection);
+
+WockyXep0115Capabilities * gabble_connection_get_caps (
+    GabblePluginConnection *connection, TpHandle handle);
 
 /* Default parameters for optional parameters */
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443

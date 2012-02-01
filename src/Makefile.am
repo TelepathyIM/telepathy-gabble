@@ -77,7 +77,6 @@ libgabble_convenience_la_SOURCES = \
     conn-util.c \
     conn-mail-notif.h \
     conn-mail-notif.c \
-    $(top_srcdir)/gabble/connection.h \
     connection.h \
     connection.c \
     connection-manager.h \
@@ -136,8 +135,6 @@ libgabble_convenience_la_SOURCES = \
     olpc-activity.c \
     plugin-loader.h \
     plugin-loader.c \
-    $(top_srcdir)/gabble/plugin.h \
-    plugin.c \
     presence.h \
     presence.c \
     presence-cache.h \
@@ -213,6 +210,7 @@ libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la \
    $(top_builddir)/lib/gibber/libgibber.la \
    $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
+   libgabble-plugins.la \
    $(ALL_LIBS)
 
 nodist_libgabble_convenience_la_SOURCES = \
@@ -241,12 +239,29 @@ endif
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
-if WINDOWS
-lib_LTLIBRARIES = libgabble-runtime.la
-libgabble_runtime_la_LIBADD = libgabble-convenience.la
-libgabble_runtime_la_LDFLAGS = -no-undefined
-libgabble_runtime_la_SOURCES =
-endif
+lib_LTLIBRARIES = libgabble-plugins.la
+
+libgabble_plugins_la_LDFLAGS = -shared -no-undefined -avoid-version
+
+libgabble_plugins_la_LIBADD = \
+   $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
+   $(top_builddir)/lib/loudmouth/libloudmouth.la \
+   $(ALL_LIBS)
+
+libgabble_plugins_la_SOURCES = \
+   (top_srcdir)/gabble/capabilities.h \
+   capabilities.c \
+   $(top_srcdir)/gabble/caps-channel-manager.h \
+   caps-channel-manager.c \
+   $(top_srcdir)/gabble/debug.h \
+   debug.c \
+   $(top_srcdir)/gabble/error.h \
+   error.c \
+   $(top_srcdir)/gabble/plugin.h \
+   plugin.c \
+   $(top_srcdir)/gabble/plugin-connection.h \
+   plugin-connection.c \
+   sidecar.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @TP_YELL_CFLAGS@ \
@@ -268,7 +283,6 @@ AM_CFLAGS += -D_WIN32_WINNT=0x0501
 else
 ALL_LIBS += @WOCKY_LIBS@
 endif
-
 
 # build gibber first
 all: gibber

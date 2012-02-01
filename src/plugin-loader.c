@@ -290,7 +290,7 @@ gabble_plugin_loader_create_sidecar (
           GSimpleAsyncResult *res = g_simple_async_result_new (G_OBJECT (self),
               callback, user_data, gabble_plugin_loader_create_sidecar);
 
-          gabble_plugin_create_sidecar (p, sidecar_interface, connection, session,
+          gabble_plugin_create_sidecar_async (p, sidecar_interface, connection, session,
               create_sidecar_cb, res);
           return;
         }

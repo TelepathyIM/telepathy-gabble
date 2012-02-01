@@ -80,7 +80,7 @@ sidecar_iq_created_cb (
 }
 
 static void
-test_plugin_create_sidecar (
+test_plugin_create_sidecar_async (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
     GabbleConnection *connection,
@@ -90,10 +90,8 @@ test_plugin_create_sidecar (
 {
   GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (plugin),
       callback, user_data,
-      /* sic: all plugins share gabble_plugin_create_sidecar_finish() so we
-       * need to use the same source tag.
-       */
-      gabble_plugin_create_sidecar);
+      test_plugin_create_sidecar_async);
+
   GabbleSidecar *sidecar = NULL;
 
   if (!tp_strdiff (sidecar_interface, IFACE_TEST))
@@ -124,7 +122,29 @@ test_plugin_create_sidecar (
     g_simple_async_result_set_op_res_gpointer (result, sidecar, g_object_unref);
 
   g_simple_async_result_complete_in_idle (result);
+
   g_object_unref (result);
+}
+
+static GabbleSidecar *
+test_plugin_create_sidecar_finish (
+    GabblePlugin *plugin,
+    GAsyncResult *result,
+    GError **error)
+{
+  GabbleSidecar *sidecar;
+
+  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
+        error))
+    return NULL;
+
+  g_return_val_if_fail (g_simple_async_result_is_valid (result,
+        G_OBJECT (plugin), test_plugin_create_sidecar_async), NULL);
+
+  sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
+        G_SIMPLE_ASYNC_RESULT (result)));
+
+  return g_object_ref (sidecar);
 }
 
 static GPtrArray *
@@ -164,7 +184,8 @@ plugin_iface_init (
   iface->name = "Sidecar test plugin";
   iface->version = PACKAGE_VERSION;
   iface->sidecar_interfaces = sidecar_interfaces;
-  iface->create_sidecar = test_plugin_create_sidecar;
+  iface->create_sidecar_async = test_plugin_create_sidecar_async;
+  iface->create_sidecar_finish = test_plugin_create_sidecar_finish;
   iface->create_channel_managers = test_plugin_create_channel_managers;
 
   iface->presence_statuses = test_presences;

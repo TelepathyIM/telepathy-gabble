@@ -349,7 +349,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
       contact_handles, conn->self_handle);
 
   if (priv->session != NULL)
-      priv->creator = priv->session->peer;
+      priv->creator = gabble_jingle_session_get_peer_handle (priv->session);
   else
       priv->creator = conn->self_handle;
 
@@ -403,7 +403,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
        */
       set = tp_intset_new_containing (conn->self_handle);
       tp_group_mixin_change_members (obj, "", NULL, NULL, set, NULL,
-          priv->session->peer, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+          gabble_jingle_session_get_peer_handle (priv->session), TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
       tp_intset_destroy (set);
 
       /* Set up signal callbacks, emit session handler, initialize streams,
@@ -2724,7 +2724,7 @@ construct_stream (GabbleMediaChannel *chan,
     mtype == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video");
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
-      chan, id, priv->session->peer, mtype);
+      chan, id, gabble_jingle_session_get_peer_handle (priv->session), mtype);
 
   /* StreamAdded does not include the stream's direction and pending send
    * information, so we call the notify::combined-direction handler in order to

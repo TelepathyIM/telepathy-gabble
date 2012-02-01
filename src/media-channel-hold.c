@@ -331,6 +331,7 @@ remote_state_changed_cb (GabbleJingleSession *session,
 {
   GabbleMediaChannelPrivate *priv = self->priv;
   TpChannelCallStateFlags call_state = 0;
+  TpHandle peer;
 
   if (gabble_jingle_session_get_remote_hold (session))
     call_state |= TP_CHANNEL_CALL_STATE_HELD;
@@ -346,8 +347,9 @@ remote_state_changed_cb (GabbleJingleSession *session,
 
   priv->call_state = call_state;
 
+  peer = gabble_jingle_session_get_peer_handle (priv->session);
   tp_svc_channel_interface_call_state_emit_call_state_changed (self,
-      priv->session->peer, call_state);
+      peer, call_state);
 }
 
 
@@ -360,8 +362,12 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
   GHashTable *states = g_hash_table_new (g_direct_hash, g_direct_equal);
 
   if (self->priv->session != NULL)
-    g_hash_table_insert (states, GUINT_TO_POINTER (self->priv->session->peer),
-        GUINT_TO_POINTER (self->priv->call_state));
+    {
+      TpHandle peer = gabble_jingle_session_get_peer_handle (self->priv->session);
+
+      g_hash_table_insert (states, GUINT_TO_POINTER (peer),
+          GUINT_TO_POINTER (self->priv->call_state));
+    }
 
   tp_svc_channel_interface_call_state_return_from_get_call_states (context,
       states);

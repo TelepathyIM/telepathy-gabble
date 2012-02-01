@@ -375,7 +375,7 @@ new_call_channel (GabbleMediaFactory *self,
   TpHandle initiator;
 
   if (sess != NULL)
-    initiator = sess->peer;
+    initiator = gabble_jingle_session_get_peer_handle (sess);
   else
     initiator = conn->self_handle;
 
@@ -458,14 +458,15 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
     }
   else if (self->priv->use_call_channels)
     {
-      new_call_channel (self, sess, sess->peer,
+      new_call_channel (self, sess, gabble_jingle_session_get_peer_handle (sess),
         FALSE, NULL,
         FALSE, NULL,
         NULL);
     }
   else
     {
-      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
+      GabbleMediaChannel *chan = new_media_channel (self, sess,
+          gabble_jingle_session_get_peer_handle (sess),
           FALSE, FALSE, FALSE);
       GList *cs;
 

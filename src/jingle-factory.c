@@ -895,7 +895,8 @@ session_terminated_cb (GabbleJingleSession *session,
                        const gchar *text,
                        GabbleJingleFactory *factory)
 {
-  gchar *key = make_session_map_key (session->peer,
+  gchar *key = make_session_map_key (
+      gabble_jingle_session_get_peer_handle (session),
       gabble_jingle_session_get_peer_jid (session),
       gabble_jingle_session_get_sid (session));
 

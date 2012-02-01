@@ -380,6 +380,7 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
   JingleContentState state;
   TpSendingState local_state;
   TpSendingState remote_state;
+  TpHandle peer;
 
   g_object_get (priv->content, "state", &state, NULL);
 
@@ -417,8 +418,9 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
 
   tp_base_call_stream_update_local_sending_state (base, local_state,
       0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
+  peer = gabble_jingle_session_get_peer_handle (priv->content->session);
   tp_base_call_stream_update_remote_sending_state (base,
-        priv->content->session->peer, remote_state,
+        peer, remote_state,
         0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
 }
 

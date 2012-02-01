@@ -398,8 +398,9 @@ extract_media_type (WockyNode *desc_node,
 static gboolean
 content_has_cap (GabbleJingleContent *content, const gchar *cap)
 {
+  TpHandle peer = gabble_jingle_session_get_peer_handle (content->session);
   GabblePresence *presence = gabble_presence_cache_get (
-      content->conn->presence_cache, content->session->peer);
+      content->conn->presence_cache, peer);
 
   return (presence != NULL) && gabble_presence_resource_has_caps (presence,
       gabble_jingle_session_get_peer_resource (content->session),

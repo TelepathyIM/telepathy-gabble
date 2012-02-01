@@ -79,6 +79,7 @@ struct _GabbleJingleSessionPrivate
 {
   GabbleConnection *conn;
 
+  TpHandle peer;
   gchar *peer_resource;
   gchar *peer_jid;
   gchar *initiator;
@@ -223,8 +224,8 @@ gabble_jingle_session_dispose (GObject *object)
   g_hash_table_unref (priv->responder_contents);
   priv->responder_contents = NULL;
 
-  tp_handle_unref (contact_repo, sess->peer);
-  sess->peer = 0;
+  tp_handle_unref (contact_repo, priv->peer);
+  priv->peer = 0;
 
   g_free (priv->sid);
   priv->sid = NULL;
@@ -262,7 +263,7 @@ gabble_jingle_session_get_property (GObject *object,
       g_value_set_boolean (value, priv->local_initiator);
       break;
     case PROP_PEER:
-      g_value_set_uint (value, sess->peer);
+      g_value_set_uint (value, priv->peer);
       break;
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
@@ -354,7 +355,7 @@ gabble_jingle_session_constructed (GObject *object)
   g_assert (priv->peer_jid != NULL);
   g_assert (priv->sid != NULL);
 
-  self->peer = tp_handle_ensure (contact_repo, priv->peer_jid, NULL, NULL);
+  priv->peer = tp_handle_ensure (contact_repo, priv->peer_jid, NULL, NULL);
 
   if (priv->local_initiator)
     priv->initiator = gabble_connection_get_full_jid (priv->conn);
@@ -637,7 +638,7 @@ gabble_jingle_session_peer_has_quirk (
 {
   GabbleJingleSessionPrivate *priv = self->priv;
   GabblePresence *presence = gabble_presence_cache_get (
-      priv->conn->presence_cache, self->peer);
+      priv->conn->presence_cache, priv->peer);
 
   return (presence != NULL &&
       priv->peer_resource != NULL &&
@@ -1904,6 +1905,8 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
   if (priv->local_initiator)
     {
+      TpHandle peer;
+
       if (priv->state != JINGLE_STATE_PENDING_CREATED)
         {
           DEBUG ("session is in state %u, won't try to initiate", priv->state);
@@ -1918,9 +1921,10 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
       /* send directed presence (including our own caps, avatar etc.) to
        * the peer, if we aren't already visible to them */
-      if (!conn_presence_visible_to (priv->conn, sess->peer))
+      peer = gabble_jingle_session_get_peer_handle (sess);
+      if (!conn_presence_visible_to (priv->conn, peer))
         conn_presence_signal_own_presence (priv->conn,
-            tp_handle_inspect (contact_repo, sess->peer), NULL);
+            tp_handle_inspect (contact_repo, peer), NULL);
 
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JINGLE_STATE_PENDING_INITIATE_SENT;
@@ -2378,6 +2382,12 @@ JingleDialect
 gabble_jingle_session_get_dialect (GabbleJingleSession *sess)
 {
   return sess->priv->dialect;
+}
+
+TpHandle
+gabble_jingle_session_get_peer_handle (GabbleJingleSession *self)
+{
+  return self->priv->peer;
 }
 
 const gchar *

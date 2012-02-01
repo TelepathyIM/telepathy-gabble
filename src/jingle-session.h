@@ -65,8 +65,6 @@ typedef struct _GabbleJingleSessionPrivate GabbleJingleSessionPrivate;
 struct _GabbleJingleSession {
     GObject parent;
     GabbleJingleSessionPrivate *priv;
-
-    TpHandle peer;
 };
 
 GabbleJingleSession *gabble_jingle_session_new (GabbleConnection *connection,
@@ -129,6 +127,7 @@ gboolean gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess);
 gboolean gabble_jingle_session_defines_action (GabbleJingleSession *sess,
     JingleAction action);
 
+TpHandle gabble_jingle_session_get_peer_handle (GabbleJingleSession *self);
 const gchar *gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess);
 
 const gchar *gabble_jingle_session_get_reason_name (JingleReason reason);

@@ -376,11 +376,12 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
               GabbleJingleShareManifestEntry *entry = i->data;
               GabbleFileTransferChannel *channel = NULL;
               gchar *filename = NULL;
+              TpHandle peer = gabble_jingle_session_get_peer_handle (sess);
 
               filename = g_strdup_printf ("%s%s",
                   entry->name, entry->folder? ".tar":"");
               channel = gabble_file_transfer_channel_new (self->priv->connection,
-                  sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,
+                  peer, peer, TP_FILE_TRANSFER_STATE_PENDING,
                   NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
                   NULL, 0, 0, FALSE, NULL, gtalk_fc, token, NULL, NULL, NULL);
               g_free (filename);

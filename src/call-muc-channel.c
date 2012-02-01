@@ -1115,7 +1115,7 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
     gabble_jingle_session_get_peer_jid (session));
 
   member = gabble_base_call_channel_get_member_from_handle
-    (GABBLE_BASE_CALL_CHANNEL (self), session->peer);
+    (GABBLE_BASE_CALL_CHANNEL (self), gabble_jingle_session_get_peer_handle (session));
 
   if (member == NULL || gabble_call_member_get_session (member) != NULL)
     {

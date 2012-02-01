@@ -294,10 +294,11 @@ parse_description (GabbleJingleContent *content,
 {
   GabbleJingleShare *self = GABBLE_JINGLE_SHARE (content);
   GabbleJingleSharePrivate *priv = self->priv;
-  NodeIter i;
+  WockyNodeIter i;
   WockyNode *manifest_node = NULL;
   WockyNode *protocol_node = NULL;
   WockyNode *http_node = NULL;
+  WockyNode *node;
 
   DEBUG ("parse description called");
 
@@ -324,9 +325,9 @@ parse_description (GabbleJingleContent *content,
   priv->manifest = g_slice_new0 (GabbleJingleShareManifest);
 
   /* Build the manifest */
-  for (i = node_iter (manifest_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, manifest_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      WockyNode *node = node_iter_data (i);
       WockyNode *name = NULL;
       WockyNode *image = NULL;
       gboolean folder;
@@ -375,15 +376,10 @@ parse_description (GabbleJingleContent *content,
   if (http_node != NULL)
     {
       /* clear the previously set values */
-      for (i = node_iter (http_node); i; i = node_iter_next (i))
+      wocky_node_iter_init (&i, http_node, "url", NULL);
+      while (wocky_node_iter_next (&i, &node))
         {
-          WockyNode *node = node_iter_data (i);
-          const gchar *name;
-
-          if (tp_strdiff (node->name, "url"))
-            continue;
-
-          name = wocky_node_get_attribute (node, "name");
+          const gchar *name = wocky_node_get_attribute (node, "name");
           if (name == NULL)
             continue;
 

@@ -1282,14 +1282,19 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
     gpointer user_data)
 {
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
-  WockyNode *node = lm_message_node_get_child_with_namespace (
-      wocky_stanza_get_top_node (reply_msg), "list", NULL);
+  WockyNode *query_node, *list_node = NULL;
   GError *error = NULL;
 
+  query_node = wocky_node_get_child_ns (wocky_stanza_get_top_node (reply_msg),
+      "query", NS_PRIVACY);
+
+  if (query_node != NULL)
+    list_node = wocky_node_get_child (query_node, "list");
+
   if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL) &&
-      node != NULL)
+      list_node != NULL)
     {
-      if (!is_valid_invisible_list (node))
+      if (!is_valid_invisible_list (list_node))
         {
           g_free (priv->invisible_list_name);
           priv->invisible_list_name = g_strdup ("invisible-gabble");

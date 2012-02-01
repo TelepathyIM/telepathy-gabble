@@ -34,11 +34,6 @@
 
 #include "types.h"
 
-typedef GSList * NodeIter;
-#define node_iter(node) (node->children)
-#define node_iter_next(i) (g_slist_next (i))
-#define node_iter_data(i) ((WockyNode *) i->data)
-
 /* Guarantees that the resulting hash is in lower-case */
 gchar *sha1_hex (const gchar *bytes, guint len);
 
@@ -50,8 +45,6 @@ gchar *gabble_generate_id (void);
 
 void lm_message_node_add_own_nick (WockyNode *node,
     GabbleConnection *conn);
-WockyNode *lm_message_node_get_child_with_namespace (WockyNode *node,
-    const gchar *name, const gchar *ns);
 
 G_GNUC_WARN_UNUSED_RESULT
 gchar *gabble_encode_jid (const gchar *node, const gchar *domain,
@@ -74,10 +67,6 @@ lm_message_node_add_children_from_properties (WockyNode *node,
 void gabble_signal_connect_weak (gpointer instance, const gchar *detailed_signal,
     GCallback c_handler, GObject *user_data);
 guint gabble_idle_add_weak (GSourceFunc function, GObject *object);
-
-const gchar * wocky_node_get_attribute_with_namespace (WockyNode *node,
-    const gchar *attribute,
-    const gchar *ns);
 
 GPtrArray *gabble_g_ptr_array_copy (GPtrArray *source);
 

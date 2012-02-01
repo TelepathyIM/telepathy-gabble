@@ -10,6 +10,7 @@
 
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
+#include <wocky/wocky-namespaces.h>
 
 #include <gabble/gabble.h>
 
@@ -75,8 +76,10 @@ build_mapping_tables (void)
     }
 }
 
-static gboolean update_location_from_msg (GabbleConnection *conn,
-    TpHandle contact, WockyStanza *msg);
+static gboolean update_location_from_item (
+    GabbleConnection *conn,
+    TpHandle contact,
+    WockyNode *item_node);
 
 /*
  * get_cached_location:
@@ -166,10 +169,11 @@ request_location_reply_cb (GObject *source,
 {
   YetAnotherContextStruct *ctx = user_data;
   WockyStanza *reply;
+  WockyNode *item_node;
   GError *wocky_error = NULL, *tp_error = NULL;
 
   reply = wocky_pep_service_get_finish (WOCKY_PEP_SERVICE (source), res,
-      &wocky_error);
+      &item_node, &wocky_error);
 
   if (reply == NULL ||
       wocky_stanza_extract_errors (reply, NULL, &wocky_error, NULL, NULL))
@@ -183,7 +187,7 @@ request_location_reply_cb (GObject *source,
     {
       GHashTable *location;
 
-      if (update_location_from_msg (ctx->self, ctx->handle, reply))
+      if (update_location_from_item (ctx->self, ctx->handle, item_node))
         {
           location = get_cached_location (ctx->self, ctx->handle);
           /* We just cached a location for this contact, so it should be
@@ -516,9 +520,10 @@ conn_location_properties_setter (GObject *object,
 }
 
 static gboolean
-update_location_from_msg (GabbleConnection *conn,
-                          TpHandle contact,
-                          WockyStanza *msg)
+update_location_from_item (
+    GabbleConnection *conn,
+    TpHandle contact,
+    WockyNode *item_node)
 {
   WockyNode *node;
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal,
@@ -526,11 +531,14 @@ update_location_from_msg (GabbleConnection *conn,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *from = tp_handle_inspect (contact_repo, contact);
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *subloc_node;
   const gchar *lang;
 
-  node = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (msg),
-      "geoloc", NULL);
+  if (item_node == NULL)
+    return FALSE;
+
+  node = wocky_node_get_child_ns (item_node, "geoloc", NS_GEOLOC);
   if (node == NULL)
     return FALSE;
 
@@ -545,9 +553,9 @@ update_location_from_msg (GabbleConnection *conn,
 
   build_mapping_tables ();
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &subloc_node))
     {
-      WockyNode *subloc_node = node_iter_data (i);
       GValue *value = NULL;
       gchar *xmpp_name;
       const gchar *str;
@@ -617,6 +625,7 @@ static void
 location_pep_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyStanza *stanza,
+    WockyNode *item_node,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -637,7 +646,7 @@ location_pep_node_changed (WockyPepService *pep,
     /* Ignore echoed pubsub notifications */
     goto out;
 
-  update_location_from_msg (conn, handle, stanza);
+  update_location_from_item (conn, handle, item_node);
 
 out:
   tp_handle_unref (contact_repo, handle);

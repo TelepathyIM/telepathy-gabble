@@ -1722,7 +1722,6 @@ bare_jid_disco_cb (GabbleDisco *disco,
     gpointer user_data)
 {
   GabbleConnection *conn = user_data;
-  NodeIter i;
 
   if (disco_error != NULL)
     {
@@ -1730,22 +1729,21 @@ bare_jid_disco_cb (GabbleDisco *disco,
     }
   else
     {
-      for (i = node_iter (result); i; i = node_iter_next (i))
+      WockyNodeIter i;
+      WockyNode *child;
+
+      wocky_node_iter_init (&i, result, "identity", NULL);
+      while (wocky_node_iter_next (&i, &child))
         {
-          WockyNode *child = node_iter_data (i);
+          const gchar *category = wocky_node_get_attribute (child,
+              "category");
+          const gchar *type = wocky_node_get_attribute (child, "type");
 
-          if (!tp_strdiff (child->name, "identity"))
+          if (!tp_strdiff (category, "pubsub") &&
+              !tp_strdiff (type, "pep"))
             {
-              const gchar *category = wocky_node_get_attribute (child,
-                  "category");
-              const gchar *type = wocky_node_get_attribute (child, "type");
-
-              if (!tp_strdiff (category, "pubsub") &&
-                  !tp_strdiff (type, "pep"))
-                {
-                  DEBUG ("Server advertises PEP support in our jid features");
-                  conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
-                }
+              DEBUG ("Server advertises PEP support in our jid features");
+              conn->features |= GABBLE_CONNECTION_FEATURES_PEP;
             }
         }
     }
@@ -2825,14 +2823,14 @@ connection_disco_cb (GabbleDisco *disco,
     }
   else
     {
-      NodeIter i;
+      WockyNodeIter i;
+      WockyNode *child;
 
       NODE_DEBUG (result, "got");
 
-      for (i = node_iter (result); i; i = node_iter_next (i))
+      wocky_node_iter_init (&i, result, NULL, NULL);
+      while (wocky_node_iter_next (&i, &child))
         {
-          WockyNode *child = node_iter_data (i);
-
           if (0 == strcmp (child->name, "identity"))
             {
               const gchar *category = wocky_node_get_attribute (child,

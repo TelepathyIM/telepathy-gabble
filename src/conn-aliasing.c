@@ -668,7 +668,7 @@ _grab_nickname (GabbleConnection *self,
   GQuark quark = gabble_conn_aliasing_pep_alias_quark ();
   const gchar *old, *nickname;
 
-  node = lm_message_node_get_child_with_namespace (node, "nick", NS_NICK);
+  node = wocky_node_get_child_ns (node, "nick", NS_NICK);
 
   if (NULL == node)
     {
@@ -704,11 +704,11 @@ static void
 pep_nick_node_changed (WockyPepService *pep,
     WockyBareContact *contact,
     WockyStanza *stanza,
+    WockyNode *item,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
-  WockyNode *node;
   TpHandle handle;
   const gchar *jid;
 
@@ -720,15 +720,13 @@ pep_nick_node_changed (WockyPepService *pep,
       return;
     }
 
-  node = lm_message_node_get_child_with_namespace (wocky_stanza_get_top_node (stanza),
-      "item", NULL);
-  if (NULL == node)
+  if (NULL == item)
     {
       STANZA_DEBUG (stanza, "PEP event without item node, ignoring");
       return;
     }
 
-  _grab_nickname (conn, handle, node);
+  _grab_nickname (conn, handle, item);
 }
 
 
@@ -737,15 +735,15 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
                                              WockyStanza *msg,
                                              TpHandle handle)
 {
-  WockyNode *pubsub_node, *items_node;
+  WockyNode *pubsub_node, *items_node, *item_node;
   gboolean found = FALSE;
-  NodeIter i;
+  WockyNodeIter i;
 
-  pubsub_node = lm_message_node_get_child_with_namespace (
+  pubsub_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB);
   if (pubsub_node == NULL)
     {
-      pubsub_node = lm_message_node_get_child_with_namespace (
+      pubsub_node = wocky_node_get_child_ns (
         wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB "#event");
 
       if (pubsub_node == NULL)
@@ -769,10 +767,9 @@ gabble_conn_aliasing_pep_nick_reply_handler (GabbleConnection *conn,
       return;
     }
 
-  for (i = node_iter (items_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, items_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &item_node))
     {
-      WockyNode *item_node = node_iter_data (i);
-
       if (_grab_nickname (conn, handle, item_node))
         {
           /* FIXME: does this do the right thing on servers which return

@@ -637,7 +637,8 @@ properties_disco_cb (GabbleDisco *disco,
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv = chan->priv;
   WockyNode *lm_node;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *child;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -669,10 +670,10 @@ properties_disco_cb (GabbleDisco *disco,
         }
     }
 
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_result, NULL, NULL);
+  while (wocky_node_iter_next (&i, &child))
     {
       const gchar *config_property_name = NULL;
-      WockyNode *child = node_iter_data (i);
       GValue val = { 0, };
 
       if (strcmp (child->name, "feature") == 0)

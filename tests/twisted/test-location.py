@@ -275,8 +275,8 @@ def test(q, bus, conn, stream):
     # Hey, while we weren't looking Bob moved abroad!
     result = make_result_iq(stream, e.stanza)
     result['from'] = 'bob@foo.com'
-    query = result.firstChildElement()
-    result.addChild(
+    pubsub_node = result.firstChildElement()
+    pubsub_node.addChild(
       elem('items', node=ns.GEOLOC)(
         elem('item', id='12345')(
           elem(ns.GEOLOC, 'geoloc')(

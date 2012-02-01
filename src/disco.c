@@ -397,7 +397,7 @@ request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
   if (!g_list_find (priv->requests, request))
     return;
 
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg),
       "query", disco_type_to_xmlns (request->type));
 
@@ -567,11 +567,11 @@ item_info_cb (GabbleDisco *disco,
               GError *error,
               gpointer user_data)
 {
-  WockyNode *identity, *value_node;
+  WockyNode *identity, *value_node, *feature;
   const char *category, *type, *var, *name, *value;
   GHashTable *keys;
   GabbleDiscoItem item;
-  NodeIter i;
+  WockyNodeIter i;
 
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
 
@@ -604,10 +604,9 @@ item_info_cb (GabbleDisco *disco,
 
   keys = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, g_free);
 
-  for (i = node_iter (result); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, result, NULL, NULL);
+  while (wocky_node_iter_next (&i, &feature))
     {
-      WockyNode *feature = node_iter_data (i);
-
       if (0 == strcmp (feature->name, "feature"))
         {
           var = wocky_node_get_attribute (feature, "var");
@@ -618,15 +617,12 @@ item_info_cb (GabbleDisco *disco,
         {
           if (wocky_node_has_ns (feature, NS_X_DATA))
             {
-              NodeIter j;
+              WockyNodeIter j;
+              WockyNode *field;
 
-              for (j = node_iter (feature); j; j = node_iter_next (j))
+              wocky_node_iter_init (&j, feature, "field", NULL);
+              while (wocky_node_iter_next (&j, &field))
                 {
-                  WockyNode *field = node_iter_data (j);
-
-                  if (0 != strcmp (field->name, "field"))
-                    continue;
-
                   var = wocky_node_get_attribute (field, "var");
                   if (NULL == var)
                     continue;
@@ -720,7 +716,8 @@ disco_items_cb (GabbleDisco *disco,
   const char *item_jid;
   gpointer key, value;
   GabbleDiscoPipeline *pipeline = (GabbleDiscoPipeline *) user_data;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *item;
 
   pipeline->list_request = NULL;
 
@@ -730,13 +727,9 @@ disco_items_cb (GabbleDisco *disco,
       goto out;
     }
 
-  for (i = node_iter (result); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, result, "item", NULL);
+  while (wocky_node_iter_next (&i, &item))
     {
-      WockyNode *item = node_iter_data (i);
-
-      if (0 != strcmp (item->name, "item"))
-        continue;
-
       item_jid = wocky_node_get_attribute (item, "jid");
 
       if (NULL != item_jid &&

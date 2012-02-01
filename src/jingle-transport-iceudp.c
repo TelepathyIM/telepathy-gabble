@@ -232,22 +232,20 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportIceUdpPrivate *priv = t->priv;
   gboolean node_contains_a_candidate = FALSE;
   GList *candidates = NULL;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *node;
 
   DEBUG ("called");
 
-  for (i = node_iter (transport_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, transport_node, "candidate", NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      WockyNode *node = node_iter_data (i);
       const gchar *id, *address, *user, *pass, *str;
       guint port, net, gen, component = 1;
       gdouble pref;
       JingleTransportProtocol proto;
       JingleCandidateType ctype;
       JingleCandidate *c;
-
-      if (tp_strdiff (node->name, "candidate"))
-        continue;
 
       node_contains_a_candidate = TRUE;
 

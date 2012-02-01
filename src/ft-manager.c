@@ -680,7 +680,7 @@ hyvaa_vappua (
       return NULL; \
     }
 
-  WockyNode *file_node = lm_message_node_get_child_with_namespace (si_node,
+  WockyNode *file_node = wocky_node_get_child_ns (si_node,
       "file", NS_FILE_TRANSFER);
 
   die_if_null (file_node, "Invalid file transfer SI request: no <file>")
@@ -816,7 +816,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   gboolean resume_supported;
   GError *error = NULL;
 
-  si_node = lm_message_node_get_child_with_namespace (
+  si_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 

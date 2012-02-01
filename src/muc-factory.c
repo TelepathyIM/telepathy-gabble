@@ -632,7 +632,7 @@ process_muc_invite (GabbleMucFactory *fac,
   gchar *room;
 
   /* does it have a muc subnode? */
-  x_node = lm_message_node_get_child_with_namespace (
+  x_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (message), "x",
       NS_MUC_USER);
 
@@ -707,7 +707,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
   struct DiscoInviteData *disco_udata;
 
   /* check for obsolete invite method */
-  x_node = lm_message_node_get_child_with_namespace (
+  x_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (message), "x", NS_X_CONFERENCE);
   if (x_node == NULL)
     return FALSE;

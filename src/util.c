@@ -162,30 +162,6 @@ lm_message_node_add_own_nick (WockyNode *node,
   g_free (nick);
 }
 
-WockyNode *
-lm_message_node_get_child_with_namespace (WockyNode *node,
-                                          const gchar *name,
-                                          const gchar *ns)
-{
-  WockyNode *found;
-  NodeIter i;
-
-  found = wocky_node_get_child_ns (node, name, ns);
-  if (found != NULL)
-    return found;
-
-  for (i = node_iter (node); i; i = node_iter_next (i))
-    {
-      WockyNode *child = node_iter_data (i);
-
-      found = lm_message_node_get_child_with_namespace (child, name, ns);
-      if (found != NULL)
-        return found;
-    }
-
-  return NULL;
-}
-
 /**
  * gabble_get_room_handle_from_jid:
  * @room_repo: The %TP_HANDLE_TYPE_ROOM handle repository
@@ -406,7 +382,8 @@ lm_message_node_extract_properties (WockyNode *node,
                                     const gchar *prop)
 {
   GHashTable *properties;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *child;
 
   properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
@@ -414,26 +391,15 @@ lm_message_node_extract_properties (WockyNode *node,
   if (node == NULL)
     return properties;
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, prop, NULL);
+  while (wocky_node_iter_next (&i, &child))
     {
-      WockyNode *child = node_iter_data (i);
-      const gchar *name;
-      const gchar *type;
-      const gchar *value;
+      const gchar *name = wocky_node_get_attribute (child, "name");
+      const gchar *type = wocky_node_get_attribute (child, "type");
+      const gchar *value = child->content;
       GValue *gvalue;
 
-      if (0 != strcmp (child->name, prop))
-        continue;
-
-      name = wocky_node_get_attribute (child, "name");
-
-      if (!name)
-        continue;
-
-      type = wocky_node_get_attribute (child, "type");
-      value = child->content;
-
-      if (type == NULL || value == NULL)
+      if (name == NULL || type == NULL || value == NULL)
         continue;
 
       if (0 == strcmp (type, "bytes"))
@@ -773,19 +739,6 @@ gabble_idle_add_weak (GSourceFunc function,
   g_object_weak_ref (
       object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
   return ctx->source_id;
-}
-
-typedef struct {
-    gchar *key;
-    gchar *value;
-} Attribute;
-
-const gchar *
-wocky_node_get_attribute_with_namespace (WockyNode *node,
-    const gchar *attribute,
-    const gchar *ns)
-{
-  return wocky_node_get_attribute_ns (node, attribute, ns);
 }
 
 GPtrArray *

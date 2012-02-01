@@ -220,7 +220,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
   GabbleJingleTransportRawUdp *t = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv = t->priv;
   GList *candidates = NULL;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *node;
 
   DEBUG ("called");
 
@@ -230,15 +231,12 @@ parse_candidates (GabbleJingleTransportIface *obj,
       return;
     }
 
-  for (i = node_iter (transport_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, transport_node, "candidate", NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      WockyNode *node = node_iter_data (i);
       const gchar *id, *ip, *str;
       guint port, gen, component = 1;
       JingleCandidate *c;
-
-      if (tp_strdiff (node->name, "candidate"))
-          continue;
 
       str = wocky_node_get_attribute (node, "component");
       if (str != NULL)
@@ -275,7 +273,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       candidates = g_list_append (candidates, c);
     }
 
-  if (i != NULL)
+  if (wocky_node_iter_next (&i, NULL))
     {
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */

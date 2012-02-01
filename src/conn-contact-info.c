@@ -252,17 +252,14 @@ _parse_vcard (WockyNode *vcard_node,
 {
   GPtrArray *contact_info = dbus_g_type_specialized_construct (
       TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *node;
 
-  for (i = node_iter (vcard_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, vcard_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      WockyNode *node = node_iter_data (i);
-      const VCardField *field;
-
-      if (node->name == NULL || !tp_strdiff (node->name, ""))
-        continue;
-
-      field = g_hash_table_lookup (known_fields_xmpp, node->name);
+      const VCardField *field = g_hash_table_lookup (known_fields_xmpp,
+          node->name);
 
       if (field == NULL)
         {
@@ -294,7 +291,8 @@ _parse_vcard (WockyNode *vcard_node,
             {
               WockyNode *orgname = wocky_node_get_child (node,
                   "ORGNAME");
-              NodeIter orgunit_iter;
+              WockyNodeIter orgunit_iter;
+              WockyNode *orgunit;
               GPtrArray *field_values;
               const gchar *value;
 
@@ -313,15 +311,9 @@ _parse_vcard (WockyNode *vcard_node,
 
               g_ptr_array_add (field_values, (gpointer) value);
 
-              for (orgunit_iter = node_iter (node);
-                  orgunit_iter != NULL;
-                  orgunit_iter = node_iter_next (orgunit_iter))
+              wocky_node_iter_init (&orgunit_iter, node, "ORGUNIT", NULL);
+              while (wocky_node_iter_next (&orgunit_iter, &orgunit))
                 {
-                  WockyNode *orgunit = node_iter_data (orgunit_iter);
-
-                  if (tp_strdiff (orgunit->name, "ORGUNIT"))
-                    continue;
-
                   value = orgunit->content;
 
                   if (value == NULL)
@@ -341,21 +333,15 @@ _parse_vcard (WockyNode *vcard_node,
 
         case FIELD_LABEL:
             {
-              NodeIter line_iter;
+              WockyNodeIter line_iter;
+              WockyNode *line_node;
               gchar *field_values[2] = { NULL, NULL };
               GString *text = g_string_new ("");
 
-              for (line_iter = node_iter (node);
-                   line_iter != NULL;
-                   line_iter = node_iter_next (line_iter))
+              wocky_node_iter_init (&line_iter, node, "LINE", NULL);
+              while (wocky_node_iter_next (&line_iter, &line_node))
                 {
-                  const gchar *line;
-                  WockyNode *line_node = node_iter_data (line_iter);
-
-                  if (tp_strdiff (line_node->name, "LINE"))
-                    continue;
-
-                  line = line_node->content;
+                  const gchar *line = line_node->content;
 
                   if (line != NULL)
                     {

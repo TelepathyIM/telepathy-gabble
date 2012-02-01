@@ -779,7 +779,7 @@ _grab_nickname (GabblePresenceCache *cache,
   const gchar *nickname;
   GabblePresence *presence;
 
-  node = lm_message_node_get_child_with_namespace (node, "nick", NS_NICK);
+  node = wocky_node_get_child_ns (node, "nick", NS_NICK);
 
   if (NULL == node)
     return;
@@ -909,7 +909,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   if (NULL == presence)
     return;
 
-  x_node = lm_message_node_get_child_with_namespace (node, "x",
+  x_node = wocky_node_get_child_ns (node, "x",
       NS_VCARD_TEMP_UPDATE);
 
   if (NULL == x_node)
@@ -977,7 +977,7 @@ _parse_cap_bundles (
   *hash = NULL;
   *ver = NULL;
 
-  cap_node = lm_message_node_get_child_with_namespace (lm_node, "c", NS_CAPS);
+  cap_node = wocky_node_get_child_ns (lm_node, "c", NS_CAPS);
 
   if (NULL == cap_node)
       return NULL;
@@ -1025,7 +1025,7 @@ _parse_node (GabblePresence *presence,
   WockyNode *cap_node;
   const gchar *node;
 
-  cap_node = lm_message_node_get_child_with_namespace (lm_node, "c", NS_CAPS);
+  cap_node = wocky_node_get_child_ns (lm_node, "c", NS_CAPS);
 
   if (NULL == cap_node)
     return;

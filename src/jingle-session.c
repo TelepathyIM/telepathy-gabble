@@ -1282,17 +1282,18 @@ on_session_info (GabbleJingleSession *sess,
 {
   gboolean understood_a_payload = FALSE;
   gboolean hit_an_error = FALSE;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *n;
 
   /* if this is a ping, just ack it. */
-  if (node_iter (node) == NULL)
+  if (wocky_node_get_first_child (node) == NULL)
     return;
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &n))
     {
       gboolean handled;
       GError *e = NULL;
-      WockyNode *n = node_iter_data (i);
 
       if (handle_payload (sess, n, &handled, &e))
         {

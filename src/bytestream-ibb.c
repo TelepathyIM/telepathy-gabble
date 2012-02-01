@@ -617,7 +617,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
 
   /* caller must have checked for this in order to know which bytestream to
    * route this packet to */
-  data = lm_message_node_get_child_with_namespace (
+  data = wocky_node_get_child_ns (
     wocky_stanza_get_top_node (msg), "data", NS_IBB);
   g_assert (data != NULL);
 
@@ -722,7 +722,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_IBB);
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 

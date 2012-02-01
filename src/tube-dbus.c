@@ -1265,7 +1265,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       full_jid = g_strdup_printf ("%s/%s", jid, resource);
       msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
           priv->stream_id, NS_TUBES);
-      si_node = lm_message_node_get_child_with_namespace (
+      si_node = wocky_node_get_child_ns (
           wocky_stanza_get_top_node (msg), "si", NS_SI);
       g_assert (si_node != NULL);
 

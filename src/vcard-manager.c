@@ -1014,17 +1014,15 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
     WockyNode *old_vcard)
 {
   gboolean seen = FALSE;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *node;
 
-  for (i = node_iter (old_vcard); i != NULL; i = node_iter_next (i))
+  /* Find the first node matching the one we want to edit */
+  wocky_node_iter_init (&i, old_vcard, info->element_name, NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      WockyNode *node = node_iter_data (i);
       const gchar *value;
       const gchar *new_value;
-
-      /* skip over nodes that aren't the one we want to edit */
-      if (tp_strdiff (info->element_name, node->name))
-        continue;
 
       /* if there are >= 2 copies of this field, we're going to reduce that
        * to 1 */
@@ -1250,15 +1248,16 @@ vcard_copy (WockyNode *parent,
     WockyNode *new = wocky_node_add_child_with_content (parent, src->name,
         src->content);
     const gchar *xmlns;
-    NodeIter i;
+    WockyNodeIter i;
+    WockyNode *child;
 
     xmlns = wocky_node_get_ns (src);
     if (xmlns != NULL)
       new->ns = g_quark_from_string (xmlns);
 
-    for (i = node_iter (src); i; i = node_iter_next (i))
+    wocky_node_iter_init (&i, src, NULL, NULL);
+    while (wocky_node_iter_next (&i, &child))
       {
-        WockyNode *child = node_iter_data (i);
 
         if (tp_strdiff (child->name, exclude))
           {

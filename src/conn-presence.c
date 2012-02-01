@@ -30,8 +30,7 @@
 #include <telepathy-glib/util.h>
 #include <telepathy-glib/interfaces.h>
 
-#include <wocky/wocky-c2s-porter.h>
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 

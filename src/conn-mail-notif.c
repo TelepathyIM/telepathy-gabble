@@ -39,7 +39,7 @@
 #include <telepathy-glib/svc-connection.h>
 #include <telepathy-glib/util.h>
 
-#include <wocky/wocky-c2s-porter.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MAIL_NOTIF
 #include "connection.h"

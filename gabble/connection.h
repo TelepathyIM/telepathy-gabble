@@ -27,7 +27,7 @@
 #include <gabble/capabilities-set.h>
 #include <gabble/types.h>
 
-#include <wocky/wocky-xep-0115-capabilities.h>
+#include <wocky/wocky.h>
 
 G_BEGIN_DECLS
 

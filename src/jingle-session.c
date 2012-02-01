@@ -25,7 +25,7 @@
 #include <glib.h>
 
 #include <telepathy-glib/handle-repo-dynamic.h>
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 

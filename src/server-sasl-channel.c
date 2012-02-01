@@ -34,8 +34,7 @@
 #include <glib/gstdio.h>
 #include <gio/gio.h>
 #include <dbus/dbus-glib.h>
-#include <wocky/wocky-auth-registry.h>
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>

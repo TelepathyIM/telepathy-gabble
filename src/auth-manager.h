@@ -21,7 +21,7 @@
 #define __AUTH_MANAGER_H__
 
 #include <glib-object.h>
-#include <wocky/wocky-auth-registry.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/handle.h>
 
 G_BEGIN_DECLS

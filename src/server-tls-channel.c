@@ -27,7 +27,7 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/channel-iface.h>
 
-#include <wocky/wocky-tls.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_TLS
 #include "debug.h"

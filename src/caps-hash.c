@@ -29,8 +29,7 @@
 
 #include <string.h>
 
-#include <wocky/wocky-disco-identity.h>
-#include <wocky/wocky-caps-hash.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 

@@ -32,7 +32,7 @@
 #include <telepathy-glib/run.h>
 #include <telepathy-glib/util.h>
 #include <wocky/wocky.h>
-#include <wocky/wocky-debug.h>
+#include <wocky/wocky.h>
 
 #include "debug.h"
 #include "connection-manager.h"

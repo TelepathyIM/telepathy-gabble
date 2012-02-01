@@ -32,7 +32,7 @@
 
 #include "extensions/extensions.h"
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 static void channel_manager_iface_init (gpointer, gpointer);
 

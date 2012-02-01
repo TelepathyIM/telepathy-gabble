@@ -24,7 +24,7 @@
 #include <telepathy-glib/message-mixin.h>
 
 #include <wocky/wocky.h>
-#include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky.h>
 
 #include "connection.h"
 

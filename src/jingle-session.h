@@ -21,7 +21,7 @@
 #define __JINGLE_SESSION_H__
 
 #include <glib-object.h>
-#include <wocky/wocky-stanza.h>
+#include <wocky/wocky.h>
 
 #include "jingle-content.h"
 #include "jingle-factory.h"

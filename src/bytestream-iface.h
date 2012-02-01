@@ -21,7 +21,7 @@
 #define __GABBLE_BYTESTREAM_IFACE_H__
 
 #include <glib-object.h>
-#include <wocky/wocky-node.h>
+#include <wocky/wocky.h>
 
 G_BEGIN_DECLS
 

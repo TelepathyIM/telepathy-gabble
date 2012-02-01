@@ -31,8 +31,7 @@
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/dbus.h>
 
-#include <wocky/wocky-session.h>
-#include <wocky/wocky-pep-service.h>
+#include <wocky/wocky.h>
 
 #include "gabble/connection.h"
 #include "gabble/capabilities.h"

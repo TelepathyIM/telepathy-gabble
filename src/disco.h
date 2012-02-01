@@ -25,7 +25,7 @@
 #define __GABBLE_DISCO_H__
 
 #include <glib-object.h>
-#include <wocky/wocky-node.h>
+#include <wocky/wocky.h>
 
 #include "types.h"
 

@@ -39,7 +39,7 @@
 #include "presence-cache.h"
 #include "util.h"
 
-#include <wocky/wocky-data-form.h>
+#include <wocky/wocky.h>
 
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/channel-factory-iface.h>

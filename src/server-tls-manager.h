@@ -22,7 +22,7 @@
 #define __GABBLE_SERVER_TLS_MANAGER_H__
 
 #include <glib-object.h>
-#include <wocky/wocky-tls-handler.h>
+#include <wocky/wocky.h>
 
 #include <telepathy-glib/enums.h>
 

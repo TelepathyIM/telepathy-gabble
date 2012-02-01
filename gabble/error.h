@@ -22,7 +22,7 @@
 
 #include <glib.h>
 
-#include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/telepathy-glib.h>
 
 G_BEGIN_DECLS

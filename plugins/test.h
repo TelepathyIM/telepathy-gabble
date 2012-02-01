@@ -1,7 +1,7 @@
 #include <glib-object.h>
 
 #include <gio/gio.h>
-#include <wocky/wocky-session.h>
+#include <wocky/wocky.h>
 #include <gabble/gabble.h>
 
 /* Plugin */

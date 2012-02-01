@@ -3,7 +3,7 @@
 
 #include <string.h>
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 #include "src/util.h"
 

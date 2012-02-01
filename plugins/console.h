@@ -20,7 +20,7 @@
 #include <glib-object.h>
 
 #include <gio/gio.h>
-#include <wocky/wocky-session.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 
 typedef struct _GabbleConsolePlugin GabbleConsolePlugin;

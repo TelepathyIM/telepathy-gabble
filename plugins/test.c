@@ -5,8 +5,7 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 
-#include <wocky/wocky-disco-identity.h>
-#include <wocky/wocky-data-form.h>
+#include <wocky/wocky.h>
 
 #include "extensions/extensions.h"
 

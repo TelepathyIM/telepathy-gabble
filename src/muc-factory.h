@@ -21,7 +21,7 @@
 #define __MUC_FACTORY_H__
 
 #include <glib-object.h>
-#include <wocky/wocky-stanza.h>
+#include <wocky/wocky.h>
 
 #include "bytestream-iface.h"
 #include "types.h"

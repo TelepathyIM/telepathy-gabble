@@ -22,7 +22,7 @@
 #define __GABBLE_REQUEST_PIPELINE_H__
 
 #include <glib-object.h>
-#include <wocky/wocky-stanza.h>
+#include <wocky/wocky.h>
 #include "types.h"
 
 G_BEGIN_DECLS

@@ -37,13 +37,7 @@
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/intset.h>
-#include <wocky/wocky-caps-cache.h>
-#include <wocky/wocky-caps-hash.h>
-#include <wocky/wocky-disco-identity.h>
-#include <wocky/wocky-utils.h>
-#include <wocky/wocky-namespaces.h>
-#include <wocky/wocky-data-form.h>
-#include <wocky/wocky-xmpp-error-enumtypes.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 

@@ -10,7 +10,7 @@
 
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
-#include <wocky/wocky-namespaces.h>
+#include <wocky/wocky.h>
 
 #include <gabble/gabble.h>
 

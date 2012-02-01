@@ -27,7 +27,7 @@
 #include <glib.h>
 #include <telepathy-glib/handle-repo.h>
 #include <telepathy-glib/util.h>
-#include <wocky/wocky-bare-contact.h>
+#include <wocky/wocky.h>
 
 #include "jingle-factory.h"
 #include "jingle-content.h"

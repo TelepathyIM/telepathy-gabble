@@ -23,8 +23,7 @@
 
 #include <string.h>
 #include <telepathy-glib/channel-manager.h>
-#include <wocky/wocky-utils.h>
-#include <wocky/wocky-xep-0115-capabilities.h>
+#include <wocky/wocky.h>
 
 #include "gabble/capabilities.h"
 #include "conn-presence.h"

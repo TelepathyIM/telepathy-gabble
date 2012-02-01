@@ -26,7 +26,7 @@
 #include "namespaces.h"
 #include "util.h"
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 static void
 conn_util_send_iq_cb (GObject *source_object,

@@ -23,7 +23,7 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/base-channel.h>
-#include <wocky/wocky-auth-registry.h>
+#include <wocky/wocky.h>
 
 #include "types.h"
 

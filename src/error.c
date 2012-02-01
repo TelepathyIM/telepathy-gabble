@@ -27,14 +27,7 @@
 #include "namespaces.h"
 #include "util.h"
 
-#include <wocky/wocky-auth-registry.h>
-#include <wocky/wocky-auth-registry-enumtypes.h>
-#include <wocky/wocky-connector.h>
-#include <wocky/wocky-connector-enumtypes.h>
-#include <wocky/wocky-tls.h>
-#include <wocky/wocky-tls-enumtypes.h>
-#include <wocky/wocky-xmpp-error.h>
-#include <wocky/wocky-xmpp-error-enumtypes.h>
+#include <wocky/wocky.h>
 
 static inline TpError
 set_conn_reason (TpConnectionStatusReason *p,

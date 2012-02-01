@@ -27,13 +27,7 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 #include <glib-object.h>
-#include <wocky/wocky-connector.h>
-#include <wocky/wocky-disco-identity.h>
-#include <wocky/wocky-tls-handler.h>
-#include <wocky/wocky-ping.h>
-#include <wocky/wocky-utils.h>
-#include <wocky/wocky-xmpp-error.h>
-#include <wocky/wocky-data-form.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/enums.h>

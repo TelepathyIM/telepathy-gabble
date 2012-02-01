@@ -30,7 +30,7 @@
 
 #include <gobject/gvaluecollector.h>
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/dbus.h>
 

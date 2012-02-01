@@ -25,9 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <wocky/wocky-muc.h>
-#include <wocky/wocky-utils.h>
-#include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky.h>
 
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>

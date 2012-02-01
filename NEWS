@@ -5,7 +5,25 @@ Go go go
 
 Enhancements:
 
-* fd.o#41790 - Make file transfer support optional (andrunko)
+• fd.o#41790 - Make file transfer support optional (andrunko)
+
+• fd.o#44056 - telepathy-gabble-xmpp-console no longer mixes GIR and
+  pygtk. (Guillaume)
+
+• fd.o#33911 - The Loudmouth API compatibility layer has been removed.
+  It's possible this will cause regressions in weird edge cases but it
+  should make the code base more maintainable. (Jonny, Will)
+
+API changes to Wocky snapshot:
+
+• fd.o#45400 - WockyPepService's API has changed a little bit.
+  wocky_pep_service_get_finish() has grown an extra out argument to give
+  the caller the <item/> element found, if any; similarly, the ::changed
+  signal has grown a similar extra argument. (Will)
+
+• fd.o#34975 - WockyPorter is now responsible for sending back error
+  replies for unhandled IQs, whereas previously this was up to Gabble.
+  Plugin authors shouldn't notice this change. (Will)
 
 telepathy-gabble 0.15.3 (2011-12-22)
 ====================================

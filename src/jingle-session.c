@@ -634,8 +634,8 @@ gabble_jingle_session_peer_has_cap (
     const gchar *cap_or_quirk)
 {
   GabbleJingleSessionPrivate *priv = self->priv;
-  GabblePresence *presence = gabble_presence_cache_get (
-      priv->conn->presence_cache, priv->peer);
+  GabblePresence *presence = gabble_presence_cache_get_for_contact (
+      priv->conn->presence_cache, priv->peer_contact);
 
   return (presence != NULL &&
       priv->peer_resource != NULL &&

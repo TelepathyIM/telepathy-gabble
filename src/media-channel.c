@@ -534,9 +534,7 @@ gabble_media_channel_get_property (GObject    *object,
         if (priv->initial_peer != 0)
           peer = priv->initial_peer;
         else if (priv->session != NULL)
-          g_object_get (priv->session,
-              "peer", &peer,
-              NULL);
+          peer = gabble_jingle_session_get_peer_handle (priv->session);
 
         g_value_set_uint (value, peer);
         break;
@@ -1133,15 +1131,10 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
   if (priv->session)
     {
       GValue handler = { 0, };
-      TpHandle member;
 
       g_value_init (&handler, info_type);
       g_value_take_boxed (&handler,
           dbus_g_type_specialized_construct (info_type));
-
-      g_object_get (priv->session,
-                    "peer", &member,
-                    NULL);
 
       dbus_g_type_struct_set (&handler,
           0, priv->object_path,
@@ -1199,7 +1192,7 @@ make_stream_list (GabbleMediaChannel *self,
           "combined-direction", &combined_direction,
           NULL);
 
-      g_object_get (priv->session, "peer", &peer, NULL);
+      peer = gabble_jingle_session_get_peer_handle (priv->session);
 
       g_value_init (&entry, info_type);
       g_value_take_boxed (&entry,
@@ -1917,11 +1910,7 @@ media_channel_request_streams (GabbleMediaChannel *self,
 
   if (priv->session != NULL)
     {
-      TpHandle peer;
-
-      g_object_get (priv->session,
-          "peer", &peer,
-          NULL);
+      TpHandle peer = gabble_jingle_session_get_peer_handle (priv->session);
 
       if (peer != contact_handle)
         {
@@ -2122,9 +2111,7 @@ gabble_media_channel_add_member (GObject *obj,
        */
       if (priv->session != NULL)
         {
-          TpHandle peer;
-
-          g_object_get (priv->session, "peer", &peer, NULL);
+          TpHandle peer = gabble_jingle_session_get_peer_handle (priv->session);
 
           if (peer != handle)
             {
@@ -2374,14 +2361,14 @@ session_terminated_cb (GabbleJingleSession *session,
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   guint terminator;
   JingleState state;
-  TpHandle peer;
+  TpHandle peer = gabble_jingle_session_get_peer_handle (priv->session);
   TpIntSet *set;
 
   DEBUG ("called");
 
+  peer = gabble_jingle_session_get_peer_handle (priv->session);
   g_object_get (session,
                 "state", &state,
-                "peer", &peer,
                 NULL);
 
   if (local_terminator)
@@ -2468,9 +2455,9 @@ session_state_changed_cb (GabbleJingleSession *session,
 
   DEBUG ("called");
 
+  peer = gabble_jingle_session_get_peer_handle (priv->session);
   g_object_get (session,
                 "state", &state,
-                "peer", &peer,
                 NULL);
 
   set = tp_intset_new_containing (peer);

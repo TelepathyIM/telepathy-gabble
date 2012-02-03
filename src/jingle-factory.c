@@ -644,21 +644,20 @@ connection_porter_available_cb (
 }
 
 /* The 'session' map is keyed by:
- * "<peer's handle>\n<peer's jid>\n<session id>"
+ * "<peer's jid>\n<session id>"
  */
-#define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
+#define SESSION_MAP_KEY_FORMAT "%s\n%s"
 
 static gchar *
-make_session_map_key (TpHandle peer,
+make_session_map_key (
     const gchar *jid,
     const gchar *sid)
 {
-  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer, jid, sid);
+  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, jid, sid);
 }
 
 static gchar *
 get_unique_sid_for (GabbleJingleFactory *factory,
-    TpHandle peer,
     const gchar *jid,
     gchar **key)
 {
@@ -673,7 +672,7 @@ get_unique_sid_for (GabbleJingleFactory *factory,
       g_free (sid);
       g_free (key_);
       sid = g_strdup_printf ("%u", val);
-      key_ = make_session_map_key (peer, jid, sid);
+      key_ = make_session_map_key (jid, sid);
     }
   while (g_hash_table_lookup (factory->priv->sessions, key_) != NULL);
 
@@ -706,7 +705,7 @@ ensure_session (GabbleJingleFactory *self,
     }
 
   /* If we can ensure the handle, we can decode the jid */
-  key = make_session_map_key (peer, from, sid);
+  key = make_session_map_key (from, sid);
   sess = g_hash_table_lookup (priv->sessions, key);
   g_free (key);
 
@@ -809,14 +808,14 @@ create_session (GabbleJingleFactory *fac,
 
   if (sid != NULL)
     {
-      key = make_session_map_key (peer, jid, sid);
+      key = make_session_map_key (jid, sid);
       sid_ = g_strdup (sid);
 
       local_initiator = FALSE;
     }
   else
     {
-      sid_ = get_unique_sid_for (fac, peer, jid, &key);
+      sid_ = get_unique_sid_for (fac, jid, &key);
 
       local_initiator = TRUE;
     }
@@ -896,7 +895,6 @@ session_terminated_cb (GabbleJingleSession *session,
                        GabbleJingleFactory *factory)
 {
   gchar *key = make_session_map_key (
-      gabble_jingle_session_get_peer_handle (session),
       gabble_jingle_session_get_peer_jid (session),
       gabble_jingle_session_get_sid (session));
 

@@ -81,7 +81,8 @@ struct _GabbleJingleSessionPrivate
 
   TpHandle peer;
   WockyContact *peer_contact;
-  gchar *peer_resource;
+  /* Borrowed from peer_contact if it's a WockyResourceContact. */
+  const gchar *peer_resource;
   gchar *peer_jid;
   gchar *initiator;
   gboolean local_initiator;
@@ -233,9 +234,6 @@ gabble_jingle_session_dispose (GObject *object)
   g_free (priv->sid);
   priv->sid = NULL;
 
-  g_free (priv->peer_resource);
-  priv->peer_resource = NULL;
-
   g_free (priv->peer_jid);
   priv->peer_jid = NULL;
 
@@ -369,18 +367,9 @@ gabble_jingle_session_constructed (GObject *object)
   else
     priv->initiator = g_strdup (priv->peer_jid);
 
-  /* FIXME Gabble resource part handling falls apart when it comes to mucs, so
-   * jump though some hoops here */
-  if (tp_dynamic_handle_repo_lookup_exact (contact_repo, priv->peer_jid) == 0)
-    {
-      /* The peer jid isn't exactly what is in the contact repo so it will have
-       * a resource */
-      if (wocky_decode_jid (priv->peer_jid, NULL, NULL,
-          &priv->peer_resource))
-        {
-          /* fake for gcc */;
-        }
-    }
+  if (WOCKY_IS_RESOURCE_CONTACT (priv->peer_contact))
+    priv->peer_resource = wocky_resource_contact_get_resource (
+        WOCKY_RESOURCE_CONTACT (priv->peer_contact));
 }
 
 GabbleJingleSession *
@@ -1901,8 +1890,6 @@ static void
 try_session_initiate_or_accept (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   WockyStanza *msg;
   WockyNode *sess_node;
   gboolean contents_ready = TRUE;
@@ -1937,7 +1924,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
       peer = gabble_jingle_session_get_peer_handle (sess);
       if (!conn_presence_visible_to (priv->conn, peer))
         conn_presence_signal_own_presence (priv->conn,
-            tp_handle_inspect (contact_repo, peer), NULL);
+            priv->peer_jid, NULL);
 
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JINGLE_STATE_PENDING_INITIATE_SENT;

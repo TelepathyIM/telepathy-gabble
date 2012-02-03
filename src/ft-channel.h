@@ -24,6 +24,8 @@
 #include <glib-object.h>
 #include <extensions/extensions.h>
 
+#include <telepathy-glib/base-channel.h>
+
 typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 
 #include "gtalk-file-collection.h"
@@ -36,12 +38,12 @@ typedef struct _GabbleFileTransferChannelClass GabbleFileTransferChannelClass;
 typedef struct _GabbleFileTransferChannelPrivate GabbleFileTransferChannelPrivate;
 
 struct _GabbleFileTransferChannelClass {
-    GObjectClass parent_class;
+    TpBaseChannelClass parent_class;
     TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleFileTransferChannel {
-    GObject parent;
+    TpBaseChannel parent;
 
     GabbleFileTransferChannelPrivate *priv;
 };
@@ -92,10 +94,6 @@ void gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
 
 void gabble_file_transfer_channel_gtalk_file_collection_data_received (
     GabbleFileTransferChannel *self, const gchar *data, guint len);
-
-void
-gabble_file_transfer_channel_do_close (GabbleFileTransferChannel *self);
-
 
 G_END_DECLS
 

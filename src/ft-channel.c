@@ -48,7 +48,7 @@
 #include "presence-cache.h"
 #include "util.h"
 
-#include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/base-channel.h>
 #include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/dbus.h>
@@ -57,7 +57,6 @@
 #include <telepathy-glib/svc-channel.h>
 
 
-static void channel_iface_init (gpointer g_iface, gpointer iface_data);
 static void file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
 static void transferred_chunk (GabbleFileTransferChannel *self, guint64 count);
 static gboolean set_bytestream (GabbleFileTransferChannel *self,
@@ -68,12 +67,7 @@ static gboolean set_gtalk_file_collection (GabbleFileTransferChannel *self,
 
 
 G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel,
-    G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL, channel_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-                           tp_dbus_properties_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_EXPORTABLE_CHANNEL, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_CHANNEL_IFACE, NULL);
+    TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_FILE_TRANSFER,
                            file_transfer_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_FILETRANSFER_FUTURE,
@@ -89,23 +83,8 @@ static const char *gabble_file_transfer_channel_interfaces[] = { NULL };
 /* properties */
 enum
 {
-  PROP_OBJECT_PATH = 1,
-
-   /* org.freedesktop.Telepathy.Channel D-Bus properties */
-  PROP_CHANNEL_TYPE,
-  PROP_INTERFACES,
-  PROP_HANDLE,
-  PROP_TARGET_ID,
-  PROP_HANDLE_TYPE,
-  PROP_REQUESTED,
-  PROP_INITIATOR_HANDLE,
-  PROP_INITIATOR_ID,
-
-  PROP_CHANNEL_DESTROYED,
-  PROP_CHANNEL_PROPERTIES,
-
-  /* org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties */
-  PROP_STATE,
+  /* Channel.Type.FileTransfer D-Bus properties */
+  PROP_STATE = 1,
   PROP_CONTENT_TYPE,
   PROP_FILENAME,
   PROP_SIZE,
@@ -136,15 +115,10 @@ enum
 /* private structure */
 struct _GabbleFileTransferChannelPrivate {
   gboolean dispose_has_run;
-  gboolean closed;
-  gchar *object_path;
-  TpHandle handle;
-  GabbleConnection *connection;
   GTimeVal last_transferred_bytes_emitted;
   guint progress_timer;
   TpSocketAddressType socket_type;
   GValue *socket_address;
-  TpHandle initiator;
   gboolean resume_supported;
 
   GTalkFileCollection *gtalk_file_collection;
@@ -172,16 +146,28 @@ struct _GabbleFileTransferChannelPrivate {
   gboolean channel_opened;
 };
 
+static void gabble_file_transfer_channel_set_state (
+    TpSvcChannelTypeFileTransfer *iface, TpFileTransferState state,
+    TpFileTransferStateChangeReason reason);
+static void close_session_and_transport (GabbleFileTransferChannel *self);
 
-void
-gabble_file_transfer_channel_do_close (GabbleFileTransferChannel *self)
+static void
+gabble_file_transfer_channel_close (TpBaseChannel *base)
 {
-  if (self->priv->closed)
-    return;
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (base);
 
-  DEBUG ("Emitting closed signal for %s", self->priv->object_path);
-  self->priv->closed = TRUE;
-  tp_svc_channel_emit_closed (self);
+  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
+      self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
+    {
+      gabble_file_transfer_channel_set_state (
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_FILE_TRANSFER_STATE_CANCELLED,
+          TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
+
+      close_session_and_transport (self);
+    }
+
+  tp_base_channel_destroyed (base);
 }
 
 static void
@@ -189,15 +175,7 @@ gabble_file_transfer_channel_init (GabbleFileTransferChannel *obj)
 {
   obj->priv = G_TYPE_INSTANCE_GET_PRIVATE (obj,
       GABBLE_TYPE_FILE_TRANSFER_CHANNEL, GabbleFileTransferChannelPrivate);
-
-  /* allocate any data required by the object here */
-  obj->priv->object_path = NULL;
-  obj->priv->connection = NULL;
 }
-
-static void gabble_file_transfer_channel_set_state (
-    TpSvcChannelTypeFileTransfer *iface, TpFileTransferState state,
-    TpFileTransferStateChangeReason reason);
 
 static void
 gabble_file_transfer_channel_get_property (GObject *object,
@@ -206,55 +184,9 @@ gabble_file_transfer_channel_get_property (GObject *object,
                                            GParamSpec *pspec)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (object);
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
 
   switch (property_id)
     {
-      case PROP_OBJECT_PATH:
-        g_value_set_string (value, self->priv->object_path);
-        break;
-      case PROP_CHANNEL_TYPE:
-        g_value_set_static_string (value,
-            TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER);
-        break;
-      case PROP_HANDLE_TYPE:
-        g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
-        break;
-      case PROP_TARGET_ID:
-        {
-           TpHandleRepoIface *repo = tp_base_connection_get_handles (base_conn,
-             TP_HANDLE_TYPE_CONTACT);
-
-           g_value_set_string (value, tp_handle_inspect (repo,
-                 self->priv->handle));
-        }
-        break;
-      case PROP_HANDLE:
-        g_value_set_uint (value, self->priv->handle);
-        break;
-      case PROP_REQUESTED:
-        g_value_set_boolean (value, (self->priv->initiator ==
-              base_conn->self_handle));
-        break;
-      case PROP_INITIATOR_HANDLE:
-        g_value_set_uint (value, self->priv->initiator);
-        break;
-      case PROP_INITIATOR_ID:
-          {
-            TpHandleRepoIface *repo = tp_base_connection_get_handles (
-                base_conn, TP_HANDLE_TYPE_CONTACT);
-
-            g_assert (self->priv->initiator != 0);
-            g_value_set_string (value,
-                tp_handle_inspect (repo, self->priv->initiator));
-          }
-        break;
-      case PROP_CONNECTION:
-        g_value_set_object (value, self->priv->connection);
-        break;
-      case PROP_INTERFACES:
-        g_value_set_boxed (value, gabble_file_transfer_channel_interfaces);
-        break;
       case PROP_STATE:
         g_value_set_uint (value, self->priv->state);
         break;
@@ -295,50 +227,8 @@ gabble_file_transfer_channel_get_property (GObject *object,
         g_value_set_string (value,
             self->priv->uri != NULL ? self->priv->uri: "");
         break;
-      case PROP_CHANNEL_DESTROYED:
-        g_value_set_boolean (value, self->priv->closed);
-        break;
       case PROP_RESUME_SUPPORTED:
         g_value_set_boolean (value, self->priv->resume_supported);
-        break;
-      case PROP_CHANNEL_PROPERTIES:
-        {
-          GHashTable *props;
-
-          props = tp_dbus_properties_mixin_make_properties_hash (object,
-              TP_IFACE_CHANNEL, "ChannelType",
-              TP_IFACE_CHANNEL, "Interfaces",
-              TP_IFACE_CHANNEL, "TargetHandle",
-              TP_IFACE_CHANNEL, "TargetID",
-              TP_IFACE_CHANNEL, "TargetHandleType",
-              TP_IFACE_CHANNEL, "Requested",
-              TP_IFACE_CHANNEL, "InitiatorHandle",
-              TP_IFACE_CHANNEL, "InitiatorID",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "State",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentType",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Filename",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Size",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHashType",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHash",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Description",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Date",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
-              TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
-              GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
-              TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
-              TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
-              NULL);
-
-          /* URI is immutable only for outgoing transfers */
-          if (self->priv->initiator == base_conn->self_handle)
-            {
-              tp_dbus_properties_mixin_fill_properties_hash (object, props,
-                  TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "URI", NULL);
-            }
-
-          g_value_take_boxed (value, props);
-        }
         break;
       case PROP_BYTESTREAM:
         g_value_set_object (value, self->priv->bytestream);
@@ -380,21 +270,6 @@ gabble_file_transfer_channel_set_property (GObject *object,
 
   switch (property_id)
     {
-      case PROP_OBJECT_PATH:
-        g_free (self->priv->object_path);
-        self->priv->object_path = g_value_dup_string (value);
-        break;
-      case PROP_HANDLE:
-        self->priv->handle = g_value_get_uint (value);
-        break;
-      case PROP_CONNECTION:
-        self->priv->connection = g_value_get_object (value);
-        break;
-      /* these properties are writable in the interface, but not actually
-       * meaningfully changeable on this channel, so we do nothing */
-      case PROP_HANDLE_TYPE:
-      case PROP_CHANNEL_TYPE:
-        break;
       case PROP_STATE:
         gabble_file_transfer_channel_set_state (
             TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (object),
@@ -422,10 +297,6 @@ gabble_file_transfer_channel_set_property (GObject *object,
       case PROP_DESCRIPTION:
         g_free (self->priv->description);
         self->priv->description = g_value_dup_string (value);
-        break;
-      case PROP_INITIATOR_HANDLE:
-        self->priv->initiator = g_value_get_uint (value);
-        g_assert (self->priv->initiator != 0);
         break;
       case PROP_DATE:
         self->priv->date = g_value_get_uint64 (value);
@@ -475,6 +346,9 @@ connection_presences_updated_cb (GabblePresenceCache *cache,
                                  GArray *handles,
                                  GabbleFileTransferChannel *self)
 {
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   guint i;
 
   for (i = 0; i < handles->len ; i++)
@@ -482,12 +356,12 @@ connection_presences_updated_cb (GabblePresenceCache *cache,
       TpHandle handle;
 
       handle = g_array_index (handles, TpHandle, i);
-      if (handle == self->priv->handle)
+      if (handle == tp_base_channel_get_target_handle (base))
         {
           GabblePresence *presence;
 
           presence = gabble_presence_cache_get (
-              self->priv->connection->presence_cache, handle);
+              conn->presence_cache, handle);
 
           if (presence == NULL || presence->status < GABBLE_PRESENCE_XA)
             {
@@ -507,39 +381,24 @@ connection_presences_updated_cb (GabblePresenceCache *cache,
     }
 }
 
-static GObject *
-gabble_file_transfer_channel_constructor (GType type,
-                                          guint n_props,
-                                          GObjectConstructParam *props)
+static void
+gabble_file_transfer_channel_constructed (GObject *obj)
 {
-  GObject *obj;
-  GabbleFileTransferChannel *self;
-  TpDBusDaemon *bus;
-  TpBaseConnection *base_conn;
-  TpHandleRepoIface *contact_repo;
+  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (obj);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      base_conn, TP_HANDLE_TYPE_CONTACT);
   GArray *socket_access;
   TpSocketAccessControl access_control;
 
-  /* Parent constructor chain */
-  obj = G_OBJECT_CLASS (gabble_file_transfer_channel_parent_class)->
-          constructor (type, n_props, props);
-  self = GABBLE_FILE_TRANSFER_CHANNEL (obj);
-  base_conn = TP_BASE_CONNECTION (self->priv->connection);
+  /* Parent constructed chain */
+  void (*chain_up) (GObject *) =
+    ((GObjectClass *) gabble_file_transfer_channel_parent_class)->constructed;
 
-  /* Ref the target and initiator handles; they can't be reffed in
-   * _set_property as we may not have the TpConnection at that point.
-   */
-  contact_repo = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_CONTACT);
-  tp_handle_ref (contact_repo, self->priv->handle);
-  tp_handle_ref (contact_repo, self->priv->initiator);
-
-  self->priv->object_path = g_strdup_printf ("%s/FileTransferChannel/%p",
-      base_conn->object_path, self);
-
-  /* Connect to the bus */
-  bus = tp_base_connection_get_dbus_daemon (base_conn);
-  tp_dbus_daemon_register_object (bus, self->priv->object_path, obj);
+  if (chain_up != NULL)
+    chain_up (obj);
 
   /* Initialise the available socket types hash table */
   self->priv->available_socket_types = g_hash_table_new_full (g_direct_hash,
@@ -571,24 +430,22 @@ gabble_file_transfer_channel_constructor (GType type,
   g_hash_table_insert (self->priv->available_socket_types,
       GUINT_TO_POINTER (TP_SOCKET_ADDRESS_TYPE_IPV6), socket_access);
 
-  gabble_signal_connect_weak (self->priv->connection->presence_cache,
+  gabble_signal_connect_weak (conn->presence_cache,
       "presences-updated", G_CALLBACK (connection_presences_updated_cb), obj);
 
   DEBUG ("New FT channel created: %s (contact: %s, initiator: %s, "
       "file: \"%s\", size: %" G_GUINT64_FORMAT ")",
-       self->priv->object_path,
-       tp_handle_inspect (contact_repo, self->priv->handle),
-       tp_handle_inspect (contact_repo, self->priv->initiator),
+      tp_base_channel_get_object_path (base),
+      tp_handle_inspect (contact_repo, tp_base_channel_get_target_handle (base)),
+      tp_handle_inspect (contact_repo,
+          tp_base_channel_get_initiator (base)),
        self->priv->filename, self->priv->size);
 
-  if (self->priv->initiator != base_conn->self_handle)
+  if (!tp_base_channel_is_requested (base))
     /* Incoming transfer, URI has to be set by the handler */
     g_assert (self->priv->uri == NULL);
-
-  return obj;
 }
 
-static void close_session_and_transport (GabbleFileTransferChannel *self);
 static void gabble_file_transfer_channel_dispose (GObject *object);
 static void gabble_file_transfer_channel_finalize (GObject *object);
 
@@ -601,7 +458,7 @@ file_transfer_channel_properties_setter (GObject *object,
     GError **error)
 {
   GabbleFileTransferChannel *self = (GabbleFileTransferChannel *) object;
-  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->connection);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
 
   g_return_val_if_fail (interface == TP_IFACE_QUARK_CHANNEL_TYPE_FILE_TRANSFER,
       FALSE);
@@ -620,7 +477,7 @@ file_transfer_channel_properties_setter (GObject *object,
       return FALSE;
     }
 
-  if (self->priv->initiator == base_conn->self_handle)
+  if (tp_base_channel_is_requested (base))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
           "Channel is not an incoming transfer");
@@ -642,24 +499,55 @@ file_transfer_channel_properties_setter (GObject *object,
 }
 
 static void
+gabble_file_transfer_channel_fill_immutable_properties (TpBaseChannel *chan,
+    GHashTable *properties)
+{
+  TpBaseChannelClass *cls = TP_BASE_CHANNEL_CLASS (
+      gabble_file_transfer_channel_parent_class);
+
+  cls->fill_immutable_properties (chan, properties);
+
+  tp_dbus_properties_mixin_fill_properties_hash (
+      G_OBJECT (chan), properties,
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "State",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentType",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Filename",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Size",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHashType",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHash",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Description",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Date",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
+      GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
+      TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
+      TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
+      NULL);
+
+  /* URI is immutable only for outgoing transfers */
+  if (tp_base_channel_is_requested (chan))
+    {
+      tp_dbus_properties_mixin_fill_properties_hash (G_OBJECT (chan), properties,
+          TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "URI", NULL);
+    }
+}
+
+static gchar *
+gabble_file_transfer_channel_get_object_path_suffix (TpBaseChannel *chan)
+{
+  return g_strdup_printf ("FileTransferChannel/%p", chan);
+}
+
+static void
 gabble_file_transfer_channel_class_init (
     GabbleFileTransferChannelClass *gabble_file_transfer_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (
       gabble_file_transfer_channel_class);
+  TpBaseChannelClass *base_class = TP_BASE_CHANNEL_CLASS (
+      gabble_file_transfer_channel_class);
   GParamSpec *param_spec;
-
-  static TpDBusPropertiesMixinPropImpl channel_props[] = {
-    { "TargetHandleType", "handle-type", NULL },
-    { "TargetHandle", "handle", NULL },
-    { "TargetID", "target-id", NULL },
-    { "ChannelType", "channel-type", NULL },
-    { "Interfaces", "interfaces", NULL },
-    { "Requested", "requested", NULL },
-    { "InitiatorHandle", "initiator-handle", NULL },
-    { "InitiatorID", "initiator-id", NULL },
-    { NULL }
-  };
 
   static TpDBusPropertiesMixinPropImpl file_props[] = {
     { "State", "state", NULL },
@@ -689,11 +577,6 @@ gabble_file_transfer_channel_class_init (
   };
 
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-    { TP_IFACE_CHANNEL,
-      tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
-      channel_props
-    },
     { TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER,
       tp_dbus_properties_mixin_getter_gobject_properties,
       file_transfer_channel_properties_setter,
@@ -717,63 +600,18 @@ gabble_file_transfer_channel_class_init (
 
   object_class->dispose = gabble_file_transfer_channel_dispose;
   object_class->finalize = gabble_file_transfer_channel_finalize;
-
-  object_class->constructor = gabble_file_transfer_channel_constructor;
+  object_class->constructed = gabble_file_transfer_channel_constructed;
   object_class->get_property = gabble_file_transfer_channel_get_property;
   object_class->set_property = gabble_file_transfer_channel_set_property;
 
-  g_object_class_override_property (object_class, PROP_OBJECT_PATH,
-      "object-path");
-  g_object_class_override_property (object_class, PROP_CHANNEL_TYPE,
-      "channel-type");
-  g_object_class_override_property (object_class, PROP_HANDLE_TYPE,
-      "handle-type");
-  g_object_class_override_property (object_class, PROP_HANDLE, "handle");
-  g_object_class_override_property (object_class, PROP_CHANNEL_DESTROYED,
-      "channel-destroyed");
-  g_object_class_override_property (object_class, PROP_CHANNEL_PROPERTIES,
-      "channel-properties");
-
-  param_spec = g_param_spec_string ("target-id", "Target JID",
-      "The string obtained by inspecting this channel's handle",
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_TARGET_ID, param_spec);
-
-  param_spec = g_param_spec_boolean ("requested", "Requested?",
-      "True if this channel was requested by the local user",
-      FALSE,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_REQUESTED, param_spec);
-
- param_spec = g_param_spec_uint ("initiator-handle", "Initiator's handle",
-      "The contact who initiated the channel",
-      0, G_MAXUINT32, 0,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INITIATOR_HANDLE,
-      param_spec);
-
-  param_spec = g_param_spec_string ("initiator-id", "Initiator's bare JID",
-      "The string obtained by inspecting the initiator-handle",
-      NULL,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INITIATOR_ID,
-      param_spec);
-
-  param_spec = g_param_spec_object ("connection",
-      "GabbleConnection object",
-      "Gabble Connection that owns the"
-      "connection for this IM channel",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY |
-      G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
-  param_spec = g_param_spec_boxed ("interfaces", "Extra D-Bus interfaces",
-      "Additional Channel.Interface.* interfaces",
-      G_TYPE_STRV,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_INTERFACES, param_spec);
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER;
+  base_class->interfaces = gabble_file_transfer_channel_interfaces;
+  base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_class->close = gabble_file_transfer_channel_close;
+  base_class->fill_immutable_properties =
+    gabble_file_transfer_channel_fill_immutable_properties;
+  base_class->get_object_path_suffix =
+    gabble_file_transfer_channel_get_object_path_suffix;
 
   param_spec = g_param_spec_uint (
       "state",
@@ -963,20 +801,12 @@ void
 gabble_file_transfer_channel_dispose (GObject *object)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (object);
-  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->connection);
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_CONTACT);
 
   if (self->priv->dispose_has_run)
     return;
 
   DEBUG ("dispose called");
   self->priv->dispose_has_run = TRUE;
-  gabble_file_transfer_channel_do_close (self);
-
-  tp_handle_unref (handle_repo, self->priv->handle);
-  tp_handle_unref (handle_repo, self->priv->initiator);
-
 
   if (self->priv->progress_timer != 0)
     {
@@ -985,7 +815,6 @@ gabble_file_transfer_channel_dispose (GObject *object)
     }
 
   close_session_and_transport (self);
-
 
   /* release any references held by the object here */
 
@@ -1019,7 +848,6 @@ gabble_file_transfer_channel_finalize (GObject *object)
 
   /* free any data held directly by the object here */
   erase_socket (self);
-  g_free (self->priv->object_path);
   g_free (self->priv->filename);
   if (self->priv->socket_address != NULL)
     tp_g_value_slice_free (self->priv->socket_address);
@@ -1053,91 +881,6 @@ close_session_and_transport (GabbleFileTransferChannel *self)
   tp_clear_object (&self->priv->bytestream);
   tp_clear_object (&self->priv->listener);
   tp_clear_object (&self->priv->transport);
-}
-
-/**
- * gabble_file_transfer_channel_close
- *
- * Implements DBus method Close
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_file_transfer_channel_close (TpSvcChannel *iface,
-                                   DBusGMethodInvocation *context)
-{
-  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
-
-  if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
-      self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
-    {
-      gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (iface),
-          TP_FILE_TRANSFER_STATE_CANCELLED,
-          TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
-
-      close_session_and_transport (self);
-    }
-
-  gabble_file_transfer_channel_do_close (GABBLE_FILE_TRANSFER_CHANNEL (iface));
-  tp_svc_channel_return_from_close (context);
-}
-
-/**
- * gabble_file_transfer_channel_get_channel_type
- *
- * Implements DBus method GetChannelType
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_file_transfer_channel_get_channel_type (TpSvcChannel *iface,
-                                              DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_channel_type (context,
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER);
-}
-
-/**
- * gabble_file_transfer_channel_get_handle
- *
- * Implements DBus method GetHandle
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_file_transfer_channel_get_handle (TpSvcChannel *iface,
-                                        DBusGMethodInvocation *context)
-{
-  GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
-
-  tp_svc_channel_return_from_get_handle (context, TP_HANDLE_TYPE_CONTACT,
-      self->priv->handle);
-}
-
-/**
- * gabble_file_transfer_channel_get_interfaces
- *
- * Implements DBus method GetInterfaces
- * on interface org.freedesktop.Telepathy.Channel
- */
-static void
-gabble_file_transfer_channel_get_interfaces (TpSvcChannel *iface,
-                                            DBusGMethodInvocation *context)
-{
-  tp_svc_channel_return_from_get_interfaces (context,
-      gabble_file_transfer_channel_interfaces);
-}
-
-static void
-channel_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcChannelClass *klass = (TpSvcChannelClass *) g_iface;
-
-#define IMPLEMENT(x) tp_svc_channel_implement_##x (\
-    klass, gabble_file_transfer_channel_##x)
-  IMPLEMENT (close);
-  IMPLEMENT (get_channel_type);
-  IMPLEMENT (get_handle);
-  IMPLEMENT (get_interfaces);
-#undef IMPLEMENT
 }
 
 static gboolean setup_local_socket (GabbleFileTransferChannel *self,
@@ -1236,11 +979,8 @@ bytestream_closed (GabbleFileTransferChannel *self)
   if (self->priv->state != TP_FILE_TRANSFER_STATE_COMPLETED &&
       self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
     {
-      TpBaseConnection *base_conn = (TpBaseConnection *)
-          self->priv->connection;
-      gboolean receiver;
-
-      receiver = (self->priv->initiator != base_conn->self_handle);
+      gboolean receiver = !tp_base_channel_is_requested (
+          TP_BASE_CHANNEL (self));
 
       /* Something did wrong */
       gabble_file_transfer_channel_set_state (
@@ -1445,6 +1185,8 @@ static gboolean
 offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
                   const gchar *resource, GError **error)
 {
+  GabbleConnection *conn = GABBLE_CONNECTION (tp_base_channel_get_connection (
+          TP_BASE_CHANNEL (self)));
   gboolean result;
   WockyStanza *msg;
   WockyNode *si_node, *file_node;
@@ -1459,7 +1201,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
 
   /* Outgoing FT , we'll need SOCK5 proxies */
   gabble_bytestream_factory_query_socks5_proxies (
-      self->priv->connection->bytestream_factory);
+      conn->bytestream_factory);
 
 
   stream_id = gabble_bytestream_factory_generate_stream_id ();
@@ -1510,7 +1252,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   wocky_node_add_child_with_content (file_node, "range", NULL);
 
   result = gabble_bytestream_factory_negotiate_stream (
-      self->priv->connection->bytestream_factory, msg, stream_id,
+      conn->bytestream_factory, msg, stream_id,
       bytestream_negotiate_cb, self, G_OBJECT (self), error);
 
   g_object_unref (msg);
@@ -1587,13 +1329,16 @@ static gboolean
 offer_gtalk_file_transfer (GabbleFileTransferChannel *self,
     const gchar *full_jid, GError **error)
 {
-
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  GabbleConnection *conn = GABBLE_CONNECTION (
+      tp_base_channel_get_connection (base));
   GTalkFileCollection *gtalk_file_collection;
 
   DEBUG ("Offering Gtalk file transfer to %s", full_jid);
 
   gtalk_file_collection = gtalk_file_collection_new (self,
-      self->priv->connection->jingle_factory, self->priv->handle, full_jid);
+      conn->jingle_factory,
+      tp_base_channel_get_target_handle (base), full_jid);
 
   g_return_val_if_fail (gtalk_file_collection != NULL, FALSE);
 
@@ -1615,6 +1360,9 @@ gboolean
 gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
                                          GError **error)
 {
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   GabblePresence *presence;
   gboolean result;
   TpHandleRepoIface *contact_repo, *room_repo;
@@ -1628,8 +1376,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
   g_return_val_if_fail (self->priv->gtalk_file_collection == NULL, FALSE);
 
-  presence = gabble_presence_cache_get (self->priv->connection->presence_cache,
-      self->priv->handle);
+  presence = gabble_presence_cache_get (conn->presence_cache,
+      tp_base_channel_get_target_handle (base));
 
   if (presence == NULL)
     {
@@ -1655,12 +1403,13 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
         }
     }
 
-  contact_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_CONTACT);
-  room_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) self->priv->connection, TP_HANDLE_TYPE_ROOM);
+  contact_repo = tp_base_connection_get_handles (base_conn,
+     TP_HANDLE_TYPE_CONTACT);
+  room_repo = tp_base_connection_get_handles (base_conn,
+     TP_HANDLE_TYPE_ROOM);
 
-  jid = tp_handle_inspect (contact_repo, self->priv->handle);
+  jid = tp_handle_inspect (contact_repo,
+      tp_base_channel_get_target_handle (base));
   if (gabble_get_room_handle_from_jid (room_repo, jid) == 0)
     {
       /* Not a MUC jid, need to get a resource */
@@ -1687,14 +1436,14 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   if (si &&
       (!jingle_share ||
           gabble_jingle_factory_get_google_relay_token (
-              self->priv->connection->jingle_factory) == NULL))
+              conn->jingle_factory) == NULL))
     {
       result = offer_bytestream (self, jid, si_resource, error);
     }
   else if (jingle_share)
     {
-      gchar *full_jid = gabble_peer_to_jid (self->priv->connection,
-        self->priv->handle, share_resource);
+      gchar *full_jid = gabble_peer_to_jid (conn,
+          tp_base_channel_get_target_handle (base), share_resource);
       result = offer_gtalk_file_transfer (self, full_jid, error);
       g_free (full_jid);
     }
@@ -1902,10 +1651,10 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
                                           DBusGMethodInvocation *context)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GError *error = NULL;
 
-  if (self->priv->initiator == base_conn->self_handle)
+  if (tp_base_channel_is_requested (base))
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Channel is not an incoming transfer");
@@ -2001,10 +1750,9 @@ gabble_file_transfer_channel_provide_file (
     DBusGMethodInvocation *context)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (iface);
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
   GError *error = NULL;
 
-  if (self->priv->initiator != base_conn->self_handle)
+  if (!tp_base_channel_is_requested (TP_BASE_CHANNEL (self)))
     {
       g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "Channel is not an outgoing transfer");
@@ -2085,12 +1833,15 @@ file_transfer_iface_init (gpointer g_iface,
 static gchar *
 get_local_unix_socket_path (GabbleFileTransferChannel *self)
 {
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (
+      TP_BASE_CHANNEL (self));
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   const gchar *tmp_dir;
   gchar *path = NULL;
   gchar *name;
   struct stat buf;
 
-  tmp_dir = gabble_ft_manager_get_tmp_dir (self->priv->connection->ft_manager);
+  tmp_dir = gabble_ft_manager_get_tmp_dir (conn->ft_manager);
   if (tmp_dir == NULL)
     return NULL;
 
@@ -2210,8 +1961,8 @@ static void
 transport_disconnected_cb (GibberTransport *transport,
                            GabbleFileTransferChannel *self)
 {
-  TpBaseConnection *base_conn = (TpBaseConnection *) self->priv->connection;
-  gboolean requested = (self->priv->initiator == base_conn->self_handle);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  gboolean requested = tp_base_channel_is_requested (base);
 
   DEBUG ("transport to local socket has been disconnected");
 
@@ -2263,9 +2014,7 @@ new_connection_cb (GibberListener *listener,
                    gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  gboolean requested;
-  TpBaseConnection *base_conn = (TpBaseConnection *)
-      self->priv->connection;
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
 
   DEBUG ("Client connected to local socket");
 
@@ -2275,9 +2024,7 @@ new_connection_cb (GibberListener *listener,
   gabble_signal_connect_weak (transport, "buffer-empty",
     G_CALLBACK (transport_buffer_empty_cb), G_OBJECT (self));
 
-  requested = (self->priv->initiator == base_conn->self_handle);
-
-  if (!requested)
+  if (!tp_base_channel_is_requested (base))
     /* Incoming file transfer */
     file_transfer_receive (self);
   else
@@ -2425,6 +2172,7 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "connection", conn,
       "handle", handle,
       "initiator-handle", initiator_handle,
+      "requested", (initiator_handle != handle),
       "state", state,
       "content-type", content_type,
       "filename", filename,

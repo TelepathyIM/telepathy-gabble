@@ -70,7 +70,7 @@ struct _GabbleJingleSession {
 GabbleJingleSession *gabble_jingle_session_new (GabbleConnection *connection,
     const gchar *session_id,
     gboolean local_initiator,
-    const gchar *jid,
+    WockyContact *peer,
     gboolean local_hold);
 
 const gchar * gabble_jingle_session_detect (WockyStanza *stanza,
@@ -128,6 +128,7 @@ gboolean gabble_jingle_session_defines_action (GabbleJingleSession *sess,
     JingleAction action);
 
 TpHandle gabble_jingle_session_get_peer_handle (GabbleJingleSession *self);
+WockyContact *gabble_jingle_session_get_peer_contact (GabbleJingleSession *self);
 const gchar *gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess);
 
 const gchar *gabble_jingle_session_get_reason_name (JingleReason reason);

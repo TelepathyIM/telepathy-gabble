@@ -64,8 +64,8 @@ enum
 {
   PROP_CONNECTION = 1,
   PROP_SESSION_ID,
-  PROP_PEER_JID,
   PROP_PEER,
+  PROP_PEER_CONTACT,
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
   PROP_DIALECT,
@@ -80,6 +80,7 @@ struct _GabbleJingleSessionPrivate
   GabbleConnection *conn;
 
   TpHandle peer;
+  WockyContact *peer_contact;
   gchar *peer_resource;
   gchar *peer_jid;
   gchar *initiator;
@@ -227,6 +228,8 @@ gabble_jingle_session_dispose (GObject *object)
   tp_handle_unref (contact_repo, priv->peer);
   priv->peer = 0;
 
+  tp_clear_object (&priv->peer_contact);
+
   g_free (priv->sid);
   priv->sid = NULL;
 
@@ -264,6 +267,9 @@ gabble_jingle_session_get_property (GObject *object,
       break;
     case PROP_PEER:
       g_value_set_uint (value, priv->peer);
+      break;
+    case PROP_PEER_CONTACT:
+      g_value_set_object (value, priv->peer_contact);
       break;
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
@@ -310,8 +316,8 @@ gabble_jingle_session_set_property (GObject *object,
     case PROP_DIALECT:
       priv->dialect = g_value_get_uint (value);
       break;
-    case PROP_PEER_JID:
-      priv->peer_jid = g_value_dup_string (value);
+    case PROP_PEER_CONTACT:
+      priv->peer_contact = g_value_dup_object (value);
       break;
     case PROP_LOCAL_HOLD:
       {
@@ -352,9 +358,10 @@ gabble_jingle_session_constructed (GObject *object)
     chain_up (object);
 
   g_assert (priv->conn != NULL);
-  g_assert (priv->peer_jid != NULL);
+  g_assert (priv->peer_contact != NULL);
   g_assert (priv->sid != NULL);
 
+  priv->peer_jid = wocky_contact_dup_jid (priv->peer_contact);
   priv->peer = tp_handle_ensure (contact_repo, priv->peer_jid, NULL, NULL);
 
   if (priv->local_initiator)
@@ -380,14 +387,14 @@ GabbleJingleSession *
 gabble_jingle_session_new (GabbleConnection *connection,
                            const gchar *session_id,
                            gboolean local_initiator,
-                           const gchar *jid,
+                           WockyContact *peer,
                            gboolean local_hold)
 {
   return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
       "session-id", session_id,
       "connection", connection,
       "local-initiator", local_initiator,
-      "peer-jid", jid,
+      "peer-contact", peer,
       "local-hold", local_hold,
       NULL);
 }
@@ -431,12 +438,18 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
-  param_spec = g_param_spec_string ("peer-jid", "Session peer's jid",
-      "The full jid of the contact with whom this session communicates",
-      NULL,
+  /**
+   * GabbleJingleSession:peer-contact:
+   *
+   * The #WockyContact representing the other party in the session. Note that
+   * if this is a #WockyBareContact (as opposed to a #WockyResourceContact) the
+   * session is with the contact's bare JID.
+   */
+  param_spec = g_param_spec_object ("peer-contact", "Session peer",
+      "The WockyContact representing the other party in the session.",
+      WOCKY_TYPE_CONTACT,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_PEER_JID,
-      param_spec);
+  g_object_class_install_property (object_class, PROP_PEER_CONTACT, param_spec);
 
   param_spec = g_param_spec_uint ("state", "Session state",
       "The current state that the session is in.",
@@ -2390,6 +2403,18 @@ gabble_jingle_session_get_peer_handle (GabbleJingleSession *self)
   return self->priv->peer;
 }
 
+WockyContact *
+gabble_jingle_session_get_peer_contact (GabbleJingleSession *self)
+{
+  return self->priv->peer_contact;
+}
+
+/*
+ * gabble_jingle_session_get_peer_jid:
+ * @sess: a jingle session
+ *
+ * Returns: the full JID of the remote contact.
+ */
 const gchar *
 gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess)
 {

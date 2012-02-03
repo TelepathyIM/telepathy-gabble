@@ -23,6 +23,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <glib.h>
 
 #include <wocky/wocky.h>
@@ -803,8 +804,19 @@ create_session (GabbleJingleFactory *fac,
   GabbleJingleSession *sess;
   gboolean local_initiator;
   gchar *sid_, *key;
+  gpointer contact;
+  WockyContactFactory *factory;
 
+  factory = wocky_session_get_contact_factory (priv->conn->session);
   g_assert (jid != NULL);
+
+  if (strchr (jid, '/') != NULL)
+    contact = wocky_contact_factory_ensure_resource_contact (factory, jid);
+  else
+    contact = wocky_contact_factory_ensure_bare_contact (factory, jid);
+
+  g_return_val_if_fail (contact != NULL, NULL);
+  g_return_val_if_fail (WOCKY_IS_CONTACT (contact), NULL);
 
   if (sid != NULL)
     {
@@ -824,7 +836,7 @@ create_session (GabbleJingleFactory *fac,
    * get_unique_sid_for should have ensured the key is fresh. */
   g_assert (NULL == g_hash_table_lookup (priv->sessions, key));
 
-  sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, jid,
+  sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, contact,
       local_hold);
   g_signal_connect (sess, "terminated",
     (GCallback) session_terminated_cb, fac);
@@ -835,6 +847,7 @@ create_session (GabbleJingleFactory *fac,
   DEBUG ("new session (%s, %s) @ %p", jid, sid_, sess);
 
   g_free (sid_);
+  g_object_unref (contact);
 
   return sess;
 }

@@ -98,7 +98,6 @@ static gboolean jingle_cb (
     gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid,
-    TpHandle peer,
     const gchar *jid,
     gboolean local_hold);
 
@@ -691,15 +690,10 @@ ensure_session (GabbleJingleFactory *self,
     GError **error)
 {
   GabbleJingleFactoryPrivate *priv = self->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   gchar *key;
   GabbleJingleSession *sess;
-  TpHandle peer;
 
-  peer = tp_handle_ensure (contact_repo, from, NULL, error);
-
-  if (peer == 0)
+  if (!wocky_decode_jid (from, NULL, NULL, NULL))
     {
       g_prefix_error (error, "Couldn't parse sender '%s': ", from);
       return NULL;
@@ -714,7 +708,7 @@ ensure_session (GabbleJingleFactory *self,
     {
       if (action == JINGLE_ACTION_SESSION_INITIATE)
         {
-          sess = create_session (self, sid, peer, from, FALSE);
+          sess = create_session (self, sid, from, FALSE);
           g_object_set (sess, "dialect", dialect, NULL);
           *new_session = TRUE;
         }
@@ -731,7 +725,6 @@ ensure_session (GabbleJingleFactory *self,
       *new_session = FALSE;
     }
 
-  tp_handle_unref (contact_repo, peer);
   return sess;
 }
 
@@ -796,7 +789,6 @@ REQUEST_ERROR:
 static GabbleJingleSession *
 create_session (GabbleJingleFactory *fac,
     const gchar *sid,
-    TpHandle peer,
     const gchar *jid,
     gboolean local_hold)
 {
@@ -854,11 +846,10 @@ create_session (GabbleJingleFactory *fac,
 
 GabbleJingleSession *
 gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
-    TpHandle peer,
     const gchar *jid,
     gboolean local_hold)
 {
-  return create_session (fac, NULL, peer, jid, local_hold);
+  return create_session (fac, NULL, jid, local_hold);
 }
 
 void

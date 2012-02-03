@@ -511,7 +511,7 @@ gabble_call_member_open_session (GabbleCallMember *self,
   jid = gabble_peer_to_jid (conn, priv->target, NULL);
 
   session = gabble_jingle_factory_create_session (conn->jingle_factory,
-      priv->target, jid, FALSE);
+      jid, FALSE);
   DEBUG ("Created a jingle session: %p", session);
 
   g_object_set (session, "dialect", JINGLE_DIALECT_V032, NULL);
@@ -554,7 +554,7 @@ gabble_call_member_start_session (GabbleCallMember *self,
   jid = gabble_peer_to_jid (gabble_call_member_get_connection (self), target, resource);
 
   session = gabble_jingle_factory_create_session (
-        gabble_call_member_get_connection (self)->jingle_factory, target, jid, FALSE);
+        gabble_call_member_get_connection (self)->jingle_factory, jid, FALSE);
   g_free (jid);
 
   gabble_call_member_set_session (self, session);

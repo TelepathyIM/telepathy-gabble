@@ -1449,7 +1449,7 @@ gtalk_file_collection_new (GabbleFileTransferChannel *channel,
   self->priv->requested = TRUE;
 
   session = gabble_jingle_factory_create_session (jingle_factory,
-      handle, jid, FALSE);
+      jid, FALSE);
 
   if (session == NULL)
     {

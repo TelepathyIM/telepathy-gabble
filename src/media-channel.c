@@ -301,7 +301,6 @@ _latch_to_session (GabbleMediaChannel *chan)
 
 static void
 create_session (GabbleMediaChannel *chan,
-    TpHandle peer,
     const gchar *jid)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
@@ -313,7 +312,7 @@ create_session (GabbleMediaChannel *chan,
 
   priv->session = g_object_ref (
       gabble_jingle_factory_create_session (priv->conn->jingle_factory,
-          peer, jid, local_hold));
+          jid, local_hold));
 
   _latch_to_session (chan);
 }
@@ -1709,7 +1708,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
           transport_ns, dialect);
 
       jid = gabble_peer_to_jid (priv->conn, peer, peer_resource);
-      create_session (chan, peer, jid);
+      create_session (chan, jid);
       g_free (jid);
 
       g_object_set (priv->session, "dialect", dialect, NULL);

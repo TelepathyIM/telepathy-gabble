@@ -1997,6 +1997,17 @@ gabble_presence_cache_get (GabblePresenceCache *cache, TpHandle handle)
   return g_hash_table_lookup (priv->presence, GUINT_TO_POINTER (handle));
 }
 
+GabblePresence *
+gabble_presence_cache_get_for_contact (
+    GabblePresenceCache *cache,
+    WockyContact *contact)
+{
+  GabblePresenceCachePrivate *priv = cache->priv;
+  TpHandle handle = ensure_handle_from_contact (priv->conn, contact);
+
+  return g_hash_table_lookup (priv->presence, GUINT_TO_POINTER (handle));
+}
+
 void
 gabble_presence_cache_maybe_remove (
     GabblePresenceCache *cache,

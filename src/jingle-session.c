@@ -208,8 +208,6 @@ gabble_jingle_session_dispose (GObject *object)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (object);
   GabbleJingleSessionPrivate *priv = sess->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->dispose_has_run)
     return;
@@ -225,9 +223,6 @@ gabble_jingle_session_dispose (GObject *object)
 
   g_hash_table_unref (priv->responder_contents);
   priv->responder_contents = NULL;
-
-  tp_handle_unref (contact_repo, priv->peer);
-  priv->peer = 0;
 
   tp_clear_object (&priv->peer_contact);
 

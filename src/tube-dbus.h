@@ -25,6 +25,7 @@
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/group-mixin.h>
 #include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/base-channel.h>
 
 #include "connection.h"
 #include "bytestream-iface.h"
@@ -34,18 +35,18 @@
 G_BEGIN_DECLS
 
 typedef struct _GabbleTubeDBus GabbleTubeDBus;
-typedef struct _GabbleTubeDBusPrivate GabbleTubeDBusPrivate;
 typedef struct _GabbleTubeDBusClass GabbleTubeDBusClass;
+typedef struct _GabbleTubeDBusPrivate GabbleTubeDBusPrivate;
 
 struct _GabbleTubeDBusClass {
-  GObjectClass parent_class;
+  TpBaseChannelClass parent_class;
 
   TpDBusPropertiesMixinClass dbus_props_class;
   TpGroupMixinClass group_class;
 };
 
 struct _GabbleTubeDBus {
-  GObject parent;
+  TpBaseChannel parent;
   TpGroupMixin group;
 
   GabbleTubeDBusPrivate *priv;

@@ -453,7 +453,10 @@ tube_closed_cb (GabbleTubeIface *tube,
 
   tp_svc_channel_type_tubes_emit_tube_closed (self, tube_id);
 
-  tp_svc_channel_emit_closed (tube);
+  /* TODO: remove this completely when GabbleTubeStream is also a
+   * TpBaseChannel subclass */
+  if (!GABBLE_IS_TUBE_DBUS (tube))
+    tp_svc_channel_emit_closed (tube);
 
   /* Ideally, this should be done in the factory directly but the private
    * tubes factory and the muc factory are not aware of tube channels.
@@ -557,6 +560,9 @@ create_new_tube (GabbleTubesChannel *self,
           priv->handle, priv->handle_type, priv->self_handle, initiator,
           service, parameters, stream_id, tube_id, bytestream, self->muc,
           requested));
+      /* TODO: put this below when GabbleTubeStream is also a
+       * TpBaseChannel */
+      tp_base_channel_register ((TpBaseChannel *) tube);
       break;
     case TP_TUBE_TYPE_STREAM:
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,

@@ -21,6 +21,8 @@
 #include "config.h"
 #include "server-tls-manager.h"
 
+#include <telepathy-glib/gtypes.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_TLS
 #include "debug.h"
 #include "gabble/caps-channel-manager.h"
@@ -30,7 +32,7 @@
 
 #include "extensions/extensions.h"
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 static void channel_manager_iface_init (gpointer, gpointer);
 

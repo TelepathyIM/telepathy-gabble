@@ -28,7 +28,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_SHARE
 
@@ -183,9 +182,9 @@ gabble_jingle_share_dispose (GObject *object)
 
 
 static void parse_description (GabbleJingleContent *content,
-    LmMessageNode *desc_node, GError **error);
+    WockyNode *desc_node, GError **error);
 static void produce_description (GabbleJingleContent *obj,
-    LmMessageNode *content_node);
+    WockyNode *content_node);
 
 
 static void
@@ -291,14 +290,15 @@ gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
 
 static void
 parse_description (GabbleJingleContent *content,
-    LmMessageNode *desc_node, GError **error)
+    WockyNode *desc_node, GError **error)
 {
   GabbleJingleShare *self = GABBLE_JINGLE_SHARE (content);
   GabbleJingleSharePrivate *priv = self->priv;
-  NodeIter i;
-  LmMessageNode *manifest_node = NULL;
-  LmMessageNode *protocol_node = NULL;
-  LmMessageNode *http_node = NULL;
+  WockyNodeIter i;
+  WockyNode *manifest_node = NULL;
+  WockyNode *protocol_node = NULL;
+  WockyNode *http_node = NULL;
+  WockyNode *node;
 
   DEBUG ("parse description called");
 
@@ -308,52 +308,52 @@ parse_description (GabbleJingleContent *content,
       return;
     }
 
-  manifest_node = lm_message_node_get_child (desc_node, "manifest");
+  manifest_node = wocky_node_get_child (desc_node, "manifest");
 
   if (manifest_node == NULL)
     {
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "description missing <manifest/> node");
       return;
     }
 
-  protocol_node = lm_message_node_get_child (desc_node, "protocol");
+  protocol_node = wocky_node_get_child (desc_node, "protocol");
   if (protocol_node != NULL)
-    http_node = lm_message_node_get_child (protocol_node, "http");
+    http_node = wocky_node_get_child (protocol_node, "http");
 
   free_manifest (self);
   priv->manifest = g_slice_new0 (GabbleJingleShareManifest);
 
   /* Build the manifest */
-  for (i = node_iter (manifest_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, manifest_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      LmMessageNode *node = node_iter_data (i);
-      LmMessageNode *name = NULL;
-      LmMessageNode *image = NULL;
+      WockyNode *name = NULL;
+      WockyNode *image = NULL;
       gboolean folder;
       const gchar *size;
       GabbleJingleShareManifestEntry *m = NULL;
 
-      if (!tp_strdiff (lm_message_node_get_name (node), "folder"))
+      if (!tp_strdiff (node->name, "folder"))
         folder = TRUE;
-      else if (!tp_strdiff (lm_message_node_get_name (node), "file"))
+      else if (!tp_strdiff (node->name, "file"))
         folder = FALSE;
       else
         continue;
 
-      name = lm_message_node_get_child (node, "name");
+      name = wocky_node_get_child (node, "name");
       if (name == NULL)
         continue;
 
       m = g_slice_new0 (GabbleJingleShareManifestEntry);
       m->folder = folder;
-      m->name = g_strdup (lm_message_node_get_value (name));
+      m->name = g_strdup (name->content);
 
-      size = lm_message_node_get_attribute (node, "size");
+      size = wocky_node_get_attribute (node, "size");
       if (size)
         m->size = g_ascii_strtoull (size, NULL, 10);
 
-      image = lm_message_node_get_child (node, "image");
+      image = wocky_node_get_child (node, "image");
       if (image)
         {
           const gchar *width;
@@ -361,11 +361,11 @@ parse_description (GabbleJingleContent *content,
 
           m->image = TRUE;
 
-          width = lm_message_node_get_attribute (image, "width");
+          width = wocky_node_get_attribute (image, "width");
           if (width)
             m->image_width = g_ascii_strtoull (width, NULL, 10);
 
-          height =lm_message_node_get_attribute (image, "height");
+          height =wocky_node_get_attribute (image, "height");
           if (height)
             m->image_height = g_ascii_strtoull (height, NULL, 10);
         }
@@ -376,27 +376,22 @@ parse_description (GabbleJingleContent *content,
   if (http_node != NULL)
     {
       /* clear the previously set values */
-      for (i = node_iter (http_node); i; i = node_iter_next (i))
+      wocky_node_iter_init (&i, http_node, "url", NULL);
+      while (wocky_node_iter_next (&i, &node))
         {
-          LmMessageNode *node = node_iter_data (i);
-          const gchar *name;
-
-          if (tp_strdiff (lm_message_node_get_name (node), "url"))
-            continue;
-
-          name = lm_message_node_get_attribute (node, "name");
+          const gchar *name = wocky_node_get_attribute (node, "name");
           if (name == NULL)
             continue;
 
           if (!tp_strdiff (name, "source-path"))
             {
-              const gchar *url = lm_message_node_get_value (node);
+              const gchar *url = node->content;
               priv->manifest->source_url = g_strdup (url);
             }
 
           if (!tp_strdiff (name, "preview-path"))
             {
-              const gchar *url = lm_message_node_get_value (node);
+              const gchar *url = node->content;
               priv->manifest->preview_url = g_strdup (url);
             }
         }
@@ -446,76 +441,76 @@ parse_description (GabbleJingleContent *content,
 }
 
 static void
-produce_description (GabbleJingleContent *content, LmMessageNode *content_node)
+produce_description (GabbleJingleContent *content, WockyNode *content_node)
 {
   GabbleJingleShare *self = GABBLE_JINGLE_SHARE (content);
   GabbleJingleSharePrivate *priv = self->priv;
   GList *i;
 
-  LmMessageNode *desc_node;
-  LmMessageNode *manifest_node;
-  LmMessageNode *protocol_node;
-  LmMessageNode *http_node;
-  LmMessageNode *url_node;
+  WockyNode *desc_node;
+  WockyNode *manifest_node;
+  WockyNode *protocol_node;
+  WockyNode *http_node;
+  WockyNode *url_node;
 
   DEBUG ("produce description called");
 
   ensure_manifest (self);
 
-  desc_node = lm_message_node_add_child (content_node, "description", NULL);
+  desc_node = wocky_node_add_child_with_content (content_node, "description", NULL);
 
-  lm_message_node_set_attribute (desc_node, "xmlns", NS_GOOGLE_SESSION_SHARE);
+  desc_node->ns = g_quark_from_string (NS_GOOGLE_SESSION_SHARE);
 
-  manifest_node = lm_message_node_add_child (desc_node, "manifest", NULL);
+  manifest_node = wocky_node_add_child_with_content (desc_node, "manifest", NULL);
 
   for (i = priv->manifest->entries; i; i = i->next)
     {
       GabbleJingleShareManifestEntry *m = i->data;
-      LmMessageNode *file_node;
-      LmMessageNode *image_node;
+      WockyNode *file_node;
+      WockyNode *image_node;
       gchar *size_str, *width_str, *height_str;
 
       if (m->folder)
-        file_node = lm_message_node_add_child (manifest_node, "folder", NULL);
+        file_node = wocky_node_add_child_with_content (manifest_node, "folder", NULL);
       else
-        file_node = lm_message_node_add_child (manifest_node, "file", NULL);
+        file_node = wocky_node_add_child_with_content (manifest_node, "file", NULL);
 
       if (m->size > 0)
         {
           size_str = g_strdup_printf ("%" G_GUINT64_FORMAT, m->size);
-          lm_message_node_set_attribute (file_node, "size", size_str);
+          wocky_node_set_attribute (file_node, "size", size_str);
           g_free (size_str);
         }
-      lm_message_node_add_child (file_node, "name", m->name);
+      wocky_node_add_child_with_content (file_node, "name", m->name);
 
       if (m->image &&
           (m->image_width > 0 || m->image_height > 0))
         {
-          image_node = lm_message_node_add_child (file_node, "image", NULL);
+          image_node = wocky_node_add_child_with_content (file_node, "image", NULL);
           if (m->image_width > 0)
             {
               width_str = g_strdup_printf ("%d", m->image_width);
-              lm_message_node_set_attribute (image_node, "width", width_str);
+              wocky_node_set_attribute (image_node, "width", width_str);
               g_free (width_str);
             }
 
           if (m->image_height > 0)
             {
               height_str = g_strdup_printf ("%d", m->image_height);
-              lm_message_node_set_attribute (image_node, "height", height_str);
+              wocky_node_set_attribute (image_node, "height", height_str);
               g_free (height_str);
             }
         }
     }
 
-  protocol_node = lm_message_node_add_child (desc_node, "protocol", NULL);
-  http_node = lm_message_node_add_child (protocol_node, "http", NULL);
-  url_node = lm_message_node_add_child (http_node, "url",
+  protocol_node = wocky_node_add_child_with_content (desc_node, "protocol", NULL);
+  http_node = wocky_node_add_child_with_content (protocol_node, "http", NULL);
+  url_node = wocky_node_add_child_with_content (http_node, "url",
       priv->manifest->source_url);
-  lm_message_node_set_attribute (url_node, "name", "source-path");
-  url_node = lm_message_node_add_child (http_node, "url",
+  wocky_node_set_attribute (url_node, "name", "source-path");
+  url_node = wocky_node_add_child_with_content (http_node, "url",
       priv->manifest->preview_url);
-  lm_message_node_set_attribute (url_node, "name", "preview-path");
+  wocky_node_set_attribute (url_node, "name", "preview-path");
 
 }
 

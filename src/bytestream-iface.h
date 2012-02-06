@@ -21,7 +21,7 @@
 #define __GABBLE_BYTESTREAM_IFACE_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky.h>
 
 G_BEGIN_DECLS
 
@@ -43,7 +43,7 @@ typedef enum
 } GabbleBytestreamState;
 
 typedef void (* GabbleBytestreamAugmentSiAcceptReply) (
-    LmMessageNode *si, gpointer user_data);
+    WockyNode *si, gpointer user_data);
 
 typedef struct _GabbleBytestreamIface GabbleBytestreamIface;
 typedef struct _GabbleBytestreamIfaceClass GabbleBytestreamIfaceClass;

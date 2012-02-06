@@ -26,8 +26,7 @@
 #include "util.h"
 #include "conn-util.h"
 
-#include <wocky/wocky-namespaces.h>
-#include <wocky/wocky-c2s-porter.h>
+#include <wocky/wocky.h>
 
 enum
 {

@@ -25,8 +25,7 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
@@ -145,10 +144,10 @@ gabble_socks5_proxy_free (GabbleSocks5Proxy *proxy)
 struct _GabbleBytestreamFactoryPrivate
 {
   GabbleConnection *conn;
-  LmMessageHandler *iq_si_cb;
-  LmMessageHandler *iq_ibb_cb;
-  LmMessageHandler *iq_socks5_cb;
-  LmMessageHandler *msg_data_cb;
+  guint iq_si_cb;
+  guint iq_ibb_cb;
+  guint iq_socks5_cb;
+  guint msg_data_cb;
 
   /* SI-initiated bytestreams - data sent by normal messages, IQs used to
    * open and close.
@@ -185,21 +184,25 @@ struct _GabbleBytestreamFactoryPrivate
 
 #define GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE(obj) ((obj)->priv)
 
-static LmHandlerResult
-bytestream_factory_msg_data_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *message, gpointer user_data);
+static gboolean bytestream_factory_msg_data_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data);
 
-static LmHandlerResult
-bytestream_factory_iq_si_cb (LmMessageHandler *handler, LmConnection *lmconn,
-    LmMessage *message, gpointer user_data);
+static gboolean bytestream_factory_iq_si_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data);
 
-static LmHandlerResult
-bytestream_factory_iq_ibb_cb (LmMessageHandler *handler, LmConnection *lmconn,
-    LmMessage *message, gpointer user_data);
+static gboolean bytestream_factory_iq_ibb_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data);
 
-static LmHandlerResult
-bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
-    LmConnection *lmconn, LmMessage *message, gpointer user_data);
+static gboolean handle_socks5_query_iq (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data);
 
 static void query_proxies (GabbleBytestreamFactory *self,
     guint nb_proxies_needed);
@@ -294,17 +297,17 @@ add_proxy_to_list (GabbleBytestreamFactory *self,
   *list = g_slist_prepend (*list, proxy);
 }
 
-static LmHandlerResult
+static void
 socks5_proxy_query_reply_cb (GabbleConnection *conn,
-                             LmMessage *sent_msg,
-                             LmMessage *reply_msg,
+                             WockyStanza *sent_msg,
+                             WockyStanza *reply_msg,
                              GObject *obj,
                              gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
-  LmMessageNode *query, *streamhost;
+  WockyNode *query, *streamhost;
   const gchar *from;
   const gchar *jid, *host, *portstr;
   gint64 port;
@@ -312,26 +315,26 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
   gboolean fallback = GPOINTER_TO_INT (user_data);
   GSList *found = NULL;
 
-  from = lm_message_node_get_attribute (
+  from = wocky_node_get_attribute (
     wocky_stanza_get_top_node (reply_msg), "from");
   if (from == NULL)
     goto fail;
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     goto fail;
 
-  query = lm_message_node_get_child_with_namespace (
+  query = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
   if (query == NULL)
     goto fail;
 
-  streamhost = lm_message_node_get_child (query, "streamhost");
+  streamhost = wocky_node_get_child (query, "streamhost");
   if (streamhost == NULL)
     goto fail;
 
-  jid = lm_message_node_get_attribute (streamhost, "jid");
-  host = lm_message_node_get_attribute (streamhost, "host");
-  portstr = lm_message_node_get_attribute (streamhost, "port");
+  jid = wocky_node_get_attribute (streamhost, "jid");
+  host = wocky_node_get_attribute (streamhost, "host");
+  portstr = wocky_node_get_attribute (streamhost, "port");
 
   if (jid == NULL || host == NULL || portstr == NULL)
     goto fail;
@@ -345,7 +348,7 @@ socks5_proxy_query_reply_cb (GabbleConnection *conn,
 
   add_proxy_to_list (self , proxy, fallback);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return;
 
 fail:
   if (fallback && from != NULL)
@@ -366,7 +369,6 @@ fail:
 
   /* Try to get another proxy as this one failed */
   query_proxies (self, 1);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -376,21 +378,21 @@ send_proxy_query (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
-  LmMessage *query;
+  WockyStanza *query;
 
   DEBUG ("send SOCKS5 query to %s", jid);
 
-  query = lm_message_build (jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "get",
-      '(', "query", "",
-        '@', "xmlns", NS_BYTESTREAMS,
+  query = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, jid,
+      '(', "query",
+        ':', NS_BYTESTREAMS,
       ')', NULL);
 
   _gabble_connection_send_with_reply (priv->conn, query,
       socks5_proxy_query_reply_cb, G_OBJECT (self), GINT_TO_POINTER (fallback),
       NULL);
 
-  lm_message_unref (query);
+  g_object_unref (query);
 }
 
 static void
@@ -436,14 +438,15 @@ proxies_disco_cb (GabbleDisco *disco,
     GabbleDiscoRequest *request,
     const gchar *j,
     const gchar *n,
-    LmMessageNode *query_result,
+    WockyNode *query_result,
     GError *error,
     gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
       self);
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *node;
   GSList *new_list = NULL;
 
   if (error != NULL)
@@ -452,15 +455,10 @@ proxies_disco_cb (GabbleDisco *disco,
       return;
     }
 
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_result, "item", NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      LmMessageNode *node = node_iter_data (i);
-      const gchar *jid;
-
-      if (tp_strdiff (node->name, "item"))
-        continue;
-
-      jid = lm_message_node_get_attribute (node, "jid");
+      const gchar *jid = wocky_node_get_attribute (node, "jid");
       if (jid == NULL)
         continue;
 
@@ -571,6 +569,43 @@ randomize_g_slist (GSList *list)
 }
 
 static void
+porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+  GabbleBytestreamFactoryPrivate *priv = self->priv;
+
+  priv->msg_data_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      bytestream_factory_msg_data_cb, self,
+      NULL);
+
+  priv->iq_si_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      bytestream_factory_iq_si_cb, self,
+      '(', "si", ':', NS_SI,
+      ')',
+      NULL);
+
+  priv->iq_ibb_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      bytestream_factory_iq_ibb_cb, self,
+      NULL);
+
+  priv->iq_socks5_cb = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      WOCKY_PORTER_HANDLER_PRIORITY_MAX,
+      handle_socks5_query_iq, self,
+      '(', "query", ':', NS_BYTESTREAMS, ')',
+      NULL);
+}
+
+static void
 conn_status_changed_cb (GabbleConnection *conn,
                         TpConnectionStatus status,
                         TpConnectionStatusReason reason,
@@ -620,32 +655,14 @@ gabble_bytestream_factory_constructor (GType type,
   self = GABBLE_BYTESTREAM_FACTORY (obj);
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  priv->msg_data_cb = lm_message_handler_new (bytestream_factory_msg_data_cb,
-      self, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->msg_data_cb, LM_MESSAGE_TYPE_MESSAGE, LM_HANDLER_PRIORITY_FIRST);
-
-  priv->iq_si_cb = lm_message_handler_new (bytestream_factory_iq_si_cb, self,
-      NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_si_cb,
-      LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
-
-  priv->iq_ibb_cb = lm_message_handler_new (bytestream_factory_iq_ibb_cb, self,
-      NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn, priv->iq_ibb_cb,
-      LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
-
-  priv->iq_socks5_cb = lm_message_handler_new (bytestream_factory_iq_socks5_cb,
-      self, NULL);
-  lm_connection_register_message_handler (priv->conn->lmconn,
-      priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ, LM_HANDLER_PRIORITY_FIRST);
-
   /* Track SOCKS5 proxy available on the connection */
   gabble_signal_connect_weak (priv->conn->disco, "item-found",
       G_CALLBACK (disco_item_found_cb), G_OBJECT (self));
 
   gabble_signal_connect_weak (priv->conn, "status-changed",
       G_CALLBACK (conn_status_changed_cb), G_OBJECT (self));
+  tp_g_signal_connect_object (priv->conn, "porter-available",
+      G_CALLBACK (porter_available_cb), self, 0);
 
   return obj;
 }
@@ -664,21 +681,15 @@ gabble_bytestream_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->msg_data_cb, LM_MESSAGE_TYPE_MESSAGE);
-  lm_message_handler_unref (priv->msg_data_cb);
+  if (priv->msg_data_cb != 0)
+    {
+      WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
 
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->iq_si_cb, LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_si_cb);
-
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->iq_ibb_cb, LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_ibb_cb);
-
-  lm_connection_unregister_message_handler (priv->conn->lmconn,
-      priv->iq_socks5_cb, LM_MESSAGE_TYPE_IQ);
-  lm_message_handler_unref (priv->iq_socks5_cb);
+      wocky_porter_unregister_handler (porter, priv->msg_data_cb);
+      wocky_porter_unregister_handler (porter, priv->iq_si_cb);
+      wocky_porter_unregister_handler (porter, priv->iq_ibb_cb);
+      wocky_porter_unregister_handler (porter, priv->iq_socks5_cb);
+    }
 
   g_hash_table_unref (priv->ibb_bytestreams);
   priv->ibb_bytestreams = NULL;
@@ -832,8 +843,8 @@ remove_bytestream (GabbleBytestreamFactory *self,
  * message.
  */
 static gboolean
-streaminit_parse_request (LmMessage *message,
-                          LmMessageNode *si,
+streaminit_parse_request (WockyStanza *message,
+                          WockyNode *si,
                           const gchar **profile,
                           const gchar **from,
                           const gchar **stream_id,
@@ -842,13 +853,13 @@ streaminit_parse_request (LmMessage *message,
                           GSList **stream_methods,
                           gboolean *multiple)
 {
-  LmMessageNode *iq = wocky_stanza_get_top_node (message);
-  LmMessageNode *feature, *x, *si_multiple;
-  NodeIter i, j;
+  WockyNode *iq = wocky_stanza_get_top_node (message);
+  WockyNode *feature, *x, *si_multiple, *field;
+  WockyNodeIter i, j;
 
-  *stream_init_id = lm_message_node_get_attribute (iq, "id");
+  *stream_init_id = wocky_node_get_attribute (iq, "id");
 
-  *from = lm_message_node_get_attribute (iq, "from");
+  *from = wocky_node_get_attribute (iq, "from");
   if (*from == NULL)
     {
       STANZA_DEBUG (message, "got a message without a from field");
@@ -857,18 +868,18 @@ streaminit_parse_request (LmMessage *message,
 
   /* Parse <si> */
 
-  *stream_id = lm_message_node_get_attribute (si, "id");
+  *stream_id = wocky_node_get_attribute (si, "id");
   if (*stream_id == NULL)
     {
       STANZA_DEBUG (message, "got a SI request without a stream id field");
       return FALSE;
     }
 
-  *mime_type = lm_message_node_get_attribute (si, "mime-type");
+  *mime_type = wocky_node_get_attribute (si, "mime-type");
   /* if no mime_type is defined, XEP-0095 says to assume "binary/octect-stream"
    * which is presumably a typo for "application/octet-stream" */
 
-  *profile = lm_message_node_get_attribute (si, "profile");
+  *profile = wocky_node_get_attribute (si, "profile");
   if (*profile == NULL)
     {
       STANZA_DEBUG (message, "got a SI request without a profile field");
@@ -876,7 +887,7 @@ streaminit_parse_request (LmMessage *message,
     }
 
   /* Parse <feature> */
-  feature = lm_message_node_get_child_with_namespace (si, "feature",
+  feature = wocky_node_get_child_ns (si, "feature",
       NS_FEATURENEG);
   if (feature == NULL)
     {
@@ -884,23 +895,24 @@ streaminit_parse_request (LmMessage *message,
       return FALSE;
     }
 
-  x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
+  x = wocky_node_get_child_ns (feature, "x", NS_X_DATA);
   if (x == NULL)
     {
       STANZA_DEBUG (message, "got a SI request without a X data field");
       return FALSE;
     }
 
-  for (i = node_iter (x); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, x, NULL, NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      LmMessageNode *field = node_iter_data (i);
+      WockyNode *stream_method;
 
-      if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
+      if (tp_strdiff (wocky_node_get_attribute (field, "var"),
             "stream-method"))
         /* some future field, ignore it */
         continue;
 
-      if (tp_strdiff (lm_message_node_get_attribute (field, "type"),
+      if (tp_strdiff (wocky_node_get_attribute (field, "type"),
             "list-single"))
         {
           STANZA_DEBUG (message, "SI request's stream-method field was "
@@ -910,17 +922,17 @@ streaminit_parse_request (LmMessage *message,
 
       /* Get the stream methods offered */
       *stream_methods = NULL;
-      for (j = node_iter (field); j; j = node_iter_next (j))
+      wocky_node_iter_init (&j, field, NULL, NULL);
+      while (wocky_node_iter_next (&j, &stream_method))
         {
-          LmMessageNode *stream_method = node_iter_data (j);
-          LmMessageNode *value;
+          WockyNode *value;
           const gchar *stream_method_str;
 
-          value = lm_message_node_get_child (stream_method, "value");
+          value = wocky_node_get_child (stream_method, "value");
           if (value == NULL)
             continue;
 
-          stream_method_str = lm_message_node_get_value (value);
+          stream_method_str = value->content;
           if (!tp_strdiff (stream_method_str, ""))
             continue;
 
@@ -943,8 +955,7 @@ streaminit_parse_request (LmMessage *message,
       return FALSE;
     }
 
-  si_multiple = lm_message_node_get_child_with_namespace (si, "si-multiple",
-      NS_SI_MULTIPLE);
+  si_multiple = wocky_node_get_child_ns (si, "si-multiple", NS_SI_MULTIPLE);
   if (si_multiple == NULL)
     *multiple = FALSE;
   else
@@ -965,38 +976,38 @@ streaminit_parse_request (LmMessage *message,
  * The MIME type is not set - the receiving client will assume
  * application/octet-stream unless the caller sets a MIME type explicitly.
  */
-LmMessage *
+WockyStanza *
 gabble_bytestream_factory_make_stream_init_iq (const gchar *full_jid,
                                                const gchar *stream_id,
                                                const gchar *profile)
 {
-  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "si", "",
-        '@', "xmlns", NS_SI,
+  return wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, full_jid,
+      '(', "si",
+        ':', NS_SI,
         '@', "id", stream_id,
         '@', "profile", profile,
-        '(', "feature", "",
-          '@', "xmlns", NS_FEATURENEG,
-          '(', "x", "",
-            '@', "xmlns", NS_X_DATA,
+        '(', "feature",
+          ':', NS_FEATURENEG,
+          '(', "x",
+            ':', NS_X_DATA,
             '@', "type", "form",
-            '(', "field", "",
+            '(', "field",
               '@', "var", "stream-method",
               '@', "type", "list-single",
-              '(', "option", "",
-                '(', "value", NS_BYTESTREAMS,
+              '(', "option",
+                '(', "value", '$', NS_BYTESTREAMS,
                 ')',
               ')',
-              '(', "option", "",
-                '(', "value", NS_IBB,
+              '(', "option",
+                '(', "value", '$', NS_IBB,
                 ')',
               ')',
             ')',
           ')',
         ')',
-        '(', "si-multiple", "",
-          '@', "xmlns", NS_SI_MULTIPLE,
+        '(', "si-multiple",
+          ':', NS_SI_MULTIPLE,
         ')',
       ')', NULL);
 }
@@ -1033,8 +1044,8 @@ static GabbleBytestreamSocks5 *gabble_bytestream_factory_create_socks5 (
 
 static void
 si_tube_received (GabbleBytestreamFactory *self,
-                  LmMessage *msg,
-                  LmMessageNode *si,
+                  WockyStanza *msg,
+                  WockyNode *si,
                   GabbleBytestreamIface *bytestream,
                   TpHandle peer_handle,
                   TpHandle room_handle,
@@ -1048,14 +1059,14 @@ si_tube_received (GabbleBytestreamFactory *self,
    *  - a 1-1 tube extra bytestream offer
    *  - a muc tube extra bytestream offer
    */
-  if (lm_message_node_get_child_with_namespace (si, "tube", NS_TUBES) != NULL)
+  if (wocky_node_get_child_ns (si, "tube", NS_TUBES) != NULL)
     {
       /* The SI request is a tube offer */
        gabble_private_tubes_factory_handle_si_tube_request (
            priv->conn->private_tubes_factory, bytestream, peer_handle,
            stream_id, msg);
     }
-  else if (lm_message_node_get_child_with_namespace (si, "stream", NS_TUBES)
+  else if (wocky_node_get_child_ns (si, "stream", NS_TUBES)
       != NULL)
     {
       /* The SI request is an extra bytestream for a 1-1 tube */
@@ -1063,14 +1074,14 @@ si_tube_received (GabbleBytestreamFactory *self,
           priv->conn->private_tubes_factory, bytestream, peer_handle,
           stream_id, msg);
     }
-  else if (lm_message_node_get_child_with_namespace (si, "muc-stream",
+  else if (wocky_node_get_child_ns (si, "muc-stream",
         NS_TUBES) != NULL)
     {
       /* The SI request is an extra bytestream for a muc tube */
 
       if (room_handle == 0)
         {
-          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+          GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
               "<muc-stream> is only valid in a MUC context" };
 
           gabble_bytestream_iface_close (bytestream, &e);
@@ -1083,7 +1094,7 @@ si_tube_received (GabbleBytestreamFactory *self,
     }
   else
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "Invalid tube SI request: expected <tube>, <stream> or "
           "<muc-stream>" };
 
@@ -1096,15 +1107,15 @@ si_tube_received (GabbleBytestreamFactory *self,
 /**
  * bytestream_factory_iq_si_cb:
  *
- * Called by loudmouth when we get an incoming <iq>. This handler is concerned
+ * Called by Wocky when we get an incoming <iq>. This handler is concerned
  * with Stream Initiation requests (XEP-0095).
  *
  */
-static LmHandlerResult
-bytestream_factory_iq_si_cb (LmMessageHandler *handler,
-                             LmConnection *lmconn,
-                             LmMessage *msg,
-                             gpointer user_data)
+static gboolean
+bytestream_factory_iq_si_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
   GabbleBytestreamFactoryPrivate *priv =
@@ -1113,7 +1124,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
-  LmMessageNode *si;
+  WockyNode *si;
   TpHandle peer_handle = 0, room_handle;
   GabbleBytestreamIface *bytestream = NULL;
   GSList *l;
@@ -1123,13 +1134,9 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   gchar *peer_resource = NULL;
   gchar *self_jid = NULL;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
-
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
     wocky_stanza_get_top_node (msg), "si", NS_SI);
-  if (si == NULL)
-    return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  g_return_val_if_fail (si != NULL, FALSE);
 
   /* after this point, the message is for us, so in all cases we either handle
    * it or send an error reply */
@@ -1137,8 +1144,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
   if (!streaminit_parse_request (msg, si, &profile, &from, &stream_id,
         &stream_init_id, &mime_type, &stream_methods, &multiple))
     {
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "failed to parse SI request");
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, "failed to parse SI request");
       goto out;
     }
 
@@ -1166,7 +1173,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       peer_handle = tp_handle_ensure (contact_repo, from, NULL, NULL);
 
       /* we are not in a muc so our own jid is the one in the 'to' attribute */
-      self_jid = g_strdup (lm_message_node_get_attribute (
+      self_jid = g_strdup (wocky_node_get_attribute (
         wocky_stanza_get_top_node (msg), "to"));
     }
   else
@@ -1191,8 +1198,8 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   if (peer_handle == 0)
     {
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_JID_MALFORMED, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_JID_MALFORMED, NULL);
       goto out;
     }
 
@@ -1242,10 +1249,10 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 
   if (bytestream == NULL)
     {
-      DEBUG ("SI request doesn't contain any supported stream methods.");
+      GError error = { WOCKY_SI_ERROR, WOCKY_SI_ERROR_NO_VALID_STREAMS, "" };
 
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_SI_NO_VALID_STREAMS, NULL);
+      DEBUG ("SI request doesn't contain any supported stream methods.");
+      wocky_porter_send_iq_gerror (porter, msg, &error);
       goto out;
     }
 
@@ -1255,7 +1262,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
       if (!gabble_bytestream_multiple_has_stream_method (
             GABBLE_BYTESTREAM_MULTIPLE (bytestream)))
         {
-          GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_NO_VALID_STREAMS, "" };
+          GError e = { WOCKY_SI_ERROR, WOCKY_SI_ERROR_NO_VALID_STREAMS, "" };
           DEBUG ("No valid stream method in the multi bytestream. Closing");
 
           gabble_bytestream_iface_close (bytestream, &e);
@@ -1281,7 +1288,7 @@ bytestream_factory_iq_si_cb (LmMessageHandler *handler,
 #endif
   else
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_SI_BAD_PROFILE, "" };
+      GError e = { WOCKY_SI_ERROR, WOCKY_SI_ERROR_BAD_PROFILE, "" };
       DEBUG ("SI profile unsupported: %s", profile);
 
       gabble_bytestream_iface_close (bytestream, &e);
@@ -1294,45 +1301,48 @@ out:
   if (peer_handle != 0)
     tp_handle_unref (contact_repo, peer_handle);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return TRUE;
 }
 
 static gboolean
 handle_ibb_open_iq (GabbleBytestreamFactory *self,
-                    LmMessage *msg)
+                    WockyStanza *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   GabbleBytestreamIBB *bytestream;
-  LmMessageNode *open_node;
+  WockyNode *open_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   const gchar *tmp;
   guint state;
+  WockyStanzaSubType sub_type;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
-  open_node = lm_message_node_get_child_with_namespace (
+  open_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "open", NS_IBB);
   if (open_node == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (
+  bsid.jid = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
-  bsid.stream = lm_message_node_get_attribute (open_node, "sid");
+  bsid.stream = wocky_node_get_attribute (open_node, "sid");
   if (bsid.stream == NULL)
     {
       DEBUG ("IBB open stanza doesn't contain stream id");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -1341,8 +1351,8 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
     {
       /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
@@ -1352,12 +1362,12 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
     {
       /* We don't accept streams not previously accepted using SI */
       DEBUG ("unaccepted stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, NULL);
       return TRUE;
     }
 
-  tmp = lm_message_node_get_attribute (open_node, "block-size");
+  tmp = wocky_node_get_attribute (open_node, "block-size");
   if (tmp != NULL)
     {
       guint block_size = strtoul (tmp, NULL, 10);
@@ -1369,45 +1379,48 @@ handle_ibb_open_iq (GabbleBytestreamFactory *self,
   g_object_set (bytestream, "state", GABBLE_BYTESTREAM_STATE_OPEN,
       NULL);
 
-  _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+  wocky_porter_acknowledge_iq (porter, msg, NULL);
 
   return TRUE;
 }
 
 static gboolean
 handle_ibb_close_iq (GabbleBytestreamFactory *self,
-                     LmMessage *msg)
+                     WockyStanza *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   GabbleBytestreamIBB *bytestream;
-  LmMessageNode *close_node;
+  WockyNode *close_node;
+  WockyStanzaSubType sub_type;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
-  close_node = lm_message_node_get_child_with_namespace (
+  close_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "close", NS_IBB);
   if (close_node == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (wocky_stanza_get_top_node (msg),
+  bsid.jid = wocky_node_get_attribute (wocky_stanza_get_top_node (msg),
       "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
       return TRUE;
     }
 
-  bsid.stream = lm_message_node_get_attribute (close_node, "sid");
+  bsid.stream = wocky_node_get_attribute (close_node, "sid");
   if (bsid.stream == NULL)
     {
       DEBUG ("IBB close stanza doesn't contain stream id");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "IBB <close> has no stream ID");
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_BAD_REQUEST, "IBB <close> has no stream ID");
       return TRUE;
     }
 
@@ -1415,8 +1428,8 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
   if (bytestream == NULL)
     {
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
+      wocky_porter_send_iq_error (porter, msg,
+          WOCKY_XMPP_ERROR_ITEM_NOT_FOUND, NULL);
     }
   else
     {
@@ -1432,43 +1445,46 @@ handle_ibb_close_iq (GabbleBytestreamFactory *self,
  * Return TRUE if we take responsibility for this message. */
 static gboolean
 handle_ibb_data (GabbleBytestreamFactory *self,
-                 LmMessage *msg,
+                 WockyStanza *msg,
                  gboolean is_iq)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   GabbleBytestreamIBB *bytestream = NULL;
-  LmMessageNode *data;
+  WockyNode *data;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
+  WockyStanzaSubType sub_type;
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  if (is_iq && lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
+  wocky_stanza_get_type_info (msg, NULL, &sub_type);
+  if (is_iq && sub_type != WOCKY_STANZA_SUB_TYPE_SET)
     return FALSE;
 
-  data = lm_message_node_get_child_with_namespace (
+  data = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "data", NS_IBB);
   if (data == NULL)
     return FALSE;
 
-  bsid.jid = lm_message_node_get_attribute (wocky_stanza_get_top_node (msg),
+  bsid.jid = wocky_node_get_attribute (wocky_stanza_get_top_node (msg),
     "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB <close> has no 'from' attribute");
+        wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+            "IBB <close> has no 'from' attribute");
       return TRUE;
     }
 
-  bsid.stream = lm_message_node_get_attribute (data, "sid");
+  bsid.stream = wocky_node_get_attribute (data, "sid");
   if (bsid.stream == NULL)
     {
       DEBUG ("got a IBB message data without a stream id field");
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB <data> needs a stream ID");
+        wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+            "IBB <data> needs a stream ID");
       return TRUE;
     }
 
@@ -1478,8 +1494,8 @@ handle_ibb_data (GabbleBytestreamFactory *self,
     {
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB <data> has unknown stream ID");
+        wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+            "IBB <data> has unknown stream ID");
 
       return TRUE;
     }
@@ -1491,24 +1507,24 @@ handle_ibb_data (GabbleBytestreamFactory *self,
 
 static gboolean
 handle_muc_data (GabbleBytestreamFactory *self,
-                 LmMessage *msg)
+                 WockyStanza *msg)
 {
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   GabbleBytestreamMuc *bytestream = NULL;
-  LmMessageNode *data;
+  WockyNode *data;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   gchar *room_name;
   const gchar *from;
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
-  data = lm_message_node_get_child_with_namespace (
+  data = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "data", NS_MUC_BYTESTREAM);
   if (data == NULL)
     return FALSE;
 
-  from = lm_message_node_get_attribute (
+  from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
   if (from == NULL)
     {
@@ -1516,7 +1532,7 @@ handle_muc_data (GabbleBytestreamFactory *self,
       return TRUE;
     }
 
-  bsid.stream = lm_message_node_get_attribute (data, "sid");
+  bsid.stream = wocky_node_get_attribute (data, "sid");
   if (bsid.stream == NULL)
     {
       DEBUG ("got a pseudo IBB muc message data without a stream id field");
@@ -1544,89 +1560,87 @@ handle_muc_data (GabbleBytestreamFactory *self,
 /**
  * bytestream_factory_iq_ibb_cb:
  *
- * Called by loudmouth when we get an incoming <iq>.
+ * Called by Wocky when we get an incoming <iq>.
  * This handler is concerned with IBB iq's.
  *
  */
-static LmHandlerResult
-bytestream_factory_iq_ibb_cb (LmMessageHandler *handler,
-                              LmConnection *lmconn,
-                              LmMessage *msg,
-                              gpointer user_data)
+static gboolean
+bytestream_factory_iq_ibb_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
 {
   GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
 
   if (handle_ibb_open_iq (self, msg))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (handle_ibb_close_iq (self, msg))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (handle_ibb_data (self, msg, TRUE))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  return FALSE;
 }
 
 /**
  * bytestream_factory_msg_data_cb
  *
- * Called by loudmouth when we get an incoming <message>.
+ * Called by Wocky when we get an incoming <message>.
  * This handler handles IBB data and pseudo IBB Muc data.
  */
-static LmHandlerResult
-bytestream_factory_msg_data_cb (LmMessageHandler *handler,
-                                LmConnection *lmconn,
-                                LmMessage *msg,
-                                gpointer user_data)
+static gboolean
+bytestream_factory_msg_data_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
 {
   GabbleBytestreamFactory *self = user_data;
 
   if (handle_ibb_data (self, msg, FALSE))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (handle_muc_data (self, msg))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  return FALSE;
 }
 
 static gboolean
-handle_socks5_query_iq (GabbleBytestreamFactory *self,
-                        LmMessage *msg)
+handle_socks5_query_iq (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
 {
-  GabbleBytestreamFactoryPrivate *priv =
-    GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
+  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
+  GabbleBytestreamFactoryPrivate *priv = self->priv;
   GabbleBytestreamSocks5 *bytestream;
-  LmMessageNode *query_node;
+  WockyNode *query_node, *child_node;
   ConstBytestreamIdentifier bsid = { NULL, NULL };
   const gchar *tmp;
-  NodeIter i;
+  WockyNodeIter i;
 
-  if (lm_message_get_sub_type (msg) != LM_MESSAGE_SUB_TYPE_SET)
-    return FALSE;
-
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "query", NS_BYTESTREAMS);
-  if (query_node == NULL)
-    return FALSE;
+  g_return_val_if_fail (query_node != NULL, FALSE);
 
-  bsid.jid = lm_message_node_get_attribute (
+  bsid.jid = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
   if (bsid.jid == NULL)
     {
       DEBUG ("got a message without a from field");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no 'from' attribute");
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "SOCKS5 <query> has no 'from' attribute");
       return TRUE;
     }
 
-  bsid.stream = lm_message_node_get_attribute (query_node, "sid");
+  bsid.stream = wocky_node_get_attribute (query_node, "sid");
   if (bsid.stream == NULL)
     {
       DEBUG ("SOCKS5 query stanza doesn't contain stream id");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST, "SOCKS5 <query> has no stream ID");
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "SOCKS5 <query> has no stream ID");
       return TRUE;
     }
 
@@ -1635,55 +1649,30 @@ handle_socks5_query_iq (GabbleBytestreamFactory *self,
     {
       /* We don't accept streams not previously announced using SI */
       DEBUG ("unknown stream: <%s> from <%s>", bsid.stream, bsid.jid);
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_ITEM_NOT_FOUND,
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_ITEM_NOT_FOUND,
           "SOCKS5 <query> has an unknown stream ID");
       return TRUE;
     }
 
-  tmp = lm_message_node_get_attribute (query_node, "mode");
+  tmp = wocky_node_get_attribute (query_node, "mode");
   /* If this attribute is missing, the default value of "tcp" MUST be assumed */
   if (tmp != NULL && tp_strdiff (tmp, "tcp"))
     {
       DEBUG ("non-TCP SOCKS5 bytestreams are not supported");
-      _gabble_connection_send_iq_error (priv->conn, msg,
-          XMPP_ERROR_BAD_REQUEST,
+      wocky_porter_send_iq_error (porter, msg, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "SOCKS5 non-TCP bytestreams are not supported");
       return TRUE;
     }
 
-  for (i = node_iter (query_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_node, "streamhost", NULL);
+  while (wocky_node_iter_next (&i, &child_node))
     {
-      LmMessageNode *child_node = node_iter_data (i);
-
-      if (!tp_strdiff (child_node->name, "streamhost"))
-        gabble_bytestream_socks5_add_streamhost (bytestream, child_node);
+      gabble_bytestream_socks5_add_streamhost (bytestream, child_node);
     }
 
   gabble_bytestream_socks5_connect_to_streamhost (bytestream, msg);
 
   return TRUE;
-}
-
-/**
- * bytestream_factory_iq_socks5_cb:
- *
- * Called by loudmouth when we get an incoming <iq>.
- * This handler is concerned with SOCKS5 iq's.
- *
- */
-static LmHandlerResult
-bytestream_factory_iq_socks5_cb (LmMessageHandler *handler,
-                                 LmConnection *lmconn,
-                                 LmMessage *msg,
-                                 gpointer user_data)
-{
-  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (user_data);
-
-  if (handle_socks5_query_iq (self, msg))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
-
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
 }
 
 GabbleBytestreamFactory *
@@ -1897,8 +1886,8 @@ gabble_bytestream_factory_create_multiple (GabbleBytestreamFactory *self,
 
 static GabbleBytestreamIface *
 streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
-                                    LmMessage *reply_msg,
-                                    LmMessageNode *si,
+                                    WockyStanza *reply_msg,
+                                    WockyNode *si,
                                     const gchar *stream_id,
                                     TpHandle peer_handle,
                                     const gchar *peer_resource,
@@ -1906,12 +1895,13 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
 {
   /* If the other client supports si-multiple we have directly a list of
    * supported methods inside <value/> tags */
-  LmMessageNode *si_multi;
+  WockyNode *si_multi;
   const gchar *stream_method;
   GabbleBytestreamMultiple *bytestream = NULL;
-  NodeIter i;
+  WockyNode *value;
+  WockyNodeIter i;
 
-  si_multi = lm_message_node_get_child_with_namespace (si, "si-multiple",
+  si_multi = wocky_node_get_child_ns (si, "si-multiple",
       NS_SI_MULTIPLE);
   if (si_multi == NULL)
     return NULL;
@@ -1920,14 +1910,10 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
       stream_id, NULL, peer_resource, self_jid,
       GABBLE_BYTESTREAM_STATE_INITIATING);
 
-  for (i = node_iter (si_multi); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, si_multi, "value", NULL);
+  while (wocky_node_iter_next (&i, &value))
     {
-      LmMessageNode *value = node_iter_data (i);
-
-      if (tp_strdiff (value->name, "value"))
-        continue;
-
-      stream_method = lm_message_node_get_value (value);
+      stream_method = value->content;
       if (!stream_method_supported (stream_method))
         {
           DEBUG ("got a si-multiple reply with an unsupported "
@@ -1943,19 +1929,19 @@ streaminit_get_multiple_bytestream (GabbleBytestreamFactory *self,
 
 static GabbleBytestreamIface *
 streaminit_get_bytestream (GabbleBytestreamFactory *self,
-                           LmMessage *reply_msg,
-                           LmMessageNode *si,
+                           WockyStanza *reply_msg,
+                           WockyNode *si,
                            const gchar *stream_id,
                            TpHandle peer_handle,
                            const gchar *peer_resource,
                            const gchar *self_jid)
 {
-  LmMessageNode *feature, *x, *value;
+  WockyNode *feature, *x, *value, *field;
   GabbleBytestreamIface *bytestream = NULL;
   const gchar *stream_method;
-  NodeIter i;
+  WockyNodeIter i;
 
-  feature = lm_message_node_get_child_with_namespace (si, "feature",
+  feature = wocky_node_get_child_ns (si, "feature",
       NS_FEATURENEG);
   if (feature == NULL)
     {
@@ -1963,23 +1949,22 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
       return NULL;
     }
 
-  x = lm_message_node_get_child_with_namespace (feature, "x", NS_X_DATA);
+  x = wocky_node_get_child_ns (feature, "x", NS_X_DATA);
   if (x == NULL)
     {
       STANZA_DEBUG (reply_msg, "got a SI reply without a x field");
       return NULL;
     }
 
-  for (i = node_iter (x); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, x, NULL, NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      LmMessageNode *field = node_iter_data (i);
-
-      if (tp_strdiff (lm_message_node_get_attribute (field, "var"),
+      if (tp_strdiff (wocky_node_get_attribute (field, "var"),
             "stream-method"))
         /* some future field, ignore it */
         continue;
 
-      value = lm_message_node_get_child (field, "value");
+      value = wocky_node_get_child (field, "value");
       if (value == NULL)
         {
           STANZA_DEBUG (reply_msg, "SI reply's stream-method field "
@@ -1987,7 +1972,7 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
           return NULL;
         }
 
-      stream_method = lm_message_node_get_value (value);
+      stream_method = value->content;
       bytestream = gabble_bytestream_factory_create_from_method (self,
           stream_method, peer_handle, stream_id, NULL, peer_resource, self_jid,
           GABBLE_BYTESTREAM_STATE_INITIATING);
@@ -2021,10 +2006,10 @@ negotiate_stream_object_destroy_notify_cb (gpointer _data,
 }
 
 /* Called when we receive the reply of a SI request */
-static LmHandlerResult
+static void
 streaminit_reply_cb (GabbleConnection *conn,
-                     LmMessage *sent_msg,
-                     LmMessage *reply_msg,
+                     WockyStanza *sent_msg,
+                     WockyStanza *reply_msg,
                      GObject *obj,
                      gpointer user_data)
 {
@@ -2035,7 +2020,7 @@ streaminit_reply_cb (GabbleConnection *conn,
     (struct _streaminit_reply_cb_data*) user_data;
   GabbleBytestreamIface *bytestream = NULL;
   gchar *peer_resource = NULL;
-  LmMessageNode *si;
+  WockyNode *si;
   const gchar *from;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
@@ -2058,7 +2043,7 @@ streaminit_reply_cb (GabbleConnection *conn,
       goto END;
     }
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("stream %s declined", data->stream_id);
       goto END;
@@ -2066,7 +2051,7 @@ streaminit_reply_cb (GabbleConnection *conn,
 
   /* stream accepted */
 
-  from = lm_message_node_get_attribute (
+  from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (reply_msg), "from");
   if (from == NULL)
     {
@@ -2094,7 +2079,7 @@ streaminit_reply_cb (GabbleConnection *conn,
         }
 
       /* we are not in a muc so our own jid is the one in the 'to' attribute */
-      self_jid = g_strdup (lm_message_node_get_attribute (
+      self_jid = g_strdup (wocky_node_get_attribute (
           wocky_stanza_get_top_node (reply_msg), "to"));
     }
   else
@@ -2114,7 +2099,7 @@ streaminit_reply_cb (GabbleConnection *conn,
       g_object_get (muc, "self-jid", &self_jid, NULL);
     }
 
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "si", NS_SI);
   if (si == NULL)
     {
@@ -2167,8 +2152,6 @@ END:
   g_free (self_jid);
   g_free (data->stream_id);
   g_slice_free (struct _streaminit_reply_cb_data, data);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /*
@@ -2187,7 +2170,7 @@ END:
  */
 gboolean
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
-                                            LmMessage *msg,
+                                            WockyStanza *msg,
                                             const gchar *stream_id,
                                             GabbleBytestreamFactoryNegotiateReplyFunc func,
                                             gpointer user_data,
@@ -2241,24 +2224,24 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
  * a SI request (XEP-0095).
  *
  */
-LmMessage *
+WockyStanza *
 gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
                                           const gchar *stream_init_id,
                                           const gchar *stream_method)
 {
-  return lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "result",
+  return wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_RESULT,
+      NULL, full_jid,
       '@', "id", stream_init_id,
-      '(', "si", "",
-        '@', "xmlns", NS_SI,
-        '(', "feature", "",
-          '@', "xmlns", NS_FEATURENEG,
-          '(', "x", "",
-            '@', "xmlns", NS_X_DATA,
+      '(', "si",
+        ':', NS_SI,
+        '(', "feature",
+          ':', NS_FEATURENEG,
+          '(', "x",
+            ':', NS_X_DATA,
             '@', "type", "submit",
-            '(', "field", "",
+            '(', "field",
               '@', "var", "stream-method",
-              '(', "value", stream_method, ')',
+              '(', "value", '$', stream_method, ')',
             ')',
           ')',
         ')',
@@ -2276,29 +2259,29 @@ gabble_bytestream_factory_make_accept_iq (const gchar *full_jid,
  * a si-multiple SI request.
  *
  */
-LmMessage *
+WockyStanza *
 gabble_bytestream_factory_make_multi_accept_iq (const gchar *full_jid,
                                                 const gchar *stream_init_id,
                                                 GList *stream_methods)
 {
-  LmMessage *msg;
-  LmMessageNode *multi_node;
+  WockyStanza *msg;
+  WockyNode *multi_node;
   GList *l;
 
-  msg = lm_message_build (full_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "result",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_RESULT,
+      NULL, full_jid,
       '@', "id", stream_init_id,
-      '(', "si", "",
-        '@', "xmlns", NS_SI,
-        '(', "si-multiple", "",
-          '@', "xmlns", NS_SI_MULTIPLE,
+      '(', "si",
+        ':', NS_SI,
+        '(', "si-multiple",
+          ':', NS_SI_MULTIPLE,
           '*', &multi_node,
         ')',
       ')', NULL);
 
   for (l = stream_methods; l != NULL; l = l->next)
     {
-      lm_message_node_add_child (multi_node, "value", l->data);
+      wocky_node_add_child_with_content (multi_node, "value", l->data);
     }
 
   return msg;

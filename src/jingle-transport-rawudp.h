@@ -21,7 +21,6 @@
 #define __JINGLE_TRANSPORT_RAWUDP_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 
 #include "types.h"
 

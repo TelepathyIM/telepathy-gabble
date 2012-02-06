@@ -19,12 +19,14 @@
 
 #include "conn-util.h"
 
+#include <gabble/gabble.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 #include "debug.h"
 #include "namespaces.h"
 #include "util.h"
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 static void
 conn_util_send_iq_cb (GObject *source_object,

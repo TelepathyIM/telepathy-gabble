@@ -26,7 +26,7 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/gtypes.h>
 
-#include <wocky/wocky-muc.h>
+#include <wocky/wocky.h>
 #include "call-content.h"
 
 #include "muc-channel.h"

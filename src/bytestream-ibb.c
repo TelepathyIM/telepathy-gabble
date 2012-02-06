@@ -24,7 +24,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/interfaces.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
@@ -81,17 +80,17 @@ struct _GabbleBytestreamIBBPrivate
 
   guint16 seq;
   guint16 last_seq_recv;
-  LmMessage *close_iq_to_ack;
+  WockyStanza *close_iq_to_ack;
 
   /* We can't stop receving IBB data so if user wants to block the bytestream
    * we buffer them until he unblocks it. */
   gboolean read_blocked;
   GString *read_buffer;
-  /* list of reffed (LmMessage *) */
+  /* list of reffed (WockyStanza *) */
   GSList *received_stanzas_not_acked;
 
-  /* (LmMessage *) -> TRUE
-   * We don't keep a ref on the LmMessage as we just use this table to track
+  /* (WockyStanza *) -> TRUE
+   * We don't keep a ref on the WockyStanza as we just use this table to track
    * stanzas waiting for reply. The stanza is never used (and so deferenced). */
   GHashTable *sent_stanzas_not_acked;
   GString *write_buffer;
@@ -142,7 +141,7 @@ gabble_bytestream_ibb_dispose (GObject *object)
   if (priv->close_iq_to_ack != NULL)
     {
       _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
-      lm_message_unref (priv->close_iq_to_ack);
+      g_object_unref (priv->close_iq_to_ack);
       priv->close_iq_to_ack = NULL;
     }
 
@@ -375,22 +374,22 @@ static void
 send_close_stanza (GabbleBytestreamIBB *self)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
 
   if (priv->close_iq_to_ack != NULL)
     {
       /* We received a close IQ and just need to ACK it */
       _gabble_connection_acknowledge_set_iq (priv->conn, priv->close_iq_to_ack);
-      lm_message_unref (priv->close_iq_to_ack);
+      g_object_unref (priv->close_iq_to_ack);
       priv->close_iq_to_ack = NULL;
     }
 
   DEBUG ("send IBB close stanza");
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "close", "",
-        '@', "xmlns", NS_IBB,
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->peer_jid,
+      '(', "close",
+        ':', NS_IBB,
         '@', "sid", priv->stream_id,
       ')', NULL);
 
@@ -399,17 +398,17 @@ send_close_stanza (GabbleBytestreamIBB *self)
   _gabble_connection_send_with_reply (priv->conn, msg,
       NULL, NULL, NULL, NULL);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static gboolean
 send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
     gboolean *result);
 
-static LmHandlerResult
+static void
 iq_acked_cb (GabbleConnection *conn,
-             LmMessage *sent_msg,
-             LmMessage *reply_msg,
+             WockyStanza *sent_msg,
+             WockyStanza *reply_msg,
              GObject *obj,
              gpointer user_data)
 {
@@ -451,8 +450,6 @@ iq_acked_cb (GabbleConnection *conn,
               priv->write_buffer->len);
         }
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -468,7 +465,7 @@ send_data (GabbleBytestreamIBB *self,
   stanza_count = 0;
   while (sent < len)
     {
-      LmMessage *iq;
+      WockyStanza *iq;
       guint send_now, remaining;
       gchar *seq, *encoded;
       GError *error = NULL;
@@ -500,10 +497,11 @@ send_data (GabbleBytestreamIBB *self,
       encoded = base64_encode (send_now, str + sent, FALSE);
       seq = g_strdup_printf ("%u", priv->seq++);
 
-      iq = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-          '@', "type", "set",
-          '(', "data", encoded,
-            '@', "xmlns", NS_IBB,
+      iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+          NULL, priv->peer_jid,
+          '(', "data",
+            '$', encoded,
+            ':', NS_IBB,
             '@', "sid", priv->stream_id,
             '@', "seq", seq,
           ')', NULL);
@@ -513,7 +511,7 @@ send_data (GabbleBytestreamIBB *self,
 
       g_free (encoded);
       g_free (seq);
-      lm_message_unref (iq);
+      g_object_unref (iq);
 
       if (!ret)
         {
@@ -609,17 +607,17 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 
 void
 gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
-                               LmMessage *msg,
+                               WockyStanza *msg,
                                gboolean is_iq)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessageNode *data;
+  WockyNode *data;
   GString *str;
   TpHandle sender;
 
   /* caller must have checked for this in order to know which bytestream to
    * route this packet to */
-  data = lm_message_node_get_child_with_namespace (
+  data = wocky_node_get_child_ns (
     wocky_stanza_get_top_node (msg), "data", NS_IBB);
   g_assert (data != NULL);
 
@@ -628,8 +626,9 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       DEBUG ("can't receive data through a not open bytestream (state: %d)",
           priv->state);
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "IBB bytestream isn't open");
+        wocky_porter_send_iq_error (
+            wocky_session_get_porter (priv->conn->session), msg,
+            WOCKY_XMPP_ERROR_BAD_REQUEST, "IBB bytestream isn't open");
       return;
     }
 
@@ -639,13 +638,14 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
 
   /* FIXME: check sequence number */
 
-  str = base64_decode (lm_message_node_get_value (data));
+  str = base64_decode (data->content);
   if (str == NULL)
     {
       DEBUG ("base64 decoding failed");
       if (is_iq)
-        _gabble_connection_send_iq_error (priv->conn, msg,
-            XMPP_ERROR_BAD_REQUEST, "base64 decoding failed");
+        wocky_porter_send_iq_error (
+            wocky_session_get_porter (priv->conn->session), msg,
+            WOCKY_XMPP_ERROR_BAD_REQUEST, "base64 decoding failed");
       return;
     }
 
@@ -662,8 +662,9 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
           DEBUG ("Buffer is full. Closing the bytestream");
 
           if (is_iq)
-            _gabble_connection_send_iq_error (priv->conn, msg,
-                XMPP_ERROR_NOT_ACCEPTABLE, "buffer is full");
+            wocky_porter_send_iq_error (
+                wocky_session_get_porter (priv->conn->session), msg,
+                WOCKY_XMPP_ERROR_NOT_ACCEPTABLE, "buffer is full");
 
           gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
           g_string_free (str, TRUE);
@@ -683,7 +684,7 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
       if (is_iq)
         {
           priv->received_stanzas_not_acked = g_slist_prepend (
-              priv->received_stanzas_not_acked, lm_message_ref (msg));
+              priv->received_stanzas_not_acked, g_object_ref (msg));
         }
 
       return;
@@ -710,8 +711,8 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
-  LmMessageNode *si;
+  WockyStanza *msg;
+  WockyNode *si;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
@@ -721,7 +722,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_IBB);
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 
@@ -738,7 +739,7 @@ gabble_bytestream_ibb_accept (GabbleBytestreamIface *iface,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static void
@@ -746,30 +747,29 @@ gabble_bytestream_ibb_decline (GabbleBytestreamIBB *self,
                                GError *error)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
 
   g_return_if_fail (priv->state == GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_ERROR,
+      NULL, priv->peer_jid,
       '@', "id", priv->stream_init_id,
       NULL);
 
-  if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
+  if (error != NULL)
     {
-      gabble_xmpp_error_to_node (error->code,
-        wocky_stanza_get_top_node (msg), error->message);
+      wocky_stanza_error_to_node (error, wocky_stanza_get_top_node (msg));
     }
   else
     {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN,
-          wocky_stanza_get_top_node (msg),
-          "Offer Declined");
+      GError fallback = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN,
+          "Offer Declined" };
+      wocky_stanza_error_to_node (&fallback, wocky_stanza_get_top_node (msg));
     }
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
@@ -785,6 +785,7 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   GSList *l;
 
   if (priv->state == GABBLE_BYTESTREAM_STATE_CLOSED)
@@ -795,16 +796,9 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
   priv->received_stanzas_not_acked = g_slist_reverse (
       priv->received_stanzas_not_acked);
 
-  for (l = priv->received_stanzas_not_acked; l != NULL;
-      l = g_slist_next (l))
-    {
-      LmMessage *iq = (LmMessage *) l->data;
-
-      _gabble_connection_send_iq_error (priv->conn, iq,
-          XMPP_ERROR_ITEM_NOT_FOUND, NULL);
-
-      lm_message_unref (iq);
-    }
+  for (l = priv->received_stanzas_not_acked; l != NULL; l = g_slist_next (l))
+    wocky_porter_send_iq_error (porter, l->data,
+        WOCKY_XMPP_ERROR_ITEM_NOT_FOUND, NULL);
 
   g_slist_free (priv->received_stanzas_not_acked);
   priv->received_stanzas_not_acked = NULL;
@@ -829,16 +823,17 @@ gabble_bytestream_ibb_close (GabbleBytestreamIface *iface,
     }
 }
 
-static LmHandlerResult
+static void
 ibb_init_reply_cb (GabbleConnection *conn,
-                   LmMessage *sent_msg,
-                   LmMessage *reply_msg,
+                   WockyStanza *sent_msg,
+                   WockyStanza *reply_msg,
                    GObject *obj,
                    gpointer user_data)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (obj);
+  GError *error = NULL;
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
       /* yeah, stream initiated */
       DEBUG ("IBB stream initiated");
@@ -846,11 +841,10 @@ ibb_init_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      DEBUG ("error during IBB initiation");
+      DEBUG ("error during IBB initiation: %s", error->message);
+      g_clear_error (&error);
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 /*
@@ -863,7 +857,7 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
   gchar *block_size;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_INITIATING)
@@ -874,10 +868,10 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
     }
 
   block_size = g_strdup_printf ("%u", priv->block_size);
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "open", "",
-        '@', "xmlns", NS_IBB,
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->peer_jid,
+      '(', "open",
+        ':', NS_IBB,
         '@', "sid", priv->stream_id,
         '@', "block-size", block_size,
       ')', NULL);
@@ -888,11 +882,11 @@ gabble_bytestream_ibb_initiate (GabbleBytestreamIface *iface)
     {
       DEBUG ("Error when sending IBB init stanza");
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
       return FALSE;
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return TRUE;
 }
@@ -931,11 +925,11 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
       for (l = priv->received_stanzas_not_acked; l != NULL;
           l = g_slist_next (l))
         {
-          LmMessage *iq = (LmMessage *) l->data;
+          WockyStanza *iq = (WockyStanza *) l->data;
 
           _gabble_connection_acknowledge_set_iq (priv->conn, iq);
 
-          lm_message_unref (iq);
+          g_object_unref (iq);
         }
 
       g_slist_free (priv->received_stanzas_not_acked);
@@ -945,13 +939,13 @@ gabble_bytestream_ibb_block_reading (GabbleBytestreamIface *iface,
 
 void
 gabble_bytestream_ibb_close_received (GabbleBytestreamIBB *self,
-                                      LmMessage *iq)
+                                      WockyStanza *iq)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
 
   DEBUG ("received IBB close stanza. Closing bytestream");
 
-  priv->close_iq_to_ack = lm_message_ref (iq);
+  priv->close_iq_to_ack = g_object_ref (iq);
   gabble_bytestream_ibb_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
 }
 

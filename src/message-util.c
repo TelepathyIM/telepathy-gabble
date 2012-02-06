@@ -27,8 +27,8 @@
 #include <string.h>
 #include <time.h>
 
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/dbus.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_IM
 #include "debug.h"
@@ -40,32 +40,30 @@ void
 gabble_message_util_add_chat_state (WockyStanza *stanza,
                  TpChannelChatState state)
 {
-  LmMessageNode *node = NULL;
+  WockyNode *node = NULL;
   WockyNode *n = wocky_stanza_get_top_node (stanza);
 
   switch (state)
     {
       case TP_CHANNEL_CHAT_STATE_GONE:
-        node = lm_message_node_add_child (n, "gone", NULL);
+        node = wocky_node_add_child_with_content (n, "gone", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_INACTIVE:
-        node = lm_message_node_add_child (n, "inactive", NULL);
+        node = wocky_node_add_child_with_content (n, "inactive", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_ACTIVE:
-        node = lm_message_node_add_child (n, "active", NULL);
+        node = wocky_node_add_child_with_content (n, "active", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_PAUSED:
-        node = lm_message_node_add_child (n, "paused", NULL);
+        node = wocky_node_add_child_with_content (n, "paused", NULL);
         break;
       case TP_CHANNEL_CHAT_STATE_COMPOSING:
-        node = lm_message_node_add_child (n, "composing", NULL);
+        node = wocky_node_add_child_with_content (n, "composing", NULL);
         break;
     }
 
   if (node != NULL)
-    {
-      lm_message_node_set_attributes (node, "xmlns", NS_CHAT_STATES, NULL);
-    }
+    node->ns = g_quark_from_static_string (NS_CHAT_STATES);
 }
 
 /**
@@ -85,7 +83,7 @@ gabble_message_util_add_chat_state (WockyStanza *stanza,
 WockyStanza *
 gabble_message_util_build_stanza (TpMessage *message,
                                   GabbleConnection *conn,
-                                  LmMessageSubType subtype,
+                                  WockyStanzaSubType subtype,
                                   TpChannelChatState state,
                                   const char *recipient,
                                   gboolean send_nick,
@@ -142,21 +140,23 @@ gabble_message_util_build_stanza (TpMessage *message,
         {
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL:
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_ACTION:
-          subtype = LM_MESSAGE_SUB_TYPE_CHAT;
+          subtype = WOCKY_STANZA_SUB_TYPE_CHAT;
           break;
         case TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE:
-          subtype = LM_MESSAGE_SUB_TYPE_NORMAL;
+          subtype = WOCKY_STANZA_SUB_TYPE_NORMAL;
           break;
         }
     }
 
-  stanza = lm_message_new_with_sub_type (recipient, LM_MESSAGE_TYPE_MESSAGE,
-      subtype);
-  node = wocky_stanza_get_top_node (stanza);
   /* Generate a UUID for the message */
   id = gabble_generate_id ();
-  lm_message_node_set_attribute (node, "id", id);
   tp_message_set_string (message, 0, "message-token", id);
+
+  stanza = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, subtype,
+      NULL, recipient,
+      '@', "id", id,
+      '*', &node,
+      NULL);
 
   if (send_nick)
     lm_message_node_add_own_nick (node, conn);
@@ -165,12 +165,12 @@ gabble_message_util_build_stanza (TpMessage *message,
     {
       gchar *tmp;
       tmp = g_strconcat ("/me ", text, NULL);
-      lm_message_node_add_child (node, "body", tmp);
+      wocky_node_add_child_with_content (node, "body", tmp);
       g_free (tmp);
     }
   else
     {
-      lm_message_node_add_child (node, "body", text);
+      wocky_node_add_child_with_content (node, "body", text);
     }
 
   gabble_message_util_add_chat_state (stanza, state);
@@ -199,19 +199,19 @@ gabble_message_util_build_stanza (TpMessage *message,
 gboolean
 gabble_message_util_send_chat_state (GObject *obj,
                                      GabbleConnection *conn,
-                                     LmMessageSubType subtype,
+                                     WockyStanzaSubType subtype,
                                      TpChannelChatState state,
                                      const char *recipient,
                                      GError **error)
 {
-  LmMessage *msg = lm_message_new_with_sub_type (recipient,
-      LM_MESSAGE_TYPE_MESSAGE, subtype);
+  WockyStanza *msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, subtype,
+      NULL, recipient, NULL);
   gboolean result;
 
   gabble_message_util_add_chat_state (msg, state);
 
   result = _gabble_connection_send (conn, msg, error);
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return result;
 }
@@ -252,68 +252,66 @@ gabble_tp_send_error_from_wocky_xmpp_error (WockyXmppError err)
 }
 
 static TpChannelTextSendError
-_tp_send_error_from_error_node (LmMessageNode *error_node,
-                                TpDeliveryStatus *delivery_status)
+_tp_send_error_from_xmpp_error (
+    WockyXmppErrorType error_type,
+    GError *error,
+    TpDeliveryStatus *delivery_status)
 {
-  if (error_node != NULL)
-    {
-      GabbleXmppErrorType err_type = XMPP_ERROR_TYPE_UNDEFINED;
-      GabbleXmppError err = gabble_xmpp_error_from_node (error_node, &err_type);
+  /* The thing calling us should have got this back from
+   * wocky_stanza_extract_errors().
+   */
+  g_assert (error->domain == WOCKY_XMPP_ERROR);
 
-      DEBUG ("got xmpp error: %s (type=%u): %s", gabble_xmpp_error_string (err),
-          err_type, gabble_xmpp_error_description (err));
+  DEBUG ("got xmpp error: %s (type=%u): '%s'",
+      wocky_xmpp_stanza_error_to_string (error),
+      error_type, error->message);
 
-      if (err_type == XMPP_ERROR_TYPE_WAIT)
-        *delivery_status = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
-      else
-        *delivery_status = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
-
-      /* these are based on descriptions of errors, and some testing */
-      switch (err)
-        {
-        /* Note: Google replies with <service-unavailable/> if you send a
-         * message to someone you're not subscribed to. But
-         * http://xmpp.org/rfcs/rfc3921.html#rules explicitly says that means
-         * the user is offline and doesn't have offline storage. I think Google
-         * should be returning <forbidden/> or <not-authorized/>. --wjt
-         */
-        case XMPP_ERROR_SERVICE_UNAVAILABLE:
-        case XMPP_ERROR_RECIPIENT_UNAVAILABLE:
-          return TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
-
-        case XMPP_ERROR_ITEM_NOT_FOUND:
-        case XMPP_ERROR_JID_MALFORMED:
-        case XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
-          return TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
-
-        case XMPP_ERROR_FORBIDDEN:
-        case XMPP_ERROR_NOT_AUTHORIZED:
-          return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
-
-        case XMPP_ERROR_RESOURCE_CONSTRAINT:
-          return TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
-
-        case XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
-          return TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
-
-        default:
-          return TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
-        }
-    }
+  if (error_type == WOCKY_XMPP_ERROR_TYPE_WAIT)
+    *delivery_status = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
   else
+    *delivery_status = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
+
+  /* these are based on descriptions of errors, and some testing */
+  switch (error->code)
     {
+    /* Note: Google replies with <service-unavailable/> if you send a
+     * message to someone you're not subscribed to. But
+     * http://xmpp.org/rfcs/rfc3921.html#rules explicitly says that means
+     * the user is offline and doesn't have offline storage. I think Google
+     * should be returning <forbidden/> or <not-authorized/>. --wjt
+     */
+    case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
+    case WOCKY_XMPP_ERROR_RECIPIENT_UNAVAILABLE:
+      return TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE;
+
+    case WOCKY_XMPP_ERROR_ITEM_NOT_FOUND:
+    case WOCKY_XMPP_ERROR_JID_MALFORMED:
+    case WOCKY_XMPP_ERROR_REMOTE_SERVER_TIMEOUT:
+      return TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT;
+
+    case WOCKY_XMPP_ERROR_FORBIDDEN:
+    case WOCKY_XMPP_ERROR_NOT_AUTHORIZED:
+      return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
+
+    case WOCKY_XMPP_ERROR_RESOURCE_CONSTRAINT:
+      return TP_CHANNEL_TEXT_SEND_ERROR_TOO_LONG;
+
+    case WOCKY_XMPP_ERROR_FEATURE_NOT_IMPLEMENTED:
+      return TP_CHANNEL_TEXT_SEND_ERROR_NOT_IMPLEMENTED;
+
+    default:
       return TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN;
     }
 }
 
 
 static gint
-_tp_chat_state_from_message (LmMessage *message)
+_tp_chat_state_from_message (WockyStanza *message)
 {
-  LmMessageNode *node;
+  WockyNode *node;
 
 #define MAP_TO(str, state) \
-  node = lm_message_node_get_child_with_namespace ( \
+  node = wocky_node_get_child_ns ( \
       wocky_stanza_get_top_node (message), str, \
       NS_CHAT_STATES); \
   if (node != NULL) \
@@ -355,7 +353,7 @@ _tp_chat_state_from_message (LmMessage *message)
  *  contained no body, chat state or send error; %FALSE otherwise.
  */
 gboolean
-gabble_message_util_parse_incoming_message (LmMessage *message,
+gabble_message_util_parse_incoming_message (WockyStanza *message,
                                             const gchar **from,
                                             time_t *stamp,
                                             TpChannelTextMessageType *msgtype,
@@ -366,26 +364,24 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
                                             TpDeliveryStatus *delivery_status)
 {
   const gchar *type, *body;
-  LmMessageNode *node;
+  WockyNode *node;
+  WockyXmppErrorType error_type;
+  GError *error = NULL;
 
   *send_error = GABBLE_TEXT_CHANNEL_SEND_NO_ERROR;
   *delivery_status = TP_DELIVERY_STATUS_UNKNOWN;
 
-  if (lm_message_get_sub_type (message) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (message, &error_type, &error, NULL, NULL))
     {
-      LmMessageNode *error_node;
-
-      error_node = lm_message_node_get_child (
-        wocky_stanza_get_top_node (message), "error");
-
-      *send_error = _tp_send_error_from_error_node (error_node,
+      *send_error = _tp_send_error_from_xmpp_error (error_type, error,
           delivery_status);
+      g_clear_error (&error);
     }
 
-  *id = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+  *id = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
       "id");
 
-  *from = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+  *from = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
       "from");
   if (*from == NULL)
     {
@@ -393,7 +389,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
       return FALSE;
     }
 
-  type = lm_message_node_get_attribute (wocky_stanza_get_top_node (message),
+  type = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
     "type");
 
   /*
@@ -402,7 +398,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
    */
   *stamp = 0;
 
-  node = lm_message_node_get_child_with_namespace (
+  node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (message), "x", NS_X_DELAY);
   if (node != NULL)
     {
@@ -412,7 +408,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
        * in GMT. They're in the format yyyymmddThhmmss, so if we append 'Z'
        * we'll get (one of the many valid syntaxes for) an ISO-8601 timestamp.
        */
-      stamp_str = lm_message_node_get_attribute (node, "stamp");
+      stamp_str = wocky_node_get_attribute (node, "stamp");
 
       if (stamp_str != NULL)
         {
@@ -436,12 +432,12 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
   /*
    * Parse body if it exists.
    */
-  node = lm_message_node_get_child (wocky_stanza_get_top_node (message),
+  node = wocky_node_get_child (wocky_stanza_get_top_node (message),
       "body");
 
   if (node)
     {
-      body = lm_message_node_get_value (node);
+      body = node->content;
     }
   else
     {
@@ -459,7 +455,7 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
 
   if (body != NULL)
     {
-      if (lm_message_node_get_child_with_namespace (
+      if (wocky_node_get_child_ns (
               wocky_stanza_get_top_node (message),
               "google-rbc-announcement", "google:metadata") != NULL)
         {
@@ -468,10 +464,10 @@ gabble_message_util_parse_incoming_message (LmMessage *message,
         }
 
       if (type == NULL &&
-          lm_message_node_get_child_with_namespace (
+          wocky_node_get_child_ns (
               wocky_stanza_get_top_node (message),
               "time", "google:timestamp") != NULL &&
-          lm_message_node_get_child_with_namespace (
+          wocky_node_get_child_ns (
               wocky_stanza_get_top_node (message),
               "x", "jabber:x:delay") != NULL)
         {

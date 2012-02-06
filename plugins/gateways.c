@@ -25,9 +25,7 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 
-#include <wocky/wocky-namespaces.h>
-#include <wocky/wocky-xmpp-error.h>
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 #include "extensions/extensions.h"
 

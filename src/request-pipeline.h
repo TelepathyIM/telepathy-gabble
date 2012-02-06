@@ -22,8 +22,7 @@
 #define __GABBLE_REQUEST_PIPELINE_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
+#include <wocky/wocky.h>
 #include "types.h"
 
 G_BEGIN_DECLS
@@ -32,7 +31,7 @@ typedef struct _GabbleRequestPipelinePrivate GabbleRequestPipelinePrivate;
 typedef struct _GabbleRequestPipelineClass GabbleRequestPipelineClass;
 typedef struct _GabbleRequestPipelineItem GabbleRequestPipelineItem;
 typedef void (*GabbleRequestPipelineCb) (GabbleConnection *conn,
-    LmMessage *msg, gpointer user_data, GError *error);
+    WockyStanza *msg, gpointer user_data, GError *error);
 
 /**
  * GabbleRequestPipelineError:
@@ -78,7 +77,7 @@ struct _GabbleRequestPipeline {
 
 GabbleRequestPipeline *gabble_request_pipeline_new (GabbleConnection *conn);
 GabbleRequestPipelineItem *gabble_request_pipeline_enqueue
-    (GabbleRequestPipeline *pipeline, LmMessage *msg, guint timeout,
+    (GabbleRequestPipeline *pipeline, WockyStanza *msg, guint timeout,
      GabbleRequestPipelineCb callback, gpointer user_data);
 void gabble_request_pipeline_item_cancel (GabbleRequestPipelineItem *req);
 

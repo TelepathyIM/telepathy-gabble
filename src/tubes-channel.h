@@ -21,8 +21,7 @@
 #define __GABBLE_TUBES_CHANNEL_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
-
+#include <wocky/wocky.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/exportable-channel.h>
 
@@ -77,15 +76,15 @@ GabbleTubeIface *gabble_tubes_channel_tube_request (GabbleTubesChannel *self,
     gboolean require_new);
 
 void gabble_tubes_channel_presence_updated (GabbleTubesChannel *chan,
-    TpHandle contact, LmMessageNode *presence);
+    TpHandle contact, WockyNode *presence);
 
 void gabble_tubes_channel_tube_si_offered (GabbleTubesChannel *chan,
-    GabbleBytestreamIface *bytestream, LmMessage *msg);
+    GabbleBytestreamIface *bytestream, WockyStanza *msg);
 
 void gabble_tubes_channel_bytestream_offered (GabbleTubesChannel *chan,
-    GabbleBytestreamIface *bytestream, LmMessage *msg);
+    GabbleBytestreamIface *bytestream, WockyStanza *msg);
 
-void gabble_tubes_channel_tube_msg (GabbleTubesChannel *chan, LmMessage *msg);
+void gabble_tubes_channel_tube_msg (GabbleTubesChannel *chan, WockyStanza *msg);
 
 void gabble_tubes_channel_close (GabbleTubesChannel *self);
 

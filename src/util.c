@@ -30,9 +30,10 @@
 
 #include <gobject/gvaluecollector.h>
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/handle-repo-dynamic.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/gtypes.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 
@@ -135,16 +136,16 @@ gabble_generate_id (void)
 
 
 static void
-lm_message_node_add_nick (LmMessageNode *node, const gchar *nick)
+lm_message_node_add_nick (WockyNode *node, const gchar *nick)
 {
-  LmMessageNode *nick_node;
+  WockyNode *nick_node;
 
-  nick_node = lm_message_node_add_child (node, "nick", nick);
-  lm_message_node_set_attribute (nick_node, "xmlns", NS_NICK);
+  nick_node = wocky_node_add_child_with_content (node, "nick", nick);
+  nick_node->ns = g_quark_from_string (NS_NICK);
 }
 
 void
-lm_message_node_add_own_nick (LmMessageNode *node,
+lm_message_node_add_own_nick (WockyNode *node,
                               GabbleConnection *connection)
 {
   gchar *nick;
@@ -158,218 +159,6 @@ lm_message_node_add_own_nick (LmMessageNode *node,
     lm_message_node_add_nick (node, nick);
 
   g_free (nick);
-}
-
-
-void
-lm_message_node_steal_children (LmMessageNode *snatcher,
-                                LmMessageNode *mum)
-{
-  g_return_if_fail (snatcher->children == NULL);
-
-  if (mum->children == NULL)
-    return;
-
-  snatcher->children = mum->children;
-  mum->children = NULL;
-}
-
-/* variant of lm_message_node_get_child() which ignores node namespace
- * prefix */
-LmMessageNode *
-lm_message_node_get_child_any_ns (LmMessageNode *node, const gchar *name)
-{
-  NodeIter i;
-
-  for (i = node_iter (node); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-
-      if (!tp_strdiff (lm_message_node_get_name (child), name))
-          return child;
-    }
-
-  return NULL;
-}
-
-const gchar *
-lm_message_node_get_namespace (LmMessageNode *node)
-{
-  return wocky_node_get_ns (node);
-}
-
-const gchar *
-lm_message_node_get_name (LmMessageNode *node)
-{
-  return node->name;
-}
-
-gboolean
-lm_message_node_has_namespace (LmMessageNode *node,
-                               const gchar *ns,
-                               const gchar *tag)
-{
-  return (!tp_strdiff (lm_message_node_get_namespace (node), ns));
-}
-
-LmMessageNode *
-lm_message_node_get_child_with_namespace (LmMessageNode *node,
-                                          const gchar *name,
-                                          const gchar *ns)
-{
-  LmMessageNode *found;
-  NodeIter i;
-
-  found = wocky_node_get_child_ns (node, name, ns);
-  if (found != NULL)
-    return found;
-
-  for (i = node_iter (node); i; i = node_iter_next (i))
-    {
-      LmMessageNode *child = node_iter_data (i);
-
-      found = lm_message_node_get_child_with_namespace (child, name, ns);
-      if (found != NULL)
-        return found;
-    }
-
-  return NULL;
-}
-
-/* note: these are only used internally for readability, not part of the API
- */
-enum {
-    BUILD_END = '\0',
-    BUILD_ATTRIBUTE = '@',
-    BUILD_CHILD = '(',
-    BUILD_CHILD_END = ')',
-    BUILD_POINTER = '*',
-};
-
-/* lm_message_node_add_build_va
- *
- * Used to implement lm_message_build and lm_message_build_with_sub_type.
- */
-static void
-lm_message_node_add_build_va (LmMessageNode *node, guint spec, va_list ap)
-{
-  GSList *stack = NULL;
-  guint arg = spec;
-
-  stack = g_slist_prepend (stack, node);
-
-  while (arg != BUILD_END)
-    {
-      switch (arg)
-        {
-        case BUILD_ATTRIBUTE:
-          {
-            gchar *key = va_arg (ap, gchar *);
-            gchar *value = va_arg (ap, gchar *);
-
-            g_return_if_fail (key != NULL);
-            g_return_if_fail (value != NULL);
-            lm_message_node_set_attribute (stack->data, key, value);
-          }
-          break;
-
-        case BUILD_CHILD:
-          {
-            gchar *name = va_arg (ap, gchar *);
-            gchar *value = va_arg (ap, gchar *);
-            LmMessageNode *child;
-
-            g_return_if_fail (name != NULL);
-            g_return_if_fail (value != NULL);
-            child = lm_message_node_add_child (stack->data, name, value);
-            stack = g_slist_prepend (stack, child);
-          }
-          break;
-
-        case BUILD_CHILD_END:
-          {
-            GSList *tmp;
-
-            tmp = stack;
-            stack = stack->next;
-            tmp->next = NULL;
-            g_slist_free (tmp);
-          }
-          break;
-
-        case BUILD_POINTER:
-          {
-            LmMessageNode **assign_to = va_arg (ap, LmMessageNode **);
-
-            g_return_if_fail (assign_to != NULL);
-            *assign_to = stack->data;
-          }
-          break;
-
-        default:
-          g_assert_not_reached ();
-        }
-
-      /* Note that we pull out an int-sized value here, whereas our sentinel,
-       * NULL, is pointer-sized. However, sizeof (void *) should always be >=
-       * sizeof (uint), so this shouldn't cause a problem.
-       */
-      arg = va_arg (ap, guint);
-    }
-
-  g_slist_free (stack);
-}
-
-/**
- * lm_message_build:
- *
- * Build an LmMessage from a list of arguments employing an S-expression-like
- * notation. Example:
- *
- * lm_message_build ("bob@jabber.org", LM_MESSAGE_TYPE_IQ,
- *   '(', 'query', 'lala',
- *      '@', 'xmlns', 'http://jabber.org/protocol/foo',
- *   ')',
- *   NULL);
- *
- * --> <iq to="bob@jabber.org">
- *        <query xmlns="http://jabber.org/protocol/foo">lala</query>
- *     </iq>
- */
-G_GNUC_NULL_TERMINATED
-LmMessage *
-lm_message_build (const gchar *to, LmMessageType type, guint spec, ...)
-{
-  LmMessage *msg;
-  va_list ap;
-
-  msg = lm_message_new (to, type);
-  va_start (ap, spec);
-  lm_message_node_add_build_va (
-      wocky_stanza_get_top_node (msg), spec, ap);
-  va_end (ap);
-  return msg;
-}
-
-/**
- * lm_message_build_with_sub_type:
- *
- * As lm_message_build (), but creates a message with an LmMessageSubType.
- */
-G_GNUC_NULL_TERMINATED
-LmMessage *
-lm_message_build_with_sub_type (const gchar *to, LmMessageType type,
-    LmMessageSubType sub_type, guint spec, ...)
-{
-  LmMessage *msg;
-  va_list ap;
-
-  msg = lm_message_new_with_sub_type (to, type, sub_type);
-  va_start (ap, spec);
-  lm_message_node_add_build_va (
-      wocky_stanza_get_top_node (msg), spec, ap);
-  va_end (ap);
-  return msg;
 }
 
 /**
@@ -588,11 +377,12 @@ OUT:
  *
  */
 GHashTable *
-lm_message_node_extract_properties (LmMessageNode *node,
+lm_message_node_extract_properties (WockyNode *node,
                                     const gchar *prop)
 {
   GHashTable *properties;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *child;
 
   properties = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
@@ -600,26 +390,15 @@ lm_message_node_extract_properties (LmMessageNode *node,
   if (node == NULL)
     return properties;
 
-  for (i = node_iter (node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, node, prop, NULL);
+  while (wocky_node_iter_next (&i, &child))
     {
-      LmMessageNode *child = node_iter_data (i);
-      const gchar *name;
-      const gchar *type;
-      const gchar *value;
+      const gchar *name = wocky_node_get_attribute (child, "name");
+      const gchar *type = wocky_node_get_attribute (child, "type");
+      const gchar *value = child->content;
       GValue *gvalue;
 
-      if (0 != strcmp (child->name, prop))
-        continue;
-
-      name = lm_message_node_get_attribute (child, "name");
-
-      if (!name)
-        continue;
-
-      type = lm_message_node_get_attribute (child, "type");
-      value = lm_message_node_get_value (child);
-
-      if (type == NULL || value == NULL)
+      if (name == NULL || type == NULL || value == NULL)
         continue;
 
       if (0 == strcmp (type, "bytes"))
@@ -690,7 +469,7 @@ lm_message_node_extract_properties (LmMessageNode *node,
 
 struct _set_child_from_property_data
 {
-  LmMessageNode *node;
+  WockyNode *node;
   const gchar *prop;
 };
 
@@ -702,7 +481,7 @@ set_child_from_property (gpointer key,
   GValue *gvalue = value;
   struct _set_child_from_property_data *data =
     (struct _set_child_from_property_data *) user_data;
-  LmMessageNode *child;
+  WockyNode *child;
   const char *type = NULL;
 
   if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
@@ -733,11 +512,11 @@ set_child_from_property (gpointer key,
       return;
     }
 
-  child = lm_message_node_add_child (data->node, data->prop, "");
+  child = wocky_node_add_child_with_content (data->node, data->prop, "");
 
   if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
     {
-      lm_message_node_set_value (child,
+      wocky_node_set_content (child,
         g_value_get_string (gvalue));
     }
   else if (G_VALUE_TYPE (gvalue) == DBUS_TYPE_G_UCHAR_ARRAY)
@@ -748,7 +527,7 @@ set_child_from_property (gpointer key,
       type = "bytes";
       arr = g_value_get_boxed (gvalue);
       str = base64_encode (arr->len, arr->data, FALSE);
-      lm_message_node_set_value (child, str);
+      wocky_node_set_content (child, str);
 
       g_free (str);
     }
@@ -757,7 +536,7 @@ set_child_from_property (gpointer key,
       gchar *str;
 
       str = g_strdup_printf ("%d", g_value_get_int (gvalue));
-      lm_message_node_set_value (child, str);
+      wocky_node_set_content (child, str);
 
       g_free (str);
     }
@@ -766,7 +545,7 @@ set_child_from_property (gpointer key,
       gchar *str;
 
       str = g_strdup_printf ("%u", g_value_get_uint (gvalue));
-      lm_message_node_set_value (child, str);
+      wocky_node_set_content (child, str);
 
       g_free (str);
     }
@@ -775,7 +554,7 @@ set_child_from_property (gpointer key,
       /* we output as "0" or "1" despite the canonical representation for
        * xs:boolean being "false" or "true", for compatibility with older
        * Gabble versions (OLPC Trial-3) */
-      lm_message_node_set_value (child,
+      wocky_node_set_content (child,
           g_value_get_boolean (gvalue) ? "1" : "0");
     }
   else
@@ -783,8 +562,8 @@ set_child_from_property (gpointer key,
       g_assert_not_reached ();
     }
 
-  lm_message_node_set_attribute (child, "name", key);
-  lm_message_node_set_attribute (child, "type", type);
+  wocky_node_set_attribute (child, "name", key);
+  wocky_node_set_attribute (child, "type", type);
 }
 
 /**
@@ -806,7 +585,7 @@ set_child_from_property (gpointer key,
  *
  */
 void
-lm_message_node_add_children_from_properties (LmMessageNode *node,
+lm_message_node_add_children_from_properties (WockyNode *node,
                                               GHashTable *properties,
                                               const gchar *prop)
 {
@@ -816,44 +595,6 @@ lm_message_node_add_children_from_properties (LmMessageNode *node,
   data.prop = prop;
 
   g_hash_table_foreach (properties, set_child_from_property, &data);
-}
-
-/**
- * lm_iq_message_make_result:
- * @iq_message: A LmMessage containing an IQ stanza to acknowledge
- *
- * Creates a result IQ stanza to acknowledge @iq_message.
- *
- * Returns: A newly-created LmMessage containing the result IQ stanza.
- */
-LmMessage *
-lm_iq_message_make_result (LmMessage *iq_message)
-{
-  LmMessage *result;
-  LmMessageNode *iq, *result_iq;
-  const gchar *from_jid, *id;
-
-  g_assert (lm_message_get_type (iq_message) == LM_MESSAGE_TYPE_IQ);
-  g_assert (lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_GET ||
-            lm_message_get_sub_type (iq_message) == LM_MESSAGE_SUB_TYPE_SET);
-
-  iq = lm_message_get_node (iq_message);
-  id = lm_message_node_get_attribute (iq, "id");
-
-  if (id == NULL)
-    {
-      NODE_DEBUG (iq, "can't acknowledge IQ with no id");
-      return NULL;
-    }
-
-  from_jid = lm_message_node_get_attribute (iq, "from");
-
-  result = lm_message_new_with_sub_type (from_jid, LM_MESSAGE_TYPE_IQ,
-                                         LM_MESSAGE_SUB_TYPE_RESULT);
-  result_iq = lm_message_get_node (result);
-  lm_message_node_set_attribute (result_iq, "id", id);
-
-  return result;
 }
 
 typedef struct {
@@ -997,19 +738,6 @@ gabble_idle_add_weak (GSourceFunc function,
   g_object_weak_ref (
       object, idle_weak_ref_notify, GUINT_TO_POINTER (ctx->source_id));
   return ctx->source_id;
-}
-
-typedef struct {
-    gchar *key;
-    gchar *value;
-} Attribute;
-
-const gchar *
-lm_message_node_get_attribute_with_namespace (LmMessageNode *node,
-    const gchar *attribute,
-    const gchar *ns)
-{
-  return wocky_node_get_attribute_ns (node, attribute, ns);
 }
 
 GPtrArray *

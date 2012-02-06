@@ -26,7 +26,7 @@
 
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/presence-mixin.h>
-#include <wocky/wocky-session.h>
+#include <wocky/wocky.h>
 
 #include <gabble/connection.h>
 #include <gabble/sidecar.h>

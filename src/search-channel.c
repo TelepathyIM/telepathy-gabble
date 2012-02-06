@@ -29,13 +29,12 @@
 #include <telepathy-glib/svc-channel.h>
 #include <telepathy-glib/util.h>
 
-#include <wocky/wocky-utils.h>
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_SEARCH
+#include <gabble/error.h>
 #include "connection.h"
 #include "debug.h"
-#include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "util.h"
@@ -206,21 +205,22 @@ supported_field_discovery_failed (GabbleSearchChannel *chan,
 static GPtrArray *
 parse_unextended_field_response (
     GabbleSearchChannel *self,
-    LmMessageNode *query_node,
+    WockyNode *query_node,
     GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *field;
 
-  for (i = node_iter (query_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      LmMessageNode *field = node_iter_data (i);
       gchar *tp_name;
 
       if (!strcmp (field->name, "instructions"))
         {
           DEBUG ("server gave us some instructions: %s",
-              lm_message_node_get_value (field));
+              field->content);
           continue;
         }
 
@@ -263,30 +263,31 @@ name_in_array (GPtrArray *array,
 static GPtrArray *
 parse_data_form (
     GabbleSearchChannel *self,
-    LmMessageNode *x_node,
+    WockyNode *x_node,
     GError **error)
 {
   GPtrArray *search_keys = g_ptr_array_new ();
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *n;
 
-  if (tp_strdiff (lm_message_node_get_attribute (x_node, "type"), "form"))
+  if (tp_strdiff (wocky_node_get_attribute (x_node, "type"), "form"))
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
           "server is broken: <x> not type='form'");
       goto fail;
     }
 
-  for (i = node_iter (x_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, x_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &n))
     {
-      LmMessageNode *n = node_iter_data (i);
-      const gchar *type = lm_message_node_get_attribute (n, "type");
-      const gchar *var = lm_message_node_get_attribute (n, "var");
+      const gchar *type = wocky_node_get_attribute (n, "type");
+      const gchar *var = wocky_node_get_attribute (n, "var");
       gchar *tp_name;
 
       if (!strcmp (n->name, "title") ||
           !strcmp (n->name, "instructions"))
         {
-          DEBUG ("ignoring <%s>: %s", n->name, lm_message_node_get_value (n));
+          DEBUG ("ignoring <%s>: %s", n->name, n->content);
           continue;
         }
 
@@ -301,9 +302,10 @@ parse_data_form (
 
       if (!strcmp (var, "FORM_TYPE"))
         {
-          if (node_iter (n) == NULL ||
-              strcmp (lm_message_node_get_value (node_iter_data (
-                    node_iter (n))), NS_SEARCH))
+          const gchar *form_type = wocky_node_get_content_from_child (n,
+              "value");
+
+          if (tp_strdiff (form_type, NS_SEARCH))
             {
               DEBUG ("<x> form does not have FORM_TYPE %s", NS_SEARCH);
               g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -357,15 +359,15 @@ fail:
 
 static void
 parse_search_field_response (GabbleSearchChannel *chan,
-                             LmMessageNode *query_node)
+                             WockyNode *query_node)
 {
-  LmMessageNode *x_node;
+  WockyNode *x_node;
   GPtrArray *search_keys = NULL;
   GError *e = NULL;
 
   g_return_if_fail (query_node != NULL);
 
-  x_node = lm_message_node_get_child_with_namespace (query_node, "x",
+  x_node = wocky_node_get_child_ns (query_node, "x",
       NS_X_DATA);
 
   if (x_node == NULL)
@@ -394,27 +396,23 @@ parse_search_field_response (GabbleSearchChannel *chan,
   supported_fields_discovered (chan);
 }
 
-static LmHandlerResult
+static void
 query_reply_cb (GabbleConnection *conn,
-                LmMessage *sent_msg,
-                LmMessage *reply_msg,
+                WockyStanza *sent_msg,
+                WockyStanza *reply_msg,
                 GObject *object,
                 gpointer user_data)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (object);
-  LmMessageNode *query_node;
+  WockyNode *query_node;
   GError *err = NULL;
 
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &err, NULL, NULL))
     {
-      err = gabble_message_get_xmpp_error (reply_msg);
-
-      if (err == NULL)
-        err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-            "%s gave us an error we don't understand", chan->priv->server);
+      /* pass */
     }
   else if (NULL == query_node)
     {
@@ -432,8 +430,6 @@ query_reply_cb (GabbleConnection *conn,
       supported_field_discovery_failed (chan, err);
       g_error_free (err);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -441,15 +437,13 @@ request_search_fields (GabbleSearchChannel *chan)
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
-  LmMessage *msg;
-  LmMessageNode *lm_node;
+  WockyStanza *msg;
   GError *error = NULL;
 
-  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_GET);
-  lm_node = lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (lm_node, "xmlns", NS_SEARCH);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      NULL, chan->priv->server,
+      '(', "query", ':', NS_SEARCH,
+      ')', NULL);
 
   if (! _gabble_connection_send_with_reply (GABBLE_CONNECTION (base_conn), msg,
             query_reply_cb, (GObject *) chan, NULL, &error))
@@ -458,7 +452,7 @@ request_search_fields (GabbleSearchChannel *chan)
       g_error_free (error);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 /* Search implementation */
@@ -642,11 +636,12 @@ add_search_result (GabbleSearchChannel *chan,
 
 static void
 parse_result_item (GabbleSearchChannel *chan,
-                   LmMessageNode *item)
+                   WockyNode *item)
 {
-  const gchar *jid = lm_message_node_get_attribute (item, "jid");
+  const gchar *jid = wocky_node_get_attribute (item, "jid");
   GHashTable *info;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *n;
 
   if (jid == NULL)
     {
@@ -657,10 +652,10 @@ parse_result_item (GabbleSearchChannel *chan,
   info = g_hash_table_new (g_str_hash, g_str_equal);
   g_hash_table_insert (info, "jid", (gchar *) jid);
 
-  for (i = node_iter (item); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, item, NULL, NULL);
+  while (wocky_node_iter_next (&i, &n))
     {
-      LmMessageNode *n = node_iter_data (i);
-      gchar *value = (gchar *) lm_message_node_get_value (n);
+      gchar *value = (gchar *) n->content;
 
       g_hash_table_insert (info, n->name, value);
     }
@@ -671,41 +666,33 @@ parse_result_item (GabbleSearchChannel *chan,
 
 static void
 parse_extended_result_item (GabbleSearchChannel *chan,
-    LmMessageNode *item)
+    WockyNode *item)
 {
-  GHashTable *info;
-  NodeIter i;
+  GHashTable *info = g_hash_table_new (g_str_hash, g_str_equal);
+  WockyNodeIter i;
+  WockyNode *field;
 
-  info = g_hash_table_new (g_str_hash, g_str_equal);
-
-  for (i = node_iter (item); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, item, "field", NULL);
+  while (wocky_node_iter_next (&i, &field))
     {
-      LmMessageNode *field = node_iter_data (i);
-      LmMessageNode *value_node;
+      WockyNode *value_node;
       const gchar *var, *value;
 
-      if (tp_strdiff (field->name, "field"))
-        {
-          DEBUG ("found <%s/> in <item/> rather than <field/>, skipping",
-              field->name);
-          continue;
-        }
-
-      var = lm_message_node_get_attribute (field, "var");
+      var = wocky_node_get_attribute (field, "var");
       if (var == NULL)
         {
           DEBUG ("Ignore <field/> without 'var' attribut");
           continue;
         }
 
-      value_node = lm_message_node_get_child (field, "value");
+      value_node = wocky_node_get_child (field, "value");
       if (value_node == NULL)
         {
           DEBUG ("Ignore <field/> without <value/> child");
           continue;
         }
 
-      value = lm_message_node_get_value (value_node);
+      value = value_node->content;
 
       g_hash_table_insert (info, (gchar *) var, (gchar *) value);
     }
@@ -724,20 +711,16 @@ parse_extended_result_item (GabbleSearchChannel *chan,
 
 static gboolean
 parse_unextended_search_results (GabbleSearchChannel *chan,
-    LmMessageNode *query_node,
+    WockyNode *query_node,
     GError **error)
 {
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *item;
 
-  for (i = node_iter (query_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_node, "item", NULL);
+  while (wocky_node_iter_next (&i, &item))
     {
-      LmMessageNode *item = node_iter_data (i);
-
-      if (!strcmp (item->name, "item"))
-        parse_result_item (chan, item);
-      else
-        DEBUG ("found <%s/> in <query/> rather than <item/>, skipping",
-            item->name);
+      parse_result_item (chan, item);
     }
 
   return TRUE;
@@ -745,13 +728,13 @@ parse_unextended_search_results (GabbleSearchChannel *chan,
 
 static gboolean
 parse_extended_search_results (GabbleSearchChannel *chan,
-    LmMessageNode *query_node,
+    WockyNode *query_node,
     GError **error)
 {
-  LmMessageNode *x;
-  NodeIter i;
+  WockyNode *x, *item;
+  WockyNodeIter i;
 
-  x = lm_message_node_get_child_with_namespace (query_node, "x", NS_X_DATA);
+  x = wocky_node_get_child_ns (query_node, "x", NS_X_DATA);
   if (x == NULL)
     {
       g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
@@ -759,17 +742,16 @@ parse_extended_search_results (GabbleSearchChannel *chan,
       return FALSE;
     }
 
-  for (i = node_iter (x); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, x, NULL, NULL);
+  while (wocky_node_iter_next (&i, &item))
     {
-      LmMessageNode *item = node_iter_data (i);
-
       if (!tp_strdiff (item->name, "item"))
         parse_extended_result_item (chan, item);
       else if (!tp_strdiff (item->name, "reported"))
         /* Ignore <reported> node */
         continue;
       else if (!tp_strdiff (item->name, "title"))
-        DEBUG ("title: %s", lm_message_node_get_value (item));
+        DEBUG ("title: %s", item->content);
       else
         DEBUG ("found <%s/> in <x/> rather than <item/>, <title/> and "
             "<reported/>, skipping", item->name);
@@ -780,7 +762,7 @@ parse_extended_search_results (GabbleSearchChannel *chan,
 
 static gboolean
 parse_search_results (GabbleSearchChannel *chan,
-    LmMessageNode *query_node,
+    WockyNode *query_node,
     GError **error)
 {
   if (chan->priv->xforms)
@@ -789,15 +771,16 @@ parse_search_results (GabbleSearchChannel *chan,
     return parse_unextended_search_results (chan, query_node, error);
 }
 
-static LmHandlerResult
+static void
 search_reply_cb (GabbleConnection *conn,
-                 LmMessage *sent_msg,
-                 LmMessage *reply_msg,
+                 WockyStanza *sent_msg,
+                 WockyStanza *reply_msg,
                  GObject *object,
                  gpointer user_data)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (object);
-  LmMessageNode *query_node;
+  WockyNode *query_node;
+  GError *stanza_error = NULL;
   GError *err = NULL;
 
   DEBUG ("called");
@@ -806,43 +789,16 @@ search_reply_cb (GabbleConnection *conn,
     {
       DEBUG ("state is %s, not in progress; ignoring results",
           states[chan->priv->state]);
-
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
-  query_node = lm_message_node_get_child_with_namespace (
+  query_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (reply_msg), "query", NS_SEARCH);
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_ERROR)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, &stanza_error, NULL, NULL))
     {
-      err = gabble_message_get_xmpp_error (reply_msg);
-
-      if (err == NULL)
-        {
-          err = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "%s gave us an error we don't understand", chan->priv->server);
-        }
-      else
-        {
-          err->domain = TP_ERRORS;
-
-          switch (err->code)
-            {
-            case XMPP_ERROR_NOT_AUTHORIZED:
-            case XMPP_ERROR_NOT_ACCEPTABLE:
-            case XMPP_ERROR_FORBIDDEN:
-            case XMPP_ERROR_NOT_ALLOWED:
-            case XMPP_ERROR_REGISTRATION_REQUIRED:
-            case XMPP_ERROR_SUBSCRIPTION_REQUIRED:
-              err->code = TP_ERROR_PERMISSION_DENIED;
-              break;
-            /* FIXME: other error mappings go here. Maybe we need some kind of
-             *        generic GabbleXmppError -> TpError mapping.
-             */
-            default:
-              err->code = TP_ERROR_NOT_AVAILABLE;
-            }
-        }
+      gabble_set_tp_error_from_wocky (stanza_error, &err);
+      g_clear_error (&stanza_error);
     }
   else if (NULL == query_node)
     {
@@ -871,8 +827,6 @@ search_reply_cb (GabbleConnection *conn,
           err);
       g_error_free (err);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -906,7 +860,7 @@ validate_terms (GabbleSearchChannel *chan,
 static void
 build_unextended_query (
     GabbleSearchChannel *self,
-    LmMessageNode *query,
+    WockyNode *query,
     GHashTable *terms)
 {
   GHashTableIter iter;
@@ -920,32 +874,30 @@ build_unextended_query (
 
       g_assert (xmpp_field != NULL);
 
-      lm_message_node_add_child (query, xmpp_field, value);
+      wocky_node_add_child_with_content (query, xmpp_field, value);
     }
 }
 
 static void
 build_extended_query (GabbleSearchChannel *self,
-    LmMessageNode *query,
+    WockyNode *query,
     GHashTable *terms)
 {
-  LmMessageNode *x, *field;
+  WockyNode *x, *field;
   GHashTableIter iter;
   gpointer key, value;
 
-  x = lm_message_node_add_child (query, "x", "");
-  lm_message_node_set_attributes (x,
-      "type", "submit",
-      "xmlns", NS_X_DATA,
-      NULL);
+  x = wocky_node_add_child_with_content (query, "x", "");
+  x->ns = g_quark_from_static_string (NS_X_DATA);
+  wocky_node_set_attribute (x, "type", "submit");
 
   /* add FORM_TYPE */
-  field = lm_message_node_add_child (x, "field", "");
-  lm_message_node_set_attributes (field,
+  field = wocky_node_add_child_with_content (x, "field", "");
+  wocky_node_set_attributes (field,
       "type", "hidden",
       "var", "FORM_TYPE",
       NULL);
-  lm_message_node_add_child (field, "value", NS_SEARCH);
+  wocky_node_add_child_with_content (field, "value", NS_SEARCH);
 
   /* Add search terms */
   g_hash_table_iter_init (&iter, terms);
@@ -957,9 +909,9 @@ build_extended_query (GabbleSearchChannel *self,
 
       g_assert (xmpp_field != NULL);
 
-      field = lm_message_node_add_child (x, "field", "");
-      lm_message_node_set_attribute (field, "var", xmpp_field);
-      lm_message_node_add_child (field, "value", value);
+      field = wocky_node_add_child_with_content (x, "field", "");
+      wocky_node_set_attribute (field, "var", xmpp_field);
+      wocky_node_add_child_with_content (field, "value", value);
 
       if (!tp_strdiff (tp_name, ""))
         {
@@ -970,12 +922,12 @@ build_extended_query (GabbleSearchChannel *self,
             {
               xmpp_field = g_ptr_array_index (self->priv->boolean_keys, i);
 
-              field = lm_message_node_add_child (x, "field", "");
-              lm_message_node_set_attributes (field,
+              field = wocky_node_add_child_with_content (x, "field", "");
+              wocky_node_set_attributes (field,
                   "var", xmpp_field,
                   "type", "boolean",
                   NULL);
-              lm_message_node_add_child (field, "value", "1");
+              wocky_node_add_child_with_content (field, "value", "1");
             }
         }
     }
@@ -988,8 +940,8 @@ do_search (GabbleSearchChannel *chan,
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
-  LmMessage *msg;
-  LmMessageNode *query;
+  WockyStanza *msg;
+  WockyNode *query;
   gboolean ret;
 
   DEBUG ("called");
@@ -997,11 +949,11 @@ do_search (GabbleSearchChannel *chan,
   if (!validate_terms (chan, terms, error))
     return FALSE;
 
-  msg = lm_message_new_with_sub_type (chan->priv->server, LM_MESSAGE_TYPE_IQ,
-      LM_MESSAGE_SUB_TYPE_SET);
-  query = lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (query, "xmlns", NS_SEARCH);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, chan->priv->server,
+      '(', "query", ':', NS_SEARCH,
+        '*', &query,
+      ')', NULL);
 
   if (chan->priv->xforms)
     {
@@ -1026,7 +978,7 @@ do_search (GabbleSearchChannel *chan,
       ret = FALSE;
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   return ret;
 }
 

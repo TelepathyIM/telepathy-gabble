@@ -20,7 +20,7 @@
 #include <glib-object.h>
 
 #include <gio/gio.h>
-#include <wocky/wocky-session.h>
+#include <wocky/wocky.h>
 
 typedef struct _GabbleGatewayPlugin GabbleGatewayPlugin;
 typedef struct _GabbleGatewayPluginClass GabbleGatewayPluginClass;

@@ -24,7 +24,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 
 #include "connection.h"
 #include "util.h"

@@ -26,6 +26,7 @@
 #include <telepathy-glib/svc-properties-interface.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
 
 #include "call-member.h"
 #include "call-content.h"

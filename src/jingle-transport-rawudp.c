@@ -25,8 +25,6 @@
 #include <string.h>
 #include <glib.h>
 
-#include <loudmouth/loudmouth.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
@@ -217,12 +215,13 @@ gabble_jingle_transport_rawudp_class_init (GabbleJingleTransportRawUdpClass *cls
 
 static void
 parse_candidates (GabbleJingleTransportIface *obj,
-    LmMessageNode *transport_node, GError **error)
+    WockyNode *transport_node, GError **error)
 {
   GabbleJingleTransportRawUdp *t = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv = t->priv;
   GList *candidates = NULL;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *node;
 
   DEBUG ("called");
 
@@ -232,17 +231,14 @@ parse_candidates (GabbleJingleTransportIface *obj,
       return;
     }
 
-  for (i = node_iter (transport_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, transport_node, "candidate", NULL);
+  while (wocky_node_iter_next (&i, &node))
     {
-      LmMessageNode *node = node_iter_data (i);
       const gchar *id, *ip, *str;
       guint port, gen, component = 1;
       JingleCandidate *c;
 
-      if (tp_strdiff (node->name, "candidate"))
-          continue;
-
-      str = lm_message_node_get_attribute (node, "component");
+      str = wocky_node_get_attribute (node, "component");
       if (str != NULL)
           component = atoi (str);
 
@@ -252,20 +248,20 @@ parse_candidates (GabbleJingleTransportIface *obj,
           continue;
         }
 
-      id = lm_message_node_get_attribute (node, "id");
+      id = wocky_node_get_attribute (node, "id");
       if (id == NULL)
           break;
 
-      ip = lm_message_node_get_attribute (node, "ip");
+      ip = wocky_node_get_attribute (node, "ip");
       if (ip == NULL)
           break;
 
-      str = lm_message_node_get_attribute (node, "port");
+      str = wocky_node_get_attribute (node, "port");
       if (str == NULL)
           break;
       port = atoi (str);
 
-      str = lm_message_node_get_attribute (node, "generation");
+      str = wocky_node_get_attribute (node, "generation");
       if (str == NULL)
           break;
       gen = atoi (str);
@@ -277,12 +273,12 @@ parse_candidates (GabbleJingleTransportIface *obj,
       candidates = g_list_append (candidates, c);
     }
 
-  if (i != NULL)
+  if (wocky_node_iter_next (&i, NULL))
     {
       DEBUG ("not all nodes were processed, reporting error");
       /* rollback these */
       jingle_transport_free_candidates (candidates);
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "invalid candidate");
       return;
     }
@@ -294,14 +290,14 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
 static void
 inject_candidates (GabbleJingleTransportIface *obj,
-    LmMessageNode *transport_node)
+    WockyNode *transport_node)
 {
   GabbleJingleTransportRawUdp *self = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
   GabbleJingleTransportRawUdpPrivate *priv = self->priv;
   JingleCandidate *c;
   GList *li;
   gchar port_str[16], comp_str[16];
-  LmMessageNode *cnode;
+  WockyNode *cnode;
 
   /* If we don't have the local candidates yet, we should've waited with
    * the session initiation, or can_accept would have returned FALSE.
@@ -314,8 +310,8 @@ inject_candidates (GabbleJingleTransportIface *obj,
       sprintf (port_str, "%d", c->port);
       sprintf (comp_str, "%d", c->component);
 
-      cnode = lm_message_node_add_child (transport_node, "candidate", NULL);
-      lm_message_node_set_attributes (cnode,
+      cnode = wocky_node_add_child_with_content (transport_node, "candidate", NULL);
+      wocky_node_set_attributes (cnode,
           "ip", c->address,
           "port", port_str,
           "generation", "0",

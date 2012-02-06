@@ -44,7 +44,7 @@ G_DEFINE_TYPE (GabbleRequestPipeline, gabble_request_pipeline, G_TYPE_OBJECT);
 struct _GabbleRequestPipelineItem
 {
   GabbleRequestPipeline *pipeline;
-  LmMessage *message;
+  WockyStanza *message;
   guint timer_id;
   guint timeout;
   gboolean in_flight;
@@ -193,7 +193,7 @@ delete_item (GabbleRequestPipelineItem *item)
   if (item->timer_id)
       g_source_remove (item->timer_id);
 
-  tp_clear_pointer (&item->message, lm_message_unref);
+  tp_clear_pointer (&item->message, g_object_unref);
 
   g_slice_free (GabbleRequestPipelineItem, item);
 }
@@ -290,10 +290,10 @@ gabble_request_pipeline_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_request_pipeline_parent_class)->finalize (object);
 }
 
-static LmHandlerResult
+static void
 response_cb (GabbleConnection *conn,
-             LmMessage *sent,
-             LmMessage *reply,
+             WockyStanza *sent,
+             WockyStanza *reply,
              GObject *object,
              gpointer user_data)
 {
@@ -307,7 +307,7 @@ response_cb (GabbleConnection *conn,
   DEBUG ("got reply for request %p", item);
 
   if (NULL == g_slist_find (priv->items_in_flight, item))
-      return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+      return;
 
   g_assert (item->in_flight);
 
@@ -315,8 +315,8 @@ response_cb (GabbleConnection *conn,
 
   if (!item->zombie)
     {
-      GError *error = gabble_message_get_xmpp_error (reply);
-
+      GError *error = NULL;
+      wocky_stanza_extract_errors (reply, NULL, &error, NULL, NULL);
       item->callback (priv->connection, reply, item->user_data, error);
       g_clear_error (&error);
     }
@@ -328,8 +328,6 @@ response_cb (GabbleConnection *conn,
   delete_item (item);
 
   gabble_request_pipeline_go (pipeline);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -406,7 +404,7 @@ delayed_run_pipeline (gpointer user_data)
 
 GabbleRequestPipelineItem *
 gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
-                                 LmMessage *msg,
+                                 WockyStanza *msg,
                                  guint timeout,
                                  GabbleRequestPipelineCb callback,
                                  gpointer user_data)
@@ -426,7 +424,7 @@ gabble_request_pipeline_enqueue (GabbleRequestPipeline *pipeline,
   item->callback = callback;
   item->user_data = user_data;
 
-  lm_message_ref (msg);
+  g_object_ref (msg);
 
   priv->pending_items = g_slist_append (priv->pending_items, item);
 

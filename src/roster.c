@@ -28,10 +28,7 @@
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
-#include <wocky/wocky-c2s-porter.h>
-#include <wocky/wocky-namespaces.h>
-#include <wocky/wocky-node.h>
-#include <wocky/wocky-stanza.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_ROSTER
 
@@ -311,17 +308,13 @@ _parse_item_groups (WockyNode *item_node, TpBaseConnection *conn)
       conn, TP_HANDLE_TYPE_GROUP);
   TpHandleSet *groups = tp_handle_set_new (group_repo);
   TpHandle handle;
-  NodeIter i;
+  WockyNodeIter i;
+  WockyNode *group_node;
 
-  for (i = node_iter (item_node); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, item_node, "group", NULL);
+  while (wocky_node_iter_next (&i, &group_node))
     {
-      WockyNode *group_node = node_iter_data (i);
-      const gchar *value;
-
-      if (0 != strcmp (group_node->name, "group"))
-        continue;
-
-      value = group_node->content;
+      const gchar *value = group_node->content;
 
       if (NULL == value)
         continue;
@@ -1027,8 +1020,7 @@ is_google_roster_push (
 /**
  * validate_roster_item:
  * @contact_repo: the handle repository for contacts
- * @item_node: a child of a <query xmlns='jabber:iq:roster'>, purporting to be
- *             an <item>
+ * @item_node: an <item> child of a <query xmlns='jabber:iq:roster'>
  * @jid_out: location at which to store the roster item's jid, borrowed from
  *           @item_node, if the item is valid.
  *
@@ -1043,12 +1035,6 @@ validate_roster_item (
 {
   const gchar *jid;
   TpHandle handle;
-
-  if (strcmp (item_node->name, "item"))
-    {
-      NODE_DEBUG (item_node, "query sub-node is not item, skipping");
-      return 0;
-    }
 
   jid = wocky_node_get_attribute (item_node, "jid");
   if (!jid)
@@ -1103,17 +1089,18 @@ process_roster (
   TpHandleSet *referenced_handles = tp_handle_set_new (contact_repo);
 
   gboolean google_roster = is_google_roster_push (roster, query_node);
-  NodeIter j;
+  WockyNodeIter j;
+  WockyNode *item_node;
 
   if (google_roster)
     blocking_changed = tp_handle_set_new (contact_repo);
   else
     blocking_changed = NULL;
 
-  /* iterate every sub-node, which we expect to be <item>s */
-  for (j = node_iter (query_node); j; j = node_iter_next (j))
+  /* iterate every <item> sub-node */
+  wocky_node_iter_init (&j, query_node, "item", NULL);
+  while (wocky_node_iter_next (&j, &item_node))
     {
-      WockyNode *item_node = node_iter_data (j);
       const char *jid;
       TpHandle handle;
       GabbleRosterItem *item;

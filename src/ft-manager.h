@@ -64,7 +64,7 @@ GabbleFtManager *gabble_ft_manager_new (GabbleConnection *connection);
 
 void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
     GabbleBytestreamIface *bytestream, TpHandle handle, const gchar *stream_id,
-    LmMessage *msg);
+    WockyStanza *msg);
 
 #ifdef G_OS_UNIX
 /* Slight encapsulation violation: this function isn't portable, but we

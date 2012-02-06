@@ -25,7 +25,7 @@
 #include <stdlib.h>
 #include <glib.h>
 
-#include <wocky/wocky-c2s-porter.h>
+#include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -720,8 +720,9 @@ ensure_session (GabbleJingleFactory *self,
         }
       else
         {
-          g_set_error (error, GABBLE_XMPP_ERROR,
-              XMPP_ERROR_JINGLE_UNKNOWN_SESSION, "session %s is unknown", sid);
+          g_set_error (error, WOCKY_XMPP_ERROR,
+              WOCKY_JINGLE_ERROR_UNKNOWN_SESSION,
+              "session %s is unknown", sid);
           return NULL;
         }
     }
@@ -776,11 +777,9 @@ jingle_cb (
 
 REQUEST_ERROR:
   g_assert (error != NULL);
-
   DEBUG ("NAKing with error: %s", error->message);
-  _gabble_connection_send_iq_error (priv->conn, msg, error->code,
-      error->message);
-
+  wocky_porter_send_iq_gerror (wocky_session_get_porter (priv->conn->session),
+      msg, error);
   g_error_free (error);
 
   if (sess != NULL && new_session)

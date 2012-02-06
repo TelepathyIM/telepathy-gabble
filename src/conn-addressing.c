@@ -21,6 +21,9 @@
 
 #include <dbus/dbus-glib-lowlevel.h>
 
+#include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/interfaces.h>
+
 #include "extensions/extensions.h"
 
 #include "addressing-util.h"

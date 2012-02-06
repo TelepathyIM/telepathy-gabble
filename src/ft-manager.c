@@ -34,13 +34,12 @@
 #include "connection.h"
 #include "ft-manager.h"
 #include "ft-channel.h"
-#include "error.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 #include "presence-cache.h"
 #include "util.h"
 
-#include <wocky/wocky-data-form.h>
+#include <wocky/wocky.h>
 
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/channel-factory-iface.h>
@@ -666,9 +665,9 @@ gabble_ft_manager_type_foreach_channel_class (GType type,
   g_hash_table_unref (table);
 }
 
-static LmMessageNode *
+static WockyNode *
 hyvaa_vappua (
-    LmMessageNode *si_node,
+    WockyNode *si_node,
     const gchar **filename,
     const gchar **size_str,
     GError **error)
@@ -676,17 +675,18 @@ hyvaa_vappua (
 #define die_if_null(var, msg) \
   if ((var) == NULL) \
     { \
-      g_set_error (error, GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST, msg); \
+      g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST, \
+          msg); \
       return NULL; \
     }
 
-  LmMessageNode *file_node = lm_message_node_get_child_with_namespace (si_node,
+  WockyNode *file_node = wocky_node_get_child_ns (si_node,
       "file", NS_FILE_TRANSFER);
 
   die_if_null (file_node, "Invalid file transfer SI request: no <file>")
-  die_if_null (*filename = lm_message_node_get_attribute (file_node, "name"),
+  die_if_null (*filename = wocky_node_get_attribute (file_node, "name"),
       "Invalid file transfer SI request: missing file name")
-  die_if_null (*size_str = lm_message_node_get_attribute (file_node, "size"),
+  die_if_null (*size_str = wocky_node_get_attribute (file_node, "size"),
       "Invalid file transfer SI request: missing file size")
 
   return file_node;
@@ -747,7 +747,7 @@ extract_service_name (WockyNode *file)
 
   if (field == NULL)
     {
-      DEBUG ("ServiceName propery not present in data form; odd...");
+      DEBUG ("ServiceName property not present in data form; odd...");
       goto out;
     }
 
@@ -802,9 +802,9 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
                                           GabbleBytestreamIface *bytestream,
                                           TpHandle handle,
                                           const gchar *stream_id,
-                                          LmMessage *msg)
+                                          WockyStanza *msg)
 {
-  LmMessageNode *si_node, *file_node, *desc_node;
+  WockyNode *si_node, *file_node, *desc_node;
   const gchar *filename, *size_str, *content_type, *content_hash, *description;
   const gchar *date_str;
   gchar *service_name;
@@ -816,7 +816,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
   gboolean resume_supported;
   GError *error = NULL;
 
-  si_node = lm_message_node_get_child_with_namespace (
+  si_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 
@@ -832,24 +832,24 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
 
   size = g_ascii_strtoull (size_str, NULL, 0);
 
-  content_type = lm_message_node_get_attribute (file_node, "mime-type");
+  content_type = wocky_node_get_attribute (file_node, "mime-type");
   if (content_type == NULL)
     content_type = "application/octet-stream";
 
   /* The hash is always an MD5-sum, if present. */
-  content_hash = lm_message_node_get_attribute (file_node, "hash");
+  content_hash = wocky_node_get_attribute (file_node, "hash");
   if (content_hash != NULL)
     content_hash_type = TP_FILE_HASH_TYPE_MD5;
   else
     content_hash_type = TP_FILE_HASH_TYPE_NONE;
 
-  desc_node = lm_message_node_get_child (file_node, "desc");
+  desc_node = wocky_node_get_child (file_node, "desc");
   if (desc_node != NULL)
-    description = lm_message_node_get_value (desc_node);
+    description = desc_node->content;
   else
     description = NULL;
 
-  date_str = lm_message_node_get_attribute (file_node, "date");
+  date_str = wocky_node_get_attribute (file_node, "date");
   if (date_str != NULL)
     {
       GTimeVal val;
@@ -859,7 +859,7 @@ void gabble_ft_manager_handle_si_request (GabbleFtManager *self,
         date = val.tv_sec;
     }
 
-  resume_supported = (lm_message_node_get_child (file_node, "range") != NULL);
+  resume_supported = (wocky_node_get_child (file_node, "range") != NULL);
 
   /* metadata */
   service_name = extract_service_name (file_node);

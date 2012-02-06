@@ -37,8 +37,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_FT
 #include "debug.h"
 
-#include <loudmouth/loudmouth.h>
-
 #include <gibber/gibber-listener.h>
 #include <gibber/gibber-transport.h>
 #include <gibber/gibber-unix-transport.h>       /* just for the feature-test */
@@ -1319,12 +1317,13 @@ set_gtalk_file_collection (
 static void
 bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          const gchar *stream_id,
-                         LmMessage *msg,
+                         WockyStanza *msg,
                          GObject *object,
                          gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  LmMessageNode *file;
+  WockyNode *si;
+  WockyNode *file = NULL;
 
   if (bytestream == NULL)
     {
@@ -1336,17 +1335,20 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
       return;
     }
 
-  file = lm_message_node_find_child (wocky_stanza_get_top_node (msg), "file");
+  si = wocky_node_get_child_ns (wocky_stanza_get_top_node (msg), "si", NS_SI);
+  if (si != NULL)
+    file = wocky_node_get_child_ns (si, "file", NULL);
+
   if (file != NULL)
     {
-      LmMessageNode *range;
+      WockyNode *range;
 
-      range = lm_message_node_get_child_any_ns (file, "range");
+      range = wocky_node_get_child (file, "range");
       if (range != NULL)
         {
           const gchar *offset_str;
 
-          offset_str = lm_message_node_get_attribute (range, "offset");
+          offset_str = wocky_node_get_attribute (range, "offset");
           if (offset_str != NULL)
             {
               self->priv->initial_offset = g_ascii_strtoull (offset_str, NULL,
@@ -1444,8 +1446,8 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
                   const gchar *resource, GError **error)
 {
   gboolean result;
-  LmMessage *msg;
-  LmMessageNode *si_node, *file_node;
+  WockyStanza *msg;
+  WockyNode *si_node, *file_node;
   gchar *stream_id, *size_str, *full_jid;
 
   if (resource)
@@ -1465,15 +1467,15 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
       stream_id, NS_FILE_TRANSFER);
 
-  si_node = lm_message_node_get_child_with_namespace (
+  si_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si_node != NULL);
 
   size_str = g_strdup_printf ("%" G_GUINT64_FORMAT, self->priv->size);
 
-  file_node = lm_message_node_add_child (si_node, "file", NULL);
-  lm_message_node_set_attributes (file_node,
-      "xmlns", NS_FILE_TRANSFER,
+  file_node = wocky_node_add_child_with_content (si_node, "file", NULL);
+  file_node->ns = g_quark_from_string (NS_FILE_TRANSFER);
+  wocky_node_set_attributes (file_node,
       "name", self->priv->filename,
       "size", size_str,
       "mime-type", self->priv->content_type,
@@ -1482,7 +1484,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   add_metadata_forms (self, file_node);
 
   if (self->priv->content_hash != NULL)
-    lm_message_node_set_attribute (file_node, "hash", self->priv->content_hash);
+    wocky_node_set_attribute (file_node, "hash", self->priv->content_hash);
 
   if (self->priv->date != 0)
     {
@@ -1499,19 +1501,19 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
       strftime (date_str, sizeof (date_str), "%FT%H:%M:%SZ", tm);
 #endif
 
-      lm_message_node_set_attribute (file_node, "date", date_str);
+      wocky_node_set_attribute (file_node, "date", date_str);
     }
 
-  lm_message_node_add_child (file_node, "desc", self->priv->description);
+  wocky_node_add_child_with_content (file_node, "desc", self->priv->description);
 
   /* we support resume */
-  lm_message_node_add_child (file_node, "range", NULL);
+  wocky_node_add_child_with_content (file_node, "range", NULL);
 
   result = gabble_bytestream_factory_negotiate_stream (
       self->priv->connection->bytestream_factory, msg, stream_id,
       bytestream_negotiate_cb, self, G_OBJECT (self), error);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
   g_free (stream_id);
   g_free (size_str);
   g_free (full_jid);
@@ -1859,24 +1861,24 @@ bytestream_data_received_cb (GabbleBytestreamIface *stream,
 }
 
 static void
-augment_si_reply (LmMessageNode *si,
+augment_si_reply (WockyNode *si,
                   gpointer user_data)
 {
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
-  LmMessageNode *file;
+  WockyNode *file;
 
-  file = lm_message_node_add_child (si, "file", NULL);
-  lm_message_node_set_attribute (file, "xmlns", NS_FILE_TRANSFER);
+  file = wocky_node_add_child_with_content (si, "file", NULL);
+  file->ns = g_quark_from_string (NS_FILE_TRANSFER);
 
   if (self->priv->initial_offset != 0)
     {
-      LmMessageNode *range;
+      WockyNode *range;
       gchar *offset_str;
 
-      range = lm_message_node_add_child (file, "range", NULL);
+      range = wocky_node_add_child_with_content (file, "range", NULL);
       offset_str = g_strdup_printf ("%" G_GUINT64_FORMAT,
           self->priv->initial_offset);
-      lm_message_node_set_attribute (range, "offset", offset_str);
+      wocky_node_set_attribute (range, "offset", offset_str);
 
       /* Don't set "length" attribute as the default is the length of the file
        * from offset to the end which is what we want when resuming a FT. */

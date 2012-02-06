@@ -178,7 +178,7 @@ struct _GabbleBytestreamSocks5Private
 
   /* Connections to streamhosts are async, so we keep the IQ set message
    * around */
-  LmMessage *msg_for_acknowledge_connection;
+  WockyStanza *msg_for_acknowledge_connection;
 
   Socks5State socks5_state;
   GibberTransport *transport;
@@ -621,6 +621,7 @@ socks5_error (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
   Socks5State previous_state;
 
   stop_timer (self);
@@ -657,11 +658,12 @@ socks5_error (GabbleBytestreamSocks5 *self)
         g_signal_emit_by_name (self, "connection-error");
 
         g_assert (priv->msg_for_acknowledge_connection != NULL);
-        _gabble_connection_send_iq_error (priv->conn,
-            priv->msg_for_acknowledge_connection, XMPP_ERROR_ITEM_NOT_FOUND,
+        wocky_porter_send_iq_error (porter,
+            priv->msg_for_acknowledge_connection,
+            WOCKY_XMPP_ERROR_ITEM_NOT_FOUND,
             "impossible to connect to any streamhost");
 
-        lm_message_unref (priv->msg_for_acknowledge_connection);
+        g_object_unref (priv->msg_for_acknowledge_connection);
         priv->msg_for_acknowledge_connection = NULL;
         break;
 
@@ -734,7 +736,8 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
-  LmMessage *iq_result;
+  WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
+  Streamhost *current_streamhost;
 
   DEBUG ("Received CONNECT reply. Socks5 stream connected. "
       "Bytestream is now open");
@@ -742,29 +745,17 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
 
   /* Acknowledge the connection */
-  iq_result = lm_iq_message_make_result (
-      priv->msg_for_acknowledge_connection);
-  if (NULL != iq_result)
-    {
-      LmMessageNode *node;
-      Streamhost *current_streamhost;
-
-      node = lm_message_node_add_child (
-        wocky_stanza_get_top_node (iq_result), "query", "");
-      lm_message_node_set_attribute (node, "xmlns", NS_BYTESTREAMS);
-
-      /* streamhost-used informs the other end of the streamhost we
-       * decided to use. In case of a direct connetion this is useless
-       * but if we are using an external proxy we need to know which
-       * one was selected */
-      node = lm_message_node_add_child (node, "streamhost-used", "");
-      current_streamhost = priv->streamhosts->data;
-      lm_message_node_set_attribute (node, "jid",
-          current_streamhost->jid);
-
-      _gabble_connection_send (priv->conn, iq_result, NULL);
-      lm_message_unref (iq_result);
-    }
+  current_streamhost = priv->streamhosts->data;
+  wocky_porter_acknowledge_iq (porter, priv->msg_for_acknowledge_connection,
+      '(', "query", ':', NS_BYTESTREAMS,
+        /* streamhost-used informs the other end of the streamhost we
+         * decided to use. In case of a direct connetion this is useless
+         * but if we are using an external proxy we need to know which
+         * one was selected */
+        '(', "streamhost-used",
+          '@', "jid", current_streamhost->jid,
+        ')',
+      ')', NULL);
 
   if (priv->read_blocked)
     {
@@ -774,10 +765,10 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
     }
 }
 
-static LmHandlerResult
+static void
 socks5_activation_reply_cb (GabbleConnection *conn,
-                            LmMessage *sent_msg,
-                            LmMessage *reply_msg,
+                            WockyStanza *sent_msg,
+                            WockyStanza *reply_msg,
                             GObject *obj,
                             gpointer user_data)
 {
@@ -785,7 +776,7 @@ socks5_activation_reply_cb (GabbleConnection *conn,
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
 
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("Activation failed");
       goto activation_failed;
@@ -805,11 +796,10 @@ socks5_activation_reply_cb (GabbleConnection *conn,
   /* We can read data from the sock5 socket now */
   gibber_transport_block_receiving (priv->transport, FALSE);
 
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+  return;
 activation_failed:
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static void
@@ -817,17 +807,17 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
 {
   GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
       self);
-  LmMessage *iq;
+  WockyStanza *iq;
 
   DEBUG ("Got CONNECT reply. SOCKS5 negotiation with proxy is done. "
       "Sending activation IQ");
 
-  iq = lm_message_build (priv->proxy_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "query", "",
-        '@', "xmlns", NS_BYTESTREAMS,
+  iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->proxy_jid,
+      '(', "query",
+        ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
-        '(', "activate", priv->peer_jid, ')',
+        '(', "activate", '$', priv->peer_jid, ')',
       ')', NULL);
 
   priv->socks5_state = SOCKS5_STATE_INITIATOR_ACTIVATION_SENT;
@@ -844,7 +834,7 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
     }
 
-  lm_message_unref (iq);
+  g_object_unref (iq);
 }
 
 /* Process the received data and returns the number of bytes that have been
@@ -1257,7 +1247,7 @@ socks5_connect (GabbleBytestreamSocks5 *self)
  */
 void
 gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
-                                         LmMessageNode *streamhost_node)
+                                         WockyNode *streamhost_node)
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
@@ -1270,7 +1260,7 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
 
   g_return_if_fail (!tp_strdiff (streamhost_node->name, "streamhost"));
 
-  zeroconf = lm_message_node_get_attribute (streamhost_node, "zeroconf");
+  zeroconf = wocky_node_get_attribute (streamhost_node, "zeroconf");
   if (zeroconf != NULL)
     {
       /* TODO: add suppport for zeroconf */
@@ -1278,21 +1268,21 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
       return;
     }
 
-  jid = lm_message_node_get_attribute (streamhost_node, "jid");
+  jid = wocky_node_get_attribute (streamhost_node, "jid");
   if (jid == NULL)
     {
       DEBUG ("streamhost doesn't contain a JID");
       return;
     }
 
-  host = lm_message_node_get_attribute (streamhost_node, "host");
+  host = wocky_node_get_attribute (streamhost_node, "host");
   if (host == NULL)
     {
       DEBUG ("streamhost doesn't contain a host");
       return;
     }
 
-  portstr = lm_message_node_get_attribute (streamhost_node, "port");
+  portstr = wocky_node_get_attribute (streamhost_node, "port");
   if (portstr == NULL)
     {
       DEBUG ("streamhost doesn't contain a port");
@@ -1327,13 +1317,13 @@ gabble_bytestream_socks5_add_streamhost (GabbleBytestreamSocks5 *self,
  */
 void
 gabble_bytestream_socks5_connect_to_streamhost (GabbleBytestreamSocks5 *self,
-                                                LmMessage *msg)
+                                                WockyStanza *msg)
 
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  priv->msg_for_acknowledge_connection = lm_message_ref (msg);
+  priv->msg_for_acknowledge_connection = g_object_ref (msg);
 
   socks5_connect (self);
 }
@@ -1408,8 +1398,8 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  LmMessage *msg;
-  LmMessageNode *si;
+  WockyStanza *msg;
+  WockyNode *si;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     {
@@ -1419,7 +1409,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
 
   msg = gabble_bytestream_factory_make_accept_iq (priv->peer_jid,
       priv->stream_init_id, NS_BYTESTREAMS);
-  si = lm_message_node_get_child_with_namespace (
+  si = wocky_node_get_child_ns (
     wocky_stanza_get_top_node (msg), "si", NS_SI);
   g_assert (si != NULL);
 
@@ -1436,7 +1426,7 @@ gabble_bytestream_socks5_accept (GabbleBytestreamIface *iface,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_ACCEPTED, NULL);
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 }
 
 static void
@@ -1445,31 +1435,30 @@ gabble_bytestream_socks5_decline (GabbleBytestreamSocks5 *self,
 {
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  LmMessage *msg;
+  WockyStanza *msg;
 
   g_return_if_fail (priv->bytestream_state ==
       GABBLE_BYTESTREAM_STATE_LOCAL_PENDING);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "error",
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_ERROR,
+      NULL, priv->peer_jid,
       '@', "id", priv->stream_init_id,
       NULL);
 
-  if (error != NULL && error->domain == GABBLE_XMPP_ERROR)
+  if (error != NULL)
     {
-      gabble_xmpp_error_to_node (error->code,
-        wocky_stanza_get_top_node (msg), error->message);
+      wocky_stanza_error_to_node (error, wocky_stanza_get_top_node (msg));
     }
   else
     {
-      gabble_xmpp_error_to_node (XMPP_ERROR_FORBIDDEN,
-          wocky_stanza_get_top_node (msg),
-          "Offer Declined");
+      GError fallback = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN,
+          "Offer Declined" };
+      wocky_stanza_error_to_node (&fallback, wocky_stanza_get_top_node (msg));
     }
 
   _gabble_connection_send (priv->conn, msg, NULL);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
 }
@@ -1553,10 +1542,10 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
       proxy->port);
 }
 
-static LmHandlerResult
+static void
 socks5_init_reply_cb (GabbleConnection *conn,
-                      LmMessage *sent_msg,
-                      LmMessage *reply_msg,
+                      WockyStanza *sent_msg,
+                      WockyStanza *reply_msg,
                       GObject *obj,
                       gpointer user_data)
 {
@@ -1564,16 +1553,16 @@ socks5_init_reply_cb (GabbleConnection *conn,
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
 
-  if (lm_message_get_sub_type (reply_msg) == LM_MESSAGE_SUB_TYPE_RESULT)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
-      LmMessageNode *query, *streamhost = NULL;
+      WockyNode *query, *streamhost = NULL;
       const gchar *jid;
 
-      query = lm_message_node_get_child_with_namespace (
+      query = wocky_node_get_child_ns (
         wocky_stanza_get_top_node (reply_msg), "query", NS_BYTESTREAMS);
 
       if (query != NULL)
-        streamhost = lm_message_node_get_child (query, "streamhost-used");
+        streamhost = wocky_node_get_child (query, "streamhost-used");
 
       if (streamhost == NULL)
         {
@@ -1581,7 +1570,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
           goto socks5_init_error;
         }
 
-      jid = lm_message_node_get_attribute (streamhost, "jid");
+      jid = wocky_node_get_attribute (streamhost, "jid");
       if (jid == NULL)
         {
           DEBUG ("no jid attribute in streamhost. Closing the bytestream");
@@ -1601,7 +1590,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
 
           priv->proxy_jid = g_strdup (jid);
           initiator_connected_to_proxy (self);
-          return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+          return;
         }
 
       /* No proxy used */
@@ -1620,7 +1609,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
       /* We can read data from the sock5 socket now */
       gibber_transport_block_receiving (priv->transport, FALSE);
-      return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+      return;
     }
 
 socks5_init_error:
@@ -1628,8 +1617,6 @@ socks5_init_error:
 
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 #ifdef G_OS_WIN32
@@ -1891,7 +1878,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   gchar *port;
   gint port_num;
-  LmMessage *msg;
+  WockyStanza *msg;
+  WockyNode *query_node;
   GSList *ips, *ip;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
@@ -1923,23 +1911,20 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   port_num = gibber_listener_get_port (priv->listener);
   port = g_strdup_printf ("%d", port_num);
 
-  msg = lm_message_build (priv->peer_jid, LM_MESSAGE_TYPE_IQ,
-      '@', "type", "set",
-      '(', "query", "",
-        '@', "xmlns", NS_BYTESTREAMS,
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->peer_jid,
+      '(', "query",
+        ':', NS_BYTESTREAMS,
         '@', "sid", priv->stream_id,
         '@', "mode", "tcp",
+        '*', &query_node,
       ')', NULL);
 
   for (ip = ips; ip != NULL; ip = g_slist_next (ip))
     {
-      LmMessageNode *node;
-      NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
+      WockyNode *node = wocky_node_add_child (query_node, "streamhost");
 
-      node = lm_message_node_add_child (node_iter_data (i),
-          "streamhost", "");
-
-      lm_message_node_set_attributes (node,
+      wocky_node_set_attributes (node,
           "jid", priv->self_full_jid,
           "host", ip->data,
           "port", port,
@@ -1960,17 +1945,13 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
       for (l = proxies; l != NULL; l = g_slist_next (l))
         {
-          LmMessageNode *node;
+          WockyNode *node = wocky_node_add_child (query_node, "streamhost");
           gchar *portstr;
           GabbleSocks5Proxy *proxy = (GabbleSocks5Proxy *) l->data;
-          NodeIter i = node_iter (wocky_stanza_get_top_node (msg));
-
-          node = lm_message_node_add_child (node_iter_data (i),
-              "streamhost", "");
 
           portstr = g_strdup_printf ("%d", proxy->port);
 
-          lm_message_node_set_attributes (node,
+          wocky_node_set_attributes (node,
               "jid", proxy->jid,
               "host", proxy->host,
               "port", portstr,
@@ -1992,11 +1973,11 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
     {
       DEBUG ("Error when sending Socks5 init stanza");
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
       return FALSE;
     }
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return TRUE;
 }

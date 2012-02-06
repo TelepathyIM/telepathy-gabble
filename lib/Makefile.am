@@ -1,1 +1,1 @@
-SUBDIRS=ext gibber loudmouth
+SUBDIRS=ext gibber

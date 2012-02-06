@@ -25,19 +25,16 @@
 
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/contacts-mixin.h>
 #include <telepathy-glib/presence-mixin.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
 #include <telepathy-glib/dbus.h>
 
-#include <wocky/wocky-session.h>
-#include <wocky/wocky-pep-service.h>
+#include <wocky/wocky.h>
 
 #include "gabble/connection.h"
 #include "gabble/capabilities.h"
-#include "error.h"
 #ifdef ENABLE_FILE_TRANSFER
 #include "ft-manager.h"
 #endif
@@ -92,11 +89,12 @@ typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;
 typedef struct _GabbleConnectionMailNotificationPrivate GabbleConnectionMailNotificationPrivate;
 typedef struct _GabbleConnectionPresencePrivate GabbleConnectionPresencePrivate;
 
-typedef LmHandlerResult (*GabbleConnectionMsgReplyFunc) (GabbleConnection *conn,
-                                                         LmMessage *sent_msg,
-                                                         LmMessage *reply_msg,
-                                                         GObject *object,
-                                                         gpointer user_data);
+typedef void (*GabbleConnectionMsgReplyFunc) (
+    GabbleConnection *conn,
+    WockyStanza *sent_msg,
+    WockyStanza *reply_msg,
+    GObject *object,
+    gpointer user_data);
 
 typedef enum {
     /* The JID could be a "global" JID, or a MUC room member. We'll assume
@@ -126,8 +124,6 @@ struct _GabbleConnection {
     /* DBus daemon instance */
     TpDBusDaemon *daemon;
 
-    /* loudmouth connection */
-    LmConnection *lmconn;
     WockySession *session;
 
     /* channel factories borrowed from TpBaseConnection's list */
@@ -214,15 +210,13 @@ WockyPorter *gabble_connection_dup_porter (GabbleConnection *conn);
 
 gboolean _gabble_connection_set_properties_from_account (
     GabbleConnection *conn, const gchar *account, GError **error);
-gboolean _gabble_connection_send (GabbleConnection *conn, LmMessage *msg,
+gboolean _gabble_connection_send (GabbleConnection *conn, WockyStanza *msg,
     GError **error);
 gboolean _gabble_connection_send_with_reply (GabbleConnection *conn,
-    LmMessage *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object,
+    WockyStanza *msg, GabbleConnectionMsgReplyFunc reply_func, GObject *object,
     gpointer user_data, GError **error);
 void _gabble_connection_acknowledge_set_iq (GabbleConnection *conn,
-    LmMessage *iq);
-void _gabble_connection_send_iq_error (GabbleConnection *conn,
-    LmMessage *message, GabbleXmppError error, const gchar *errmsg);
+    WockyStanza *iq);
 void gabble_connection_update_last_use (GabbleConnection *conn);
 
 const char *_gabble_connection_find_conference_server (GabbleConnection *);
@@ -233,7 +227,7 @@ void gabble_connection_ensure_capabilities (GabbleConnection *self,
     const GabbleCapabilitySet *ensured);
 
 gboolean gabble_connection_send_presence (GabbleConnection *conn,
-    LmMessageSubType sub_type, const gchar *contact, const gchar *status,
+    WockyStanzaSubType sub_type, const gchar *contact, const gchar *status,
     GError **error);
 
 gboolean gabble_connection_send_capabilities (GabbleConnection *self,
@@ -243,7 +237,7 @@ gboolean gabble_connection_request_decloak (GabbleConnection *self,
     const gchar *to, const gchar *reason, GError **error);
 
 void gabble_connection_fill_in_caps (GabbleConnection *self,
-    LmMessage *presence_message);
+    WockyStanza *presence_message);
 
 gboolean _gabble_connection_invisible_privacy_list_set_active (
     GabbleConnection *self,

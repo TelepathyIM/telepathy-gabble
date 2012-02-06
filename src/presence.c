@@ -23,8 +23,7 @@
 
 #include <string.h>
 #include <telepathy-glib/channel-manager.h>
-#include <wocky/wocky-utils.h>
-#include <wocky/wocky-xep-0115-capabilities.h>
+#include <wocky/wocky.h>
 
 #include "gabble/capabilities.h"
 #include "conn-presence.h"
@@ -644,34 +643,34 @@ gabble_presence_add_status_and_vcard (GabblePresence *presence,
     }
 }
 
-LmMessage *
+WockyStanza *
 gabble_presence_as_message (GabblePresence *presence,
                             const gchar *to)
 {
   GabblePresencePrivate *priv = presence->priv;
-  LmMessage *message;
-  LmMessageSubType subtype;
+  WockyStanza *message;
+  WockyStanzaSubType subtype;
   Resource *res = priv->resources->data; /* pick first resource */
 
   g_assert (NULL != res);
 
   if (presence->status == GABBLE_PRESENCE_OFFLINE)
-    subtype = LM_MESSAGE_SUB_TYPE_UNAVAILABLE;
+    subtype = WOCKY_STANZA_SUB_TYPE_UNAVAILABLE;
   else
-    subtype = LM_MESSAGE_SUB_TYPE_AVAILABLE;
+    subtype = WOCKY_STANZA_SUB_TYPE_AVAILABLE;
 
-  message = lm_message_new_with_sub_type (to, LM_MESSAGE_TYPE_PRESENCE,
-              subtype);
+  message = wocky_stanza_build (WOCKY_STANZA_TYPE_PRESENCE, subtype,
+      NULL, to, NULL);
 
   gabble_presence_add_status_and_vcard (presence, message);
 
   if (res->priority)
     {
       gchar *priority = g_strdup_printf ("%d", res->priority);
-      LmMessageNode *node;
+      WockyNode *node;
 
-      node = lm_message_get_node (message);
-      lm_message_node_add_child (node, "priority", priority);
+      node = wocky_stanza_get_top_node (message);
+      wocky_node_add_child_with_content (node, "priority", priority);
       g_free (priority);
     }
 

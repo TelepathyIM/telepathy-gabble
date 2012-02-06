@@ -21,7 +21,7 @@
 #define __JINGLE_SESSION_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky.h>
 
 #include "jingle-content.h"
 #include "jingle-factory.h"
@@ -75,12 +75,12 @@ GabbleJingleSession *gabble_jingle_session_new (GabbleConnection *connection,
     const gchar *jid,
     gboolean local_hold);
 
-const gchar * gabble_jingle_session_detect (LmMessage *message,
+const gchar * gabble_jingle_session_detect (WockyStanza *stanza,
     JingleAction *action, JingleDialect *dialect);
 gboolean gabble_jingle_session_parse (GabbleJingleSession *sess,
-    JingleAction action, LmMessage *message, GError **error);
-LmMessage *gabble_jingle_session_new_message (GabbleJingleSession *sess,
-    JingleAction action, LmMessageNode **sess_node);
+    JingleAction action, WockyStanza *stanza, GError **error);
+WockyStanza *gabble_jingle_session_new_message (GabbleJingleSession *sess,
+    JingleAction action, WockyNode **sess_node);
 
 void gabble_jingle_session_accept (GabbleJingleSession *sess);
 gboolean gabble_jingle_session_terminate (GabbleJingleSession *sess,
@@ -112,9 +112,9 @@ gboolean gabble_jingle_session_peer_has_quirk (
     const gchar *quirk);
 
 typedef void (*JingleReplyHandler) (GObject *, gboolean success,
-    LmMessage *reply);
+    WockyStanza *reply);
 void gabble_jingle_session_send (GabbleJingleSession *sess,
-    LmMessage *msg,
+    WockyStanza *stanza,
     JingleReplyHandler cb,
     GObject *weak_object);
 

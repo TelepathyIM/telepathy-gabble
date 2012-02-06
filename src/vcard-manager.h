@@ -23,7 +23,7 @@
 #define __GABBLE_VCARD_MANAGER_H__
 
 #include <glib-object.h>
-#include <loudmouth/loudmouth.h>
+#include <wocky/wocky.h>
 
 #include "types.h"
 
@@ -90,7 +90,7 @@ typedef enum {
 typedef void (*GabbleVCardManagerCb)(GabbleVCardManager *self,
                                     GabbleVCardManagerRequest *request,
                                     TpHandle handle,
-                                    LmMessageNode *vcard,
+                                    WockyNode *vcard,
                                     GError *error,
                                     gpointer user_data);
 
@@ -115,12 +115,12 @@ gboolean gabble_vcard_manager_has_cached_alias (GabbleVCardManager *manager,
 
 gboolean gabble_vcard_manager_get_cached (GabbleVCardManager *,
                                           TpHandle,
-                                          LmMessageNode **);
+                                          WockyNode **);
 void gabble_vcard_manager_invalidate_cache (GabbleVCardManager *, TpHandle);
 
 typedef void (*GabbleVCardManagerEditCb)(GabbleVCardManager *self,
                                          GabbleVCardManagerEditRequest *request,
-                                         LmMessageNode *vcard,
+                                         WockyNode *vcard,
                                          GError *error,
                                          gpointer user_data);
 
@@ -133,7 +133,7 @@ GabbleVCardManagerEditRequest *gabble_vcard_manager_edit (GabbleVCardManager *,
 
 void gabble_vcard_manager_remove_edit_request (GabbleVCardManagerEditRequest *);
 
-gchar *vcard_get_avatar_sha1 (LmMessageNode *vcard);
+gchar *vcard_get_avatar_sha1 (WockyNode *vcard);
 
 GabbleVCardManagerEditInfo *gabble_vcard_manager_edit_info_new (
     const gchar *element_name,

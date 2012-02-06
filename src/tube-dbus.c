@@ -26,8 +26,7 @@
 #include <glib/gstdio.h>
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/channel-iface.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/exportable-channel.h>
@@ -1193,7 +1192,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 static void
 bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
                          const gchar *stream_id,
-                         LmMessage *msg,
+                         WockyStanza *msg,
                          GObject *object,
                          gpointer user_data)
 {
@@ -1234,8 +1233,8 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       const gchar *jid, *resource;
       gchar *full_jid;
       GabblePresence *presence;
-      LmMessageNode *tube_node, *si_node;
-      LmMessage *msg;
+      WockyNode *tube_node, *si_node;
+      WockyStanza *msg;
       gboolean result;
 
       contact_repo = tp_base_connection_get_handles (
@@ -1266,12 +1265,12 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       full_jid = g_strdup_printf ("%s/%s", jid, resource);
       msg = gabble_bytestream_factory_make_stream_init_iq (full_jid,
           priv->stream_id, NS_TUBES);
-      si_node = lm_message_node_get_child_with_namespace (
+      si_node = wocky_node_get_child_ns (
           wocky_stanza_get_top_node (msg), "si", NS_SI);
       g_assert (si_node != NULL);
 
-      tube_node = lm_message_node_add_child (si_node, "tube", NULL);
-      lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
+      tube_node = wocky_node_add_child_with_content (si_node, "tube", NULL);
+      tube_node->ns = g_quark_from_string (NS_TUBES);
       gabble_tube_iface_publish_in_node (GABBLE_TUBE_IFACE (tube),
           (TpBaseConnection *) priv->conn, tube_node);
 
@@ -1283,7 +1282,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       /* We don't create the bytestream of private D-Bus tube yet.
        * It will be when we'll receive the answer of the SI request */
 
-      lm_message_unref (msg);
+      g_object_unref (msg);
       g_free (full_jid);
 
       if (!result)
@@ -1563,13 +1562,13 @@ gabble_tube_dbus_new (GabbleConnection *conn,
 }
 
 static void
-augment_si_accept_iq (LmMessageNode *si,
+augment_si_accept_iq (WockyNode *si,
                       gpointer user_data)
 {
-  LmMessageNode *tube_node;
+  WockyNode *tube_node;
 
-  tube_node = lm_message_node_add_child (si, "tube", "");
-  lm_message_node_set_attribute (tube_node, "xmlns", NS_TUBES);
+  tube_node = wocky_node_add_child_with_content (si, "tube", "");
+  tube_node->ns = g_quark_from_string (NS_TUBES);
 }
 
 /*

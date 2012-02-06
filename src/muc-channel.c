@@ -25,9 +25,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <wocky/wocky-muc.h>
-#include <wocky/wocky-utils.h>
-#include <wocky/wocky-xmpp-error.h>
+#include <wocky/wocky.h>
 
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
@@ -319,11 +317,11 @@ static void handle_errmsg (GObject *source,
 static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
     TpHandleType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *subject,
-    LmMessage *msg);
+    WockyStanza *msg);
 static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
     TpChannelTextMessageType msg_type, TpHandleType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *id, const gchar *text,
-    LmMessage *msg, TpChannelTextSendError send_error,
+    WockyStanza *msg, TpChannelTextSendError send_error,
     TpDeliveryStatus delivery_status);
 
 static void
@@ -630,14 +628,15 @@ properties_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
                      const gchar *jid,
                      const gchar *node,
-                     LmMessageNode *query_result,
+                     WockyNode *query_result,
                      GError *error,
                      gpointer user_data)
 {
   GabbleMucChannel *chan = user_data;
   GabbleMucChannelPrivate *priv = chan->priv;
-  LmMessageNode *lm_node;
-  NodeIter i;
+  WockyNode *lm_node;
+  WockyNodeIter i;
+  WockyNode *child;
 
   g_assert (GABBLE_IS_MUC_CHANNEL (chan));
 
@@ -652,14 +651,14 @@ properties_disco_cb (GabbleDisco *disco,
    */
 
   /* ROOM_PROP_NAME */
-  lm_node = lm_message_node_get_child (query_result, "identity");
+  lm_node = wocky_node_get_child (query_result, "identity");
   if (lm_node)
     {
       const gchar *category, *type, *name;
 
-      category = lm_message_node_get_attribute (lm_node, "category");
-      type = lm_message_node_get_attribute (lm_node, "type");
-      name = lm_message_node_get_attribute (lm_node, "name");
+      category = wocky_node_get_attribute (lm_node, "category");
+      type = wocky_node_get_attribute (lm_node, "type");
+      name = wocky_node_get_attribute (lm_node, "name");
 
       if (!tp_strdiff (category, "conference") &&
           !tp_strdiff (type, "text") &&
@@ -669,10 +668,10 @@ properties_disco_cb (GabbleDisco *disco,
         }
     }
 
-  for (i = node_iter (query_result); i; i = node_iter_next (i))
+  wocky_node_iter_init (&i, query_result, NULL, NULL);
+  while (wocky_node_iter_next (&i, &child))
     {
       const gchar *config_property_name = NULL;
-      LmMessageNode *child = node_iter_data (i);
       GValue val = { 0, };
 
       if (strcmp (child->name, "feature") == 0)
@@ -680,7 +679,7 @@ properties_disco_cb (GabbleDisco *disco,
           config_property_name = map_feature (child, &val);
         }
       else if (strcmp (child->name, "x") == 0 &&
-               lm_message_node_has_namespace (child, NS_X_DATA, NULL))
+               wocky_node_has_ns (child, NS_X_DATA))
         {
           config_property_name = handle_form (child, &val);
         }
@@ -1745,11 +1744,6 @@ update_permissions (GabbleMucChannel *chan)
     }
 }
 
-
-
-/* ************************************************************************* */
-/* wocky MUC implementation */
-
 /* connect to wocky-muc:SIG_PRESENCE_ERROR */
 static void
 handle_error (GObject *source,
@@ -2116,7 +2110,7 @@ handle_fill_presence (WockyMuc *muc,
       conn->self_presence->status_message,
       0);
 
-  g_signal_emit (self, signals[PRE_PRESENCE], 0, (LmMessage *) stanza);
+  g_signal_emit (self, signals[PRE_PRESENCE], 0, (WockyStanza *) stanza);
 }
 
 /* connect to wocky-muc:SIG_NICK_CHANGE, which we will receive when the *
@@ -2179,7 +2173,7 @@ update_roster_presence (GabbleMucChannel *gmuc,
     }
 
   gabble_presence_parse_presence_message (conn->presence_cache,
-      handle, member->from, (LmMessage *) member->presence_stanza);
+      handle, member->from, (WockyStanza *) member->presence_stanza);
 
   tp_handle_set_add (members, handle);
   g_hash_table_insert (omap,
@@ -2303,7 +2297,7 @@ handle_presence (GObject *source,
     }
 
   gabble_presence_parse_presence_message (conn->presence_cache,
-    handle, who->from, (LmMessage *) who->presence_stanza);
+    handle, who->from, (WockyStanza *) who->presence_stanza);
 
   /* add the member in quesion */
   tp_handle_set_add (handles, handle);
@@ -2516,7 +2510,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     TpHandle sender,
                                     GDateTime *datetime,
                                     const gchar *subject,
-                                    LmMessage *msg)
+                                    WockyStanza *msg)
 {
   GabbleMucChannelPrivate *priv;
   const gchar *actor;
@@ -2591,7 +2585,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              GDateTime *datetime,
                              const gchar *id,
                              const gchar *text,
-                             LmMessage *msg,
+                             WockyStanza *msg,
                              TpChannelTextSendError send_error,
                              TpDeliveryStatus error_status)
 {
@@ -2836,7 +2830,7 @@ gabble_muc_channel_send (GObject *obj,
   gchar *id = NULL;
 
   stanza = gabble_message_util_build_stanza (message, gabble_conn,
-      LM_MESSAGE_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
+      WOCKY_STANZA_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
       priv->jid, FALSE, &id, &error);
 
   if (stanza != NULL)
@@ -2867,30 +2861,30 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
-  LmMessage *msg;
-  LmMessageNode *x_node, *invite_node;
+  WockyStanza *msg;
+  WockyNode *invite_node;
   gboolean result;
 
   g_signal_emit (self, signals[PRE_INVITE], 0, jid);
 
-  msg = lm_message_new (priv->jid, LM_MESSAGE_TYPE_MESSAGE);
-
-  x_node = lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "x", NULL);
-  lm_message_node_set_attribute (x_node, "xmlns", NS_MUC_USER);
-
-  invite_node = lm_message_node_add_child (x_node, "invite", NULL);
-
-  lm_message_node_set_attribute (invite_node, "to", jid);
+  msg = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, priv->jid,
+      '(', "x", ':', NS_MUC_USER,
+        '(', "invite",
+          '@', "to", jid,
+          '*', &invite_node,
+        ')',
+      ')', NULL);
 
   if (message != NULL && *message != '\0')
     {
-      lm_message_node_add_child (invite_node, "reason", message);
+      wocky_node_add_child_with_content (invite_node, "reason", message);
     }
 
   if (continue_)
     {
-      lm_message_node_add_child (invite_node, "continue", NULL);
+      wocky_node_add_child_with_content (invite_node, "continue", NULL);
     }
 
   DEBUG ("sending MUC invitation for room %s to contact %s with reason "
@@ -2898,7 +2892,7 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 
   result = _gabble_connection_send (
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)), msg, error);
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return result;
 }
@@ -2982,17 +2976,15 @@ gabble_muc_channel_add_member (GObject *obj,
   return gabble_muc_channel_send_invite (self, jid, message, FALSE, error);
 }
 
-static LmHandlerResult
-kick_request_reply_cb (GabbleConnection *conn, LmMessage *sent_msg,
-                       LmMessage *reply_msg, GObject *object,
+static void
+kick_request_reply_cb (GabbleConnection *conn, WockyStanza *sent_msg,
+                       WockyStanza *reply_msg, GObject *object,
                        gpointer user_data)
 {
-  if (lm_message_get_sub_type (reply_msg) != LM_MESSAGE_SUB_TYPE_RESULT)
+  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
     {
       DEBUG ("Failed to kick user %s from room", (const char *) user_data);
     }
-
-  return LM_HANDLER_RESULT_REMOVE_MESSAGE;
 }
 
 static gboolean
@@ -3005,8 +2997,8 @@ gabble_muc_channel_remove_member (GObject *obj,
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   GabbleMucChannelPrivate *priv = chan->priv;
   TpGroupMixin *group = TP_GROUP_MIXIN (chan);
-  LmMessage *msg;
-  LmMessageNode *query_node, *item_node;
+  WockyStanza *msg;
+  WockyNode *item_node;
   const gchar *jid, *nick;
   gboolean result;
 
@@ -3020,14 +3012,13 @@ gabble_muc_channel_remove_member (GObject *obj,
     }
 
   /* Otherwise, the user wants to kick someone. */
-  msg = lm_message_new_with_sub_type (priv->jid, LM_MESSAGE_TYPE_IQ,
-                                      LM_MESSAGE_SUB_TYPE_SET);
-
-  query_node = lm_message_node_add_child (
-      wocky_stanza_get_top_node (msg), "query", NULL);
-  lm_message_node_set_attribute (query_node, "xmlns", NS_MUC_ADMIN);
-
-  item_node = lm_message_node_add_child (query_node, "item", NULL);
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, priv->jid,
+      '(', "query", ':', NS_MUC_ADMIN,
+        '(', "item",
+          '*', &item_node,
+        ')',
+      ')', NULL);
 
   jid = tp_handle_inspect (TP_GROUP_MIXIN (obj)->handle_repo, handle);
 
@@ -3035,14 +3026,14 @@ gabble_muc_channel_remove_member (GObject *obj,
   if (nick != NULL)
     nick++;
 
-  lm_message_node_set_attributes (item_node,
+  wocky_node_set_attributes (item_node,
                                   "nick", nick,
                                   "role", "none",
                                   NULL);
 
   if (*message != '\0')
     {
-      lm_message_node_add_child (item_node, "reason", message);
+      wocky_node_add_child_with_content (item_node, "reason", message);
     }
 
   DEBUG ("sending MUC kick request for contact %u (%s) to room %s with reason "
@@ -3052,7 +3043,7 @@ gabble_muc_channel_remove_member (GObject *obj,
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
       msg, kick_request_reply_cb, obj, (gpointer) jid, error);
 
-  lm_message_unref (msg);
+  g_object_unref (msg);
 
   return result;
 }
@@ -3255,7 +3246,7 @@ request_config_form_reply_cb (
   while (wocky_node_iter_next (&j, &child))
     {
       const gchar *var, *type_str;
-      LmMessageNode *field_node;
+      WockyNode *field_node;
       ConfigFormMapping *f;
       GValue *value = NULL;
 
@@ -3434,7 +3425,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
   if (error != NULL ||
       !gabble_message_util_send_chat_state (G_OBJECT (self),
           GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-          LM_MESSAGE_SUB_TYPE_GROUPCHAT, state, priv->jid, &error))
+          WOCKY_STANZA_SUB_TYPE_GROUPCHAT, state, priv->jid, &error))
     {
       dbus_g_method_return_error (context, error);
       g_error_free (error);

@@ -27,7 +27,7 @@
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/errors.h>
-#include <wocky/wocky-caps-cache.h>
+#include <wocky/wocky.h>
 
 #include "connection.h"
 #include "debug.h"

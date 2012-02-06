@@ -24,8 +24,7 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <loudmouth/loudmouth.h>
-#include <wocky/wocky-utils.h>
+#include <wocky/wocky.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/interfaces.h>
@@ -74,7 +73,7 @@ struct _GabbleMucFactoryPrivate
   GabbleConnection *conn;
   gulong status_changed_id;
 
-  LmMessageHandler *message_cb;
+  guint message_cb_id;
   /* GUINT_TO_POINTER(room_handle) => (GabbleMucChannel *) */
   GHashTable *text_channels;
   /* Tubes channels which will be considered ready when the corresponding
@@ -119,8 +118,6 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
 
   priv->queued_requests = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, NULL);
-
-  priv->message_cb = NULL;
 
   priv->conn = NULL;
   priv->dispose_has_run = FALSE;
@@ -570,7 +567,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
                           GabbleDiscoRequest *request,
                           const gchar *jid,
                           const gchar *node,
-                          LmMessageNode *query_result,
+                          WockyNode *query_result,
                           GError* error,
                           gpointer user_data)
 {
@@ -580,7 +577,7 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  LmMessageNode *identity;
+  WockyNode *identity;
   const char *category = NULL, *type = NULL;
 
   g_hash_table_remove (priv->disco_requests, request);
@@ -592,11 +589,11 @@ obsolete_invite_disco_cb (GabbleDisco *self,
       goto out;
     }
 
-  identity = lm_message_node_get_child (query_result, "identity");
+  identity = wocky_node_get_child (query_result, "identity");
   if (identity != NULL)
     {
-      category = lm_message_node_get_attribute (identity, "category");
-      type = lm_message_node_get_attribute (identity, "type");
+      category = wocky_node_get_attribute (identity, "category");
+      type = wocky_node_get_attribute (identity, "type");
     }
 
   if (tp_strdiff (category, "conference") ||
@@ -618,7 +615,7 @@ out:
 
 static gboolean
 process_muc_invite (GabbleMucFactory *fac,
-                    LmMessage *message,
+                    WockyStanza *message,
                     const gchar *from,
                     TpChannelTextSendError send_error)
 {
@@ -627,13 +624,13 @@ process_muc_invite (GabbleMucFactory *fac,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  LmMessageNode *x_node, *invite_node, *reason_node;
+  WockyNode *x_node, *invite_node, *reason_node;
   const gchar *invite_from, *reason = NULL;
   TpHandle inviter_handle;
   gchar *room;
 
   /* does it have a muc subnode? */
-  x_node = lm_message_node_get_child_with_namespace (
+  x_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (message), "x",
       NS_MUC_USER);
 
@@ -641,7 +638,7 @@ process_muc_invite (GabbleMucFactory *fac,
     return FALSE;
 
   /* and an invitation? */
-  invite_node = lm_message_node_get_child (x_node, "invite");
+  invite_node = wocky_node_get_child (x_node, "invite");
 
   if (invite_node == NULL)
     return FALSE;
@@ -655,7 +652,7 @@ process_muc_invite (GabbleMucFactory *fac,
       return TRUE;
     }
 
-  invite_from = lm_message_node_get_attribute (invite_node, "from");
+  invite_from = wocky_node_get_attribute (invite_node, "from");
   if (invite_from == NULL)
     {
       STANZA_DEBUG (message, "got a MUC invitation message with no JID; "
@@ -674,10 +671,10 @@ process_muc_invite (GabbleMucFactory *fac,
       return TRUE;
     }
 
-  reason_node = lm_message_node_get_child (invite_node, "reason");
+  reason_node = wocky_node_get_child (invite_node, "reason");
 
   if (reason_node != NULL)
-    reason = lm_message_node_get_value (reason_node);
+    reason = reason_node->content;
 
   /* create the channel */
   room = gabble_remove_resource (from);
@@ -691,7 +688,7 @@ process_muc_invite (GabbleMucFactory *fac,
 
 static gboolean
 process_obsolete_invite (GabbleMucFactory *fac,
-                         LmMessage *message,
+                         WockyStanza *message,
                          const gchar *from,
                          const gchar *body,
                          TpChannelTextSendError send_error)
@@ -701,14 +698,14 @@ process_obsolete_invite (GabbleMucFactory *fac,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
 
-  LmMessageNode *x_node;
+  WockyNode *x_node;
   const gchar *room;
   TpHandle inviter_handle;
   GabbleDiscoRequest *request;
   struct DiscoInviteData *disco_udata;
 
   /* check for obsolete invite method */
-  x_node = lm_message_node_get_child_with_namespace (
+  x_node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (message), "x", NS_X_CONFERENCE);
   if (x_node == NULL)
     return FALSE;
@@ -725,7 +722,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
     }
 
   /* the room JID is in x */
-  room = lm_message_node_get_attribute (x_node, "jid");
+  room = wocky_node_get_attribute (x_node, "jid");
   if (room == NULL)
     {
       STANZA_DEBUG (message,
@@ -774,14 +771,14 @@ process_obsolete_invite (GabbleMucFactory *fac,
 /**
  * muc_factory_message_cb:
  *
- * Called by loudmouth when we get an incoming <message>.
+ * Called by Wocky when we get an incoming <message>.
  * We filter only groupchat and MUC messages, ignoring the rest.
  */
-static LmHandlerResult
-muc_factory_message_cb (LmMessageHandler *handler,
-                        LmConnection *connection,
-                        LmMessage *message,
-                        gpointer user_data)
+static gboolean
+muc_factory_message_cb (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = fac->priv;
@@ -795,26 +792,26 @@ muc_factory_message_cb (LmMessageHandler *handler,
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (conn_olpc_process_activity_properties_message (priv->conn, message,
         from))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (conn_olpc_process_activity_uninvite_message (priv->conn, message,
         from))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (process_muc_invite (fac, message, from, send_error))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   if (process_obsolete_invite (fac, message, from, body, send_error))
-    return LM_HANDLER_RESULT_REMOVE_MESSAGE;
+    return TRUE;
 
   /* we used to check if a room with the jid exists, instead at this  *
    * point we stop caring: actual MUC messages are handled internally *
    * by the wocky muc implementation                                  */
-  return LM_HANDLER_RESULT_ALLOW_MORE_HANDLERS;
+  return FALSE;
 }
 
 void
@@ -913,17 +910,30 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
       g_hash_table_unref (tmp);
     }
 
-  if (priv->message_cb != NULL)
+  if (priv->message_cb_id != 0)
     {
-      DEBUG ("removing callbacks");
+      WockyPorter *porter = gabble_connection_dup_porter (priv->conn);
 
-      lm_connection_unregister_message_handler (priv->conn->lmconn,
-          priv->message_cb, LM_MESSAGE_TYPE_MESSAGE);
+      wocky_porter_unregister_handler (porter, priv->message_cb_id);
+      priv->message_cb_id = 0;
+      g_object_unref (porter);
     }
-
-  tp_clear_pointer (&priv->message_cb, lm_message_handler_unref);
 }
 
+static void
+porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleMucFactory *self = GABBLE_MUC_FACTORY (user_data);
+
+  self->priv->message_cb_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL,
+      muc_factory_message_cb, self,
+      NULL);
+}
 
 static void
 connection_status_changed_cb (GabbleConnection *conn,
@@ -931,21 +941,8 @@ connection_status_changed_cb (GabbleConnection *conn,
                               guint reason,
                               GabbleMucFactory *self)
 {
-  GabbleMucFactoryPrivate *priv = self->priv;
-
   switch (status)
     {
-    case TP_CONNECTION_STATUS_CONNECTING:
-      DEBUG ("adding callbacks");
-      g_assert (priv->message_cb == NULL);
-
-      priv->message_cb = lm_message_handler_new (muc_factory_message_cb,
-          self, NULL);
-      lm_connection_register_message_handler (priv->conn->lmconn,
-          priv->message_cb, LM_MESSAGE_TYPE_MESSAGE,
-          LM_HANDLER_PRIORITY_NORMAL);
-      break;
-
     case TP_CONNECTION_STATUS_DISCONNECTED:
       gabble_muc_factory_close_all (self);
       break;
@@ -964,6 +961,8 @@ gabble_muc_factory_constructor (GType type, guint n_props,
 
   priv->status_changed_id = g_signal_connect (priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
+  tp_g_signal_connect_object (priv->conn,
+      "porter-available", (GCallback) porter_available_cb, obj, 0);
 
   return obj;
 }
@@ -1057,7 +1056,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
                                              GabbleBytestreamIface *bytestream,
                                              TpHandle room_handle,
                                              const gchar *stream_id,
-                                             LmMessage *msg)
+                                             WockyStanza *msg)
 {
   GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -1073,7 +1072,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
 
   if (tube == NULL)
     {
-      GError e = { GABBLE_XMPP_ERROR, XMPP_ERROR_BAD_REQUEST,
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "No tubes channel available for this MUC" };
 
       DEBUG ("tubes channel doesn't exist for muc %d", room_handle);

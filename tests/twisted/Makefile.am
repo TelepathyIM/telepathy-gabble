@@ -3,6 +3,7 @@ TWISTED_TESTS = \
 	avatar-requirements.py \
 	caps/advertise-contact-caps.py \
 	caps/advertise-legacy.py \
+	caps/broken-reply.py \
 	caps/caps-cache.py \
 	caps/caps-persistent-cache.py \
 	caps/compat-bundles.py \
@@ -63,6 +64,7 @@ TWISTED_TESTS = \
 	plugin-channel-managers.py \
 	power-save.py \
 	presence/decloak.py \
+	presence/error.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
 	presence/invisible_xep_0126.py \

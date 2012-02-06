@@ -416,5 +416,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     assertEquals(conn_id, e.args[0])
     assertEquals(cs.CONNECTION_LOST, e.args[1])
 
+    t.cleanup()
+
 if __name__ == '__main__':
     t.exec_stream_tube_test(test)

@@ -30,6 +30,11 @@ API changes to Wocky snapshot:
   replies for unhandled IQs, whereas previously this was up to Gabble.
   Plugin authors shouldn't notice this change. (Will)
 
+• fd.o#27489 - including <wocky/wocky.h> now includes all public API
+  from Wocky, and including any other header directly is forbidden.
+  (This is similar to how GLib's headers are structured.) Out-of-tree
+  plugins will need to be updated. (Will)
+
 telepathy-gabble 0.15.3 (2011-12-22)
 ====================================
 

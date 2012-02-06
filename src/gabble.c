@@ -161,7 +161,10 @@ gabble_main (int argc,
   if (g_getenv ("WOCKY_DEBUG") == NULL)
     {
       redirect_wocky = TRUE;
-      wocky_debug_set_flags (DEBUG_XMPP | DEBUG_AUTH | DEBUG_PORTER);
+      wocky_debug_set_flags ( WOCKY_DEBUG_XMPP
+                            | WOCKY_DEBUG_AUTH
+                            | WOCKY_DEBUG_PORTER
+                            );
     }
 
   debug_sender = tp_debug_sender_dup ();

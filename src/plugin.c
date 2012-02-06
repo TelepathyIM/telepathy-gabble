@@ -96,7 +96,7 @@ gabble_plugin_implements_sidecar (
  * @user_data: data to pass to @callback
  */
 void
-gabble_plugin_create_sidecar (
+gabble_plugin_create_sidecar_async (
     GabblePlugin *plugin,
     const gchar *sidecar_interface,
     GabbleConnection *connection,
@@ -111,13 +111,18 @@ gabble_plugin_create_sidecar (
         user_data, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
         "Gabble is buggy: '%s' doesn't implement sidecar %s",
         iface->name, sidecar_interface);
-  else if (iface->create_sidecar == NULL)
+  else if (iface->create_sidecar_async == NULL)
     g_simple_async_report_error_in_idle (G_OBJECT (plugin), callback,
         user_data, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
         "'%s' is buggy: it claims to implement %s, but does not implement "
-        "create_sidecar", iface->name, sidecar_interface);
+        "create_sidecar_async", iface->name, sidecar_interface);
+  else if (iface->create_sidecar_finish == NULL)
+    g_simple_async_report_error_in_idle (G_OBJECT (plugin), callback,
+        user_data, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+        "'%s' is buggy: does not imlement create_sidecar_finish",
+        iface->name);
   else
-    iface->create_sidecar (plugin, sidecar_interface, connection, session,
+    iface->create_sidecar_async (plugin, sidecar_interface, connection, session,
         callback, user_data);
 }
 
@@ -127,17 +132,20 @@ gabble_plugin_create_sidecar_finish (
     GAsyncResult *result,
     GError **error)
 {
+  GabblePluginInterface *iface = GABBLE_PLUGIN_GET_INTERFACE (plugin);
   GabbleSidecar *sidecar;
 
   if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
           error))
     return NULL;
 
-  g_return_val_if_fail (g_simple_async_result_is_valid (result,
-    G_OBJECT (plugin), gabble_plugin_create_sidecar), NULL);
+  if (iface->create_sidecar_finish == NULL) {
+    WARNING ("'%s' is buggy: does not implement create_sidecar_finish", iface->name);
+    return NULL;
+  }
 
-  sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
-      G_SIMPLE_ASYNC_RESULT (result)));
+  sidecar = iface->create_sidecar_finish (plugin, result, error);
+
   return g_object_ref (sidecar);
 }
 

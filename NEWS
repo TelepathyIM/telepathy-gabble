@@ -35,6 +35,12 @@ API changes to Wocky snapshot:
   (This is similar to how GLib's headers are structured.) Out-of-tree
   plugins will need to be updated. (Will)
 
+* fd.o#44331 - Gabble plugin API symbols should be factored out to a separate library :
+  gabble_plugin_create_sidecar function is renamed to gabble_plugin_create_sidecar_async
+  and new virtual function gabble_plugin_create_sidecar_finish is introduced. All gabble
+  plugins should implement these two methods and all internal plugins are updated to use
+  this new API.
+
 telepathy-gabble 0.15.3 (2011-12-22)
 ====================================
 

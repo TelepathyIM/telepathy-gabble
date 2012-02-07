@@ -316,7 +316,11 @@ ac_configure_args="$ac_configure_args --with-installed-headers=${wocky_install_h
 
 # Code from the submodules will be linked in to the gabble-plugins.so shared library, so they need
 # to be compiled as position-independent code. Pass on any other flags we got as well.
-sub_cflags="$CFLAGS -fPIC"
+#
+# On some platforms -fPIC results in a "all code is position independent" warning though, so let's
+# try to compile with -Werror to find out if the current platform is one of these.
+sub_cflags="$CFLAGS"
+TP_COMPILER_FLAG([-fPIC -Werror], [sub_cflags+=" -fPIC"])
 ac_configure_args+=" CFLAGS=\"$sub_cflags\""
 
 if test "x$ENABLE_CODING_STYLE_CHECKS" = xyes ; then

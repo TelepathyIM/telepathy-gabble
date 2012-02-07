@@ -19,6 +19,11 @@ Enhancements:
   This makes it easier for users to distinguish contacts being offline
   from contacts' servers being broken. (Will)
 
+• fd.o#44649 - Gabble now has a gabble-plugins.so library, similarly to mission-control. This
+  enables plugins to link correctly as DLLs on Windows. This also means that plugins don't directly
+  access GabbleConnections anymore, but instead invoke the same functionality through a
+  GabblePluginConnection GInterface. (siraj)
+
 API changes to Wocky snapshot:
 
 • fd.o#45400 - WockyPepService's API has changed a little bit.
@@ -35,11 +40,13 @@ API changes to Wocky snapshot:
   (This is similar to how GLib's headers are structured.) Out-of-tree
   plugins will need to be updated. (Will)
 
-* fd.o#44331 - Gabble plugin API symbols should be factored out to a separate library :
+Fixes:
+
+• fd.o#44331 - Gabble plugin API fails at runtime on Windows :
   gabble_plugin_create_sidecar function is renamed to gabble_plugin_create_sidecar_async
   and new virtual function gabble_plugin_create_sidecar_finish is introduced. All gabble
   plugins should implement these two methods and all internal plugins are updated to use
-  this new API.
+  this new API. (siraj)
 
 telepathy-gabble 0.15.3 (2011-12-22)
 ====================================

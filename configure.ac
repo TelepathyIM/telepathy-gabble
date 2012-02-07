@@ -314,6 +314,11 @@ AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 prev_ac_configure_args=$ac_configure_args
 ac_configure_args="$ac_configure_args --with-installed-headers=${wocky_install_headers_dir}"
 
+# Code from the submodules will be linked in to the gabble-plugins.so shared library, so they need
+# to be compiled as position-independent code. Pass on any other flags we got as well.
+sub_cflags="$CFLAGS -fPIC"
+ac_configure_args+=" CFLAGS=\"$sub_cflags\""
+
 if test "x$ENABLE_CODING_STYLE_CHECKS" = xyes ; then
   ac_configure_args+=" --enable-coding-style-checks"
 else

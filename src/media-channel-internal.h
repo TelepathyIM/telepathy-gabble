@@ -40,6 +40,7 @@ struct _GabbleMediaChannelPrivate
   gchar *object_path;
   TpHandle creator;
   TpHandle initial_peer;
+  TpHandle peer;
   gboolean peer_in_rp;
 
   GabbleJingleSession *session;

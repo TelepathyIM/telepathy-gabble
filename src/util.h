@@ -72,6 +72,9 @@ GPtrArray *gabble_g_ptr_array_copy (GPtrArray *source);
 
 WockyBareContact * ensure_bare_contact_from_jid (GabbleConnection *conn,
     const gchar *jid);
+TpHandle ensure_handle_from_contact (
+    GabbleConnection *conn,
+    WockyContact *contact);
 
 gboolean jingle_pick_best_resource (GabbleConnection *conn,
     TpHandle peer,

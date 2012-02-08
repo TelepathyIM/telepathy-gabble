@@ -115,7 +115,6 @@ class CallContentAddingRemovalTest(CallTest):
             # considering the call finished.
             EventPattern('dbus-signal', signal='CallStateChanged'))
         assertEquals(ended.args[0], cs.CALL_STATE_ENDED)
-        print ended.args[2]
     
         # Only now does the peer ack the content-remove. This serves as a
         # regression test for contents outliving the session; if the content did

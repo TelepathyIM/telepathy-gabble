@@ -173,7 +173,9 @@ TWISTED_JINGLE_TESTS = \
 	jingle/accept-extra-stream.py \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
+	jingle/call-content-adding-removal.py \
 	jingle/call-dtmf.py \
+	jingle/call-google-relay.py \
 	jingle/call-hold-audio.py \
 	jingle/call-hold-av.py \
 	jingle/call-muc-cancel.py \

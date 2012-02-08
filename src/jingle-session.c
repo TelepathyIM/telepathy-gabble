@@ -2180,7 +2180,7 @@ gabble_jingle_session_remove_content (GabbleJingleSession *sess,
     }
   else
     {
-      /* session will be terminated when the content gets maked as removed */
+      /* session will be terminated when the content gets marked as removed */
       DEBUG ("called for last active content, doing session-terminate instead");
       gabble_jingle_content_remove (c, FALSE);
     }

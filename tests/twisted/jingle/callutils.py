@@ -85,17 +85,3 @@ def create_muji_channel (q, conn, stream, muc, in_muc = False):
     e = q.expect ('dbus-return', method='CreateChannel')
 
     return e.value
-
-def advertise_call (conn):
-    conn.ContactCapabilities.UpdateCapabilities([
-        (cs.CLIENT + ".CallHandler", [
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_AUDIO: True},
-            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
-                cs.CALL_INITIAL_VIDEO: True},
-            ], [
-                cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
-                cs.CHANNEL_TYPE_CALL + '/ice-udp',
-                cs.CHANNEL_TYPE_CALL + '/video/h264',
-            ]),
-        ])

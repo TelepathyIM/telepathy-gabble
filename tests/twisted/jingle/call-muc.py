@@ -7,11 +7,10 @@ from dbus.exceptions import DBusException
 
 from twisted.words.xish import xpath
 
-from gabbletest import exec_test, make_presence, sync_stream
+from gabbletest import exec_test, sync_stream
 from servicetest import (
-    make_channel_proxy, wrap_channel,
     EventPattern, call_async,
-    assertEquals, assertContains, assertLength, assertNotEquals
+    assertEquals, assertContains, assertLength
     )
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects, JingleProtocol031

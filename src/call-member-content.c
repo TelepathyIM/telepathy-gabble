@@ -476,7 +476,8 @@ gabble_call_member_content_remove (GabbleCallMemberContent *self)
   g_object_ref (self);
   /* Remove ourselves from the sesison */
   if (priv->jingle_content != NULL)
-      gabble_jingle_content_remove (priv->jingle_content, TRUE);
+      gabble_jingle_session_remove_content (priv->jingle_content->session,
+          priv->jingle_content);
 
   g_signal_emit (self, signals[REMOVED], 0);
   g_object_unref (self);

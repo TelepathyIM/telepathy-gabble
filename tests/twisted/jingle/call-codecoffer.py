@@ -6,7 +6,7 @@ import dbus
 from dbus.exceptions import DBusException
 
 from servicetest import (EventPattern,
-    assertEquals, assertContains, assertLength, assertNotEquals
+    assertEquals, assertLength, assertNotEquals
     )
 import ns
 import constants as cs

@@ -245,7 +245,7 @@ libgabble_plugins_la_LIBADD = \
    $(ALL_LIBS)
 
 libgabble_plugins_la_SOURCES = \
-   (top_srcdir)/gabble/capabilities.h \
+   $(top_srcdir)/gabble/capabilities.h \
    capabilities.c \
    $(top_srcdir)/gabble/caps-channel-manager.h \
    caps-channel-manager.c \
@@ -320,12 +320,21 @@ gabble-enumtypes.c: $(enumtype_sources) Makefile.in
 	$(enumtype_sources) > $@
 
 Android.mk: Makefile.am $(BUILT_SOURCES)
-	androgenizer -:PROJECT telepathy-gabble -:SHARED telepathy-gabble -:TAGS eng debug \
-	 -:REL_TOP $(top_srcdir) -:ABS_TOP $(abs_top_srcdir) \
-	 -:SOURCES $(libgabble_convenience_la_SOURCES) \
-	  $(nodist_libgabble_convenience_la_SOURCES) main.c \
-	 -:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-	  $(AM_CFLAGS) -DBUILD_AS_ANDROID_SERVICE \
-	  -:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) $(telepathy_gabble_LDFLAGS) \
-	  -:LDFLAGS $(telepathy_gabble_LDADD) $(libgabble_convenience_la_LIBADD) \
+	androgenizer -:PROJECT telepathy-gabble \
+	-:REL_TOP $(top_srcdir) -:ABS_TOP $(abs_top_srcdir) \
+	-:SHARED gabble-plugins -:TAGS eng debug \
+	-:SOURCES $(libgabble_plugins_la_SOURCES) \
+	-:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CFLAGS) \
+	-:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) \
+	-:LDFLAGS $(libgabble_plugins_la_LDFLAGS) \
+	$(libgabble_plugins_la_LIBADD) \
+	-:SHARED telepathy-gabble -:TAGS eng debug \
+	-:SOURCES $(libgabble_convenience_la_SOURCES) \
+	$(nodist_libgabble_convenience_la_SOURCES) main.c \
+	-:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
+	$(AM_CFLAGS) -DBUILD_AS_ANDROID_SERVICE \
+	-:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) $(telepathy_gabble_LDFLAGS) \
+	-:LDFLAGS $(telepathy_gabble_LDADD) $(libgabble_convenience_la_LIBADD) \
+	$(lib_LTLIBRARIES) \
 	> $@

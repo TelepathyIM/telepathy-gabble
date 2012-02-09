@@ -53,7 +53,10 @@ def test(q, bus, conn, stream):
                        'hidden'   : (cs.PRESENCE_HIDDEN,        True,  True)}
 
     presences = proto_prop_iface.Get(cs.PROTOCOL_IFACE_PRESENCES, 'Statuses');
-    assertEquals(expected_status, unwrap(presences))
+    # Plugins could add additional statuses, so we check if expected_status is
+    # included in presences rather than equality.
+    for k, v in expected_status.iteritems():
+        assertEquals(expected_status[k], unwrap(presences[k]))
 
     # (Only) 'account' is mandatory for IdentifyAccount()
     call_async(q, proto_iface, 'IdentifyAccount', {})

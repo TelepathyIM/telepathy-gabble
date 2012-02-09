@@ -148,6 +148,10 @@ if test -n "$with_ca_certificates"; then
     fi
 fi
 
+# We are still using GValueArray which has been deprecated in GLib. Disable
+# GLib deprecation warnings as the only way to fix this is to switch to GDBus.
+AC_DEFINE(GLIB_DISABLE_DEPRECATION_WARNINGS, 1, [Build with GLib deprecated])
+
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )

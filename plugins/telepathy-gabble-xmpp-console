@@ -324,10 +324,14 @@ plugin installed.""" % locals()
 
         self.console_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
             connection_bus_name, sidecar_path, CONSOLE_IFACE, None)
+        self.console_proxy.connect('notify::g-name-owner', self.__console_noc_cb)
 
         # Build up the UI
+        self.grid = Gtk.Grid()
+        self.add(self.grid)
+
         self.nb = Gtk.Notebook()
-        self.add(self.nb)
+        self.grid.attach(self.nb, 0, 0, 1, 1)
 
         self.iq = IQPage(self.console_proxy)
         self.nb.insert_page(self.iq,
@@ -344,7 +348,27 @@ plugin installed.""" % locals()
             Gtk.Label.new_with_mnemonic("_Monitor network traffic"),
             self.SNOOPY_PAGE)
 
+        self.infobar = Gtk.InfoBar()
+        self.infobar.set_message_type(Gtk.MessageType.WARNING)
+        self.infobar.set_no_show_all(True)
+        label = Gtk.Label("The connection went away! Time to leave.")
+        label.show()
+        self.infobar.get_content_area().add(label)
+        self.infobar_close_button = self.infobar.add_button("Close", Gtk.ResponseType.CLOSE)
+        self.infobar.connect('response', lambda infobar, response: Gtk.main_quit())
+        self.infobar.connect('close', lambda infobar: Gtk.main_quit())
+
+        self.grid.attach_next_to(self.infobar, self.nb,
+            Gtk.PositionType.BOTTOM, 1, 1)
+
         self.connect('destroy', Window.__destroy_cb)
+
+    def __console_noc_cb(self, *args):
+        if self.console_proxy.get_name_owner() is None:
+            self.infobar.show()
+            self.infobar_close_button.grab_focus()
+            self.nb.set_sensitive(False)
+        # TODO: reconnect if the connection comes back.
 
     def __destroy_cb(self):
         try:

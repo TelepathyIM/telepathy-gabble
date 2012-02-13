@@ -5,12 +5,22 @@ Test basic roster group functionality.
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 from rostertest import expect_contact_list_signals, check_contact_list_signals
 from servicetest import (assertLength, EventPattern, assertEquals, call_async,
-        sync_dbus)
+        sync_dbus, assertContains, assertDoesNotContain)
 import constants as cs
 import ns
 
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import xpath
+
+def parse_roster_change_request(query, iq):
+    item = query.firstChildElement()
+
+    groups = set()
+
+    for gn in xpath.queryForNodes('/iq/query/item/group', iq):
+        groups.add(str(gn))
+
+    return item['jid'], groups
 
 def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
@@ -74,14 +84,8 @@ def test(q, bus, conn, stream):
 
     assertEquals(set(('ladies', 'people starting with A')), set(s.args[0]))
 
-    item = iq.query.firstChildElement()
-    assertEquals('amy@foo.com', item['jid'])
-
-    groups = set()
-
-    for gn in xpath.queryForNodes('/iq/query/item/group', iq.stanza):
-        groups.add(str(gn))
-
+    jid, groups = parse_roster_change_request(iq.query, iq.stanza)
+    assertEquals('amy@foo.com', jid)
     assertEquals(set(('ladies', 'people starting with A')), groups)
 
     acknowledge_iq(stream, iq.stanza)
@@ -122,14 +126,8 @@ def test(q, bus, conn, stream):
         iq = q.expect('stream-iq', iq_type='set',
                 query_name='query', query_ns=ns.ROSTER)
 
-        item = iq.query.firstChildElement()
-        assertEquals('amy@foo.com', item['jid'])
-
-        groups = set()
-
-        for gn in xpath.queryForNodes('/iq/query/item/group', iq.stanza):
-            groups.add(str(gn))
-
+        jid, groups = parse_roster_change_request(iq.query, iq.stanza)
+        assertEquals('amy@foo.com', jid)
         assertEquals(set(('ladies',)), groups)
 
         acknowledge_iq(stream, iq.stanza)

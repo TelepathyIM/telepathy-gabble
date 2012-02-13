@@ -347,7 +347,11 @@ plugin installed.""" % locals()
         self.connect('destroy', Window.__destroy_cb)
 
     def __destroy_cb(self):
-        self.snoopy.teardown()
+        try:
+            self.snoopy.teardown()
+        except GLib.GError, e:
+            print "Couldn't turn off the monitor (maybe the connection went away?)"
+            print e
         Gtk.main_quit()
 
 GABBLE_PREFIX = 'org.freedesktop.Telepathy.Connection.gabble.jabber.'

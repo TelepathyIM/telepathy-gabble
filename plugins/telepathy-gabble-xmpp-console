@@ -357,20 +357,35 @@ plugin installed.""" % locals()
 GABBLE_PREFIX = 'org.freedesktop.Telepathy.Connection.gabble.jabber.'
 
 AM_BUS_NAME = 'org.freedesktop.Telepathy.AccountManager'
+AM_PATH = '/org/freedesktop/Telepathy/AccountManager'
+AM_IFACE = 'org.freedesktop.Telepathy.AccountManager'
 ACCOUNT_PREFIX = '/org/freedesktop/Telepathy/Account'
 ACCOUNT_IFACE = 'org.freedesktop.Telepathy.Account'
 
-def usage():
+def usage(bus):
+    am_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
+        AM_BUS_NAME, AM_PATH, AM_IFACE, None)
+    valid_accounts = am_proxy.get_cached_property('ValidAccounts').get_objv()
+    xmpp_accounts = sorted(
+        path[len(ACCOUNT_PREFIX + '/'):]
+        for path in valid_accounts
+        if path.startswith(ACCOUNT_PREFIX + '/gabble/')
+        )
+
     print """
 Usage:
 
   %(arg0)s gabble/jabber/blahblah
   %(arg0)s %(prefix)sblahblah
 
-List account identifiers using `mc-tool list | grep gabble`.
+Here are some account identifiers:
+
+  %(accounts)s
+
 List connection bus names using `qdbus | grep gabble`.
 """ % { 'arg0': sys.argv[0],
         'prefix': GABBLE_PREFIX,
+        'accounts': '\n  '.join(xmpp_accounts),
       }
     raise SystemExit(1)
 
@@ -378,7 +393,7 @@ if __name__ == '__main__':
     bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 
     if len(sys.argv) != 2:
-        usage()
+        usage(bus)
 
     thing = sys.argv[1]
 
@@ -395,7 +410,7 @@ if __name__ == '__main__':
             thing = nameify(path)
 
     if not re.match('^%s[a-zA-Z0-9_]+$' % GABBLE_PREFIX, thing):
-        usage()
+        usage(bus)
 
     win = Window(bus, thing)
     win.show_all()

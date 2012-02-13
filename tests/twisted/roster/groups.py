@@ -175,5 +175,36 @@ def test(q, bus, conn, stream):
         conn.Contacts.GetContactAttributes([amy],
             [cs.CONN_IFACE_CONTACT_GROUPS], False)[amy])
 
+    # Rename group 'ladies' to 'girls'
+    call_async(q, conn.ContactGroups, 'RenameGroup', 'ladies', 'girls')
+
+    # Amy is added to 'girls'
+    e = q.expect('stream-iq', iq_type='set', query_name='query', query_ns=ns.ROSTER)
+    jid, groups = parse_roster_change_request(e.query, e.stanza)
+    assertEquals('amy@foo.com', jid)
+    assertEquals(set(['girls', 'ladies']), groups)
+
+    send_roster_push(stream, 'amy@foo.com', ['girls', 'ladies'])
+    acknowledge_iq(stream, e.stanza)
+
+    # Amy is removed from 'ladies'
+    e = q.expect('stream-iq', iq_type='set', query_name='query', query_ns=ns.ROSTER)
+    jid, groups = parse_roster_change_request(e.query, e.stanza)
+    assertEquals('amy@foo.com', jid)
+    assertEquals(set(['girls']), groups)
+
+    send_roster_push(stream, 'amy@foo.com', ['girls'])
+    acknowledge_iq(stream, e.stanza)
+
+    q.expect('dbus-return', method='RenameGroup')
+
+    # check everything has been updated
+    groups = conn.Properties.Get(cs.CONN_IFACE_CONTACT_GROUPS, 'Groups')
+    assertContains('girls', groups)
+    assertDoesNotContain('ladies', groups)
+
+    contacts = conn.ContactList.GetContactListAttributes([cs.CONN_IFACE_CONTACT_GROUPS], False)
+    assertEquals(['girls'], contacts[amy][cs.CONN_IFACE_CONTACT_GROUPS + '/groups'])
+
 if __name__ == '__main__':
     exec_test(test)

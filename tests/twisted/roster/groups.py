@@ -22,6 +22,16 @@ def parse_roster_change_request(query, iq):
 
     return item['jid'], groups
 
+def send_roster_push(stream, jid, groups):
+    iq = IQ(stream, 'set')
+    query = iq.addElement((ns.ROSTER, 'query'))
+    item = query.addElement('item')
+    item['jid'] = jid
+    item['subscription'] = 'both'
+    for group in groups:
+        item.addElement('group', content=group)
+    stream.send(iq)
+
 def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'
@@ -92,14 +102,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-return', method='SetContactGroups')
 
     # Now the server sends us a roster push.
-    iq = IQ(stream, 'set')
-    query = iq.addElement((ns.ROSTER, 'query'))
-    item = query.addElement('item')
-    item['jid'] = 'amy@foo.com'
-    item['subscription'] = 'both'
-    item.addElement('group', content='people starting with A')
-    item.addElement('group', content='ladies')
-    stream.send(iq)
+    send_roster_push(stream, 'amy@foo.com', ['people starting with A', 'ladies'])
 
     # We get a single signal corresponding to that roster push
     e = q.expect('dbus-signal', signal='GroupsChanged',
@@ -144,23 +147,10 @@ def test(q, bus, conn, stream):
         if it_worked:
             # ... although in fact this is what *actually* removes Amy from the
             # group
-            iq = IQ(stream, 'set')
-            query = iq.addElement((ns.ROSTER, 'query'))
-            item = query.addElement('item')
-            item['jid'] = 'amy@foo.com'
-            item['subscription'] = 'both'
-            item.addElement('group', content='ladies')
-            stream.send(iq)
+            send_roster_push(stream, 'amy@foo.com', ['ladies'])
         else:
             # if the change didn't "stick", this message will revert it
-            iq = IQ(stream, 'set')
-            query = iq.addElement((ns.ROSTER, 'query'))
-            item = query.addElement('item')
-            item['jid'] = 'amy@foo.com'
-            item['subscription'] = 'both'
-            item.addElement('group', content='ladies')
-            item.addElement('group', content='people starting with A')
-            stream.send(iq)
+            send_roster_push(stream, 'amy@foo.com', ['ladies', 'people starting with A'])
 
             q.expect('dbus-signal', signal='GroupsCreated',
                     args=[['people starting with A']])

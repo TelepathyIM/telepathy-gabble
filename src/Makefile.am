@@ -132,6 +132,8 @@ libgabble_convenience_la_SOURCES = \
     muc-factory.c \
     muc-tube-dbus.h \
     muc-tube-dbus.c \
+    muc-tube-stream.h \
+    muc-tube-stream.c \
     $(top_srcdir)/gabble/namespaces.h \
     namespaces.h \
     olpc-activity.h \

@@ -1177,11 +1177,12 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 }
 
 static void
-_on_remove_reply (GObject *c_as_obj,
-    gboolean success,
-    WockyStanza *reply)
+_on_remove_reply (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (c_as_obj);
+  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
   GabbleJingleContentPrivate *priv = c->priv;
 
   g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
@@ -1192,6 +1193,7 @@ _on_remove_reply (GObject *c_as_obj,
    * 'removed'.
    */
   g_signal_emit (c, signals[REMOVED], 0);
+  g_object_unref (c);
 }
 
 static void
@@ -1233,8 +1235,9 @@ _content_remove (GabbleJingleContent *c,
         }
 
       gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
-      gabble_jingle_session_send (c->session, msg, _on_remove_reply,
-          (GObject *) c);
+      wocky_porter_send_iq_async (gabble_jingle_session_get_porter (c->session),
+          msg, NULL, _on_remove_reply, g_object_ref (c));
+      g_object_unref (msg);
     }
   else
     {

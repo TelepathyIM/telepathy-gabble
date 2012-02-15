@@ -78,7 +78,6 @@ struct _GabbleJingleSessionPrivate
 {
   GabbleConnection *conn;
 
-  TpHandle peer;
   WockyContact *peer_contact;
   /* Borrowed from peer_contact if it's a WockyResourceContact. */
   const gchar *peer_resource;
@@ -340,8 +339,6 @@ gabble_jingle_session_constructed (GObject *object)
       G_OBJECT_CLASS (gabble_jingle_session_parent_class)->constructed;
   GabbleJingleSession *self = GABBLE_JINGLE_SESSION (object);
   GabbleJingleSessionPrivate *priv = self->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (chain_up != NULL)
     chain_up (object);
@@ -351,7 +348,6 @@ gabble_jingle_session_constructed (GObject *object)
   g_assert (priv->sid != NULL);
 
   priv->peer_jid = wocky_contact_dup_jid (priv->peer_contact);
-  priv->peer = tp_handle_ensure (contact_repo, priv->peer_jid, NULL, NULL);
 
   if (priv->local_initiator)
     priv->initiator = gabble_connection_get_full_jid (priv->conn);
@@ -1890,8 +1886,6 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
   if (priv->local_initiator)
     {
-      TpHandle peer;
-
       if (priv->state != JINGLE_STATE_PENDING_CREATED)
         {
           DEBUG ("session is in state %u, won't try to initiate", priv->state);
@@ -1906,10 +1900,16 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
       /* send directed presence (including our own caps, avatar etc.) to
        * the peer, if we aren't already visible to them */
-      peer = sess->priv->peer;
-      if (!conn_presence_visible_to (priv->conn, peer))
-        conn_presence_signal_own_presence (priv->conn,
-            priv->peer_jid, NULL);
+      {
+        TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+            (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+        TpHandle peer = tp_handle_ensure (contact_repo, priv->peer_jid,
+            NULL, NULL);
+
+        if (!conn_presence_visible_to (priv->conn, peer))
+          conn_presence_signal_own_presence (priv->conn,
+              priv->peer_jid, NULL);
+      }
 
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JINGLE_STATE_PENDING_INITIATE_SENT;

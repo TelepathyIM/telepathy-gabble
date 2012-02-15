@@ -127,7 +127,6 @@ gboolean gabble_jingle_session_get_remote_ringing (GabbleJingleSession *sess);
 gboolean gabble_jingle_session_defines_action (GabbleJingleSession *sess,
     JingleAction action);
 
-TpHandle gabble_jingle_session_get_peer_handle (GabbleJingleSession *self);
 WockyContact *gabble_jingle_session_get_peer_contact (GabbleJingleSession *self);
 const gchar *gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess);
 

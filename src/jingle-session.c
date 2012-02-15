@@ -1916,7 +1916,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
       /* send directed presence (including our own caps, avatar etc.) to
        * the peer, if we aren't already visible to them */
-      peer = gabble_jingle_session_get_peer_handle (sess);
+      peer = sess->priv->peer;
       if (!conn_presence_visible_to (priv->conn, peer))
         conn_presence_signal_own_presence (priv->conn,
             priv->peer_jid, NULL);
@@ -2377,12 +2377,6 @@ JingleDialect
 gabble_jingle_session_get_dialect (GabbleJingleSession *sess)
 {
   return sess->priv->dialect;
-}
-
-TpHandle
-gabble_jingle_session_get_peer_handle (GabbleJingleSession *self)
-{
-  return self->priv->peer;
 }
 
 WockyContact *

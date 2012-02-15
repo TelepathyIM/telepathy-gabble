@@ -64,7 +64,6 @@ enum
 {
   PROP_CONNECTION = 1,
   PROP_SESSION_ID,
-  PROP_PEER,
   PROP_PEER_CONTACT,
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
@@ -258,9 +257,6 @@ gabble_jingle_session_get_property (GObject *object,
     case PROP_LOCAL_INITIATOR:
       g_value_set_boolean (value, priv->local_initiator);
       break;
-    case PROP_PEER:
-      g_value_set_uint (value, priv->peer);
-      break;
     case PROP_PEER_CONTACT:
       g_value_set_object (value, priv->peer_contact);
       break;
@@ -415,12 +411,6 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_LOCAL_INITIATOR,
       param_spec);
-
-  param_spec = g_param_spec_uint ("peer", "Session peer",
-      "The TpHandle representing the other party in the session.",
-      0, G_MAXUINT32, 0,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_PEER, param_spec);
 
   /**
    * GabbleJingleSession:peer-contact:

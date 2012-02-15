@@ -179,6 +179,8 @@ gabble_jingle_session_defines_action (GabbleJingleSession *sess,
 }
 
 static void gabble_jingle_session_send_held (GabbleJingleSession *sess);
+static void content_ready_cb (GabbleJingleContent *c, gpointer user_data);
+static void content_removed_cb (GabbleJingleContent *c, gpointer user_data);
 
 static void
 gabble_jingle_session_init (GabbleJingleSession *obj)
@@ -202,6 +204,25 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
 }
 
 static void
+dispose_content_hash (
+    GabbleJingleSession *sess,
+    GHashTable **contents)
+{
+  GHashTableIter iter;
+  gpointer content;
+
+  g_hash_table_iter_init (&iter, *contents);
+  while (g_hash_table_iter_next (&iter, NULL, &content))
+    {
+      g_signal_handlers_disconnect_by_func (content, content_ready_cb, sess);
+      g_signal_handlers_disconnect_by_func (content, content_removed_cb, sess);
+      g_hash_table_iter_remove (&iter);
+    }
+
+  tp_clear_pointer (contents, g_hash_table_unref);
+}
+
+static void
 gabble_jingle_session_dispose (GObject *object)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (object);
@@ -216,11 +237,8 @@ gabble_jingle_session_dispose (GObject *object)
   g_assert ((priv->state == JINGLE_STATE_PENDING_CREATED) ||
       (priv->state == JINGLE_STATE_ENDED));
 
-  g_hash_table_unref (priv->initiator_contents);
-  priv->initiator_contents = NULL;
-
-  g_hash_table_unref (priv->responder_contents);
-  priv->responder_contents = NULL;
+  dispose_content_hash (sess, &priv->initiator_contents);
+  dispose_content_hash (sess, &priv->responder_contents);
 
   tp_clear_object (&priv->peer_contact);
 
@@ -730,9 +748,6 @@ _foreach_content (GabbleJingleSession *sess,
         return;
     }
 }
-
-static void content_ready_cb (GabbleJingleContent *c, gpointer user_data);
-static void content_removed_cb (GabbleJingleContent *c, gpointer user_data);
 
 struct idle_content_reject_ctx {
     GabbleJingleSession *session;

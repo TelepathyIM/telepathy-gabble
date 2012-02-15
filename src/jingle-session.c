@@ -2396,3 +2396,9 @@ gabble_jingle_session_get_factory (GabbleJingleSession *self)
 {
   return self->priv->conn->jingle_factory;
 }
+
+WockyPorter *
+gabble_jingle_session_get_porter (GabbleJingleSession *self)
+{
+  return wocky_session_get_porter (self->priv->conn->session);
+}

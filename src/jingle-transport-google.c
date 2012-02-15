@@ -27,7 +27,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "connection.h"
 #include "debug.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
@@ -452,8 +451,9 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
       wocky_node_set_attribute (cnode, "name", name);
     }
 
-  _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
-      NULL, NULL);
+  wocky_porter_send_iq_async (
+      gabble_jingle_session_get_porter (priv->content->session), msg,
+      NULL, NULL, NULL);
   g_object_unref (msg);
 }
 

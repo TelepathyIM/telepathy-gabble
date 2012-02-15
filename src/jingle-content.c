@@ -233,7 +233,8 @@ gabble_jingle_content_set_property (GObject *object,
       if (priv->transport_ns != NULL)
         {
           GType transport_type = gabble_jingle_factory_lookup_transport (
-              self->conn->jingle_factory, priv->transport_ns);
+              gabble_jingle_session_get_factory (self->session),
+              priv->transport_ns);
 
           g_assert (transport_type != 0);
 
@@ -536,7 +537,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
           dialect = JINGLE_DIALECT_GTALK3;
           g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
           transport_type = gabble_jingle_factory_lookup_transport (
-              c->conn->jingle_factory, "");
+              gabble_jingle_session_get_factory (c->session),
+              "");
 
           /* in practice we do support gtalk-p2p, so this can't happen */
           if (G_UNLIKELY (transport_type == 0))
@@ -580,7 +582,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       const gchar *ns = wocky_node_get_ns (trans_node);
 
       transport_type = gabble_jingle_factory_lookup_transport (
-          c->conn->jingle_factory, ns);
+          gabble_jingle_session_get_factory (c->session), ns);
 
       if (transport_type == 0)
         {

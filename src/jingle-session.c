@@ -793,8 +793,8 @@ create_content (GabbleJingleSession *sess, GType content_type,
   GabbleJingleContent *c;
   GHashTable *contents;
 
-  DEBUG ("session creating new content name %s, type %d, conn %p, jf %p",
-    name, type, priv->conn, priv->conn->jingle_factory);
+  DEBUG ("session creating new content name %s, type %d, conn %p",
+    name, type, priv->conn);
 
   /* FIXME: media-type is introduced by GabbleJingleMediaRTP, not by the
    * superclass, so this call is unsafe in the general case */
@@ -869,7 +869,8 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
       content_ns = wocky_node_get_ns (desc_node);
       DEBUG ("namespace: %s", content_ns);
       content_type = gabble_jingle_factory_lookup_content_type (
-          priv->conn->jingle_factory, content_ns);
+          gabble_jingle_session_get_factory (sess),
+          content_ns);
     }
 
   if (content_type == 0)
@@ -997,19 +998,21 @@ on_session_initiate (GabbleJingleSession *sess, WockyNode *node,
 
       if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
         {
+          GabbleJingleFactory *factory =
+              gabble_jingle_session_get_factory (sess);
           GType content_type = 0;
 
           DEBUG ("GTalk v3 session with audio and video");
 
           /* audio and video content */
           content_type = gabble_jingle_factory_lookup_content_type (
-            priv->conn->jingle_factory, content_ns);
+            factory, content_ns);
           create_content (sess, content_type, JINGLE_MEDIA_TYPE_VIDEO,
             JINGLE_CONTENT_SENDERS_BOTH, NS_GOOGLE_SESSION_VIDEO, NULL,
               "video", node, error);
 
           content_type = gabble_jingle_factory_lookup_content_type (
-            priv->conn->jingle_factory, NS_GOOGLE_SESSION_PHONE);
+            factory, NS_GOOGLE_SESSION_PHONE);
           create_content (sess, content_type, JINGLE_MEDIA_TYPE_AUDIO,
             JINGLE_CONTENT_SENDERS_BOTH, NS_GOOGLE_SESSION_PHONE, NULL,
               "audio", node, error);
@@ -2208,7 +2211,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess,
     }
 
   content_type = gabble_jingle_factory_lookup_content_type (
-      priv->conn->jingle_factory, content_ns);
+      gabble_jingle_session_get_factory (sess),
+      content_ns);
 
   g_assert (content_type != 0);
 
@@ -2385,4 +2389,10 @@ const gchar *
 gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess)
 {
   return sess->priv->peer_jid;
+}
+
+GabbleJingleFactory *
+gabble_jingle_session_get_factory (GabbleJingleSession *self)
+{
+  return self->priv->conn->jingle_factory;
 }

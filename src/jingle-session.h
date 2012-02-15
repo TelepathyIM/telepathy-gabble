@@ -132,5 +132,7 @@ const gchar *gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess);
 
 const gchar *gabble_jingle_session_get_reason_name (JingleReason reason);
 
+GabbleJingleFactory *gabble_jingle_session_get_factory (GabbleJingleSession *self);
+
 #endif /* __JINGLE_SESSION_H__ */
 

@@ -771,7 +771,7 @@ idle_content_reject (gpointer data)
   wocky_node_set_attributes (node,
       "name", ctx->name, "creator", ctx->creator, NULL);
 
-  gabble_jingle_session_send (ctx->session, msg, NULL, NULL);
+  gabble_jingle_session_send (ctx->session, msg);
 
   g_object_unref (ctx->session);
   g_free (ctx->name);
@@ -1798,43 +1798,19 @@ _fill_content (GabbleJingleSession *sess,
     }
 }
 
-static void
-_process_reply (GabbleConnection *conn,
-    WockyStanza *sent,
-    WockyStanza *reply,
-    GObject *obj,
-    gpointer cb_)
-{
-  JingleReplyHandler cb = cb_;
-  WockyStanzaSubType sub_type;
-
-  wocky_stanza_get_type_info (reply, NULL, &sub_type);
-  cb (obj, sub_type == WOCKY_STANZA_SUB_TYPE_RESULT, reply);
-}
-
 /**
  * gabble_jingle_session_send:
  * @sess: a session
  * @stanza: (transfer full): a stanza, of which this function will take ownership
- * @cb: callback for the IQ reply, or %NULL to ignore the reply
- * @weak_object: an object to pass to @cb, or %NULL
  *
- * Sends an IQ, optionally calling @cb for the reply. If @weak_object is not
- * NULL, @cb will only be called if @weak_object is still alive.
+ * A shorthand for sending a Jingle IQ without waiting for the reply.
  */
 void
 gabble_jingle_session_send (GabbleJingleSession *sess,
-    WockyStanza *stanza,
-    JingleReplyHandler cb,
-    GObject *weak_object)
+    WockyStanza *stanza)
 {
-  if (cb != NULL)
-    _gabble_connection_send_with_reply (sess->priv->conn, stanza,
-        _process_reply, weak_object, cb, NULL);
-  else
-    _gabble_connection_send_with_reply (sess->priv->conn, stanza,
-        NULL, NULL, NULL, NULL);
-
+  wocky_porter_send_iq_async (gabble_jingle_session_get_porter (sess),
+      stanza, NULL, NULL, NULL);
   g_object_unref (stanza);
 }
 
@@ -2141,7 +2117,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
             wocky_node_add_child_with_content (r, "text", text);
         }
 
-      gabble_jingle_session_send (sess, msg, NULL, NULL);
+      gabble_jingle_session_send (sess, msg);
     }
 
   /* NOTE: on "terminated", jingle factory and media channel will unref
@@ -2374,7 +2350,7 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
   notification->ns = g_quark_from_static_string (NS_JINGLE_RTP_INFO);
 
   /* This is just informational, so ignoring the reply. */
-  gabble_jingle_session_send (sess, message, NULL, NULL);
+  gabble_jingle_session_send (sess, message);
 }
 
 static void

@@ -491,7 +491,7 @@ send_gtalk4_transport_accept (gpointer user_data)
   tnode = wocky_node_add_child_with_content (sess_node, "transport", NULL);
   tnode->ns = g_quark_from_string (priv->transport_ns);
 
-  gabble_jingle_session_send (c->session, msg, NULL, NULL);
+  gabble_jingle_session_send (c->session, msg);
 
   return FALSE;
 }
@@ -702,7 +702,7 @@ gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
   channel_node->ns = g_quark_from_string (priv->content_ns);
   wocky_node_set_attribute (channel_node, "name", name);
 
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  gabble_jingle_session_send (self->session, msg);
 
   return new_share_channel (self, name);
 }
@@ -721,7 +721,7 @@ gabble_jingle_content_send_complete (GabbleJingleContent *self)
   complete_node = wocky_node_add_child_with_content (sess_node, "complete", NULL);
   complete_node->ns = g_quark_from_string (priv->content_ns);
 
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  gabble_jingle_session_send (self->session, msg);
 
 }
 
@@ -997,7 +997,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
       &transport_node);
   gabble_jingle_transport_iface_inject_candidates (priv->transport,
       transport_node);
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  gabble_jingle_session_send (self->session, msg);
 
   priv->state = new_state;
   g_object_notify (G_OBJECT (self), "state");
@@ -1065,7 +1065,7 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
           JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
 
       gabble_jingle_content_produce_node (self, sess_node, TRUE, FALSE, NULL);
-      gabble_jingle_session_send (self->session, msg, NULL, NULL);
+      gabble_jingle_session_send (self->session, msg);
     }
   else
     {
@@ -1169,7 +1169,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
       gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
-      gabble_jingle_session_send (c->session, msg, NULL, NULL);
+      gabble_jingle_session_send (c->session, msg);
     }
 
   /* FIXME: actually check whether remote end accepts our content-modify */

@@ -110,12 +110,9 @@ gboolean gabble_jingle_session_peer_has_cap (
     GabbleJingleSession *self,
     const gchar *cap_or_quirk);
 
-typedef void (*JingleReplyHandler) (GObject *, gboolean success,
-    WockyStanza *reply);
-void gabble_jingle_session_send (GabbleJingleSession *sess,
-    WockyStanza *stanza,
-    JingleReplyHandler cb,
-    GObject *weak_object);
+void gabble_jingle_session_send (
+    GabbleJingleSession *sess,
+    WockyStanza *stanza);
 
 void gabble_jingle_session_set_local_hold (GabbleJingleSession *sess,
     gboolean held);

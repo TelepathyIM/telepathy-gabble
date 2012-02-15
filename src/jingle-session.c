@@ -1839,14 +1839,27 @@ gabble_jingle_session_send (GabbleJingleSession *sess,
 }
 
 static void
-_on_initiate_reply (GObject *sess_as_obj,
-    gboolean success,
-    WockyStanza *reply)
+_on_initiate_reply (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
+  WockyPorter *porter = WOCKY_PORTER (source);
+  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
   GabbleJingleSessionPrivate *priv = sess->priv;
+  WockyStanza *reply;
 
-  if (success)
+  if (priv->state != JINGLE_STATE_PENDING_INITIATE_SENT)
+    {
+      DEBUG ("Ignoring session-initiate reply; session %p is in state %u.",
+          sess, priv->state);
+      g_object_unref (sess);
+      return;
+    }
+
+  reply = wocky_porter_send_iq_finish (porter, result, NULL);
+  if (reply != NULL &&
+      !wocky_stanza_extract_errors (reply, NULL, NULL, NULL, NULL))
     {
       set_state (sess, JINGLE_STATE_PENDING_INITIATED, 0, NULL);
 
@@ -1864,16 +1877,32 @@ _on_initiate_reply (GObject *sess_as_obj,
       set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
+
+  g_clear_object (&reply);
 }
 
 static void
-_on_accept_reply (GObject *sess_as_obj,
-    gboolean success,
-    WockyStanza *reply)
+_on_accept_reply (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
+  WockyPorter *porter = WOCKY_PORTER (source);
+  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
+  GabbleJingleSessionPrivate *priv = sess->priv;
+  WockyStanza *reply;
 
-  if (success)
+  if (priv->state != JINGLE_STATE_PENDING_ACCEPT_SENT)
+    {
+      DEBUG ("Ignoring session-accept reply; session %p is in state %u.",
+          sess, priv->state);
+      g_object_unref (sess);
+      return;
+    }
+
+  reply = wocky_porter_send_iq_finish (porter, result, NULL);
+  if (reply != NULL &&
+      !wocky_stanza_extract_errors (reply, NULL, NULL, NULL, NULL))
     {
       set_state (sess, JINGLE_STATE_ACTIVE, 0, NULL);
       gabble_jingle_session_send_rtp_info (sess, "active");
@@ -1883,6 +1912,8 @@ _on_accept_reply (GObject *sess_as_obj,
       set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
+
+  g_clear_object (&reply);
 }
 
 static void
@@ -1894,7 +1925,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
   gboolean contents_ready = TRUE;
   JingleAction action;
   JingleState new_state;
-  JingleReplyHandler handler;
+  GAsyncReadyCallback handler;
 
   DEBUG ("Trying initiate or accept");
 
@@ -2000,7 +2031,9 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
 
   _map_initial_contents (sess, _fill_content, sess_node);
-  gabble_jingle_session_send (sess, msg, handler, (GObject *) sess);
+  wocky_porter_send_iq_async (gabble_jingle_session_get_porter (sess),
+      msg, NULL, handler, g_object_ref (sess));
+  g_object_unref (msg);
   set_state (sess, new_state, 0, NULL);
 
   /* now all initial contents can transmit their candidates */

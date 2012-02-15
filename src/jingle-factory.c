@@ -67,6 +67,7 @@ enum
 struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
+  WockyPorter *porter;
   guint jingle_handler_id;
   guint jingle_info_handler_id;
   GHashTable *content_types;
@@ -447,6 +448,7 @@ gabble_jingle_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
+  g_clear_object (&priv->porter);
   tp_clear_pointer (&priv->google_resolver, gabble_google_relay_resolver_destroy);
   tp_clear_pointer (&priv->sessions, g_hash_table_unref);
   tp_clear_pointer (&priv->content_types, g_hash_table_unref);
@@ -605,12 +607,10 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (priv->jingle_handler_id != 0)
+      if (priv->porter != NULL)
         {
-          WockyPorter *p = wocky_session_get_porter (priv->conn->session);
-
-          wocky_porter_unregister_handler (p, priv->jingle_handler_id);
-          wocky_porter_unregister_handler (p, priv->jingle_info_handler_id);
+          wocky_porter_unregister_handler (priv->porter, priv->jingle_handler_id);
+          wocky_porter_unregister_handler (priv->porter, priv->jingle_info_handler_id);
           priv->jingle_handler_id = 0;
           priv->jingle_info_handler_id = 0;
         }
@@ -628,7 +628,8 @@ connection_porter_available_cb (
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
   GabbleJingleFactoryPrivate *priv = self->priv;
 
-  g_assert (priv->jingle_handler_id == 0);
+  g_assert (priv->porter == NULL);
+  priv->porter = g_object_ref (porter);
 
   /* TODO: we could match different dialects here maybe? */
   priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (porter,
@@ -735,7 +736,6 @@ jingle_cb (
     gpointer user_data)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
-  GabbleJingleFactoryPrivate *priv = self->priv;
   GError *error = NULL;
   const gchar *sid, *from;
   GabbleJingleSession *sess;
@@ -764,15 +764,14 @@ jingle_cb (
     g_signal_emit (self, signals[NEW_SESSION], 0, sess);
 
   /* all went well, we can acknowledge the IQ */
-  _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+  wocky_porter_acknowledge_iq (porter, msg, NULL);
 
   return TRUE;
 
 REQUEST_ERROR:
   g_assert (error != NULL);
   DEBUG ("NAKing with error: %s", error->message);
-  wocky_porter_send_iq_gerror (wocky_session_get_porter (priv->conn->session),
-      msg, error);
+  wocky_porter_send_iq_gerror (porter, msg, error);
   g_error_free (error);
 
   if (sess != NULL && new_session)

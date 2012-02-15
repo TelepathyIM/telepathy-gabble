@@ -376,7 +376,11 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
               GabbleJingleShareManifestEntry *entry = i->data;
               GabbleFileTransferChannel *channel = NULL;
               gchar *filename = NULL;
-              TpHandle peer = gabble_jingle_session_get_peer_handle (sess);
+              TpHandleRepoIface *contacts = tp_base_connection_get_handles (
+                  TP_BASE_CONNECTION (self->priv->connection),
+                  TP_HANDLE_TYPE_CONTACT);
+              TpHandle peer = tp_handle_ensure (contacts,
+                  gabble_jingle_session_get_peer_jid (sess), NULL, NULL);
 
               filename = g_strdup_printf ("%s%s",
                   entry->name, entry->folder? ".tar":"");

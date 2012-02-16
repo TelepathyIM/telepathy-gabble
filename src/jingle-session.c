@@ -629,9 +629,9 @@ static void set_state (GabbleJingleSession *sess,
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
 gboolean
-gabble_jingle_session_peer_has_quirk (
+gabble_jingle_session_peer_has_cap (
     GabbleJingleSession *self,
-    const gchar *quirk)
+    const gchar *cap_or_quirk)
 {
   GabbleJingleSessionPrivate *priv = self->priv;
   GabblePresence *presence = gabble_presence_cache_get (
@@ -640,7 +640,7 @@ gabble_jingle_session_peer_has_quirk (
   return (presence != NULL &&
       priv->peer_resource != NULL &&
       gabble_presence_resource_has_caps (presence, priv->peer_resource,
-          gabble_capability_set_predicate_has, quirk));
+          gabble_capability_set_predicate_has, cap_or_quirk));
 }
 
 static gboolean
@@ -681,7 +681,7 @@ lookup_content (GabbleJingleSession *sess,
        * pick globally-unique content names.
        */
       if (creator == NULL &&
-          gabble_jingle_session_peer_has_quirk (sess,
+          gabble_jingle_session_peer_has_cap (sess,
               QUIRK_OMITS_CONTENT_CREATORS))
         {
           DEBUG ("working around missing 'creator' attribute");
@@ -2370,7 +2370,7 @@ gboolean
 gabble_jingle_session_can_modify_contents (GabbleJingleSession *sess)
 {
   return !JINGLE_IS_GOOGLE_DIALECT (sess->priv->dialect) &&
-      !gabble_jingle_session_peer_has_quirk (sess, QUIRK_GOOGLE_WEBMAIL_CLIENT);
+      !gabble_jingle_session_peer_has_cap (sess, QUIRK_GOOGLE_WEBMAIL_CLIENT);
 }
 
 JingleDialect

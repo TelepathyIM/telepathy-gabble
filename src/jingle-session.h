@@ -106,9 +106,9 @@ const gchar *gabble_jingle_session_get_sid (GabbleJingleSession *sess);
 JingleDialect gabble_jingle_session_get_dialect (GabbleJingleSession *sess);
 
 gboolean gabble_jingle_session_can_modify_contents (GabbleJingleSession *sess);
-gboolean gabble_jingle_session_peer_has_quirk (
+gboolean gabble_jingle_session_peer_has_cap (
     GabbleJingleSession *self,
-    const gchar *quirk);
+    const gchar *cap_or_quirk);
 
 typedef void (*JingleReplyHandler) (GObject *, gboolean success,
     WockyStanza *reply);

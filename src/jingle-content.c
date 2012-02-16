@@ -551,7 +551,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   else
     {
       if (creator == NULL &&
-          gabble_jingle_session_peer_has_quirk (c->session,
+          gabble_jingle_session_peer_has_cap (c->session,
               QUIRK_GOOGLE_WEBMAIL_CLIENT))
         {
           if (gabble_jingle_content_creator_is_initiator (c))

@@ -336,7 +336,7 @@ static void transport_created (GabbleJingleContent *content,
 
       if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO &&
           (JINGLE_IS_GOOGLE_DIALECT (dialect) ||
-           gabble_jingle_session_peer_has_quirk (content->session,
+           gabble_jingle_session_peer_has_cap (content->session,
                QUIRK_GOOGLE_WEBMAIL_CLIENT)))
         {
           jingle_transport_google_set_component_name (gtrans, "video_rtp", 1);

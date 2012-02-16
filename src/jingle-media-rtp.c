@@ -395,18 +395,6 @@ extract_media_type (WockyNode *desc_node,
   g_assert_not_reached ();
 }
 
-static gboolean
-content_has_cap (GabbleJingleContent *content, const gchar *cap)
-{
-  TpHandle peer = gabble_jingle_session_get_peer_handle (content->session);
-  GabblePresence *presence = gabble_presence_cache_get (
-      content->conn->presence_cache, peer);
-
-  return (presence != NULL) && gabble_presence_resource_has_caps (presence,
-      gabble_jingle_session_get_peer_resource (content->session),
-      gabble_capability_set_predicate_has, cap);
-}
-
 static JingleFeedbackMessage *
 parse_rtcp_fb (GabbleJingleContent *content, WockyNode *node)
 {
@@ -1089,10 +1077,10 @@ produce_description (GabbleJingleContent *content, WockyNode *content_node)
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   WockyNode *desc_node;
 
-  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+  if (gabble_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTCP_FB))
     priv->has_rtcp_fb = TRUE;
 
-  if (content_has_cap (content, NS_JINGLE_RTP_HDREXT))
+  if (gabble_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTP_HDREXT))
     priv->has_rtp_hdrext = TRUE;
 
   desc_node = produce_description_node (dialect, priv->media_type,

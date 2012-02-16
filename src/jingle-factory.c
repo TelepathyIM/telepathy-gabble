@@ -490,8 +490,9 @@ create_session (GabbleJingleFactory *fac,
    * get_unique_sid_for should have ensured the key is fresh. */
   g_assert (NULL == g_hash_table_lookup (priv->sessions, key));
 
-  sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, contact,
-      local_hold);
+  sess = gabble_jingle_session_new (priv->conn,
+      fac,
+      sid_, local_initiator, contact, local_hold);
   g_signal_connect (sess, "terminated",
     (GCallback) session_terminated_cb, fac);
 

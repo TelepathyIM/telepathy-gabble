@@ -67,7 +67,9 @@ struct _GabbleJingleSession {
     GabbleJingleSessionPrivate *priv;
 };
 
-GabbleJingleSession *gabble_jingle_session_new (GabbleConnection *connection,
+GabbleJingleSession *gabble_jingle_session_new (
+    GabbleConnection *connection,
+    GabbleJingleFactory *factory,
     const gchar *session_id,
     gboolean local_initiator,
     WockyContact *peer,

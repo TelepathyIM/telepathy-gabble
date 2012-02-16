@@ -25,7 +25,7 @@ class CallDtmfTest(CallTest):
         q.expect_many(
                 EventPattern('dbus-signal', signal='SendingTones', args=['3']),
                 EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                    args = [cs.CALL_SENDING_STATE_PENDING_SEND, 3]),
+                    args = [3, cs.CALL_SENDING_STATE_PENDING_SEND]),
                 EventPattern('dbus-return', method='StartTone'),
                 )
     
@@ -38,7 +38,7 @@ class CallDtmfTest(CallTest):
         call_async(q, content.DTMF, 'StopTone')
         q.expect_many(
                 EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                    args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 3]),
+                    args = [3, cs.CALL_SENDING_STATE_PENDING_STOP_SENDING]),
                 EventPattern('dbus-return', method='StopTone'),
                 )
     
@@ -58,32 +58,32 @@ class CallDtmfTest(CallTest):
             EventPattern('dbus-signal', signal='SendingTones', args=['123']),
             EventPattern('dbus-return', method='MultipleTones'),
             EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_SEND, 1]),
+                args = [1, cs.CALL_SENDING_STATE_PENDING_SEND]),
             )
         content.Media.AcknowledgeDTMFChange(1, cs.CALL_SENDING_STATE_SENDING)
     
         q.expect('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 1])
+                args = [1, cs.CALL_SENDING_STATE_PENDING_STOP_SENDING])
         content.Media.AcknowledgeDTMFChange(1, cs.CALL_SENDING_STATE_NONE)
     
         q.expect_many(
             EventPattern('dbus-signal', signal='SendingTones', args=['23']),
             EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_SEND, 2]),
+                args = [2, cs.CALL_SENDING_STATE_PENDING_SEND]),
             )
         content.Media.AcknowledgeDTMFChange(2, cs.CALL_SENDING_STATE_SENDING)
         q.expect('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 2])
+                args = [2, cs.CALL_SENDING_STATE_PENDING_STOP_SENDING])
         content.Media.AcknowledgeDTMFChange(2, cs.CALL_SENDING_STATE_NONE)
     
         q.expect_many(
             EventPattern('dbus-signal', signal='SendingTones', args=['3']),
             EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_SEND, 3]),
+                args = [3, cs.CALL_SENDING_STATE_PENDING_SEND]),
             )
         content.Media.AcknowledgeDTMFChange(3, cs.CALL_SENDING_STATE_SENDING)
         q.expect('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 3])
+                args = [3, cs.CALL_SENDING_STATE_PENDING_STOP_SENDING])
         content.Media.AcknowledgeDTMFChange(3, cs.CALL_SENDING_STATE_NONE)
     
         q.expect_many(
@@ -95,7 +95,7 @@ class CallDtmfTest(CallTest):
         q.expect_many(
             EventPattern('dbus-signal', signal='SendingTones'),
             EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_SEND, 1]),
+                args = [1, cs.CALL_SENDING_STATE_PENDING_SEND]),
             EventPattern('dbus-return', method='MultipleTones'),
             )
         call_async(q, content.DTMF, 'MultipleTones', '9')
@@ -107,7 +107,7 @@ class CallDtmfTest(CallTest):
         call_async(q, content.DTMF, 'StopTone')
         q.expect_many(
             EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 1]),
+                args = [1, cs.CALL_SENDING_STATE_PENDING_STOP_SENDING]),
             EventPattern('dbus-return', method='StopTone'),
             )
         call_async(q, content.Media, 'AcknowledgeDTMFChange',
@@ -128,7 +128,7 @@ class CallDtmfTest(CallTest):
         content.Media.AcknowledgeDTMFChange(1, cs.CALL_SENDING_STATE_SENDING)
     
         q.expect('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 1])
+                args = [1, cs.CALL_SENDING_STATE_PENDING_STOP_SENDING])
     
         call_async(q, content.Media, 'AcknowledgeDTMFChange', 1,
                 cs.CALL_SENDING_STATE_NONE)
@@ -144,7 +144,7 @@ class CallDtmfTest(CallTest):
         q.expect_many(
             EventPattern('dbus-signal', signal='SendingTones', args=['7']),
             EventPattern('dbus-signal', signal='DTMFChangeRequested',
-                args = [cs.CALL_SENDING_STATE_PENDING_SEND, 7]),
+                args = [7, cs.CALL_SENDING_STATE_PENDING_SEND]),
             EventPattern('dbus-return', method='StartTone'),
             )
     

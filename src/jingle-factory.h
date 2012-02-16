@@ -162,9 +162,6 @@ void gabble_jingle_factory_register_transport (GabbleJingleFactory *self,
 GType gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
     const gchar *xmlns);
 
-void _jingle_factory_unregister_session (GabbleJingleFactory *factory,
-    const gchar *sid);
-
 GabbleJingleSession *gabble_jingle_factory_create_session (
     GabbleJingleFactory *fac,
     const gchar *jid,

@@ -86,7 +86,8 @@ struct _GabbleJingleSessionPrivate
   /* Borrowed from peer_contact if it's a WockyResourceContact. */
   const gchar *peer_resource;
   gchar *peer_jid;
-  gchar *initiator;
+  /* Either borrowed from 'porter' or equal to peer_jid. */
+  const gchar *initiator;
   gboolean local_initiator;
 
   /* GabbleJingleContent objects keyed by content name.
@@ -253,9 +254,6 @@ gabble_jingle_session_dispose (GObject *object)
   g_free (priv->peer_jid);
   priv->peer_jid = NULL;
 
-  g_free (priv->initiator);
-  priv->initiator = NULL;
-
   if (G_OBJECT_CLASS (gabble_jingle_session_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_session_parent_class)->dispose (object);
 }
@@ -389,9 +387,9 @@ gabble_jingle_session_constructed (GObject *object)
   priv->peer_jid = wocky_contact_dup_jid (priv->peer_contact);
 
   if (priv->local_initiator)
-    priv->initiator = gabble_connection_get_full_jid (priv->conn);
+    priv->initiator = wocky_porter_get_full_jid (priv->porter);
   else
-    priv->initiator = g_strdup (priv->peer_jid);
+    priv->initiator = priv->peer_jid;
 
   if (WOCKY_IS_RESOURCE_CONTACT (priv->peer_contact))
     priv->peer_resource = wocky_resource_contact_get_resource (

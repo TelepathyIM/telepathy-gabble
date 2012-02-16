@@ -105,19 +105,16 @@ static GPtrArray *
 get_stun_servers (GabbleCallStream *self)
 {
   GPtrArray *arr;
-  GabbleConnection *connection;
+  GabbleJingleFactory *jf;
   gchar *stun_server;
   guint stun_port;
 
   arr = g_ptr_array_new_with_free_func ((GDestroyNotify) g_value_array_free);
-
-  g_object_get (self->priv->content,
-      "connection", &connection,
-      NULL);
+  jf = gabble_jingle_session_get_factory (self->priv->content->session);
 
   /* maybe one day we'll support multiple STUN servers */
   if (gabble_jingle_info_get_stun_server (
-          gabble_jingle_factory_get_jingle_info (connection->jingle_factory),
+          gabble_jingle_factory_get_jingle_info (jf),
           &stun_server, &stun_port))
     {
       GValueArray *va = tp_value_array_build (2,
@@ -128,8 +125,6 @@ get_stun_servers (GabbleCallStream *self)
       g_free (stun_server);
       g_ptr_array_add (arr, va);
     }
-
-  g_object_unref (connection);
 
   return arr;
 }

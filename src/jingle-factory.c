@@ -39,6 +39,7 @@
 #include "jingle-transport-rawudp.h"
 #include "jingle-transport-iceudp.h"
 #include "namespaces.h"
+#include "presence-cache.h"
 #include "util.h"
 
 #include "google-relay.h"
@@ -443,6 +444,35 @@ REQUEST_ERROR:
   return TRUE;
 }
 
+static gboolean
+session_query_cap_cb (
+    GabbleJingleSession *session,
+    WockyContact *contact,
+    const gchar *cap_or_quirk,
+    gpointer user_data)
+{
+  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
+  GabbleJingleFactoryPrivate *priv = self->priv;
+  GabblePresence *presence = gabble_presence_cache_get_for_contact (
+      priv->conn->presence_cache, contact);
+
+  if (presence == NULL)
+    return FALSE;
+
+  if (WOCKY_IS_RESOURCE_CONTACT (contact))
+    {
+      const gchar *peer_resource = wocky_resource_contact_get_resource (
+          WOCKY_RESOURCE_CONTACT (contact));
+
+      return gabble_presence_resource_has_caps (presence, peer_resource,
+          gabble_capability_set_predicate_has, cap_or_quirk);
+    }
+  else
+    {
+      return gabble_presence_has_cap (presence, cap_or_quirk);
+    }
+}
+
 /*
  * If sid is set to NULL a unique sid is generated and
  * the "local-initiator" property of the newly created
@@ -504,6 +534,9 @@ create_session (GabbleJingleFactory *fac,
 
   g_free (sid_);
   g_object_unref (contact);
+
+  gabble_signal_connect_weak (sess, "query-cap",
+      (GCallback) session_query_cap_cb, (GObject *) fac);
 
   return sess;
 }

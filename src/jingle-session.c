@@ -53,6 +53,7 @@ enum
   REMOTE_STATE_CHANGED,
   TERMINATED,
   CONTENT_REJECTED,
+  QUERY_CAP,
   LAST_SIGNAL
 };
 
@@ -523,6 +524,20 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, gabble_marshal_VOID__OBJECT_UINT_STRING,
         G_TYPE_NONE, 3, G_TYPE_OBJECT, G_TYPE_UINT, G_TYPE_STRING);
+
+  /*
+   * @contact: this call's peer (the artist commonly known as
+   *  gabble_jingle_session_get_peer_contact())
+   * @cap: the XEP-0115 feature string the session is interested in.
+   *
+   * Emitted when the session wants to check whether the peer has a particular
+   * capability. The handler should return %TRUE if @contact has @cap.
+   */
+  signals[QUERY_CAP] = g_signal_new ("query-cap",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, g_signal_accumulator_first_wins, NULL,
+        gabble_marshal_BOOLEAN__OBJECT_STRING,
+        G_TYPE_BOOLEAN, 2, WOCKY_TYPE_CONTACT, G_TYPE_STRING);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
@@ -674,13 +689,12 @@ gabble_jingle_session_peer_has_cap (
     const gchar *cap_or_quirk)
 {
   GabbleJingleSessionPrivate *priv = self->priv;
-  GabblePresence *presence = gabble_presence_cache_get_for_contact (
-      priv->conn->presence_cache, priv->peer_contact);
+  gboolean ret;
 
-  return (presence != NULL &&
-      priv->peer_resource != NULL &&
-      gabble_presence_resource_has_caps (presence, priv->peer_resource,
-          gabble_capability_set_predicate_has, cap_or_quirk));
+  g_signal_emit (self, signals[QUERY_CAP], 0,
+      priv->peer_contact, cap_or_quirk,
+      &ret);
+  return ret;
 }
 
 static gboolean

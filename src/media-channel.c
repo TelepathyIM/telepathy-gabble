@@ -327,7 +327,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   TpDBusDaemon *bus;
   TpIntSet *set;
   TpHandleRepoIface *contact_handles;
-  GabbleJingleFactory *jf;
+  GabbleJingleInfo *ji;
   const gchar *relay_token;
   gchar *stun_server;
   guint stun_port;
@@ -380,9 +380,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
       0);
 
   /* Set up Google relay related properties */
-  jf = priv->conn->jingle_factory;
+  ji = gabble_jingle_factory_get_jingle_info (priv->conn->jingle_factory);
 
-  if (gabble_jingle_factory_get_stun_server (jf, &stun_server,
+  if (gabble_jingle_info_get_stun_server (ji, &stun_server,
         &stun_port))
     {
       g_object_set (obj,
@@ -392,7 +392,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
       g_free (stun_server);
     }
 
-  relay_token = gabble_jingle_factory_get_google_relay_token (jf);
+  relay_token = gabble_jingle_info_get_google_relay_token (ji);
 
   if (relay_token != NULL)
     {
@@ -2867,8 +2867,9 @@ create_stream_from_content (GabbleMediaChannel *self,
          * don't yet know whether there will be RTCP. */
         d->nat_traversal = "gtalk-p2p";
         DEBUG ("Attempting to create Google relay session");
-        gabble_jingle_factory_create_google_relay_session (
-            self->priv->conn->jingle_factory, 2, google_relay_session_cb, d);
+        gabble_jingle_info_create_google_relay_session (
+            gabble_jingle_factory_get_jingle_info (self->priv->conn->jingle_factory),
+            2, google_relay_session_cb, d);
         return;
 
       case JINGLE_TRANSPORT_ICE_UDP:

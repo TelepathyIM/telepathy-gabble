@@ -62,7 +62,7 @@ main (int argc,
   test_resolver_add_A (TEST_RESOLVER (kludged),
       "stun.telepathy.im", "6.7.8.9");
 
-  gabble_jingle_factory_set_test_mode ();
+  gabble_jingle_info_set_test_mode ();
 #ifdef ENABLE_FILE_TRANSFER
   gtalk_file_collection_set_test_mode ();
 #endif

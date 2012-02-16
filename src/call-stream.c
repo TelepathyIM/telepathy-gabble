@@ -116,8 +116,9 @@ get_stun_servers (GabbleCallStream *self)
       NULL);
 
   /* maybe one day we'll support multiple STUN servers */
-  if (gabble_jingle_factory_get_stun_server (
-          connection->jingle_factory, &stun_server, &stun_port))
+  if (gabble_jingle_info_get_stun_server (
+          gabble_jingle_factory_get_jingle_info (connection->jingle_factory),
+          &stun_server, &stun_port))
     {
       GValueArray *va = tp_value_array_build (2,
           G_TYPE_STRING, stun_server,
@@ -218,7 +219,8 @@ content_remote_members_changed_cb (GabbleJingleContent *content,
 }
 
 static void
-jingle_factory_stun_server_changed_cb (GabbleJingleFactory *factory,
+jingle_info_stun_server_changed_cb (
+    GabbleJingleInfo *jingle_info,
     const gchar *stun_server,
     guint stun_port,
     GabbleCallStream *self)
@@ -348,7 +350,8 @@ gabble_call_stream_constructed (GObject *obj)
       /* See if our server is Google, and if it is, ask them for a relay.
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
-      gabble_jingle_factory_create_google_relay_session (conn->jingle_factory,
+      gabble_jingle_info_create_google_relay_session (
+          gabble_jingle_factory_get_jingle_info (conn->jingle_factory),
           2, google_relay_session_cb, tp_weak_ref_new (self, NULL, NULL));
     }
   else
@@ -368,8 +371,10 @@ gabble_call_stream_constructed (GObject *obj)
     G_CALLBACK (content_state_changed_cb), obj);
   gabble_signal_connect_weak (priv->content, "notify::senders",
     G_CALLBACK (content_remote_members_changed_cb), obj);
-  gabble_signal_connect_weak (conn->jingle_factory, "stun-server-changed",
-    G_CALLBACK (jingle_factory_stun_server_changed_cb), obj);
+  gabble_signal_connect_weak (
+      gabble_jingle_factory_get_jingle_info (conn->jingle_factory),
+      "stun-server-changed",
+      G_CALLBACK (jingle_info_stun_server_changed_cb), obj);
 }
 
 void

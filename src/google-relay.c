@@ -52,13 +52,13 @@ typedef struct
   GPtrArray *relays;
   guint component;
   guint requests_to_do;
-  GabbleJingleFactoryRelaySessionCb callback;
+  GabbleJingleInfoRelaySessionCb callback;
   gpointer user_data;
 } RelaySessionData;
 
 static RelaySessionData *
 relay_session_data_new (guint requests_to_do,
-    GabbleJingleFactoryRelaySessionCb callback,
+    GabbleJingleInfoRelaySessionCb callback,
     gpointer user_data)
 {
   RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
@@ -284,7 +284,7 @@ gabble_google_relay_resolver_resolve (GabbleGoogleRelayResolver *self,
     const gchar *server,
     guint16 port,
     const gchar *token,
-    GabbleJingleFactoryRelaySessionCb callback,
+    GabbleJingleInfoRelaySessionCb callback,
     gpointer user_data)
 {
   RelaySessionData *rsd =

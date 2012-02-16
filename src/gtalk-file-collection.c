@@ -983,8 +983,9 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   nice_agent_attach_recv (agent, stream_id, share_channel->component_id,
       g_main_context_default (), nice_data_received_cb, self);
 
-  if (gabble_jingle_factory_get_stun_server (
-          self->priv->jingle_factory, &stun_server, &stun_port))
+  if (gabble_jingle_info_get_stun_server (
+          gabble_jingle_factory_get_jingle_info (self->priv->jingle_factory),
+          &stun_server, &stun_port))
     {
       g_object_set (agent,
           "stun-server", stun_server,
@@ -998,8 +999,8 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   relay_data->share_channel = share_channel;
   g_object_add_weak_pointer (G_OBJECT (relay_data->u.self),
       &relay_data->u.ptr);
-  gabble_jingle_factory_create_google_relay_session (
-      self->priv->jingle_factory, 1,
+  gabble_jingle_info_create_google_relay_session (
+      gabble_jingle_factory_get_jingle_info (self->priv->jingle_factory), 1,
       google_relay_session_cb, relay_data);
 }
 

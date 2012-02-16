@@ -1686,8 +1686,10 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
      jingle-share but we have no google relay token */
   if (si &&
       (!jingle_share ||
-          gabble_jingle_factory_get_google_relay_token (
-              self->priv->connection->jingle_factory) == NULL))
+          gabble_jingle_info_get_google_relay_token (
+              gabble_jingle_factory_get_jingle_info (
+                  self->priv->connection->jingle_factory))
+              == NULL))
     {
       result = offer_bytestream (self, jid, si_resource, error);
     }

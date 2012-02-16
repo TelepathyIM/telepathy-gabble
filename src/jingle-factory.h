@@ -23,6 +23,7 @@
 #include <glib-object.h>
 
 #include "types.h"
+#include "jingle-info.h"
 
 G_BEGIN_DECLS
 
@@ -169,19 +170,8 @@ GabbleJingleSession *gabble_jingle_factory_create_session (
     const gchar *jid,
     gboolean local_hold);
 
-typedef void (*GabbleJingleFactoryRelaySessionCb) (GPtrArray *relays,
-    gpointer user_data);
-void gabble_jingle_factory_create_google_relay_session (
-    GabbleJingleFactory *self, guint components,
-    GabbleJingleFactoryRelaySessionCb callback, gpointer user_data);
-
-const gchar *gabble_jingle_factory_get_google_relay_token (
-    GabbleJingleFactory *self);
-
-gboolean gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
-    gchar **stun_server, guint *stun_port);
-
-void gabble_jingle_factory_set_test_mode (void);
+GabbleJingleInfo *gabble_jingle_factory_get_jingle_info (
+    GabbleJingleFactory *fac);
 
 G_END_DECLS;
 

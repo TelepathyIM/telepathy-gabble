@@ -288,7 +288,8 @@ gabble_media_stream_constructor (GType type, guint n_props,
       NULL);
 
   /* maybe one day we'll support multiple STUN servers */
-  if (gabble_jingle_factory_get_stun_server (connection->jingle_factory,
+  if (gabble_jingle_info_get_stun_server (
+        gabble_jingle_factory_get_jingle_info (connection->jingle_factory),
         &stun_server, &stun_port))
     {
       GValueArray *va = g_value_array_new (2);

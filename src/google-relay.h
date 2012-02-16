@@ -24,7 +24,7 @@
 
 #include <glib.h>
 
-#include "jingle-factory.h"
+#include "jingle-info.h"
 
 G_BEGIN_DECLS
 
@@ -37,7 +37,7 @@ void gabble_google_relay_resolver_resolve (GabbleGoogleRelayResolver *self,
     const gchar *server,
     guint16 port,
     const gchar *token,
-    GabbleJingleFactoryRelaySessionCb callback,
+    GabbleJingleInfoRelaySessionCb callback,
     gpointer user_data);
 
 G_END_DECLS

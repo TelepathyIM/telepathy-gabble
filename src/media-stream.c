@@ -272,7 +272,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
-  GabbleConnection *connection;
+  GabbleJingleFactory *jf;
   gchar *stun_server;
   guint stun_port;
 
@@ -287,13 +287,11 @@ gabble_media_stream_constructor (GType type, guint n_props,
   /* STUN servers are needed as soon as the stream appears, so there's little
    * point in waiting for them - either they've already been resolved, or
    * we're too late to use them for this stream */
-  g_object_get (priv->content,
-      "connection", &connection,
-      NULL);
+  jf = gabble_jingle_session_get_factory (priv->content->session);
 
   /* maybe one day we'll support multiple STUN servers */
   if (gabble_jingle_info_get_stun_server (
-        gabble_jingle_factory_get_jingle_info (connection->jingle_factory),
+        gabble_jingle_factory_get_jingle_info (jf),
         &stun_server, &stun_port))
     {
       GValueArray *va = g_value_array_new (2);
@@ -310,8 +308,6 @@ gabble_media_stream_constructor (GType type, guint n_props,
   /* go for the bus */
   g_assert (priv->dbus_daemon != NULL);
   tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path, obj);
-
-  g_object_unref (connection);
 
   update_direction (stream, priv->content);
 

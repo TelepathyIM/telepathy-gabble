@@ -54,6 +54,7 @@ enum
   TERMINATED,
   CONTENT_REJECTED,
   QUERY_CAP,
+  ABOUT_TO_INITIATE,
   LAST_SIGNAL
 };
 
@@ -538,6 +539,12 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
         0, g_signal_accumulator_first_wins, NULL,
         gabble_marshal_BOOLEAN__OBJECT_STRING,
         G_TYPE_BOOLEAN, 2, WOCKY_TYPE_CONTACT, G_TYPE_STRING);
+
+  signals[ABOUT_TO_INITIATE] = g_signal_new ("about-to-initiate",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL,
+        g_cclosure_marshal_VOID__VOID,
+        G_TYPE_NONE, 0);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
@@ -1971,18 +1978,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
           return;
         }
 
-      /* send directed presence (including our own caps, avatar etc.) to
-       * the peer, if we aren't already visible to them */
-      {
-        TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-            (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-        TpHandle peer = tp_handle_ensure (contact_repo, priv->peer_jid,
-            NULL, NULL);
-
-        if (!conn_presence_visible_to (priv->conn, peer))
-          conn_presence_signal_own_presence (priv->conn,
-              priv->peer_jid, NULL);
-      }
+      g_signal_emit (sess, signals[ABOUT_TO_INITIATE], 0);
 
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JINGLE_STATE_PENDING_INITIATE_SENT;

@@ -73,7 +73,8 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_OBJECT_PATH = 1,
+  PROP_DBUS_DAEMON = 1,
+  PROP_OBJECT_PATH,
   PROP_NAME,
   PROP_ID,
   PROP_MEDIA_TYPE,
@@ -97,6 +98,7 @@ struct _GabbleMediaStreamPrivate
   GabbleJingleContent *content;
 
   GabbleMediaSessionMode mode;
+  TpDBusDaemon *dbus_daemon;
   gchar *object_path;
   guint id;
   guint media_type;
@@ -159,7 +161,9 @@ static void update_direction (GabbleMediaStream *stream, GabbleJingleContent *c)
 static void update_sending (GabbleMediaStream *stream, gboolean start_sending);
 
 GabbleMediaStream *
-gabble_media_stream_new (const gchar *object_path,
+gabble_media_stream_new (
+    TpDBusDaemon *dbus_daemon,
+    const gchar *object_path,
     GabbleJingleContent *content,
     const gchar *name,
     guint id,
@@ -179,6 +183,7 @@ gabble_media_stream_new (const gchar *object_path,
     }
 
   result = g_object_new (GABBLE_TYPE_MEDIA_STREAM,
+      "dbus-daemon", dbus_daemon,
       "object-path", object_path,
       "content", content,
       "name", name,
@@ -267,7 +272,6 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GObject *obj;
   GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
-  TpDBusDaemon *bus;
   GabbleConnection *connection;
   gchar *stun_server;
   guint stun_port;
@@ -304,8 +308,8 @@ gabble_media_stream_constructor (GType type, guint n_props,
     }
 
   /* go for the bus */
-  bus = tp_base_connection_get_dbus_daemon ((TpBaseConnection *) connection);
-  tp_dbus_daemon_register_object (bus, priv->object_path, obj);
+  g_assert (priv->dbus_daemon != NULL);
+  tp_dbus_daemon_register_object (priv->dbus_daemon, priv->object_path, obj);
 
   g_object_unref (connection);
 
@@ -344,6 +348,9 @@ gabble_media_stream_get_property (GObject    *object,
   GabbleMediaStreamPrivate *priv = stream->priv;
 
   switch (property_id) {
+    case PROP_DBUS_DAEMON:
+      g_value_set_object (value, priv->dbus_daemon);
+      break;
     case PROP_OBJECT_PATH:
       g_value_set_string (value, priv->object_path);
       break;
@@ -405,6 +412,10 @@ gabble_media_stream_set_property (GObject      *object,
     case PROP_OBJECT_PATH:
       g_free (priv->object_path);
       priv->object_path = g_value_dup_string (value);
+      break;
+    case PROP_DBUS_DAEMON:
+      g_assert (priv->dbus_daemon == NULL);
+      priv->dbus_daemon = g_value_dup_object (value);
       break;
     case PROP_NAME:
       g_free (stream->name);
@@ -529,6 +540,12 @@ gabble_media_stream_class_init (GabbleMediaStreamClass *gabble_media_stream_clas
 
   object_class->dispose = gabble_media_stream_dispose;
   object_class->finalize = gabble_media_stream_finalize;
+
+  param_spec = g_param_spec_object ("dbus-daemon", "TpDBusDaemon",
+      "Bus on which to export this object",
+      TP_TYPE_DBUS_DAEMON,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_DBUS_DAEMON, param_spec);
 
   param_spec = g_param_spec_string ("object-path", "D-Bus object path",
                                     "The D-Bus object path used for this "
@@ -695,6 +712,7 @@ gabble_media_stream_dispose (GObject *object)
 
   tp_clear_object (&priv->content);
   tp_clear_pointer (&self->name, g_free);
+  g_clear_object (&priv->dbus_daemon);
 
   if (G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_media_stream_parent_class)->dispose (object);

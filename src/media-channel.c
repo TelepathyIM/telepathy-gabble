@@ -2638,8 +2638,9 @@ construct_stream (GabbleMediaChannel *chan,
   object_path = g_strdup_printf ("%s/MediaStream%u",
       priv->object_path, id);
 
-  stream = gabble_media_stream_new (object_path, c, name, id,
-      nat_traversal, relays, local_hold);
+  stream = gabble_media_stream_new (
+      tp_base_connection_get_dbus_daemon (TP_BASE_CONNECTION (priv->conn)),
+      object_path, c, name, id, nat_traversal, relays, local_hold);
   mtype = gabble_media_stream_get_media_type (stream);
 
   if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)

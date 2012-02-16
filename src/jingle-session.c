@@ -29,8 +29,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "gabble/capabilities.h"
-#include "connection.h"
-#include "conn-presence.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "gabble-enumtypes.h"
@@ -41,7 +39,6 @@
  */
 #include "jingle-media-rtp.h"
 #include "namespaces.h"
-#include "presence-cache.h"
 #include "util.h"
 
 G_DEFINE_TYPE(GabbleJingleSession, gabble_jingle_session, G_TYPE_OBJECT);
@@ -63,8 +60,7 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_JINGLE_FACTORY,
+  PROP_JINGLE_FACTORY = 1,
   PROP_PORTER,
   PROP_SESSION_ID,
   PROP_PEER_CONTACT,
@@ -79,7 +75,6 @@ enum
 
 struct _GabbleJingleSessionPrivate
 {
-  GabbleConnection *conn;
   /* Borrowed; the factory owns us. */
   GabbleJingleFactory *jingle_factory;
   WockyPorter *porter;
@@ -270,9 +265,6 @@ gabble_jingle_session_get_property (GObject *object,
   GabbleJingleSessionPrivate *priv = sess->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
-      break;
     case PROP_JINGLE_FACTORY:
       g_value_set_object (value, priv->jingle_factory);
       break;
@@ -319,10 +311,6 @@ gabble_jingle_session_set_property (GObject *object,
   GabbleJingleSessionPrivate *priv = sess->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      g_assert (priv->conn != NULL);
-      break;
     case PROP_JINGLE_FACTORY:
       priv->jingle_factory = g_value_get_object (value);
       g_assert (priv->jingle_factory != NULL);
@@ -380,7 +368,6 @@ gabble_jingle_session_constructed (GObject *object)
   if (chain_up != NULL)
     chain_up (object);
 
-  g_assert (priv->conn != NULL);
   g_assert (priv->jingle_factory != NULL);
   g_assert (priv->porter != NULL);
   g_assert (priv->peer_contact != NULL);
@@ -399,7 +386,7 @@ gabble_jingle_session_constructed (GObject *object)
 }
 
 GabbleJingleSession *
-gabble_jingle_session_new (GabbleConnection *connection,
+gabble_jingle_session_new (
                            GabbleJingleFactory *factory,
                            WockyPorter *porter,
                            const gchar *session_id,
@@ -409,7 +396,6 @@ gabble_jingle_session_new (GabbleConnection *connection,
 {
   return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
       "session-id", session_id,
-      "connection", connection,
       "jingle-factory", factory,
       "porter", porter,
       "local-initiator", local_initiator,
@@ -432,12 +418,6 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
   object_class->dispose = gabble_jingle_session_dispose;
 
   /* property definitions */
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object used for exchanging messages.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
   param_spec = g_param_spec_object ("jingle-factory",
       "GabbleJingleFactory object",
       "The Jingle factory which created this session",

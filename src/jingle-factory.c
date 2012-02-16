@@ -226,6 +226,7 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
 
   /* signal definitions */
 
+  /* Emitted for new incoming sessions (but not new outgoing sessions!) */
   signals[NEW_SESSION] = g_signal_new ("new-session",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
@@ -539,7 +540,7 @@ create_session (GabbleJingleFactory *fac,
    * get_unique_sid_for should have ensured the key is fresh. */
   g_assert (NULL == g_hash_table_lookup (priv->sessions, key));
 
-  sess = gabble_jingle_session_new (priv->conn,
+  sess = gabble_jingle_session_new (
       fac,
       priv->porter,
       sid_, local_initiator, contact, local_hold);

@@ -807,13 +807,11 @@ create_content (GabbleJingleSession *sess, GType content_type,
   GabbleJingleContent *c;
   GHashTable *contents;
 
-  DEBUG ("session creating new content name %s, type %d, conn %p",
-    name, type, priv->conn);
+  DEBUG ("session creating new content name %s, type %d", name, type);
 
   /* FIXME: media-type is introduced by GabbleJingleMediaRTP, not by the
    * superclass, so this call is unsafe in the general case */
   c = g_object_new (content_type,
-                    "connection", priv->conn,
                     "session", sess,
                     "content-ns", content_ns,
                     "transport-ns", transport_ns,

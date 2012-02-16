@@ -53,8 +53,7 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_SESSION,
+  PROP_SESSION = 1,
   PROP_CONTENT_NS,
   PROP_TRANSPORT_NS,
   PROP_NAME,
@@ -119,7 +118,6 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->gtalk4_event_id = 0;
   priv->dispose_has_run = FALSE;
 
-  obj->conn = NULL;
   obj->session = NULL;
 }
 
@@ -170,9 +168,6 @@ gabble_jingle_content_get_property (GObject *object,
   GabbleJingleContentPrivate *priv = self->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, self->conn);
-      break;
     case PROP_SESSION:
       g_value_set_object (value, self->session);
       break;
@@ -213,9 +208,6 @@ gabble_jingle_content_set_property (GObject *object,
   GabbleJingleContentPrivate *priv = self->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      self->conn = g_value_get_object (value);
-      break;
     case PROP_SESSION:
       self->session = g_value_get_object (value);
       break;
@@ -291,12 +283,6 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
   cls->get_default_senders = get_default_senders_real;
 
   /* property definitions */
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object used for exchanging messages.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session object that owns this content.",
       GABBLE_TYPE_JINGLE_SESSION,

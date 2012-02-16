@@ -95,7 +95,6 @@ struct _GabbleJingleContent {
     GObject parent;
     GabbleJingleContentPrivate *priv;
 
-    GabbleConnection *conn;
     GabbleJingleSession *session;
 };
 

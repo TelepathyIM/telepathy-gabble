@@ -151,7 +151,22 @@ class CallDtmfTest(CallTest):
         # Checked that DeferredTones is properly reset
         assertEquals('', content.Get(cs.CALL_CONTENT_IFACE_DTMF,
                     'DeferredTones', dbus_interface=dbus.PROPERTIES_IFACE));
-        
+
+        content.Media.AcknowledgeDTMFChange(6, cs.CALL_SENDING_STATE_SENDING)
+
+        call_async(q, content.DTMF, 'StopTone')
+        q.expect_many(
+            EventPattern('dbus-signal', signal='DTMFChangeRequested',
+                args = [cs.CALL_SENDING_STATE_PENDING_STOP_SENDING, 1]),
+            EventPattern('dbus-return', method='StopTone'),
+            )
+        call_async(q, content.Media, 'AcknowledgeDTMFChange',
+                1, cs.CALL_SENDING_STATE_NONE)
+        q.expect_many(
+            EventPattern('dbus-signal', signal='StoppedTones', args=[True]),
+            EventPattern('dbus-return', method='AcknowledgeDTMFChange'),
+            )
+
 
     def pickup(self):
         CallTest.pickup(self)

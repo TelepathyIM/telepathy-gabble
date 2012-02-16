@@ -180,7 +180,8 @@ gabble_call_member_content_add_to_session (GabbleCallMemberContent *self)
     content_ns, transport_ns);
 
   content = gabble_jingle_session_add_content (session,
-      priv->media_type, priv->name, content_ns, transport_ns);
+      priv->media_type, JINGLE_CONTENT_SENDERS_BOTH,
+      priv->name, content_ns, transport_ns);
 
   gabble_call_member_content_set_jingle_content (self, content);
 }

@@ -45,6 +45,7 @@ static TpBaseCallContent * call_muc_channel_add_content (
     TpBaseCallChannel *base,
     const gchar *name,
     TpMediaStreamType type,
+    TpMediaStreamDirection initial_direction,
     GError **error);
 static void call_muc_channel_hangup (
     TpBaseCallChannel *base,
@@ -1148,10 +1149,26 @@ static TpBaseCallContent *
 call_muc_channel_add_content (TpBaseCallChannel *base,
     const gchar *name,
     TpMediaStreamType type,
+    TpMediaStreamDirection initial_direction,
     GError **error)
 {
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (base);
   GabbleCallContent *content;
+
+  if (initial_direction == TP_MEDIA_STREAM_DIRECTION_NONE)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Jingle can not do contents with direction = NONE");
+      return NULL;
+    }
+
+  if (initial_direction != TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          "Adding un-directional contents is not supported"
+          " in MUC channels");
+      return NULL;
+    }
 
   content = gabble_base_call_channel_add_content (
         GABBLE_BASE_CALL_CHANNEL (base),

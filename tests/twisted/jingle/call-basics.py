@@ -69,7 +69,8 @@ class CallBasicsTest(CallTest):
 
     def test_content_addition(self):
         path = self.chan.AddContent("Webcam", cs.CALL_MEDIA_TYPE_VIDEO,
-                dbus_interface=cs.CHANNEL_TYPE_CALL)
+                                    cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+                                    dbus_interface=cs.CHANNEL_TYPE_CALL)
         content = self.bus.get_object(self.conn.bus_name, path)
         content_properties = content.GetAll(cs.CALL_CONTENT,
                 dbus_interface=dbus.PROPERTIES_IFACE)

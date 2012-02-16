@@ -439,6 +439,7 @@ GabbleCallMemberContent *
 gabble_call_member_create_content (GabbleCallMember *self,
   const gchar *name,
   JingleMediaType mtype,
+  JingleContentSenders senders,
   GError **error)
 {
   GabbleCallMemberPrivate *priv = self->priv;
@@ -473,7 +474,7 @@ gabble_call_member_create_content (GabbleCallMember *self,
     content_ns, priv->transport_ns);
 
   c = gabble_jingle_session_add_content (priv->session,
-      mtype, name, content_ns, priv->transport_ns);
+      mtype, senders, name, content_ns, priv->transport_ns);
 
   g_assert (c != NULL);
 
@@ -563,11 +564,11 @@ gabble_call_member_start_session (GabbleCallMember *self,
 
   if (audio_name != NULL)
     gabble_call_member_create_content (self, audio_name,
-      JINGLE_MEDIA_TYPE_AUDIO, NULL);
+      JINGLE_MEDIA_TYPE_AUDIO, JINGLE_CONTENT_SENDERS_BOTH, NULL);
 
   if (video_name != NULL)
     gabble_call_member_create_content (self, video_name,
-      JINGLE_MEDIA_TYPE_VIDEO, NULL);
+      JINGLE_MEDIA_TYPE_VIDEO, JINGLE_CONTENT_SENDERS_BOTH, NULL);
 
   return TRUE;
 }

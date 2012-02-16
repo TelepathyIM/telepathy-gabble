@@ -492,6 +492,7 @@ create_session (GabbleJingleFactory *fac,
 
   sess = gabble_jingle_session_new (priv->conn,
       fac,
+      priv->porter,
       sid_, local_initiator, contact, local_hold);
   g_signal_connect (sess, "terminated",
     (GCallback) session_terminated_cb, fac);

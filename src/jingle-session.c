@@ -63,6 +63,7 @@ enum
 {
   PROP_CONNECTION = 1,
   PROP_JINGLE_FACTORY,
+  PROP_PORTER,
   PROP_SESSION_ID,
   PROP_PEER_CONTACT,
   PROP_LOCAL_INITIATOR,
@@ -79,6 +80,7 @@ struct _GabbleJingleSessionPrivate
   GabbleConnection *conn;
   /* Borrowed; the factory owns us. */
   GabbleJingleFactory *jingle_factory;
+  WockyPorter *porter;
 
   WockyContact *peer_contact;
   /* Borrowed from peer_contact if it's a WockyResourceContact. */
@@ -243,6 +245,7 @@ gabble_jingle_session_dispose (GObject *object)
   dispose_content_hash (sess, &priv->responder_contents);
 
   tp_clear_object (&priv->peer_contact);
+  tp_clear_object (&priv->porter);
 
   g_free (priv->sid);
   priv->sid = NULL;
@@ -272,6 +275,9 @@ gabble_jingle_session_get_property (GObject *object,
       break;
     case PROP_JINGLE_FACTORY:
       g_value_set_object (value, priv->jingle_factory);
+      break;
+    case PROP_PORTER:
+      g_value_set_object (value, priv->porter);
       break;
     case PROP_SESSION_ID:
       g_value_set_string (value, priv->sid);
@@ -320,6 +326,10 @@ gabble_jingle_session_set_property (GObject *object,
     case PROP_JINGLE_FACTORY:
       priv->jingle_factory = g_value_get_object (value);
       g_assert (priv->jingle_factory != NULL);
+      break;
+    case PROP_PORTER:
+      priv->porter = g_value_dup_object (value);
+      g_assert (priv->porter != NULL);
       break;
     case PROP_SESSION_ID:
       g_free (priv->sid);
@@ -372,6 +382,7 @@ gabble_jingle_session_constructed (GObject *object)
 
   g_assert (priv->conn != NULL);
   g_assert (priv->jingle_factory != NULL);
+  g_assert (priv->porter != NULL);
   g_assert (priv->peer_contact != NULL);
   g_assert (priv->sid != NULL);
 
@@ -390,6 +401,7 @@ gabble_jingle_session_constructed (GObject *object)
 GabbleJingleSession *
 gabble_jingle_session_new (GabbleConnection *connection,
                            GabbleJingleFactory *factory,
+                           WockyPorter *porter,
                            const gchar *session_id,
                            gboolean local_initiator,
                            WockyContact *peer,
@@ -399,6 +411,7 @@ gabble_jingle_session_new (GabbleConnection *connection,
       "session-id", session_id,
       "connection", connection,
       "jingle-factory", factory,
+      "porter", porter,
       "local-initiator", local_initiator,
       "peer-contact", peer,
       "local-hold", local_hold,
@@ -431,6 +444,12 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
       GABBLE_TYPE_JINGLE_FACTORY,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_JINGLE_FACTORY, param_spec);
+
+  param_spec = g_param_spec_object ("porter", "WockyPorter",
+      "The WockyPorter for the current connection",
+      WOCKY_TYPE_PORTER,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_PORTER, param_spec);
 
   param_spec = g_param_spec_string ("session-id", "Session ID",
       "A unique session identifier used throughout all communication.",
@@ -1826,7 +1845,7 @@ void
 gabble_jingle_session_send (GabbleJingleSession *sess,
     WockyStanza *stanza)
 {
-  wocky_porter_send_iq_async (gabble_jingle_session_get_porter (sess),
+  wocky_porter_send_iq_async (sess->priv->porter,
       stanza, NULL, NULL, NULL);
   g_object_unref (stanza);
 }
@@ -2024,7 +2043,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
 
   _map_initial_contents (sess, _fill_content, sess_node);
-  wocky_porter_send_iq_async (gabble_jingle_session_get_porter (sess),
+  wocky_porter_send_iq_async (priv->porter,
       msg, NULL, handler, g_object_ref (sess));
   g_object_unref (msg);
   set_state (sess, new_state, 0, NULL);
@@ -2441,5 +2460,5 @@ gabble_jingle_session_get_factory (GabbleJingleSession *self)
 WockyPorter *
 gabble_jingle_session_get_porter (GabbleJingleSession *self)
 {
-  return wocky_session_get_porter (self->priv->conn->session);
+  return self->priv->porter;
 }

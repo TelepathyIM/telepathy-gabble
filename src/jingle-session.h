@@ -70,6 +70,7 @@ struct _GabbleJingleSession {
 GabbleJingleSession *gabble_jingle_session_new (
     GabbleConnection *connection,
     GabbleJingleFactory *factory,
+    WockyPorter *porter,
     const gchar *session_id,
     gboolean local_initiator,
     WockyContact *peer,

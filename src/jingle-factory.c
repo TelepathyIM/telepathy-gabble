@@ -29,7 +29,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "connection.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "jingle-share.h"
@@ -58,13 +57,12 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
+  PROP_SESSION = 1,
   LAST_PROPERTY
 };
 
 struct _GabbleJingleFactoryPrivate
 {
-  GabbleConnection *conn;
   WockySession *session;
   WockyPorter *porter;
   guint jingle_handler_id;
@@ -94,10 +92,7 @@ static void session_terminated_cb (GabbleJingleSession *sess,
     const gchar *text,
     GabbleJingleFactory *fac);
 
-static void connection_porter_available_cb (
-    GabbleConnection *conn,
-    WockyPorter *porter,
-    gpointer user_data);
+static void attach_to_wocky_session (GabbleJingleFactory *self);
 
 static void
 gabble_jingle_factory_init (GabbleJingleFactory *obj)
@@ -116,7 +111,6 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   priv->content_types = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
 
-  priv->conn = NULL;
   priv->dispose_has_run = FALSE;
 }
 
@@ -158,8 +152,8 @@ gabble_jingle_factory_get_property (GObject *object,
   GabbleJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
+    case PROP_SESSION:
+      g_value_set_object (value, priv->session);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -177,8 +171,8 @@ gabble_jingle_factory_set_property (GObject *object,
   GabbleJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
+    case PROP_SESSION:
+      priv->session = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -190,14 +184,12 @@ static void
 gabble_jingle_factory_constructed (GObject *obj)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (obj);
-  GabbleJingleFactoryPrivate *priv = self->priv;
   GObjectClass *parent = G_OBJECT_CLASS (gabble_jingle_factory_parent_class);
 
   if (parent->constructed != NULL)
     parent->constructed (obj);
 
-  gabble_signal_connect_weak (priv->conn, "porter-available",
-      (GCallback) connection_porter_available_cb, G_OBJECT (self));
+  attach_to_wocky_session (self);
 
   jingle_share_register (self);
   jingle_media_rtp_register (self);
@@ -219,12 +211,11 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
   object_class->set_property = gabble_jingle_factory_set_property;
   object_class->dispose = gabble_jingle_factory_dispose;
 
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that uses this Jingle Factory object",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+  param_spec = g_param_spec_object ("session", "WockySession object",
+      "WockySession to listen for Jingle sessions on",
+      WOCKY_TYPE_SESSION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
 
   /* signal definitions */
 
@@ -255,28 +246,22 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
 
 GabbleJingleFactory *
 gabble_jingle_factory_new (
-    GabbleConnection *conn)
+    WockySession *session)
 {
   return g_object_new (GABBLE_TYPE_JINGLE_FACTORY,
-      "connection", conn,
+      "session", session,
       NULL);
 }
 
 static void
-connection_porter_available_cb (
-    GabbleConnection *conn,
-    WockyPorter *porter,
-    gpointer user_data)
+attach_to_wocky_session (GabbleJingleFactory *self)
 {
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
   GabbleJingleFactoryPrivate *priv = self->priv;
 
-  /* If we have a WockyPorter, we should definitely have a WockySession */
-  g_assert (conn->session != NULL);
-  priv->session = g_object_ref (conn->session);
+  g_assert (priv->session != NULL);
 
   g_assert (priv->porter == NULL);
-  priv->porter = g_object_ref (wocky_session_get_porter (conn->session));
+  priv->porter = g_object_ref (wocky_session_get_porter (priv->session));
 
   /* TODO: we could match different dialects here maybe? */
   priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (

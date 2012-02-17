@@ -58,6 +58,11 @@ static void connection_status_changed_cb (
     guint status,
     guint reason,
     gpointer user_data);
+static void connection_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data);
+
 static void factory_new_session_cb (
     GabbleJingleFactory *factory,
     GabbleJingleSession *session,
@@ -132,12 +137,8 @@ gabble_jingle_mint_constructed (GObject *object)
 
   tp_g_signal_connect_object (priv->conn, "status-changed",
       (GCallback) connection_status_changed_cb, self, 0);
-
-  priv->factory = gabble_jingle_factory_new (priv->conn);
-  tp_g_signal_connect_object (priv->factory, "new-session",
-      (GCallback) factory_new_session_cb, self, 0);
-  tp_g_signal_connect_object (priv->factory, "query-cap",
-      (GCallback) factory_query_cap_cb, self, 0);
+  tp_g_signal_connect_object (priv->conn, "porter-available",
+      (GCallback) connection_porter_available_cb, self, 0);
 }
 
 static void
@@ -241,6 +242,27 @@ connection_status_changed_cb (
         gabble_jingle_factory_stop (priv->factory);
       break;
     }
+}
+
+static void
+connection_porter_available_cb (
+    GabbleConnection *conn,
+    WockyPorter *porter,
+    gpointer user_data)
+{
+  GabbleJingleMint *self = GABBLE_JINGLE_MINT (user_data);
+  GabbleJingleMintPrivate *priv = self->priv;
+
+  /* If we have a WockyPorter, we should definitely have a WockySession */
+  g_assert (conn->session != NULL);
+
+  g_assert (priv->factory == NULL);
+  priv->factory = gabble_jingle_factory_new (conn->session);
+
+  tp_g_signal_connect_object (priv->factory, "new-session",
+      (GCallback) factory_new_session_cb, self, 0);
+  tp_g_signal_connect_object (priv->factory, "query-cap",
+      (GCallback) factory_query_cap_cb, self, 0);
 }
 
 static void

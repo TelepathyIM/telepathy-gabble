@@ -153,7 +153,7 @@ struct _GabbleJingleFactory {
 };
 
 GabbleJingleFactory *gabble_jingle_factory_new (
-    GabbleConnection *conn);
+    WockySession *session);
 
 void gabble_jingle_factory_stop (GabbleJingleFactory *self);
 

@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include "types.h"
+#include "jingle-types.h"
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/dtmf.h>
 #include <telepathy-glib/enums.h>

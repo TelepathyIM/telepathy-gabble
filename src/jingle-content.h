@@ -21,9 +21,10 @@
 #define __JINGLE_CONTENT_H__
 
 #include <glib-object.h>
-#include "types.h"
+
 #include "jingle-factory.h"
 #include "jingle-transport-iface.h"
+#include "jingle-types.h"
 
 G_BEGIN_DECLS
 

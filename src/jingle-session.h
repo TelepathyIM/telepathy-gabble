@@ -25,7 +25,7 @@
 
 #include "jingle-content.h"
 #include "jingle-factory.h"
-#include "types.h"
+#include "jingle-types.h"
 
 G_BEGIN_DECLS
 

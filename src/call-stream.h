@@ -24,7 +24,8 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/base-media-call-stream.h>
-#include "types.h"
+
+#include "jingle-types.h"
 
 G_BEGIN_DECLS
 

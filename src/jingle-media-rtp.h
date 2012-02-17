@@ -21,9 +21,9 @@
 #define __JINGLE_MEDIA_RTP_H__
 
 #include <glib-object.h>
-#include "types.h"
 
 #include "jingle-content.h"
+#include "jingle-types.h"
 
 G_BEGIN_DECLS
 

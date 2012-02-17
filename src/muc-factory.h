@@ -24,6 +24,7 @@
 #include <wocky/wocky.h>
 
 #include "bytestream-iface.h"
+#include "jingle-types.h"
 #include "types.h"
 
 G_BEGIN_DECLS

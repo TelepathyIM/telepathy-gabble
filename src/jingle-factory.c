@@ -134,7 +134,9 @@ gabble_jingle_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
+  gabble_jingle_factory_stop (fac);
   g_clear_object (&priv->porter);
+
   g_hash_table_unref (priv->sessions);
   priv->sessions = NULL;
   g_hash_table_unref (priv->content_types);

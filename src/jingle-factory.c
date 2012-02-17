@@ -135,9 +135,12 @@ gabble_jingle_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   g_clear_object (&priv->porter);
-  tp_clear_pointer (&priv->sessions, g_hash_table_unref);
-  tp_clear_pointer (&priv->content_types, g_hash_table_unref);
-  tp_clear_pointer (&priv->transports, g_hash_table_unref);
+  g_hash_table_unref (priv->sessions);
+  priv->sessions = NULL;
+  g_hash_table_unref (priv->content_types);
+  priv->content_types = NULL;
+  g_hash_table_unref (priv->transports);
+  priv->transports = NULL;
   g_clear_object (&priv->jingle_info);
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)

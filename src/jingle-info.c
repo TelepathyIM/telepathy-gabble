@@ -167,11 +167,20 @@ gabble_jingle_info_dispose (GObject *object)
       g_clear_object (&priv->porter);
     }
 
-  tp_clear_pointer (&priv->google_resolver, gabble_google_relay_resolver_destroy);
-  tp_clear_pointer (&priv->stun_server, g_free);
-  tp_clear_pointer (&priv->fallback_stun_server, g_free);
-  tp_clear_pointer (&priv->relay_token, g_free);
-  tp_clear_pointer (&priv->relay_server, g_free);
+  if (priv->google_resolver != NULL)
+    {
+      gabble_google_relay_resolver_destroy (priv->google_resolver);
+      priv->google_resolver = NULL;
+    }
+
+  g_free (priv->stun_server);
+  priv->stun_server = NULL;
+  g_free (priv->fallback_stun_server);
+  priv->fallback_stun_server = NULL;
+  g_free (priv->relay_token);
+  priv->relay_token = NULL;
+  g_free (priv->relay_server);
+  priv->relay_server = NULL;
 }
 
 static void
@@ -489,7 +498,7 @@ jingle_info_reply_cb (
       g_clear_error (&error);
     }
 
-  tp_clear_object (&reply);
+  g_clear_object (&reply);
   g_object_unref (self);
 }
 

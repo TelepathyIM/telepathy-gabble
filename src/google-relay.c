@@ -273,7 +273,7 @@ gabble_google_relay_resolver_new (void)
 void
 gabble_google_relay_resolver_destroy (GabbleGoogleRelayResolver *self)
 {
-  tp_clear_object (&self->soup);
+  g_clear_object (&self->soup);
 
   g_slice_free (GabbleGoogleRelayResolver, self);
 }

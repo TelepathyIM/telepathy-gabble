@@ -221,7 +221,8 @@ dispose_content_hash (
       g_hash_table_iter_remove (&iter);
     }
 
-  tp_clear_pointer (contents, g_hash_table_unref);
+  g_hash_table_unref (*contents);
+  *contents = NULL;
 }
 
 static void
@@ -242,8 +243,8 @@ gabble_jingle_session_dispose (GObject *object)
   dispose_content_hash (sess, &priv->initiator_contents);
   dispose_content_hash (sess, &priv->responder_contents);
 
-  tp_clear_object (&priv->peer_contact);
-  tp_clear_object (&priv->porter);
+  g_clear_object (&priv->peer_contact);
+  g_clear_object (&priv->porter);
 
   g_free (priv->sid);
   priv->sid = NULL;

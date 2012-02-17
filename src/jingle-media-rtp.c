@@ -680,7 +680,8 @@ out:
   if (new_media_description != NULL)
     jingle_media_description_free (new_media_description);
 
-  tp_clear_pointer (&rc, g_hash_table_unref);
+  if (rc != NULL)
+    g_hash_table_unref (rc);
 
   if (e != NULL)
     {

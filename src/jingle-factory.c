@@ -88,7 +88,7 @@ static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
 
 static void session_terminated_cb (GabbleJingleSession *sess,
     gboolean local_terminator,
-    TpChannelGroupChangeReason reason,
+    JingleReason reason,
     const gchar *text,
     GabbleJingleFactory *fac);
 
@@ -567,9 +567,9 @@ gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
 
 static void
 session_terminated_cb (GabbleJingleSession *session,
-                       gboolean local_terminator,
-                       TpChannelGroupChangeReason reason,
-                       const gchar *text,
+                       gboolean local_terminator G_GNUC_UNUSED,
+                       JingleReason reason G_GNUC_UNUSED,
+                       const gchar *text G_GNUC_UNUSED,
                        GabbleJingleFactory *factory)
 {
   gchar *key = make_session_map_key (

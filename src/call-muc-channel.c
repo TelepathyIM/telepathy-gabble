@@ -33,6 +33,7 @@
 #include "call-muc-channel.h"
 #include "util.h"
 #include "namespaces.h"
+#include "jingle-tp-util.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 

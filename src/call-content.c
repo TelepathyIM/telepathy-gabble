@@ -34,6 +34,7 @@
 #include "jingle-content.h"
 #include "jingle-session.h"
 #include "jingle-media-rtp.h"
+#include "jingle-tp-util.h"
 #include "connection.h"
 #include "util.h"
 

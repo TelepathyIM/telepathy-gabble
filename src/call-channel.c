@@ -39,6 +39,7 @@
 
 #include "connection.h"
 #include "jingle-session.h"
+#include "jingle-tp-util.h"
 #include "presence-cache.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA

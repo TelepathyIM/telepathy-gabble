@@ -227,11 +227,15 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
 
   /* signal definitions */
 
-  /* Emitted for new incoming sessions (but not new outgoing sessions!) */
+  /*
+   * @session: a fresh new Jingle session for your listening pleasure
+   * @initiated_locally: %TRUE if this is a new outgoing session; %FALSE if it
+   *  is a new incoming session
+   */
   signals[NEW_SESSION] = g_signal_new ("new-session",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, g_cclosure_marshal_VOID__OBJECT,
-        G_TYPE_NONE, 1, GABBLE_TYPE_JINGLE_SESSION);
+        0, NULL, NULL, gabble_marshal_VOID__OBJECT_BOOL,
+        G_TYPE_NONE, 2, GABBLE_TYPE_JINGLE_SESSION, G_TYPE_BOOLEAN);
 }
 
 GabbleJingleFactory *
@@ -400,7 +404,7 @@ jingle_cb (
    * signal listeners.
    */
   if (new_session)
-    g_signal_emit (self, signals[NEW_SESSION], 0, sess);
+    g_signal_emit (self, signals[NEW_SESSION], 0, sess, FALSE);
 
   /* all went well, we can acknowledge the IQ */
   wocky_porter_acknowledge_iq (porter, msg, NULL);
@@ -543,7 +547,10 @@ gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
     const gchar *jid,
     gboolean local_hold)
 {
-  return create_session (fac, NULL, jid, local_hold);
+  GabbleJingleSession *session = create_session (fac, NULL, jid, local_hold);
+
+  g_signal_emit (fac, signals[NEW_SESSION], 0, session, TRUE);
+  return session;
 }
 
 void

@@ -59,6 +59,7 @@ static void connection_status_changed_cb (
 static void factory_new_session_cb (
     GabbleJingleFactory *factory,
     GabbleJingleSession *session,
+    gboolean initiated_locally,
     gpointer user_data);
 
 G_DEFINE_TYPE (GabbleJingleMint, gabble_jingle_mint, G_TYPE_OBJECT)
@@ -237,12 +238,14 @@ static void
 factory_new_session_cb (
     GabbleJingleFactory *factory,
     GabbleJingleSession *session,
+    gboolean initiated_locally,
     gpointer user_data)
 {
   GabbleJingleMint *self = GABBLE_JINGLE_MINT (user_data);
 
-  /* Proxy the signal outwards */
-  g_signal_emit (self, signals[NEW_SESSION], 0, session);
+  /* Proxy the signal outwards if this is a new incoming session. */
+  if (!initiated_locally)
+    g_signal_emit (self, signals[NEW_SESSION], 0, session);
 }
 
 GabbleJingleFactory *

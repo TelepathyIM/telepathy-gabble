@@ -2137,7 +2137,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
 
           wocky_node_add_child_with_content (r, reason_elt, NULL);
 
-          if (!tp_str_empty (text))
+          if (text != NULL && *text != '\0')
             wocky_node_add_child_with_content (r, "text", text);
         }
 

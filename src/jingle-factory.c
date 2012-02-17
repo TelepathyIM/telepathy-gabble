@@ -232,8 +232,8 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
   /* Emitted for new incoming sessions (but not new outgoing sessions!) */
   signals[NEW_SESSION] = g_signal_new ("new-session",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
-        G_TYPE_NONE, 1, G_TYPE_POINTER);
+        0, NULL, NULL, g_cclosure_marshal_VOID__OBJECT,
+        G_TYPE_NONE, 1, GABBLE_TYPE_JINGLE_SESSION);
 }
 
 static void

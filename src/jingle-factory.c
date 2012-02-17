@@ -30,7 +30,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
-#include "conn-presence.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "jingle-share.h"
@@ -452,24 +451,6 @@ session_query_cap_cb (
     }
 }
 
-static void
-session_about_to_initiate_cb (
-    GabbleJingleSession *session,
-    gpointer user_data)
-{
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
-  GabbleJingleFactoryPrivate *priv = self->priv;
-  const gchar *peer_jid = gabble_jingle_session_get_peer_jid (session);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  TpHandle peer = tp_handle_ensure (contact_repo, peer_jid, NULL, NULL);
-
-  /* send directed presence (including our own caps, avatar etc.) to
-   * the peer, if we aren't already visible to them */
-  if (!conn_presence_visible_to (priv->conn, peer))
-    conn_presence_signal_own_presence (priv->conn, peer_jid, NULL);
-}
-
 /*
  * If sid is set to NULL a unique sid is generated and
  * the "local-initiator" property of the newly created
@@ -534,10 +515,6 @@ create_session (GabbleJingleFactory *fac,
 
   gabble_signal_connect_weak (sess, "query-cap",
       (GCallback) session_query_cap_cb, (GObject *) fac);
-
-  if (local_initiator)
-    gabble_signal_connect_weak (sess, "about-to-initiate",
-        (GCallback) session_about_to_initiate_cb, (GObject *) fac);
 
   return sess;
 }

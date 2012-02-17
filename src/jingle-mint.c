@@ -30,6 +30,7 @@
 #include "debug.h"
 
 #include "connection.h"
+#include "conn-presence.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
 
@@ -235,6 +236,24 @@ connection_status_changed_cb (
 }
 
 static void
+session_about_to_initiate_cb (
+    GabbleJingleSession *session,
+    gpointer user_data)
+{
+  GabbleJingleMint *self = GABBLE_JINGLE_MINT (user_data);
+  GabbleJingleMintPrivate *priv = self->priv;
+  const gchar *peer_jid = gabble_jingle_session_get_peer_jid (session);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle peer = tp_handle_ensure (contact_repo, peer_jid, NULL, NULL);
+
+  /* send directed presence (including our own caps, avatar etc.) to
+   * the peer, if we aren't already visible to them */
+  if (!conn_presence_visible_to (priv->conn, peer))
+    conn_presence_signal_own_presence (priv->conn, peer_jid, NULL);
+}
+
+static void
 factory_new_session_cb (
     GabbleJingleFactory *factory,
     GabbleJingleSession *session,
@@ -242,6 +261,10 @@ factory_new_session_cb (
     gpointer user_data)
 {
   GabbleJingleMint *self = GABBLE_JINGLE_MINT (user_data);
+
+  if (initiated_locally)
+    tp_g_signal_connect_object (session, "about-to-initiate",
+        (GCallback) session_about_to_initiate_cb, self, 0);
 
   /* Proxy the signal outwards if this is a new incoming session. */
   if (!initiated_locally)

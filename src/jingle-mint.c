@@ -51,6 +51,11 @@ enum
   PROP_CONNECTION = 1,
 };
 
+static void connection_status_changed_cb (
+    GabbleConnection *conn,
+    guint status,
+    guint reason,
+    gpointer user_data);
 static void factory_new_session_cb (
     GabbleJingleFactory *factory,
     GabbleJingleSession *session,
@@ -117,6 +122,9 @@ gabble_jingle_mint_constructed (GObject *object)
   if (parent_class->constructed != NULL)
     parent_class->constructed (object);
 
+  tp_g_signal_connect_object (priv->conn, "status-changed",
+      (GCallback) connection_status_changed_cb, self, 0);
+
   priv->factory = gabble_jingle_factory_new (priv->conn);
   tp_g_signal_connect_object (priv->factory, "new-session",
       (GCallback) factory_new_session_cb, self, 0);
@@ -168,6 +176,61 @@ gabble_jingle_mint_new (
   return g_object_new (GABBLE_TYPE_JINGLE_MINT,
       "connection", connection,
       NULL);
+}
+
+static void
+connection_status_changed_cb (
+    GabbleConnection *conn,
+    guint status,
+    guint reason,
+    gpointer user_data)
+{
+  GabbleJingleMint *self = GABBLE_JINGLE_MINT (user_data);
+  GabbleJingleMintPrivate *priv = self->priv;
+
+  switch (status)
+    {
+    case TP_CONNECTION_STATUS_CONNECTING:
+      g_assert (priv->conn != NULL);
+      break;
+
+    case TP_CONNECTION_STATUS_CONNECTED:
+        {
+          GabbleJingleInfo *info = gabble_jingle_mint_get_info (self);
+          gchar *stun_server = NULL;
+          guint stun_port = 0;
+
+          g_object_get (priv->conn,
+              "stun-server", &stun_server,
+              "stun-port", &stun_port,
+              NULL);
+
+          if (stun_server != NULL)
+            gabble_jingle_info_take_stun_server (info,
+                stun_server, stun_port, FALSE);
+
+          g_object_get (priv->conn,
+              "fallback-stun-server", &stun_server,
+              "fallback-stun-port", &stun_port,
+              NULL);
+
+          if (stun_server != NULL)
+            gabble_jingle_info_take_stun_server (info,
+                stun_server, stun_port, TRUE);
+
+          if (priv->conn->features &
+              GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
+            {
+              gabble_jingle_info_send_request (info);
+            }
+        }
+      break;
+
+    case TP_CONNECTION_STATUS_DISCONNECTED:
+      if (priv->factory != NULL)
+        gabble_jingle_factory_stop (priv->factory);
+      break;
+    }
 }
 
 static void

@@ -334,7 +334,7 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
 
 
 static void
-new_jingle_session_cb (GabbleJingleFactory *jf,
+new_jingle_session_cb (GabbleJingleMint *jm,
     GabbleJingleSession *sess,
     gpointer data)
 {
@@ -359,7 +359,9 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
       if (content == NULL)
           return;
 
-      gtalk_fc = gtalk_file_collection_new_from_session (jf, sess);
+      gtalk_fc = gtalk_file_collection_new_from_session (
+          gabble_jingle_mint_get_factory (jm),
+          sess);
 
       if (gtalk_fc)
         {
@@ -418,7 +420,7 @@ connection_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
       case TP_CONNECTION_STATUS_CONNECTING:
-        g_signal_connect (self->priv->connection->jingle_factory,
+        g_signal_connect (self->priv->connection->jingle_mint,
             "new-session",
             G_CALLBACK (new_jingle_session_cb), self);
         break;

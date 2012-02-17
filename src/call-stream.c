@@ -346,7 +346,7 @@ gabble_call_stream_constructed (GObject *obj)
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
       gabble_jingle_info_create_google_relay_session (
-          gabble_jingle_factory_get_jingle_info (conn->jingle_factory),
+          gabble_jingle_mint_get_info (conn->jingle_mint),
           2, google_relay_session_cb, tp_weak_ref_new (self, NULL, NULL));
     }
   else
@@ -367,7 +367,7 @@ gabble_call_stream_constructed (GObject *obj)
   gabble_signal_connect_weak (priv->content, "notify::senders",
     G_CALLBACK (content_remote_members_changed_cb), obj);
   gabble_signal_connect_weak (
-      gabble_jingle_factory_get_jingle_info (conn->jingle_factory),
+      gabble_jingle_mint_get_info (conn->jingle_mint),
       "stun-server-changed",
       G_CALLBACK (jingle_info_stun_server_changed_cb), obj);
 }

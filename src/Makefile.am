@@ -101,6 +101,8 @@ libgabble_convenience_la_SOURCES = \
     jingle-share.c \
     jingle-media-rtp.h \
     jingle-media-rtp.c \
+    jingle-mint.h \
+    jingle-mint.c \
     jingle-session.h \
     jingle-session.c \
     jingle-tp-util.h \

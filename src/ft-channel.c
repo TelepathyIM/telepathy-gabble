@@ -1587,13 +1587,16 @@ static gboolean
 offer_gtalk_file_transfer (GabbleFileTransferChannel *self,
     const gchar *full_jid, GError **error)
 {
-
+  GabbleJingleFactory *jf;
   GTalkFileCollection *gtalk_file_collection;
 
   DEBUG ("Offering Gtalk file transfer to %s", full_jid);
 
+  jf = gabble_jingle_mint_get_factory (self->priv->connection->jingle_mint);
+  g_return_val_if_fail (jf != NULL, FALSE);
+
   gtalk_file_collection = gtalk_file_collection_new (self,
-      self->priv->connection->jingle_factory, self->priv->handle, full_jid);
+      jf, self->priv->handle, full_jid);
 
   g_return_val_if_fail (gtalk_file_collection != NULL, FALSE);
 
@@ -1687,8 +1690,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   if (si &&
       (!jingle_share ||
           gabble_jingle_info_get_google_relay_token (
-              gabble_jingle_factory_get_jingle_info (
-                  self->priv->connection->jingle_factory))
+              gabble_jingle_mint_get_info (self->priv->connection->jingle_mint))
               == NULL))
     {
       result = offer_bytestream (self, jid, si_resource, error);

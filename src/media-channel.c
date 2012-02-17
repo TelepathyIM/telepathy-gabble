@@ -305,14 +305,16 @@ create_session (GabbleMediaChannel *chan,
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   gboolean local_hold = (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD);
+  GabbleJingleFactory *jf;
 
   g_assert (priv->session == NULL);
 
   DEBUG ("%p: Creating new outgoing session", chan);
 
+  jf = gabble_jingle_mint_get_factory (priv->conn->jingle_mint);
+  g_return_if_fail (jf != NULL);
   priv->session = g_object_ref (
-      gabble_jingle_factory_create_session (priv->conn->jingle_factory,
-          jid, local_hold));
+      gabble_jingle_factory_create_session (jf, jid, local_hold));
 
   _latch_to_session (chan);
 }
@@ -380,7 +382,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
       0);
 
   /* Set up Google relay related properties */
-  ji = gabble_jingle_factory_get_jingle_info (priv->conn->jingle_factory);
+  ji = gabble_jingle_mint_get_info (priv->conn->jingle_mint);
 
   if (gabble_jingle_info_get_stun_server (ji, &stun_server,
         &stun_port))
@@ -2869,7 +2871,7 @@ create_stream_from_content (GabbleMediaChannel *self,
         d->nat_traversal = "gtalk-p2p";
         DEBUG ("Attempting to create Google relay session");
         gabble_jingle_info_create_google_relay_session (
-            gabble_jingle_factory_get_jingle_info (self->priv->conn->jingle_factory),
+            gabble_jingle_mint_get_info (self->priv->conn->jingle_mint),
             2, google_relay_session_cb, d);
         return;
 

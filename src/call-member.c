@@ -505,13 +505,16 @@ gabble_call_member_open_session (GabbleCallMember *self,
 {
   GabbleCallMemberPrivate *priv = self->priv;
   GabbleConnection *conn = gabble_call_member_get_connection (self);
+  GabbleJingleFactory *jf;
   GabbleJingleSession *session;
   gchar *jid;
 
   jid = gabble_peer_to_jid (conn, priv->target, NULL);
 
-  session = gabble_jingle_factory_create_session (conn->jingle_factory,
-      jid, FALSE);
+  jf = gabble_jingle_mint_get_factory (conn->jingle_mint);
+  g_return_val_if_fail (jf != NULL, FALSE);
+
+  session = gabble_jingle_factory_create_session (jf, jid, FALSE);
   DEBUG ("Created a jingle session: %p", session);
 
   g_object_set (session, "dialect", JINGLE_DIALECT_V032, NULL);
@@ -538,6 +541,7 @@ gabble_call_member_start_session (GabbleCallMember *self,
   JingleDialect dialect;
   gchar *jid;
   const gchar *transport;
+  GabbleJingleFactory *jf;
   GabbleJingleSession *session;
 
   /* FIXME might need to wait on capabilities, also don't need transport
@@ -553,8 +557,11 @@ gabble_call_member_start_session (GabbleCallMember *self,
 
   jid = gabble_peer_to_jid (gabble_call_member_get_connection (self), target, resource);
 
-  session = gabble_jingle_factory_create_session (
-        gabble_call_member_get_connection (self)->jingle_factory, jid, FALSE);
+  jf = gabble_jingle_mint_get_factory (
+        gabble_call_member_get_connection (self)->jingle_mint);
+  g_return_val_if_fail (jf != NULL, FALSE);
+
+  session = gabble_jingle_factory_create_session (jf, jid, FALSE);
   g_free (jid);
 
   gabble_call_member_set_session (self, session);

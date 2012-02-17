@@ -393,6 +393,12 @@ jingle_cb (
   if (!gabble_jingle_session_parse (sess, action, msg, &error))
     goto REQUEST_ERROR;
 
+  /* This has to be after the call to parse(), not inside create_session():
+   * until the session has parsed the session-initiate stanza, it does not know
+   * about its own contents, and we don't even know if the content types are
+   * something we understand. So it's essentially half-alive and useless to
+   * signal listeners.
+   */
   if (new_session)
     g_signal_emit (self, signals[NEW_SESSION], 0, sess);
 

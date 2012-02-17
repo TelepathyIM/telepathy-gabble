@@ -58,8 +58,7 @@ typedef void (*GabblePluginCreateSidecarImpl) (
  * not have a free function. */
 typedef GPtrArray * (*GabblePluginCreateChannelManagersImpl) (
     GabblePlugin *plugin,
-    GabblePluginConnection *plugin_connection,
-    TpBaseConnection *connection);
+    GabblePluginConnection *plugin_connection);
 
 typedef GabbleSidecar * (*GabblePluginCreateSidecarFinishImpl) (
      GabblePlugin *plugin,
@@ -156,9 +155,7 @@ const gchar *gabble_plugin_presence_status_for_privacy_list (
     const gchar *list_name);
 
 GPtrArray * gabble_plugin_create_channel_managers (GabblePlugin *plugin,
-    GabblePluginConnection *plugin_connection,
-    TpBaseConnection *connection);
-
+    GabblePluginConnection *plugin_connection);
 /**
  * gabble_plugin_create:
  *

@@ -385,8 +385,7 @@ copy_to_other_array (gpointer data,
 GPtrArray *
 gabble_plugin_loader_create_channel_managers (
     GabblePluginLoader *self,
-    GabblePluginConnection *plugin_connection,
-    TpBaseConnection *connection)
+    GabblePluginConnection *plugin_connection)
 {
   GPtrArray *out = g_ptr_array_new ();
   guint i;
@@ -397,7 +396,7 @@ gabble_plugin_loader_create_channel_managers (
       GPtrArray *managers;
 
       managers = gabble_plugin_create_channel_managers (plugin,
-          plugin_connection, connection);
+          plugin_connection);
 
       if (managers == NULL)
         continue;

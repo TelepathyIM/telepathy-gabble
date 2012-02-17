@@ -33,6 +33,7 @@
 #include "conn-presence.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
+#include "presence-cache.h"
 
 struct _GabbleJingleMintPrivate {
     GabbleConnection *conn;
@@ -61,6 +62,11 @@ static void factory_new_session_cb (
     GabbleJingleFactory *factory,
     GabbleJingleSession *session,
     gboolean initiated_locally,
+    gpointer user_data);
+static gboolean factory_query_cap_cb (
+    GabbleJingleFactory *factory,
+    WockyContact *contact,
+    const gchar *cap_or_quirk,
     gpointer user_data);
 
 G_DEFINE_TYPE (GabbleJingleMint, gabble_jingle_mint, G_TYPE_OBJECT)
@@ -130,6 +136,8 @@ gabble_jingle_mint_constructed (GObject *object)
   priv->factory = gabble_jingle_factory_new (priv->conn);
   tp_g_signal_connect_object (priv->factory, "new-session",
       (GCallback) factory_new_session_cb, self, 0);
+  tp_g_signal_connect_object (priv->factory, "query-cap",
+      (GCallback) factory_query_cap_cb, self, 0);
 }
 
 static void
@@ -269,6 +277,35 @@ factory_new_session_cb (
   /* Proxy the signal outwards if this is a new incoming session. */
   if (!initiated_locally)
     g_signal_emit (self, signals[NEW_SESSION], 0, session);
+}
+
+static gboolean
+factory_query_cap_cb (
+    GabbleJingleFactory *factory,
+    WockyContact *contact,
+    const gchar *cap_or_quirk,
+    gpointer user_data)
+{
+  GabbleJingleMint *self = GABBLE_JINGLE_MINT (user_data);
+  GabbleJingleMintPrivate *priv = self->priv;
+  GabblePresence *presence = gabble_presence_cache_get_for_contact (
+      priv->conn->presence_cache, contact);
+
+  if (presence == NULL)
+    return FALSE;
+
+  if (WOCKY_IS_RESOURCE_CONTACT (contact))
+    {
+      const gchar *peer_resource = wocky_resource_contact_get_resource (
+          WOCKY_RESOURCE_CONTACT (contact));
+
+      return gabble_presence_resource_has_caps (presence, peer_resource,
+          gabble_capability_set_predicate_has, cap_or_quirk);
+    }
+  else
+    {
+      return gabble_presence_has_cap (presence, cap_or_quirk);
+    }
 }
 
 GabbleJingleFactory *

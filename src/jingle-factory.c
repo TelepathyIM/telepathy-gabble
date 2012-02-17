@@ -39,7 +39,6 @@
 #include "jingle-transport-rawudp.h"
 #include "jingle-transport-iceudp.h"
 #include "namespaces.h"
-#include "presence-cache.h"
 #include "util.h"
 
 #include "google-relay.h"
@@ -50,6 +49,7 @@ G_DEFINE_TYPE(GabbleJingleFactory, gabble_jingle_factory, G_TYPE_OBJECT);
 enum
 {
     NEW_SESSION,
+    QUERY_CAP,
     LAST_SIGNAL
 };
 
@@ -235,6 +235,20 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, gabble_marshal_VOID__OBJECT_BOOL,
         G_TYPE_NONE, 2, GABBLE_TYPE_JINGLE_SESSION, G_TYPE_BOOLEAN);
+
+  /*
+   * @contact: the peer in a call
+   * @cap: the XEP-0115 feature string the session is interested in.
+   *
+   * Emitted when a Jingle session wants to check whether the peer has a
+   * particular capability. The handler should return %TRUE if @contact has
+   * @cap.
+   */
+  signals[QUERY_CAP] = g_signal_new ("query-cap",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, g_signal_accumulator_first_wins, NULL,
+        gabble_marshal_BOOLEAN__OBJECT_STRING,
+        G_TYPE_BOOLEAN, 2, WOCKY_TYPE_CONTACT, G_TYPE_STRING);
 }
 
 GabbleJingleFactory *
@@ -430,25 +444,15 @@ session_query_cap_cb (
     gpointer user_data)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
-  GabbleJingleFactoryPrivate *priv = self->priv;
-  GabblePresence *presence = gabble_presence_cache_get_for_contact (
-      priv->conn->presence_cache, contact);
+  gboolean ret;
 
-  if (presence == NULL)
-    return FALSE;
-
-  if (WOCKY_IS_RESOURCE_CONTACT (contact))
-    {
-      const gchar *peer_resource = wocky_resource_contact_get_resource (
-          WOCKY_RESOURCE_CONTACT (contact));
-
-      return gabble_presence_resource_has_caps (presence, peer_resource,
-          gabble_capability_set_predicate_has, cap_or_quirk);
-    }
-  else
-    {
-      return gabble_presence_has_cap (presence, cap_or_quirk);
-    }
+  /* Propagate the query out to the application. We can't depend on the
+   * application connecting to ::query-cap on the session because caps queries
+   * may happen while parsing the session-initiate stanza, which must happen
+   * before the session is announced to the application.
+   */
+  g_signal_emit (self, signals[QUERY_CAP], 0, contact, cap_or_quirk, &ret);
+  return ret;
 }
 
 /*

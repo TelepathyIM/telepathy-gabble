@@ -152,6 +152,9 @@ struct _GabbleJingleFactory {
     GabbleJingleFactoryPrivate *priv;
 };
 
+GabbleJingleFactory *gabble_jingle_factory_new (
+    GabbleConnection *conn);
+
 void gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
     gchar *xmlns, GType content_type);
 GType gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,

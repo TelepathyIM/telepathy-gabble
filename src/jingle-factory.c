@@ -236,6 +236,15 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
         G_TYPE_NONE, 1, GABBLE_TYPE_JINGLE_SESSION);
 }
 
+GabbleJingleFactory *
+gabble_jingle_factory_new (
+    GabbleConnection *conn)
+{
+  return g_object_new (GABBLE_TYPE_JINGLE_FACTORY,
+      "connection", conn,
+      NULL);
+}
+
 static void
 connection_status_changed_cb (GabbleConnection *conn,
                               guint status,

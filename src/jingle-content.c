@@ -401,11 +401,11 @@ parse_senders (const gchar *txt)
   if (txt == NULL)
       return JINGLE_CONTENT_SENDERS_NONE;
 
-  if (!tp_strdiff (txt, "initiator"))
+  if (!wocky_strdiff (txt, "initiator"))
       return JINGLE_CONTENT_SENDERS_INITIATOR;
-  else if (!tp_strdiff (txt, "responder"))
+  else if (!wocky_strdiff (txt, "responder"))
       return JINGLE_CONTENT_SENDERS_RESPONDER;
-  else if (!tp_strdiff (txt, "both"))
+  else if (!wocky_strdiff (txt, "both"))
       return JINGLE_CONTENT_SENDERS_BOTH;
 
   return JINGLE_CONTENT_SENDERS_NONE;
@@ -598,7 +598,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   if (disposition == NULL)
       disposition = "session";
 
-  if (tp_strdiff (disposition, priv->disposition))
+  if (wocky_strdiff (disposition, priv->disposition))
     {
       g_free (priv->disposition);
       priv->disposition = g_strdup (disposition);
@@ -1006,7 +1006,7 @@ _maybe_ready (GabbleJingleContent *self)
 
   g_object_get (self->session, "state", &state, NULL);
 
-  if (!tp_strdiff (priv->disposition, "session") &&
+  if (!wocky_strdiff (priv->disposition, "session") &&
       (state < JINGLE_STATE_PENDING_ACCEPT_SENT))
     {
       /* Notify the session that we're ready for

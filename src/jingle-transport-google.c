@@ -274,11 +274,11 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str == NULL)
           break;
 
-      if (!tp_strdiff (str, "udp"))
+      if (!wocky_strdiff (str, "udp"))
         {
           proto = JINGLE_TRANSPORT_PROTOCOL_UDP;
         }
-      else if (!tp_strdiff (str, "tcp"))
+      else if (!wocky_strdiff (str, "tcp"))
         {
           /* candiates on port 443 must be "ssltcp" */
           if (port == 443)
@@ -286,7 +286,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
           proto = JINGLE_TRANSPORT_PROTOCOL_TCP;
         }
-      else if (!tp_strdiff (str, "ssltcp"))
+      else if (!wocky_strdiff (str, "ssltcp"))
         {
           /* "ssltcp" must use port 443 */
           if (port != 443)
@@ -312,15 +312,15 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str == NULL)
           break;
 
-      if (!tp_strdiff (str, "local"))
+      if (!wocky_strdiff (str, "local"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_LOCAL;
         }
-      else if (!tp_strdiff (str, "stun"))
+      else if (!wocky_strdiff (str, "stun"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_STUN;
         }
-      else if (!tp_strdiff (str, "relay"))
+      else if (!wocky_strdiff (str, "relay"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_RELAY;
         }

@@ -568,38 +568,38 @@ parse_action (const gchar *txt)
       return JINGLE_ACTION_UNKNOWN;
 
   /* synonyms, best deal with them right now */
-  if (!tp_strdiff (txt, "initiate") ||
-      !tp_strdiff (txt, "session-initiate"))
+  if (!wocky_strdiff (txt, "initiate") ||
+      !wocky_strdiff (txt, "session-initiate"))
         return JINGLE_ACTION_SESSION_INITIATE;
-  else if (!tp_strdiff (txt, "terminate") ||
-      !tp_strdiff (txt, "session-terminate") ||
-      !tp_strdiff (txt, "reject"))
+  else if (!wocky_strdiff (txt, "terminate") ||
+      !wocky_strdiff (txt, "session-terminate") ||
+      !wocky_strdiff (txt, "reject"))
         return JINGLE_ACTION_SESSION_TERMINATE;
-  else if (!tp_strdiff (txt, "accept") ||
-      !tp_strdiff (txt, "session-accept"))
+  else if (!wocky_strdiff (txt, "accept") ||
+      !wocky_strdiff (txt, "session-accept"))
         return JINGLE_ACTION_SESSION_ACCEPT;
-  else if (!tp_strdiff (txt, "candidates") ||
-      !tp_strdiff (txt, "transport-info"))
+  else if (!wocky_strdiff (txt, "candidates") ||
+      !wocky_strdiff (txt, "transport-info"))
         return JINGLE_ACTION_TRANSPORT_INFO;
-  else if (!tp_strdiff (txt, "content-accept"))
+  else if (!wocky_strdiff (txt, "content-accept"))
       return JINGLE_ACTION_CONTENT_ACCEPT;
-  else if (!tp_strdiff (txt, "content-add"))
+  else if (!wocky_strdiff (txt, "content-add"))
       return JINGLE_ACTION_CONTENT_ADD;
-  else if (!tp_strdiff (txt, "content-modify"))
+  else if (!wocky_strdiff (txt, "content-modify"))
       return JINGLE_ACTION_CONTENT_MODIFY;
-  else if (!tp_strdiff (txt, "content-replace"))
+  else if (!wocky_strdiff (txt, "content-replace"))
       return JINGLE_ACTION_CONTENT_REPLACE;
-  else if (!tp_strdiff (txt, "content-reject"))
+  else if (!wocky_strdiff (txt, "content-reject"))
       return JINGLE_ACTION_CONTENT_REJECT;
-  else if (!tp_strdiff (txt, "content-remove"))
+  else if (!wocky_strdiff (txt, "content-remove"))
       return JINGLE_ACTION_CONTENT_REMOVE;
-  else if (!tp_strdiff (txt, "session-info"))
+  else if (!wocky_strdiff (txt, "session-info"))
       return JINGLE_ACTION_SESSION_INFO;
-  else if (!tp_strdiff (txt, "transport-accept"))
+  else if (!wocky_strdiff (txt, "transport-accept"))
       return JINGLE_ACTION_TRANSPORT_ACCEPT;
-  else if (!tp_strdiff (txt, "description-info"))
+  else if (!wocky_strdiff (txt, "description-info"))
       return JINGLE_ACTION_DESCRIPTION_INFO;
-  else if (!tp_strdiff (txt, "info"))
+  else if (!wocky_strdiff (txt, "info"))
       return JINGLE_ACTION_INFO;
 
   return JINGLE_ACTION_UNKNOWN;
@@ -732,11 +732,11 @@ lookup_content (GabbleJingleSession *sess,
           if (*c == NULL)
             *c = g_hash_table_lookup (priv->responder_contents, name);
         }
-      else if (!tp_strdiff (creator, "initiator"))
+      else if (!wocky_strdiff (creator, "initiator"))
         {
           *c = g_hash_table_lookup (priv->initiator_contents, name);
         }
-      else if (!tp_strdiff (creator, "responder"))
+      else if (!wocky_strdiff (creator, "responder"))
         {
           *c = g_hash_table_lookup (priv->responder_contents, name);
         }
@@ -1046,7 +1046,7 @@ on_session_initiate (GabbleJingleSession *sess, WockyNode *node,
         wocky_node_get_child (node, "description");
       content_ns = wocky_node_get_ns (desc_node);
 
-      if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
+      if (!wocky_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
         {
           GabbleJingleFactory *factory =
               gabble_jingle_session_get_factory (sess);
@@ -1272,7 +1272,7 @@ handle_payload (GabbleJingleSession *sess,
   const gchar *name = wocky_node_get_attribute (payload, "name");
   const gchar *creator = wocky_node_get_attribute (payload, "creator");
 
-  if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
+  if (wocky_strdiff (ns, NS_JINGLE_RTP_INFO))
     {
       *handled = FALSE;
       return TRUE;
@@ -1280,33 +1280,33 @@ handle_payload (GabbleJingleSession *sess,
 
   *handled = TRUE;
 
-  if (!tp_strdiff (elt, "active"))
+  if (!wocky_strdiff (elt, "active"))
     {
       /* Clear all states, we're active */
       mute_all (sess, FALSE);
       set_ringing (sess, FALSE);
       set_hold (sess, FALSE);
     }
-  else if (!tp_strdiff (elt, "ringing"))
+  else if (!wocky_strdiff (elt, "ringing"))
     {
       set_ringing (sess, TRUE);
     }
-  else if (!tp_strdiff (elt, "hold"))
+  else if (!wocky_strdiff (elt, "hold"))
     {
       set_hold (sess, TRUE);
     }
-  else if (!tp_strdiff (elt, "unhold"))
+  else if (!wocky_strdiff (elt, "unhold"))
     {
       set_hold (sess, FALSE);
     }
   /* XEP-0178 says that only <mute/> and <unmute/> can have a name=''
    * attribute.
    */
-  else if (!tp_strdiff (elt, "mute"))
+  else if (!wocky_strdiff (elt, "mute"))
     {
       return set_mute (sess, name, creator, TRUE, error);
     }
-  else if (!tp_strdiff (elt, "unmute"))
+  else if (!wocky_strdiff (elt, "unmute"))
     {
       return set_mute (sess, name, creator, FALSE, error);
     }
@@ -1402,7 +1402,7 @@ on_transport_info (GabbleJingleSession *sess, WockyNode *node,
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
         {
-          if (!tp_strdiff (wocky_node_get_attribute (node, "type"),
+          if (!wocky_strdiff (wocky_node_get_attribute (node, "type"),
                 "candidates"))
             {
               GList *contents = gabble_jingle_session_get_contents (sess);
@@ -1777,7 +1777,7 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
       GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
       const gchar *disposition = gabble_jingle_content_get_disposition (c);
 
-      if (!tp_strdiff (disposition, "session"))
+      if (!wocky_strdiff (disposition, "session"))
         mapper (sess, c, user_data);
     }
 
@@ -2349,7 +2349,7 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
   /* This assertion is actually safe, because 'ready' is only emitted by
    * contents with disposition "session". But this is crazy.
    */
-  g_assert (!tp_strdiff (disposition, "session"));
+  g_assert (!wocky_strdiff (disposition, "session"));
 
   try_session_initiate_or_accept (sess);
 }

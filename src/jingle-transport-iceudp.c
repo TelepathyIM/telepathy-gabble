@@ -286,7 +286,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
           continue;
         }
 
-      if (!tp_strdiff (str, "udp"))
+      if (!wocky_strdiff (str, "udp"))
         {
           proto = JINGLE_TRANSPORT_PROTOCOL_UDP;
         }
@@ -312,18 +312,18 @@ parse_candidates (GabbleJingleTransportIface *obj,
           continue;
         }
 
-      if (!tp_strdiff (str, "host"))
+      if (!wocky_strdiff (str, "host"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_LOCAL;
         }
-      else if (!tp_strdiff (str, "srflx") || !tp_strdiff (str, "prflx"))
+      else if (!wocky_strdiff (str, "srflx") || !wocky_strdiff (str, "prflx"))
         {
           /* FIXME Strictly speaking a prflx candidate should be a different
            * type, but the TP spec has now way to distinguish and it doesn't
            * matter much anyway.. */
           ctype = JINGLE_CANDIDATE_TYPE_STUN;
         }
-      else if (!tp_strdiff (str, "relay"))
+      else if (!wocky_strdiff (str, "relay"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_RELAY;
         }
@@ -435,7 +435,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
         {
           username = c->username;
         }
-      else if (tp_strdiff (username, c->username))
+      else if (wocky_strdiff (username, c->username))
         {
           DEBUG ("found a candidate with a different username (%s not %s); "
               "will send in a separate batch", c->username, username);

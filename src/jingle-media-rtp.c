@@ -366,10 +366,10 @@ extract_media_type (WockyNode *desc_node,
           return JINGLE_MEDIA_TYPE_NONE;
         }
 
-      if (!tp_strdiff (type, "audio"))
+      if (!wocky_strdiff (type, "audio"))
           return JINGLE_MEDIA_TYPE_AUDIO;
 
-      if (!tp_strdiff (type, "video"))
+      if (!wocky_strdiff (type, "video"))
         return JINGLE_MEDIA_TYPE_VIDEO;
 
       g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
@@ -402,7 +402,7 @@ parse_rtcp_fb (GabbleJingleContent *content, WockyNode *node)
   const gchar *type;
   const gchar *subtype;
 
-  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+  if (wocky_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
     return NULL;
 
   type = wocky_node_get_attribute (node, "type");
@@ -430,7 +430,7 @@ parse_rtcp_fb_trr_int (GabbleJingleContent *content, WockyNode *node)
   guint trr_int;
   gchar *endptr = NULL;
 
-  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+  if (wocky_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
     return G_MAXUINT;
 
   txt = wocky_node_get_attribute (node, "value");
@@ -495,7 +495,7 @@ parse_payload_type (GabbleJingleContent *content,
   wocky_node_iter_init (&i, node, NULL, NULL);
   while (wocky_node_iter_next (&i, &param))
     {
-      if (!tp_strdiff (param->name, "parameter"))
+      if (!wocky_strdiff (param->name, "parameter"))
         {
           const gchar *param_name, *param_value;
 
@@ -508,7 +508,7 @@ parse_payload_type (GabbleJingleContent *content,
           g_hash_table_insert (p->params, g_strdup (param_name),
               g_strdup (param_value));
         }
-      else if (!tp_strdiff (param->name, "rtcp-fb"))
+      else if (!wocky_strdiff (param->name, "rtcp-fb"))
         {
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
 
@@ -518,7 +518,7 @@ parse_payload_type (GabbleJingleContent *content,
               priv->has_rtcp_fb = TRUE;
             }
         }
-      else if (!tp_strdiff (param->name,
+      else if (!wocky_strdiff (param->name,
               "rtcp-fb-trr-int"))
         {
           guint trr_int = parse_rtcp_fb_trr_int (content, param);
@@ -727,7 +727,7 @@ parse_description (GabbleJingleContent *content,
     {
       const gchar *desc_ns =
         wocky_node_get_ns (desc_node);
-      video_session = !tp_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
+      video_session = !wocky_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
     }
 
   md = jingle_media_description_new ();
@@ -735,7 +735,7 @@ parse_description (GabbleJingleContent *content,
   wocky_node_iter_init (&i, desc_node, NULL, NULL);
   while (wocky_node_iter_next (&i, &node) && !description_error)
     {
-      if (!tp_strdiff (node->name, "payload-type"))
+      if (!wocky_strdiff (node->name, "payload-type"))
         {
           if (dialect == JINGLE_DIALECT_GTALK3)
             {
@@ -744,13 +744,13 @@ parse_description (GabbleJingleContent *content,
               if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
                 {
                   if (video_session &&
-                      tp_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
+                      wocky_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
                     continue;
                 }
               else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
                 {
                   if (!(video_session && pt_ns == NULL)
-                      && tp_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
+                      && wocky_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
                     continue;
                 }
             }
@@ -768,12 +768,12 @@ parse_description (GabbleJingleContent *content,
                 is_avpf = TRUE;
             }
         }
-      else if (!tp_strdiff (node->name, "rtp-hdrext"))
+      else if (!wocky_strdiff (node->name, "rtp-hdrext"))
         {
           const gchar *pt_ns = wocky_node_get_ns (node);
           JingleRtpHeaderExtension *hdrext;
 
-          if (tp_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
+          if (wocky_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
             continue;
 
           hdrext = parse_rtp_header_extension (node);
@@ -789,7 +789,7 @@ parse_description (GabbleJingleContent *content,
             }
 
         }
-      else if (!tp_strdiff (node->name, "rtcp-fb"))
+      else if (!wocky_strdiff (node->name, "rtcp-fb"))
         {
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
 
@@ -804,7 +804,7 @@ parse_description (GabbleJingleContent *content,
               priv->has_rtcp_fb = TRUE;
             }
         }
-      else if (!tp_strdiff (node->name, "rtcp-fb-trr-int"))
+      else if (!wocky_strdiff (node->name, "rtcp-fb-trr-int"))
         {
           guint trr_int = parse_rtcp_fb_trr_int (content, node);
 
@@ -1138,7 +1138,7 @@ string_string_maps_equal (GHashTable *a,
       if (!g_hash_table_lookup_extended (b, a_key, NULL, &b_value))
         return FALSE;
 
-      if (tp_strdiff (a_value, b_value))
+      if (wocky_strdiff (a_value, b_value))
         return FALSE;
     }
 

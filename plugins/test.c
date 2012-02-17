@@ -148,8 +148,7 @@ test_plugin_create_sidecar_finish (
 
 static GPtrArray *
 test_plugin_create_channel_managers (GabblePlugin *plugin,
-    GabblePluginConnection *plugin_connection,
-    TpBaseConnection *connection)
+    GabblePluginConnection *plugin_connection)
 {
   GPtrArray *ret = g_ptr_array_new ();
 

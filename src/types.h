@@ -54,12 +54,6 @@ struct _GabbleDiscoIdentity
     gchar *name;
 };
 
-typedef enum {
-    INITIATOR_INVALID = -1,
-    INITIATOR_LOCAL = 0,
-    INITIATOR_REMOTE,
-} JingleInitiator;
-
 G_END_DECLS
 
 #endif

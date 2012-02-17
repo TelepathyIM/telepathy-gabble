@@ -65,6 +65,7 @@ enum
 struct _GabbleJingleFactoryPrivate
 {
   GabbleConnection *conn;
+  WockySession *session;
   WockyPorter *porter;
   guint jingle_handler_id;
   GHashTable *content_types;
@@ -132,6 +133,7 @@ gabble_jingle_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   gabble_jingle_factory_stop (fac);
+  g_clear_object (&priv->session);
   g_clear_object (&priv->porter);
 
   g_hash_table_unref (priv->sessions);
@@ -269,16 +271,21 @@ connection_porter_available_cb (
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
   GabbleJingleFactoryPrivate *priv = self->priv;
 
+  /* If we have a WockyPorter, we should definitely have a WockySession */
+  g_assert (conn->session != NULL);
+  priv->session = g_object_ref (conn->session);
+
   g_assert (priv->porter == NULL);
-  priv->porter = g_object_ref (porter);
+  priv->porter = g_object_ref (wocky_session_get_porter (conn->session));
 
   /* TODO: we could match different dialects here maybe? */
-  priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (porter,
+  priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (
+      priv->porter,
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
       WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_cb, self,
       NULL);
 
-  priv->jingle_info = gabble_jingle_info_new (porter);
+  priv->jingle_info = gabble_jingle_info_new (priv->porter);
 }
 
 void
@@ -473,7 +480,7 @@ create_session (GabbleJingleFactory *fac,
   gpointer contact;
   WockyContactFactory *factory;
 
-  factory = wocky_session_get_contact_factory (priv->conn->session);
+  factory = wocky_session_get_contact_factory (priv->session);
   g_assert (jid != NULL);
 
   if (strchr (jid, '/') != NULL)

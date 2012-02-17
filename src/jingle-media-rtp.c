@@ -591,10 +591,11 @@ parse_rtp_header_extension (WockyNode *node)
 static gboolean
 codec_update_coherent (const JingleCodec *old_c,
                        const JingleCodec *new_c,
-                       GQuark domain,
-                       gint code,
                        GError **e)
 {
+  const GQuark domain = WOCKY_XMPP_ERROR;
+  const gint code = WOCKY_XMPP_ERROR_BAD_REQUEST;
+
   if (old_c == NULL)
     {
       g_set_error (e, domain, code, "Codec with id %u ('%s') unknown",
@@ -658,8 +659,7 @@ update_remote_media_description (GabbleJingleMediaRtp *self,
       new_c = l->data;
       old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
 
-      if (!codec_update_coherent (old_c, new_c, WOCKY_XMPP_ERROR,
-            WOCKY_XMPP_ERROR_BAD_REQUEST, &e))
+      if (!codec_update_coherent (old_c, new_c, &e))
         goto out;
     }
 
@@ -1174,8 +1174,7 @@ jingle_media_rtp_compare_codecs (GList *old,
       old_c = g_hash_table_lookup (old_table, GUINT_TO_POINTER (
             (guint) new_c->id));
 
-      if (!codec_update_coherent (old_c, new_c, TP_ERRORS,
-            TP_ERROR_INVALID_ARGUMENT, e))
+      if (!codec_update_coherent (old_c, new_c, e))
         goto out;
 
       if (!string_string_maps_equal (old_c->params, new_c->params))
@@ -1195,8 +1194,20 @@ out:
   return ret;
 }
 
-/* Takes in a list of slice-allocated JingleCodec structs. Ready indicated
- * whether the codecs can regarded as ready to sent from now on */
+/*
+ * @self: a content in an RTP session
+ * @md: (transfer full): new media description for this content
+ * @ready: whether the codecs can regarded as ready to sent from now on
+ * @error: used to return a %WOCKY_XMPP_ERROR if the codec update is illegal.
+ *
+ * Sets or updates the media description (codecs, feedback messages, etc) for
+ * @self.
+ *
+ * Returns: %TRUE if no description was previously set, or if the update is
+ *  compatible with the existing description; %FALSE if the update is illegal
+ *  (due to adding previously-unknown codecs or renaming an existing codec, for
+ *  example)
+ */
 gboolean
 jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
                                               JingleMediaDescription *md,

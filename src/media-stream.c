@@ -1046,6 +1046,7 @@ pass_local_codecs (GabbleMediaStream *stream,
   JingleMediaDescription *md;
   const GPtrArray *hdrexts;
   GHashTable *fbs;
+  GError *wocky_error = NULL;
 
   DEBUG ("putting list of %d supported codecs from stream-engine into cache",
       codecs->len);
@@ -1193,8 +1194,14 @@ pass_local_codecs (GabbleMediaStream *stream,
 
   jingle_media_description_simplify (md);
 
-  return jingle_media_rtp_set_local_media_description (
-      GABBLE_JINGLE_MEDIA_RTP (priv->content), md, ready, error);
+  if (jingle_media_rtp_set_local_media_description (
+          GABBLE_JINGLE_MEDIA_RTP (priv->content), md, ready, &wocky_error))
+    return TRUE;
+
+  g_set_error_literal (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      wocky_error->message);
+  g_clear_error (&wocky_error);
+  return FALSE;
 }
 
 /**

@@ -155,6 +155,8 @@ struct _GabbleJingleFactory {
 GabbleJingleFactory *gabble_jingle_factory_new (
     GabbleConnection *conn);
 
+void gabble_jingle_factory_stop (GabbleJingleFactory *self);
+
 void gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
     gchar *xmlns, GType content_type);
 GType gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,

@@ -291,12 +291,7 @@ connection_status_changed_cb (GabbleConnection *conn,
       break;
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (priv->porter != NULL)
-        {
-          wocky_porter_unregister_handler (priv->porter, priv->jingle_handler_id);
-          priv->jingle_handler_id = 0;
-        }
-
+      gabble_jingle_factory_stop (self);
       break;
     }
 }
@@ -320,6 +315,19 @@ connection_porter_available_cb (
       NULL);
 
   priv->jingle_info = gabble_jingle_info_new (porter);
+}
+
+void
+gabble_jingle_factory_stop (GabbleJingleFactory *self)
+{
+  GabbleJingleFactoryPrivate *priv = self->priv;
+
+  if (priv->porter != NULL &&
+      priv->jingle_handler_id != 0)
+    {
+      wocky_porter_unregister_handler (priv->porter, priv->jingle_handler_id);
+      priv->jingle_handler_id = 0;
+    }
 }
 
 /* The 'session' map is keyed by:

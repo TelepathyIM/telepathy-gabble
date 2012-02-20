@@ -384,7 +384,7 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   /* plugin channel managers */
   loader = gabble_plugin_loader_dup ();
   tmp = gabble_plugin_loader_create_channel_managers (loader,
-      plugin_connection, conn);
+      plugin_connection);
   g_object_unref (loader);
 
   g_ptr_array_foreach (tmp, add_to_array, channel_managers);

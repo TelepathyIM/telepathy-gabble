@@ -801,7 +801,8 @@ fire_idle_content_reject (GabbleJingleSession *sess, const gchar *name,
 
 static GabbleJingleContent *
 create_content (GabbleJingleSession *sess, GType content_type,
-  JingleMediaType type, const gchar *content_ns, const gchar *transport_ns,
+  JingleMediaType type, JingleContentSenders senders,
+  const gchar *content_ns, const gchar *transport_ns,
   const gchar *name, WockyNode *content_node, GError **error)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
@@ -821,7 +822,7 @@ create_content (GabbleJingleSession *sess, GType content_type,
                     "media-type", type,
                     "name", name,
                     "disposition", "session",
-                    "senders", JINGLE_CONTENT_SENDERS_BOTH,
+                    "senders", senders,
                     NULL);
 
   g_signal_connect (c, "ready",
@@ -909,7 +910,8 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
     }
 
   create_content (sess, content_type, JINGLE_MEDIA_TYPE_NONE,
-      content_ns, NULL, NULL, content_node, error);
+      JINGLE_CONTENT_SENDERS_BOTH, content_ns, NULL, NULL, content_node,
+      error);
 }
 
 static void
@@ -1019,12 +1021,14 @@ on_session_initiate (GabbleJingleSession *sess, WockyNode *node,
           content_type = gabble_jingle_factory_lookup_content_type (
             priv->conn->jingle_factory, content_ns);
           create_content (sess, content_type, JINGLE_MEDIA_TYPE_VIDEO,
-            NS_GOOGLE_SESSION_VIDEO, NULL, "video", node, error);
+            JINGLE_CONTENT_SENDERS_BOTH, NS_GOOGLE_SESSION_VIDEO, NULL,
+              "video", node, error);
 
           content_type = gabble_jingle_factory_lookup_content_type (
             priv->conn->jingle_factory, NS_GOOGLE_SESSION_PHONE);
           create_content (sess, content_type, JINGLE_MEDIA_TYPE_AUDIO,
-            NS_GOOGLE_SESSION_PHONE, NULL, "audio", node, error);
+            JINGLE_CONTENT_SENDERS_BOTH, NS_GOOGLE_SESSION_PHONE, NULL,
+              "audio", node, error);
         }
       else
         {
@@ -2189,6 +2193,7 @@ gabble_jingle_session_remove_content (GabbleJingleSession *sess,
 GabbleJingleContent *
 gabble_jingle_session_add_content (GabbleJingleSession *sess,
     JingleMediaType mtype,
+    JingleContentSenders senders,
     const gchar *name,
     const gchar *content_ns,
     const gchar *transport_ns)
@@ -2218,7 +2223,7 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess,
 
   g_assert (content_type != 0);
 
-  c = create_content (sess, content_type, mtype,
+  c = create_content (sess, content_type, mtype, senders,
       content_ns, transport_ns, cname, NULL, NULL);
 
   /* The new content better have ended up in the set we thought it would... */

@@ -1760,7 +1760,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       c = gabble_jingle_session_add_content (priv->session,
           media_type == TP_MEDIA_STREAM_TYPE_AUDIO ?
             JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO,
-            NULL, content_ns, transport_ns);
+            JINGLE_CONTENT_SENDERS_BOTH, NULL, content_ns, transport_ns);
 
       /* The stream is created in "new-content" callback, and appended to
        * priv->streams. This is now guaranteed to happen asynchronously (adding

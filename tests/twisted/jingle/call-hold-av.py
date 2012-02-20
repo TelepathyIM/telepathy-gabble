@@ -38,6 +38,7 @@ class CallHoldAVTest(CallTest):
     
         content_path = chan.AddContent('added_audio',
                 cs.MEDIA_STREAM_TYPE_AUDIO,
+                cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
                 dbus_interface=cs.CHANNEL_TYPE_CALL)
         q.expect ('dbus-signal', signal='ContentAdded')
     

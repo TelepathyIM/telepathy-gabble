@@ -63,6 +63,7 @@ static TpBaseCallContent * call_channel_add_content (
     TpBaseCallChannel *base,
     const gchar *name,
     TpMediaStreamType type,
+    TpMediaStreamDirection initial_direction,
     GError **error);
 static void call_channel_hold_state_changed (TpBaseMediaCallChannel *self,
     TpLocalHoldState hold_state, TpLocalHoldStateReason hold_state_reason);
@@ -653,14 +654,42 @@ static TpBaseCallContent *
 call_channel_add_content (TpBaseCallChannel *base,
     const gchar *name,
     TpMediaStreamType type,
+    TpMediaStreamDirection initial_direction,
     GError **error)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (base);
   GabbleCallContent *content = NULL;
   GabbleCallMemberContent *mcontent;
+  JingleContentSenders senders;
+  gboolean initiated_by_us;
+
+  if (initial_direction == TP_MEDIA_STREAM_DIRECTION_NONE)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Jingle can not do contents with direction = NONE");
+      return NULL;
+    }
+
+  g_object_get (self->priv->session, "local-initiator", &initiated_by_us,
+      NULL);
+
+  switch (initial_direction)
+    {
+    case TP_MEDIA_STREAM_DIRECTION_SEND:
+      senders = initiated_by_us ?
+          JINGLE_CONTENT_SENDERS_INITIATOR : JINGLE_CONTENT_SENDERS_RESPONDER;
+      break;
+    case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
+      senders = initiated_by_us ?
+          JINGLE_CONTENT_SENDERS_RESPONDER : JINGLE_CONTENT_SENDERS_INITIATOR;
+      break;
+    default:
+    case TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL:
+      senders = JINGLE_CONTENT_SENDERS_BOTH;
+    }
 
   mcontent = gabble_call_member_create_content (self->priv->member, name,
-      jingle_media_type_from_tp (type), error);
+      jingle_media_type_from_tp (type), senders, error);
 
   if (mcontent != NULL)
     {

@@ -48,8 +48,10 @@ class CallContentAddingRemovalTest(CallTest):
         self.stream.send(make_result_iq(self.stream, e.stanza))
     
         # Actually, we *do* want video!
-        content_path = self.chan.AddContent("video1", cs.CALL_MEDIA_TYPE_VIDEO,
-                dbus_interface=cs.CHANNEL_TYPE_CALL);
+        content_path = self.chan.AddContent(
+            "video1", cs.CALL_MEDIA_TYPE_VIDEO,
+            cs.MEDIA_STREAM_DIRECTION_BIDIRECTIONAL,
+            dbus_interface=cs.CHANNEL_TYPE_CALL);
         self.q.expect('dbus-signal', signal='ContentAdded')
 
         self.store_content(content_path, initial=False)

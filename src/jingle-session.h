@@ -93,6 +93,7 @@ void gabble_jingle_session_remove_content (GabbleJingleSession *sess,
 GabbleJingleContent *
 gabble_jingle_session_add_content (GabbleJingleSession *sess,
     JingleMediaType mtype,
+    JingleContentSenders senders,
     const char *name,
     const gchar *content_ns,
     const gchar *transport_ns);

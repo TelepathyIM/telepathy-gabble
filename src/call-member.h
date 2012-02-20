@@ -85,6 +85,7 @@ GabbleCallMemberContent * gabble_call_member_create_content (
     GabbleCallMember *self,
     const gchar *name,
     JingleMediaType mtype,
+    JingleContentSenders senders,
     GError **error);
 
 gboolean gabble_call_member_start_session (GabbleCallMember *self,

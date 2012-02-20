@@ -553,6 +553,30 @@ gabble_jingle_info_get_google_relay_token (
   return self->priv->relay_token;
 }
 
+GabbleJingleRelay *
+gabble_jingle_relay_new (
+    GabbleJingleRelayType type,
+    const gchar *ip,
+    guint port,
+    const gchar *username,
+    const gchar *password,
+    guint component)
+{
+  GabbleJingleRelay ret = { type, g_strdup (ip), port, g_strdup (username),
+      g_strdup (password), component };
+
+  return g_slice_dup (GabbleJingleRelay, &ret);
+}
+
+void
+gabble_jingle_relay_free (GabbleJingleRelay *relay)
+{
+  g_free (relay->ip);
+  g_free (relay->username);
+  g_free (relay->password);
+  g_slice_free (GabbleJingleRelay, relay);
+}
+
 void
 gabble_jingle_info_create_google_relay_session (
     GabbleJingleInfo *self,

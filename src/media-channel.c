@@ -43,6 +43,7 @@
 #include "jingle-factory.h"
 #include "jingle-media-rtp.h"
 #include "jingle-session.h"
+#include "jingle-tp-util.h"
 #include "media-factory.h"
 #include "media-stream.h"
 #include "namespaces.h"
@@ -2778,11 +2779,13 @@ google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
   StreamCreationData *d = user_data;
+  GPtrArray *tp_relays = gabble_build_tp_relay_info (relays);
 
   if (d->content != NULL && d->self != NULL)
-    construct_stream (d->self, d->content, d->name, d->nat_traversal, relays,
+    construct_stream (d->self, d->content, d->name, d->nat_traversal, tp_relays,
       d->initial);
 
+  g_ptr_array_unref (tp_relays);
   stream_creation_data_free (d);
 }
 

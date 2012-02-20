@@ -57,7 +57,37 @@ gboolean gabble_jingle_info_get_stun_server (
 const gchar *gabble_jingle_info_get_google_relay_token (
     GabbleJingleInfo *self);
 
-typedef void (*GabbleJingleInfoRelaySessionCb) (GPtrArray *relays,
+typedef enum {
+    GABBLE_JINGLE_RELAY_TYPE_UDP,
+    GABBLE_JINGLE_RELAY_TYPE_TCP,
+    GABBLE_JINGLE_RELAY_TYPE_TLS
+} GabbleJingleRelayType;
+#define GABBLE_N_JINGLE_RELAY_TYPES 3
+
+typedef struct {
+    GabbleJingleRelayType type;
+    gchar *ip;
+    guint port;
+    gchar *username;
+    gchar *password;
+    guint component;
+} GabbleJingleRelay;
+
+GabbleJingleRelay *gabble_jingle_relay_new (
+    GabbleJingleRelayType type,
+    const gchar *ip,
+    guint port,
+    const gchar *username,
+    const gchar *password,
+    guint component);
+void gabble_jingle_relay_free (GabbleJingleRelay *relay);
+
+/*
+ * @relays: (element-type GabbleJingleRelay) (transfer none): a possibly-empty
+ *  array of GabbleJingleRelay structs.
+ */
+typedef void (*GabbleJingleInfoRelaySessionCb) (
+    GPtrArray *relays,
     gpointer user_data);
 void gabble_jingle_info_create_google_relay_session (
     GabbleJingleInfo *self,

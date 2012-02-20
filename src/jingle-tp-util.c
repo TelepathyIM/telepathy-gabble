@@ -46,3 +46,36 @@ jingle_media_type_to_tp (JingleMediaType type)
         g_return_val_if_reached (TP_MEDIA_STREAM_TYPE_AUDIO);
     }
 }
+
+static const gchar * const relay_type_map[] = {
+    /* GABBLE_JINGLE_RELAY_TYPE_UDP */ "udp",
+    /* GABBLE_JINGLE_RELAY_TYPE_TCP */ "tcp",
+    /* GABBLE_JINGLE_RELAY_TYPE_TLS */ "tls",
+};
+
+GPtrArray *
+gabble_build_tp_relay_info (GPtrArray *relays)
+{
+  guint i;
+  GPtrArray *tp_relays = g_ptr_array_sized_new (relays->len);
+
+  g_ptr_array_set_free_func (tp_relays, (GDestroyNotify) g_hash_table_unref);
+
+  for (i = 0; i < relays->len; i++)
+    {
+      GabbleJingleRelay *relay = g_ptr_array_index (relays, i);
+
+      g_return_val_if_fail (relay->type < GABBLE_N_JINGLE_RELAY_TYPES, tp_relays);
+
+      g_ptr_array_add (tp_relays, tp_asv_new (
+          "type", G_TYPE_STRING, relay_type_map[relay->type],
+          "ip", G_TYPE_STRING, relay->ip,
+          "port", G_TYPE_UINT, relay->port,
+          "username", G_TYPE_STRING, relay->username,
+          "password", G_TYPE_STRING, relay->password,
+          "component", G_TYPE_UINT, relay->component,
+          NULL));
+    }
+
+  return tp_relays;
+}

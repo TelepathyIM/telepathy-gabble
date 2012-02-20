@@ -26,4 +26,6 @@
 JingleMediaType jingle_media_type_from_tp (TpMediaStreamType type);
 TpMediaStreamType jingle_media_type_to_tp (JingleMediaType type);
 
+GPtrArray *gabble_build_tp_relay_info (GPtrArray *relays);
+
 #endif /* GABBLE_JINGLE_TP_UTIL_H */

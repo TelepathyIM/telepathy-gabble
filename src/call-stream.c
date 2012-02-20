@@ -32,6 +32,7 @@
 #include "connection.h"
 #include "jingle-session.h"
 #include "jingle-content.h"
+#include "jingle-tp-util.h"
 #include "util.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
@@ -186,7 +187,9 @@ google_relay_session_cb (GPtrArray *relays,
 
   if (stream != NULL)
     {
-      tp_base_media_call_stream_set_relay_info (stream, relays);
+      GPtrArray *tp_relays = gabble_build_tp_relay_info (relays);
+      tp_base_media_call_stream_set_relay_info (stream, tp_relays);
+      g_ptr_array_unref (tp_relays);
       g_object_unref (stream);
     }
 

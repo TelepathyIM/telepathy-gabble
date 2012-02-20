@@ -851,63 +851,25 @@ typedef struct
   ShareChannel *share_channel;
 } GoogleRelaySessionData;
 
+static const NiceRelayType relay_type_map[] = {
+    /* GABBLE_JINGLE_RELAY_TYPE_UDP */ NICE_RELAY_TYPE_TURN_UDP,
+    /* GABBLE_JINGLE_RELAY_TYPE_TCP */ NICE_RELAY_TYPE_TURN_TCP,
+    /* GABBLE_JINGLE_RELAY_TYPE_TLS */ NICE_RELAY_TYPE_TURN_TLS,
+};
+
 static void
 set_relay_info (gpointer item, gpointer user_data)
 {
   GoogleRelaySessionData *data = user_data;
-  GHashTable *relay = item;
-  const gchar *server_ip = NULL;
-  const gchar *username = NULL;
-  const gchar *password = NULL;
-  const gchar *type_str = NULL;
-  guint server_port;
+  GabbleJingleRelay *relay = item;
   NiceRelayType type;
-  GValue *value;
 
-  value = g_hash_table_lookup (relay, "ip");
-  if (value != NULL)
-    server_ip = g_value_get_string (value);
-  else
-    return;
-
-  value = g_hash_table_lookup (relay, "port");
-  if (value != NULL)
-    server_port = g_value_get_uint (value);
-  else
-    return;
-
-  value = g_hash_table_lookup (relay, "username");
-  if (value != NULL)
-    username = g_value_get_string (value);
-  else
-    return;
-
-  value = g_hash_table_lookup (relay, "password");
-  if (value != NULL)
-    password = g_value_get_string (value);
-  else
-    return;
-
-  value = g_hash_table_lookup (relay, "type");
-  if (value != NULL)
-    type_str = g_value_get_string (value);
-  else
-    return;
-
-  if (!strcmp (type_str, "udp"))
-    type = NICE_RELAY_TYPE_TURN_UDP;
-  else if (!strcmp (type_str, "tcp"))
-    type = NICE_RELAY_TYPE_TURN_TCP;
-  else if (!strcmp (type_str, "tls"))
-    type = NICE_RELAY_TYPE_TURN_TLS;
-  else
-    return;
+  g_return_if_fail (relay->type < GABBLE_N_JINGLE_RELAY_TYPES);
+  type = relay_type_map[relay->type];
 
   nice_agent_set_relay_info (data->share_channel->agent,
       data->share_channel->stream_id, data->share_channel->component_id,
-      server_ip, server_port,
-      username, password, type);
-
+      relay->ip, relay->port, relay->username, relay->password, type);
 }
 
 static void

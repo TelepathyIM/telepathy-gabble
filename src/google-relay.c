@@ -27,8 +27,6 @@
 #include <libsoup/soup.h>
 #endif
 
-#include <telepathy-glib/util.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #ifdef G_OS_WIN32
@@ -64,7 +62,7 @@ relay_session_data_new (guint requests_to_do,
   RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
 
   rsd->relays = g_ptr_array_sized_new (requests_to_do);
-  g_ptr_array_set_free_func (rsd->relays, (GDestroyNotify) g_hash_table_unref);
+  g_ptr_array_set_free_func (rsd->relays, (GDestroyNotify) gabble_jingle_relay_free);
   rsd->component = 1;
   rsd->requests_to_do = requests_to_do;
   rsd->callback = callback;
@@ -104,17 +102,16 @@ translate_relay_info (GPtrArray *relays,
     const gchar *relay_ip,
     const gchar *username,
     const gchar *password,
-    const gchar *static_type,
+    GabbleJingleRelayType relay_type,
     const gchar *port_string,
     guint component)
 {
-  GHashTable *asv;
   guint64 portll;
   guint port;
 
   if (port_string == NULL)
     {
-      DEBUG ("no relay port for %s found", static_type);
+      DEBUG ("no relay port for %u found", relay_type);
       return;
     }
 
@@ -122,31 +119,18 @@ translate_relay_info (GPtrArray *relays,
 
   if (portll == 0 || portll > G_MAXUINT16)
     {
-      DEBUG ("failed to parse relay port '%s' for %s", port_string,
-          static_type);
+      DEBUG ("failed to parse relay port '%s' for %u", port_string,
+          relay_type);
       return;
     }
   port = (guint) portll;
 
-  DEBUG ("type=%s ip=%s port=%u username=%s password=%s component=%u",
-      static_type, relay_ip, port, username, password, component);
-  /* keys are static, values are slice-allocated */
-  asv = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) tp_g_value_slice_free);
-  g_hash_table_insert (asv, "ip",
-      tp_g_value_slice_new_string (relay_ip));
-  g_hash_table_insert (asv, "type",
-      tp_g_value_slice_new_static_string (static_type));
-  g_hash_table_insert (asv, "port",
-      tp_g_value_slice_new_uint (port));
-  g_hash_table_insert (asv, "username",
-      tp_g_value_slice_new_string (username));
-  g_hash_table_insert (asv, "password",
-      tp_g_value_slice_new_string (password));
-  g_hash_table_insert (asv, "component",
-      tp_g_value_slice_new_uint (component));
+  DEBUG ("type=%u ip=%s port=%u username=%s password=%s component=%u",
+      relay_type, relay_ip, port, username, password, component);
 
-  g_ptr_array_add (relays, asv);
+  g_ptr_array_add (relays,
+      gabble_jingle_relay_new (relay_type, relay_ip, port, username, password,
+          component));
 }
 
 static void
@@ -229,11 +213,11 @@ on_http_response (SoupSession *soup,
       else
         {
           translate_relay_info (rsd->relays, relay_ip, username, password,
-              "udp", relay_udp_port, rsd->component);
+              GABBLE_JINGLE_RELAY_TYPE_UDP, relay_udp_port, rsd->component);
           translate_relay_info (rsd->relays, relay_ip, username, password,
-              "tcp", relay_tcp_port, rsd->component);
+              GABBLE_JINGLE_RELAY_TYPE_TCP, relay_tcp_port, rsd->component);
           translate_relay_info (rsd->relays, relay_ip, username, password,
-              "tls", relay_ssltcp_port, rsd->component);
+              GABBLE_JINGLE_RELAY_TYPE_TLS, relay_ssltcp_port, rsd->component);
         }
 
       g_strfreev (lines);

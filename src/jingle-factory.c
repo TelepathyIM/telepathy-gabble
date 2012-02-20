@@ -38,7 +38,6 @@
 #include "jingle-transport-rawudp.h"
 #include "jingle-transport-iceudp.h"
 #include "namespaces.h"
-#include "util.h"
 
 #include "google-relay.h"
 

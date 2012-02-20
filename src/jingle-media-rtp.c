@@ -38,7 +38,6 @@
 #include "jingle-session.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "util.h"
 #include "jingle-transport-google.h"
 
 G_DEFINE_TYPE (GabbleJingleMediaRtp,

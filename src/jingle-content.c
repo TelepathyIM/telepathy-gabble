@@ -34,7 +34,6 @@
 #include "jingle-transport-google.h"
 #include "jingle-media-rtp.h"
 #include "namespaces.h"
-#include "util.h"
 #include "gabble-signals-marshal.h"
 
 /* signal enum */

@@ -33,7 +33,6 @@
 #include "jingle-factory.h"
 #include "jingle-session.h"
 #include "namespaces.h"
-#include "util.h"
 
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data);

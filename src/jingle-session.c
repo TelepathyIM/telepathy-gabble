@@ -39,7 +39,6 @@
  */
 #include "jingle-media-rtp.h"
 #include "namespaces.h"
-#include "util.h"
 
 G_DEFINE_TYPE(GabbleJingleSession, gabble_jingle_session, G_TYPE_OBJECT);
 

@@ -86,6 +86,11 @@ static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *jid,
     gboolean local_hold);
 
+static gboolean session_query_cap_cb (
+    GabbleJingleSession *session,
+    WockyContact *contact,
+    const gchar *cap_or_quirk,
+    gpointer user_data);
 static void session_terminated_cb (GabbleJingleSession *sess,
     gboolean local_terminator,
     JingleReason reason,
@@ -119,6 +124,8 @@ gabble_jingle_factory_dispose (GObject *object)
 {
   GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (object);
   GabbleJingleFactoryPrivate *priv = fac->priv;
+  GHashTableIter iter;
+  gpointer val;
 
   if (priv->dispose_has_run)
     return;
@@ -130,8 +137,12 @@ gabble_jingle_factory_dispose (GObject *object)
   g_clear_object (&priv->session);
   g_clear_object (&priv->porter);
 
+  g_hash_table_iter_init (&iter, priv->sessions);
+  while (g_hash_table_iter_next (&iter, NULL, &val))
+    g_signal_handlers_disconnect_by_func (val, session_query_cap_cb, fac);
   g_hash_table_unref (priv->sessions);
   priv->sessions = NULL;
+
   g_hash_table_unref (priv->content_types);
   priv->content_types = NULL;
   g_hash_table_unref (priv->transports);
@@ -509,7 +520,7 @@ create_session (GabbleJingleFactory *fac,
   g_free (sid_);
   g_object_unref (contact);
 
-  gabble_signal_connect_weak (sess, "query-cap",
+  g_signal_connect (sess, "query-cap",
       (GCallback) session_query_cap_cb, (GObject *) fac);
 
   return sess;
@@ -578,6 +589,7 @@ session_terminated_cb (GabbleJingleSession *session,
 
   DEBUG ("removing terminated session with key %s", key);
 
+  g_signal_handlers_disconnect_by_func (session, session_query_cap_cb, factory);
   g_warn_if_fail (g_hash_table_remove (factory->priv->sessions, key));
 
   g_free (key);

@@ -112,6 +112,9 @@ def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
 
 def test(q, bus, conn, stream, bytestream_cls,
         address_type, access_control, access_control_param):
+    if access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
+        print "Skip Socket_Access_Control_Credentials (fdo #45445)"
+        return
 
     vcard_event, roster_event, disco_event = q.expect_many(
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',

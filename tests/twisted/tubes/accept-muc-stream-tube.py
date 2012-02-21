@@ -28,6 +28,10 @@ def test(q, bus, conn, stream, bytestream_cls,
         # contacts atm
         return
 
+    if access_control == cs.SOCKET_ACCESS_CONTROL_CREDENTIALS:
+        print "Skip Socket_Access_Control_Credentials (fdo #45445)"
+        return
+
     iq_event, disco_event = q.expect_many(
         EventPattern('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard'),

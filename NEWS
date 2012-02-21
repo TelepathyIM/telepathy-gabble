@@ -1,9 +1,16 @@
-telepathy-gabble 0.15.4 (UNRELEASED)
+telepathy-gabble 0.15.4 (2012-02-21)
 ====================================
 
-Go go go
+The "disproportionate retribution" release.
+
+Requirements:
+
+• telepathy-glib 0.17.5 is now required
 
 Enhancements:
+
+• Add support for the final version of Call1 from telepathy-spec 0.25.2
+  and remove the telepathy-yell submodule. (Many contributors)
 
 • fd.o#41790 - Make file transfer support optional (andrunko)
 
@@ -19,10 +26,11 @@ Enhancements:
   This makes it easier for users to distinguish contacts being offline
   from contacts' servers being broken. (Will)
 
-• fd.o#44649 - Gabble now has a gabble-plugins.so library, similarly to mission-control. This
-  enables plugins to link correctly as DLLs on Windows. This also means that plugins don't directly
-  access GabbleConnections anymore, but instead invoke the same functionality through a
-  GabblePluginConnection GInterface. (siraj)
+• fd.o#44649 - Gabble now has a gabble-plugins.so library, similarly
+  to mission-control. This enables plugins to link correctly as DLLs
+  on Windows. This also means that plugins don't directly access
+  GabbleConnections anymore, but instead invoke the same functionality
+  through a GabblePluginConnection GInterface. (siraj)
 
 API changes to Wocky snapshot:
 
@@ -43,10 +51,22 @@ API changes to Wocky snapshot:
 Fixes:
 
 • fd.o#44331 - Gabble plugin API fails at runtime on Windows :
-  gabble_plugin_create_sidecar function is renamed to gabble_plugin_create_sidecar_async
-  and new virtual function gabble_plugin_create_sidecar_finish is introduced. All gabble
-  plugins should implement these two methods and all internal plugins are updated to use
-  this new API. (siraj)
+  gabble_plugin_create_sidecar function is renamed
+  to gabble_plugin_create_sidecar_async and new virtual function
+  gabble_plugin_create_sidecar_finish is introduced. All gabble plugins
+  should implement these two methods and all internal plugins are
+  updated to use this new API. (siraj)
+
+• fd.o #45443 (workaround): avoid testing Credentials access control,
+  since recent Linux has  stricter requirements for credentials-passing
+  (it's now opt-in) which we're not yet meeting. (Guillaume)
+
+• fd.o #46379: don't raise a GError with domain 0. (Simon)
+
+• fd.o #44855: work around Google's unimplemented capability discovery
+  by hard-coding the capabilities of the GTalk echo bot. (Guillaume)
+
+• Work around the deprecation of GValueArray. (Guillaume)
 
 telepathy-gabble 0.15.3 (2011-12-22)
 ====================================

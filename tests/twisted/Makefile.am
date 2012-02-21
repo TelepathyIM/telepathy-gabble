@@ -257,6 +257,7 @@ TWISTED_OTHER_FILES = \
 	file-transfer/file_transfer_helper.py \
 	gabbletest.py \
 	httptest.py \
+	jingle/call_helper.py \
 	jingle/callutils.py \
 	jingle/__init__.py \
 	jingle/jingletest2.py \

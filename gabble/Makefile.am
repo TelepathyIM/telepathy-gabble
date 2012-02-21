@@ -1,9 +1,18 @@
 if ENABLE_PLUGIN_API
+
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = telepathy-gabble.pc
 
 gabbleincludedir = $(includedir)/telepathy-gabble-0/gabble
-gabbleinclude_HEADERS = \
+gabbleinclude_HEADERS = $(headers)
+
+else
+
+EXTRA_DIST = $(headers)
+
+endif
+
+headers = \
     capabilities.h \
     capabilities-set.h \
     caps-channel-manager.h \
@@ -15,5 +24,3 @@ gabbleinclude_HEADERS = \
     plugin.h \
     sidecar.h \
     types.h
-
-endif

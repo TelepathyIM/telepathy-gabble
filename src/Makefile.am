@@ -45,13 +45,9 @@ libgabble_convenience_la_SOURCES = \
     call-member-content.c \
     call-stream.h \
     call-stream.c \
-    $(top_srcdir)/gabble/capabilities-set.h \
-    $(top_srcdir)/gabble/capabilities.h \
     capabilities.c \
-    $(top_srcdir)/gabble/caps-hash.h \
     caps-hash.h \
     caps-hash.c \
-    $(top_srcdir)/gabble/caps-channel-manager.h \
     caps-channel-manager.c \
     conn-addressing.h \
     conn-addressing.c \
@@ -129,7 +125,6 @@ libgabble_convenience_la_SOURCES = \
     muc-channel.c \
     muc-factory.h \
     muc-factory.c \
-    $(top_srcdir)/gabble/namespaces.h \
     namespaces.h \
     olpc-activity.h \
     olpc-activity.c \
@@ -163,7 +158,6 @@ libgabble_convenience_la_SOURCES = \
     server-tls-channel.c \
     server-tls-manager.h \
     server-tls-manager.c \
-    $(top_srcdir)/gabble/sidecar.h \
     sidecar.c \
     tls-certificate.h \
     tls-certificate.c \
@@ -175,7 +169,6 @@ libgabble_convenience_la_SOURCES = \
     tube-dbus.c \
     tube-stream.h \
     tube-stream.c \
-    $(top_srcdir)/gabble/types.h \
     types.h \
     util.h \
     util.c \
@@ -243,17 +236,11 @@ libgabble_plugins_la_LIBADD = \
    $(ALL_LIBS)
 
 libgabble_plugins_la_SOURCES = \
-   $(top_srcdir)/gabble/capabilities.h \
    capabilities.c \
-   $(top_srcdir)/gabble/caps-channel-manager.h \
    caps-channel-manager.c \
-   $(top_srcdir)/gabble/debug.h \
    debug.c \
-   $(top_srcdir)/gabble/error.h \
    error.c \
-   $(top_srcdir)/gabble/plugin.h \
    plugin.c \
-   $(top_srcdir)/gabble/plugin-connection.h \
    plugin-connection.c \
    sidecar.c
 

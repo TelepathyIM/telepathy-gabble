@@ -3,7 +3,7 @@
 dist-hook:
 	chmod u+w ${distdir}/ChangeLog
 	if test -d ${top_srcdir}/.git; then \
-		git log --date=iso $(CHANGELOG_RANGE) > ${distdir}/ChangeLog; \
+		( cd ${top_srcdir} && git log --date=iso $(CHANGELOG_RANGE) ) > ${distdir}/ChangeLog; \
 	fi
 
 distcheck-hook:
@@ -26,11 +26,13 @@ _is-release-check:
 			exit 2; \
 			;; \
 	esac
-	@if ! git diff --no-ext-diff --quiet --exit-code; then \
+	@cd ${top_srcdir} && \
+	if ! git diff --no-ext-diff --quiet --exit-code; then \
 		echo "Hey! Your tree is dirty! No release for you." >&2; \
 		exit 2; \
 	fi
-	@if ! git diff --cached --no-ext-diff --quiet --exit-code; then \
+	@cd ${top_srcdir} && \
+	if ! git diff --cached --no-ext-diff --quiet --exit-code; then \
 		echo "Hey! You have changes staged! No release for you." >&2; \
 		exit 2; \
 	fi

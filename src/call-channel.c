@@ -44,15 +44,15 @@
 
 static void async_initable_iface_init (GAsyncInitableIface *iface);
 
-static void call_session_state_changed_cb (GabbleJingleSession *session,
+static void call_session_state_changed_cb (WockyJingleSession *session,
   GParamSpec *param, GabbleCallChannel *self);
 static void call_member_content_added_cb (GabbleCallMember *member,
     GabbleCallMemberContent *content, GabbleCallChannel *self);
 static void call_member_content_removed_cb (GabbleCallMember *member,
     GabbleCallMemberContent *mcontent,
     GabbleBaseCallChannel *self);
-static void call_session_terminated_cb (GabbleJingleSession *session,
-    gboolean locally_terminated, JingleReason termination_reason,
+static void call_session_terminated_cb (WockyJingleSession *session,
+    gboolean locally_terminated, WockyJingleReason termination_reason,
     gchar *reason_text, GabbleCallChannel *self);
 
 static void call_channel_accept (TpBaseMediaCallChannel *channel);
@@ -86,7 +86,7 @@ struct _GabbleCallChannelPrivate
 
   /* Our only call member, owned by the base channel */
   GabbleCallMember *member;
-  GabbleJingleSession *session;
+  WockyJingleSession *session;
 };
 
 static void
@@ -222,9 +222,9 @@ gabble_call_channel_class_init (
   tp_base_media_call_class->hold_state_changed =
       call_channel_hold_state_changed;
 
-  param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
+  param_spec = g_param_spec_object ("session", "WockyJingleSession object",
       "Jingle session associated with this media channel object.",
-      GABBLE_TYPE_JINGLE_SESSION,
+      WOCKY_TYPE_JINGLE_SESSION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SESSION, param_spec);
 }
@@ -253,8 +253,8 @@ gabble_call_channel_finalize (GObject *object)
 }
 
 static void
-call_session_terminated_cb (GabbleJingleSession *session,
-    gboolean locally_terminated, JingleReason termination_reason,
+call_session_terminated_cb (WockyJingleSession *session,
+    gboolean locally_terminated, WockyJingleReason termination_reason,
     gchar *reason_text, GabbleCallChannel *self)
 {
   TpHandle actor;
@@ -278,66 +278,66 @@ call_session_terminated_cb (GabbleJingleSession *session,
 
   switch (termination_reason)
     {
-    case JINGLE_REASON_UNKNOWN:
+    case WOCKY_JINGLE_REASON_UNKNOWN:
       call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
       break;
-    case JINGLE_REASON_BUSY:
+    case WOCKY_JINGLE_REASON_BUSY:
       call_reason = TP_CALL_STATE_CHANGE_REASON_BUSY;
       break;
-    case JINGLE_REASON_CANCEL:
+    case WOCKY_JINGLE_REASON_CANCEL:
       if (locally_terminated)
         call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
       else
         call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
       break;
-    case JINGLE_REASON_CONNECTIVITY_ERROR:
+    case WOCKY_JINGLE_REASON_CONNECTIVITY_ERROR:
       call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
       break;
-    case JINGLE_REASON_FAILED_APPLICATION:
+    case WOCKY_JINGLE_REASON_FAILED_APPLICATION:
       call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
       dbus_detail = TP_ERROR_STR_MEDIA_CODECS_INCOMPATIBLE;
       break;
-    case JINGLE_REASON_GENERAL_ERROR:
+    case WOCKY_JINGLE_REASON_GENERAL_ERROR:
       call_reason = TP_CALL_STATE_CHANGE_REASON_SERVICE_ERROR;
       break;
-    case JINGLE_REASON_GONE:
+    case WOCKY_JINGLE_REASON_GONE:
       /* This one is only in the media channel, we don't have a
        * Call reason to match */
       call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
       break;
-    case JINGLE_REASON_MEDIA_ERROR:
+    case WOCKY_JINGLE_REASON_MEDIA_ERROR:
       call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
       break;
-    case JINGLE_REASON_SUCCESS:
+    case WOCKY_JINGLE_REASON_SUCCESS:
       call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
       break;
-    case JINGLE_REASON_TIMEOUT:
+    case WOCKY_JINGLE_REASON_TIMEOUT:
       call_reason = TP_CALL_STATE_CHANGE_REASON_NO_ANSWER;
       break;
-    case JINGLE_REASON_DECLINE:
+    case WOCKY_JINGLE_REASON_DECLINE:
       call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
       break;
-    case JINGLE_REASON_ALTERNATIVE_SESSION:
+    case WOCKY_JINGLE_REASON_ALTERNATIVE_SESSION:
       break;
-    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+    case WOCKY_JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
       call_reason = TP_CALL_STATE_CHANGE_REASON_NETWORK_ERROR;
       break;
-    case JINGLE_REASON_FAILED_TRANSPORT:
+    case WOCKY_JINGLE_REASON_FAILED_TRANSPORT:
       call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
       dbus_detail = TP_ERROR_STR_CONNECTION_FAILED;
       break;
-    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+    case WOCKY_JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
       call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
       dbus_detail = TP_ERROR_STR_MEDIA_CODECS_INCOMPATIBLE;
       break;
-    case JINGLE_REASON_SECURITY_ERROR:
+    case WOCKY_JINGLE_REASON_SECURITY_ERROR:
       call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
       break;
-    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+    case WOCKY_JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
       call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
       dbus_detail = TP_ERROR_STR_MEDIA_UNSUPPORTED_TYPE;
       break;
-    case JINGLE_REASON_EXPIRED:
+    case WOCKY_JINGLE_REASON_EXPIRED:
       /* No matching error in our spec */
       call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
       break;
@@ -352,16 +352,16 @@ call_session_terminated_cb (GabbleJingleSession *session,
 }
 
 static void
-call_session_state_changed_cb (GabbleJingleSession *session,
+call_session_state_changed_cb (WockyJingleSession *session,
   GParamSpec *param,
   GabbleCallChannel *self)
 {
   TpBaseCallChannel *cbase = TP_BASE_CALL_CHANNEL (self);
-  JingleState state;
+  WockyJingleState state;
 
   g_object_get (session, "state", &state, NULL);
 
-  if (state == JINGLE_STATE_ACTIVE && !tp_base_call_channel_is_accepted (cbase))
+  if (state == WOCKY_JINGLE_STATE_ACTIVE && !tp_base_call_channel_is_accepted (cbase))
     {
       tp_base_call_channel_remote_accept (cbase);
     }
@@ -374,13 +374,13 @@ call_member_content_added_cb (GabbleCallMember *member,
     GabbleCallChannel *self)
 {
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
-  GabbleJingleContent *jingle_content;
+  WockyJingleContent *jingle_content;
   GabbleCallContent *c;
 
   jingle_content = gabble_call_member_content_get_jingle_content (content);
 
   if (jingle_content == NULL ||
-      gabble_jingle_content_is_created_by_us (jingle_content))
+      wocky_jingle_content_is_created_by_us (jingle_content))
     return;
 
   c = gabble_base_call_channel_add_content (cbase,
@@ -644,7 +644,7 @@ static void
 call_channel_accept (TpBaseMediaCallChannel *channel)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (channel);
-  gabble_jingle_session_accept (self->priv->session);
+  wocky_jingle_session_accept (self->priv->session);
 }
 
 static TpBaseCallContent *
@@ -657,7 +657,7 @@ call_channel_add_content (TpBaseCallChannel *base,
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (base);
   GabbleCallContent *content = NULL;
   GabbleCallMemberContent *mcontent;
-  JingleContentSenders senders;
+  WockyJingleContentSenders senders;
   gboolean initiated_by_us;
 
   if (initial_direction == TP_MEDIA_STREAM_DIRECTION_NONE)
@@ -674,25 +674,25 @@ call_channel_add_content (TpBaseCallChannel *base,
     {
     case TP_MEDIA_STREAM_DIRECTION_SEND:
       senders = initiated_by_us ?
-          JINGLE_CONTENT_SENDERS_INITIATOR : JINGLE_CONTENT_SENDERS_RESPONDER;
+          WOCKY_JINGLE_CONTENT_SENDERS_INITIATOR : WOCKY_JINGLE_CONTENT_SENDERS_RESPONDER;
       break;
     case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
       senders = initiated_by_us ?
-          JINGLE_CONTENT_SENDERS_RESPONDER : JINGLE_CONTENT_SENDERS_INITIATOR;
+          WOCKY_JINGLE_CONTENT_SENDERS_RESPONDER : WOCKY_JINGLE_CONTENT_SENDERS_INITIATOR;
       break;
     default:
     case TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL:
-      senders = JINGLE_CONTENT_SENDERS_BOTH;
+      senders = WOCKY_JINGLE_CONTENT_SENDERS_BOTH;
     }
 
   mcontent = gabble_call_member_create_content (self->priv->member, name,
-      jingle_media_type_from_tp (type), senders, error);
+      wocky_jingle_media_type_from_tp (type), senders, error);
 
   if (mcontent != NULL)
     {
       content = gabble_base_call_channel_add_content (
         GABBLE_BASE_CALL_CHANNEL (base),
-        name, jingle_media_type_from_tp (type),
+        name, wocky_jingle_media_type_from_tp (type),
         TP_CALL_CONTENT_DISPOSITION_NONE);
       gabble_call_content_add_member_content (content, mcontent);
     }
@@ -710,10 +710,10 @@ call_channel_hold_state_changed (TpBaseMediaCallChannel *bmcc,
     {
     case TP_LOCAL_HOLD_STATE_HELD:
     case TP_LOCAL_HOLD_STATE_PENDING_HOLD:
-      gabble_jingle_session_set_local_hold (self->priv->session, TRUE);
+      wocky_jingle_session_set_local_hold (self->priv->session, TRUE);
       break;
     case TP_LOCAL_HOLD_STATE_UNHELD:
-      gabble_jingle_session_set_local_hold (self->priv->session, FALSE);
+      wocky_jingle_session_set_local_hold (self->priv->session, FALSE);
       break;
     case TP_LOCAL_HOLD_STATE_PENDING_UNHOLD:
       break;

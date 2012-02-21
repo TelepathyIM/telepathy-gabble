@@ -1,5 +1,5 @@
 /*
- * jingle-transport-rawudp.h - Header for GabbleJingleTransportRawUdp
+ * jingle-transport-rawudp.h - Header for WockyJingleTransportRawUdp
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -26,39 +26,39 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleJingleTransportRawUdpClass GabbleJingleTransportRawUdpClass;
+typedef struct _WockyJingleTransportRawUdpClass WockyJingleTransportRawUdpClass;
 
-GType gabble_jingle_transport_rawudp_get_type (void);
+GType wocky_jingle_transport_rawudp_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP \
-  (gabble_jingle_transport_rawudp_get_type ())
-#define GABBLE_JINGLE_TRANSPORT_RAWUDP(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP, \
-                              GabbleJingleTransportRawUdp))
-#define GABBLE_JINGLE_TRANSPORT_RAWUDP_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP, \
-                           GabbleJingleTransportRawUdpClass))
-#define GABBLE_IS_JINGLE_TRANSPORT_RAWUDP(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP))
-#define GABBLE_IS_JINGLE_TRANSPORT_RAWUDP_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP))
-#define GABBLE_JINGLE_TRANSPORT_RAWUDP_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP, \
-                              GabbleJingleTransportRawUdpClass))
+#define WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP \
+  (wocky_jingle_transport_rawudp_get_type ())
+#define WOCKY_JINGLE_TRANSPORT_RAWUDP(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP, \
+                              WockyJingleTransportRawUdp))
+#define WOCKY_JINGLE_TRANSPORT_RAWUDP_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP, \
+                           WockyJingleTransportRawUdpClass))
+#define WOCKY_IS_JINGLE_TRANSPORT_RAWUDP(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP))
+#define WOCKY_IS_JINGLE_TRANSPORT_RAWUDP_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP))
+#define WOCKY_JINGLE_TRANSPORT_RAWUDP_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP, \
+                              WockyJingleTransportRawUdpClass))
 
-struct _GabbleJingleTransportRawUdpClass {
+struct _WockyJingleTransportRawUdpClass {
     GObjectClass parent_class;
 };
 
-typedef struct _GabbleJingleTransportRawUdpPrivate GabbleJingleTransportRawUdpPrivate;
+typedef struct _WockyJingleTransportRawUdpPrivate WockyJingleTransportRawUdpPrivate;
 
-struct _GabbleJingleTransportRawUdp {
+struct _WockyJingleTransportRawUdp {
     GObject parent;
-    GabbleJingleTransportRawUdpPrivate *priv;
+    WockyJingleTransportRawUdpPrivate *priv;
 };
 
-void jingle_transport_rawudp_register (GabbleJingleFactory *factory);
+void jingle_transport_rawudp_register (WockyJingleFactory *factory);
 
 #endif /* __JINGLE_TRANSPORT_RAWUDP_H__ */
 

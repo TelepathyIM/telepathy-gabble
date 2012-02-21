@@ -340,24 +340,24 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
 #ifdef ENABLE_JINGLE_FILE_TRANSFER
 static void
 new_jingle_session_cb (GabbleJingleMint *jm,
-    GabbleJingleSession *sess,
+    WockyJingleSession *sess,
     gpointer data)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (data);
   GTalkFileCollection *gtalk_fc = NULL;
-  GabbleJingleContent *content = NULL;
+  WockyJingleContent *content = NULL;
   GabbleJingleShareManifest *manifest = NULL;
   GList *channels = NULL;
   GList *cs, *i;
 
-  if (gabble_jingle_session_get_content_type (sess) ==
+  if (wocky_jingle_session_get_content_type (sess) ==
       GABBLE_TYPE_JINGLE_SHARE)
     {
-      cs = gabble_jingle_session_get_contents (sess);
+      cs = wocky_jingle_session_get_contents (sess);
 
       if (cs != NULL)
         {
-          content = GABBLE_JINGLE_CONTENT (cs->data);
+          content = WOCKY_JINGLE_CONTENT (cs->data);
           g_list_free (cs);
         }
 
@@ -387,7 +387,7 @@ new_jingle_session_cb (GabbleJingleMint *jm,
                   TP_BASE_CONNECTION (self->priv->connection),
                   TP_HANDLE_TYPE_CONTACT);
               TpHandle peer = tp_handle_ensure (contacts,
-                  gabble_jingle_session_get_peer_jid (sess), NULL, NULL);
+                  wocky_jingle_session_get_peer_jid (sess), NULL, NULL);
 
               filename = g_strdup_printf ("%s%s",
                   entry->name, entry->folder? ".tar":"");

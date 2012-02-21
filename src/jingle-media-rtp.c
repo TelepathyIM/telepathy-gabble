@@ -1,5 +1,5 @@
 /*
- * jingle-media-rtp.c - Source for GabbleJingleMediaRtp
+ * jingle-media-rtp.c - Source for WockyJingleMediaRtp
  *
  * Copyright (C) 2008 Collabora Ltd.
  *
@@ -41,8 +41,8 @@
 #include "presence-cache.h"
 #include "jingle-transport-google.h"
 
-G_DEFINE_TYPE (GabbleJingleMediaRtp,
-    gabble_jingle_media_rtp, GABBLE_TYPE_JINGLE_CONTENT);
+G_DEFINE_TYPE (WockyJingleMediaRtp,
+    wocky_jingle_media_rtp, WOCKY_TYPE_JINGLE_CONTENT);
 
 /* signal enum */
 enum
@@ -62,22 +62,22 @@ enum
 };
 
 typedef enum {
-  JINGLE_MEDIA_PROFILE_RTP_AVP,
-} JingleMediaProfile;
+  WOCKY_JINGLE_MEDIA_PROFILE_RTP_AVP,
+} WockyJingleMediaProfile;
 
-struct _GabbleJingleMediaRtpPrivate
+struct _WockyJingleMediaRtpPrivate
 {
-  JingleMediaDescription *local_media_description;
+  WockyJingleMediaDescription *local_media_description;
 
-  /* Holds (JingleCodec *)'s borrowed from local_media_description,
+  /* Holds (WockyJingleCodec *)'s borrowed from local_media_description,
    * namely codecs which have changed from local_media_description's
    * previous value. Since the contents are borrowed, this must be
    * freed with g_list_free, not jingle_media_rtp_free_codecs().
    */
   GList *local_codec_updates;
 
-  JingleMediaDescription *remote_media_description;
-  JingleMediaType media_type;
+  WockyJingleMediaDescription *remote_media_description;
+  WockyJingleMediaType media_type;
   gboolean remote_mute;
 
   gboolean has_rtcp_fb;
@@ -87,20 +87,20 @@ struct _GabbleJingleMediaRtpPrivate
 };
 
 static void
-gabble_jingle_media_rtp_init (GabbleJingleMediaRtp *obj)
+wocky_jingle_media_rtp_init (WockyJingleMediaRtp *obj)
 {
-  GabbleJingleMediaRtpPrivate *priv =
-     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_JINGLE_MEDIA_RTP,
-         GabbleJingleMediaRtpPrivate);
+  WockyJingleMediaRtpPrivate *priv =
+     G_TYPE_INSTANCE_GET_PRIVATE (obj, WOCKY_TYPE_JINGLE_MEDIA_RTP,
+         WockyJingleMediaRtpPrivate);
   obj->priv = priv;
   priv->dispose_has_run = FALSE;
 }
 
-JingleCodec *
+WockyJingleCodec *
 jingle_media_rtp_codec_new (guint id, const gchar *name,
     guint clockrate, guint channels, GHashTable *params)
 {
-  JingleCodec *p = g_slice_new0 (JingleCodec);
+  WockyJingleCodec *p = g_slice_new0 (WockyJingleCodec);
 
   p->id = id;
   p->name = g_strdup (name);
@@ -124,16 +124,16 @@ jingle_media_rtp_codec_new (guint id, const gchar *name,
 
 
 static GList *
-jingle_feedback_message_list_copy (GList *fbs)
+wocky_jingle_feedback_message_list_copy (GList *fbs)
 {
   GQueue new = G_QUEUE_INIT;
   GList *li;
 
   for (li = fbs; li; li = li->next)
     {
-      JingleFeedbackMessage *fb = li->data;
+      WockyJingleFeedbackMessage *fb = li->data;
 
-      g_queue_push_tail (&new, jingle_feedback_message_new (fb->type,
+      g_queue_push_tail (&new, wocky_jingle_feedback_message_new (fb->type,
               fb->subtype));
     }
 
@@ -141,26 +141,26 @@ jingle_feedback_message_list_copy (GList *fbs)
 }
 
 static void
-jingle_feedback_message_list_free (GList *fbs)
+wocky_jingle_feedback_message_list_free (GList *fbs)
 {
   while (fbs != NULL)
     {
-      jingle_feedback_message_free (fbs->data);
+      wocky_jingle_feedback_message_free (fbs->data);
       fbs = g_list_delete_link (fbs, fbs);
     }
 }
 
 void
-jingle_media_rtp_codec_free (JingleCodec *p)
+jingle_media_rtp_codec_free (WockyJingleCodec *p)
 {
   g_hash_table_unref (p->params);
   g_free (p->name);
-  jingle_feedback_message_list_free (p->feedback_msgs);
-  g_slice_free (JingleCodec, p);
+  wocky_jingle_feedback_message_list_free (p->feedback_msgs);
+  g_slice_free (WockyJingleCodec, p);
 }
 
 static void
-add_codec_to_table (JingleCodec *codec,
+add_codec_to_table (WockyJingleCodec *codec,
                     GHashTable *table)
 {
   g_hash_table_insert (table, GUINT_TO_POINTER ((guint) codec->id), codec);
@@ -182,8 +182,8 @@ jingle_media_rtp_copy_codecs (GList *codecs)
 
   for (l = codecs; l != NULL; l = g_list_next (l))
     {
-      JingleCodec *c = l->data;
-      JingleCodec *newc =  jingle_media_rtp_codec_new (c->id,
+      WockyJingleCodec *c = l->data;
+      WockyJingleCodec *newc =  jingle_media_rtp_codec_new (c->id,
           c->name, c->clockrate, c->channels, c->params);
       newc->trr_int = c->trr_int;
       ret = g_list_append (ret, newc);
@@ -203,10 +203,10 @@ jingle_media_rtp_free_codecs (GList *codecs)
 }
 
 static void
-gabble_jingle_media_rtp_dispose (GObject *object)
+wocky_jingle_media_rtp_dispose (GObject *object)
 {
-  GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv = trans->priv;
+  WockyJingleMediaRtp *trans = WOCKY_JINGLE_MEDIA_RTP (object);
+  WockyJingleMediaRtpPrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -215,11 +215,11 @@ gabble_jingle_media_rtp_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   if (priv->remote_media_description != NULL)
-    jingle_media_description_free (priv->remote_media_description);
+    wocky_jingle_media_description_free (priv->remote_media_description);
   priv->remote_media_description = NULL;
 
   if (priv->local_media_description != NULL)
-    jingle_media_description_free (priv->local_media_description);
+    wocky_jingle_media_description_free (priv->local_media_description);
   priv->local_media_description = NULL;
 
   if (priv->local_codec_updates != NULL)
@@ -230,18 +230,18 @@ gabble_jingle_media_rtp_dispose (GObject *object)
       priv->local_codec_updates = NULL;
     }
 
-  if (G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_jingle_media_rtp_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (wocky_jingle_media_rtp_parent_class)->dispose)
+    G_OBJECT_CLASS (wocky_jingle_media_rtp_parent_class)->dispose (object);
 }
 
 static void
-gabble_jingle_media_rtp_get_property (GObject *object,
+wocky_jingle_media_rtp_get_property (GObject *object,
                                              guint property_id,
                                              GValue *value,
                                              GParamSpec *pspec)
 {
-  GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv = trans->priv;
+  WockyJingleMediaRtp *trans = WOCKY_JINGLE_MEDIA_RTP (object);
+  WockyJingleMediaRtpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_MEDIA_TYPE:
@@ -257,13 +257,13 @@ gabble_jingle_media_rtp_get_property (GObject *object,
 }
 
 static void
-gabble_jingle_media_rtp_set_property (GObject *object,
+wocky_jingle_media_rtp_set_property (GObject *object,
                                              guint property_id,
                                              const GValue *value,
                                              GParamSpec *pspec)
 {
-  GabbleJingleMediaRtp *trans = GABBLE_JINGLE_MEDIA_RTP (object);
-  GabbleJingleMediaRtpPrivate *priv = trans->priv;
+  WockyJingleMediaRtp *trans = WOCKY_JINGLE_MEDIA_RTP (object);
+  WockyJingleMediaRtpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_MEDIA_TYPE:
@@ -278,25 +278,25 @@ gabble_jingle_media_rtp_set_property (GObject *object,
   }
 }
 
-static void parse_description (GabbleJingleContent *content,
+static void parse_description (WockyJingleContent *content,
     WockyNode *desc_node, GError **error);
-static void produce_description (GabbleJingleContent *obj,
+static void produce_description (WockyJingleContent *obj,
     WockyNode *content_node);
-static void transport_created (GabbleJingleContent *obj,
-    GabbleJingleTransportIface *transport);
+static void transport_created (WockyJingleContent *obj,
+    WockyJingleTransportIface *transport);
 
 static void
-gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
+wocky_jingle_media_rtp_class_init (WockyJingleMediaRtpClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
-  GabbleJingleContentClass *content_class = GABBLE_JINGLE_CONTENT_CLASS (cls);
+  WockyJingleContentClass *content_class = WOCKY_JINGLE_CONTENT_CLASS (cls);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (cls, sizeof (GabbleJingleMediaRtpPrivate));
+  g_type_class_add_private (cls, sizeof (WockyJingleMediaRtpPrivate));
 
-  object_class->get_property = gabble_jingle_media_rtp_get_property;
-  object_class->set_property = gabble_jingle_media_rtp_set_property;
-  object_class->dispose = gabble_jingle_media_rtp_dispose;
+  object_class->get_property = wocky_jingle_media_rtp_get_property;
+  object_class->set_property = wocky_jingle_media_rtp_set_property;
+  object_class->dispose = wocky_jingle_media_rtp_dispose;
 
   content_class->parse_description = parse_description;
   content_class->produce_description = produce_description;
@@ -304,7 +304,7 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
 
   param_spec = g_param_spec_uint ("media-type", "RTP media type",
       "Media type.",
-      JINGLE_MEDIA_TYPE_NONE, G_MAXUINT32, JINGLE_MEDIA_TYPE_NONE,
+      WOCKY_JINGLE_MEDIA_TYPE_NONE, G_MAXUINT32, WOCKY_JINGLE_MEDIA_TYPE_NONE,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE, param_spec);
 
@@ -321,24 +321,24 @@ gabble_jingle_media_rtp_class_init (GabbleJingleMediaRtpClass *cls)
         G_TYPE_NONE, 1, G_TYPE_POINTER);
 }
 
-static void transport_created (GabbleJingleContent *content,
-    GabbleJingleTransportIface *transport)
+static void transport_created (WockyJingleContent *content,
+    WockyJingleTransportIface *transport)
 {
-  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
-  GabbleJingleTransportGoogle *gtrans = NULL;
-  JingleDialect dialect;
+  WockyJingleMediaRtp *self = WOCKY_JINGLE_MEDIA_RTP (content);
+  WockyJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleTransportGoogle *gtrans = NULL;
+  WockyJingleDialect dialect;
 
-  if (GABBLE_IS_JINGLE_TRANSPORT_GOOGLE (transport))
+  if (WOCKY_IS_JINGLE_TRANSPORT_GOOGLE (transport))
     {
-      gtrans = GABBLE_JINGLE_TRANSPORT_GOOGLE (transport);
-      dialect = gabble_jingle_session_get_dialect (content->session);
+      gtrans = WOCKY_JINGLE_TRANSPORT_GOOGLE (transport);
+      dialect = wocky_jingle_session_get_dialect (content->session);
 
-      if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO &&
-          (JINGLE_IS_GOOGLE_DIALECT (dialect) ||
-           gabble_jingle_session_peer_has_cap (content->session,
+      if (priv->media_type == WOCKY_JINGLE_MEDIA_TYPE_VIDEO &&
+          (WOCKY_JINGLE_DIALECT_IS_GOOGLE (dialect) ||
+           wocky_jingle_session_peer_has_cap (content->session,
                QUIRK_GOOGLE_WEBMAIL_CLIENT) ||
-           gabble_jingle_session_peer_has_cap (content->session,
+           wocky_jingle_session_peer_has_cap (content->session,
                QUIRK_ANDROID_GTALK_CLIENT)))
         {
           jingle_transport_google_set_component_name (gtrans, "video_rtp", 1);
@@ -353,7 +353,7 @@ static void transport_created (GabbleJingleContent *content,
 }
 
 
-static JingleMediaType
+static WockyJingleMediaType
 extract_media_type (WockyNode *desc_node,
                     GError **error)
 {
@@ -365,31 +365,31 @@ extract_media_type (WockyNode *desc_node,
         {
           g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
               "missing required media type attribute");
-          return JINGLE_MEDIA_TYPE_NONE;
+          return WOCKY_JINGLE_MEDIA_TYPE_NONE;
         }
 
       if (!wocky_strdiff (type, "audio"))
-          return JINGLE_MEDIA_TYPE_AUDIO;
+          return WOCKY_JINGLE_MEDIA_TYPE_AUDIO;
 
       if (!wocky_strdiff (type, "video"))
-        return JINGLE_MEDIA_TYPE_VIDEO;
+        return WOCKY_JINGLE_MEDIA_TYPE_VIDEO;
 
       g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "unknown media type %s", type);
-      return JINGLE_MEDIA_TYPE_NONE;
+      return WOCKY_JINGLE_MEDIA_TYPE_NONE;
     }
 
   if (wocky_node_has_ns (desc_node, NS_JINGLE_DESCRIPTION_AUDIO))
-    return JINGLE_MEDIA_TYPE_AUDIO;
+    return WOCKY_JINGLE_MEDIA_TYPE_AUDIO;
 
   if (wocky_node_has_ns (desc_node, NS_JINGLE_DESCRIPTION_VIDEO))
-    return JINGLE_MEDIA_TYPE_VIDEO;
+    return WOCKY_JINGLE_MEDIA_TYPE_VIDEO;
 
   if (wocky_node_has_ns (desc_node, NS_GOOGLE_SESSION_PHONE))
-    return JINGLE_MEDIA_TYPE_AUDIO;
+    return WOCKY_JINGLE_MEDIA_TYPE_AUDIO;
 
   if (wocky_node_has_ns (desc_node, NS_GOOGLE_SESSION_VIDEO))
-    return JINGLE_MEDIA_TYPE_VIDEO;
+    return WOCKY_JINGLE_MEDIA_TYPE_VIDEO;
 
   /* If we get here, namespace in use is not one of namespaces we signed up
    * with, so obviously a bug somewhere.
@@ -397,8 +397,8 @@ extract_media_type (WockyNode *desc_node,
   g_assert_not_reached ();
 }
 
-static JingleFeedbackMessage *
-parse_rtcp_fb (GabbleJingleContent *content, WockyNode *node)
+static WockyJingleFeedbackMessage *
+parse_rtcp_fb (WockyJingleContent *content, WockyNode *node)
 {
   const gchar *pt_ns = wocky_node_get_ns (node);
   const gchar *type;
@@ -417,7 +417,7 @@ parse_rtcp_fb (GabbleJingleContent *content, WockyNode *node)
   if (subtype == NULL)
     subtype = "";
 
-  return jingle_feedback_message_new (type, subtype);
+  return wocky_jingle_feedback_message_new (type, subtype);
 }
 
 
@@ -425,7 +425,7 @@ parse_rtcp_fb (GabbleJingleContent *content, WockyNode *node)
  * Returns G_MAXUINT on error
  */
 static guint
-parse_rtcp_fb_trr_int (GabbleJingleContent *content, WockyNode *node)
+parse_rtcp_fb_trr_int (WockyJingleContent *content, WockyNode *node)
 {
   const gchar *pt_ns = wocky_node_get_ns (node);
   const gchar *txt;
@@ -451,16 +451,16 @@ parse_rtcp_fb_trr_int (GabbleJingleContent *content, WockyNode *node)
  * parse_payload_type:
  * @node: a <payload-type> node.
  *
- * Returns: a newly-allocated JingleCodec if parsing succeeds, or %NULL
+ * Returns: a newly-allocated WockyJingleCodec if parsing succeeds, or %NULL
  *          otherwise.
  */
-static JingleCodec *
-parse_payload_type (GabbleJingleContent *content,
+static WockyJingleCodec *
+parse_payload_type (WockyJingleContent *content,
     WockyNode *node)
 {
-  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
-  JingleCodec *p;
+  WockyJingleMediaRtp *self = WOCKY_JINGLE_MEDIA_RTP (content);
+  WockyJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleCodec *p;
   const char *txt;
   guint8 id;
   const gchar *name;
@@ -512,7 +512,7 @@ parse_payload_type (GabbleJingleContent *content,
         }
       else if (!wocky_strdiff (param->name, "rtcp-fb"))
         {
-          JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
+          WockyJingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
 
           if (fb != NULL)
             {
@@ -539,11 +539,11 @@ parse_payload_type (GabbleJingleContent *content,
   return p;
 }
 
-static JingleRtpHeaderExtension *
+static WockyJingleRtpHeaderExtension *
 parse_rtp_header_extension (WockyNode *node)
 {
   guint id;
-  JingleContentSenders senders;
+  WockyJingleContentSenders senders;
   const gchar *uri;
   const char *txt;
 
@@ -560,11 +560,11 @@ parse_rtp_header_extension (WockyNode *node)
   txt = wocky_node_get_attribute (node, "senders");
 
   if (txt == NULL || !g_ascii_strcasecmp (txt, "both"))
-    senders = JINGLE_CONTENT_SENDERS_BOTH;
+    senders = WOCKY_JINGLE_CONTENT_SENDERS_BOTH;
   else if (!g_ascii_strcasecmp (txt, "initiator"))
-    senders = JINGLE_CONTENT_SENDERS_INITIATOR;
+    senders = WOCKY_JINGLE_CONTENT_SENDERS_INITIATOR;
   else if (!g_ascii_strcasecmp (txt, "responder"))
-    senders = JINGLE_CONTENT_SENDERS_RESPONDER;
+    senders = WOCKY_JINGLE_CONTENT_SENDERS_RESPONDER;
   else
     return NULL;
 
@@ -573,7 +573,7 @@ parse_rtp_header_extension (WockyNode *node)
   if (uri == NULL)
     return NULL;
 
-  return jingle_rtp_header_extension_new (id, senders, uri);
+  return wocky_jingle_rtp_header_extension_new (id, senders, uri);
 }
 
 
@@ -591,8 +591,8 @@ parse_rtp_header_extension (WockyNode *node)
  * have, returns %FALSE and sets @e.
  */
 static gboolean
-codec_update_coherent (const JingleCodec *old_c,
-                       const JingleCodec *new_c,
+codec_update_coherent (const WockyJingleCodec *old_c,
+                       const WockyJingleCodec *new_c,
                        GError **e)
 {
   const GQuark domain = WOCKY_XMPP_ERROR;
@@ -634,13 +634,13 @@ codec_update_coherent (const JingleCodec *old_c,
 }
 
 static void
-update_remote_media_description (GabbleJingleMediaRtp *self,
-                                 JingleMediaDescription *new_media_description,
+update_remote_media_description (WockyJingleMediaRtp *self,
+                                 WockyJingleMediaDescription *new_media_description,
                                  GError **error)
 {
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleMediaRtpPrivate *priv = self->priv;
   GHashTable *rc = NULL;
-  JingleCodec *old_c, *new_c;
+  WockyJingleCodec *old_c, *new_c;
   GList *l;
   GError *e = NULL;
 
@@ -680,7 +680,7 @@ update_remote_media_description (GabbleJingleMediaRtp *self,
 
 out:
   if (new_media_description != NULL)
-    jingle_media_description_free (new_media_description);
+    wocky_jingle_media_description_free (new_media_description);
 
   if (rc != NULL)
     g_hash_table_unref (rc);
@@ -699,15 +699,15 @@ out:
 }
 
 static void
-parse_description (GabbleJingleContent *content,
+parse_description (WockyJingleContent *content,
     WockyNode *desc_node, GError **error)
 {
-  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
-  JingleMediaType mtype;
-  JingleMediaDescription *md;
-  JingleCodec *p;
-  JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
+  WockyJingleMediaRtp *self = WOCKY_JINGLE_MEDIA_RTP (content);
+  WockyJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleMediaType mtype;
+  WockyJingleMediaDescription *md;
+  WockyJingleCodec *p;
+  WockyJingleDialect dialect = wocky_jingle_session_get_dialect (content->session);
   gboolean video_session = FALSE;
   WockyNodeIter i;
   WockyNode *node;
@@ -716,41 +716,41 @@ parse_description (GabbleJingleContent *content,
 
   DEBUG ("node: %s", desc_node->name);
 
-  if (priv->media_type == JINGLE_MEDIA_TYPE_NONE)
+  if (priv->media_type == WOCKY_JINGLE_MEDIA_TYPE_NONE)
     mtype = extract_media_type (desc_node, error);
   else
     mtype = priv->media_type;
 
-  if (mtype == JINGLE_MEDIA_TYPE_NONE)
+  if (mtype == WOCKY_JINGLE_MEDIA_TYPE_NONE)
     return;
 
   DEBUG ("detected media type %u", mtype);
 
-  if (dialect == JINGLE_DIALECT_GTALK3)
+  if (dialect == WOCKY_JINGLE_DIALECT_GTALK3)
     {
       const gchar *desc_ns =
         wocky_node_get_ns (desc_node);
       video_session = !wocky_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
     }
 
-  md = jingle_media_description_new ();
+  md = wocky_jingle_media_description_new ();
 
   wocky_node_iter_init (&i, desc_node, NULL, NULL);
   while (wocky_node_iter_next (&i, &node) && !description_error)
     {
       if (!wocky_strdiff (node->name, "payload-type"))
         {
-          if (dialect == JINGLE_DIALECT_GTALK3)
+          if (dialect == WOCKY_JINGLE_DIALECT_GTALK3)
             {
               const gchar *pt_ns = wocky_node_get_ns (node);
 
-              if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
+              if (priv->media_type == WOCKY_JINGLE_MEDIA_TYPE_AUDIO)
                 {
                   if (video_session &&
                       wocky_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
                     continue;
                 }
-              else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
+              else if (priv->media_type == WOCKY_JINGLE_MEDIA_TYPE_VIDEO)
                 {
                   if (!(video_session && pt_ns == NULL)
                       && wocky_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
@@ -774,7 +774,7 @@ parse_description (GabbleJingleContent *content,
       else if (!wocky_strdiff (node->name, "rtp-hdrext"))
         {
           const gchar *pt_ns = wocky_node_get_ns (node);
-          JingleRtpHeaderExtension *hdrext;
+          WockyJingleRtpHeaderExtension *hdrext;
 
           if (wocky_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
             continue;
@@ -794,7 +794,7 @@ parse_description (GabbleJingleContent *content,
         }
       else if (!wocky_strdiff (node->name, "rtcp-fb"))
         {
-          JingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
+          WockyJingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
 
           if (fb == NULL)
             {
@@ -827,7 +827,7 @@ parse_description (GabbleJingleContent *content,
   if (description_error)
     {
       /* rollback these */
-      jingle_media_description_free (md);
+      wocky_jingle_media_description_free (md);
       g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "invalid description");
       return;
@@ -906,7 +906,7 @@ produce_rtcp_fb_trr_int (WockyNode *node,
 
 
 static void
-produce_rtcp_fb (JingleFeedbackMessage *fb, WockyNode *node)
+produce_rtcp_fb (WockyJingleFeedbackMessage *fb, WockyNode *node)
 {
   WockyNode *fb_node;
 
@@ -920,14 +920,14 @@ produce_rtcp_fb (JingleFeedbackMessage *fb, WockyNode *node)
 }
 
 static void
-produce_payload_type (GabbleJingleContent *content,
+produce_payload_type (WockyJingleContent *content,
                       WockyNode *desc_node,
-                      JingleMediaType type,
-                      JingleCodec *p,
-                      JingleDialect dialect)
+                      WockyJingleMediaType type,
+                      WockyJingleCodec *p,
+                      WockyJingleDialect dialect)
 {
-  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleMediaRtp *self = WOCKY_JINGLE_MEDIA_RTP (content);
+  WockyJingleMediaRtpPrivate *priv = self->priv;
   WockyNode *pt_node;
   gchar buf[16];
 
@@ -937,9 +937,9 @@ produce_payload_type (GabbleJingleContent *content,
   sprintf (buf, "%d", p->id);
   wocky_node_set_attribute (pt_node, "id", buf);
 
-  if (dialect == JINGLE_DIALECT_GTALK3)
+  if (dialect == WOCKY_JINGLE_DIALECT_GTALK3)
     {
-      if (type == JINGLE_MEDIA_TYPE_AUDIO)
+      if (type == WOCKY_JINGLE_MEDIA_TYPE_AUDIO)
         {
           /* Gtalk 03 has either an audio or a video session, in case of a
            * video session the audio codecs need to set their namespace to
@@ -968,7 +968,7 @@ produce_payload_type (GabbleJingleContent *content,
   /* name: optional */
   if (*p->name != '\0')
     {
-      if (JINGLE_IS_GOOGLE_DIALECT (dialect))
+      if (WOCKY_JINGLE_DIALECT_IS_GOOGLE (dialect))
         wocky_node_set_attribute (pt_node, "name", gtalk_case (p->name));
       else
         wocky_node_set_attribute (pt_node, "name", p->name);
@@ -979,7 +979,7 @@ produce_payload_type (GabbleJingleContent *content,
     {
       const gchar *attname = "clockrate";
 
-      if (dialect == JINGLE_DIALECT_V015)
+      if (dialect == WOCKY_JINGLE_DIALECT_V015)
         attname = "rate";
 
       sprintf (buf, "%u", p->clockrate);
@@ -1004,25 +1004,25 @@ produce_payload_type (GabbleJingleContent *content,
 }
 
 static WockyNode *
-produce_description_node (JingleDialect dialect, JingleMediaType media_type,
+produce_description_node (WockyJingleDialect dialect, WockyJingleMediaType media_type,
    WockyNode *content_node)
 {
   WockyNode *desc_node;
   const gchar *xmlns = NULL, *media_attr = NULL;
 
-  if (dialect == JINGLE_DIALECT_GTALK3)
+  if (dialect == WOCKY_JINGLE_DIALECT_GTALK3)
     return NULL;
 
   switch (dialect)
     {
-      case JINGLE_DIALECT_GTALK4:
-        g_assert (media_type == JINGLE_MEDIA_TYPE_AUDIO);
+      case WOCKY_JINGLE_DIALECT_GTALK4:
+        g_assert (media_type == WOCKY_JINGLE_MEDIA_TYPE_AUDIO);
         xmlns = NS_GOOGLE_SESSION_PHONE;
         break;
-      case JINGLE_DIALECT_V015:
-        if (media_type == JINGLE_MEDIA_TYPE_AUDIO)
+      case WOCKY_JINGLE_DIALECT_V015:
+        if (media_type == WOCKY_JINGLE_MEDIA_TYPE_AUDIO)
             xmlns = NS_JINGLE_DESCRIPTION_AUDIO;
-        else if (media_type == JINGLE_MEDIA_TYPE_VIDEO)
+        else if (media_type == WOCKY_JINGLE_MEDIA_TYPE_VIDEO)
             xmlns = NS_JINGLE_DESCRIPTION_VIDEO;
         else
           {
@@ -1032,9 +1032,9 @@ produce_description_node (JingleDialect dialect, JingleMediaType media_type,
         break;
       default:
         xmlns = NS_JINGLE_RTP;
-        if (media_type == JINGLE_MEDIA_TYPE_AUDIO)
+        if (media_type == WOCKY_JINGLE_MEDIA_TYPE_AUDIO)
             media_attr = "audio";
-        else if (media_type == JINGLE_MEDIA_TYPE_VIDEO)
+        else if (media_type == WOCKY_JINGLE_MEDIA_TYPE_VIDEO)
             media_attr = "video";
         else
             g_assert_not_reached ();
@@ -1052,7 +1052,7 @@ produce_description_node (JingleDialect dialect, JingleMediaType media_type,
 static void
 produce_hdrext (gpointer data, gpointer user_data)
 {
-  JingleRtpHeaderExtension *hdrext = data;
+  WockyJingleRtpHeaderExtension *hdrext = data;
   WockyNode *desc_node = user_data;
   WockyNode *hdrext_node;
   gchar buf[16];
@@ -1064,27 +1064,27 @@ produce_hdrext (gpointer data, gpointer user_data)
   wocky_node_set_attribute (hdrext_node, "id", buf);
   wocky_node_set_attribute (hdrext_node, "uri", hdrext->uri);
 
-  if (hdrext->senders == JINGLE_CONTENT_SENDERS_INITIATOR)
+  if (hdrext->senders == WOCKY_JINGLE_CONTENT_SENDERS_INITIATOR)
     wocky_node_set_attribute (hdrext_node, "senders", "initiator");
-  else if (hdrext->senders == JINGLE_CONTENT_SENDERS_RESPONDER)
+  else if (hdrext->senders == WOCKY_JINGLE_CONTENT_SENDERS_RESPONDER)
     wocky_node_set_attribute (hdrext_node, "senders", "responder");
 
   wocky_node_set_attribute (hdrext_node, "xmlns", NS_JINGLE_RTP_HDREXT);
 }
 
 static void
-produce_description (GabbleJingleContent *content, WockyNode *content_node)
+produce_description (WockyJingleContent *content, WockyNode *content_node)
 {
-  GabbleJingleMediaRtp *self = GABBLE_JINGLE_MEDIA_RTP (content);
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleMediaRtp *self = WOCKY_JINGLE_MEDIA_RTP (content);
+  WockyJingleMediaRtpPrivate *priv = self->priv;
   GList *li;
-  JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
+  WockyJingleDialect dialect = wocky_jingle_session_get_dialect (content->session);
   WockyNode *desc_node;
 
-  if (gabble_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTCP_FB))
+  if (wocky_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTCP_FB))
     priv->has_rtcp_fb = TRUE;
 
-  if (gabble_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTP_HDREXT))
+  if (wocky_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTP_HDREXT))
     priv->has_rtp_hdrext = TRUE;
 
   desc_node = produce_description_node (dialect, priv->media_type,
@@ -1167,7 +1167,7 @@ jingle_media_rtp_compare_codecs (GList *old,
   gboolean ret = FALSE;
   GHashTable *old_table = build_codec_table (old);
   GList *l;
-  JingleCodec *old_c, *new_c;
+  WockyJingleCodec *old_c, *new_c;
 
   g_assert (changed != NULL && *changed == NULL);
 
@@ -1212,12 +1212,12 @@ out:
  *  example)
  */
 gboolean
-jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
-                                              JingleMediaDescription *md,
+jingle_media_rtp_set_local_media_description (WockyJingleMediaRtp *self,
+                                              WockyJingleMediaDescription *md,
                                               gboolean ready,
                                               GError **error)
 {
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleMediaRtpPrivate *priv = self->priv;
 
   DEBUG ("setting new local media description");
 
@@ -1233,7 +1233,7 @@ jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
             md->codecs, &changed, &err))
         {
           DEBUG ("codec update was illegal: %s", err->message);
-          jingle_media_description_free (md);
+          wocky_jingle_media_description_free (md);
           g_propagate_error (error, err);
           return FALSE;
         }
@@ -1241,20 +1241,20 @@ jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
       if (changed == NULL)
         {
           DEBUG ("codec update changed nothing!");
-          jingle_media_description_free (md);
+          wocky_jingle_media_description_free (md);
           goto out;
         }
 
       DEBUG ("%u codecs changed", g_list_length (changed));
       priv->local_codec_updates = changed;
 
-      jingle_media_description_free (priv->local_media_description);
+      wocky_jingle_media_description_free (priv->local_media_description);
     }
 
   priv->local_media_description = md;
 
   /* Codecs have changed, sending a fresh description might be necessary */
-  gabble_jingle_content_maybe_send_description (GABBLE_JINGLE_CONTENT (self));
+  wocky_jingle_content_maybe_send_description (WOCKY_JINGLE_CONTENT (self));
 
   /* Update done if any, free the changed codecs if any */
   g_list_free (priv->local_codec_updates);
@@ -1262,55 +1262,55 @@ jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
 
 out:
   if (ready)
-    _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
+    _wocky_jingle_content_set_media_ready (WOCKY_JINGLE_CONTENT (self));
 
   return TRUE;
 }
 
 void
-jingle_media_rtp_register (GabbleJingleFactory *factory)
+jingle_media_rtp_register (WockyJingleFactory *factory)
 {
   /* Current (v0.25) Jingle draft URI */
-  gabble_jingle_factory_register_content_type (factory,
-      NS_JINGLE_RTP, GABBLE_TYPE_JINGLE_MEDIA_RTP);
+  wocky_jingle_factory_register_content_type (factory,
+      NS_JINGLE_RTP, WOCKY_TYPE_JINGLE_MEDIA_RTP);
 
   /* Old Jingle audio/video namespaces */
-  gabble_jingle_factory_register_content_type (factory,
+  wocky_jingle_factory_register_content_type (factory,
       NS_JINGLE_DESCRIPTION_AUDIO,
-      GABBLE_TYPE_JINGLE_MEDIA_RTP);
+      WOCKY_TYPE_JINGLE_MEDIA_RTP);
 
-  gabble_jingle_factory_register_content_type (factory,
+  wocky_jingle_factory_register_content_type (factory,
       NS_JINGLE_DESCRIPTION_VIDEO,
-      GABBLE_TYPE_JINGLE_MEDIA_RTP);
+      WOCKY_TYPE_JINGLE_MEDIA_RTP);
 
   /* GTalk audio call namespace */
-  gabble_jingle_factory_register_content_type (factory,
+  wocky_jingle_factory_register_content_type (factory,
       NS_GOOGLE_SESSION_PHONE,
-      GABBLE_TYPE_JINGLE_MEDIA_RTP);
+      WOCKY_TYPE_JINGLE_MEDIA_RTP);
 
   /* GTalk video call namespace */
-  gabble_jingle_factory_register_content_type (factory,
+  wocky_jingle_factory_register_content_type (factory,
       NS_GOOGLE_SESSION_VIDEO,
-      GABBLE_TYPE_JINGLE_MEDIA_RTP);
+      WOCKY_TYPE_JINGLE_MEDIA_RTP);
 }
 
 /* We can't get remote media description when they're signalled, because
  * the signal is emitted immediately upon JingleContent creation,
  * and parsing, which is before a corresponding MediaStream is
  * created. */
-JingleMediaDescription *
-gabble_jingle_media_rtp_get_remote_media_description (
-    GabbleJingleMediaRtp *self)
+WockyJingleMediaDescription *
+wocky_jingle_media_rtp_get_remote_media_description (
+    WockyJingleMediaRtp *self)
 {
-  GabbleJingleMediaRtpPrivate *priv = self->priv;
+  WockyJingleMediaRtpPrivate *priv = self->priv;
 
   return priv->remote_media_description;
 }
 
-JingleMediaDescription *
-jingle_media_description_new (void)
+WockyJingleMediaDescription *
+wocky_jingle_media_description_new (void)
 {
-  JingleMediaDescription *md = g_slice_new0 (JingleMediaDescription);
+  WockyJingleMediaDescription *md = g_slice_new0 (WockyJingleMediaDescription);
 
   md->trr_int = G_MAXUINT;
 
@@ -1318,45 +1318,45 @@ jingle_media_description_new (void)
 }
 
 void
-jingle_media_description_free (JingleMediaDescription *md)
+wocky_jingle_media_description_free (WockyJingleMediaDescription *md)
 {
   jingle_media_rtp_free_codecs (md->codecs);
 
   while (md->hdrexts != NULL)
     {
-      jingle_rtp_header_extension_free (md->hdrexts->data);
+      wocky_jingle_rtp_header_extension_free (md->hdrexts->data);
       md->hdrexts = g_list_delete_link (md->hdrexts, md->hdrexts);
     }
 
-  g_slice_free (JingleMediaDescription, md);
+  g_slice_free (WockyJingleMediaDescription, md);
 }
 
-JingleMediaDescription *
-jingle_media_description_copy (JingleMediaDescription *md)
+WockyJingleMediaDescription *
+wocky_jingle_media_description_copy (WockyJingleMediaDescription *md)
 {
-  JingleMediaDescription *newmd = g_slice_new0 (JingleMediaDescription);
+  WockyJingleMediaDescription *newmd = g_slice_new0 (WockyJingleMediaDescription);
   GList *li;
 
   newmd->codecs = jingle_media_rtp_copy_codecs (md->codecs);
-  newmd->feedback_msgs = jingle_feedback_message_list_copy (md->feedback_msgs);
+  newmd->feedback_msgs = wocky_jingle_feedback_message_list_copy (md->feedback_msgs);
   newmd->trr_int = md->trr_int;
 
   for (li = md->hdrexts; li; li = li->next)
     {
-      JingleRtpHeaderExtension *h = li->data;
+      WockyJingleRtpHeaderExtension *h = li->data;
 
       newmd->hdrexts = g_list_append (newmd->hdrexts,
-          jingle_rtp_header_extension_new (h->id, h->senders, h->uri));
+          wocky_jingle_rtp_header_extension_new (h->id, h->senders, h->uri));
     }
 
   return newmd;
 }
 
-JingleRtpHeaderExtension *
-jingle_rtp_header_extension_new (guint id, JingleContentSenders senders,
+WockyJingleRtpHeaderExtension *
+wocky_jingle_rtp_header_extension_new (guint id, WockyJingleContentSenders senders,
     const gchar *uri)
 {
-  JingleRtpHeaderExtension *hdrext = g_slice_new (JingleRtpHeaderExtension);
+  WockyJingleRtpHeaderExtension *hdrext = g_slice_new (WockyJingleRtpHeaderExtension);
 
   hdrext->id = id;
   hdrext->senders = senders;
@@ -1366,16 +1366,16 @@ jingle_rtp_header_extension_new (guint id, JingleContentSenders senders,
 }
 
 void
-jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext)
+wocky_jingle_rtp_header_extension_free (WockyJingleRtpHeaderExtension *hdrext)
 {
   g_free (hdrext->uri);
-  g_slice_free (JingleRtpHeaderExtension, hdrext);
+  g_slice_free (WockyJingleRtpHeaderExtension, hdrext);
 }
 
-JingleFeedbackMessage *
-jingle_feedback_message_new (const gchar *type, const gchar *subtype)
+WockyJingleFeedbackMessage *
+wocky_jingle_feedback_message_new (const gchar *type, const gchar *subtype)
 {
-  JingleFeedbackMessage *fb = g_slice_new0 (JingleFeedbackMessage);
+  WockyJingleFeedbackMessage *fb = g_slice_new0 (WockyJingleFeedbackMessage);
 
   fb->type = g_strdup (type);
   fb->subtype = g_strdup (subtype);
@@ -1384,17 +1384,17 @@ jingle_feedback_message_new (const gchar *type, const gchar *subtype)
 }
 
 void
-jingle_feedback_message_free (JingleFeedbackMessage *fb)
+wocky_jingle_feedback_message_free (WockyJingleFeedbackMessage *fb)
 {
   g_free (fb->type);
   g_free (fb->subtype);
-  g_slice_free (JingleFeedbackMessage, fb);
+  g_slice_free (WockyJingleFeedbackMessage, fb);
 }
 
 
 static gint
-jingle_feedback_message_compare (const JingleFeedbackMessage *fb1,
-    const JingleFeedbackMessage *fb2)
+wocky_jingle_feedback_message_compare (const WockyJingleFeedbackMessage *fb1,
+    const WockyJingleFeedbackMessage *fb2)
 {
   if (!g_ascii_strcasecmp (fb1->type, fb2->type) &&
       !g_ascii_strcasecmp (fb1->subtype, fb2->subtype))
@@ -1404,7 +1404,7 @@ jingle_feedback_message_compare (const JingleFeedbackMessage *fb1,
 }
 
 /**
- * jingle_media_description_simplify:
+ * wocky_jingle_media_description_simplify:
  *
  * Removes duplicated Feedback message and put them in the global structure
  *
@@ -1415,7 +1415,7 @@ jingle_feedback_message_compare (const JingleFeedbackMessage *fb1,
  */
 
 void
-jingle_media_description_simplify (JingleMediaDescription *md)
+wocky_jingle_media_description_simplify (WockyJingleMediaDescription *md)
 {
   GList *item;
   guint trr_int = 0;
@@ -1425,7 +1425,7 @@ jingle_media_description_simplify (JingleMediaDescription *md)
 
   for (item = md->codecs; item; item = item->next)
     {
-      JingleCodec *c = item->data;
+      WockyJingleCodec *c = item->data;
 
       if (!init)
         {
@@ -1451,11 +1451,11 @@ jingle_media_description_simplify (JingleMediaDescription *md)
 
           for (item2 = identical_fbs; item2;)
             {
-              JingleFeedbackMessage *fb = identical_fbs->data;
+              WockyJingleFeedbackMessage *fb = identical_fbs->data;
               GList *next = item2->next;
 
               if (!g_list_find_custom (c->feedback_msgs, fb,
-                      (GCompareFunc) jingle_feedback_message_compare))
+                      (GCompareFunc) wocky_jingle_feedback_message_compare))
                 identical_fbs = g_list_delete_link (identical_fbs,  item2);
 
               item2 = next;
@@ -1481,14 +1481,14 @@ jingle_media_description_simplify (JingleMediaDescription *md)
    */
   if (identical_fbs)
     {
-      md->feedback_msgs = jingle_feedback_message_list_copy (identical_fbs);
+      md->feedback_msgs = wocky_jingle_feedback_message_list_copy (identical_fbs);
       g_list_free (identical_fbs);
     }
 
   if (trr_int_all_same || md->feedback_msgs != NULL)
     for (item = md->codecs; item; item = item->next)
       {
-        JingleCodec *c = item->data;
+        WockyJingleCodec *c = item->data;
         GList *item2;
 
         /* If the trr_int is the same everywhere, lets put the default on
@@ -1503,12 +1503,12 @@ jingle_media_description_simplify (JingleMediaDescription *md)
         for (item2 = md->feedback_msgs; item2; item2 = item2->next)
           {
             GList *duplicated;
-            JingleFeedbackMessage *fb = item2->data;
+            WockyJingleFeedbackMessage *fb = item2->data;
 
             while ((duplicated = g_list_find_custom (c->feedback_msgs, fb,
-                        (GCompareFunc) jingle_feedback_message_compare)) != NULL)
+                        (GCompareFunc) wocky_jingle_feedback_message_compare)) != NULL)
               {
-                jingle_feedback_message_free (duplicated->data);
+                wocky_jingle_feedback_message_free (duplicated->data);
                 c->feedback_msgs = g_list_delete_link (c->feedback_msgs,
                     duplicated);
               }

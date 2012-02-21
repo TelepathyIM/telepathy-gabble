@@ -37,15 +37,15 @@ static gboolean jingle_info_cb (
     WockyStanza *stanza,
     gpointer user_data);
 
-struct _GabbleJingleInfoPrivate {
+struct _WockyJingleInfoPrivate {
     WockyPorter *porter;
     guint jingle_info_handler_id;
     gchar *jid_domain;
 
-    GabbleGoogleRelayResolver *google_resolver;
+    WockyGoogleRelayResolver *google_resolver;
 
-    GabbleStunServer *stun_server;
-    GabbleStunServer *fallback_stun_server;
+    WockyStunServer *stun_server;
+    WockyStunServer *fallback_stun_server;
 
     gchar *relay_token;
 
@@ -76,52 +76,52 @@ static guint signals[N_SIGNALS];
 static gboolean test_mode = FALSE;
 
 void
-gabble_jingle_info_set_test_mode (void)
+wocky_jingle_info_set_test_mode (void)
 {
   test_mode = TRUE;
 }
 
-static GabbleStunServer *
-gabble_stun_server_new (
+static WockyStunServer *
+wocky_stun_server_new (
     gchar *address,
     guint16 port)
 {
-  GabbleStunServer stun_server = { address, port };
+  WockyStunServer stun_server = { address, port };
 
-  return g_slice_dup (GabbleStunServer, &stun_server);
+  return g_slice_dup (WockyStunServer, &stun_server);
 }
 
 static void
-gabble_stun_server_free (GabbleStunServer *stun_server)
+wocky_stun_server_free (WockyStunServer *stun_server)
 {
   if (stun_server != NULL)
     {
       g_free (stun_server->address);
-      g_slice_free (GabbleStunServer, stun_server);
+      g_slice_free (WockyStunServer, stun_server);
     }
 }
 
-G_DEFINE_TYPE (GabbleJingleInfo, gabble_jingle_info, G_TYPE_OBJECT)
+G_DEFINE_TYPE (WockyJingleInfo, wocky_jingle_info, G_TYPE_OBJECT)
 
 static void
-gabble_jingle_info_init (GabbleJingleInfo *self)
+wocky_jingle_info_init (WockyJingleInfo *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_JINGLE_INFO,
-      GabbleJingleInfoPrivate);
+  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, WOCKY_TYPE_JINGLE_INFO,
+      WockyJingleInfoPrivate);
 
   self->priv->relay_http_port = 80;
   self->priv->get_stun_from_jingle = TRUE;
 }
 
 static void
-gabble_jingle_info_get_property (
+wocky_jingle_info_get_property (
     GObject *object,
     guint property_id,
     GValue *value,
     GParamSpec *pspec)
 {
-  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (object);
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfo *self = WOCKY_JINGLE_INFO (object);
+  WockyJingleInfoPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -135,14 +135,14 @@ gabble_jingle_info_get_property (
 }
 
 static void
-gabble_jingle_info_set_property (
+wocky_jingle_info_set_property (
     GObject *object,
     guint property_id,
     const GValue *value,
     GParamSpec *pspec)
 {
-  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (object);
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfo *self = WOCKY_JINGLE_INFO (object);
+  WockyJingleInfoPrivate *priv = self->priv;
 
   switch (property_id)
     {
@@ -157,11 +157,11 @@ gabble_jingle_info_set_property (
 }
 
 static void
-gabble_jingle_info_constructed (GObject *object)
+wocky_jingle_info_constructed (GObject *object)
 {
-  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (object);
-  GabbleJingleInfoPrivate *priv = self->priv;
-  GObjectClass *parent_class = gabble_jingle_info_parent_class;
+  WockyJingleInfo *self = WOCKY_JINGLE_INFO (object);
+  WockyJingleInfoPrivate *priv = self->priv;
+  GObjectClass *parent_class = wocky_jingle_info_parent_class;
 
   if (parent_class->constructed != NULL)
     parent_class->constructed (object);
@@ -174,11 +174,11 @@ gabble_jingle_info_constructed (GObject *object)
 }
 
 static void
-gabble_jingle_info_dispose (GObject *object)
+wocky_jingle_info_dispose (GObject *object)
 {
-  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (object);
-  GabbleJingleInfoPrivate *priv = self->priv;
-  GObjectClass *parent_class = gabble_jingle_info_parent_class;
+  WockyJingleInfo *self = WOCKY_JINGLE_INFO (object);
+  WockyJingleInfoPrivate *priv = self->priv;
+  GObjectClass *parent_class = wocky_jingle_info_parent_class;
 
   if (priv->porter != NULL)
     {
@@ -191,15 +191,15 @@ gabble_jingle_info_dispose (GObject *object)
 
   if (priv->google_resolver != NULL)
     {
-      gabble_google_relay_resolver_destroy (priv->google_resolver);
+      wocky_google_relay_resolver_destroy (priv->google_resolver);
       priv->google_resolver = NULL;
     }
 
   g_free (priv->jid_domain);
   priv->jid_domain = NULL;
-  gabble_stun_server_free (priv->stun_server);
+  wocky_stun_server_free (priv->stun_server);
   priv->stun_server = NULL;
-  gabble_stun_server_free (priv->fallback_stun_server);
+  wocky_stun_server_free (priv->fallback_stun_server);
   priv->fallback_stun_server = NULL;
   g_free (priv->relay_token);
   priv->relay_token = NULL;
@@ -211,17 +211,17 @@ gabble_jingle_info_dispose (GObject *object)
 }
 
 static void
-gabble_jingle_info_class_init (GabbleJingleInfoClass *klass)
+wocky_jingle_info_class_init (WockyJingleInfoClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   GParamSpec *param_spec;
 
-  object_class->get_property = gabble_jingle_info_get_property;
-  object_class->set_property = gabble_jingle_info_set_property;
-  object_class->constructed = gabble_jingle_info_constructed;
-  object_class->dispose = gabble_jingle_info_dispose;
+  object_class->get_property = wocky_jingle_info_get_property;
+  object_class->set_property = wocky_jingle_info_set_property;
+  object_class->constructed = wocky_jingle_info_constructed;
+  object_class->dispose = wocky_jingle_info_dispose;
 
-  g_type_class_add_private (klass, sizeof (GabbleJingleInfoPrivate));
+  g_type_class_add_private (klass, sizeof (WockyJingleInfoPrivate));
 
   param_spec = g_param_spec_object ("porter", "WockyC2SPorter",
       "Porter for the current connection",
@@ -235,20 +235,20 @@ gabble_jingle_info_class_init (GabbleJingleInfoClass *klass)
       G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_UINT);
 }
 
-GabbleJingleInfo *
-gabble_jingle_info_new (
+WockyJingleInfo *
+wocky_jingle_info_new (
     WockyPorter *porter)
 {
-  return g_object_new (GABBLE_TYPE_JINGLE_INFO,
+  return g_object_new (WOCKY_TYPE_JINGLE_INFO,
       "porter", porter,
       NULL);
 }
 
 typedef struct {
-    GabbleJingleInfo *factory;
+    WockyJingleInfo *factory;
     gchar *stun_server;
     guint16 stun_port;
-    GabbleStunServerSource source;
+    WockyStunServerSource source;
     GCancellable *cancellable;
 } PendingStunServer;
 
@@ -272,10 +272,10 @@ stun_server_resolved_cb (GObject *resolver,
                          gpointer user_data)
 {
   PendingStunServer *data = user_data;
-  GabbleJingleInfo *self = data->factory;
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfo *self = data->factory;
+  WockyJingleInfoPrivate *priv = self->priv;
   GError *e = NULL;
-  GabbleStunServer *stun_server;
+  WockyStunServer *stun_server;
   gchar *address;
   GList *entries;
 
@@ -306,16 +306,16 @@ stun_server_resolved_cb (GObject *resolver,
       goto out;
     }
 
-  stun_server = gabble_stun_server_new (address, data->stun_port);
+  stun_server = wocky_stun_server_new (address, data->stun_port);
 
-  if (data->source == GABBLE_STUN_SERVER_FALLBACK)
+  if (data->source == WOCKY_STUN_SERVER_FALLBACK)
     {
-      gabble_stun_server_free (priv->fallback_stun_server);
+      wocky_stun_server_free (priv->fallback_stun_server);
       priv->fallback_stun_server = stun_server;
     }
   else
     {
-      gabble_stun_server_free (priv->stun_server);
+      wocky_stun_server_free (priv->stun_server);
       priv->stun_server = stun_server;
 
       g_signal_emit (self, signals[STUN_SERVER_CHANGED], 0,
@@ -328,11 +328,11 @@ out:
 }
 
 static void
-gabble_jingle_info_take_stun_server_internal (
-    GabbleJingleInfo *self,
+wocky_jingle_info_take_stun_server_internal (
+    WockyJingleInfo *self,
     gchar *stun_server,
     guint16 stun_port,
-    GabbleStunServerSource source)
+    WockyStunServerSource source)
 {
   GResolver *resolver;
   PendingStunServer *data;
@@ -340,7 +340,7 @@ gabble_jingle_info_take_stun_server_internal (
   if (stun_server == NULL)
     return;
 
-  if (source == GABBLE_STUN_SERVER_USER_SPECIFIED)
+  if (source == WOCKY_STUN_SERVER_USER_SPECIFIED)
     self->priv->get_stun_from_jingle = FALSE;
 
   resolver = g_resolver_get_default ();
@@ -364,8 +364,8 @@ gabble_jingle_info_take_stun_server_internal (
 }
 
 /*
- * gabble_jingle_info_take_stun_server:
- * @self: a #GabbleJingleInfo object
+ * wocky_jingle_info_take_stun_server:
+ * @self: a #WockyJingleInfo object
  * @stun_server: (transfer full): the STUN server's address
  * @stun_port: the STUN server's port
  * @is_fallback: %TRUE if this is a last resort; %FALSE if this STUN server was
@@ -373,23 +373,23 @@ gabble_jingle_info_take_stun_server_internal (
  *  user's XMPP server).
  */
 void
-gabble_jingle_info_take_stun_server (
-    GabbleJingleInfo *self,
+wocky_jingle_info_take_stun_server (
+    WockyJingleInfo *self,
     gchar *stun_server,
     guint16 stun_port,
     gboolean is_fallback)
 {
-  GabbleStunServerSource source = is_fallback
-      ? GABBLE_STUN_SERVER_FALLBACK
-      : GABBLE_STUN_SERVER_USER_SPECIFIED;
+  WockyStunServerSource source = is_fallback
+      ? WOCKY_STUN_SERVER_FALLBACK
+      : WOCKY_STUN_SERVER_USER_SPECIFIED;
 
-  gabble_jingle_info_take_stun_server_internal (self, stun_server, stun_port,
+  wocky_jingle_info_take_stun_server_internal (self, stun_server, stun_port,
       source);
 }
 
 static void
 got_jingle_info_stanza (
-    GabbleJingleInfo *self,
+    WockyJingleInfo *self,
     WockyStanza *stanza)
 {
   WockyNode *node, *query_node;
@@ -428,8 +428,8 @@ got_jingle_info_stanza (
             {
               DEBUG ("jingle info: got stun server %s, port %u", server,
                   port);
-              gabble_jingle_info_take_stun_server_internal (self,
-                  g_strdup (server), port, GABBLE_STUN_SERVER_DISCOVERED);
+              wocky_jingle_info_take_stun_server_internal (self,
+                  g_strdup (server), port, WOCKY_STUN_SERVER_DISCOVERED);
             }
         }
     }
@@ -523,7 +523,7 @@ jingle_info_cb (
     WockyStanza *stanza,
     gpointer user_data)
 {
-  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (user_data);
+  WockyJingleInfo *self = WOCKY_JINGLE_INFO (user_data);
 
   got_jingle_info_stanza (self, stanza);
   wocky_porter_acknowledge_iq (porter, stanza, NULL);
@@ -538,7 +538,7 @@ jingle_info_reply_cb (
     gpointer user_data)
 {
   WockyPorter *porter = WOCKY_PORTER (source);
-  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (user_data);
+  WockyJingleInfo *self = WOCKY_JINGLE_INFO (user_data);
   WockyStanza *reply = NULL;
   GError *error = NULL;
 
@@ -559,10 +559,10 @@ jingle_info_reply_cb (
 }
 
 static void
-gabble_jingle_info_send_google_request (
-    GabbleJingleInfo *self)
+wocky_jingle_info_send_google_request (
+    WockyJingleInfo *self)
 {
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfoPrivate *priv = self->priv;
   WockyStanza *stanza = wocky_stanza_build (
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET, NULL,
       wocky_porter_get_bare_jid (priv->porter),
@@ -584,8 +584,8 @@ discover_stun_servers_cb (GObject *resolver,
     GAsyncResult *result,
     gpointer user_data)
 {
-  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (user_data);
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfo *self = WOCKY_JINGLE_INFO (user_data);
+  WockyJingleInfoPrivate *priv = self->priv;
   GError *error = NULL;
   GList *targets;
 
@@ -612,7 +612,7 @@ discover_stun_servers_cb (GObject *resolver,
 
           DEBUG ("Found STUN server: %s:%d", hostname, port);
 
-          gabble_jingle_info_take_stun_server (self, g_strdup (hostname), port,
+          wocky_jingle_info_take_stun_server (self, g_strdup (hostname), port,
               FALSE);
         }
 
@@ -624,10 +624,10 @@ discover_stun_servers_cb (GObject *resolver,
 }
 
 static void
-gabble_jingle_info_lookup_srv (
-    GabbleJingleInfo *self)
+wocky_jingle_info_lookup_srv (
+    WockyJingleInfo *self)
 {
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfoPrivate *priv = self->priv;
   GResolver *resolver;
 
   g_assert (priv->jid_domain != NULL);
@@ -639,31 +639,31 @@ gabble_jingle_info_lookup_srv (
 }
 
 void
-gabble_jingle_info_send_request (
-    GabbleJingleInfo *self,
+wocky_jingle_info_send_request (
+    WockyJingleInfo *self,
     gboolean google_jingleinfo_supported)
 {
   /* FIXME: we probably don't want to send either query if the user specified a
    * stun server (that is, get_stun_from_jingle is FALSE).
    */
   if (google_jingleinfo_supported)
-    gabble_jingle_info_send_google_request (self);
+    wocky_jingle_info_send_google_request (self);
   else
-    gabble_jingle_info_lookup_srv (self);
+    wocky_jingle_info_lookup_srv (self);
 }
 
 /*
- * gabble_jingle_info_get_stun_servers:
+ * wocky_jingle_info_get_stun_servers:
  *
  * Grabs the currently known and resolved stun servers.
  *
- * Returns: (transfer container): a list of GabbleJingleInfo structs
+ * Returns: (transfer container): a list of WockyJingleInfo structs
  */
 GList *
-gabble_jingle_info_get_stun_servers (
-    GabbleJingleInfo *self)
+wocky_jingle_info_get_stun_servers (
+    WockyJingleInfo *self)
 {
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfoPrivate *priv = self->priv;
   GQueue stun_servers = G_QUEUE_INIT;
 
   if (priv->stun_server != NULL)
@@ -678,53 +678,53 @@ gabble_jingle_info_get_stun_servers (
 }
 
 const gchar *
-gabble_jingle_info_get_google_relay_token (
-    GabbleJingleInfo *self)
+wocky_jingle_info_get_google_relay_token (
+    WockyJingleInfo *self)
 {
   return self->priv->relay_token;
 }
 
-GabbleJingleRelay *
-gabble_jingle_relay_new (
-    GabbleJingleRelayType type,
+WockyJingleRelay *
+wocky_jingle_relay_new (
+    WockyJingleRelayType type,
     const gchar *ip,
     guint port,
     const gchar *username,
     const gchar *password,
     guint component)
 {
-  GabbleJingleRelay ret = { type, g_strdup (ip), port, g_strdup (username),
+  WockyJingleRelay ret = { type, g_strdup (ip), port, g_strdup (username),
       g_strdup (password), component };
 
-  return g_slice_dup (GabbleJingleRelay, &ret);
+  return g_slice_dup (WockyJingleRelay, &ret);
 }
 
 void
-gabble_jingle_relay_free (GabbleJingleRelay *relay)
+wocky_jingle_relay_free (WockyJingleRelay *relay)
 {
   g_free (relay->ip);
   g_free (relay->username);
   g_free (relay->password);
-  g_slice_free (GabbleJingleRelay, relay);
+  g_slice_free (WockyJingleRelay, relay);
 }
 
 void
-gabble_jingle_info_create_google_relay_session (
-    GabbleJingleInfo *self,
+wocky_jingle_info_create_google_relay_session (
+    WockyJingleInfo *self,
     guint components,
-    GabbleJingleInfoRelaySessionCb callback,
+    WockyJingleInfoRelaySessionCb callback,
     gpointer user_data)
 {
-  GabbleJingleInfoPrivate *priv = self->priv;
+  WockyJingleInfoPrivate *priv = self->priv;
 
   g_return_if_fail (callback != NULL);
 
   if (priv->google_resolver == NULL)
     {
-      priv->google_resolver = gabble_google_relay_resolver_new ();
+      priv->google_resolver = wocky_google_relay_resolver_new ();
     }
 
-  gabble_google_relay_resolver_resolve (priv->google_resolver,
+  wocky_google_relay_resolver_resolve (priv->google_resolver,
       components, priv->relay_server, priv->relay_http_port, priv->relay_token,
       callback, user_data);
 }

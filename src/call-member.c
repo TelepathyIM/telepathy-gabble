@@ -60,7 +60,7 @@ struct _GabbleCallMemberPrivate
 
   GabbleBaseCallChannel *call;
   TpCallMemberFlags flags;
-  GabbleJingleSession *session;
+  WockyJingleSession *session;
 
   GList *contents;
   gchar *transport_ns;
@@ -126,7 +126,7 @@ gabble_call_member_set_property (GObject *object,
         break;
       case PROP_SESSION:
         gabble_call_member_set_session (self,
-          GABBLE_JINGLE_SESSION (g_value_get_object (value)));
+          WOCKY_JINGLE_SESSION (g_value_get_object (value)));
         break;
       case PROP_TARGET:
         priv->target = g_value_get_uint (value);
@@ -165,7 +165,7 @@ gabble_call_member_class_init (
 
   param_spec = g_param_spec_object ("session", "Session",
       "The jingle session below this call",
-      GABBLE_TYPE_JINGLE_SESSION,
+      WOCKY_TYPE_JINGLE_SESSION,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SESSION, param_spec);
 
@@ -243,16 +243,16 @@ gabble_call_member_finalize (GObject *object)
 }
 
 static void
-remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
+remote_state_changed_cb (WockyJingleSession *session, gpointer user_data)
 {
   GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
   GabbleCallMemberPrivate *priv = self->priv;
   TpCallMemberFlags newflags = 0;
 
-  if (gabble_jingle_session_get_remote_ringing (session))
+  if (wocky_jingle_session_get_remote_ringing (session))
     newflags |= TP_CALL_MEMBER_FLAG_RINGING;
 
-  if (gabble_jingle_session_get_remote_hold (session))
+  if (wocky_jingle_session_get_remote_hold (session))
     newflags |= TP_CALL_MEMBER_FLAG_HELD;
 
   if (priv->flags == newflags)
@@ -293,14 +293,14 @@ gabble_call_member_add_member_content (GabbleCallMember *self,
 
 /* This function handles additional contents added by the remote side */
 static void
-new_content_cb (GabbleJingleSession *session,
-    GabbleJingleContent *c,
+new_content_cb (WockyJingleSession *session,
+    WockyJingleContent *c,
     gpointer user_data)
 {
   GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
   GabbleCallMemberContent *content = NULL;
 
-  if (gabble_jingle_content_is_created_by_us (c))
+  if (wocky_jingle_content_is_created_by_us (c))
     return;
 
   content = gabble_call_member_content_from_jingle_content (c, self);
@@ -310,7 +310,7 @@ new_content_cb (GabbleJingleSession *session,
 
 static gboolean
 call_member_update_existing_content (GabbleCallMember *self,
-    GabbleJingleContent *content)
+    WockyJingleContent *content)
 {
   GList *l;
 
@@ -322,7 +322,7 @@ call_member_update_existing_content (GabbleCallMember *self,
         continue;
 
       if (!tp_strdiff (gabble_call_member_content_get_name (mcontent),
-          gabble_jingle_content_get_name (content)))
+          wocky_jingle_content_get_name (content)))
         {
           gabble_call_member_content_set_jingle_content (mcontent, content);
           return TRUE;
@@ -334,7 +334,7 @@ call_member_update_existing_content (GabbleCallMember *self,
 
 void
 gabble_call_member_set_session (GabbleCallMember *self,
-    GabbleJingleSession *session)
+    WockyJingleSession *session)
 {
   GabbleCallMemberPrivate *priv = self->priv;
   GList *c, *contents;
@@ -345,10 +345,10 @@ gabble_call_member_set_session (GabbleCallMember *self,
   DEBUG ("Setting session: %p -> %p\n", self, session);
   priv->session = g_object_ref (session);
 
-  contents = gabble_jingle_session_get_contents (session);
+  contents = wocky_jingle_session_get_contents (session);
   for (c = contents ; c != NULL; c = g_list_next (c))
     {
-      GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (c->data);
+      WockyJingleContent *content = WOCKY_JINGLE_CONTENT (c->data);
 
       if (priv->transport_ns == NULL)
         {
@@ -380,7 +380,7 @@ gabble_call_member_set_session (GabbleCallMember *self,
   g_list_free (contents);
 }
 
-GabbleJingleSession *
+WockyJingleSession *
 gabble_call_member_get_session (GabbleCallMember *self)
 {
   return self->priv->session;
@@ -409,7 +409,7 @@ gabble_call_member_get_contents (GabbleCallMember *self)
 GabbleCallMemberContent *
 gabble_call_member_ensure_content (GabbleCallMember *self,
   const gchar *name,
-  JingleMediaType mtype)
+  WockyJingleMediaType mtype)
 {
   GabbleCallMemberPrivate *priv = self->priv;
   GList *l;
@@ -439,19 +439,19 @@ gabble_call_member_ensure_content (GabbleCallMember *self,
 GabbleCallMemberContent *
 gabble_call_member_create_content (GabbleCallMember *self,
   const gchar *name,
-  JingleMediaType mtype,
-  JingleContentSenders senders,
+  WockyJingleMediaType mtype,
+  WockyJingleContentSenders senders,
   GError **error)
 {
   GabbleCallMemberPrivate *priv = self->priv;
   const gchar *content_ns;
-  GabbleJingleContent *c;
+  WockyJingleContent *c;
   GabbleCallMemberContent *content;
   const gchar *peer_resource;
 
   g_assert (priv->session != NULL);
 
-  peer_resource = gabble_jingle_session_get_peer_resource (priv->session);
+  peer_resource = wocky_jingle_session_get_peer_resource (priv->session);
 
   DEBUG ("Creating new content %s, type %d", name, mtype);
 
@@ -474,7 +474,7 @@ gabble_call_member_create_content (GabbleCallMember *self,
   DEBUG ("Creating new jingle content with ns %s : %s",
     content_ns, priv->transport_ns);
 
-  c = gabble_jingle_session_add_content (priv->session,
+  c = wocky_jingle_session_add_content (priv->session,
       mtype, senders, name, content_ns, priv->transport_ns);
 
   g_assert (c != NULL);
@@ -492,7 +492,7 @@ gabble_call_member_accept (GabbleCallMember *self)
   self->priv->accepted = TRUE;
 
   if (self->priv->session != NULL)
-    gabble_jingle_session_accept (self->priv->session);
+    wocky_jingle_session_accept (self->priv->session);
 }
 
 /**
@@ -506,8 +506,8 @@ gabble_call_member_open_session (GabbleCallMember *self,
 {
   GabbleCallMemberPrivate *priv = self->priv;
   GabbleConnection *conn = gabble_call_member_get_connection (self);
-  GabbleJingleFactory *jf;
-  GabbleJingleSession *session;
+  WockyJingleFactory *jf;
+  WockyJingleSession *session;
   gchar *jid;
 
   jid = gabble_peer_to_jid (conn, priv->target, NULL);
@@ -515,7 +515,7 @@ gabble_call_member_open_session (GabbleCallMember *self,
   jf = gabble_jingle_mint_get_factory (conn->jingle_mint);
   g_return_val_if_fail (jf != NULL, FALSE);
 
-  session = gabble_jingle_factory_create_session (jf, jid, JINGLE_DIALECT_V032,
+  session = wocky_jingle_factory_create_session (jf, jid, WOCKY_JINGLE_DIALECT_V032,
       FALSE);
   DEBUG ("Created a jingle session: %p", session);
 
@@ -538,11 +538,11 @@ gabble_call_member_start_session (GabbleCallMember *self,
   TpBaseChannel *base_channel = TP_BASE_CHANNEL (priv->call);
   TpHandle target = tp_base_channel_get_target_handle (base_channel);
   const gchar *resource;
-  JingleDialect dialect;
+  WockyJingleDialect dialect;
   gchar *jid;
   const gchar *transport;
-  GabbleJingleFactory *jf;
-  GabbleJingleSession *session;
+  WockyJingleFactory *jf;
+  WockyJingleSession *session;
 
   /* FIXME might need to wait on capabilities, also don't need transport
    * and dialect already */
@@ -561,7 +561,7 @@ gabble_call_member_start_session (GabbleCallMember *self,
         gabble_call_member_get_connection (self)->jingle_mint);
   g_return_val_if_fail (jf != NULL, FALSE);
 
-  session = gabble_jingle_factory_create_session (jf, jid, dialect, FALSE);
+  session = wocky_jingle_factory_create_session (jf, jid, dialect, FALSE);
   g_free (jid);
 
   gabble_call_member_set_session (self, session);
@@ -570,11 +570,11 @@ gabble_call_member_start_session (GabbleCallMember *self,
 
   if (audio_name != NULL)
     gabble_call_member_create_content (self, audio_name,
-      JINGLE_MEDIA_TYPE_AUDIO, JINGLE_CONTENT_SENDERS_BOTH, NULL);
+      WOCKY_JINGLE_MEDIA_TYPE_AUDIO, WOCKY_JINGLE_CONTENT_SENDERS_BOTH, NULL);
 
   if (video_name != NULL)
     gabble_call_member_create_content (self, video_name,
-      JINGLE_MEDIA_TYPE_VIDEO, JINGLE_CONTENT_SENDERS_BOTH, NULL);
+      WOCKY_JINGLE_MEDIA_TYPE_VIDEO, WOCKY_JINGLE_CONTENT_SENDERS_BOTH, NULL);
 
   return TRUE;
 }
@@ -600,8 +600,8 @@ gabble_call_member_shutdown (GabbleCallMember *self)
 
   if (priv->session != NULL)
     {
-      gabble_jingle_session_terminate (priv->session,
-        JINGLE_REASON_UNKNOWN, NULL, NULL);
+      wocky_jingle_session_terminate (priv->session,
+        WOCKY_JINGLE_REASON_UNKNOWN, NULL, NULL);
     }
 
   /* removing the content will remove it from our list */

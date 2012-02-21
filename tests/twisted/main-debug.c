@@ -108,7 +108,7 @@ main (int argc,
       "stun", "udp", "stunning.localhost", "resolves-to-5.4.3.2", 1);
 
 #ifdef ENABLE_VOIP
-  gabble_jingle_info_set_test_mode ();
+  wocky_jingle_info_set_test_mode ();
 #endif
 
 #ifdef ENABLE_JINGLE_FILE_TRANSFER

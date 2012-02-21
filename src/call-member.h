@@ -63,12 +63,12 @@ GType gabble_call_member_get_type (void);
    GabbleCallMemberClass))
 
 void gabble_call_member_set_session (GabbleCallMember *member,
-    GabbleJingleSession *session);
+    WockyJingleSession *session);
 
 TpHandle gabble_call_member_get_handle (
     GabbleCallMember *self);
 
-GabbleJingleSession *gabble_call_member_get_session (
+WockyJingleSession *gabble_call_member_get_session (
     GabbleCallMember *self);
 
 TpCallMemberFlags gabble_call_member_get_flags (
@@ -79,13 +79,13 @@ GList *gabble_call_member_get_contents (GabbleCallMember *self);
 GabbleCallMemberContent * gabble_call_member_ensure_content (
     GabbleCallMember *self,
     const gchar *name,
-    JingleMediaType mtype);
+    WockyJingleMediaType mtype);
 
 GabbleCallMemberContent * gabble_call_member_create_content (
     GabbleCallMember *self,
     const gchar *name,
-    JingleMediaType mtype,
-    JingleContentSenders senders,
+    WockyJingleMediaType mtype,
+    WockyJingleContentSenders senders,
     GError **error);
 
 gboolean gabble_call_member_start_session (GabbleCallMember *self,

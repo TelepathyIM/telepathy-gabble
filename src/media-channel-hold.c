@@ -80,7 +80,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
           priv->hold_state = TP_LOCAL_HOLD_STATE_UNHELD;
 
           if (priv->session != NULL)
-            gabble_jingle_session_set_local_hold (priv->session, FALSE);
+            wocky_jingle_session_set_local_hold (priv->session, FALSE);
 
           break;
 
@@ -174,7 +174,7 @@ stream_hold_state_changed (GabbleMediaStream *stream G_GNUC_UNUSED,
 
       /* Tell the peer what's happened. */
       if (priv->session != NULL)
-        gabble_jingle_session_set_local_hold (priv->session, FALSE);
+        wocky_jingle_session_set_local_hold (priv->session, FALSE);
     }
 
   tp_svc_channel_interface_hold_emit_hold_state_changed (self,
@@ -235,7 +235,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (iface);
   GabbleMediaChannelPrivate *priv = self->priv;
-  GabbleJingleSession *session = priv->session;
+  WockyJingleSession *session = priv->session;
   guint i;
   TpLocalHoldState old_state = priv->hold_state;
 
@@ -251,7 +251,7 @@ gabble_media_channel_request_hold (TpSvcChannelInterfaceHold *iface,
         }
 
       if (priv->hold_state == TP_LOCAL_HOLD_STATE_UNHELD && session != NULL)
-        gabble_jingle_session_set_local_hold (session, TRUE);
+        wocky_jingle_session_set_local_hold (session, TRUE);
 
       priv->hold_state = TP_LOCAL_HOLD_STATE_PENDING_HOLD;
     }
@@ -328,16 +328,16 @@ gabble_media_channel_hold_iface_init (gpointer g_iface,
  */
 
 static void
-remote_state_changed_cb (GabbleJingleSession *session,
+remote_state_changed_cb (WockyJingleSession *session,
     GabbleMediaChannel *self)
 {
   GabbleMediaChannelPrivate *priv = self->priv;
   TpChannelCallStateFlags call_state = 0;
 
-  if (gabble_jingle_session_get_remote_hold (session))
+  if (wocky_jingle_session_get_remote_hold (session))
     call_state |= TP_CHANNEL_CALL_STATE_HELD;
 
-  if (gabble_jingle_session_get_remote_ringing (session))
+  if (wocky_jingle_session_get_remote_ringing (session))
     call_state |= TP_CHANNEL_CALL_STATE_RINGING;
 
   DEBUG ("Call state changed to %u (current state %u)", call_state,
@@ -394,7 +394,7 @@ gabble_media_channel_call_state_iface_init (gpointer g_iface,
 void
 gabble_media_channel_hold_new_stream (GabbleMediaChannel *chan,
     GabbleMediaStream *stream,
-    GabbleJingleMediaRtp *content)
+    WockyJingleMediaRtp *content)
 {
   GObject *chan_o = (GObject *) chan;
 

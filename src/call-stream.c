@@ -81,7 +81,7 @@ struct _GabbleCallStreamPrivate
 {
   gboolean dispose_has_run;
 
-  GabbleJingleContent *content;
+  WockyJingleContent *content;
 };
 
 static void
@@ -100,17 +100,17 @@ static GPtrArray *
 get_stun_servers (GabbleCallStream *self)
 {
   GPtrArray *arr;
-  GabbleJingleFactory *jf;
+  WockyJingleFactory *jf;
   GList *stun_servers;
 
   arr = g_ptr_array_new_with_free_func ((GDestroyNotify) g_value_array_free);
-  jf = gabble_jingle_session_get_factory (self->priv->content->session);
-  stun_servers = gabble_jingle_info_get_stun_servers (
-      gabble_jingle_factory_get_jingle_info (jf));
+  jf = wocky_jingle_session_get_factory (self->priv->content->session);
+  stun_servers = wocky_jingle_info_get_stun_servers (
+      wocky_jingle_factory_get_jingle_info (jf));
 
   while (stun_servers != NULL)
     {
-      GabbleStunServer *stun_server = stun_servers->data;
+      WockyStunServer *stun_server = stun_servers->data;
       GValueArray *va = tp_value_array_build (2,
           G_TYPE_STRING, stun_server->address,
           G_TYPE_UINT, (guint) stun_server->port,
@@ -140,9 +140,9 @@ gabble_call_stream_get_property (GObject    *object,
         break;
       case PROP_CAN_REQUEST_RECEIVING:
         {
-          JingleDialect dialect =
-              gabble_jingle_session_get_dialect (priv->content->session);
-          g_value_set_boolean (value, !JINGLE_IS_GOOGLE_DIALECT (dialect));
+          WockyJingleDialect dialect =
+              wocky_jingle_session_get_dialect (priv->content->session);
+          g_value_set_boolean (value, !WOCKY_JINGLE_DIALECT_IS_GOOGLE (dialect));
         }
         break;
       default:
@@ -192,7 +192,7 @@ google_relay_session_cb (GPtrArray *relays,
 }
 
 static void
-content_state_changed_cb (GabbleJingleContent *content,
+content_state_changed_cb (WockyJingleContent *content,
     GParamSpec *spec,
     gpointer user_data)
 {
@@ -202,7 +202,7 @@ content_state_changed_cb (GabbleJingleContent *content,
 }
 
 static void
-content_remote_members_changed_cb (GabbleJingleContent *content,
+content_remote_members_changed_cb (WockyJingleContent *content,
     GParamSpec *spec,
     gpointer user_data)
 {
@@ -213,7 +213,7 @@ content_remote_members_changed_cb (GabbleJingleContent *content,
 
 static void
 jingle_info_stun_server_changed_cb (
-    GabbleJingleInfo *jingle_info,
+    WockyJingleInfo *jingle_info,
     const gchar *stun_server,
     guint stun_port,
     GabbleCallStream *self)
@@ -228,7 +228,7 @@ jingle_info_stun_server_changed_cb (
 
 static void
 _new_candidates_cb (
-    GabbleJingleContent *content,
+    WockyJingleContent *content,
     GList *candidates,
     TpCallStreamEndpoint *endpoint)
 {
@@ -238,7 +238,7 @@ _new_candidates_cb (
   if (candidates == NULL)
     return;
 
-  if (gabble_jingle_content_get_credentials (content, &ufrag, &pwd))
+  if (wocky_jingle_content_get_credentials (content, &ufrag, &pwd))
     tp_call_stream_endpoint_set_remote_credentials (endpoint, ufrag, pwd);
 
   tp_candidates = gabble_call_candidates_to_array (candidates);
@@ -250,19 +250,19 @@ static void
 _endpoint_state_changed_cb (
     TpCallStreamEndpoint *endpoint,
     GParamSpec *spec,
-    GabbleJingleContent *content)
+    WockyJingleContent *content)
 {
   TpMediaStreamState state;
 
   /* We only care about connecting RTP, RTCP is optional */
   state = tp_call_stream_endpoint_get_state (endpoint, 1);
-  gabble_jingle_content_set_transport_state (content, state);
+  wocky_jingle_content_set_transport_state (content, state);
 }
 
 static TpCallStreamEndpoint *
 _hook_up_endpoint (GabbleCallStream *self,
     const gchar *path,
-    GabbleJingleContent *content)
+    WockyJingleContent *content)
 {
   TpBaseCallStream *base = (TpBaseCallStream *) self;
   TpBaseConnection *conn = tp_base_call_stream_get_connection (base);
@@ -273,7 +273,7 @@ _hook_up_endpoint (GabbleCallStream *self,
   GList *candidates;
   gchar *ufrag, *pwd;
 
-  switch (gabble_jingle_content_get_transport_type (content))
+  switch (wocky_jingle_content_get_transport_type (content))
     {
     case JINGLE_TRANSPORT_GOOGLE_P2P:
       type = TP_STREAM_TRANSPORT_TYPE_GTALK_P2P;
@@ -292,9 +292,9 @@ _hook_up_endpoint (GabbleCallStream *self,
   /* FIXME: ice??? */
   endpoint = tp_call_stream_endpoint_new (bus, path, type, FALSE);
 
-  if (gabble_jingle_content_get_credentials (content, &ufrag, &pwd))
+  if (wocky_jingle_content_get_credentials (content, &ufrag, &pwd))
     tp_call_stream_endpoint_set_remote_credentials (endpoint, ufrag, pwd);
-  candidates = gabble_jingle_content_get_remote_candidates (content);
+  candidates = wocky_jingle_content_get_remote_candidates (content);
   tp_candidates = gabble_call_candidates_to_array (candidates);
   tp_call_stream_endpoint_add_new_candidates (endpoint, tp_candidates);
   g_boxed_free (TP_ARRAY_TYPE_CANDIDATE_LIST, tp_candidates);
@@ -318,7 +318,7 @@ gabble_call_stream_constructed (GObject *obj)
   GabbleConnection *conn;
   TpCallStreamEndpoint *endpoint;
   gchar *path;
-  JingleTransportType transport;
+  WockyJingleTransportType transport;
   GPtrArray *stun_servers;
   gboolean locally_created;
 
@@ -330,7 +330,7 @@ gabble_call_stream_constructed (GObject *obj)
   g_object_get (priv->content, "locally-created", &locally_created, NULL);
 
   if (locally_created &&
-      gabble_jingle_content_sending (priv->content))
+      wocky_jingle_content_sending (priv->content))
     tp_base_media_call_stream_set_local_sending (
         TP_BASE_MEDIA_CALL_STREAM (self), TRUE);
 
@@ -343,7 +343,7 @@ gabble_call_stream_constructed (GObject *obj)
   g_object_unref (endpoint);
   g_free (path);
 
-  transport = gabble_jingle_content_get_transport_type (priv->content);
+  transport = wocky_jingle_content_get_transport_type (priv->content);
 
   if (transport == JINGLE_TRANSPORT_GOOGLE_P2P)
     {
@@ -352,7 +352,7 @@ gabble_call_stream_constructed (GObject *obj)
       /* See if our server is Google, and if it is, ask them for a relay.
        * We ask for enough relays for 2 components (RTP and RTCP) since we
        * don't yet know whether there will be RTCP. */
-      gabble_jingle_info_create_google_relay_session (
+      wocky_jingle_info_create_google_relay_session (
           gabble_jingle_mint_get_info (conn->jingle_mint),
           2, google_relay_session_cb, tp_weak_ref_new (self, NULL, NULL));
     }
@@ -385,7 +385,7 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
   TpBaseCallStream *base = TP_BASE_CALL_STREAM (self);
   TpBaseMediaCallStream *bmcs = TP_BASE_MEDIA_CALL_STREAM (self);
   GabbleCallStreamPrivate *priv = self->priv;
-  JingleContentState state;
+  WockyJingleContentState state;
   TpSendingState local_state;
   TpSendingState remote_state;
   TpBaseConnection *conn = tp_base_call_stream_get_connection (base);
@@ -395,13 +395,13 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
 
   g_object_get (priv->content, "state", &state, NULL);
 
-  if (state == JINGLE_CONTENT_STATE_REMOVING)
+  if (state == WOCKY_JINGLE_CONTENT_STATE_REMOVING)
     return;
 
   local_state = tp_base_call_stream_get_local_sending_state (base);
   remote_state = tp_base_call_stream_get_remote_sending_state (base, 0);
 
-  if (gabble_jingle_content_sending (priv->content))
+  if (wocky_jingle_content_sending (priv->content))
     {
       if (tp_base_media_call_stream_get_local_sending (bmcs))
         local_state = TP_SENDING_STATE_SENDING;
@@ -416,7 +416,7 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
         local_state = TP_SENDING_STATE_NONE;
     }
 
-  if (gabble_jingle_content_receiving (priv->content))
+  if (wocky_jingle_content_receiving (priv->content))
     {
       remote_state = TP_SENDING_STATE_SENDING;
     }
@@ -430,7 +430,7 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
   tp_base_call_stream_update_local_sending_state (base, local_state,
       0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
   peer = tp_handle_ensure (contact_repo,
-      gabble_jingle_session_get_peer_jid (priv->content->session),
+      wocky_jingle_session_get_peer_jid (priv->content->session),
       NULL,
       NULL);
   tp_base_call_stream_update_remote_sending_state (base,
@@ -459,7 +459,7 @@ gabble_call_stream_class_init (GabbleCallStreamClass *gabble_call_stream_class)
 
   param_spec = g_param_spec_object ("jingle-content", "Jingle Content",
       "The Jingle Content related to this content object",
-      GABBLE_TYPE_JINGLE_CONTENT,
+      WOCKY_TYPE_JINGLE_CONTENT,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
       param_spec);
@@ -509,10 +509,10 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
   for (i = 0; i < candidates->len ; i++)
     {
       GValueArray *va;
-      JingleCandidate *c;
+      WockyJingleCandidate *c;
       GHashTable *info;
       guint tptype;
-      JingleCandidateType type;
+      WockyJingleCandidateType type;
       /* borrowed strings, owned by other people. */
       const gchar *username;
       const gchar *password;
@@ -528,13 +528,13 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
         default:
           /* Anything else is local */
         case TP_CALL_STREAM_CANDIDATE_TYPE_HOST:
-          type = JINGLE_CANDIDATE_TYPE_LOCAL;
+          type = WOCKY_JINGLE_CANDIDATE_TYPE_LOCAL;
           break;
         case TP_CALL_STREAM_CANDIDATE_TYPE_SERVER_REFLEXIVE:
-          type = JINGLE_CANDIDATE_TYPE_STUN;
+          type = WOCKY_JINGLE_CANDIDATE_TYPE_STUN;
           break;
         case TP_CALL_STREAM_CANDIDATE_TYPE_RELAY:
-          type = JINGLE_CANDIDATE_TYPE_RELAY;
+          type = WOCKY_JINGLE_CANDIDATE_TYPE_RELAY;
           break;
         }
 
@@ -550,7 +550,7 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
       if (foundation == NULL)
         foundation = "1";
 
-      c = jingle_candidate_new (
+      c = wocky_jingle_candidate_new (
         /* transport protocol */
         tp_asv_get_uint32 (info, "protocol", NULL),
         /* Candidate type */
@@ -577,7 +577,7 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
       g_ptr_array_add (accepted_candidates, va);
     }
 
-  gabble_jingle_content_add_candidates (priv->content, l);
+  wocky_jingle_content_add_candidates (priv->content, l);
 
   if (accepted_candidates->len == 0 && candidates->len != 0)
     {
@@ -599,7 +599,7 @@ gabble_call_stream_set_sending (TpBaseMediaCallStream *stream,
   if (sending)
     tp_base_media_call_stream_set_local_sending (stream, TRUE);
 
-  gabble_jingle_content_set_sending (self->priv->content, sending);
+  wocky_jingle_content_set_sending (self->priv->content, sending);
 
   return TRUE;
 }
@@ -609,10 +609,10 @@ static void gabble_call_stream_request_receiving (TpBaseMediaCallStream *stream,
 {
   GabbleCallStream *self = GABBLE_CALL_STREAM (stream);
 
-  gabble_jingle_content_request_receiving (self->priv->content, receive);
+  wocky_jingle_content_request_receiving (self->priv->content, receive);
 }
 
-GabbleJingleContent *
+WockyJingleContent *
 gabble_call_stream_get_jingle_content (GabbleCallStream *stream)
 {
   return stream->priv->content;

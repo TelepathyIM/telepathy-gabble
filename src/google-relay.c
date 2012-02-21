@@ -37,7 +37,7 @@
 
 #define RELAY_HTTP_TIMEOUT 5
 
-struct _GabbleGoogleRelayResolver {
+struct _WockyGoogleRelayResolver {
 #ifdef ENABLE_GOOGLE_RELAY
   SoupSession *soup;
 #else
@@ -50,19 +50,19 @@ typedef struct
   GPtrArray *relays;
   guint component;
   guint requests_to_do;
-  GabbleJingleInfoRelaySessionCb callback;
+  WockyJingleInfoRelaySessionCb callback;
   gpointer user_data;
 } RelaySessionData;
 
 static RelaySessionData *
 relay_session_data_new (guint requests_to_do,
-    GabbleJingleInfoRelaySessionCb callback,
+    WockyJingleInfoRelaySessionCb callback,
     gpointer user_data)
 {
   RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
 
   rsd->relays = g_ptr_array_sized_new (requests_to_do);
-  g_ptr_array_set_free_func (rsd->relays, (GDestroyNotify) gabble_jingle_relay_free);
+  g_ptr_array_set_free_func (rsd->relays, (GDestroyNotify) wocky_jingle_relay_free);
   rsd->component = 1;
   rsd->requests_to_do = requests_to_do;
   rsd->callback = callback;
@@ -102,7 +102,7 @@ translate_relay_info (GPtrArray *relays,
     const gchar *relay_ip,
     const gchar *username,
     const gchar *password,
-    GabbleJingleRelayType relay_type,
+    WockyJingleRelayType relay_type,
     const gchar *port_string,
     guint component)
 {
@@ -129,7 +129,7 @@ translate_relay_info (GPtrArray *relays,
       relay_type, relay_ip, port, username, password, component);
 
   g_ptr_array_add (relays,
-      gabble_jingle_relay_new (relay_type, relay_ip, port, username, password,
+      wocky_jingle_relay_new (relay_type, relay_ip, port, username, password,
           component));
 }
 
@@ -213,11 +213,11 @@ on_http_response (SoupSession *soup,
       else
         {
           translate_relay_info (rsd->relays, relay_ip, username, password,
-              GABBLE_JINGLE_RELAY_TYPE_UDP, relay_udp_port, rsd->component);
+              WOCKY_JINGLE_RELAY_TYPE_UDP, relay_udp_port, rsd->component);
           translate_relay_info (rsd->relays, relay_ip, username, password,
-              GABBLE_JINGLE_RELAY_TYPE_TCP, relay_tcp_port, rsd->component);
+              WOCKY_JINGLE_RELAY_TYPE_TCP, relay_tcp_port, rsd->component);
           translate_relay_info (rsd->relays, relay_ip, username, password,
-              GABBLE_JINGLE_RELAY_TYPE_TLS, relay_ssltcp_port, rsd->component);
+              WOCKY_JINGLE_RELAY_TYPE_TLS, relay_ssltcp_port, rsd->component);
         }
 
       g_strfreev (lines);
@@ -235,11 +235,11 @@ on_http_response (SoupSession *soup,
 
 #endif  /* ENABLE_GOOGLE_RELAY */
 
-GabbleGoogleRelayResolver *
-gabble_google_relay_resolver_new (void)
+WockyGoogleRelayResolver *
+wocky_google_relay_resolver_new (void)
 {
-  GabbleGoogleRelayResolver *resolver =
-      g_slice_new0 (GabbleGoogleRelayResolver);
+  WockyGoogleRelayResolver *resolver =
+      g_slice_new0 (WockyGoogleRelayResolver);
 
 #ifdef ENABLE_GOOGLE_RELAY
 
@@ -255,20 +255,20 @@ gabble_google_relay_resolver_new (void)
 }
 
 void
-gabble_google_relay_resolver_destroy (GabbleGoogleRelayResolver *self)
+wocky_google_relay_resolver_destroy (WockyGoogleRelayResolver *self)
 {
   g_clear_object (&self->soup);
 
-  g_slice_free (GabbleGoogleRelayResolver, self);
+  g_slice_free (WockyGoogleRelayResolver, self);
 }
 
 void
-gabble_google_relay_resolver_resolve (GabbleGoogleRelayResolver *self,
+wocky_google_relay_resolver_resolve (WockyGoogleRelayResolver *self,
     guint components,
     const gchar *server,
     guint16 port,
     const gchar *token,
-    GabbleJingleInfoRelaySessionCb callback,
+    WockyJingleInfoRelaySessionCb callback,
     gpointer user_data)
 {
   RelaySessionData *rsd =

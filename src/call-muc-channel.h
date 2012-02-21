@@ -75,7 +75,7 @@ GabbleCallMucChannel * gabble_call_muc_channel_new_finish (GObject *source,
     GError **error);
 
 void gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
-    GabbleJingleSession *session);
+    WockyJingleSession *session);
 
 G_END_DECLS
 

@@ -1,5 +1,5 @@
 /*
- * jingle-transport-rawudp.c - Source for GabbleJingleTransportRawUdp
+ * jingle-transport-rawudp.c - Source for WockyJingleTransportRawUdp
  *
  * Copyright (C) 2008 Collabora Ltd.
  *
@@ -38,9 +38,9 @@
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data);
 
-G_DEFINE_TYPE_WITH_CODE (GabbleJingleTransportRawUdp,
-    gabble_jingle_transport_rawudp, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_JINGLE_TRANSPORT_IFACE,
+G_DEFINE_TYPE_WITH_CODE (WockyJingleTransportRawUdp,
+    wocky_jingle_transport_rawudp, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (WOCKY_TYPE_JINGLE_TRANSPORT_IFACE,
         transport_iface_init));
 
 /* signal enum */
@@ -61,10 +61,10 @@ enum
   LAST_PROPERTY
 };
 
-struct _GabbleJingleTransportRawUdpPrivate
+struct _WockyJingleTransportRawUdpPrivate
 {
-  GabbleJingleContent *content;
-  JingleTransportState state;
+  WockyJingleContent *content;
+  WockyJingleTransportState state;
   gchar *transport_ns;
 
   GList *local_candidates;
@@ -73,21 +73,21 @@ struct _GabbleJingleTransportRawUdpPrivate
 };
 
 static void
-gabble_jingle_transport_rawudp_init (GabbleJingleTransportRawUdp *obj)
+wocky_jingle_transport_rawudp_init (WockyJingleTransportRawUdp *obj)
 {
-  GabbleJingleTransportRawUdpPrivate *priv =
-     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP,
-         GabbleJingleTransportRawUdpPrivate);
+  WockyJingleTransportRawUdpPrivate *priv =
+     G_TYPE_INSTANCE_GET_PRIVATE (obj, WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP,
+         WockyJingleTransportRawUdpPrivate);
   obj->priv = priv;
 
   priv->dispose_has_run = FALSE;
 }
 
 static void
-gabble_jingle_transport_rawudp_dispose (GObject *object)
+wocky_jingle_transport_rawudp_dispose (GObject *object)
 {
-  GabbleJingleTransportRawUdp *trans = GABBLE_JINGLE_TRANSPORT_RAWUDP (object);
-  GabbleJingleTransportRawUdpPrivate *priv = trans->priv;
+  WockyJingleTransportRawUdp *trans = WOCKY_JINGLE_TRANSPORT_RAWUDP (object);
+  WockyJingleTransportRawUdpPrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -104,18 +104,18 @@ gabble_jingle_transport_rawudp_dispose (GObject *object)
   g_free (priv->transport_ns);
   priv->transport_ns = NULL;
 
-  if (G_OBJECT_CLASS (gabble_jingle_transport_rawudp_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_jingle_transport_rawudp_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (wocky_jingle_transport_rawudp_parent_class)->dispose)
+    G_OBJECT_CLASS (wocky_jingle_transport_rawudp_parent_class)->dispose (object);
 }
 
 static void
-gabble_jingle_transport_rawudp_get_property (GObject *object,
+wocky_jingle_transport_rawudp_get_property (GObject *object,
                                              guint property_id,
                                              GValue *value,
                                              GParamSpec *pspec)
 {
-  GabbleJingleTransportRawUdp *trans = GABBLE_JINGLE_TRANSPORT_RAWUDP (object);
-  GabbleJingleTransportRawUdpPrivate *priv = trans->priv;
+  WockyJingleTransportRawUdp *trans = WOCKY_JINGLE_TRANSPORT_RAWUDP (object);
+  WockyJingleTransportRawUdpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -134,13 +134,13 @@ gabble_jingle_transport_rawudp_get_property (GObject *object,
 }
 
 static void
-gabble_jingle_transport_rawudp_set_property (GObject *object,
+wocky_jingle_transport_rawudp_set_property (GObject *object,
                                              guint property_id,
                                              const GValue *value,
                                              GParamSpec *pspec)
 {
-  GabbleJingleTransportRawUdp *trans = GABBLE_JINGLE_TRANSPORT_RAWUDP (object);
-  GabbleJingleTransportRawUdpPrivate *priv = trans->priv;
+  WockyJingleTransportRawUdp *trans = WOCKY_JINGLE_TRANSPORT_RAWUDP (object);
+  WockyJingleTransportRawUdpPrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -160,21 +160,21 @@ gabble_jingle_transport_rawudp_set_property (GObject *object,
 }
 
 static void
-gabble_jingle_transport_rawudp_class_init (GabbleJingleTransportRawUdpClass *cls)
+wocky_jingle_transport_rawudp_class_init (WockyJingleTransportRawUdpClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (cls, sizeof (GabbleJingleTransportRawUdpPrivate));
+  g_type_class_add_private (cls, sizeof (WockyJingleTransportRawUdpPrivate));
 
-  object_class->get_property = gabble_jingle_transport_rawudp_get_property;
-  object_class->set_property = gabble_jingle_transport_rawudp_set_property;
-  object_class->dispose = gabble_jingle_transport_rawudp_dispose;
+  object_class->get_property = wocky_jingle_transport_rawudp_get_property;
+  object_class->set_property = wocky_jingle_transport_rawudp_set_property;
+  object_class->dispose = wocky_jingle_transport_rawudp_dispose;
 
   /* property definitions */
-  param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
+  param_spec = g_param_spec_object ("content", "WockyJingleContent object",
                                     "Jingle content object using this transport.",
-                                    GABBLE_TYPE_JINGLE_CONTENT,
+                                    WOCKY_TYPE_JINGLE_CONTENT,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NICK |
@@ -193,9 +193,9 @@ gabble_jingle_transport_rawudp_class_init (GabbleJingleTransportRawUdpClass *cls
   param_spec = g_param_spec_uint ("state",
                                   "Connection state for the transport.",
                                   "Enum specifying the connection state of the transport.",
-                                  JINGLE_TRANSPORT_STATE_DISCONNECTED,
-                                  JINGLE_TRANSPORT_STATE_CONNECTED,
-                                  JINGLE_TRANSPORT_STATE_DISCONNECTED,
+                                  WOCKY_JINGLE_TRANSPORT_STATE_DISCONNECTED,
+                                  WOCKY_JINGLE_TRANSPORT_STATE_CONNECTED,
+                                  WOCKY_JINGLE_TRANSPORT_STATE_DISCONNECTED,
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_NICK |
@@ -214,11 +214,11 @@ gabble_jingle_transport_rawudp_class_init (GabbleJingleTransportRawUdpClass *cls
 }
 
 static void
-parse_candidates (GabbleJingleTransportIface *obj,
+parse_candidates (WockyJingleTransportIface *obj,
     WockyNode *transport_node, GError **error)
 {
-  GabbleJingleTransportRawUdp *t = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
-  GabbleJingleTransportRawUdpPrivate *priv = t->priv;
+  WockyJingleTransportRawUdp *t = WOCKY_JINGLE_TRANSPORT_RAWUDP (obj);
+  WockyJingleTransportRawUdpPrivate *priv = t->priv;
   GList *candidates = NULL;
   WockyNodeIter i;
   WockyNode *node;
@@ -236,7 +236,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
     {
       const gchar *id, *ip, *str;
       guint port, gen, component = 1;
-      JingleCandidate *c;
+      WockyJingleCandidate *c;
 
       str = wocky_node_get_attribute (node, "component");
       if (str != NULL)
@@ -266,8 +266,8 @@ parse_candidates (GabbleJingleTransportIface *obj,
           break;
       gen = atoi (str);
 
-      c = jingle_candidate_new (JINGLE_TRANSPORT_PROTOCOL_UDP,
-          JINGLE_CANDIDATE_TYPE_LOCAL, id, component, ip, port,
+      c = wocky_jingle_candidate_new (WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP,
+          WOCKY_JINGLE_CANDIDATE_TYPE_LOCAL, id, component, ip, port,
           gen, 1.0, NULL, NULL, 0);
 
       candidates = g_list_append (candidates, c);
@@ -289,12 +289,12 @@ parse_candidates (GabbleJingleTransportIface *obj,
 }
 
 static void
-inject_candidates (GabbleJingleTransportIface *obj,
+inject_candidates (WockyJingleTransportIface *obj,
     WockyNode *transport_node)
 {
-  GabbleJingleTransportRawUdp *self = GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
-  GabbleJingleTransportRawUdpPrivate *priv = self->priv;
-  JingleCandidate *c;
+  WockyJingleTransportRawUdp *self = WOCKY_JINGLE_TRANSPORT_RAWUDP (obj);
+  WockyJingleTransportRawUdpPrivate *priv = self->priv;
+  WockyJingleCandidate *c;
   GList *li;
   gchar port_str[16], comp_str[16];
   WockyNode *cnode;
@@ -306,7 +306,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
 
   for (li = priv->local_candidates; li != NULL; li = li->next)
     {
-      c = (JingleCandidate *) li->data;
+      c = (WockyJingleCandidate *) li->data;
       sprintf (port_str, "%d", c->port);
       sprintf (comp_str, "%d", c->component);
 
@@ -321,13 +321,13 @@ inject_candidates (GabbleJingleTransportIface *obj,
     }
 }
 
-/* Takes in a list of slice-allocated JingleCandidate structs */
+/* Takes in a list of slice-allocated WockyJingleCandidate structs */
 static void
-new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
+new_local_candidates (WockyJingleTransportIface *obj, GList *new_candidates)
 {
-  GabbleJingleTransportRawUdp *transport =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP (obj);
-  GabbleJingleTransportRawUdpPrivate *priv = transport->priv;
+  WockyJingleTransportRawUdp *transport =
+    WOCKY_JINGLE_TRANSPORT_RAWUDP (obj);
+  WockyJingleTransportRawUdpPrivate *priv = transport->priv;
 
   if (priv->local_candidates != NULL)
     {
@@ -340,34 +340,34 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 }
 
 static gboolean
-can_accept (GabbleJingleTransportIface *iface)
+can_accept (WockyJingleTransportIface *iface)
 {
-  GabbleJingleTransportRawUdp *self = GABBLE_JINGLE_TRANSPORT_RAWUDP (iface);
+  WockyJingleTransportRawUdp *self = WOCKY_JINGLE_TRANSPORT_RAWUDP (iface);
 
   return (self->priv->local_candidates != NULL);
 }
 
 static GList *
-get_local_candidates (GabbleJingleTransportIface *iface)
+get_local_candidates (WockyJingleTransportIface *iface)
 {
-  GabbleJingleTransportRawUdp *transport =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP (iface);
-  GabbleJingleTransportRawUdpPrivate *priv = transport->priv;
+  WockyJingleTransportRawUdp *transport =
+    WOCKY_JINGLE_TRANSPORT_RAWUDP (iface);
+  WockyJingleTransportRawUdpPrivate *priv = transport->priv;
 
   return priv->local_candidates;
 }
 
 static GList *
-get_remote_candidates (GabbleJingleTransportIface *iface)
+get_remote_candidates (WockyJingleTransportIface *iface)
 {
-  GabbleJingleTransportRawUdp *transport =
-    GABBLE_JINGLE_TRANSPORT_RAWUDP (iface);
-  GabbleJingleTransportRawUdpPrivate *priv = transport->priv;
+  WockyJingleTransportRawUdp *transport =
+    WOCKY_JINGLE_TRANSPORT_RAWUDP (iface);
+  WockyJingleTransportRawUdpPrivate *priv = transport->priv;
 
   return priv->remote_candidates;
 }
 
-static JingleTransportType
+static WockyJingleTransportType
 get_transport_type (void)
 {
   DEBUG ("called");
@@ -378,7 +378,7 @@ get_transport_type (void)
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
+  WockyJingleTransportIfaceClass *klass = (WockyJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
 
@@ -395,10 +395,10 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
 }
 
 void
-jingle_transport_rawudp_register (GabbleJingleFactory *factory)
+jingle_transport_rawudp_register (WockyJingleFactory *factory)
 {
-  gabble_jingle_factory_register_transport (factory,
+  wocky_jingle_factory_register_transport (factory,
       NS_JINGLE_TRANSPORT_RAWUDP,
-      GABBLE_TYPE_JINGLE_TRANSPORT_RAWUDP);
+      WOCKY_TYPE_JINGLE_TRANSPORT_RAWUDP);
 }
 

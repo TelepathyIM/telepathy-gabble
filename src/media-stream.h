@@ -99,7 +99,7 @@ void gabble_media_stream_accept_pending_local_send (GabbleMediaStream *stream);
 GabbleMediaStream *gabble_media_stream_new (
     TpDBusDaemon *dbus_daemon,
     const gchar *object_path,
-    GabbleJingleContent *content,
+    WockyJingleContent *content,
     const gchar *name,
     guint id,
     const gchar *nat_traversal,
@@ -110,7 +110,7 @@ TpMediaStreamType gabble_media_stream_get_media_type (GabbleMediaStream *self);
 void gabble_media_stream_add_dtmf_player (GabbleMediaStream *self,
     TpDTMFPlayer *dtmf_player);
 
-GabbleJingleMediaRtp *gabble_media_stream_get_content (GabbleMediaStream *self);
+WockyJingleMediaRtp *gabble_media_stream_get_content (GabbleMediaStream *self);
 
 void gabble_media_stream_start_telephony_event (GabbleMediaStream *self, guchar event);
 void gabble_media_stream_stop_telephony_event (GabbleMediaStream *self);

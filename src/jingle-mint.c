@@ -1,5 +1,5 @@
 /*
- * jingle-mint.c - creates and configures a GabbleJingleFactory
+ * jingle-mint.c - creates and configures a WockyJingleFactory
  * Copyright ©2012 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -39,7 +39,7 @@
 struct _GabbleJingleMintPrivate {
     GabbleConnection *conn;
 
-    GabbleJingleFactory *factory;
+    WockyJingleFactory *factory;
 };
 
 enum {
@@ -65,12 +65,12 @@ static void connection_porter_available_cb (
     gpointer user_data);
 
 static void factory_new_session_cb (
-    GabbleJingleFactory *factory,
-    GabbleJingleSession *session,
+    WockyJingleFactory *factory,
+    WockyJingleSession *session,
     gboolean initiated_locally,
     gpointer user_data);
 static gboolean factory_query_cap_cb (
-    GabbleJingleFactory *factory,
+    WockyJingleFactory *factory,
     WockyContact *contact,
     const gchar *cap_or_quirk,
     gpointer user_data);
@@ -177,7 +177,7 @@ gabble_jingle_mint_class_init (GabbleJingleMintClass *klass)
   signals[INCOMING_SESSION] = g_signal_new ("incoming-session",
         G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__OBJECT,
-        G_TYPE_NONE, 1, GABBLE_TYPE_JINGLE_SESSION);
+        G_TYPE_NONE, 1, WOCKY_TYPE_JINGLE_SESSION);
 }
 
 GabbleJingleMint *
@@ -207,7 +207,7 @@ connection_status_changed_cb (
 
     case TP_CONNECTION_STATUS_CONNECTED:
         {
-          GabbleJingleInfo *info = gabble_jingle_mint_get_info (self);
+          WockyJingleInfo *info = gabble_jingle_mint_get_info (self);
           gchar *stun_server = NULL;
           guint stun_port = 0;
 
@@ -217,7 +217,7 @@ connection_status_changed_cb (
               NULL);
 
           if (stun_server != NULL)
-            gabble_jingle_info_take_stun_server (info,
+            wocky_jingle_info_take_stun_server (info,
                 stun_server, stun_port, FALSE);
 
           g_object_get (priv->conn,
@@ -226,10 +226,10 @@ connection_status_changed_cb (
               NULL);
 
           if (stun_server != NULL)
-            gabble_jingle_info_take_stun_server (info,
+            wocky_jingle_info_take_stun_server (info,
                 stun_server, stun_port, TRUE);
 
-          gabble_jingle_info_send_request (info,
+          wocky_jingle_info_send_request (info,
               /* FIXME: one day Wocky will know about caps and then we won't
                * have to pass in a flag here.
                */
@@ -240,7 +240,7 @@ connection_status_changed_cb (
 
     case TP_CONNECTION_STATUS_DISCONNECTED:
       if (priv->factory != NULL)
-        gabble_jingle_factory_stop (priv->factory);
+        wocky_jingle_factory_stop (priv->factory);
       break;
     }
 }
@@ -258,7 +258,7 @@ connection_porter_available_cb (
   g_assert (conn->session != NULL);
 
   g_assert (priv->factory == NULL);
-  priv->factory = gabble_jingle_factory_new (conn->session);
+  priv->factory = wocky_jingle_factory_new (conn->session);
 
   tp_g_signal_connect_object (priv->factory, "new-session",
       (GCallback) factory_new_session_cb, self, 0);
@@ -268,12 +268,12 @@ connection_porter_available_cb (
 
 static void
 session_about_to_initiate_cb (
-    GabbleJingleSession *session,
+    WockyJingleSession *session,
     gpointer user_data)
 {
   GabbleJingleMint *self = GABBLE_JINGLE_MINT (user_data);
   GabbleJingleMintPrivate *priv = self->priv;
-  const gchar *peer_jid = gabble_jingle_session_get_peer_jid (session);
+  const gchar *peer_jid = wocky_jingle_session_get_peer_jid (session);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle peer = tp_handle_ensure (contact_repo, peer_jid, NULL, NULL);
@@ -286,8 +286,8 @@ session_about_to_initiate_cb (
 
 static void
 factory_new_session_cb (
-    GabbleJingleFactory *factory,
-    GabbleJingleSession *session,
+    WockyJingleFactory *factory,
+    WockyJingleSession *session,
     gboolean initiated_locally,
     gpointer user_data)
 {
@@ -304,7 +304,7 @@ factory_new_session_cb (
 
 static gboolean
 factory_query_cap_cb (
-    GabbleJingleFactory *factory,
+    WockyJingleFactory *factory,
     WockyContact *contact,
     const gchar *cap_or_quirk,
     gpointer user_data)
@@ -331,16 +331,16 @@ factory_query_cap_cb (
     }
 }
 
-GabbleJingleFactory *
+WockyJingleFactory *
 gabble_jingle_mint_get_factory (
     GabbleJingleMint *self)
 {
   return self->priv->factory;
 }
 
-GabbleJingleInfo *
+WockyJingleInfo *
 gabble_jingle_mint_get_info (
     GabbleJingleMint *self)
 {
-  return gabble_jingle_factory_get_jingle_info (self->priv->factory);
+  return wocky_jingle_factory_get_jingle_info (self->priv->factory);
 }

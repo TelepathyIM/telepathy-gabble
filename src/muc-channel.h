@@ -125,7 +125,7 @@ gboolean gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
     GError **error);
 
 gboolean gabble_muc_channel_handle_jingle_session (GabbleMucChannel *channel,
-    GabbleJingleSession *session);
+    WockyJingleSession *session);
 #endif
 
 void gabble_muc_channel_update_configuration_async (

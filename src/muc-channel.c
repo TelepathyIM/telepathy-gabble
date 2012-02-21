@@ -4059,7 +4059,7 @@ gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
 
 gboolean
 gabble_muc_channel_handle_jingle_session (GabbleMucChannel *self,
-    GabbleJingleSession *session)
+    WockyJingleSession *session)
 {
   GabbleMucChannelPrivate *priv = self->priv;
 

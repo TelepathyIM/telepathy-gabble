@@ -1,5 +1,5 @@
 /*
- * google-relay.h - Header for GabbleGoogleRelaySession
+ * google-relay.h - Header for WockyGoogleRelaySession
  *
  * Copyright (C) 2006-2008 Collabora Ltd.
  * Copyright (C) 2011 Nokia Corporation
@@ -28,16 +28,16 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleGoogleRelayResolver GabbleGoogleRelayResolver;
+typedef struct _WockyGoogleRelayResolver WockyGoogleRelayResolver;
 
-GabbleGoogleRelayResolver * gabble_google_relay_resolver_new (void);
-void gabble_google_relay_resolver_destroy (GabbleGoogleRelayResolver *self);
-void gabble_google_relay_resolver_resolve (GabbleGoogleRelayResolver *self,
+WockyGoogleRelayResolver * wocky_google_relay_resolver_new (void);
+void wocky_google_relay_resolver_destroy (WockyGoogleRelayResolver *self);
+void wocky_google_relay_resolver_resolve (WockyGoogleRelayResolver *self,
     guint requests_to_do,
     const gchar *server,
     guint16 port,
     const gchar *token,
-    GabbleJingleInfoRelaySessionCb callback,
+    WockyJingleInfoRelaySessionCb callback,
     gpointer user_data);
 
 G_END_DECLS

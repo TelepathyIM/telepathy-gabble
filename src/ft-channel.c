@@ -1338,7 +1338,7 @@ offer_gtalk_file_transfer (GabbleFileTransferChannel *self,
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleConnection *conn = GABBLE_CONNECTION (
       tp_base_channel_get_connection (base));
-  GabbleJingleFactory *jf;
+  WockyJingleFactory *jf;
   GTalkFileCollection *gtalk_file_collection;
 
   DEBUG ("Offering Gtalk file transfer to %s", full_jid);
@@ -1457,7 +1457,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
 #ifdef ENABLE_JINGLE_FILE_TRANSFER
   use_si = si &&
     (!jingle_share ||
-     gabble_jingle_info_get_google_relay_token (
+     wocky_jingle_info_get_google_relay_token (
        gabble_jingle_mint_get_info (conn->jingle_mint)) == NULL);
 #else
   use_si = si;

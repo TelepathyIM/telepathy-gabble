@@ -1,5 +1,5 @@
 /*
- * jingle-content.h - Header for GabbleJingleContent
+ * jingle-content.h - Header for WockyJingleContent
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -29,22 +29,22 @@
 G_BEGIN_DECLS
 
 typedef enum {
-  JINGLE_MEDIA_TYPE_NONE = 0,
-  JINGLE_MEDIA_TYPE_AUDIO,
-  JINGLE_MEDIA_TYPE_VIDEO,
-} JingleMediaType;
+  WOCKY_JINGLE_MEDIA_TYPE_NONE = 0,
+  WOCKY_JINGLE_MEDIA_TYPE_AUDIO,
+  WOCKY_JINGLE_MEDIA_TYPE_VIDEO,
+} WockyJingleMediaType;
 
 typedef enum {
-  JINGLE_CONTENT_STATE_EMPTY = 0,
-  JINGLE_CONTENT_STATE_NEW,
-  JINGLE_CONTENT_STATE_SENT,
-  JINGLE_CONTENT_STATE_ACKNOWLEDGED,
-  JINGLE_CONTENT_STATE_REMOVING
-} JingleContentState;
+  WOCKY_JINGLE_CONTENT_STATE_EMPTY = 0,
+  WOCKY_JINGLE_CONTENT_STATE_NEW,
+  WOCKY_JINGLE_CONTENT_STATE_SENT,
+  WOCKY_JINGLE_CONTENT_STATE_ACKNOWLEDGED,
+  WOCKY_JINGLE_CONTENT_STATE_REMOVING
+} WockyJingleContentState;
 
-struct _JingleCandidate {
-  JingleTransportProtocol protocol;
-  JingleCandidateType type;
+struct _WockyJingleCandidate {
+  WockyJingleTransportProtocol protocol;
+  WockyJingleCandidateType type;
 
   gchar *id;
   gchar *address;
@@ -58,106 +58,106 @@ struct _JingleCandidate {
   int network;
 };
 
-typedef struct _GabbleJingleContentClass GabbleJingleContentClass;
+typedef struct _WockyJingleContentClass WockyJingleContentClass;
 
-GType gabble_jingle_content_get_type (void);
+GType wocky_jingle_content_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_JINGLE_CONTENT \
-  (gabble_jingle_content_get_type ())
-#define GABBLE_JINGLE_CONTENT(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_CONTENT, \
-                              GabbleJingleContent))
-#define GABBLE_JINGLE_CONTENT_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_JINGLE_CONTENT, \
-                           GabbleJingleContentClass))
-#define GABBLE_IS_JINGLE_CONTENT(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_CONTENT))
-#define GABBLE_IS_JINGLE_CONTENT_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_JINGLE_CONTENT))
-#define GABBLE_JINGLE_CONTENT_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_JINGLE_CONTENT, \
-                              GabbleJingleContentClass))
+#define WOCKY_TYPE_JINGLE_CONTENT \
+  (wocky_jingle_content_get_type ())
+#define WOCKY_JINGLE_CONTENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_JINGLE_CONTENT, \
+                              WockyJingleContent))
+#define WOCKY_JINGLE_CONTENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), WOCKY_TYPE_JINGLE_CONTENT, \
+                           WockyJingleContentClass))
+#define WOCKY_IS_JINGLE_CONTENT(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_JINGLE_CONTENT))
+#define WOCKY_IS_JINGLE_CONTENT_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), WOCKY_TYPE_JINGLE_CONTENT))
+#define WOCKY_JINGLE_CONTENT_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_JINGLE_CONTENT, \
+                              WockyJingleContentClass))
 
-struct _GabbleJingleContentClass {
+struct _WockyJingleContentClass {
     GObjectClass parent_class;
 
-    void  (*parse_description) (GabbleJingleContent *, WockyNode *,
+    void  (*parse_description) (WockyJingleContent *, WockyNode *,
         GError **);
-    void  (*produce_description) (GabbleJingleContent *, WockyNode *);
-    void  (*transport_created) (GabbleJingleContent *,
-        GabbleJingleTransportIface *);
-    JingleContentSenders (*get_default_senders) (GabbleJingleContent *);
+    void  (*produce_description) (WockyJingleContent *, WockyNode *);
+    void  (*transport_created) (WockyJingleContent *,
+        WockyJingleTransportIface *);
+    WockyJingleContentSenders (*get_default_senders) (WockyJingleContent *);
 };
 
-typedef struct _GabbleJingleContentPrivate GabbleJingleContentPrivate;
+typedef struct _WockyJingleContentPrivate WockyJingleContentPrivate;
 
-struct _GabbleJingleContent {
+struct _WockyJingleContent {
     GObject parent;
-    GabbleJingleContentPrivate *priv;
+    WockyJingleContentPrivate *priv;
 
-    GabbleJingleSession *session;
+    WockyJingleSession *session;
 };
 
-void gabble_jingle_content_parse_add (GabbleJingleContent *c,
+void wocky_jingle_content_parse_add (WockyJingleContent *c,
     WockyNode *content_node, gboolean google_mode, GError **error);
-void gabble_jingle_content_update_senders (GabbleJingleContent *c,
+void wocky_jingle_content_update_senders (WockyJingleContent *c,
     WockyNode *content_node, GError **error);
-void gabble_jingle_content_produce_node (GabbleJingleContent *c,
+void wocky_jingle_content_produce_node (WockyJingleContent *c,
     WockyNode *parent,
     gboolean include_description,
     gboolean include_transport,
     WockyNode **trans_node_out);
-void gabble_jingle_content_parse_accept (GabbleJingleContent *c,
+void wocky_jingle_content_parse_accept (WockyJingleContent *c,
   WockyNode *content_node, gboolean google_mode, GError **error);
 
-void gabble_jingle_content_parse_info (GabbleJingleContent *c,
+void wocky_jingle_content_parse_info (WockyJingleContent *c,
     WockyNode *content_node, GError **error);
-void gabble_jingle_content_parse_transport_info (GabbleJingleContent *self,
+void wocky_jingle_content_parse_transport_info (WockyJingleContent *self,
   WockyNode *trans_node, GError **error);
-void gabble_jingle_content_parse_description_info (GabbleJingleContent *self,
+void wocky_jingle_content_parse_description_info (WockyJingleContent *self,
   WockyNode *trans_node, GError **error);
-guint gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
+guint wocky_jingle_content_create_share_channel (WockyJingleContent *self,
     const gchar *name);
-void gabble_jingle_content_add_candidates (GabbleJingleContent *self, GList *li);
-void _gabble_jingle_content_set_media_ready (GabbleJingleContent *self);
-gboolean gabble_jingle_content_is_ready (GabbleJingleContent *self);
-void gabble_jingle_content_set_transport_state (GabbleJingleContent *content,
-    JingleTransportState state);
-void gabble_jingle_content_remove (GabbleJingleContent *c, gboolean signal_peer);
-void gabble_jingle_content_reject (GabbleJingleContent *c,
-    JingleReason reason);
+void wocky_jingle_content_add_candidates (WockyJingleContent *self, GList *li);
+void _wocky_jingle_content_set_media_ready (WockyJingleContent *self);
+gboolean wocky_jingle_content_is_ready (WockyJingleContent *self);
+void wocky_jingle_content_set_transport_state (WockyJingleContent *content,
+    WockyJingleTransportState state);
+void wocky_jingle_content_remove (WockyJingleContent *c, gboolean signal_peer);
+void wocky_jingle_content_reject (WockyJingleContent *c,
+    WockyJingleReason reason);
 
-GList *gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c);
-GList *gabble_jingle_content_get_local_candidates (GabbleJingleContent *c);
-gboolean gabble_jingle_content_get_credentials (GabbleJingleContent *c,
+GList *wocky_jingle_content_get_remote_candidates (WockyJingleContent *c);
+GList *wocky_jingle_content_get_local_candidates (WockyJingleContent *c);
+gboolean wocky_jingle_content_get_credentials (WockyJingleContent *c,
   gchar **ufrag, gchar **pwd);
-gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
-    JingleContentSenders senders);
-void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
+gboolean wocky_jingle_content_change_direction (WockyJingleContent *c,
+    WockyJingleContentSenders senders);
+void wocky_jingle_content_retransmit_candidates (WockyJingleContent *self,
     gboolean all);
-void gabble_jingle_content_inject_candidates (GabbleJingleContent *self,
+void wocky_jingle_content_inject_candidates (WockyJingleContent *self,
     WockyNode *transport_node);
-gboolean gabble_jingle_content_is_created_by_us (GabbleJingleContent *c);
-gboolean gabble_jingle_content_creator_is_initiator (GabbleJingleContent *c);
+gboolean wocky_jingle_content_is_created_by_us (WockyJingleContent *c);
+gboolean wocky_jingle_content_creator_is_initiator (WockyJingleContent *c);
 
-const gchar *gabble_jingle_content_get_name (GabbleJingleContent *self);
-const gchar *gabble_jingle_content_get_ns (GabbleJingleContent *self);
-const gchar *gabble_jingle_content_get_disposition (GabbleJingleContent *self);
-JingleTransportType gabble_jingle_content_get_transport_type (GabbleJingleContent *c);
-const gchar *gabble_jingle_content_get_transport_ns (GabbleJingleContent *self);
+const gchar *wocky_jingle_content_get_name (WockyJingleContent *self);
+const gchar *wocky_jingle_content_get_ns (WockyJingleContent *self);
+const gchar *wocky_jingle_content_get_disposition (WockyJingleContent *self);
+WockyJingleTransportType wocky_jingle_content_get_transport_type (WockyJingleContent *c);
+const gchar *wocky_jingle_content_get_transport_ns (WockyJingleContent *self);
 
-void gabble_jingle_content_maybe_send_description (GabbleJingleContent *self);
+void wocky_jingle_content_maybe_send_description (WockyJingleContent *self);
 
-gboolean gabble_jingle_content_sending (GabbleJingleContent *self);
-gboolean gabble_jingle_content_receiving (GabbleJingleContent *self);
+gboolean wocky_jingle_content_sending (WockyJingleContent *self);
+gboolean wocky_jingle_content_receiving (WockyJingleContent *self);
 
-void gabble_jingle_content_set_sending (GabbleJingleContent *self,
+void wocky_jingle_content_set_sending (WockyJingleContent *self,
     gboolean send);
-void gabble_jingle_content_request_receiving (GabbleJingleContent *self,
+void wocky_jingle_content_request_receiving (WockyJingleContent *self,
     gboolean receive);
 
-void gabble_jingle_content_send_complete (GabbleJingleContent *self);
+void wocky_jingle_content_send_complete (WockyJingleContent *self);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

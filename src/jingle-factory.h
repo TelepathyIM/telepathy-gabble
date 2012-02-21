@@ -1,5 +1,5 @@
 /*
- * jingle-factory.h - Header for GabbleJingleFactory
+ * jingle-factory.h - Header for WockyJingleFactory
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -27,62 +27,62 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleJingleFactoryClass GabbleJingleFactoryClass;
+typedef struct _WockyJingleFactoryClass WockyJingleFactoryClass;
 
-GType gabble_jingle_factory_get_type (void);
+GType wocky_jingle_factory_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_JINGLE_FACTORY \
-  (gabble_jingle_factory_get_type ())
-#define GABBLE_JINGLE_FACTORY(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_FACTORY, \
-                              GabbleJingleFactory))
-#define GABBLE_JINGLE_FACTORY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_JINGLE_FACTORY, \
-                           GabbleJingleFactoryClass))
-#define GABBLE_IS_JINGLE_FACTORY(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_FACTORY))
-#define GABBLE_IS_JINGLE_FACTORY_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_JINGLE_FACTORY))
-#define GABBLE_JINGLE_FACTORY_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_JINGLE_FACTORY, \
-                              GabbleJingleFactoryClass))
+#define WOCKY_TYPE_JINGLE_FACTORY \
+  (wocky_jingle_factory_get_type ())
+#define WOCKY_JINGLE_FACTORY(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_JINGLE_FACTORY, \
+                              WockyJingleFactory))
+#define WOCKY_JINGLE_FACTORY_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), WOCKY_TYPE_JINGLE_FACTORY, \
+                           WockyJingleFactoryClass))
+#define WOCKY_IS_JINGLE_FACTORY(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_JINGLE_FACTORY))
+#define WOCKY_IS_JINGLE_FACTORY_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), WOCKY_TYPE_JINGLE_FACTORY))
+#define WOCKY_JINGLE_FACTORY_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_JINGLE_FACTORY, \
+                              WockyJingleFactoryClass))
 
-struct _GabbleJingleFactoryClass {
+struct _WockyJingleFactoryClass {
     GObjectClass parent_class;
 };
 
-typedef struct _GabbleJingleFactoryPrivate GabbleJingleFactoryPrivate;
+typedef struct _WockyJingleFactoryPrivate WockyJingleFactoryPrivate;
 
-struct _GabbleJingleFactory {
+struct _WockyJingleFactory {
     GObject parent;
 
-    GabbleJingleFactoryPrivate *priv;
+    WockyJingleFactoryPrivate *priv;
 };
 
-GabbleJingleFactory *gabble_jingle_factory_new (
+WockyJingleFactory *wocky_jingle_factory_new (
     WockySession *session);
 
-void gabble_jingle_factory_stop (GabbleJingleFactory *self);
+void wocky_jingle_factory_stop (WockyJingleFactory *self);
 
-void gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
+void wocky_jingle_factory_register_content_type (WockyJingleFactory *self,
     gchar *xmlns, GType content_type);
-GType gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
+GType wocky_jingle_factory_lookup_content_type (WockyJingleFactory *self,
     const gchar *xmlns);
 
-void gabble_jingle_factory_register_transport (GabbleJingleFactory *self,
+void wocky_jingle_factory_register_transport (WockyJingleFactory *self,
     gchar *xmlns, GType transport_type);
-GType gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
+GType wocky_jingle_factory_lookup_transport (WockyJingleFactory *self,
     const gchar *xmlns);
 
-GabbleJingleSession *gabble_jingle_factory_create_session (
-    GabbleJingleFactory *fac,
+WockyJingleSession *wocky_jingle_factory_create_session (
+    WockyJingleFactory *fac,
     const gchar *jid,
-    JingleDialect dialect,
+    WockyJingleDialect dialect,
     gboolean local_hold);
 
-GabbleJingleInfo *gabble_jingle_factory_get_jingle_info (
-    GabbleJingleFactory *fac);
+WockyJingleInfo *wocky_jingle_factory_get_jingle_info (
+    WockyJingleFactory *fac);
 
 G_END_DECLS;
 

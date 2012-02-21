@@ -83,7 +83,7 @@ GabbleCallMember * gabble_base_call_channel_get_member_from_handle (
 GabbleCallContent * gabble_base_call_channel_add_content (
     GabbleBaseCallChannel *self,
     const gchar *name,
-    JingleMediaType mtype,
+    WockyJingleMediaType mtype,
     TpCallContentDisposition disposition);
 
 void gabble_base_call_channel_remove_content (GabbleBaseCallChannel *self,

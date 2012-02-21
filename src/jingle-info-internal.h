@@ -1,5 +1,5 @@
 /*
- * jingle-info-internal.h - internal types for GabbleJingleInfo
+ * jingle-info-internal.h - internal types for WockyJingleInfo
  * Copyright © 2012 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -17,13 +17,13 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#ifndef GABBLE_JINGLE_INFO_INTERNAL_H
-#define GABBLE_JINGLE_INFO_INTERNAL_H
+#ifndef WOCKY_JINGLE_INFO_INTERNAL_H
+#define WOCKY_JINGLE_INFO_INTERNAL_H
 
 typedef enum {
-    GABBLE_STUN_SERVER_USER_SPECIFIED,
-    GABBLE_STUN_SERVER_DISCOVERED,
-    GABBLE_STUN_SERVER_FALLBACK
-} GabbleStunServerSource;
+    WOCKY_STUN_SERVER_USER_SPECIFIED,
+    WOCKY_STUN_SERVER_DISCOVERED,
+    WOCKY_STUN_SERVER_FALLBACK
+} WockyStunServerSource;
 
-#endif /* GABBLE_JINGLE_INFO_INTERNAL_H */
+#endif /* WOCKY_JINGLE_INFO_INTERNAL_H */

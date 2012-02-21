@@ -66,7 +66,7 @@
  *              |                             \
  *              |                              \
  *          ref |                               \
- *     GabbleJingleSession                       \
+ *     WockyJingleSession                       \
  *              |                                 \ (one at a time)
  *              |                                  \
  *          ref |                                   \
@@ -74,7 +74,7 @@
  *              |                                                       |
  *              |                                                       |
  *         ref  |                           ref                         |
- *   GabbleTransportGoogle ----------------*- JingleCandidate        PseudoTCP
+ *   GabbleTransportGoogle ----------------*- WockyJingleCandidate        PseudoTCP
  *
  * The protocol works like this :
  * Once you receive an invitation, the manifest will contain a number of files
@@ -183,8 +183,8 @@ struct _GTalkFileCollectionPrivate
   /* the weakref to the channel here is held through the GList *channels */
   GHashTable *channels_usable;
   GabbleFileTransferChannel *current_channel;
-  GabbleJingleFactory *jingle_factory;
-  GabbleJingleSession *jingle;
+  WockyJingleFactory *jingle_factory;
+  WockyJingleSession *jingle;
   /* ICE component id to jingle share channel association
      GINT_TO_POINTER (candidate->component) => g_slice_new (ShareChannel) */
   GHashTable *share_channels;
@@ -249,8 +249,8 @@ gtalk_file_collection_dispose (GObject *object)
   self->priv->dispose_has_run = TRUE;
 
   if (self->priv->jingle != NULL)
-    gabble_jingle_session_terminate (self->priv->jingle,
-        JINGLE_REASON_UNKNOWN, NULL, NULL);
+    wocky_jingle_session_terminate (self->priv->jingle,
+        WOCKY_JINGLE_REASON_UNKNOWN, NULL, NULL);
 
   tp_clear_object (&self->priv->jingle);
 
@@ -412,11 +412,11 @@ del_channel (GTalkFileCollection * self, GabbleFileTransferChannel *channel)
 }
 
 static void
-jingle_session_state_changed_cb (GabbleJingleSession *session,
+jingle_session_state_changed_cb (WockyJingleSession *session,
                                  GParamSpec *arg1,
                                  GTalkFileCollection *self)
 {
-  JingleState state;
+  WockyJingleState state;
   GList *i;
 
   DEBUG ("called");
@@ -427,11 +427,11 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
 
   switch (state)
     {
-      case JINGLE_STATE_INVALID:
-      case JINGLE_STATE_PENDING_CREATED:
+      case WOCKY_JINGLE_STATE_INVALID:
+      case WOCKY_JINGLE_STATE_PENDING_CREATED:
         break;
-      case JINGLE_STATE_PENDING_INITIATE_SENT:
-      case JINGLE_STATE_PENDING_INITIATED:
+      case WOCKY_JINGLE_STATE_PENDING_INITIATE_SENT:
+      case WOCKY_JINGLE_STATE_PENDING_INITIATED:
         for (i = self->priv->channels; i;)
           {
             GabbleFileTransferChannel *channel = i->data;
@@ -441,8 +441,8 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
                 channel, GTALK_FILE_COLLECTION_STATE_PENDING, FALSE);
           }
         break;
-      case JINGLE_STATE_PENDING_ACCEPT_SENT:
-      case JINGLE_STATE_ACTIVE:
+      case WOCKY_JINGLE_STATE_PENDING_ACCEPT_SENT:
+      case WOCKY_JINGLE_STATE_ACTIVE:
         /* Do not set the channels to OPEN unless we're ready to send/receive
            data from them */
         if (self->priv->status == GTALK_FT_STATUS_INITIATED)
@@ -461,7 +461,7 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
                   channel, GTALK_FILE_COLLECTION_STATE_ACCEPTED, FALSE);
           }
         break;
-      case JINGLE_STATE_ENDED:
+      case WOCKY_JINGLE_STATE_ENDED:
         /* Do nothing, let the terminated signal set the correct state
            depending on the termination reason */
       default:
@@ -470,9 +470,9 @@ jingle_session_state_changed_cb (GabbleJingleSession *session,
 }
 
 static void
-jingle_session_terminated_cb (GabbleJingleSession *session,
+jingle_session_terminated_cb (WockyJingleSession *session,
                        gboolean local_terminator,
-                       JingleReason reason,
+                       WockyJingleReason reason,
                        const gchar *text,
                        gpointer user_data)
 {
@@ -494,7 +494,7 @@ jingle_session_terminated_cb (GabbleJingleSession *session,
 }
 
 static void
-content_new_remote_candidates_cb (GabbleJingleContent *content,
+content_new_remote_candidates_cb (WockyJingleContent *content,
     GList *clist, gpointer user_data)
 {
   GTalkFileCollection *self = GTALK_FILE_COLLECTION (user_data);
@@ -504,12 +504,12 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
 
   for (li = clist; li; li = li->next)
     {
-      JingleCandidate *candidate = li->data;
+      WockyJingleCandidate *candidate = li->data;
       NiceCandidate *cand = NULL;
       ShareChannel *share_channel = NULL;
       GSList *candidates = NULL;
 
-      if (candidate->protocol != JINGLE_TRANSPORT_PROTOCOL_UDP)
+      if (candidate->protocol != WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP)
         {
           DEBUG ("Ignoring candidate %s because of non-UDP protocol : %d",
               candidate->username, candidate->protocol);
@@ -526,14 +526,14 @@ content_new_remote_candidates_cb (GabbleJingleContent *content,
         }
 
       cand = nice_candidate_new (
-          candidate->type == JINGLE_CANDIDATE_TYPE_LOCAL?
+          candidate->type == WOCKY_JINGLE_CANDIDATE_TYPE_LOCAL?
           NICE_CANDIDATE_TYPE_HOST:
-          candidate->type == JINGLE_CANDIDATE_TYPE_STUN?
+          candidate->type == WOCKY_JINGLE_CANDIDATE_TYPE_STUN?
           NICE_CANDIDATE_TYPE_SERVER_REFLEXIVE:
           NICE_CANDIDATE_TYPE_RELAYED);
 
 
-      cand->transport = JINGLE_TRANSPORT_PROTOCOL_UDP;
+      cand->transport = WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP;
       nice_address_init (&cand->addr);
 
       if (!nice_address_set_from_string (&cand->addr, candidate->address))
@@ -577,7 +577,7 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
 {
   GTalkFileCollection *self = GTALK_FILE_COLLECTION (user_data);
   ShareChannel *share_channel = get_share_channel (self, agent);
-  GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (share_channel->content);
+  WockyJingleContent *content = WOCKY_JINGLE_CONTENT (share_channel->content);
   GList *candidates = NULL;
   GList *remote_candidates = NULL;
   GSList *local_candidates;
@@ -586,7 +586,7 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
   DEBUG ("libnice candidate gathering done!!!!");
 
   /* Send remote candidates to libnice and listen to new signal */
-  remote_candidates = gabble_jingle_content_get_remote_candidates (content);
+  remote_candidates = wocky_jingle_content_get_remote_candidates (content);
   content_new_remote_candidates_cb (content, remote_candidates, self);
 
   gabble_signal_connect_weak (content, "new-candidates",
@@ -599,22 +599,22 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
   for (li = local_candidates; li; li = li->next)
     {
       NiceCandidate *cand = li->data;
-      JingleCandidate *candidate;
+      WockyJingleCandidate *candidate;
       gchar ip[NICE_ADDRESS_STRING_LEN];
 
       nice_address_to_string (&cand->addr, ip);
 
-      candidate = jingle_candidate_new (
+      candidate = wocky_jingle_candidate_new (
           /* protocol */
           cand->transport == NICE_CANDIDATE_TRANSPORT_UDP?
-          JINGLE_TRANSPORT_PROTOCOL_UDP:
-          JINGLE_TRANSPORT_PROTOCOL_TCP,
+          WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP:
+          WOCKY_JINGLE_TRANSPORT_PROTOCOL_TCP,
           /* candidate type */
           cand->type == NICE_CANDIDATE_TYPE_HOST?
-          JINGLE_CANDIDATE_TYPE_LOCAL:
+          WOCKY_JINGLE_CANDIDATE_TYPE_LOCAL:
           cand->type == NICE_CANDIDATE_TYPE_RELAYED?
-          JINGLE_CANDIDATE_TYPE_RELAY:
-          JINGLE_CANDIDATE_TYPE_STUN,
+          WOCKY_JINGLE_CANDIDATE_TYPE_RELAY:
+          WOCKY_JINGLE_CANDIDATE_TYPE_STUN,
           /* id */
           cand->foundation,
           /* component */
@@ -637,7 +637,7 @@ nice_candidate_gathering_done (NiceAgent *agent, guint stream_id,
       candidates = g_list_prepend (candidates, candidate);
     }
 
-  gabble_jingle_content_add_candidates (content, candidates);
+  wocky_jingle_content_add_candidates (content, candidates);
 }
 
 static void
@@ -646,8 +646,8 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
 {
   GTalkFileCollection *self = GTALK_FILE_COLLECTION (user_data);
   ShareChannel *share_channel = get_share_channel (self, agent);
-  GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (share_channel->content);
-  JingleTransportState ts = JINGLE_TRANSPORT_STATE_DISCONNECTED;
+  WockyJingleContent *content = WOCKY_JINGLE_CONTENT (share_channel->content);
+  WockyJingleTransportState ts = WOCKY_JINGLE_TRANSPORT_STATE_DISCONNECTED;
 
   DEBUG ("libnice component state changed %d!!!!", state);
 
@@ -655,14 +655,14 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
     {
       case NICE_COMPONENT_STATE_DISCONNECTED:
       case NICE_COMPONENT_STATE_GATHERING:
-        ts = JINGLE_TRANSPORT_STATE_DISCONNECTED;
+        ts = WOCKY_JINGLE_TRANSPORT_STATE_DISCONNECTED;
         break;
       case NICE_COMPONENT_STATE_CONNECTING:
-        ts = JINGLE_TRANSPORT_STATE_CONNECTING;
+        ts = WOCKY_JINGLE_TRANSPORT_STATE_CONNECTING;
         break;
       case NICE_COMPONENT_STATE_CONNECTED:
       case NICE_COMPONENT_STATE_READY:
-        ts = JINGLE_TRANSPORT_STATE_CONNECTED;
+        ts = WOCKY_JINGLE_TRANSPORT_STATE_CONNECTED;
         break;
       case NICE_COMPONENT_STATE_FAILED:
         {
@@ -682,7 +682,7 @@ nice_component_state_changed (NiceAgent *agent,  guint stream_id,
           return;
         }
     }
-  gabble_jingle_content_set_transport_state (content, ts);
+  wocky_jingle_content_set_transport_state (content, ts);
 }
 
 static void
@@ -700,11 +700,11 @@ get_next_manifest_entry (GTalkFileCollection *self,
     {
       if (g_list_length (self->priv->channels) == 1)
         {
-          GabbleJingleContent *content = \
-              GABBLE_JINGLE_CONTENT (share_channel->content);
+          WockyJingleContent *content = \
+              WOCKY_JINGLE_CONTENT (share_channel->content);
 
           DEBUG ("Received all the files. Transfer is complete");
-          gabble_jingle_content_send_complete (content);
+          wocky_jingle_content_send_complete (content);
         }
 
       g_hash_table_replace (self->priv->channels_usable,
@@ -765,7 +765,7 @@ get_next_manifest_entry (GTalkFileCollection *self,
           "User-Agent: %s\r\n\r\n",
           (source_url != NULL ? source_url : ""),
           separator, filename,
-          gabble_jingle_session_get_initiator (self->priv->jingle),
+          wocky_jingle_session_get_initiator (self->priv->jingle),
           PACKAGE_STRING);
       g_free (filename);
 
@@ -852,19 +852,19 @@ typedef struct
 } GoogleRelaySessionData;
 
 static const NiceRelayType relay_type_map[] = {
-    /* GABBLE_JINGLE_RELAY_TYPE_UDP */ NICE_RELAY_TYPE_TURN_UDP,
-    /* GABBLE_JINGLE_RELAY_TYPE_TCP */ NICE_RELAY_TYPE_TURN_TCP,
-    /* GABBLE_JINGLE_RELAY_TYPE_TLS */ NICE_RELAY_TYPE_TURN_TLS,
+    /* WOCKY_JINGLE_RELAY_TYPE_UDP */ NICE_RELAY_TYPE_TURN_UDP,
+    /* WOCKY_JINGLE_RELAY_TYPE_TCP */ NICE_RELAY_TYPE_TURN_TCP,
+    /* WOCKY_JINGLE_RELAY_TYPE_TLS */ NICE_RELAY_TYPE_TURN_TLS,
 };
 
 static void
 set_relay_info (gpointer item, gpointer user_data)
 {
   GoogleRelaySessionData *data = user_data;
-  GabbleJingleRelay *relay = item;
+  WockyJingleRelay *relay = item;
   NiceRelayType type;
 
-  g_return_if_fail (relay->type < GABBLE_N_JINGLE_RELAY_TYPES);
+  g_return_if_fail (relay->type < WOCKY_N_JINGLE_RELAY_TYPES);
   type = relay_type_map[relay->type];
 
   nice_agent_set_relay_info (data->share_channel->agent,
@@ -896,7 +896,7 @@ google_relay_session_cb (GPtrArray *relays, gpointer user_data)
 
 
 static void
-content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
+content_new_share_channel_cb (WockyJingleContent *content, const gchar *name,
     guint share_channel_id, gpointer user_data)
 {
   GTalkFileCollection *self = GTALK_FILE_COLLECTION (user_data);
@@ -944,11 +944,11 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   nice_agent_attach_recv (agent, stream_id, share_channel->component_id,
       g_main_context_default (), nice_data_received_cb, self);
 
-  stun_servers = gabble_jingle_info_get_stun_servers (
-      gabble_jingle_factory_get_jingle_info (self->priv->jingle_factory));
+  stun_servers = wocky_jingle_info_get_stun_servers (
+      wocky_jingle_factory_get_jingle_info (self->priv->jingle_factory));
   if (stun_servers != NULL)
     {
-      GabbleStunServer *stun_server = stun_servers->data;
+      WockyStunServer *stun_server = stun_servers->data;
 
       g_object_set (agent,
           "stun-server", stun_server->address,
@@ -963,13 +963,13 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   relay_data->share_channel = share_channel;
   g_object_add_weak_pointer (G_OBJECT (relay_data->u.self),
       &relay_data->u.ptr);
-  gabble_jingle_info_create_google_relay_session (
-      gabble_jingle_factory_get_jingle_info (self->priv->jingle_factory), 1,
+  wocky_jingle_info_create_google_relay_session (
+      wocky_jingle_factory_get_jingle_info (self->priv->jingle_factory), 1,
       google_relay_session_cb, relay_data);
 }
 
 static void
-content_completed (GabbleJingleContent *content, gpointer user_data)
+content_completed (WockyJingleContent *content, gpointer user_data)
 {
   GTalkFileCollection *self = GTALK_FILE_COLLECTION (user_data);
   GList *i;
@@ -1383,7 +1383,7 @@ nice_data_received_cb (NiceAgent *agent,
 
 static void
 set_session (GTalkFileCollection * self,
-    GabbleJingleSession *session, GabbleJingleContent *content)
+    WockyJingleSession *session, WockyJingleContent *content)
 {
   self->priv->jingle = g_object_ref (session);
 
@@ -1402,19 +1402,19 @@ set_session (GTalkFileCollection * self,
 
 GTalkFileCollection *
 gtalk_file_collection_new (GabbleFileTransferChannel *channel,
-    GabbleJingleFactory *jingle_factory, TpHandle handle, const gchar *jid)
+    WockyJingleFactory *jingle_factory, TpHandle handle, const gchar *jid)
 {
   GTalkFileCollection * self = g_object_new (GTALK_TYPE_FILE_COLLECTION, NULL);
-  GabbleJingleSession *session = NULL;
-  GabbleJingleContent *content = NULL;
+  WockyJingleSession *session = NULL;
+  WockyJingleContent *content = NULL;
   gchar *filename;
   guint64 size;
 
   self->priv->jingle_factory = jingle_factory;
   self->priv->requested = TRUE;
 
-  session = gabble_jingle_factory_create_session (jingle_factory,
-      jid, JINGLE_DIALECT_GTALK4, FALSE);
+  session = wocky_jingle_factory_create_session (jingle_factory,
+      jid, WOCKY_JINGLE_DIALECT_GTALK4, FALSE);
 
   if (session == NULL)
     {
@@ -1422,8 +1422,8 @@ gtalk_file_collection_new (GabbleFileTransferChannel *channel,
       return NULL;
     }
 
-  content = gabble_jingle_session_add_content (session,
-      JINGLE_MEDIA_TYPE_NONE, JINGLE_CONTENT_SENDERS_BOTH, "share",
+  content = wocky_jingle_session_add_content (session,
+      WOCKY_JINGLE_MEDIA_TYPE_NONE, WOCKY_JINGLE_CONTENT_SENDERS_BOTH, "share",
       NS_GOOGLE_SESSION_SHARE, NS_GOOGLE_TRANSPORT_P2P);
 
   if (content == NULL)
@@ -1451,22 +1451,22 @@ gtalk_file_collection_new (GabbleFileTransferChannel *channel,
 }
 
 GTalkFileCollection *
-gtalk_file_collection_new_from_session (GabbleJingleFactory *jingle_factory,
-    GabbleJingleSession *session)
+gtalk_file_collection_new_from_session (WockyJingleFactory *jingle_factory,
+    WockyJingleSession *session)
 {
   GTalkFileCollection * self = NULL;
-  GabbleJingleContent *content = NULL;
+  WockyJingleContent *content = NULL;
   GList *cs;
 
-  if (gabble_jingle_session_get_content_type (session) !=
+  if (wocky_jingle_session_get_content_type (session) !=
       GABBLE_TYPE_JINGLE_SHARE)
       return NULL;
 
-  cs = gabble_jingle_session_get_contents (session);
+  cs = wocky_jingle_session_get_contents (session);
 
   if (cs != NULL)
     {
-      content = GABBLE_JINGLE_CONTENT (cs->data);
+      content = WOCKY_JINGLE_CONTENT (cs->data);
       g_list_free (cs);
     }
 
@@ -1504,7 +1504,7 @@ gtalk_file_collection_initiate (GTalkFileCollection *self,
 
   if (self->priv->status == GTALK_FT_STATUS_PENDING)
     {
-      gabble_jingle_session_accept (self->priv->jingle);
+      wocky_jingle_session_accept (self->priv->jingle);
       self->priv->status = GTALK_FT_STATUS_INITIATED;
     }
   else
@@ -1519,7 +1519,7 @@ void
 gtalk_file_collection_accept (GTalkFileCollection *self,
     GabbleFileTransferChannel * channel)
 {
-  GList *cs = gabble_jingle_session_get_contents (self->priv->jingle);
+  GList *cs = wocky_jingle_session_get_contents (self->priv->jingle);
 
   DEBUG ("called");
 
@@ -1533,11 +1533,11 @@ gtalk_file_collection_accept (GTalkFileCollection *self,
     {
       if (cs != NULL)
         {
-          GabbleJingleContent *content = GABBLE_JINGLE_CONTENT (cs->data);
+          WockyJingleContent *content = WOCKY_JINGLE_CONTENT (cs->data);
           guint initial_id = 0;
           guint share_channel_id;
 
-          gabble_jingle_session_accept (self->priv->jingle);
+          wocky_jingle_session_accept (self->priv->jingle);
           self->priv->status = GTALK_FT_STATUS_ACCEPTED;
 
           /* The new-share-channel signal will take care of the rest.. */
@@ -1546,7 +1546,7 @@ gtalk_file_collection_accept (GTalkFileCollection *self,
               gchar *share_channel_name = NULL;
 
               share_channel_name = g_strdup_printf ("gabble-%d", ++initial_id);
-              share_channel_id = gabble_jingle_content_create_share_channel (
+              share_channel_id = wocky_jingle_content_create_share_channel (
                   content, share_channel_name);
               g_free (share_channel_name);
             } while (share_channel_id == 0 && initial_id < 10);
@@ -1685,8 +1685,8 @@ gtalk_file_collection_terminate (GTalkFileCollection *self,
              terminate all channels which should unref us which will unref the
              jingle session */
           self->priv->status = GTALK_FT_STATUS_TERMINATED;
-          gabble_jingle_session_terminate (self->priv->jingle,
-              JINGLE_REASON_UNKNOWN, NULL, NULL);
+          wocky_jingle_session_terminate (self->priv->jingle,
+              WOCKY_JINGLE_REASON_UNKNOWN, NULL, NULL);
           return;
         }
       return;
@@ -1697,7 +1697,7 @@ gtalk_file_collection_terminate (GTalkFileCollection *self,
 
       /* If this was the last channel, it will cause it to unref us and
          the dispose will be called, which will call
-         gabble_jingle_session_terminate */
+         wocky_jingle_session_terminate */
       gabble_file_transfer_channel_gtalk_file_collection_state_changed (channel,
           GTALK_FILE_COLLECTION_STATE_TERMINATED, TRUE);
     }
@@ -1726,8 +1726,8 @@ channel_disposed (gpointer data, GObject *object)
              terminate all channels which should unref us which will unref the
              jingle session */
           self->priv->status = GTALK_FT_STATUS_TERMINATED;
-          gabble_jingle_session_terminate (self->priv->jingle,
-              JINGLE_REASON_UNKNOWN, NULL, NULL);
+          wocky_jingle_session_terminate (self->priv->jingle,
+              WOCKY_JINGLE_REASON_UNKNOWN, NULL, NULL);
           return;
         }
     }

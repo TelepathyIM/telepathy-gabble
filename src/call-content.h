@@ -63,7 +63,7 @@ GType gabble_call_content_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), \
     GABBLE_TYPE_CALL_CONTENT, GabbleCallContentClass))
 
-JingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
+WockyJingleMediaType gabble_call_content_get_media_type (GabbleCallContent *self);
 void gabble_call_content_new_offer (GabbleCallContent *self,
     GabbleCallMemberContent *content);
 

@@ -1,5 +1,5 @@
 /*
- * jingle-media-rtp.h - Header for GabbleJingleMediaRtp
+ * jingle-media-rtp.h - Header for WockyJingleMediaRtp
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -27,36 +27,36 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleJingleMediaRtpClass GabbleJingleMediaRtpClass;
+typedef struct _WockyJingleMediaRtpClass WockyJingleMediaRtpClass;
 
-GType gabble_jingle_media_rtp_get_type (void);
+GType wocky_jingle_media_rtp_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_JINGLE_MEDIA_RTP \
-  (gabble_jingle_media_rtp_get_type ())
-#define GABBLE_JINGLE_MEDIA_RTP(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_MEDIA_RTP, \
-                              GabbleJingleMediaRtp))
-#define GABBLE_JINGLE_MEDIA_RTP_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_JINGLE_MEDIA_RTP, \
-                           GabbleJingleMediaRtpClass))
-#define GABBLE_IS_JINGLE_MEDIA_RTP(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_MEDIA_RTP))
-#define GABBLE_IS_JINGLE_MEDIA_RTP_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_JINGLE_MEDIA_RTP))
-#define GABBLE_JINGLE_MEDIA_RTP_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_JINGLE_MEDIA_RTP, \
-                              GabbleJingleMediaRtpClass))
+#define WOCKY_TYPE_JINGLE_MEDIA_RTP \
+  (wocky_jingle_media_rtp_get_type ())
+#define WOCKY_JINGLE_MEDIA_RTP(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_JINGLE_MEDIA_RTP, \
+                              WockyJingleMediaRtp))
+#define WOCKY_JINGLE_MEDIA_RTP_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), WOCKY_TYPE_JINGLE_MEDIA_RTP, \
+                           WockyJingleMediaRtpClass))
+#define WOCKY_IS_JINGLE_MEDIA_RTP(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_JINGLE_MEDIA_RTP))
+#define WOCKY_IS_JINGLE_MEDIA_RTP_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), WOCKY_TYPE_JINGLE_MEDIA_RTP))
+#define WOCKY_JINGLE_MEDIA_RTP_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_JINGLE_MEDIA_RTP, \
+                              WockyJingleMediaRtpClass))
 
-struct _GabbleJingleMediaRtpClass {
-    GabbleJingleContentClass parent_class;
+struct _WockyJingleMediaRtpClass {
+    WockyJingleContentClass parent_class;
 };
 
-typedef struct _GabbleJingleMediaRtpPrivate GabbleJingleMediaRtpPrivate;
+typedef struct _WockyJingleMediaRtpPrivate WockyJingleMediaRtpPrivate;
 
-struct _GabbleJingleMediaRtp {
-    GabbleJingleContent parent;
-    GabbleJingleMediaRtpPrivate *priv;
+struct _WockyJingleMediaRtp {
+    WockyJingleContent parent;
+    WockyJingleMediaRtpPrivate *priv;
 };
 
 typedef struct {
@@ -67,36 +67,36 @@ typedef struct {
   GHashTable *params;
   guint trr_int;
   GList *feedback_msgs;
-} JingleCodec;
+} WockyJingleCodec;
 
 typedef struct {
   gchar *type;
   gchar *subtype;
-} JingleFeedbackMessage;
+} WockyJingleFeedbackMessage;
 
 typedef struct {
   guint id;
-  JingleContentSenders senders;
+  WockyJingleContentSenders senders;
   gchar *uri;
-} JingleRtpHeaderExtension;
+} WockyJingleRtpHeaderExtension;
 
 typedef struct {
   GList *codecs;
   GList *hdrexts;
   guint trr_int;
   GList *feedback_msgs;
-} JingleMediaDescription;
+} WockyJingleMediaDescription;
 
-void jingle_media_rtp_register (GabbleJingleFactory *factory);
+void jingle_media_rtp_register (WockyJingleFactory *factory);
 gboolean jingle_media_rtp_set_local_media_description (
-    GabbleJingleMediaRtp *self, JingleMediaDescription *md, gboolean ready,
+    WockyJingleMediaRtp *self, WockyJingleMediaDescription *md, gboolean ready,
     GError **error);
-JingleMediaDescription *gabble_jingle_media_rtp_get_remote_media_description (
-    GabbleJingleMediaRtp *self);
+WockyJingleMediaDescription *wocky_jingle_media_rtp_get_remote_media_description (
+    WockyJingleMediaRtp *self);
 
-JingleCodec * jingle_media_rtp_codec_new (guint id, const gchar *name,
+WockyJingleCodec * jingle_media_rtp_codec_new (guint id, const gchar *name,
     guint clockrate, guint channels, GHashTable *params);
-void jingle_media_rtp_codec_free (JingleCodec *p);
+void jingle_media_rtp_codec_free (WockyJingleCodec *p);
 void jingle_media_rtp_free_codecs (GList *codecs);
 GList * jingle_media_rtp_copy_codecs (GList *codecs);
 
@@ -105,20 +105,20 @@ gboolean jingle_media_rtp_compare_codecs (GList *old,
     GList **changed,
     GError **e);
 
-JingleMediaDescription *jingle_media_description_new (void);
-void jingle_media_description_free (JingleMediaDescription *md);
-JingleMediaDescription *jingle_media_description_copy (
-    JingleMediaDescription *md);
+WockyJingleMediaDescription *wocky_jingle_media_description_new (void);
+void wocky_jingle_media_description_free (WockyJingleMediaDescription *md);
+WockyJingleMediaDescription *wocky_jingle_media_description_copy (
+    WockyJingleMediaDescription *md);
 
-JingleRtpHeaderExtension *jingle_rtp_header_extension_new (guint id,
-    JingleContentSenders senders, const gchar *uri);
-void jingle_rtp_header_extension_free (JingleRtpHeaderExtension *hdrext);
+WockyJingleRtpHeaderExtension *wocky_jingle_rtp_header_extension_new (guint id,
+    WockyJingleContentSenders senders, const gchar *uri);
+void wocky_jingle_rtp_header_extension_free (WockyJingleRtpHeaderExtension *hdrext);
 
 
-JingleFeedbackMessage *jingle_feedback_message_new (const gchar *type,
+WockyJingleFeedbackMessage *wocky_jingle_feedback_message_new (const gchar *type,
     const gchar *subtype);
-void jingle_feedback_message_free (JingleFeedbackMessage *fb);
-void jingle_media_description_simplify (JingleMediaDescription *md);
+void wocky_jingle_feedback_message_free (WockyJingleFeedbackMessage *fb);
+void wocky_jingle_media_description_simplify (WockyJingleMediaDescription *md);
 
 #endif /* __JINGLE_MEDIA_RTP_H__ */
 

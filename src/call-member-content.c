@@ -62,9 +62,9 @@ struct _GabbleCallMemberContentPrivate
 
   GabbleCallMember *member;
 
-  GabbleJingleContent *jingle_content;
+  WockyJingleContent *jingle_content;
   gchar *name;
-  JingleMediaType media_type;
+  WockyJingleMediaType media_type;
 
   GList *remote_codecs;
   gboolean removed;
@@ -136,7 +136,7 @@ gabble_call_member_content_set_property (GObject *object,
         break;
       case PROP_MEDIA_TYPE:
         priv->media_type = g_value_get_uint (value);
-        g_assert (priv->media_type != JINGLE_MEDIA_TYPE_NONE);
+        g_assert (priv->media_type != WOCKY_JINGLE_MEDIA_TYPE_NONE);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -152,8 +152,8 @@ gabble_call_member_content_add_to_session (GabbleCallMemberContent *self)
 {
   GabbleCallMemberContentPrivate *priv = self->priv;
   const gchar *content_ns;
-  GabbleJingleSession *session;
-  GabbleJingleContent *content;
+  WockyJingleSession *session;
+  WockyJingleContent *content;
   const gchar *peer_resource;
   const gchar *transport_ns;
 
@@ -170,7 +170,7 @@ gabble_call_member_content_add_to_session (GabbleCallMemberContent *self)
 
   g_assert (session != NULL);
 
-  peer_resource = gabble_jingle_session_get_peer_resource (session);
+  peer_resource = wocky_jingle_session_get_peer_resource (session);
 
   if (peer_resource != NULL)
     DEBUG ("existing call, using peer resource %s", peer_resource);
@@ -180,8 +180,8 @@ gabble_call_member_content_add_to_session (GabbleCallMemberContent *self)
   DEBUG ("Creating new jingle content with ns %s : %s",
     content_ns, transport_ns);
 
-  content = gabble_jingle_session_add_content (session,
-      priv->media_type, JINGLE_CONTENT_SENDERS_BOTH,
+  content = wocky_jingle_session_add_content (session,
+      priv->media_type, WOCKY_JINGLE_CONTENT_SENDERS_BOTH,
       priv->name, content_ns, transport_ns);
 
   gabble_call_member_content_set_jingle_content (self, content);
@@ -237,16 +237,16 @@ gabble_call_member_content_class_init (
 
   param_spec = g_param_spec_uint ("media-type", "MediaType",
       "The media type of this jingle content",
-      JINGLE_MEDIA_TYPE_NONE,
-      JINGLE_MEDIA_TYPE_VIDEO,
-      JINGLE_MEDIA_TYPE_NONE,
+      WOCKY_JINGLE_MEDIA_TYPE_NONE,
+      WOCKY_JINGLE_MEDIA_TYPE_VIDEO,
+      WOCKY_JINGLE_MEDIA_TYPE_NONE,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE,
     param_spec);
 
   param_spec = g_param_spec_object ("jingle-content", "JingleContent",
       "The jingle content corresponding to this members content",
-      GABBLE_TYPE_JINGLE_CONTENT,
+      WOCKY_TYPE_JINGLE_CONTENT,
       G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_JINGLE_CONTENT,
     param_spec);
@@ -311,7 +311,7 @@ gabble_call_member_content_finalize (GObject *object)
   G_OBJECT_CLASS (gabble_call_member_content_parent_class)->finalize (object);
 }
 
-JingleMediaType
+WockyJingleMediaType
 gabble_call_member_content_get_media_type (GabbleCallMemberContent *self)
 {
   return self->priv->media_type;
@@ -323,7 +323,7 @@ gabble_call_member_content_get_name (GabbleCallMemberContent *self)
   return self->priv->name;
 }
 
-GabbleJingleContent *
+WockyJingleContent *
 gabble_call_member_content_get_jingle_content (
     GabbleCallMemberContent *self)
 {
@@ -332,7 +332,7 @@ gabble_call_member_content_get_jingle_content (
 
 GabbleCallMemberContent *
 gabble_call_member_content_new (const gchar *name,
-    JingleMediaType type,
+    WockyJingleMediaType type,
     GabbleCallMember *member)
 {
   return GABBLE_CALL_MEMBER_CONTENT (g_object_new (
@@ -344,7 +344,7 @@ gabble_call_member_content_new (const gchar *name,
 }
 
 static void
-call_member_content_jingle_removed_cb (GabbleJingleContent *jingle_content,
+call_member_content_jingle_removed_cb (WockyJingleContent *jingle_content,
     GabbleCallMemberContent *content)
 {
   if (!content->priv->removed)
@@ -355,8 +355,8 @@ call_member_content_jingle_removed_cb (GabbleJingleContent *jingle_content,
 }
 
 static void
-call_member_content_jingle_media_description_cb (GabbleJingleMediaRtp *media,
-    JingleMediaDescription *md,
+call_member_content_jingle_media_description_cb (WockyJingleMediaRtp *media,
+    WockyJingleMediaDescription *md,
     gpointer user_data)
 {
   GabbleCallMemberContent *self = GABBLE_CALL_MEMBER_CONTENT (user_data);
@@ -368,12 +368,12 @@ call_member_content_jingle_media_description_cb (GabbleJingleMediaRtp *media,
 
 GabbleCallMemberContent *
 gabble_call_member_content_from_jingle_content (
-  GabbleJingleContent *jingle_content,
+  WockyJingleContent *jingle_content,
   GabbleCallMember *member)
 {
   GabbleCallMemberContent *content;
   gchar *name;
-  JingleMediaType mtype;
+  WockyJingleMediaType mtype;
 
   g_object_get (jingle_content,
     "name", &name,
@@ -403,9 +403,9 @@ gabble_call_member_content_get_remote_codecs (GabbleCallMemberContent *self)
 
   if (self->priv->jingle_content != NULL)
     {
-      JingleMediaDescription *md;
-      md = gabble_jingle_media_rtp_get_remote_media_description (
-          GABBLE_JINGLE_MEDIA_RTP (self->priv->jingle_content));
+      WockyJingleMediaDescription *md;
+      md = wocky_jingle_media_rtp_get_remote_media_description (
+          WOCKY_JINGLE_MEDIA_RTP (self->priv->jingle_content));
       if (md != NULL)
         jcodecs = md->codecs;
     }
@@ -447,7 +447,7 @@ gabble_call_member_content_get_member (GabbleCallMemberContent *self)
 
 void
 gabble_call_member_content_set_jingle_content (GabbleCallMemberContent *self,
-    GabbleJingleContent *content)
+    WockyJingleContent *content)
 {
   g_assert (self->priv->jingle_content == NULL);
 
@@ -478,7 +478,7 @@ gabble_call_member_content_remove (GabbleCallMemberContent *self)
   g_object_ref (self);
   /* Remove ourselves from the sesison */
   if (priv->jingle_content != NULL)
-      gabble_jingle_session_remove_content (priv->jingle_content->session,
+      wocky_jingle_session_remove_content (priv->jingle_content->session,
           priv->jingle_content);
 
   g_signal_emit (self, signals[REMOVED], 0);

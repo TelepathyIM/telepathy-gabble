@@ -23,8 +23,8 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include "jingle-content.h"
 
-JingleMediaType jingle_media_type_from_tp (TpMediaStreamType type);
-TpMediaStreamType jingle_media_type_to_tp (JingleMediaType type);
+WockyJingleMediaType wocky_jingle_media_type_from_tp (TpMediaStreamType type);
+TpMediaStreamType wocky_jingle_media_type_to_tp (WockyJingleMediaType type);
 
 GPtrArray *gabble_build_tp_relay_info (GPtrArray *relays);
 

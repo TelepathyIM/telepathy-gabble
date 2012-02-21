@@ -1,5 +1,5 @@
 /*
- * jingle-mint.h - creates and configures a GabbleJingleFactory
+ * jingle-mint.h - creates and configures a WockyJingleFactory
  * Copyright ©2012 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -45,9 +45,9 @@ GType gabble_jingle_mint_get_type (void);
 GabbleJingleMint *gabble_jingle_mint_new (
     GabbleConnection *connection);
 
-GabbleJingleFactory *gabble_jingle_mint_get_factory (
+WockyJingleFactory *gabble_jingle_mint_get_factory (
     GabbleJingleMint *self);
-GabbleJingleInfo *gabble_jingle_mint_get_info (
+WockyJingleInfo *gabble_jingle_mint_get_info (
     GabbleJingleMint *self);
 
 /* TYPE MACROS */

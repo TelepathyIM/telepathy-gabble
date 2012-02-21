@@ -1,5 +1,5 @@
 /*
- * jingle-transport-google.c - Source for GabbleJingleTransportGoogle
+ * jingle-transport-google.c - Source for WockyJingleTransportGoogle
  *
  * Copyright (C) 2008 Collabora Ltd.
  *
@@ -37,9 +37,9 @@
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data);
 
-G_DEFINE_TYPE_WITH_CODE (GabbleJingleTransportGoogle,
-    gabble_jingle_transport_google, G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_JINGLE_TRANSPORT_IFACE,
+G_DEFINE_TYPE_WITH_CODE (WockyJingleTransportGoogle,
+    wocky_jingle_transport_google, G_TYPE_OBJECT,
+    G_IMPLEMENT_INTERFACE (WOCKY_TYPE_JINGLE_TRANSPORT_IFACE,
         transport_iface_init));
 
 /* signal enum */
@@ -60,10 +60,10 @@ enum
   LAST_PROPERTY
 };
 
-struct _GabbleJingleTransportGooglePrivate
+struct _WockyJingleTransportGooglePrivate
 {
-  GabbleJingleContent *content;
-  JingleTransportState state;
+  WockyJingleContent *content;
+  WockyJingleTransportState state;
   gchar *transport_ns;
 
   /* Component names or jingle-share transport 'channels'
@@ -82,11 +82,11 @@ struct _GabbleJingleTransportGooglePrivate
 };
 
 static void
-gabble_jingle_transport_google_init (GabbleJingleTransportGoogle *obj)
+wocky_jingle_transport_google_init (WockyJingleTransportGoogle *obj)
 {
-  GabbleJingleTransportGooglePrivate *priv =
-     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE,
-         GabbleJingleTransportGooglePrivate);
+  WockyJingleTransportGooglePrivate *priv =
+     G_TYPE_INSTANCE_GET_PRIVATE (obj, WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE,
+         WockyJingleTransportGooglePrivate);
   obj->priv = priv;
 
   priv->component_names = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -96,10 +96,10 @@ gabble_jingle_transport_google_init (GabbleJingleTransportGoogle *obj)
 }
 
 static void
-gabble_jingle_transport_google_dispose (GObject *object)
+wocky_jingle_transport_google_dispose (GObject *object)
 {
-  GabbleJingleTransportGoogle *trans = GABBLE_JINGLE_TRANSPORT_GOOGLE (object);
-  GabbleJingleTransportGooglePrivate *priv = trans->priv;
+  WockyJingleTransportGoogle *trans = WOCKY_JINGLE_TRANSPORT_GOOGLE (object);
+  WockyJingleTransportGooglePrivate *priv = trans->priv;
 
   if (priv->dispose_has_run)
     return;
@@ -119,18 +119,18 @@ gabble_jingle_transport_google_dispose (GObject *object)
   g_free (priv->transport_ns);
   priv->transport_ns = NULL;
 
-  if (G_OBJECT_CLASS (gabble_jingle_transport_google_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_jingle_transport_google_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (wocky_jingle_transport_google_parent_class)->dispose)
+    G_OBJECT_CLASS (wocky_jingle_transport_google_parent_class)->dispose (object);
 }
 
 static void
-gabble_jingle_transport_google_get_property (GObject *object,
+wocky_jingle_transport_google_get_property (GObject *object,
                                              guint property_id,
                                              GValue *value,
                                              GParamSpec *pspec)
 {
-  GabbleJingleTransportGoogle *trans = GABBLE_JINGLE_TRANSPORT_GOOGLE (object);
-  GabbleJingleTransportGooglePrivate *priv = trans->priv;
+  WockyJingleTransportGoogle *trans = WOCKY_JINGLE_TRANSPORT_GOOGLE (object);
+  WockyJingleTransportGooglePrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -149,13 +149,13 @@ gabble_jingle_transport_google_get_property (GObject *object,
 }
 
 static void
-gabble_jingle_transport_google_set_property (GObject *object,
+wocky_jingle_transport_google_set_property (GObject *object,
                                              guint property_id,
                                              const GValue *value,
                                              GParamSpec *pspec)
 {
-  GabbleJingleTransportGoogle *trans = GABBLE_JINGLE_TRANSPORT_GOOGLE (object);
-  GabbleJingleTransportGooglePrivate *priv = trans->priv;
+  WockyJingleTransportGoogle *trans = WOCKY_JINGLE_TRANSPORT_GOOGLE (object);
+  WockyJingleTransportGooglePrivate *priv = trans->priv;
 
   switch (property_id) {
     case PROP_CONTENT:
@@ -175,21 +175,21 @@ gabble_jingle_transport_google_set_property (GObject *object,
 }
 
 static void
-gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls)
+wocky_jingle_transport_google_class_init (WockyJingleTransportGoogleClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (cls, sizeof (GabbleJingleTransportGooglePrivate));
+  g_type_class_add_private (cls, sizeof (WockyJingleTransportGooglePrivate));
 
-  object_class->get_property = gabble_jingle_transport_google_get_property;
-  object_class->set_property = gabble_jingle_transport_google_set_property;
-  object_class->dispose = gabble_jingle_transport_google_dispose;
+  object_class->get_property = wocky_jingle_transport_google_get_property;
+  object_class->set_property = wocky_jingle_transport_google_set_property;
+  object_class->dispose = wocky_jingle_transport_google_dispose;
 
   /* property definitions */
-  param_spec = g_param_spec_object ("content", "GabbleJingleContent object",
+  param_spec = g_param_spec_object ("content", "WockyJingleContent object",
                                     "Jingle content object using this transport.",
-                                    GABBLE_TYPE_JINGLE_CONTENT,
+                                    WOCKY_TYPE_JINGLE_CONTENT,
                                     G_PARAM_CONSTRUCT_ONLY |
                                     G_PARAM_READWRITE |
                                     G_PARAM_STATIC_NICK |
@@ -208,9 +208,9 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
   param_spec = g_param_spec_uint ("state",
                                   "Connection state for the transport.",
                                   "Enum specifying the connection state of the transport.",
-                                  JINGLE_TRANSPORT_STATE_DISCONNECTED,
-                                  JINGLE_TRANSPORT_STATE_CONNECTED,
-                                  JINGLE_TRANSPORT_STATE_DISCONNECTED,
+                                  WOCKY_JINGLE_TRANSPORT_STATE_DISCONNECTED,
+                                  WOCKY_JINGLE_TRANSPORT_STATE_CONNECTED,
+                                  WOCKY_JINGLE_TRANSPORT_STATE_DISCONNECTED,
                                   G_PARAM_READWRITE |
                                   G_PARAM_STATIC_NAME |
                                   G_PARAM_STATIC_NICK |
@@ -229,11 +229,11 @@ gabble_jingle_transport_google_class_init (GabbleJingleTransportGoogleClass *cls
 }
 
 static void
-parse_candidates (GabbleJingleTransportIface *obj,
+parse_candidates (WockyJingleTransportIface *obj,
     WockyNode *transport_node, GError **error)
 {
-  GabbleJingleTransportGoogle *t = GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-  GabbleJingleTransportGooglePrivate *priv = t->priv;
+  WockyJingleTransportGoogle *t = WOCKY_JINGLE_TRANSPORT_GOOGLE (obj);
+  WockyJingleTransportGooglePrivate *priv = t->priv;
   GList *candidates = NULL;
   WockyNodeIter i;
   WockyNode *node;
@@ -244,9 +244,9 @@ parse_candidates (GabbleJingleTransportIface *obj,
       const gchar *name, *address, *user, *pass, *str;
       guint port, net, gen, component;
       int pref;
-      JingleTransportProtocol proto;
-      JingleCandidateType ctype;
-      JingleCandidate *c;
+      WockyJingleTransportProtocol proto;
+      WockyJingleCandidateType ctype;
+      WockyJingleCandidate *c;
 
       name = wocky_node_get_attribute (node, "name");
       if (name == NULL)
@@ -276,7 +276,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       if (!wocky_strdiff (str, "udp"))
         {
-          proto = JINGLE_TRANSPORT_PROTOCOL_UDP;
+          proto = WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP;
         }
       else if (!wocky_strdiff (str, "tcp"))
         {
@@ -284,7 +284,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
           if (port == 443)
               break;
 
-          proto = JINGLE_TRANSPORT_PROTOCOL_TCP;
+          proto = WOCKY_JINGLE_TRANSPORT_PROTOCOL_TCP;
         }
       else if (!wocky_strdiff (str, "ssltcp"))
         {
@@ -293,7 +293,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
               break;
 
           /* we really don't care about "ssltcp" otherwise */
-          proto = JINGLE_TRANSPORT_PROTOCOL_TCP;
+          proto = WOCKY_JINGLE_TRANSPORT_PROTOCOL_TCP;
         }
       else
         {
@@ -314,15 +314,15 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
       if (!wocky_strdiff (str, "local"))
         {
-          ctype = JINGLE_CANDIDATE_TYPE_LOCAL;
+          ctype = WOCKY_JINGLE_CANDIDATE_TYPE_LOCAL;
         }
       else if (!wocky_strdiff (str, "stun"))
         {
-          ctype = JINGLE_CANDIDATE_TYPE_STUN;
+          ctype = WOCKY_JINGLE_CANDIDATE_TYPE_STUN;
         }
       else if (!wocky_strdiff (str, "relay"))
         {
-          ctype = JINGLE_CANDIDATE_TYPE_RELAY;
+          ctype = WOCKY_JINGLE_CANDIDATE_TYPE_RELAY;
         }
       else
         {
@@ -353,7 +353,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str != NULL)
           component = atoi (str);
 
-      c = jingle_candidate_new (proto, ctype, NULL, component,
+      c = wocky_jingle_candidate_new (proto, ctype, NULL, component,
           address, port, gen, pref, user, pass, net);
 
       candidates = g_list_append (candidates, c);
@@ -378,11 +378,11 @@ parse_candidates (GabbleJingleTransportIface *obj,
 }
 
 static void
-transmit_candidates (GabbleJingleTransportGoogle *transport,
+transmit_candidates (WockyJingleTransportGoogle *transport,
     const gchar *name,
     GList *candidates)
 {
-  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  WockyJingleTransportGooglePrivate *priv = transport->priv;
   GList *li;
   WockyStanza *msg;
   WockyNode *trans_node, *sess_node;
@@ -390,15 +390,15 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
   if (candidates == NULL)
     return;
 
-  msg = gabble_jingle_session_new_message (priv->content->session,
-    JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
+  msg = wocky_jingle_session_new_message (priv->content->session,
+    WOCKY_JINGLE_ACTION_TRANSPORT_INFO, &sess_node);
 
-  gabble_jingle_content_produce_node (priv->content, sess_node, FALSE, TRUE,
+  wocky_jingle_content_produce_node (priv->content, sess_node, FALSE, TRUE,
       &trans_node);
 
   for (li = candidates; li; li = li->next)
     {
-      JingleCandidate *c = (JingleCandidate *) li->data;
+      WockyJingleCandidate *c = (WockyJingleCandidate *) li->data;
       gchar port_str[16], pref_str[16], comp_str[16], *type_str, *proto_str;
       WockyNode *cnode;
 
@@ -407,13 +407,13 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
       sprintf (comp_str, "%d", c->component);
 
       switch (c->type) {
-        case JINGLE_CANDIDATE_TYPE_LOCAL:
+        case WOCKY_JINGLE_CANDIDATE_TYPE_LOCAL:
           type_str = "local";
           break;
-        case JINGLE_CANDIDATE_TYPE_STUN:
+        case WOCKY_JINGLE_CANDIDATE_TYPE_STUN:
           type_str = "stun";
           break;
-        case JINGLE_CANDIDATE_TYPE_RELAY:
+        case WOCKY_JINGLE_CANDIDATE_TYPE_RELAY:
           type_str = "relay";
           break;
         default:
@@ -421,11 +421,11 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
       }
 
       switch (c->protocol) {
-        case JINGLE_TRANSPORT_PROTOCOL_UDP:
+        case WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP:
           proto_str = "udp";
           break;
-        case JINGLE_TRANSPORT_PROTOCOL_TCP:
-          if ((c->port == 443) && (c->type == JINGLE_CANDIDATE_TYPE_RELAY))
+        case WOCKY_JINGLE_TRANSPORT_PROTOCOL_TCP:
+          if ((c->port == 443) && (c->type == WOCKY_JINGLE_CANDIDATE_TYPE_RELAY))
             proto_str = "ssltcp";
           else
             proto_str = "tcp";
@@ -452,7 +452,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
     }
 
   wocky_porter_send_iq_async (
-      gabble_jingle_session_get_porter (priv->content->session), msg,
+      wocky_jingle_session_get_porter (priv->content->session), msg,
       NULL, NULL, NULL);
   g_object_unref (msg);
 }
@@ -462,22 +462,22 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
  * stanzas containing non-rtp candidates.
  */
 static void
-group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
+group_and_transmit_candidates (WockyJingleTransportGoogle *transport,
     GList *candidates)
 {
-  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  WockyJingleTransportGooglePrivate *priv = transport->priv;
   GList *all_candidates = NULL;
-  JingleMediaType media;
+  WockyJingleMediaType media;
   GList *li;
   GList *cands;
 
   for (li = candidates; li != NULL; li = g_list_next (li))
     {
-      JingleCandidate *c = li->data;
+      WockyJingleCandidate *c = li->data;
 
       for (cands = all_candidates; cands != NULL;  cands = g_list_next (cands))
         {
-          JingleCandidate *c2 = ((GList *) cands->data)->data;
+          WockyJingleCandidate *c2 = ((GList *) cands->data)->data;
 
           if (c->component == c2->component)
             {
@@ -500,7 +500,7 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
       GHashTableIter iter;
       gpointer key, value;
       gchar *name = NULL;
-      JingleCandidate *c = ((GList *) cands->data)->data;
+      WockyJingleCandidate *c = ((GList *) cands->data)->data;
 
       g_hash_table_iter_init (&iter, priv->component_names);
       while (g_hash_table_iter_next (&iter, &key, &value))
@@ -525,13 +525,13 @@ group_and_transmit_candidates (GabbleJingleTransportGoogle *transport,
   g_list_free (all_candidates);
 }
 
-/* Takes in a list of slice-allocated JingleCandidate structs */
+/* Takes in a list of slice-allocated WockyJingleCandidate structs */
 static void
-new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
+new_local_candidates (WockyJingleTransportIface *obj, GList *new_candidates)
 {
-  GabbleJingleTransportGoogle *transport =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  WockyJingleTransportGoogle *transport =
+    WOCKY_JINGLE_TRANSPORT_GOOGLE (obj);
+  WockyJingleTransportGooglePrivate *priv = transport->priv;
 
   priv->local_candidates = g_list_concat (priv->local_candidates,
       new_candidates);
@@ -544,11 +544,11 @@ new_local_candidates (GabbleJingleTransportIface *obj, GList *new_candidates)
 }
 
 static void
-send_candidates (GabbleJingleTransportIface *obj, gboolean all)
+send_candidates (WockyJingleTransportIface *obj, gboolean all)
 {
-  GabbleJingleTransportGoogle *transport =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE (obj);
-  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  WockyJingleTransportGoogle *transport =
+    WOCKY_JINGLE_TRANSPORT_GOOGLE (obj);
+  WockyJingleTransportGooglePrivate *priv = transport->priv;
 
   if (all)
     {
@@ -569,26 +569,26 @@ send_candidates (GabbleJingleTransportIface *obj, gboolean all)
 }
 
 static GList *
-get_local_candidates (GabbleJingleTransportIface *iface)
+get_local_candidates (WockyJingleTransportIface *iface)
 {
-  GabbleJingleTransportGoogle *transport =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE (iface);
-  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  WockyJingleTransportGoogle *transport =
+    WOCKY_JINGLE_TRANSPORT_GOOGLE (iface);
+  WockyJingleTransportGooglePrivate *priv = transport->priv;
 
   return priv->local_candidates;
 }
 
 static GList *
-get_remote_candidates (GabbleJingleTransportIface *iface)
+get_remote_candidates (WockyJingleTransportIface *iface)
 {
-  GabbleJingleTransportGoogle *transport =
-    GABBLE_JINGLE_TRANSPORT_GOOGLE (iface);
-  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  WockyJingleTransportGoogle *transport =
+    WOCKY_JINGLE_TRANSPORT_GOOGLE (iface);
+  WockyJingleTransportGooglePrivate *priv = transport->priv;
 
   return priv->remote_candidates;
 }
 
-static JingleTransportType
+static WockyJingleTransportType
 get_transport_type (void)
 {
   return JINGLE_TRANSPORT_GOOGLE_P2P;
@@ -597,7 +597,7 @@ get_transport_type (void)
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  GabbleJingleTransportIfaceClass *klass = (GabbleJingleTransportIfaceClass *) g_iface;
+  WockyJingleTransportIfaceClass *klass = (WockyJingleTransportIfaceClass *) g_iface;
 
   klass->parse_candidates = parse_candidates;
 
@@ -615,10 +615,10 @@ transport_iface_init (gpointer g_iface, gpointer iface_data)
 /* Returns FALSE if the component name already exists */
 gboolean
 jingle_transport_google_set_component_name (
-    GabbleJingleTransportGoogle *transport,
+    WockyJingleTransportGoogle *transport,
     const gchar *name, guint component_id)
 {
-  GabbleJingleTransportGooglePrivate *priv = transport->priv;
+  WockyJingleTransportGooglePrivate *priv = transport->priv;
 
   if (g_hash_table_lookup_extended (priv->component_names, name, NULL, NULL))
       return FALSE;
@@ -630,15 +630,15 @@ jingle_transport_google_set_component_name (
 }
 
 void
-jingle_transport_google_register (GabbleJingleFactory *factory)
+jingle_transport_google_register (WockyJingleFactory *factory)
 {
   /* GTalk libjingle0.3 dialect */
-  gabble_jingle_factory_register_transport (factory, "",
-      GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE);
+  wocky_jingle_factory_register_transport (factory, "",
+      WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE);
 
   /* GTalk libjingle0.4 dialect */
-  gabble_jingle_factory_register_transport (factory,
+  wocky_jingle_factory_register_transport (factory,
       NS_GOOGLE_TRANSPORT_P2P,
-      GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE);
+      WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE);
 }
 

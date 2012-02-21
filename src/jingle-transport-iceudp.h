@@ -1,5 +1,5 @@
 /*
- * jingle-transport-iceudp.h - Header for GabbleJingleTransportIceUdp
+ * jingle-transport-iceudp.h - Header for WockyJingleTransportIceUdp
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -26,39 +26,39 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleJingleTransportIceUdpClass GabbleJingleTransportIceUdpClass;
+typedef struct _WockyJingleTransportIceUdpClass WockyJingleTransportIceUdpClass;
 
-GType gabble_jingle_transport_iceudp_get_type (void);
+GType wocky_jingle_transport_iceudp_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_JINGLE_TRANSPORT_ICEUDP \
-  (gabble_jingle_transport_iceudp_get_type ())
-#define GABBLE_JINGLE_TRANSPORT_ICEUDP(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_TRANSPORT_ICEUDP, \
-                              GabbleJingleTransportIceUdp))
-#define GABBLE_JINGLE_TRANSPORT_ICEUDP_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_JINGLE_TRANSPORT_ICEUDP, \
-                           GabbleJingleTransportIceUdpClass))
-#define GABBLE_IS_JINGLE_TRANSPORT_ICEUDP(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_TRANSPORT_ICEUDP))
-#define GABBLE_IS_JINGLE_TRANSPORT_ICEUDP_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_JINGLE_TRANSPORT_ICEUDP))
-#define GABBLE_JINGLE_TRANSPORT_ICEUDP_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_JINGLE_TRANSPORT_ICEUDP, \
-                              GabbleJingleTransportIceUdpClass))
+#define WOCKY_TYPE_JINGLE_TRANSPORT_ICEUDP \
+  (wocky_jingle_transport_iceudp_get_type ())
+#define WOCKY_JINGLE_TRANSPORT_ICEUDP(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_JINGLE_TRANSPORT_ICEUDP, \
+                              WockyJingleTransportIceUdp))
+#define WOCKY_JINGLE_TRANSPORT_ICEUDP_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), WOCKY_TYPE_JINGLE_TRANSPORT_ICEUDP, \
+                           WockyJingleTransportIceUdpClass))
+#define WOCKY_IS_JINGLE_TRANSPORT_ICEUDP(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_JINGLE_TRANSPORT_ICEUDP))
+#define WOCKY_IS_JINGLE_TRANSPORT_ICEUDP_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), WOCKY_TYPE_JINGLE_TRANSPORT_ICEUDP))
+#define WOCKY_JINGLE_TRANSPORT_ICEUDP_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_JINGLE_TRANSPORT_ICEUDP, \
+                              WockyJingleTransportIceUdpClass))
 
-struct _GabbleJingleTransportIceUdpClass {
+struct _WockyJingleTransportIceUdpClass {
     GObjectClass parent_class;
 };
 
-typedef struct _GabbleJingleTransportIceUdpPrivate GabbleJingleTransportIceUdpPrivate;
+typedef struct _WockyJingleTransportIceUdpPrivate WockyJingleTransportIceUdpPrivate;
 
-struct _GabbleJingleTransportIceUdp {
+struct _WockyJingleTransportIceUdp {
     GObject parent;
-    GabbleJingleTransportIceUdpPrivate *priv;
+    WockyJingleTransportIceUdpPrivate *priv;
 };
 
-void jingle_transport_iceudp_register (GabbleJingleFactory *factory);
+void jingle_transport_iceudp_register (WockyJingleFactory *factory);
 
 #endif /* __JINGLE_TRANSPORT_ICEUDP_H__ */
 

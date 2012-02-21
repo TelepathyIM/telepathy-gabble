@@ -1866,7 +1866,7 @@ gabble_muc_factory_ensure_channel (TpChannelManager *manager,
 #ifdef ENABLE_VOIP
 gboolean
 gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
-  GabbleJingleSession *session)
+  WockyJingleSession *session)
 {
   GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
@@ -1874,7 +1874,7 @@ gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
   TpHandle room;
 
   room = gabble_get_room_handle_from_jid (room_repo,
-    gabble_jingle_session_get_peer_jid (session));
+    wocky_jingle_session_get_peer_jid (session));
 
   if (room != 0)
     {

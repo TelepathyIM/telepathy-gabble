@@ -21,28 +21,28 @@
 
 #include "jingle-tp-util.h"
 
-JingleMediaType
-jingle_media_type_from_tp (TpMediaStreamType type)
+WockyJingleMediaType
+wocky_jingle_media_type_from_tp (TpMediaStreamType type)
 {
   switch (type)
     {
       case TP_MEDIA_STREAM_TYPE_AUDIO:
-        return JINGLE_MEDIA_TYPE_AUDIO;
+        return WOCKY_JINGLE_MEDIA_TYPE_AUDIO;
       case TP_MEDIA_STREAM_TYPE_VIDEO:
-        return JINGLE_MEDIA_TYPE_VIDEO;
+        return WOCKY_JINGLE_MEDIA_TYPE_VIDEO;
       default:
-        g_return_val_if_reached (JINGLE_MEDIA_TYPE_NONE);
+        g_return_val_if_reached (WOCKY_JINGLE_MEDIA_TYPE_NONE);
     }
 }
 
 TpMediaStreamType
-jingle_media_type_to_tp (JingleMediaType type)
+wocky_jingle_media_type_to_tp (WockyJingleMediaType type)
 {
   switch (type)
     {
-      case JINGLE_MEDIA_TYPE_AUDIO:
+      case WOCKY_JINGLE_MEDIA_TYPE_AUDIO:
         return TP_MEDIA_STREAM_TYPE_AUDIO;
-      case JINGLE_MEDIA_TYPE_VIDEO:
+      case WOCKY_JINGLE_MEDIA_TYPE_VIDEO:
         return TP_MEDIA_STREAM_TYPE_VIDEO;
       default:
         g_return_val_if_reached (TP_MEDIA_STREAM_TYPE_AUDIO);
@@ -50,9 +50,9 @@ jingle_media_type_to_tp (JingleMediaType type)
 }
 
 static const gchar * const relay_type_map[] = {
-    /* GABBLE_JINGLE_RELAY_TYPE_UDP */ "udp",
-    /* GABBLE_JINGLE_RELAY_TYPE_TCP */ "tcp",
-    /* GABBLE_JINGLE_RELAY_TYPE_TLS */ "tls",
+    /* WOCKY_JINGLE_RELAY_TYPE_UDP */ "udp",
+    /* WOCKY_JINGLE_RELAY_TYPE_TCP */ "tcp",
+    /* WOCKY_JINGLE_RELAY_TYPE_TLS */ "tls",
 };
 
 GPtrArray *
@@ -65,9 +65,9 @@ gabble_build_tp_relay_info (GPtrArray *relays)
 
   for (i = 0; i < relays->len; i++)
     {
-      GabbleJingleRelay *relay = g_ptr_array_index (relays, i);
+      WockyJingleRelay *relay = g_ptr_array_index (relays, i);
 
-      g_return_val_if_fail (relay->type < GABBLE_N_JINGLE_RELAY_TYPES, tp_relays);
+      g_return_val_if_fail (relay->type < WOCKY_N_JINGLE_RELAY_TYPES, tp_relays);
 
       g_ptr_array_add (tp_relays, tp_asv_new (
           "type", G_TYPE_STRING, relay_type_map[relay->type],

@@ -17,8 +17,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#ifndef __GABBLE_JINGLE_TRANSPORT_IFACE_H__
-#define __GABBLE_JINGLE_TRANSPORT_IFACE_H__
+#ifndef __WOCKY_JINGLE_TRANSPORT_IFACE_H__
+#define __WOCKY_JINGLE_TRANSPORT_IFACE_H__
 
 #include <glib-object.h>
 #include <wocky/wocky.h>
@@ -30,80 +30,80 @@ G_BEGIN_DECLS
 
 typedef enum
 {
-  JINGLE_TRANSPORT_STATE_DISCONNECTED,
-  JINGLE_TRANSPORT_STATE_CONNECTING,
-  JINGLE_TRANSPORT_STATE_CONNECTED
-} JingleTransportState;
+  WOCKY_JINGLE_TRANSPORT_STATE_DISCONNECTED,
+  WOCKY_JINGLE_TRANSPORT_STATE_CONNECTING,
+  WOCKY_JINGLE_TRANSPORT_STATE_CONNECTED
+} WockyJingleTransportState;
 
-typedef struct _GabbleJingleTransportIface GabbleJingleTransportIface;
-typedef struct _GabbleJingleTransportIfaceClass GabbleJingleTransportIfaceClass;
+typedef struct _WockyJingleTransportIface WockyJingleTransportIface;
+typedef struct _WockyJingleTransportIfaceClass WockyJingleTransportIfaceClass;
 
-struct _GabbleJingleTransportIfaceClass {
+struct _WockyJingleTransportIfaceClass {
   GTypeInterface parent;
 
-  void (*parse_candidates) (GabbleJingleTransportIface *,
+  void (*parse_candidates) (WockyJingleTransportIface *,
     WockyNode *, GError **);
 
-  void (*new_local_candidates) (GabbleJingleTransportIface *, GList *);
-  void (*inject_candidates) (GabbleJingleTransportIface *,
+  void (*new_local_candidates) (WockyJingleTransportIface *, GList *);
+  void (*inject_candidates) (WockyJingleTransportIface *,
       WockyNode *transport_node);
-  void (*send_candidates) (GabbleJingleTransportIface *, gboolean all);
-  gboolean (*can_accept) (GabbleJingleTransportIface *);
+  void (*send_candidates) (WockyJingleTransportIface *, gboolean all);
+  gboolean (*can_accept) (WockyJingleTransportIface *);
 
-  GList * (*get_remote_candidates) (GabbleJingleTransportIface *);
-  GList * (*get_local_candidates) (GabbleJingleTransportIface *);
-  gboolean (*get_credentials) (GabbleJingleTransportIface *,
+  GList * (*get_remote_candidates) (WockyJingleTransportIface *);
+  GList * (*get_local_candidates) (WockyJingleTransportIface *);
+  gboolean (*get_credentials) (WockyJingleTransportIface *,
       gchar **ufrag, gchar **pwd);
 
-  JingleTransportType (*get_transport_type) (void);
+  WockyJingleTransportType (*get_transport_type) (void);
 };
 
-GType gabble_jingle_transport_iface_get_type (void);
+GType wocky_jingle_transport_iface_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_JINGLE_TRANSPORT_IFACE \
-  (gabble_jingle_transport_iface_get_type ())
-#define GABBLE_JINGLE_TRANSPORT_IFACE(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_TRANSPORT_IFACE, GabbleJingleTransportIface))
-#define GABBLE_IS_JINGLE_TRANSPORT_IFACE(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_TRANSPORT_IFACE))
-#define GABBLE_JINGLE_TRANSPORT_IFACE_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_INTERFACE ((obj), GABBLE_TYPE_JINGLE_TRANSPORT_IFACE,\
-                              GabbleJingleTransportIfaceClass))
+#define WOCKY_TYPE_JINGLE_TRANSPORT_IFACE \
+  (wocky_jingle_transport_iface_get_type ())
+#define WOCKY_JINGLE_TRANSPORT_IFACE(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_JINGLE_TRANSPORT_IFACE, WockyJingleTransportIface))
+#define WOCKY_IS_JINGLE_TRANSPORT_IFACE(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_JINGLE_TRANSPORT_IFACE))
+#define WOCKY_JINGLE_TRANSPORT_IFACE_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_INTERFACE ((obj), WOCKY_TYPE_JINGLE_TRANSPORT_IFACE,\
+                              WockyJingleTransportIfaceClass))
 
-void gabble_jingle_transport_iface_parse_candidates (GabbleJingleTransportIface *,
+void wocky_jingle_transport_iface_parse_candidates (WockyJingleTransportIface *,
     WockyNode *, GError **);
 
-void gabble_jingle_transport_iface_new_local_candidates (
-    GabbleJingleTransportIface *self,
+void wocky_jingle_transport_iface_new_local_candidates (
+    WockyJingleTransportIface *self,
     GList *candidates);
-void gabble_jingle_transport_iface_inject_candidates (
-    GabbleJingleTransportIface *self,
+void wocky_jingle_transport_iface_inject_candidates (
+    WockyJingleTransportIface *self,
     WockyNode *transport_node);
-void gabble_jingle_transport_iface_send_candidates (
-    GabbleJingleTransportIface *self,
+void wocky_jingle_transport_iface_send_candidates (
+    WockyJingleTransportIface *self,
     gboolean all);
-gboolean gabble_jingle_transport_iface_can_accept (
-    GabbleJingleTransportIface *self);
+gboolean wocky_jingle_transport_iface_can_accept (
+    WockyJingleTransportIface *self);
 
-GList *gabble_jingle_transport_iface_get_remote_candidates (GabbleJingleTransportIface *);
-GList *gabble_jingle_transport_iface_get_local_candidates (GabbleJingleTransportIface *);
-JingleTransportType gabble_jingle_transport_iface_get_transport_type (GabbleJingleTransportIface *);
-gboolean jingle_transport_get_credentials (GabbleJingleTransportIface *,
+GList *wocky_jingle_transport_iface_get_remote_candidates (WockyJingleTransportIface *);
+GList *wocky_jingle_transport_iface_get_local_candidates (WockyJingleTransportIface *);
+WockyJingleTransportType wocky_jingle_transport_iface_get_transport_type (WockyJingleTransportIface *);
+gboolean jingle_transport_get_credentials (WockyJingleTransportIface *,
     gchar **ufrag, gchar **pwd);
 
-GabbleJingleTransportIface *gabble_jingle_transport_iface_new (
-    GType type, GabbleJingleContent *content, const gchar *transport_ns);
+WockyJingleTransportIface *wocky_jingle_transport_iface_new (
+    GType type, WockyJingleContent *content, const gchar *transport_ns);
 
-JingleCandidate *jingle_candidate_new (JingleTransportProtocol protocol,
-    JingleCandidateType type, const gchar *id, int component,
+WockyJingleCandidate *wocky_jingle_candidate_new (WockyJingleTransportProtocol protocol,
+    WockyJingleCandidateType type, const gchar *id, int component,
     const gchar *address, int port, int generation, int preference,
     const gchar *username, const gchar *password, int network);
 
-void jingle_candidate_free (JingleCandidate *c);
+void wocky_jingle_candidate_free (WockyJingleCandidate *c);
 void jingle_transport_free_candidates (GList *candidates);
 
 
 G_END_DECLS
 
-#endif /* #ifndef __GABBLE_JINGLE_TRANSPORT_IFACE_H__ */
+#endif /* #ifndef __WOCKY_JINGLE_TRANSPORT_IFACE_H__ */

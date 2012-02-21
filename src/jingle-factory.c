@@ -41,7 +41,7 @@
 
 #include "google-relay.h"
 
-G_DEFINE_TYPE(GabbleJingleFactory, gabble_jingle_factory, G_TYPE_OBJECT);
+G_DEFINE_TYPE(WockyJingleFactory, wocky_jingle_factory, G_TYPE_OBJECT);
 
 /* signal enum */
 enum
@@ -60,7 +60,7 @@ enum
   LAST_PROPERTY
 };
 
-struct _GabbleJingleFactoryPrivate
+struct _WockyJingleFactoryPrivate
 {
   WockySession *session;
   WockyPorter *porter;
@@ -68,10 +68,10 @@ struct _GabbleJingleFactoryPrivate
   GHashTable *content_types;
   GHashTable *transports;
 
-  /* instances of SESSION_MAP_KEY_FORMAT => GabbleJingleSession. */
+  /* instances of SESSION_MAP_KEY_FORMAT => WockyJingleSession. */
   GHashTable *sessions;
 
-  GabbleJingleInfo *jingle_info;
+  WockyJingleInfo *jingle_info;
 
   gboolean dispose_has_run;
 };
@@ -80,31 +80,31 @@ static gboolean jingle_cb (
     WockyPorter *porter,
     WockyStanza *msg,
     gpointer user_data);
-static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
+static WockyJingleSession *create_session (WockyJingleFactory *fac,
     const gchar *sid,
     const gchar *jid,
-    JingleDialect dialect,
+    WockyJingleDialect dialect,
     gboolean local_hold);
 
 static gboolean session_query_cap_cb (
-    GabbleJingleSession *session,
+    WockyJingleSession *session,
     WockyContact *contact,
     const gchar *cap_or_quirk,
     gpointer user_data);
-static void session_terminated_cb (GabbleJingleSession *sess,
+static void session_terminated_cb (WockyJingleSession *sess,
     gboolean local_terminator,
-    JingleReason reason,
+    WockyJingleReason reason,
     const gchar *text,
-    GabbleJingleFactory *fac);
+    WockyJingleFactory *fac);
 
-static void attach_to_wocky_session (GabbleJingleFactory *self);
+static void attach_to_wocky_session (WockyJingleFactory *self);
 
 static void
-gabble_jingle_factory_init (GabbleJingleFactory *obj)
+wocky_jingle_factory_init (WockyJingleFactory *obj)
 {
-  GabbleJingleFactoryPrivate *priv =
-     G_TYPE_INSTANCE_GET_PRIVATE (obj, GABBLE_TYPE_JINGLE_FACTORY,
-         GabbleJingleFactoryPrivate);
+  WockyJingleFactoryPrivate *priv =
+     G_TYPE_INSTANCE_GET_PRIVATE (obj, WOCKY_TYPE_JINGLE_FACTORY,
+         WockyJingleFactoryPrivate);
   obj->priv = priv;
 
   priv->sessions = g_hash_table_new_full (g_str_hash, g_str_equal,
@@ -120,10 +120,10 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
 }
 
 static void
-gabble_jingle_factory_dispose (GObject *object)
+wocky_jingle_factory_dispose (GObject *object)
 {
-  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (object);
-  GabbleJingleFactoryPrivate *priv = fac->priv;
+  WockyJingleFactory *fac = WOCKY_JINGLE_FACTORY (object);
+  WockyJingleFactoryPrivate *priv = fac->priv;
   GHashTableIter iter;
   gpointer val;
 
@@ -133,7 +133,7 @@ gabble_jingle_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  gabble_jingle_factory_stop (fac);
+  wocky_jingle_factory_stop (fac);
   g_clear_object (&priv->session);
   g_clear_object (&priv->porter);
 
@@ -149,18 +149,18 @@ gabble_jingle_factory_dispose (GObject *object)
   priv->transports = NULL;
   g_clear_object (&priv->jingle_info);
 
-  if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
-    G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);
+  if (G_OBJECT_CLASS (wocky_jingle_factory_parent_class)->dispose)
+    G_OBJECT_CLASS (wocky_jingle_factory_parent_class)->dispose (object);
 }
 
 static void
-gabble_jingle_factory_get_property (GObject *object,
+wocky_jingle_factory_get_property (GObject *object,
                                    guint property_id,
                                    GValue *value,
                                    GParamSpec *pspec)
 {
-  GabbleJingleFactory *chan = GABBLE_JINGLE_FACTORY (object);
-  GabbleJingleFactoryPrivate *priv = chan->priv;
+  WockyJingleFactory *chan = WOCKY_JINGLE_FACTORY (object);
+  WockyJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_SESSION:
@@ -173,13 +173,13 @@ gabble_jingle_factory_get_property (GObject *object,
 }
 
 static void
-gabble_jingle_factory_set_property (GObject *object,
+wocky_jingle_factory_set_property (GObject *object,
                                    guint property_id,
                                    const GValue *value,
                                    GParamSpec *pspec)
 {
-  GabbleJingleFactory *chan = GABBLE_JINGLE_FACTORY (object);
-  GabbleJingleFactoryPrivate *priv = chan->priv;
+  WockyJingleFactory *chan = WOCKY_JINGLE_FACTORY (object);
+  WockyJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
     case PROP_SESSION:
@@ -192,10 +192,10 @@ gabble_jingle_factory_set_property (GObject *object,
 }
 
 static void
-gabble_jingle_factory_constructed (GObject *obj)
+wocky_jingle_factory_constructed (GObject *obj)
 {
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (obj);
-  GObjectClass *parent = G_OBJECT_CLASS (gabble_jingle_factory_parent_class);
+  WockyJingleFactory *self = WOCKY_JINGLE_FACTORY (obj);
+  GObjectClass *parent = G_OBJECT_CLASS (wocky_jingle_factory_parent_class);
 
   if (parent->constructed != NULL)
     parent->constructed (obj);
@@ -210,17 +210,17 @@ gabble_jingle_factory_constructed (GObject *obj)
 }
 
 static void
-gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
+wocky_jingle_factory_class_init (WockyJingleFactoryClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
   GParamSpec *param_spec;
 
-  g_type_class_add_private (cls, sizeof (GabbleJingleFactoryPrivate));
+  g_type_class_add_private (cls, sizeof (WockyJingleFactoryPrivate));
 
-  object_class->constructed = gabble_jingle_factory_constructed;
-  object_class->get_property = gabble_jingle_factory_get_property;
-  object_class->set_property = gabble_jingle_factory_set_property;
-  object_class->dispose = gabble_jingle_factory_dispose;
+  object_class->constructed = wocky_jingle_factory_constructed;
+  object_class->get_property = wocky_jingle_factory_get_property;
+  object_class->set_property = wocky_jingle_factory_set_property;
+  object_class->dispose = wocky_jingle_factory_dispose;
 
   param_spec = g_param_spec_object ("session", "WockySession object",
       "WockySession to listen for Jingle sessions on",
@@ -238,7 +238,7 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
   signals[NEW_SESSION] = g_signal_new ("new-session",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, gabble_marshal_VOID__OBJECT_BOOL,
-        G_TYPE_NONE, 2, GABBLE_TYPE_JINGLE_SESSION, G_TYPE_BOOLEAN);
+        G_TYPE_NONE, 2, WOCKY_TYPE_JINGLE_SESSION, G_TYPE_BOOLEAN);
 
   /*
    * @contact: the peer in a call
@@ -255,19 +255,19 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
         G_TYPE_BOOLEAN, 2, WOCKY_TYPE_CONTACT, G_TYPE_STRING);
 }
 
-GabbleJingleFactory *
-gabble_jingle_factory_new (
+WockyJingleFactory *
+wocky_jingle_factory_new (
     WockySession *session)
 {
-  return g_object_new (GABBLE_TYPE_JINGLE_FACTORY,
+  return g_object_new (WOCKY_TYPE_JINGLE_FACTORY,
       "session", session,
       NULL);
 }
 
 static void
-attach_to_wocky_session (GabbleJingleFactory *self)
+attach_to_wocky_session (WockyJingleFactory *self)
 {
-  GabbleJingleFactoryPrivate *priv = self->priv;
+  WockyJingleFactoryPrivate *priv = self->priv;
 
   g_assert (priv->session != NULL);
 
@@ -281,13 +281,13 @@ attach_to_wocky_session (GabbleJingleFactory *self)
       WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_cb, self,
       NULL);
 
-  priv->jingle_info = gabble_jingle_info_new (priv->porter);
+  priv->jingle_info = wocky_jingle_info_new (priv->porter);
 }
 
 void
-gabble_jingle_factory_stop (GabbleJingleFactory *self)
+wocky_jingle_factory_stop (WockyJingleFactory *self)
 {
-  GabbleJingleFactoryPrivate *priv = self->priv;
+  WockyJingleFactoryPrivate *priv = self->priv;
 
   if (priv->porter != NULL &&
       priv->jingle_handler_id != 0)
@@ -311,7 +311,7 @@ make_session_map_key (
 }
 
 static gchar *
-get_unique_sid_for (GabbleJingleFactory *factory,
+get_unique_sid_for (WockyJingleFactory *factory,
     const gchar *jid,
     gchar **key)
 {
@@ -334,18 +334,18 @@ get_unique_sid_for (GabbleJingleFactory *factory,
   return sid;
 }
 
-static GabbleJingleSession *
-ensure_session (GabbleJingleFactory *self,
+static WockyJingleSession *
+ensure_session (WockyJingleFactory *self,
     const gchar *sid,
     const gchar *from,
-    JingleAction action,
-    JingleDialect dialect,
+    WockyJingleAction action,
+    WockyJingleDialect dialect,
     gboolean *new_session,
     GError **error)
 {
-  GabbleJingleFactoryPrivate *priv = self->priv;
+  WockyJingleFactoryPrivate *priv = self->priv;
   gchar *key;
-  GabbleJingleSession *sess;
+  WockyJingleSession *sess;
 
   if (!wocky_decode_jid (from, NULL, NULL, NULL))
     {
@@ -360,7 +360,7 @@ ensure_session (GabbleJingleFactory *self,
 
   if (sess == NULL)
     {
-      if (action == JINGLE_ACTION_SESSION_INITIATE)
+      if (action == WOCKY_JINGLE_ACTION_SESSION_INITIATE)
         {
           sess = create_session (self, sid, from, dialect, FALSE);
           *new_session = TRUE;
@@ -387,16 +387,16 @@ jingle_cb (
     WockyStanza *msg,
     gpointer user_data)
 {
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
+  WockyJingleFactory *self = WOCKY_JINGLE_FACTORY (user_data);
   GError *error = NULL;
   const gchar *sid, *from;
-  GabbleJingleSession *sess;
+  WockyJingleSession *sess;
   gboolean new_session = FALSE;
-  JingleAction action;
-  JingleDialect dialect;
+  WockyJingleAction action;
+  WockyJingleDialect dialect;
 
   /* see if it's a jingle message and detect dialect */
-  sid = gabble_jingle_session_detect (msg, &action, &dialect);
+  sid = wocky_jingle_session_detect (msg, &action, &dialect);
   from = wocky_stanza_get_from (msg);
 
   if (sid == NULL || from == NULL)
@@ -409,7 +409,7 @@ jingle_cb (
     goto REQUEST_ERROR;
 
   /* now act on the message */
-  if (!gabble_jingle_session_parse (sess, action, msg, &error))
+  if (!wocky_jingle_session_parse (sess, action, msg, &error))
     goto REQUEST_ERROR;
 
   /* This has to be after the call to parse(), not inside create_session():
@@ -433,19 +433,19 @@ REQUEST_ERROR:
   g_error_free (error);
 
   if (sess != NULL && new_session)
-    gabble_jingle_session_terminate (sess, JINGLE_REASON_UNKNOWN, NULL, NULL);
+    wocky_jingle_session_terminate (sess, WOCKY_JINGLE_REASON_UNKNOWN, NULL, NULL);
 
   return TRUE;
 }
 
 static gboolean
 session_query_cap_cb (
-    GabbleJingleSession *session,
+    WockyJingleSession *session,
     WockyContact *contact,
     const gchar *cap_or_quirk,
     gpointer user_data)
 {
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
+  WockyJingleFactory *self = WOCKY_JINGLE_FACTORY (user_data);
   gboolean ret;
 
   /* Propagate the query out to the application. We can't depend on the
@@ -460,17 +460,17 @@ session_query_cap_cb (
 /*
  * If sid is set to NULL a unique sid is generated and
  * the "local-initiator" property of the newly created
- * GabbleJingleSession is set to true.
+ * WockyJingleSession is set to true.
  */
-static GabbleJingleSession *
-create_session (GabbleJingleFactory *fac,
+static WockyJingleSession *
+create_session (WockyJingleFactory *fac,
     const gchar *sid,
     const gchar *jid,
-    JingleDialect dialect,
+    WockyJingleDialect dialect,
     gboolean local_hold)
 {
-  GabbleJingleFactoryPrivate *priv = fac->priv;
-  GabbleJingleSession *sess;
+  WockyJingleFactoryPrivate *priv = fac->priv;
+  WockyJingleSession *sess;
   gboolean local_initiator;
   gchar *sid_, *key;
   gpointer contact;
@@ -505,7 +505,7 @@ create_session (GabbleJingleFactory *fac,
    * get_unique_sid_for should have ensured the key is fresh. */
   g_assert (NULL == g_hash_table_lookup (priv->sessions, key));
 
-  sess = gabble_jingle_session_new (
+  sess = wocky_jingle_session_new (
       fac,
       priv->porter,
       sid_, local_initiator, contact, dialect, local_hold);
@@ -526,32 +526,32 @@ create_session (GabbleJingleFactory *fac,
   return sess;
 }
 
-GabbleJingleSession *
-gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
+WockyJingleSession *
+wocky_jingle_factory_create_session (WockyJingleFactory *fac,
     const gchar *jid,
-    JingleDialect dialect,
+    WockyJingleDialect dialect,
     gboolean local_hold)
 {
-  GabbleJingleSession *session = create_session (fac, NULL, jid, dialect, local_hold);
+  WockyJingleSession *session = create_session (fac, NULL, jid, dialect, local_hold);
 
   g_signal_emit (fac, signals[NEW_SESSION], 0, session, TRUE);
   return session;
 }
 
 void
-gabble_jingle_factory_register_transport (GabbleJingleFactory *self,
+wocky_jingle_factory_register_transport (WockyJingleFactory *self,
                                           gchar *xmlns,
                                           GType transport_type)
 {
   g_return_if_fail (g_type_is_a (transport_type,
-        GABBLE_TYPE_JINGLE_TRANSPORT_IFACE));
+        WOCKY_TYPE_JINGLE_TRANSPORT_IFACE));
 
   g_hash_table_insert (self->priv->transports, xmlns,
       GSIZE_TO_POINTER (transport_type));
 }
 
 GType
-gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
+wocky_jingle_factory_lookup_transport (WockyJingleFactory *self,
                                         const gchar *xmlns)
 {
   return GPOINTER_TO_SIZE (g_hash_table_lookup (self->priv->transports,
@@ -559,18 +559,18 @@ gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
 }
 
 void
-gabble_jingle_factory_register_content_type (GabbleJingleFactory *self,
+wocky_jingle_factory_register_content_type (WockyJingleFactory *self,
                                              gchar *xmlns,
                                              GType content_type)
 {
-  g_return_if_fail (g_type_is_a (content_type, GABBLE_TYPE_JINGLE_CONTENT));
+  g_return_if_fail (g_type_is_a (content_type, WOCKY_TYPE_JINGLE_CONTENT));
 
   g_hash_table_insert (self->priv->content_types, xmlns,
       GSIZE_TO_POINTER (content_type));
 }
 
 GType
-gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
+wocky_jingle_factory_lookup_content_type (WockyJingleFactory *self,
                                            const gchar *xmlns)
 {
   return GPOINTER_TO_SIZE (g_hash_table_lookup (self->priv->content_types,
@@ -578,15 +578,15 @@ gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
 }
 
 static void
-session_terminated_cb (GabbleJingleSession *session,
+session_terminated_cb (WockyJingleSession *session,
                        gboolean local_terminator G_GNUC_UNUSED,
-                       JingleReason reason G_GNUC_UNUSED,
+                       WockyJingleReason reason G_GNUC_UNUSED,
                        const gchar *text G_GNUC_UNUSED,
-                       GabbleJingleFactory *factory)
+                       WockyJingleFactory *factory)
 {
   gchar *key = make_session_map_key (
-      gabble_jingle_session_get_peer_jid (session),
-      gabble_jingle_session_get_sid (session));
+      wocky_jingle_session_get_peer_jid (session),
+      wocky_jingle_session_get_sid (session));
 
   DEBUG ("removing terminated session with key %s", key);
 
@@ -596,9 +596,9 @@ session_terminated_cb (GabbleJingleSession *session,
   g_free (key);
 }
 
-GabbleJingleInfo *
-gabble_jingle_factory_get_jingle_info (
-    GabbleJingleFactory *self)
+WockyJingleInfo *
+wocky_jingle_factory_get_jingle_info (
+    WockyJingleFactory *self)
 {
   return self->priv->jingle_info;
 }

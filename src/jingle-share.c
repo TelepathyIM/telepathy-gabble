@@ -68,7 +68,7 @@
 
 
 G_DEFINE_TYPE (GabbleJingleShare,
-    gabble_jingle_share, GABBLE_TYPE_JINGLE_CONTENT);
+    gabble_jingle_share, WOCKY_TYPE_JINGLE_CONTENT);
 
 /* properties */
 enum
@@ -182,9 +182,9 @@ gabble_jingle_share_dispose (GObject *object)
 }
 
 
-static void parse_description (GabbleJingleContent *content,
+static void parse_description (WockyJingleContent *content,
     WockyNode *desc_node, GError **error);
-static void produce_description (GabbleJingleContent *obj,
+static void produce_description (WockyJingleContent *obj,
     WockyNode *content_node);
 
 
@@ -200,7 +200,7 @@ gabble_jingle_share_get_property (GObject *object,
   switch (property_id)
     {
       case PROP_MEDIA_TYPE:
-        g_value_set_uint (value, JINGLE_MEDIA_TYPE_NONE);
+        g_value_set_uint (value, WOCKY_JINGLE_MEDIA_TYPE_NONE);
         break;
       case PROP_FILENAME:
         g_value_set_string (value, priv->filename);
@@ -232,7 +232,7 @@ gabble_jingle_share_set_property (GObject *object,
         priv->filename = g_value_dup_string (value);
         free_manifest (self);
         /* simulate a media_ready when we know our own filename */
-        _gabble_jingle_content_set_media_ready (GABBLE_JINGLE_CONTENT (self));
+        _wocky_jingle_content_set_media_ready (WOCKY_JINGLE_CONTENT (self));
         break;
       case PROP_FILESIZE:
         priv->filesize = g_value_get_uint64 (value);
@@ -244,17 +244,17 @@ gabble_jingle_share_set_property (GObject *object,
     }
 }
 
-static JingleContentSenders
-get_default_senders (GabbleJingleContent *c)
+static WockyJingleContentSenders
+get_default_senders (WockyJingleContent *c)
 {
-  return JINGLE_CONTENT_SENDERS_INITIATOR;
+  return WOCKY_JINGLE_CONTENT_SENDERS_INITIATOR;
 }
 
 static void
 gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (cls);
-  GabbleJingleContentClass *content_class = GABBLE_JINGLE_CONTENT_CLASS (cls);
+  WockyJingleContentClass *content_class = WOCKY_JINGLE_CONTENT_CLASS (cls);
 
   g_type_class_add_private (cls, sizeof (GabbleJingleSharePrivate));
 
@@ -271,8 +271,8 @@ gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
   g_object_class_install_property (object_class, PROP_MEDIA_TYPE,
       g_param_spec_uint ("media-type", "media type",
           "irrelevant media type. Will always be NONE.",
-          JINGLE_MEDIA_TYPE_NONE, JINGLE_MEDIA_TYPE_NONE,
-          JINGLE_MEDIA_TYPE_NONE,
+          WOCKY_JINGLE_MEDIA_TYPE_NONE, WOCKY_JINGLE_MEDIA_TYPE_NONE,
+          WOCKY_JINGLE_MEDIA_TYPE_NONE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_FILENAME,
@@ -290,7 +290,7 @@ gabble_jingle_share_class_init (GabbleJingleShareClass *cls)
 }
 
 static void
-parse_description (GabbleJingleContent *content,
+parse_description (WockyJingleContent *content,
     WockyNode *desc_node, GError **error)
 {
   GabbleJingleShare *self = GABBLE_JINGLE_SHARE (content);
@@ -438,11 +438,11 @@ parse_description (GabbleJingleContent *content,
           g_free (temp);
         }
     }
-  _gabble_jingle_content_set_media_ready (content);
+  _wocky_jingle_content_set_media_ready (content);
 }
 
 static void
-produce_description (GabbleJingleContent *content, WockyNode *content_node)
+produce_description (WockyJingleContent *content, WockyNode *content_node)
 {
   GabbleJingleShare *self = GABBLE_JINGLE_SHARE (content);
   GabbleJingleSharePrivate *priv = self->priv;
@@ -522,10 +522,10 @@ gabble_jingle_share_get_manifest (GabbleJingleShare *self)
 }
 
 void
-jingle_share_register (GabbleJingleFactory *factory)
+jingle_share_register (WockyJingleFactory *factory)
 {
   /* GTalk video call namespace */
-  gabble_jingle_factory_register_content_type (factory,
+  wocky_jingle_factory_register_content_type (factory,
       NS_GOOGLE_SESSION_SHARE,
       GABBLE_TYPE_JINGLE_SHARE);
 }

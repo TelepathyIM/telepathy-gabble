@@ -163,7 +163,7 @@ gabble_call_content_new_offer (GabbleCallContent *self,
       codecs = gabble_call_member_content_get_remote_codecs (content);
       for (l = codecs; l != NULL; l = g_list_next (l))
         {
-          JingleCodec *c = l->data;
+          WockyJingleCodec *c = l->data;
 
           tp_call_content_media_description_append_codec (md,
               c->id, c->name, c->clockrate, c->channels,
@@ -180,12 +180,12 @@ gabble_call_content_new_offer (GabbleCallContent *self,
   g_free (path);
 }
 
-JingleMediaType
+WockyJingleMediaType
 gabble_call_content_get_media_type (GabbleCallContent *self)
 {
   TpBaseCallContent *base = TP_BASE_CALL_CONTENT (self);
 
-  return jingle_media_type_from_tp (
+  return wocky_jingle_media_type_from_tp (
       tp_base_call_content_get_media_type (base));
 }
 
@@ -210,7 +210,7 @@ codec_array_to_list (GPtrArray *codecs)
 
   for (i = 0; i < codecs->len ; i++)
     {
-      JingleCodec *c;
+      WockyJingleCodec *c;
       GValueArray *va;
 
       va = g_ptr_array_index (codecs, i);
@@ -237,7 +237,7 @@ call_content_local_media_description_updated (GabbleCallContent *self,
     gpointer data)
 {
   GList *l;
-  JingleMediaDescription *md = jingle_media_description_new ();
+  WockyJingleMediaDescription *md = wocky_jingle_media_description_new ();
 
   md->codecs = codec_array_to_list (tp_asv_get_boxed (properties,
           TP_PROP_CALL_CONTENT_MEDIA_DESCRIPTION_CODECS,
@@ -246,22 +246,22 @@ call_content_local_media_description_updated (GabbleCallContent *self,
   for (l = self->priv->contents; l != NULL; l = g_list_next (l))
     {
       GabbleCallMemberContent *c = GABBLE_CALL_MEMBER_CONTENT (l->data);
-      GabbleJingleContent *j =
+      WockyJingleContent *j =
         gabble_call_member_content_get_jingle_content (c);
 
       if (j == NULL)
         continue;
 
       /* FIXME react properly on errors ? */
-      jingle_media_rtp_set_local_media_description (GABBLE_JINGLE_MEDIA_RTP (j),
-        jingle_media_description_copy (md), TRUE, NULL);
+      jingle_media_rtp_set_local_media_description (WOCKY_JINGLE_MEDIA_RTP (j),
+        wocky_jingle_media_description_copy (md), TRUE, NULL);
     }
 
-  jingle_media_description_free (md);
+  wocky_jingle_media_description_free (md);
 }
 
 static TpStreamTransportType
-_jingle_to_tp_transport (JingleTransportType jt)
+_jingle_to_tp_transport (WockyJingleTransportType jt)
 {
   switch (jt)
   {
@@ -281,11 +281,11 @@ call_content_setup_jingle (GabbleCallContent *self,
     GabbleCallMemberContent *mcontent)
 {
   TpBaseCallContent *base = TP_BASE_CALL_CONTENT (self);
-  GabbleJingleContent *jingle;
+  WockyJingleContent *jingle;
   GabbleCallStream *stream;
   gchar *path;
-  JingleTransportType transport;
-  JingleMediaDescription *md;
+  WockyJingleTransportType transport;
+  WockyJingleMediaDescription *md;
   GHashTable *tp_md;
   TpHandle contact;
 
@@ -294,7 +294,7 @@ call_content_setup_jingle (GabbleCallContent *self,
   if (jingle == NULL)
     return;
 
-  transport = gabble_jingle_content_get_transport_type (jingle);
+  transport = wocky_jingle_content_get_transport_type (jingle);
   path = g_strdup_printf ("%s/Stream%p",
       tp_base_call_content_get_object_path (base),
       jingle);
@@ -306,7 +306,7 @@ call_content_setup_jingle (GabbleCallContent *self,
       NULL);
   g_free (path);
 
-  md = jingle_media_description_new ();
+  md = wocky_jingle_media_description_new ();
 
   /* FIXME: correct??? */
   contact = gabble_call_member_get_handle (
@@ -322,9 +322,9 @@ call_content_setup_jingle (GabbleCallContent *self,
 
   if (md->codecs != NULL)
     jingle_media_rtp_set_local_media_description (
-        GABBLE_JINGLE_MEDIA_RTP (jingle), md, TRUE, NULL);
+        WOCKY_JINGLE_MEDIA_RTP (jingle), md, TRUE, NULL);
   else
-    jingle_media_description_free (md);
+    wocky_jingle_media_description_free (md);
 
   tp_base_call_content_add_stream (base, TP_BASE_CALL_STREAM (stream));
   gabble_call_stream_update_member_states (stream);
@@ -346,7 +346,7 @@ member_content_removed_cb (GabbleCallMemberContent *mcontent,
   GabbleCallContent *self = GABBLE_CALL_CONTENT (user_data);
   GabbleCallContentPrivate *priv = self->priv;
   TpBaseCallContent *base = TP_BASE_CALL_CONTENT (self);
-  GabbleJingleContent *content;
+  WockyJingleContent *content;
   GList *l;
 
   priv->contents = g_list_remove (priv->contents, mcontent);

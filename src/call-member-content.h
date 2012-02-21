@@ -61,20 +61,20 @@ GType gabble_call_member_content_get_type (void);
     GabbleCallMemberContentClass))
 
 GabbleCallMemberContent *gabble_call_member_content_new (const gchar *name,
-    JingleMediaType type,
+    WockyJingleMediaType type,
     GabbleCallMember *member);
 
 GabbleCallMemberContent *gabble_call_member_content_from_jingle_content (
-    GabbleJingleContent *jingle_content,
+    WockyJingleContent *jingle_content,
     GabbleCallMember *member);
 
-JingleMediaType gabble_call_member_content_get_media_type (
+WockyJingleMediaType gabble_call_member_content_get_media_type (
     GabbleCallMemberContent *self);
 
 const gchar *gabble_call_member_content_get_name (
     GabbleCallMemberContent *self);
 
-GabbleJingleContent *gabble_call_member_content_get_jingle_content (
+WockyJingleContent *gabble_call_member_content_get_jingle_content (
     GabbleCallMemberContent *self);
 
 gboolean gabble_call_member_content_has_jingle_content (
@@ -95,7 +95,7 @@ GabbleCallMember *gabble_call_member_content_get_member (
 
 void gabble_call_member_content_set_jingle_content (
     GabbleCallMemberContent *self,
-    GabbleJingleContent *content);
+    WockyJingleContent *content);
 
 void gabble_call_member_content_add_to_session (
     GabbleCallMemberContent *self);

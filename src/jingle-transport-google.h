@@ -1,5 +1,5 @@
 /*
- * jingle-transport-google.h - Header for GabbleJingleTransportGoogle
+ * jingle-transport-google.h - Header for WockyJingleTransportGoogle
  * Copyright (C) 2008 Collabora Ltd.
  *
  * This library is free software; you can redistribute it and/or
@@ -26,42 +26,42 @@
 
 G_BEGIN_DECLS
 
-typedef struct _GabbleJingleTransportGoogleClass GabbleJingleTransportGoogleClass;
+typedef struct _WockyJingleTransportGoogleClass WockyJingleTransportGoogleClass;
 
-GType gabble_jingle_transport_google_get_type (void);
+GType wocky_jingle_transport_google_get_type (void);
 
 /* TYPE MACROS */
-#define GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE \
-  (gabble_jingle_transport_google_get_type ())
-#define GABBLE_JINGLE_TRANSPORT_GOOGLE(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST((obj), GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE, \
-                              GabbleJingleTransportGoogle))
-#define GABBLE_JINGLE_TRANSPORT_GOOGLE_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST((klass), GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE, \
-                           GabbleJingleTransportGoogleClass))
-#define GABBLE_IS_JINGLE_TRANSPORT_GOOGLE(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE((obj), GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE))
-#define GABBLE_IS_JINGLE_TRANSPORT_GOOGLE_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE((klass), GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE))
-#define GABBLE_JINGLE_TRANSPORT_GOOGLE_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_JINGLE_TRANSPORT_GOOGLE, \
-                              GabbleJingleTransportGoogleClass))
+#define WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE \
+  (wocky_jingle_transport_google_get_type ())
+#define WOCKY_JINGLE_TRANSPORT_GOOGLE(obj) \
+  (G_TYPE_CHECK_INSTANCE_CAST((obj), WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE, \
+                              WockyJingleTransportGoogle))
+#define WOCKY_JINGLE_TRANSPORT_GOOGLE_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_CAST((klass), WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE, \
+                           WockyJingleTransportGoogleClass))
+#define WOCKY_IS_JINGLE_TRANSPORT_GOOGLE(obj) \
+  (G_TYPE_CHECK_INSTANCE_TYPE((obj), WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE))
+#define WOCKY_IS_JINGLE_TRANSPORT_GOOGLE_CLASS(klass) \
+  (G_TYPE_CHECK_CLASS_TYPE((klass), WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE))
+#define WOCKY_JINGLE_TRANSPORT_GOOGLE_GET_CLASS(obj) \
+  (G_TYPE_INSTANCE_GET_CLASS ((obj), WOCKY_TYPE_JINGLE_TRANSPORT_GOOGLE, \
+                              WockyJingleTransportGoogleClass))
 
-struct _GabbleJingleTransportGoogleClass {
+struct _WockyJingleTransportGoogleClass {
     GObjectClass parent_class;
 };
 
-typedef struct _GabbleJingleTransportGooglePrivate GabbleJingleTransportGooglePrivate;
+typedef struct _WockyJingleTransportGooglePrivate WockyJingleTransportGooglePrivate;
 
-struct _GabbleJingleTransportGoogle {
+struct _WockyJingleTransportGoogle {
     GObject parent;
-    GabbleJingleTransportGooglePrivate *priv;
+    WockyJingleTransportGooglePrivate *priv;
 };
 
-void jingle_transport_google_register (GabbleJingleFactory *factory);
+void jingle_transport_google_register (WockyJingleFactory *factory);
 
 gboolean jingle_transport_google_set_component_name (
-    GabbleJingleTransportGoogle *transport,
+    WockyJingleTransportGoogle *transport,
     const gchar *name, guint component_id);
 
 #endif /* __JINGLE_TRANSPORT_GOOGLE_H__ */

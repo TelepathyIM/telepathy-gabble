@@ -814,7 +814,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
     gboolean want_audio,
     gboolean want_video,
     const char **transport_ns,
-    JingleDialect *dialect,
+    WockyJingleDialect *dialect,
     const gchar **resource_out)
 {
   /* We prefer gtalk-p2p to ice, because it can use tcp and https relays (if
@@ -838,7 +838,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
       return FALSE;
     }
 
-  *dialect = JINGLE_DIALECT_ERROR;
+  *dialect = WOCKY_JINGLE_DIALECT_ERROR;
   *transport_ns = NULL;
 
   g_return_val_if_fail (want_audio || want_video, FALSE);
@@ -856,7 +856,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
 
   if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
-      *dialect = JINGLE_DIALECT_V032;
+      *dialect = WOCKY_JINGLE_DIALECT_V032;
       goto CHOOSE_TRANSPORT;
     }
 
@@ -870,7 +870,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
 
   if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
-      *dialect = JINGLE_DIALECT_V015;
+      *dialect = WOCKY_JINGLE_DIALECT_V015;
       goto CHOOSE_TRANSPORT;
     }
 
@@ -890,7 +890,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
 
   if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
-      *dialect = JINGLE_DIALECT_GTALK3;
+      *dialect = WOCKY_JINGLE_DIALECT_GTALK3;
       goto CHOOSE_TRANSPORT;
     }
 
@@ -907,7 +907,7 @@ jingle_pick_best_resource (GabbleConnection *conn,
 
   if (jingle_pick_resource_or_bare_jid (presence, caps, &resource))
     {
-      *dialect = JINGLE_DIALECT_GTALK4;
+      *dialect = WOCKY_JINGLE_DIALECT_GTALK4;
       goto CHOOSE_TRANSPORT;
     }
 
@@ -921,7 +921,7 @@ CHOOSE_TRANSPORT:
 
   success = TRUE;
 
-  if (*dialect == JINGLE_DIALECT_GTALK4 || *dialect == JINGLE_DIALECT_GTALK3)
+  if (*dialect == WOCKY_JINGLE_DIALECT_GTALK4 || *dialect == WOCKY_JINGLE_DIALECT_GTALK3)
     {
       /* the GTalk dialects only support google p2p as transport protocol. */
       *transport_ns = NS_GOOGLE_TRANSPORT_P2P;
@@ -949,20 +949,20 @@ const gchar *
 jingle_pick_best_content_type (GabbleConnection *conn,
   TpHandle peer,
   const gchar *resource,
-  JingleMediaType type)
+  WockyJingleMediaType type)
 {
   GabblePresence *presence;
   const GabbleFeatureFallback content_types[] = {
       /* if $thing is supported, then use it */
         { TRUE, TWICE (NS_JINGLE_RTP) },
-        { type == JINGLE_MEDIA_TYPE_VIDEO,
+        { type == WOCKY_JINGLE_MEDIA_TYPE_VIDEO,
             TWICE (NS_JINGLE_DESCRIPTION_VIDEO) },
-        { type == JINGLE_MEDIA_TYPE_AUDIO,
+        { type == WOCKY_JINGLE_MEDIA_TYPE_AUDIO,
             TWICE (NS_JINGLE_DESCRIPTION_AUDIO) },
       /* odd Google ones: if $thing is supported, use $other_thing */
-        { type == JINGLE_MEDIA_TYPE_AUDIO,
+        { type == WOCKY_JINGLE_MEDIA_TYPE_AUDIO,
           NS_GOOGLE_FEAT_VOICE, NS_GOOGLE_SESSION_PHONE },
-        { type == JINGLE_MEDIA_TYPE_VIDEO,
+        { type == WOCKY_JINGLE_MEDIA_TYPE_VIDEO,
           NS_GOOGLE_FEAT_VIDEO, NS_GOOGLE_SESSION_VIDEO },
         { FALSE, NULL, NULL }
   };
@@ -988,23 +988,23 @@ jingle_pick_best_content_type (GabbleConnection *conn,
 }
 
 static TpCallStreamCandidateType
-tp_candidate_type_from_jingle (JingleCandidateType type)
+tp_candidate_type_from_jingle (WockyJingleCandidateType type)
 {
   switch (type)
     {
     default:
       /* Consider UNKNOWN as LOCAL/HOST */
-    case JINGLE_CANDIDATE_TYPE_LOCAL:
+    case WOCKY_JINGLE_CANDIDATE_TYPE_LOCAL:
       return TP_CALL_STREAM_CANDIDATE_TYPE_HOST;
-    case JINGLE_CANDIDATE_TYPE_STUN:
+    case WOCKY_JINGLE_CANDIDATE_TYPE_STUN:
       return TP_CALL_STREAM_CANDIDATE_TYPE_SERVER_REFLEXIVE;
-    case JINGLE_CANDIDATE_TYPE_RELAY:
+    case WOCKY_JINGLE_CANDIDATE_TYPE_RELAY:
       return TP_CALL_STREAM_CANDIDATE_TYPE_RELAY;
     }
 }
 
 /**
- * @candidates: (element-type JingleCandidate): candidates
+ * @candidates: (element-type WockyJingleCandidate): candidates
  *
  * Returns: (transfer full): a GABBLE_ARRAY_TYPE_CANDIDATE_LIST, i.e.
  *  a(usqa{sv})
@@ -1019,7 +1019,7 @@ gabble_call_candidates_to_array (GList *candidates)
 
   for (c = candidates; c != NULL; c = g_list_next (c))
     {
-        JingleCandidate *cand = (JingleCandidate *) c->data;
+        WockyJingleCandidate *cand = (WockyJingleCandidate *) c->data;
         GValueArray *a;
         GHashTable *info;
 

@@ -1133,6 +1133,15 @@ gabble_jingle_content_get_local_candidates (GabbleJingleContent *c)
 }
 
 gboolean
+gabble_jingle_content_get_credentials (GabbleJingleContent *c,
+    gchar **ufrag, gchar **pwd)
+{
+  GabbleJingleContentPrivate *priv = c->priv;
+
+  return jingle_transport_get_credentials (priv->transport, ufrag, pwd);
+}
+
+gboolean
 gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders)
 {
@@ -1340,7 +1349,7 @@ gabble_jingle_content_set_sending (GabbleJingleContent *self,
   JingleContentSenders senders;
   gboolean initiated_by_us;
 
-  if (send == jingle_content_has_direction (self, TRUE))
+  if (send == gabble_jingle_content_sending (self))
     return;
 
   g_object_get (self->session, "local-initiator",
@@ -1368,6 +1377,46 @@ gabble_jingle_content_set_sending (GabbleJingleContent *self,
   else
     gabble_jingle_content_change_direction (self, senders);
 }
+
+
+void
+gabble_jingle_content_request_receiving (GabbleJingleContent *self,
+  gboolean receive)
+{
+  GabbleJingleContentPrivate *priv = self->priv;
+  JingleContentSenders senders;
+  gboolean initiated_by_us;
+
+  if (receive == gabble_jingle_content_receiving (self))
+    return;
+
+  g_object_get (self->session, "local-initiator",
+    &initiated_by_us, NULL);
+
+  if (receive)
+    {
+      if (priv->senders == JINGLE_CONTENT_SENDERS_NONE)
+        senders = (initiated_by_us ? JINGLE_CONTENT_SENDERS_RESPONDER :
+            JINGLE_CONTENT_SENDERS_INITIATOR);
+      else
+        senders = JINGLE_CONTENT_SENDERS_BOTH;
+    }
+  else
+    {
+      if (priv->senders == JINGLE_CONTENT_SENDERS_BOTH)
+        senders = (initiated_by_us ? JINGLE_CONTENT_SENDERS_INITIATOR :
+            JINGLE_CONTENT_SENDERS_RESPONDER);
+      else
+        senders = JINGLE_CONTENT_SENDERS_NONE;
+    }
+
+
+  if (senders == JINGLE_CONTENT_SENDERS_NONE)
+    gabble_jingle_content_remove (self, TRUE);
+  else
+    gabble_jingle_content_change_direction (self, senders);
+}
+
 
 JingleMediaType
 jingle_media_type_from_tp (TpMediaStreamType type)

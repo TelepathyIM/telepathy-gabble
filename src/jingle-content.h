@@ -130,6 +130,8 @@ void gabble_jingle_content_reject (GabbleJingleContent *c,
 
 GList *gabble_jingle_content_get_remote_candidates (GabbleJingleContent *c);
 GList *gabble_jingle_content_get_local_candidates (GabbleJingleContent *c);
+gboolean gabble_jingle_content_get_credentials (GabbleJingleContent *c,
+  gchar **ufrag, gchar **pwd);
 gboolean gabble_jingle_content_change_direction (GabbleJingleContent *c,
     JingleContentSenders senders);
 void gabble_jingle_content_retransmit_candidates (GabbleJingleContent *self,
@@ -151,7 +153,9 @@ gboolean gabble_jingle_content_sending (GabbleJingleContent *self);
 gboolean gabble_jingle_content_receiving (GabbleJingleContent *self);
 
 void gabble_jingle_content_set_sending (GabbleJingleContent *self,
-  gboolean send);
+    gboolean send);
+void gabble_jingle_content_request_receiving (GabbleJingleContent *self,
+    gboolean receive);
 
 void gabble_jingle_content_send_complete (GabbleJingleContent *self);
 

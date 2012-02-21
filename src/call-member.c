@@ -58,7 +58,7 @@ struct _GabbleCallMemberPrivate
   TpHandle target;
 
   GabbleBaseCallChannel *call;
-  TpyCallMemberFlags flags;
+  TpCallMemberFlags flags;
   GabbleJingleSession *session;
 
   GList *contents;
@@ -246,13 +246,13 @@ remote_state_changed_cb (GabbleJingleSession *session, gpointer user_data)
 {
   GabbleCallMember *self = GABBLE_CALL_MEMBER (user_data);
   GabbleCallMemberPrivate *priv = self->priv;
-  TpyCallMemberFlags newflags = 0;
+  TpCallMemberFlags newflags = 0;
 
   if (gabble_jingle_session_get_remote_ringing (session))
-    newflags |= TPY_CALL_MEMBER_FLAG_RINGING;
+    newflags |= TP_CALL_MEMBER_FLAG_RINGING;
 
   if (gabble_jingle_session_get_remote_hold (session))
-    newflags |= TPY_CALL_MEMBER_FLAG_HELD;
+    newflags |= TP_CALL_MEMBER_FLAG_HELD;
 
   if (priv->flags == newflags)
     return;
@@ -385,7 +385,7 @@ gabble_call_member_get_session (GabbleCallMember *self)
   return self->priv->session;
 }
 
-TpyCallMemberFlags
+TpCallMemberFlags
 gabble_call_member_get_flags (GabbleCallMember *self)
 {
   return self->priv->flags;
@@ -439,6 +439,7 @@ GabbleCallMemberContent *
 gabble_call_member_create_content (GabbleCallMember *self,
   const gchar *name,
   JingleMediaType mtype,
+  JingleContentSenders senders,
   GError **error)
 {
   GabbleCallMemberPrivate *priv = self->priv;
@@ -473,7 +474,7 @@ gabble_call_member_create_content (GabbleCallMember *self,
     content_ns, priv->transport_ns);
 
   c = gabble_jingle_session_add_content (priv->session,
-      mtype, name, content_ns, priv->transport_ns);
+      mtype, senders, name, content_ns, priv->transport_ns);
 
   g_assert (c != NULL);
 
@@ -563,11 +564,11 @@ gabble_call_member_start_session (GabbleCallMember *self,
 
   if (audio_name != NULL)
     gabble_call_member_create_content (self, audio_name,
-      JINGLE_MEDIA_TYPE_AUDIO, NULL);
+      JINGLE_MEDIA_TYPE_AUDIO, JINGLE_CONTENT_SENDERS_BOTH, NULL);
 
   if (video_name != NULL)
     gabble_call_member_create_content (self, video_name,
-      JINGLE_MEDIA_TYPE_VIDEO, NULL);
+      JINGLE_MEDIA_TYPE_VIDEO, JINGLE_CONTENT_SENDERS_BOTH, NULL);
 
   return TRUE;
 }

@@ -282,7 +282,7 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.17.2])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.17.5])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)
@@ -313,8 +313,6 @@ AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 # separate Wocky installation won't clash with them. This is a bit of a hack.
 # AX_CONFIG_DIR doesn't make it very easy to pass extra arguments to the
 # submodule's configure.
-#
-# Also do this for telepathy-yell.
 prev_ac_configure_args=$ac_configure_args
 ac_configure_args="$ac_configure_args --with-installed-headers=${wocky_install_headers_dir}"
 
@@ -344,16 +342,11 @@ prev_top_build_prefix=$ac_top_build_prefix
 AX_CONFIG_DIR([lib/ext/wocky])
 ac_top_build_prefix=$prev_top_build_prefix
 
-dnl tp-yell
-prev_top_build_prefix=$ac_top_build_prefix
-AX_CONFIG_DIR([lib/ext/telepathy-yell])
-ac_top_build_prefix=$prev_top_build_prefix
-
 ac_configure_args=$prev_ac_configure_args
 
 dnl Check if Android build
 AC_ARG_ENABLE(submodules,
-              AS_HELP_STRING([--disable-submodules],[Use system versions of Wocky and Telepathy-Yell, rather than submodules]),
+              AS_HELP_STRING([--disable-submodules],[Use system versions of Wocky, rather than submodules]),
               build_submodules=$enableval, build_submodules=yes )
 
 dnl Check for Wocky
@@ -365,14 +358,6 @@ fi
 PKG_CHECK_MODULES(WOCKY, wocky >= 0.0.0)
 AC_SUBST(WOCKY_CFLAGS)
 AC_SUBST(WOCKY_LIBS)
-
-dnl Check for tp-yell
-if test x$build_submodules = xyes; then
-    export PKG_CONFIG_PATH=$PKG_CONFIG_PATH:"$ac_top_build_prefix"lib/ext/telepathy-yell/telepathy-yell
-fi
-PKG_CHECK_MODULES(TP_YELL, telepathy-yell)
-AC_SUBST(TP_YELL_CFLAGS)
-AC_SUBST(TP_YELL_LIBS)
 
 AC_ARG_ENABLE(google-relay,
   AC_HELP_STRING([--disable-google-relay],

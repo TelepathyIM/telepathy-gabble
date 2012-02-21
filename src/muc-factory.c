@@ -30,8 +30,6 @@
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
-#include <telepathy-yell/interfaces.h>
-
 #define DEBUG_FLAG GABBLE_DEBUG_MUC
 
 #include "gabble/caps-channel-manager.h"
@@ -1166,7 +1164,7 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
 
   /* Muc Channel.Type.Call */
   g_value_set_static_string (channel_type_value,
-      TPY_IFACE_CHANNEL_TYPE_CALL);
+      TP_IFACE_CHANNEL_TYPE_CALL);
   func (type, table,
       gabble_media_factory_call_channel_allowed_properties (),
       user_data);
@@ -1789,9 +1787,9 @@ handle_call_channel_request (GabbleMucFactory *self,
     return FALSE;
 
   initial_audio = tp_asv_get_boolean (request_properties,
-      TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
+      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
   initial_video = tp_asv_get_boolean (request_properties,
-      TPY_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
+      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
 
   if (!initial_audio && !initial_video)
     {
@@ -1857,7 +1855,7 @@ static ChannelTypeHandler channel_type_handlers[] = {
     { TP_IFACE_CHANNEL_TYPE_TUBES, handle_tubes_channel_request },
     { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, handle_stream_tube_channel_request },
     { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, handle_dbus_tube_channel_request },
-    { TPY_IFACE_CHANNEL_TYPE_CALL, handle_call_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_CALL, handle_call_channel_request },
     { NULL }
 };
 

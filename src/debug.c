@@ -18,7 +18,6 @@
 #include <glib/gstdio.h>
 #include <telepathy-glib/debug.h>
 #include <telepathy-glib/debug-sender.h>
-#include <telepathy-yell/debug.h>
 
 static GabbleDebugFlags flags = 0;
 
@@ -63,7 +62,7 @@ void gabble_debug_set_flags_from_env ()
   flags_string = g_getenv ("GABBLE_DEBUG");
 
   tp_debug_set_flags (flags_string);
-  tpy_debug_set_flags (flags_string);
+  tp_debug_set_flags (flags_string);
 
   if (flags_string != NULL)
     {

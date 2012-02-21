@@ -29,6 +29,7 @@
 #include <telepathy-glib/dbus.h>
 #include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/util.h>
 
 #include "extensions/extensions.h"

@@ -35,11 +35,6 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
 
-#include <telepathy-yell/enums.h>
-#include <telepathy-yell/gtypes.h>
-#include <telepathy-yell/interfaces.h>
-#include <telepathy-yell/svc-call.h>
-
 #include "util.h"
 #include "call-content.h"
 
@@ -51,10 +46,10 @@
 #include "debug.h"
 
 G_DEFINE_TYPE(GabbleBaseCallChannel, gabble_base_call_channel,
-  TPY_TYPE_BASE_CALL_CHANNEL);
+  TP_TYPE_BASE_MEDIA_CALL_CHANNEL);
 
 static void gabble_base_call_channel_hangup (
-    TpyBaseCallChannel *base,
+    TpBaseCallChannel *base,
     guint reason,
     const gchar *detailed_reason,
     const gchar *message);
@@ -152,8 +147,8 @@ gabble_base_call_channel_class_init (
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_base_call_channel_class);
   TpBaseChannelClass *base_channel_class =
       TP_BASE_CHANNEL_CLASS (gabble_base_call_channel_class);
-  TpyBaseCallChannelClass *tpy_base_call_channel_class =
-      TPY_BASE_CALL_CHANNEL_CLASS (gabble_base_call_channel_class);
+  TpBaseCallChannelClass *tp_base_call_channel_class =
+      TP_BASE_CALL_CHANNEL_CLASS (gabble_base_call_channel_class);
   GParamSpec *param_spec;
 
   g_type_class_add_private (gabble_base_call_channel_class,
@@ -169,7 +164,7 @@ gabble_base_call_channel_class_init (
       gabble_base_call_channel_get_object_path_suffix;
   base_channel_class->close = gabble_base_call_channel_close;
 
-  tpy_base_call_channel_class->hangup = gabble_base_call_channel_hangup;
+  tp_base_call_channel_class->hangup = gabble_base_call_channel_hangup;
 
   param_spec = g_param_spec_string ("object-path-prefix", "Object path prefix",
       "prefix of the object path",
@@ -213,11 +208,11 @@ GabbleCallContent *
 gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
     const gchar *name,
     JingleMediaType mtype,
-    TpyCallContentDisposition disposition)
+    TpCallContentDisposition disposition)
 {
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   gchar *object_path;
-  TpyBaseCallContent *content;
+  TpBaseCallContent *content;
   gchar *escaped;
 
   /* FIXME could clash when other party in a one-to-one call creates a stream
@@ -238,7 +233,7 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
 
   g_free (object_path);
 
-  tpy_base_call_channel_add_content (TPY_BASE_CALL_CHANNEL (self),
+  tp_base_call_channel_add_content (TP_BASE_CALL_CHANNEL (self),
     content);
 
   return GABBLE_CALL_CONTENT (content);
@@ -246,14 +241,15 @@ gabble_base_call_channel_add_content (GabbleBaseCallChannel *self,
 
 static void
 call_member_flags_changed_cb (GabbleCallMember *member,
-  TpyCallMemberFlags flags,
+  TpCallMemberFlags flags,
   gpointer user_data)
 {
-  TpyBaseCallChannel *base = TPY_BASE_CALL_CHANNEL (user_data);
+  TpBaseCallChannel *base = TP_BASE_CALL_CHANNEL (user_data);
 
-  tpy_base_call_channel_update_member_flags (base,
+  tp_base_call_channel_update_member_flags (base,
     gabble_call_member_get_handle (member),
-    flags);
+    flags,
+    0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
 }
 
 GabbleCallMember *
@@ -281,9 +277,10 @@ gabble_base_call_channel_ensure_member_from_handle (
         NULL));
       g_hash_table_insert (priv->members, GUINT_TO_POINTER (handle), m);
 
-      tpy_base_call_channel_add_member (TPY_BASE_CALL_CHANNEL (self),
+      tp_base_call_channel_update_member_flags (TP_BASE_CALL_CHANNEL (self),
         gabble_call_member_get_handle (m),
-        gabble_call_member_get_flags (m));
+        gabble_call_member_get_flags (m),
+        0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
 
       gabble_signal_connect_weak (m, "flags-changed",
         G_CALLBACK (call_member_flags_changed_cb), G_OBJECT (self));
@@ -302,8 +299,9 @@ gabble_base_call_channel_remove_member (GabbleBaseCallChannel *self,
     GUINT_TO_POINTER (h))== member);
 
   gabble_call_member_shutdown (member);
-  tpy_base_call_channel_remove_member (TPY_BASE_CALL_CHANNEL (self),
-    gabble_call_member_get_handle (member));
+  tp_base_call_channel_remove_member (TP_BASE_CALL_CHANNEL (self),
+    gabble_call_member_get_handle (member),
+    0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
   g_hash_table_remove (self->priv->members, GUINT_TO_POINTER (h));
 }
 
@@ -319,7 +317,7 @@ gabble_base_call_channel_shutdown_all_members (GabbleBaseCallChannel *self)
 }
 
 static void
-gabble_base_call_channel_hangup (TpyBaseCallChannel *base,
+gabble_base_call_channel_hangup (TpBaseCallChannel *base,
     guint reason,
     const gchar *detailed_reason,
     const gchar *message)

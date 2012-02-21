@@ -1,6 +1,3 @@
 [submodule "lib/ext/wocky"]
 	path = lib/ext/wocky
 	url = git://anongit.freedesktop.org/wocky
-[submodule "lib/ext/telepathy-yell"]
-	path = lib/ext/telepathy-yell
-	url = git://anongit.freedesktop.org/telepathy/telepathy-yell

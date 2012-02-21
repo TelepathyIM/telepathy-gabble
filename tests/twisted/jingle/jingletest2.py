@@ -93,13 +93,13 @@ class JingleProtocol:
                 "address": host,
                 "port": str(port),
                 "protocol": "udp",
-                "preference": str(props["Priority"] / 65536.0),
-                "type":  ["local", "stun", "relay"][props["Type"]],
+                "preference": str(props["priority"] / 65536.0),
+                "type":  ["local", "stun", "relay"][props["type"]],
                 "network": "0",
                 "generation": "0",# Increment this yourself if you care.
                 "component": str(component), # 1 is rtp, 2 is rtcp
-                "username": props.get("Username", username),
-                "password": props.get("Password", password),
+                "username": props.get("username", username),
+                "password": props.get("password", password),
                 }, [])) #NOTE: subtype and profile are unused
         return ('transport', ns.GOOGLE_P2P, {}, candidates)
 
@@ -508,7 +508,7 @@ class JingleTest2:
 
     # Default video codecs for the remote end. I have no idea what's
     # a suitable value here...
-    video_codecs = [ ('WTF', 42, 80000, {}) ]
+    video_codecs = [ ('WTF', 96, 90000, {}) ]
 
 
     ufrag = "SessionUfrag"
@@ -516,58 +516,52 @@ class JingleTest2:
     # Default candidates for the remote end
     remote_call_candidates = [# Local candidates
                          (1, "192.168.0.1", 666,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 10000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 10000,
+                             #"base-ip":
                              }),
                          (2, "192.168.0.1", 667,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 10000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 10000,
+                             #"base-ip":
                              }),
                          # STUN candidates have their own ufrag
                          (1, "168.192.0.1", 10666,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 100,
-                             #"BaseIP":,
-                             "Username": "STUNRTPUfrag",
-                             "Password": "STUNRTPPwd",
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 100,
+                             #"base-ip":,
+                             "username": "STUNRTPUfrag",
+                             "password": "STUNRTPPwd"
                              }),
                          (2, "168.192.0.1", 10667,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 100,
-                             #"BaseIP":,
-                             "Username": "STUNRTCPUfrag",
-                             "Password": "STUNRTCPPwd",
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 100,
+                             #"base-ip":,
+                             "username": "STUNRTCPUfrag",
+                             "password": "STUNRTCPPwd"
                              }),
                          # Candidates found using UPnP or somesuch?
                          (1, "131.111.12.50", 10666,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 1000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 1000,
+                             #"base-ip":
                              }),
                          (2, "131.111.12.50", 10667,
-                            {"Type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
                              #"Foundation":,
-                             "Protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
-                             "Priority": 1000,
-                             #"BaseIP":,
-                             #"RawUDPFallback": False
+                             "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
+                             "priority": 1000,
+                             #"base-ip":
                              }),
                              ]
     remote_transports = [
@@ -593,19 +587,20 @@ class JingleTest2:
         self.stream = stream
         self.sid = 'sess' + str(int(random.random() * 10000))
 
-    def prepare(self, send_presence=True, send_roster=True):
+    def prepare(self, send_presence=True, send_roster=True, events=None):
         # If we need to override remote caps, feats, codecs or caps,
         # we should do it prior to calling this method.
 
-        # Catch events: authentication, our presence update,
-        # status connected, vCard query
-        # If we don't catch the vCard query here, it can trip us up later:
-        # http://bugs.freedesktop.org/show_bug.cgi?id=19161
-        events = self.q.expect_many(
-                EventPattern('stream-iq', to=None, query_ns='vcard-temp',
-                    query_name='vCard'),
-                EventPattern('stream-iq', query_ns=ns.ROSTER),
-                )
+        if events is None:
+            # Catch events: authentication, our presence update,
+            # status connected, vCard query
+            # If we don't catch the vCard query here, it can trip us up later:
+            # http://bugs.freedesktop.org/show_bug.cgi?id=19161
+            events = self.q.expect_many(
+                    EventPattern('stream-iq', to=None, query_ns='vcard-temp',
+                        query_name='vCard'),
+                    EventPattern('stream-iq', query_ns=ns.ROSTER),
+                    )
 
         # some Jingle tests care about our roster relationship to the peer
         if send_roster:
@@ -739,6 +734,16 @@ class JingleTest2:
                 jp.TransportGoogleP2P()) ]) ])
         self.stream.send(jp.xml(node))
 
+    def content_modify(self, name, creator, senders):
+        jp = self.jp
+
+        assert jp.separate_contents()
+        node = jp.SetIq(self.peer, self.jid, [
+            jp.Jingle(self.sid, self.peer, 'content-modify', [
+                jp.Content(name, creator, senders)])])
+        self.stream.send(jp.xml(node))
+
+
     def terminate(self, reason=None, text=""):
         jp = self.jp
 
@@ -754,6 +759,13 @@ class JingleTest2:
         iq = jp.SetIq(self.peer, self.jid, [
             jp.Jingle(self.sid, self.peer, 'session-terminate', body) ])
         self.stream.send(jp.xml(iq))
+
+    def result_iq(self, iniq, children = []):
+        jp = self.jp
+        iq = jp.ResultIq(self.peer, {'id': iniq.iq_id, 'to': self.peer},
+                         children)
+        self.stream.send(jp.xml(iq))
+
 
     def send_remote_candidates_call_xmpp(self, name, creator, candidates=None):
         jp = self.jp
@@ -795,19 +807,28 @@ class JingleTest2:
         return self.dbusify_codecs(self.video_codecs)
 
     def dbusify_call_codecs(self, codecs):
-        dbussed_codecs = [ (id, name, rate, 0, params)
+        dbussed_codecs = [ (id, name, rate, 0, False, params)
                             for (name, id, rate, params) in codecs ]
-        return dbus.Array(dbussed_codecs, signature='(usuua{ss})')
+        return dbus.Array(dbussed_codecs, signature='(usuuba{ss})')
 
     def dbusify_call_codecs_with_params(self, codecs):
         return dbusify_call_codecs (self, codecs)
 
-    def get_call_audio_codecs_dbus(self):
+    def __get_call_audio_codecs_dbus(self):
         return self.dbusify_call_codecs(self.audio_codecs)
 
-    def get_call_video_codecs_dbus(self):
+    def __get_call_video_codecs_dbus(self):
         return self.dbusify_call_codecs(self.video_codecs)
 
+    def get_call_audio_md_dbus(self):
+        return dbus.Dictionary(
+            { cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs': self.__get_call_audio_codecs_dbus(),
+            }, signature='sv')
+
+    def get_call_video_md_dbus(self):
+        return dbus.Dictionary(
+            { cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs': self.__get_call_video_codecs_dbus(),
+            }, signature='sv')
 
     def get_remote_transports_dbus(self):
         return dbus.Array([

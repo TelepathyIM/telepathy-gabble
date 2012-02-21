@@ -209,7 +209,6 @@ enumtype_sources = \
 libgabble_convenience_la_LIBADD = \
    $(top_builddir)/extensions/libgabble-extensions.la \
    $(top_builddir)/lib/gibber/libgibber.la \
-   $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
    libgabble-plugins.la \
    $(ALL_LIBS)
 
@@ -241,7 +240,6 @@ lib_LTLIBRARIES = libgabble-plugins.la
 libgabble_plugins_la_LDFLAGS = -shared -no-undefined -avoid-version
 
 libgabble_plugins_la_LIBADD = \
-   $(top_builddir)/lib/ext/telepathy-yell/telepathy-yell/libtelepathy-yell.la \
    $(ALL_LIBS)
 
 libgabble_plugins_la_SOURCES = \
@@ -260,7 +258,6 @@ libgabble_plugins_la_SOURCES = \
    sidecar.c
 
 AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
-	    @TP_YELL_CFLAGS@ \
 	    @DBUS_CFLAGS@ @GLIB_CFLAGS@ @WOCKY_CFLAGS@ \
 	    @TP_GLIB_CFLAGS@ \
 	    @SOUP_CFLAGS@ @NICE_CFLAGS@ @GMODULE_CFLAGS@ \

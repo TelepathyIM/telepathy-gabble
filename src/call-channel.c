@@ -33,9 +33,6 @@
 #include <telepathy-glib/base-connection.h>
 #include <telepathy-glib/gtypes.h>
 
-#include <telepathy-yell/enums.h>
-#include <telepathy-yell/svc-call.h>
-
 #include "util.h"
 #include "call-channel.h"
 #include "call-content.h"
@@ -54,13 +51,23 @@ static void call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param, GabbleCallChannel *self);
 static void call_member_content_added_cb (GabbleCallMember *member,
     GabbleCallMemberContent *content, GabbleCallChannel *self);
+static void call_member_content_removed_cb (GabbleCallMember *member,
+    GabbleCallMemberContent *mcontent,
+    GabbleBaseCallChannel *self);
+static void call_session_terminated_cb (GabbleJingleSession *session,
+    gboolean locally_terminated, JingleReason termination_reason,
+    gchar *reason_text, GabbleCallChannel *self);
 
-static void call_channel_accept (TpyBaseCallChannel *channel);
-static TpyBaseCallContent * call_channel_add_content (
-    TpyBaseCallChannel *base,
+static void call_channel_accept (TpBaseMediaCallChannel *channel);
+static TpBaseCallContent * call_channel_add_content (
+    TpBaseCallChannel *base,
     const gchar *name,
     TpMediaStreamType type,
+    TpMediaStreamDirection initial_direction,
     GError **error);
+static void call_channel_hold_state_changed (TpBaseMediaCallChannel *self,
+    TpLocalHoldState hold_state, TpLocalHoldStateReason hold_state_reason);
+
 
 G_DEFINE_TYPE_WITH_CODE(GabbleCallChannel, gabble_call_channel,
   GABBLE_TYPE_BASE_CALL_CHANNEL,
@@ -90,7 +97,6 @@ gabble_call_channel_constructed (GObject *obj)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (obj);
   GabbleCallChannelPrivate *priv = self->priv;
-  TpyBaseCallChannel *tpy_base = TPY_BASE_CALL_CHANNEL (obj);
   GabbleBaseCallChannel *g_base = GABBLE_BASE_CALL_CHANNEL (obj);
   GabbleCallMember *member;
 
@@ -106,8 +112,12 @@ gabble_call_channel_constructed (GObject *obj)
 
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), obj);
+      gabble_signal_connect_weak (priv->session, "terminated",
+        G_CALLBACK (call_session_terminated_cb), G_OBJECT (self));
       gabble_signal_connect_weak (member, "content-added",
         G_CALLBACK (call_member_content_added_cb), G_OBJECT (self));
+      gabble_signal_connect_weak (member, "content-removed",
+        G_CALLBACK (call_member_content_removed_cb), G_OBJECT (self));
 
       contents = gabble_call_member_get_contents (member);
 
@@ -120,23 +130,9 @@ gabble_call_channel_constructed (GObject *obj)
           c = gabble_base_call_channel_add_content (g_base,
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
-                TPY_CALL_CONTENT_DISPOSITION_INITIAL);
+                TP_CALL_CONTENT_DISPOSITION_INITIAL);
 
           gabble_call_content_add_member_content (c, content);
-
-          switch (gabble_call_member_content_get_media_type (content))
-            {
-              case JINGLE_MEDIA_TYPE_AUDIO:
-                tpy_base->initial_audio = TRUE;
-                break;
-              case JINGLE_MEDIA_TYPE_VIDEO:
-                tpy_base->initial_video = TRUE;
-                break;
-              default:
-                DEBUG ("Unknown media type: %d",
-                  gabble_call_member_content_get_media_type (content));
-                break;
-            }
         }
     }
 
@@ -202,8 +198,10 @@ gabble_call_channel_class_init (
     GabbleCallChannelClass *gabble_call_channel_class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_call_channel_class);
-  TpyBaseCallChannelClass *tpy_base_call_class =
-      TPY_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
+  TpBaseMediaCallChannelClass *tp_base_media_call_class =
+      TP_BASE_MEDIA_CALL_CHANNEL_CLASS (gabble_call_channel_class);
+  TpBaseCallChannelClass *tp_base_call_class =
+      TP_BASE_CALL_CHANNEL_CLASS (gabble_call_channel_class);
   TpBaseChannelClass *base_channel_class =
       TP_BASE_CHANNEL_CLASS (gabble_call_channel_class);
   GParamSpec *param_spec;
@@ -221,8 +219,11 @@ gabble_call_channel_class_init (
 
   base_channel_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
 
-  tpy_base_call_class->accept = call_channel_accept;
-  tpy_base_call_class->add_content = call_channel_add_content;
+  tp_base_call_class->add_content = call_channel_add_content;
+
+  tp_base_media_call_class->accept = call_channel_accept;
+  tp_base_media_call_class->hold_state_changed =
+      call_channel_hold_state_changed;
 
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session associated with this media channel object.",
@@ -255,28 +256,117 @@ gabble_call_channel_finalize (GObject *object)
 }
 
 static void
+call_session_terminated_cb (GabbleJingleSession *session,
+    gboolean locally_terminated, JingleReason termination_reason,
+    gchar *reason_text, GabbleCallChannel *self)
+{
+  TpHandle actor;
+  TpCallStateChangeReason call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+  const gchar *dbus_detail = "";
+
+  if (tp_base_call_channel_get_state (TP_BASE_CALL_CHANNEL (self)) ==
+      TP_CALL_STATE_ENDED)
+    {
+      DEBUG ("ignoring jingle session terminate, already in ENDED state");
+      return;
+    }
+
+  if (reason_text == NULL)
+    reason_text = "";
+
+  if (locally_terminated)
+    actor = tp_base_channel_get_self_handle (TP_BASE_CHANNEL (self));
+  else
+    actor = tp_base_channel_get_target_handle (TP_BASE_CHANNEL (self));
+
+  switch (termination_reason)
+    {
+    case JINGLE_REASON_UNKNOWN:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    case JINGLE_REASON_BUSY:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_BUSY;
+      break;
+    case JINGLE_REASON_CANCEL:
+      if (locally_terminated)
+        call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
+      else
+        call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
+      break;
+    case JINGLE_REASON_CONNECTIVITY_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
+      break;
+    case JINGLE_REASON_FAILED_APPLICATION:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      dbus_detail = TP_ERROR_STR_MEDIA_CODECS_INCOMPATIBLE;
+      break;
+    case JINGLE_REASON_GENERAL_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_SERVICE_ERROR;
+      break;
+    case JINGLE_REASON_GONE:
+      /* This one is only in the media channel, we don't have a
+       * Call reason to match */
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    case JINGLE_REASON_MEDIA_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      break;
+    case JINGLE_REASON_SUCCESS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_USER_REQUESTED;
+      break;
+    case JINGLE_REASON_TIMEOUT:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_NO_ANSWER;
+      break;
+    case JINGLE_REASON_DECLINE:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_REJECTED;
+      break;
+    case JINGLE_REASON_ALTERNATIVE_SESSION:
+      break;
+    case JINGLE_REASON_UNSUPPORTED_TRANSPORTS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_NETWORK_ERROR;
+      break;
+    case JINGLE_REASON_FAILED_TRANSPORT:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
+      dbus_detail = TP_ERROR_STR_CONNECTION_FAILED;
+      break;
+    case JINGLE_REASON_INCOMPATIBLE_PARAMETERS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      dbus_detail = TP_ERROR_STR_MEDIA_CODECS_INCOMPATIBLE;
+      break;
+    case JINGLE_REASON_SECURITY_ERROR:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_CONNECTIVITY_ERROR;
+      break;
+    case JINGLE_REASON_UNSUPPORTED_APPLICATIONS:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_MEDIA_ERROR;
+      dbus_detail = TP_ERROR_STR_MEDIA_UNSUPPORTED_TYPE;
+      break;
+    case JINGLE_REASON_EXPIRED:
+      /* No matching error in our spec */
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    default:
+      call_reason = TP_CALL_STATE_CHANGE_REASON_UNKNOWN;
+      break;
+    }
+
+  DEBUG ("Moving to ENDED state");
+  tp_base_call_channel_set_state (TP_BASE_CALL_CHANNEL (self),
+      TP_CALL_STATE_ENDED, actor, call_reason, dbus_detail, reason_text);
+}
+
+static void
 call_session_state_changed_cb (GabbleJingleSession *session,
   GParamSpec *param,
   GabbleCallChannel *self)
 {
-  TpyBaseCallChannel *cbase = TPY_BASE_CALL_CHANNEL (self);
+  TpBaseCallChannel *cbase = TP_BASE_CALL_CHANNEL (self);
   JingleState state;
-  TpyCallState cstate;
-
-  cstate = tpy_base_call_channel_get_state (cbase);
 
   g_object_get (session, "state", &state, NULL);
 
-  if (state == JINGLE_STATE_ACTIVE && cstate != TPY_CALL_STATE_ACCEPTED)
+  if (state == JINGLE_STATE_ACTIVE && !tp_base_call_channel_is_accepted (cbase))
     {
-      tpy_base_call_channel_set_state (cbase, TPY_CALL_STATE_ACCEPTED);
-      return;
-    }
-
-  if (state == JINGLE_STATE_ENDED && cstate < TPY_CALL_STATE_ENDED)
-    {
-      tpy_base_call_channel_set_state (cbase, TPY_CALL_STATE_ENDED);
-      return;
+      tp_base_call_channel_remote_accept (cbase);
     }
 }
 
@@ -289,7 +379,6 @@ call_member_content_added_cb (GabbleCallMember *member,
   GabbleBaseCallChannel *cbase = GABBLE_BASE_CALL_CHANNEL (self);
   GabbleJingleContent *jingle_content;
   GabbleCallContent *c;
-  TpyBaseCallContent *base_content;
 
   jingle_content = gabble_call_member_content_get_jingle_content (content);
 
@@ -300,13 +389,9 @@ call_member_content_added_cb (GabbleCallMember *member,
   c = gabble_base_call_channel_add_content (cbase,
       gabble_call_member_content_get_name (content),
       gabble_call_member_content_get_media_type (content),
-      TPY_CALL_CONTENT_DISPOSITION_NONE);
-  base_content = TPY_BASE_CALL_CONTENT (c);
+      TP_CALL_CONTENT_DISPOSITION_NONE);
 
   gabble_call_content_add_member_content (c, content);
-
-  tpy_svc_channel_type_call_emit_content_added (self,
-      tpy_base_call_content_get_object_path (base_content));
 }
 
 static gboolean
@@ -364,10 +449,10 @@ call_member_content_removed_cb (GabbleCallMember *member,
     GabbleCallMemberContent *mcontent,
     GabbleBaseCallChannel *self)
 {
-  TpyBaseCallChannel *cbase = TPY_BASE_CALL_CHANNEL (self);
+  TpBaseCallChannel *cbase = TP_BASE_CALL_CHANNEL (self);
   GList *l;
 
-  for (l = tpy_base_call_channel_get_contents (cbase);
+  for (l = tp_base_call_channel_get_contents (cbase);
       l != NULL; l = g_list_next (l))
     {
       GabbleCallContent *content = GABBLE_CALL_CONTENT (l->data);
@@ -375,8 +460,9 @@ call_member_content_removed_cb (GabbleCallMember *member,
 
       if (contents != NULL && contents->data == mcontent)
         {
-          tpy_base_call_channel_remove_content (cbase,
-            TPY_BASE_CALL_CONTENT (content));
+          tp_base_call_channel_remove_content (cbase,
+              TP_BASE_CALL_CONTENT (content),
+              0, TP_CALL_STATE_CHANGE_REASON_PROGRESS_MADE, "", "");
           break;
         }
     }
@@ -387,10 +473,11 @@ call_channel_continue_init (GabbleCallChannel *self,
     GSimpleAsyncResult *result)
 {
   GabbleCallChannelPrivate *priv = self->priv;
-  TpyBaseCallChannel *base = TPY_BASE_CALL_CHANNEL (self);
+  TpBaseCallChannel *base = TP_BASE_CALL_CHANNEL (self);
   TpBaseChannel *tp_base = TP_BASE_CHANNEL (self);
   GError *error = NULL;
-  gchar *initial_audio_name = NULL, *initial_video_name = NULL;
+  gboolean initial_audio, initial_video;
+  const gchar *initial_audio_name = NULL, *initial_video_name = NULL;
 
   if (priv->session == NULL)
     {
@@ -401,14 +488,14 @@ call_channel_continue_init (GabbleCallChannel *self,
           GABBLE_BASE_CALL_CHANNEL (self),
           tp_base_channel_get_target_handle (tp_base));
 
-      g_object_get (self,
-          "initial-audio-name", &initial_audio_name,
-          "initial-video-name", &initial_video_name,
-          NULL);
+      initial_audio = tp_base_call_channel_has_initial_audio (base,
+          &initial_audio_name);
+      initial_video = tp_base_call_channel_has_initial_video (base,
+          &initial_video_name);
 
       if (!gabble_call_member_start_session (member,
-          base->initial_audio ? initial_audio_name : NULL,
-          base->initial_video ? initial_video_name : NULL,
+          initial_audio ? initial_audio_name : NULL,
+          initial_video ? initial_video_name : NULL,
           &error))
        {
          g_simple_async_result_set_from_error (result, error);
@@ -419,6 +506,8 @@ call_channel_continue_init (GabbleCallChannel *self,
       priv->session = g_object_ref (gabble_call_member_get_session (member));
       gabble_signal_connect_weak (priv->session, "notify::state",
         G_CALLBACK (call_session_state_changed_cb), G_OBJECT (self));
+      gabble_signal_connect_weak (priv->session, "terminated",
+        G_CALLBACK (call_session_terminated_cb), G_OBJECT (self));
 
       contents = gabble_call_member_get_contents (member);
 
@@ -432,7 +521,7 @@ call_channel_continue_init (GabbleCallChannel *self,
                 GABBLE_BASE_CALL_CHANNEL (self),
                 gabble_call_member_content_get_name (content),
                 gabble_call_member_content_get_media_type (content),
-                TPY_CALL_CONTENT_DISPOSITION_INITIAL);
+                TP_CALL_CONTENT_DISPOSITION_INITIAL);
 
           gabble_call_content_add_member_content (c, content);
         }
@@ -448,8 +537,6 @@ call_channel_continue_init (GabbleCallChannel *self,
 out:
   g_simple_async_result_complete_in_idle (result);
   g_object_unref (result);
-  g_free (initial_audio_name);
-  g_free (initial_video_name);
 }
 
 static void
@@ -557,33 +644,83 @@ async_initable_iface_init (GAsyncInitableIface *iface)
 }
 
 static void
-call_channel_accept (TpyBaseCallChannel *channel)
+call_channel_accept (TpBaseMediaCallChannel *channel)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (channel);
   gabble_jingle_session_accept (self->priv->session);
 }
 
-static TpyBaseCallContent *
-call_channel_add_content (TpyBaseCallChannel *base,
+static TpBaseCallContent *
+call_channel_add_content (TpBaseCallChannel *base,
     const gchar *name,
     TpMediaStreamType type,
+    TpMediaStreamDirection initial_direction,
     GError **error)
 {
   GabbleCallChannel *self = GABBLE_CALL_CHANNEL (base);
   GabbleCallContent *content = NULL;
   GabbleCallMemberContent *mcontent;
+  JingleContentSenders senders;
+  gboolean initiated_by_us;
+
+  if (initial_direction == TP_MEDIA_STREAM_DIRECTION_NONE)
+    {
+      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          "Jingle can not do contents with direction = NONE");
+      return NULL;
+    }
+
+  g_object_get (self->priv->session, "local-initiator", &initiated_by_us,
+      NULL);
+
+  switch (initial_direction)
+    {
+    case TP_MEDIA_STREAM_DIRECTION_SEND:
+      senders = initiated_by_us ?
+          JINGLE_CONTENT_SENDERS_INITIATOR : JINGLE_CONTENT_SENDERS_RESPONDER;
+      break;
+    case TP_MEDIA_STREAM_DIRECTION_RECEIVE:
+      senders = initiated_by_us ?
+          JINGLE_CONTENT_SENDERS_RESPONDER : JINGLE_CONTENT_SENDERS_INITIATOR;
+      break;
+    default:
+    case TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL:
+      senders = JINGLE_CONTENT_SENDERS_BOTH;
+    }
 
   mcontent = gabble_call_member_create_content (self->priv->member, name,
-      jingle_media_type_from_tp (type), error);
+      jingle_media_type_from_tp (type), senders, error);
 
   if (mcontent != NULL)
     {
       content = gabble_base_call_channel_add_content (
         GABBLE_BASE_CALL_CHANNEL (base),
         name, jingle_media_type_from_tp (type),
-        TPY_CALL_CONTENT_DISPOSITION_NONE);
+        TP_CALL_CONTENT_DISPOSITION_NONE);
       gabble_call_content_add_member_content (content, mcontent);
     }
 
-  return TPY_BASE_CALL_CONTENT (content);
+  return TP_BASE_CALL_CONTENT (content);
+}
+
+static void
+call_channel_hold_state_changed (TpBaseMediaCallChannel *bmcc,
+    TpLocalHoldState hold_state, TpLocalHoldStateReason hold_state_reason)
+{
+  GabbleCallChannel *self = GABBLE_CALL_CHANNEL (bmcc);
+
+  switch (hold_state)
+    {
+    case TP_LOCAL_HOLD_STATE_HELD:
+    case TP_LOCAL_HOLD_STATE_PENDING_HOLD:
+      gabble_jingle_session_set_local_hold (self->priv->session, TRUE);
+      break;
+    case TP_LOCAL_HOLD_STATE_UNHELD:
+      gabble_jingle_session_set_local_hold (self->priv->session, FALSE);
+      break;
+    case TP_LOCAL_HOLD_STATE_PENDING_UNHOLD:
+      break;
+    default:
+      g_assert_not_reached ();
+    }
 }

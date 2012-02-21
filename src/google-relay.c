@@ -64,6 +64,7 @@ relay_session_data_new (guint requests_to_do,
   RelaySessionData *rsd = g_slice_new0 (RelaySessionData);
 
   rsd->relays = g_ptr_array_sized_new (requests_to_do);
+  g_ptr_array_set_free_func (rsd->relays, (GDestroyNotify) g_hash_table_unref);
   rsd->component = 1;
   rsd->requests_to_do = requests_to_do;
   rsd->callback = callback;
@@ -91,7 +92,6 @@ relay_session_data_destroy (gpointer p)
 {
   RelaySessionData *rsd = p;
 
-  g_ptr_array_foreach (rsd->relays, (GFunc) g_hash_table_unref, NULL);
   g_ptr_array_unref (rsd->relays);
 
   g_slice_free (RelaySessionData, rsd);

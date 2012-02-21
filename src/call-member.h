@@ -25,8 +25,6 @@
 
 #include <telepathy-glib/handle.h>
 
-#include <telepathy-yell/enums.h>
-
 #include "types.h"
 #include "jingle-session.h"
 #include "call-member-content.h"
@@ -73,7 +71,7 @@ TpHandle gabble_call_member_get_handle (
 GabbleJingleSession *gabble_call_member_get_session (
     GabbleCallMember *self);
 
-TpyCallMemberFlags gabble_call_member_get_flags (
+TpCallMemberFlags gabble_call_member_get_flags (
   GabbleCallMember *self);
 
 GList *gabble_call_member_get_contents (GabbleCallMember *self);
@@ -87,6 +85,7 @@ GabbleCallMemberContent * gabble_call_member_create_content (
     GabbleCallMember *self,
     const gchar *name,
     JingleMediaType mtype,
+    JingleContentSenders senders,
     GError **error);
 
 gboolean gabble_call_member_start_session (GabbleCallMember *self,

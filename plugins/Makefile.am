@@ -44,7 +44,6 @@ endif
 
 AM_LDFLAGS = -avoid-version -shared -no-undefined
 
-if WINDOWS
 ALL_PLUGIN_LIBS = \
 	@WOCKY_LIBS@ \
 	@GLIB_LIBS@ \
@@ -55,7 +54,6 @@ ALL_PLUGIN_LIBS = \
 libtest_la_LIBADD = $(ALL_PLUGIN_LIBS)
 libgateways_la_LIBADD = $(ALL_PLUGIN_LIBS)
 libconsole_la_LIBADD = $(ALL_PLUGIN_LIBS)
-endif
 
 libtest_la_SOURCES = \
     test.c \

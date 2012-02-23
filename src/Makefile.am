@@ -241,7 +241,13 @@ noinst_LTLIBRARIES = libgabble-convenience.la
 
 lib_LTLIBRARIES = libgabble-plugins.la
 
-libgabble_plugins_la_LDFLAGS = -shared -no-undefined -avoid-version
+# Gabble's plugin API is not stable yet (it can't be, since neither is Wocky),
+# so use -release to make the SONAME of the plugin library change with every
+# Gabble release.
+libgabble_plugins_la_LDFLAGS = \
+   -no-undefined \
+   -release $(VERSION) \
+   $(NULL)
 
 libgabble_plugins_la_LIBADD = \
    $(ALL_LIBS)

@@ -76,6 +76,7 @@ def handle_request(req, n):
 TOO_SLOW_CLOSE = 1
 TOO_SLOW_REMOVE_SELF = 2
 TOO_SLOW_DISCONNECT = 3
+TOO_SLOW_DISCONNECT_IMMEDIATELY = 4
 
 def test(q, bus, conn, stream, incoming=True, too_slow=None, use_call=False):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
@@ -103,6 +104,12 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None, use_call=False):
     # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
     ji_event = q.expect('stream-iq', query_ns='google:jingleinfo',
                 to='test@localhost')
+
+    # Regression test for a bug where Gabble would crash if it disconnected
+    # before receiving a reply to the google:jingleinfo query.
+    if too_slow == TOO_SLOW_DISCONNECT_IMMEDIATELY:
+        disconnect_conn(q, conn, stream, [])
+        return
 
     listen_port = listen_http(q, 0)
 
@@ -411,6 +418,7 @@ if __name__ == '__main__':
     exec_relay_test(False, TOO_SLOW_REMOVE_SELF)
     exec_relay_test(True,  TOO_SLOW_DISCONNECT)
     exec_relay_test(False, TOO_SLOW_DISCONNECT)
+    exec_relay_test(True,  TOO_SLOW_DISCONNECT_IMMEDIATELY)
 
     if config.CHANNEL_TYPE_CALL_ENABLED:
         exec_relay_test(True,  TOO_SLOW_CLOSE,      use_call=True)

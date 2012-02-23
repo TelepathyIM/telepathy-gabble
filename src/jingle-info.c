@@ -490,6 +490,7 @@ jingle_info_reply_cb (
     }
 
   tp_clear_object (&reply);
+  g_object_unref (self);
 }
 
 void
@@ -501,7 +502,8 @@ gabble_jingle_info_send_request (GabbleJingleInfo *self)
       wocky_porter_get_bare_jid (priv->porter),
       '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
 
-  wocky_porter_send_iq_async (priv->porter, stanza, NULL, jingle_info_reply_cb, self);
+  wocky_porter_send_iq_async (priv->porter, stanza, NULL, jingle_info_reply_cb,
+      g_object_ref (self));
   g_object_unref (stanza);
 }
 

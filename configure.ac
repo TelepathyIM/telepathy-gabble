@@ -296,7 +296,12 @@ PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.17.7])
+# FIXME: telepathy-glib 0.17.6 has the new spec but not
+#        tp_base_contact_list_get_download_at_connection
+#        and others. Please update the dependency to
+#        telepathy-glib 0.17.8 if it is released with the
+#        new needed functions. And remove this comment.
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.17.7.1])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)

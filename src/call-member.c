@@ -514,10 +514,9 @@ gabble_call_member_open_session (GabbleCallMember *self,
   jf = gabble_jingle_mint_get_factory (conn->jingle_mint);
   g_return_val_if_fail (jf != NULL, FALSE);
 
-  session = gabble_jingle_factory_create_session (jf, jid, FALSE);
+  session = gabble_jingle_factory_create_session (jf, jid, JINGLE_DIALECT_V032,
+      FALSE);
   DEBUG ("Created a jingle session: %p", session);
-
-  g_object_set (session, "dialect", JINGLE_DIALECT_V032, NULL);
 
   priv->transport_ns = g_strdup (NS_JINGLE_TRANSPORT_ICEUDP);
 
@@ -561,11 +560,10 @@ gabble_call_member_start_session (GabbleCallMember *self,
         gabble_call_member_get_connection (self)->jingle_mint);
   g_return_val_if_fail (jf != NULL, FALSE);
 
-  session = gabble_jingle_factory_create_session (jf, jid, FALSE);
+  session = gabble_jingle_factory_create_session (jf, jid, dialect, FALSE);
   g_free (jid);
 
   gabble_call_member_set_session (self, session);
-  g_object_set (session, "dialect", dialect, NULL);
 
   priv->transport_ns = g_strdup (transport);
 

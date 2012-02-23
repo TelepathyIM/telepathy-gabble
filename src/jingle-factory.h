@@ -78,6 +78,7 @@ GType gabble_jingle_factory_lookup_transport (GabbleJingleFactory *self,
 GabbleJingleSession *gabble_jingle_factory_create_session (
     GabbleJingleFactory *fac,
     const gchar *jid,
+    JingleDialect dialect,
     gboolean local_hold);
 
 GabbleJingleInfo *gabble_jingle_factory_get_jingle_info (

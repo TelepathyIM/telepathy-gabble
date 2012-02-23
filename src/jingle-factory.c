@@ -83,6 +83,7 @@ static gboolean jingle_cb (
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid,
     const gchar *jid,
+    JingleDialect dialect,
     gboolean local_hold);
 
 static gboolean session_query_cap_cb (
@@ -361,8 +362,7 @@ ensure_session (GabbleJingleFactory *self,
     {
       if (action == JINGLE_ACTION_SESSION_INITIATE)
         {
-          sess = create_session (self, sid, from, FALSE);
-          g_object_set (sess, "dialect", dialect, NULL);
+          sess = create_session (self, sid, from, dialect, FALSE);
           *new_session = TRUE;
         }
       else
@@ -466,6 +466,7 @@ static GabbleJingleSession *
 create_session (GabbleJingleFactory *fac,
     const gchar *sid,
     const gchar *jid,
+    JingleDialect dialect,
     gboolean local_hold)
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
@@ -507,7 +508,7 @@ create_session (GabbleJingleFactory *fac,
   sess = gabble_jingle_session_new (
       fac,
       priv->porter,
-      sid_, local_initiator, contact, local_hold);
+      sid_, local_initiator, contact, dialect, local_hold);
   g_signal_connect (sess, "terminated",
     (GCallback) session_terminated_cb, fac);
 
@@ -528,9 +529,10 @@ create_session (GabbleJingleFactory *fac,
 GabbleJingleSession *
 gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
     const gchar *jid,
+    JingleDialect dialect,
     gboolean local_hold)
 {
-  GabbleJingleSession *session = create_session (fac, NULL, jid, local_hold);
+  GabbleJingleSession *session = create_session (fac, NULL, jid, dialect, local_hold);
 
   g_signal_emit (fac, signals[NEW_SESSION], 0, session, TRUE);
   return session;

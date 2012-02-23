@@ -392,6 +392,7 @@ gabble_jingle_session_new (
                            const gchar *session_id,
                            gboolean local_initiator,
                            WockyContact *peer,
+                           JingleDialect dialect,
                            gboolean local_hold)
 {
   return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
@@ -400,6 +401,7 @@ gabble_jingle_session_new (
       "porter", porter,
       "local-initiator", local_initiator,
       "peer-contact", peer,
+      "dialect", dialect,
       "local-hold", local_hold,
       NULL);
 }

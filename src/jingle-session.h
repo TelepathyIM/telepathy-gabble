@@ -73,6 +73,7 @@ GabbleJingleSession *gabble_jingle_session_new (
     const gchar *session_id,
     gboolean local_initiator,
     WockyContact *peer,
+    JingleDialect dialect,
     gboolean local_hold);
 
 const gchar * gabble_jingle_session_detect (WockyStanza *stanza,

@@ -1412,17 +1412,13 @@ gtalk_file_collection_new (GabbleFileTransferChannel *channel,
   self->priv->requested = TRUE;
 
   session = gabble_jingle_factory_create_session (jingle_factory,
-      jid, FALSE);
+      jid, JINGLE_DIALECT_GTALK4, FALSE);
 
   if (session == NULL)
     {
       g_object_unref (self);
       return NULL;
     }
-
-  g_object_set (session,
-      "dialect", JINGLE_DIALECT_GTALK4,
-      NULL);
 
   content = gabble_jingle_session_add_content (session,
       JINGLE_MEDIA_TYPE_NONE, JINGLE_CONTENT_SENDERS_BOTH, "share",

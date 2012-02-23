@@ -302,7 +302,8 @@ _latch_to_session (GabbleMediaChannel *chan)
 
 static void
 create_session (GabbleMediaChannel *chan,
-    const gchar *jid)
+    const gchar *jid,
+    JingleDialect dialect)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   gboolean local_hold = (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD);
@@ -315,7 +316,7 @@ create_session (GabbleMediaChannel *chan,
   jf = gabble_jingle_mint_get_factory (priv->conn->jingle_mint);
   g_return_if_fail (jf != NULL);
   priv->session = g_object_ref (
-      gabble_jingle_factory_create_session (jf, jid, local_hold));
+      gabble_jingle_factory_create_session (jf, jid, dialect, local_hold));
 
   _latch_to_session (chan);
 }
@@ -1709,10 +1710,8 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
 
       jid = gabble_peer_to_jid (priv->conn, peer, peer_resource);
       priv->peer = peer;
-      create_session (chan, jid);
+      create_session (chan, jid, dialect);
       g_free (jid);
-
-      g_object_set (priv->session, "dialect", dialect, NULL);
 
       /* Change nat-traversal if we need to */
       if (!tp_strdiff (transport_ns, NS_JINGLE_TRANSPORT_ICEUDP))

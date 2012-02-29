@@ -1892,6 +1892,7 @@ _on_initiate_reply (
     }
 
   g_clear_object (&reply);
+  g_object_unref (sess);
 }
 
 static void
@@ -1927,6 +1928,7 @@ _on_accept_reply (
     }
 
   g_clear_object (&reply);
+  g_object_unref (sess);
 }
 
 static void

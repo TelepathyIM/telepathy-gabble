@@ -157,9 +157,6 @@ gabble_jingle_info_dispose (GObject *object)
   GabbleJingleInfoPrivate *priv = self->priv;
   GObjectClass *parent_class = gabble_jingle_info_parent_class;
 
-  if (parent_class->dispose != NULL)
-    parent_class->dispose (object);
-
   if (priv->porter != NULL)
     {
       g_assert (priv->jingle_info_handler_id != 0);
@@ -181,6 +178,9 @@ gabble_jingle_info_dispose (GObject *object)
   priv->relay_token = NULL;
   g_free (priv->relay_server);
   priv->relay_server = NULL;
+
+  if (parent_class->dispose != NULL)
+    parent_class->dispose (object);
 }
 
 static void

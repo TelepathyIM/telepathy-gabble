@@ -125,6 +125,10 @@ libgabble_convenience_la_SOURCES = \
     muc-channel.c \
     muc-factory.h \
     muc-factory.c \
+    muc-tube-dbus.h \
+    muc-tube-dbus.c \
+    muc-tube-stream.h \
+    muc-tube-stream.c \
     namespaces.h \
     olpc-activity.h \
     olpc-activity.c \

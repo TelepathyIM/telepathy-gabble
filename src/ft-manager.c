@@ -42,6 +42,7 @@
 #include <wocky/wocky.h>
 
 #include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/base-channel.h>
 #include <telepathy-glib/channel-factory-iface.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/gtypes.h>
@@ -190,7 +191,7 @@ ft_manager_close_all (GabbleFtManager *self)
 
   while ((l = self->priv->channels) != NULL)
     {
-      gabble_file_transfer_channel_do_close (l->data);
+      tp_base_channel_close (l->data);
       /* Channels should have closed and disappeared from the list */
       g_assert (l != self->priv->channels);
     }
@@ -297,6 +298,8 @@ gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
     {
       GabbleFileTransferChannel *chan = i->data;
 
+      tp_base_channel_register (TP_BASE_CHANNEL (chan));
+
       gabble_signal_connect_weak (chan, "closed",
           G_CALLBACK (file_channel_closed_cb), G_OBJECT (self));
 
@@ -317,6 +320,8 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
                                    gpointer request_token)
 {
   GSList *requests = NULL;
+
+  tp_base_channel_register (TP_BASE_CHANNEL (chan));
 
   gabble_signal_connect_weak (chan, "closed",
       G_CALLBACK (file_channel_closed_cb), G_OBJECT (self));

@@ -515,7 +515,7 @@ connection_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
     case TP_CONNECTION_STATUS_CONNECTING:
-      g_signal_connect (priv->conn->jingle_mint, "new-session",
+      g_signal_connect (priv->conn->jingle_mint, "incoming-session",
           G_CALLBACK (new_jingle_session_cb), self);
       break;
 

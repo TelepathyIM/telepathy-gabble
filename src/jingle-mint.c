@@ -42,7 +42,7 @@ struct _GabbleJingleMintPrivate {
 };
 
 enum {
-    NEW_SESSION = 0,
+    INCOMING_SESSION = 0,
     N_SIGNALS
 };
 
@@ -173,8 +173,7 @@ gabble_jingle_mint_class_init (GabbleJingleMintClass *klass)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
 
-  /* Only emitted for new incoming sessions, mainly for legacy reasons */
-  signals[NEW_SESSION] = g_signal_new ("new-session",
+  signals[INCOMING_SESSION] = g_signal_new ("incoming-session",
         G_TYPE_FROM_CLASS (klass), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, g_cclosure_marshal_VOID__OBJECT,
         G_TYPE_NONE, 1, GABBLE_TYPE_JINGLE_SESSION);
@@ -298,7 +297,7 @@ factory_new_session_cb (
 
   /* Proxy the signal outwards if this is a new incoming session. */
   if (!initiated_locally)
-    g_signal_emit (self, signals[NEW_SESSION], 0, session);
+    g_signal_emit (self, signals[INCOMING_SESSION], 0, session);
 }
 
 static gboolean

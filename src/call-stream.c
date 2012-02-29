@@ -188,6 +188,7 @@ google_relay_session_cb (GPtrArray *relays,
   if (stream != NULL)
     {
       GPtrArray *tp_relays = gabble_build_tp_relay_info (relays);
+
       tp_base_media_call_stream_set_relay_info (stream, tp_relays);
       g_ptr_array_unref (tp_relays);
       g_object_unref (stream);

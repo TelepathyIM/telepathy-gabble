@@ -375,7 +375,7 @@ new_call_channel (GabbleMediaFactory *self,
   TpHandle initiator;
 
   if (sess != NULL)
-    initiator = sess->peer;
+    initiator = peer;
   else
     initiator = conn->self_handle;
 
@@ -441,12 +441,14 @@ gabble_media_factory_close_all (GabbleMediaFactory *fac)
 }
 
 static void
-new_jingle_session_cb (GabbleJingleFactory *jf,
+new_jingle_session_cb (GabbleJingleMint *jm,
     GabbleJingleSession *sess,
     gpointer data)
 {
   GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (data);
   GabbleMediaFactoryPrivate *priv = self->priv;
+  TpHandleRepoIface *contacts;
+  TpHandle peer;
 
   if (gabble_jingle_session_get_content_type (sess) !=
       GABBLE_TYPE_JINGLE_MEDIA_RTP)
@@ -455,17 +457,25 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
   if (gabble_muc_factory_handle_jingle_session (priv->conn->muc_factory, sess))
     {
       /* Muji channel the muc factory is taking care of it */
+      return;
     }
-  else if (self->priv->use_call_channels)
+
+  contacts = tp_base_connection_get_handles (TP_BASE_CONNECTION (priv->conn),
+      TP_HANDLE_TYPE_CONTACT);
+  peer = tp_handle_ensure (contacts, gabble_jingle_session_get_peer_jid (sess),
+      NULL, NULL);
+
+  if (self->priv->use_call_channels)
     {
-      new_call_channel (self, sess, sess->peer,
+      new_call_channel (self, sess, peer,
         FALSE, NULL,
         FALSE, NULL,
         NULL);
     }
   else
     {
-      GabbleMediaChannel *chan = new_media_channel (self, sess, sess->peer,
+      GabbleMediaChannel *chan = new_media_channel (self, sess,
+          peer,
           FALSE, FALSE, FALSE);
       GList *cs;
 
@@ -505,7 +515,7 @@ connection_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
     case TP_CONNECTION_STATUS_CONNECTING:
-      g_signal_connect (priv->conn->jingle_factory, "new-session",
+      g_signal_connect (priv->conn->jingle_mint, "incoming-session",
           G_CALLBACK (new_jingle_session_cb), self);
       break;
 

@@ -762,6 +762,28 @@ ensure_bare_contact_from_jid (GabbleConnection *conn,
   return wocky_contact_factory_ensure_bare_contact (contact_factory, jid);
 }
 
+TpHandle
+ensure_handle_from_contact (
+    GabbleConnection *conn,
+    WockyContact *contact)
+{
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  gchar *jid = wocky_contact_dup_jid (contact);
+  GError *error = NULL;
+  TpHandle handle = tp_handle_ensure (contact_repo, jid, NULL, &error);
+
+  if (handle == 0)
+    {
+      g_critical ("Contact %p has JID '%s' which is not valid: %s",
+          contact, jid, error->message);
+      g_clear_error (&error);
+    }
+
+  g_free (jid);
+  return handle;
+}
+
 #define TWICE(x) x, x
 
 static gboolean

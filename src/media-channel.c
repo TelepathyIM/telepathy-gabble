@@ -43,6 +43,7 @@
 #include "jingle-factory.h"
 #include "jingle-media-rtp.h"
 #include "jingle-session.h"
+#include "jingle-tp-util.h"
 #include "media-factory.h"
 #include "media-stream.h"
 #include "namespaces.h"
@@ -301,19 +302,21 @@ _latch_to_session (GabbleMediaChannel *chan)
 
 static void
 create_session (GabbleMediaChannel *chan,
-    TpHandle peer,
-    const gchar *jid)
+    const gchar *jid,
+    JingleDialect dialect)
 {
   GabbleMediaChannelPrivate *priv = chan->priv;
   gboolean local_hold = (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD);
+  GabbleJingleFactory *jf;
 
   g_assert (priv->session == NULL);
 
   DEBUG ("%p: Creating new outgoing session", chan);
 
+  jf = gabble_jingle_mint_get_factory (priv->conn->jingle_mint);
+  g_return_if_fail (jf != NULL);
   priv->session = g_object_ref (
-      gabble_jingle_factory_create_session (priv->conn->jingle_factory,
-          peer, jid, local_hold));
+      gabble_jingle_factory_create_session (jf, jid, dialect, local_hold));
 
   _latch_to_session (chan);
 }
@@ -328,7 +331,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   TpDBusDaemon *bus;
   TpIntSet *set;
   TpHandleRepoIface *contact_handles;
-  GabbleJingleFactory *jf;
+  GabbleJingleInfo *ji;
   const gchar *relay_token;
   gchar *stun_server;
   guint stun_port;
@@ -349,9 +352,16 @@ gabble_media_channel_constructor (GType type, guint n_props,
       contact_handles, conn->self_handle);
 
   if (priv->session != NULL)
-      priv->creator = priv->session->peer;
+    {
+      priv->peer = ensure_handle_from_contact (priv->conn,
+          gabble_jingle_session_get_peer_contact (priv->session));
+      g_return_val_if_fail (priv->peer != 0, NULL);
+      priv->creator = priv->peer;
+    }
   else
+    {
       priv->creator = conn->self_handle;
+    }
 
   /* automatically add creator to channel, but also ref them again (because
    * priv->creator is the InitiatorHandle) */
@@ -374,9 +384,9 @@ gabble_media_channel_constructor (GType type, guint n_props,
       0);
 
   /* Set up Google relay related properties */
-  jf = priv->conn->jingle_factory;
+  ji = gabble_jingle_mint_get_info (priv->conn->jingle_mint);
 
-  if (gabble_jingle_factory_get_stun_server (jf, &stun_server,
+  if (gabble_jingle_info_get_stun_server (ji, &stun_server,
         &stun_port))
     {
       g_object_set (obj,
@@ -386,7 +396,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
       g_free (stun_server);
     }
 
-  relay_token = gabble_jingle_factory_get_google_relay_token (jf);
+  relay_token = gabble_jingle_info_get_google_relay_token (ji);
 
   if (relay_token != NULL)
     {
@@ -403,7 +413,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
        */
       set = tp_intset_new_containing (conn->self_handle);
       tp_group_mixin_change_members (obj, "", NULL, NULL, set, NULL,
-          priv->session->peer, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+          priv->peer, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
       tp_intset_destroy (set);
 
       /* Set up signal callbacks, emit session handler, initialize streams,
@@ -534,10 +544,8 @@ gabble_media_channel_get_property (GObject    *object,
 
         if (priv->initial_peer != 0)
           peer = priv->initial_peer;
-        else if (priv->session != NULL)
-          g_object_get (priv->session,
-              "peer", &peer,
-              NULL);
+        else
+          peer = priv->peer;
 
         g_value_set_uint (value, peer);
         break;
@@ -1134,15 +1142,10 @@ gabble_media_channel_get_session_handlers (TpSvcChannelInterfaceMediaSignalling 
   if (priv->session)
     {
       GValue handler = { 0, };
-      TpHandle member;
 
       g_value_init (&handler, info_type);
       g_value_take_boxed (&handler,
           dbus_g_type_specialized_construct (info_type));
-
-      g_object_get (priv->session,
-                    "peer", &member,
-                    NULL);
 
       dbus_g_type_struct_set (&handler,
           0, priv->object_path,
@@ -1188,7 +1191,6 @@ make_stream_list (GabbleMediaChannel *self,
     {
       GValue entry = { 0, };
       guint id;
-      TpHandle peer;
       TpMediaStreamType type;
       TpMediaStreamState connection_state;
       CombinedStreamDirection combined_direction;
@@ -1200,15 +1202,13 @@ make_stream_list (GabbleMediaChannel *self,
           "combined-direction", &combined_direction,
           NULL);
 
-      g_object_get (priv->session, "peer", &peer, NULL);
-
       g_value_init (&entry, info_type);
       g_value_take_boxed (&entry,
           dbus_g_type_specialized_construct (info_type));
 
       dbus_g_type_struct_set (&entry,
           0, id,
-          1, peer,
+          1, priv->peer,
           2, type,
           3, connection_state,
           4, COMBINED_DIRECTION_GET_DIRECTION (combined_direction),
@@ -1709,10 +1709,9 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
           transport_ns, dialect);
 
       jid = gabble_peer_to_jid (priv->conn, peer, peer_resource);
-      create_session (chan, peer, jid);
+      priv->peer = peer;
+      create_session (chan, jid, dialect);
       g_free (jid);
-
-      g_object_set (priv->session, "dialect", dialect, NULL);
 
       /* Change nat-traversal if we need to */
       if (!tp_strdiff (transport_ns, NS_JINGLE_TRANSPORT_ICEUDP))
@@ -1916,21 +1915,12 @@ media_channel_request_streams (GabbleMediaChannel *self,
       goto error;
     }
 
-  if (priv->session != NULL)
+  if (priv->peer != 0 && priv->peer != contact_handle)
     {
-      TpHandle peer;
-
-      g_object_get (priv->session,
-          "peer", &peer,
-          NULL);
-
-      if (peer != contact_handle)
-        {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-              "cannot add streams for %u: this channel's peer is %u",
-              contact_handle, peer);
-          goto error;
-        }
+      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          "cannot add streams for %u: this channel's peer is %u",
+          contact_handle, priv->peer);
+      goto error;
     }
 
   if (!_gabble_media_channel_request_contents (self, contact_handle, types,
@@ -2121,19 +2111,12 @@ gabble_media_channel_add_member (GObject *obj,
       /* yes: check we don't have a peer already, and if not add this one to
        * remote pending (but don't send an invitation yet).
        */
-      if (priv->session != NULL)
+      if (priv->peer != 0 && priv->peer != handle)
         {
-          TpHandle peer;
-
-          g_object_get (priv->session, "peer", &peer, NULL);
-
-          if (peer != handle)
-            {
-              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
-                  "handle %u cannot be added: this channel's peer is %u",
-                  handle, peer);
-              return FALSE;
-            }
+          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              "handle %u cannot be added: this channel's peer is %u",
+              handle, priv->peer);
+          return FALSE;
         }
 
       /* We can't delay the request at this time, but if there's a chance
@@ -2375,26 +2358,24 @@ session_terminated_cb (GabbleJingleSession *session,
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   guint terminator;
   JingleState state;
-  TpHandle peer;
   TpIntSet *set;
 
   DEBUG ("called");
 
   g_object_get (session,
                 "state", &state,
-                "peer", &peer,
                 NULL);
 
   if (local_terminator)
       terminator = mixin->self_handle;
   else
-      terminator = peer;
+      terminator = priv->peer;
 
   set = tp_intset_new ();
 
   /* remove us and the peer from the member list */
   tp_intset_add (set, mixin->self_handle);
-  tp_intset_add (set, peer);
+  tp_intset_add (set, priv->peer);
 
   tp_group_mixin_change_members ((GObject *) channel,
       text, NULL, set, NULL, NULL, terminator,
@@ -2464,21 +2445,19 @@ session_state_changed_cb (GabbleJingleSession *session,
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   JingleState state;
-  TpHandle peer;
   TpIntSet *set;
 
   DEBUG ("called");
 
   g_object_get (session,
                 "state", &state,
-                "peer", &peer,
                 NULL);
 
-  set = tp_intset_new_containing (peer);
+  set = tp_intset_new_containing (priv->peer);
 
   if (state >= JINGLE_STATE_PENDING_INITIATE_SENT &&
       state < JINGLE_STATE_ACTIVE &&
-      !tp_handle_set_is_member (mixin->members, peer))
+      !tp_handle_set_is_member (mixin->members, priv->peer))
     {
       /* The first time we send anything to the other user, they materialise
        * in remote-pending if necessary */
@@ -2500,7 +2479,7 @@ session_state_changed_cb (GabbleJingleSession *session,
 
       /* add the peer to the member list */
       tp_group_mixin_change_members (as_object, "", set, NULL, NULL, NULL,
-          peer, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
+          priv->peer, TP_CHANNEL_GROUP_CHANGE_REASON_NONE);
     }
 
   tp_intset_destroy (set);
@@ -2661,8 +2640,9 @@ construct_stream (GabbleMediaChannel *chan,
   object_path = g_strdup_printf ("%s/MediaStream%u",
       priv->object_path, id);
 
-  stream = gabble_media_stream_new (object_path, c, name, id,
-      nat_traversal, relays, local_hold);
+  stream = gabble_media_stream_new (
+      tp_base_connection_get_dbus_daemon (TP_BASE_CONNECTION (priv->conn)),
+      object_path, c, name, id, nat_traversal, relays, local_hold);
   mtype = gabble_media_stream_get_media_type (stream);
 
   if (mtype == TP_MEDIA_STREAM_TYPE_AUDIO)
@@ -2724,7 +2704,7 @@ construct_stream (GabbleMediaChannel *chan,
     mtype == TP_MEDIA_STREAM_TYPE_AUDIO ? "audio" : "video");
 
   tp_svc_channel_type_streamed_media_emit_stream_added (
-      chan, id, priv->session->peer, mtype);
+      chan, id, priv->peer, mtype);
 
   /* StreamAdded does not include the stream's direction and pending send
    * information, so we call the notify::combined-direction handler in order to
@@ -2798,11 +2778,13 @@ google_relay_session_cb (GPtrArray *relays,
                          gpointer user_data)
 {
   StreamCreationData *d = user_data;
+  GPtrArray *tp_relays = gabble_build_tp_relay_info (relays);
 
   if (d->content != NULL && d->self != NULL)
-    construct_stream (d->self, d->content, d->name, d->nat_traversal, relays,
+    construct_stream (d->self, d->content, d->name, d->nat_traversal, tp_relays,
       d->initial);
 
+  g_ptr_array_unref (tp_relays);
   stream_creation_data_free (d);
 }
 
@@ -2890,8 +2872,9 @@ create_stream_from_content (GabbleMediaChannel *self,
          * don't yet know whether there will be RTCP. */
         d->nat_traversal = "gtalk-p2p";
         DEBUG ("Attempting to create Google relay session");
-        gabble_jingle_factory_create_google_relay_session (
-            self->priv->conn->jingle_factory, 2, google_relay_session_cb, d);
+        gabble_jingle_info_create_google_relay_session (
+            gabble_jingle_mint_get_info (self->priv->conn->jingle_mint),
+            2, google_relay_session_cb, d);
         return;
 
       case JINGLE_TRANSPORT_ICE_UDP:

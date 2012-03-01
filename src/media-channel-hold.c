@@ -347,7 +347,7 @@ remote_state_changed_cb (GabbleJingleSession *session,
   priv->call_state = call_state;
 
   tp_svc_channel_interface_call_state_emit_call_state_changed (self,
-      priv->session->peer, call_state);
+      priv->peer, call_state);
 }
 
 
@@ -357,11 +357,14 @@ gabble_media_channel_get_call_states (TpSvcChannelInterfaceCallState *iface,
     DBusGMethodInvocation *context)
 {
   GabbleMediaChannel *self = (GabbleMediaChannel *) iface;
+  GabbleMediaChannelPrivate *priv = self->priv;
   GHashTable *states = g_hash_table_new (g_direct_hash, g_direct_equal);
 
-  if (self->priv->session != NULL)
-    g_hash_table_insert (states, GUINT_TO_POINTER (self->priv->session->peer),
-        GUINT_TO_POINTER (self->priv->call_state));
+  if (priv->peer != 0)
+    {
+      g_hash_table_insert (states, GUINT_TO_POINTER (priv->peer),
+          GUINT_TO_POINTER (priv->call_state));
+    }
 
   tp_svc_channel_interface_call_state_return_from_get_call_states (context,
       states);

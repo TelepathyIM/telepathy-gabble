@@ -43,19 +43,8 @@ typedef struct _GabbleRequestPipeline GabbleRequestPipeline;
 
 typedef struct _GabbleTubesChannel GabbleTubesChannel;
 
-typedef struct _GabbleJingleFactory GabbleJingleFactory;
-typedef struct _GabbleJingleSession GabbleJingleSession;
-typedef struct _GabbleJingleContent GabbleJingleContent;
-typedef struct _GabbleJingleTransportGoogle GabbleJingleTransportGoogle;
-typedef struct _GabbleJingleTransportRawUdp GabbleJingleTransportRawUdp;
-typedef struct _GabbleJingleTransportIceUdp GabbleJingleTransportIceUdp;
-typedef struct _GabbleJingleMediaRtp GabbleJingleMediaRtp;
-typedef struct _GabbleJingleShare GabbleJingleShare;
-
 typedef struct _GabbleCallMember GabbleCallMember;
 typedef struct _GabbleCallMemberContent GabbleCallMemberContent;
-
-typedef struct _JingleCandidate JingleCandidate;
 
 struct _GabbleDiscoIdentity
 {
@@ -64,12 +53,6 @@ struct _GabbleDiscoIdentity
     gchar *lang;
     gchar *name;
 };
-
-typedef enum {
-    INITIATOR_INVALID = -1,
-    INITIATOR_LOCAL = 0,
-    INITIATOR_REMOTE,
-} JingleInitiator;
 
 G_END_DECLS
 

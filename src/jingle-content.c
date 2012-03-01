@@ -34,7 +34,6 @@
 #include "jingle-transport-google.h"
 #include "jingle-media-rtp.h"
 #include "namespaces.h"
-#include "util.h"
 #include "gabble-signals-marshal.h"
 
 /* signal enum */
@@ -53,8 +52,7 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
-  PROP_SESSION,
+  PROP_SESSION = 1,
   PROP_CONTENT_NS,
   PROP_TRANSPORT_NS,
   PROP_NAME,
@@ -119,7 +117,6 @@ gabble_jingle_content_init (GabbleJingleContent *obj)
   priv->gtalk4_event_id = 0;
   priv->dispose_has_run = FALSE;
 
-  obj->conn = NULL;
   obj->session = NULL;
 }
 
@@ -170,9 +167,6 @@ gabble_jingle_content_get_property (GObject *object,
   GabbleJingleContentPrivate *priv = self->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, self->conn);
-      break;
     case PROP_SESSION:
       g_value_set_object (value, self->session);
       break;
@@ -213,9 +207,6 @@ gabble_jingle_content_set_property (GObject *object,
   GabbleJingleContentPrivate *priv = self->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      self->conn = g_value_get_object (value);
-      break;
     case PROP_SESSION:
       self->session = g_value_get_object (value);
       break;
@@ -233,7 +224,8 @@ gabble_jingle_content_set_property (GObject *object,
       if (priv->transport_ns != NULL)
         {
           GType transport_type = gabble_jingle_factory_lookup_transport (
-              self->conn->jingle_factory, priv->transport_ns);
+              gabble_jingle_session_get_factory (self->session),
+              priv->transport_ns);
 
           g_assert (transport_type != 0);
 
@@ -290,12 +282,6 @@ gabble_jingle_content_class_init (GabbleJingleContentClass *cls)
   cls->get_default_senders = get_default_senders_real;
 
   /* property definitions */
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object used for exchanging messages.",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
-
   param_spec = g_param_spec_object ("session", "GabbleJingleSession object",
       "Jingle session object that owns this content.",
       GABBLE_TYPE_JINGLE_SESSION,
@@ -414,11 +400,11 @@ parse_senders (const gchar *txt)
   if (txt == NULL)
       return JINGLE_CONTENT_SENDERS_NONE;
 
-  if (!tp_strdiff (txt, "initiator"))
+  if (!wocky_strdiff (txt, "initiator"))
       return JINGLE_CONTENT_SENDERS_INITIATOR;
-  else if (!tp_strdiff (txt, "responder"))
+  else if (!wocky_strdiff (txt, "responder"))
       return JINGLE_CONTENT_SENDERS_RESPONDER;
-  else if (!tp_strdiff (txt, "both"))
+  else if (!wocky_strdiff (txt, "both"))
       return JINGLE_CONTENT_SENDERS_BOTH;
 
   return JINGLE_CONTENT_SENDERS_NONE;
@@ -490,7 +476,7 @@ send_gtalk4_transport_accept (gpointer user_data)
   tnode = wocky_node_add_child_with_content (sess_node, "transport", NULL);
   tnode->ns = g_quark_from_string (priv->transport_ns);
 
-  gabble_jingle_session_send (c->session, msg, NULL, NULL);
+  gabble_jingle_session_send (c->session, msg);
 
   return FALSE;
 }
@@ -536,7 +522,8 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
           dialect = JINGLE_DIALECT_GTALK3;
           g_object_set (c->session, "dialect", JINGLE_DIALECT_GTALK3, NULL);
           transport_type = gabble_jingle_factory_lookup_transport (
-              c->conn->jingle_factory, "");
+              gabble_jingle_session_get_factory (c->session),
+              "");
 
           /* in practice we do support gtalk-p2p, so this can't happen */
           if (G_UNLIKELY (transport_type == 0))
@@ -551,7 +538,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   else
     {
       if (creator == NULL &&
-          gabble_jingle_session_peer_has_quirk (c->session,
+          gabble_jingle_session_peer_has_cap (c->session,
               QUIRK_GOOGLE_WEBMAIL_CLIENT))
         {
           if (gabble_jingle_content_creator_is_initiator (c))
@@ -580,7 +567,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
       const gchar *ns = wocky_node_get_ns (trans_node);
 
       transport_type = gabble_jingle_factory_lookup_transport (
-          c->conn->jingle_factory, ns);
+          gabble_jingle_session_get_factory (c->session), ns);
 
       if (transport_type == 0)
         {
@@ -610,7 +597,7 @@ gabble_jingle_content_parse_add (GabbleJingleContent *c,
   if (disposition == NULL)
       disposition = "session";
 
-  if (tp_strdiff (disposition, priv->disposition))
+  if (wocky_strdiff (disposition, priv->disposition))
     {
       g_free (priv->disposition);
       priv->disposition = g_strdup (disposition);
@@ -700,7 +687,7 @@ gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
   channel_node->ns = g_quark_from_string (priv->content_ns);
   wocky_node_set_attribute (channel_node, "name", name);
 
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  gabble_jingle_session_send (self->session, msg);
 
   return new_share_channel (self, name);
 }
@@ -719,7 +706,7 @@ gabble_jingle_content_send_complete (GabbleJingleContent *self)
   complete_node = wocky_node_add_child_with_content (sess_node, "complete", NULL);
   complete_node->ns = g_quark_from_string (priv->content_ns);
 
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  gabble_jingle_session_send (self->session, msg);
 
 }
 
@@ -995,7 +982,7 @@ send_content_add_or_accept (GabbleJingleContent *self)
       &transport_node);
   gabble_jingle_transport_iface_inject_candidates (priv->transport,
       transport_node);
-  gabble_jingle_session_send (self->session, msg, NULL, NULL);
+  gabble_jingle_session_send (self->session, msg);
 
   priv->state = new_state;
   g_object_notify (G_OBJECT (self), "state");
@@ -1018,7 +1005,7 @@ _maybe_ready (GabbleJingleContent *self)
 
   g_object_get (self->session, "state", &state, NULL);
 
-  if (!tp_strdiff (priv->disposition, "session") &&
+  if (!wocky_strdiff (priv->disposition, "session") &&
       (state < JINGLE_STATE_PENDING_ACCEPT_SENT))
     {
       /* Notify the session that we're ready for
@@ -1063,7 +1050,7 @@ gabble_jingle_content_maybe_send_description (GabbleJingleContent *self)
           JINGLE_ACTION_DESCRIPTION_INFO, &sess_node);
 
       gabble_jingle_content_produce_node (self, sess_node, TRUE, FALSE, NULL);
-      gabble_jingle_session_send (self->session, msg, NULL, NULL);
+      gabble_jingle_session_send (self->session, msg);
     }
   else
     {
@@ -1167,7 +1154,7 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
       msg = gabble_jingle_session_new_message (c->session,
           JINGLE_ACTION_CONTENT_MODIFY, &sess_node);
       gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
-      gabble_jingle_session_send (c->session, msg, NULL, NULL);
+      gabble_jingle_session_send (c->session, msg);
     }
 
   /* FIXME: actually check whether remote end accepts our content-modify */
@@ -1175,11 +1162,12 @@ gabble_jingle_content_change_direction (GabbleJingleContent *c,
 }
 
 static void
-_on_remove_reply (GObject *c_as_obj,
-    gboolean success,
-    WockyStanza *reply)
+_on_remove_reply (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (c_as_obj);
+  GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
   GabbleJingleContentPrivate *priv = c->priv;
 
   g_assert (priv->state == JINGLE_CONTENT_STATE_REMOVING);
@@ -1190,6 +1178,7 @@ _on_remove_reply (GObject *c_as_obj,
    * 'removed'.
    */
   g_signal_emit (c, signals[REMOVED], 0);
+  g_object_unref (c);
 }
 
 static void
@@ -1231,8 +1220,9 @@ _content_remove (GabbleJingleContent *c,
         }
 
       gabble_jingle_content_produce_node (c, sess_node, FALSE, FALSE, NULL);
-      gabble_jingle_session_send (c->session, msg, _on_remove_reply,
-          (GObject *) c);
+      wocky_porter_send_iq_async (gabble_jingle_session_get_porter (c->session),
+          msg, NULL, _on_remove_reply, g_object_ref (c));
+      g_object_unref (msg);
     }
   else
     {
@@ -1415,33 +1405,4 @@ gabble_jingle_content_request_receiving (GabbleJingleContent *self,
     gabble_jingle_content_remove (self, TRUE);
   else
     gabble_jingle_content_change_direction (self, senders);
-}
-
-
-JingleMediaType
-jingle_media_type_from_tp (TpMediaStreamType type)
-{
-  switch (type)
-    {
-      case TP_MEDIA_STREAM_TYPE_AUDIO:
-        return JINGLE_MEDIA_TYPE_AUDIO;
-      case TP_MEDIA_STREAM_TYPE_VIDEO:
-        return JINGLE_MEDIA_TYPE_VIDEO;
-      default:
-        g_return_val_if_reached (JINGLE_MEDIA_TYPE_NONE);
-    }
-}
-
-TpMediaStreamType
-jingle_media_type_to_tp (JingleMediaType type)
-{
-  switch (type)
-    {
-      case JINGLE_MEDIA_TYPE_AUDIO:
-        return TP_MEDIA_STREAM_TYPE_AUDIO;
-      case JINGLE_MEDIA_TYPE_VIDEO:
-        return TP_MEDIA_STREAM_TYPE_VIDEO;
-      default:
-        g_return_val_if_reached (TP_MEDIA_STREAM_TYPE_AUDIO);
-    }
 }

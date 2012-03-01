@@ -334,9 +334,9 @@ parse_description (GabbleJingleContent *content,
       const gchar *size;
       GabbleJingleShareManifestEntry *m = NULL;
 
-      if (!tp_strdiff (node->name, "folder"))
+      if (!wocky_strdiff (node->name, "folder"))
         folder = TRUE;
-      else if (!tp_strdiff (node->name, "file"))
+      else if (!wocky_strdiff (node->name, "file"))
         folder = FALSE;
       else
         continue;
@@ -383,13 +383,13 @@ parse_description (GabbleJingleContent *content,
           if (name == NULL)
             continue;
 
-          if (!tp_strdiff (name, "source-path"))
+          if (!wocky_strdiff (name, "source-path"))
             {
               const gchar *url = node->content;
               priv->manifest->source_url = g_strdup (url);
             }
 
-          if (!tp_strdiff (name, "preview-path"))
+          if (!wocky_strdiff (name, "preview-path"))
             {
               const gchar *url = node->content;
               priv->manifest->preview_url = g_strdup (url);

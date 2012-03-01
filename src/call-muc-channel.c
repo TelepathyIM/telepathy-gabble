@@ -33,6 +33,7 @@
 #include "call-muc-channel.h"
 #include "util.h"
 #include "namespaces.h"
+#include "jingle-tp-util.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
@@ -1111,11 +1112,15 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
     GabbleJingleSession *session)
 {
   GabbleCallMember *member;
-  DEBUG ("New incoming session from %s",
-    gabble_jingle_session_get_peer_jid (session));
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *jid = gabble_jingle_session_get_peer_jid (session);
+  TpHandle peer = tp_handle_ensure (contact_repo, jid, NULL, NULL);
 
-  member = gabble_base_call_channel_get_member_from_handle
-    (GABBLE_BASE_CALL_CHANNEL (self), session->peer);
+  DEBUG ("New incoming session from %s", jid);
+  member = gabble_base_call_channel_get_member_from_handle (
+      GABBLE_BASE_CALL_CHANNEL (self), peer);
 
   if (member == NULL || gabble_call_member_get_session (member) != NULL)
     {

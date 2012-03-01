@@ -38,7 +38,6 @@
 #include "jingle-session.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "util.h"
 #include "jingle-transport-google.h"
 
 G_DEFINE_TYPE (GabbleJingleMediaRtp,
@@ -336,7 +335,7 @@ static void transport_created (GabbleJingleContent *content,
 
       if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO &&
           (JINGLE_IS_GOOGLE_DIALECT (dialect) ||
-           gabble_jingle_session_peer_has_quirk (content->session,
+           gabble_jingle_session_peer_has_cap (content->session,
                QUIRK_GOOGLE_WEBMAIL_CLIENT)))
         {
           jingle_transport_google_set_component_name (gtrans, "video_rtp", 1);
@@ -366,10 +365,10 @@ extract_media_type (WockyNode *desc_node,
           return JINGLE_MEDIA_TYPE_NONE;
         }
 
-      if (!tp_strdiff (type, "audio"))
+      if (!wocky_strdiff (type, "audio"))
           return JINGLE_MEDIA_TYPE_AUDIO;
 
-      if (!tp_strdiff (type, "video"))
+      if (!wocky_strdiff (type, "video"))
         return JINGLE_MEDIA_TYPE_VIDEO;
 
       g_set_error (error, WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
@@ -395,17 +394,6 @@ extract_media_type (WockyNode *desc_node,
   g_assert_not_reached ();
 }
 
-static gboolean
-content_has_cap (GabbleJingleContent *content, const gchar *cap)
-{
-  GabblePresence *presence = gabble_presence_cache_get (
-      content->conn->presence_cache, content->session->peer);
-
-  return (presence != NULL) && gabble_presence_resource_has_caps (presence,
-      gabble_jingle_session_get_peer_resource (content->session),
-      gabble_capability_set_predicate_has, cap);
-}
-
 static JingleFeedbackMessage *
 parse_rtcp_fb (GabbleJingleContent *content, WockyNode *node)
 {
@@ -413,7 +401,7 @@ parse_rtcp_fb (GabbleJingleContent *content, WockyNode *node)
   const gchar *type;
   const gchar *subtype;
 
-  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+  if (wocky_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
     return NULL;
 
   type = wocky_node_get_attribute (node, "type");
@@ -441,7 +429,7 @@ parse_rtcp_fb_trr_int (GabbleJingleContent *content, WockyNode *node)
   guint trr_int;
   gchar *endptr = NULL;
 
-  if (tp_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
+  if (wocky_strdiff (pt_ns, NS_JINGLE_RTCP_FB))
     return G_MAXUINT;
 
   txt = wocky_node_get_attribute (node, "value");
@@ -506,7 +494,7 @@ parse_payload_type (GabbleJingleContent *content,
   wocky_node_iter_init (&i, node, NULL, NULL);
   while (wocky_node_iter_next (&i, &param))
     {
-      if (!tp_strdiff (param->name, "parameter"))
+      if (!wocky_strdiff (param->name, "parameter"))
         {
           const gchar *param_name, *param_value;
 
@@ -519,7 +507,7 @@ parse_payload_type (GabbleJingleContent *content,
           g_hash_table_insert (p->params, g_strdup (param_name),
               g_strdup (param_value));
         }
-      else if (!tp_strdiff (param->name, "rtcp-fb"))
+      else if (!wocky_strdiff (param->name, "rtcp-fb"))
         {
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, param);
 
@@ -529,7 +517,7 @@ parse_payload_type (GabbleJingleContent *content,
               priv->has_rtcp_fb = TRUE;
             }
         }
-      else if (!tp_strdiff (param->name,
+      else if (!wocky_strdiff (param->name,
               "rtcp-fb-trr-int"))
         {
           guint trr_int = parse_rtcp_fb_trr_int (content, param);
@@ -602,10 +590,11 @@ parse_rtp_header_extension (WockyNode *node)
 static gboolean
 codec_update_coherent (const JingleCodec *old_c,
                        const JingleCodec *new_c,
-                       GQuark domain,
-                       gint code,
                        GError **e)
 {
+  const GQuark domain = WOCKY_XMPP_ERROR;
+  const gint code = WOCKY_XMPP_ERROR_BAD_REQUEST;
+
   if (old_c == NULL)
     {
       g_set_error (e, domain, code, "Codec with id %u ('%s') unknown",
@@ -669,8 +658,7 @@ update_remote_media_description (GabbleJingleMediaRtp *self,
       new_c = l->data;
       old_c = g_hash_table_lookup (rc, GUINT_TO_POINTER ((guint) new_c->id));
 
-      if (!codec_update_coherent (old_c, new_c, WOCKY_XMPP_ERROR,
-            WOCKY_XMPP_ERROR_BAD_REQUEST, &e))
+      if (!codec_update_coherent (old_c, new_c, &e))
         goto out;
     }
 
@@ -691,7 +679,8 @@ out:
   if (new_media_description != NULL)
     jingle_media_description_free (new_media_description);
 
-  tp_clear_pointer (&rc, g_hash_table_unref);
+  if (rc != NULL)
+    g_hash_table_unref (rc);
 
   if (e != NULL)
     {
@@ -738,7 +727,7 @@ parse_description (GabbleJingleContent *content,
     {
       const gchar *desc_ns =
         wocky_node_get_ns (desc_node);
-      video_session = !tp_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
+      video_session = !wocky_strdiff (desc_ns, NS_GOOGLE_SESSION_VIDEO);
     }
 
   md = jingle_media_description_new ();
@@ -746,7 +735,7 @@ parse_description (GabbleJingleContent *content,
   wocky_node_iter_init (&i, desc_node, NULL, NULL);
   while (wocky_node_iter_next (&i, &node) && !description_error)
     {
-      if (!tp_strdiff (node->name, "payload-type"))
+      if (!wocky_strdiff (node->name, "payload-type"))
         {
           if (dialect == JINGLE_DIALECT_GTALK3)
             {
@@ -755,13 +744,13 @@ parse_description (GabbleJingleContent *content,
               if (priv->media_type == JINGLE_MEDIA_TYPE_AUDIO)
                 {
                   if (video_session &&
-                      tp_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
+                      wocky_strdiff (pt_ns, NS_GOOGLE_SESSION_PHONE))
                     continue;
                 }
               else if (priv->media_type == JINGLE_MEDIA_TYPE_VIDEO)
                 {
                   if (!(video_session && pt_ns == NULL)
-                      && tp_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
+                      && wocky_strdiff (pt_ns, NS_GOOGLE_SESSION_VIDEO))
                     continue;
                 }
             }
@@ -779,12 +768,12 @@ parse_description (GabbleJingleContent *content,
                 is_avpf = TRUE;
             }
         }
-      else if (!tp_strdiff (node->name, "rtp-hdrext"))
+      else if (!wocky_strdiff (node->name, "rtp-hdrext"))
         {
           const gchar *pt_ns = wocky_node_get_ns (node);
           JingleRtpHeaderExtension *hdrext;
 
-          if (tp_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
+          if (wocky_strdiff (pt_ns, NS_JINGLE_RTP_HDREXT))
             continue;
 
           hdrext = parse_rtp_header_extension (node);
@@ -800,7 +789,7 @@ parse_description (GabbleJingleContent *content,
             }
 
         }
-      else if (!tp_strdiff (node->name, "rtcp-fb"))
+      else if (!wocky_strdiff (node->name, "rtcp-fb"))
         {
           JingleFeedbackMessage *fb = parse_rtcp_fb (content, node);
 
@@ -815,7 +804,7 @@ parse_description (GabbleJingleContent *content,
               priv->has_rtcp_fb = TRUE;
             }
         }
-      else if (!tp_strdiff (node->name, "rtcp-fb-trr-int"))
+      else if (!wocky_strdiff (node->name, "rtcp-fb-trr-int"))
         {
           guint trr_int = parse_rtcp_fb_trr_int (content, node);
 
@@ -1088,10 +1077,10 @@ produce_description (GabbleJingleContent *content, WockyNode *content_node)
   JingleDialect dialect = gabble_jingle_session_get_dialect (content->session);
   WockyNode *desc_node;
 
-  if (content_has_cap (content, NS_JINGLE_RTCP_FB))
+  if (gabble_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTCP_FB))
     priv->has_rtcp_fb = TRUE;
 
-  if (content_has_cap (content, NS_JINGLE_RTP_HDREXT))
+  if (gabble_jingle_session_peer_has_cap (content->session, NS_JINGLE_RTP_HDREXT))
     priv->has_rtp_hdrext = TRUE;
 
   desc_node = produce_description_node (dialect, priv->media_type,
@@ -1149,7 +1138,7 @@ string_string_maps_equal (GHashTable *a,
       if (!g_hash_table_lookup_extended (b, a_key, NULL, &b_value))
         return FALSE;
 
-      if (tp_strdiff (a_value, b_value))
+      if (wocky_strdiff (a_value, b_value))
         return FALSE;
     }
 
@@ -1184,8 +1173,7 @@ jingle_media_rtp_compare_codecs (GList *old,
       old_c = g_hash_table_lookup (old_table, GUINT_TO_POINTER (
             (guint) new_c->id));
 
-      if (!codec_update_coherent (old_c, new_c, TP_ERRORS,
-            TP_ERROR_INVALID_ARGUMENT, e))
+      if (!codec_update_coherent (old_c, new_c, e))
         goto out;
 
       if (!string_string_maps_equal (old_c->params, new_c->params))
@@ -1205,8 +1193,20 @@ out:
   return ret;
 }
 
-/* Takes in a list of slice-allocated JingleCodec structs. Ready indicated
- * whether the codecs can regarded as ready to sent from now on */
+/*
+ * @self: a content in an RTP session
+ * @md: (transfer full): new media description for this content
+ * @ready: whether the codecs can regarded as ready to sent from now on
+ * @error: used to return a %WOCKY_XMPP_ERROR if the codec update is illegal.
+ *
+ * Sets or updates the media description (codecs, feedback messages, etc) for
+ * @self.
+ *
+ * Returns: %TRUE if no description was previously set, or if the update is
+ *  compatible with the existing description; %FALSE if the update is illegal
+ *  (due to adding previously-unknown codecs or renaming an existing codec, for
+ *  example)
+ */
 gboolean
 jingle_media_rtp_set_local_media_description (GabbleJingleMediaRtp *self,
                                               JingleMediaDescription *md,

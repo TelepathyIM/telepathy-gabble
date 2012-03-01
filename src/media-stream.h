@@ -23,7 +23,8 @@
 
 #include <glib-object.h>
 
-#include "types.h"
+#include "jingle-types.h"
+#include <telepathy-glib/dbus.h>
 #include <telepathy-glib/dtmf.h>
 #include <telepathy-glib/enums.h>
 #include <telepathy-glib/dbus-properties-mixin.h>
@@ -98,7 +99,9 @@ gboolean gabble_media_stream_change_direction (GabbleMediaStream *stream,
     guint requested_dir, GError **error);
 void gabble_media_stream_accept_pending_local_send (GabbleMediaStream *stream);
 
-GabbleMediaStream *gabble_media_stream_new (const gchar *object_path,
+GabbleMediaStream *gabble_media_stream_new (
+    TpDBusDaemon *dbus_daemon,
+    const gchar *object_path,
     GabbleJingleContent *content,
     const gchar *name,
     guint id,

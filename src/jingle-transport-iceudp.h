@@ -22,7 +22,7 @@
 
 #include <glib-object.h>
 
-#include "types.h"
+#include "jingle-types.h"
 
 G_BEGIN_DECLS
 

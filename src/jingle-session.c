@@ -24,14 +24,11 @@
 #include <string.h>
 #include <glib.h>
 
-#include <telepathy-glib/handle-repo-dynamic.h>
 #include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "gabble/capabilities.h"
-#include "connection.h"
-#include "conn-presence.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "gabble-enumtypes.h"
@@ -42,8 +39,6 @@
  */
 #include "jingle-media-rtp.h"
 #include "namespaces.h"
-#include "presence-cache.h"
-#include "util.h"
 
 G_DEFINE_TYPE(GabbleJingleSession, gabble_jingle_session, G_TYPE_OBJECT);
 
@@ -54,6 +49,8 @@ enum
   REMOTE_STATE_CHANGED,
   TERMINATED,
   CONTENT_REJECTED,
+  QUERY_CAP,
+  ABOUT_TO_INITIATE,
   LAST_SIGNAL
 };
 
@@ -62,10 +59,10 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
+  PROP_JINGLE_FACTORY = 1,
+  PROP_PORTER,
   PROP_SESSION_ID,
-  PROP_PEER_JID,
-  PROP_PEER,
+  PROP_PEER_CONTACT,
   PROP_LOCAL_INITIATOR,
   PROP_STATE,
   PROP_DIALECT,
@@ -77,11 +74,16 @@ enum
 
 struct _GabbleJingleSessionPrivate
 {
-  GabbleConnection *conn;
+  /* Borrowed; the factory owns us. */
+  GabbleJingleFactory *jingle_factory;
+  WockyPorter *porter;
 
-  gchar *peer_resource;
+  WockyContact *peer_contact;
+  /* Borrowed from peer_contact if it's a WockyResourceContact. */
+  const gchar *peer_resource;
   gchar *peer_jid;
-  gchar *initiator;
+  /* Either borrowed from 'porter' or equal to peer_jid. */
+  const gchar *initiator;
   gboolean local_initiator;
 
   /* GabbleJingleContent objects keyed by content name.
@@ -178,6 +180,8 @@ gabble_jingle_session_defines_action (GabbleJingleSession *sess,
 }
 
 static void gabble_jingle_session_send_held (GabbleJingleSession *sess);
+static void content_ready_cb (GabbleJingleContent *c, gpointer user_data);
+static void content_removed_cb (GabbleJingleContent *c, gpointer user_data);
 
 static void
 gabble_jingle_session_init (GabbleJingleSession *obj)
@@ -201,12 +205,30 @@ gabble_jingle_session_init (GabbleJingleSession *obj)
 }
 
 static void
+dispose_content_hash (
+    GabbleJingleSession *sess,
+    GHashTable **contents)
+{
+  GHashTableIter iter;
+  gpointer content;
+
+  g_hash_table_iter_init (&iter, *contents);
+  while (g_hash_table_iter_next (&iter, NULL, &content))
+    {
+      g_signal_handlers_disconnect_by_func (content, content_ready_cb, sess);
+      g_signal_handlers_disconnect_by_func (content, content_removed_cb, sess);
+      g_hash_table_iter_remove (&iter);
+    }
+
+  g_hash_table_unref (*contents);
+  *contents = NULL;
+}
+
+static void
 gabble_jingle_session_dispose (GObject *object)
 {
   GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (object);
   GabbleJingleSessionPrivate *priv = sess->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->dispose_has_run)
     return;
@@ -217,26 +239,17 @@ gabble_jingle_session_dispose (GObject *object)
   g_assert ((priv->state == JINGLE_STATE_PENDING_CREATED) ||
       (priv->state == JINGLE_STATE_ENDED));
 
-  g_hash_table_unref (priv->initiator_contents);
-  priv->initiator_contents = NULL;
+  dispose_content_hash (sess, &priv->initiator_contents);
+  dispose_content_hash (sess, &priv->responder_contents);
 
-  g_hash_table_unref (priv->responder_contents);
-  priv->responder_contents = NULL;
-
-  tp_handle_unref (contact_repo, sess->peer);
-  sess->peer = 0;
+  g_clear_object (&priv->peer_contact);
+  g_clear_object (&priv->porter);
 
   g_free (priv->sid);
   priv->sid = NULL;
 
-  g_free (priv->peer_resource);
-  priv->peer_resource = NULL;
-
   g_free (priv->peer_jid);
   priv->peer_jid = NULL;
-
-  g_free (priv->initiator);
-  priv->initiator = NULL;
 
   if (G_OBJECT_CLASS (gabble_jingle_session_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_session_parent_class)->dispose (object);
@@ -252,8 +265,11 @@ gabble_jingle_session_get_property (GObject *object,
   GabbleJingleSessionPrivate *priv = sess->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
+    case PROP_JINGLE_FACTORY:
+      g_value_set_object (value, priv->jingle_factory);
+      break;
+    case PROP_PORTER:
+      g_value_set_object (value, priv->porter);
       break;
     case PROP_SESSION_ID:
       g_value_set_string (value, priv->sid);
@@ -261,8 +277,8 @@ gabble_jingle_session_get_property (GObject *object,
     case PROP_LOCAL_INITIATOR:
       g_value_set_boolean (value, priv->local_initiator);
       break;
-    case PROP_PEER:
-      g_value_set_uint (value, sess->peer);
+    case PROP_PEER_CONTACT:
+      g_value_set_object (value, priv->peer_contact);
       break;
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
@@ -295,9 +311,13 @@ gabble_jingle_session_set_property (GObject *object,
   GabbleJingleSessionPrivate *priv = sess->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
-      g_assert (priv->conn != NULL);
+    case PROP_JINGLE_FACTORY:
+      priv->jingle_factory = g_value_get_object (value);
+      g_assert (priv->jingle_factory != NULL);
+      break;
+    case PROP_PORTER:
+      priv->porter = g_value_dup_object (value);
+      g_assert (priv->porter != NULL);
       break;
     case PROP_SESSION_ID:
       g_free (priv->sid);
@@ -309,8 +329,8 @@ gabble_jingle_session_set_property (GObject *object,
     case PROP_DIALECT:
       priv->dialect = g_value_get_uint (value);
       break;
-    case PROP_PEER_JID:
-      priv->peer_jid = g_value_dup_string (value);
+    case PROP_PEER_CONTACT:
+      priv->peer_contact = g_value_dup_object (value);
       break;
     case PROP_LOCAL_HOLD:
       {
@@ -344,49 +364,44 @@ gabble_jingle_session_constructed (GObject *object)
       G_OBJECT_CLASS (gabble_jingle_session_parent_class)->constructed;
   GabbleJingleSession *self = GABBLE_JINGLE_SESSION (object);
   GabbleJingleSessionPrivate *priv = self->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (chain_up != NULL)
     chain_up (object);
 
-  g_assert (priv->conn != NULL);
-  g_assert (priv->peer_jid != NULL);
+  g_assert (priv->jingle_factory != NULL);
+  g_assert (priv->porter != NULL);
+  g_assert (priv->peer_contact != NULL);
   g_assert (priv->sid != NULL);
 
-  self->peer = tp_handle_ensure (contact_repo, priv->peer_jid, NULL, NULL);
+  priv->peer_jid = wocky_contact_dup_jid (priv->peer_contact);
 
   if (priv->local_initiator)
-    priv->initiator = gabble_connection_get_full_jid (priv->conn);
+    priv->initiator = wocky_porter_get_full_jid (priv->porter);
   else
-    priv->initiator = g_strdup (priv->peer_jid);
+    priv->initiator = priv->peer_jid;
 
-  /* FIXME Gabble resource part handling falls apart when it comes to mucs, so
-   * jump though some hoops here */
-  if (tp_dynamic_handle_repo_lookup_exact (contact_repo, priv->peer_jid) == 0)
-    {
-      /* The peer jid isn't exactly what is in the contact repo so it will have
-       * a resource */
-      if (wocky_decode_jid (priv->peer_jid, NULL, NULL,
-          &priv->peer_resource))
-        {
-          /* fake for gcc */;
-        }
-    }
+  if (WOCKY_IS_RESOURCE_CONTACT (priv->peer_contact))
+    priv->peer_resource = wocky_resource_contact_get_resource (
+        WOCKY_RESOURCE_CONTACT (priv->peer_contact));
 }
 
 GabbleJingleSession *
-gabble_jingle_session_new (GabbleConnection *connection,
+gabble_jingle_session_new (
+                           GabbleJingleFactory *factory,
+                           WockyPorter *porter,
                            const gchar *session_id,
                            gboolean local_initiator,
-                           const gchar *jid,
+                           WockyContact *peer,
+                           JingleDialect dialect,
                            gboolean local_hold)
 {
   return g_object_new (GABBLE_TYPE_JINGLE_SESSION,
       "session-id", session_id,
-      "connection", connection,
+      "jingle-factory", factory,
+      "porter", porter,
       "local-initiator", local_initiator,
-      "peer-jid", jid,
+      "peer-contact", peer,
+      "dialect", dialect,
       "local-hold", local_hold,
       NULL);
 }
@@ -405,11 +420,18 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
   object_class->dispose = gabble_jingle_session_dispose;
 
   /* property definitions */
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object used for exchanging messages.",
-      GABBLE_TYPE_CONNECTION,
+  param_spec = g_param_spec_object ("jingle-factory",
+      "GabbleJingleFactory object",
+      "The Jingle factory which created this session",
+      GABBLE_TYPE_JINGLE_FACTORY,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+  g_object_class_install_property (object_class, PROP_JINGLE_FACTORY, param_spec);
+
+  param_spec = g_param_spec_object ("porter", "WockyPorter",
+      "The WockyPorter for the current connection",
+      WOCKY_TYPE_PORTER,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_PORTER, param_spec);
 
   param_spec = g_param_spec_string ("session-id", "Session ID",
       "A unique session identifier used throughout all communication.",
@@ -424,18 +446,18 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
   g_object_class_install_property (object_class, PROP_LOCAL_INITIATOR,
       param_spec);
 
-  param_spec = g_param_spec_uint ("peer", "Session peer",
-      "The TpHandle representing the other party in the session.",
-      0, G_MAXUINT32, 0,
-      G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_PEER, param_spec);
-
-  param_spec = g_param_spec_string ("peer-jid", "Session peer's jid",
-      "The full jid of the contact with whom this session communicates",
-      NULL,
+  /**
+   * GabbleJingleSession:peer-contact:
+   *
+   * The #WockyContact representing the other party in the session. Note that
+   * if this is a #WockyBareContact (as opposed to a #WockyResourceContact) the
+   * session is with the contact's bare JID.
+   */
+  param_spec = g_param_spec_object ("peer-contact", "Session peer",
+      "The WockyContact representing the other party in the session.",
+      WOCKY_TYPE_CONTACT,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_PEER_JID,
-      param_spec);
+  g_object_class_install_property (object_class, PROP_PEER_CONTACT, param_spec);
 
   param_spec = g_param_spec_uint ("state", "Session state",
       "The current state that the session is in.",
@@ -485,6 +507,26 @@ gabble_jingle_session_class_init (GabbleJingleSessionClass *cls)
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
         0, NULL, NULL, gabble_marshal_VOID__OBJECT_UINT_STRING,
         G_TYPE_NONE, 3, G_TYPE_OBJECT, G_TYPE_UINT, G_TYPE_STRING);
+
+  /*
+   * @contact: this call's peer (the artist commonly known as
+   *  gabble_jingle_session_get_peer_contact())
+   * @cap: the XEP-0115 feature string the session is interested in.
+   *
+   * Emitted when the session wants to check whether the peer has a particular
+   * capability. The handler should return %TRUE if @contact has @cap.
+   */
+  signals[QUERY_CAP] = g_signal_new ("query-cap",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, g_signal_accumulator_first_wins, NULL,
+        gabble_marshal_BOOLEAN__OBJECT_STRING,
+        G_TYPE_BOOLEAN, 2, WOCKY_TYPE_CONTACT, G_TYPE_STRING);
+
+  signals[ABOUT_TO_INITIATE] = g_signal_new ("about-to-initiate",
+        G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL,
+        g_cclosure_marshal_VOID__VOID,
+        G_TYPE_NONE, 0);
 }
 
 typedef void (*HandlerFunc)(GabbleJingleSession *sess,
@@ -528,38 +570,38 @@ parse_action (const gchar *txt)
       return JINGLE_ACTION_UNKNOWN;
 
   /* synonyms, best deal with them right now */
-  if (!tp_strdiff (txt, "initiate") ||
-      !tp_strdiff (txt, "session-initiate"))
+  if (!wocky_strdiff (txt, "initiate") ||
+      !wocky_strdiff (txt, "session-initiate"))
         return JINGLE_ACTION_SESSION_INITIATE;
-  else if (!tp_strdiff (txt, "terminate") ||
-      !tp_strdiff (txt, "session-terminate") ||
-      !tp_strdiff (txt, "reject"))
+  else if (!wocky_strdiff (txt, "terminate") ||
+      !wocky_strdiff (txt, "session-terminate") ||
+      !wocky_strdiff (txt, "reject"))
         return JINGLE_ACTION_SESSION_TERMINATE;
-  else if (!tp_strdiff (txt, "accept") ||
-      !tp_strdiff (txt, "session-accept"))
+  else if (!wocky_strdiff (txt, "accept") ||
+      !wocky_strdiff (txt, "session-accept"))
         return JINGLE_ACTION_SESSION_ACCEPT;
-  else if (!tp_strdiff (txt, "candidates") ||
-      !tp_strdiff (txt, "transport-info"))
+  else if (!wocky_strdiff (txt, "candidates") ||
+      !wocky_strdiff (txt, "transport-info"))
         return JINGLE_ACTION_TRANSPORT_INFO;
-  else if (!tp_strdiff (txt, "content-accept"))
+  else if (!wocky_strdiff (txt, "content-accept"))
       return JINGLE_ACTION_CONTENT_ACCEPT;
-  else if (!tp_strdiff (txt, "content-add"))
+  else if (!wocky_strdiff (txt, "content-add"))
       return JINGLE_ACTION_CONTENT_ADD;
-  else if (!tp_strdiff (txt, "content-modify"))
+  else if (!wocky_strdiff (txt, "content-modify"))
       return JINGLE_ACTION_CONTENT_MODIFY;
-  else if (!tp_strdiff (txt, "content-replace"))
+  else if (!wocky_strdiff (txt, "content-replace"))
       return JINGLE_ACTION_CONTENT_REPLACE;
-  else if (!tp_strdiff (txt, "content-reject"))
+  else if (!wocky_strdiff (txt, "content-reject"))
       return JINGLE_ACTION_CONTENT_REJECT;
-  else if (!tp_strdiff (txt, "content-remove"))
+  else if (!wocky_strdiff (txt, "content-remove"))
       return JINGLE_ACTION_CONTENT_REMOVE;
-  else if (!tp_strdiff (txt, "session-info"))
+  else if (!wocky_strdiff (txt, "session-info"))
       return JINGLE_ACTION_SESSION_INFO;
-  else if (!tp_strdiff (txt, "transport-accept"))
+  else if (!wocky_strdiff (txt, "transport-accept"))
       return JINGLE_ACTION_TRANSPORT_ACCEPT;
-  else if (!tp_strdiff (txt, "description-info"))
+  else if (!wocky_strdiff (txt, "description-info"))
       return JINGLE_ACTION_DESCRIPTION_INFO;
-  else if (!tp_strdiff (txt, "info"))
+  else if (!wocky_strdiff (txt, "info"))
       return JINGLE_ACTION_INFO;
 
   return JINGLE_ACTION_UNKNOWN;
@@ -631,18 +673,17 @@ static void set_state (GabbleJingleSession *sess,
 static GabbleJingleContent *_get_any_content (GabbleJingleSession *session);
 
 gboolean
-gabble_jingle_session_peer_has_quirk (
+gabble_jingle_session_peer_has_cap (
     GabbleJingleSession *self,
-    const gchar *quirk)
+    const gchar *cap_or_quirk)
 {
   GabbleJingleSessionPrivate *priv = self->priv;
-  GabblePresence *presence = gabble_presence_cache_get (
-      priv->conn->presence_cache, self->peer);
+  gboolean ret;
 
-  return (presence != NULL &&
-      priv->peer_resource != NULL &&
-      gabble_presence_resource_has_caps (presence, priv->peer_resource,
-          gabble_capability_set_predicate_has, quirk));
+  g_signal_emit (self, signals[QUERY_CAP], 0,
+      priv->peer_contact, cap_or_quirk,
+      &ret);
+  return ret;
 }
 
 static gboolean
@@ -683,7 +724,7 @@ lookup_content (GabbleJingleSession *sess,
        * pick globally-unique content names.
        */
       if (creator == NULL &&
-          gabble_jingle_session_peer_has_quirk (sess,
+          gabble_jingle_session_peer_has_cap (sess,
               QUIRK_OMITS_CONTENT_CREATORS))
         {
           DEBUG ("working around missing 'creator' attribute");
@@ -693,11 +734,11 @@ lookup_content (GabbleJingleSession *sess,
           if (*c == NULL)
             *c = g_hash_table_lookup (priv->responder_contents, name);
         }
-      else if (!tp_strdiff (creator, "initiator"))
+      else if (!wocky_strdiff (creator, "initiator"))
         {
           *c = g_hash_table_lookup (priv->initiator_contents, name);
         }
-      else if (!tp_strdiff (creator, "responder"))
+      else if (!wocky_strdiff (creator, "responder"))
         {
           *c = g_hash_table_lookup (priv->responder_contents, name);
         }
@@ -747,9 +788,6 @@ _foreach_content (GabbleJingleSession *sess,
     }
 }
 
-static void content_ready_cb (GabbleJingleContent *c, gpointer user_data);
-static void content_removed_cb (GabbleJingleContent *c, gpointer user_data);
-
 struct idle_content_reject_ctx {
     GabbleJingleSession *session;
     gchar *creator;
@@ -772,7 +810,7 @@ idle_content_reject (gpointer data)
   wocky_node_set_attributes (node,
       "name", ctx->name, "creator", ctx->creator, NULL);
 
-  gabble_jingle_session_send (ctx->session, msg, NULL, NULL);
+  gabble_jingle_session_send (ctx->session, msg);
 
   g_object_unref (ctx->session);
   g_free (ctx->name);
@@ -809,13 +847,11 @@ create_content (GabbleJingleSession *sess, GType content_type,
   GabbleJingleContent *c;
   GHashTable *contents;
 
-  DEBUG ("session creating new content name %s, type %d, conn %p, jf %p",
-    name, type, priv->conn, priv->conn->jingle_factory);
+  DEBUG ("session creating new content name %s, type %d", name, type);
 
   /* FIXME: media-type is introduced by GabbleJingleMediaRTP, not by the
    * superclass, so this call is unsafe in the general case */
   c = g_object_new (content_type,
-                    "connection", priv->conn,
                     "session", sess,
                     "content-ns", content_ns,
                     "transport-ns", transport_ns,
@@ -885,7 +921,8 @@ _each_content_add (GabbleJingleSession *sess, GabbleJingleContent *c,
       content_ns = wocky_node_get_ns (desc_node);
       DEBUG ("namespace: %s", content_ns);
       content_type = gabble_jingle_factory_lookup_content_type (
-          priv->conn->jingle_factory, content_ns);
+          gabble_jingle_session_get_factory (sess),
+          content_ns);
     }
 
   if (content_type == 0)
@@ -1011,21 +1048,23 @@ on_session_initiate (GabbleJingleSession *sess, WockyNode *node,
         wocky_node_get_child (node, "description");
       content_ns = wocky_node_get_ns (desc_node);
 
-      if (!tp_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
+      if (!wocky_strdiff (content_ns, NS_GOOGLE_SESSION_VIDEO))
         {
+          GabbleJingleFactory *factory =
+              gabble_jingle_session_get_factory (sess);
           GType content_type = 0;
 
           DEBUG ("GTalk v3 session with audio and video");
 
           /* audio and video content */
           content_type = gabble_jingle_factory_lookup_content_type (
-            priv->conn->jingle_factory, content_ns);
+            factory, content_ns);
           create_content (sess, content_type, JINGLE_MEDIA_TYPE_VIDEO,
             JINGLE_CONTENT_SENDERS_BOTH, NS_GOOGLE_SESSION_VIDEO, NULL,
               "video", node, error);
 
           content_type = gabble_jingle_factory_lookup_content_type (
-            priv->conn->jingle_factory, NS_GOOGLE_SESSION_PHONE);
+            factory, NS_GOOGLE_SESSION_PHONE);
           create_content (sess, content_type, JINGLE_MEDIA_TYPE_AUDIO,
             JINGLE_CONTENT_SENDERS_BOTH, NS_GOOGLE_SESSION_PHONE, NULL,
               "audio", node, error);
@@ -1235,7 +1274,7 @@ handle_payload (GabbleJingleSession *sess,
   const gchar *name = wocky_node_get_attribute (payload, "name");
   const gchar *creator = wocky_node_get_attribute (payload, "creator");
 
-  if (tp_strdiff (ns, NS_JINGLE_RTP_INFO))
+  if (wocky_strdiff (ns, NS_JINGLE_RTP_INFO))
     {
       *handled = FALSE;
       return TRUE;
@@ -1243,33 +1282,33 @@ handle_payload (GabbleJingleSession *sess,
 
   *handled = TRUE;
 
-  if (!tp_strdiff (elt, "active"))
+  if (!wocky_strdiff (elt, "active"))
     {
       /* Clear all states, we're active */
       mute_all (sess, FALSE);
       set_ringing (sess, FALSE);
       set_hold (sess, FALSE);
     }
-  else if (!tp_strdiff (elt, "ringing"))
+  else if (!wocky_strdiff (elt, "ringing"))
     {
       set_ringing (sess, TRUE);
     }
-  else if (!tp_strdiff (elt, "hold"))
+  else if (!wocky_strdiff (elt, "hold"))
     {
       set_hold (sess, TRUE);
     }
-  else if (!tp_strdiff (elt, "unhold"))
+  else if (!wocky_strdiff (elt, "unhold"))
     {
       set_hold (sess, FALSE);
     }
   /* XEP-0178 says that only <mute/> and <unmute/> can have a name=''
    * attribute.
    */
-  else if (!tp_strdiff (elt, "mute"))
+  else if (!wocky_strdiff (elt, "mute"))
     {
       return set_mute (sess, name, creator, TRUE, error);
     }
-  else if (!tp_strdiff (elt, "unmute"))
+  else if (!wocky_strdiff (elt, "unmute"))
     {
       return set_mute (sess, name, creator, FALSE, error);
     }
@@ -1365,7 +1404,7 @@ on_transport_info (GabbleJingleSession *sess, WockyNode *node,
 
       if (priv->dialect == JINGLE_DIALECT_GTALK4)
         {
-          if (!tp_strdiff (wocky_node_get_attribute (node, "type"),
+          if (!wocky_strdiff (wocky_node_get_attribute (node, "type"),
                 "candidates"))
             {
               GList *contents = gabble_jingle_session_get_contents (sess);
@@ -1740,7 +1779,7 @@ _map_initial_contents (GabbleJingleSession *sess, ContentMapperFunc mapper,
       GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (li->data);
       const gchar *disposition = gabble_jingle_content_get_disposition (c);
 
-      if (!tp_strdiff (disposition, "session"))
+      if (!wocky_strdiff (disposition, "session"))
         mapper (sess, c, user_data);
     }
 
@@ -1796,55 +1835,44 @@ _fill_content (GabbleJingleSession *sess,
     }
 }
 
-static void
-_process_reply (GabbleConnection *conn,
-    WockyStanza *sent,
-    WockyStanza *reply,
-    GObject *obj,
-    gpointer cb_)
-{
-  JingleReplyHandler cb = cb_;
-  WockyStanzaSubType sub_type;
-
-  wocky_stanza_get_type_info (reply, NULL, &sub_type);
-  cb (obj, sub_type == WOCKY_STANZA_SUB_TYPE_RESULT, reply);
-}
-
 /**
  * gabble_jingle_session_send:
  * @sess: a session
  * @stanza: (transfer full): a stanza, of which this function will take ownership
- * @cb: callback for the IQ reply, or %NULL to ignore the reply
- * @weak_object: an object to pass to @cb, or %NULL
  *
- * Sends an IQ, optionally calling @cb for the reply. If @weak_object is not
- * NULL, @cb will only be called if @weak_object is still alive.
+ * A shorthand for sending a Jingle IQ without waiting for the reply.
  */
 void
 gabble_jingle_session_send (GabbleJingleSession *sess,
-    WockyStanza *stanza,
-    JingleReplyHandler cb,
-    GObject *weak_object)
+    WockyStanza *stanza)
 {
-  if (cb != NULL)
-    _gabble_connection_send_with_reply (sess->priv->conn, stanza,
-        _process_reply, weak_object, cb, NULL);
-  else
-    _gabble_connection_send_with_reply (sess->priv->conn, stanza,
-        NULL, NULL, NULL, NULL);
-
+  wocky_porter_send_iq_async (sess->priv->porter,
+      stanza, NULL, NULL, NULL);
   g_object_unref (stanza);
 }
 
 static void
-_on_initiate_reply (GObject *sess_as_obj,
-    gboolean success,
-    WockyStanza *reply)
+_on_initiate_reply (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
+  WockyPorter *porter = WOCKY_PORTER (source);
+  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
   GabbleJingleSessionPrivate *priv = sess->priv;
+  WockyStanza *reply;
 
-  if (success)
+  if (priv->state != JINGLE_STATE_PENDING_INITIATE_SENT)
+    {
+      DEBUG ("Ignoring session-initiate reply; session %p is in state %u.",
+          sess, priv->state);
+      g_object_unref (sess);
+      return;
+    }
+
+  reply = wocky_porter_send_iq_finish (porter, result, NULL);
+  if (reply != NULL &&
+      !wocky_stanza_extract_errors (reply, NULL, NULL, NULL, NULL))
     {
       set_state (sess, JINGLE_STATE_PENDING_INITIATED, 0, NULL);
 
@@ -1862,16 +1890,33 @@ _on_initiate_reply (GObject *sess_as_obj,
       set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
+
+  g_clear_object (&reply);
+  g_object_unref (sess);
 }
 
 static void
-_on_accept_reply (GObject *sess_as_obj,
-    gboolean success,
-    WockyStanza *reply)
+_on_accept_reply (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (sess_as_obj);
+  WockyPorter *porter = WOCKY_PORTER (source);
+  GabbleJingleSession *sess = GABBLE_JINGLE_SESSION (user_data);
+  GabbleJingleSessionPrivate *priv = sess->priv;
+  WockyStanza *reply;
 
-  if (success)
+  if (priv->state != JINGLE_STATE_PENDING_ACCEPT_SENT)
+    {
+      DEBUG ("Ignoring session-accept reply; session %p is in state %u.",
+          sess, priv->state);
+      g_object_unref (sess);
+      return;
+    }
+
+  reply = wocky_porter_send_iq_finish (porter, result, NULL);
+  if (reply != NULL &&
+      !wocky_stanza_extract_errors (reply, NULL, NULL, NULL, NULL))
     {
       set_state (sess, JINGLE_STATE_ACTIVE, 0, NULL);
       gabble_jingle_session_send_rtp_info (sess, "active");
@@ -1881,20 +1926,21 @@ _on_accept_reply (GObject *sess_as_obj,
       set_state (sess, JINGLE_STATE_ENDED, JINGLE_REASON_UNKNOWN,
           NULL);
     }
+
+  g_clear_object (&reply);
+  g_object_unref (sess);
 }
 
 static void
 try_session_initiate_or_accept (GabbleJingleSession *sess)
 {
   GabbleJingleSessionPrivate *priv = sess->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   WockyStanza *msg;
   WockyNode *sess_node;
   gboolean contents_ready = TRUE;
   JingleAction action;
   JingleState new_state;
-  JingleReplyHandler handler;
+  GAsyncReadyCallback handler;
 
   DEBUG ("Trying initiate or accept");
 
@@ -1916,11 +1962,7 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
           return;
         }
 
-      /* send directed presence (including our own caps, avatar etc.) to
-       * the peer, if we aren't already visible to them */
-      if (!conn_presence_visible_to (priv->conn, sess->peer))
-        conn_presence_signal_own_presence (priv->conn,
-            tp_handle_inspect (contact_repo, sess->peer), NULL);
+      g_signal_emit (sess, signals[ABOUT_TO_INITIATE], 0);
 
       action = JINGLE_ACTION_SESSION_INITIATE;
       new_state = JINGLE_STATE_PENDING_INITIATE_SENT;
@@ -1993,7 +2035,9 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
 
   _map_initial_contents (sess, _fill_content, sess_node);
-  gabble_jingle_session_send (sess, msg, handler, (GObject *) sess);
+  wocky_porter_send_iq_async (priv->porter,
+      msg, NULL, handler, g_object_ref (sess));
+  g_object_unref (msg);
   set_state (sess, new_state, 0, NULL);
 
   /* now all initial contents can transmit their candidates */
@@ -2097,11 +2141,11 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
 
           wocky_node_add_child_with_content (r, reason_elt, NULL);
 
-          if (!tp_str_empty (text))
+          if (text != NULL && *text != '\0')
             wocky_node_add_child_with_content (r, "text", text);
         }
 
-      gabble_jingle_session_send (sess, msg, NULL, NULL);
+      gabble_jingle_session_send (sess, msg);
     }
 
   /* NOTE: on "terminated", jingle factory and media channel will unref
@@ -2219,7 +2263,8 @@ gabble_jingle_session_add_content (GabbleJingleSession *sess,
     }
 
   content_type = gabble_jingle_factory_lookup_content_type (
-      priv->conn->jingle_factory, content_ns);
+      gabble_jingle_session_get_factory (sess),
+      content_ns);
 
   g_assert (content_type != 0);
 
@@ -2308,7 +2353,7 @@ content_ready_cb (GabbleJingleContent *c, gpointer user_data)
   /* This assertion is actually safe, because 'ready' is only emitted by
    * contents with disposition "session". But this is crazy.
    */
-  g_assert (!tp_strdiff (disposition, "session"));
+  g_assert (!wocky_strdiff (disposition, "session"));
 
   try_session_initiate_or_accept (sess);
 }
@@ -2333,7 +2378,7 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
   notification->ns = g_quark_from_static_string (NS_JINGLE_RTP_INFO);
 
   /* This is just informational, so ignoring the reply. */
-  gabble_jingle_session_send (sess, message, NULL, NULL);
+  gabble_jingle_session_send (sess, message);
 }
 
 static void
@@ -2371,7 +2416,7 @@ gboolean
 gabble_jingle_session_can_modify_contents (GabbleJingleSession *sess)
 {
   return !JINGLE_IS_GOOGLE_DIALECT (sess->priv->dialect) &&
-      !gabble_jingle_session_peer_has_quirk (sess, QUIRK_GOOGLE_WEBMAIL_CLIENT);
+      !gabble_jingle_session_peer_has_cap (sess, QUIRK_GOOGLE_WEBMAIL_CLIENT);
 }
 
 JingleDialect
@@ -2380,8 +2425,32 @@ gabble_jingle_session_get_dialect (GabbleJingleSession *sess)
   return sess->priv->dialect;
 }
 
+WockyContact *
+gabble_jingle_session_get_peer_contact (GabbleJingleSession *self)
+{
+  return self->priv->peer_contact;
+}
+
+/*
+ * gabble_jingle_session_get_peer_jid:
+ * @sess: a jingle session
+ *
+ * Returns: the full JID of the remote contact.
+ */
 const gchar *
 gabble_jingle_session_get_peer_jid (GabbleJingleSession *sess)
 {
   return sess->priv->peer_jid;
+}
+
+GabbleJingleFactory *
+gabble_jingle_session_get_factory (GabbleJingleSession *self)
+{
+  return self->priv->jingle_factory;
+}
+
+WockyPorter *
+gabble_jingle_session_get_porter (GabbleJingleSession *self)
+{
+  return self->priv->porter;
 }

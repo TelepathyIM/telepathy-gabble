@@ -22,15 +22,13 @@
 #include "jingle-factory.h"
 
 #include <stdio.h>
-#include <stdlib.h>
+#include <string.h>
 #include <glib.h>
 
 #include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "connection.h"
-#include "conn-util.h"
 #include "debug.h"
 #include "gabble-signals-marshal.h"
 #include "jingle-share.h"
@@ -40,7 +38,6 @@
 #include "jingle-transport-rawudp.h"
 #include "jingle-transport-iceudp.h"
 #include "namespaces.h"
-#include "util.h"
 
 #include "google-relay.h"
 
@@ -50,7 +47,7 @@ G_DEFINE_TYPE(GabbleJingleFactory, gabble_jingle_factory, G_TYPE_OBJECT);
 enum
 {
     NEW_SESSION,
-    STUN_SERVER_CHANGED,
+    QUERY_CAP,
     LAST_SIGNAL
 };
 
@@ -59,34 +56,22 @@ static guint signals[LAST_SIGNAL] = {0};
 /* properties */
 enum
 {
-  PROP_CONNECTION = 1,
+  PROP_SESSION = 1,
   LAST_PROPERTY
 };
 
 struct _GabbleJingleFactoryPrivate
 {
-  GabbleConnection *conn;
+  WockySession *session;
+  WockyPorter *porter;
   guint jingle_handler_id;
-  guint jingle_info_handler_id;
   GHashTable *content_types;
   GHashTable *transports;
 
   /* instances of SESSION_MAP_KEY_FORMAT => GabbleJingleSession. */
   GHashTable *sessions;
 
-  GabbleGoogleRelayResolver *google_resolver;
-
-  gchar *stun_server;
-  guint16 stun_port;
-  gchar *fallback_stun_server;
-  guint16 fallback_stun_port;
-  gchar *relay_token;
-  gboolean get_stun_from_jingle;
-  gchar *relay_server;
-  guint16 relay_http_port;
-  guint16 relay_udp;
-  guint16 relay_tcp;
-  guint16 relay_ssltcp;
+  GabbleJingleInfo *jingle_info;
 
   gboolean dispose_has_run;
 };
@@ -97,30 +82,22 @@ static gboolean jingle_cb (
     gpointer user_data);
 static GabbleJingleSession *create_session (GabbleJingleFactory *fac,
     const gchar *sid,
-    TpHandle peer,
     const gchar *jid,
+    JingleDialect dialect,
     gboolean local_hold);
 
+static gboolean session_query_cap_cb (
+    GabbleJingleSession *session,
+    WockyContact *contact,
+    const gchar *cap_or_quirk,
+    gpointer user_data);
 static void session_terminated_cb (GabbleJingleSession *sess,
     gboolean local_terminator,
-    TpChannelGroupChangeReason reason,
+    JingleReason reason,
     const gchar *text,
     GabbleJingleFactory *fac);
 
-static void connection_status_changed_cb (GabbleConnection *conn,
-    guint status, guint reason, GabbleJingleFactory *self);
-static void connection_porter_available_cb (
-    GabbleConnection *conn,
-    WockyPorter *porter,
-    gpointer user_data);
-
-static gboolean test_mode = FALSE;
-
-void
-gabble_jingle_factory_set_test_mode (void)
-{
-  test_mode = TRUE;
-}
+static void attach_to_wocky_session (GabbleJingleFactory *self);
 
 static void
 gabble_jingle_factory_init (GabbleJingleFactory *obj)
@@ -139,300 +116,7 @@ gabble_jingle_factory_init (GabbleJingleFactory *obj)
   priv->content_types = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, NULL);
 
-  priv->conn = NULL;
   priv->dispose_has_run = FALSE;
-  priv->relay_http_port = 80;
-}
-
-typedef struct {
-    GabbleJingleFactory *factory;
-    gchar *stun_server;
-    guint16 stun_port;
-    gboolean fallback;
-    GCancellable *cancellable;
-} PendingStunServer;
-
-static void
-pending_stun_server_free (gpointer p)
-{
-  PendingStunServer *data = p;
-
-  if (data->factory != NULL)
-    g_object_remove_weak_pointer (G_OBJECT (data->factory),
-        (gpointer)&data->factory);
-
-  g_object_unref (data->cancellable);
-  g_free (data->stun_server);
-  g_slice_free (PendingStunServer, p);
-}
-
-static void
-stun_server_resolved_cb (GObject *resolver,
-                         GAsyncResult *result,
-                         gpointer user_data)
-{
-  PendingStunServer *data = user_data;
-  GabbleJingleFactory *self = data->factory;
-  GError *e = NULL;
-  gchar *stun_server;
-  GList *entries;
-
-  if (self != NULL)
-      g_object_weak_unref (G_OBJECT (self),
-          (GWeakNotify)g_cancellable_cancel, data->cancellable);
-
-  entries = g_resolver_lookup_by_name_finish (
-      G_RESOLVER (resolver), result, &e);
-
-  if (entries == NULL)
-    {
-      DEBUG ("Failed to resolve STUN server %s:%u: %s",
-          data->stun_server, data->stun_port, e->message);
-      g_error_free (e);
-      goto out;
-    }
-
-  stun_server = g_inet_address_to_string (entries->data);
-  g_resolver_free_addresses (entries);
-
-  DEBUG ("Resolved STUN server %s:%u to %s:%u", data->stun_server,
-      data->stun_port, stun_server, data->stun_port);
-
-  if (self == NULL)
-    {
-      g_free (stun_server);
-      goto out;
-    }
-
-  if (data->fallback)
-    {
-      g_free (self->priv->fallback_stun_server);
-      self->priv->fallback_stun_server = stun_server;
-      self->priv->fallback_stun_port = data->stun_port;
-    }
-  else
-    {
-      g_free (self->priv->stun_server);
-      self->priv->stun_server = stun_server;
-      self->priv->stun_port = data->stun_port;
-
-      g_signal_emit (self, signals[STUN_SERVER_CHANGED], 0,
-          stun_server, data->stun_port);
-    }
-
-out:
-  pending_stun_server_free (data);
-  g_object_unref (resolver);
-}
-
-static void
-take_stun_server (GabbleJingleFactory *self,
-                  gchar *stun_server,
-                  guint16 stun_port,
-                  gboolean fallback)
-{
-  GResolver *resolver;
-  PendingStunServer *data;
-
-  if (stun_server == NULL)
-    return;
-
-  resolver = g_resolver_get_default ();
-  data = g_slice_new0 (PendingStunServer);
-
-  DEBUG ("Resolving %s STUN server %s:%u",
-      fallback ? "fallback" : "primary", stun_server, stun_port);
-  data->factory = self;
-  g_object_add_weak_pointer (G_OBJECT (self), (gpointer *) &data->factory);
-  data->stun_server = stun_server;
-  data->stun_port = stun_port;
-  data->fallback = fallback;
-
-  data->cancellable = g_cancellable_new ();
-  g_object_weak_ref (G_OBJECT (self), (GWeakNotify)g_cancellable_cancel,
-      data->cancellable);
-
-  g_resolver_lookup_by_name_async (resolver, stun_server,
-      data->cancellable, stun_server_resolved_cb, data);
-}
-
-
-static void
-got_jingle_info_stanza (
-    GabbleJingleFactory *fac,
-    WockyStanza *stanza)
-{
-  WockyNode *node, *query_node;
-
-  query_node = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (stanza), "query", NS_GOOGLE_JINGLE_INFO);
-
-  if (query_node == NULL)
-    return;
-
-  if (fac->priv->get_stun_from_jingle)
-    node = wocky_node_get_child (query_node, "stun");
-  else
-    node = NULL;
-
-  if (node != NULL)
-    {
-      node = wocky_node_get_child (node, "server");
-
-      if (node != NULL)
-        {
-          const gchar *server;
-          const gchar *port_attr;
-          guint port = GABBLE_PARAMS_DEFAULT_STUN_PORT;
-
-          server = wocky_node_get_attribute (node, "host");
-          port_attr = wocky_node_get_attribute (node, "udp");
-
-          if (port_attr != NULL)
-            port = atoi (port_attr);
-
-          if (server != NULL && port > 0 && port <= G_MAXUINT16)
-            {
-              DEBUG ("jingle info: got stun server %s, port %u", server,
-                  port);
-              take_stun_server (fac, g_strdup (server), port, FALSE);
-            }
-        }
-    }
-
-#ifdef ENABLE_GOOGLE_RELAY
-  node = wocky_node_get_child (query_node, "relay");
-
-  if (node != NULL)
-    {
-      WockyNode *subnode = wocky_node_get_child (node, "token");
-
-      if (subnode != NULL)
-        {
-          const gchar *token = subnode->content;
-
-          if (token != NULL)
-            {
-              DEBUG ("jingle info: got Google relay token %s", token);
-              g_free (fac->priv->relay_token);
-              fac->priv->relay_token = g_strdup (token);
-            }
-        }
-
-      subnode = wocky_node_get_child (node, "server");
-
-      if (subnode != NULL)
-        {
-          const gchar *server;
-          const gchar *port;
-
-          server = wocky_node_get_attribute (subnode, "host");
-
-          if (server != NULL)
-            {
-              DEBUG ("jingle info: got relay server %s", server);
-              g_free (fac->priv->relay_server);
-              fac->priv->relay_server = g_strdup (server);
-            }
-
-          if (test_mode)
-            {
-              /* this is not part of the real protocol, but we can't listen on
-               * port 80 in an unprivileged regression test */
-              port = wocky_node_get_attribute (subnode,
-                  "gabble-test-http-port");
-
-              if (port != NULL)
-                {
-                  DEBUG ("jingle info: diverting 'Google' HTTP requests to "
-                      "port %s", port);
-                  fac->priv->relay_http_port = atoi (port);
-                }
-            }
-
-          /* FIXME: these are not really actually used anywhere at
-           * the moment, because we get the same info when creating
-           * relay session. */
-          port = wocky_node_get_attribute (subnode, "udp");
-
-          if (port != NULL)
-            {
-              DEBUG ("jingle info: got relay udp port %s", port);
-              fac->priv->relay_udp = atoi (port);
-            }
-
-          port = wocky_node_get_attribute (subnode, "tcp");
-
-          if (port != NULL)
-            {
-              DEBUG ("jingle info: got relay tcp port %s", port);
-              fac->priv->relay_tcp = atoi (port);
-            }
-
-          port = wocky_node_get_attribute (subnode, "tcpssl");
-
-          if (port != NULL)
-            {
-              DEBUG ("jingle info: got relay tcpssl port %s", port);
-              fac->priv->relay_ssltcp = atoi (port);
-            }
-
-        }
-
-    }
-#endif  /* ENABLE_GOOGLE_RELAY */
-}
-
-static gboolean
-jingle_info_cb (
-    WockyPorter *porter,
-    WockyStanza *stanza,
-    gpointer user_data)
-{
-  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
-
-  got_jingle_info_stanza (fac, stanza);
-  wocky_porter_acknowledge_iq (porter, stanza, NULL);
-
-  return TRUE;
-}
-
-static void
-jingle_info_reply_cb (
-    GObject *source,
-    GAsyncResult *result,
-    gpointer user_data)
-{
-  GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (user_data);
-  WockyStanza *reply = NULL;
-  GError *error = NULL;
-
-  if (conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, &reply,
-          &error))
-    {
-      got_jingle_info_stanza (fac, reply);
-    }
-  else
-    {
-      DEBUG ("jingle info request failed: %s", error->message);
-      g_clear_error (&error);
-    }
-
-  tp_clear_object (&reply);
-}
-
-static void
-jingle_info_send_request (GabbleJingleFactory *fac)
-{
-  GabbleJingleFactoryPrivate *priv = fac->priv;
-  const gchar *jid = conn_util_get_bare_self_jid (priv->conn);
-  WockyStanza *stanza = wocky_stanza_build (
-      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET, NULL, jid,
-      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
-
-  conn_util_send_iq_async (priv->conn, stanza, NULL, jingle_info_reply_cb, fac);
-
-  g_object_unref (stanza);
 }
 
 static void
@@ -440,6 +124,8 @@ gabble_jingle_factory_dispose (GObject *object)
 {
   GabbleJingleFactory *fac = GABBLE_JINGLE_FACTORY (object);
   GabbleJingleFactoryPrivate *priv = fac->priv;
+  GHashTableIter iter;
+  gpointer val;
 
   if (priv->dispose_has_run)
     return;
@@ -447,14 +133,21 @@ gabble_jingle_factory_dispose (GObject *object)
   DEBUG ("dispose called");
   priv->dispose_has_run = TRUE;
 
-  tp_clear_pointer (&priv->google_resolver, gabble_google_relay_resolver_destroy);
-  tp_clear_pointer (&priv->sessions, g_hash_table_unref);
-  tp_clear_pointer (&priv->content_types, g_hash_table_unref);
-  tp_clear_pointer (&priv->transports, g_hash_table_unref);
-  tp_clear_pointer (&priv->stun_server, g_free);
-  tp_clear_pointer (&priv->fallback_stun_server, g_free);
-  tp_clear_pointer (&priv->relay_token, g_free);
-  tp_clear_pointer (&priv->relay_server, g_free);
+  gabble_jingle_factory_stop (fac);
+  g_clear_object (&priv->session);
+  g_clear_object (&priv->porter);
+
+  g_hash_table_iter_init (&iter, priv->sessions);
+  while (g_hash_table_iter_next (&iter, NULL, &val))
+    g_signal_handlers_disconnect_by_func (val, session_query_cap_cb, fac);
+  g_hash_table_unref (priv->sessions);
+  priv->sessions = NULL;
+
+  g_hash_table_unref (priv->content_types);
+  priv->content_types = NULL;
+  g_hash_table_unref (priv->transports);
+  priv->transports = NULL;
+  g_clear_object (&priv->jingle_info);
 
   if (G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_jingle_factory_parent_class)->dispose (object);
@@ -470,8 +163,8 @@ gabble_jingle_factory_get_property (GObject *object,
   GabbleJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      g_value_set_object (value, priv->conn);
+    case PROP_SESSION:
+      g_value_set_object (value, priv->session);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -489,8 +182,8 @@ gabble_jingle_factory_set_property (GObject *object,
   GabbleJingleFactoryPrivate *priv = chan->priv;
 
   switch (property_id) {
-    case PROP_CONNECTION:
-      priv->conn = g_value_get_object (value);
+    case PROP_SESSION:
+      priv->session = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -502,16 +195,12 @@ static void
 gabble_jingle_factory_constructed (GObject *obj)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (obj);
-  GabbleJingleFactoryPrivate *priv = self->priv;
   GObjectClass *parent = G_OBJECT_CLASS (gabble_jingle_factory_parent_class);
 
   if (parent->constructed != NULL)
     parent->constructed (obj);
 
-  gabble_signal_connect_weak (priv->conn, "status-changed",
-      (GCallback) connection_status_changed_cb, G_OBJECT (self));
-  gabble_signal_connect_weak (priv->conn, "porter-available",
-      (GCallback) connection_porter_available_cb, G_OBJECT (self));
+  attach_to_wocky_session (self);
 
   jingle_share_register (self);
   jingle_media_rtp_register (self);
@@ -533,132 +222,96 @@ gabble_jingle_factory_class_init (GabbleJingleFactoryClass *cls)
   object_class->set_property = gabble_jingle_factory_set_property;
   object_class->dispose = gabble_jingle_factory_dispose;
 
-  param_spec = g_param_spec_object ("connection", "GabbleConnection object",
-      "Gabble connection object that uses this Jingle Factory object",
-      GABBLE_TYPE_CONNECTION,
-      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_NICK |
-      G_PARAM_STATIC_BLURB);
-  g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+  param_spec = g_param_spec_object ("session", "WockySession object",
+      "WockySession to listen for Jingle sessions on",
+      WOCKY_TYPE_SESSION,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_SESSION, param_spec);
 
   /* signal definitions */
 
+  /*
+   * @session: a fresh new Jingle session for your listening pleasure
+   * @initiated_locally: %TRUE if this is a new outgoing session; %FALSE if it
+   *  is a new incoming session
+   */
   signals[NEW_SESSION] = g_signal_new ("new-session",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, g_cclosure_marshal_VOID__POINTER,
-        G_TYPE_NONE, 1, G_TYPE_POINTER);
+        0, NULL, NULL, gabble_marshal_VOID__OBJECT_BOOL,
+        G_TYPE_NONE, 2, GABBLE_TYPE_JINGLE_SESSION, G_TYPE_BOOLEAN);
 
-  signals[STUN_SERVER_CHANGED] = g_signal_new ("stun-server-changed",
+  /*
+   * @contact: the peer in a call
+   * @cap: the XEP-0115 feature string the session is interested in.
+   *
+   * Emitted when a Jingle session wants to check whether the peer has a
+   * particular capability. The handler should return %TRUE if @contact has
+   * @cap.
+   */
+  signals[QUERY_CAP] = g_signal_new ("query-cap",
         G_TYPE_FROM_CLASS (cls), G_SIGNAL_RUN_LAST,
-        0, NULL, NULL, gabble_marshal_VOID__STRING_UINT,
-      G_TYPE_NONE, 2, G_TYPE_STRING, G_TYPE_UINT);
+        0, g_signal_accumulator_first_wins, NULL,
+        gabble_marshal_BOOLEAN__OBJECT_STRING,
+        G_TYPE_BOOLEAN, 2, WOCKY_TYPE_CONTACT, G_TYPE_STRING);
+}
+
+GabbleJingleFactory *
+gabble_jingle_factory_new (
+    WockySession *session)
+{
+  return g_object_new (GABBLE_TYPE_JINGLE_FACTORY,
+      "session", session,
+      NULL);
 }
 
 static void
-connection_status_changed_cb (GabbleConnection *conn,
-                              guint status,
-                              guint reason,
-                              GabbleJingleFactory *self)
+attach_to_wocky_session (GabbleJingleFactory *self)
 {
   GabbleJingleFactoryPrivate *priv = self->priv;
 
-  switch (status)
-    {
-    case TP_CONNECTION_STATUS_CONNECTING:
-      g_assert (priv->conn != NULL);
-      break;
+  g_assert (priv->session != NULL);
 
-    case TP_CONNECTION_STATUS_CONNECTED:
-        {
-          gchar *stun_server = NULL;
-          guint stun_port = 0;
-
-          g_object_get (priv->conn,
-              "stun-server", &stun_server,
-              "stun-port", &stun_port,
-              NULL);
-
-          if (stun_server == NULL)
-            {
-              self->priv->get_stun_from_jingle = TRUE;
-            }
-          else
-            {
-              take_stun_server (self, stun_server, stun_port, FALSE);
-            }
-
-          g_object_get (priv->conn,
-              "fallback-stun-server", &stun_server,
-              "fallback-stun-port", &stun_port,
-              NULL);
-
-          if (stun_server != NULL)
-            {
-              take_stun_server (self, stun_server, stun_port, TRUE);
-            }
-
-          if (priv->conn->features &
-              GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
-            {
-              jingle_info_send_request (self);
-            }
-        }
-      break;
-
-    case TP_CONNECTION_STATUS_DISCONNECTED:
-      if (priv->jingle_handler_id != 0)
-        {
-          WockyPorter *p = wocky_session_get_porter (priv->conn->session);
-
-          wocky_porter_unregister_handler (p, priv->jingle_handler_id);
-          wocky_porter_unregister_handler (p, priv->jingle_info_handler_id);
-          priv->jingle_handler_id = 0;
-          priv->jingle_info_handler_id = 0;
-        }
-
-      break;
-    }
-}
-
-static void
-connection_porter_available_cb (
-    GabbleConnection *conn,
-    WockyPorter *porter,
-    gpointer user_data)
-{
-  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
-  GabbleJingleFactoryPrivate *priv = self->priv;
-
-  g_assert (priv->jingle_handler_id == 0);
+  g_assert (priv->porter == NULL);
+  priv->porter = g_object_ref (wocky_session_get_porter (priv->session));
 
   /* TODO: we could match different dialects here maybe? */
-  priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (porter,
+  priv->jingle_handler_id = wocky_porter_register_handler_from_anyone (
+      priv->porter,
       WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
       WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_cb, self,
       NULL);
 
-  priv->jingle_info_handler_id = wocky_c2s_porter_register_handler_from_server (
-      WOCKY_C2S_PORTER (porter),
-      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
-      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_info_cb, self,
-      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
+  priv->jingle_info = gabble_jingle_info_new (priv->porter);
+}
+
+void
+gabble_jingle_factory_stop (GabbleJingleFactory *self)
+{
+  GabbleJingleFactoryPrivate *priv = self->priv;
+
+  if (priv->porter != NULL &&
+      priv->jingle_handler_id != 0)
+    {
+      wocky_porter_unregister_handler (priv->porter, priv->jingle_handler_id);
+      priv->jingle_handler_id = 0;
+    }
 }
 
 /* The 'session' map is keyed by:
- * "<peer's handle>\n<peer's jid>\n<session id>"
+ * "<peer's jid>\n<session id>"
  */
-#define SESSION_MAP_KEY_FORMAT "%u\n%s\n%s"
+#define SESSION_MAP_KEY_FORMAT "%s\n%s"
 
 static gchar *
-make_session_map_key (TpHandle peer,
+make_session_map_key (
     const gchar *jid,
     const gchar *sid)
 {
-  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, peer, jid, sid);
+  return g_strdup_printf (SESSION_MAP_KEY_FORMAT, jid, sid);
 }
 
 static gchar *
 get_unique_sid_for (GabbleJingleFactory *factory,
-    TpHandle peer,
     const gchar *jid,
     gchar **key)
 {
@@ -673,7 +326,7 @@ get_unique_sid_for (GabbleJingleFactory *factory,
       g_free (sid);
       g_free (key_);
       sid = g_strdup_printf ("%u", val);
-      key_ = make_session_map_key (peer, jid, sid);
+      key_ = make_session_map_key (jid, sid);
     }
   while (g_hash_table_lookup (factory->priv->sessions, key_) != NULL);
 
@@ -691,22 +344,17 @@ ensure_session (GabbleJingleFactory *self,
     GError **error)
 {
   GabbleJingleFactoryPrivate *priv = self->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   gchar *key;
   GabbleJingleSession *sess;
-  TpHandle peer;
 
-  peer = tp_handle_ensure (contact_repo, from, NULL, error);
-
-  if (peer == 0)
+  if (!wocky_decode_jid (from, NULL, NULL, NULL))
     {
       g_prefix_error (error, "Couldn't parse sender '%s': ", from);
       return NULL;
     }
 
   /* If we can ensure the handle, we can decode the jid */
-  key = make_session_map_key (peer, from, sid);
+  key = make_session_map_key (from, sid);
   sess = g_hash_table_lookup (priv->sessions, key);
   g_free (key);
 
@@ -714,8 +362,7 @@ ensure_session (GabbleJingleFactory *self,
     {
       if (action == JINGLE_ACTION_SESSION_INITIATE)
         {
-          sess = create_session (self, sid, peer, from, FALSE);
-          g_object_set (sess, "dialect", dialect, NULL);
+          sess = create_session (self, sid, from, dialect, FALSE);
           *new_session = TRUE;
         }
       else
@@ -731,7 +378,6 @@ ensure_session (GabbleJingleFactory *self,
       *new_session = FALSE;
     }
 
-  tp_handle_unref (contact_repo, peer);
   return sess;
 }
 
@@ -742,7 +388,6 @@ jingle_cb (
     gpointer user_data)
 {
   GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
-  GabbleJingleFactoryPrivate *priv = self->priv;
   GError *error = NULL;
   const gchar *sid, *from;
   GabbleJingleSession *sess;
@@ -767,25 +412,49 @@ jingle_cb (
   if (!gabble_jingle_session_parse (sess, action, msg, &error))
     goto REQUEST_ERROR;
 
+  /* This has to be after the call to parse(), not inside create_session():
+   * until the session has parsed the session-initiate stanza, it does not know
+   * about its own contents, and we don't even know if the content types are
+   * something we understand. So it's essentially half-alive and useless to
+   * signal listeners.
+   */
   if (new_session)
-    g_signal_emit (self, signals[NEW_SESSION], 0, sess);
+    g_signal_emit (self, signals[NEW_SESSION], 0, sess, FALSE);
 
   /* all went well, we can acknowledge the IQ */
-  _gabble_connection_acknowledge_set_iq (priv->conn, msg);
+  wocky_porter_acknowledge_iq (porter, msg, NULL);
 
   return TRUE;
 
 REQUEST_ERROR:
   g_assert (error != NULL);
   DEBUG ("NAKing with error: %s", error->message);
-  wocky_porter_send_iq_gerror (wocky_session_get_porter (priv->conn->session),
-      msg, error);
+  wocky_porter_send_iq_gerror (porter, msg, error);
   g_error_free (error);
 
   if (sess != NULL && new_session)
     gabble_jingle_session_terminate (sess, JINGLE_REASON_UNKNOWN, NULL, NULL);
 
   return TRUE;
+}
+
+static gboolean
+session_query_cap_cb (
+    GabbleJingleSession *session,
+    WockyContact *contact,
+    const gchar *cap_or_quirk,
+    gpointer user_data)
+{
+  GabbleJingleFactory *self = GABBLE_JINGLE_FACTORY (user_data);
+  gboolean ret;
+
+  /* Propagate the query out to the application. We can't depend on the
+   * application connecting to ::query-cap on the session because caps queries
+   * may happen while parsing the session-initiate stanza, which must happen
+   * before the session is announced to the application.
+   */
+  g_signal_emit (self, signals[QUERY_CAP], 0, contact, cap_or_quirk, &ret);
+  return ret;
 }
 
 /*
@@ -796,27 +465,38 @@ REQUEST_ERROR:
 static GabbleJingleSession *
 create_session (GabbleJingleFactory *fac,
     const gchar *sid,
-    TpHandle peer,
     const gchar *jid,
+    JingleDialect dialect,
     gboolean local_hold)
 {
   GabbleJingleFactoryPrivate *priv = fac->priv;
   GabbleJingleSession *sess;
   gboolean local_initiator;
   gchar *sid_, *key;
+  gpointer contact;
+  WockyContactFactory *factory;
 
+  factory = wocky_session_get_contact_factory (priv->session);
   g_assert (jid != NULL);
+
+  if (strchr (jid, '/') != NULL)
+    contact = wocky_contact_factory_ensure_resource_contact (factory, jid);
+  else
+    contact = wocky_contact_factory_ensure_bare_contact (factory, jid);
+
+  g_return_val_if_fail (contact != NULL, NULL);
+  g_return_val_if_fail (WOCKY_IS_CONTACT (contact), NULL);
 
   if (sid != NULL)
     {
-      key = make_session_map_key (peer, jid, sid);
+      key = make_session_map_key (jid, sid);
       sid_ = g_strdup (sid);
 
       local_initiator = FALSE;
     }
   else
     {
-      sid_ = get_unique_sid_for (fac, peer, jid, &key);
+      sid_ = get_unique_sid_for (fac, jid, &key);
 
       local_initiator = TRUE;
     }
@@ -825,8 +505,10 @@ create_session (GabbleJingleFactory *fac,
    * get_unique_sid_for should have ensured the key is fresh. */
   g_assert (NULL == g_hash_table_lookup (priv->sessions, key));
 
-  sess = gabble_jingle_session_new (priv->conn, sid_, local_initiator, jid,
-      local_hold);
+  sess = gabble_jingle_session_new (
+      fac,
+      priv->porter,
+      sid_, local_initiator, contact, dialect, local_hold);
   g_signal_connect (sess, "terminated",
     (GCallback) session_terminated_cb, fac);
 
@@ -836,17 +518,24 @@ create_session (GabbleJingleFactory *fac,
   DEBUG ("new session (%s, %s) @ %p", jid, sid_, sess);
 
   g_free (sid_);
+  g_object_unref (contact);
+
+  g_signal_connect (sess, "query-cap",
+      (GCallback) session_query_cap_cb, (GObject *) fac);
 
   return sess;
 }
 
 GabbleJingleSession *
 gabble_jingle_factory_create_session (GabbleJingleFactory *fac,
-    TpHandle peer,
     const gchar *jid,
+    JingleDialect dialect,
     gboolean local_hold)
 {
-  return create_session (fac, NULL, peer, jid, local_hold);
+  GabbleJingleSession *session = create_session (fac, NULL, jid, dialect, local_hold);
+
+  g_signal_emit (fac, signals[NEW_SESSION], 0, session, TRUE);
+  return session;
 }
 
 void
@@ -890,74 +579,26 @@ gabble_jingle_factory_lookup_content_type (GabbleJingleFactory *self,
 
 static void
 session_terminated_cb (GabbleJingleSession *session,
-                       gboolean local_terminator,
-                       TpChannelGroupChangeReason reason,
-                       const gchar *text,
+                       gboolean local_terminator G_GNUC_UNUSED,
+                       JingleReason reason G_GNUC_UNUSED,
+                       const gchar *text G_GNUC_UNUSED,
                        GabbleJingleFactory *factory)
 {
-  gchar *key = make_session_map_key (session->peer,
+  gchar *key = make_session_map_key (
       gabble_jingle_session_get_peer_jid (session),
       gabble_jingle_session_get_sid (session));
 
   DEBUG ("removing terminated session with key %s", key);
 
+  g_signal_handlers_disconnect_by_func (session, session_query_cap_cb, factory);
   g_warn_if_fail (g_hash_table_remove (factory->priv->sessions, key));
 
   g_free (key);
 }
 
-const gchar *
-gabble_jingle_factory_get_google_relay_token (GabbleJingleFactory *self)
+GabbleJingleInfo *
+gabble_jingle_factory_get_jingle_info (
+    GabbleJingleFactory *self)
 {
-  return self->priv->relay_token;
-}
-
-gboolean
-gabble_jingle_factory_get_stun_server (GabbleJingleFactory *self,
-                                       gchar **stun_server,
-                                       guint *stun_port)
-{
-  if (self->priv->stun_server == NULL || self->priv->stun_port == 0)
-    {
-      if (self->priv->fallback_stun_server == NULL ||
-          self->priv->fallback_stun_port == 0)
-        return FALSE;
-
-      if (stun_server != NULL)
-        *stun_server = g_strdup (self->priv->fallback_stun_server);
-
-      if (stun_port != NULL)
-        *stun_port = self->priv->fallback_stun_port;
-
-      return TRUE;
-    }
-
-  if (stun_server != NULL)
-    *stun_server = g_strdup (self->priv->stun_server);
-
-  if (stun_port != NULL)
-    *stun_port = self->priv->stun_port;
-
-  return TRUE;
-}
-
-void
-gabble_jingle_factory_create_google_relay_session (
-    GabbleJingleFactory *fac,
-    guint components,
-    GabbleJingleFactoryRelaySessionCb callback,
-    gpointer user_data)
-{
-  GabbleJingleFactoryPrivate *priv = fac->priv;
-
-  g_return_if_fail (callback != NULL);
-
-  if (priv->google_resolver == NULL)
-    {
-      priv->google_resolver = gabble_google_relay_resolver_new ();
-    }
-
-  gabble_google_relay_resolver_resolve (priv->google_resolver,
-      components, priv->relay_server, priv->relay_http_port, priv->relay_token,
-      callback, user_data);
+  return self->priv->jingle_info;
 }

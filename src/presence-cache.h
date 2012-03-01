@@ -99,6 +99,9 @@ GType gabble_presence_cache_get_type (void);
 GabblePresenceCache *gabble_presence_cache_new (GabbleConnection *conn);
 GabblePresence *gabble_presence_cache_get (GabblePresenceCache *cache,
     TpHandle handle);
+GabblePresence *gabble_presence_cache_get_for_contact (
+    GabblePresenceCache *cache,
+    WockyContact *contact);
 void gabble_presence_cache_update (GabblePresenceCache *cache,
     TpHandle handle, const gchar *resource, GabblePresenceId presence_id,
     const gchar *status_message, gint8 priority);

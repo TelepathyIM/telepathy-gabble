@@ -21,9 +21,10 @@
 #define __JINGLE_CONTENT_H__
 
 #include <glib-object.h>
-#include "types.h"
+
 #include "jingle-factory.h"
 #include "jingle-transport-iface.h"
+#include "jingle-types.h"
 
 G_BEGIN_DECLS
 
@@ -95,7 +96,6 @@ struct _GabbleJingleContent {
     GObject parent;
     GabbleJingleContentPrivate *priv;
 
-    GabbleConnection *conn;
     GabbleJingleSession *session;
 };
 
@@ -158,9 +158,6 @@ void gabble_jingle_content_request_receiving (GabbleJingleContent *self,
     gboolean receive);
 
 void gabble_jingle_content_send_complete (GabbleJingleContent *self);
-
-JingleMediaType jingle_media_type_from_tp (TpMediaStreamType type);
-TpMediaStreamType jingle_media_type_to_tp (JingleMediaType type);
 
 #endif /* __JINGLE_CONTENT_H__ */
 

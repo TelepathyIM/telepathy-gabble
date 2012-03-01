@@ -27,13 +27,11 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
-#include "connection.h"
 #include "debug.h"
 #include "jingle-content.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
 #include "namespaces.h"
-#include "util.h"
 
 static void
 transport_iface_init (gpointer g_iface, gpointer iface_data);
@@ -275,11 +273,11 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str == NULL)
           break;
 
-      if (!tp_strdiff (str, "udp"))
+      if (!wocky_strdiff (str, "udp"))
         {
           proto = JINGLE_TRANSPORT_PROTOCOL_UDP;
         }
-      else if (!tp_strdiff (str, "tcp"))
+      else if (!wocky_strdiff (str, "tcp"))
         {
           /* candiates on port 443 must be "ssltcp" */
           if (port == 443)
@@ -287,7 +285,7 @@ parse_candidates (GabbleJingleTransportIface *obj,
 
           proto = JINGLE_TRANSPORT_PROTOCOL_TCP;
         }
-      else if (!tp_strdiff (str, "ssltcp"))
+      else if (!wocky_strdiff (str, "ssltcp"))
         {
           /* "ssltcp" must use port 443 */
           if (port != 443)
@@ -313,15 +311,15 @@ parse_candidates (GabbleJingleTransportIface *obj,
       if (str == NULL)
           break;
 
-      if (!tp_strdiff (str, "local"))
+      if (!wocky_strdiff (str, "local"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_LOCAL;
         }
-      else if (!tp_strdiff (str, "stun"))
+      else if (!wocky_strdiff (str, "stun"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_STUN;
         }
-      else if (!tp_strdiff (str, "relay"))
+      else if (!wocky_strdiff (str, "relay"))
         {
           ctype = JINGLE_CANDIDATE_TYPE_RELAY;
         }
@@ -452,8 +450,9 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
       wocky_node_set_attribute (cnode, "name", name);
     }
 
-  _gabble_connection_send_with_reply (priv->content->conn, msg, NULL, NULL,
-      NULL, NULL);
+  wocky_porter_send_iq_async (
+      gabble_jingle_session_get_porter (priv->content->session), msg,
+      NULL, NULL, NULL);
   g_object_unref (msg);
 }
 

@@ -1332,12 +1332,16 @@ offer_gtalk_file_transfer (GabbleFileTransferChannel *self,
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleConnection *conn = GABBLE_CONNECTION (
       tp_base_channel_get_connection (base));
+  GabbleJingleFactory *jf;
   GTalkFileCollection *gtalk_file_collection;
 
   DEBUG ("Offering Gtalk file transfer to %s", full_jid);
 
+  jf = gabble_jingle_mint_get_factory (conn->jingle_mint);
+  g_return_val_if_fail (jf != NULL, FALSE);
+
   gtalk_file_collection = gtalk_file_collection_new (self,
-      conn->jingle_factory,
+      jf,
       tp_base_channel_get_target_handle (base), full_jid);
 
   g_return_val_if_fail (gtalk_file_collection != NULL, FALSE);
@@ -1435,8 +1439,9 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
      jingle-share but we have no google relay token */
   if (si &&
       (!jingle_share ||
-          gabble_jingle_factory_get_google_relay_token (
-              conn->jingle_factory) == NULL))
+          gabble_jingle_info_get_google_relay_token (
+              gabble_jingle_mint_get_info (conn->jingle_mint))
+              == NULL))
     {
       result = offer_bytestream (self, jid, si_resource, error);
     }

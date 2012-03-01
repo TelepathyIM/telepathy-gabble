@@ -339,7 +339,7 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
 
 
 static void
-new_jingle_session_cb (GabbleJingleFactory *jf,
+new_jingle_session_cb (GabbleJingleMint *jm,
     GabbleJingleSession *sess,
     gpointer data)
 {
@@ -364,7 +364,9 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
       if (content == NULL)
           return;
 
-      gtalk_fc = gtalk_file_collection_new_from_session (jf, sess);
+      gtalk_fc = gtalk_file_collection_new_from_session (
+          gabble_jingle_mint_get_factory (jm),
+          sess);
 
       if (gtalk_fc)
         {
@@ -381,11 +383,16 @@ new_jingle_session_cb (GabbleJingleFactory *jf,
               GabbleJingleShareManifestEntry *entry = i->data;
               GabbleFileTransferChannel *channel = NULL;
               gchar *filename = NULL;
+              TpHandleRepoIface *contacts = tp_base_connection_get_handles (
+                  TP_BASE_CONNECTION (self->priv->connection),
+                  TP_HANDLE_TYPE_CONTACT);
+              TpHandle peer = tp_handle_ensure (contacts,
+                  gabble_jingle_session_get_peer_jid (sess), NULL, NULL);
 
               filename = g_strdup_printf ("%s%s",
                   entry->name, entry->folder? ".tar":"");
               channel = gabble_file_transfer_channel_new (self->priv->connection,
-                  sess->peer, sess->peer, TP_FILE_TRANSFER_STATE_PENDING,
+                  peer, peer, TP_FILE_TRANSFER_STATE_PENDING,
                   NULL, filename, entry->size, TP_FILE_HASH_TYPE_NONE, NULL,
                   NULL, 0, 0, FALSE, NULL, gtalk_fc, token, NULL, NULL, NULL);
               g_free (filename);
@@ -418,8 +425,8 @@ connection_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
       case TP_CONNECTION_STATUS_CONNECTING:
-        g_signal_connect (self->priv->connection->jingle_factory,
-            "new-session",
+        g_signal_connect (self->priv->connection->jingle_mint,
+            "incoming-session",
             G_CALLBACK (new_jingle_session_cb), self);
         break;
 

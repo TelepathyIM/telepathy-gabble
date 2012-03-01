@@ -368,8 +368,7 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   self->private_tubes_factory = gabble_private_tubes_factory_new (self);
   g_ptr_array_add (channel_managers, self->private_tubes_factory);
 
-  self->jingle_factory = g_object_new (GABBLE_TYPE_JINGLE_FACTORY,
-    "connection", self, NULL);
+  self->jingle_mint = gabble_jingle_mint_new (self);
 
   g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
@@ -1229,7 +1228,7 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&self->disco);
   tp_clear_object (&self->req_pipeline);
   tp_clear_object (&self->vcard_manager);
-  tp_clear_object (&self->jingle_factory);
+  tp_clear_object (&self->jingle_mint);
 
   /* remove borrowed references before TpBaseConnection unrefs the channel
    * factories */

@@ -267,7 +267,7 @@ AM_CFLAGS = $(ERROR_CFLAGS) -I$(top_srcdir) -I$(top_builddir) \
 	    @SOUP_CFLAGS@ @NICE_CFLAGS@ @GMODULE_CFLAGS@ \
 	    -I $(top_srcdir)/lib -I $(top_builddir)/lib \
 	    -DG_LOG_DOMAIN=\"gabble\" \
-	    -DPLUGIN_DIR=\"$(libdir)/telepathy/gabble-0\"
+	    -DPLUGIN_DIR=\"$(pluginexecdir)\"
 
 # following flag is requied to make getnameinfo work
 if WINDOWS

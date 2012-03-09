@@ -3,9 +3,9 @@ exec_prefix=
 abs_top_srcdir=@abs_top_srcdir@
 abs_top_builddir=@abs_top_builddir@
 libdir=@libdir@
+pluginexecdir=@pluginexecdir@
 pluginexeclibdir=@pluginexeclibdir@
 
-plugindir=${libdir}/telepathy/gabble-0
 gabblepath=@abs_top_builddir@/src/telepathy-gabble # For plugins' tests
 
 Name: Telepathy-Gabble

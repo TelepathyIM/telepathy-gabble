@@ -3,8 +3,7 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
 libexecdir=@libexecdir@
-
-plugindir=${libdir}/telepathy/gabble-0
+pluginexecdir=@pluginexecdir@
 pluginexeclibdir=@pluginexeclibdir@
 gabblepath=${libexecdir}/telepathy-gabble # For plugins' tests
 

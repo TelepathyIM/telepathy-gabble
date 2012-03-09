@@ -4,7 +4,7 @@ G_DEBUG=fatal-warnings,fatal-criticals
 export G_DEBUG
 GABBLE_TIMING=1
 export GABBLE_TIMING
-GABBLE_PLUGIN_DIR="@gabbletestsdir@/plugins:@libdir@/telepathy/gabble-0"
+GABBLE_PLUGIN_DIR="@gabbletestsdir@/plugins:@pluginexecdir@"
 export GABBLE_PLUGIN_DIR
 WOCKY_CAPS_CACHE=:memory:
 export WOCKY_CAPS_CACHE

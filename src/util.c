@@ -996,6 +996,22 @@ jingle_pick_best_content_type (GabbleConnection *conn,
     }
 }
 
+static TpCallStreamCandidateType
+tp_candidate_type_from_jingle (JingleCandidateType type)
+{
+  switch (type)
+    {
+    default:
+      /* Consider UNKNOWN as LOCAL/HOST */
+    case JINGLE_CANDIDATE_TYPE_LOCAL:
+      return TP_CALL_STREAM_CANDIDATE_TYPE_HOST;
+    case JINGLE_CANDIDATE_TYPE_STUN:
+      return TP_CALL_STREAM_CANDIDATE_TYPE_SERVER_REFLEXIVE;
+    case JINGLE_CANDIDATE_TYPE_RELAY:
+      return TP_CALL_STREAM_CANDIDATE_TYPE_RELAY;
+    }
+}
+
 /**
  * @candidates: (element-type JingleCandidate): candidates
  *
@@ -1018,7 +1034,7 @@ gabble_call_candidates_to_array (GList *candidates)
 
         info = tp_asv_new (
           "protocol", G_TYPE_UINT, cand->protocol,
-          "type", G_TYPE_UINT, cand->type,
+          "type", G_TYPE_UINT, tp_candidate_type_from_jingle (cand->type),
           "foundation", G_TYPE_STRING, cand->id,
           "priority", G_TYPE_UINT, cand->preference,
           "username", G_TYPE_STRING, cand->username,

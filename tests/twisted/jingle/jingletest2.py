@@ -94,7 +94,7 @@ class JingleProtocol:
                 "port": str(port),
                 "protocol": "udp",
                 "preference": str(props["priority"] / 65536.0),
-                "type":  ["local", "stun", "relay"][props["type"]],
+                "type":  ["INVALID NONE", "local", "stun", "INVALID PEER RFLX", "relay"][props["type"]],
                 "network": "0",
                 "generation": "0",# Increment this yourself if you care.
                 "component": str(component), # 1 is rtp, 2 is rtcp
@@ -516,14 +516,14 @@ class JingleTest2:
     # Default candidates for the remote end
     remote_call_candidates = [# Local candidates
                          (1, "192.168.0.1", 666,
-                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.CALL_STREAM_CANDIDATE_TYPE_HOST,
                              #"Foundation":,
                              "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
                              "priority": 10000,
                              #"base-ip":
                              }),
                          (2, "192.168.0.1", 667,
-                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.CALL_STREAM_CANDIDATE_TYPE_HOST,
                              #"Foundation":,
                              "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
                              "priority": 10000,
@@ -531,7 +531,7 @@ class JingleTest2:
                              }),
                          # STUN candidates have their own ufrag
                          (1, "168.192.0.1", 10666,
-                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                            {"type": cs.CALL_STREAM_CANDIDATE_TYPE_SERVER_REFLEXIVE,
                              #"Foundation":,
                              "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
                              "priority": 100,
@@ -540,7 +540,7 @@ class JingleTest2:
                              "password": "STUNRTPPwd"
                              }),
                          (2, "168.192.0.1", 10667,
-                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_DERIVED,
+                            {"type": cs.CALL_STREAM_CANDIDATE_TYPE_SERVER_REFLEXIVE,
                              #"Foundation":,
                              "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
                              "priority": 100,
@@ -550,14 +550,14 @@ class JingleTest2:
                              }),
                          # Candidates found using UPnP or somesuch?
                          (1, "131.111.12.50", 10666,
-                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.CALL_STREAM_CANDIDATE_TYPE_HOST,
                              #"Foundation":,
                              "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
                              "priority": 1000,
                              #"base-ip":
                              }),
                          (2, "131.111.12.50", 10667,
-                            {"type": cs.MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+                            {"type": cs.CALL_STREAM_CANDIDATE_TYPE_HOST,
                              #"Foundation":,
                              "protocol": cs.MEDIA_STREAM_BASE_PROTO_UDP,
                              "priority": 1000,
@@ -571,7 +571,7 @@ class JingleTest2:
             "RTP", # protocol subtype
             "AVP", # profile
             1.0, # preference
-            0, # transport type = TP_MEDIA_STREAM_TRANSPORT_TYPE_LOCAL,
+            0, # transport type = TP_CALL_STREAM_CANDIDATE_TYPE_HOST,
             "username",
             "password" ) ]
 

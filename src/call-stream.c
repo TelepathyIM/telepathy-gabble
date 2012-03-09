@@ -508,7 +508,8 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
       GValueArray *va;
       JingleCandidate *c;
       GHashTable *info;
-      guint fstype, type;
+      guint tptype;
+      JingleCandidateType type;
       /* borrowed strings, owned by other people. */
       const gchar *username;
       const gchar *password;
@@ -518,24 +519,20 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
 
       info = g_value_get_boxed (va->values + 3);
 
-      fstype = tp_asv_get_uint32 (info, "Type", NULL);
-
-      switch (fstype)
+      tptype = tp_asv_get_uint32 (info, "type", NULL);
+      switch (tptype)
         {
-        case 0: /* FS_CANDIDATE_TYPE_HOST */
+        default:
+          /* Anything else is local */
+        case TP_CALL_STREAM_CANDIDATE_TYPE_HOST:
           type = JINGLE_CANDIDATE_TYPE_LOCAL;
           break;
-        case 1: /* FS_CANDIDATE_TYPE_SRFLX */
-        case 2: /* FS_CANDIDATE_TYPE_PRFLX */
+        case TP_CALL_STREAM_CANDIDATE_TYPE_SERVER_REFLEXIVE:
           type = JINGLE_CANDIDATE_TYPE_STUN;
           break;
-        case 3: /* FS_CANDIDATE_TYPE_RELAY */
+        case TP_CALL_STREAM_CANDIDATE_TYPE_RELAY:
           type = JINGLE_CANDIDATE_TYPE_RELAY;
           break;
-        case 4: /* FS_CANDIDATE_TYPE_MULTICAST */
-        default:
-          DEBUG ("Unhandled candidate type %d", fstype);
-          continue;
         }
 
       username = tp_asv_get_string (info, "username");

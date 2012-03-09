@@ -222,7 +222,7 @@ AM_CONDITIONAL([ENABLE_FATAL_CRITICALS], [test "x$fatal_criticals" = xyes])
 
 dnl dummy check for gtk-doc
 AC_ARG_ENABLE(gtk-doc,
-  AC_HELP_STRING([--enable-gtk-doc],[doesn't actually do anything]),
+  AC_HELP_STRING([--enable-gtk-doc],[does not actually do anything]),
   enable_gtk_doc=yes, enable_gtk_doc=no)
 AM_CONDITIONAL([ENABLE_GTK_DOC], [test "x$enable_gtk_doc" = xyes])
 

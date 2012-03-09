@@ -63,32 +63,6 @@ gabble_tube_iface_base_init (gpointer klass)
     {
       GParamSpec *param_spec;
 
-      param_spec = g_param_spec_object (
-          "connection",
-          "GabbleConnection object",
-          "Gabble connection object that owns this tube object.",
-          GABBLE_TYPE_CONNECTION,
-          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-      g_object_interface_install_property (klass, param_spec);
-
-      param_spec = g_param_spec_uint (
-          "handle",
-          "Handle",
-          "The TpHandle associated with the tubes channel that"
-          "owns this tube object.",
-          0, G_MAXUINT32, 0,
-          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-      g_object_interface_install_property (klass, param_spec);
-
-      param_spec = g_param_spec_uint (
-          "handle-type",
-          "Handle type",
-          "The TpHandleType of the handle associated with the tubes channel"
-          "that owns this tube object.",
-          0, G_MAXUINT32, 0,
-          G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
-      g_object_interface_install_property (klass, param_spec);
-
       param_spec = g_param_spec_uint (
           "self-handle",
           "Self handle",

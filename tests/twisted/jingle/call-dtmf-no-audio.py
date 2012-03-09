@@ -7,6 +7,12 @@ from servicetest import call_async
 from jingletest2 import test_all_dialects
 from call_helper import CallTest, run_call_test
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 class CallDtmfNoAudioTest(CallTest):
 
     # We want vieo only channel

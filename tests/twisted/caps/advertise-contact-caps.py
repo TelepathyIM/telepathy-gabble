@@ -13,7 +13,11 @@ from caps_helper import caps_contain, receive_presence_and_ask_caps, \
 import constants as cs
 import ns
 
-from config import FILE_TRANSFER_ENABLED
+from config import FILE_TRANSFER_ENABLED, VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
 
 def noop_presence_update(q, stream):
     # At the moment Gabble does not optimize away presence updates that

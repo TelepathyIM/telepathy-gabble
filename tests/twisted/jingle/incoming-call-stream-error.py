@@ -12,6 +12,12 @@ import constants as cs
 
 from twisted.words.xish import xpath
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def _session_terminate_predicate(event, reason, msg, jp):
     matches = jp.match_jingle_action(event.query, 'session-terminate')
 

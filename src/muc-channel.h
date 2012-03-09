@@ -22,6 +22,8 @@
 #ifndef __GABBLE_MUC_CHANNEL_H__
 #define __GABBLE_MUC_CHANNEL_H__
 
+#include "config.h"
+
 #include <glib-object.h>
 #include <gio/gio.h>
 
@@ -32,7 +34,9 @@
 
 #include "types.h"
 #include "tubes-channel.h"
+#ifdef ENABLE_VOIP
 #include "call-muc-channel.h"
+#endif
 
 G_BEGIN_DECLS
 
@@ -94,6 +98,7 @@ gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
     TpHandle initiator,
     gboolean requested);
 
+#ifdef ENABLE_VOIP
 GabbleCallMucChannel * gabble_muc_channel_get_call (GabbleMucChannel *gmuc);
 GList * gabble_muc_channel_get_call_channels (GabbleMucChannel *self);
 
@@ -110,6 +115,7 @@ gboolean gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
 
 gboolean gabble_muc_channel_handle_jingle_session (GabbleMucChannel *channel,
     GabbleJingleSession *session);
+#endif
 
 void gabble_muc_channel_update_configuration_async (
     GabbleMucChannel *self,

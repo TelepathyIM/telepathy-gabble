@@ -11,6 +11,11 @@ import constants as cs
 
 from twisted.words.xish import xpath
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
 
 def extract_params(payload_type):
     ret = {}

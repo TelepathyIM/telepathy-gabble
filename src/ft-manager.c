@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
+
 #define _BSD_SOURCE
 #define _XOPEN_SOURCE /* glibc2 needs this */
 #include <time.h>
@@ -28,8 +30,10 @@
 #include <string.h>
 #include <glib/gstdio.h>
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 #include "jingle-session.h"
 #include "jingle-share.h"
+#endif
 #include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "ft-manager.h"
@@ -287,6 +291,7 @@ file_channel_closed_cb (GabbleFileTransferChannel *chan,
     }
 }
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 static void
 gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
 {
@@ -313,6 +318,7 @@ gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
 
   g_hash_table_unref (new_channels);
 }
+#endif
 
 static void
 gabble_ft_manager_channel_created (GabbleFtManager *self,
@@ -337,7 +343,7 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
   g_slist_free (requests);
 }
 
-
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 static void
 new_jingle_session_cb (GabbleJingleMint *jm,
     GabbleJingleSession *sess,
@@ -413,7 +419,7 @@ new_jingle_session_cb (GabbleJingleMint *jm,
         }
     }
 }
-
+#endif
 
 static void
 connection_status_changed_cb (GabbleConnection *conn,
@@ -424,11 +430,13 @@ connection_status_changed_cb (GabbleConnection *conn,
 
   switch (status)
     {
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       case TP_CONNECTION_STATUS_CONNECTING:
         g_signal_connect (self->priv->connection->jingle_mint,
             "incoming-session",
             G_CALLBACK (new_jingle_session_cb), self);
         break;
+#endif
 
       case TP_CONNECTION_STATUS_DISCONNECTED:
         ft_manager_close_all (self);

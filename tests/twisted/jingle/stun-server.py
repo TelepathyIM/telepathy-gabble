@@ -13,7 +13,11 @@ from servicetest import (
 import jingletest
 import constants as cs
 
-from config import CHANNEL_TYPE_CALL_ENABLED, GOOGLE_RELAY_ENABLED
+from config import CHANNEL_TYPE_CALL_ENABLED, GOOGLE_RELAY_ENABLED, VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
 
 def test_stun_server(stun_server_prop,
         expected_stun_server=None, expected_stun_port=None):

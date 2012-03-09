@@ -7,6 +7,12 @@ from servicetest import call_async
 
 import constants as cs
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 muc = "muji@test"
 
 def run_cancel_test(q, bus, conn, stream):

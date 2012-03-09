@@ -21,6 +21,12 @@ from jingletest2 import JingleTest2, test_all_dialects
 import constants as cs
 import ns
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 class CallTest(object):
 
     SELF_JID = 'test@localhost'

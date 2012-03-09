@@ -375,16 +375,32 @@ AC_ARG_ENABLE(file-transfer,
 
 if test x$enable_ft = xyes; then
     AC_DEFINE(ENABLE_FILE_TRANSFER, [], [Enable file transfer])
+fi
+AM_CONDITIONAL([ENABLE_FILE_TRANSFER], [test "x$enable_ft" = xyes])
 
+AC_ARG_ENABLE(voip,
+  AC_HELP_STRING([--disable-voip],
+                 [disable VoIP support (and, consequently, Jingle-based file transfer support]),
+    [enable_voip=$enableval], [enable_voip=yes])
+
+if test x$enable_voip = xyes; then
+    AC_DEFINE(ENABLE_VOIP, [], [Enable VoIP])
+fi
+AM_CONDITIONAL([ENABLE_VOIP], [test "x$enable_voip" = xyes])
+
+if test x$enable_voip = xyes -a x$enable_ft = xyes; then
+    enable_jingle_ft=yes
+    AC_DEFINE(ENABLE_JINGLE_FILE_TRANSFER, [], [Enable file transfer])
     dnl Check for libnice
     PKG_CHECK_MODULES(NICE, nice >= 0.0.11)
 else
+    enable_jingle_ft=no
     NICE_CFLAGS=
     NICE_LIBS=
 fi
 AC_SUBST(NICE_CFLAGS)
 AC_SUBST(NICE_LIBS)
-AM_CONDITIONAL([ENABLE_FILE_TRANSFER], [test "x$enable_ft" = xyes])
+AM_CONDITIONAL([ENABLE_JINGLE_FILE_TRANSFER], [test "x$enable_jingle_ft" = xyes])
 
 AC_CHECK_FUNCS(getifaddrs memset select strndup setresuid setreuid strerror)
 
@@ -432,5 +448,7 @@ Configure summary:
         Channel.Type.Call support...:  ${enable_channel_type_call}
         Google relay support........:  ${enable_google_relay}
         File transfer support.......:  ${enable_ft}
+        Jingle file transfer support:  ${enable_jingle_ft}
+        VoIP support................:  ${enable_voip}
 
 "

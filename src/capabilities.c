@@ -49,9 +49,13 @@ struct _Feature
 static const Feature self_advertised_features[] =
 {
   { FEATURE_FIXED, NS_GOOGLE_FEAT_SESSION },
+
+#ifdef ENABLE_VOIP
   { FEATURE_FIXED, NS_JINGLE_TRANSPORT_RAWUDP },
   { FEATURE_FIXED, NS_JINGLE015 },
   { FEATURE_FIXED, NS_JINGLE032 },
+#endif
+
   { FEATURE_FIXED, NS_CHAT_STATES },
   { FEATURE_FIXED, NS_NICK },
   { FEATURE_FIXED, NS_NICK "+notify" },
@@ -66,6 +70,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_TP_FT_METADATA },
 #endif
 
+#ifdef ENABLE_VOIP
   { FEATURE_OPTIONAL, NS_GOOGLE_TRANSPORT_P2P },
   { FEATURE_OPTIONAL, NS_JINGLE_TRANSPORT_ICEUDP },
 
@@ -77,6 +82,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_JINGLE_RTP },
   { FEATURE_OPTIONAL, NS_JINGLE_RTP_AUDIO },
   { FEATURE_OPTIONAL, NS_JINGLE_RTP_VIDEO },
+#endif
 
   { FEATURE_OLPC, NS_OLPC_BUDDY_PROPS "+notify" },
   { FEATURE_OLPC, NS_OLPC_ACTIVITIES "+notify" },
@@ -255,6 +261,7 @@ gabble_capabilities_init (gpointer conn)
           gabble_capability_set_add (legacy_caps, feat->ns);
         }
 
+#ifdef ENABLE_VOIP
       share_v1_caps = gabble_capability_set_new ();
       gabble_capability_set_add (share_v1_caps, NS_GOOGLE_FEAT_SHARE);
 
@@ -289,6 +296,7 @@ gabble_capabilities_init (gpointer conn)
       gabble_capability_set_add (any_transport_caps, NS_GOOGLE_TRANSPORT_P2P);
       gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_ICEUDP);
       gabble_capability_set_add (any_transport_caps, NS_JINGLE_TRANSPORT_RAWUDP);
+#endif
 
       fixed_caps = gabble_capability_set_new ();
 
@@ -323,6 +331,7 @@ gabble_capabilities_finalize (gpointer conn)
   if (--feature_handles_refcount == 0)
     {
       gabble_capability_set_free (legacy_caps);
+#ifdef ENABLE_VOIP
       gabble_capability_set_free (share_v1_caps);
       gabble_capability_set_free (voice_v1_caps);
       gabble_capability_set_free (video_v1_caps);
@@ -332,6 +341,7 @@ gabble_capabilities_finalize (gpointer conn)
       gabble_capability_set_free (any_google_av_caps);
       gabble_capability_set_free (any_jingle_av_caps);
       gabble_capability_set_free (any_transport_caps);
+#endif
       gabble_capability_set_free (fixed_caps);
       gabble_capability_set_free (geoloc_caps);
       gabble_capability_set_free (olpc_caps);

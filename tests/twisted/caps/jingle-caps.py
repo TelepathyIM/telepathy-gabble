@@ -14,6 +14,12 @@ import ns
 from caps_helper import presence_and_disco, compute_caps_hash
 from jingle.jingletest2 import JingleTest2, JingleProtocol031
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 client = 'http://telepathy.freedesktop.org/fake-client'
 caps = { 'node': client, 'ver':  "dummy", 'hash': 'sha-1' }
 all_transports = [

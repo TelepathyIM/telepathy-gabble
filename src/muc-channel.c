@@ -49,7 +49,6 @@
 #include "presence.h"
 #include "util.h"
 #include "presence-cache.h"
-#include "call-muc-channel.h"
 #include "gabble-signals-marshal.h"
 #include "gabble-enumtypes.h"
 
@@ -63,11 +62,13 @@
 static void password_iface_init (gpointer, gpointer);
 static void chat_state_iface_init (gpointer, gpointer);
 static void subject_iface_init (gpointer, gpointer);
+#ifdef ENABLE_VOIP
 static void gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
     GHashTable *request);
 static void muc_call_channel_finish_requests (GabbleMucChannel *self,
     GabbleCallMucChannel *call,
     GError *error);
+#endif
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     TP_TYPE_BASE_CHANNEL,
@@ -115,7 +116,10 @@ enum
     PRE_PRESENCE,
     NEW_TUBE,
 
+#ifdef ENABLE_VOIP
     NEW_CALL,
+#endif
+
     LAST_SIGNAL
 };
 
@@ -201,6 +205,7 @@ struct _GabbleMucChannelPrivate
   WockyMuc *wmuc;
   GabbleTubesChannel *tube;
 
+#ifdef ENABLE_VOIP
   /* Current active call */
   GabbleCallMucChannel *call;
   /* All calls, active one + potential ended ones */
@@ -209,6 +214,7 @@ struct _GabbleMucChannelPrivate
   /* List of GSimpleAsyncResults for the various request for a call */
   GList *call_requests;
   gboolean call_initiating;
+#endif
 
   GCancellable *requests_cancellable;
 
@@ -1174,6 +1180,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   g_cclosure_marshal_VOID__OBJECT,
                   G_TYPE_NONE, 1, GABBLE_TYPE_TUBES_CHANNEL);
 
+#ifdef ENABLE_VOIP
   signals[NEW_CALL] = g_signal_new ("new-call",
                   G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
                   G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
@@ -1183,6 +1190,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_TYPE_NONE, 2,
                   GABBLE_TYPE_CALL_MUC_CHANNEL,
                   G_TYPE_POINTER);
+#endif
 
   gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (object_class,
@@ -1477,11 +1485,17 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   g_object_ref (chan);
 
   gabble_muc_channel_close_tube (chan);
+
+#ifdef ENABLE_VOIP
   muc_call_channel_finish_requests (chan, NULL, &error);
+#endif
+
   g_cancellable_cancel (priv->requests_cancellable);
 
+#ifdef ENABLE_VOIP
   while (priv->calls != NULL)
     tp_base_channel_close (TP_BASE_CHANNEL (priv->calls->data));
+#endif
 
   set = tp_intset_new_containing (TP_GROUP_MIXIN (chan)->self_handle);
   tp_group_mixin_change_members ((GObject *) chan, reason,
@@ -2269,7 +2283,9 @@ handle_presence (GObject *source,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
+#ifdef ENABLE_VOIP
   GabbleMucChannelPrivate *priv = gmuc->priv;
+#endif
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
@@ -2309,6 +2325,7 @@ handle_presence (GObject *source,
 
   handle_tube_presence (gmuc, handle, stanza);
 
+#ifdef ENABLE_VOIP
   if (!priv->call_initiating && priv->call == NULL)
     {
       WockyNode *m;
@@ -2322,6 +2339,7 @@ handle_presence (GObject *source,
           gabble_muc_channel_start_call_creation (gmuc, NULL);
         }
     }
+#endif
 
   /* zap the handle refs we created */
   tp_handle_unref (contact_repo, handle);
@@ -3489,6 +3507,7 @@ gabble_muc_channel_close_tube (GabbleMucChannel *gmuc)
     }
 }
 
+#ifdef ENABLE_VOIP
 GabbleCallMucChannel *
 gabble_muc_channel_get_call (GabbleMucChannel *gmuc)
 {
@@ -3700,7 +3719,6 @@ gabble_muc_channel_request_call_finish (GabbleMucChannel *gmuc,
   return TRUE;
 }
 
-
 gboolean
 gabble_muc_channel_handle_jingle_session (GabbleMucChannel *self,
     GabbleJingleSession *session)
@@ -3715,6 +3733,7 @@ gabble_muc_channel_handle_jingle_session (GabbleMucChannel *self,
 
   return TRUE;
 }
+#endif
 
 void
 gabble_muc_channel_teardown (GabbleMucChannel *gmuc)

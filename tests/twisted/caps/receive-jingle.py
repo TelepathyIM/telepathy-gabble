@@ -8,6 +8,12 @@ from servicetest import EventPattern, assertEquals, sync_dbus
 from gabbletest import exec_test, make_result_iq, make_presence, sync_stream
 import constants as cs
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 icaps_attr  = cs.CONN_IFACE_CAPS + "/caps"
 basic_caps = [(2, cs.CHANNEL_TYPE_TEXT, 3, 0)]
 

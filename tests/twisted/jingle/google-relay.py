@@ -26,6 +26,12 @@ from twisted.web import http
 
 from httptest import listen_http
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 # A real request/response looks like this:
 #
 # GET /create_session HTTP/1.1

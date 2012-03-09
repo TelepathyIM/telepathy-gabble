@@ -21,6 +21,8 @@
 #ifndef __GABBLE_FILE_TRANSFER_CHANNEL_H__
 #define __GABBLE_FILE_TRANSFER_CHANNEL_H__
 
+#include "config.h"
+
 #include <glib-object.h>
 #include <extensions/extensions.h>
 
@@ -28,7 +30,9 @@
 
 typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 #include "gtalk-file-collection.h"
+#endif
 
 #include "bytestream-factory.h"
 
@@ -73,12 +77,20 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
     TpFileHashType content_hash_type, const gchar *content_hash,
     const gchar *description, guint64 date, guint64 initial_offset,
     gboolean resume_supported, GabbleBytestreamIface *bytestream,
-    GTalkFileCollection *gtalk_fc, const gchar *file_collection,
-    const gchar *uri, const gchar *service_name, const GHashTable *metadata);
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
+    GTalkFileCollection *gtalk_fc,
+#else
+    /* It's easier for the calling code if we don't change the number of
+     * arguments based on a #ifdef */
+    gpointer gtalk_fc_dummy,
+#endif
+    const gchar *file_collection, const gchar *uri, const gchar *service_name,
+    const GHashTable *metadata);
 
 gboolean gabble_file_transfer_channel_offer_file (
     GabbleFileTransferChannel *self, GError **error);
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 /* The following methods are a hack, they are 'signal-like' callbacks for the
    GTalkFileCollection. They have to be made this way because the FileCollection
    can't send out signals since it needs its signals to be sent to a specific
@@ -94,6 +106,7 @@ void gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
 
 void gabble_file_transfer_channel_gtalk_file_collection_data_received (
     GabbleFileTransferChannel *self, const gchar *data, guint len);
+#endif
 
 G_END_DECLS
 

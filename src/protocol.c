@@ -32,7 +32,9 @@
 #include "connection.h"
 #include "connection-manager.h"
 #include "im-factory.h"
+#ifdef ENABLE_VOIP
 #include "media-factory.h"
+#endif
 #include "private-tubes-factory.h"
 #include "roomlist-manager.h"
 #include "search-manager.h"
@@ -345,7 +347,9 @@ get_connection_details (TpBaseProtocol *self,
           GABBLE_TYPE_FT_MANAGER,
 #endif
           GABBLE_TYPE_IM_FACTORY,
+#ifdef ENABLE_VOIP
           GABBLE_TYPE_MEDIA_FACTORY,
+#endif
           GABBLE_TYPE_MUC_FACTORY,
           GABBLE_TYPE_ROOMLIST_MANAGER,
           GABBLE_TYPE_SEARCH_MANAGER,

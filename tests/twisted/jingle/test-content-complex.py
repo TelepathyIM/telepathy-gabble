@@ -11,6 +11,12 @@ from jingletest2 import (
 
 from twisted.words.xish import xpath
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def worker(jp, q, bus, conn, stream):
 
     def make_stream_request(stream_type):

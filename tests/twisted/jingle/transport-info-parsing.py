@@ -7,6 +7,12 @@ from servicetest import ( make_channel_proxy, EventPattern,
     assertEquals, assertNotEquals )
 from jingletest2 import *
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def test(q, bus, conn, stream, peer='foo@bar.com/Foo'):
     jp = JingleProtocol031()
 

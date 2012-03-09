@@ -239,7 +239,7 @@ telepathy_gabble_LDFLAGS = -export-dynamic
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
-lib_LTLIBRARIES = libgabble-plugins.la
+pluginexeclib_LTLIBRARIES = libgabble-plugins.la
 
 # Gabble's plugin API is not stable yet (it can't be, since neither is Wocky),
 # so use -release to make the SONAME of the plugin library change with every

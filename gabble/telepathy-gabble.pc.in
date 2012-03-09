@@ -5,6 +5,7 @@ includedir=@includedir@
 libexecdir=@libexecdir@
 
 plugindir=${libdir}/telepathy/gabble-0
+pluginexeclibdir=@pluginexeclibdir@
 gabblepath=${libexecdir}/telepathy-gabble # For plugins' tests
 
 Name: Telepathy-Gabble
@@ -12,5 +13,5 @@ Description: XMPP backend for the Telepathy framework
 Version: @VERSION@
 Requires: pkg-config >= 0.21
 Requires.private: glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gio-2.0, telepathy-glib >= 0.7.37
-Libs: -L${libdir} -lgabble-plugins -lwocky
+Libs: -L${pluginexeclibdir} -lgabble-plugins -lwocky
 Cflags: -I${includedir}/telepathy-gabble-0

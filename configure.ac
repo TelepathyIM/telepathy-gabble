@@ -238,6 +238,15 @@ AC_SUBST(GLIB_LIBS)
 GLIB_GENMARSHAL=`$PKG_CONFIG --variable=glib_genmarshal glib-2.0`
 AC_SUBST(GLIB_GENMARSHAL)
 
+# These must contain "exec" for automake to work right (install-exec,
+# not install-data).
+#
+# Private directory for Wocky and the gabble-plugins library
+if test "x$pluginexeclibdir" = x; then
+  pluginexeclibdir='${libdir}/telepathy/gabble-0/lib'
+fi
+AC_ARG_VAR([pluginexeclibdir])
+
 AC_ARG_ENABLE(plugins,
   AC_HELP_STRING([--disable-plugins],
                  [disable plugin loader]),
@@ -321,7 +330,8 @@ fi
 # AX_CONFIG_DIR doesn't make it very easy to pass extra arguments to the
 # submodule's configure.
 prev_ac_configure_args=$ac_configure_args
-ac_configure_args="$ac_configure_args --with-installed-headers=${wocky_install_headers_dir} --enable-shared-suffix=${PACKAGE}-${VERSION}"
+
+ac_configure_args="$ac_configure_args --with-installed-headers=${wocky_install_headers_dir} --enable-shared-suffix=${PACKAGE}-${VERSION} --libdir=${pluginexeclibdir}"
 
 if test "x$ENABLE_CODING_STYLE_CHECKS" = xyes ; then
   ac_configure_args="$ac_configure_args --enable-coding-style-checks"

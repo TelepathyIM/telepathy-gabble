@@ -324,15 +324,15 @@ prev_ac_configure_args=$ac_configure_args
 ac_configure_args="$ac_configure_args --with-installed-headers=${wocky_install_headers_dir} --enable-shared-suffix=${PACKAGE}-${VERSION}"
 
 if test "x$ENABLE_CODING_STYLE_CHECKS" = xyes ; then
-  ac_configure_args+=" --enable-coding-style-checks"
+  ac_configure_args="$ac_configure_args --enable-coding-style-checks"
 else
-  ac_configure_args+=" --disable-coding-style-checks"
+  ac_configure_args="$ac_configure_args --disable-coding-style-checks"
 fi
 
 if test "x$tp_werror" = xyes && test "x$official_release" = xno; then
-  ac_configure_args+=" --enable-Werror"
+  ac_configure_args="$ac_configure_args --enable-Werror"
 else
-  ac_configure_args+=" --disable-Werror"
+  ac_configure_args="$ac_configure_args --disable-Werror"
 fi
 
 dnl wocky

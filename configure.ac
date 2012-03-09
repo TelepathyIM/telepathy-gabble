@@ -309,6 +309,13 @@ AM_CONDITIONAL([WANT_TWISTED_TESTS], test false != "$TEST_PYTHON")
 
 # We have to run Wocky's configure *before* looking for it with PKG_CHECK_MODULES so wocky-uninstalled.pc has been generated
 
+# If you don't specify --prefix, it starts off as NONE. Autoconf
+# would normally do this defaulting for us later, but that's too
+# late to help Wocky.
+if test "x${prefix}" = "xNONE"; then
+  prefix=/usr/local
+fi
+
 # We tell Wocky to install its headers alongside gabble's so that an actual
 # separate Wocky installation won't clash with them. This is a bit of a hack.
 # AX_CONFIG_DIR doesn't make it very easy to pass extra arguments to the

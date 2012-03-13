@@ -189,8 +189,12 @@ class CallTest(object):
                 dbus_interface=dbus.PROPERTIES_IFACE)
         assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
                 stream_media_props["SendingState"])
-        assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
-                stream_media_props["ReceivingState"])
+        if initial:
+            assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
+                         stream_media_props["ReceivingState"])
+        else:
+            assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START,
+                         stream_media_props["ReceivingState"])
         assertEquals(False,  stream_media_props["ICERestartPending"])
 
         # Store the content and stream

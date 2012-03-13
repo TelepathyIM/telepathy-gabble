@@ -124,7 +124,10 @@ class CallTest(object):
             assertEquals([md], o.args)
 
 
-    def store_content(self, content_path, initial = True):
+    def store_content(self, content_path, initial = True, incoming = None):
+        if incoming is None:
+            incoming = self.incoming
+
         content = wrap_content(self.bus.get_object(self.conn.bus_name,
                     content_path), ['DTMF', 'Media'])
         content_props = content.GetAll(cs.CALL_CONTENT,
@@ -163,20 +166,21 @@ class CallTest(object):
         assertEquals(self.can_change_direction,
                 stream_props["CanRequestReceiving"])
 
-        # We only check direction for initial content Telepathy does not
-        # expose enough information to know which state we should have when
-        # the stream was created locally or remotly.
-        if initial:
-            if self.incoming:
+        if incoming:
+            assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND,
+                         stream_props["LocalSendingState"])
+            assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                         stream_props["RemoteMembers"][self.peer_handle])
+        else:
+            if initial:
                 assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND,
-                        stream_props["LocalSendingState"])
-                assertEquals(cs.CALL_SENDING_STATE_SENDING,
-                        stream_props["RemoteMembers"][self.peer_handle])
+                             stream_props["RemoteMembers"][self.peer_handle])
             else:
-                assertEquals(cs.CALL_SENDING_STATE_PENDING_SEND,
-                        stream_props["RemoteMembers"][self.peer_handle])
                 assertEquals(cs.CALL_SENDING_STATE_SENDING,
-                        stream_props["LocalSendingState"])
+                             stream_props["RemoteMembers"][self.peer_handle])
+
+            assertEquals(cs.CALL_SENDING_STATE_SENDING,
+                         stream_props["LocalSendingState"])
 
         # Packetization should be RTP
         content_media_props = content.GetAll(cs.CALL_CONTENT_IFACE_MEDIA,

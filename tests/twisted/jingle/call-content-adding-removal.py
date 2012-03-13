@@ -54,7 +54,7 @@ class CallContentAddingRemovalTest(CallTest):
             dbus_interface=cs.CHANNEL_TYPE_CALL);
         self.q.expect('dbus-signal', signal='ContentAdded')
 
-        self.store_content(content_path, initial=False)
+        self.store_content(content_path, initial=False, incoming=False)
 
         md = self.jt2.get_call_video_md_dbus()
         self.check_and_accept_offer(self.video_content, md)

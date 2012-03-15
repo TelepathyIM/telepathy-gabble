@@ -978,24 +978,6 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
   GHashTable *table;
   GValue *value;
 
-  /* 1-1 Channel.Type.Tubes */
-  table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-      (GDestroyNotify) tp_g_value_slice_free);
-
-  value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_TUBES);
-  g_hash_table_insert (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
-      value);
-
-  value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
-      value);
-
-  func (type, table, old_tubes_channel_allowed_properties, user_data);
-
-  g_hash_table_unref (table);
-
   /* 1-1 Channel.Type.StreamTube */
   table = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
       (GDestroyNotify) tp_g_value_slice_free);

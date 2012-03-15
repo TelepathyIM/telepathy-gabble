@@ -24,54 +24,37 @@ bob_jid = 'bob@localhost/Bob'
 stream_tube_id = 49
 
 def receive_tube_offer(q, bus, conn, stream):
+    global stream_tube_id
     message = domish.Element(('jabber:client', 'message'))
     message['to'] = 'test@localhost/Resource'
     message['from'] = bob_jid
     tube_node = message.addElement((ns.TUBES, 'tube'))
     tube_node['type'] = 'stream'
     tube_node['service'] = 'http'
+    stream_tube_id += 1
     tube_node['id'] = str(stream_tube_id)
     stream.send(message)
 
-    old_sig, new_sig = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
-        )
-    chan_path = old_sig.args[0]
-    assert old_sig.args[1] == cs.CHANNEL_TYPE_TUBES, old_sig.args[1]
-    assert old_sig.args[2] == cs.HT_CONTACT
-    bob_handle = old_sig.args[3]
-    assert old_sig.args[2] == 1, old_sig.args[2] # Suppress_Handler
+    def new_chan_predicate(e):
+        path, props = e.args[0][0]
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
+
+    new_sig = q.expect('dbus-signal', signal='NewChannels',
+                       predicate=new_chan_predicate)
+
     assert len(new_sig.args) == 1
     assert len(new_sig.args[0]) == 1
-    assert new_sig.args[0][0][0] == chan_path, new_sig.args[0][0]
-    assert new_sig.args[0][0][1] is not None
 
-    event = q.expect('dbus-signal', signal='NewTube')
-
-    old_sig, new_sig = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
-        )
-    new_chan_path = old_sig.args[0]
-    assert new_chan_path != chan_path
-    assert old_sig.args[1] == cs.CHANNEL_TYPE_STREAM_TUBE, old_sig.args[1]
-    assert old_sig.args[2] == cs.HT_CONTACT
-    bob_handle = old_sig.args[3]
-    assert old_sig.args[2] == 1, old_sig.args[2] # Suppress_Handler
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1
-    assert new_sig.args[0][0][0] == new_chan_path, new_sig.args[0][0]
-    assert new_sig.args[0][0][1] is not None
+    path, props = new_sig.args[0][0]
+    assertEquals(cs.CHANNEL_TYPE_STREAM_TUBE, props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(False, props[cs.REQUESTED])
 
     # create channel proxies
-    tubes_chan = bus.get_object(conn.bus_name, chan_path)
-    tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
-
-    new_tube_chan = bus.get_object(conn.bus_name, new_chan_path)
+    new_tube_chan = bus.get_object(conn.bus_name, path)
     new_tube_iface = dbus.Interface(new_tube_chan, cs.CHANNEL_TYPE_STREAM_TUBE)
 
-    return (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface)
+    return (new_tube_chan, new_tube_iface)
 
 def expect_tube_activity(q, bus, conn, stream, bytestream_cls, address_type,
     address, access_control, access_control_param):
@@ -157,19 +140,8 @@ def test(q, bus, conn, stream, bytestream_cls,
     sync_dbus(bus, q, conn)
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
+    (new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
-
-    # Try bad parameters on the old iface
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id+1, 2, 0, '',
-            byte_arrays=True)
-    q.expect('dbus-error', method='AcceptStreamTube')
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 2, 1, '',
-            byte_arrays=True)
-    q.expect('dbus-error', method='AcceptStreamTube')
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, 20, 0, '',
-            byte_arrays=True)
-    q.expect('dbus-error', method='AcceptStreamTube')
 
     # Try bad parameters on the new iface
     call_async(q, new_tube_iface, 'Accept', 20, 0, '',
@@ -179,69 +151,8 @@ def test(q, bus, conn, stream, bytestream_cls,
             byte_arrays=True)
     q.expect('dbus-error', method='Accept')
 
-    # Accept the tube with old iface
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id, address_type,
-        access_control, access_control_param, byte_arrays=True)
-
-    accept_return_event, _ = q.expect_many(
-        EventPattern('dbus-return', method='AcceptStreamTube'),
-        EventPattern('dbus-signal', signal='TubeStateChanged',
-            args=[stream_tube_id, 2]))
-
-    socket_address = accept_return_event.value[0]
-
-    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
-        address_type, socket_address, access_control, access_control_param)
-
-    tubes_chan.Close()
-    bytestream.wait_bytestream_closed()
-
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
-        receive_tube_offer(q, bus, conn, stream)
-
-    # Accept the tube with old iface, and use UNIX sockets
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id,
-        address_type, access_control, access_control_param, byte_arrays=True)
-
-    accept_return_event, _ = q.expect_many(
-        EventPattern('dbus-return', method='AcceptStreamTube'),
-        EventPattern('dbus-signal', signal='TubeStateChanged',
-            args=[stream_tube_id, 2]))
-
-    socket_address = accept_return_event.value[0]
-
-    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
-        address_type, socket_address, access_control, access_control_param)
-    tubes_chan.Close()
-    bytestream.wait_bytestream_closed()
-
-    # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
-        receive_tube_offer(q, bus, conn, stream)
-
-    # Accept the tube with new iface, and use IPv4
-    call_async(q, new_tube_iface, 'Accept', address_type,
-        access_control, access_control_param, byte_arrays=True)
-
-    accept_return_event, _ = q.expect_many(
-        EventPattern('dbus-return', method='Accept'),
-        EventPattern('dbus-signal', signal='TubeStateChanged',
-            args=[stream_tube_id, 2]))
-
-    socket_address = accept_return_event.value[0]
-
-    bytestream, conn_id = expect_tube_activity(q, bus, conn, stream, bytestream_cls,
-        address_type, socket_address, access_control, access_control_param)
-    tubes_chan.Close()
-    e, _ = bytestream.wait_bytestream_closed([
-        EventPattern('dbus-signal', signal='ConnectionClosed'),
-        EventPattern('socket-disconnected')])
-    assertEquals(conn_id, e.args[0])
-    assertEquals(cs.CANCELLED, e.args[1])
-
-    # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
+    (new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
 
     # Accept the tube with new iface, and use UNIX sockets
@@ -250,8 +161,8 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     accept_return_event, _ = q.expect_many(
         EventPattern('dbus-return', method='Accept'),
-        EventPattern('dbus-signal', signal='TubeStateChanged',
-            args=[stream_tube_id, 2]))
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged',
+            args=[2]))
 
     socket_address = accept_return_event.value[0]
 
@@ -274,16 +185,10 @@ def test(q, bus, conn, stream, bytestream_cls,
     assertEquals(conn_id, e.args[0])
     assertEquals(cs.CONNECTION_REFUSED, e.args[1])
 
-    tubes_chan.Close()
+    new_tube_chan.Close()
 
     # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
-        receive_tube_offer(q, bus, conn, stream)
-    # Just close the tube
-    tubes_chan.Close()
-
-    # Receive a tube offer from Bob
-    (tubes_chan, tubes_iface, new_tube_chan, new_tube_iface) = \
+    (new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
     # Just close the tube
     new_tube_chan.Close()

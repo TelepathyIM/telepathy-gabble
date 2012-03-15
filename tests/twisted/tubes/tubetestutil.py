@@ -81,24 +81,6 @@ def check_conn_properties(q, conn, channel_list=None):
             assert i in properties['Channels'], \
                 (i, properties['Channels'])
 
-    # 1-1 tubes channel (old API)
-    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
-             cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-             },
-             [cs.TARGET_HANDLE, cs.TARGET_ID
-             ]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-
-    # muc tubes channel (old API)
-    assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
-             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-             },
-             [cs.TARGET_HANDLE, cs.TARGET_ID
-             ]
-            ) in properties.get('RequestableChannelClasses'),\
-                     properties['RequestableChannelClasses']
-
     # 1-1 StreamTube channel
     assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT

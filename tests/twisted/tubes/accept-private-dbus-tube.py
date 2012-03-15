@@ -81,66 +81,21 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     # RequestChannel are the ones we wanted.
     sync_dbus(bus, q, conn)
 
-    # let's try to accept a D-Bus tube using the old API
-    bytestream = bytestream_cls(stream, q, 'beta', bob_full_jid,
-        'test@localhost/Reource', True)
-
-    last_tube_id += 1
-    contact_offer_dbus_tube(bytestream, last_tube_id)
-
-    # tubes channel is created
-    event = q.expect('dbus-signal', signal='NewChannel')
-
     bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@localhost'])[0]
 
-    t.check_NewChannel_signal(event.args, cs.CHANNEL_TYPE_TUBES, None,
-        bob_handle, False)
-
-    tubes_chan = bus.get_object(conn.bus_name, event.args[0])
-    tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
-
-    event = q.expect('dbus-signal', signal='NewTube')
-    id = event.args[0]
-    initiator = event.args[1]
-    type = event.args[2]
-    service = event.args[3]
-    parameters = event.args[4]
-    state = event.args[5]
-
-    assertEquals (last_tube_id, id)
-    initiator_jid = conn.InspectHandles(1, [initiator])[0]
-    assert initiator_jid == 'bob@localhost'
-    assert type == cs.TUBE_TYPE_DBUS
-    assert service == 'com.example.TestCase2'
-    assert parameters == {'login': 'TEST'}
-    assert state == cs.TUBE_STATE_LOCAL_PENDING
-
-    # accept the tube (old API)
-    call_async(q, tubes_iface, 'AcceptDBusTube', id)
-
-    event = q.expect('stream-iq', iq_type='result')
-    bytestream.check_si_reply(event.stanza)
-    tube = xpath.queryForNodes('/iq/si/tube[@xmlns="%s"]' % ns.TUBES,
-        event.stanza)
-    assert len(tube) == 1
-
-    # Init the bytestream
-    events, _ = bytestream.open_bytestream([EventPattern('dbus-return', method='AcceptDBusTube')],
-        [EventPattern('dbus-signal', signal='TubeStateChanged',
-        args=[last_tube_id, 2])])
-
-    return_event = events[0]
-    address = return_event.value[0]
-    assert len(address) > 0
-
-    # OK, now let's try to accept a D-Bus tube using the new API
+    # let's try to accept a D-Bus tube using the new API
     bytestream = bytestream_cls(stream, q, 'gamma', bob_full_jid,
         self_full_jid, True)
 
     last_tube_id += 1
     contact_offer_dbus_tube(bytestream, last_tube_id)
 
-    e = q.expect('dbus-signal', signal='NewChannels')
+    def new_chan_predicate(e):
+        path, props = e.args[0][0]
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
+
+    e = q.expect('dbus-signal', signal='NewChannels',
+                 predicate=new_chan_predicate)
     channels = e.args[0]
     assert len(channels) == 1
     path, props = channels[0]

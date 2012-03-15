@@ -49,8 +49,10 @@ def test(q, bus, conn, stream, bytestream_cls,
     room_handle = handles[0]
 
     # join the muc
-    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
-        room_handle, True)
+    call_async(q, conn.Requests, 'CreateChannel', {
+            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.TARGET_HANDLE: room_handle})
 
     _, stream_event = q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
@@ -70,7 +72,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
     bob_handle = 3
 
-    event = q.expect('dbus-return', method='RequestChannel')
+    event = q.expect('dbus-return', method='CreateChannel')
 
     # Bob offers a stream tube
     stream_tube_id = 666
@@ -112,51 +114,13 @@ def test(q, bus, conn, stream, bytestream_cls,
     path, props = channels[0]
     assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
 
-    # tubes channel is automatically created
-    event, new_event = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'))
+    def new_chan_predicate(e):
+        path, props = e.args[0][0]
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
-    assert event.args[1] == cs.CHANNEL_TYPE_TUBES, event.args
-    assert event.args[2] == cs.HT_ROOM
-    assert event.args[3] == room_handle
-
-    tubes_chan = bus.get_object(conn.bus_name, event.args[0])
-    tubes_iface = dbus.Interface(tubes_chan, event.args[1])
-
-    channel_props = tubes_chan.GetAll(cs.CHANNEL, dbus_interface=cs.PROPERTIES_IFACE)
-    assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
-    assert channel_props['Requested'] == False
-    assert channel_props['InitiatorID'] == ''
-    assert channel_props['InitiatorHandle'] == 0
-
-    channels = new_event.args[0]
-    assert len(channels) == 1
-    path, props = channels[0]
-    assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES
-
-    tubes_self_handle = tubes_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
-
-    q.expect('dbus-signal', signal='NewTube',
-        args=[stream_tube_id, bob_handle, 1, 'echo', sample_parameters, 0])
-
-    expected_tube = (stream_tube_id, bob_handle, cs.TUBE_TYPE_STREAM, 'echo',
-        sample_parameters, cs.TUBE_STATE_LOCAL_PENDING)
-    tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert tubes == [(
-        stream_tube_id,
-        bob_handle,
-        1,      # Stream
-        'echo',
-        sample_parameters,
-        cs.TUBE_CHANNEL_STATE_LOCAL_PENDING
-        )]
-
-    assert len(tubes) == 1, unwrap(tubes)
-    t.check_tube_in_tubes(expected_tube, tubes)
-
-    # tube channel is also announced (new API)
-    new_event = q.expect('dbus-signal', signal='NewChannels')
+    # tube channel is announced
+    new_event = q.expect('dbus-signal', signal='NewChannels',
+                         predicate=new_chan_predicate)
 
     channels = new_event.args[0]
     assert len(channels) == 1
@@ -176,17 +140,18 @@ def test(q, bus, conn, stream, bytestream_cls,
     tube_chan = bus.get_object(conn.bus_name, path)
     tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE,
         byte_arrays=True)
+    tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_STREAM_TUBE)
     assert tube_props['Parameters'] == sample_parameters
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_LOCAL_PENDING
 
     # Accept the tube
-    call_async(q, tubes_iface, 'AcceptStreamTube', stream_tube_id,
+    call_async(q, tube_iface, 'Accept',
         address_type, access_control, access_control_param, byte_arrays=True)
 
     accept_return_event, _ = q.expect_many(
-        EventPattern('dbus-return', method='AcceptStreamTube'),
-        EventPattern('dbus-signal', signal='TubeStateChanged',
-            args=[stream_tube_id, 2]))
+        EventPattern('dbus-return', method='Accept'),
+        EventPattern('dbus-signal', signal='TubeChannelStateChanged',
+            args=[2]))
 
     address = accept_return_event.value[0]
 
@@ -260,8 +225,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     assertEquals(cs.CANCELLED, e.args[1])
 
     # OK, we're done
-    disconnect_conn(q, conn, stream,
-        [EventPattern('dbus-signal', signal='TubeClosed', args=[stream_tube_id])])
+    disconnect_conn(q, conn, stream)
 
 if __name__ == '__main__':
     t.exec_stream_tube_test(test)

@@ -49,6 +49,9 @@
 #include "tube-stream.h"
 #include "util.h"
 
+static GabbleTubeIface * new_channel_from_stanza (GabblePrivateTubesFactory *self,
+    WockyStanza *stanza, guint tube_id);
+
 static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
     TpHandle handle, TpHandle initiator, gpointer request_token,
     gboolean send_new_channel_signal);
@@ -56,6 +59,10 @@ static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
 static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
     gpointer user_data);
 
+static gboolean private_tubes_factory_tube_close_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data);
 static gboolean private_tubes_factory_msg_tube_cb (
     WockyPorter *porter,
     WockyStanza *msg,
@@ -108,6 +115,101 @@ static const gchar * const old_tubes_channel_allowed_properties[] = {
     NULL
 };
 
+static gboolean
+extract_tube_information (GabblePrivateTubesFactory *self,
+    WockyNode *tube_node,
+    TpTubeType *type,
+    TpHandle *initiator_handle,
+    const gchar **service,
+    GHashTable **parameters,
+    guint *tube_id)
+{
+  GabblePrivateTubesFactoryPrivate *priv = self->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+
+  if (type != NULL)
+    {
+      const gchar *_type;
+
+      _type = wocky_node_get_attribute (tube_node, "type");
+
+      if (!tp_strdiff (_type, "stream"))
+        {
+          *type = TP_TUBE_TYPE_STREAM;
+        }
+      else if (!tp_strdiff (_type, "dbus"))
+        {
+          *type = TP_TUBE_TYPE_DBUS;
+        }
+      else
+        {
+          DEBUG ("Unknown tube type: %s", _type);
+          return FALSE;
+        }
+    }
+
+  if (initiator_handle != NULL)
+    {
+      const gchar *initiator;
+
+      initiator = wocky_node_get_attribute (tube_node, "initiator");
+
+      if (initiator != NULL)
+        {
+          *initiator_handle = tp_handle_ensure (contact_repo, initiator,
+              GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
+
+          if (*initiator_handle == 0)
+            {
+              DEBUG ("invalid initiator JID %s", initiator);
+              return FALSE;
+            }
+        }
+      else
+        {
+          *initiator_handle = 0;
+        }
+    }
+
+  if (service != NULL)
+    {
+      *service = wocky_node_get_attribute (tube_node, "service");
+    }
+
+  if (parameters != NULL)
+    {
+      WockyNode *node;
+
+      node = wocky_node_get_child (tube_node, "parameters");
+      *parameters = lm_message_node_extract_properties (node, "parameter");
+    }
+
+  if (tube_id != NULL)
+    {
+      const gchar *str;
+      gchar *endptr;
+      unsigned long tmp;
+
+      str = wocky_node_get_attribute (tube_node, "id");
+      if (str == NULL)
+        {
+          DEBUG ("no tube id in SI request");
+          return FALSE;
+        }
+
+      tmp = strtoul (str, &endptr, 10);
+      if (!endptr || *endptr || tmp > G_MAXUINT32)
+        {
+          DEBUG ("tube id is not numeric or > 2**32: %s", str);
+          return FALSE;
+        }
+      *tube_id = (guint) tmp;
+    }
+
+  return TRUE;
+}
+
 static void
 gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
 {
@@ -148,7 +250,7 @@ porter_available_cb (
   priv->msg_close_cb = wocky_porter_register_handler_from_anyone (porter,
       WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX,
-      private_tubes_factory_msg_tube_cb, self,
+      private_tubes_factory_tube_close_cb, self,
       '(', "close", ':', NS_TUBES,
       ')', NULL);
 }
@@ -749,27 +851,19 @@ gabble_private_tubes_factory_handle_si_stream_request (
 }
 
 static gboolean
-private_tubes_factory_msg_tube_cb (
-    WockyPorter *porter,
+tube_msg_checks (GabblePrivateTubesFactory *self,
     WockyStanza *msg,
-    gpointer user_data)
+    WockyNode *node,
+    TpHandle *out_handle,
+    guint *out_tube_id)
 {
-  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  WockyNode *tube_node, *close_node;
-  GabbleTubesChannel *chan;
-  const gchar *from;
+  const gchar *from, *tmp;
   TpHandle handle;
-
-  tube_node = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
-  close_node = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (msg), "close", NS_TUBES);
-
-  g_return_val_if_fail (tube_node != NULL || close_node != NULL, FALSE);
+  guint tube_id;
 
   from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
@@ -786,26 +880,120 @@ private_tubes_factory_msg_tube_cb (
       return FALSE;
     }
 
-  /* Tube offer */
-  chan = g_hash_table_lookup (priv->tubes_channels, GUINT_TO_POINTER (handle));
-
-  if (chan == NULL)
+  tmp = wocky_node_get_attribute (node, "id");
+  if (tmp == NULL)
     {
-      if (tube_node != NULL)
-        {
-          /* We create the tubes channel only if the message is a new tube
-           * offer */
-          chan = new_tubes_channel (self, handle, handle, NULL, TRUE);
-        }
-      else
-        {
-          DEBUG ("Ignore tube close message as there is no tubes channel"
-             " to handle it");
-          return TRUE;
-        }
+      DEBUG ("failed to get the tube ID");
+      return FALSE;
     }
 
-  gabble_tubes_channel_tube_msg (chan, msg);
+  tube_id = g_ascii_strtoull (tmp, NULL, 10);
+  if (tube_id == 0 || tube_id >= G_MAXINT)
+    {
+      DEBUG ("tube ID is not numeric or > 2**32: %s", tmp);
+      return FALSE;
+    }
+
+  if (out_tube_id != NULL)
+    *out_tube_id = tube_id;
+
+  if (out_handle != NULL)
+    *out_handle = handle;
+
+  return TRUE;
+}
+
+static gboolean
+private_tubes_factory_msg_tube_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
+{
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
+  WockyNode *node;
+  guint tube_id;
+  GabbleTubeIface *channel;
+  TpHandle handle;
+
+  node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (msg), "tube", NS_TUBES);
+  g_return_val_if_fail (node != NULL, FALSE);
+
+  if (!tube_msg_checks (self, msg, node, &handle, &tube_id))
+    return FALSE;
+
+  channel = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+
+  if (channel != NULL)
+    {
+      TpHandle tube_handle = 0;
+
+      g_object_get (channel,
+          "handle", &tube_handle,
+          NULL);
+
+      DEBUG ("tube ID already in use; do not open the offered tube and close "
+          "the existing tube if it's to the same contact");
+
+      /* only close the existing channel if it's the same contact
+       * otherwise contacts could force close unrelated tubes. */
+      if (handle == tube_handle)
+        gabble_tube_iface_close (channel, FALSE);
+
+      return TRUE;
+    }
+
+  channel = new_channel_from_stanza (self, msg, tube_id);
+
+  if (channel != NULL)
+    {
+      tp_channel_manager_emit_new_channel (self,
+          TP_EXPORTABLE_CHANNEL (channel), NULL);
+    }
+
+  return TRUE;
+}
+
+static gboolean
+private_tubes_factory_tube_close_cb (
+    WockyPorter *porter,
+    WockyStanza *msg,
+    gpointer user_data)
+{
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
+  WockyNode *node;
+  guint tube_id;
+  GabbleTubeIface *channel;
+  TpTubeType type;
+
+  node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (msg), "close", NS_TUBES);
+  g_return_val_if_fail (node != NULL, FALSE);
+
+  if (!tube_msg_checks (self, msg, node, NULL, &tube_id))
+    return FALSE;
+
+  channel = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+
+  if (channel == NULL)
+    {
+      DEBUG ("<close> tube attribute points to a nonexistent tube");
+      return TRUE;
+    }
+
+  g_object_get (channel, "type", &type, NULL);
+  if (type != TP_TUBE_TYPE_STREAM)
+    {
+      DEBUG ("Only stream tubes can be closed using a close message");
+      return TRUE;
+    }
+
+  DEBUG ("tube %u was closed by remote peer", tube_id);
+  gabble_tube_iface_close (channel, TRUE);
 
   return TRUE;
 }
@@ -945,6 +1133,95 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
     {
       g_return_val_if_reached (NULL);
     }
+
+  tp_base_channel_register ((TpBaseChannel *) tube);
+
+  g_signal_connect (tube, "closed",
+      G_CALLBACK (channel_closed_cb), self);
+
+  g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id),
+      tube);
+
+  g_hash_table_unref (parameters);
+
+  return tube;
+}
+
+static void
+send_tube_close_msg (GabblePrivateTubesFactory *self,
+    const gchar *jid,
+    guint tube_id)
+{
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
+  WockyPorter *porter;
+  WockyStanza *msg;
+  gchar *id_str;
+
+  id_str = g_strdup_printf ("%u", tube_id);
+
+  porter = gabble_connection_dup_porter (priv->conn);
+
+  /* Send the close message */
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, jid,
+      '(', "close",
+        ':', NS_TUBES,
+        '@', "tube", id_str,
+      ')',
+      GABBLE_AMP_DO_NOT_STORE_SPEC,
+      NULL);
+  g_free (id_str);
+
+  wocky_porter_send (porter, msg);
+
+  g_object_unref (porter);
+  g_object_unref (msg);
+}
+
+static GabbleTubeIface *
+new_channel_from_stanza (GabblePrivateTubesFactory *self,
+    WockyStanza *stanza,
+    guint tube_id)
+{
+  GabblePrivateTubesFactoryPrivate *priv =
+    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
+  GabbleTubeIface *tube;
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  WockyNode *tube_node;
+
+  TpTubeType type;
+  TpHandle handle;
+  const gchar *service;
+  GHashTable *parameters;
+
+  tube_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (stanza), "tube", NS_TUBES);
+
+  if (!extract_tube_information (self, tube_node, &type, NULL,
+              &service, &parameters, NULL))
+    {
+      DEBUG ("can't extract <tube> information from message");
+      send_tube_close_msg (self, wocky_stanza_get_from (stanza), tube_id);
+      return NULL;
+    }
+
+  if (type != TP_TUBE_TYPE_STREAM)
+    {
+      DEBUG ("Only stream tubes are allowed to be created using messages");
+      send_tube_close_msg (self, wocky_stanza_get_from (stanza), tube_id);
+      return NULL;
+    }
+
+  /* this has already been checked */
+  handle = tp_handle_lookup (contact_repo,
+      wocky_stanza_get_from (stanza), NULL, NULL);
+
+  tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
+          handle, TP_HANDLE_TYPE_CONTACT, base_conn->self_handle,
+          handle, service, parameters, tube_id, NULL, FALSE));
 
   tp_base_channel_register ((TpBaseChannel *) tube);
 

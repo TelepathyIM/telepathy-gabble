@@ -194,14 +194,6 @@ libgabble_convenience_la_SOURCES += \
     ft-manager.h \
     gtalk-file-collection.h \
     gtalk-file-collection.c
-else
-EXTRA_DIST += \
-    ft-channel.c \
-    ft-channel.h \
-    ft-manager.c \
-    ft-manager.h \
-    gtalk-file-collection.h \
-    gtalk-file-collection.c
 endif
 
 enumtype_sources = \

@@ -191,8 +191,12 @@ class CallTest(object):
         # Check the directions
         stream_media_props = stream.GetAll(cs.CALL_STREAM_IFACE_MEDIA,
                 dbus_interface=dbus.PROPERTIES_IFACE)
-        assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
-                stream_media_props["SendingState"])
+        if initial or incoming:
+            assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
+                         stream_media_props["SendingState"])
+        else:
+            assertEquals(cs.CALL_STREAM_FLOW_STATE_PENDING_START,
+                         stream_media_props["SendingState"])
         if initial:
             assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
                          stream_media_props["ReceivingState"])

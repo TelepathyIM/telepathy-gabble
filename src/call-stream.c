@@ -327,11 +327,20 @@ gabble_call_stream_constructed (GObject *obj)
   gchar *path;
   JingleTransportType transport;
   GPtrArray *stun_servers;
+  gboolean locally_created;
 
   if (G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed != NULL)
     G_OBJECT_CLASS (gabble_call_stream_parent_class)->constructed (obj);
 
   conn = GABBLE_CONNECTION (tp_base_call_stream_get_connection (base));
+
+  g_object_get (priv->content, "locally-created", &locally_created, NULL);
+
+  if (locally_created &&
+      gabble_jingle_content_sending (priv->content))
+    tp_base_media_call_stream_set_local_sending (
+        TP_BASE_MEDIA_CALL_STREAM (self), TRUE);
+
 
   /* Currently we'll only have one endpoint we know right away */
   path = g_strdup_printf ("%s/Endpoint",

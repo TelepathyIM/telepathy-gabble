@@ -53,13 +53,6 @@ static GabbleTubeIface * new_channel_from_stanza (GabblePrivateTubesFactory *sel
     WockyStanza *stanza, WockyNode *tube_node, guint tube_id,
     GabbleBytestreamIface *bytestream);
 
-static GabbleTubesChannel *new_tubes_channel (GabblePrivateTubesFactory *fac,
-    TpHandle handle, TpHandle initiator, gpointer request_token,
-    gboolean send_new_channel_signal);
-
-static void tubes_channel_closed_cb (GabbleTubesChannel *chan,
-    gpointer user_data);
-
 static gboolean private_tubes_factory_tube_close_cb (
     WockyPorter *porter,
     WockyStanza *msg,
@@ -93,8 +86,6 @@ struct _GabblePrivateTubesFactoryPrivate
   gulong status_changed_id;
   guint msg_tube_cb;
   guint msg_close_cb;
-
-  GHashTable *tubes_channels;
 
   /* guint tube ID => (owned) (GabbleTubeIface*) */
   GHashTable *tubes;
@@ -218,9 +209,6 @@ gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
       GABBLE_TYPE_PRIVATE_TUBES_FACTORY, GabblePrivateTubesFactoryPrivate);
 
   self->priv = priv;
-
-  priv->tubes_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, g_object_unref);
 
   priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
@@ -385,99 +373,6 @@ gabble_private_tubes_factory_class_init (
 
 }
 
-
-/**
- * tubes_channel_closed_cb:
- *
- * Signal callback for when an Tubes channel is closed. Removes the references
- * that PrivateTubesFactory holds to them.
- */
-static void
-tubes_channel_closed_cb (GabbleTubesChannel *chan,
-                         gpointer user_data)
-{
-  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
-  TpHandle contact_handle;
-
-  if (priv->tubes_channels == NULL)
-    return;
-
-  g_object_get (chan, "handle", &contact_handle, NULL);
-
-  tp_channel_manager_emit_channel_closed_for_object (self,
-      TP_EXPORTABLE_CHANNEL (chan));
-
-  DEBUG ("removing tubes channel with handle %d", contact_handle);
-
-  g_hash_table_remove (priv->tubes_channels, GUINT_TO_POINTER (contact_handle));
-}
-
-/**
- * new_tubes_channel
- *
- * Creates the GabbleTubes object associated with the given parameters
- */
-static GabbleTubesChannel *
-new_tubes_channel (GabblePrivateTubesFactory *fac,
-                   TpHandle handle,
-                   TpHandle initiator,
-                   gpointer request_token,
-                   gboolean send_new_channel_signal)
-{
-  GabblePrivateTubesFactoryPrivate *priv;
-  TpBaseConnection *conn;
-  GabbleTubesChannel *chan;
-  char *object_path;
-  gboolean requested;
-
-  g_assert (GABBLE_IS_PRIVATE_TUBES_FACTORY (fac));
-  g_assert (handle != 0);
-  g_assert (initiator != 0);
-
-  priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
-  conn = (TpBaseConnection *) priv->conn;
-
-  object_path = g_strdup_printf ("%s/SITubesChannel%u", conn->object_path,
-      handle);
-
-  requested = (request_token != NULL);
-
-  chan = g_object_new (GABBLE_TYPE_TUBES_CHANNEL,
-                       "connection", priv->conn,
-                       "object-path", object_path,
-                       "handle", handle,
-                       "handle-type", TP_HANDLE_TYPE_CONTACT,
-                       "initiator-handle", initiator,
-                       "requested", requested,
-                       NULL);
-
-  DEBUG ("object path %s", object_path);
-
-  g_signal_connect (chan, "closed", G_CALLBACK (tubes_channel_closed_cb), fac);
-
-  g_hash_table_insert (priv->tubes_channels, GUINT_TO_POINTER (handle), chan);
-
-  g_free (object_path);
-
-  if (send_new_channel_signal)
-    {
-      GSList *request_tokens;
-      if (request_token != NULL)
-        request_tokens = g_slist_prepend (NULL, request_token);
-      else
-        request_tokens = NULL;
-
-      tp_channel_manager_emit_new_channel (fac,
-          TP_EXPORTABLE_CHANNEL (chan), request_tokens);
-
-      g_slist_free (request_tokens);
-    }
-
-  return chan;
-}
-
 static void
 gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
 {
@@ -503,10 +398,6 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
       priv->msg_close_cb = 0;
     }
 
-  /* Use a temporary variable (the macro does this) because we don't want
-   * tubes_channel_closed_cb to remove the channel from the hash table a
-   * second time */
-  tp_clear_pointer (&priv->tubes_channels, g_hash_table_unref);
   tp_clear_pointer (&priv->tubes, g_hash_table_unref);
 }
 

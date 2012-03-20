@@ -332,7 +332,7 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
   GabblePluginConnection *plugin_connection = GABBLE_PLUGIN_CONNECTION (self);
-  GPtrArray *channel_managers = g_ptr_array_sized_new (5);
+  GPtrArray *channel_managers = g_ptr_array_sized_new (10);
   GabblePluginLoader *loader;
   GPtrArray *tmp;
 

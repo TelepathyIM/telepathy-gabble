@@ -830,24 +830,68 @@ gabble_private_tubes_factory_handle_si_stream_request (
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  GabbleTubesChannel *chan;
+      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+  const gchar *tmp;
+  gchar *endptr;
+  guint tube_id;
+  WockyNode *si_node, *stream_node;
+  unsigned long tube_id_tmp;
+  GabbleTubeIface *tube;
+  WockyStanzaType stanza_type;
+  WockyStanzaSubType sub_type;
 
   DEBUG ("contact#%u stream %s", handle, stream_id);
   g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
-  chan = g_hash_table_lookup (priv->tubes_channels, GUINT_TO_POINTER (handle));
-  if (chan == NULL)
+  wocky_stanza_get_type_info (msg, &stanza_type, &sub_type);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
+  g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
+
+  si_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
+  g_return_if_fail (si_node != NULL);
+
+  stream_node = wocky_node_get_child_ns (si_node,
+      "stream", NS_TUBES);
+  g_return_if_fail (stream_node != NULL);
+
+  tmp = wocky_node_get_attribute (stream_node, "tube");
+  if (tmp == NULL)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
-          "No tubes channel available for this contact" };
+          "<stream> or <muc-stream> has no tube attribute" };
 
-      DEBUG ("tubes channel with contact %d doesn't exist", handle);
+      NODE_DEBUG (stream_node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
+      return;
+    }
+  tube_id_tmp = strtoul (tmp, &endptr, 10);
+  if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
+    {
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "<stream> or <muc-stream> tube attribute not numeric or > 2**32" };
+
+      DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
+      gabble_bytestream_iface_close (bytestream, &e);
+      return;
+    }
+  tube_id = (guint) tube_id_tmp;
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube == NULL)
+    {
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "<stream> or <muc-stream> tube attribute points to a nonexistent "
+          "tube" };
+
+      DEBUG ("tube %u doesn't exist", tube_id);
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
-  gabble_tubes_channel_bytestream_offered (chan, bytestream, msg);
+  DEBUG ("received new bytestream request for existing tube: %u", tube_id);
+
+  gabble_tube_iface_add_bytestream (tube, bytestream);
 }
 
 static gboolean

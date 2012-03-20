@@ -737,12 +737,6 @@ gabble_private_tubes_factory_handle_si_tube_request (
   /* New tube */
   tube = new_channel_from_stanza (self, msg, tube_node,
       tube_id, bytestream);
-
-  if (tube != NULL)
-    {
-      tp_channel_manager_emit_new_channel (self,
-          TP_EXPORTABLE_CHANNEL (tube), NULL);
-    }
 }
 
 void
@@ -916,12 +910,6 @@ private_tubes_factory_msg_tube_cb (
     }
 
   channel = new_channel_from_stanza (self, msg, node, tube_id, NULL);
-
-  if (channel != NULL)
-    {
-      tp_channel_manager_emit_new_channel (self,
-          TP_EXPORTABLE_CHANNEL (channel), NULL);
-    }
 
   return TRUE;
 }
@@ -1226,6 +1214,9 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
       tube);
 
   g_hash_table_unref (parameters);
+
+  tp_channel_manager_emit_new_channel (self,
+      TP_EXPORTABLE_CHANNEL (tube), NULL);
 
   return tube;
 }

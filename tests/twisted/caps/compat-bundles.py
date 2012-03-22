@@ -16,6 +16,12 @@ from gabbletest import exec_test, elem, elem_iq
 import constants as cs
 import ns
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def disco_bundle(q, bus, conn, stream, node, features):
     request = \
         elem_iq(stream, 'get', from_='fake_contact@jabber.org/resource')(

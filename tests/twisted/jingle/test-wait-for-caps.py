@@ -13,6 +13,12 @@ import dbus
 import constants as cs
 import ns
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def test(q, bus, conn, stream, channel_type):
     jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
     jt2 = jingletest.JingleTest(stream, 'test@localhost', 'foo2@bar.com/Foo')

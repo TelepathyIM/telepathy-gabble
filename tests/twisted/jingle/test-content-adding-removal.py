@@ -13,6 +13,12 @@ from jingletest2 import (
     )
 import constants as cs
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def gabble_terminates(jp, q, bus, conn, stream):
     test(jp, q, bus, conn, stream, False)
 

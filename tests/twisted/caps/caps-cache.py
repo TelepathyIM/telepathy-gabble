@@ -14,6 +14,12 @@ from caps_helper import (
     compute_caps_hash, fake_client_dataforms, presence_and_disco,
     send_presence, expect_disco, send_disco_reply)
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 client = 'http://telepathy.freedesktop.org/fake-client/caps-cache'
 features = [
     ns.JINGLE_015,

@@ -14,12 +14,18 @@ import config
 import ns
 import constants as cs
 
-# The caps we always have, regardless of any clients' caps
-FIXED_CAPS = [
-    ns.JINGLE,
-    ns.JINGLE_015,
+if config.VOIP_ENABLED:
+    FIXED_JINGLE_CAPS = [
+        ns.JINGLE,
+        ns.JINGLE_015,
+        ns.JINGLE_TRANSPORT_RAWUDP,
+        ]
+else:
+    FIXED_JINGLE_CAPS = []
+
+# The caps we have regardless of any clients' caps
+FIXED_CAPS = FIXED_JINGLE_CAPS + [
     ns.GOOGLE_FEAT_SESSION,
-    ns.JINGLE_TRANSPORT_RAWUDP,
     ns.NICK,
     ns.NICK + '+notify',
     ns.CHAT_STATES,

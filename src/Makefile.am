@@ -19,8 +19,6 @@ libgabble_convenience_la_SOURCES = \
     auth-manager.c \
     base64.h \
     base64.c \
-    base-call-channel.h \
-    base-call-channel.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \
@@ -33,18 +31,6 @@ libgabble_convenience_la_SOURCES = \
     bytestream-multiple.c \
     bytestream-socks5.h \
     bytestream-socks5.c \
-    call-content.h \
-    call-content.c \
-    call-channel.h \
-    call-channel.c \
-    call-muc-channel.h \
-    call-muc-channel.c \
-    call-member.h \
-    call-member.c \
-    call-member-content.h \
-    call-member-content.c \
-    call-stream.h \
-    call-stream.c \
     capabilities.c \
     caps-hash.h \
     caps-hash.c \
@@ -85,47 +71,12 @@ libgabble_convenience_la_SOURCES = \
     error.h \
     gabble.c \
     gabble.h \
-    google-relay.c \
-    google-relay.h \
     im-channel.h \
     im-channel.c \
     im-factory.h \
     im-factory.c \
-    jingle-content.h \
-    jingle-content.c \
-    jingle-factory.h \
-    jingle-factory.c \
-    jingle-info.c \
-    jingle-info.h \
-    jingle-share.h \
-    jingle-share.c \
-    jingle-media-rtp.h \
-    jingle-media-rtp.c \
-    jingle-mint.h \
-    jingle-mint.c \
-    jingle-session.h \
-    jingle-session.c \
-    jingle-tp-util.h \
-    jingle-tp-util.c \
-    jingle-transport-google.h \
-    jingle-transport-google.c \
-    jingle-transport-rawudp.h \
-    jingle-transport-rawudp.c \
-    jingle-transport-iceudp.h \
-    jingle-transport-iceudp.c \
-    jingle-transport-iface.h \
-    jingle-transport-iface.c \
-    jingle-types.h \
     legacy-caps.h \
     legacy-caps.c \
-    media-channel.h \
-    media-channel-internal.h \
-    media-channel.c \
-    media-channel-hold.c \
-    media-stream.h \
-    media-stream.c \
-    media-factory.h \
-    media-factory.c \
     message-util.h \
     message-util.c \
     muc-channel.h \
@@ -191,17 +142,66 @@ libgabble_convenience_la_SOURCES += \
     ft-channel.c \
     ft-channel.h \
     ft-manager.c \
-    ft-manager.h \
-    gtalk-file-collection.h \
-    gtalk-file-collection.c
-else
-EXTRA_DIST += \
-    ft-channel.c \
-    ft-channel.h \
-    ft-manager.c \
-    ft-manager.h \
-    gtalk-file-collection.h \
-    gtalk-file-collection.c
+    ft-manager.h
+endif
+
+if ENABLE_VOIP
+libgabble_convenience_la_SOURCES += \
+    base-call-channel.h \
+    base-call-channel.c \
+    call-content.h \
+    call-content.c \
+    call-channel.h \
+    call-channel.c \
+    call-muc-channel.h \
+    call-muc-channel.c \
+    call-member.h \
+    call-member.c \
+    call-member-content.h \
+    call-member-content.c \
+    call-stream.h \
+    call-stream.c \
+    google-relay.c \
+    google-relay.h \
+    jingle-content.h \
+    jingle-content.c \
+    jingle-factory.h \
+    jingle-factory.c \
+    jingle-info.c \
+    jingle-info.h \
+    jingle-share.h \
+    jingle-share.c \
+    jingle-media-rtp.h \
+    jingle-media-rtp.c \
+    jingle-mint.h \
+    jingle-mint.c \
+    jingle-session.h \
+    jingle-session.c \
+    jingle-tp-util.h \
+    jingle-tp-util.c \
+    jingle-transport-google.h \
+    jingle-transport-google.c \
+    jingle-transport-rawudp.h \
+    jingle-transport-rawudp.c \
+    jingle-transport-iceudp.h \
+    jingle-transport-iceudp.c \
+    jingle-transport-iface.h \
+    jingle-transport-iface.c \
+    jingle-types.h \
+    media-channel.h \
+    media-channel-internal.h \
+    media-channel.c \
+    media-channel-hold.c \
+    media-stream.h \
+    media-stream.c \
+    media-factory.h \
+    media-factory.c
+endif
+
+if ENABLE_JINGLE_FILE_TRANSFER
+libgabble_convenience_la_SOURCES += \
+    gtalk-file-collection.c \
+    gtalk-file-collection.h
 endif
 
 enumtype_sources = \

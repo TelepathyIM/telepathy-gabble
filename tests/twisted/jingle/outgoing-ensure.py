@@ -15,6 +15,11 @@ from servicetest import (
 import constants as cs
 from jingletest2 import JingleProtocol031, JingleTest2
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
 
 def test(q, bus, conn, stream, channel_type):
     jt = JingleTest2(JingleProtocol031(), conn, q, stream, 'test@localhost',

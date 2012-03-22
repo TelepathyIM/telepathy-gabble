@@ -34,6 +34,12 @@ from caps_helper import (
     compute_caps_hash, make_caps_disco_reply, send_disco_reply,
     fake_client_dataforms)
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 caps_changed_flag = False
 
 some_identities = [

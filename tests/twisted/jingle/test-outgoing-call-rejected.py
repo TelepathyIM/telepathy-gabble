@@ -8,6 +8,12 @@ from servicetest import make_channel_proxy, assertEquals
 import constants as cs
 from jingletest2 import JingleTest2, test_all_dialects
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def _test(jp, q, bus, conn, stream,
           jingle_reason, group_change_reason, stream_error):
     remote_jid = 'foo@bar.com/Foo'

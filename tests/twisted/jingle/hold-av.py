@@ -11,6 +11,12 @@ import constants as cs
 
 from jingletest2 import JingleTest2, test_all_dialects
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def mutable_stream_tests(jp, jt, q, bus, conn, stream, chan, handle):
     # ---- Test 13: while the call's on hold, we add a new stream ---
     # We shouldn't go off hold locally as a result, and the new StreamHandler

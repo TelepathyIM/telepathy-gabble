@@ -13,6 +13,12 @@ from caps_helper import caps_contain, receive_presence_and_ask_caps,\
 import constants as cs
 import ns
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def run_test(q, bus, conn, stream):
     initial_presence = q.expect('stream-presence')
 

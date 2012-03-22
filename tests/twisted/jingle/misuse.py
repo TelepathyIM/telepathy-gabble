@@ -11,6 +11,12 @@ from jingletest2 import JingleTest2, JingleProtocol031
 
 import constants as cs
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def test(q, bus, conn, stream):
     jp = JingleProtocol031()
     remote_jid = 'foo@example.com/misc'

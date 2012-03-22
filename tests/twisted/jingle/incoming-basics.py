@@ -12,6 +12,12 @@ import constants as cs
 
 from twisted.words.xish import xpath
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def test(jp, q, bus, conn, stream, peer='foo@bar.com/Foo'):
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
     jt.prepare()

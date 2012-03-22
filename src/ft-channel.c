@@ -61,9 +61,10 @@ static void file_transfer_iface_init (gpointer g_iface, gpointer iface_data);
 static void transferred_chunk (GabbleFileTransferChannel *self, guint64 count);
 static gboolean set_bytestream (GabbleFileTransferChannel *self,
     GabbleBytestreamIface *bytestream);
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 static gboolean set_gtalk_file_collection (GabbleFileTransferChannel *self,
     GTalkFileCollection *gtalk_file_collection);
-
+#endif
 
 
 G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel,
@@ -102,8 +103,10 @@ enum
   PROP_CONNECTION,
   PROP_BYTESTREAM,
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   /* Chan.Type.FileTransfer.FUTURE */
   PROP_GTALK_FILE_COLLECTION,
+#endif
 
   /* Chan.Iface.FileTransfer.Metadata */
   PROP_SERVICE_NAME,
@@ -121,7 +124,9 @@ struct _GabbleFileTransferChannelPrivate {
   GValue *socket_address;
   gboolean resume_supported;
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   GTalkFileCollection *gtalk_file_collection;
+#endif
 
   GabbleBytestreamIface *bytestream;
   GibberListener *listener;
@@ -233,9 +238,11 @@ gabble_file_transfer_channel_get_property (GObject *object,
       case PROP_BYTESTREAM:
         g_value_set_object (value, self->priv->bytestream);
         break;
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       case PROP_GTALK_FILE_COLLECTION:
         g_value_set_object (value, self->priv->gtalk_file_collection);
         break;
+#endif
       case PROP_SERVICE_NAME:
         g_value_set_string (value, self->priv->service_name);
         break;
@@ -319,10 +326,12 @@ gabble_file_transfer_channel_set_property (GObject *object,
         set_bytestream (self,
             GABBLE_BYTESTREAM_IFACE (g_value_get_object (value)));
         break;
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       case PROP_GTALK_FILE_COLLECTION:
         set_gtalk_file_collection (self,
             GTALK_FILE_COLLECTION (g_value_get_object (value)));
         break;
+#endif
       case PROP_SERVICE_NAME:
         self->priv->service_name = g_value_dup_string (value);
         break;
@@ -738,6 +747,7 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_BYTESTREAM,
       param_spec);
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   param_spec = g_param_spec_object (
       "gtalk-file-collection",
       "GTalkFileCollection object for gtalk-compatible file transfer",
@@ -746,6 +756,7 @@ gabble_file_transfer_channel_class_init (
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_GTALK_FILE_COLLECTION,
       param_spec);
+#endif
 
   param_spec = g_param_spec_boolean (
       "resume-supported",
@@ -870,10 +881,12 @@ close_session_and_transport (GabbleFileTransferChannel *self)
 
   DEBUG ("Closing session and transport");
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   if (self->priv->gtalk_file_collection != NULL)
     gtalk_file_collection_terminate (self->priv->gtalk_file_collection, self);
 
   tp_clear_object (&self->priv->gtalk_file_collection);
+#endif
 
   if (self->priv->bytestream != NULL)
     gabble_bytestream_iface_close (self->priv->bytestream, NULL);
@@ -1022,7 +1035,9 @@ set_bytestream (GabbleFileTransferChannel *self,
     return FALSE;
 
   g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   g_return_val_if_fail (self->priv->gtalk_file_collection == NULL, FALSE);
+#endif
 
   DEBUG ("Setting bytestream to %p", bytestream);
 
@@ -1036,6 +1051,7 @@ set_bytestream (GabbleFileTransferChannel *self,
   return TRUE;
 }
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 static gboolean
 set_gtalk_file_collection (
     GabbleFileTransferChannel *self, GTalkFileCollection *gtalk_file_collection)
@@ -1053,6 +1069,7 @@ set_gtalk_file_collection (
 
   return TRUE;
 }
+#endif
 
 static void
 bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
@@ -1263,7 +1280,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   return result;
 }
 
-
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 void
 gabble_file_transfer_channel_gtalk_file_collection_state_changed (
     GabbleFileTransferChannel *self,
@@ -1359,6 +1376,7 @@ offer_gtalk_file_transfer (GabbleFileTransferChannel *self,
 
   return TRUE;
 }
+#endif
 
 gboolean
 gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
@@ -1372,13 +1390,19 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
   TpHandleRepoIface *contact_repo, *room_repo;
   const gchar *jid;
   gboolean si = FALSE;
-  gboolean jingle_share = FALSE;
+  gboolean use_si = FALSE;
   const gchar *si_resource = NULL;
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
+  gboolean jingle_share = FALSE;
   const gchar *share_resource = NULL;
+#endif
+
   g_assert (!tp_str_empty (self->priv->filename));
   g_assert (self->priv->size != GABBLE_UNDEFINED_FILE_SIZE);
   g_return_val_if_fail (self->priv->bytestream == NULL, FALSE);
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   g_return_val_if_fail (self->priv->gtalk_file_collection == NULL, FALSE);
+#endif
 
   presence = gabble_presence_cache_get (conn->presence_cache,
       tp_base_channel_get_target_handle (base));
@@ -1424,27 +1448,37 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
          gabble_capability_set_predicate_has, NS_FILE_TRANSFER);
       si = (si_resource != NULL);
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       share_resource = gabble_presence_pick_resource_by_caps (presence, 0,
           gabble_capability_set_predicate_has, NS_GOOGLE_FEAT_SHARE);
       jingle_share  = (share_resource != NULL);
+#endif
     }
   else
     {
       /* MUC jid, we already have the full jid */
       si = gabble_presence_has_cap (presence, NS_FILE_TRANSFER);
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       jingle_share = gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_SHARE);
+#endif
     }
 
   /* Use bytestream if we have SI, but no jingle-share or if we have SI and
      jingle-share but we have no google relay token */
-  if (si &&
-      (!jingle_share ||
-          gabble_jingle_info_get_google_relay_token (
-              gabble_jingle_mint_get_info (conn->jingle_mint))
-              == NULL))
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
+  use_si = si &&
+    (!jingle_share ||
+     gabble_jingle_info_get_google_relay_token (
+       gabble_jingle_mint_get_info (conn->jingle_mint)) == NULL);
+#else
+  use_si = si;
+#endif
+
+  if (use_si)
     {
       result = offer_bytestream (self, jid, si_resource, error);
     }
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   else if (jingle_share)
     {
       gchar *full_jid = gabble_peer_to_jid (conn,
@@ -1452,6 +1486,7 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
       result = offer_gtalk_file_transfer (self, full_jid, error);
       g_free (full_jid);
     }
+#endif
   else
     {
       DEBUG ("contact doesn't have file transfer capabilities");
@@ -1589,20 +1624,22 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
       /* We don't want to send more data while the buffer isn't empty */
       if (self->priv->bytestream != NULL)
         gabble_bytestream_iface_block_reading (self->priv->bytestream, TRUE);
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       else if (self->priv->gtalk_file_collection != NULL)
         gtalk_file_collection_block_reading (self->priv->gtalk_file_collection,
             self, TRUE);
+#endif
     }
 }
 
-
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 void
 gabble_file_transfer_channel_gtalk_file_collection_data_received (
     GabbleFileTransferChannel *self, const gchar *data, guint len)
 {
   data_received_cb (self, (const guint8 *) data, len);
 }
-
+#endif
 
 static void
 bytestream_data_received_cb (GabbleBytestreamIface *stream,
@@ -1726,6 +1763,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       gabble_bytestream_iface_accept (self->priv->bytestream, augment_si_reply,
           self);
     }
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   else if (self->priv->gtalk_file_collection != NULL)
     {
       /* Block the gtalk ft stream while the user is not connected
@@ -1734,6 +1772,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
           self, TRUE);
       gtalk_file_collection_accept (self->priv->gtalk_file_collection, self);
     }
+#endif
   else
     {
       g_assert_not_reached ();
@@ -1885,6 +1924,7 @@ transport_handler (GibberTransport *transport,
           return;
         }
     }
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   else if (self->priv->gtalk_file_collection != NULL)
     {
       if (!gtalk_file_collection_send_data (self->priv->gtalk_file_collection,
@@ -1895,6 +1935,7 @@ transport_handler (GibberTransport *transport,
           return;
         }
     }
+#endif
 
   transferred_chunk (self, (guint64) data->length);
 
@@ -1910,12 +1951,14 @@ transport_handler (GibberTransport *transport,
               TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
           gabble_bytestream_iface_close (self->priv->bytestream, NULL);
         }
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       else if (self->priv->gtalk_file_collection != NULL)
         {
           DEBUG ("All the file has been sent.");
           gtalk_file_collection_completed (self->priv->gtalk_file_collection,
               self);
         }
+#endif
     }
 }
 
@@ -1928,6 +1971,7 @@ bytestream_write_blocked_cb (GabbleBytestreamIface *bytestream,
     gibber_transport_block_receiving (self->priv->transport, blocked);
 }
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
 void
 gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
     GabbleFileTransferChannel *self, gboolean blocked)
@@ -1935,7 +1979,7 @@ gabble_file_transfer_channel_gtalk_file_collection_write_blocked (
   if (self->priv->transport != NULL)
     gibber_transport_block_receiving (self->priv->transport, blocked);
 }
-
+#endif
 
 static void
 file_transfer_send (GabbleFileTransferChannel *self)
@@ -1957,9 +2001,11 @@ file_transfer_receive (GabbleFileTransferChannel *self)
   /* Client is connected, we can now receive data. Unblock the bytestream */
   if (self->priv->bytestream != NULL)
     gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   else if (self->priv->gtalk_file_collection != NULL)
     gtalk_file_collection_block_reading (self->priv->gtalk_file_collection,
         self, FALSE);
+#endif
 }
 
 static void
@@ -2000,9 +2046,11 @@ transport_buffer_empty_cb (GibberTransport *transport,
   if (self->priv->bytestream != NULL)
     gabble_bytestream_iface_block_reading (self->priv->bytestream, FALSE);
 
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
   if (self->priv->gtalk_file_collection != NULL)
     gtalk_file_collection_block_reading (self->priv->gtalk_file_collection,
         self, FALSE);
+#endif
 
   if (self->priv->state > TP_FILE_TRANSFER_STATE_OPEN)
     gibber_transport_disconnect (transport);
@@ -2166,13 +2214,21 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
                                   guint64 initial_offset,
                                   gboolean resume_supported,
                                   GabbleBytestreamIface *bytestream,
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
                                   GTalkFileCollection *gtalk_file_collection,
+#else
+                                  gpointer gtalk_file_collection_dummy,
+#endif
                                   const gchar *file_collection,
                                   const gchar *uri,
                                   const gchar *service_name,
                                   const GHashTable *metadata)
 
 {
+#ifndef ENABLE_JINGLE_FILE_TRANSFER
+  g_assert (gtalk_file_collection_dummy == NULL);
+#endif
+
   return g_object_new (GABBLE_TYPE_FILE_TRANSFER_CHANNEL,
       "connection", conn,
       "handle", handle,
@@ -2190,7 +2246,9 @@ gabble_file_transfer_channel_new (GabbleConnection *conn,
       "resume-supported", resume_supported,
       "file-collection", file_collection,
       "bytestream", bytestream,
+#ifdef ENABLE_JINGLE_FILE_TRANSFER
       "gtalk-file-collection", gtalk_file_collection,
+#endif
       "uri", uri,
       "service-name", service_name,
       "metadata", metadata,

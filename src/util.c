@@ -784,8 +784,9 @@ ensure_handle_from_contact (
   return handle;
 }
 
-#define TWICE(x) x, x
+#ifdef ENABLE_VOIP
 
+#define TWICE(x) x, x
 static gboolean
 jingle_pick_resource_or_bare_jid (GabblePresence *presence,
     GabbleCapabilitySet *caps, const gchar **resource)
@@ -1053,6 +1054,8 @@ gabble_call_candidates_to_array (GList *candidates)
 
   return arr;
 }
+
+#endif
 
 gchar *
 gabble_peer_to_jid (GabbleConnection *conn,

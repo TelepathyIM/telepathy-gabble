@@ -18,6 +18,8 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#include "config.h"
+
 #include "connection.h"
 #include "gabble.h"
 
@@ -60,11 +62,8 @@
 #include "conn-power-saving.h"
 #include "debug.h"
 #include "disco.h"
-#include "media-channel.h"
 #include "im-factory.h"
-#include "jingle-factory.h"
 #include "legacy-caps.h"
-#include "media-factory.h"
 #include "muc-factory.h"
 #include "namespaces.h"
 #include "presence-cache.h"
@@ -81,6 +80,12 @@
 #include "vcard-manager.h"
 #include "conn-util.h"
 #include "conn-addressing.h"
+
+#ifdef ENABLE_VOIP
+#include "media-channel.h"
+#include "jingle-factory.h"
+#include "media-factory.h"
+#endif
 
 static guint disco_reply_timeout = 5;
 
@@ -368,12 +373,14 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   self->private_tubes_factory = gabble_private_tubes_factory_new (self);
   g_ptr_array_add (channel_managers, self->private_tubes_factory);
 
+#ifdef ENABLE_VOIP
   self->jingle_mint = gabble_jingle_mint_new (self);
 
   g_ptr_array_add (channel_managers,
       g_object_new (GABBLE_TYPE_MEDIA_FACTORY,
         "connection", self,
         NULL));
+#endif
 
 #ifdef ENABLE_FILE_TRANSFER
   self->ft_manager = gabble_ft_manager_new (self);
@@ -491,8 +498,10 @@ gabble_connection_constructor (GType type,
    * presence, but could be removed by AdvertiseCapabilities(). Emulate
    * that here for now. */
   priv->bonus_caps = gabble_capability_set_new ();
+#ifdef ENABLE_VOIP
   gabble_capability_set_add (priv->bonus_caps, NS_GOOGLE_TRANSPORT_P2P);
   gabble_capability_set_add (priv->bonus_caps, NS_JINGLE_TRANSPORT_ICEUDP);
+#endif
 
   return (GObject *) self;
 }
@@ -1228,7 +1237,9 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&self->disco);
   tp_clear_object (&self->req_pipeline);
   tp_clear_object (&self->vcard_manager);
+#ifdef ENABLE_VOIP
   tp_clear_object (&self->jingle_mint);
+#endif
 
   /* remove borrowed references before TpBaseConnection unrefs the channel
    * factories */
@@ -2831,10 +2842,12 @@ connection_disco_cb (GabbleDisco *disco,
               if (var == NULL)
                 continue;
 
-              if (0 == strcmp (var, NS_GOOGLE_JINGLE_INFO))
-                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO;
-              else if (0 == strcmp (var, NS_GOOGLE_ROSTER))
+              if (0 == strcmp (var, NS_GOOGLE_ROSTER))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER;
+#ifdef ENABLE_VOIP
+              else if (0 == strcmp (var, NS_GOOGLE_JINGLE_INFO))
+                conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO;
+#endif
               else if (0 == strcmp (var, NS_PRESENCE_INVISIBLE))
                 conn->features |= GABBLE_CONNECTION_FEATURES_PRESENCE_INVISIBLE;
               else if (0 == strcmp (var, NS_PRIVACY))

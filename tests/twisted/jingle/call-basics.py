@@ -18,6 +18,12 @@ from jingletest2 import test_all_dialects
 import constants as cs
 import ns
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 class CallBasicsTest(CallTest):
 
     def test_connect_disconnect_endpoint(self):

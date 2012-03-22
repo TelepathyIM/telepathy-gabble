@@ -7,6 +7,12 @@ sid.
 from jingletest2 import JingleTest2, test_all_dialects
 import constants as cs
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def test(jp, q, bus, conn, stream):
     jt1 = JingleTest2(jp, conn, q, stream, 'test@localhost',
         'edgar@collabora.co.uk/Monitor')

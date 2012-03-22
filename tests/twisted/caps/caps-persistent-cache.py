@@ -9,6 +9,12 @@ from caps_helper import compute_caps_hash, send_disco_reply
 import constants as cs
 import ns
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 contact_bare_jid = 'macbeth@glamis'
 contact_jid = 'macbeth@glamis/hall'
 client = 'http://telepathy.freedesktop.org/zomg-ponies'

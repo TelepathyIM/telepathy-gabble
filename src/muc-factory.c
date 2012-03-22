@@ -27,6 +27,7 @@
 #include <wocky/wocky.h>
 #include <telepathy-glib/channel-manager.h>
 #include <telepathy-glib/dbus.h>
+#include <telepathy-glib/gtypes.h>
 #include <telepathy-glib/interfaces.h>
 #include <telepathy-glib/util.h>
 
@@ -38,7 +39,9 @@
 #include "debug.h"
 #include "disco.h"
 #include "im-channel.h"
+#ifdef ENABLE_VOIP
 #include "media-factory.h"
+#endif
 #include "message-util.h"
 #include "muc-channel.h"
 #include "namespaces.h"
@@ -47,7 +50,9 @@
 #include "tube-dbus.h"
 #include "tube-stream.h"
 #include "util.h"
+#ifdef ENABLE_VOIP
 #include "call-muc-channel.h"
+#endif
 
 static void channel_manager_iface_init (gpointer, gpointer);
 
@@ -394,6 +399,7 @@ muc_sub_channel_closed_cb (TpSvcChannel *chan,
       TP_EXPORTABLE_CHANNEL (chan));
 }
 
+#ifdef ENABLE_VOIP
 static void
 muc_channel_new_call (GabbleMucChannel *muc,
     GabbleCallMucChannel *call,
@@ -410,6 +416,7 @@ muc_channel_new_call (GabbleMucChannel *muc,
   g_signal_connect (call, "closed",
     G_CALLBACK (muc_sub_channel_closed_cb), fac);
 }
+#endif
 
 static void
 muc_channel_new_tube (GabbleMucChannel *channel,
@@ -494,8 +501,10 @@ new_muc_channel (GabbleMucFactory *fac,
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
   g_signal_connect (chan, "new-tube", (GCallback) muc_channel_new_tube, fac);
+#ifdef ENABLE_VOIP
   g_signal_connect (chan, "new-call",
       (GCallback) muc_channel_new_call, fac);
+#endif
 
   g_hash_table_insert (priv->text_channels, GUINT_TO_POINTER (handle), chan);
 
@@ -994,8 +1003,10 @@ _foreach_slave (gpointer key, gpointer value, gpointer user_data)
       g_object_unref (tube);
     }
 
+#ifdef ENABLE_VOIP
   g_list_foreach (gabble_muc_channel_get_call_channels (gmuc),
       (GFunc) data->foreach, data->user_data);
+#endif
 }
 
 static void
@@ -1162,12 +1173,14 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
   func (type, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
+#ifdef ENABLE_VOIP
   /* Muc Channel.Type.Call */
   g_value_set_static_string (channel_type_value,
       TP_IFACE_CHANNEL_TYPE_CALL);
   func (type, table,
       gabble_media_factory_call_channel_allowed_properties (),
       user_data);
+#endif
 
   g_hash_table_unref (table);
 }
@@ -1740,6 +1753,7 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
       require_new, handle, error);
 }
 
+#ifdef ENABLE_VOIP
 static void
 call_muc_channel_request_cb (GObject *source,
   GAsyncResult *result,
@@ -1836,6 +1850,7 @@ out:
 error:
   return FALSE;
 }
+#endif
 
 typedef gboolean (*ChannelTypeHandlerFunc) (
     GabbleMucFactory *self,
@@ -1855,7 +1870,9 @@ static ChannelTypeHandler channel_type_handlers[] = {
     { TP_IFACE_CHANNEL_TYPE_TUBES, handle_tubes_channel_request },
     { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, handle_stream_tube_channel_request },
     { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, handle_dbus_tube_channel_request },
+#ifdef ENABLE_VOIP
     { TP_IFACE_CHANNEL_TYPE_CALL, handle_call_channel_request },
+#endif
     { NULL }
 };
 
@@ -1957,6 +1974,7 @@ gabble_muc_factory_ensure_channel (TpChannelManager *manager,
       FALSE);
 }
 
+#ifdef ENABLE_VOIP
 gboolean
 gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
   GabbleJingleSession *session)
@@ -1983,7 +2001,7 @@ gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
 
   return FALSE;
 }
-
+#endif
 
 static void
 channel_manager_iface_init (gpointer g_iface,

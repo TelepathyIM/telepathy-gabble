@@ -15,6 +15,12 @@ import constants as cs
 
 from jingletest2 import *
 
+from config import VOIP_ENABLED
+
+if not VOIP_ENABLED:
+    print "NOTE: built with --disable-voip"
+    raise SystemExit(77)
+
 def worker(jp, q, bus, conn, stream):
     jp.features.remove(ns.GOOGLE_P2P)
     jp.features.append(ns.JINGLE_TRANSPORT_ICEUDP)

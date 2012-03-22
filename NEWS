@@ -1,7 +1,28 @@
-telepathy-gabble 0.15.5 (UNRELEASED)
+telepathy-gabble 0.15.5 (2012-03-22)
 ====================================
 
-...
+Requirements:
+
+• telepathy-glib 0.17.7 is now required.
+
+Enhancements:
+
+• fd.o#46513: Refactor Jingle code to remove Telepathy in preparation
+  of moving it to Wocky. (Will)
+
+• fd.o#45602: Subclass TpBaseChannel in more channel
+  implemenations. (Jonny)
+
+• fd.o#47502: Add a --disable-voip configure flag to disable building
+  gabble with VoIP support. (Marco)
+
+Fixes:
+
+• Correctly convert between Telepathy and Jingle candidate
+  types. (Olivier)
+
+• Start sending automatically on accepting bidirectional
+  calls. (Olivier)
 
 telepathy-gabble 0.15.4 (2012-02-21)
 ====================================

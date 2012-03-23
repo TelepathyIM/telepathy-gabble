@@ -1148,11 +1148,6 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
   func (type, table, muc_channel_allowed_properties,
       user_data);
 
-  /* Channel.Type.Tubes */
-  g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TUBES);
-  func (type, table, muc_tubes_channel_allowed_properties,
-      user_data);
-
   /* Muc Channel.Type.StreamTube */
   g_value_set_static_string (channel_type_value,
       TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);

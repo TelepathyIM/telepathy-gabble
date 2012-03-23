@@ -206,6 +206,9 @@ struct _GabbleMucChannelPrivate
   WockyMuc *wmuc;
   GabbleTubesChannel *tube;
 
+  /* tube ID => owned GabbleTubeIface */
+  GHashTable *tubes;
+
 #ifdef ENABLE_VOIP
   /* Current active call */
   GabbleCallMucChannel *call;
@@ -239,6 +242,9 @@ gabble_muc_channel_init (GabbleMucChannel *self)
   self->priv = priv;
 
   priv->requests_cancellable = g_cancellable_new ();
+
+  priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) g_object_unref);
 }
 
 static TpHandle create_room_identity (GabbleMucChannel *)
@@ -1233,6 +1239,8 @@ gabble_muc_channel_dispose (GObject *object)
   tp_clear_object (&priv->requests_cancellable);
   tp_clear_object (&priv->room_config);
 
+  tp_clear_pointer (&priv->tubes, g_hash_table_unref);
+
   if (G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_muc_channel_parent_class)->dispose (object);
 }
@@ -1485,7 +1493,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   /* Ensure we stay alive even while telling everyone else to abandon us. */
   g_object_ref (chan);
 
-  gabble_muc_channel_close_tube (chan);
+  g_hash_table_remove_all (priv->tubes);
 
 #ifdef ENABLE_VOIP
   muc_call_channel_finish_requests (chan, NULL, &error);

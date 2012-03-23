@@ -107,8 +107,9 @@ static const gchar * const old_tubes_channel_allowed_properties[] = {
     NULL
 };
 
-static gboolean
-extract_tube_information (GabblePrivateTubesFactory *self,
+gboolean
+gabble_private_tubes_factory_extract_tube_information (
+    TpHandleRepoIface *contact_repo,
     WockyNode *tube_node,
     TpTubeType *type,
     TpHandle *initiator_handle,
@@ -116,10 +117,6 @@ extract_tube_information (GabblePrivateTubesFactory *self,
     GHashTable **parameters,
     guint *tube_id)
 {
-  GabblePrivateTubesFactoryPrivate *priv = self->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-
   if (type != NULL)
     {
       const gchar *_type;
@@ -712,8 +709,9 @@ gabble_private_tubes_factory_handle_si_tube_request (
       NS_TUBES);
   g_return_if_fail (tube_node != NULL);
 
-  if (!extract_tube_information (self, tube_node, NULL, NULL,
-              NULL, NULL, &tube_id))
+  if (!gabble_private_tubes_factory_extract_tube_information (
+          contact_repo, tube_node, NULL, NULL,
+          NULL, NULL, &tube_id))
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
           "<tube> has no id attribute" };
@@ -1156,8 +1154,9 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
   const gchar *service;
   GHashTable *parameters;
 
-  if (!extract_tube_information (self, tube_node, &type, NULL,
-              &service, &parameters, NULL))
+  if (!gabble_private_tubes_factory_extract_tube_information (
+          contact_repo, tube_node, &type, NULL,
+          &service, &parameters, NULL))
     {
       DEBUG ("can't extract <tube> information from message");
       send_tube_close_msg (self, wocky_stanza_get_from (stanza), tube_id);

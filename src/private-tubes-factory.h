@@ -75,6 +75,12 @@ void gabble_private_tubes_factory_handle_si_stream_request (
     GabblePrivateTubesFactory *fac, GabbleBytestreamIface *bytestream,
     TpHandle handle, const gchar *stream_id, WockyStanza *msg);
 
+gboolean gabble_private_tubes_factory_extract_tube_information (
+    TpHandleRepoIface *contact_repo, WockyNode *tube_node,
+    TpTubeType *type, TpHandle *initiator_handle,
+    const gchar **service, GHashTable **parameters,
+    guint *tube_id);
+
 G_END_DECLS
 
 #endif /* #ifndef __PRIVATE_TUBES_FACTORY_H__ */

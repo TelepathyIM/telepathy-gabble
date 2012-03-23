@@ -779,7 +779,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
   if (tmp == NULL)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
-          "<stream> or <muc-stream> has no tube attribute" };
+          "<stream> has no tube attribute" };
 
       NODE_DEBUG (stream_node, e.message);
       gabble_bytestream_iface_close (bytestream, &e);
@@ -789,7 +789,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
   if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
-          "<stream> or <muc-stream> tube attribute not numeric or > 2**32" };
+          "<stream> tube attribute not numeric or > 2**32" };
 
       DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
       gabble_bytestream_iface_close (bytestream, &e);
@@ -801,7 +801,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
   if (tube == NULL)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
-          "<stream> or <muc-stream> tube attribute points to a nonexistent "
+          "<stream> tube attribute points to a nonexistent "
           "tube" };
 
       DEBUG ("tube %u doesn't exist", tube_id);

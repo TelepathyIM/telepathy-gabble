@@ -1118,12 +1118,6 @@ static const gchar * const muc_channel_allowed_properties[] = {
     NULL
 };
 
-static const gchar * const muc_tubes_channel_allowed_properties[] = {
-    TP_PROP_CHANNEL_TARGET_HANDLE,
-    TP_PROP_CHANNEL_TARGET_ID,
-    NULL
-};
-
 static void
 gabble_muc_factory_type_foreach_channel_class (GType type,
     TpChannelManagerTypeChannelClassFunc func,
@@ -1535,62 +1529,6 @@ out:
 }
 
 static gboolean
-handle_tubes_channel_request (GabbleMucFactory *self,
-                              gpointer request_token,
-                              GHashTable *request_properties,
-                              gboolean require_new,
-                              TpHandle handle,
-                              GError **error)
-{
-  GabbleMucFactoryPrivate *priv = self->priv;
-  GabbleTubesChannel *tube = NULL;
-  GabbleMucChannel *gmuc = NULL;
-
-  if (tp_channel_manager_asv_has_unknown_properties (request_properties,
-          muc_tubes_channel_fixed_properties,
-          muc_tubes_channel_allowed_properties,
-          error))
-    return FALSE;
-
-  gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
-
-  if (gmuc != NULL)
-    g_object_get (gmuc, "tube", &tube, NULL);
-
-  if (tube != NULL)
-    {
-      if (require_new)
-        {
-          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
-              "That channel has already been created (or requested)");
-          return FALSE;
-        }
-      else
-        {
-          tp_channel_manager_emit_request_already_satisfied (self,
-              request_token, TP_EXPORTABLE_CHANNEL (tube));
-        }
-    }
-  else if (ensure_tubes_channel (self, handle, &tube, TRUE))
-    {
-      GSList *list = NULL;
-
-      list = g_slist_prepend (list, request_token);
-      tp_channel_manager_emit_new_channel (self,
-          TP_EXPORTABLE_CHANNEL (tube), list);
-      g_slist_free (list);
-    }
-  else
-    {
-      gabble_muc_factory_associate_request (self, tube, request_token);
-    }
-
-  g_object_unref (tube);
-
-  return TRUE;
-}
-
-static gboolean
 handle_tube_channel_request (GabbleMucFactory *self,
                              gpointer request_token,
                              GHashTable *request_properties,
@@ -1845,7 +1783,6 @@ typedef struct {
 
 static ChannelTypeHandler channel_type_handlers[] = {
     { TP_IFACE_CHANNEL_TYPE_TEXT, handle_text_channel_request },
-    { TP_IFACE_CHANNEL_TYPE_TUBES, handle_tubes_channel_request },
     { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, handle_stream_tube_channel_request },
     { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, handle_dbus_tube_channel_request },
 #ifdef ENABLE_VOIP

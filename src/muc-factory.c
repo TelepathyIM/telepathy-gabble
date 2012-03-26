@@ -81,14 +81,10 @@ struct _GabbleMucFactoryPrivate
   guint message_cb_id;
   /* GUINT_TO_POINTER(room_handle) => (GabbleMucChannel *) */
   GHashTable *text_channels;
-  /* Tubes channels which will be considered ready when the corresponding
-   * text channel is created.
-   * Borrowed GabbleMucChannel => borrowed GabbleTubesChannel */
-  GHashTable *text_needed_for_tubes;
   /* Tube channels which will be considered ready when the corresponding
-   * tubes channel is created.
-   * Borrowed GabbleTubesChannel => GSlist of borrowed GabbleTubeIface */
-  GHashTable *tubes_needed_for_tube;
+   * text channel is created.
+   * Borrowed GabbleMucChannel => owned GQueue of borrowed GabbleTubeIface */
+  GHashTable *text_needed_for_tube;
   /* GabbleDiscoRequest * => NULL (used as a set) */
   GHashTable *disco_requests;
 
@@ -103,6 +99,9 @@ struct _GabbleMucFactoryPrivate
 static GObject *gabble_muc_factory_constructor (GType type, guint n_props,
     GObjectConstructParam *props);
 
+static void gabble_muc_factory_associate_tube (GabbleMucFactory *self,
+    GabbleMucChannel *gmuc, GabbleTubeIface *tube);
+
 static void
 gabble_muc_factory_init (GabbleMucFactory *fac)
 {
@@ -113,13 +112,11 @@ gabble_muc_factory_init (GabbleMucFactory *fac)
 
   priv->text_channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_object_unref);
-  priv->text_needed_for_tubes = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, NULL);
-  priv->tubes_needed_for_tube = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, (GDestroyNotify) g_slist_free);
+  priv->text_needed_for_tube = g_hash_table_new_full (g_direct_hash,
+      g_direct_equal, NULL, (GDestroyNotify) g_queue_free);
 
   priv->disco_requests = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-                                                NULL, NULL);
+      NULL, NULL);
 
   priv->queued_requests = g_hash_table_new_full (g_direct_hash,
       g_direct_equal, NULL, NULL);
@@ -156,8 +153,7 @@ gabble_muc_factory_dispose (GObject *object)
 
   gabble_muc_factory_close_all (fac);
   g_assert (priv->text_channels == NULL);
-  g_assert (priv->text_needed_for_tubes == NULL);
-  g_assert (priv->tubes_needed_for_tube == NULL);
+  g_assert (priv->text_needed_for_tube == NULL);
   g_assert (priv->queued_requests == NULL);
 
   g_hash_table_foreach (priv->disco_requests, cancel_disco_request,
@@ -250,8 +246,6 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 
       DEBUG ("removing MUC channel with handle %d", room_handle);
 
-      gabble_muc_channel_close_tube (chan);
-
       g_hash_table_remove (priv->text_channels, GUINT_TO_POINTER (room_handle));
     }
 }
@@ -262,86 +256,49 @@ muc_ready_cb (GabbleMucChannel *text_chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
   GabbleMucFactoryPrivate *priv = fac->priv;
-  GabbleTubesChannel *tubes_chan;
-  GSList *requests_satisfied_text, *requests_satisfied_tubes = NULL;
-  gboolean text_requested;
-  GSList *tube_channels, *l;
+  GHashTable *channels;
+
+  GSList *requests_satisfied_text = NULL;
+  GQueue *tube_channels;
 
   DEBUG ("text chan=%p", text_chan);
 
-  g_object_get (text_chan, "requested", &text_requested, NULL);
+  channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+      NULL, (GDestroyNotify) g_slist_free);
 
   requests_satisfied_text = g_hash_table_lookup (
       priv->queued_requests, text_chan);
   g_hash_table_steal (priv->queued_requests, text_chan);
   requests_satisfied_text = g_slist_reverse (requests_satisfied_text);
 
-  tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, text_chan);
-  g_hash_table_remove (priv->text_needed_for_tubes, text_chan);
-
-  if (tubes_chan != NULL)
-    {
-      requests_satisfied_tubes = g_hash_table_lookup (
-          priv->queued_requests, tubes_chan);
-      g_hash_table_steal (priv->queued_requests, tubes_chan);
-    }
-
   /* Announce tube channels now */
-  /* FIXME: we should probably aggregate tube announcement with tubes and text
-   * ones in some cases. */
-  tube_channels = g_hash_table_lookup (priv->tubes_needed_for_tube,
-      tubes_chan);
-
-  tube_channels = g_slist_reverse (tube_channels);
-  for (l = tube_channels; l != NULL; l = g_slist_next (l))
+  tube_channels = g_hash_table_lookup (priv->text_needed_for_tube, text_chan);
+  if (tube_channels != NULL)
     {
-      GabbleTubeIface *tube_chan = GABBLE_TUBE_IFACE (l->data);
-      GSList *requests_satisfied_tube;
+      GList *l;
 
-      requests_satisfied_tube = g_hash_table_lookup (priv->queued_requests,
-          tube_chan);
-      g_hash_table_steal (priv->queued_requests, tube_chan);
-      requests_satisfied_tube = g_slist_reverse (requests_satisfied_tube);
-
-      tp_channel_manager_emit_new_channel (fac,
-          TP_EXPORTABLE_CHANNEL (tube_chan), requests_satisfied_tube);
-
-      g_slist_free (requests_satisfied_tube);
-    }
-
-  if (tubes_chan == NULL || text_requested)
-    {
-      /* There is no tubes channel or the text channel has been explicitely
-       * requested. In both cases, the text channel has to be announced
-       * separately. */
-
-      /* announce text channel */
-      tp_channel_manager_emit_new_channel (fac,
-          TP_EXPORTABLE_CHANNEL (text_chan), requests_satisfied_text);
-
-      if (tubes_chan != NULL)
+      for (l = tube_channels->head; l != NULL; l = l->next)
         {
-          tp_channel_manager_emit_new_channel (fac,
-              TP_EXPORTABLE_CHANNEL (tubes_chan), requests_satisfied_tubes);
+          GabbleTubeIface *tube_chan = GABBLE_TUBE_IFACE (l->data);
+          GSList *requests_satisfied_tube;
+
+          requests_satisfied_tube = g_hash_table_lookup (
+              priv->queued_requests, tube_chan);
+          g_hash_table_steal (priv->queued_requests, tube_chan);
+          requests_satisfied_tube = g_slist_reverse (requests_satisfied_tube);
+
+          g_hash_table_insert (channels, tube_chan, requests_satisfied_tube);
         }
-    }
-  else
-    {
-      /* Announce text and tubes text_chan together */
-      GHashTable *channels;
 
-      channels = g_hash_table_new (g_direct_hash, g_direct_equal);
-      g_hash_table_insert (channels, text_chan, requests_satisfied_text);
-      g_hash_table_insert (channels, tubes_chan, requests_satisfied_tubes);
-
-      tp_channel_manager_emit_new_channels (fac, channels);
-
-      g_hash_table_unref (channels);
+      g_hash_table_remove (priv->text_needed_for_tube, text_chan);
     }
 
-  g_hash_table_remove (priv->tubes_needed_for_tube, tubes_chan);
-  g_slist_free (requests_satisfied_text);
-  g_slist_free (requests_satisfied_tubes);
+  /* finally add the text channel */
+  g_hash_table_insert (channels, text_chan, requests_satisfied_text);
+
+  tp_channel_manager_emit_new_channels (fac, channels);
+
+  g_hash_table_unref (channels);
 }
 
 static void
@@ -351,7 +308,7 @@ muc_join_error_cb (GabbleMucChannel *chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
   GabbleMucFactoryPrivate *priv = fac->priv;
-  GabbleTubesChannel *tubes_chan;
+  GQueue *tube_channels;
   GSList *requests_satisfied;
   GSList *iter;
 
@@ -369,23 +326,32 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
   g_slist_free (requests_satisfied);
 
-  tubes_chan = g_hash_table_lookup (priv->text_needed_for_tubes, chan);
+  /* tube channels */
+  tube_channels = g_hash_table_lookup (priv->text_needed_for_tube, chan);
 
-  if (tubes_chan != NULL)
+  if (tube_channels != NULL)
     {
-      g_hash_table_remove (priv->text_needed_for_tubes, chan);
+      GList *l;
 
-      requests_satisfied = g_slist_reverse (g_hash_table_lookup (
-            priv->queued_requests, tubes_chan));
-      g_hash_table_steal (priv->queued_requests, tubes_chan);
-
-      for (iter = requests_satisfied; iter != NULL; iter = iter->next)
+      for (l = tube_channels->head; l != NULL; l = l->next)
         {
-          tp_channel_manager_emit_request_failed (fac, iter->data,
-              error->domain, error->code, error->message);
+          GabbleTubeIface *tube_chan = GABBLE_TUBE_IFACE (l->data);
+
+          requests_satisfied = g_hash_table_lookup (
+              priv->queued_requests, tube_chan);
+          g_hash_table_steal (priv->queued_requests, tube_chan);
+          requests_satisfied = g_slist_reverse (requests_satisfied);
+
+          for (iter = requests_satisfied; iter != NULL; iter = iter->next)
+            {
+              tp_channel_manager_emit_request_failed (fac, iter->data,
+                  error->domain, error->code, error->message);
+            }
+
+          g_slist_free (requests_satisfied);
         }
 
-      g_slist_free (requests_satisfied);
+      g_hash_table_remove (priv->text_needed_for_tube, chan);
     }
 }
 
@@ -832,6 +798,25 @@ gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
 }
 
 static void
+gabble_muc_factory_associate_tube (GabbleMucFactory *self,
+    GabbleMucChannel *gmuc,
+    GabbleTubeIface *tube)
+{
+  GabbleMucFactoryPrivate *priv = self->priv;
+  GQueue *queue;
+
+  queue = g_hash_table_lookup (priv->text_needed_for_tube, gmuc);
+
+  if (queue == NULL)
+    {
+      queue = g_queue_new ();
+      g_hash_table_insert (priv->text_needed_for_tube, gmuc, queue);
+    }
+
+  g_queue_push_tail (queue, tube);
+}
+
+static void
 gabble_muc_factory_associate_request (GabbleMucFactory *self,
                                       gpointer channel,
                                       gpointer request)
@@ -890,12 +875,11 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
         cancel_queued_requests, self);
 
   tp_clear_pointer (&priv->queued_requests, g_hash_table_unref);
-  tp_clear_pointer (&priv->text_needed_for_tubes, g_hash_table_unref);
-  tp_clear_pointer (&priv->tubes_needed_for_tube, g_hash_table_unref);
+  tp_clear_pointer (&priv->text_needed_for_tube, g_hash_table_unref);
 
   /* Use a temporary variable because we don't want
-   * muc_channel_closed_cb or tubes_channel_closed_cb to remove the channel
-   * from the hash table a second time */
+   * muc_channel_closed_cb remove the channel from the hash table a
+   * second time */
   if (priv->text_channels != NULL)
     {
       GHashTable *tmp = priv->text_channels;
@@ -1164,31 +1148,6 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
 #endif
 
   g_hash_table_unref (table);
-}
-
-/* return TRUE if the text_channel associated is ready */
-static gboolean
-ensure_tubes_channel (GabbleMucFactory *self,
-                      TpHandle handle,
-                      GabbleTubesChannel **tubes_chan,
-                      gboolean requested)
-{
-  GabbleMucFactoryPrivate *priv = self->priv;
-  TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
-  GabbleMucChannel *text_chan;
-  TpHandle initiator = base_conn->self_handle;
-  gboolean result;
-
-  result = ensure_muc_channel (self, priv, handle, &text_chan, FALSE,
-      NULL, NULL, NULL, NULL);
-
-  /* this refs the tube channel object */
-  *tubes_chan = gabble_muc_channel_open_tube (text_chan, initiator, requested);
-
-  if (!result)
-    g_hash_table_insert (priv->text_needed_for_tubes, text_chan, *tubes_chan);
-
-  return result;
 }
 
 static gboolean
@@ -1538,71 +1497,44 @@ handle_tube_channel_request (GabbleMucFactory *self,
 
 {
   GabbleMucFactoryPrivate *priv = self->priv;
-  gboolean can_announce_now = TRUE;
-  gboolean tubes_channel_created = FALSE;
-  GabbleTubesChannel *tube = NULL;
+  gboolean can_announce_now;
   GabbleMucChannel * gmuc;
   GabbleTubeIface *new_channel;
 
   gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 
-  if (gmuc != NULL)
-    g_object_get (gmuc, "tube", &tube, NULL);
+  if (gmuc == NULL)
+    ensure_muc_channel (self, priv, handle, &gmuc, FALSE,
+        NULL, NULL, NULL, NULL);
 
-  if (tube == NULL)
-    {
-      /* Need to create a tubes channel */
-      if (!ensure_tubes_channel (self, handle, &tube, FALSE))
-      {
-        /* We have to wait the tubes channel before announcing */
-        can_announce_now = FALSE;
-      }
+  can_announce_now = _gabble_muc_channel_is_ready (gmuc);
 
-      tubes_channel_created = TRUE;
-    }
+  new_channel = gabble_muc_channel_tube_request (gmuc, request_token,
+      request_properties, TRUE);
 
-  g_assert (tube != NULL);
-
-  new_channel = gabble_tubes_channel_tube_request (tube,
-      request_token, request_properties, TRUE);
-  g_assert (new_channel != NULL);
+  g_signal_connect (new_channel, "closed",
+    G_CALLBACK (muc_sub_channel_closed_cb), self);
 
   if (can_announce_now)
     {
-      GHashTable *channels;
       GSList *request_tokens;
-
-      channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-        NULL, NULL);
-
-      if (tubes_channel_created)
-        g_hash_table_insert (channels, tube, NULL);
 
       request_tokens = g_slist_prepend (NULL, request_token);
 
-      g_hash_table_insert (channels, new_channel, request_tokens);
-      tp_channel_manager_emit_new_channels (self, channels);
+      tp_channel_manager_emit_new_channel (self,
+          TP_EXPORTABLE_CHANNEL (new_channel), request_tokens);
 
-      g_hash_table_unref (channels);
       g_slist_free (request_tokens);
     }
   else
     {
-      GSList *l;
-
-      l = g_hash_table_lookup (priv->tubes_needed_for_tube, tube);
-      g_hash_table_steal (priv->tubes_needed_for_tube, tube);
-
-      l = g_slist_prepend (l, new_channel);
-      g_hash_table_insert (priv->tubes_needed_for_tube, tube, l);
+      gabble_muc_factory_associate_tube (self, gmuc, new_channel);
 
       /* And now finally associate the new stream or dbus tube channel with
        * the request token so that when the muc channel is ready, the request
        * will be satisfied. */
       gabble_muc_factory_associate_request (self, new_channel, request_token);
     }
-
-  g_object_unref (tube);
 
   return TRUE;
 }

@@ -1025,26 +1025,30 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
   GabbleMucChannel *gmuc = NULL;
-  GabbleTubesChannel *tube = NULL;
+  WockyStanzaType stanza_type;
+  WockyStanzaSubType sub_type;
 
   g_return_if_fail (tp_handle_is_valid (room_repo, room_handle, NULL));
 
+  wocky_stanza_get_type_info (msg, &stanza_type, &sub_type);
+  g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
+  g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
+
   gmuc = g_hash_table_lookup (priv->text_channels,
       GUINT_TO_POINTER (room_handle));
-  g_object_get (gmuc, "tube", &tube, NULL);
 
-  if (tube == NULL)
+  if (gmuc == NULL)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
-          "No tubes channel available for this MUC" };
+          "No MUC channel available" };
 
-      DEBUG ("tubes channel doesn't exist for muc %d", room_handle);
+      DEBUG ("MUC channel doesn't exist handle %d", room_handle);
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
-  gabble_tubes_channel_bytestream_offered (tube, bytestream, msg);
-  g_object_unref (tube);
+ gabble_muc_channel_handle_si_stream_request (
+     gmuc, bytestream, stream_id, msg);
 }
 
 GabbleMucChannel *

@@ -102,6 +102,10 @@ GabbleTubeIface * gabble_muc_channel_tube_request (GabbleMucChannel *self,
 void gabble_muc_channel_foreach_tubes (GabbleMucChannel *gmuc,
     TpExportableChannelFunc foreach, gpointer user_data);
 
+void gabble_muc_channel_handle_si_stream_request (GabbleMucChannel *self,
+    GabbleBytestreamIface *bytestream, const gchar *stream_id,
+    WockyStanza *msg);
+
 #ifdef ENABLE_VOIP
 GabbleCallMucChannel * gabble_muc_channel_get_call (GabbleMucChannel *gmuc);
 GList * gabble_muc_channel_get_call_channels (GabbleMucChannel *self);

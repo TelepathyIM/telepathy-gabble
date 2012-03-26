@@ -2043,6 +2043,67 @@ gabble_muc_channel_foreach_tubes (GabbleMucChannel *gmuc,
     }
 }
 
+void
+gabble_muc_channel_handle_si_stream_request (GabbleMucChannel *self,
+    GabbleBytestreamIface *bytestream,
+    const gchar *stream_id,
+    WockyStanza *msg)
+{
+  GabbleMucChannelPrivate *priv = self->priv;
+  WockyNode *si_node, *stream_node;
+  const gchar *tmp;
+  gchar *endptr;
+  unsigned long tube_id_tmp;
+  guint tube_id;
+  GabbleTubeIface *tube;
+
+  si_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (msg), "si", NS_SI);
+  g_return_if_fail (si_node != NULL);
+
+  stream_node = wocky_node_get_child_ns (si_node,
+      "muc-stream", NS_TUBES);
+  g_return_if_fail (stream_node != NULL);
+
+  tmp = wocky_node_get_attribute (stream_node, "tube");
+  if (tmp == NULL)
+    {
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "<muc-stream> has no tube attribute" };
+
+      NODE_DEBUG (stream_node, e.message);
+      gabble_bytestream_iface_close (bytestream, &e);
+      return;
+    }
+  tube_id_tmp = strtoul (tmp, &endptr, 10);
+  if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
+    {
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "<muc-stream> tube attribute not numeric or > 2**32" };
+
+      DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
+      gabble_bytestream_iface_close (bytestream, &e);
+      return;
+    }
+  tube_id = (guint) tube_id_tmp;
+
+  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  if (tube == NULL)
+    {
+      GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
+          "<muc-stream> tube attribute points to a nonexistent "
+          "tube" };
+
+      DEBUG ("tube %u doesn't exist", tube_id);
+      gabble_bytestream_iface_close (bytestream, &e);
+      return;
+    }
+
+  DEBUG ("received new bytestream request for existing tube: %u", tube_id);
+
+  gabble_tube_iface_add_bytestream (tube, bytestream);
+}
+
 static void
 tubes_presence_update (GabbleMucChannel *gmuc,
     TpHandle contact,

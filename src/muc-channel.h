@@ -37,6 +37,7 @@
 #ifdef ENABLE_VOIP
 #include "call-muc-channel.h"
 #endif
+#include "tube-iface.h"
 
 G_BEGIN_DECLS
 
@@ -97,6 +98,11 @@ GabbleTubesChannel *
 gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
     TpHandle initiator,
     gboolean requested);
+
+GabbleTubeIface * gabble_muc_channel_tube_request (GabbleMucChannel *self,
+    gpointer request_token,
+    GHashTable *request_properties,
+    gboolean require_new);
 
 #ifdef ENABLE_VOIP
 GabbleCallMucChannel * gabble_muc_channel_get_call (GabbleMucChannel *gmuc);

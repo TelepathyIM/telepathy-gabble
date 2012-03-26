@@ -50,6 +50,10 @@
 #include "presence-cache.h"
 #include "gabble-signals-marshal.h"
 #include "gabble-enumtypes.h"
+#include "tube-dbus.h"
+#include "tube-stream.h"
+#include "private-tubes-factory.h"
+#include "bytestream-factory.h"
 
 #define DEFAULT_JOIN_TIMEOUT 180
 #define DEFAULT_LEAVE_TIMEOUT 180
@@ -1185,7 +1189,9 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   0,
                   NULL, NULL,
                   g_cclosure_marshal_VOID__OBJECT,
-                  G_TYPE_NONE, 1, GABBLE_TYPE_TUBES_CHANNEL);
+                  /* this should be GABBLE_TYPE_TUBE_IFACE but GObject
+                   * wants a value type, not an interface. */
+                  G_TYPE_NONE, 1, TP_TYPE_BASE_CHANNEL);
 
 #ifdef ENABLE_VOIP
   signals[NEW_CALL] = g_signal_new ("new-call",
@@ -1843,55 +1849,137 @@ handle_error (GObject *source,
 }
 
 static void
-tube_closed_cb (GabbleTubesChannel *chan, gpointer user_data)
+tube_closed_cb (GabbleTubeIface *tube,
+    GabbleMucChannel *gmuc)
 {
-  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (user_data);
   GabbleMucChannelPrivate *priv = gmuc->priv;
-  TpHandle room;
+  guint tube_id;
 
-  if (priv->tube != NULL)
-    {
-      priv->tube = NULL;
-      g_object_get (chan, "handle", &room, NULL);
-      DEBUG ("removing MUC tubes channel with handle %d", room);
-      g_object_unref (chan);
-    }
+  g_object_get (tube, "id", &tube_id, NULL);
+
+  g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (tube_id));
 }
 
-static GabbleTubesChannel *
-new_tube (GabbleMucChannel *gmuc,
+static GabbleTubeIface *
+create_new_tube (GabbleMucChannel *gmuc,
+    TpTubeType type,
     TpHandle initiator,
+    const gchar *service,
+    GHashTable *parameters,
+    const gchar *stream_id,
+    guint tube_id,
+    GabbleBytestreamIface *bytestream,
     gboolean requested)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
-  TpBaseConnection *conn = tp_base_channel_get_connection (base);
-  char *object_path;
+  GabbleConnection *conn = GABBLE_CONNECTION (
+      tp_base_channel_get_connection (base));
+  TpHandle self_handle = TP_GROUP_MIXIN (gmuc)->self_handle;
+  TpHandle handle = tp_base_channel_get_target_handle (base);
+  GabbleTubeIface *tube;
 
-  g_assert (priv->tube == NULL);
+  switch (type)
+    {
+    case TP_TUBE_TYPE_DBUS:
+      tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (conn,
+          handle, TP_HANDLE_TYPE_ROOM, self_handle, initiator,
+          service, parameters, stream_id, tube_id, bytestream, gmuc,
+          requested));
+      break;
+    case TP_TUBE_TYPE_STREAM:
+      tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (conn,
+          handle, TP_HANDLE_TYPE_ROOM, self_handle, initiator,
+          service, parameters, tube_id, gmuc, requested));
+      break;
+    default:
+      g_return_val_if_reached (NULL);
+    }
 
-  object_path = g_strdup_printf ("%s/MucTubesChannel%u",
-      conn->object_path, tp_base_channel_get_target_handle (base));
+  tp_base_channel_register ((TpBaseChannel *) tube);
 
-  DEBUG ("creating new tubes chan, object path %s", object_path);
+  DEBUG ("create tube %u", tube_id);
+  g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
 
-  priv->tube = g_object_new (GABBLE_TYPE_TUBES_CHANNEL,
-      "connection", tp_base_channel_get_connection (base),
-      "object-path", object_path,
-      "handle", tp_base_channel_get_target_handle (base),
-      "handle-type", TP_HANDLE_TYPE_ROOM,
-      "muc", gmuc,
-      "initiator-handle", initiator,
-      "requested", requested,
-      NULL);
+  g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), gmuc);
 
-  g_signal_connect (priv->tube, "closed", (GCallback) tube_closed_cb, gmuc);
+  return tube;
+}
 
-  g_signal_emit (gmuc, signals[NEW_TUBE], 0 , priv->tube);
+static guint
+generate_tube_id (GabbleMucChannel *self)
+{
+  GabbleMucChannelPrivate *priv = self->priv;
+  guint out;
 
-  g_free (object_path);
+  /* probably totally overkill */
+  do
+    {
+      out = g_random_int_range (0, G_MAXINT);
+    }
+  while (g_hash_table_lookup (priv->tubes,
+          GUINT_TO_POINTER (out)) != NULL);
 
-  return priv->tube;
+  return out;
+}
+
+GabbleTubeIface *
+gabble_muc_channel_tube_request (GabbleMucChannel *self,
+    gpointer request_token,
+    GHashTable *request_properties,
+    gboolean require_new)
+{
+  GabbleTubeIface *tube;
+  const gchar *channel_type;
+  const gchar *service;
+  GHashTable *parameters = NULL;
+  guint tube_id;
+  gchar *stream_id;
+  TpTubeType type;
+
+  tube_id = generate_tube_id (self);
+
+  channel_type = tp_asv_get_string (request_properties,
+      TP_IFACE_CHANNEL ".ChannelType");
+
+  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+    {
+      type = TP_TUBE_TYPE_STREAM;
+      service = tp_asv_get_string (request_properties,
+          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+
+    }
+  else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+    {
+      type = TP_TUBE_TYPE_DBUS;
+      service = tp_asv_get_string (request_properties,
+                TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+    }
+  else
+    /* This assertion is safe: this function's caller only calls it in one of
+     * the above cases.
+     * FIXME: but it would be better to pass an enum member or something maybe.
+     */
+    g_assert_not_reached ();
+
+  /* requested tubes have an empty parameters dict */
+  parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  /* if the service property is missing, the requestotron rejects the request
+   */
+  g_assert (service != NULL);
+
+  DEBUG ("Request a tube channel with type='%s' and service='%s'",
+      channel_type, service);
+
+  stream_id = gabble_bytestream_factory_generate_stream_id ();
+  tube = create_new_tube (self, type, TP_GROUP_MIXIN (self)->self_handle,
+      service, parameters, stream_id, tube_id, NULL, TRUE);
+  g_free (stream_id);
+  g_hash_table_unref (parameters);
+
+  return tube;
 }
 
 /* ************************************************************************* */

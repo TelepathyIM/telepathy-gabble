@@ -127,31 +127,18 @@ def test(q, bus, conn, stream, access_control):
     }
     join_muc(q, bus, conn, stream, muc, request=request)
 
-    def find_text_channel(channels):
+    def find_channel(channels, ctype):
         for path, props in channels:
-            if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT:
+            if props[cs.CHANNEL_TYPE] == ctype:
                 return path, props
 
         return None, None
 
-    def tube_chan_predicate(e):
-        path, props = e.args[0][0]
-        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
+    e = q.expect('dbus-signal', signal='NewChannels')
 
-    def text_chan_predicate(e):
-        path, _ = find_text_channel(e.args[0])
-        return path is not None
-
-    # TODO: these two should really come together
-    e_tube, e_text = q.expect_many(EventPattern('dbus-signal', signal='NewChannels',
-                                                predicate=tube_chan_predicate),
-                                   EventPattern('dbus-signal', signal='NewChannels',
-                                                predicate=text_chan_predicate))
-
-    e = e_tube
     channels = e.args[0]
-    assert len(channels) == 1
-    path, prop = channels[0]
+    assert len(channels) == 2
+    path, prop = find_channel(channels, cs.CHANNEL_TYPE_DBUS_TUBE)
     assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
     assert prop[cs.INITIATOR_ID] == 'chat2@conf.localhost/test'
     assert prop[cs.REQUESTED] == True
@@ -175,8 +162,7 @@ def test(q, bus, conn, stream, access_control):
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # now check the text channel
-    e = e_text
-    path, prop = find_text_channel(e.args[0])
+    path, prop = find_channel(channels, cs.CHANNEL_TYPE_TEXT)
     assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
     assert prop[cs.INITIATOR_HANDLE] == self_handle
     assert prop[cs.INITIATOR_ID] == self_name
@@ -310,21 +296,17 @@ def test(q, bus, conn, stream, access_control):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', muc, 'test'))
 
-
-    # tube is created as well
-    e = q.expect('dbus-signal', signal='NewChannels',
-                 predicate=tube_chan_predicate)
-    tube_path, props = e.args[0][0]
+    # tube and text is created
+    e = q.expect('dbus-signal', signal='NewChannels')
+    channels = e.args[0]
+    tube_path, props = find_channel(channels, cs.CHANNEL_TYPE_DBUS_TUBE)
     assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
     assertEquals('chat2@conf.localhost/test', props[cs.INITIATOR_ID])
     assertEquals(False, props[cs.REQUESTED])
     assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
     assertEquals('com.example.TestCase', props[cs.DBUS_TUBE_SERVICE_NAME])
 
-    # text channel is created
-    e = q.expect('dbus-signal', signal='NewChannels',
-                 predicate=text_chan_predicate)
-    path, props = e.args[0][0]
+    _, props = find_channel(channels, cs.CHANNEL_TYPE_TEXT)
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     assertEquals(True, props[cs.REQUESTED])
 

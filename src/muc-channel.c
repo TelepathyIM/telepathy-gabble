@@ -787,6 +787,49 @@ send_join_request (GabbleMucChannel *gmuc)
   wocky_muc_join (priv->wmuc, NULL);
 }
 
+static void
+tube_pre_presence (GabbleMucChannel *gmuc,
+    WockyStanza *stanza)
+{
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+  TpBaseConnection *conn = tp_base_channel_get_connection (
+      TP_BASE_CHANNEL (gmuc));
+  WockyNode *tubes_node;
+  GHashTableIter iter;
+  gpointer value;
+
+  tubes_node = wocky_node_add_child_with_content_ns (
+      wocky_stanza_get_top_node (stanza), "tubes", NULL, NS_TUBES);
+
+  g_hash_table_iter_init (&iter, priv->tubes);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      GabbleTubeIface *tube = value;
+      TpTubeChannelState state;
+      WockyNode *tube_node;
+      TpTubeType type;
+      TpHandle initiator;
+
+      g_object_get (tube,
+          "state", &state,
+          "type", &type,
+          "initiator-handle", &initiator,
+          NULL);
+
+      if (state != TP_TUBE_CHANNEL_STATE_OPEN)
+        continue;
+
+      if (type == TP_TUBE_TYPE_STREAM
+          && initiator != TP_GROUP_MIXIN (gmuc)->self_handle)
+        /* We only announce stream tubes we initiated */
+        continue;
+
+      tube_node = wocky_node_add_child_with_content (tubes_node,
+          "tube", NULL);
+      gabble_tube_iface_publish_in_node (tube, conn, tube_node);
+    }
+}
+
 static gboolean
 timeout_leave (gpointer data)
 {
@@ -808,6 +851,8 @@ send_leave_message (GabbleMucChannel *gmuc,
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   WockyStanza *stanza = wocky_muc_create_presence (priv->wmuc,
       WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, reason);
+
+  tube_pre_presence (gmuc, stanza);
 
   g_signal_emit (gmuc, signals[PRE_PRESENCE], 0, stanza);
   _gabble_connection_send (
@@ -1982,39 +2027,196 @@ gabble_muc_channel_tube_request (GabbleMucChannel *self,
   return tube;
 }
 
+void
+gabble_muc_channel_foreach_tubes (GabbleMucChannel *gmuc,
+    TpExportableChannelFunc foreach,
+    gpointer user_data)
+{
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+  GHashTableIter iter;
+  gpointer value;
+
+  g_hash_table_iter_init (&iter, priv->tubes);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      foreach (TP_EXPORTABLE_CHANNEL (value), user_data);
+    }
+}
+
+static void
+tubes_presence_update (GabbleMucChannel *gmuc,
+    TpHandle contact,
+    WockyNode *pnode)
+{
+  GabbleMucChannelPrivate *priv = gmuc->priv;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      tp_base_channel_get_connection (TP_BASE_CHANNEL (gmuc)),
+      TP_HANDLE_TYPE_CONTACT);
+  const gchar *presence_type;
+  WockyNode *tubes_node;
+  GHashTable *old_dbus_tubes;
+  GHashTableIter iter;
+  gpointer key, value;
+  WockyNodeIter i;
+  WockyNode *tube_node;
+
+  if (contact == TP_GROUP_MIXIN (gmuc)->self_handle)
+    /* We don't need to inspect our own presence */
+    return;
+
+  presence_type = wocky_node_get_attribute (pnode, "type");
+  if (!tp_strdiff (presence_type, "unavailable"))
+    {
+      g_hash_table_iter_init (&iter, priv->tubes);
+      while (g_hash_table_iter_next (&iter, NULL, &value))
+        {
+          GabbleTubeDBus *tube = value;
+
+          if (!GABBLE_IS_TUBE_DBUS (value))
+            continue;
+
+          gabble_tube_dbus_remove_name (tube, contact);
+        }
+    }
+
+  tubes_node = wocky_node_get_child_ns (pnode, "tubes", NS_TUBES);
+
+  if (tubes_node == NULL)
+    return;
+
+  /* Fill old_dbus_tubes with D-BUS tubes previously announced by
+   * the contact */
+  old_dbus_tubes = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+  g_hash_table_iter_init (&iter, priv->tubes);
+  while (g_hash_table_iter_next (&iter, &key, &value))
+    {
+      if (!GABBLE_IS_TUBE_DBUS (value))
+        continue;
+
+      if (gabble_tube_dbus_handle_in_names (GABBLE_TUBE_DBUS (value),
+              contact))
+        {
+          g_hash_table_insert (old_dbus_tubes,
+              key, value);
+        }
+    }
+
+  wocky_node_iter_init (&i, tubes_node, NULL, NULL);
+  while (wocky_node_iter_next (&i, &tube_node))
+    {
+      const gchar *stream_id;
+      GabbleTubeIface *tube;
+      guint tube_id;
+      TpTubeType type;
+
+      stream_id = wocky_node_get_attribute (tube_node, "stream-id");
+
+      if (!gabble_private_tubes_factory_extract_tube_information (
+              contact_repo, tube_node, NULL, NULL, NULL, NULL, &tube_id))
+        {
+          DEBUG ("Bad tube ID, skipping to next child of <tubes>");
+          continue;
+        }
+
+      tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+
+      if (tube == NULL)
+        {
+          /* We don't know yet this tube */
+          const gchar *service;
+          TpHandle initiator_handle;
+          GHashTable *parameters;
+
+          if (gabble_private_tubes_factory_extract_tube_information (
+                  contact_repo, tube_node, &type, &initiator_handle,
+                  &service, &parameters, NULL))
+            {
+              if (type == TP_TUBE_TYPE_DBUS && initiator_handle == 0)
+                {
+                  DEBUG ("D-Bus tube initiator missing");
+                  /* skip to the next child of <tubes> */
+                  continue;
+                }
+              else if (type == TP_TUBE_TYPE_STREAM)
+                {
+                  initiator_handle = contact;
+                }
+
+              tube = create_new_tube (gmuc, type, initiator_handle,
+                  service, parameters, stream_id, tube_id, NULL, FALSE);
+
+              g_signal_emit (gmuc, signals[NEW_TUBE], 0, tube);
+
+              /* the tube has reffed its initiator, no need to keep a ref */
+              tp_handle_unref (contact_repo, initiator_handle);
+              g_hash_table_unref (parameters);
+            }
+        }
+      else
+        {
+          /* The contact is in the tube.
+           * Remove it from old_dbus_tubes if needed */
+          g_hash_table_remove (old_dbus_tubes, GUINT_TO_POINTER (tube_id));
+        }
+
+      if (tube == NULL)
+        /* skip to the next child of <tubes> */
+        continue;
+
+      g_object_get (tube, "type", &type, NULL);
+
+      if (type == TP_TUBE_TYPE_DBUS)
+        {
+          /* Update mapping of handle -> D-Bus name. */
+          if (!gabble_tube_dbus_handle_in_names (GABBLE_TUBE_DBUS (tube),
+                contact))
+            {
+              /* Contact just joined the tube */
+              const gchar *new_name;
+
+              new_name = wocky_node_get_attribute (tube_node,
+                  "dbus-name");
+
+              if (!new_name)
+                {
+                  DEBUG ("Contact %u isn't announcing their D-Bus name",
+                         contact);
+                  /* skip to the next child of <tubes> */
+                  continue;
+                }
+
+              gabble_tube_dbus_add_name (GABBLE_TUBE_DBUS (tube),
+                  contact, new_name);
+            }
+        }
+    }
+
+  /* Tubes remaining in old_dbus_tubes was left by the contact */
+  g_hash_table_iter_init (&iter, old_dbus_tubes);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      gabble_tube_dbus_remove_name (GABBLE_TUBE_DBUS (value), contact);
+    }
+
+  g_hash_table_unref (old_dbus_tubes);
+}
+
 /* ************************************************************************* */
 /* presence related signal handlers                                          */
 
-/* not actually a signal handler, but used by them:                        *
- * creates a tube if none exists, and then prods the presence handler      *
- * in the gabble tubes implementation to do whatever else needs to be done */
+/* not actually a signal handler, but used by them.                        */
 static void
 handle_tube_presence (GabbleMucChannel *gmuc,
     TpHandle from,
     WockyStanza *stanza)
 {
-  GabbleMucChannelPrivate *priv = gmuc->priv;
   WockyNode *node = wocky_stanza_get_top_node (stanza);
 
   if (from == 0)
     return;
 
-  if (priv->tube == NULL)
-    {
-      WockyNode *tubes;
-      tubes = wocky_node_get_child_ns (node, "tubes", NS_TUBES);
-
-      /* presence doesn't contain tubes information, no need
-       * to create a tubes channel */
-      if (tubes == NULL)
-        return;
-
-      /* MUC Tubes channels (as opposed to the individual tubes) don't
-       * have a well-defined initiator (they're a consensus) so use 0 */
-      priv->tube = new_tube (gmuc, 0, FALSE);
-    }
-
-  gabble_tubes_channel_presence_updated (priv->tube, from, node);
+  tubes_presence_update (gmuc, from, node);
 }
 
 static TpChannelGroupChangeReason
@@ -2095,9 +2297,7 @@ handle_parted (GObject *source,
   reason = muc_status_codes_to_change_reason (codes);
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
-  if (priv->tube != NULL)
-    gabble_tubes_channel_presence_updated (priv->tube, member,
-      wocky_stanza_get_top_node (stanza));
+  tubes_presence_update (gmuc, member, wocky_stanza_get_top_node (stanza));
 
   close_channel (gmuc, why, FALSE, actor, reason);
 
@@ -2119,7 +2319,6 @@ handle_left (GObject *source,
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
-  GabbleMucChannelPrivate *priv = gmuc->priv;
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles (tp_base_channel_get_connection (base),
@@ -2149,9 +2348,7 @@ handle_left (GObject *source,
   reason = muc_status_codes_to_change_reason (codes);
 
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
-  if (priv->tube != NULL)
-    gabble_tubes_channel_presence_updated (priv->tube, member,
-        wocky_stanza_get_top_node (stanza));
+  tubes_presence_update (gmuc, member, wocky_stanza_get_top_node (stanza));
 
   tp_group_mixin_change_members (data, why, NULL, handles, NULL, NULL,
       actor, reason);
@@ -2215,6 +2412,8 @@ handle_fill_presence (WockyMuc *muc,
       conn->self_presence->status,
       conn->self_presence->status_message,
       0);
+
+  tube_pre_presence (self, stanza);
 
   g_signal_emit (self, signals[PRE_PRESENCE], 0, (WockyStanza *) stanza);
 }

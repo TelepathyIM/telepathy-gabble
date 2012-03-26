@@ -411,6 +411,8 @@ static void
 tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
@@ -423,6 +425,15 @@ tube_dbus_open (GabbleTubeDBus *self)
   if (priv->dbus_srv != NULL)
     {
       dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
+    }
+
+  if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+    {
+      /* add yourself in dbus names */
+      gabble_tube_dbus_add_name (self, priv->self_handle,
+          priv->dbus_local_name);
+
+      gabble_muc_channel_send_presence (priv->muc);
     }
 }
 
@@ -474,11 +485,16 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
 
   if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       tp_clear_object (&priv->bytestream);
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+
+      if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+        gabble_muc_channel_send_presence (priv->muc);
     }
   else if (state == GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -1092,6 +1108,8 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       g_object_set (priv->bytestream,
           "state", GABBLE_BYTESTREAM_STATE_OPEN,
           NULL);
+
+      gabble_muc_channel_send_presence (priv->muc);
     }
 
   if (!create_dbus_server (tube, error))

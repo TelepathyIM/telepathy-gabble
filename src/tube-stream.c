@@ -1750,6 +1750,9 @@ gabble_tube_iface_stream_close (GabbleTubeIface *tube,
    * disappear when we finally remove the Tubes channel type.. */
   g_object_ref (self);
 
+  if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+    gabble_muc_channel_send_presence (priv->muc);
+
   g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 
   tp_base_channel_destroyed (base);
@@ -2141,6 +2144,8 @@ gabble_tube_stream_offer (GabbleTubeStream *self,
       /* muc tube is open as soon it's offered */
       priv->state = TP_TUBE_CHANNEL_STATE_OPEN;
       g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
+
+      gabble_muc_channel_send_presence (priv->muc);
     }
 
   g_signal_emit (G_OBJECT (self), signals[OFFERED], 0);

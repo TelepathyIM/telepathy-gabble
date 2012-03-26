@@ -488,8 +488,6 @@ new_muc_channel (GabbleMucFactory *fac,
   return chan;
 }
 
-// tubes_channel_closed_cb
-
 static void
 do_invite (GabbleMucFactory *fac,
            const gchar *room,

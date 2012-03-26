@@ -951,39 +951,6 @@ gabble_muc_factory_constructor (GType type, guint n_props,
   return obj;
 }
 
-
-struct _ForeachData
-{
-  TpExportableChannelFunc foreach;
-  gpointer user_data;
-};
-
-static void
-_foreach_slave (gpointer key, gpointer value, gpointer user_data)
-{
-  struct _ForeachData *data = (struct _ForeachData *) user_data;
-  TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (value);
-  GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (value);
-  GabbleTubesChannel *tube = NULL;
-
-  data->foreach (channel, data->user_data);
-
-  g_object_get (gmuc, "tube", &tube, NULL);
-
-  if (tube != NULL)
-    {
-      channel = TP_EXPORTABLE_CHANNEL (tube);
-      data->foreach (channel, data->user_data);
-      gabble_tubes_channel_foreach (tube, data->foreach, data->user_data);
-      g_object_unref (tube);
-    }
-
-#ifdef ENABLE_VOIP
-  g_list_foreach (gabble_muc_channel_get_call_channels (gmuc),
-      (GFunc) data->foreach, data->user_data);
-#endif
-}
-
 static void
 gabble_muc_factory_foreach_channel (TpChannelManager *manager,
                                     TpExportableChannelFunc foreach,
@@ -991,14 +958,24 @@ gabble_muc_factory_foreach_channel (TpChannelManager *manager,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (manager);
   GabbleMucFactoryPrivate *priv = fac->priv;
-  struct _ForeachData data;
+  GHashTableIter iter;
+  gpointer value;
 
-  data.user_data = user_data;
-  data.foreach = foreach;
+  g_hash_table_iter_init (&iter, priv->text_channels);
+  while (g_hash_table_iter_next (&iter, NULL, &value))
+    {
+      GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (value);
 
-  g_hash_table_foreach (priv->text_channels, _foreach_slave, &data);
+      foreach (TP_EXPORTABLE_CHANNEL (gmuc), user_data);
+
+      gabble_muc_channel_foreach_tubes (gmuc, foreach, user_data);
+
+#ifdef ENABLE_VOIP
+      g_list_foreach (gabble_muc_channel_get_call_channels (gmuc),
+          (GFunc) foreach, user_data);
+#endif
+    }
 }
-
 
 /**
  * ensure_muc_channel:

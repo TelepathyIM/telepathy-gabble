@@ -99,6 +99,9 @@ GabbleTubeIface * gabble_muc_channel_tube_request (GabbleMucChannel *self,
     GHashTable *request_properties,
     gboolean require_new);
 
+void gabble_muc_channel_foreach_tubes (GabbleMucChannel *gmuc,
+    TpExportableChannelFunc foreach, gpointer user_data);
+
 #ifdef ENABLE_VOIP
 GabbleCallMucChannel * gabble_muc_channel_get_call (GabbleMucChannel *gmuc);
 GList * gabble_muc_channel_get_call_channels (GabbleMucChannel *self);

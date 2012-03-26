@@ -94,11 +94,6 @@ void gabble_muc_channel_send_presence (GabbleMucChannel *chan);
 gboolean gabble_muc_channel_send_invite (GabbleMucChannel *self,
     const gchar *jid, const gchar *message, gboolean continue_, GError **error);
 
-GabbleTubesChannel *
-gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
-    TpHandle initiator,
-    gboolean requested);
-
 GabbleTubeIface * gabble_muc_channel_tube_request (GabbleMucChannel *self,
     gpointer request_token,
     GHashTable *request_properties,
@@ -134,7 +129,6 @@ gboolean gabble_muc_channel_update_configuration_finish (
     GError **error);
 
 void gabble_muc_channel_teardown (GabbleMucChannel *gmuc);
-void gabble_muc_channel_close_tube (GabbleMucChannel *gmuc);
 
 
 G_END_DECLS

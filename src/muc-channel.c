@@ -3717,40 +3717,6 @@ gabble_muc_channel_send_presence (GabbleMucChannel *self)
   g_object_unref (stanza);
 }
 
-GabbleTubesChannel *
-gabble_muc_channel_open_tube (GabbleMucChannel *gmuc,
-    TpHandle initiator,
-    gboolean requested)
-{
-  GabbleMucChannelPrivate *priv = gmuc->priv;
-
-  if (priv->tube == NULL)
-    priv->tube = new_tube (gmuc, initiator, requested);
-
-  if (priv->tube != NULL)
-    return g_object_ref (priv->tube);
-
-  return NULL;
-}
-
-void
-gabble_muc_channel_close_tube (GabbleMucChannel *gmuc)
-{
-  GabbleMucChannelPrivate *priv = gmuc->priv;
-
-  if (priv->tube != NULL)
-    {
-      TpHandle room;
-      GabbleTubesChannel *tube = priv->tube;
-
-      priv->tube = NULL;
-      g_object_get (tube, "handle", &room, NULL);
-      DEBUG ("removing MUC tubes channel with handle %d", room);
-      gabble_tubes_channel_close (tube);
-      g_object_unref (tube);
-    }
-}
-
 #ifdef ENABLE_VOIP
 GabbleCallMucChannel *
 gabble_muc_channel_get_call (GabbleMucChannel *gmuc)

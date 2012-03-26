@@ -46,7 +46,6 @@
 #include "muc-channel.h"
 #include "namespaces.h"
 #include "presence-cache.h"
-#include "tubes-channel.h"
 #include "tube-dbus.h"
 #include "tube-stream.h"
 #include "util.h"

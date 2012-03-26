@@ -33,7 +33,6 @@
 #include <telepathy-glib/message-mixin.h>
 
 #include "types.h"
-#include "tubes-channel.h"
 #ifdef ENABLE_VOIP
 #include "call-muc-channel.h"
 #endif

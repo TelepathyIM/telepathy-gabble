@@ -1194,7 +1194,7 @@ handle_text_channel_request (GabbleMucFactory *self,
           const char *object_path = g_ptr_array_index (initial_channels, i);
           GObject *object;
           TpHandle handle;
-          GabbleConnection *connection;
+          TpBaseConnection *connection;
 
           object = dbus_g_connection_lookup_g_object (bus, object_path);
 
@@ -1205,18 +1205,18 @@ handle_text_channel_request (GabbleMucFactory *self,
               continue;
             }
 
-          g_object_get (object,
-              "connection", &connection,
-              "handle", &handle,
-              NULL);
-          g_object_unref (connection); /* drop the ref immediately */
+          connection = tp_base_channel_get_connection (
+              TP_BASE_CHANNEL (object));
 
-          if (connection != priv->conn)
+          if ((GabbleConnection *) connection != priv->conn)
             {
               DEBUG ("Channel %s is from a different Connection, ignoring",
                   object_path);
               continue;
             }
+
+          handle = tp_base_channel_get_target_handle (
+              TP_BASE_CHANNEL (object));
 
           tp_handle_set_add (handles, handle);
           tp_intset_add (continue_handles, handle);

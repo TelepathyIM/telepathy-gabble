@@ -138,7 +138,6 @@ enum
   PROP_INVITATION_MESSAGE,
   PROP_SELF_JID,
   PROP_WOCKY_MUC,
-  PROP_TUBE,
   PROP_INITIAL_CHANNELS,
   PROP_INITIAL_INVITEE_HANDLES,
   PROP_INITIAL_INVITEE_IDS,
@@ -208,7 +207,6 @@ struct _GabbleMucChannelPrivate
   gchar *invitation_message;
 
   WockyMuc *wmuc;
-  GabbleTubesChannel *tube;
 
   /* tube ID => owned GabbleTubeIface */
   GHashTable *tubes;
@@ -366,8 +364,6 @@ gabble_muc_channel_constructed (GObject *obj)
 
   if (chain_up != NULL)
     chain_up (obj);
-
-  priv->tube = NULL;
 
   room_handles = tp_base_connection_get_handles (base_conn,
       TP_HANDLE_TYPE_ROOM);
@@ -880,9 +876,6 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_SELF_JID:
       g_value_set_string (value, priv->self_jid->str);
       break;
-    case PROP_TUBE:
-      g_value_set_object (value, priv->tube);
-      break;
     case PROP_WOCKY_MUC:
       g_value_set_object (value, priv->wmuc);
       break;
@@ -1098,11 +1091,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SELF_JID,
       param_spec);
-
-  param_spec = g_param_spec_object ("tube", "Tube Channel",
-      "The GabbleTubesChannel associated with this MUC (if any)",
-      GABBLE_TYPE_TUBES_CHANNEL, G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (object_class, PROP_TUBE, param_spec);
 
   param_spec = g_param_spec_object ("wocky-muc", "Wocky MUC Object",
       "The backend (Wocky) MUC instance",

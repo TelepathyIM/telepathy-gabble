@@ -401,7 +401,7 @@ send_close_stanza (GabbleBytestreamIBB *self)
   g_object_unref (msg);
 }
 
-static gboolean
+static guint
 send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
     gboolean *result);
 
@@ -452,7 +452,7 @@ iq_acked_cb (GabbleConnection *conn,
     }
 }
 
-static gboolean
+static guint
 send_data (GabbleBytestreamIBB *self,
            const gchar *str,
            guint len,

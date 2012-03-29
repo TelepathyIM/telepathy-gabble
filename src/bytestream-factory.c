@@ -1988,21 +1988,8 @@ struct _streaminit_reply_cb_data
 {
   gchar *stream_id;
   GabbleBytestreamFactoryNegotiateReplyFunc func;
-  gpointer user_data;
-  GObject *object;
-  gboolean object_alive;
+  TpWeakRef *weak_object;
 };
-
-static void
-negotiate_stream_object_destroy_notify_cb (gpointer _data,
-                                           GObject *where_the_object_was)
-{
-  struct _streaminit_reply_cb_data *data =
-    (struct _streaminit_reply_cb_data*) _data;
-
-  data->object = NULL;
-  data->object_alive = FALSE;
-}
 
 /* Called when we receive the reply of a SI request */
 static void
@@ -2029,14 +2016,9 @@ streaminit_reply_cb (GabbleConnection *conn,
   TpHandle room_handle;
   gboolean success = FALSE;
   gchar *self_jid = NULL;
+  GObject *object = tp_weak_ref_dup_object (data->weak_object);
 
-  if (data->object != NULL)
-    {
-      g_object_weak_unref (data->object,
-          negotiate_stream_object_destroy_notify_cb, data);
-    }
-
-  if (!data->object_alive)
+  if (object == NULL)
     {
       DEBUG ("Object which requested the bytestream was disposed. Ignoring");
       goto END;
@@ -2138,15 +2120,19 @@ END:
     }
 
   /* user callback */
-  if (data->object_alive)
-    data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
-        data->object, data->user_data);
+  if (object != NULL)
+    {
+      data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
+          object, tp_weak_ref_get_user_data (data->weak_object));
+      g_clear_object (&object);
+    }
 
   if (peer_resource != NULL)
     g_free (peer_resource);
 
   g_free (self_jid);
   g_free (data->stream_id);
+  tp_weak_ref_destroy (data->weak_object);
   g_slice_free (struct _streaminit_reply_cb_data, data);
 }
 
@@ -2158,7 +2144,7 @@ END:
  * @stream_id: the stream identifier
  * @func: the callback to call when we receive the answser of the request
  * @user_data: user data to pass to the callback
- * @object: if non-NULL the handler will follow the lifetime of that object,
+ * @object: the handler will follow the lifetime of this object,
  * which means that if the object is destroyed the callback will not be invoked.
  * @error: pointer in which to return a GError in case of failure.
  *
@@ -2180,21 +2166,14 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   g_assert (GABBLE_IS_BYTESTREAM_FACTORY (self));
   g_assert (stream_id != NULL);
   g_assert (func != NULL);
+  g_assert (object != NULL);
 
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
   data = g_slice_new (struct _streaminit_reply_cb_data);
   data->stream_id = g_strdup (stream_id);
   data->func = func;
-  data->user_data = user_data;
-  data->object_alive = TRUE;
-  data->object = object;
-
-  if (object != NULL)
-    {
-      g_object_weak_ref (object, negotiate_stream_object_destroy_notify_cb,
-          data);
-    }
+  data->weak_object = tp_weak_ref_new (object, user_data, NULL);
 
   result = _gabble_connection_send_with_reply (priv->conn, msg,
       streaminit_reply_cb, G_OBJECT (self), data, error);
@@ -2202,6 +2181,7 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   if (!result)
     {
       g_free (data->stream_id);
+      tp_weak_ref_destroy (data->weak_object);
       g_slice_free (struct _streaminit_reply_cb_data, data);
     }
 

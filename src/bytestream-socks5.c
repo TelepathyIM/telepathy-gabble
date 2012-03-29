@@ -57,6 +57,7 @@
 #include "bytestream-factory.h"
 #include "bytestream-iface.h"
 #include "connection.h"
+#include "conn-util.h"
 #include "debug.h"
 #include "disco.h"
 #include "gabble-signals-marshal.h"
@@ -761,17 +762,22 @@ target_got_connect_reply (GabbleBytestreamSocks5 *self)
 }
 
 static void
-socks5_activation_reply_cb (GabbleConnection *conn,
-                            WockyStanza *sent_msg,
-                            WockyStanza *reply_msg,
-                            GObject *obj,
-                            gpointer user_data)
+socks5_activation_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (user_data);
-  GabbleBytestreamSocks5Private *priv = GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (
-      self);
+  TpWeakRef *weak_ref = user_data;
+  GabbleBytestreamSocks5 *self = tp_weak_ref_dup_object (weak_ref);
+  GabbleBytestreamSocks5Private *priv;
+  WockyStanza *reply_msg = NULL;
 
-  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
+  tp_weak_ref_destroy (weak_ref);
+  if (self == NULL)
+    return;
+  priv = self->priv;
+
+  if (!conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, &reply_msg, NULL))
     {
       DEBUG ("Activation failed");
       goto activation_failed;
@@ -790,11 +796,15 @@ socks5_activation_reply_cb (GabbleConnection *conn,
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
   /* We can read data from the sock5 socket now */
   gibber_transport_block_receiving (priv->transport, FALSE);
+  goto out;
 
-  return;
 activation_failed:
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+
+out:
+  g_clear_object (&reply_msg);
+  g_object_unref (self);
 }
 
 static void
@@ -820,15 +830,8 @@ initiator_got_connect_reply (GabbleBytestreamSocks5 *self)
   /* Block reading while waiting for the activation reply */
   gibber_transport_block_receiving (priv->transport, TRUE);
 
-  if (!_gabble_connection_send_with_reply (priv->conn, iq,
-      socks5_activation_reply_cb, G_OBJECT (self), self, NULL))
-    {
-      DEBUG ("Sending activation IQ failed");
-
-      g_signal_emit_by_name (self, "connection-error");
-      g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
-    }
-
+  conn_util_send_iq_async (priv->conn, iq, NULL,
+      socks5_activation_reply_cb, tp_weak_ref_new (self, NULL, NULL));
   g_object_unref (iq);
 }
 
@@ -1538,17 +1541,22 @@ initiator_connected_to_proxy (GabbleBytestreamSocks5 *self)
 }
 
 static void
-socks5_init_reply_cb (GabbleConnection *conn,
-                      WockyStanza *sent_msg,
-                      WockyStanza *reply_msg,
-                      GObject *obj,
-                      gpointer user_data)
+socks5_init_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (obj);
-  GabbleBytestreamSocks5Private *priv =
-      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  TpWeakRef *weak_ref = user_data;
+  GabbleBytestreamSocks5 *self = tp_weak_ref_dup_object (weak_ref);
+  GabbleBytestreamSocks5Private *priv;
+  WockyStanza *reply_msg = NULL;
 
-  if (!wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
+  tp_weak_ref_destroy (weak_ref);
+  if (self == NULL)
+    return;
+  priv = self->priv;
+
+  if (conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, &reply_msg, NULL))
     {
       WockyNode *query, *streamhost = NULL;
       const gchar *jid;
@@ -1585,7 +1593,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
 
           priv->proxy_jid = g_strdup (jid);
           initiator_connected_to_proxy (self);
-          return;
+          goto out;
         }
 
       /* No proxy used */
@@ -1604,7 +1612,7 @@ socks5_init_reply_cb (GabbleConnection *conn,
       g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_OPEN, NULL);
       /* We can read data from the sock5 socket now */
       gibber_transport_block_receiving (priv->transport, FALSE);
-      return;
+      goto out;
     }
 
 socks5_init_error:
@@ -1612,6 +1620,10 @@ socks5_init_error:
 
   g_signal_emit_by_name (self, "connection-error");
   g_object_set (self, "state", GABBLE_BYTESTREAM_STATE_CLOSED, NULL);
+
+out:
+  g_clear_object (&reply_msg);
+  g_object_unref (self);
 }
 
 #ifdef G_OS_WIN32
@@ -1963,15 +1975,8 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
 
   priv->socks5_state = SOCKS5_STATE_INITIATOR_OFFER_SENT;
 
-  if (!_gabble_connection_send_with_reply (priv->conn, msg,
-      socks5_init_reply_cb, G_OBJECT (self), NULL, NULL))
-    {
-      DEBUG ("Error when sending Socks5 init stanza");
-
-      g_object_unref (msg);
-      return FALSE;
-    }
-
+  conn_util_send_iq_async (priv->conn, msg, NULL,
+      socks5_init_reply_cb, tp_weak_ref_new (self, NULL, NULL));
   g_object_unref (msg);
 
   return TRUE;

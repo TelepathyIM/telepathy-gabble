@@ -1873,47 +1873,18 @@ new_connection_cb (GibberListener *listener,
 }
 
 /*
- * gabble_bytestream_socks5_initiate
- *
- * Implements gabble_bytestream_iface_initiate on GabbleBytestreamIface
+ * Consumes @ips.
  */
-static gboolean
-gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
+static void
+send_streamhosts (
+    GabbleBytestreamSocks5 *self,
+    GSList *ips)
 {
-  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
-  GabbleBytestreamSocks5Private *priv =
-      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GabbleBytestreamSocks5Private *priv = self->priv;
   gchar *port;
   gint port_num;
   WockyStanza *msg;
   WockyNode *query_node;
-  GSList *ips, *ip;
-
-  if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
-    {
-      DEBUG ("bytestream is not is the initiating state (state %d)",
-          priv->bytestream_state);
-      return FALSE;
-    }
-
-  ips = get_local_interfaces_ips ();
-  if (ips == NULL)
-    {
-      DEBUG ("Can't get IP addresses");
-      return FALSE;
-    }
-
-  g_assert (priv->listener == NULL);
-  priv->listener = gibber_listener_new ();
-
-  g_signal_connect (priv->listener, "new-connection",
-      G_CALLBACK (new_connection_cb), self);
-
-  if (!gibber_listener_listen_tcp (priv->listener, 0, NULL))
-    {
-      DEBUG ("can't listen for incoming connection");
-      return FALSE;
-    }
 
   port_num = gibber_listener_get_port (priv->listener);
   port = g_strdup_printf ("%d", port_num);
@@ -1927,17 +1898,17 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
         '*', &query_node,
       ')', NULL);
 
-  for (ip = ips; ip != NULL; ip = g_slist_next (ip))
+  for (; ips != NULL; ips = g_slist_delete_link (ips, ips))
     {
       WockyNode *node = wocky_node_add_child (query_node, "streamhost");
 
       wocky_node_set_attributes (node,
           "jid", priv->self_full_jid,
-          "host", ip->data,
+          "host", ips->data,
           "port", port,
           NULL);
 
-      g_free (ip->data);
+      g_free (ips->data);
     }
 
   g_slist_free (ips);
@@ -1965,7 +1936,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
               NULL);
           g_free (portstr);
         }
-      g_slist_free (proxies);
+     g_slist_free (proxies);
     }
   else
     {
@@ -1978,7 +1949,48 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   conn_util_send_iq_async (priv->conn, msg, NULL,
       socks5_init_reply_cb, tp_weak_ref_new (self, NULL, NULL));
   g_object_unref (msg);
+}
 
+/*
+ * gabble_bytestream_socks5_initiate
+ *
+ * Implements gabble_bytestream_iface_initiate on GabbleBytestreamIface
+ */
+static gboolean
+gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
+{
+  GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (iface);
+  GabbleBytestreamSocks5Private *priv =
+      GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
+  GSList *ips;
+
+  if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
+    {
+      DEBUG ("bytestream is not is the initiating state (state %d)",
+          priv->bytestream_state);
+      return FALSE;
+    }
+
+  ips = get_local_interfaces_ips ();
+  if (ips == NULL)
+    {
+      DEBUG ("Can't get IP addresses");
+      return FALSE;
+    }
+
+  g_assert (priv->listener == NULL);
+  priv->listener = gibber_listener_new ();
+
+  g_signal_connect (priv->listener, "new-connection",
+      G_CALLBACK (new_connection_cb), self);
+
+  if (!gibber_listener_listen_tcp (priv->listener, 0, NULL))
+    {
+      DEBUG ("can't listen for incoming connection");
+      return FALSE;
+    }
+
+  send_streamhosts (self, ips);
   return TRUE;
 }
 

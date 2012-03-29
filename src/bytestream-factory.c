@@ -37,6 +37,7 @@
 #include "bytestream-multiple.h"
 #include "bytestream-socks5.h"
 #include "connection.h"
+#include "conn-util.h"
 #include "debug.h"
 #include "disco.h"
 #include "namespaces.h"
@@ -1986,6 +1987,7 @@ streaminit_get_bytestream (GabbleBytestreamFactory *self,
 
 struct _streaminit_reply_cb_data
 {
+  GabbleBytestreamFactory *self;
   gchar *stream_id;
   GabbleBytestreamFactoryNegotiateReplyFunc func;
   TpWeakRef *weak_object;
@@ -1993,17 +1995,15 @@ struct _streaminit_reply_cb_data
 
 /* Called when we receive the reply of a SI request */
 static void
-streaminit_reply_cb (GabbleConnection *conn,
-                     WockyStanza *sent_msg,
-                     WockyStanza *reply_msg,
-                     GObject *obj,
-                     gpointer user_data)
+streaminit_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleBytestreamFactory *self = GABBLE_BYTESTREAM_FACTORY (obj);
-  GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (
-      self);
-  struct _streaminit_reply_cb_data *data =
-    (struct _streaminit_reply_cb_data*) user_data;
+  GabbleConnection *conn = GABBLE_CONNECTION (source);
+  struct _streaminit_reply_cb_data *data = user_data;
+  GabbleBytestreamFactory *self = data->self;
+  GabbleBytestreamFactoryPrivate *priv = self->priv;
   GabbleBytestreamIface *bytestream = NULL;
   gchar *peer_resource = NULL;
   WockyNode *si;
@@ -2017,6 +2017,7 @@ streaminit_reply_cb (GabbleConnection *conn,
   gboolean success = FALSE;
   gchar *self_jid = NULL;
   GObject *object = tp_weak_ref_dup_object (data->weak_object);
+  WockyStanza *reply_msg = NULL;
 
   if (object == NULL)
     {
@@ -2024,7 +2025,7 @@ streaminit_reply_cb (GabbleConnection *conn,
       goto END;
     }
 
-  if (wocky_stanza_extract_errors (reply_msg, NULL, NULL, NULL, NULL))
+  if (!conn_util_send_iq_finish (conn, result, &reply_msg, NULL))
     {
       DEBUG ("stream %s declined", data->stream_id);
       goto END;
@@ -2130,6 +2131,8 @@ END:
   if (peer_resource != NULL)
     g_free (peer_resource);
 
+  g_clear_object (&reply_msg);
+  g_clear_object (&data->self);
   g_free (self_jid);
   g_free (data->stream_id);
   tp_weak_ref_destroy (data->weak_object);
@@ -2161,7 +2164,6 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
 {
   GabbleBytestreamFactoryPrivate *priv;
   struct _streaminit_reply_cb_data *data;
-  gboolean result;
 
   g_assert (GABBLE_IS_BYTESTREAM_FACTORY (self));
   g_assert (stream_id != NULL);
@@ -2171,21 +2173,15 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
   priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
 
   data = g_slice_new (struct _streaminit_reply_cb_data);
+  data->self = g_object_ref (self);
   data->stream_id = g_strdup (stream_id);
   data->func = func;
   data->weak_object = tp_weak_ref_new (object, user_data, NULL);
 
-  result = _gabble_connection_send_with_reply (priv->conn, msg,
-      streaminit_reply_cb, G_OBJECT (self), data, error);
+  conn_util_send_iq_async (priv->conn, msg, NULL,
+      streaminit_reply_cb, data);
 
-  if (!result)
-    {
-      g_free (data->stream_id);
-      tp_weak_ref_destroy (data->weak_object);
-      g_slice_free (struct _streaminit_reply_cb_data, data);
-    }
-
-  return result;
+  return TRUE;
 }
 
 /*

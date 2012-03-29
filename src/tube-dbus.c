@@ -1049,7 +1049,6 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       GabblePresence *presence;
       WockyNode *tube_node, *si_node;
       WockyStanza *msg;
-      gboolean result;
 
       jid = tp_handle_inspect (contact_repo,
           tp_base_channel_get_target_handle (base));
@@ -1087,22 +1086,17 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
           base_conn, tube_node);
 
       tube->priv->offered = TRUE;
-      result = gabble_bytestream_factory_negotiate_stream (
+      gabble_bytestream_factory_negotiate_stream (
           conn->bytestream_factory, msg, priv->stream_id,
-          bytestream_negotiate_cb, tube, G_OBJECT (tube), error);
+          bytestream_negotiate_cb, tube, G_OBJECT (tube));
 
       /* We don't create the bytestream of private D-Bus tube yet.
        * It will be when we'll receive the answer of the SI request */
-
       g_object_unref (msg);
       g_free (full_jid);
 
-      if (!result)
-        return FALSE;
-
       tp_svc_channel_interface_tube_emit_tube_channel_state_changed (tube,
           TP_TUBE_CHANNEL_STATE_REMOTE_PENDING);
-
     }
   else
     {

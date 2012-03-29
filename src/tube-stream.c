@@ -457,7 +457,6 @@ start_stream_initiation (GabbleTubeStream *self,
   TpHandleRepoIface *contact_repo;
   const gchar *jid;
   gchar *full_jid, *stream_id, *id_str;
-  gboolean result;
 
   contact_repo = tp_base_connection_get_handles (
      base_conn, TP_HANDLE_TYPE_CONTACT);
@@ -520,23 +519,18 @@ start_stream_initiation (GabbleTubeStream *self,
 
   wocky_node_set_attribute (node, "tube", id_str);
 
-  result = gabble_bytestream_factory_negotiate_stream (
+  gabble_bytestream_factory_negotiate_stream (
       conn->bytestream_factory, msg, stream_id,
-      extra_bytestream_negotiate_cb, g_object_ref (transport), G_OBJECT (self),
-      error);
+      extra_bytestream_negotiate_cb, g_object_ref (transport), G_OBJECT (self));
 
   /* FIXME: data and one ref on data->transport are leaked if the tube is
    * closed before we got the SI reply. */
-
-  if (!result)
-    g_object_unref (transport);
-
   g_object_unref (msg);
   g_free (stream_id);
   g_free (full_jid);
   g_free (id_str);
 
-  return result;
+  return TRUE;
 }
 
 static guint

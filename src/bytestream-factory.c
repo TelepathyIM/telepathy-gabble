@@ -2149,18 +2149,16 @@ END:
  * @user_data: user data to pass to the callback
  * @object: the handler will follow the lifetime of this object,
  * which means that if the object is destroyed the callback will not be invoked.
- * @error: pointer in which to return a GError in case of failure.
  *
  * Send a Stream Initiation (XEP-0095) request.
  */
-gboolean
+void
 gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
                                             WockyStanza *msg,
                                             const gchar *stream_id,
                                             GabbleBytestreamFactoryNegotiateReplyFunc func,
                                             gpointer user_data,
-                                            GObject *object,
-                                            GError **error)
+                                            GObject *object)
 {
   GabbleBytestreamFactoryPrivate *priv;
   struct _streaminit_reply_cb_data *data;
@@ -2180,8 +2178,6 @@ gabble_bytestream_factory_negotiate_stream (GabbleBytestreamFactory *self,
 
   conn_util_send_iq_async (priv->conn, msg, NULL,
       streaminit_reply_cb, data);
-
-  return TRUE;
 }
 
 /*

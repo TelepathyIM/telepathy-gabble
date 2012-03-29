@@ -1204,13 +1204,12 @@ add_metadata_forms (GabbleFileTransferChannel *self,
     }
 }
 
-static gboolean
+static void
 offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
-                  const gchar *resource, GError **error)
+                  const gchar *resource)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (tp_base_channel_get_connection (
           TP_BASE_CHANNEL (self)));
-  gboolean result;
   WockyStanza *msg;
   WockyNode *si_node, *file_node;
   gchar *stream_id, *size_str, *full_jid;
@@ -1273,16 +1272,14 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   /* we support resume */
   wocky_node_add_child (file_node, "range");
 
-  result = gabble_bytestream_factory_negotiate_stream (
+  gabble_bytestream_factory_negotiate_stream (
       conn->bytestream_factory, msg, stream_id,
-      bytestream_negotiate_cb, self, G_OBJECT (self), error);
+      bytestream_negotiate_cb, self, G_OBJECT (self));
 
   g_object_unref (msg);
   g_free (stream_id);
   g_free (size_str);
   g_free (full_jid);
-
-  return result;
 }
 
 #ifdef ENABLE_JINGLE_FILE_TRANSFER
@@ -1481,7 +1478,8 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
 
   if (use_si)
     {
-      result = offer_bytestream (self, jid, si_resource, error);
+      offer_bytestream (self, jid, si_resource);
+      result = TRUE;
     }
 #ifdef ENABLE_JINGLE_FILE_TRANSFER
   else if (jingle_share)

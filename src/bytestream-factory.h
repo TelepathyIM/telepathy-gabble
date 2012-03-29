@@ -97,10 +97,10 @@ WockyStanza *gabble_bytestream_factory_make_multi_accept_iq (
     const gchar *full_jid, const gchar *stream_init_id,
     GList *stream_methods);
 
-gboolean gabble_bytestream_factory_negotiate_stream (
+void gabble_bytestream_factory_negotiate_stream (
     GabbleBytestreamFactory *fac, WockyStanza *msg, const gchar *stream_id,
     GabbleBytestreamFactoryNegotiateReplyFunc func,
-    gpointer user_data, GObject *object, GError **error);
+    gpointer user_data, GObject *object);
 
 gchar *gabble_bytestream_factory_generate_stream_id (void);
 

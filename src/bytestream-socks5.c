@@ -1878,15 +1878,14 @@ new_connection_cb (GibberListener *listener,
 static void
 send_streamhosts (
     GabbleBytestreamSocks5 *self,
-    GSList *ips)
+    GSList *ips,
+    gint port_num)
 {
   GabbleBytestreamSocks5Private *priv = self->priv;
   gchar *port;
-  gint port_num;
   WockyStanza *msg;
   WockyNode *query_node;
 
-  port_num = gibber_listener_get_port (priv->listener);
   port = g_strdup_printf ("%d", port_num);
 
   msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
@@ -1898,7 +1897,7 @@ send_streamhosts (
         '*', &query_node,
       ')', NULL);
 
-  for (; ips != NULL; ips = g_slist_delete_link (ips, ips))
+  for (; port_num != 0 && ips != NULL; ips = g_slist_delete_link (ips, ips))
     {
       WockyNode *node = wocky_node_add_child (query_node, "streamhost");
 
@@ -1963,6 +1962,7 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
   GSList *ips;
+  guint port_num = 0;
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_INITIATING)
     {
@@ -1974,23 +1974,28 @@ gabble_bytestream_socks5_initiate (GabbleBytestreamIface *iface)
   ips = get_local_interfaces_ips ();
   if (ips == NULL)
     {
-      DEBUG ("Can't get IP addresses");
-      return FALSE;
+      DEBUG ("Can't get IP addresses; will send empty offer.");
     }
-
-  g_assert (priv->listener == NULL);
-  priv->listener = gibber_listener_new ();
-
-  g_signal_connect (priv->listener, "new-connection",
-      G_CALLBACK (new_connection_cb), self);
-
-  if (!gibber_listener_listen_tcp (priv->listener, 0, NULL))
+  else
     {
-      DEBUG ("can't listen for incoming connection");
-      return FALSE;
+      g_assert (priv->listener == NULL);
+      priv->listener = gibber_listener_new ();
+
+      g_signal_connect (priv->listener, "new-connection",
+          G_CALLBACK (new_connection_cb), self);
+
+      if (!gibber_listener_listen_tcp (priv->listener, 0, NULL))
+        {
+          DEBUG ("can't listen for incoming connection; will send empty offer.");
+          g_slist_foreach (ips, (GFunc) g_free, NULL);
+          g_slist_free (ips);
+          ips = NULL;
+        }
+
+      port_num = gibber_listener_get_port (priv->listener);
     }
 
-  send_streamhosts (self, ips);
+  send_streamhosts (self, ips, port_num);
   return TRUE;
 }
 

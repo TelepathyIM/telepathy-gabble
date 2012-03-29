@@ -71,7 +71,7 @@ typedef struct {
 } GabbleSocks5Proxy;
 
 typedef void (* GabbleBytestreamFactoryNegotiateReplyFunc) (
-    GabbleBytestreamIface *bytestream, const gchar *stream_id, WockyStanza *msg,
+    GabbleBytestreamIface *bytestream, WockyStanza *msg,
     GObject *object, gpointer user_data);
 
 GabbleBytestreamFactory *gabble_bytestream_factory_new (

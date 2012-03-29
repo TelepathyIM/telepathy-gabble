@@ -1000,7 +1000,6 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 
 static void
 bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
-                         const gchar *stream_id,
                          WockyStanza *msg,
                          GObject *object,
                          gpointer user_data)

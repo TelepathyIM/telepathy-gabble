@@ -2123,7 +2123,7 @@ END:
   /* user callback */
   if (object != NULL)
     {
-      data->func (bytestream, (const gchar*) data->stream_id, reply_msg,
+      data->func (bytestream, reply_msg,
           object, tp_weak_ref_get_user_data (data->weak_object));
       g_clear_object (&object);
     }

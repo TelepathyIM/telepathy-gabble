@@ -406,7 +406,6 @@ extra_bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 
 static void
 extra_bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
-                               const gchar *stream_id,
                                WockyStanza *msg,
                                GObject *object,
                                gpointer user_data)

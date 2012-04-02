@@ -32,6 +32,7 @@
 #include "bytestream-factory.h"
 #include "bytestream-iface.h"
 #include "connection.h"
+#include "conn-util.h"
 #include "debug.h"
 #include "disco.h"
 #include "namespaces.h"
@@ -401,30 +402,47 @@ send_close_stanza (GabbleBytestreamIBB *self)
   g_object_unref (msg);
 }
 
-static gboolean
-send_data (GabbleBytestreamIBB *self, const gchar *str, guint len,
-    gboolean *result);
+static guint
+send_data (GabbleBytestreamIBB *self, const gchar *str, guint len);
 
 static void
-iq_acked_cb (GabbleConnection *conn,
-             WockyStanza *sent_msg,
-             WockyStanza *reply_msg,
-             GObject *obj,
-             gpointer user_data)
+iq_reply_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
 {
-  GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (obj);
-  GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
+  TpWeakRef *weak_ref = user_data;
+  GabbleBytestreamIBB *self = tp_weak_ref_dup_object (weak_ref);
+  /* We don't hold a ref to the outgoing stanza; we just use its address as a
+   * key */
+  gpointer sent_msg = tp_weak_ref_get_user_data (weak_ref);
+  GabbleBytestreamIBBPrivate *priv;
+  GError *error = NULL;
 
+  tp_weak_ref_destroy (weak_ref);
+
+  /* If the channel is already dead, never mind! */
+  if (self == NULL)
+    return;
+
+  priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   g_hash_table_remove (priv->sent_stanzas_not_acked, sent_msg);
 
-  if (priv->write_buffer != NULL)
+  if (!conn_util_send_iq_finish (GABBLE_CONNECTION (source), result, NULL, &error))
+    {
+      DEBUG ("error sending IBB stanza: %s #%u '%s'. Closing the bytestream",
+          g_quark_to_string (error->domain), error->code, error->message);
+      g_clear_error (&error);
+      /* FIXME: we should be able to feed this up to the application somehow. */
+      gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
+    }
+  else if (priv->write_buffer != NULL)
     {
       guint sent;
 
       DEBUG ("A stanza has been acked. Try to flush the buffer");
 
-      sent = send_data (self, priv->write_buffer->str, priv->write_buffer->len,
-          NULL);
+      sent = send_data (self, priv->write_buffer->str, priv->write_buffer->len);
       if (sent == priv->write_buffer->len)
         {
           DEBUG ("buffer has been flushed; unblock write the bytestream");
@@ -450,13 +468,14 @@ iq_acked_cb (GabbleConnection *conn,
               priv->write_buffer->len);
         }
     }
+
+  g_object_unref (self);
 }
 
-static gboolean
+static guint
 send_data (GabbleBytestreamIBB *self,
            const gchar *str,
-           guint len,
-           gboolean *result)
+           guint len)
 {
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   guint sent, stanza_count;
@@ -468,8 +487,6 @@ send_data (GabbleBytestreamIBB *self,
       WockyStanza *iq;
       guint send_now, remaining;
       gchar *seq, *encoded;
-      GError *error = NULL;
-      gboolean ret;
       guint nb_stanzas_waiting;
 
       remaining = (len - sent);
@@ -506,26 +523,12 @@ send_data (GabbleBytestreamIBB *self,
             '@', "seq", seq,
           ')', NULL);
 
-      ret = _gabble_connection_send_with_reply (priv->conn, iq, iq_acked_cb,
-          G_OBJECT (self), NULL, &error);
+      conn_util_send_iq_async (priv->conn, iq, NULL,
+          iq_reply_cb, tp_weak_ref_new (self, iq, NULL));
 
       g_free (encoded);
       g_free (seq);
       g_object_unref (iq);
-
-      if (!ret)
-        {
-          DEBUG ("error sending IBB stanza: %s. Close the bytestream",
-              error->message);
-          g_error_free (error);
-
-          gabble_bytestream_iface_close (GABBLE_BYTESTREAM_IFACE (self), NULL);
-
-          if (result != NULL)
-            *result = FALSE;
-
-          return sent;
-        }
 
       g_hash_table_insert (priv->sent_stanzas_not_acked, iq,
           GUINT_TO_POINTER (TRUE));
@@ -539,8 +542,6 @@ send_data (GabbleBytestreamIBB *self,
 
   DEBUG ("sent %d bytes (%d stanzas needed)", sent, stanza_count);
 
-  if (result != NULL)
-    *result = TRUE;
   return sent;
 }
 
@@ -556,7 +557,6 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
 {
   GabbleBytestreamIBB *self = GABBLE_BYTESTREAM_IBB (iface);
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
-  gboolean result;
   guint sent;
 
   if (priv->state != GABBLE_BYTESTREAM_STATE_OPEN)
@@ -579,7 +579,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
       return TRUE;
     }
 
-  sent = send_data (self, str, len, &result);
+  sent = send_data (self, str, len);
   if (sent < len)
     {
       guint remaining;
@@ -602,7 +602,7 @@ gabble_bytestream_ibb_send (GabbleBytestreamIface *iface,
       change_write_blocked_state (self, TRUE);
     }
 
-  return result;
+  return TRUE;
 }
 
 void

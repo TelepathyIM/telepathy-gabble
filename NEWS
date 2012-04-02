@@ -1,7 +1,30 @@
-telepathy-gabble 0.15.6 (UNRELEASED)
+telepathy-gabble 0.16.0 (UNRELEASED)
 ====================================
 
-...
+This is the start of a new stable branch.
+
+Changes since 0.15.5:
+
+• telepathy-glib 0.18.0 is now required.
+
+• Install plugins in their own special (versioned) gabble directory so
+  we're not installing unversioned ABI-unstable libraries. (Simon)
+
+• The DownloadAtConnection and Download ContactList members have been
+  implemented. (Alban)
+
+• Handle errors in IBB bytestreams. (fd.o#47999, Will)
+
+Summary of particularly noteworthy changes since 0.14.x:
+
+• telepathy-glib 0.18.0 is now required.
+
+• Gabble can now be built on Android, using 'androgenizer'.
+
+• Add support for the final version of Call1 and remove the
+  telepathy-yell submodule.
+
+• Many other miscellanous fixes and small interface implementations.
 
 telepathy-gabble 0.15.5 (2012-03-22)
 ====================================

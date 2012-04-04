@@ -21,9 +21,6 @@
 
 #include "config.h"
 
-/* needed for struct ucred */
-#define _GNU_SOURCE
-
 #include <glib.h>
 
 #ifdef G_OS_UNIX

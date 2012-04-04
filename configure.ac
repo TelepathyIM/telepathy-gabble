@@ -228,8 +228,8 @@ AM_CONDITIONAL([ENABLE_GTK_DOC], [test "x$enable_gtk_doc" = xyes])
 
 dnl Check for Glib
 PKG_CHECK_MODULES(GLIB,
-    [glib-2.0 >= 2.24, gobject-2.0 >= 2.24, gthread-2.0 >= 2.24, gio-2.0])
-PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.24])
+    [glib-2.0 >= 2.30, gobject-2.0 >= 2.30, gthread-2.0 >= 2.30, gio-2.0])
+PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.30])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)

@@ -21,6 +21,7 @@
 /* Share content type deals with file sharing content, ie. file transfers. It
  * Google's jingle variants (libjingle 0.3/0.4). */
 
+#include "config.h"
 #include "jingle-share.h"
 
 #include <stdio.h>

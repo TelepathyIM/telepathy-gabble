@@ -148,10 +148,6 @@ if test -n "$with_ca_certificates"; then
     fi
 fi
 
-# We are still using GValueArray which has been deprecated in GLib. Disable
-# GLib deprecation warnings as the only way to fix this is to switch to GDBus.
-AC_DEFINE(GLIB_DISABLE_DEPRECATION_WARNINGS, 1, [Build with GLib deprecated])
-
 AC_ARG_ENABLE(debug,
   AC_HELP_STRING([--disable-debug],[compile without debug code]),
     enable_debug=$enableval, enable_debug=yes )
@@ -230,6 +226,9 @@ dnl Check for Glib
 PKG_CHECK_MODULES(GLIB,
     [glib-2.0 >= 2.30, gobject-2.0 >= 2.30, gthread-2.0 >= 2.30, gio-2.0])
 PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.30])
+
+AC_DEFINE(GLIB_VERSION_MIN_REQUIRED, GLIB_VERSION_2_30, [Ignore post 2.30 deprecations])
+AC_DEFINE(GLIB_VERSION_MAX_ALLOWED, GLIB_VERSION_2_30, [Prevent post 2.30 APIs])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)

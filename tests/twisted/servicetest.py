@@ -12,7 +12,6 @@ import os
 
 import pprint
 import unittest
-from unittest.runner import TextTestRunner
 
 import dbus.glib
 
@@ -660,5 +659,5 @@ class DummyStream(object):
 
 if __name__ == '__main__':
     stream = DummyStream()
-    runner = TextTestRunner(stream=stream)
+    runner = unittest.TextTestRunner(stream=stream)
     unittest.main(testRunner=runner)

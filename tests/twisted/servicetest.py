@@ -155,6 +155,12 @@ class BaseEventQueue:
         """
         self.forbidden_events.difference_update(set(patterns))
 
+    def unforbid_all(self):
+        """
+        Remove all patterns from the set of forbidden events.
+        """
+        self.forbidden_events.clear()
+
     def _check_forbidden(self, event):
         for e in self.forbidden_events:
             if e.match(event):

@@ -281,34 +281,38 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
   GabbleImFactoryPrivate *priv = self->priv;
-  TpHandle contact_handle;
-  gboolean really_destroyed;
+  TpBaseChannel *base = TP_BASE_CHANNEL (chan);
+  TpHandle contact_handle = tp_base_channel_get_target_handle (base);
 
   DEBUG ("%p, channel %p", self, chan);
 
-  tp_channel_manager_emit_channel_closed_for_object (self,
-      (TpExportableChannel *) chan);
+  if (tp_base_channel_is_registered (base))
+    {
+      tp_channel_manager_emit_channel_closed_for_object (self,
+          (TpExportableChannel *) chan);
+    }
 
   if (priv->channels != NULL)
     {
-      g_object_get (chan,
-          "handle", &contact_handle,
-          "channel-destroyed", &really_destroyed,
-          NULL);
-
-      if (really_destroyed)
+      if (tp_base_channel_is_destroyed (base))
         {
           DEBUG ("removing channel with handle %u", contact_handle);
           g_hash_table_remove (priv->channels,
               GUINT_TO_POINTER (contact_handle));
         }
-      else
+      else if (tp_base_channel_is_respawning (base))
         {
-
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
           tp_channel_manager_emit_new_channel (self,
               (TpExportableChannel *) chan, NULL);
+        }
+      else
+        {
+          /* this basically means tp_base_channel_disappear() must
+           * have been called; this doesn't have any meaning in this
+           * channel manager. */
+          g_assert_not_reached ();
         }
     }
 }

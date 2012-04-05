@@ -31,10 +31,7 @@ def test(q, bus, conn, stream):
         cs.TARGET_ID: 'chat@conf.localhost',
         cs.STREAM_TUBE_SERVICE: 'test'})
 
-    stream_event = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [], [], [], [2], 0, 0]),
-        EventPattern('stream-presence', to='chat@conf.localhost/test'))
+    q.expect('stream-presence', to='chat@conf.localhost/test')
 
     # Send presence for other member of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))

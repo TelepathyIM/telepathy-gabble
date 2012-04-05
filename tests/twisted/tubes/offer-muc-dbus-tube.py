@@ -127,18 +127,11 @@ def test(q, bus, conn, stream, access_control):
     }
     join_muc(q, bus, conn, stream, muc, request=request)
 
-    def find_channel(channels, ctype):
-        for path, props in channels:
-            if props[cs.CHANNEL_TYPE] == ctype:
-                return path, props
-
-        return None, None
-
     e = q.expect('dbus-signal', signal='NewChannels')
 
     channels = e.args[0]
-    assert len(channels) == 2
-    path, prop = find_channel(channels, cs.CHANNEL_TYPE_DBUS_TUBE)
+    assert len(channels) == 1
+    path, prop = channels[0]
     assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
     assert prop[cs.INITIATOR_ID] == 'chat2@conf.localhost/test'
     assert prop[cs.REQUESTED] == True
@@ -160,18 +153,6 @@ def test(q, bus, conn, stream, access_control):
         byte_arrays=True)
 
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
-
-    # now check the text channel
-    path, prop = find_channel(channels, cs.CHANNEL_TYPE_TEXT)
-    assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
-    assert prop[cs.INITIATOR_HANDLE] == self_handle
-    assert prop[cs.INITIATOR_ID] == self_name
-    assert cs.CHANNEL_IFACE_GROUP in prop[cs.INTERFACES]
-    assert prop[cs.TARGET_ID] == 'chat2@conf.localhost'
-    assert prop[cs.REQUESTED] == False
-
-    text_chan = dbus.Interface(bus.get_object(conn.bus_name, path),
-                               cs.CHANNEL)
 
     # try to offer using a wrong access control
     try:
@@ -262,25 +243,17 @@ def test(q, bus, conn, stream, access_control):
     assert names == {tube_self_handle: my_bus_name}
 
     chan_iface.Close()
-    q.expect_many(
+    _, _, event = q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-signal', signal='ChannelClosed'))
-
-    # leave the room
-    text_chan.Close()
+        EventPattern('dbus-signal', signal='ChannelClosed'),
+        EventPattern('stream-presence', to='chat2@conf.localhost/test',
+                     presence_type='unavailable'))
 
     # we must echo the MUC presence so the room will actually close
     # and we should wait to make sure gabble has actually parsed our
     # echo before trying to rejoin
-    event = q.expect('stream-presence', to='chat2@conf.localhost/test',
-                     presence_type='unavailable')
     echo_muc_presence(q, stream, event.stanza, 'none', 'participant')
     sync_stream(q, stream)
-
-    q.expect_many(
-        EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-signal', signal='ChannelClosed'),
-        )
 
     # rejoin the room
     call_async(q, conn.Requests, 'CreateChannel',
@@ -296,17 +269,29 @@ def test(q, bus, conn, stream, access_control):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', muc, 'test'))
 
+    def new_tube(e):
+        path, props = e.args[0][0]
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
+
+    def new_text(e):
+        path, props = e.args[0][0]
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
+
     # tube and text is created
-    e = q.expect('dbus-signal', signal='NewChannels')
+    text_event, tube_event = q.expect_many(EventPattern('dbus-signal', signal='NewChannels',
+                                                        predicate=new_text),
+                                           EventPattern('dbus-signal', signal='NewChannels',
+                                                        predicate=new_tube))
+
     channels = e.args[0]
-    tube_path, props = find_channel(channels, cs.CHANNEL_TYPE_DBUS_TUBE)
+    tube_path, props = tube_event.args[0][0]
     assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
     assertEquals('chat2@conf.localhost/test', props[cs.INITIATOR_ID])
     assertEquals(False, props[cs.REQUESTED])
     assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
     assertEquals('com.example.TestCase', props[cs.DBUS_TUBE_SERVICE_NAME])
 
-    _, props = find_channel(channels, cs.CHANNEL_TYPE_TEXT)
+    _, props = text_event.args[0][0]
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     assertEquals(True, props[cs.REQUESTED])
 

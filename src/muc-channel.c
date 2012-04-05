@@ -125,6 +125,8 @@ enum
     NEW_CALL,
 #endif
 
+    APPEARED,
+
     LAST_SIGNAL
 };
 
@@ -134,6 +136,7 @@ static guint signals[LAST_SIGNAL] = {0};
 enum
 {
   PROP_STATE = 1,
+  PROP_INITIALLY_REGISTER,
   PROP_INVITED,
   PROP_INVITATION_MESSAGE,
   PROP_SELF_JID,
@@ -167,6 +170,8 @@ struct _GabbleMucChannelPrivate
 {
   GabbleMucState state;
   gboolean closing;
+  gboolean autoclose;
+  gboolean initially_register;
 
   guint join_timer_id;
   guint poll_timer_id;
@@ -423,7 +428,8 @@ gabble_muc_channel_constructed (GObject *obj)
   }
 
   /* register object on the bus */
-  tp_base_channel_register (base);
+  if (priv->initially_register)
+    tp_base_channel_register (base);
 
   /* initialize group mixin */
   tp_group_mixin_init (obj,
@@ -873,6 +879,9 @@ gabble_muc_channel_get_property (GObject    *object,
     case PROP_STATE:
       g_value_set_uint (value, priv->state);
       break;
+    case PROP_INITIALLY_REGISTER:
+      g_value_set_boolean (value, priv->initially_register);
+      break;
     case PROP_SELF_JID:
       g_value_set_string (value, priv->self_jid->str);
       break;
@@ -944,6 +953,9 @@ gabble_muc_channel_set_property (GObject     *object,
       if (priv->state != prev_state)
         channel_state_changed (chan, prev_state, priv->state);
 
+      break;
+    case PROP_INITIALLY_REGISTER:
+      priv->initially_register = g_value_get_boolean (value);
       break;
     case PROP_INVITED:
       priv->invited = g_value_get_boolean (value);
@@ -1070,6 +1082,12 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       0, G_MAXUINT32, 0,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_STATE, param_spec);
+
+  param_spec = g_param_spec_boolean ("initially-register", "Initially register",
+      "whether to register the channel on the bus on creation",
+      TRUE,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_INITIALLY_REGISTER, param_spec);
 
   param_spec = g_param_spec_boolean ("invited", "Invited?",
       "Whether the user has been invited to the channel.", FALSE,
@@ -1225,6 +1243,14 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   /* this should be GABBLE_TYPE_TUBE_IFACE but GObject
                    * wants a value type, not an interface. */
                   G_TYPE_NONE, 1, TP_TYPE_BASE_CHANNEL);
+
+  signals[APPEARED] = g_signal_new ("appeared",
+                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
+                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
+                  0,
+                  NULL, NULL,
+                  g_cclosure_marshal_VOID__VOID,
+                  G_TYPE_NONE, 0);
 
 #ifdef ENABLE_VOIP
   signals[NEW_CALL] = g_signal_new ("new-call",
@@ -1525,8 +1551,31 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   GError error = { TP_ERROR, TP_ERROR_CANCELLED,
       "Muc channel closed below us" };
 
-  if (tp_base_channel_is_destroyed (base) || priv->closing)
+  if (tp_base_channel_is_destroyed (base))
     return;
+
+  /* if priv->closing is TRUE, we're waiting for the MUC to echo our
+   * presence. however, if we're being asked to close again, but this
+   * time without letting the muc know, let's actually close. if we
+   * don't then the channel won't disappear from the bus properly. */
+  if (priv->closing && !inform_muc)
+    {
+      clear_leave_timer (chan);
+      tp_base_channel_destroyed (base);
+      return;
+    }
+
+  /* If inform_muc is TRUE it means that we're closing the channel
+   * gracefully and we don't mind if the channel doesn't actually
+   * close behind the scenes if a tube/call is still open. Every call
+   * to this function has inform_muc=FALSE, except for Channel.Close()
+   * and RemoveMembers(self_handle) */
+  if (inform_muc && !gabble_muc_channel_can_be_closed (chan))
+    {
+      priv->autoclose = TRUE;
+      tp_base_channel_disappear (base);
+      return;
+    }
 
   DEBUG ("Closing");
   /* Ensure we stay alive even while telling everyone else to abandon us. */
@@ -1589,6 +1638,35 @@ _gabble_muc_channel_is_ready (GabbleMucChannel *chan)
   priv = chan->priv;
 
   return priv->ready;
+}
+
+/* returns TRUE if there are no tube or Call channels open in this MUC */
+gboolean
+gabble_muc_channel_can_be_closed (GabbleMucChannel *chan)
+{
+  GabbleMucChannelPrivate *priv = chan->priv;
+
+  if (g_hash_table_size (priv->tubes) > 0)
+    return FALSE;
+
+  if (priv->calls != NULL || priv->call_requests != NULL
+      || priv->call_initiating)
+    return FALSE;
+
+  return TRUE;
+}
+
+gboolean
+gabble_muc_channel_get_autoclose (GabbleMucChannel *chan)
+{
+  return chan->priv->autoclose;
+}
+
+void
+gabble_muc_channel_set_autoclose (GabbleMucChannel *chan,
+                                  gboolean autoclose)
+{
+  chan->priv->autoclose = autoclose;
 }
 
 static gboolean
@@ -2978,6 +3056,17 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
 
       return;
     }
+
+  /* are we actually hidden? */
+  if (!tp_base_channel_is_registered (base))
+    {
+      DEBUG ("making MUC channel reappear!");
+      tp_base_channel_reopened_with_requested (base, FALSE, sender);
+      g_signal_emit (chan, signals[APPEARED], 0);
+    }
+
+  /* let's not autoclose now */
+  chan->priv->autoclose = FALSE;
 
   message = tp_cm_message_new (base_conn, 2);
 

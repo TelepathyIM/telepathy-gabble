@@ -234,12 +234,17 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = fac->priv;
+  TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpHandle room_handle;
 
-  tp_channel_manager_emit_channel_closed_for_object (fac,
-      TP_EXPORTABLE_CHANNEL (chan));
+  if (tp_base_channel_is_registered (base))
+    {
+      tp_channel_manager_emit_channel_closed_for_object (fac,
+          TP_EXPORTABLE_CHANNEL (chan));
+    }
 
-  if (priv->text_channels != NULL)
+  if (tp_base_channel_is_destroyed (base)
+      && priv->text_channels != NULL)
     {
       g_object_get (chan, "handle", &room_handle, NULL);
 
@@ -250,12 +255,23 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 }
 
 static void
+muc_channel_appeared_cb (GabbleMucChannel *chan,
+    gpointer user_data)
+{
+  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
+
+  tp_channel_manager_emit_new_channel (fac,
+      TP_EXPORTABLE_CHANNEL (chan), NULL);
+}
+
+static void
 muc_ready_cb (GabbleMucChannel *text_chan,
               gpointer data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
   GabbleMucFactoryPrivate *priv = fac->priv;
   GHashTable *channels;
+  TpBaseChannel *base = TP_BASE_CHANNEL (text_chan);
 
   GSList *requests_satisfied_text = NULL;
   GQueue *tube_channels;
@@ -292,8 +308,14 @@ muc_ready_cb (GabbleMucChannel *text_chan,
       g_hash_table_remove (priv->text_needed_for_tube, text_chan);
     }
 
-  /* finally add the text channel */
-  g_hash_table_insert (channels, text_chan, requests_satisfied_text);
+  /* only announce channels which are on the bus (requested or
+   * requested with an invite, not channels only around because they
+   * have to be) */
+  if (tp_base_channel_is_registered (base))
+    {
+      tp_channel_manager_emit_new_channel (fac,
+          TP_EXPORTABLE_CHANNEL (text_chan), requests_satisfied_text);
+    }
 
   tp_channel_manager_emit_new_channels (fac, channels);
 
@@ -359,9 +381,23 @@ muc_sub_channel_closed_cb (TpSvcChannel *chan,
     gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
+  GabbleMucChannel *muc;
 
   tp_channel_manager_emit_channel_closed_for_object (fac,
       TP_EXPORTABLE_CHANNEL (chan));
+
+  /* GabbleTubeDBus, GabbleTubeStream, and GabbleMucCallChannel all
+   * have "muc" properties. */
+  g_object_get (chan,
+      "muc", &muc,
+      NULL);
+
+  if (muc == NULL)
+    return;
+
+  if (gabble_muc_channel_can_be_closed (muc)
+      && gabble_muc_channel_get_autoclose (muc))
+    tp_base_channel_close (TP_BASE_CHANNEL (muc));
 }
 
 #ifdef ENABLE_VOIP
@@ -412,6 +448,7 @@ new_muc_channel (GabbleMucFactory *fac,
                  TpHandle inviter,
                  const gchar *message,
                  gboolean requested,
+                 gboolean needed_not_wanted,
                  GHashTable *initial_channels,
                  GArray *initial_handles,
                  char **initial_ids,
@@ -461,8 +498,10 @@ new_muc_channel (GabbleMucFactory *fac,
        "initial-invitee-handles", initial_handles,
        "initial-invitee-ids", initial_ids,
        "room-name", room_name,
+       "initially-register", !needed_not_wanted,
        NULL);
 
+  g_signal_connect (chan, "appeared", (GCallback) muc_channel_appeared_cb, fac);
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
   g_signal_connect (chan, "new-tube", (GCallback) muc_channel_new_tube, fac);
 #ifdef ENABLE_VOIP
@@ -510,8 +549,8 @@ do_invite (GabbleMucFactory *fac,
   if (g_hash_table_lookup (priv->text_channels,
         GUINT_TO_POINTER (room_handle)) == NULL)
     {
-      new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason, FALSE,
-          NULL, NULL, NULL, NULL);
+      new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason,
+          FALSE, FALSE, NULL, NULL, NULL, NULL);
     }
   else
     {
@@ -988,6 +1027,7 @@ ensure_muc_channel (GabbleMucFactory *fac,
                     TpHandle handle,
                     GabbleMucChannel **ret,
                     gboolean requested,
+                    gboolean needed_not_wanted,
                     GHashTable *initial_channels,
                     GArray *initial_handles,
                     char **initial_ids,
@@ -999,9 +1039,17 @@ ensure_muc_channel (GabbleMucFactory *fac,
 
   if (*ret == NULL)
     {
-      *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle, NULL,
-          requested, initial_channels, initial_handles, initial_ids, room_name);
-      return FALSE;
+      *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle,
+          NULL, requested, needed_not_wanted, initial_channels,
+          initial_handles, initial_ids, room_name);
+
+      gabble_muc_channel_set_autoclose (*ret, needed_not_wanted);
+    }
+  else
+    {
+      /* only set this if it's already enabled */
+      if (gabble_muc_channel_get_autoclose (*ret))
+        gabble_muc_channel_set_autoclose (*ret, needed_not_wanted);
     }
 
   if (_gabble_muc_channel_is_ready (*ret))
@@ -1390,12 +1438,13 @@ handle_text_channel_request (GabbleMucFactory *self,
 
     }
 
-  if (ensure_muc_channel (self, priv, room, &text_chan, TRUE,
+  if (ensure_muc_channel (self, priv, room, &text_chan, TRUE, FALSE,
           final_channels, final_handles, final_ids, room_name))
     {
       /* channel exists */
 
-      if (require_new)
+      if (require_new
+          && tp_base_channel_is_registered (TP_BASE_CHANNEL (text_chan)))
         {
           g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "That channel has already been created (or requested)");
@@ -1414,8 +1463,23 @@ handle_text_channel_request (GabbleMucFactory *self,
             }
           else
             {
-              tp_channel_manager_emit_request_already_satisfied (self,
-                  request_token, TP_EXPORTABLE_CHANNEL (text_chan));
+              if (tp_base_channel_is_registered (TP_BASE_CHANNEL (text_chan)))
+                {
+                  tp_channel_manager_emit_request_already_satisfied (self,
+                      request_token, TP_EXPORTABLE_CHANNEL (text_chan));
+                }
+              else
+                {
+                  GSList *tokens;
+
+                  tp_base_channel_register (TP_BASE_CHANNEL (text_chan));
+
+                  tokens = g_slist_append (NULL, request_token);
+                  tp_channel_manager_emit_new_channel (self,
+                      TP_EXPORTABLE_CHANNEL (text_chan), tokens);
+                  g_slist_free (tokens);
+                }
+
               ret = TRUE;
             }
         }
@@ -1481,7 +1545,7 @@ handle_tube_channel_request (GabbleMucFactory *self,
   gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 
   if (gmuc == NULL)
-    ensure_muc_channel (self, priv, handle, &gmuc, FALSE,
+    ensure_muc_channel (self, priv, handle, &gmuc, FALSE, TRUE,
         NULL, NULL, NULL, NULL);
 
   can_announce_now = _gabble_muc_channel_is_ready (gmuc);
@@ -1637,7 +1701,7 @@ handle_call_channel_request (GabbleMucFactory *self,
       return FALSE;
     }
 
-  ensure_muc_channel (self, priv, handle, &muc, FALSE, NULL, NULL, NULL, NULL);
+  ensure_muc_channel (self, priv, handle, &muc, FALSE, TRUE, NULL, NULL, NULL, NULL);
 
   call = gabble_muc_channel_get_call (muc);
 

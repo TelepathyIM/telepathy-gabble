@@ -88,6 +88,13 @@ GType gabble_muc_channel_get_type (void);
 
 gboolean _gabble_muc_channel_is_ready (GabbleMucChannel *chan);
 
+void gabble_muc_channel_set_autoclose (GabbleMucChannel *chan,
+    gboolean autoclose);
+
+gboolean gabble_muc_channel_get_autoclose (GabbleMucChannel *chan);
+
+gboolean gabble_muc_channel_can_be_closed (GabbleMucChannel *chan);
+
 void gabble_muc_channel_send_presence (GabbleMucChannel *chan);
 
 gboolean gabble_muc_channel_send_invite (GabbleMucChannel *self,

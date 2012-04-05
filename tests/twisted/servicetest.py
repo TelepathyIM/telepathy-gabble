@@ -8,9 +8,11 @@ from twisted.internet.protocol import Protocol, Factory, ClientFactory
 glib2reactor.install()
 import sys
 import time
+import os
 
 import pprint
 import unittest
+from unittest.runner import TextTestRunner
 
 import dbus.glib
 
@@ -647,6 +649,16 @@ def install_colourer():
     sys.stdout = Colourer(sys.stdout, patterns)
     return sys.stdout
 
-if __name__ == '__main__':
-    unittest.main()
+# this is just to shut up unittest.
+class DummyStream(object):
+    def write(self, s):
+        if 'CHECK_TWISTED_VERBOSE' in os.environ:
+            print s,
 
+    def flush(self):
+        pass
+
+if __name__ == '__main__':
+    stream = DummyStream()
+    runner = TextTestRunner(stream=stream)
+    unittest.main(testRunner=runner)

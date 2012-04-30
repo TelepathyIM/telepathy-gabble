@@ -59,7 +59,6 @@
 #define PROPS_POLL_INTERVAL_HIGH 60
 
 static void password_iface_init (gpointer, gpointer);
-static void chat_state_iface_init (gpointer, gpointer);
 static void subject_iface_init (gpointer, gpointer);
 #ifdef ENABLE_VOIP
 static void gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
@@ -80,7 +79,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
       tp_message_mixin_messages_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
-      chat_state_iface_init);
+      tp_message_mixin_chat_state_iface_init)
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG,
@@ -91,6 +90,9 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
 
 static void gabble_muc_channel_send (GObject *obj, TpMessage *message,
     TpMessageSendingFlags flags);
+static gboolean gabble_muc_channel_send_chat_state (GObject *object,
+    TpChannelChatState state,
+    GError **error);
 static void gabble_muc_channel_close (TpBaseChannel *base);
 
 static const gchar *gabble_muc_channel_interfaces[] = {
@@ -438,6 +440,8 @@ gabble_muc_channel_constructed (GObject *obj)
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_FAILURES |
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_SUCCESSES,
       supported_content_types);
+  tp_message_mixin_implement_send_chat_state (obj,
+      gabble_muc_channel_send_chat_state);
 
   tp_group_mixin_add_handle_owner (obj, self_handle, base_conn->self_handle);
 
@@ -2061,6 +2065,8 @@ handle_left (GObject *source,
 
   tp_group_mixin_change_members (data, why, NULL, handles, NULL, NULL,
       actor, reason);
+  tp_message_mixin_change_chat_state (data, member,
+      TP_CHANNEL_CHAT_STATE_GONE);
 
   if (actor != 0)
     tp_handle_unref (contact_repo, actor);
@@ -2412,7 +2418,7 @@ handle_message (GObject *source,
 
   if (from_member && state != WOCKY_MUC_MSG_STATE_NONE)
     {
-      gint tp_msg_state;
+      TpChannelChatState tp_msg_state;
       switch (state)
         {
           case WOCKY_MUC_MSG_STATE_ACTIVE:
@@ -2431,8 +2437,7 @@ handle_message (GObject *source,
             tp_msg_state = TP_CHANNEL_CHAT_STATE_ACTIVE;
         }
 
-      tp_svc_channel_interface_chat_state_emit_chat_state_changed (gmuc,
-          from, tp_msg_state);
+      tp_message_mixin_change_chat_state ((GObject *) gmuc, from, tp_msg_state);
     }
 
   if (subject != NULL)
@@ -2838,13 +2843,20 @@ gabble_muc_channel_send (GObject *obj,
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   GabbleMucChannelPrivate *priv = self->priv;
-  GabbleConnection *gabble_conn =
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
+  TpBaseConnection *base_conn;
+  GabbleConnection *gabble_conn;
   _GabbleMUCSendMessageCtx *context = NULL;
   WockyStanza *stanza = NULL;
   WockyPorter *porter = NULL;
   GError *error = NULL;
   gchar *id = NULL;
+
+  base_conn = tp_base_channel_get_connection (base);
+  gabble_conn = GABBLE_CONNECTION (base_conn);
+
+  tp_message_mixin_change_chat_state (obj,
+      tp_base_channel_get_self_handle (base),
+      TP_CHANNEL_CHAT_STATE_ACTIVE);
 
   stanza = gabble_message_util_build_stanza (message, gabble_conn,
       WOCKY_STANZA_SUB_TYPE_GROUPCHAT, TP_CHANNEL_CHAT_STATE_ACTIVE,
@@ -3401,55 +3413,18 @@ request_config_form_submit_reply_cb (
   g_object_unref (update_result);
 }
 
-/**
- * gabble_muc_channel_set_chat_state
- *
- * Implements D-Bus method SetChatState
- * on interface org.freedesktop.Telepathy.Channel.Interface.ChatState
- */
-static void
-gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
-                                   guint state,
-                                   DBusGMethodInvocation *context)
+static gboolean
+gabble_muc_channel_send_chat_state (GObject *object,
+    TpChannelChatState state,
+    GError **error)
 {
-  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
+  GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
+  GabbleMucChannelPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
-  GabbleMucChannelPrivate *priv;
-  GError *error = NULL;
 
-  g_assert (GABBLE_IS_MUC_CHANNEL (self));
-
-  priv = self->priv;
-
-  if (state >= NUM_TP_CHANNEL_CHAT_STATES)
-    {
-      DEBUG ("invalid state %u", state);
-
-      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-          "invalid state: %u", state);
-    }
-
-  if (state == TP_CHANNEL_CHAT_STATE_GONE)
-    {
-      /* We cannot explicitly set the Gone state */
-      DEBUG ("you may not explicitly set the Gone state");
-
-      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-          "you may not explicitly set the Gone state");
-    }
-
-  if (error != NULL ||
-      !gabble_message_util_send_chat_state (G_OBJECT (self),
-          GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-          WOCKY_STANZA_SUB_TYPE_GROUPCHAT, state, priv->jid, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-
-      return;
-    }
-
-  tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
+  return gabble_message_util_send_chat_state (G_OBJECT (self),
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
+      WOCKY_STANZA_SUB_TYPE_GROUPCHAT, state, priv->jid, error);
 }
 
 void
@@ -3839,18 +3814,6 @@ password_iface_init (gpointer g_iface, gpointer iface_data)
     klass, gabble_muc_channel_##x)
   IMPLEMENT(get_password_flags);
   IMPLEMENT(provide_password);
-#undef IMPLEMENT
-}
-
-static void
-chat_state_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcChannelInterfaceChatStateClass *klass =
-    (TpSvcChannelInterfaceChatStateClass *) g_iface;
-
-#define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
-    klass, gabble_muc_channel_##x)
-  IMPLEMENT(set_chat_state);
 #undef IMPLEMENT
 }
 

@@ -44,7 +44,6 @@
 #include "roster.h"
 #include "util.h"
 
-static void chat_state_iface_init (gpointer, gpointer);
 static void destroyable_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel,
@@ -54,13 +53,16 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
       tp_message_mixin_messages_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
-      chat_state_iface_init);
+      tp_message_mixin_chat_state_iface_init)
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DESTROYABLE,
       destroyable_iface_init));
 
 static void _gabble_im_channel_send_message (GObject *object,
     TpMessage *message, TpMessageSendingFlags flags);
 static void gabble_im_channel_close (TpBaseChannel *base_chan);
+static gboolean _gabble_im_channel_send_chat_state (GObject *object,
+    TpChannelChatState state,
+    GError **error);
 
 static const gchar *gabble_im_channel_interfaces[] = {
     TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
@@ -83,13 +85,6 @@ struct _GabbleIMChannelPrivate
   gchar *peer_jid;
   gboolean send_nick;
   ChatStateSupport chat_states_supported;
-
-  /* FALSE unless at least one chat state notification has been sent; <gone/>
-   * will only be sent when the channel closes if this is TRUE. This prevents
-   * opening a channel and closing it immediately sending a spurious <gone/> to
-   * the peer.
-   */
-  gboolean send_gone;
 
   gboolean dispose_has_run;
 };
@@ -143,8 +138,6 @@ gabble_im_channel_constructed (GObject *obj)
   else
     priv->send_nick = TRUE;
 
-  priv->chat_states_supported = CHAT_STATES_UNKNOWN;
-
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, message_mixin),
       base_conn);
 
@@ -152,6 +145,10 @@ gabble_im_channel_constructed (GObject *obj)
       G_N_ELEMENTS (types), types, 0,
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_FAILURES,
       supported_content_types);
+
+  priv->chat_states_supported = CHAT_STATES_UNKNOWN;
+  tp_message_mixin_implement_send_chat_state (obj,
+      _gabble_im_channel_send_chat_state);
 }
 
 static void gabble_im_channel_dispose (GObject *object);
@@ -238,24 +235,6 @@ chat_states_supported (GabbleIMChannel *self,
 }
 
 static void
-im_channel_send_gone (GabbleIMChannel *self)
-{
-  GabbleIMChannelPrivate *priv = self->priv;
-  TpBaseChannel *base = (TpBaseChannel *) self;
-
-  if (priv->send_gone)
-    {
-      if (chat_states_supported (self, FALSE))
-        gabble_message_util_send_chat_state (G_OBJECT (self),
-            GABBLE_CONNECTION (tp_base_channel_get_connection (base)),
-            WOCKY_STANZA_SUB_TYPE_CHAT, TP_CHANNEL_CHAT_STATE_GONE,
-            priv->peer_jid, NULL);
-
-      priv->send_gone = FALSE;
-    }
-}
-
-static void
 gabble_im_channel_dispose (GObject *object)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
@@ -282,7 +261,7 @@ gabble_im_channel_dispose (GObject *object)
         }
     }
 
-  im_channel_send_gone (self);
+  tp_message_mixin_maybe_send_gone (object);
 
   if (G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_im_channel_parent_class)->dispose (object);
@@ -340,9 +319,10 @@ _gabble_im_channel_send_message (GObject *object,
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
   TpBaseChannel *base = (TpBaseChannel *) self;
+  TpBaseConnection *base_conn;
   GabbleConnection *gabble_conn;
   GabbleIMChannelPrivate *priv;
-  gint state = -1;
+  TpChannelChatState state = -1;
   WockyStanza *stanza = NULL;
   gchar *id = NULL;
   GError *error = NULL;
@@ -352,16 +332,18 @@ _gabble_im_channel_send_message (GObject *object,
   g_assert (GABBLE_IS_IM_CHANNEL (self));
   priv = self->priv;
 
+  base_conn = tp_base_channel_get_connection (base);
+  gabble_conn = GABBLE_CONNECTION (base_conn);
+
   if (chat_states_supported (self, TRUE))
     {
       state = TP_CHANNEL_CHAT_STATE_ACTIVE;
-      priv->send_gone = TRUE;
+      tp_message_mixin_change_chat_state (object,
+          base_conn->self_handle, state);
     }
 
   /* We don't support providing successful delivery reports. */
   flags = 0;
-  gabble_conn =
-      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
 
   stanza = gabble_message_util_build_stanza (message,
       gabble_conn, 0, state, priv->peer_jid,
@@ -555,15 +537,13 @@ _gabble_im_channel_state_receive (GabbleIMChannel *chan,
   GabbleIMChannelPrivate *priv;
   TpBaseChannel *base_chan;
 
-  g_assert (state < NUM_TP_CHANNEL_CHAT_STATES);
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   base_chan = (TpBaseChannel *) chan;
   priv = chan->priv;
 
   priv->chat_states_supported = CHAT_STATES_SUPPORTED;
 
-  tp_svc_channel_interface_chat_state_emit_chat_state_changed (
-      (TpSvcChannelInterfaceChatState *) chan,
+  tp_message_mixin_change_chat_state ((GObject *) chan,
       tp_base_channel_get_target_handle (base_chan), state);
 }
 
@@ -572,7 +552,7 @@ gabble_im_channel_close (TpBaseChannel *base_chan)
 {
   GabbleIMChannel *self = GABBLE_IM_CHANNEL (base_chan);
 
-  im_channel_send_gone (self);
+  tp_message_mixin_maybe_send_gone ((GObject *) self);
 
   /* The IM factory will resurrect the channel if we have pending
    * messages. When we're resurrected, we want the initiator
@@ -610,76 +590,24 @@ gabble_im_channel_destroy (TpSvcChannelInterfaceDestroyable *iface,
   tp_svc_channel_interface_destroyable_return_from_destroy (context);
 }
 
-
-/**
- * gabble_im_channel_set_chat_state
- *
- * Implements D-Bus method SetChatState
- * on interface org.freedesktop.Telepathy.Channel.Interface.ChatState
- */
-static void
-gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
-                                  guint state,
-                                  DBusGMethodInvocation *context)
+static gboolean
+_gabble_im_channel_send_chat_state (GObject *object,
+    TpChannelChatState state,
+    GError **error)
 {
-  GabbleIMChannel *self = GABBLE_IM_CHANNEL (iface);
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (object);
+  GabbleIMChannelPrivate *priv = self->priv;
   TpBaseChannel *base = (TpBaseChannel *) self;
-  GabbleIMChannelPrivate *priv;
-  GError *error = NULL;
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
 
-  g_assert (GABBLE_IS_IM_CHANNEL (self));
-  priv = self->priv;
-
-  if (state >= NUM_TP_CHANNEL_CHAT_STATES)
-    {
-      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-          "invalid state: %u", state);
-    }
-  else if (state == TP_CHANNEL_CHAT_STATE_GONE)
-    {
-      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-          "you may not explicitly set the Gone state");
-    }
   /* Only send anything to the peer if we actually know they support chat
-   * states.
-   */
-  else if (chat_states_supported (self, FALSE))
-    {
-      TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+   * states. */
+  if (!chat_states_supported (self, FALSE))
+    return TRUE;
 
-      if (gabble_message_util_send_chat_state (G_OBJECT (self),
-              GABBLE_CONNECTION (base_conn),
-              WOCKY_STANZA_SUB_TYPE_CHAT, state, priv->peer_jid, &error))
-        {
-          priv->send_gone = TRUE;
-
-          /* Send the ChatStateChanged signal for the local user */
-          tp_svc_channel_interface_chat_state_emit_chat_state_changed (iface,
-              base_conn->self_handle, state);
-        }
-    }
-
-  if (error != NULL)
-    {
-      DEBUG ("%s", error->message);
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-    }
-  else
-    {
-      tp_svc_channel_interface_chat_state_return_from_set_chat_state (context);
-    }
-}
-
-static void
-chat_state_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcChannelInterfaceChatStateClass *klass =
-    (TpSvcChannelInterfaceChatStateClass *) g_iface;
-#define IMPLEMENT(x) tp_svc_channel_interface_chat_state_implement_##x (\
-    klass, gabble_im_channel_##x)
-  IMPLEMENT(set_chat_state);
-#undef IMPLEMENT
+  return gabble_message_util_send_chat_state (G_OBJECT (self),
+      GABBLE_CONNECTION (base_conn),
+      WOCKY_STANZA_SUB_TYPE_CHAT, state, priv->peer_jid, error);
 }
 
 static void

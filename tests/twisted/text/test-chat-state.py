@@ -6,8 +6,9 @@ channels.
 
 from twisted.words.xish import domish
 
-from servicetest import assertEquals, assertNotEquals, \
-    assertLength, wrap_channel, EventPattern
+from servicetest import (assertEquals, assertNotEquals,
+    assertLength, wrap_channel, EventPattern, call_async,
+    sync_dbus)
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 import ns
@@ -70,23 +71,61 @@ def test(q, bus, conn, stream):
 
     sync_stream(q, stream)
 
+    states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')
+    assertEquals(cs.CHAT_STATE_INACTIVE,
+            states.get(self_handle, cs.CHAT_STATE_INACTIVE))
+    assertEquals(cs.CHAT_STATE_INACTIVE,
+            states.get(foo_handle, cs.CHAT_STATE_INACTIVE))
+
     # Receiving chat states:
 
     # Composing...
     stream.send(make_message(full_jid, state='composing'))
 
-    changed = q.expect('dbus-signal', signal='ChatStateChanged')
+    changed = q.expect('dbus-signal', signal='ChatStateChanged',
+            path=chan.object_path)
     handle, state = changed.args
     assertEquals(foo_handle, handle)
     assertEquals(cs.CHAT_STATE_COMPOSING, state)
 
+    states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')
+    assertEquals(cs.CHAT_STATE_INACTIVE,
+            states.get(self_handle, cs.CHAT_STATE_INACTIVE))
+    assertEquals(cs.CHAT_STATE_COMPOSING,
+            states.get(foo_handle, cs.CHAT_STATE_INACTIVE))
+
     # Message!
     stream.send(make_message(full_jid, body='hello', state='active'))
 
-    changed = q.expect('dbus-signal', signal='ChatStateChanged')
+    changed = q.expect('dbus-signal', signal='ChatStateChanged',
+            path=chan.object_path)
     handle, state = changed.args
     assertEquals(foo_handle, handle)
     assertEquals(cs.CHAT_STATE_ACTIVE, state)
+
+    states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')
+    assertEquals(cs.CHAT_STATE_INACTIVE,
+            states.get(self_handle, cs.CHAT_STATE_INACTIVE))
+    assertEquals(cs.CHAT_STATE_ACTIVE,
+            states.get(foo_handle, cs.CHAT_STATE_INACTIVE))
+
+    # Assert that a redundant chat-state change doesn't emit a signal
+
+    forbidden = [EventPattern('dbus-signal', signal='ChatStateChanged',
+        args=[foo_handle, cs.CHAT_STATE_ACTIVE])]
+    q.forbid_events(forbidden)
+
+    m = domish.Element((None, 'message'))
+    m['from'] = 'foo@bar.com/Foo'
+    m['type'] = 'chat'
+    m.addElement((ns.CHAT_STATES, 'active'))
+    m.addElement('body', content='hello')
+    stream.send(m)
+
+    sync_dbus(bus, q, conn)
+    sync_stream(q, stream)
+
+    q.unforbid_events(forbidden)
 
     # Sending chat states:
 
@@ -95,6 +134,12 @@ def test(q, bus, conn, stream):
 
     stream_message = q.expect('stream-message')
     check_state_notification(stream_message.stanza, 'composing')
+
+    states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')
+    assertEquals(cs.CHAT_STATE_COMPOSING,
+            states.get(self_handle, cs.CHAT_STATE_INACTIVE))
+    assertEquals(cs.CHAT_STATE_ACTIVE,
+            states.get(foo_handle, cs.CHAT_STATE_INACTIVE))
 
     # XEP 0085:
     #   every content message SHOULD contain an <active/> notification.
@@ -105,6 +150,12 @@ def test(q, bus, conn, stream):
     assertEquals('chat', elem['type'])
 
     check_state_notification(elem, 'active', allow_body=True)
+
+    states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')
+    assertEquals(cs.CHAT_STATE_ACTIVE,
+            states.get(self_handle, cs.CHAT_STATE_INACTIVE))
+    assertEquals(cs.CHAT_STATE_ACTIVE,
+            states.get(foo_handle, cs.CHAT_STATE_INACTIVE))
 
     def is_body(e):
         if e.name == 'body':
@@ -172,7 +223,8 @@ def test(q, bus, conn, stream):
 
     stream.send(make_message(full_jid, body='i am invisible', state='active'))
 
-    changed = q.expect('dbus-signal', signal='ChatStateChanged')
+    changed = q.expect('dbus-signal', signal='ChatStateChanged',
+            path=chan.object_path)
     assertEquals(cs.CHAT_STATE_ACTIVE, changed.args[1])
 
     # We've seen them send a chat state notification, so we should send them
@@ -181,7 +233,8 @@ def test(q, bus, conn, stream):
     stream_message = q.expect('stream-message', to=full_jid)
     check_state_notification(stream_message.stanza, 'composing')
 
-    changed = q.expect('dbus-signal', signal='ChatStateChanged')
+    changed = q.expect('dbus-signal', signal='ChatStateChanged',
+            path=chan.object_path)
     handle, state = changed.args
     assertEquals(cs.CHAT_STATE_COMPOSING, state)
     assertEquals(self_handle, handle)
@@ -204,11 +257,18 @@ def test(q, bus, conn, stream):
         ['ChatState'])
 
     # We shouldn't send any notifications until we actually send a message.
+    # But ChatStateChanged is still emitted locally
     e = EventPattern('stream-message', to=jid)
     q.forbid_events([e])
-    for i in [cs.CHAT_STATE_COMPOSING, cs.CHAT_STATE_INACTIVE,
-              cs.CHAT_STATE_PAUSED, cs.CHAT_STATE_ACTIVE]:
+    for i in [cs.CHAT_STATE_ACTIVE, cs.CHAT_STATE_COMPOSING,
+              cs.CHAT_STATE_PAUSED, cs.CHAT_STATE_INACTIVE ]:
         chan.ChatState.SetChatState(i)
+        changed = q.expect('dbus-signal', signal='ChatStateChanged',
+                path=chan.object_path)
+        handle, state = changed.args
+        assertEquals(i, state)
+        assertEquals(self_handle, handle)
+
     sync_stream(q, stream)
     q.unforbid_events([e])
 
@@ -217,15 +277,23 @@ def test(q, bus, conn, stream):
     stream_message = q.expect('stream-message', to=jid)
     check_state_notification(stream_message.stanza, 'active', allow_body=True)
 
+    # The D-Bus property changes, too
+    changed = q.expect('dbus-signal', signal='ChatStateChanged',
+            path=chan.object_path)
+    handle, state = changed.args
+    assertEquals(cs.CHAT_STATE_ACTIVE, state)
+    assertEquals(self_handle, handle)
+
     # We get a notification back from our contact.
     stream.send(make_message(full_jid, state='composing'))
 
     # Wait until gabble tells us the chat-state of the remote party has
     # changed so we know gabble knows chat state notification are supported
-    changed = q.expect('dbus-signal', signal='ChatStateChanged')
+    changed = q.expect('dbus-signal', signal='ChatStateChanged',
+            path=chan.object_path)
     handle, state = changed.args
     assertEquals(cs.CHAT_STATE_COMPOSING, state)
-    assertNotEquals(self_handle, handle)
+    assertNotEquals(foo_handle, handle)
 
     # So now we know they support notification, so should send notifications.
     chan.ChatState.SetChatState(cs.CHAT_STATE_COMPOSING)
@@ -243,6 +311,13 @@ def test(q, bus, conn, stream):
     #    one from my N900)!
     stream_message = q.expect('stream-message')
     check_state_notification(stream_message.stanza, 'composing')
+
+    # The D-Bus property changes, too
+    changed = q.expect('dbus-signal', signal='ChatStateChanged',
+            path=chan.object_path)
+    handle, state = changed.args
+    assertEquals(cs.CHAT_STATE_COMPOSING, state)
+    assertEquals(self_handle, handle)
 
     # But! Now they start messaging us from a different client, which *doesn't*
     # support notifications.

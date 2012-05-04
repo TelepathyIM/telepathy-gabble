@@ -29,7 +29,6 @@
 
 #include <dbus/dbus-glib.h>
 #include <telepathy-glib/dbus.h>
-#include <telepathy-glib/debug-ansi.h>
 #include <telepathy-glib/errors.h>
 #include <telepathy-glib/exportable-channel.h>
 #include <telepathy-glib/gtypes.h>
@@ -3324,8 +3323,7 @@ request_config_form_reply_cb (
     {
       GString *unsubstituted = g_string_new ("");
 
-      printf (TP_ANSI_BOLD_ON TP_ANSI_FG_WHITE TP_ANSI_BG_RED
-              "\n%s: the following properties were not substituted:\n",
+      printf ("\n%s: the following properties were not substituted:\n",
               G_STRFUNC);
 
       for (i = 0; i < TP_NUM_BASE_ROOM_CONFIG_PROPERTIES; i++)
@@ -3345,7 +3343,7 @@ request_config_form_reply_cb (
 
       printf ("\nthis is a MUC server compatibility bug in gabble, please "
               "report it with a full debug log attached (running gabble "
-              "with WOCKY_DEBUG=xmpp)" TP_ANSI_RESET "\n\n");
+              "with WOCKY_DEBUG=xmpp)\n\n");
       fflush (stdout);
 
       error = g_error_new (TP_ERRORS, TP_ERROR_SERVICE_CONFUSED,

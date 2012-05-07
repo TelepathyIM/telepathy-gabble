@@ -95,7 +95,7 @@ gabble_gateway_plugin_create_sidecar_async (
     }
   else
     {
-      g_simple_async_result_set_error (result, TP_ERRORS,
+      g_simple_async_result_set_error (result, TP_ERROR,
           TP_ERROR_NOT_IMPLEMENTED, "'%s' not implemented", sidecar_interface);
     }
 
@@ -422,12 +422,12 @@ register_cb (GObject *source,
           switch (error->code)
             {
             case WOCKY_XMPP_ERROR_CONFLICT:
-              g_set_error (&tp_error, TP_ERRORS, TP_ERROR_REGISTRATION_EXISTS,
+              g_set_error (&tp_error, TP_ERROR, TP_ERROR_REGISTRATION_EXISTS,
                   "someone else registered that username: %s", error->message);
               break;
 
             case WOCKY_XMPP_ERROR_NOT_ACCEPTABLE:
-              g_set_error (&tp_error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              g_set_error (&tp_error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
                   "registration not acceptable: %s", error->message);
               break;
 
@@ -487,21 +487,21 @@ gateways_register (
 
   if (strchr (gateway, '@') != NULL)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Gateway names cannot contain '@': %s", gateway);
       goto error;
     }
 
   if (strchr (gateway, '/') != NULL)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Gateway names cannot contain '/': %s", gateway);
       goto error;
     }
 
   if (!wocky_decode_jid (gateway, NULL, &normalized_gateway, NULL))
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Invalid gateway name: %s", gateway);
       goto error;
     }

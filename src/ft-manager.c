@@ -493,7 +493,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   /* Don't support opening a channel to our self handle */
   if (handle == base_connection->self_handle)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Can't open a file transfer channel to yourself");
       goto error;
     }
@@ -502,7 +502,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentType");
   if (content_type == NULL)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "ContentType property is mandatory");
       goto error;
     }
@@ -511,7 +511,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Filename");
   if (filename == NULL)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Filename property is mandatory");
       goto error;
     }
@@ -520,7 +520,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".Size", NULL);
   if (size == 0)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Size property is mandatory");
       goto error;
     }
@@ -536,7 +536,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
     {
       if (content_hash_type >= NUM_TP_FILE_HASH_TYPES)
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "%u is not a valid ContentHashType", content_hash_type);
           goto error;
         }
@@ -548,7 +548,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
           TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER ".ContentHash");
       if (content_hash == NULL)
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "ContentHash property is mandatory if ContentHashType is "
               "not None");
           goto error;
@@ -580,7 +580,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
 
   if (metadata != NULL && g_hash_table_lookup ((GHashTable *) metadata, "FORM_TYPE"))
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Metadata cannot contain an item with key 'FORM_TYPE'");
       goto error;
     }

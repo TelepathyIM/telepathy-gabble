@@ -113,7 +113,7 @@ test_plugin_create_sidecar_async (
       /* This deliberately doesn't check for IFACE_TEST_BUGGY, to test Gabble's
        * reactions to buggy plugins. :)
        */
-      g_simple_async_result_set_error (result, TP_ERRORS,
+      g_simple_async_result_set_error (result, TP_ERROR,
           TP_ERROR_NOT_IMPLEMENTED, "'%s' not implemented", sidecar_interface);
     }
 
@@ -442,7 +442,7 @@ iq_cb (
       if (t == WOCKY_STANZA_SUB_TYPE_RESULT)
         g_simple_async_result_set_op_res_gboolean (result, TRUE);
       else
-        g_simple_async_result_set_error (result, TP_ERRORS,
+        g_simple_async_result_set_error (result, TP_ERROR,
             TP_ERROR_NOT_AVAILABLE, "server said no!");
 
       g_object_unref (reply);

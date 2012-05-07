@@ -1398,7 +1398,7 @@ _gabble_connection_set_properties_from_account (GabbleConnection *conn,
 
   if (!wocky_decode_jid (account, &username, &server, &resource))
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "unable to extract JID from account name");
       result = FALSE;
       goto OUT;
@@ -1484,7 +1484,7 @@ _gabble_connection_send (GabbleConnection *conn, WockyStanza *msg, GError **erro
 
   if (conn->priv->porter == NULL)
     {
-      g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      g_set_error_literal (error, TP_ERROR, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
       return FALSE;
     }
@@ -1600,7 +1600,7 @@ _gabble_connection_send_with_reply (GabbleConnection *conn,
 
   if (priv->porter == NULL)
     {
-      g_set_error_literal (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      g_set_error_literal (error, TP_ERROR, TP_ERROR_NETWORK_ERROR,
               "connection is disconnected");
       return FALSE;
     }
@@ -1647,7 +1647,7 @@ gabble_connection_disconnect_with_tp_error (GabbleConnection *self,
       "debug-message", G_TYPE_STRING, tp_error->message,
       NULL);
 
-  g_assert (tp_error->domain == TP_ERRORS);
+  g_assert (tp_error->domain == TP_ERROR);
   tp_base_connection_disconnect_with_dbus_error (base,
       tp_error_get_dbus_name (tp_error->code), details, reason);
   g_hash_table_unref (details);
@@ -1658,7 +1658,7 @@ remote_closed_cb (WockyPorter *porter,
     GabbleConnection *self)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
-  GError e = { TP_ERRORS, TP_ERROR_CONNECTION_LOST,
+  GError e = { TP_ERROR, TP_ERROR_CONNECTION_LOST,
       "server closed its XMPP stream" };
 
   if (base->status == TP_CONNECTION_STATUS_DISCONNECTED)
@@ -1713,7 +1713,7 @@ remote_error_cb (WockyPorter *porter,
     return;
 
   gabble_set_tp_conn_error_from_wocky (&e, base->status, &reason, &error);
-  g_assert (error->domain == TP_ERRORS);
+  g_assert (error->domain == TP_ERROR);
 
   DEBUG ("Force closing of the connection %p", self);
   priv->closing = TRUE;
@@ -1770,7 +1770,7 @@ connector_error_disconnect (GabbleConnection *self,
   gabble_set_tp_conn_error_from_wocky (error, base->status, &reason,
       &tp_error);
   DEBUG ("connection failed: %s", tp_error->message);
-  g_assert (tp_error->domain == TP_ERRORS);
+  g_assert (tp_error->domain == TP_ERROR);
 
   gabble_connection_disconnect_with_tp_error (self, tp_error, reason);
   g_error_free (tp_error);
@@ -1962,9 +1962,9 @@ connector_connected (GabbleConnection *self,
     {
       DEBUG ("couldn't get our self handle: %s", error->message);
 
-      if (error->domain != TP_ERRORS)
+      if (error->domain != TP_ERROR)
         {
-          error->domain = TP_ERRORS;
+          error->domain = TP_ERROR;
           error->code = TP_ERROR_INVALID_HANDLE;
         }
 
@@ -1980,9 +1980,9 @@ connector_connected (GabbleConnection *self,
     {
       DEBUG ("couldn't parse our own JID: %s", error->message);
 
-      if (error->domain != TP_ERRORS)
+      if (error->domain != TP_ERROR)
         {
-          error->domain = TP_ERRORS;
+          error->domain = TP_ERROR;
           error->code = TP_ERROR_INVALID_ARGUMENT;
         }
 
@@ -2008,9 +2008,9 @@ connector_connected (GabbleConnection *self,
       DEBUG ("sending disco request failed: %s",
           error->message);
 
-      if (error->domain != TP_ERRORS)
+      if (error->domain != TP_ERROR)
         {
-          error->domain = TP_ERRORS;
+          error->domain = TP_ERROR;
           error->code = TP_ERROR_NETWORK_ERROR;
         }
 
@@ -2027,9 +2027,9 @@ connector_connected (GabbleConnection *self,
       DEBUG ("Sending disco request to our own bare jid failed: %s",
           error->message);
 
-      if (error->domain != TP_ERRORS)
+      if (error->domain != TP_ERROR)
         {
-          error->domain = TP_ERRORS;
+          error->domain = TP_ERROR;
           error->code = TP_ERROR_NETWORK_ERROR;
         }
 

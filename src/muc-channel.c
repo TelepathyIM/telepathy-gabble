@@ -1473,7 +1473,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
       tp_base_channel_get_connection (base));
   TpIntSet *set;
   GArray *handles;
-  GError error = { TP_ERRORS, TP_ERROR_CANCELLED,
+  GError error = { TP_ERROR, TP_ERROR_CANCELLED,
       "Muc channel closed below us" };
 
   if (tp_base_channel_is_destroyed (base) || priv->closing)
@@ -1577,7 +1577,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
 
   if (priv->nick_retry_count >= MAX_NICK_RETRIES)
     {
-      g_set_error (tp_error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (tp_error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "nickname already in use and retry count exceeded");
       return FALSE;
     }
@@ -1800,18 +1800,18 @@ handle_error (GObject *source,
       switch (errnum)
         {
           case WOCKY_XMPP_ERROR_FORBIDDEN:
-            tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_BANNED,
+            tp_error = g_error_new (TP_ERROR, TP_ERROR_CHANNEL_BANNED,
                 "banned from room");
             reason = TP_CHANNEL_GROUP_CHANGE_REASON_BANNED;
             break;
           case WOCKY_XMPP_ERROR_SERVICE_UNAVAILABLE:
-            tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_FULL,
+            tp_error = g_error_new (TP_ERROR, TP_ERROR_CHANNEL_FULL,
                 "room is full");
             reason = TP_CHANNEL_GROUP_CHANGE_REASON_BUSY;
             break;
 
           case WOCKY_XMPP_ERROR_REGISTRATION_REQUIRED:
-            tp_error = g_error_new (TP_ERRORS, TP_ERROR_CHANNEL_INVITE_ONLY,
+            tp_error = g_error_new (TP_ERROR, TP_ERROR_CHANNEL_INVITE_ONLY,
                 "room is invite only");
             break;
 
@@ -1821,7 +1821,7 @@ handle_error (GObject *source,
             break;
 
           default:
-            tp_error = g_error_new (TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+            tp_error = g_error_new (TP_ERROR, TP_ERROR_NOT_AVAILABLE,
                 "%s", wocky_xmpp_error_description (errnum));
             break;
         }
@@ -2782,7 +2782,7 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
   if (!priv->must_provide_password ||
       priv->password_ctx != NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "password cannot be provided in the current state" };
       dbus_g_method_return_error (context, &error);
     }
@@ -2938,7 +2938,7 @@ gabble_muc_channel_add_member (GObject *obj,
       if (tp_handle_set_is_member (mixin->members, handle) ||
           tp_handle_set_is_member (mixin->remote_pending, handle))
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "already a member or in remote pending");
 
           return FALSE;
@@ -2982,7 +2982,7 @@ gabble_muc_channel_add_member (GObject *obj,
   /* check that we're indeed a member when attempting to invite others */
   if (priv->state < MUC_STATE_JOINED)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "channel membership is required for inviting others");
 
       return FALSE;
@@ -3346,7 +3346,7 @@ request_config_form_reply_cb (
               "with WOCKY_DEBUG=xmpp)\n\n");
       fflush (stdout);
 
-      error = g_error_new (TP_ERRORS, TP_ERROR_SERVICE_CONFUSED,
+      error = g_error_new (TP_ERROR, TP_ERROR_SERVICE_CONFUSED,
           "Couldn't find fields corresponding to %s in the muc#owner form. "
           "This is a MUC server compatibility bug in Gabble.",
           unsubstituted->str);
@@ -3425,7 +3425,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
     {
       DEBUG ("invalid state %u", state);
 
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "invalid state: %u", state);
     }
 
@@ -3434,7 +3434,7 @@ gabble_muc_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
       /* We cannot explicitly set the Gone state */
       DEBUG ("you may not explicitly set the Gone state");
 
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "you may not explicitly set the Gone state");
     }
 
@@ -3687,7 +3687,7 @@ gabble_muc_channel_request_call (GabbleMucChannel *gmuc,
     {
       g_simple_async_report_error_in_idle (G_OBJECT (gmuc),
         callback, user_data,
-        TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+        TP_ERROR, TP_ERROR_NOT_AVAILABLE,
         "A request for a call is already in progress");
       return;
     }
@@ -3783,21 +3783,21 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
 
   if (priv->state < MUC_STATE_JOINED)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Steady on. You're not in the room yet" };
 
       dbus_g_method_return_error (context, &error);
     }
   else if (priv->state > MUC_STATE_JOINED || priv->closing)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Already left/leaving the room" };
 
       dbus_g_method_return_error (context, &error);
     }
   else if (priv->set_subject_context != NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Hey! Stop changing the subject! (Your last request is still in "
           "flight.)" };
 

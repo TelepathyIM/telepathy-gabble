@@ -932,7 +932,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
                 TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
       if (service == NULL)
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
               "Request does not contain the mandatory property '%s'",
               TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
           goto error;
@@ -954,7 +954,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
                 TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
       if (service == NULL)
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
               "Request does not contain the mandatory property '%s'",
               TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
           goto error;
@@ -963,7 +963,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       if (!tp_dbus_check_valid_bus_name (service, TP_DBUS_NAME_TYPE_WELL_KNOWN,
             &err))
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "Invalid ServiceName: %s", err->message);
           g_error_free (err);
           goto error;
@@ -978,7 +978,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   /* Don't support opening a channel to our self handle */
   if (handle == base_conn->self_handle)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Can't open a channel to your self handle");
       goto error;
     }
@@ -997,7 +997,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
       if (require_new)
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "Tubes channel with contact #%u already exists", handle);
           DEBUG ("Tubes channel with contact #%u already exists",
               handle);

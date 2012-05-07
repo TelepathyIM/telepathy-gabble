@@ -869,7 +869,7 @@ cancel_queued_requests (gpointer k,
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
       tp_channel_manager_emit_request_failed (self,
-          iter->data, TP_ERRORS, TP_ERROR_DISCONNECTED,
+          iter->data, TP_ERROR, TP_ERROR_DISCONNECTED,
           "Unable to complete this channel request, we're disconnecting!");
     }
 
@@ -1436,7 +1436,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
       if (!ok)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "TargetID's node part (%s) doesn't match RoomName (%s)",
               target_room, room_name);
           ret = FALSE;
@@ -1466,7 +1466,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
       if (!ok)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "TargetID's domain part (%s) doesn't match Server (%s)",
               target_server, server_prop);
           ret = FALSE;
@@ -1486,7 +1486,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
       if (require_new)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "That channel has already been created (or requested)");
           ret = FALSE;
         }
@@ -1496,7 +1496,7 @@ handle_text_channel_request (GabbleMucFactory *self,
               initial_handles != NULL ||
               initial_ids != NULL)
             {
-              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                   "Cannot set InitialChannels, InitialInviteeHandles or "
                   "InitialInviteIDs for existing channel");
               ret = FALSE;
@@ -1583,7 +1583,7 @@ handle_tubes_channel_request (GabbleMucFactory *self,
     {
       if (require_new)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "That channel has already been created (or requested)");
           return FALSE;
         }
@@ -1712,7 +1712,7 @@ handle_stream_tube_channel_request (GabbleMucFactory *self,
             TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
   if (service == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
           TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
       return FALSE;
@@ -1743,7 +1743,7 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
       TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
   if (service == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
           TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
       return FALSE;
@@ -1807,7 +1807,7 @@ handle_call_channel_request (GabbleMucFactory *self,
 
   if (!initial_audio && !initial_video)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Request didn't set either InitialAudio or InitialVideo");
       return FALSE;
     }
@@ -1820,7 +1820,7 @@ handle_call_channel_request (GabbleMucFactory *self,
     {
       if (require_new)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
             "There is already a call in this muc");
           goto error;
         }

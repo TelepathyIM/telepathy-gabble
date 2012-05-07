@@ -102,7 +102,7 @@ gabble_message_util_build_stanza (TpMessage *message,
 #define RETURN_INVALID_ARGUMENT(msg, ...) \
   G_STMT_START { \
     DEBUG (msg , ## __VA_ARGS__); \
-    g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, \
+    g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT, \
         msg , ## __VA_ARGS__); \
     return NULL; \
   } G_STMT_END

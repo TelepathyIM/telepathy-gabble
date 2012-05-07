@@ -1196,7 +1196,7 @@ pass_local_codecs (GabbleMediaStream *stream,
           GABBLE_JINGLE_MEDIA_RTP (priv->content), md, ready, &wocky_error))
     return TRUE;
 
-  g_set_error_literal (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+  g_set_error_literal (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
       wocky_error->message);
   g_clear_error (&wocky_error);
   return FALSE;
@@ -1302,7 +1302,7 @@ gabble_media_stream_supported_codecs (TpSvcMediaStreamHandler *iface,
 
   if (codecs->len == 0)
     {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError e = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                    "SupportedCodecs must have a non-empty list of codecs" };
 
       dbus_g_method_return_error (context, &e);
@@ -1355,7 +1355,7 @@ gabble_media_stream_codecs_updated (TpSvcMediaStreamHandler *iface,
 
   if (!self->priv->local_codecs_set)
     {
-      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "CodecsUpdated may only be called once an initial set of codecs "
           "has been set" };
 
@@ -1979,7 +1979,7 @@ gabble_media_stream_change_direction (GabbleMediaStream *stream,
 
   if (!gabble_jingle_content_change_direction (priv->content, senders))
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "stream direction invalid for the Jingle dialect in use");
       return FALSE;
     }

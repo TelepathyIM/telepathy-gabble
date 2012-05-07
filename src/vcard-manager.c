@@ -582,7 +582,7 @@ complete_one_request (GabbleVCardManagerRequest *request,
 static void
 disconnect_entry_foreach (gpointer handle, gpointer value, gpointer unused)
 {
-  GError err = { TP_ERRORS, TP_ERROR_DISCONNECTED, "Connection closed" };
+  GError err = { TP_ERROR, TP_ERROR_DISCONNECTED, "Connection closed" };
   GabbleVCardCacheEntry *entry = value;
 
   if (entry->suspended_timer_id)

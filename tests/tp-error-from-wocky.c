@@ -19,7 +19,7 @@ test_remap (GQuark domain,
       &conn_reason, &error);
   g_assert (error != NULL);
   g_assert_cmpstr (g_quark_to_string (error->domain), ==,
-        g_quark_to_string (TP_ERRORS));
+        g_quark_to_string (TP_ERROR));
   g_assert_cmpint (error->code, ==, exp_code);
   g_assert_cmpint (conn_reason, ==, exp_reason);
 

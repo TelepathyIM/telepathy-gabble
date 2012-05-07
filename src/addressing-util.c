@@ -85,7 +85,7 @@ gabble_uri_to_jid (const gchar *uri,
 
   if (scheme == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid URI", uri);
       goto OUT;
     }
@@ -106,7 +106,7 @@ gabble_uri_to_jid (const gchar *uri,
     }
   else
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "'%s' URI scheme is not supported by this protocol",
           scheme);
       goto OUT;
@@ -137,7 +137,7 @@ gabble_jid_to_uri (const gchar *scheme,
 
   if (!wocky_decode_jid (jid, &node, &domain, &resource))
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid JID", jid);
       return NULL;
     }
@@ -234,7 +234,7 @@ gabble_vcard_address_to_jid (const gchar *vcard_field,
 
       if (gabble_error != NULL)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "'%s' is an invalid address: %s", vcard_address,
               gabble_error->message);
           g_error_free (gabble_error);
@@ -249,7 +249,7 @@ gabble_vcard_address_to_jid (const gchar *vcard_field,
         s++;
       if (G_UNLIKELY (*s != '\0'))
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "'%s' is an invalid facebook chat address", vcard_address);
           goto OUT;
         }
@@ -258,7 +258,7 @@ gabble_vcard_address_to_jid (const gchar *vcard_field,
     }
   else
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "'%s' vCard field is not supported by this protocol", vcard_field);
     }
 
@@ -286,7 +286,7 @@ gabble_jid_to_vcard_address (const gchar *vcard_field,
 
       if (gabble_error != NULL)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "'%s' is an invalid address: %s", jid,
               gabble_error->message);
           g_error_free (gabble_error);
@@ -312,13 +312,13 @@ gabble_jid_to_vcard_address (const gchar *vcard_field,
             s++;
           if (G_UNLIKELY (*s != '\0'))
             {
-              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                   "'%s' is an invalid facebook chat address", jid);
             }
         }
       else
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "'%s' is an invalid facebook chat address", jid);
         }
 
@@ -326,7 +326,7 @@ gabble_jid_to_vcard_address (const gchar *vcard_field,
     }
   else
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "'%s' vCard field is not supported by this protocol", vcard_field);
     }
 
@@ -438,7 +438,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
 
   if (scheme == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid URI", uri);
       goto OUT;
     }
@@ -447,7 +447,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
 
   if (!wocky_decode_jid (jid, &tmp_node, &tmp_domain, &tmp_resource))
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid XMPP URI", uri);
       goto OUT;
     }
@@ -458,7 +458,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
       unescaped_node = g_uri_unescape_string (tmp_node, NULL);
       if (unescaped_node == NULL)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "'%s' is not a valid XMPP URI", uri);
           goto OUT;
         }
@@ -468,7 +468,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
   unescaped_domain = g_uri_unescape_string (tmp_domain, NULL);
   if (unescaped_domain == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid XMPP URI", uri);
       goto OUT;
     }
@@ -478,7 +478,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
       unescaped_resource = g_uri_unescape_string (tmp_resource, NULL);
       if (unescaped_resource == NULL)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "'%s' is not a valid XMPP URI", uri);
           goto OUT;
         }
@@ -491,7 +491,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
 
   if (gabble_error != NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid XMPP URI: %s", uri,
           gabble_error->message);
       g_error_free (gabble_error);
@@ -500,7 +500,7 @@ gabble_parse_xmpp_uri (const gchar *uri,
 
   if (!wocky_decode_jid (normalized_jid, node, domain, resource))
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is not a valid XMPP URI", uri);
       goto OUT;
     }

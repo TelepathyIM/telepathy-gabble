@@ -193,7 +193,7 @@ gabble_get_room_handle_from_jid (TpHandleRepoIface *room_repo,
 #define INVALID_HANDLE(e, f, ...) \
   G_STMT_START { \
   DEBUG (f, ##__VA_ARGS__); \
-  g_set_error (e, TP_ERRORS, TP_ERROR_INVALID_HANDLE, f, ##__VA_ARGS__);\
+  g_set_error (e, TP_ERROR, TP_ERROR_INVALID_HANDLE, f, ##__VA_ARGS__);\
   } G_STMT_END
 
 gchar *

@@ -776,7 +776,7 @@ gabble_media_factory_requestotron (TpChannelManager *manager,
 
       if (require_target_handle)
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
               "A valid Contact handle must be provided when requesting a media "
               "channel");
           goto error;
@@ -918,7 +918,7 @@ gabble_media_factory_create_call (TpChannelManager *manager,
 
   if (!initial_audio && !initial_video)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Call channel must contain at least "
           "one of InitialAudio or InitialVideo");
       goto error;

@@ -632,12 +632,12 @@ gabble_im_channel_set_chat_state (TpSvcChannelInterfaceChatState *iface,
 
   if (state >= NUM_TP_CHANNEL_CHAT_STATES)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "invalid state: %u", state);
     }
   else if (state == TP_CHANNEL_CHAT_STATE_GONE)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "you may not explicitly set the Gone state");
     }
   /* Only send anything to the peer if we actually know they support chat

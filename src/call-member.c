@@ -465,7 +465,7 @@ gabble_call_member_create_content (GabbleCallMember *self,
 
   if (content_ns == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
         "Content type %d not available for this resource", mtype);
       return NULL;
     }
@@ -549,7 +549,7 @@ gabble_call_member_start_session (GabbleCallMember *self,
           target, audio_name != NULL, video_name != NULL,
           &transport, &dialect, &resource))
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_CAPABLE,
         "member does not have the desired audio/video capabilities");
       return FALSE;
     }

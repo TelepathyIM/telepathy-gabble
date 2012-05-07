@@ -704,7 +704,7 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
 
   if (require_new)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Already chatting with contact #%u in another channel", handle);
       goto error;
     }

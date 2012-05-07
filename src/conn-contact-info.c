@@ -484,7 +484,7 @@ _return_from_request_contact_info (WockyNode *vcard_node,
 
   if (NULL == vcard_node)
     {
-      GError tp_error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError tp_error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           vcard_error->message };
 
       if (vcard_error->domain == WOCKY_XMPP_ERROR)
@@ -650,7 +650,7 @@ conn_contact_info_new_edit (const VCardField *field,
 
   if (field->types[0] == NULL && field_params[0] != NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "%s vCard field expects no type-parameters", field->xmpp_name);
       gabble_vcard_manager_edit_info_free (edit_info);
       return NULL;
@@ -681,7 +681,7 @@ conn_contact_info_new_edit (const VCardField *field,
 
       if (!used)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "%s vCard field does not support type-parameter %s",
               field->xmpp_name, *p);
           gabble_vcard_manager_edit_info_free (edit_info);
@@ -703,7 +703,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
 
   if (vcard_node == NULL)
     {
-      GError tp_error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError tp_error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           vcard_error->message };
 
       if (vcard_error->domain == WOCKY_XMPP_ERROR)
@@ -763,7 +763,7 @@ gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
 
       if (field == NULL)
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "unknown vCard field from D-Bus: %s", field_name);
           goto finally;
         }
@@ -771,7 +771,7 @@ gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
       if (!gabble_vcard_manager_can_use_vcard_field (self->vcard_manager,
             field->xmpp_name))
         {
-          g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "%s vCard field is not supported by this server",
               field->xmpp_name);
           goto finally;
@@ -784,7 +784,7 @@ gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
             {
               if (n_field_values != 1)
                 {
-                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                       "%s vCard field expects one value but got %u",
                       field->xmpp_name, n_field_values);
                   goto finally;
@@ -808,7 +808,7 @@ gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
 
               if (n_field_values != n_elements)
                 {
-                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                       "%s vCard field expects %u values but got %u",
                       field->xmpp_name, n_elements, n_field_values);
                   goto finally;
@@ -834,7 +834,7 @@ gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
 
               if (n_field_values == 0)
                 {
-                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                       "ORG vCard field expects at least one value but got 0");
                   goto finally;
                 }
@@ -865,7 +865,7 @@ gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
 
               if (n_field_values != 1)
                 {
-                  g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+                  g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                       "%s vCard field expects one value but got %u",
                       field->xmpp_name, n_field_values);
                   goto finally;

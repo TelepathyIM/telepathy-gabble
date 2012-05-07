@@ -3273,7 +3273,7 @@ gabble_roster_set_group_members_async (TpBaseContactList *base,
   /* You can't add people to an invalid group. */
   if (G_UNLIKELY (group_handle == 0))
     {
-      g_simple_async_result_set_error (result, TP_ERRORS,
+      g_simple_async_result_set_error (result, TP_ERROR,
           TP_ERROR_INVALID_ARGUMENT, "Invalid group name: %s", group);
       goto finally;
     }
@@ -3327,7 +3327,7 @@ gabble_roster_add_to_group_async (TpBaseContactList *base,
   /* You can't add people to an invalid group. */
   if (G_UNLIKELY (group_handle == 0))
     {
-      g_simple_async_result_set_error (result, TP_ERRORS,
+      g_simple_async_result_set_error (result, TP_ERROR,
           TP_ERROR_INVALID_ARGUMENT, "Invalid group name: %s", group);
       goto finally;
     }

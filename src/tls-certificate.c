@@ -266,7 +266,7 @@ gabble_tls_certificate_accept (TpSvcAuthenticationTLSCertificate *cert,
   if (self->priv->cert_state != TP_TLS_CERTIFICATE_STATE_PENDING)
     {
       GError error =
-        { TP_ERRORS,
+        { TP_ERROR,
           TP_ERROR_INVALID_ARGUMENT,
           "Calling Accept() on a certificate with state != PENDING "
           "doesn't make sense."
@@ -295,7 +295,7 @@ gabble_tls_certificate_reject (TpSvcAuthenticationTLSCertificate *cert,
 
   if (rejections->len < 1)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Calling Reject() with a zero-length rejection list." };
 
       dbus_g_method_return_error (context, &error);
@@ -305,7 +305,7 @@ gabble_tls_certificate_reject (TpSvcAuthenticationTLSCertificate *cert,
   if (self->priv->cert_state != TP_TLS_CERTIFICATE_STATE_PENDING)
     {
       GError error =
-        { TP_ERRORS,
+        { TP_ERROR,
           TP_ERROR_INVALID_ARGUMENT,
           "Calling Reject() on a certificate with state != PENDING "
           "doesn't make sense."

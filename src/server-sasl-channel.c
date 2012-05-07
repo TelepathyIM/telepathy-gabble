@@ -470,7 +470,7 @@ gabble_server_sasl_channel_raise (DBusGMethodInvocation *context,
   GError *error = NULL;
 
   va_start (ap, message);
-  error = g_error_new_valist (TP_ERRORS, code, message, ap);
+  error = g_error_new_valist (TP_ERROR, code, message, ap);
   va_end (ap);
 
   dbus_g_method_return_error (context, error);
@@ -924,7 +924,7 @@ gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
 
   gabble_set_tp_conn_error_from_wocky (error, TP_CONNECTION_STATUS_CONNECTING,
       &conn_reason, &tp_error);
-  g_assert (tp_error->domain == TP_ERRORS);
+  g_assert (tp_error->domain == TP_ERROR);
 
   DEBUG ("auth failed: %s", tp_error->message);
   change_current_state (self, TP_SASL_STATUS_SERVER_FAILED,

@@ -434,11 +434,11 @@ contact_is_media_capable (GabbleCallChannel *self,
     *wait_ret = wait;
 
   if (presence == NULL)
-    g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+    g_set_error (error, TP_ERROR, TP_ERROR_OFFLINE,
         "contact %d (%s) has no presence available", handle,
         tp_handle_inspect (contact_handles, handle));
   else
-    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+    g_set_error (error, TP_ERROR, TP_ERROR_NOT_CAPABLE,
         "contact %d (%s) doesn't have sufficient media caps", handle,
         tp_handle_inspect (contact_handles, handle));
 
@@ -666,7 +666,7 @@ call_channel_add_content (TpBaseCallChannel *base,
 
   if (initial_direction == TP_MEDIA_STREAM_DIRECTION_NONE)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Jingle can not do contents with direction = NONE");
       return NULL;
     }

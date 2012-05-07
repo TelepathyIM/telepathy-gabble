@@ -344,7 +344,7 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
       klass = g_type_class_ref (WOCKY_TYPE_XMPP_ERROR);
       name = get_error_prefix (klass, wocky_error->code,
           "unknown WockyXmppError code");
-      g_set_error (error, TP_ERRORS,
+      g_set_error (error, TP_ERROR,
           map_wocky_xmpp_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
@@ -356,7 +356,7 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
           "unknown GIOError code");
       /* FIXME: is it safe to assume that every GIOError we encounter from
        * Wocky is a NetworkError? */
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      g_set_error (error, TP_ERROR, TP_ERROR_NETWORK_ERROR,
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
 
@@ -368,7 +368,7 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
       klass = g_type_class_ref (WOCKY_TYPE_AUTH_ERROR);
       name = get_error_prefix (klass, wocky_error->code,
           "unknown WockyAuthError code");
-      g_set_error (error, TP_ERRORS,
+      g_set_error (error, TP_ERROR,
           map_wocky_auth_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
@@ -378,7 +378,7 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
       klass = g_type_class_ref (WOCKY_TYPE_CONNECTOR_ERROR);
       name = get_error_prefix (klass, wocky_error->code,
           "unknown WockyConnectorError code");
-      g_set_error (error, TP_ERRORS,
+      g_set_error (error, TP_ERROR,
           map_wocky_connector_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
@@ -388,7 +388,7 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
       klass = g_type_class_ref (WOCKY_TYPE_XMPP_STREAM_ERROR);
       name = get_error_prefix (klass, wocky_error->code,
           "unknown WockyXmppStreamError code");
-      g_set_error (error, TP_ERRORS,
+      g_set_error (error, TP_ERROR,
           map_wocky_stream_error (wocky_error, previous_status, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
@@ -398,7 +398,7 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
       klass = g_type_class_ref (WOCKY_TYPE_TLS_CERT_STATUS);
       name = get_error_prefix (klass, wocky_error->code,
           "unknown WockyTLSCertStatus code");
-      g_set_error (error, TP_ERRORS,
+      g_set_error (error, TP_ERROR,
           map_wocky_tls_cert_error (wocky_error, conn_reason),
           "%s (#%d): %s", name, wocky_error->code, wocky_error->message);
       g_type_class_unref (klass);
@@ -406,14 +406,14 @@ gabble_set_tp_conn_error_from_wocky (const GError *wocky_error,
   else if (wocky_error->domain == WOCKY_XMPP_CONNECTION_ERROR)
     {
       /* FIXME: there's no GEnum for WockyXmppConnectionError. */
-      g_set_error_literal (error, TP_ERRORS,
+      g_set_error_literal (error, TP_ERROR,
           map_connection_error (wocky_error),
           wocky_error->message);
     }
   else
     {
       /* best we can do... */
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "%s (#%d): %s", g_quark_to_string (wocky_error->domain),
           wocky_error->code, wocky_error->message);
     }

@@ -129,7 +129,7 @@ check_pep (GabbleConnection *conn,
 {
   if (!(conn->features & GABBLE_CONNECTION_FEATURES_PEP))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Server does not support PEP" };
 
       DEBUG ("%s", error.message);
@@ -277,7 +277,7 @@ get_properties_reply_cb (GObject *source,
       NULL, &error);
   if (reply_msg == NULL)
     {
-      GError err = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError err = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property request to server" };
 
       DEBUG ("Query failed: %s", error->message);
@@ -379,7 +379,7 @@ transmit_properties (GabbleConnection *conn,
   if (!_gabble_connection_send_with_reply (conn, msg,
         set_properties_reply_cb, NULL, context, NULL))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property change request to server" };
 
       DEBUG ("%s", error.message);
@@ -824,7 +824,7 @@ get_activities_reply_cb (GObject *source,
       NULL, &err);
   if (reply_msg == NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property request to server" };
 
       DEBUG ("Query failed: %s", err->message);
@@ -838,7 +838,7 @@ get_activities_reply_cb (GObject *source,
       wocky_stanza_get_top_node (reply_msg), "from");
   if (from == NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Error in pubsub reply: no sender" };
 
       dbus_g_method_return_error (ctx->context, &error);
@@ -848,7 +848,7 @@ get_activities_reply_cb (GObject *source,
   from_handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
   if (from_handle == 0)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Error in pubsub reply: unknown sender" };
 
       dbus_g_method_return_error (ctx->context, &error);
@@ -965,7 +965,7 @@ upload_activities_pep (GabbleConnection *conn,
 
   if (!ret)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      g_set_error (error, TP_ERROR, TP_ERROR_NETWORK_ERROR,
           "Failed to send property change request to server: %s", e->message);
       g_error_free (e);
     }
@@ -1012,7 +1012,7 @@ add_activity (GabbleConnection *self,
 
   if (old_activities != NULL && tp_handle_set_is_member (old_activities, channel))
     {
-      *error = g_error_new (TP_ERRORS,
+      *error = g_error_new (TP_ERROR,
           TP_ERROR_INVALID_ARGUMENT,
           "Can't set twice the same activity: %s", id);
 
@@ -1109,7 +1109,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
         {
           if (tp_handle_set_is_member (activities_set, channel))
             {
-              error = g_error_new (TP_ERRORS,
+              error = g_error_new (TP_ERROR,
                   TP_ERROR_INVALID_ARGUMENT,
                   "Can't set twice the same activity: %s", room);
 
@@ -1161,7 +1161,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
 
   if (!upload_activities_pep (conn, set_activities_reply_cb, context, NULL))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property request to server" };
 
       dbus_g_method_return_error (context, &error);
@@ -1336,7 +1336,7 @@ get_current_activity_reply_cb (GObject *source,
       NULL, &error);
   if (reply_msg == NULL)
     {
-      GError err = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError err = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property request to server" };
 
       DEBUG ("Query failed: %s", error->message);
@@ -1501,7 +1501,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
 
       if (!activity_in_own_set (conn, room))
         {
-          GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
             "Can't set an activity as current if you're not announcing it" };
 
           dbus_g_method_return_error (context, &error);
@@ -1522,7 +1522,7 @@ olpc_buddy_info_set_current_activity (GabbleSvcOLPCBuddyInfo *iface,
   if (!_gabble_connection_send_with_reply (conn, msg,
         set_current_activity_reply_cb, NULL, context, NULL))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property change request to server" };
 
       dbus_g_method_return_error (context, &error);
@@ -1634,7 +1634,7 @@ olpc_buddy_info_add_activity (GabbleSvcOLPCBuddyInfo *iface,
 
   if (!upload_activities_pep (self, add_activity_reply_cb, context, NULL))
     {
-      error = g_error_new (TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      error = g_error_new (TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property request to server");
 
       dbus_g_method_return_error (context, error);
@@ -1697,7 +1697,7 @@ upload_activity_properties_pep (GabbleConnection *conn,
 
   if (!ret)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      g_set_error (error, TP_ERROR, TP_ERROR_NETWORK_ERROR,
           "Failed to send property change request to server: %s", e->message);
       g_error_free (e);
     }
@@ -1853,7 +1853,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
 
   if (!activity_in_own_set (conn, jid))
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Can't set properties on an activity if you're not announcing it" };
 
       dbus_g_method_return_error (context, &error);
@@ -1870,7 +1870,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
     }
   if (muc_channel == NULL || state != MUC_STATE_JOINED)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Can't set properties on an activity if you're not in it" };
 
       dbus_g_method_return_error (context, &error);
@@ -1898,7 +1898,7 @@ olpc_activity_properties_set_properties (GabbleSvcOLPCActivityProperties *iface,
     wocky_stanza_get_top_node (msg), FALSE);
   if (!_gabble_connection_send (conn, msg, NULL))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
         "Failed to send property change notification to chatroom" };
 
       g_object_unref (msg);
@@ -3046,7 +3046,7 @@ olpc_activity_properties_get_activity (GabbleSvcOLPCActivityProperties *iface,
   activity = find_activity_by_id (self, activity_id);
   if (activity == NULL)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Activity unknown: %s", activity_id);
       goto error;
     }

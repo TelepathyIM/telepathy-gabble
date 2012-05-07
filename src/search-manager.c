@@ -149,7 +149,7 @@ disco_done_cb (GabbleDisco *disco,
       else
         {
           tp_channel_manager_emit_request_failed (self, request_token,
-              TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "No Server has been specified and no server has been "
               "discovered on the connection");
         }
@@ -408,7 +408,7 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
     {
       if (domain == WOCKY_XMPP_ERROR)
         {
-          domain = TP_ERRORS;
+          domain = TP_ERROR;
 
           switch (code)
             {
@@ -424,7 +424,7 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
         }
       else
         {
-          g_assert (domain == TP_ERRORS);
+          g_assert (domain == TP_ERROR);
         }
 
       tp_channel_manager_emit_request_failed (ctx->self,
@@ -490,7 +490,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   else if (!wocky_decode_jid (server, NULL, NULL, NULL))
     {
       /* On the other hand, if the JID's invalid, blow up. */
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Specified server '%s' is not a valid JID", server);
       goto error;
     }
@@ -501,7 +501,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
         {
           if (self->priv->disco_done)
             {
-              error = g_error_new (TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              error = g_error_new (TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                   "No Server has been specified and no server has been "
                   "discovered on the connection");
               goto error;

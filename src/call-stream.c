@@ -584,7 +584,7 @@ gabble_call_stream_add_candidates (TpBaseMediaCallStream *stream,
 
   if (accepted_candidates->len == 0 && candidates->len != 0)
     {
-      g_set_error_literal (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error_literal (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "All candidates had the wrong Type");
       tp_clear_pointer (&accepted_candidates, g_ptr_array_unref);
     }

@@ -95,7 +95,7 @@ gabble_console_plugin_create_sidecar_async (
     }
   else
     {
-      g_simple_async_result_set_error (result, TP_ERRORS,
+      g_simple_async_result_set_error (result, TP_ERROR,
           TP_ERROR_NOT_IMPLEMENTED, "'%s' not implemented", sidecar_interface);
     }
 
@@ -492,7 +492,7 @@ get_iq_type (const gchar *type_str,
       return TRUE;
     }
 
-  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+  g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
       "Type must be 'get' or 'set', not '%s'", type_str);
   return FALSE;
 }
@@ -510,7 +510,7 @@ validate_jid (const gchar **to,
   if (wocky_decode_jid (*to, NULL, NULL, NULL))
     return TRUE;
 
-  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+  g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
       "'%s' is not a valid (or empty) JID", *to);
   return FALSE;
 }
@@ -541,7 +541,7 @@ parse_me_a_stanza (
 
   if (stanza == NULL)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Incomplete stanza! Bad person.");
       return FALSE;
     }
@@ -620,13 +620,13 @@ stanza_looks_coherent (
 
   if (t == WOCKY_STANZA_TYPE_UNKNOWN)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "I don't know what a <%s/> is", top_node->name);
       return FALSE;
     }
   else if (st == WOCKY_STANZA_SUB_TYPE_UNKNOWN)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "I don't know what type='%s' means",
           wocky_node_get_attribute (top_node, "type"));
       return FALSE;

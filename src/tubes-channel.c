@@ -1714,7 +1714,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
     {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+      GError e = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
 
       dbus_g_method_return_error (context, &e);
       return;
@@ -1727,7 +1727,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   if (type != TP_TUBE_TYPE_DBUS)
     {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError e = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a D-Bus tube" };
 
       dbus_g_method_return_error (context, &e);
@@ -1736,7 +1736,7 @@ gabble_tubes_channel_accept_d_bus_tube (TpSvcChannelTypeTubes *iface,
 
   if (state != TP_TUBE_CHANNEL_STATE_LOCAL_PENDING)
     {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError e = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the local pending state" };
 
       dbus_g_method_return_error (context, &e);
@@ -1784,7 +1784,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
     {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+      GError e = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
 
       dbus_g_method_return_error (context, &e);
       return;
@@ -1797,7 +1797,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
 
   if (type != TP_TUBE_TYPE_STREAM)
     {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError e = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a stream tube" };
 
       dbus_g_method_return_error (context, &e);
@@ -1810,7 +1810,7 @@ gabble_tubes_channel_accept_stream_tube (TpSvcChannelTypeTubes *iface,
       address_type != TP_SOCKET_ADDRESS_TYPE_IPV4 &&
       address_type != TP_SOCKET_ADDRESS_TYPE_IPV6)
     {
-      GError e = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError e = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Address type not implemented" };
 
       dbus_g_method_return_error (context, &e);
@@ -1860,7 +1860,7 @@ gabble_tubes_channel_close_tube (TpSvcChannelTypeTubes *iface,
 
   if (tube == NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
 
       dbus_g_method_return_error (context, &error);
       return;
@@ -1897,7 +1897,7 @@ gabble_tubes_channel_get_d_bus_tube_address (TpSvcChannelTypeTubes *iface,
 
   if (tube == NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
 
       dbus_g_method_return_error (context, &error);
       return;
@@ -1910,7 +1910,7 @@ gabble_tubes_channel_get_d_bus_tube_address (TpSvcChannelTypeTubes *iface,
 
   if (type != TP_TUBE_TYPE_DBUS)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a D-Bus tube" };
 
       dbus_g_method_return_error (context, &error);
@@ -1967,7 +1967,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
 
   if (tube == NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
 
       dbus_g_method_return_error (context, &error);
       return;
@@ -1981,7 +1981,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
   if (type != TP_TUBE_TYPE_DBUS ||
       priv->handle_type != TP_HANDLE_TYPE_ROOM)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a Muc D-Bus tube" };
 
       dbus_g_method_return_error (context, &error);
@@ -1990,7 +1990,7 @@ gabble_tubes_channel_get_d_bus_names (TpSvcChannelTypeTubes *iface,
 
   if (state != TP_TUBE_CHANNEL_STATE_OPEN)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Tube is not open" };
 
       dbus_g_method_return_error (context, &error);
@@ -2033,7 +2033,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (id));
   if (tube == NULL)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT, "Unknown tube" };
 
       dbus_g_method_return_error (context, &error);
       return;
@@ -2046,7 +2046,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
 
   if (type != TP_TUBE_TYPE_STREAM)
     {
-      GError error = { TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not a Stream tube" };
 
       dbus_g_method_return_error (context, &error);
@@ -2055,7 +2055,7 @@ gabble_tubes_channel_get_stream_tube_socket_address (TpSvcChannelTypeTubes *ifac
 
   if (state != TP_TUBE_CHANNEL_STATE_OPEN)
     {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Tube is not open" };
 
       dbus_g_method_return_error (context, &error);

@@ -1100,7 +1100,7 @@ get_existing_privacy_lists_cb (GabbleConnection *conn,
   else if (query_node == NULL)
     {
       g_simple_async_result_set_error (result,
-          TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+          TP_ERROR, TP_ERROR_NETWORK_ERROR,
           "no <query/> node in 'list privacy lists' reply");
     }
   else
@@ -1764,7 +1764,7 @@ set_own_status_cb (GObject *obj,
        * with the check enabled). Assumes PresenceId value ordering. */
       if (i < GABBLE_PRESENCE_HIDDEN)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "Status '%s' can not be requested in this connection",
                 gabble_statuses[i].name);
           retval = FALSE;
@@ -1782,7 +1782,7 @@ set_own_status_cb (GObject *obj,
           if (!G_VALUE_HOLDS_STRING (message))
             {
               DEBUG ("got a status message which was not a string");
-              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                   "Status argument 'message' requires a string");
               retval = FALSE;
               goto OUT;
@@ -1795,7 +1795,7 @@ set_own_status_cb (GObject *obj,
           if (!G_VALUE_HOLDS_INT (priority))
             {
               DEBUG ("got a priority value which was not a signed integer");
-              g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+              g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
                    "Status argument 'priority' requires a signed integer");
               retval = FALSE;
               goto OUT;

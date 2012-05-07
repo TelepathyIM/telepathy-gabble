@@ -293,7 +293,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   if (self->priv->connection == NULL)
     {
       DEBUG ("connection already went away; failing immediately");
-      g_simple_async_result_set_error (result, TP_ERRORS, TP_ERROR_CANCELLED,
+      g_simple_async_result_set_error (result, TP_ERROR, TP_ERROR_CANCELLED,
           "The Telepathy connection has already been disconnected");
       g_simple_async_result_complete_in_idle (result);
       g_object_unref (result);

@@ -263,7 +263,7 @@ add_to_geoloc_node (const gchar *tp_name,
     {
       if (G_VALUE_TYPE (value) != G_TYPE_STRING)
         {
-          g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (err, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "expecting string for language value, but got %s",
                   G_VALUE_TYPE_NAME (value));
           return FALSE;
@@ -286,7 +286,7 @@ add_to_geoloc_node (const gchar *tp_name,
 
   if (G_VALUE_TYPE (value) != mapping->type)
     {
-      g_set_error (err, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (err, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "'%s' is supposed to be of type %s but is %s",
           (const char *) tp_name, g_type_name (mapping->type),
           G_VALUE_TYPE_NAME (value));
@@ -364,7 +364,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
 
   if (!(conn->features & GABBLE_CONNECTION_FEATURES_PEP))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      GError error = { TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Server does not support PEP, cannot publish geolocation" };
 
       dbus_g_method_return_error (context, &error);
@@ -395,7 +395,7 @@ location_set_location (TpSvcConnectionInterfaceLocation *iface,
   if (!_gabble_connection_send_with_reply (conn, msg, set_location_sent_cb,
         G_OBJECT (conn), context, NULL))
     {
-      GError error = { TP_ERRORS, TP_ERROR_NETWORK_ERROR,
+      GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
           "Failed to send msg" };
 
       dbus_g_method_return_error (context, &error);
@@ -511,7 +511,7 @@ conn_location_properties_setter (GObject *object,
   if (access_control_type !=
       TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Access control type not implemented");
       return FALSE;
     }

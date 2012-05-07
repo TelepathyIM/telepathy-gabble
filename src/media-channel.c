@@ -1279,7 +1279,7 @@ _find_stream_by_id (GabbleMediaChannel *chan,
         return stream;
     }
 
-  g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+  g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
       "given stream id %u does not exist", stream_id);
   return NULL;
 }
@@ -1331,7 +1331,7 @@ gabble_media_channel_remove_streams (TpSvcChannelTypeStreamedMedia *iface,
 
   if (!gabble_jingle_session_can_modify_contents (priv->session))
     {
-      GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+      GError e = { TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Streams can't be removed from Google Talk calls" };
       dbus_g_method_return_error (context, &e);
       return;
@@ -1426,7 +1426,7 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
 
   if (stream_direction > TP_MEDIA_STREAM_DIRECTION_BIDIRECTIONAL)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+      g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "given stream direction %u is not valid", stream_direction);
       dbus_g_method_return_error (context, error);
       g_error_free (error);
@@ -1464,7 +1464,7 @@ gabble_media_channel_request_stream_direction (TpSvcChannelTypeStreamedMedia *if
         }
       else
         {
-          GError e = { TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          GError e = { TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
               "Stream direction can't be set to None in Google Talk calls" };
           DEBUG ("%s", e.message);
           dbus_g_method_return_error (context, &e);
@@ -1570,7 +1570,7 @@ pending_stream_request_maybe_fail (PendingStreamRequest *p,
     {
       if (content == p->contents[i])
         {
-          GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "A stream was removed before it could be fully set up" };
 
           /* return early */
@@ -1590,7 +1590,7 @@ pending_stream_request_free (gpointer data)
 
   if (p->context != NULL)
     {
-      GError e = { TP_ERRORS, TP_ERROR_CANCELLED,
+      GError e = { TP_ERROR, TP_ERROR_CANCELLED,
           "The session terminated before the requested streams could be added"
       };
 
@@ -1635,7 +1635,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
         }
       else
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "given media type %u is invalid", media_type);
           return FALSE;
         }
@@ -1654,7 +1654,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       /* is a google call... we have no other option */
       if (!gabble_jingle_session_can_modify_contents (priv->session))
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "Streams can't be added to ongoing Google Talk calls");
           return FALSE;
         }
@@ -1665,7 +1665,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
           peer_resource,
           want_audio ? JINGLE_MEDIA_TYPE_AUDIO : JINGLE_MEDIA_TYPE_VIDEO))
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "member does not have the desired audio/video capabilities");
 
           return FALSE;
@@ -1699,7 +1699,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
       if (!jingle_pick_best_resource (priv->conn, peer,
           want_audio, want_video, &transport_ns, &dialect, &peer_resource))
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_CAPABLE,
               "member does not have the desired audio/video capabilities");
           return FALSE;
         }
@@ -1729,7 +1729,7 @@ _gabble_media_channel_request_contents (GabbleMediaChannel *chan,
   /* check it's not a ridiculous number of streams */
   if ((priv->streams->len + media_types->len) > MAX_STREAMS)
     {
-      g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "I think that's quite enough streams already");
       return FALSE;
     }
@@ -1790,7 +1790,7 @@ destroy_request (struct _delayed_request_streams_ctx *ctx,
   if (ctx->context != NULL)
     {
       GError *error = NULL;
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "cannot add streams: peer has insufficient caps");
       ctx->failed_cb (ctx->context, error);
       g_error_free (error);
@@ -1917,7 +1917,7 @@ media_channel_request_streams (GabbleMediaChannel *self,
 
   if (priv->peer != 0 && priv->peer != contact_handle)
     {
-      g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "cannot add streams for %u: this channel's peer is %u",
           contact_handle, priv->peer);
       goto error;
@@ -2080,11 +2080,11 @@ contact_is_media_capable (GabbleMediaChannel *chan,
     *wait_ret = wait;
 
   if (presence == NULL)
-    g_set_error (error, TP_ERRORS, TP_ERROR_OFFLINE,
+    g_set_error (error, TP_ERROR, TP_ERROR_OFFLINE,
         "contact %d (%s) has no presence available", peer,
         tp_handle_inspect (contact_handles, peer));
   else
-    g_set_error (error, TP_ERRORS, TP_ERROR_NOT_CAPABLE,
+    g_set_error (error, TP_ERROR, TP_ERROR_NOT_CAPABLE,
         "contact %d (%s) doesn't have sufficient media caps", peer,
         tp_handle_inspect (contact_handles, peer));
 
@@ -2113,7 +2113,7 @@ gabble_media_channel_add_member (GObject *obj,
        */
       if (priv->peer != 0 && priv->peer != handle)
         {
-          g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+          g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "handle %u cannot be added: this channel's peer is %u",
               handle, priv->peer);
           return FALSE;
@@ -2160,7 +2160,7 @@ gabble_media_channel_add_member (GObject *obj,
           /* is the call on hold? */
           if (priv->hold_state != TP_LOCAL_HOLD_STATE_UNHELD)
             {
-              g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+              g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
                   "Can't answer a call while it's on hold");
               return FALSE;
             }
@@ -2182,7 +2182,7 @@ gabble_media_channel_add_member (GObject *obj,
         }
     }
 
-  g_set_error (error, TP_ERRORS, TP_ERROR_NOT_AVAILABLE,
+  g_set_error (error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
       "handle %u cannot be added in the current state", handle);
   return FALSE;
 }
@@ -2233,7 +2233,7 @@ gabble_media_channel_remove_member (GObject *obj,
           jingle_reason = JINGLE_REASON_TIMEOUT;
           break;
         default:
-          g_set_error (error, TP_ERRORS, TP_ERROR_INVALID_ARGUMENT,
+          g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "%u doesn't make sense as a reason to end a call", reason);
           g_object_unref (chan);
           return FALSE;
@@ -2966,7 +2966,7 @@ gabble_media_channel_ready (TpSvcMediaSessionHandler *iface,
        * error message describes the only legitimate situation in which this
        * could arise.
        */
-      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "call has already ended" };
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE, "call has already ended" };
 
       DEBUG ("no session, returning an error.");
       dbus_g_method_return_error (context, &e);
@@ -3013,7 +3013,7 @@ gabble_media_channel_error (TpSvcMediaSessionHandler *iface,
        * error message describes the only legitimate situation in which this
        * could arise.
        */
-      GError e = { TP_ERRORS, TP_ERROR_NOT_AVAILABLE, "call has already ended" };
+      GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE, "call has already ended" };
 
       DEBUG ("no session, returning an error.");
       dbus_g_method_return_error (context, &e);

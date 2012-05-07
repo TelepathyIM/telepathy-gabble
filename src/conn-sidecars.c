@@ -155,7 +155,7 @@ create_sidecar_cb (
         {
           /* TODO: maybe this lives in the loader? It knows what the plugin is
            * called. */
-          g_set_error (&error, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+          g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
               "A buggy plugin created a %s sidecar when asked to create %s",
               actual_iface, ctx->sidecar_iface);
         }
@@ -208,7 +208,7 @@ gabble_connection_ensure_sidecar (
 
   if (base_conn->status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
-      GError e = { TP_ERRORS, TP_ERROR_DISCONNECTED,
+      GError e = { TP_ERROR, TP_ERROR_DISCONNECTED,
           "This connection has already disconnected" };
 
       DEBUG ("already disconnected, declining request for %s", sidecar_iface);
@@ -218,7 +218,7 @@ gabble_connection_ensure_sidecar (
 
   if (!tp_dbus_check_valid_interface_name (sidecar_iface, &error))
     {
-      error->domain = TP_ERRORS;
+      error->domain = TP_ERROR;
       error->code = TP_ERROR_INVALID_ARGUMENT;
       DEBUG ("%s is malformed: %s", sidecar_iface, error->message);
       dbus_g_method_return_error (context, error);
@@ -303,7 +303,7 @@ sidecars_conn_status_changed_cb (
         {
           const gchar *sidecar_iface = key;
           GList *contexts = value;
-          GError *error = g_error_new (TP_ERRORS, TP_ERROR_CANCELLED,
+          GError *error = g_error_new (TP_ERROR, TP_ERROR_CANCELLED,
               "Disconnected before %s could be created", sidecar_iface);
 
           DEBUG ("failing all %u requests for %s", g_list_length (contexts),

@@ -108,17 +108,17 @@ gabble_plugin_create_sidecar_async (
 
   if (!gabble_plugin_implements_sidecar (plugin, sidecar_interface))
     g_simple_async_report_error_in_idle (G_OBJECT (plugin), callback,
-        user_data, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+        user_data, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
         "Gabble is buggy: '%s' doesn't implement sidecar %s",
         iface->name, sidecar_interface);
   else if (iface->create_sidecar_async == NULL)
     g_simple_async_report_error_in_idle (G_OBJECT (plugin), callback,
-        user_data, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+        user_data, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
         "'%s' is buggy: it claims to implement %s, but does not implement "
         "create_sidecar_async", iface->name, sidecar_interface);
   else if (iface->create_sidecar_finish == NULL)
     g_simple_async_report_error_in_idle (G_OBJECT (plugin), callback,
-        user_data, TP_ERRORS, TP_ERROR_NOT_IMPLEMENTED,
+        user_data, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
         "'%s' is buggy: does not imlement create_sidecar_finish",
         iface->name);
   else

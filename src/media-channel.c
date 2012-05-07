@@ -329,7 +329,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   GabbleMediaChannelPrivate *priv;
   TpBaseConnection *conn;
   TpDBusDaemon *bus;
-  TpIntSet *set;
+  TpIntset *set;
   TpHandleRepoIface *contact_handles;
   GabbleJingleInfo *ji;
   const gchar *relay_token;
@@ -2100,7 +2100,7 @@ gabble_media_channel_add_member (GObject *obj,
   GabbleMediaChannel *chan = GABBLE_MEDIA_CHANNEL (obj);
   GabbleMediaChannelPrivate *priv = chan->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (obj);
-  TpIntSet *set;
+  TpIntset *set;
 
   /* did we create this channel? */
   if (priv->creator == mixin->self_handle)
@@ -2358,7 +2358,7 @@ session_terminated_cb (GabbleJingleSession *session,
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   guint terminator;
   JingleState state;
-  TpIntSet *set;
+  TpIntset *set;
 
   DEBUG ("called");
 
@@ -2445,7 +2445,7 @@ session_state_changed_cb (GabbleJingleSession *session,
   GabbleMediaChannelPrivate *priv = channel->priv;
   TpGroupMixin *mixin = TP_GROUP_MIXIN (channel);
   JingleState state;
-  TpIntSet *set;
+  TpIntset *set;
 
   DEBUG ("called");
 

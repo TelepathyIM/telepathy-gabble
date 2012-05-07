@@ -1222,7 +1222,7 @@ handle_text_channel_request (GabbleMucFactory *self,
   TpBaseConnection *conn = TP_BASE_CONNECTION (priv->conn);
   GabbleMucChannel *text_chan;
   TpHandleSet *handles;
-  TpIntSet *continue_handles;
+  TpIntset *continue_handles;
   guint i;
   gboolean ret = TRUE;
 

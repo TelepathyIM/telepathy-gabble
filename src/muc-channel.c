@@ -492,8 +492,8 @@ gabble_muc_channel_constructed (GObject *obj)
   if (priv->invited)
     {
       /* invited: add ourself to local pending and the inviter to members */
-      TpIntSet *members = tp_intset_new_containing (initiator);
-      TpIntSet *pending = tp_intset_new_containing (self_handle);
+      TpIntset *members = tp_intset_new_containing (initiator);
+      TpIntset *pending = tp_intset_new_containing (self_handle);
 
       tp_group_mixin_change_members (obj, priv->invitation_message,
           members, NULL, pending, NULL,
@@ -1471,7 +1471,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
   GabbleMucChannelPrivate *priv = chan->priv;
   GabbleConnection *conn = GABBLE_CONNECTION (
       tp_base_channel_get_connection (base));
-  TpIntSet *set;
+  TpIntset *set;
   GArray *handles;
   GError error = { TP_ERROR, TP_ERROR_CANCELLED,
       "Muc channel closed below us" };
@@ -1553,7 +1553,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       tp_base_channel_get_connection (base), TP_HANDLE_TYPE_CONTACT);
   TpHandle self_handle;
-  TpIntSet *add_rp, *remove_rp;
+  TpIntset *add_rp, *remove_rp;
   const gchar *from = wocky_stanza_get_from (stanza);
 
   /* If this is a nick conflict message with a resource in the JID, and the
@@ -1954,7 +1954,7 @@ handle_parted (GObject *source,
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles (tp_base_channel_get_connection (base),
         TP_HANDLE_TYPE_CONTACT);
-  TpIntSet *handles = NULL;
+  TpIntset *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
   const char *jid = wocky_muc_jid (wmuc);
@@ -2030,7 +2030,7 @@ handle_left (GObject *source,
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles (tp_base_channel_get_connection (base),
         TP_HANDLE_TYPE_CONTACT);
-  TpIntSet *handles = NULL;
+  TpIntset *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
 
@@ -2140,7 +2140,7 @@ handle_renamed (GObject *source,
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles (tp_base_channel_get_connection (base),
         TP_HANDLE_TYPE_CONTACT);
-  TpIntSet *old_self = tp_intset_new ();
+  TpIntset *old_self = tp_intset_new ();
   const gchar *me = wocky_muc_jid (wmuc);
   const gchar *me2 = wocky_muc_user (wmuc);
   TpHandle myself = tp_handle_ensure (contact_repo, me,
@@ -2931,7 +2931,7 @@ gabble_muc_channel_add_member (GObject *obj,
   if (handle == mixin->self_handle)
     {
       TpBaseConnection *conn = tp_base_channel_get_connection (base);
-      TpIntSet *set_remove_members, *set_remote_pending;
+      TpIntset *set_remove_members, *set_remote_pending;
       GArray *arr_members;
 
       /* are we already a member or in remote pending? */
@@ -3249,7 +3249,7 @@ request_config_form_reply_cb (
    * platforms, so fail at compile time if this is no longer the case
    */
 #if TP_NUM_BASE_ROOM_CONFIG_PROPERTIES > 32
-#error GabbleMUCChannel request_config_form_reply_cb needs porting to TpIntSet
+#error GabbleMUCChannel request_config_form_reply_cb needs porting to TpIntset
 #endif
 
   props_left = 0;

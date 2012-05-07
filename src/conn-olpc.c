@@ -575,7 +575,7 @@ static GPtrArray *
 get_buddy_activities (GabbleConnection *conn,
                       TpHandle buddy)
 {
-  TpIntSet *all;
+  TpIntset *all;
   gboolean free_all = FALSE;
   GPtrArray *activities = g_ptr_array_new ();
   TpHandleSet *invited_activities, *pep_activities;
@@ -612,18 +612,21 @@ get_buddy_activities (GabbleConnection *conn,
 
   if (all != NULL)
     {
-      TpIntSetIter iter = TP_INTSET_ITER_INIT (all);
+      TpIntsetFastIter iter;
+      guint element;
 
-      while (tp_intset_iter_next (&iter))
+      tp_intset_fast_iter_init (&iter, all);
+
+      while (tp_intset_fast_iter_next (&iter, &element))
         {
           GabbleOlpcActivity *activity = g_hash_table_lookup (
-              conn->olpc_activities_info, GUINT_TO_POINTER (iter.element));
+              conn->olpc_activities_info, GUINT_TO_POINTER (element));
           GValue gvalue = { 0 };
 
           g_assert (activity != NULL);
           if (activity->id == NULL)
             {
-              DEBUG ("... activity #%u has no ID, skipping", iter.element);
+              DEBUG ("... activity #%u has no ID, skipping", element);
               continue;
             }
 
@@ -938,13 +941,15 @@ upload_activities_pep (GabbleConnection *conn,
 
   if (my_activities != NULL)
     {
-      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
-            (my_activities));
+      TpIntsetFastIter iter;
+      guint element;
 
-      while (tp_intset_iter_next (&iter))
+      tp_intset_fast_iter_init (&iter, tp_handle_set_peek (my_activities));
+
+      while (tp_intset_fast_iter_next (&iter, &element))
         {
           GabbleOlpcActivity *activity = g_hash_table_lookup (
-              conn->olpc_activities_info, GUINT_TO_POINTER (iter.element));
+              conn->olpc_activities_info, GUINT_TO_POINTER (element));
           WockyNode *activity_node;
 
           g_assert (activity != NULL);
@@ -1680,13 +1685,15 @@ upload_activity_properties_pep (GabbleConnection *conn,
 
   if (my_activities != NULL)
     {
-      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
-          (my_activities));
+      TpIntsetFastIter iter;
+      guint element;
 
-      while (tp_intset_iter_next (&iter))
+      tp_intset_fast_iter_init (&iter, tp_handle_set_peek (my_activities));
+
+      while (tp_intset_fast_iter_next (&iter, &element))
         {
           GabbleOlpcActivity *activity = g_hash_table_lookup (
-              conn->olpc_activities_info, GUINT_TO_POINTER (iter.element));
+              conn->olpc_activities_info, GUINT_TO_POINTER (element));
 
           activity_info_contribute_properties (activity, publish, TRUE);
         }
@@ -1793,12 +1800,14 @@ refresh_invitations (GabbleConnection *conn,
 
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
-      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
-          (invitees));
+      TpIntsetFastIter iter;
+      guint element;
 
-      while (tp_intset_iter_next (&iter))
+      tp_intset_fast_iter_init (&iter, tp_handle_set_peek (invitees));
+
+      while (tp_intset_fast_iter_next (&iter, &element))
         {
-          const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+          const gchar *to = tp_handle_inspect (contact_repo, element);
           WockyStanza *msg = wocky_stanza_build (
               WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
               NULL, to, NULL);
@@ -2496,13 +2505,15 @@ revoke_invitations (GabbleConnection *conn,
 
   if (invitees != NULL && tp_handle_set_size (invitees) > 0)
     {
-      TpIntSetIter iter = TP_INTSET_ITER_INIT (tp_handle_set_peek
-          (invitees));
+      TpIntsetFastIter iter;
+      guint element;
+
+      tp_intset_fast_iter_init (&iter, tp_handle_set_peek (invitees));
 
       DEBUG ("revoke invitations for activity %s", activity->id);
-      while (tp_intset_iter_next (&iter))
+      while (tp_intset_fast_iter_next (&iter, &element))
         {
-          const gchar *to = tp_handle_inspect (contact_repo, iter.element);
+          const gchar *to = tp_handle_inspect (contact_repo, element);
           WockyStanza *msg = wocky_stanza_build (
               WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
               NULL, to,

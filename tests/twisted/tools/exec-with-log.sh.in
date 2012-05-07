@@ -14,6 +14,8 @@ WOCKY_CAPS_CACHE=:memory:
 export WOCKY_CAPS_CACHE
 WOCKY_CAPS_CACHE_SIZE=50
 export WOCKY_CAPS_CACHE_SIZE
+G_MESSAGES_DEBUG=all
+export G_MESSAGES_DEBUG
 ulimit -c unlimited
 exec >> gabble-testing.log 2>&1
 

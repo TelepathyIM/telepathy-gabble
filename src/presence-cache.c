@@ -147,7 +147,6 @@ disco_waiter_new (TpHandleRepoIface *repo,
   DiscoWaiter *waiter;
 
   g_assert (repo);
-  tp_handle_ref (repo, handle);
 
   waiter = g_slice_new0 (DiscoWaiter);
   waiter->repo = repo;
@@ -170,8 +169,6 @@ disco_waiter_free (DiscoWaiter *waiter)
 
   DEBUG ("freeing waiter %p for handle %u with serial %u", waiter,
       waiter->handle, waiter->serial);
-
-  tp_handle_unref (waiter->repo, waiter->handle);
 
   g_free (waiter->resource);
   g_free (waiter->hash);
@@ -1348,7 +1345,7 @@ _caps_disco_cb (GabbleDisco *disco,
   if (NULL == waiter_self)
     {
       DEBUG ("Ignoring non requested disco reply from %s", jid);
-      goto OUT;
+      return;
     }
 
   /* Now onto caps */
@@ -1490,10 +1487,6 @@ _caps_disco_cb (GabbleDisco *disco,
 
   gabble_capability_set_free (cap_set);
   g_ptr_array_unref (data_forms);
-
-OUT:
-  if (handle)
-    tp_handle_unref (contact_repo, handle);
 }
 
 static void

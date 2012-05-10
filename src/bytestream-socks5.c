@@ -232,8 +232,6 @@ gabble_bytestream_socks5_dispose (GObject *object)
   GabbleBytestreamSocks5 *self = GABBLE_BYTESTREAM_SOCKS5 (object);
   GabbleBytestreamSocks5Private *priv =
       GABBLE_BYTESTREAM_SOCKS5_GET_PRIVATE (self);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   if (priv->dispose_has_run)
     return;
@@ -241,8 +239,6 @@ gabble_bytestream_socks5_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   stop_timer (self);
-
-  tp_handle_unref (contact_repo, priv->peer_handle);
 
   if (priv->bytestream_state != GABBLE_BYTESTREAM_STATE_CLOSED)
     {
@@ -397,8 +393,6 @@ gabble_bytestream_socks5_constructor (GType type,
       TP_HANDLE_TYPE_CONTACT);
   room_repo = tp_base_connection_get_handles (base_conn,
       TP_HANDLE_TYPE_ROOM);
-
-  tp_handle_ref (contact_repo, priv->peer_handle);
 
   jid = tp_handle_inspect (contact_repo, priv->peer_handle);
 

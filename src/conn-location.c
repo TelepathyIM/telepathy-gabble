@@ -644,12 +644,9 @@ location_pep_node_changed (WockyPepService *pep,
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
-    goto out;
+    return;
 
   update_location_from_item (conn, handle, item_node);
-
-out:
-  tp_handle_unref (contact_repo, handle);
 }
 
 static void

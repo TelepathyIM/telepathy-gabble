@@ -415,7 +415,6 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
 
   /* transfer the room handle ref to signalled_rooms */
   tp_handle_set_add (priv->signalled_rooms, handle);
-  tp_handle_unref (room_handles, handle);
 
   g_value_init (&room, room_info_type);
   g_value_take_boxed (&room,

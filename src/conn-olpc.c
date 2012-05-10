@@ -495,7 +495,7 @@ olpc_buddy_props_pep_node_changed (WockyPepService *pep,
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
-    goto out;
+    return;
 
   node = search_for_child (
       wocky_stanza_get_top_node (stanza), "properties", NULL);
@@ -503,8 +503,6 @@ olpc_buddy_props_pep_node_changed (WockyPepService *pep,
   gabble_svc_olpc_buddy_info_emit_properties_changed (conn, handle,
       properties);
   g_hash_table_unref (properties);
-out:
-  tp_handle_unref (contact_repo, handle);
 }
 
 static void
@@ -710,7 +708,6 @@ extract_activities (GabbleConnection *conn,
               if (tp_handle_set_is_member (activities_set, room_handle))
                 {
                   NODE_DEBUG (node, "Room advertised twice, skipping");
-                  tp_handle_unref (room_repo, room_handle);
                   continue;
                 }
 
@@ -722,7 +719,6 @@ extract_activities (GabbleConnection *conn,
             }
           /* pass ownership to the activities_set */
           tp_handle_set_add (activities_set, room_handle);
-          tp_handle_unref (room_repo, room_handle);
 
           if (tp_strdiff (activity->id, act_id))
             {
@@ -1307,8 +1303,6 @@ extract_current_activity (GabbleConnection *conn,
           conn->olpc_pep_activities);
     }
 
-  tp_handle_unref (room_repo, room_handle);
-
   /* update current-activity cache */
   if (activity != NULL)
     {
@@ -1561,7 +1555,7 @@ olpc_current_act_pep_node_changed (WockyPepService *pep,
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
-    goto out;
+    return;
 
   node = search_for_child (wocky_stanza_get_top_node (stanza),
       "activity", NULL);
@@ -1581,9 +1575,6 @@ olpc_current_act_pep_node_changed (WockyPepService *pep,
       gabble_svc_olpc_buddy_info_emit_current_activity_changed (conn, handle,
           "", 0);
     }
-
-out:
-  tp_handle_unref (contact_repo, handle);
 }
 
 static void
@@ -2102,8 +2093,6 @@ update_activity_properties (GabbleConnection *conn,
         }
     }
 
-  tp_handle_unref (room_repo, room_handle);
-
   if (activity == NULL)
     return;
 
@@ -2186,11 +2175,9 @@ olpc_act_props_pep_node_changed (WockyPepService *pep,
 
   if (handle == base->self_handle)
     /* Ignore echoed pubsub notifications */
-    goto out;
+    return;
 
   update_activities_properties (conn, jid, stanza);
-out:
-  tp_handle_unref (contact_repo, handle);
 }
 
 static void
@@ -2373,7 +2360,6 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
           g_object_ref (activity);
           tp_handle_set_add (their_invites, room_handle);
         }
-      tp_handle_unref (room_repo, room_handle);
     }
   else
     {
@@ -2734,7 +2720,6 @@ muc_channel_pre_invite_cb (GabbleMucChannel *chan,
     }
 
   tp_handle_set_add (invitees, handle);
-  tp_handle_unref (contact_repo, handle);
 
   g_object_unref (conn);
 }

@@ -1298,8 +1298,6 @@ out:
   g_slist_free (stream_methods);
   g_free (peer_resource);
   g_free (self_jid);
-  if (peer_handle != 0)
-    tp_handle_unref (contact_repo, peer_handle);
 
   return TRUE;
 }
@@ -2145,9 +2143,6 @@ END:
 
   if (peer_resource != NULL)
     g_free (peer_resource);
-
-  if (peer_handle != 0)
-    tp_handle_unref (contact_repo, peer_handle);
 
   g_free (self_jid);
   g_free (data->stream_id);

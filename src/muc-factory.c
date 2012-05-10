@@ -555,8 +555,6 @@ do_invite (GabbleMucFactory *fac,
     {
       DEBUG ("ignoring invite to room \"%s\"; we're already there", room);
     }
-
-  tp_handle_unref (room_repo, room_handle);
 }
 
 struct DiscoInviteData {
@@ -584,8 +582,6 @@ obsolete_invite_disco_cb (GabbleDisco *self,
 
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data->factory);
   GabbleMucFactoryPrivate *priv = fac->priv;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   WockyNode *identity;
   const char *category = NULL, *type = NULL;
 
@@ -617,7 +613,6 @@ obsolete_invite_disco_cb (GabbleDisco *self,
   do_invite (fac, jid, data->inviter, data->reason);
 
 out:
-  tp_handle_unref (contact_repo, data->inviter);
   g_free (data->reason);
   g_slice_free (struct DiscoInviteData, data);
 }
@@ -689,8 +684,6 @@ process_muc_invite (GabbleMucFactory *fac,
   room = gabble_remove_resource (from);
   do_invite (fac, room, inviter_handle, reason);
   g_free (room);
-
-  tp_handle_unref (contact_repo, inviter_handle);
 
   return TRUE;
 }
@@ -769,7 +762,6 @@ process_obsolete_invite (GabbleMucFactory *fac,
     {
       DEBUG ("obsolete MUC invite disco failed, freeing info");
 
-      tp_handle_unref (contact_repo, inviter_handle);
       g_free (disco_udata->reason);
       g_slice_free (struct DiscoInviteData, disco_udata);
     }
@@ -1340,7 +1332,6 @@ handle_text_channel_request (GabbleMucFactory *self,
             }
 
           tp_handle_set_add (handles, handle);
-          tp_handle_unref (contact_handles, handle);
         }
     }
 
@@ -1414,11 +1405,6 @@ handle_text_channel_request (GabbleMucFactory *self,
           ret = FALSE;
           goto out;
         }
-    }
-  else
-    {
-      /* ref room here so we can unref it again, below */
-      tp_handle_ref (room_handles, room);
     }
 
   /* Make sure TargetID and RoomName don't conflict. */
@@ -1543,9 +1529,6 @@ handle_text_channel_request (GabbleMucFactory *self,
     }
 
 out:
-  if (room != 0)
-    tp_handle_unref (room_handles, room);
-
   g_hash_table_unref (final_channels);
   g_array_unref (final_handles);
   g_free (final_ids);

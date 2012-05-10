@@ -366,7 +366,6 @@ gabble_media_channel_constructor (GType type, guint n_props,
   /* automatically add creator to channel, but also ref them again (because
    * priv->creator is the InitiatorHandle) */
   g_assert (priv->creator != 0);
-  tp_handle_ref (contact_handles, priv->creator);
 
   set = tp_intset_new_containing (priv->creator);
   tp_group_mixin_change_members (obj, "", set, NULL, NULL, NULL, 0,
@@ -666,15 +665,6 @@ gabble_media_channel_set_property (GObject     *object,
       break;
     case PROP_INITIAL_PEER:
       priv->initial_peer = g_value_get_uint (value);
-
-      if (priv->initial_peer != 0)
-        {
-          TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
-          TpHandleRepoIface *repo = tp_base_connection_get_handles (base_conn,
-              TP_HANDLE_TYPE_CONTACT);
-          tp_handle_ref (repo, priv->initial_peer);
-        }
-
       break;
     case PROP_PEER_IN_RP:
       priv->peer_in_rp = g_value_get_boolean (value);
@@ -952,9 +942,6 @@ gabble_media_channel_dispose (GObject *object)
 {
   GabbleMediaChannel *self = GABBLE_MEDIA_CHANNEL (object);
   GabbleMediaChannelPrivate *priv = self->priv;
-  TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
-      conn, TP_HANDLE_TYPE_CONTACT);
   GList *l;
 
   if (priv->dispose_has_run)
@@ -988,15 +975,6 @@ gabble_media_channel_dispose (GObject *object)
           (GFunc) destroy_request, NULL);
       g_ptr_array_unref (priv->delayed_request_streams);
       priv->delayed_request_streams = NULL;
-    }
-
-  tp_handle_unref (contact_handles, priv->creator);
-  priv->creator = 0;
-
-  if (priv->initial_peer != 0)
-    {
-      tp_handle_unref (contact_handles, priv->initial_peer);
-      priv->initial_peer = 0;
     }
 
   /* All of the streams should have closed in response to the contents being

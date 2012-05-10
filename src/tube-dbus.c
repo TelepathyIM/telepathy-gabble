@@ -435,17 +435,6 @@ gabble_tube_dbus_init (GabbleTubeDBus *self)
   self->priv = priv;
 }
 
-static void
-unref_handle_foreach (gpointer key,
-                      gpointer value,
-                      gpointer user_data)
-{
-  TpHandle handle = GPOINTER_TO_UINT (key);
-  TpHandleRepoIface *contact_repo = (TpHandleRepoIface *) user_data;
-
-  tp_handle_unref (contact_repo, handle);
-}
-
 static TpTubeChannelState
 get_tube_state (GabbleTubeDBus *self)
 {
@@ -507,10 +496,6 @@ gabble_tube_dbus_dispose (GObject *object)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (object);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
-  TpBaseConnection *base_conn = tp_base_channel_get_connection (
-      TP_BASE_CHANNEL (self));
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
 
   DEBUG ("called");
 
@@ -556,13 +541,6 @@ gabble_tube_dbus_dispose (GObject *object)
   tp_clear_pointer (&priv->dbus_srv_addr, g_free);
   tp_clear_pointer (&priv->socket_path, g_free);
   tp_clear_pointer (&priv->dbus_local_name, g_free);
-
-  if (priv->dbus_names != NULL)
-    {
-      g_hash_table_foreach (priv->dbus_names, unref_handle_foreach,
-          contact_repo);
-    }
-
   tp_clear_pointer (&priv->dbus_names, g_hash_table_unref);
   tp_clear_pointer (&priv->dbus_name_to_handle, g_hash_table_unref);
 
@@ -1518,7 +1496,6 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   name_copy = g_strdup (name);
   g_hash_table_insert (priv->dbus_names, GUINT_TO_POINTER (handle),
       name_copy);
-  tp_handle_ref (contact_repo, handle);
 
   g_hash_table_insert (priv->dbus_name_to_handle, name_copy,
       GUINT_TO_POINTER (handle));
@@ -1545,9 +1522,6 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
   TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
-  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *name;
   GHashTable *added;
   GArray *removed;
@@ -1575,7 +1549,6 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
 
   g_hash_table_unref (added);
   g_array_unref (removed);
-  tp_handle_unref (contact_repo, handle);
   return TRUE;
 }
 

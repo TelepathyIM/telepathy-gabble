@@ -528,8 +528,6 @@ gabble_muc_channel_constructed (GObject *obj)
       g_assert (error == NULL);
       g_array_unref (members);
     }
-
-  tp_handle_unref (contact_handles, self_handle);
 }
 
 typedef struct {
@@ -1605,7 +1603,6 @@ handle_nick_conflict (GabbleMucChannel *chan,
 
   tp_intset_destroy (add_rp);
   tp_intset_destroy (remove_rp);
-  tp_handle_unref (contact_repo, self_handle);
 
   priv->nick_retry_count++;
   send_join_request (chan);
@@ -2008,10 +2005,7 @@ handle_parted (GObject *source,
 
   close_channel (gmuc, why, FALSE, actor, reason);
 
-  if (actor != 0)
-    tp_handle_unref (contact_repo, actor);
   tp_intset_destroy (handles);
-  tp_handle_unref (contact_repo, member);
 }
 
 
@@ -2068,10 +2062,7 @@ handle_left (GObject *source,
   tp_message_mixin_change_chat_state (data, member,
       TP_CHANNEL_CHAT_STATE_GONE);
 
-  if (actor != 0)
-    tp_handle_unref (contact_repo, actor);
   tp_intset_destroy (handles);
-  tp_handle_unref (contact_repo, member);
 }
 
 /* connect to wocky-muc:SIG_PERM_CHANGE, which we will receive when the *
@@ -2162,8 +2153,6 @@ handle_renamed (GObject *source,
   handle_tube_presence (gmuc, myself, stanza);
 
   tp_intset_destroy (old_self);
-  tp_handle_unref (contact_repo, userid);
-  tp_handle_unref (contact_repo, myself);
 }
 
 static void
@@ -2199,7 +2188,6 @@ update_roster_presence (GabbleMucChannel *gmuc,
       GUINT_TO_POINTER (handle),
       GUINT_TO_POINTER (owner));
 
-  tp_handle_unref (contact_repo, handle);
   /* make a note of the fact that owner JIDs are visible to us    */
   /* notify whomever that an identifiable contact joined the MUC  */
   if (owner != 0)
@@ -2207,7 +2195,6 @@ update_roster_presence (GabbleMucChannel *gmuc,
       tp_group_mixin_change_flags (G_OBJECT (gmuc), 0,
           TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE);
       g_signal_emit (gmuc, signals[CONTACT_JOIN], 0, owner);
-      tp_handle_unref (contact_repo, owner);
     }
 
   handle_tube_presence (gmuc, handle, member->presence_stanza);
@@ -2271,7 +2258,6 @@ handle_join (WockyMuc *muc,
 
   g_object_set (gmuc, "state", MUC_STATE_JOINED, NULL);
 
-  tp_handle_unref (contact_repo, myself);
   tp_handle_set_destroy (members);
   tp_handle_set_destroy (owners);
   g_hash_table_unref (omap);
@@ -2346,10 +2332,6 @@ handle_presence (GObject *source,
     }
 #endif
 
-  /* zap the handle refs we created */
-  tp_handle_unref (contact_repo, handle);
-  if (owner != 0)
-    tp_handle_unref (contact_repo, owner);
   tp_handle_set_destroy (handles);
 }
 
@@ -2396,7 +2378,6 @@ handle_message (GObject *source,
       handle_type = TP_HANDLE_TYPE_ROOM;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_base_channel_get_target_handle (base);
-      tp_handle_ref (repo, from);
     }
 
   switch (type)
@@ -2443,8 +2424,6 @@ handle_message (GObject *source,
   if (subject != NULL)
     _gabble_muc_channel_handle_subject (gmuc, handle_type, from,
         datetime, subject, stanza);
-
-  tp_handle_unref (repo, from);
 }
 
 static void
@@ -2489,7 +2468,6 @@ handle_errmsg (GObject *source,
       handle_type = TP_HANDLE_TYPE_ROOM;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_base_channel_get_target_handle (base);
-      tp_handle_ref (repo, from);
     }
 
   tp_err = gabble_tp_send_error_from_wocky_xmpp_error (error);
@@ -2518,8 +2496,6 @@ handle_errmsg (GObject *source,
        !tp_strdiff (xmpp_id, priv->set_subject_stanza_id)))
     _gabble_muc_channel_handle_subject (gmuc,
         handle_type, from, datetime, subject, stanza);
-
-  tp_handle_unref (repo, from);
 }
 
 /* ************************************************************************* */

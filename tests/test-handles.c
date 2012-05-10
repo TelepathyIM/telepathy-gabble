@@ -65,9 +65,6 @@ test_handles (guint handle_type)
   return_jid = tp_handle_inspect (tp_repo, handle);
   g_assert (!strcmp (return_jid, jid));
 
-  /* Now unref it */
-  tp_handle_unref (tp_repo, handle);
-
   for (i = 0; i < NUM_TP_HANDLE_TYPES; i++)
     {
       if (repos[i])

@@ -144,7 +144,6 @@ gabble_tubes_channel_constructor (GType type,
   GabbleTubesChannel *self;
   GabbleTubesChannelPrivate *priv;
   TpDBusDaemon *bus;
-  TpHandleRepoIface *handle_repo, *contact_repo;
 
   DEBUG ("Called");
 
@@ -153,15 +152,6 @@ gabble_tubes_channel_constructor (GType type,
 
   self = GABBLE_TUBES_CHANNEL (obj);
   priv = self->priv;
-  contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
-  handle_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, priv->handle_type);
-
-  tp_handle_ref (handle_repo, priv->handle);
-
-  if (priv->initiator != 0)
-    tp_handle_ref (contact_repo, priv->initiator);
 
   switch (priv->handle_type)
     {
@@ -815,8 +805,6 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
 {
   GabbleTubesChannelPrivate *priv = self->priv;
   WockyNode *tubes_node;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   WockyNodeIter i;
   WockyNode *tube_node;
   const gchar *presence_type;
@@ -892,12 +880,7 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                     break;
                   case TP_TUBE_TYPE_STREAM:
                     {
-                      if (initiator_handle != 0)
-                        /* ignore it */
-                        tp_handle_unref (contact_repo, initiator_handle);
-
                       initiator_handle = contact;
-                      tp_handle_ref (contact_repo, initiator_handle);
                     }
                     break;
                   default:
@@ -913,7 +896,6 @@ gabble_tubes_channel_presence_updated (GabbleTubesChannel *self,
                   TP_EXPORTABLE_CHANNEL (tube), NULL);
 
               /* the tube has reffed its initiator, no need to keep a ref */
-              tp_handle_unref (contact_repo, initiator_handle);
               g_hash_table_unref (parameters);
             }
         }
@@ -2319,15 +2301,11 @@ gabble_tubes_channel_dispose (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
   GabbleTubesChannelPrivate *priv = self->priv;
-  TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, priv->handle_type);
 
   if (priv->dispose_has_run)
     return;
 
   priv->dispose_has_run = TRUE;
-
-  tp_handle_unref (handle_repo, priv->handle);
 
   if (self->muc != NULL)
     {
@@ -2349,13 +2327,8 @@ gabble_tubes_channel_finalize (GObject *object)
 {
   GabbleTubesChannel *self = GABBLE_TUBES_CHANNEL (object);
   GabbleTubesChannelPrivate *priv = self->priv;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   g_free (priv->object_path);
-
-  if (priv->initiator != 0)
-    tp_handle_unref (contact_handles, priv->initiator);
 
   G_OBJECT_CLASS (gabble_tubes_channel_parent_class)->finalize (object);
 }

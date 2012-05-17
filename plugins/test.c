@@ -1,5 +1,6 @@
-#include "test.h"
 #include "config.h"
+
+#include "test.h"
 
 #include <stdio.h>
 

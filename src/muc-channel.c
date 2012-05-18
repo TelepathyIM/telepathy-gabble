@@ -1973,20 +1973,20 @@ gabble_muc_channel_tube_request (GabbleMucChannel *self,
   tube_id = generate_tube_id (self);
 
   channel_type = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL ".ChannelType");
+      TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
       type = TP_TUBE_TYPE_STREAM;
       service = tp_asv_get_string (request_properties,
-          TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service");
+          TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
 
     }
   else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
       type = TP_TUBE_TYPE_DBUS;
       service = tp_asv_get_string (request_properties,
-                TP_IFACE_CHANNEL_TYPE_DBUS_TUBE ".ServiceName");
+          TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
     }
   else
     /* This assertion is safe: this function's caller only calls it in one of

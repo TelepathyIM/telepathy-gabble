@@ -1038,6 +1038,18 @@ _parse_node (GabblePresence *presence,
       gabble_presence_set_capabilities (presence, resource, cap_set, NULL, serial);
       gabble_capability_set_free (cap_set);
     }
+
+  if (!tp_strdiff (node, "http://www.android.com/gtalk/client/caps") ||
+      !tp_strdiff (node, "http://www.android.com/gtalk/client/caps2"))
+    {
+      GabbleCapabilitySet *cap_set = gabble_capability_set_new ();
+
+      DEBUG ("Client is Android GTalk Client");
+
+      gabble_capability_set_add (cap_set, QUIRK_ANDROID_GTALK_CLIENT);
+      gabble_presence_set_capabilities (presence, resource, cap_set, NULL, serial);
+      gabble_capability_set_free (cap_set);
+    }
 }
 
 

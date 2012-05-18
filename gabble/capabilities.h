@@ -33,6 +33,8 @@
 #define QUIRK_OMITS_CONTENT_CREATORS "\x07omits-content-creators"
 /* The Google Webmail client doesn't support some features */
 #define QUIRK_GOOGLE_WEBMAIL_CLIENT "\x07google-webmail-client"
+/* The Android GTalk client needs a quirk for component names */
+#define QUIRK_ANDROID_GTALK_CLIENT "\x07android-gtalk-client"
 
 /* Some useful capability sets for Jingle etc. */
 const GabbleCapabilitySet *gabble_capabilities_get_legacy (void);

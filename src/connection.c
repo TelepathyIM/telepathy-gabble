@@ -2817,6 +2817,115 @@ decrement_waiting_connected (GabbleConnection *conn)
 }
 
 static void
+conn_wlm_jid_lookup_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleConnection *conn = (GabbleConnection *) source;
+  GSimpleAsyncResult *my_result = user_data;
+  WockyStanza *iq = NULL;
+  WockyNode *node;
+  const gchar *jid = NULL;
+  GError *error = NULL;
+
+  if (!conn_util_send_iq_finish (conn, result, &iq, &error))
+    {
+      g_simple_async_result_take_error (my_result, error);
+      goto out;
+    }
+
+  node = wocky_node_get_child_ns (wocky_stanza_get_top_node (iq),
+      "getjid", NS_WLM_JID_LOOKUP);
+
+  if (node != NULL)
+    {
+      jid = wocky_node_get_content_from_child (node, "jid");
+    }
+
+  if (!tp_str_empty (jid))
+    {
+      g_simple_async_result_set_op_res_gpointer (my_result,
+          g_strdup (jid), g_free);
+    }
+  else
+    {
+      g_simple_async_result_set_error (my_result,
+          TP_ERROR, TP_ERROR_INVALID_HANDLE,
+          "jid not found in getjid reply");
+    }
+
+out:
+  g_simple_async_result_complete (my_result);
+  g_object_unref (my_result);
+}
+
+static void
+conn_wlm_jid_lookup_async (TpHandleRepoIface *repo,
+    TpBaseConnection *base,
+    const gchar *id,
+    gpointer context,
+    GAsyncReadyCallback callback,
+    gpointer user_data)
+{
+  GabbleConnection *self = GABBLE_CONNECTION (base);
+  WockyStanza *iq;
+  GSimpleAsyncResult *result;
+  gchar *normal_id;
+  GError *error = NULL;
+
+  result = g_simple_async_result_new ((GObject *) repo, callback, user_data,
+      conn_wlm_jid_lookup_async);
+
+  /* First, do local normalization */
+  normal_id = gabble_normalize_contact (repo, id, context, &error);
+  if (normal_id == NULL)
+    {
+      g_simple_async_result_take_error (result, error);
+      g_simple_async_result_complete_in_idle (result);
+      g_object_unref (result);
+      return;
+    }
+
+  /* If it is already a WLM jid, return it */
+  if (g_str_has_suffix (normal_id, "@messenger.live.com"))
+    {
+      g_simple_async_result_set_op_res_gpointer (result, normal_id, g_free);
+      g_simple_async_result_complete_in_idle (result);
+      g_object_unref (result);
+      return;
+    }
+
+  /* Ask the server to give a WLM jid */
+  iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+      conn_util_get_bare_self_jid (self), normal_id,
+      '(', "getjid",
+        ':', NS_WLM_JID_LOOKUP,
+      ')',
+      NULL);
+
+  conn_util_send_iq_async (self, iq, NULL, conn_wlm_jid_lookup_cb, result);
+
+  g_object_unref (iq);
+  g_free (normal_id);
+}
+
+static gchar *
+conn_wlm_jid_lookup_finish (TpHandleRepoIface *repo,
+    GAsyncResult *result,
+    GError **error)
+{
+  GSimpleAsyncResult *simple = (GSimpleAsyncResult *) result;
+
+  g_return_val_if_fail (g_simple_async_result_is_valid (result,
+      G_OBJECT (repo), conn_wlm_jid_lookup_async), NULL);
+
+  if (g_simple_async_result_propagate_error (simple, error))
+    return NULL;
+
+  return g_strdup (g_simple_async_result_get_op_res_gpointer (simple));
+}
+
+static void
 connection_disco_cb (GabbleDisco *disco,
                      GabbleDiscoRequest *request,
                      const gchar *jid,
@@ -2893,10 +3002,23 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE;
               else if (0 == strcmp (var, NS_GOOGLE_SETTING))
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_SETTING;
+              else if (0 == strcmp (var, NS_WLM_JID_LOOKUP))
+                conn->features |= GABBLE_CONNECTION_FEATURES_WLM_JID_LOOKUP;
             }
         }
 
       DEBUG ("set features flags to %d", conn->features);
+    }
+
+  if ((conn->features & GABBLE_CONNECTION_FEATURES_WLM_JID_LOOKUP) != 0)
+    {
+      TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
+          TP_HANDLE_TYPE_CONTACT);
+
+      tp_dynamic_handle_repo_set_normalize_async (
+          (TpDynamicHandleRepo *) contact_repo,
+          conn_wlm_jid_lookup_async,
+          conn_wlm_jid_lookup_finish);
     }
 
   conn_presence_set_initial_presence_async (conn,

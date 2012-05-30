@@ -22,8 +22,7 @@
 
 #include <glib-object.h>
 #include <wocky/wocky.h>
-#include <telepathy-glib/base-connection.h>
-#include <telepathy-glib/exportable-channel.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "bytestream-iface.h"
 #include "muc-channel.h"

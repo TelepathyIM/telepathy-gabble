@@ -24,11 +24,8 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/channel-manager.h>
-#include <telepathy-glib/handle-repo.h>
-#include <telepathy-glib/handle-repo-dynamic.h>
-#include <telepathy-glib/util.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"

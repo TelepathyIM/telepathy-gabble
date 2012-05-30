@@ -24,7 +24,7 @@
 
 #include "config.h"
 
-#include <telepathy-glib/handle.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "gabble/types.h"
 

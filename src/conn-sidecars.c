@@ -20,7 +20,7 @@
 
 #include "conn-sidecars.h"
 
-#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "extensions/extensions.h"
 

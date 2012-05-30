@@ -22,9 +22,8 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/enums.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/base-channel.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include "connection.h"
 #include "extensions/extensions.h"

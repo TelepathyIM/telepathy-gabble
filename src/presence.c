@@ -22,7 +22,7 @@
 #include "presence.h"
 
 #include <string.h>
-#include <telepathy-glib/channel-manager.h>
+#include <telepathy-glib/telepathy-glib.h>
 #include <wocky/wocky.h>
 
 #include "gabble/capabilities.h"

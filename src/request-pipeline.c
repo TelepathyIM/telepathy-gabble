@@ -21,7 +21,7 @@
 #include "config.h"
 #include "request-pipeline.h"
 
-#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PIPELINE
 

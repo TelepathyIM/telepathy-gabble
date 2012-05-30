@@ -21,7 +21,7 @@
 #include "config.h"
 #include "legacy-caps.h"
 
-#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 #include "debug.h"

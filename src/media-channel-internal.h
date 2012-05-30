@@ -26,7 +26,7 @@
 
 #include <glib.h>
 
-#include <telepathy-glib/dtmf.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "media-stream.h"
 #include "jingle-session.h"

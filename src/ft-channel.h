@@ -26,7 +26,7 @@
 #include <glib-object.h>
 #include <extensions/extensions.h>
 
-#include <telepathy-glib/base-channel.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 typedef struct _GabbleFileTransferChannel GabbleFileTransferChannel;
 

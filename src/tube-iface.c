@@ -20,7 +20,8 @@
 #include "config.h"
 #include "tube-iface.h"
 
-#include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include "connection.h"
 #include "util.h"

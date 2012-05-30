@@ -22,7 +22,8 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/telepathy-glib.h>
+
 #include "connection.h"
 #include "bytestream-iface.h"
 #include "tubes-channel.h"

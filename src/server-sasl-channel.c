@@ -36,15 +36,8 @@
 #include <dbus/dbus-glib.h>
 #include <wocky/wocky.h>
 
-#include <telepathy-glib/channel-iface.h>
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/enums.h>
-#include <telepathy-glib/errors.h>
-#include <telepathy-glib/exportable-channel.h>
-#include <telepathy-glib/gtypes.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/svc-channel.h>
-#include <telepathy-glib/svc-generic.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_AUTH
 

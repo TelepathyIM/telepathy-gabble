@@ -4,9 +4,8 @@
 #include <string.h>
 #include <glib.h>
 #include <glib-object.h>
-#include <telepathy-glib/enums.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/errors.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include "src/connection.h"
 

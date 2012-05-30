@@ -23,8 +23,7 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/dbus-properties-mixin.h>
-#include <telepathy-glib/group-mixin.h>
+#include <telepathy-glib/telepathy-glib.h>
 #include <telepathy-glib/properties-mixin.h>
 
 #include "presence.h"

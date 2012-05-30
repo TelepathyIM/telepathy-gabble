@@ -35,8 +35,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
 #include <dbus/dbus-glib.h>
-#include <telepathy-glib/channel-manager.h>
-#include <telepathy-glib/intset.h>
+#include <telepathy-glib/telepathy-glib.h>
 #include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE

@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/base-media-call-content.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "jingle-content.h"
 #include "call-member-content.h"

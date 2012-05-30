@@ -25,11 +25,7 @@
 
 #include <dbus/dbus-glib.h>
 #include <glib-object.h>
-#include <telepathy-glib/base-connection.h>
-#include <telepathy-glib/contacts-mixin.h>
-#include <telepathy-glib/presence-mixin.h>
-#include <telepathy-glib/dbus-properties-mixin.h>
-#include <telepathy-glib/dbus.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include <wocky/wocky.h>
 

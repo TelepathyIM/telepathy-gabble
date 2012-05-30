@@ -24,8 +24,7 @@
 #define GABBLE_CAPS_CHANNEL_MANAGER_H
 
 #include <glib-object.h>
-#include <telepathy-glib/exportable-channel.h>
-#include <telepathy-glib/handle.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "capabilities.h"
 

@@ -22,8 +22,9 @@
 #include "protocol.h"
 
 #include <string.h>
-#include <telepathy-glib/base-connection-manager.h>
-#include <telepathy-glib/interfaces.h>
+
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 #include <dbus/dbus-protocol.h>
 #include <dbus/dbus-glib.h>
 

@@ -26,14 +26,8 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/errors.h>
-#include <telepathy-glib/exportable-channel.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/channel-iface.h>
-#include <telepathy-glib/svc-channel.h>
-#include <telepathy-glib/svc-properties-interface.h>
-#include <telepathy-glib/svc-media-interfaces.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 

@@ -27,10 +27,7 @@
 #include <glib-object.h>
 #include <gio/gio.h>
 
-#include <telepathy-glib/base-channel.h>
-#include <telepathy-glib/dbus-properties-mixin.h>
-#include <telepathy-glib/group-mixin.h>
-#include <telepathy-glib/message-mixin.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "types.h"
 #include "tubes-channel.h"

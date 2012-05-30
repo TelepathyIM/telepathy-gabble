@@ -24,8 +24,8 @@
 
 #include <string.h>
 
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/heap.h>
+#include <telepathy-glib/telepathy-glib.h>
+
 #include <wocky/wocky.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD

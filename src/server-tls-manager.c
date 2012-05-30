@@ -21,7 +21,8 @@
 #include "config.h"
 #include "server-tls-manager.h"
 
-#include <telepathy-glib/gtypes.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_TLS
 #include "debug.h"

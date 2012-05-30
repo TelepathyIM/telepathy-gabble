@@ -22,12 +22,9 @@
 #define __GABBLE_MEDIA_STREAM_H__
 
 #include <glib-object.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "jingle-types.h"
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/dtmf.h>
-#include <telepathy-glib/enums.h>
-#include <telepathy-glib/dbus-properties-mixin.h>
 
 G_BEGIN_DECLS
 

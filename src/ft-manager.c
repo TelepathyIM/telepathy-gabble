@@ -45,14 +45,8 @@
 
 #include <wocky/wocky.h>
 
-#include <telepathy-glib/base-connection.h>
-#include <telepathy-glib/base-channel.h>
-#include <telepathy-glib/channel-factory-iface.h>
-#include <telepathy-glib/channel-manager.h>
-#include <telepathy-glib/gtypes.h>
-#include <telepathy-glib/interfaces.h>
-#include <telepathy-glib/dbus.h>
-#include <telepathy-glib/util.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_FT
 #include "debug.h"

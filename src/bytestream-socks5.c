@@ -44,7 +44,9 @@
 
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-glib-lowlevel.h>
-#include <telepathy-glib/interfaces.h>
+
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include <gibber/gibber-transport.h>
 #include <gibber/gibber-tcp-transport.h>

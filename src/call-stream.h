@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 
-#include <telepathy-glib/base-media-call-stream.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "jingle-types.h"
 

@@ -21,7 +21,7 @@
 #define __GABBLE_TUBE_IFACE_H__
 
 #include <glib-object.h>
-#include <telepathy-glib/base-connection.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include "bytestream-iface.h"
 

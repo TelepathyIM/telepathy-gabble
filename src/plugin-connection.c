@@ -23,7 +23,7 @@
 
 #include <glib-object.h>
 #include <gabble/types.h>
-#include <telepathy-glib/errors.h>
+#include <telepathy-glib/telepathy-glib.h>
 #include <debug.h>
 
 

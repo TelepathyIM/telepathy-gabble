@@ -8,8 +8,8 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_LOCATION
 
-#include <telepathy-glib/gtypes.h>
-#include <telepathy-glib/interfaces.h>
+#include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 #include <wocky/wocky.h>
 
 #include <gabble/gabble.h>

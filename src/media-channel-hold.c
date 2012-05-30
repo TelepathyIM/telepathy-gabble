@@ -23,7 +23,7 @@
 #include "media-channel.h"
 #include "media-channel-internal.h"
 
-#include <telepathy-glib/channel-iface.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 

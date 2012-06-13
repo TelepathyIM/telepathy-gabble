@@ -225,7 +225,9 @@ gabble_server_tls_channel_fill_immutable_properties (
 static gchar *
 gabble_server_tls_channel_get_object_path_suffix (TpBaseChannel *base)
 {
-  return g_strdup ("ServerTLSChannel");
+  static guint count = 0;
+
+  return g_strdup_printf ("ServerTLSChannel%u", ++count);
 }
 
 static void

@@ -51,23 +51,25 @@ enum {
 };
 
 struct _GabbleServerTLSManagerPrivate {
+  /* Properties */
   GabbleConnection *connection;
-  GabbleServerTLSChannel *channel;
+  gboolean interactive_tls;
 
+  /* Current operation data */
   gchar *peername;
   GStrv reference_identities;
   WockyTLSSession *tls_session;
-
+  GabbleServerTLSChannel *channel;
   GSimpleAsyncResult *async_result;
-  GAsyncReadyCallback async_callback;
-  gpointer async_data;
 
-  gboolean verify_async_called;
-  gboolean tls_state_changed;
-  gboolean interactive_tls;
+  /* List of owned TpBaseChannel not yet closed by the client */
+  GList *completed_channels;
 
   gboolean dispose_has_run;
 };
+
+#define chainup ((WockyTLSHandlerClass *) \
+    gabble_server_tls_manager_parent_class)
 
 static void
 gabble_server_tls_manager_get_property (GObject *object,
@@ -114,6 +116,18 @@ gabble_server_tls_manager_set_property (GObject *object,
 }
 
 static void
+close_all (GabbleServerTLSManager *self)
+{
+  GList *l;
+
+  if (self->priv->channel != NULL)
+    tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
+
+  for (l = self->priv->completed_channels; l != NULL; l = l->next)
+    tp_base_channel_close (l->data);
+}
+
+static void
 connection_status_changed_cb (GabbleConnection *conn,
     guint status,
     guint reason,
@@ -125,11 +139,44 @@ connection_status_changed_cb (GabbleConnection *conn,
 
   if (status == TP_CONNECTION_STATUS_DISCONNECTED)
     {
-      if (self->priv->channel != NULL)
-        tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
-
+      close_all (self);
       tp_clear_object (&self->priv->connection);
     }
+}
+
+static void
+complete_verify (GabbleServerTLSManager *self)
+{
+  /* Move channel to a list until a client Close() it */
+  if (self->priv->channel != NULL)
+    {
+      self->priv->completed_channels = g_list_prepend (
+          self->priv->completed_channels,
+          g_object_ref (self->priv->channel));
+    }
+
+  g_simple_async_result_complete (self->priv->async_result);
+
+  /* Reset to initial state */
+  tp_clear_pointer (&self->priv->peername, g_free);
+  tp_clear_pointer (&self->priv->reference_identities, g_strfreev);
+  g_clear_object (&self->priv->tls_session);
+  g_clear_object (&self->priv->channel);
+  g_clear_object (&self->priv->async_result);
+}
+
+static void
+verify_fallback_cb (GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleServerTLSManager *self = (GabbleServerTLSManager *) source;
+  GError *error = NULL;
+
+  if (!chainup->verify_finish_func (WOCKY_TLS_HANDLER (self), result, &error))
+    g_simple_async_result_take_error (self->priv->async_result, error);
+
+  complete_verify (self);
 }
 
 static void
@@ -140,24 +187,31 @@ server_tls_channel_closed_cb (GabbleServerTLSChannel *channel,
 
   DEBUG ("Server TLS channel closed.");
 
-  if (!self->priv->tls_state_changed)
+  if (channel == self->priv->channel)
     {
       /* fallback to the old-style non interactive TLS verification */
       DEBUG ("Channel closed, but unhandled, falling back...");
 
-      WOCKY_TLS_HANDLER_CLASS
-        (gabble_server_tls_manager_parent_class)->verify_async_func (
-            WOCKY_TLS_HANDLER (self), self->priv->tls_session,
-            self->priv->peername, self->priv->reference_identities,
-            self->priv->async_callback, self->priv->async_data);
-    }
+      chainup->verify_async_func (WOCKY_TLS_HANDLER (self),
+          self->priv->tls_session, self->priv->peername,
+          self->priv->reference_identities, verify_fallback_cb, NULL);
 
-  tp_clear_object (&self->priv->async_result);
+      self->priv->channel = NULL;
+    }
+  else
+    {
+      GList *l;
+
+      l = g_list_find (self->priv->completed_channels, channel);
+      g_assert (l != NULL);
+
+      self->priv->completed_channels = g_list_delete_link (
+          self->priv->completed_channels, l);
+    }
 
   tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (channel));
-
-  tp_clear_object (&self->priv->channel);
+  g_object_unref (channel);
 }
 
 GQuark
@@ -179,10 +233,7 @@ tls_certificate_accepted_cb (GabbleTLSCertificate *certificate,
 
   DEBUG ("TLS certificate accepted");
 
-  self->priv->tls_state_changed = TRUE;
-
-  g_simple_async_result_complete_in_idle (self->priv->async_result);
-  tp_clear_object (&self->priv->async_result);
+  complete_verify (self);
 }
 
 static void
@@ -190,20 +241,15 @@ tls_certificate_rejected_cb (GabbleTLSCertificate *certificate,
     GPtrArray *rejections,
     gpointer user_data)
 {
-  GError *error = NULL;
   GabbleServerTLSManager *self = user_data;
 
   DEBUG ("TLS certificate rejected with rejections %p, length %u.",
       rejections, rejections->len);
 
-  self->priv->tls_state_changed = TRUE;
-  g_set_error (&error, GABBLE_SERVER_TLS_ERROR, 0,
-      "TLS certificate rejected");
-  g_simple_async_result_set_from_error (self->priv->async_result, error);
+  g_simple_async_result_set_error (self->priv->async_result,
+      GABBLE_SERVER_TLS_ERROR, 0, "TLS certificate rejected");
 
-  g_simple_async_result_complete_in_idle (self->priv->async_result);
-  tp_clear_object (&self->priv->async_result);
-  g_clear_error (&error);
+  complete_verify (self);
 }
 
 static void
@@ -281,12 +327,9 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   GabbleTLSCertificate *certificate;
   GSimpleAsyncResult *result;
 
-  /* this should be called only once per-connection. */
-  g_return_if_fail (!self->priv->verify_async_called);
+  g_return_if_fail (self->priv->async_result == NULL);
 
   DEBUG ("verify_async() called on the GabbleServerTLSManager.");
-
-  self->priv->verify_async_called = TRUE;
 
   result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data, gabble_server_tls_manager_verify_async);
@@ -301,6 +344,8 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
       return;
     }
 
+  self->priv->async_result = result;
+
   fill_reference_identities (self, peername, extra_identities);
 
   if (!self->priv->interactive_tls)
@@ -308,21 +353,14 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
       DEBUG ("ignore-ssl-errors is set, fallback to non-interactive "
           "verification.");
 
-      g_object_unref (result);
-
-      WOCKY_TLS_HANDLER_CLASS
-        (gabble_server_tls_manager_parent_class)->verify_async_func (
-            WOCKY_TLS_HANDLER (self), tls_session, peername,
-            self->priv->reference_identities, callback, user_data);
+      chainup->verify_async_func (WOCKY_TLS_HANDLER (self), tls_session,
+          peername, self->priv->reference_identities, verify_fallback_cb, NULL);
 
       return;
     }
 
-  self->priv->async_result = result;
   self->priv->tls_session = g_object_ref (tls_session);
   self->priv->peername = g_strdup (peername);
-  self->priv->async_callback = callback;
-  self->priv->async_data = user_data;
 
   self->priv->channel = g_object_new (GABBLE_TYPE_SERVER_TLS_CHANNEL,
       "connection", self->priv->connection,
@@ -334,8 +372,7 @@ gabble_server_tls_manager_verify_async (WockyTLSHandler *handler,
   g_signal_connect (self->priv->channel, "closed",
       G_CALLBACK (server_tls_channel_closed_cb), self);
 
-  certificate = gabble_server_tls_channel_get_certificate
-    (self->priv->channel);
+  certificate = gabble_server_tls_channel_get_certificate (self->priv->channel);
 
   g_signal_connect (certificate, "accepted",
       G_CALLBACK (tls_certificate_accepted_cb), self);
@@ -352,19 +389,7 @@ gabble_server_tls_manager_verify_finish (WockyTLSHandler *self,
     GAsyncResult *result,
     GError **error)
 {
-  if (G_IS_SIMPLE_ASYNC_RESULT (result) &&
-      g_simple_async_result_get_source_tag ((GSimpleAsyncResult *) result) ==
-        gabble_server_tls_manager_verify_async)
-    {
-      wocky_implement_finish_void (self,
-          gabble_server_tls_manager_verify_async);
-    }
-  else
-    {
-      return WOCKY_TLS_HANDLER_CLASS
-        (gabble_server_tls_manager_parent_class)->verify_finish_func (self,
-            result, error);
-    }
+  wocky_implement_finish_void (self, gabble_server_tls_manager_verify_async);
 }
 
 static void
@@ -399,8 +424,7 @@ gabble_server_tls_manager_finalize (GObject *object)
 
   DEBUG ("%p", self);
 
-  if (self->priv->channel != NULL)
-    tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
+  close_all (self);
 
   g_free (self->priv->peername);
   g_strfreev (self->priv->reference_identities);
@@ -461,10 +485,15 @@ gabble_server_tls_manager_foreach_channel (TpChannelManager *manager,
     gpointer user_data)
 {
   GabbleServerTLSManager *self = GABBLE_SERVER_TLS_MANAGER (manager);
+  GList *l;
 
-  /* there's only one channel of this kind */
   if (self->priv->channel != NULL)
     func (TP_EXPORTABLE_CHANNEL (self->priv->channel), user_data);
+
+  for (l = self->priv->completed_channels; l != NULL; l = l->next)
+    {
+      func (l->data, user_data);
+    }
 }
 
 static void
@@ -520,9 +549,11 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
   GValueArray *rejection;
   TpTLSCertificateRejectReason tls_reason;
 
-  certificate = gabble_server_tls_channel_get_certificate
-    (self->priv->channel);
+  /* We probably want the rejection details of last completed operation */
+  g_return_if_fail (self->priv->completed_channels != NULL);
 
+  certificate = gabble_server_tls_channel_get_certificate (
+      self->priv->completed_channels->data);
   g_object_get (certificate,
       "rejections", &rejections,
       NULL);

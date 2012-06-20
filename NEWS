@@ -1,7 +1,18 @@
-telepathy-gabble 0.16.1 (UNRELEASED)
+telepathy-gabble 0.16.1 (2012-06-20)
 ====================================
 
-...
+Requirements:
+
+• glib 2.30 is now required.
+
+Enhancements:
+
+• "see-other-host" stream error is now supported. This fix connection issue
+  with Windows Live XMPP server.
+
+Fixes:
+
+• fd.o#36998: Fail to establish a video call with Android
 
 telepathy-gabble 0.16.0 (2012-04-02)
 ====================================

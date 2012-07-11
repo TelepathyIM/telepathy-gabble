@@ -122,8 +122,17 @@ close_all (GabbleServerTLSManager *self)
   if (self->priv->channel != NULL)
     tp_base_channel_close (TP_BASE_CHANNEL (self->priv->channel));
 
-  for (l = self->priv->completed_channels; l != NULL; l = l->next)
-    tp_base_channel_close (l->data);
+  l = self->priv->completed_channels;
+  while (l != NULL)
+    {
+      /* use a temporary variable as the ::closed callback will delete
+       * the link from the list. */
+      GList *next = l->next;
+
+      tp_base_channel_close (l->data);
+
+      l = next;
+    }
 }
 
 static void

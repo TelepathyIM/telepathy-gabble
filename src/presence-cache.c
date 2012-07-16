@@ -963,9 +963,10 @@ static GSList *
 _parse_cap_bundles (
     WockyNode *lm_node,
     const gchar **hash,
-    const gchar **ver)
+    const gchar **ver,
+    const gchar **node)
 {
-  const gchar *node, *ext;
+  const gchar *ext;
   GSList *uris = NULL;
   WockyNode *cap_node;
 
@@ -979,15 +980,15 @@ _parse_cap_bundles (
 
   *hash = wocky_node_get_attribute (cap_node, "hash");
 
-  node = wocky_node_get_attribute (cap_node, "node");
+  *node = wocky_node_get_attribute (cap_node, "node");
 
-  if (NULL == node)
+  if (NULL == *node)
     return NULL;
 
   *ver = wocky_node_get_attribute (cap_node, "ver");
 
   if (NULL != *ver)
-    uris = g_slist_prepend (uris, g_strdup_printf ("%s#%s", node, *ver));
+    uris = g_slist_prepend (uris, g_strdup (*ver));
 
   /* If there is a hash, the remote contact uses XEP-0115 v1.5 and the 'ext'
    * attribute MUST be ignored. */
@@ -1003,7 +1004,7 @@ _parse_cap_bundles (
       exts = g_strsplit (ext, " ", 0);
 
       for (i = exts; NULL != *i; i++)
-        uris = g_slist_prepend (uris, g_strdup_printf ("%s#%s", node, *i));
+        uris = g_slist_prepend (uris, g_strdup (*i));
 
       g_strfreev (exts);
     }
@@ -1505,7 +1506,8 @@ _caps_disco_cb (GabbleDisco *disco,
 static void
 _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *from,
-                   const gchar *uri,
+                   const gchar *node,
+                   const gchar *fragment,
                    const gchar *hash,
                    const gchar *ver,
                    TpHandle handle,
@@ -1518,6 +1520,7 @@ _process_caps_uri (GabblePresenceCache *cache,
   GabblePresenceCachePrivate *priv;
   TpHandleRepoIface *contact_repo;
   WockyCapsCache *caps_cache;
+  gchar *uri = g_strdup_printf ("%s#%s", node, fragment);
 
   priv = cache->priv;
   contact_repo = tp_base_connection_get_handles (
@@ -1650,6 +1653,8 @@ _process_caps_uri (GabblePresenceCache *cache,
 out:
   if (cached_query_reply != NULL)
     g_object_unref (cached_query_reply);
+
+  g_free (uri);
 }
 
 static void
@@ -1661,10 +1666,11 @@ _process_caps (GabblePresenceCache *cache,
 {
   const gchar *resource;
   GSList *uris, *i;
+
   GabblePresenceCachePrivate *priv;
   GabbleCapabilitySet *old_cap_set = NULL;
   guint serial;
-  const gchar *hash, *ver;
+  const gchar *hash, *ver, *node;
 
   priv = cache->priv;
   serial = priv->caps_serial++;
@@ -1673,7 +1679,7 @@ _process_caps (GabblePresenceCache *cache,
   if (resource != NULL)
     resource++;
 
-  uris = _parse_cap_bundles (lm_node, &hash, &ver);
+  uris = _parse_cap_bundles (lm_node, &hash, &ver, &node);
 
   if (presence)
     {
@@ -1695,7 +1701,7 @@ _process_caps (GabblePresenceCache *cache,
    */
   for (i = uris; NULL != i; i = i->next)
     {
-      _process_caps_uri (cache, from, (gchar *) i->data, hash, ver, handle,
+      _process_caps_uri (cache, from, node, (gchar *) i->data, hash, ver, handle,
           resource, serial);
       g_free (i->data);
 

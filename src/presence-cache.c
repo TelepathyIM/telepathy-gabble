@@ -497,48 +497,9 @@ static void gabble_presence_cache_add_bundle_caps (GabblePresenceCache *cache,
 static void
 gabble_presence_cache_add_bundles (GabblePresenceCache *cache)
 {
-#define GOOGLE_BUNDLE(cap, features) \
-  gabble_presence_cache_add_bundle_caps (cache, \
-      "http://www.google.com/xmpp/client/caps#" cap, features); \
-  gabble_presence_cache_add_bundle_caps (cache, \
-      "http://talk.google.com/xmpp/client/caps#" cap, features); \
-  gabble_presence_cache_add_bundle_caps (cache, \
-      "http://www.android.com/gtalk/client/caps#" cap, features); \
-  gabble_presence_cache_add_bundle_caps (cache, \
-      "http://www.android.com/gtalk/client/caps2#" cap, features); \
-  gabble_presence_cache_add_bundle_caps (cache, \
-      "http://talk.google.com/xmpp/bot/caps#" cap, features);
-
-  /* Cache various bundle from the Google Talk clients as trusted.  Some old
-   * versions of Google Talk do not reply correctly to discovery requests.
-   * Plus, we know what Google's bundles mean, so it's a waste of time to disco
-   * them, particularly the ones for features we don't support. The desktop
-   * client doesn't currently have all of these, but it doesn't hurt to cache
-   * them anyway.
-   */
-  GOOGLE_BUNDLE ("voice-v1", NS_GOOGLE_FEAT_VOICE);
-  GOOGLE_BUNDLE ("video-v1", NS_GOOGLE_FEAT_VIDEO);
-
-  /* File transfer support */
-  GOOGLE_BUNDLE ("share-v1", NS_GOOGLE_FEAT_SHARE);
-
-  /* Not really sure what this ones is. */
-  GOOGLE_BUNDLE ("sms-v1", NULL);
-
-  /* TODO: remove this when we fix fd.o#22768. */
-  GOOGLE_BUNDLE ("pmuc-v1", NULL);
-
-  /* The camera-v1 bundle seems to mean "I have a camera plugged in". Not
-   * having it doesn't seem to affect anything, and we have no way of exposing
-   * that information anyway.
-   */
-  GOOGLE_BUNDLE ("camera-v1", NULL);
-
-#undef GOOGLE_BUNDLE
-
-  /* We should also cache the ext='' bundles Gabble advertises: older Gabbles
-   * advertise these and don't support hashed caps, and we shouldn't need to
-   * disco them.
+  /* We cache the ext='' bundles Gabble advertises: older Gabbles
+   * advertise these and don't support hashed caps, and we shouldn't
+   * need to disco them.
    */
   gabble_presence_cache_add_bundle_caps (cache,
       NS_GABBLE_CAPS "#" BUNDLE_VOICE_V1, NS_GOOGLE_FEAT_VOICE);
@@ -1503,6 +1464,44 @@ _caps_disco_cb (GabbleDisco *disco,
   g_ptr_array_unref (data_forms);
 }
 
+static gboolean
+get_google_cap (const gchar *fragment,
+    const gchar **ns)
+{
+  if (!tp_strdiff (fragment, "voice-v1"))
+    {
+      *ns = NS_GOOGLE_FEAT_VOICE;
+      return TRUE;
+    }
+  else if (!tp_strdiff (fragment, "video-v1"))
+    {
+      *ns = NS_GOOGLE_FEAT_VIDEO;
+      return TRUE;
+    }
+  else if (!tp_strdiff (fragment, "share-v1"))
+    {
+      *ns = NS_GOOGLE_FEAT_SHARE;
+      return TRUE;
+    }
+  else if (!tp_strdiff (fragment, "sms-v1"))
+    {
+      *ns = NULL;
+      return TRUE;
+    }
+  else if (!tp_strdiff (fragment, "pmuc-v1"))
+    {
+      *ns = NULL;
+      return TRUE;
+    }
+  else if (!tp_strdiff (fragment, "camera-v1"))
+    {
+      *ns = NULL;
+      return TRUE;
+    }
+
+  return FALSE;
+}
+
 static void
 _process_caps_uri (GabblePresenceCache *cache,
                    const gchar *from,
@@ -1521,6 +1520,7 @@ _process_caps_uri (GabblePresenceCache *cache,
   TpHandleRepoIface *contact_repo;
   WockyCapsCache *caps_cache;
   gchar *uri = g_strdup_printf ("%s#%s", node, fragment);
+  const gchar *ns = NULL;
 
   priv = cache->priv;
   contact_repo = tp_base_connection_get_handles (
@@ -1587,6 +1587,34 @@ _process_caps_uri (GabblePresenceCache *cache,
 
       if (cached_caps != NULL)
         gabble_capability_set_free (cached_caps);
+    }
+  else if (hash == NULL && get_google_cap (fragment, &ns))
+    {
+      /* if the hash is NULL then are looking at the ext='...' values,
+       * so this is starting to smell like Google */
+      GabblePresence *presence = gabble_presence_cache_get (cache, handle);
+
+      /* we already know about this fragment; apply the known value to
+       * the (handle, resource) */
+      DEBUG ("we know about fragment %s, setting caps for %u (%s)", fragment, handle,
+          from);
+
+      if (presence != NULL)
+        {
+          GabbleCapabilitySet *cap_set = gabble_capability_set_new ();
+
+          if (ns != NULL)
+            gabble_capability_set_add (cap_set, ns);
+
+          gabble_presence_set_capabilities (
+              presence, resource, cap_set, NULL, serial);
+
+          gabble_capability_set_free (cap_set);
+        }
+      else
+        {
+          DEBUG ("presence not found");
+        }
     }
   else
     {

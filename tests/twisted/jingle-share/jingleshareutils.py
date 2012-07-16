@@ -64,19 +64,18 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     c = presence.addElement((ns.CAPS, 'c'))
     c['node'] = client
     c['ext'] = "share-v1"
-    c['ver'] = compute_caps_hash([], [], {})
+    c['ver'] = '1.1'
     stream.send(presence)
 
     # Gabble looks up our capabilities
     event = q.expect('stream-iq', to=contact, query_ns=ns.DISCO_INFO)
     query_node = xpath.queryForNodes('/iq/query', event.stanza)[0]
-    assert query_node.attributes['node'] == \
-        client + '#' + c['ext']
+    assertEquals(client + '#' + c['ver'], query_node.attributes['node'])
 
     # send good reply
     result = make_result_iq(stream, event.stanza)
     query = result.firstChildElement()
-    query['node'] = client + '#' + c['ext']
+    query['node'] = client + '#' + c['ver']
     feature = query.addElement('feature')
     feature['var'] = ns.GOOGLE_FEAT_SHARE
     stream.send(result)

@@ -4,14 +4,16 @@ and/or video capable
 """
 
 from functools import partial
+from itertools import permutations
 
 from gabbletest import exec_test, make_presence, sync_stream
 from servicetest import (
-    assertContains, assertEquals, EventPattern, make_channel_proxy
+    assertContains, assertDoesNotContain, assertEquals, EventPattern,
+    make_channel_proxy
     )
 import constants as cs
 import ns
-from caps_helper import presence_and_disco, compute_caps_hash
+from caps_helper import presence_and_disco, compute_caps_hash, send_presence
 from jingle.jingletest2 import JingleTest2, JingleProtocol031
 
 from config import VOIP_ENABLED
@@ -197,6 +199,49 @@ def test_prefer_phones(q, bus, conn, stream, expect_disco):
     # ...then calls should go there, even though the laptop is more available.
     make_call(expected_recipient=phone_jid)
 
+def test_google_caps(q, bus, conn, stream):
+    i = 1
+
+    # we want to make sure all permutations of voice-v1 and video-v1
+    # result in the correct caps, so let's do exactly that.
+    for j in (1, 2):
+        for ext_set in permutations(['voice-v1', 'video-v1'], j):
+            jid = 'larry%s@page/mountainview' % i
+            i += 1
+
+            # order of these ext values shouldn't matter
+            gcaps = { 'node': 'blahblahthiskeepsonchanging',
+                      'ver':  '1.1',
+                      'ext': ' '.join(ext_set) }
+
+            handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+
+            send_presence(q, conn, stream, jid, gcaps, initial=True)
+
+            e = q.expect('dbus-signal', signal='ContactCapabilitiesChanged',
+                         predicate=lambda e: handle in e.args[0])
+
+            assertEquals(1, len(e.args[0]))
+            rccs = e.args[0][handle]
+
+            found = False
+            for fixed, allowed in rccs:
+                if fixed[cs.CHANNEL_TYPE] != cs.CHANNEL_TYPE_CALL:
+                    continue
+
+                # we should only have InitialAudio or InitialVideo if
+                # voice-v1 or video-v1 is present respectively
+                for a, b in [('voice-v1' in ext_set, cs.CALL_INITIAL_AUDIO),
+                             ('video-v1' in ext_set, cs.CALL_INITIAL_VIDEO)]:
+                    if a:
+                        assertContains(b, allowed)
+                    else:
+                        assertDoesNotContain(b, allowed)
+
+                found = True
+
+            assert found
+
 if __name__ == '__main__':
     exec_test(test)
 
@@ -204,3 +249,5 @@ if __name__ == '__main__':
     # And again, this time pulling the caps from the cache. This tests that the
     # quirk is cached!
     exec_test(partial(test_prefer_phones, expect_disco=False))
+
+    exec_test(test_google_caps)

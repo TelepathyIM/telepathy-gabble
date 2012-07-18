@@ -982,7 +982,7 @@ gabble_private_tubes_factory_lookup (GabblePrivateTubesFactory *self,
       if (!tp_strdiff (type, channel_type)
           && handle == channel_handle
           && !tp_strdiff (service, channel_service))
-        match = FALSE;
+        match = TRUE;
 
       g_free (channel_type);
       g_free (channel_service);

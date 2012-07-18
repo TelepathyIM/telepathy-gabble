@@ -86,7 +86,7 @@ struct _GabblePrivateTubesFactoryPrivate
   guint msg_tube_cb;
   guint msg_close_cb;
 
-  /* guint tube ID => (owned) (GabbleTubeIface*) */
+  /* guint tube ID => (owned) (GabbleTubeIface *) */
   GHashTable *tubes;
 
   gboolean dispose_has_run;

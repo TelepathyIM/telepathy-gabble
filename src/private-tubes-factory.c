@@ -1031,6 +1031,8 @@ generate_tube_id (GabblePrivateTubesFactory *self)
   return out;
 }
 
+/* Returns: (transfer none): new tube channel. the channel manager holds
+ * the ref to this channel, so don't unref it! */
 static GabbleTubeIface *
 new_channel_from_request (GabblePrivateTubesFactory *self,
     GHashTable *request)
@@ -1134,6 +1136,8 @@ send_tube_close_msg (GabblePrivateTubesFactory *self,
   g_object_unref (msg);
 }
 
+/* Returns: (transfer none): new tube channel. the channel manager holds
+ * the ref to this channel, so don't unref it! */
 static GabbleTubeIface *
 new_channel_from_stanza (GabblePrivateTubesFactory *self,
     WockyStanza *stanza,

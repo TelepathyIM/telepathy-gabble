@@ -1374,23 +1374,16 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
   if (channel == NULL)
     {
-      GHashTable *channels;
-      GSList *request_tokens;
+      GSList *request_tokens = NULL;
 
       channel = new_channel_from_request (self, request_properties);
 
-      channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-          NULL, NULL);
-
       if (request_token != NULL)
         request_tokens = g_slist_prepend (NULL, request_token);
-      else
-        request_tokens = NULL;
 
-      g_hash_table_insert (channels, channel, request_tokens);
-      tp_channel_manager_emit_new_channels (self, channels);
+      tp_channel_manager_emit_new_channel (self,
+          TP_EXPORTABLE_CHANNEL (channel), request_tokens);
 
-      g_hash_table_unref (channels);
       g_slist_free (request_tokens);
     }
   else

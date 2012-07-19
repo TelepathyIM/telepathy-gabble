@@ -78,7 +78,7 @@ gboolean gabble_private_tubes_factory_extract_tube_information (
     TpHandleRepoIface *contact_repo, WockyNode *tube_node,
     TpTubeType *type, TpHandle *initiator_handle,
     const gchar **service, GHashTable **parameters,
-    guint *tube_id);
+    guint64 *tube_id);
 
 G_END_DECLS
 

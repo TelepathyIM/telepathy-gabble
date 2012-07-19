@@ -1964,7 +1964,7 @@ tube_closed_cb (GabbleTubeIface *tube,
     GabbleMucChannel *gmuc)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
-  guint tube_id;
+  guint64 tube_id;
 
   g_object_get (tube, "id", &tube_id, NULL);
 
@@ -1978,7 +1978,7 @@ create_new_tube (GabbleMucChannel *gmuc,
     const gchar *service,
     GHashTable *parameters,
     const gchar *stream_id,
-    guint tube_id,
+    guint64 tube_id,
     GabbleBytestreamIface *bytestream,
     gboolean requested)
 {
@@ -2009,7 +2009,7 @@ create_new_tube (GabbleMucChannel *gmuc,
 
   tp_base_channel_register ((TpBaseChannel *) tube);
 
-  DEBUG ("create tube %u", tube_id);
+  DEBUG ("create tube %" G_GUINT64_FORMAT, tube_id);
   g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id), tube);
 
   g_signal_connect (tube, "closed", G_CALLBACK (tube_closed_cb), gmuc);
@@ -2017,16 +2017,16 @@ create_new_tube (GabbleMucChannel *gmuc,
   return tube;
 }
 
-static guint
+static guint64
 generate_tube_id (GabbleMucChannel *self)
 {
   GabbleMucChannelPrivate *priv = self->priv;
-  guint out;
+  guint64 out;
 
   /* probably totally overkill */
   do
     {
-      out = g_random_int_range (0, G_MAXINT);
+      out = g_random_int_range (1, G_MAXINT32);
     }
   while (g_hash_table_lookup (priv->tubes,
           GUINT_TO_POINTER (out)) != NULL);
@@ -2044,7 +2044,7 @@ gabble_muc_channel_tube_request (GabbleMucChannel *self,
   const gchar *channel_type;
   const gchar *service;
   GHashTable *parameters = NULL;
-  guint tube_id;
+  guint64 tube_id;
   gchar *stream_id;
   TpTubeType type;
 
@@ -2118,9 +2118,7 @@ gabble_muc_channel_handle_si_stream_request (GabbleMucChannel *self,
   GabbleMucChannelPrivate *priv = self->priv;
   WockyNode *si_node, *stream_node;
   const gchar *tmp;
-  gchar *endptr;
-  unsigned long tube_id_tmp;
-  guint tube_id;
+  guint64 tube_id;
   GabbleTubeIface *tube;
 
   si_node = wocky_node_get_child_ns (
@@ -2141,17 +2139,16 @@ gabble_muc_channel_handle_si_stream_request (GabbleMucChannel *self,
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
-  tube_id_tmp = strtoul (tmp, &endptr, 10);
-  if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
+  tube_id = g_ascii_strtoull (tmp, NULL, 10);
+  if (tube_id == 0 || tube_id > G_MAXUINT32)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
-          "<muc-stream> tube attribute not numeric or > 2**32" };
+          "<muc-stream> tube ID attribute non-numeric or out of range" };
 
-      DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
+      DEBUG ("tube id is non-numeric or out of range: %s", tmp);
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
-  tube_id = (guint) tube_id_tmp;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
@@ -2160,12 +2157,13 @@ gabble_muc_channel_handle_si_stream_request (GabbleMucChannel *self,
           "<muc-stream> tube attribute points to a nonexistent "
           "tube" };
 
-      DEBUG ("tube %u doesn't exist", tube_id);
+      DEBUG ("tube %" G_GUINT64_FORMAT " doesn't exist", tube_id);
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
-  DEBUG ("received new bytestream request for existing tube: %u", tube_id);
+  DEBUG ("received new bytestream request for existing tube: %" G_GUINT64_FORMAT,
+      tube_id);
 
   gabble_tube_iface_add_bytestream (tube, bytestream);
 }
@@ -2234,7 +2232,7 @@ tubes_presence_update (GabbleMucChannel *gmuc,
     {
       const gchar *stream_id;
       GabbleTubeIface *tube;
-      guint tube_id;
+      guint64 tube_id;
       TpTubeType type;
 
       stream_id = wocky_node_get_attribute (tube_node, "stream-id");

@@ -49,7 +49,7 @@
 #include "util.h"
 
 static GabbleTubeIface * new_channel_from_stanza (GabblePrivateTubesFactory *self,
-    WockyStanza *stanza, WockyNode *tube_node, guint tube_id,
+    WockyStanza *stanza, WockyNode *tube_node, guint64 tube_id,
     GabbleBytestreamIface *bytestream);
 
 static gboolean private_tubes_factory_tube_close_cb (
@@ -114,7 +114,7 @@ gabble_private_tubes_factory_extract_tube_information (
     TpHandle *initiator_handle,
     const gchar **service,
     GHashTable **parameters,
-    guint *tube_id)
+    guint64 *tube_id)
 {
   if (type != NULL)
     {
@@ -176,8 +176,7 @@ gabble_private_tubes_factory_extract_tube_information (
   if (tube_id != NULL)
     {
       const gchar *str;
-      gchar *endptr;
-      unsigned long tmp;
+      guint64 tmp;
 
       str = wocky_node_get_attribute (tube_node, "id");
       if (str == NULL)
@@ -186,13 +185,13 @@ gabble_private_tubes_factory_extract_tube_information (
           return FALSE;
         }
 
-      tmp = strtoul (str, &endptr, 10);
-      if (!endptr || *endptr || tmp > G_MAXUINT32)
+      tmp = g_ascii_strtoull (str, NULL, 10);
+      if (tmp == 0 || tmp > G_MAXUINT32)
         {
-          DEBUG ("tube id is not numeric or > 2**32: %s", str);
+          DEBUG ("tube id is non-numeric or out of range: %s", str);
           return FALSE;
         }
-      *tube_id = (guint) tmp;
+      *tube_id = tmp;
     }
 
   return TRUE;
@@ -692,7 +691,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
   WockyNode *si_node, *tube_node;
   WockyStanzaType stanza_type;
   WockyStanzaSubType sub_type;
-  guint tube_id;
+  guint64 tube_id;
   GabbleTubeIface *tube;
 
   DEBUG ("contact#%u stream %s", handle, stream_id);
@@ -749,10 +748,8 @@ gabble_private_tubes_factory_handle_si_stream_request (
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *tmp;
-  gchar *endptr;
-  guint tube_id;
+  guint64 tube_id;
   WockyNode *si_node, *stream_node;
-  unsigned long tube_id_tmp;
   GabbleTubeIface *tube;
   WockyStanzaType stanza_type;
   WockyStanzaSubType sub_type;
@@ -782,17 +779,16 @@ gabble_private_tubes_factory_handle_si_stream_request (
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
-  tube_id_tmp = strtoul (tmp, &endptr, 10);
-  if (!endptr || *endptr || tube_id_tmp > G_MAXUINT32)
+  tube_id = g_ascii_strtoull (tmp, NULL, 10);
+  if (tube_id == 0 || tube_id > G_MAXUINT32)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
-          "<stream> tube attribute not numeric or > 2**32" };
+          "<stream> tube ID attribute non-numeric or out of range" };
 
-      DEBUG ("tube id is not numeric or > 2**32: %s", tmp);
+      DEBUG ("tube id is non-numeric or out of range: %s", tmp);
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
-  tube_id = (guint) tube_id_tmp;
 
   tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
@@ -801,12 +797,13 @@ gabble_private_tubes_factory_handle_si_stream_request (
           "<stream> tube attribute points to a nonexistent "
           "tube" };
 
-      DEBUG ("tube %u doesn't exist", tube_id);
+      DEBUG ("tube %" G_GUINT64_FORMAT " doesn't exist", tube_id);
       gabble_bytestream_iface_close (bytestream, &e);
       return;
     }
 
-  DEBUG ("received new bytestream request for existing tube: %u", tube_id);
+  DEBUG ("received new bytestream request for existing tube: %" G_GUINT64_FORMAT,
+      tube_id);
 
   gabble_tube_iface_add_bytestream (tube, bytestream);
 }
@@ -816,7 +813,7 @@ tube_msg_checks (GabblePrivateTubesFactory *self,
     WockyStanza *msg,
     WockyNode *node,
     TpHandle *out_handle,
-    guint *out_tube_id)
+    guint64 *out_tube_id)
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
@@ -824,7 +821,7 @@ tube_msg_checks (GabblePrivateTubesFactory *self,
       (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *from, *tmp;
   TpHandle handle;
-  guint tube_id;
+  guint64 tube_id;
 
   from = wocky_node_get_attribute (
       wocky_stanza_get_top_node (msg), "from");
@@ -849,9 +846,9 @@ tube_msg_checks (GabblePrivateTubesFactory *self,
     }
 
   tube_id = g_ascii_strtoull (tmp, NULL, 10);
-  if (tube_id == 0 || tube_id >= G_MAXINT)
+  if (tube_id == 0 || tube_id > G_MAXUINT32)
     {
-      DEBUG ("tube ID is not numeric or > 2**32: %s", tmp);
+      DEBUG ("tube ID is non-numeric or out of range: %s", tmp);
       return FALSE;
     }
 
@@ -874,7 +871,7 @@ private_tubes_factory_msg_tube_cb (
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   WockyNode *node;
-  guint tube_id;
+  guint64 tube_id;
   GabbleTubeIface *channel;
   TpHandle handle;
 
@@ -921,7 +918,7 @@ private_tubes_factory_tube_close_cb (
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   WockyNode *node;
-  guint tube_id;
+  guint64 tube_id;
   GabbleTubeIface *channel;
   TpTubeType type;
 
@@ -947,7 +944,7 @@ private_tubes_factory_tube_close_cb (
       return TRUE;
     }
 
-  DEBUG ("tube %u was closed by remote peer", tube_id);
+  DEBUG ("tube %" G_GUINT64_FORMAT " was closed by remote peer", tube_id);
   gabble_tube_iface_close (channel, TRUE);
 
   return TRUE;
@@ -1013,7 +1010,7 @@ channel_closed_cb (GabbleTubeIface *tube,
     g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (id));
 }
 
-static guint
+static guint64
 generate_tube_id (GabblePrivateTubesFactory *self)
 {
   GabblePrivateTubesFactoryPrivate *priv =
@@ -1023,7 +1020,7 @@ generate_tube_id (GabblePrivateTubesFactory *self)
   /* probably totally overkill */
   do
     {
-      out = g_random_int_range (0, G_MAXINT);
+      out = g_random_int_range (1, G_MAXINT32);
     }
   while (g_hash_table_lookup (priv->tubes,
           GUINT_TO_POINTER (out)) != NULL);
@@ -1048,7 +1045,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
   const gchar *ctype, *service;
   TpHandleType handle_type;
   GHashTable *parameters;
-  guint tube_id;
+  guint64 tube_id;
 
   ctype = tp_asv_get_string (request, TP_PROP_CHANNEL_CHANNEL_TYPE);
   handle = tp_asv_get_uint32 (request, TP_PROP_CHANNEL_TARGET_HANDLE,
@@ -1107,7 +1104,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
 static void
 send_tube_close_msg (GabblePrivateTubesFactory *self,
     const gchar *jid,
-    guint tube_id)
+    guint64 tube_id)
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
@@ -1115,7 +1112,7 @@ send_tube_close_msg (GabblePrivateTubesFactory *self,
   WockyStanza *msg;
   gchar *id_str;
 
-  id_str = g_strdup_printf ("%u", tube_id);
+  id_str = g_strdup_printf ("%" G_GUINT64_FORMAT, tube_id);
 
   porter = gabble_connection_dup_porter (priv->conn);
 
@@ -1142,7 +1139,7 @@ static GabbleTubeIface *
 new_channel_from_stanza (GabblePrivateTubesFactory *self,
     WockyStanza *stanza,
     WockyNode *tube_node,
-    guint tube_id,
+    guint64 tube_id,
     GabbleBytestreamIface *bytestream)
 {
   GabblePrivateTubesFactoryPrivate *priv =

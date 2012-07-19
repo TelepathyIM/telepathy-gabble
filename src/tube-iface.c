@@ -72,7 +72,7 @@ gabble_tube_iface_base_init (gpointer klass)
           G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
 
-      param_spec = g_param_spec_uint (
+      param_spec = g_param_spec_uint64 (
           "id",
           "id",
           "The unique identifier of this tube",
@@ -151,7 +151,7 @@ gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
   GHashTable *parameters;
   TpTubeType type;
   gchar *service, *id_str;
-  guint tube_id;
+  guint64 tube_id;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
     conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle initiator_handle;
@@ -164,7 +164,7 @@ gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
       "id", &tube_id,
       NULL);
 
-  id_str = g_strdup_printf ("%u", tube_id);
+  id_str = g_strdup_printf ("%" G_GUINT64_FORMAT, tube_id);
 
   wocky_node_set_attributes (node,
       "service", service,

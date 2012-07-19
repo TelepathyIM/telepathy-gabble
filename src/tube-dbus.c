@@ -120,7 +120,7 @@ enum
 struct _GabbleTubeDBusPrivate
 {
   TpHandle self_handle;
-  guint id;
+  guint64 id;
   GabbleBytestreamIface *bytestream;
   gchar *stream_id;
   gchar *service;
@@ -599,7 +599,7 @@ gabble_tube_dbus_get_property (GObject *object,
         g_value_set_uint (value, priv->self_handle);
         break;
       case PROP_ID:
-        g_value_set_uint (value, priv->id);
+        g_value_set_uint64 (value, priv->id);
         break;
       case PROP_BYTESTREAM:
         g_value_set_object (value, priv->bytestream);
@@ -655,7 +655,7 @@ gabble_tube_dbus_set_property (GObject *object,
         priv->self_handle = g_value_get_uint (value);
         break;
       case PROP_ID:
-        priv->id = g_value_get_uint (value);
+        priv->id = g_value_get_uint64 (value);
         break;
       case PROP_BYTESTREAM:
         if (priv->bytestream == NULL)
@@ -833,7 +833,7 @@ gabble_tube_dbus_get_object_path_suffix (TpBaseChannel *base)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (base);
 
-  return g_strdup_printf ("DBusTubeChannel/%u/%u",
+  return g_strdup_printf ("DBusTubeChannel/%u/%" G_GUINT64_FORMAT,
       tp_base_channel_get_target_handle (base),
       self->priv->id);
 }
@@ -1344,7 +1344,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       const gchar *service,
                       GHashTable *parameters,
                       const gchar *stream_id,
-                      guint id,
+                      guint64 id,
                       GabbleBytestreamIface *bytestream,
                       GabbleMucChannel *muc,
                       gboolean requested)

@@ -1154,6 +1154,11 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
   const gchar *service;
   GHashTable *parameters;
 
+  /* the validity of this has already been checked by wocky */
+  handle = tp_handle_ensure (contact_repo,
+      wocky_stanza_get_from (stanza), NULL, NULL);
+  g_return_val_if_fail (handle != 0, NULL);
+
   if (!gabble_private_tubes_factory_extract_tube_information (
           contact_repo, tube_node, &type, NULL,
           &service, &parameters, NULL))
@@ -1178,10 +1183,6 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
       gabble_bytestream_iface_close (bytestream, &e);
       return NULL;
     }
-
-  /* this has already been checked */
-  handle = tp_handle_lookup (contact_repo,
-      wocky_stanza_get_from (stanza), NULL, NULL);
 
   if (type == TP_TUBE_TYPE_STREAM)
     {

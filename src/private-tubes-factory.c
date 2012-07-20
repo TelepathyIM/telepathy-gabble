@@ -1197,7 +1197,10 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
 
       si_node = wocky_node_get_child_ns (
           wocky_stanza_get_top_node (stanza), "si", NS_SI);
+      g_return_val_if_fail (si_node != NULL, NULL);
+
       stream_id = wocky_node_get_attribute (si_node, "id");
+      g_return_val_if_fail (stream_id != NULL, NULL);
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
               handle, TP_HANDLE_TYPE_CONTACT, base_conn->self_handle,

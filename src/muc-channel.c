@@ -125,8 +125,6 @@ enum
     NEW_CALL,
 #endif
 
-    APPEARED,
-
     LAST_SIGNAL
 };
 
@@ -1243,14 +1241,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   /* this should be GABBLE_TYPE_TUBE_IFACE but GObject
                    * wants a value type, not an interface. */
                   G_TYPE_NONE, 1, TP_TYPE_BASE_CHANNEL);
-
-  signals[APPEARED] = g_signal_new ("appeared",
-                  G_OBJECT_CLASS_TYPE (gabble_muc_channel_class),
-                  G_SIGNAL_RUN_LAST | G_SIGNAL_DETAILED,
-                  0,
-                  NULL, NULL,
-                  g_cclosure_marshal_VOID__VOID,
-                  G_TYPE_NONE, 0);
 
 #ifdef ENABLE_VOIP
   signals[NEW_CALL] = g_signal_new ("new-call",
@@ -3060,7 +3050,6 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
     {
       DEBUG ("making MUC channel reappear!");
       tp_base_channel_reopened_with_requested (base, FALSE, sender);
-      g_signal_emit (chan, signals[APPEARED], 0);
     }
 
   /* let's not autoclose now */

@@ -237,6 +237,14 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpHandle room_handle;
 
+  /* channel is actually reappearing, announce it */
+  if (tp_base_channel_is_respawning (base))
+    {
+      tp_channel_manager_emit_new_channel (fac,
+          TP_EXPORTABLE_CHANNEL (chan), NULL);
+      return;
+    }
+
   if (tp_base_channel_is_registered (base))
     {
       tp_channel_manager_emit_channel_closed_for_object (fac,
@@ -252,16 +260,6 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
 
       g_hash_table_remove (priv->text_channels, GUINT_TO_POINTER (room_handle));
     }
-}
-
-static void
-muc_channel_appeared_cb (GabbleMucChannel *chan,
-    gpointer user_data)
-{
-  GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-
-  tp_channel_manager_emit_new_channel (fac,
-      TP_EXPORTABLE_CHANNEL (chan), NULL);
 }
 
 static void
@@ -501,7 +499,6 @@ new_muc_channel (GabbleMucFactory *fac,
        "initially-register", !needed_not_wanted,
        NULL);
 
-  g_signal_connect (chan, "appeared", (GCallback) muc_channel_appeared_cb, fac);
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
   g_signal_connect (chan, "new-tube", (GCallback) muc_channel_new_tube, fac);
 #ifdef ENABLE_VOIP

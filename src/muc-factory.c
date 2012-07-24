@@ -446,7 +446,7 @@ new_muc_channel (GabbleMucFactory *fac,
                  TpHandle inviter,
                  const gchar *message,
                  gboolean requested,
-                 gboolean needed_not_wanted,
+                 gboolean initially_register,
                  GHashTable *initial_channels,
                  GArray *initial_handles,
                  char **initial_ids,
@@ -496,7 +496,7 @@ new_muc_channel (GabbleMucFactory *fac,
        "initial-invitee-handles", initial_handles,
        "initial-invitee-ids", initial_ids,
        "room-name", room_name,
-       "initially-register", !needed_not_wanted,
+       "initially-register", initially_register,
        NULL);
 
   g_signal_connect (chan, "closed", (GCallback) muc_channel_closed_cb, fac);
@@ -547,7 +547,7 @@ do_invite (GabbleMucFactory *fac,
         GUINT_TO_POINTER (room_handle)) == NULL)
     {
       new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason,
-          FALSE, FALSE, NULL, NULL, NULL, NULL);
+          FALSE, TRUE, NULL, NULL, NULL, NULL);
     }
   else
     {
@@ -1024,7 +1024,7 @@ ensure_muc_channel (GabbleMucFactory *fac,
                     TpHandle handle,
                     GabbleMucChannel **ret,
                     gboolean requested,
-                    gboolean needed_not_wanted,
+                    gboolean export_text,
                     GHashTable *initial_channels,
                     GArray *initial_handles,
                     char **initial_ids,
@@ -1037,16 +1037,15 @@ ensure_muc_channel (GabbleMucFactory *fac,
   if (*ret == NULL)
     {
       *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle,
-          NULL, requested, needed_not_wanted, initial_channels,
+          NULL, requested, export_text, initial_channels,
           initial_handles, initial_ids, room_name);
 
-      gabble_muc_channel_set_autoclose (*ret, needed_not_wanted);
+      gabble_muc_channel_set_autoclose (*ret, !export_text);
     }
   else
     {
-      /* only set this if it's already enabled */
-      if (gabble_muc_channel_get_autoclose (*ret))
-        gabble_muc_channel_set_autoclose (*ret, needed_not_wanted);
+      if (export_text)
+        gabble_muc_channel_set_autoclose (*ret, FALSE);
     }
 
   if (_gabble_muc_channel_is_ready (*ret))
@@ -1435,7 +1434,7 @@ handle_text_channel_request (GabbleMucFactory *self,
 
     }
 
-  if (ensure_muc_channel (self, priv, room, &text_chan, TRUE, FALSE,
+  if (ensure_muc_channel (self, priv, room, &text_chan, TRUE, TRUE,
           final_channels, final_handles, final_ids, room_name))
     {
       /* channel exists */
@@ -1542,7 +1541,7 @@ handle_tube_channel_request (GabbleMucFactory *self,
   gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
 
   if (gmuc == NULL)
-    ensure_muc_channel (self, priv, handle, &gmuc, FALSE, TRUE,
+    ensure_muc_channel (self, priv, handle, &gmuc, FALSE, FALSE,
         NULL, NULL, NULL, NULL);
 
   can_announce_now = _gabble_muc_channel_is_ready (gmuc);
@@ -1698,7 +1697,7 @@ handle_call_channel_request (GabbleMucFactory *self,
       return FALSE;
     }
 
-  ensure_muc_channel (self, priv, handle, &muc, FALSE, TRUE, NULL, NULL, NULL, NULL);
+  ensure_muc_channel (self, priv, handle, &muc, FALSE, FALSE, NULL, NULL, NULL, NULL);
 
   call = gabble_muc_channel_get_call (muc);
 

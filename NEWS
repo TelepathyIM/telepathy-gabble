@@ -1,3 +1,10 @@
+telepathy-gabble 0.16.2 (2012-08-14)
+====================================
+
+Fixes:
+
+• fd.o#53087 - Crash in tp_base_channel_close
+
 telepathy-gabble 0.16.1 (2012-06-20)
 ====================================
 

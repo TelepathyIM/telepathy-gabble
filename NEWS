@@ -1,10 +1,16 @@
-telepathy-gabble 0.17.0 (UNRELEASED)
+telepathy-gabble 0.17.0 (2012-08-14)
 ====================================
 
 Dependencies:
 
-• telepathy-glib 0.19.0 is now required.
+• telepathy-glib 0.19.2 is now required.
 
+Changes since 0.16.2:
+
+• Fix calls with android devices (Marcus)
+• Implement WLM jidlookup. This makes possible to add MSN contacts using XMPP.
+  (Xavier)
+• Fix google caps parsing (Jonny)
 
 telepathy-gabble 0.16.0 (2012-04-02)
 ====================================

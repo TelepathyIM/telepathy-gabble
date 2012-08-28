@@ -1,3 +1,10 @@
+telepathy-gabble 0.17.1 (UNRELEASED)
+====================================
+
+Dependencies:
+
+• telepathy-glib 0.19.7 is now required. (sorry about that)
+
 telepathy-gabble 0.17.0 (2012-08-14)
 ====================================
 

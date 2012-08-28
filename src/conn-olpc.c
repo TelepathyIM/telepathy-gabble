@@ -2627,6 +2627,10 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
   TpHandleSet *my_activities;
   gboolean was_in_our_pep = FALSE;
 
+  /* is the muc channel /actually/ disappearing */
+  if (!tp_base_channel_is_destroyed (TP_BASE_CHANNEL (chan)))
+    return;
+
   g_object_get (activity, "connection", &conn, NULL);
 
   /* Revoke invitations we sent for this activity */

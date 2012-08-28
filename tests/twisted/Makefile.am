@@ -131,10 +131,8 @@ TWISTED_TUBE_TESTS = \
 	tubes/accept-private-stream-tube.py \
 	tubes/check-create-tube-return.py \
 	tubes/close-muc-with-closed-tube.py \
-	tubes/crash-on-list-channels.py \
 	tubes/create-invalid-tube-channels.py \
 	tubes/ensure-si-tube.py \
-	tubes/muc-presence.py \
 	tubes/offer-muc-dbus-tube.py \
 	tubes/offer-muc-stream-tube.py \
 	tubes/offer-no-caps.py \
@@ -275,7 +273,6 @@ TWISTED_OTHER_FILES = \
 	test-helper.py \
 	tls-cert.pem \
 	tls-key.pem \
-	tubes/muctubeutil.py \
 	tubes/tubetestutil.py \
 	$(NULL)
 

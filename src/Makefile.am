@@ -125,8 +125,6 @@ libgabble_convenience_la_SOURCES = \
     tls-certificate.c \
     tube-iface.h \
     tube-iface.c \
-    tubes-channel.h \
-    tubes-channel.c \
     tube-dbus.h \
     tube-dbus.c \
     tube-stream.h \

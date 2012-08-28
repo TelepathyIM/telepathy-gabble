@@ -116,7 +116,7 @@ enum
 struct _GabbleTubeDBusPrivate
 {
   TpHandle self_handle;
-  guint id;
+  guint64 id;
   GabbleBytestreamIface *bytestream;
   gchar *stream_id;
   gchar *service;
@@ -407,6 +407,8 @@ static void
 tube_dbus_open (GabbleTubeDBus *self)
 {
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
 
   g_signal_connect (priv->bytestream, "data-received",
       G_CALLBACK (data_received_cb), self);
@@ -419,6 +421,15 @@ tube_dbus_open (GabbleTubeDBus *self)
   if (priv->dbus_srv != NULL)
     {
       dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
+    }
+
+  if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+    {
+      /* add yourself in dbus names */
+      gabble_tube_dbus_add_name (self, priv->self_handle,
+          priv->dbus_local_name);
+
+      gabble_muc_channel_send_presence (priv->muc);
     }
 }
 
@@ -470,11 +481,16 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (user_data);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
 
   if (state == GABBLE_BYTESTREAM_STATE_CLOSED)
     {
       tp_clear_object (&priv->bytestream);
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
+
+      if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+        gabble_muc_channel_send_presence (priv->muc);
     }
   else if (state == GABBLE_BYTESTREAM_STATE_OPEN)
     {
@@ -579,7 +595,7 @@ gabble_tube_dbus_get_property (GObject *object,
         g_value_set_uint (value, priv->self_handle);
         break;
       case PROP_ID:
-        g_value_set_uint (value, priv->id);
+        g_value_set_uint64 (value, priv->id);
         break;
       case PROP_BYTESTREAM:
         g_value_set_object (value, priv->bytestream);
@@ -635,7 +651,7 @@ gabble_tube_dbus_set_property (GObject *object,
         priv->self_handle = g_value_get_uint (value);
         break;
       case PROP_ID:
-        priv->id = g_value_get_uint (value);
+        priv->id = g_value_get_uint64 (value);
         break;
       case PROP_BYTESTREAM:
         if (priv->bytestream == NULL)
@@ -813,7 +829,7 @@ gabble_tube_dbus_get_object_path_suffix (TpBaseChannel *base)
 {
   GabbleTubeDBus *self = GABBLE_TUBE_DBUS (base);
 
-  return g_strdup_printf ("DBusTubeChannel/%u/%u",
+  return g_strdup_printf ("DBusTubeChannel/%u/%" G_GUINT64_FORMAT,
       tp_base_channel_get_target_handle (base),
       self->priv->id);
 }
@@ -1088,6 +1104,8 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       g_object_set (priv->bytestream,
           "state", GABBLE_BYTESTREAM_STATE_OPEN,
           NULL);
+
+      gabble_muc_channel_send_presence (priv->muc);
     }
 
   if (!create_dbus_server (tube, error))
@@ -1322,7 +1340,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
                       const gchar *service,
                       GHashTable *parameters,
                       const gchar *stream_id,
-                      guint id,
+                      guint64 id,
                       GabbleBytestreamIface *bytestream,
                       GabbleMucChannel *muc,
                       gboolean requested)

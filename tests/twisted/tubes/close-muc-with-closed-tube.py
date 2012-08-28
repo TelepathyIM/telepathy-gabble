@@ -2,7 +2,7 @@
 
 import dbus
 
-from servicetest import call_async, EventPattern, unwrap
+from servicetest import call_async, EventPattern, unwrap, assertEquals
 from gabbletest import exec_test, make_result_iq, acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
@@ -84,43 +84,28 @@ def test(q, bus, conn, stream):
 
     stream.send(presence)
 
-    # tubes channel is automatically created
-    event = q.expect('dbus-signal', signal='NewChannel')
+    def new_chan_predicate(e):
+        path, props = e.args[0][0]
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
 
-    if event.args[1] == cs.CHANNEL_TYPE_TEXT:
-        # skip this one, try the next one
-        event = q.expect('dbus-signal', signal='NewChannel')
+    # tube channel is automatically created
+    event = q.expect('dbus-signal', signal='NewChannels',
+                     predicate=new_chan_predicate)
 
-    assert event.args[1] == cs.CHANNEL_TYPE_TUBES, event.args
-    assert event.args[2] == cs.HT_ROOM
-    assert event.args[3] == room_handle
+    path, props = event.args[0][0]
 
-    tubes_chan = bus.get_object(conn.bus_name, event.args[0])
-    tubes_iface = dbus.Interface(tubes_chan, event.args[1])
+    assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(room_handle, props[cs.TARGET_HANDLE])
+    assertEquals('chat@conf.localhost', props[cs.TARGET_ID])
+    assertEquals(False, props[cs.REQUESTED])
 
-    channel_props = tubes_chan.GetAll(
-        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
-    assert channel_props['Requested'] == False
-    assert channel_props['InitiatorID'] == ''
-    assert channel_props['InitiatorHandle'] == 0
-
-    tubes_self_handle = tubes_chan.GetSelfHandle(
-        dbus_interface=cs.CHANNEL_IFACE_GROUP)
-
-    q.expect('dbus-signal', signal='NewTube',
-        args=[tube_id, bob_handle, 0, 'org.telepathy.freedesktop.test', sample_parameters, 0])
-
-    expected_tube = (tube_id, bob_handle, cs.TUBE_TYPE_DBUS,
-        'org.telepathy.freedesktop.test', sample_parameters,
-        cs.TUBE_STATE_LOCAL_PENDING)
-    tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert len(tubes) == 1, unwrap(tubes)
-    t.check_tube_in_tubes(expected_tube, tubes)
+    tube_chan = bus.get_object(conn.bus_name, path)
+    tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
 
     # reject the tube
-    tubes_iface.CloseTube(tube_id)
-    q.expect('dbus-signal', signal='TubeClosed', args=[tube_id])
+    tube_iface.Close(dbus_interface=cs.CHANNEL)
+    q.expect('dbus-signal', signal='ChannelClosed')
 
     # close the text channel
     text_chan.Close()

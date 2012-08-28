@@ -5,7 +5,7 @@ from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
 from servicetest import call_async, EventPattern, unwrap, watch_tube_signals,\
-    assertContains
+    assertContains, assertEquals
 from gabbletest import sync_stream, make_presence
 import constants as cs
 import tubetestutil as t
@@ -57,8 +57,8 @@ def alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls):
 
     bytestream.wait_bytestream_open()
 
-    q.expect('dbus-signal', signal='TubeStateChanged',
-        args=[dbus_tube_id, cs.TUBE_STATE_OPEN])
+    q.expect('dbus-signal', signal='TubeChannelStateChanged',
+        args=[cs.TUBE_STATE_OPEN])
 
     return bytestream
 
@@ -98,74 +98,24 @@ def send_dbus_message_to_alice(q, stream, dbus_tube_adr, bytestream):
     q.expect('tube-signal', signal='baz', args=[42], tube=tube)
     q.expect('tube-signal', signal='baz', args=[42], tube=tube)
 
-def offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls):
-    # request tubes channel (old API)
-    tubes_path = conn.RequestChannel(cs.CHANNEL_TYPE_TUBES, cs.HT_CONTACT,
-            alice_handle, True)
-    tubes_chan = bus.get_object(conn.bus_name, tubes_path)
-    tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
-    tubes_chan_iface = dbus.Interface(tubes_chan, cs.CHANNEL)
-
-    # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = tubes_chan.GetAll(cs.CHANNEL, dbus_interface=cs.PROPERTIES_IFACE)
-    assert channel_props.get('TargetHandle') == alice_handle,\
-            (channel_props.get('TargetHandle'), alice_handle)
-    assert channel_props.get('TargetHandleType') == cs.HT_CONTACT,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == cs.CHANNEL_TYPE_TUBES,\
-            channel_props.get('ChannelType')
-    assert 'Interfaces' in channel_props, channel_props
-    assert channel_props['Interfaces'] == [], channel_props['Interfaces']
-    assert channel_props['TargetID'] == 'alice@localhost', channel_props['TargetID']
-    assert channel_props['Requested'] == True
-    assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
-
-    # Offer a D-Bus tube using old API
-    call_async(q, tubes_iface, 'OfferDBusTube',
-            'com.example.TestCase', sample_parameters)
-
-    new_tube_event, iq_event, offer_return_event = \
-        q.expect_many(
-        EventPattern('dbus-signal', signal='NewTube'),
-        EventPattern('stream-iq', to='alice@localhost/Test'),
-        EventPattern('dbus-return', method='OfferDBusTube'))
-
-    # handle new_tube_event
-    dbus_tube_id = new_tube_event.args[0]
-    assert new_tube_event.args[1] == self_handle
-    assert new_tube_event.args[2] == cs.TUBE_TYPE_DBUS
-    assert new_tube_event.args[3] == 'com.example.TestCase'
-    assert new_tube_event.args[4] == sample_parameters
-    assert new_tube_event.args[5] == cs.TUBE_STATE_REMOTE_PENDING
-
-    # handle offer_return_event
-    assert offer_return_event.value[0] == dbus_tube_id
-
-    tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert len(tubes) == 1
-    expected_tube = (dbus_tube_id, self_handle, cs.TUBE_TYPE_DBUS,
-        'com.example.TestCase', sample_parameters, cs.TUBE_STATE_REMOTE_PENDING)
-    t.check_tube_in_tubes(expected_tube, tubes)
-
-    bytestream = alice_accepts_tube(q, stream, iq_event, dbus_tube_id, bytestream_cls)
-
-    dbus_tube_adr = tubes_iface.GetDBusTubeAddress(dbus_tube_id)
-    send_dbus_message_to_alice(q, stream, dbus_tube_adr, bytestream)
-
-    # close the tube
-    tubes_iface.CloseTube(dbus_tube_id)
-    q.expect('dbus-signal', signal='TubeClosed', args=[dbus_tube_id])
-
-    # and close the tubes channel
-    tubes_chan_iface.Close()
-    q.expect('dbus-signal', signal='Closed')
-
-
 def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
     bytestream_cls, access_control):
 
     # Offer a tube to Alice (new API)
+
+    def new_chan_predicate(e):
+        types = []
+        for _, props in e.args[0]:
+            types.append(props[cs.CHANNEL_TYPE])
+
+        return cs.CHANNEL_TYPE_DBUS_TUBE in types
+
+    def find_dbus_tube(channels):
+        for path, props in channels:
+            if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE:
+                return path, props
+
+        return None, None
 
     call_async(q, conn.Requests, 'CreateChannel',
             {cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_DBUS_TUBE,
@@ -175,10 +125,11 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
             }, byte_arrays=True)
     cc_ret, nc = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannels',
+                     predicate=new_chan_predicate),
         )
     tube_path, tube_props = cc_ret.value
-    new_channel_details = nc.args[0]
+    _, new_channel_props = find_dbus_tube(nc.args[0])
 
     # check tube channel properties
     assert tube_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
@@ -200,34 +151,10 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
     all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
 
-    for path, props in new_channel_details:
+    for path, props in nc.args[0]:
         assertContains((path, props), all_channels)
 
-    # Under the current implementation, creating a new-style Tube channel
-    # ensures that an old-style Tubes channel exists, even though Tube channels
-    # aren't visible on the Tubes channel until they're offered.  Another
-    # correct implementation would have the Tubes channel spring up only when
-    # the Tube is offered.
-    #
-    # Anyway. Given the current implementation, they should be announced together.
-    assert len(new_channel_details) == 2, unwrap(new_channel_details)
-    found_tubes = False
-    found_tube = False
-    for path, details in new_channel_details:
-        if details[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TUBES:
-            found_tubes = True
-            tubes_chan = bus.get_object(conn.bus_name, path)
-            tubes_iface = dbus.Interface(tubes_chan, cs.CHANNEL_TYPE_TUBES)
-        elif details[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE:
-            found_tube = True
-            assert tube_path == path, (tube_path, path)
-        else:
-            assert False, (path, details)
-    assert found_tube and found_tubes, unwrap(new_channel_details)
-
-    # The tube's not offered, so it shouldn't be shown on the old interface.
-    tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert len(tubes) == 0, tubes
+    assertEquals(tube_props, new_channel_props)
 
     tube_chan = bus.get_object(conn.bus_name, tube_path)
     tube_chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
@@ -248,10 +175,9 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
     # arrived if it had been sent.
     sync_stream(q, stream)
     call_async(q, dbus_tube_iface, 'Offer', sample_parameters, access_control)
-    offer_return_event, iq_event, new_tube_event, state_event = q.expect_many(
+    offer_return_event, iq_event, state_event = q.expect_many(
         EventPattern('dbus-return', method='Offer'),
         EventPattern('stream-iq', to='alice@localhost/Test'),
-        EventPattern('dbus-signal', signal='NewTube'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged'),
         )
 
@@ -259,13 +185,6 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
     assert len(tube_address) > 0
 
     assert state_event.args[0] == cs.TUBE_CHANNEL_STATE_REMOTE_PENDING
-
-    # Now the tube's been offered, it should be shown on the old interface
-    tubes = tubes_iface.ListTubes(byte_arrays=True)
-    assert len(tubes) == 1
-    expected_tube = (None, self_handle, cs.TUBE_TYPE_DBUS, 'com.example.TestCase',
-        sample_parameters, cs.TUBE_STATE_REMOTE_PENDING)
-    t.check_tube_in_tubes(expected_tube, tubes)
 
     status = tube_chan.Get(cs.CHANNEL_IFACE_TUBE, 'State', dbus_interface=cs.PROPERTIES_IFACE)
     assert status == cs.TUBE_STATE_REMOTE_PENDING
@@ -304,7 +223,6 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
 
     sync_stream(q, stream)
 
-    offer_old_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls)
     offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle, bytestream_cls, access_control)
 
 if __name__ == '__main__':

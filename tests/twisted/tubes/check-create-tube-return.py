@@ -74,29 +74,5 @@ def test(q, bus, conn, stream):
     assertEquals(props[cs.TARGET_HANDLE_TYPE], cs.HT_ROOM)
     assertEquals(props[cs.TARGET_ID], muc)
 
-    # Now make sure we can get our Tubes channel if we request it.
-    muc = 'chat3@conf.localhost'
-
-    call_async(q, conn.Requests, 'CreateChannel',
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TUBES,
-          cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-          cs.TARGET_ID: muc})
-
-    q.expect('stream-presence', to='%s/test' % muc)
-    stream.send(make_muc_presence('owner', 'moderator', muc, 'bob'))
-    stream.send(make_muc_presence('none', 'participant', muc, 'test'))
-
-    ret, _, _ = q.expect_many(
-        EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
-        )
-
-    _, props = ret.value
-
-    assertEquals(props[cs.CHANNEL_TYPE], cs.CHANNEL_TYPE_TUBES)
-    assertEquals(props[cs.TARGET_HANDLE_TYPE], cs.HT_ROOM)
-    assertEquals(props[cs.TARGET_ID], muc)
-
 if __name__ == '__main__':
     exec_test(test)

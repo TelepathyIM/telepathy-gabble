@@ -36,16 +36,20 @@ def run_cancel_test(q, bus, conn, stream):
         # Accept the channel
         channel.Accept()
 
-        e = q.expect('stream-presence', to = muc + "/test")
-        mujinode = xpath.queryForNodes("/presence/muji/preparing", e.stanza)
-        assertNotEquals(None, mujinode)
+        def preparing(e):
+            node = xpath.queryForNodes("/presence/muji/preparing", e.stanza)
+            return node is not None
+
+        q.expect('stream-presence', to = muc + "/test", predicate=preparing)
 
         channel.Hangup(0, "", "",
             dbus_interface=cs.CHANNEL_TYPE_CALL)
 
-        e = q.expect('stream-presence', to = muc + "/test")
-        mujinode = xpath.queryForNodes("/presence/muji/preparing", e.stanza)
-        assertEquals(None, mujinode)
+        def notpreparing(e):
+            node = xpath.queryForNodes("/presence/muji/preparing", e.stanza)
+            return node is None
+
+        q.expect('stream-presence', to = muc + "/test", predicate=notpreparing)
 
         if x % 2 == 0:
             channel.Close()

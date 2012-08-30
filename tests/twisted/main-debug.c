@@ -115,9 +115,12 @@ main (int argc,
    * the connector so let's use ::connection-established. We need to
    * ref the class type as it's not loaded yet.  */
   cls = g_type_class_ref (WOCKY_TYPE_CONNECTOR);
-  g_signal_add_emission_hook (
-      g_signal_lookup ("connection-established", WOCKY_TYPE_CONNECTOR),
-      0, connection_established_cb, NULL, NULL);
+  if (g_getenv ("GABBLE_NODELAY") != NULL)
+    {
+      g_signal_add_emission_hook (
+          g_signal_lookup ("connection-established", WOCKY_TYPE_CONNECTOR),
+          0, connection_established_cb, NULL, NULL);
+    }
 #endif
 
   ret = gabble_main (argc, argv);

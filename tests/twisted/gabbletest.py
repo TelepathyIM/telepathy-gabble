@@ -399,7 +399,9 @@ class BaseXmlStream(xmlstream.XmlStream):
 
     def connectionMade(self):
         xmlstream.XmlStream.connectionMade(self)
-        self.transport.setTcpNoDelay(True)
+
+        if 'GABBLE_NODELAY' in os.environ:
+            self.transport.setTcpNoDelay(True)
 
     def _cb_priv_list(self, iq):
         send_error_reply(self, iq)

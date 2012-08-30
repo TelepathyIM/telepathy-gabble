@@ -77,6 +77,11 @@ To debug an individual test you can set one of the following env variable:
     bus daemon. The logs are saved to tools/*bustle-logs.
         export GABBLE_TEST_BUSTLE=1
 
+  * GABBLE_NODELAY : to run any Gabble test with TCP_NODELAY set on
+    both Wocky and Twisted's socket. This can speed up tests
+    significantly.
+        export GABBLE_NODELAY=1
+
 == Jingle tests ==
 
 Various jingle tests run the same tests with different dialects. To only test

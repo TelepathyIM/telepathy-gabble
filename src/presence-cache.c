@@ -522,6 +522,7 @@ gabble_presence_cache_add_bundles (GabblePresenceCache *cache)
    */
   GOOGLE_BUNDLE ("voice-v1", NS_GOOGLE_FEAT_VOICE);
   GOOGLE_BUNDLE ("video-v1", NS_GOOGLE_FEAT_VIDEO);
+  GOOGLE_BUNDLE ("camera-v1", NS_GOOGLE_FEAT_CAMERA);
 
   /* File transfer support */
   GOOGLE_BUNDLE ("share-v1", NS_GOOGLE_FEAT_SHARE);
@@ -550,6 +551,8 @@ gabble_presence_cache_add_bundles (GabblePresenceCache *cache)
       NS_GABBLE_CAPS "#" BUNDLE_VIDEO_V1, NS_GOOGLE_FEAT_VIDEO);
   gabble_presence_cache_add_bundle_caps (cache,
       NS_GABBLE_CAPS "#" BUNDLE_SHARE_V1, NS_GOOGLE_FEAT_SHARE);
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_CAMERA_V1, NS_GOOGLE_FEAT_CAMERA);
 }
 
 static GObject *

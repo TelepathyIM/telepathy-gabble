@@ -2707,6 +2707,9 @@ iq_disco_cb (WockyPorter *porter,
 
       if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
         features = gabble_capabilities_get_bundle_video_v1 ();
+
+      if (!tp_strdiff (suffix, BUNDLE_CAMERA_V1))
+        features = gabble_capabilities_get_bundle_camera_v1 ();
     }
 
   if (data_forms != NULL)

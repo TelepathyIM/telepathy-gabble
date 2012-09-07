@@ -77,6 +77,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_SHARE },
   { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_VOICE },
   { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_VIDEO },
+  { FEATURE_OPTIONAL, NS_GOOGLE_FEAT_CAMERA },
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_AUDIO },
   { FEATURE_OPTIONAL, NS_JINGLE_DESCRIPTION_VIDEO },
   { FEATURE_OPTIONAL, NS_JINGLE_RTP },
@@ -103,6 +104,7 @@ static GabbleCapabilitySet *legacy_caps = NULL;
 static GabbleCapabilitySet *share_v1_caps = NULL;
 static GabbleCapabilitySet *voice_v1_caps = NULL;
 static GabbleCapabilitySet *video_v1_caps = NULL;
+static GabbleCapabilitySet *camera_v1_caps = NULL;
 static GabbleCapabilitySet *any_audio_caps = NULL;
 static GabbleCapabilitySet *any_video_caps = NULL;
 static GabbleCapabilitySet *any_audio_video_caps = NULL;
@@ -135,6 +137,12 @@ const GabbleCapabilitySet *
 gabble_capabilities_get_bundle_video_v1 (void)
 {
   return video_v1_caps;
+}
+
+const GabbleCapabilitySet *
+gabble_capabilities_get_bundle_camera_v1 (void)
+{
+  return camera_v1_caps;
 }
 
 const GabbleCapabilitySet *
@@ -271,6 +279,9 @@ gabble_capabilities_init (gpointer conn)
       video_v1_caps = gabble_capability_set_new ();
       gabble_capability_set_add (video_v1_caps, NS_GOOGLE_FEAT_VIDEO);
 
+      camera_v1_caps = gabble_capability_set_new ();
+      gabble_capability_set_add (camera_v1_caps, NS_GOOGLE_FEAT_CAMERA);
+
       any_audio_caps = gabble_capability_set_new ();
       gabble_capability_set_add (any_audio_caps, NS_JINGLE_RTP_AUDIO);
       gabble_capability_set_add (any_audio_caps, NS_JINGLE_DESCRIPTION_AUDIO);
@@ -335,6 +346,7 @@ gabble_capabilities_finalize (gpointer conn)
       gabble_capability_set_free (share_v1_caps);
       gabble_capability_set_free (voice_v1_caps);
       gabble_capability_set_free (video_v1_caps);
+      gabble_capability_set_free (camera_v1_caps);
       gabble_capability_set_free (any_audio_caps);
       gabble_capability_set_free (any_video_caps);
       gabble_capability_set_free (any_audio_video_caps);
@@ -350,6 +362,7 @@ gabble_capabilities_finalize (gpointer conn)
       share_v1_caps = NULL;
       voice_v1_caps = NULL;
       video_v1_caps = NULL;
+      camera_v1_caps = NULL;
       any_audio_caps = NULL;
       any_video_caps = NULL;
       any_audio_video_caps = NULL;

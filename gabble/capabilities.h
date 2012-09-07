@@ -65,6 +65,7 @@ const GabbleCapabilitySet *gabble_capabilities_get_olpc_notify (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_share_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_voice_v1 (void);
 const GabbleCapabilitySet *gabble_capabilities_get_bundle_video_v1 (void);
+const GabbleCapabilitySet *gabble_capabilities_get_bundle_camera_v1 (void);
 
 /* Return the capabilities we always have */
 const GabbleCapabilitySet *gabble_capabilities_get_fixed_caps (void);

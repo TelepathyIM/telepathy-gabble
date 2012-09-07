@@ -60,18 +60,21 @@ def test(q, bus, conn, stream):
     c_ = xpath.queryForNodes('/presence/c', self_presence.stanza)[0]
     assertNotEquals(c['ver'], c_['ver'])
 
-    # But then someone asks us for our old caps
-    iq = IQ(stream, 'get')
-    iq['from'] = jid
-    query = iq.addElement((ns.DISCO_INFO, 'query'))
-    query['node'] = c['node'] + '#' + c['ver']
-    stream.send(iq)
+    for suffix in [c['ver'], 'voice-v1', 'video-v1', 'camera-v1', 'share-v1',
+            'pmuc-v1'] + list(c_['ext'].split()):
+        # But then someone asks us for our old caps
+        iq = IQ(stream, 'get')
+        iq['from'] = jid
+        query = iq.addElement((ns.DISCO_INFO, 'query'))
+        query['node'] = c['node'] + '#' + suffix
+        stream.send(iq)
 
-    # Gabble should still know what they are, and reply. This is actually quite
-    # important: there's a bug in iChat where if you return an error to a disco
-    # query, it just asks again, and again, and again...
-    reply = q.expect('stream-iq', to=jid)
-    assertEquals('result', reply.iq_type)
+        # Gabble should still know what they are, and reply. This is
+        # actually quite important: there's a bug in iChat where if you
+        # return an error to a disco query, it just asks again, and again,
+        # and again...
+        reply = q.expect('stream-iq', to=jid)
+        assertEquals('result', reply.iq_type)
 
 if __name__ == '__main__':
     exec_test(test)

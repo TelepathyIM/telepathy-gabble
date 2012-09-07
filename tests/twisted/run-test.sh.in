@@ -15,11 +15,26 @@ else
   list=$(cat @gabbletestsdir@/twisted/gabble-twisted-tests.list)
 fi
 
-for i in $list ; do 
-  echo "Testing $i"
+any_failed=0
+for i in $list ; do
+  echo "Testing $i ..."
   sh @gabbletestsdir@/twisted/tools/with-session-bus.sh \
     --config-file=@gabbletestsdir@/twisted/tools/servicedir/tmp-session-bus.conf \
     -- \
     @PYTHON@ @gabbletestsdir@/twisted/$i
+    e=$?
+    case "$e" in
+        (0)
+            echo "PASS: $i"
+            ;;
+        (77)
+            echo "SKIP: $i"
+            ;;
+        (*)
+            any_failed=1
+            echo "FAIL: $i ($e)"
+            ;;
+    esac
 done
 
+exit $any_failed

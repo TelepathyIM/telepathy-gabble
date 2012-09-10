@@ -20,9 +20,6 @@ libgabble_extensions_la_SOURCES = \
     extensions.h
 
 nodist_libgabble_extensions_la_SOURCES = \
-    _gen/signals-marshal.c \
-    _gen/signals-marshal.h \
-    _gen/signals-marshal.list \
     _gen/enums.h \
     _gen/enums-gtk-doc.h \
     _gen/gtypes.h \
@@ -65,24 +62,11 @@ extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
 _gen/svc.c _gen/svc.h _gen/svc-gtk-doc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py \
 	Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-ginterface-gen.py \
-		--filename=_gen/svc --signal-marshal-prefix=_gabble_ext \
-		--include='<telepathy-glib/dbus.h>' \
-		--include='"_gen/signals-marshal.h"' \
+		--filename=_gen/svc \
+		--include='<telepathy-glib/telepathy-glib.h>' \
 		--allow-unstable \
 		--not-implemented-func='tp_dbus_g_method_return_not_implemented' \
 		$< Gabble_Svc_
-
-_gen/signals-marshal.list: _gen/all.xml \
-	$(tools_dir)/glib-signals-marshal-gen.py \
-	Makefile.am
-	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-signals-marshal-gen.py $< > $@
-
-_gen/signals-marshal.h: _gen/signals-marshal.list Makefile.am
-	$(AM_V_GEN)$(GLIB_GENMARSHAL) --header --prefix=_gabble_ext_marshal $< > $@
-
-_gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
-	$(AM_V_GEN){ echo '#include "_gen/signals-marshal.h"' && \
-	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< ; } > $@
 
 _gen/enums.h _gen/enums-gtk-doc.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
 	Makefile.am

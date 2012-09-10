@@ -3,6 +3,7 @@
 from sys import argv, stdout, stderr
 import xml.dom.minidom
 
+from libtpcodegen import file_set_contents
 from libglibcodegen import NS_TP, get_docstring, \
         get_descendant_text, get_by_path
 
@@ -11,19 +12,23 @@ class Generator(object):
         self.prefix = prefix + '_'
         self.spec = get_by_path(dom, "spec")[0]
 
-        self.__header = open(output_base + '.h', 'w')
-        self.__docs = open(output_base + '-gtk-doc.h', 'w')
+	self.output_base = output_base
+        self.__header = []
+        self.__docs = []
 
     def __call__(self):
         self.do_header()
         self.do_body()
         self.do_footer()
 
+        file_set_contents(self.output_base + '.h', ''.join(self.__header))
+        file_set_contents(self.output_base + '-gtk-doc.h', ''.join(self.__docs))
+
     def write(self, code):
-        self.__header.write(code.encode('utf-8'))
+        self.__header.append(code.encode('utf-8'))
 
     def d(self, code):
-        self.__docs.write(code.encode('utf-8'))
+        self.__docs.append(code.encode('utf-8'))
 
     # Header
     def do_header(self):
@@ -62,8 +67,7 @@ extern "C" {
                        flags.getAttribute('name')
         self.d("""\
 /**
- *
-%s:
+ * %s:
 """ % (self.prefix + name).replace('_', ''))
         for flag in get_by_path(flags, 'flag'):
             self.do_gtkdoc(flag, value_prefix)
@@ -97,8 +101,7 @@ extern "C" {
                       enum.getAttribute('name') + 's'
         self.d("""\
 /**
- *
-%s:
+ * %s:
 """ % (self.prefix + name).replace('_', ''))
         vals = get_by_path(enum, 'enumvalue')
         for val in vals:
@@ -123,19 +126,29 @@ extern "C" {
 
         self.d("""\
 /**
- * NUM_%(upper-plural)s: (skip)
+ * %(upper-prefix)sNUM_%(upper-plural)s:
  *
  * 1 higher than the highest valid value of #%(mixed-name)s.
  */
+
+/**
+ * NUM_%(upper-prefix)s%(upper-plural)s: (skip)
+ *
+ * 1 higher than the highest valid value of #%(mixed-name)s.
+ * In new code, use %(upper-prefix)sNUM_%(upper-plural)s instead.
+ */
 """ % {'mixed-name' : (self.prefix + name).replace('_', ''),
-       'upper-plural' : (self.prefix + name_plural).upper(),
+       'upper-prefix' : self.prefix.upper(),
+       'upper-plural' : name_plural.upper(),
        'last-val' : vals[-1].getAttribute('value')})
 
         self.write("""\
-#define NUM_%(upper-plural)s (%(last-val)s+1)
+#define %(upper-prefix)sNUM_%(upper-plural)s (%(last-val)s+1)
+#define NUM_%(upper-prefix)s%(upper-plural)s %(upper-prefix)sNUM_%(upper-plural)s
 
 """ % {'mixed-name' : (self.prefix + name).replace('_', ''),
-       'upper-plural' : (self.prefix + name_plural).upper(),
+       'upper-prefix' : self.prefix.upper(),
+       'upper-plural' : name_plural.upper(),
        'last-val' : vals[-1].getAttribute('value')})
 
     def do_val(self, val, value_prefix):

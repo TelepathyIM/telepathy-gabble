@@ -26,9 +26,9 @@ import sys
 import os.path
 import xml.dom.minidom
 
+from libtpcodegen import file_set_contents
 from libglibcodegen import Signature, type_to_gtype, cmp_by_name, \
-        NS_TP, dbus_gutils_wincaps_to_uscore, \
-        signal_to_marshal_name, method_to_glue_marshal_name
+        NS_TP, dbus_gutils_wincaps_to_uscore
 
 
 NS_TP = "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
@@ -421,8 +421,7 @@ class Generator(object):
                     'not match' % (method.getAttribute('name'), lc_name))
         lc_name = lc_name.lower()
 
-        marshaller = method_to_glue_marshal_name(method,
-                self.signal_marshal_prefix)
+        marshaller = 'g_cclosure_marshal_generic'
         wrapper = self.prefix_ + self.node_name_lc + '_' + lc_name
 
         self.b("  { (GCallback) %s, %s, %d }," % (wrapper, marshaller, offset))
@@ -717,8 +716,7 @@ class Generator(object):
         in_base_init.append('      G_SIGNAL_RUN_LAST|G_SIGNAL_DETAILED,')
         in_base_init.append('      0,')
         in_base_init.append('      NULL, NULL,')
-        in_base_init.append('      %s,'
-                % signal_to_marshal_name(signal, self.signal_marshal_prefix))
+        in_base_init.append('      g_cclosure_marshal_generic,')
         in_base_init.append('      G_TYPE_NONE,')
         tmp = ['%d' % len(args)] + [gtype for (ctype, name, gtype) in args]
         in_base_init.append('      %s);' % ',\n      '.join(tmp))
@@ -740,17 +738,15 @@ class Generator(object):
         self.h('#include <glib-object.h>')
         self.h('#include <dbus/dbus-glib.h>')
 
-        if self.have_properties(nodes):
-            self.h('#include <telepathy-glib/dbus-properties-mixin.h>')
+        for header in self.headers:
+            self.h('#include %s' % header)
+        self.h('')
 
         self.h('')
         self.h('G_BEGIN_DECLS')
         self.h('')
 
         self.b('#include "%s.h"' % self.basename)
-        self.b('')
-        for header in self.headers:
-            self.b('#include %s' % header)
         self.b('')
 
         for node in nodes:
@@ -765,10 +761,9 @@ class Generator(object):
 
         self.h('')
         self.b('')
-        open(self.basename + '.h', 'w').write('\n'.join(self.__header))
-        open(self.basename + '.c', 'w').write('\n'.join(self.__body))
-        open(self.basename + '-gtk-doc.h', 'w').write('\n'.join(self.__docs))
-
+        file_set_contents(self.basename + '.h', '\n'.join(self.__header))
+        file_set_contents(self.basename + '.c', '\n'.join(self.__body))
+        file_set_contents(self.basename + '-gtk-doc.h', '\n'.join(self.__docs))
 
 def cmdline_error():
     print """\

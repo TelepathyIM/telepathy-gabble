@@ -23,6 +23,7 @@
 import sys
 import xml.dom.minidom
 
+from libtpcodegen import file_set_contents
 from libglibcodegen import escape_as_identifier, \
                            get_docstring, \
                            NS_TP, \
@@ -42,15 +43,16 @@ class GTypesGenerator(object):
         self.PREFIX_ = self.Prefix.upper() + '_'
         self.prefix_ = self.Prefix.lower() + '_'
 
-        self.header = open(output + '.h', 'w')
-        self.body = open(output + '-body.h', 'w')
-        self.docs = open(output + '-gtk-doc.h', 'w')
+        self.header = []
+        self.body = []
+        self.docs = []
+        self.output = output
 
         for f in (self.header, self.body, self.docs):
-            f.write('/* Auto-generated, do not edit.\n *\n'
-                    ' * This file may be distributed under the same terms\n'
-                    ' * as the specification from which it was generated.\n'
-                    ' */\n\n')
+            f.append('/* Auto-generated, do not edit.\n *\n'
+                     ' * This file may be distributed under the same terms\n'
+                     ' * as the specification from which it was generated.\n'
+                     ' */\n\n')
 
         # keys are e.g. 'sv', values are the key escaped
         self.need_mappings = {}
@@ -66,13 +68,13 @@ class GTypesGenerator(object):
         self.need_other_arrays = {}
 
     def h(self, code):
-        self.header.write(code.encode("utf-8"))
+        self.header.append(code.encode("utf-8"))
 
     def c(self, code):
-        self.body.write(code.encode("utf-8"))
+        self.body.append(code.encode("utf-8"))
 
     def d(self, code):
-        self.docs.write(code.encode('utf-8'))
+        self.docs.append(code.encode('utf-8'))
 
     def do_mapping_header(self, mapping):
         members = mapping.getElementsByTagNameNS(NS_TP, 'member')
@@ -89,7 +91,7 @@ class GTypesGenerator(object):
 
         docstring = get_docstring(mapping) or '(Undocumented)'
 
-        self.d('/**\n * %s:\n *\n' % name)
+        self.d('/**\n * %s:\n *\n' % name.strip())
         self.d(' * %s\n' % xml_escape(docstring))
         self.d(' *\n')
         self.d(' * This macro expands to a call to a function\n')
@@ -289,6 +291,10 @@ class GTypesGenerator(object):
 
             self.c('  return t;\n')
             self.c('}\n\n')
+
+        file_set_contents(self.output + '.h', ''.join(self.header))
+        file_set_contents(self.output + '-body.h', ''.join(self.body))
+        file_set_contents(self.output + '-gtk-doc.h', ''.join(self.docs))
 
 if __name__ == '__main__':
     argv = sys.argv[1:]

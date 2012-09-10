@@ -3,13 +3,6 @@ fail=0
 
 ( . "${tools_dir}"/check-misc.sh ) || fail=$?
 
-if grep -n '^ *GError *\*[[:alpha:]_][[:alnum:]_]* *;' "$@"
-then
-  echo "^^^ The above files contain uninitialized GError*s - they should be"
-  echo "    initialized to NULL"
-  fail=1
-fi
-
 # The first regex finds function calls like foo() (as opposed to foo ()).
 #   It attempts to ignore string constants (may cause false negatives).
 # The second and third ignore block comments (gtkdoc uses foo() as markup).

@@ -20,7 +20,7 @@ please make any changes there.
 # License along with this library; if not, write to the Free Software
 # Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
-
+import os
 from string import ascii_letters, digits
 
 
@@ -28,6 +28,18 @@ NS_TP = "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
 
 _ASCII_ALNUM = ascii_letters + digits
 
+def file_set_contents(filename, contents):
+    try:
+        os.remove(filename)
+    except OSError:
+        pass
+    try:
+        os.remove(filename + '.tmp')
+    except OSError:
+        pass
+
+    open(filename + '.tmp', 'w').write(contents)
+    os.rename(filename + '.tmp', filename)
 
 def cmp_by_name(node1, node2):
     return cmp(node1.getAttributeNode("name").nodeValue,

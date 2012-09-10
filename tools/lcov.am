@@ -8,6 +8,7 @@ lcov-report:
 		--remove @top_builddir@/lcov.info.tmp telepathy-glib-scan.c
 	rm @top_builddir@/lcov.info.tmp
 	$(mkdir_p) @top_builddir@/lcov.html
+	echo "Coming soon!" > @top_builddir@/lcov.html/index.html
 	git_commit=`GIT_DIR=@top_srcdir@/.git git log -1 --pretty=format:%h 2>/dev/null`;\
 	genhtml --title "@PACKAGE_STRING@ $$git_commit" \
 		--output-directory @top_builddir@/lcov.html lcov.info

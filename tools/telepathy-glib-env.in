@@ -1,0 +1,9 @@
+#!/bin/sh
+abs_top_builddir="@abs_top_builddir@"
+export abs_top_builddir
+LD_LIBRARY_PATH="${abs_top_builddir}/telepathy-glib/.libs${LD_LIBRARY_PATH:+":${LD_LIBRARY_PATH}"}"
+export LD_LIBRARY_PATH
+G_DEBUG="fatal_criticals,fatal_warnings${G_DEBUG:+",${G_DEBUG}"}"
+export G_DEBUG
+
+exec "$@"

@@ -21,7 +21,7 @@
 #ifndef __GABBLE_MESSAGE_UTIL_H__
 #define __GABBLE_MESSAGE_UTIL_H__
 
-#include <telepathy-glib/message-mixin.h>
+#include <telepathy-glib/telepathy-glib.h>
 
 #include <wocky/wocky.h>
 #include <wocky/wocky.h>

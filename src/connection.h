@@ -39,9 +39,6 @@
 #include "muc-factory.h"
 #include "types.h"
 
-#include <telepathy-glib/base-connection.h>
-#include <telepathy-glib/base-contact-list.h>
-
 #include <gabble/capabilities-set.h>
 #include <gabble/types.h>
 #include <gabble/plugin-connection.h>

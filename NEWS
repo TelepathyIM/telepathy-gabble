@@ -1,4 +1,4 @@
-telepathy-gabble 0.17.1 (UNRELEASED)
+telepathy-gabble 0.17.1 (2012-09-11)
 ====================================
 
 Dependencies:
@@ -12,6 +12,12 @@ Enhancements:
 • Tube and Text channels are no longer announced together. (Jonny)
 
 Fixes:
+
+• Make sure capability discovery works for the camera-v1 capability bundle,
+  avoiding an iChat bug in which it repeats failed capability discovery
+  requests in a rapid loop (fd.o #54634, Simon)
+
+• Fix some race conditions and other brokenness in the tests (Sjoerd)
 
 • Make sure capability discovery works for the camera-v1 capability bundle,
   avoiding an iChat bug in which it repeats failed capability discovery

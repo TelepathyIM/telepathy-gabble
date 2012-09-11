@@ -152,7 +152,7 @@ lm_message_node_add_own_nick (WockyNode *node,
   TpBaseConnection *base = (TpBaseConnection *) connection;
 
   source = _gabble_connection_get_cached_alias (connection,
-        base->self_handle, &nick);
+      tp_base_connection_get_self_handle (base), &nick);
 
   if (source > GABBLE_CONNECTION_ALIAS_FROM_JID)
     lm_message_node_add_nick (node, nick);

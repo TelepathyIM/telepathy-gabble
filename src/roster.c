@@ -1530,7 +1530,7 @@ gabble_roster_presence_cb (WockyPorter *porter,
       return FALSE;
     }
 
-  if (handle == conn->self_handle)
+  if (handle == tp_base_connection_get_self_handle (conn))
     {
       NODE_DEBUG (pres_node, "ignoring presence from ourselves on another "
           "resource");

@@ -59,13 +59,6 @@ static gboolean _gabble_im_channel_send_chat_state (GObject *object,
     TpChannelChatState state,
     GError **error);
 
-static const gchar *gabble_im_channel_interfaces[] = {
-    TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
-    TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
-    TP_IFACE_CHANNEL_INTERFACE_DESTROYABLE,
-    NULL
-};
-
 
 /* private structure */
 
@@ -89,6 +82,21 @@ typedef struct {
   TpMessage *message;
   gchar *token;
 } _GabbleIMSendMessageCtx;
+
+static GPtrArray *
+gabble_im_channel_get_interfaces (TpBaseChannel *base)
+{
+  GPtrArray *interfaces;
+
+  interfaces = TP_BASE_CHANNEL_CLASS (
+      gabble_im_channel_parent_class)->get_interfaces (base);
+
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_MESSAGES);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_DESTROYABLE);
+
+  return interfaces;
+}
 
 static void
 gabble_im_channel_init (GabbleIMChannel *self)
@@ -189,7 +197,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
   object_class->finalize = gabble_im_channel_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_TEXT;
-  base_class->interfaces = gabble_im_channel_interfaces;
+  base_class->get_interfaces = gabble_im_channel_get_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
   base_class->close = gabble_im_channel_close;
   base_class->fill_immutable_properties =
@@ -334,7 +342,7 @@ _gabble_im_channel_send_message (GObject *object,
     {
       state = TP_CHANNEL_CHAT_STATE_ACTIVE;
       tp_message_mixin_change_chat_state (object,
-          base_conn->self_handle, state);
+          tp_base_connection_get_self_handle (base_conn), state);
     }
 
   /* We don't support providing successful delivery reports. */
@@ -508,7 +516,7 @@ _gabble_im_channel_report_delivery (
 
   /* This is a delivery report, so the original sender of the echoed message
    * must be us! */
-  tp_cm_message_set_sender (msg, base_conn->self_handle);
+  tp_cm_message_set_sender (msg, tp_base_connection_get_self_handle (base_conn));
 
   /* Since this is a delivery report, we can trust the id on the message. */
   if (id != NULL)

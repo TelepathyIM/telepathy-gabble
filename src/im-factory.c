@@ -341,7 +341,7 @@ new_im_channel (GabbleImFactory *fac,
   g_return_val_if_fail (handle != 0, NULL);
 
   if (request_token != NULL)
-    initiator = conn->self_handle;
+    initiator = tp_base_connection_get_self_handle (conn);
   else
     initiator = handle;
 

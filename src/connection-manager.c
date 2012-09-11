@@ -82,9 +82,7 @@ gabble_connection_manager_class_init (GabbleConnectionManagerClass *klass)
   TpBaseConnectionManagerClass *base_class =
     (TpBaseConnectionManagerClass *) klass;
 
-  base_class->new_connection = NULL;
   base_class->cm_dbus_name = "gabble";
-  base_class->protocol_params = NULL;
   object_class->constructed = gabble_connection_manager_constructed;
   object_class->finalize = gabble_connection_manager_finalize;
 }

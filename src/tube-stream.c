@@ -82,11 +82,6 @@ static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
     NULL
 };
 
-static const gchar *gabble_tube_stream_interfaces[] = {
-    TP_IFACE_CHANNEL_INTERFACE_TUBE,
-    NULL
-};
-
 /* Linux glibc bits/socket.h suggests that struct sockaddr_storage is
  * not guaranteed to be big enough for AF_UNIX addresses */
 typedef union
@@ -174,6 +169,19 @@ struct _GabbleTubeStreamPrivate
 
   gboolean dispose_has_run;
 };
+
+static GPtrArray *
+gabble_tube_stream_get_interfaces (TpBaseChannel *base)
+{
+  GPtrArray *interfaces;
+
+  interfaces = TP_BASE_CHANNEL_CLASS (
+      gabble_tube_stream_parent_class)->get_interfaces (base);
+
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_TUBE);
+
+  return interfaces;
+}
 
 typedef struct
 {
@@ -1445,7 +1453,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   object_class->finalize = gabble_tube_stream_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_STREAM_TUBE;
-  base_class->interfaces = gabble_tube_stream_interfaces;
+  base_class->get_interfaces = gabble_tube_stream_get_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
   base_class->close = gabble_tube_stream_close;
   base_class->fill_immutable_properties =

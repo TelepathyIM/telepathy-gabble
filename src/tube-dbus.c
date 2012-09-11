@@ -71,11 +71,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeDBus, gabble_tube_dbus,
       tp_external_group_mixin_iface_init);
 );
 
-static const gchar *gabble_tube_dbus_interfaces[] = {
-    TP_IFACE_CHANNEL_INTERFACE_TUBE,
-    NULL
-};
-
 static const gchar * const gabble_tube_dbus_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
@@ -160,6 +155,19 @@ struct _GabbleTubeDBusPrivate
 };
 
 #define GABBLE_TUBE_DBUS_GET_PRIVATE(obj) ((obj)->priv)
+
+static GPtrArray *
+gabble_tube_dbus_get_interfaces (TpBaseChannel *base)
+{
+  GPtrArray *interfaces;
+
+  interfaces = TP_BASE_CHANNEL_CLASS (
+      gabble_tube_dbus_parent_class)->get_interfaces (base);
+
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_TUBE);
+
+  return interfaces;
+}
 
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
@@ -872,7 +880,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   object_class->finalize = gabble_tube_dbus_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_DBUS_TUBE;
-  base_class->interfaces = gabble_tube_dbus_interfaces;
+  base_class->get_interfaces = gabble_tube_dbus_get_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
   base_class->close = gabble_tube_dbus_close;
   base_class->fill_immutable_properties =

@@ -642,7 +642,7 @@ location_pep_node_changed (WockyPepService *pep,
       return;
     }
 
-  if (handle == base->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base))
     /* Ignore echoed pubsub notifications */
     return;
 

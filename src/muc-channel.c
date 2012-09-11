@@ -95,18 +95,6 @@ static gboolean gabble_muc_channel_send_chat_state (GObject *object,
     GError **error);
 static void gabble_muc_channel_close (TpBaseChannel *base);
 
-static const gchar *gabble_muc_channel_interfaces[] = {
-    TP_IFACE_CHANNEL_INTERFACE_GROUP,
-    TP_IFACE_CHANNEL_INTERFACE_PASSWORD,
-    TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE,
-    TP_IFACE_CHANNEL_INTERFACE_MESSAGES,
-    TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
-    TP_IFACE_CHANNEL_INTERFACE_ROOM,
-    TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG,
-    TP_IFACE_CHANNEL_INTERFACE_SUBJECT,
-    NULL
-};
-
 /* signal enum */
 enum
 {
@@ -233,6 +221,26 @@ typedef struct {
   TpMessage *message;
   gchar *token;
 } _GabbleMUCSendMessageCtx;
+
+static GPtrArray *
+gabble_muc_channel_get_interfaces (TpBaseChannel *base)
+{
+  GPtrArray *interfaces;
+
+  interfaces = TP_BASE_CHANNEL_CLASS (
+      gabble_muc_channel_parent_class)->get_interfaces (base);
+
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_GROUP);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_PASSWORD);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_MESSAGES);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CONFERENCE);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SUBJECT);
+
+  return interfaces;
+}
 
 static void
 gabble_muc_channel_init (GabbleMucChannel *self)
@@ -449,7 +457,8 @@ gabble_muc_channel_constructed (GObject *obj)
   tp_message_mixin_implement_send_chat_state (obj,
       gabble_muc_channel_send_chat_state);
 
-  tp_group_mixin_add_handle_owner (obj, self_handle, base_conn->self_handle);
+  tp_group_mixin_add_handle_owner (obj, self_handle,
+      tp_base_connection_get_self_handle (base_conn));
 
   /* Room interface */
   g_object_get (self,
@@ -526,7 +535,7 @@ gabble_muc_channel_constructed (GObject *obj)
       GError *error = NULL;
       GArray *members = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
 
-      g_assert (initiator == base_conn->self_handle);
+      g_assert (initiator == tp_base_connection_get_self_handle (base_conn));
       g_assert (priv->invitation_message == NULL);
 
       g_array_append_val (members, self_handle);
@@ -748,7 +757,7 @@ create_room_identity (GabbleMucChannel *chan)
   g_assert (priv->self_jid == NULL);
 
   source = _gabble_connection_get_cached_alias (GABBLE_CONNECTION (conn),
-      conn->self_handle, &alias);
+      tp_base_connection_get_self_handle (conn), &alias);
   g_assert (alias != NULL);
 
   if (source == GABBLE_CONNECTION_ALIAS_FROM_JID)
@@ -1067,7 +1076,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_TEXT;
   base_class->target_handle_type = TP_HANDLE_TYPE_ROOM;
-  base_class->interfaces = gabble_muc_channel_interfaces;
+  base_class->get_interfaces = gabble_muc_channel_get_interfaces;
   base_class->fill_immutable_properties = gabble_muc_channel_fill_immutable_properties;
   base_class->close = gabble_muc_channel_close;
 
@@ -2638,7 +2647,7 @@ handle_join (WockyMuc *muc,
 
   g_hash_table_insert (omap,
       GUINT_TO_POINTER (myself),
-      GUINT_TO_POINTER (base_conn->self_handle));
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base_conn)));
 
   tp_handle_set_add (members, myself);
   tp_group_mixin_add_handle_owners (G_OBJECT (gmuc), omap);
@@ -3364,7 +3373,7 @@ gabble_muc_channel_add_member (GObject *obj,
       tp_intset_add (set_remote_pending, handle);
 
       tp_group_mixin_add_handle_owner (obj, mixin->self_handle,
-          conn->self_handle);
+          tp_base_connection_get_self_handle (conn));
       tp_group_mixin_change_members (obj, "", NULL, set_remove_members,
           NULL, set_remote_pending, 0,
           priv->invited
@@ -3985,7 +3994,7 @@ gabble_muc_channel_start_call_creation (GabbleMucChannel *gmuc,
    * address; and finally TpBaseChannel pastes the connection path back on. :)
    */
   prefix = tp_base_channel_get_object_path (base) +
-      strlen (base_conn->object_path) + 1 /* for the slash */;
+      strlen (tp_base_connection_get_object_path (base_conn)) + 1 /* for the slash */;
 
   /* Keep ourselves reffed while call channels are created */
   g_object_ref (gmuc);

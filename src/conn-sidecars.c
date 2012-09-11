@@ -65,10 +65,12 @@ make_sidecar_path (
     GabbleConnection *conn,
     const gchar *sidecar_iface)
 {
-  TpBaseConnection *base_conn = TP_BASE_CONNECTION (conn);
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
 
   return g_strdelimit (
-      g_strdup_printf ("%s/Sidecar/%s", base_conn->object_path, sidecar_iface),
+      g_strdup_printf ("%s/Sidecar/%s",
+          tp_base_connection_get_object_path (base),
+          sidecar_iface),
       ".", '/');
 }
 
@@ -203,12 +205,12 @@ gabble_connection_ensure_sidecar (
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base_conn = TP_BASE_CONNECTION (conn);
+  TpBaseConnection *base = TP_BASE_CONNECTION (conn);
   GabbleSidecar *sidecar;
   gpointer key, value;
   GError *error = NULL;
 
-  if (base_conn->status == TP_CONNECTION_STATUS_DISCONNECTED)
+  if (tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_DISCONNECTED)
     {
       GError e = { TP_ERROR, TP_ERROR_DISCONNECTED,
           "This connection has already disconnected" };
@@ -262,7 +264,7 @@ gabble_connection_ensure_sidecar (
   g_hash_table_insert (conn->pending_sidecars, g_strdup (sidecar_iface),
       g_list_prepend (NULL, context));
 
-  if (base_conn->status == TP_CONNECTION_STATUS_CONNECTED)
+  if (tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_CONNECTED)
     {
       GabblePluginLoader *loader = gabble_plugin_loader_dup ();
 

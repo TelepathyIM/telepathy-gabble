@@ -36,10 +36,6 @@
 #include "namespaces.h"
 #include "util.h"
 
-static const gchar *gabble_search_channel_interfaces[] = {
-    NULL
-};
-
 /* properties */
 enum
 {
@@ -1156,7 +1152,6 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
   object_class->set_property = gabble_search_channel_set_property;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH;
-  base_class->interfaces = gabble_search_channel_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   base_class->fill_immutable_properties =
       gabble_search_channel_fill_immutable_properties;

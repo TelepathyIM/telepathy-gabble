@@ -460,7 +460,7 @@ new_muc_channel (GabbleMucFactory *fac,
         GUINT_TO_POINTER (handle)) == NULL);
 
   object_path = g_strdup_printf ("%s/MucChannel%u",
-      conn->object_path, handle);
+      tp_base_connection_get_object_path (conn), handle);
 
   initial_channels_array = g_ptr_array_new ();
   if (initial_channels != NULL)
@@ -487,7 +487,8 @@ new_muc_channel (GabbleMucFactory *fac,
        "object-path", object_path,
        "handle", handle,
        "invited", invited,
-       "initiator-handle", invited ? inviter : conn->self_handle,
+       "initiator-handle",
+           invited ? inviter : tp_base_connection_get_self_handle (conn),
        "invitation-message", message,
        "requested", requested,
        "initial-channels", initial_channels_array,
@@ -1034,7 +1035,8 @@ ensure_muc_channel (GabbleMucFactory *fac,
 
   if (*ret == NULL)
     {
-      *ret = new_muc_channel (fac, handle, FALSE, base_conn->self_handle,
+      *ret = new_muc_channel (fac, handle, FALSE,
+          tp_base_connection_get_self_handle (base_conn),
           NULL, requested, export_text, initial_channels,
           initial_handles, initial_ids, room_name);
 

@@ -441,13 +441,14 @@ new_search_channel (GabbleSearchManager *self,
 {
   GabbleSearchManagerPrivate *priv = self->priv;
   GabbleSearchChannel *chan;
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
 
   g_assert (server != NULL);
 
   chan = g_object_new (GABBLE_TYPE_SEARCH_CHANNEL,
       "connection", priv->conn,
       "server", server,
-      "initiator-handle", priv->conn->parent.self_handle,
+      "initiator-handle", tp_base_connection_get_self_handle (base_conn),
       NULL);
   g_hash_table_insert (priv->channels, chan, priv->channels);
   g_signal_connect (chan, "closed", (GCallback) search_channel_closed_cb, self);

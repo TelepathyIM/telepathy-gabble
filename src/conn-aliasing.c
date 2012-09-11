@@ -251,7 +251,7 @@ aliases_request_basic_pep_cb (GabbleConnection *self,
   source = _gabble_connection_get_cached_alias (self, handle, NULL);
 
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
-      base->status == TP_CONNECTION_STATUS_CONNECTED &&
+      tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_CONNECTED &&
       !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       /* no alias in PEP, get the vcard */
@@ -292,7 +292,8 @@ aliases_request_pep_cb (GabbleConnection *self,
     {
       aliases_request->aliases[index] = alias;
     }
-  else if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+  else if (tp_base_connection_get_status (base) !=
+               TP_CONNECTION_STATUS_CONNECTED)
     {
       DEBUG ("no longer connected, not chaining up to vCard");
       g_free (alias);
@@ -350,7 +351,8 @@ gabble_do_pep_request (GabbleConnection *self,
   pep_request_ctx *ctx;
 
   /* callers must check this... */
-  g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
+  g_assert (tp_base_connection_get_status (base) ==
+      TP_CONNECTION_STATUS_CONNECTED);
   /* ... which implies this */
   g_assert (self->req_pipeline != NULL);
 
@@ -499,7 +501,8 @@ set_one_alias (
       TP_HANDLE_TYPE_CONTACT);
   gboolean ret = TRUE;
 
-  g_assert (base->status == TP_CONNECTION_STATUS_CONNECTED);
+  g_assert (tp_base_connection_get_status (base) ==
+      TP_CONNECTION_STATUS_CONNECTED);
 
   if (tp_str_empty (alias))
     alias = NULL;
@@ -508,7 +511,7 @@ set_one_alias (
     {
       ret = FALSE;
     }
-  else if (base->self_handle == handle)
+  else if (tp_base_connection_get_self_handle (base) == handle)
     {
       /* only alter the roster if we're already there, e.g. because someone
        * added us with another client
@@ -542,7 +545,7 @@ set_one_alias (
       maybe_request_vcard (conn, handle, source);
     }
 
-  if (base->self_handle == handle)
+  if (tp_base_connection_get_self_handle (base) == handle)
     {
       GabbleVCardManagerEditInfo *edit;
       GQueue edits = G_QUEUE_INIT;
@@ -923,7 +926,7 @@ get_cached_remote_alias (
 
   /* XXX: should this be more important than the ones from presence? */
   /* if it's our own handle, use alias passed to the connmgr, if any */
-  if (handle == base->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base))
     {
       gchar *cm_alias;
 
@@ -1068,7 +1071,7 @@ maybe_request_vcard (GabbleConnection *self, TpHandle handle,
 
   /* If the source wasn't good enough then do a request */
   if (source < GABBLE_CONNECTION_ALIAS_FROM_VCARD &&
-      base->status == TP_CONNECTION_STATUS_CONNECTED &&
+      tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_CONNECTED &&
       !gabble_vcard_manager_has_cached_alias (self->vcard_manager, handle))
     {
       if (self->features & GABBLE_CONNECTION_FEATURES_PEP)

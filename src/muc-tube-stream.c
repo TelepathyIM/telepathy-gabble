@@ -24,11 +24,18 @@
 G_DEFINE_TYPE (GabbleMucTubeStream, gabble_muc_tube_stream,
     GABBLE_TYPE_TUBE_STREAM)
 
-static const gchar *gabble_muc_tube_stream_interfaces[] = {
-    TP_IFACE_CHANNEL_INTERFACE_GROUP,
-    TP_IFACE_CHANNEL_INTERFACE_TUBE,
-    NULL
-};
+static GPtrArray *
+gabble_muc_tube_stream_get_interfaces (TpBaseChannel *base)
+{
+  GPtrArray *interfaces;
+
+  interfaces = TP_BASE_CHANNEL_CLASS (
+      gabble_muc_tube_stream_parent_class)->get_interfaces (base);
+
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_GROUP);
+
+  return interfaces;
+}
 
 static void
 gabble_muc_tube_stream_init (GabbleMucTubeStream *self)
@@ -42,6 +49,6 @@ gabble_muc_tube_stream_class_init (
   TpBaseChannelClass *base_class = TP_BASE_CHANNEL_CLASS (
       gabble_muc_tube_stream_class);
 
-  base_class->interfaces = gabble_muc_tube_stream_interfaces;
+  base_class->get_interfaces = gabble_muc_tube_stream_get_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_ROOM;
 }

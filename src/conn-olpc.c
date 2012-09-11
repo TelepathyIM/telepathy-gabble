@@ -432,10 +432,10 @@ olpc_buddy_info_set_properties (GabbleSvcOLPCBuddyInfo *iface,
                                 DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base_conn = (TpBaseConnection *) conn;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
   DEBUG ("called");
 
-  if (base_conn->status == TP_CONNECTION_STATUS_CONNECTED)
+  if (tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_CONNECTED)
     {
       transmit_properties (conn, properties, context);
     }
@@ -492,7 +492,7 @@ olpc_buddy_props_pep_node_changed (WockyPepService *pep,
       return;
     }
 
-  if (handle == base->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base))
     /* Ignore echoed pubsub notifications */
     return;
 
@@ -924,8 +924,8 @@ upload_activities_pep (GabbleConnection *conn,
   TpBaseConnection *base = (TpBaseConnection *) conn;
   WockyNode *item, *activities;
   WockyStanza *msg;
-  TpHandleSet *my_activities = g_hash_table_lookup
-      (conn->olpc_pep_activities, GUINT_TO_POINTER (base->self_handle));
+  TpHandleSet *my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
   GError *e = NULL;
   gboolean ret;
 
@@ -1001,7 +1001,7 @@ add_activity (GabbleConnection *self,
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
       base, TP_HANDLE_TYPE_ROOM);
   TpHandleSet *old_activities = g_hash_table_lookup (self->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle));
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
   GabbleOlpcActivity *activity;
 
   if (!tp_handle_is_valid (room_repo, channel, error))
@@ -1145,7 +1145,7 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
     }
 
   old_activities = g_hash_table_lookup (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle));
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
 
   if (old_activities != NULL)
     {
@@ -1157,7 +1157,8 @@ olpc_buddy_info_set_activities (GabbleSvcOLPCBuddyInfo *iface,
 
   /* Update the list of activities associated with our own contact. */
   g_hash_table_insert (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle), activities_set);
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)),
+      activities_set);
 
   if (!upload_activities_pep (conn, set_activities_reply_cb, context, NULL))
     {
@@ -1195,7 +1196,7 @@ olpc_activities_pep_node_changed (WockyPepService *pep,
       return;
     }
 
-  if (handle != base->self_handle)
+  if (handle != tp_base_connection_get_self_handle (base))
     extract_activities (conn, stanza, handle);
 
   activities = get_buddy_activities (conn, handle);
@@ -1461,7 +1462,7 @@ activity_in_own_set (GabbleConnection *conn,
     return FALSE;
 
   activities_set = g_hash_table_lookup (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle));
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
 
   if (activities_set == NULL ||
       !tp_handle_set_is_member (activities_set, room_handle))
@@ -1552,7 +1553,7 @@ olpc_current_act_pep_node_changed (WockyPepService *pep,
       return;
     }
 
-  if (handle == base->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base))
     /* Ignore echoed pubsub notifications */
     return;
 
@@ -1602,7 +1603,7 @@ olpc_buddy_info_add_activity (GabbleSvcOLPCBuddyInfo *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleSet *activities_set = g_hash_table_lookup (self->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle));
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_ROOM);
   GError *error = NULL;
@@ -1622,7 +1623,8 @@ olpc_buddy_info_add_activity (GabbleSvcOLPCBuddyInfo *iface,
   if (activities_set == NULL) {
     activities_set = tp_handle_set_new (room_repo);
     g_hash_table_insert (self->olpc_pep_activities,
-        GUINT_TO_POINTER (base->self_handle), activities_set);
+        GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)),
+        activities_set);
   }
 
   tp_handle_set_add (activities_set, channel);
@@ -1667,7 +1669,7 @@ upload_activity_properties_pep (GabbleConnection *conn,
   GError *e = NULL;
   gboolean ret;
   TpHandleSet *my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (base->self_handle));
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
 
   msg = wocky_pep_service_make_publish_stanza (conn->pep_olpc_act_props, &item);
   publish = wocky_node_add_child_ns (item, "activities",
@@ -2172,7 +2174,7 @@ olpc_act_props_pep_node_changed (WockyPepService *pep,
       return;
     }
 
-  if (handle == base->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base))
     /* Ignore echoed pubsub notifications */
     return;
 
@@ -2426,7 +2428,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
   if (pep_properties_changed)
     {
       our_activities = g_hash_table_lookup (conn->olpc_pep_activities,
-          GUINT_TO_POINTER (base->self_handle));
+          GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
       if (our_activities != NULL &&
           tp_handle_set_is_member (our_activities, room_handle))
         {
@@ -2442,7 +2444,7 @@ conn_olpc_process_activity_properties_message (GabbleConnection *conn,
   if (is_visible != was_visible)
     {
       our_activities = g_hash_table_lookup (conn->olpc_pep_activities,
-          GUINT_TO_POINTER (base->self_handle));
+          GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
       if (our_activities != NULL &&
           tp_handle_set_is_member (our_activities, room_handle))
         {
@@ -2624,6 +2626,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
                        GabbleOlpcActivity *activity)
 {
   GabbleConnection *conn;
+  TpBaseConnection *base;
   TpHandleSet *my_activities;
   gboolean was_in_our_pep = FALSE;
 
@@ -2632,6 +2635,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
     return;
 
   g_object_get (activity, "connection", &conn, NULL);
+  base = TP_BASE_CONNECTION (conn);
 
   /* Revoke invitations we sent for this activity */
   revoke_invitations (conn, chan, activity, NULL);
@@ -2639,7 +2643,7 @@ muc_channel_closed_cb (GabbleMucChannel *chan,
   /* remove it from our advertised activities list, unreffing it in the
    * process if it was in fact advertised */
   my_activities = g_hash_table_lookup (conn->olpc_pep_activities,
-      GUINT_TO_POINTER (TP_BASE_CONNECTION (conn)->self_handle));
+      GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)));
   if (my_activities != NULL)
     {
       if (tp_handle_set_remove (my_activities, activity->room))
@@ -2783,10 +2787,12 @@ muc_channel_contact_join_cb (GabbleMucChannel *chan,
                              GabbleOlpcActivity *activity)
 {
   GabbleConnection *conn;
+  TpBaseConnection *base;
 
   g_object_get (activity, "connection", &conn, NULL);
+  base = TP_BASE_CONNECTION (conn);
 
-  if (contact == TP_BASE_CONNECTION (conn)->self_handle)
+  if (contact == tp_base_connection_get_self_handle (base))
     {
       /* We join the channel, forget about all invites we received about
        * this activity */

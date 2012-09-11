@@ -795,7 +795,7 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
   GabblePresence *presence = priv->conn->self_presence;
   GError *error = NULL;
 
-  if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED)
+  if (tp_base_connection_get_status (base_conn) != TP_CONNECTION_STATUS_CONNECTED)
     {
       DEBUG ("no longer connected");
       return;
@@ -841,9 +841,10 @@ self_avatar_resolve_conflict (GabblePresenceCache *cache)
     }
 
   gabble_vcard_manager_invalidate_cache (priv->conn->vcard_manager,
-      base_conn->self_handle);
+      tp_base_connection_get_self_handle (base_conn));
   gabble_vcard_manager_request (priv->conn->vcard_manager,
-      base_conn->self_handle, 0, self_vcard_request_cb, cache,
+      tp_base_connection_get_self_handle (base_conn), 0,
+      self_vcard_request_cb, cache,
       NULL);
 }
 
@@ -859,7 +860,7 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
   WockyNode *x_node, *photo_node;
   GabblePresence *presence;
 
-  if (handle == base_conn->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base_conn))
     presence = priv->conn->self_presence;
   else
     presence = gabble_presence_cache_get (cache, handle);
@@ -905,14 +906,14 @@ _grab_avatar_sha1 (GabblePresenceCache *cache,
 
   if (tp_strdiff (presence->avatar_sha1, sha1))
     {
-      if (handle == base_conn->self_handle)
+      if (handle == tp_base_connection_get_self_handle (base_conn))
         {
           DEBUG ("Avatar conflict! Received hash '%s' and our cache is '%s'",
             sha1, presence->avatar_sha1 == NULL ?
               "<NULL>" : presence->avatar_sha1);
           self_avatar_resolve_conflict (cache);
         }
-      else if (base_conn->status == TP_CONNECTION_STATUS_CONNECTED)
+      else if (tp_base_connection_get_status (base_conn) == TP_CONNECTION_STATUS_CONNECTED)
         {
           g_free (presence->avatar_sha1);
           presence->avatar_sha1 = g_strdup (sha1);
@@ -2242,6 +2243,7 @@ gabble_presence_cache_add_own_caps (
 {
   gchar *uri = g_strdup_printf ("%s#%s", NS_GABBLE_CAPS, ver);
   GabbleCapabilityInfo *info = capability_info_get (cache, uri);
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (cache->priv->conn);
 
   if (info->complete)
     goto out;
@@ -2271,7 +2273,7 @@ gabble_presence_cache_add_own_caps (
 
   info->complete = TRUE;
   info->trust = CAPABILITY_BUNDLE_ENOUGH_TRUST;
-  tp_intset_add (info->guys, cache->priv->conn->parent.self_handle);
+  tp_intset_add (info->guys, tp_base_connection_get_self_handle (base_conn));
 
   replace_data_forms (info, data_forms);
 
@@ -2465,7 +2467,7 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
    * Presences with keep_unavailable are the result of caching someone's
    * nick from <message> stanzas, so they don't count as real presence - if
    * someone sends us a <message>, their presence might still follow. */
-  if (base_conn->status != TP_CONNECTION_STATUS_CONNECTED ||
+  if (tp_base_connection_get_status (base_conn) != TP_CONNECTION_STATUS_CONNECTED ||
       priv->unsure_id != 0)
     {
       GabblePresence *presence = gabble_presence_cache_get (cache, handle);

@@ -561,9 +561,11 @@ gabble_private_tubes_factory_get_contact_caps (
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
   GetContactCapsClosure closure = { FALSE, arr, handle };
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->conn);
 
   /* Always claim that we support tubes. */
-  closure.supports_tubes = (handle == self->priv->conn->parent.self_handle);
+  closure.supports_tubes = (handle ==
+      tp_base_connection_get_self_handle (base_conn));
 
   gabble_capability_set_foreach (caps, get_contact_caps_foreach, &closure);
 
@@ -1062,9 +1064,10 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
           TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
-              handle, handle_type, base_conn->self_handle,
-              base_conn->self_handle, service, parameters,
-              tube_id, NULL, TRUE));
+              handle, handle_type,
+              tp_base_connection_get_self_handle (base_conn),
+              tp_base_connection_get_self_handle (base_conn),
+              service, parameters, tube_id, NULL, TRUE));
     }
   else if (!tp_strdiff (ctype, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
@@ -1074,9 +1077,10 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
       stream_id = gabble_bytestream_factory_generate_stream_id ();
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
-              handle, handle_type, base_conn->self_handle,
-              base_conn->self_handle, service, parameters,
-              stream_id, tube_id, NULL, NULL, TRUE));
+              handle, handle_type,
+              tp_base_connection_get_self_handle (base_conn),
+              tp_base_connection_get_self_handle (base_conn),
+              service, parameters, stream_id, tube_id, NULL, NULL, TRUE));
 
       g_free (stream_id);
     }
@@ -1184,7 +1188,8 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
   if (type == TP_TUBE_TYPE_STREAM)
     {
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
-              handle, TP_HANDLE_TYPE_CONTACT, base_conn->self_handle,
+              handle, TP_HANDLE_TYPE_CONTACT,
+              tp_base_connection_get_self_handle (base_conn),
               handle, service, parameters, tube_id, NULL, FALSE));
     }
   else
@@ -1200,7 +1205,8 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
       g_return_val_if_fail (stream_id != NULL, NULL);
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
-              handle, TP_HANDLE_TYPE_CONTACT, base_conn->self_handle,
+              handle, TP_HANDLE_TYPE_CONTACT,
+              tp_base_connection_get_self_handle (base_conn),
               handle, service, parameters,
               stream_id, tube_id, bytestream, NULL, FALSE));
     }
@@ -1360,7 +1366,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   g_assert (handle != 0);
 
   /* Don't support opening a channel to our self handle */
-  if (handle == base_conn->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base_conn))
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Can't open a channel to your self handle");

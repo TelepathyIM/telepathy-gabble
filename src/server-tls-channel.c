@@ -39,10 +39,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleServerTLSChannel, gabble_server_tls_channel,
 
 static void gabble_server_tls_channel_close (TpBaseChannel *base);
 
-static const gchar *gabble_server_tls_channel_interfaces[] = {
-  NULL
-};
-
 enum {
   /* server TLS channel iface */
   PROP_SERVER_CERTIFICATE = 1,
@@ -260,7 +256,6 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
   oclass->constructed = gabble_server_tls_channel_constructed;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION;
-  base_class->interfaces = gabble_server_tls_channel_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   base_class->fill_immutable_properties =
       gabble_server_tls_channel_fill_immutable_properties;

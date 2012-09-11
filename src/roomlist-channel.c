@@ -44,10 +44,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
       roomlist_iface_init);
     );
 
-static const gchar *gabble_roomlist_channel_interfaces[] = {
-    NULL
-};
-
 /* properties */
 enum
 {
@@ -187,7 +183,6 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *klass)
   object_class->finalize = gabble_roomlist_channel_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_ROOM_LIST;
-  base_class->interfaces = gabble_roomlist_channel_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   base_class->get_object_path_suffix =
       gabble_roomlist_channel_get_object_path_suffix;

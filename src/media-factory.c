@@ -278,7 +278,7 @@ new_media_channel (GabbleMediaFactory *fac,
   conn = (TpBaseConnection *) priv->conn;
 
   object_path = g_strdup_printf ("%s/MediaChannel%u",
-      conn->object_path, priv->channel_index);
+      tp_base_connection_get_object_path (conn), priv->channel_index);
   priv->channel_index += 1;
 
   chan = g_object_new (GABBLE_TYPE_MEDIA_CHANNEL,
@@ -377,10 +377,10 @@ new_call_channel (GabbleMediaFactory *self,
   if (sess != NULL)
     initiator = peer;
   else
-    initiator = conn->self_handle;
+    initiator = tp_base_connection_get_self_handle (conn);
 
   object_path = g_strdup_printf ("%s/CallChannel%u",
-    conn->object_path, self->priv->channel_index);
+    tp_base_connection_get_object_path (conn), self->priv->channel_index);
   self->priv->channel_index++;
 
   channel = g_object_new (GABBLE_TYPE_CALL_CHANNEL,

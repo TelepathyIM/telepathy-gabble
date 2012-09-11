@@ -193,7 +193,7 @@ construct_contact_statuses_cb (GObject *obj,
     {
       handle = g_array_index (contact_handles, TpHandle, i);
 
-      if (handle == base->self_handle)
+      if (handle == tp_base_connection_get_self_handle (base))
         presence = self->self_presence;
       else
         presence = gabble_presence_cache_get (self->presence_cache, handle);
@@ -268,8 +268,10 @@ emit_presences_changed_for_self (GabbleConnection *self)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
   GArray *handles = g_array_sized_new (FALSE, FALSE, sizeof (TpHandle), 1);
+  TpHandle self_handle;
 
-  g_array_insert_val (handles, 0, base->self_handle);
+  self_handle = tp_base_connection_get_self_handle (base);
+  g_array_insert_val (handles, 0, self_handle);
   conn_presence_emit_presence_update (self, handles);
   g_array_unref (handles);
 }
@@ -495,7 +497,8 @@ set_xep0186_invisible (GabbleConnection *self,
 
   g_object_ref (result);
 
-  if (!invisible && base->status != TP_CONNECTION_STATUS_CONNECTED)
+  if (!invisible &&
+      tp_base_connection_get_status (base) != TP_CONNECTION_STATUS_CONNECTED)
     {
       if (priv->privacy_statuses != NULL)
         {
@@ -601,7 +604,8 @@ activate_current_privacy_list (GabbleConnection *self,
 
   g_object_ref (result);
 
-  if (base->status == TP_CONNECTION_STATUS_CONNECTED && invisible)
+  if (tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_CONNECTED &&
+      invisible)
     {
       if (!gabble_connection_send_presence (self,
               WOCKY_STANZA_SUB_TYPE_UNAVAILABLE, NULL, NULL, &error))
@@ -611,7 +615,7 @@ activate_current_privacy_list (GabbleConnection *self,
    * need to bother with removing the active list; just shortcut to
    * signalling our presence. */
   else if (list_name == NULL &&
-      base->status != TP_CONNECTION_STATUS_CONNECTED)
+      tp_base_connection_get_status (base) != TP_CONNECTION_STATUS_CONNECTED)
     {
       if (!conn_presence_signal_own_presence (self, NULL, &error))
         goto ERROR;
@@ -885,7 +889,7 @@ store_shared_statuses (GabbleConnection *self,
         presence_id = GABBLE_PRESENCE_AVAILABLE;
     }
 
-  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+  if (tp_base_connection_get_status (base) != TP_CONNECTION_STATUS_CONNECTED)
     {
       /* Not connected, override with the local status. */
       rv = TRUE;
@@ -1588,7 +1592,8 @@ conn_presence_signal_own_presence (GabbleConnection *self,
    * previously sent directed presence to? (Perhaps also GC them after a
    * while?) */
 
-  if (to == NULL && base->status == TP_CONNECTION_STATUS_CONNECTED)
+  if (to == NULL &&
+      tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_CONNECTED)
     gabble_muc_factory_broadcast_presence (self->muc_factory);
 
   return ret;
@@ -1812,7 +1817,8 @@ set_own_status_cb (GObject *obj,
   if (gabble_presence_update (conn->self_presence, resource, i,
           message_str, prio, NULL, time (NULL)))
     {
-      if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+      if (tp_base_connection_get_status (base) !=
+              TP_CONNECTION_STATUS_CONNECTED)
         {
           retval = TRUE;
         }
@@ -1881,7 +1887,7 @@ status_available_cb (GObject *obj, guint status)
   TpConnectionPresenceType presence_type =
     gabble_statuses[status].presence_type;
 
-  if (base->status != TP_CONNECTION_STATUS_CONNECTED)
+  if (tp_base_connection_get_status (base) != TP_CONNECTION_STATUS_CONNECTED)
     {
       /* we just don't know yet */
       return TRUE;

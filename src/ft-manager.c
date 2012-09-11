@@ -451,10 +451,9 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (manager);
   GabbleFileTransferChannel *chan;
-  TpBaseConnection *base_connection = TP_BASE_CONNECTION (
-      self->priv->connection);
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->connection);
   TpHandleRepoIface *contact_repo =
-      tp_base_connection_get_handles (base_connection, TP_HANDLE_TYPE_CONTACT);
+      tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   const gchar *content_type, *filename, *content_hash, *description;
   const gchar *file_uri, *service_name;
@@ -485,7 +484,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
     goto error;
 
   /* Don't support opening a channel to our self handle */
-  if (handle == base_connection->self_handle)
+  if (handle == tp_base_connection_get_self_handle (base_conn))
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Can't open a file transfer channel to yourself");
@@ -583,7 +582,8 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       tp_handle_inspect (contact_repo, handle));
 
   chan = gabble_file_transfer_channel_new (self->priv->connection,
-      handle, base_connection->self_handle, TP_FILE_TRANSFER_STATE_PENDING,
+      handle, tp_base_connection_get_self_handle (base_conn),
+      TP_FILE_TRANSFER_STATE_PENDING,
       content_type, filename, size, content_hash_type, content_hash,
       description, date, initial_offset, TRUE, NULL, NULL, NULL, file_uri,
       service_name, metadata);

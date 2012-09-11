@@ -59,12 +59,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleServerSaslChannel, gabble_server_sasl_channel,
         TP_TYPE_SVC_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
         sasl_auth_iface_init));
 
-static const gchar *gabble_server_sasl_channel_interfaces[] = {
-  TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
-  TP_IFACE_CHANNEL_INTERFACE_SECURABLE,
-  NULL
-};
-
 enum
 {
   /* server authentication channel */
@@ -102,6 +96,20 @@ struct _GabbleServerSaslChannelPrivate
 
   GSimpleAsyncResult *result;
 };
+
+static GPtrArray *
+gabble_server_sasl_channel_get_interfaces (TpBaseChannel *base)
+{
+  GPtrArray *interfaces;
+
+  interfaces = TP_BASE_CHANNEL_CLASS (
+      gabble_server_sasl_channel_parent_class)->get_interfaces (base);
+
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SECURABLE);
+
+  return interfaces;
+}
 
 static void
 gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
@@ -330,7 +338,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 
   channel_class->channel_type =
     TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION;
-  channel_class->interfaces = gabble_server_sasl_channel_interfaces;
+  channel_class->get_interfaces = gabble_server_sasl_channel_get_interfaces;
   channel_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   channel_class->fill_immutable_properties =
     gabble_server_sasl_channel_fill_immutable_properties;

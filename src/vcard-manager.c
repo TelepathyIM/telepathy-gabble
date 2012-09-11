@@ -503,7 +503,7 @@ cache_entry_attempt_to_free (GabbleVCardCacheEntry *entry)
    */
   g_assert (entry->suspended_timer_id == 0);
 
-  if (entry->handle == base->self_handle)
+  if (entry->handle == tp_base_connection_get_self_handle (base))
     {
       /* if we do have some pending edits, we should also have
        * some pipeline items or pending requests */
@@ -730,8 +730,7 @@ status_changed_cb (GObject *object,
 
       /* if we have a better alias, patch it into our vCard on the server */
       alias_src = _gabble_connection_get_cached_alias (conn,
-                                                       base->self_handle,
-                                                       &alias);
+          tp_base_connection_get_self_handle (base), &alias);
 
       if (alias_src >= GABBLE_CONNECTION_ALIAS_FROM_VCARD)
         {
@@ -743,7 +742,8 @@ status_changed_cb (GObject *object,
       g_free (alias);
 
       /* FIXME: we happen to know that synchronous errors can't happen */
-      gabble_vcard_manager_request (self, base->self_handle, 0,
+      gabble_vcard_manager_request (self,
+          tp_base_connection_get_self_handle (base), 0,
           initial_request_cb, NULL, (GObject *) self);
     }
 }
@@ -944,7 +944,8 @@ replace_reply_cb (GabbleConnection *conn,
     }
   else
     {
-      GabbleVCardCacheEntry *entry = cache_entry_get (self, base->self_handle);
+      GabbleVCardCacheEntry *entry = cache_entry_get (self,
+          tp_base_connection_get_self_handle (base));
 
       /* We must have patched vcard by now */
       g_assert (priv->patched_vcard != NULL);
@@ -956,7 +957,8 @@ replace_reply_cb (GabbleConnection *conn,
       priv->patched_vcard = NULL;
 
       /* observe it so we pick up alias updates */
-      observe_vcard (conn, self, base->self_handle, entry->vcard_node);
+      observe_vcard (conn, self, tp_base_connection_get_self_handle (base),
+          entry->vcard_node);
 
       node = entry->vcard_node;
     }
@@ -1121,7 +1123,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
           if (node != NULL)
             return NULL;
 
-          if (_gabble_connection_get_cached_alias (conn, base->self_handle,
+          if (_gabble_connection_get_cached_alias (conn,
+                tp_base_connection_get_self_handle (base),
                 &alias) < GABBLE_CONNECTION_ALIAS_FROM_VCARD)
             {
               /* not good enough to want to put it in the vCard */
@@ -1417,7 +1420,8 @@ pipeline_reply_cb (GabbleConnection *conn,
       /* If request for our own vCard failed, and we do have
        * pending edits to make, cancel those and return error
        * to the user */
-      if (entry->handle == base->self_handle && priv->edits != NULL)
+      if (entry->handle == tp_base_connection_get_self_handle (base) &&
+          priv->edits != NULL)
         {
           /* We won't have a chance to apply those, might as well forget them */
           g_list_foreach (priv->edits,
@@ -1467,7 +1471,7 @@ pipeline_reply_cb (GabbleConnection *conn,
   /* We have freshly updated cache for our vCard, edit it if
    * there are any pending edits and no outstanding set request.
    */
-  if (entry->handle == base->self_handle)
+  if (entry->handle == tp_base_connection_get_self_handle (base))
     {
       manager_patch_vcard (self, vcard_node);
     }
@@ -1515,7 +1519,7 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
       request->timer_id =
           g_timeout_add_seconds (request->timeout, timeout_request, request);
 
-      if (entry->handle == base->self_handle)
+      if (entry->handle == tp_base_connection_get_self_handle (base))
         {
           DEBUG ("Cache entry %p is my own, not setting @to", entry);
           jid = NULL;
@@ -1568,14 +1572,14 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
                               GObject *object)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
-  TpBaseConnection *connection = (TpBaseConnection *) priv->connection;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      connection, TP_HANDLE_TYPE_CONTACT);
+  TpBaseConnection *base = (TpBaseConnection *) priv->connection;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
   GabbleVCardManagerRequest *request;
   GabbleVCardCacheEntry *entry = cache_entry_get (self, handle);
 
-  g_return_val_if_fail (connection->status == TP_CONNECTION_STATUS_CONNECTED,
-      NULL);
+  g_return_val_if_fail (tp_base_connection_get_status (base) ==
+      TP_CONNECTION_STATUS_CONNECTED, NULL);
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
   g_assert (entry->vcard_node == NULL);
 
@@ -1622,20 +1626,22 @@ gabble_vcard_manager_edit (GabbleVCardManager *self,
   GabbleVCardManagerEditRequest *req;
   GabbleVCardCacheEntry *entry;
 
-  g_return_val_if_fail (base->status == TP_CONNECTION_STATUS_CONNECTED, NULL);
+  g_return_val_if_fail (tp_base_connection_get_status (base) ==
+      TP_CONNECTION_STATUS_CONNECTED, NULL);
 
   /* Invalidate our current vCard and ensure that we're going to get
    * it in the near future */
   DEBUG ("called; invalidating cache");
-  gabble_vcard_manager_invalidate_cache (self, base->self_handle);
+  gabble_vcard_manager_invalidate_cache (self,
+      tp_base_connection_get_self_handle (base));
   DEBUG ("checking if we have pending requests already");
-  entry = cache_entry_get (self, base->self_handle);
+  entry = cache_entry_get (self, tp_base_connection_get_self_handle (base));
   if (!priv->edit_pipeline_item && !entry->pending_requests)
     {
       DEBUG ("we don't, create one");
       /* create dummy GET request if neccessary */
-      gabble_vcard_manager_request (self, base->self_handle, 0, NULL,
-          NULL, NULL);
+      gabble_vcard_manager_request (self,
+          tp_base_connection_get_self_handle (base), 0, NULL, NULL, NULL);
     }
 
   priv->edits = g_list_concat (priv->edits, edits);

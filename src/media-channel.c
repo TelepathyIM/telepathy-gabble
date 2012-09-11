@@ -343,7 +343,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
   tp_dbus_daemon_register_object (bus, priv->object_path, obj);
 
   tp_group_mixin_init (obj, G_STRUCT_OFFSET (GabbleMediaChannel, group),
-      contact_handles, conn->self_handle);
+      contact_handles, tp_base_connection_get_self_handle (conn));
 
   if (priv->session != NULL)
     {
@@ -354,7 +354,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
     }
   else
     {
-      priv->creator = conn->self_handle;
+      priv->creator = tp_base_connection_get_self_handle (conn);
     }
 
   /* automatically add creator to channel, but also ref them again (because
@@ -404,7 +404,7 @@ gabble_media_channel_constructor (GType type, guint n_props,
        * group flags (all we can do is add or remove ourselves, which is always
        * valid per the spec)
        */
-      set = tp_intset_new_containing (conn->self_handle);
+      set = tp_intset_new_containing (tp_base_connection_get_self_handle (conn));
       tp_group_mixin_change_members (obj, "", NULL, NULL, set, NULL,
           priv->peer, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
       tp_intset_destroy (set);
@@ -428,7 +428,8 @@ gabble_media_channel_constructor (GType type, guint n_props,
                */
               set = tp_intset_new_containing (priv->initial_peer);
               tp_group_mixin_change_members (obj, "", NULL, NULL, NULL, set,
-                  conn->self_handle, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
+                  tp_base_connection_get_self_handle (conn),
+                  TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
               tp_intset_destroy (set);
             }
 
@@ -558,7 +559,8 @@ gabble_media_channel_get_property (GObject    *object,
         }
       break;
     case PROP_REQUESTED:
-      g_value_set_boolean (value, (priv->creator == base_conn->self_handle));
+      g_value_set_boolean (value,
+          (priv->creator == tp_base_connection_get_self_handle (base_conn)));
       break;
     case PROP_INTERFACES:
       g_value_set_boxed (value, gabble_media_channel_interfaces);
@@ -1973,9 +1975,10 @@ gabble_media_channel_request_initial_streams (GabbleMediaChannel *chan,
   GabbleMediaChannelPrivate *priv = chan->priv;
   GArray *types = g_array_sized_new (FALSE, FALSE, sizeof (guint), 2);
   guint media_type;
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
 
   /* This has to be an outgoing call... */
-  g_assert (priv->creator == priv->conn->parent.self_handle);
+  g_assert (priv->creator == tp_base_connection_get_self_handle (base_conn));
   /* ...which has just been constructed. */
   g_assert (priv->session == NULL);
 

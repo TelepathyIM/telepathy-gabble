@@ -1,3 +1,17 @@
+telepathy-gabble 0.16.3 (UNRELEASED)
+====================================
+
+Fixes:
+
+• Turn off deprecation warnings: we're not going to fix them on a
+  stable branch (Simon)
+
+• Make sure capability discovery works for the camera-v1 capability bundle,
+  avoiding an iChat bug in which it repeats failed capability discovery
+  requests in a rapid loop (fd.o #54634, Simon)
+
+• Fix some race conditions and other brokenness in the tests (Sjoerd)
+
 telepathy-gabble 0.16.2 (2012-08-14)
 ====================================
 

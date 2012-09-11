@@ -2268,8 +2268,6 @@ tubes_presence_update (GabbleMucChannel *gmuc,
 
               g_signal_emit (gmuc, signals[NEW_TUBE], 0, tube);
 
-              /* the tube has reffed its initiator, no need to keep a ref */
-              tp_handle_unref (contact_repo, initiator_handle);
               g_hash_table_unref (parameters);
             }
         }

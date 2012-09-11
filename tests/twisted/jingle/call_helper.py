@@ -619,13 +619,13 @@ class CallTest(object):
             # Setup media description
             contents.append(self.audio_content)
             streams.append(self.audio_stream)
-            mds.append(self.jt2.get_call_audio_md_dbus())
+            mds.append(self.jt2.get_call_audio_md_dbus(self.peer_handle))
 
         if self.initial_video:
             contents.append(self.video_content)
             streams.append(self.video_stream)
-            mds.append(self.jt2.get_call_video_md_dbus())
-        
+            mds.append(self.jt2.get_call_video_md_dbus(self.peer_handle))
+
         self.connect_streams(contents, streams, mds,
                 expect_after_si=expect_after_si)
 
@@ -728,11 +728,11 @@ class CallTest(object):
                         ret[1].args[0])
 
             if self.initial_audio:
-                md = self.jt2.get_call_audio_md_dbus()
+                md = self.jt2.get_call_audio_md_dbus(self.peer_handle)
                 self.check_and_accept_offer(self.audio_content, md,
                         md_changed = False)
             if self.initial_video:
-                md = self.jt2.get_call_video_md_dbus()
+                md = self.jt2.get_call_video_md_dbus(self.peer_handle)
                 self.check_and_accept_offer(self.video_content, md,
                         md_changed = False)
 

@@ -189,7 +189,7 @@ def test_outgoing(jp, q, bus, conn, stream):
     assertEquals(ret[1].args[1][cs.CALL_CONTENT_MEDIADESCRIPTION + ".Codecs"], [])
 
     # get a list of audio codecs we can support
-    md = jt2.get_call_audio_md_dbus()
+    md = jt2.get_call_audio_md_dbus(remote_handle)
 
     # make sure UpdateCodecs fails
     props = chan.GetAll(cs.CHANNEL_TYPE_CALL,

@@ -453,6 +453,7 @@ tools/run-gabble.sh: tools/run-gabble.sh.in
 	@mkdir -p tools
 	$(AM_V_GEN)sed \
 		-e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
+		-e "s|[@]pluginexecdir[@]|@pluginexecdir@|g" \
 		-e "s|[@]libdir[@]|$(libdir)|g" \
 		$< > $@
 	@chmod +x $@

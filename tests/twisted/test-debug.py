@@ -6,6 +6,7 @@ Test the debug message interface.
 import dbus
 
 from servicetest import assertEquals, sync_dbus, call_async, ProxyWrapper
+from servicetest import EventPattern
 from gabbletest import exec_test
 import constants as cs
 from config import DEBUGGING
@@ -38,7 +39,9 @@ def test(q, bus, conn, stream):
 
     channel_path = conn.RequestChannel(
         cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.GetSelfHandle(), True)
-    q.expect('dbus-signal', signal='NewChannel')
+    q.expect_many(
+        EventPattern ('dbus-signal', signal='NewChannel'),
+        EventPattern ('dbus-signal', signal = 'NewDebugMessage'))
 
     assert len(messages) > 0
 

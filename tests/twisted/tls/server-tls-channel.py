@@ -34,8 +34,8 @@ JID = "test@example.org"
 # the files are copied from wocky/tests/certs/tls-[cert,key].pem
 CA_CERT_HOSTNAME = 'weasel-juice.org'
 
-CA_CERT = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-cert.pem'
-CA_KEY  = os.environ.get('GABBLE_TWISTED_SRCDIR', '.') + '/tls-key.pem'
+CA_CERT = os.environ.get('GABBLE_TWISTED_PATH', '.') + '/tls-cert.pem'
+CA_KEY  = os.environ.get('GABBLE_TWISTED_PATH', '.') + '/tls-key.pem'
 
 class TlsAuthenticator(XmppAuthenticator):
     def __init__(self, username, password, resource=None):

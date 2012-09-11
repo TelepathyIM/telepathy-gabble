@@ -9,6 +9,9 @@ fi
 PYTHONPATH=@gabbletestsdir@/twisted
 export PYTHONPATH
 
+GABBLE_TWISTED_PATH=@gabbletestsdir@/twisted
+export GABBLE_TWISTED_PATH
+
 if [ -n "$1" ] ; then
   list="$1"
 else

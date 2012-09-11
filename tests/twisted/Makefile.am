@@ -307,7 +307,7 @@ TESTS =
 
 TESTS_ENVIRONMENT = \
 	PYTHONPATH=@abs_top_srcdir@/tests/twisted:@abs_top_builddir@/tests/twisted \
-	GABBLE_TWISTED_SRCDIR=@srcdir@
+	GABBLE_TWISTED_PATH=@srcdir@
 
 check-local: check-coding-style check-twisted
 

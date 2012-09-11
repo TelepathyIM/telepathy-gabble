@@ -1,3 +1,4 @@
+#include "config.h"
 #include "extensions.h"
 
 /* auto-generated stubs */

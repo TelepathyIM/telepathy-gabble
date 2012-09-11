@@ -507,6 +507,8 @@ gabble_presence_cache_add_bundles (GabblePresenceCache *cache)
       NS_GABBLE_CAPS "#" BUNDLE_VIDEO_V1, NS_GOOGLE_FEAT_VIDEO);
   gabble_presence_cache_add_bundle_caps (cache,
       NS_GABBLE_CAPS "#" BUNDLE_SHARE_V1, NS_GOOGLE_FEAT_SHARE);
+  gabble_presence_cache_add_bundle_caps (cache,
+      NS_GABBLE_CAPS "#" BUNDLE_CAMERA_V1, NS_GOOGLE_FEAT_CAMERA);
 }
 
 static GObject *

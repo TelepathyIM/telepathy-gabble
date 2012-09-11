@@ -22,6 +22,7 @@
  * supports standard Jingle drafts (v0.15, v0.26) and Google's jingle variants
  * (libjingle 0.3/0.4). */
 
+#include "config.h"
 #include "jingle-media-rtp.h"
 
 #include <stdio.h>

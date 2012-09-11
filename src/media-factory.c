@@ -1053,7 +1053,10 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
       /* video-v1 implies that we interop with Google Video Chat, i.e. we have
        * gtalk-p2p and H.264 as well as video */
       if (gtalk_p2p && h264)
-        gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
+        {
+          gabble_capability_set_add (caps, NS_GOOGLE_FEAT_VIDEO);
+          gabble_capability_set_add (caps, NS_GOOGLE_FEAT_CAMERA);
+        }
     }
 }
 

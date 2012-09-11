@@ -2397,10 +2397,11 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
   if (voice_v1)
     g_string_append (ext, " " BUNDLE_VOICE_V1);
 
-  if (video_v1) {
+  if (video_v1)
     g_string_append (ext, " " BUNDLE_VIDEO_V1);
+
+  if (gabble_presence_has_cap (presence, NS_GOOGLE_FEAT_CAMERA))
     g_string_append (ext, " " BUNDLE_CAMERA_V1);
-  }
 
   wocky_node_set_attribute (node, "ext", ext->str);
   g_string_free (ext, TRUE);
@@ -2701,6 +2702,9 @@ iq_disco_cb (WockyPorter *porter,
 
       if (!tp_strdiff (suffix, BUNDLE_VIDEO_V1))
         features = gabble_capabilities_get_bundle_video_v1 ();
+
+      if (!tp_strdiff (suffix, BUNDLE_CAMERA_V1))
+        features = gabble_capabilities_get_bundle_camera_v1 ();
     }
 
   if (data_forms != NULL)

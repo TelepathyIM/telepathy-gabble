@@ -311,6 +311,7 @@ gabble-enumtypes.h: $(enumtype_sources) Makefile.in
 
 gabble-enumtypes.c: $(enumtype_sources) Makefile.in
 	$(AM_V_GEN)glib-mkenums \
+	--fhead "#include \"config.h\"\n" \
 	--fhead "#include <$*.h>" \
 	--fprod "\n/* enumerations from \"@filename@\" */\n#include \"@filename@\"" \
 	--vhead "GType\n@enum_name@_get_type (void)\n{\n  static GType etype = 0;\n  if (etype == 0) {\n    static const G@Type@Value values[] = {"     \

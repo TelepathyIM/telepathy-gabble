@@ -24,6 +24,7 @@
  * "foundry" to make JingleFactory and this class have different initials.
  */
 
+#include "config.h"
 #include "jingle-mint.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA

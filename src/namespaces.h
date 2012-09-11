@@ -35,6 +35,7 @@
 #define NS_GOOGLE_FEAT_SHARE    "http://google.com/xmpp/protocol/share/v1"
 #define NS_GOOGLE_FEAT_VOICE    "http://www.google.com/xmpp/protocol/voice/v1"
 #define NS_GOOGLE_FEAT_VIDEO    "http://www.google.com/xmpp/protocol/video/v1"
+#define NS_GOOGLE_FEAT_CAMERA   "http://www.google.com/xmpp/protocol/camera/v1"
 #define NS_GOOGLE_JINGLE_INFO   "google:jingleinfo"
 #define NS_GOOGLE_ROSTER        "google:roster"
 #define NS_GOOGLE_QUEUE         "google:queue"

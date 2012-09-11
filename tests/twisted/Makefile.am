@@ -443,13 +443,13 @@ include $(top_srcdir)/tools/check-coding-style.mk
 gabble-twisted-tests.list:
 	$(AM_V_GEN)echo $(TWISTED_TESTS) > $@
 
-run-test.sh: run-test.sh.in
+run-test.sh: run-test.sh.in Makefile
 	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
 		-e "s|[@]PYTHON[@]|$(PYTHON)|g" \
 		 $< > $@
 	@chmod +x $@
 
-tools/run-gabble.sh: tools/run-gabble.sh.in
+tools/run-gabble.sh: tools/run-gabble.sh.in Makefile
 	@mkdir -p tools
 	$(AM_V_GEN)sed \
 		-e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
@@ -465,7 +465,7 @@ tools/exec-with-log.sh: tools/exec-with-log.sh.in
 	@chmod +x $@
 
 # The wildcard % matches both config files!
-tools/%.conf: tools/%.conf.in
+tools/%.conf: tools/%.conf.in Makefile
 	$(MKDIR_P) tools
 	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
 		-e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
@@ -473,7 +473,7 @@ tools/%.conf: tools/%.conf.in
 # We don't use the full filename for the .in because > 99 character filenames
 # in tarballs are non-portable (and automake 1.8 doesn't let us build
 # non-archaic tarballs)
-tools/servicedir/org.freedesktop.Telepathy.ConnectionManager.%.service: tools/servicedir/%.service.in
+tools/servicedir/org.freedesktop.Telepathy.ConnectionManager.%.service: tools/servicedir/%.service.in  Makefile
 	$(MKDIR_P) tools/servicedir
 	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" $< > $@
 

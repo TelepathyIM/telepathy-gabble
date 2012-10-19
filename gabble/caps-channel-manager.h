@@ -73,9 +73,6 @@ typedef void (*GabbleCapsChannelManagerRepresentClientFunc) (
     GabbleCapabilitySet *cap_set,
     GPtrArray *data_forms);
 
-void gabble_caps_channel_manager_reset_capabilities (
-    GabbleCapsChannelManager *caps_manager);
-
 void gabble_caps_channel_manager_get_contact_capabilities (
     GabbleCapsChannelManager *caps_manager,
     TpHandle handle,

@@ -1124,14 +1124,6 @@ _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
 }
 
 static void
-gabble_media_factory_reset_caps (GabbleCapsChannelManager *manager)
-{
-  GabbleMediaFactory *self = GABBLE_MEDIA_FACTORY (manager);
-
-  self->priv->use_call_channels = FALSE;
-}
-
-static void
 gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
     TpHandle handle,
     const GabbleCapabilitySet *caps,
@@ -1342,7 +1334,6 @@ caps_channel_manager_iface_init (gpointer g_iface,
 {
   GabbleCapsChannelManagerInterface *iface = g_iface;
 
-  iface->reset_caps = gabble_media_factory_reset_caps;
   iface->get_contact_caps = gabble_media_factory_get_contact_caps;
   iface->represent_client = gabble_media_factory_represent_client;
 }

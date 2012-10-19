@@ -3507,24 +3507,11 @@ gabble_connection_update_capabilities (
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   GabbleCapabilitySet *old_caps = NULL;
-  TpChannelManagerIter iter;
-  TpChannelManager *manager;
   guint i;
 
   /* Now that someone has told us our *actual* capabilities, we can stop
    * advertising spurious caps in initial presence */
   gabble_capability_set_clear (self->priv->bonus_caps);
-
-  tp_base_connection_channel_manager_iter_init (&iter, base);
-
-  while (tp_base_connection_channel_manager_iter_next (&iter, &manager))
-    {
-      if (GABBLE_IS_CAPS_CHANNEL_MANAGER (manager))
-        {
-          gabble_caps_channel_manager_reset_capabilities (
-              GABBLE_CAPS_CHANNEL_MANAGER (manager));
-        }
-    }
 
   DEBUG ("enter");
 
@@ -3536,6 +3523,8 @@ gabble_connection_update_capabilities (
       const gchar * const * cap_tokens = g_value_get_boxed (va->values + 2);
       GabbleCapabilitySet *cap_set;
       GPtrArray *data_forms;
+      TpChannelManagerIter iter;
+      TpChannelManager *manager;
 
       g_hash_table_remove (self->priv->client_caps, client_name);
       g_hash_table_remove (self->priv->client_data_forms, client_name);

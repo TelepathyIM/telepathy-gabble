@@ -436,9 +436,46 @@ build_message (
   return msg;
 }
 
+static void
+maybe_send_delivery_report (
+    GabbleIMChannel *self,
+    WockyStanza *message,
+    const gchar *jid,
+    const gchar *id)
+{
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpHandle target = tp_base_channel_get_target_handle (base);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+  GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
+  WockyStanza *report;
+
+  if (id == NULL)
+    return;
+
+  if (wocky_node_get_child_ns (wocky_stanza_get_top_node (message),
+          "request", NS_RECEIPTS) == NULL)
+    return;
+
+  if (conn->self_presence->status == GABBLE_PRESENCE_HIDDEN ||
+      !gabble_roster_handle_gets_presence_from_us (conn->roster, target))
+    return;
+
+  report = wocky_stanza_build (
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      NULL, jid,
+      '(', "received", ':', NS_RECEIPTS,
+        '@', "id", id,
+      ')', NULL);
+
+  _gabble_connection_send (conn, report, NULL);
+  g_object_unref (report);
+}
+
 /*
  * _gabble_im_channel_receive:
  * @chan: a channel
+ * @message: the <message> stanza, from which all the following arguments were
+ *           extracted.
  * @type: the message type
  * @from: the full JID we received the message from
  * @timestamp: the time at which the message was sent (not the time it was
@@ -453,6 +490,7 @@ build_message (
  */
 void
 _gabble_im_channel_receive (GabbleIMChannel *chan,
+                            WockyStanza *message,
                             TpChannelTextMessageType type,
                             const char *from,
                             time_t timestamp,
@@ -490,6 +528,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
     tp_message_set_string (msg, 0, "message-token", id);
 
   tp_message_mixin_take_received (G_OBJECT (chan), msg);
+  maybe_send_delivery_report (chan, message, from, id);
 }
 
 void

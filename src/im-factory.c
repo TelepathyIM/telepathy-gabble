@@ -257,7 +257,8 @@ im_factory_message_cb (
     }
   else if (body != NULL)
     {
-      _gabble_im_channel_receive (chan, msgtype, from, stamp, id, body, state);
+      _gabble_im_channel_receive (chan, message, msgtype, from, stamp, id,
+          body, state);
     }
   else if (state != -1)
     {

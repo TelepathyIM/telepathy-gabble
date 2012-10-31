@@ -25,6 +25,7 @@
 #include <time.h>
 
 #include <telepathy-glib/telepathy-glib.h>
+#include <wocky/wocky.h>
 
 G_BEGIN_DECLS
 
@@ -63,6 +64,7 @@ GType gabble_im_channel_get_type (void);
                               GabbleIMChannelClass))
 
 void _gabble_im_channel_receive (GabbleIMChannel *chan,
+    WockyStanza *message,
     TpChannelTextMessageType type,
     const char *from,
     time_t timestamp,

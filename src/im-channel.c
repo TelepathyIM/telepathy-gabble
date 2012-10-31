@@ -81,6 +81,7 @@ typedef struct {
   GabbleIMChannel *channel;
   TpMessage *message;
   gchar *token;
+  TpMessageSendingFlags flags;
 } _GabbleIMSendMessageCtx;
 
 static GPtrArray *
@@ -144,6 +145,10 @@ gabble_im_channel_constructed (GObject *obj)
   tp_message_mixin_init (obj, G_STRUCT_OFFSET (GabbleIMChannel, message_mixin),
       base_conn);
 
+  /* We deliberately do not include
+   * TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_SUCCESSES here, even though we
+   * support requesting receipts, because XEP-0184 provides no guarantees.
+   */
   tp_message_mixin_implement_sending (obj, _gabble_im_channel_send_message,
       G_N_ELEMENTS (types), types, 0,
       TP_DELIVERY_REPORTING_SUPPORT_FLAG_RECEIVE_FAILURES,
@@ -237,6 +242,28 @@ chat_states_supported (GabbleIMChannel *self,
     }
 }
 
+static gboolean
+receipts_conceivably_supported (
+    GabbleIMChannel *self)
+{
+  TpBaseChannel *base = (TpBaseChannel *) self;
+  GabbleConnection *conn =
+      GABBLE_CONNECTION (tp_base_channel_get_connection (base));
+  GabblePresence *presence;
+
+  presence = gabble_presence_cache_get (conn->presence_cache,
+      tp_base_channel_get_target_handle (base));
+
+  /* ...except it's never null because _parse_message_message() in
+   * presence-cache.c. I hate this exactly as much as I did when I wrote the
+   * FIXME on that function. */
+  if (presence != NULL)
+    return gabble_presence_has_cap (presence, NS_RECEIPTS);
+
+  /* Otherwise ... who knows. Why not ask for one? */
+  return TRUE;
+}
+
 static void
 gabble_im_channel_dispose (GObject *object)
 {
@@ -300,7 +327,7 @@ _gabble_im_channel_message_sent_cb (GObject *source,
 
     if (wocky_porter_send_finish (porter, res, &error))
       {
-        tp_message_mixin_sent ((GObject *) chan, message, 0,
+        tp_message_mixin_sent ((GObject *) chan, message, context->flags,
             context->token, NULL);
       }
     else
@@ -345,21 +372,30 @@ _gabble_im_channel_send_message (GObject *object,
           tp_base_connection_get_self_handle (base_conn), state);
     }
 
-  /* We don't support providing successful delivery reports. */
-  flags = 0;
-
   stanza = gabble_message_util_build_stanza (message,
       gabble_conn, 0, state, priv->peer_jid,
       priv->send_nick, &id, &error);
 
-
   if (stanza != NULL)
     {
+      if ((flags & TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY) &&
+          receipts_conceivably_supported (self))
+        {
+          wocky_node_add_child_ns (wocky_stanza_get_top_node (stanza),
+              "request", NS_RECEIPTS);
+          flags = TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
+        }
+      else
+        {
+          flags = 0;
+        }
+
       porter = gabble_connection_dup_porter (gabble_conn);
       context = g_slice_new0 (_GabbleIMSendMessageCtx);
       context->channel = g_object_ref (base);
       context->message = g_object_ref (message);
       context->token = id;
+      context->flags = flags;
       wocky_porter_send_async (porter, stanza, NULL,
           _gabble_im_channel_message_sent_cb, context);
       g_object_unref (porter);
@@ -367,7 +403,7 @@ _gabble_im_channel_send_message (GObject *object,
     }
   else
     {
-      tp_message_mixin_sent (object, message, flags, NULL, error);
+      tp_message_mixin_sent (object, message, 0, NULL, error);
       g_error_free (error);
     }
 

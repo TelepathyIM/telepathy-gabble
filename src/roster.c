@@ -3601,6 +3601,9 @@ gabble_roster_handle_gets_presence_from_us (GabbleRoster *self,
   if (item == NULL)
     return FALSE;
 
+  if (item->blocked)
+    return FALSE;
+
   return (item->subscription == GABBLE_ROSTER_SUBSCRIPTION_FROM ||
       item->subscription == GABBLE_ROSTER_SUBSCRIPTION_BOTH);
 }

@@ -71,6 +71,9 @@ void _gabble_im_channel_receive (GabbleIMChannel *chan,
     gint state);
 void _gabble_im_channel_state_receive (GabbleIMChannel *chan,
     TpChannelChatState state);
+void gabble_im_channel_receive_receipt (
+    GabbleIMChannel *self,
+    const gchar *receipt_id);
 
 void _gabble_im_channel_report_delivery (
     GabbleIMChannel *self,

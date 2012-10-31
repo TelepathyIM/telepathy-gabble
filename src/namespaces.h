@@ -103,6 +103,7 @@
 #define NS_PRESENCE_INVISIBLE   "presence-invisible"
 #define NS_PRIVACY              "jabber:iq:privacy"
 #define NS_INVISIBLE            "urn:xmpp:invisible:0"
+#define NS_RECEIPTS             "urn:xmpp:receipts"
 #define NS_REGISTER             "jabber:iq:register"
 #define NS_ROSTER               "jabber:iq:roster"
 #define NS_SEARCH               "jabber:iq:search"

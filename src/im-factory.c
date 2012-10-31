@@ -60,6 +60,7 @@ struct _GabbleImFactoryPrivate
 {
   GabbleConnection *conn;
   guint message_cb_id;
+  guint delivery_report_cb_id;
   GHashTable *channels;
 
   gulong status_changed_id;
@@ -266,6 +267,42 @@ im_factory_message_cb (
   return TRUE;
 }
 
+/* Signals incoming delivery receipts. http://xmpp.org/extensions/xep-0184.html
+ */
+static gboolean
+im_factory_receipt_cb (
+    WockyPorter *porter,
+    WockyStanza *message,
+    gpointer user_data)
+{
+  GabbleImFactory *self = GABBLE_IM_FACTORY (user_data);
+  WockyNode *received;
+  const gchar *from, *received_id;
+  GabbleIMChannel *channel;
+
+  received = wocky_node_get_child_ns (wocky_stanza_get_top_node (message),
+      "received", NS_RECEIPTS);
+  g_return_val_if_fail (received != NULL, FALSE);
+
+  received_id = wocky_node_get_attribute (received, "id");
+  if (received_id == NULL)
+    {
+      STANZA_DEBUG (message, "but *what* did you receive?!");
+      return TRUE;
+    }
+
+  from = wocky_stanza_get_from (message);
+  channel = get_channel_for_incoming_message (self, from, FALSE);
+  if (channel == NULL)
+    {
+      DEBUG ("no existing channel with '%s'; ignoring receipt", from);
+      return TRUE;
+    }
+
+  gabble_im_channel_receive_receipt (channel, received_id);
+  return TRUE;
+}
+
 /**
  * im_channel_closed_cb:
  *
@@ -433,6 +470,10 @@ gabble_im_factory_close_all (GabbleImFactory *self)
 
       wocky_porter_unregister_handler (porter, self->priv->message_cb_id);
       self->priv->message_cb_id = 0;
+
+      wocky_porter_unregister_handler (porter, self->priv->delivery_report_cb_id);
+      self->priv->delivery_report_cb_id = 0;
+
       g_object_unref (porter);
     }
 }
@@ -519,6 +560,12 @@ porter_available_cb (
       WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
       WOCKY_PORTER_HANDLER_PRIORITY_MIN, im_factory_message_cb, self,
       NULL);
+  self->priv->delivery_report_cb_id = wocky_porter_register_handler_from_anyone (porter,
+      WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+      WOCKY_PORTER_HANDLER_PRIORITY_MIN, im_factory_receipt_cb, self,
+      '(',
+        "received", ':', NS_RECEIPTS,
+      ')', NULL);
 
   g_object_get (conn, "stream-server", &stream_server, NULL);
 

@@ -445,17 +445,11 @@ build_message (
  *             received)
  * @id: the id='' attribute from the <message/> stanza, if any
  * @text: the plaintext body of the message
- * @send_error: the reason why sending @text to @sender failed, or
- *              GABBLE_TEXT_CHANNEL_SEND_NO_ERROR if this call is not to report
- *              a failure to send.
- * @delivery_status: if @send_error is GABBLE_TEXT_CHANNEL_SEND_NO_ERROR,
- *                   ignored; else the delivery status to attach to the report.
  * @state: a #TpChannelChatState, or -1 if there was no chat state in the
  *         message.
  *
  * Shoves an incoming message into @chan, possibly updating the chat state at
- * the same time; or maybe this is a delivery report? Who knows! It's a magical
- * adventure.
+ * the same time.
  */
 void
 _gabble_im_channel_receive (GabbleIMChannel *chan,

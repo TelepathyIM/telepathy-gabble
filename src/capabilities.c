@@ -62,6 +62,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_FIXED, NS_BYTESTREAMS },
   { FEATURE_FIXED, NS_VERSION },
   { FEATURE_FIXED, NS_LAST },
+  { FEATURE_FIXED, NS_RECEIPTS },
 
 #ifdef ENABLE_FILE_TRANSFER
   { FEATURE_OPTIONAL, NS_FILE_TRANSFER },

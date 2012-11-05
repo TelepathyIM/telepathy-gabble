@@ -54,7 +54,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
-#include "base64.h"
 #include "bytestream-factory.h"
 #include "bytestream-iface.h"
 #include "connection.h"

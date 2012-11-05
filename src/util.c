@@ -36,7 +36,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_JID
 
-#include "base64.h"
 #include "conn-aliasing.h"
 #include "connection.h"
 #include "debug.h"
@@ -403,19 +402,20 @@ lm_message_node_extract_properties (WockyNode *node,
       if (0 == strcmp (type, "bytes"))
         {
           GArray *arr;
-          GString *decoded;
+          guchar *st;
+          gsize outlen;
 
-          decoded = base64_decode (value);
-          if (!decoded)
+          st = g_base64_decode (value, &outlen);
+          if (!st)
             continue;
 
           arr = g_array_new (FALSE, FALSE, sizeof (guchar));
-          g_array_append_vals (arr, decoded->str, decoded->len);
+          g_array_append_vals (arr, st, outlen);
           gvalue = g_slice_new0 (GValue);
           g_value_init (gvalue, DBUS_TYPE_G_UCHAR_ARRAY);
           g_value_take_boxed (gvalue, arr);
           g_hash_table_insert (properties, g_strdup (name), gvalue);
-          g_string_free (decoded, TRUE);
+          g_free (st);
         }
       else if (0 == strcmp (type, "str"))
         {
@@ -525,7 +525,7 @@ set_child_from_property (gpointer key,
 
       type = "bytes";
       arr = g_value_get_boxed (gvalue);
-      str = base64_encode (arr->len, arr->data, FALSE);
+      str = g_base64_encode ((guchar *) arr->data, arr->len);
       wocky_node_set_content (child, str);
 
       g_free (str);

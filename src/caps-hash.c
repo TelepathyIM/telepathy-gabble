@@ -33,7 +33,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_PRESENCE
 
-#include "base64.h"
 #include "gabble/capabilities.h"
 #include "debug.h"
 #include "namespaces.h"

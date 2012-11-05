@@ -17,8 +17,6 @@ libgabble_convenience_la_SOURCES = \
     addressing-util.c \
     auth-manager.h \
     auth-manager.c \
-    base64.h \
-    base64.c \
     bytestream-factory.h \
     bytestream-factory.c \
     bytestream-ibb.h \

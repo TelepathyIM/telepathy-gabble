@@ -27,7 +27,6 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <telepathy-glib/telepathy-glib-dbus.h>
 
-#include "base64.h"
 #include "presence.h"
 #include "presence-cache.h"
 #include "conn-presence.h"
@@ -416,6 +415,8 @@ parse_avatar (WockyNode *vcard,
   WockyNode *type_node;
   WockyNode *binval_node;
   const gchar *binval_value;
+  guchar *st;
+  gsize outlen;
 
   photo_node = wocky_node_get_child (vcard, "PHOTO");
 
@@ -455,7 +456,9 @@ parse_avatar (WockyNode *vcard,
       return FALSE;
     }
 
-  *avatar = base64_decode (binval_value);
+  st = g_base64_decode (binval_value, &outlen);
+  *avatar = g_string_new_len ((gchar *) st, outlen);
+  g_free (st);
 
   if (NULL == *avatar)
     {
@@ -834,8 +837,14 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 
   if (avatar != NULL && avatar->len > 0)
     {
+      gint state = 0, save = 0, outlen;
+
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
-      base64 = base64_encode (avatar->len, avatar->data, TRUE);
+      base64 = g_malloc ((avatar->len / 3 + 1) * 4 + 1);
+      outlen = g_base64_encode_step ((const guchar *) avatar->data,
+          avatar->len, TRUE, base64, &state, &save);
+      outlen += g_base64_encode_close (TRUE, base64 + outlen, &state, &save);
+      base64[outlen] = '\0';
 
       DEBUG ("Replacing avatar");
 

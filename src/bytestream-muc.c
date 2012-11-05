@@ -29,7 +29,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
-#include "base64.h"
 #include "bytestream-factory.h"
 #include "bytestream-iface.h"
 #include "connection.h"
@@ -340,7 +339,7 @@ send_data_to (GabbleBytestreamMuc *self,
             frag = FRAG_LAST;
         }
 
-      encoded = base64_encode (send_now, str + sent, FALSE);
+      encoded = g_base64_encode ((const guchar *) str + sent, send_now);
       wocky_node_set_content (data, encoded);
 
       switch (frag)
@@ -406,6 +405,8 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
   const gchar *from;
   WockyNode *data;
   GString *str;
+  guchar *st;
+  gsize outlen;
   TpHandle sender;
   GString *buffer;
   const gchar *frag_val;
@@ -454,7 +455,9 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
       return;
     }
 
-  str = base64_decode (data->content);
+  st = g_base64_decode (data->content, &outlen);
+  str = g_string_new_len ((const gchar *) st, outlen);
+  g_free (st);
   if (str == NULL)
     {
       DEBUG ("base64 decoding failed");

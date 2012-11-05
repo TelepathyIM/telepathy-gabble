@@ -30,7 +30,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_VCARD
 
-#include "base64.h"
 #include "conn-aliasing.h"
 #include "conn-contact-info.h"
 #include "connection.h"
@@ -642,7 +641,8 @@ vcard_get_avatar_sha1 (WockyNode *vcard)
 {
   gchar *sha1;
   const gchar *binval_value;
-  GString *avatar;
+  guchar *avatar;
+  gsize outlen;
   WockyNode *node;
   WockyNode *binval;
 
@@ -662,12 +662,12 @@ vcard_get_avatar_sha1 (WockyNode *vcard)
   if (!binval_value)
     return g_strdup ("");
 
-  avatar = base64_decode (binval_value);
+  avatar = g_base64_decode (binval_value, &outlen);
 
   if (avatar)
     {
-      sha1 = sha1_hex (avatar->str, avatar->len);
-      g_string_free (avatar, TRUE);
+      sha1 = sha1_hex ((gchar *) avatar, outlen);
+      g_free (avatar);
       DEBUG ("Successfully decoded PHOTO.BINVAL, SHA-1 %s", sha1);
     }
   else

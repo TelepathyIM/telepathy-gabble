@@ -29,7 +29,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_BYTESTREAM
 
-#include "base64.h"
 #include "bytestream-factory.h"
 #include "bytestream-iface.h"
 #include "connection.h"
@@ -506,7 +505,7 @@ send_data (GabbleBytestreamIBB *self,
           send_now = remaining;
         }
 
-      encoded = base64_encode (send_now, str + sent, FALSE);
+      encoded = g_base64_encode ((const guchar *) str + sent, send_now);
       seq = g_strdup_printf ("%u", priv->seq++);
 
       iq = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
@@ -608,6 +607,8 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
   GabbleBytestreamIBBPrivate *priv = GABBLE_BYTESTREAM_IBB_GET_PRIVATE (self);
   WockyNode *data;
   GString *str;
+  guchar *st;
+  gsize outlen;
   TpHandle sender;
 
   /* caller must have checked for this in order to know which bytestream to
@@ -633,7 +634,9 @@ gabble_bytestream_ibb_receive (GabbleBytestreamIBB *self,
 
   /* FIXME: check sequence number */
 
-  str = base64_decode (data->content);
+  st = g_base64_decode (data->content, &outlen);
+  str = g_string_new_len ((gchar *) st, outlen);
+  g_free (st);
   if (str == NULL)
     {
       DEBUG ("base64 decoding failed");

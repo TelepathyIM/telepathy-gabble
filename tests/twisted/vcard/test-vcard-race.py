@@ -13,7 +13,7 @@ import base64
 
 from twisted.words.xish import xpath
 
-from servicetest import call_async, sync_dbus
+from servicetest import call_async, sync_dbus, assertEquals
 from gabbletest import (
     exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard,
     make_result_iq, sync_stream)
@@ -64,9 +64,9 @@ def test(q, bus, conn, stream):
         assert types is not None and len(types) == 1, repr(types)
         assert binvals is not None and len(binvals) == 1, repr(binvals)
         assert str(types[0]) == 'image/png'
-        got = str(binvals[0])
+        got = str(binvals[0]).strip()
         exp = base64.b64encode('hello')
-        assert got == exp, (got, exp)
+        assertEquals(exp, got)
 
     # Now Gabble should set a new vCard with both of the above changes.
     expect_and_handle_set_vcard(q, stream, has_nickname_and_photo)

@@ -34,7 +34,6 @@
 
 #define DEBUG_FLAG GABBLE_DEBUG_TUBES
 
-#include "base64.h"
 #include "bytestream-factory.h"
 #include "bytestream-ibb.h"
 #include "bytestream-iface.h"
@@ -1598,7 +1597,7 @@ _gabble_generate_dbus_unique_name (const gchar *nick)
 
   if (len <= 186)
     {
-      encoded = base64_encode (len, nick, FALSE);
+      encoded = g_base64_encode ((const guchar *) nick, len);
     }
   else
     {
@@ -1611,7 +1610,7 @@ _gabble_generate_dbus_unique_name (const gchar *nick)
       g_string_append_len (tmp, nick, 169);
       g_string_append_len (tmp, (const gchar *) sha1, 20);
 
-      encoded = base64_encode (tmp->len, tmp->str, FALSE);
+      encoded = g_base64_encode ((const guchar *) tmp->str, tmp->len);
 
       g_string_free (tmp, TRUE);
     }

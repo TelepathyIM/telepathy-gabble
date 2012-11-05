@@ -210,7 +210,7 @@ gabble_connection_ensure_sidecar (
   gpointer key, value;
   GError *error = NULL;
 
-  if (tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_DISCONNECTED)
+  if (tp_base_connection_is_destroyed (base))
     {
       GError e = { TP_ERROR, TP_ERROR_DISCONNECTED,
           "This connection has already disconnected" };

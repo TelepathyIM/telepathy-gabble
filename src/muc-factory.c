@@ -456,8 +456,7 @@ new_muc_channel (GabbleMucFactory *fac,
   char *object_path;
   GPtrArray *initial_channels_array = NULL;
 
-  g_assert (g_hash_table_lookup (priv->text_channels,
-        GUINT_TO_POINTER (handle)) == NULL);
+  g_assert (gabble_muc_factory_find_text_channel (fac, handle) == NULL);
 
   object_path = g_strdup_printf ("%s/MucChannel%u",
       tp_base_connection_get_object_path (conn), handle);
@@ -542,8 +541,7 @@ do_invite (GabbleMucFactory *fac,
       return;
     }
 
-  if (g_hash_table_lookup (priv->text_channels,
-        GUINT_TO_POINTER (room_handle)) == NULL)
+  if (gabble_muc_factory_find_text_channel (fac, room_handle) == NULL)
     {
       new_muc_channel (fac, room_handle, TRUE, inviter_handle, reason,
           FALSE, TRUE, NULL, NULL, NULL, NULL);
@@ -1031,7 +1029,7 @@ ensure_muc_channel (GabbleMucFactory *fac,
 {
   TpBaseConnection *base_conn = (TpBaseConnection *) priv->conn;
 
-  *ret = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
+  *ret = gabble_muc_factory_find_text_channel (fac, handle);
 
   if (*ret == NULL)
     {
@@ -1075,8 +1073,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
   g_return_if_fail (stanza_type == WOCKY_STANZA_TYPE_IQ);
   g_return_if_fail (sub_type == WOCKY_STANZA_SUB_TYPE_SET);
 
-  gmuc = g_hash_table_lookup (priv->text_channels,
-      GUINT_TO_POINTER (room_handle));
+  gmuc = gabble_muc_factory_find_text_channel (self, room_handle);
 
   if (gmuc == NULL)
     {
@@ -1538,7 +1535,7 @@ handle_tube_channel_request (GabbleMucFactory *self,
   GabbleMucChannel * gmuc;
   GabbleTubeIface *new_channel;
 
-  gmuc = g_hash_table_lookup (priv->text_channels, GUINT_TO_POINTER (handle));
+  gmuc = gabble_muc_factory_find_text_channel (self, handle);
 
   if (gmuc == NULL)
     ensure_muc_channel (self, priv, handle, &gmuc, FALSE, FALSE,
@@ -1875,8 +1872,7 @@ gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
     {
       GabbleMucChannel *channel;
 
-      channel = g_hash_table_lookup (priv->text_channels,
-        GUINT_TO_POINTER (room));
+      channel = gabble_muc_factory_find_text_channel (self, room);
       g_assert (GABBLE_IS_MUC_CHANNEL (channel));
 
       if (channel != NULL)

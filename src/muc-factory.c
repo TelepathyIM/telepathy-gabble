@@ -861,13 +861,11 @@ gabble_muc_factory_associate_request (GabbleMucFactory *self,
 }
 
 
-static gboolean
-cancel_queued_requests (gpointer k,
-                        gpointer v,
-                        gpointer d)
+static void
+cancel_queued_requests (
+    GabbleMucFactory *self,
+    GSList *requests_satisfied)
 {
-  GabbleMucFactory *self = GABBLE_MUC_FACTORY (d);
-  GSList *requests_satisfied = v;
   GSList *iter;
 
   requests_satisfied = g_slist_reverse (requests_satisfied);
@@ -880,8 +878,6 @@ cancel_queued_requests (gpointer k,
     }
 
   g_slist_free (requests_satisfied);
-
-  return TRUE;
 }
 
 
@@ -900,8 +896,17 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
     }
 
   if (priv->queued_requests != NULL)
-    g_hash_table_foreach_steal (priv->queued_requests,
-        cancel_queued_requests, self);
+    {
+      GHashTableIter iter;
+      gpointer value;
+
+      g_hash_table_iter_init (&iter, priv->queued_requests);
+      while (g_hash_table_iter_next (&iter, NULL, &value))
+        {
+          cancel_queued_requests (self, value);
+          g_hash_table_iter_steal (&iter);
+        }
+    }
 
   tp_clear_pointer (&priv->queued_requests, g_hash_table_unref);
   tp_clear_pointer (&priv->text_needed_for_tube, g_hash_table_unref);

@@ -457,6 +457,10 @@ class BaseXmlStream(xmlstream.XmlStream):
         # disconnect the TCP connection making tests as
         # connect/disconnect-timeout.py not working
 
+    def connectionLost(self, reason):
+        self.event_func(servicetest.Event('stream-connection-lost'))
+        xmlstream.XmlStream.connectionLost(self, reason)
+
     def send_stream_error(self, error='system-shutdown'):
         # Yes, there are meant to be two different STREAMS namespaces.
         go_away = \

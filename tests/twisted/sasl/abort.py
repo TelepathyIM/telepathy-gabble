@@ -81,6 +81,83 @@ def test_abort_connected(q, bus, conn, stream):
     q.expect('dbus-error', method='AbortSASL', name=cs.NOT_AVAILABLE)
     chan.Close()
 
+def test_give_up_while_waiting(q, bus, conn, stream,
+                               channel_method,
+                               authenticator_method):
+    """Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=52146
+    where closing the auth channel while waiting for a challenge from the
+    server would not abort the SASL exchange, and the challenge subsequently
+    arriving would make Gabble assert.
+
+    """
+    chan, authenticator = start_mechanism(q, bus, conn)
+
+    # While Gabble is waiting for waiting for the server to make the next move,
+    # a Telepathy client does something to try to end the authentication
+    # process.
+    channel_method(chan)
+
+    # And then we hear something back from the server.
+    authenticator_method(authenticator)
+
+    # FIXME: Gabble should probably send <abort/> and wait for the server to
+    # say <failure><aborted/> rather than unceremoniously closing the
+    # connection.
+    #
+    # In the bug we're testing for, the stream connection would indeed be lost,
+    # but Gabble would also crash and leave a core dump behind. So this test
+    # would appear to pass, but 'make check' would fail as we want.
+    q.expect_many(
+        EventPattern('stream-connection-lost'),
+        EventPattern('dbus-signal', signal='ConnectionError'),
+        EventPattern(
+            'dbus-signal', signal="StatusChanged",
+            args=[cs.CONN_STATUS_DISCONNECTED,
+                  cs.CSR_AUTHENTICATION_FAILED]),
+        )
+
+def test_close_then_challenge(q, bus, conn, stream):
+    """This is the specific scenario for which 52146 was reported. The channel
+    was being closed because its handler crashed.
+
+    """
+    test_give_up_while_waiting(q, bus, conn, stream,
+        lambda chan: chan.Close(),
+        lambda authenticator: authenticator.challenge(EXCHANGE[1][0]))
+
+def test_close_then_success(q, bus, conn, stream):
+    test_give_up_while_waiting(q, bus, conn, stream,
+        lambda chan: chan.Close(),
+        lambda authenticator: authenticator.success())
+
+def test_close_then_failure(q, bus, conn, stream):
+    test_give_up_while_waiting(q, bus, conn, stream,
+        lambda chan: chan.Close(),
+        lambda authenticator: authenticator.not_authorized())
+
+def test_abort_then_challenge(q, bus, conn, stream):
+    test_give_up_while_waiting(q, bus, conn, stream,
+        lambda chan: chan.SASLAuthentication.AbortSASL(
+            cs.SASL_ABORT_REASON_USER_ABORT, "bored now"),
+        lambda authenticator: authenticator.challenge(EXCHANGE[1][0]))
+
+def test_abort_then_success(q, bus, conn, stream):
+    """FIXME: this test fails because the channel changes its state from
+    TP_SASL_STATUS_CLIENT_FAILED to TP_SASL_STATUS_SERVER_SUCCEEDED and waits
+    for the client to ack it when <success> arrives, which is dumb.
+
+    """
+    test_give_up_while_waiting(q, bus, conn, stream,
+        lambda chan: chan.SASLAuthentication.AbortSASL(
+            cs.SASL_ABORT_REASON_USER_ABORT, "bored now"),
+        lambda authenticator: authenticator.success())
+
+def test_abort_then_failure(q, bus, conn, stream):
+    test_give_up_while_waiting(q, bus, conn, stream,
+        lambda chan: chan.SASLAuthentication.AbortSASL(
+            cs.SASL_ABORT_REASON_USER_ABORT, "bored now"),
+        lambda authenticator: authenticator.not_authorized())
+
 def exec_test_(func):
     # Can't use functools.partial, because the authenticator is stateful.
     authenticator = SaslEventAuthenticator(JID.split('@')[0], MECHANISMS)
@@ -94,3 +171,9 @@ if __name__ == '__main__':
     exec_test_(test_abort_mid)
     exec_test_(test_disconnect_mid)
     exec_test_(test_abort_connected)
+    # exec_test_(test_close_then_challenge)
+    # exec_test_(test_close_then_success)
+    exec_test_(test_close_then_failure)
+    # exec_test_(test_abort_then_challenge)
+    # exec_test_(test_abort_then_success)
+    exec_test_(test_abort_then_failure)

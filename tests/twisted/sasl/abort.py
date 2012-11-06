@@ -95,22 +95,16 @@ def test_abort_connected(q, bus, conn, stream):
     q.expect('dbus-error', method='AbortSASL', name=cs.NOT_AVAILABLE)
     chan.Close()
 
+def exec_test_(func):
+    # Can't use functools.partial, because the authenticator is stateful.
+    authenticator = SaslEventAuthenticator(JID.split('@')[0], MECHANISMS)
+    exec_test(func, do_connect=False, authenticator=authenticator,
+        params={'password': None,
+                'account' : JID,
+               })
+
 if __name__ == '__main__':
-    exec_test(test_abort_early,
-              {'password': None,'account' : JID}, do_connect=False)
-
-    exec_test(test_abort_mid,
-              {'password': None,'account' : JID},
-              authenticator=SaslEventAuthenticator(JID.split('@')[0],
-                                                     MECHANISMS),
-              do_connect=False)
-    exec_test(test_disconnect_mid,
-              {'password': None,'account' : JID},
-              authenticator=SaslEventAuthenticator(JID.split('@')[0],
-                                                    MECHANISMS),
-              do_connect=False)
-
-    exec_test(
-        test_abort_connected, {'password': None,'account' : JID},
-        authenticator=SaslEventAuthenticator(JID.split('@')[0], ['PLAIN']),
-        do_connect=False)
+    exec_test_(test_abort_early)
+    exec_test_(test_abort_mid)
+    exec_test_(test_disconnect_mid)
+    exec_test_(test_abort_connected)

@@ -830,6 +830,9 @@ gabble_muc_factory_broadcast_presence (GabbleMucFactory *self)
   GHashTableIter iter;
   gpointer channel = NULL;
 
+  if (priv->text_channels == NULL)
+    return;
+
   g_hash_table_iter_init (&iter, priv->text_channels);
 
   while (g_hash_table_iter_next (&iter, NULL, &channel))

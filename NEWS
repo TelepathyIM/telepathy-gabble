@@ -1,3 +1,13 @@
+telepathy-gabble 0.16.4 (2012-11-09)
+====================================
+
+Fixes:
+
+• fd.o#56181: don't inadvertantly disable creating Call1 channels. (rishi)
+
+• fd.o#52362: hopefully, don't crash if we disconnect in the middle of trying
+  to change our Google Talk presence. (wjt)
+
 telepathy-gabble 0.16.3 (2012-09-11)
 ====================================
 

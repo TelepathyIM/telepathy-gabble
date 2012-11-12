@@ -2,6 +2,7 @@ AMP = "http://jabber.org/protocol/amp"
 BYTESTREAMS = 'http://jabber.org/protocol/bytestreams'
 CHAT_STATES = 'http://jabber.org/protocol/chatstates'
 CAPS = "http://jabber.org/protocol/caps"
+CLIENT = "jabber:client"
 DISCO_INFO = "http://jabber.org/protocol/disco#info"
 DISCO_ITEMS = "http://jabber.org/protocol/disco#items"
 FEATURE_NEG = 'http://jabber.org/protocol/feature-neg'

@@ -9,6 +9,7 @@ from servicetest import (
 from gabbletest import exec_test, acknowledge_iq, elem, elem_iq
 from config import PLUGINS_ENABLED
 from twisted.words.xish import domish
+import ns
 
 CONSOLE_PLUGIN_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
 STACY = 'stacy@pilgrim.lit'
@@ -77,10 +78,15 @@ def test(q, bus, conn, stream):
         </message>''' % { 'stacy': STACY })
 
     e = q.expect('stream-message', to=STACY, message_type='headline')
-    # Wocky fills in xmlns='' for us if we don't specify a namespace... great.
-    # So this means <message/> gets sent as <message xmlns=''/> and the server
-    # kicks us off.
-    assertNotEquals('', e.stanza.uri)
+
+    # Make sure that Wocky has filled in the jabber:client namespace we
+    # carelessly omitted.
+    message = e.stanza
+    assertEquals('message', message.name)
+    assertEquals(ns.CLIENT, message.uri)
+    body = message.firstChildElement()
+    assertEquals('body', body.name)
+    assertEquals(ns.CLIENT, body.uri)
 
 if __name__ == '__main__':
     exec_test(test)

@@ -206,7 +206,8 @@ gabble_console_sidecar_init (GabbleConsoleSidecar *self)
 {
   self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_CONSOLE_SIDECAR,
       GabbleConsoleSidecarPrivate);
-  self->priv->reader = wocky_xmpp_reader_new_no_stream ();
+  self->priv->reader = wocky_xmpp_reader_new_no_stream_ns (
+      WOCKY_XMPP_NS_JABBER_CLIENT);
   self->priv->writer = wocky_xmpp_writer_new_no_stream ();
 }
 
@@ -517,7 +518,8 @@ validate_jid (const gchar **to,
 
 /*
  * @xml: doesn't actually have to be a top-level stanza. It can be the body of
- *  an IQ or whatever.
+ *  an IQ or whatever. If it has no namespace, it's assumed to be in
+ *  jabber:client.
  */
 static gboolean
 parse_me_a_stanza (
@@ -621,7 +623,8 @@ stanza_looks_coherent (
   if (t == WOCKY_STANZA_TYPE_UNKNOWN)
     {
       g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-          "I don't know what a <%s/> is", top_node->name);
+          "I don't know what a <%s xmlns='%s'/> is", top_node->name,
+          g_quark_to_string (top_node->ns));
       return FALSE;
     }
   else if (st == WOCKY_STANZA_SUB_TYPE_UNKNOWN)
@@ -631,16 +634,8 @@ stanza_looks_coherent (
           wocky_node_get_attribute (top_node, "type"));
       return FALSE;
     }
-  else
-    {
-      if (top_node->ns == g_quark_from_static_string (""))
-        {
-          /* So... Wocky puts an empty string in as the namespace. Greaaat. */
-          top_node->ns = g_quark_from_static_string (WOCKY_XMPP_NS_JABBER_CLIENT);
-        }
 
-      return TRUE;
-    }
+  return TRUE;
 }
 
 static void

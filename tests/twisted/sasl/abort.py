@@ -21,17 +21,20 @@ def test_abort_early(q, bus, conn, stream):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
     abort_auth(q, chan, 31337, "maybe if I use an undefined code you'll crash")
 
-def test_abort_mid(q, bus, conn, stream):
+def start_mechanism(q, bus, conn,
+                    mechanism="ABORT-TEST", initial_response=EXCHANGE[0][1]):
     chan, props = connect_and_get_sasl_channel(q, bus, conn)
-
-    chan.SASLAuthentication.StartMechanismWithData("ABORT-TEST", EXCHANGE[0][1])
+    chan.SASLAuthentication.StartMechanismWithData(mechanism, initial_response)
 
     q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
              args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
 
-    e = q.expect('sasl-auth', initial_response=EXCHANGE[0][1])
-    authenticator = e.authenticator
+    e = q.expect('sasl-auth', initial_response=initial_response)
+    return chan, e.authenticator
+
+def test_abort_mid(q, bus, conn, stream):
+    chan, authenticator = start_mechanism(q, bus, conn)
 
     authenticator.challenge(EXCHANGE[1][0])
     q.expect('dbus-signal', signal='NewChallenge',
@@ -42,16 +45,7 @@ def test_abort_mid(q, bus, conn, stream):
                "wrong data from server")
 
 def test_disconnect_mid(q, bus, conn, stream):
-    chan, props = connect_and_get_sasl_channel(q, bus, conn)
-
-    chan.SASLAuthentication.StartMechanismWithData("ABORT-TEST", EXCHANGE[0][1])
-
-    q.expect('dbus-signal', signal='SASLStatusChanged',
-             interface=cs.CHANNEL_IFACE_SASL_AUTH,
-             args=[cs.SASL_STATUS_IN_PROGRESS, '', {}])
-
-    e = q.expect('sasl-auth', initial_response=EXCHANGE[0][1])
-    authenticator = e.authenticator
+    chan, authenticator = start_mechanism(q, bus, conn)
 
     authenticator.challenge(EXCHANGE[1][0])
     q.expect('dbus-signal', signal='NewChallenge',
@@ -65,17 +59,10 @@ def test_disconnect_mid(q, bus, conn, stream):
                   EventPattern('dbus-return', method='Disconnect'))
 
 def test_abort_connected(q, bus, conn, stream):
-    chan, props = connect_and_get_sasl_channel(q, bus, conn)
-
-    chan.SASLAuthentication.StartMechanismWithData('PLAIN',
-        '\0' + JID.split('@')[0] + '\0' + PASSWORD)
-    e, _ = q.expect_many(
-            EventPattern('sasl-auth'),
-            EventPattern('dbus-signal', signal='SASLStatusChanged',
-                interface=cs.CHANNEL_IFACE_SASL_AUTH,
-                args=[cs.SASL_STATUS_IN_PROGRESS, '', {}]),
-            )
-    authenticator = e.authenticator
+    initial_response = '\0' + JID.split('@')[0] + '\0' + PASSWORD
+    chan, authenticator = start_mechanism(q, bus, conn,
+        mechanism='PLAIN',
+        initial_response=initial_response)
 
     authenticator.success(None)
     q.expect('dbus-signal', signal='SASLStatusChanged',
@@ -86,9 +73,8 @@ def test_abort_connected(q, bus, conn, stream):
     q.expect('dbus-signal', signal='SASLStatusChanged',
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
              args=[cs.SASL_STATUS_SUCCEEDED, '', {}])
-
-    e = q.expect('dbus-signal', signal='StatusChanged',
-                 args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+    q.expect('dbus-signal', signal='StatusChanged',
+             args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     call_async(q, chan.SASLAuthentication, 'AbortSASL',
             cs.SASL_ABORT_REASON_USER_ABORT, "aborting too late")

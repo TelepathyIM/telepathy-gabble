@@ -561,7 +561,11 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
     if sys.stdout.isatty() or 'CHECK_FORCE_COLOR' in os.environ:
         colourer = servicetest.install_colourer()
 
-    bus = dbus.SessionBus()
+    try:
+        bus = dbus.SessionBus()
+    except dbus.exceptions.DBusException as e:
+        print e
+        os._exit(1)
 
     queue = servicetest.IteratingEventQueue(timeout)
     queue.verbose = (

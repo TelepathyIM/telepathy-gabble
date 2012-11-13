@@ -453,6 +453,25 @@ change_current_state (GabbleServerSaslChannel *self,
       self->priv->sasl_error_details);
 }
 
+static void
+complete_operation (
+    GabbleServerSaslChannel *self,
+    gboolean in_idle)
+{
+  GabbleServerSaslChannelPrivate *priv = self->priv;
+  GSimpleAsyncResult *r = priv->result;
+
+  g_return_if_fail (priv->result != NULL);
+  priv->result = NULL;
+
+  if (in_idle)
+    g_simple_async_result_complete_in_idle (r);
+  else
+    g_simple_async_result_complete (r);
+
+  g_object_unref (r);
+}
+
 /**
  * SASL Authentication Channel Interface
  */
@@ -490,7 +509,6 @@ gabble_server_sasl_channel_start_mechanism_with_data (
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (iface);
   GabbleServerSaslChannelPrivate *priv = self->priv;
   WockyAuthRegistryStartData *start_data;
-  GSimpleAsyncResult *r = priv->result;
   GString *initial_data = NULL;
 
   if (self->priv->sasl_status != TP_SASL_STATUS_NOT_STARTED)
@@ -504,15 +522,13 @@ gabble_server_sasl_channel_start_mechanism_with_data (
 
   /* NotStarted state is entered by creating the channel: the caller must
    * call start_auth_async immediately */
-  g_assert (r != NULL);
-  g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+  g_assert (priv->result != NULL);
+  g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
         G_OBJECT (self), gabble_server_sasl_channel_start_auth_async));
 
   if (tp_strv_contains ((const gchar * const *) priv->available_mechanisms,
         in_Mechanism))
     {
-      priv->result = NULL;
-
       if (in_InitialData != NULL)
         {
           /* The initial data might be secret (for PLAIN etc.), and also might
@@ -534,10 +550,9 @@ gabble_server_sasl_channel_start_mechanism_with_data (
       start_data =
         wocky_auth_registry_start_data_new (in_Mechanism, initial_data);
 
-      g_simple_async_result_set_op_res_gpointer (r,
+      g_simple_async_result_set_op_res_gpointer (priv->result,
           start_data, (GDestroyNotify) wocky_auth_registry_start_data_free);
-      g_simple_async_result_complete_in_idle (r);
-      g_object_unref (r);
+      complete_operation (self, TRUE);
 
       if (initial_data != NULL)
         g_string_free (initial_data, TRUE);
@@ -568,8 +583,8 @@ gabble_server_sasl_channel_respond (
 {
   GabbleServerSaslChannel *self =
     GABBLE_SERVER_SASL_CHANNEL (channel);
+  GabbleServerSaslChannelPrivate *priv = self->priv;
   GString *response_data;
-  GSimpleAsyncResult *r = self->priv->result;
 
   if (self->priv->sasl_status != TP_SASL_STATUS_IN_PROGRESS)
     {
@@ -581,7 +596,7 @@ gabble_server_sasl_channel_respond (
       return;
     }
 
-  if (r == NULL)
+  if (priv->result == NULL)
     {
       gabble_server_sasl_channel_raise (context, TP_ERROR_NOT_AVAILABLE,
           "You already responded to the most recent challenge");
@@ -589,14 +604,12 @@ gabble_server_sasl_channel_respond (
       return;
     }
 
-  g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+  g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
         G_OBJECT (self), gabble_server_sasl_channel_challenge_async));
 
   /* The response might be secret (for PLAIN etc.), and also might
    * not be UTF-8 or even text, so we just output the length */
   DEBUG ("responding with %u bytes", in_Response_Data->len);
-
-  self->priv->result = NULL;
 
   if (in_Response_Data->len > 0)
     response_data = g_string_new_len (in_Response_Data->data,
@@ -604,11 +617,9 @@ gabble_server_sasl_channel_respond (
   else
     response_data = NULL;
 
-  g_simple_async_result_set_op_res_gpointer (r, response_data,
+  g_simple_async_result_set_op_res_gpointer (priv->result, response_data,
       (GDestroyNotify) wocky_g_string_free);
-
-  g_simple_async_result_complete_in_idle (r);
-  g_object_unref (r);
+  complete_operation (self, TRUE);
 
   tp_svc_channel_interface_sasl_authentication_return_from_respond (
       context);
@@ -620,9 +631,8 @@ gabble_server_sasl_channel_accept_sasl (
     DBusGMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
-  GSimpleAsyncResult *r = self->priv->result;
+  GabbleServerSaslChannelPrivate *priv = self->priv;
   const gchar *message = NULL;
-
 
   switch (self->priv->sasl_status)
     {
@@ -634,7 +644,7 @@ gabble_server_sasl_channel_accept_sasl (
       /* In this state, the only valid time to call this method is in response
        * to a challenge, to indicate that, actually, that challenge was
        * additional data for a successful authentication. */
-      if (r == NULL)
+      if (priv->result == NULL)
         {
           message = "In_Progress, but you already responded to the last "
             "challenge";
@@ -643,7 +653,7 @@ gabble_server_sasl_channel_accept_sasl (
         {
           DEBUG ("client says the last challenge was actually final data "
               "and has accepted it");
-          g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+          g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
                 G_OBJECT (self), gabble_server_sasl_channel_challenge_async));
           change_current_state (self, TP_SASL_STATUS_CLIENT_ACCEPTED, NULL,
               NULL);
@@ -655,7 +665,7 @@ gabble_server_sasl_channel_accept_sasl (
        * success_async(), i.e. waiting for the UI to check whether it's
        * happy too. AcceptSASL means that it is. */
       DEBUG ("client has accepted server's success");
-      g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (r),
+      g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
             G_OBJECT (self), gabble_server_sasl_channel_success_async));
       change_current_state (self, TP_SASL_STATUS_SUCCEEDED, NULL, NULL);
       break;
@@ -688,20 +698,18 @@ gabble_server_sasl_channel_accept_sasl (
       return;
     }
 
-  if (r != NULL)
+  if (priv->result != NULL)
     {
       /* This is a bit weird - this code is run for two different async
        * results. In the In_Progress case, this code results in
        * success with the GSimpleAsyncResult's op_res left as NULL, which
        * is what Wocky wants for an empty response. In the Server_Succeeded
        * response, the async result is just success or error - we succeed. */
-      self->priv->result = NULL;
 
       /* We want want to complete not in an idle because if we do we
        * will hit fd.o#32278. This is safe because we're being called
        * from dbus-glib in the main loop. */
-      g_simple_async_result_complete (r);
-      g_object_unref (r);
+      complete_operation (self, FALSE);
     }
 
   tp_svc_channel_interface_sasl_authentication_return_from_accept_sasl (
@@ -716,7 +724,7 @@ gabble_server_sasl_channel_abort_sasl (
     DBusGMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
-  GSimpleAsyncResult *r = self->priv->result;
+  GabbleServerSaslChannelPrivate *priv = self->priv;
   guint code;
   const gchar *dbus_error;
 
@@ -759,21 +767,18 @@ gabble_server_sasl_channel_abort_sasl (
               break;
           }
 
-        if (r != NULL)
+        if (priv->result != NULL)
           {
-            self->priv->result = NULL;
-
             /* If Not_Started, we're returning failure from start_auth_async.
              * If In_Progress, we might be returning failure from
              *  challenge_async, if one is outstanding.
              * If Server_Succeeded, we're returning failure from success_async.
              */
 
-            g_simple_async_result_set_error (r, WOCKY_AUTH_ERROR, code,
+            g_simple_async_result_set_error (priv->result, WOCKY_AUTH_ERROR,
+                code,
                 "Authentication aborted: %s", in_Debug_Message);
-
-            g_simple_async_result_complete_in_idle (r);
-            g_object_unref (r);
+            complete_operation (self, TRUE);
           }
 
         change_current_state (self, TP_SASL_STATUS_CLIENT_FAILED,
@@ -875,12 +880,11 @@ gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
     gpointer user_data)
 {
   GabbleServerSaslChannelPrivate *priv = self->priv;
-  GSimpleAsyncResult *r;
 
   g_assert (!tp_base_channel_is_destroyed ((TpBaseChannel *) self));
   g_assert (priv->result == NULL);
 
-  r = g_simple_async_result_new (G_OBJECT (self),
+  priv->result = g_simple_async_result_new (G_OBJECT (self),
       callback, user_data,
       gabble_server_sasl_channel_success_async);
 
@@ -888,7 +892,6 @@ gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
 
   if (self->priv->sasl_status != TP_SASL_STATUS_CLIENT_ACCEPTED)
     {
-      priv->result = r;
       change_current_state (self, TP_SASL_STATUS_SERVER_SUCCEEDED,
           NULL, NULL);
     }
@@ -896,8 +899,7 @@ gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
     {
       change_current_state (self, TP_SASL_STATUS_SUCCEEDED, NULL,
           NULL);
-      g_simple_async_result_complete_in_idle (r);
-      g_object_unref (r);
+      complete_operation (self, TRUE);
     }
 }
 
@@ -967,16 +969,12 @@ gabble_server_sasl_channel_close (TpBaseChannel *channel)
 
   if (priv->result != NULL)
     {
-      GSimpleAsyncResult *r = priv->result;
-
       DEBUG ("closed channel");
 
-      priv->result = NULL;
-      g_simple_async_result_set_error (r, WOCKY_AUTH_ERROR,
+      g_simple_async_result_set_error (priv->result, WOCKY_AUTH_ERROR,
           WOCKY_AUTH_ERROR_FAILURE,
           "%s", "Client aborted authentication.");
-      g_simple_async_result_complete_in_idle (r);
-      g_object_unref (r);
+      complete_operation (self, TRUE);
     }
 
   tp_base_channel_destroyed (channel);

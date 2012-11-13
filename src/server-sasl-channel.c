@@ -93,6 +93,7 @@ struct _GabbleServerSaslChannelPrivate
   GHashTable *sasl_error_details;
   /* Given to the Connection on request */
   TpConnectionStatusReason disconnect_reason;
+  GError *wocky_auth_error /* = NULL */;
 
   GSimpleAsyncResult *result;
 };
@@ -275,6 +276,7 @@ gabble_server_sasl_channel_finalize (GObject *object)
 
   g_free (priv->sasl_error);
   g_hash_table_unref (priv->sasl_error_details);
+  g_clear_error (&priv->wocky_auth_error);
 
   if (G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->finalize)
     G_OBJECT_CLASS (gabble_server_sasl_channel_parent_class)->finalize (object);
@@ -767,6 +769,9 @@ gabble_server_sasl_channel_abort_sasl (
               break;
           }
 
+        g_set_error (&priv->wocky_auth_error, WOCKY_AUTH_ERROR,
+            code, "Authentication aborted: %s", in_Debug_Message);
+
         if (priv->result != NULL)
           {
             /* If Not_Started, we're returning failure from start_auth_async.
@@ -775,9 +780,8 @@ gabble_server_sasl_channel_abort_sasl (
              * If Server_Succeeded, we're returning failure from success_async.
              */
 
-            g_simple_async_result_set_error (priv->result, WOCKY_AUTH_ERROR,
-                code,
-                "Authentication aborted: %s", in_Debug_Message);
+            g_simple_async_result_set_from_error (priv->result,
+                priv->wocky_auth_error);
             complete_operation (self, TRUE);
           }
 
@@ -846,7 +850,7 @@ gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
 
   g_assert (!tp_base_channel_is_destroyed ((TpBaseChannel *) self));
   g_assert (priv->result == NULL);
-  g_assert (priv->sasl_status == TP_SASL_STATUS_IN_PROGRESS);
+
   /* it might be sensitive, and also might not be UTF-8 text, so just print
    * the length */
   DEBUG ("New challenge, %" G_GSIZE_FORMAT " bytes", challenge_data->len);
@@ -854,13 +858,26 @@ gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
   priv->result = g_simple_async_result_new (G_OBJECT (self), callback,
       user_data, gabble_server_sasl_channel_challenge_async);
 
-  challenge_ay = g_array_sized_new (FALSE, FALSE, sizeof (gchar),
-      challenge_data->len);
-  g_array_append_vals (challenge_ay, challenge_data->str,
-      challenge_data->len);
+  switch (priv->sasl_status)
+    {
+      case TP_SASL_STATUS_IN_PROGRESS:
+        challenge_ay = g_array_sized_new (FALSE, FALSE, sizeof (gchar),
+            challenge_data->len);
+        g_array_append_vals (challenge_ay, challenge_data->str,
+            challenge_data->len);
 
-  tp_svc_channel_interface_sasl_authentication_emit_new_challenge (
-      self, challenge_ay);
+        tp_svc_channel_interface_sasl_authentication_emit_new_challenge (
+            self, challenge_ay);
+        break;
+      case TP_SASL_STATUS_CLIENT_FAILED:
+        g_return_if_fail (priv->wocky_auth_error != NULL);
+        g_simple_async_result_set_from_error (priv->result,
+            priv->wocky_auth_error);
+        complete_operation (self, TRUE);
+        return;
+      default:
+        g_assert_not_reached ();
+    }
 }
 
 gboolean

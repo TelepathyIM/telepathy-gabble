@@ -838,9 +838,13 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
   if (avatar != NULL && avatar->len > 0)
     {
       gint state = 0, save = 0, outlen;
+      /* See the documentation for g_base64_encode_step(). */
+      guint base64_data_size = (avatar->len / 3 + 1) * 4 + 4;
+      guint base64_line_wrapped_data_size =
+          base64_data_size + (base64_data_size / 72) + 1;
 
       ctx->avatar = g_string_new_len (avatar->data, avatar->len);
-      base64 = g_malloc (((avatar->len / 3 + 1) *4 + 4) + ((avatar->len / 3 + 1) * 4 + 4) / 72 + 1);
+      base64 = g_malloc (base64_line_wrapped_data_size);
       outlen = g_base64_encode_step ((const guchar *) avatar->data,
           avatar->len, TRUE, base64, &state, &save);
       outlen += g_base64_encode_close (TRUE, base64 + outlen, &state, &save);

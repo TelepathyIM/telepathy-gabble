@@ -150,6 +150,7 @@ TWISTED_VCARD_TESTS = \
 	vcard/overlapping-sets.py \
 	vcard/redundant-set.py \
 	vcard/refresh-contact-info.py \
+	vcard/set-avatar.py \
 	vcard/set-contact-info.py \
 	vcard/set-set-disconnect.py \
 	vcard/supported-fields.py \

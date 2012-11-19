@@ -437,7 +437,8 @@ static void
 set_errors (
     GabbleServerSaslChannel *self,
     const gchar *dbus_error,
-    const gchar *debug_message)
+    const gchar *debug_message,
+    const GError *error)
 {
   g_free (self->priv->sasl_error);
   self->priv->sasl_error = g_strdup (dbus_error);
@@ -446,6 +447,9 @@ set_errors (
   if (debug_message != NULL)
     tp_asv_set_string (self->priv->sasl_error_details, "debug-message",
         debug_message);
+
+  g_clear_error (&self->priv->wocky_auth_error);
+  self->priv->wocky_auth_error = g_error_copy (error);
 }
 
 static void
@@ -731,7 +735,6 @@ gabble_server_sasl_channel_abort_sasl (
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
   GabbleServerSaslChannelPrivate *priv = self->priv;
-  guint code;
   const gchar *dbus_error;
 
   switch (self->priv->sasl_status)
@@ -751,30 +754,38 @@ gabble_server_sasl_channel_abort_sasl (
       case TP_SASL_STATUS_NOT_STARTED:
       case TP_SASL_STATUS_IN_PROGRESS:
       case TP_SASL_STATUS_SERVER_SUCCEEDED:
+      {
+        GError *error = NULL;
+
         switch (in_Reason)
           {
             case TP_SASL_ABORT_REASON_INVALID_CHALLENGE:
-              DEBUG ("invalid challenge (%s)", in_Debug_Message);
-              code = WOCKY_AUTH_ERROR_INVALID_REPLY;
+              g_set_error (&error, WOCKY_AUTH_ERROR,
+                  WOCKY_AUTH_ERROR_INVALID_REPLY,
+                  "invalid challenge (%s)", in_Debug_Message);
               dbus_error = TP_ERROR_STR_SERVICE_CONFUSED;
               break;
 
             case TP_SASL_ABORT_REASON_USER_ABORT:
-              DEBUG ("user aborted auth (%s)", in_Debug_Message);
-              code = WOCKY_AUTH_ERROR_FAILURE;
+              g_set_error (&error, WOCKY_AUTH_ERROR,
+                  WOCKY_AUTH_ERROR_FAILURE,
+                  "user aborted auth (%s)", in_Debug_Message);
               dbus_error = TP_ERROR_STR_CANCELLED;
               break;
 
             default:
-              DEBUG ("unknown reason code %u, treating as User_Abort (%s)",
+              g_set_error (&error, WOCKY_AUTH_ERROR,
+                  WOCKY_AUTH_ERROR_FAILURE,
+                  "unknown reason code %u, treating as User_Abort (%s)",
                   in_Reason, in_Debug_Message);
-              code = WOCKY_AUTH_ERROR_FAILURE;
               dbus_error = TP_ERROR_STR_CANCELLED;
               break;
           }
 
-        g_set_error (&priv->wocky_auth_error, WOCKY_AUTH_ERROR,
-            code, "Authentication aborted: %s", in_Debug_Message);
+        DEBUG ("%s", error->message);
+
+        set_errors (self, dbus_error, in_Debug_Message, error);
+        change_current_state (self, TP_SASL_STATUS_CLIENT_FAILED);
 
         if (priv->result != NULL)
           {
@@ -783,17 +794,13 @@ gabble_server_sasl_channel_abort_sasl (
              *  challenge_async, if one is outstanding.
              * If Server_Succeeded, we're returning failure from success_async.
              */
-
-            g_simple_async_result_set_from_error (priv->result,
-                priv->wocky_auth_error);
+            g_simple_async_result_set_from_error (priv->result, error);
             complete_operation (self, TRUE);
           }
 
-        set_errors (self,
-            dbus_error, in_Debug_Message);
-        change_current_state (self, TP_SASL_STATUS_CLIENT_FAILED);
+        g_error_free (error);
         break;
-
+      }
       default:
         g_assert_not_reached ();
     }
@@ -951,7 +958,7 @@ gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
 
   DEBUG ("auth failed: %s", tp_error->message);
   set_errors (self,
-      tp_error_get_dbus_name (tp_error->code), tp_error->message);
+      tp_error_get_dbus_name (tp_error->code), tp_error->message, error);
   change_current_state (self, TP_SASL_STATUS_SERVER_FAILED);
   self->priv->disconnect_reason = conn_reason;
 }

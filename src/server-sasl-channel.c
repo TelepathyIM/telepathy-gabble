@@ -434,13 +434,11 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 }
 
 static void
-change_current_state (GabbleServerSaslChannel *self,
-    TpSASLStatus status,
+set_errors (
+    GabbleServerSaslChannel *self,
     const gchar *dbus_error,
     const gchar *debug_message)
 {
-  self->priv->sasl_status = status;
-
   g_free (self->priv->sasl_error);
   self->priv->sasl_error = g_strdup (dbus_error);
 
@@ -448,6 +446,13 @@ change_current_state (GabbleServerSaslChannel *self,
   if (debug_message != NULL)
     tp_asv_set_string (self->priv->sasl_error_details, "debug-message",
         debug_message);
+}
+
+static void
+change_current_state (GabbleServerSaslChannel *self,
+    TpSASLStatus status)
+{
+  self->priv->sasl_status = status;
 
   tp_svc_channel_interface_sasl_authentication_emit_sasl_status_changed (
       self, self->priv->sasl_status,
@@ -546,7 +551,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
               in_Mechanism);
         }
 
-      change_current_state (self, TP_SASL_STATUS_IN_PROGRESS, NULL, NULL);
+      change_current_state (self, TP_SASL_STATUS_IN_PROGRESS);
       dbus_g_method_return (context);
 
       start_data =
@@ -657,8 +662,7 @@ gabble_server_sasl_channel_accept_sasl (
               "and has accepted it");
           g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
                 G_OBJECT (self), gabble_server_sasl_channel_challenge_async));
-          change_current_state (self, TP_SASL_STATUS_CLIENT_ACCEPTED, NULL,
-              NULL);
+          change_current_state (self, TP_SASL_STATUS_CLIENT_ACCEPTED);
         }
       break;
 
@@ -669,7 +673,7 @@ gabble_server_sasl_channel_accept_sasl (
       DEBUG ("client has accepted server's success");
       g_assert (g_simple_async_result_is_valid (G_ASYNC_RESULT (priv->result),
             G_OBJECT (self), gabble_server_sasl_channel_success_async));
-      change_current_state (self, TP_SASL_STATUS_SUCCEEDED, NULL, NULL);
+      change_current_state (self, TP_SASL_STATUS_SUCCEEDED);
       break;
 
     case TP_SASL_STATUS_CLIENT_ACCEPTED:
@@ -785,8 +789,9 @@ gabble_server_sasl_channel_abort_sasl (
             complete_operation (self, TRUE);
           }
 
-        change_current_state (self, TP_SASL_STATUS_CLIENT_FAILED,
+        set_errors (self,
             dbus_error, in_Debug_Message);
+        change_current_state (self, TP_SASL_STATUS_CLIENT_FAILED);
         break;
 
       default:
@@ -909,13 +914,11 @@ gabble_server_sasl_channel_success_async (GabbleServerSaslChannel *self,
 
   if (self->priv->sasl_status != TP_SASL_STATUS_CLIENT_ACCEPTED)
     {
-      change_current_state (self, TP_SASL_STATUS_SERVER_SUCCEEDED,
-          NULL, NULL);
+      change_current_state (self, TP_SASL_STATUS_SERVER_SUCCEEDED);
     }
   else
     {
-      change_current_state (self, TP_SASL_STATUS_SUCCEEDED, NULL,
-          NULL);
+      change_current_state (self, TP_SASL_STATUS_SUCCEEDED);
       complete_operation (self, TRUE);
     }
 }
@@ -947,8 +950,9 @@ gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
   g_assert (tp_error->domain == TP_ERROR);
 
   DEBUG ("auth failed: %s", tp_error->message);
-  change_current_state (self, TP_SASL_STATUS_SERVER_FAILED,
+  set_errors (self,
       tp_error_get_dbus_name (tp_error->code), tp_error->message);
+  change_current_state (self, TP_SASL_STATUS_SERVER_FAILED);
   self->priv->disconnect_reason = conn_reason;
 }
 

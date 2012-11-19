@@ -992,16 +992,36 @@ gabble_server_sasl_channel_close (TpBaseChannel *channel)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
   GabbleServerSaslChannelPrivate *priv = self->priv;
+  GError error = { WOCKY_AUTH_ERROR, WOCKY_AUTH_ERROR_FAILURE,
+      "Client aborted authentication." };
 
   DEBUG ("called on %p", self);
+
+  switch (priv->sasl_status)
+    {
+    case TP_SASL_STATUS_NOT_STARTED:
+    case TP_SASL_STATUS_IN_PROGRESS:
+    case TP_SASL_STATUS_SERVER_SUCCEEDED:
+      set_errors (self, TP_ERROR_STR_AUTHENTICATION_FAILED, "Close() called",
+          &error);
+      break;
+
+    case TP_SASL_STATUS_CLIENT_ACCEPTED:
+    case TP_SASL_STATUS_SUCCEEDED:
+      /* Hooray! */
+      break;
+
+    case TP_SASL_STATUS_SERVER_FAILED:
+    case TP_SASL_STATUS_CLIENT_FAILED:
+      g_warn_if_fail (priv->sasl_error != NULL);
+      break;
+    }
 
   if (priv->result != NULL)
     {
       DEBUG ("closed channel");
 
-      g_simple_async_result_set_error (priv->result, WOCKY_AUTH_ERROR,
-          WOCKY_AUTH_ERROR_FAILURE,
-          "%s", "Client aborted authentication.");
+      g_simple_async_result_set_from_error (priv->result, &error);
       complete_operation (self, TRUE);
     }
 

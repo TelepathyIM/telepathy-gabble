@@ -1033,6 +1033,8 @@ gabble_server_sasl_channel_close (TpBaseChannel *channel)
  * @details: (out) (transfer full) (element-type utf8 GObject.Value): the
  *  error details
  * @reason: (out): the reason with which to disconnect
+ * @error: (out): an error in a domain Wocky understands describing what went
+ *  wrong
  *
  * Returns: %TRUE if an error was copied; %FALSE leaving the 'out' parameters
  *  untouched if there is no error
@@ -1041,7 +1043,8 @@ gboolean
 gabble_server_sasl_channel_get_failure_details (GabbleServerSaslChannel *self,
     gchar **dbus_error,
     GHashTable **details,
-    TpConnectionStatusReason *reason)
+    TpConnectionStatusReason *reason,
+    GError **error)
 {
   if (self->priv->sasl_error != NULL)
     {
@@ -1053,6 +1056,9 @@ gabble_server_sasl_channel_get_failure_details (GabbleServerSaslChannel *self,
 
       if (reason != NULL)
         *reason = self->priv->disconnect_reason;
+
+      if (error != NULL)
+        *error = g_error_copy (self->priv->wocky_auth_error);
 
       return TRUE;
     }

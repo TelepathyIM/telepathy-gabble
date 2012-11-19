@@ -53,6 +53,7 @@ typedef struct {
   gchar *name;
   GHashTable *details;
   TpConnectionStatusReason reason;
+  GError *wocky_error;
 } SavedError;
 
 struct _GabbleAuthManagerPrivate
@@ -108,7 +109,7 @@ static void
 auth_channel_closed_cb (GabbleServerSaslChannel *channel,
     GabbleAuthManager *self)
 {
-  SavedError tmp = { NULL, NULL, 0 };
+  SavedError tmp = { NULL, NULL, 0, NULL };
 
   tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (channel));
@@ -117,7 +118,7 @@ auth_channel_closed_cb (GabbleServerSaslChannel *channel,
 
   /* this is our last chance to find out why it failed */
   if (gabble_server_sasl_channel_get_failure_details (channel,
-      &tmp.name, &tmp.details, &tmp.reason))
+      &tmp.name, &tmp.details, &tmp.reason, &tmp.wocky_error))
     self->priv->error = g_slice_dup (SavedError, &tmp);
 
   g_signal_handler_disconnect (self->priv->channel, self->priv->closed_id);
@@ -575,7 +576,7 @@ gabble_auth_manager_get_failure_details (GabbleAuthManager *self,
   if (self->priv->channel != NULL)
     {
       return gabble_server_sasl_channel_get_failure_details (
-          self->priv->channel, dbus_error, details, reason);
+          self->priv->channel, dbus_error, details, reason, NULL);
     }
   else if (self->priv->error != NULL)
     {

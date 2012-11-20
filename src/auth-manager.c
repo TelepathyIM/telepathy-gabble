@@ -489,7 +489,8 @@ gabble_auth_manager_failure (WockyAuthRegistry *registry,
     {
       gabble_server_sasl_channel_fail (self->priv->channel, error);
     }
-  else
+
+  if (self->priv->chaining_up)
     {
       void (*chain_up)(WockyAuthRegistry *, GError *) =
         WOCKY_AUTH_REGISTRY_CLASS (gabble_auth_manager_parent_class)->

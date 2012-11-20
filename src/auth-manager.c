@@ -372,6 +372,7 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
     }
   else
     {
+      self->priv->falling_back = TRUE;
       WOCKY_AUTH_REGISTRY_CLASS (
           gabble_auth_manager_parent_class)->start_auth_async_func (
               registry, mechanisms, allow_plain, is_secure_channel,

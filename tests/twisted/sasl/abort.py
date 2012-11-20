@@ -158,6 +158,21 @@ def test_abort_then_failure(q, bus, conn, stream):
             cs.SASL_ABORT_REASON_USER_ABORT, "bored now"),
         lambda authenticator: authenticator.not_authorized())
 
+def abort_and_close(chan):
+    chan.SASLAuthentication.AbortSASL(
+        cs.SASL_ABORT_REASON_USER_ABORT, "bored now")
+    chan.Close()
+
+def test_abort_and_close_then_challenge(q, bus, conn, stream):
+    test_give_up_while_waiting(q, bus, conn, stream,
+        abort_and_close,
+        lambda authenticator: authenticator.challenge(EXCHANGE[1][0]))
+
+def test_abort_and_close_then_failure(q, bus, conn, stream):
+    test_give_up_while_waiting(q, bus, conn, stream,
+        abort_and_close,
+        lambda authenticator: authenticator.not_authorized())
+
 def exec_test_(func):
     # Can't use functools.partial, because the authenticator is stateful.
     authenticator = SaslEventAuthenticator(JID.split('@')[0], MECHANISMS)
@@ -177,3 +192,5 @@ if __name__ == '__main__':
     exec_test_(test_abort_then_challenge)
     # exec_test_(test_abort_then_success)
     exec_test_(test_abort_then_failure)
+    exec_test_(test_abort_and_close_then_challenge)
+    exec_test_(test_abort_and_close_then_failure)

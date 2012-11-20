@@ -62,7 +62,10 @@ struct _GabbleAuthManagerPrivate
 
   GabbleServerSaslChannel *channel;
   gulong closed_id;
-  gboolean falling_back;
+  /* TRUE if we are authenticating using our parent class's methods (because we
+   * have a username and password).
+   */
+  gboolean chaining_up;
 
   GSList *mechanisms;
   gchar *server;
@@ -261,7 +264,7 @@ gabble_auth_manager_start_auth_cb (GObject *channel,
           /* restart authentication using our own base class */
           g_assert (start_data->initial_response != NULL);
 
-          self->priv->falling_back = TRUE;
+          self->priv->chaining_up = TRUE;
           WOCKY_AUTH_REGISTRY_CLASS (
               gabble_auth_manager_parent_class)->start_auth_async_func (
                   WOCKY_AUTH_REGISTRY (self), self->priv->mechanisms,
@@ -372,7 +375,7 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
     }
   else
     {
-      self->priv->falling_back = TRUE;
+      self->priv->chaining_up = TRUE;
       WOCKY_AUTH_REGISTRY_CLASS (
           gabble_auth_manager_parent_class)->start_auth_async_func (
               registry, mechanisms, allow_plain, is_secure_channel,
@@ -402,7 +405,7 @@ gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL && !self->priv->falling_back)
+  if (self->priv->channel != NULL && !self->priv->chaining_up)
     {
       gabble_server_sasl_channel_challenge_async (self->priv->channel,
           challenge_data, callback, user_data);
@@ -423,7 +426,7 @@ gabble_auth_manager_challenge_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL && !self->priv->falling_back)
+  if (self->priv->channel != NULL && !self->priv->chaining_up)
     {
       return gabble_server_sasl_channel_challenge_finish (self->priv->channel,
           result, response, error);

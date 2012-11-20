@@ -218,7 +218,7 @@ gabble_auth_manager_set_property (GObject *object,
 }
 
 static void
-gabble_auth_manager_start_fallback_cb (GObject *self_object,
+gabble_auth_manager_start_parent_cb (GObject *self_object,
     GAsyncResult *result,
     gpointer user_data)
 {
@@ -270,7 +270,7 @@ gabble_auth_manager_start_auth_cb (GObject *channel,
                   start_data->initial_response->str,
                   self->priv->server,
                   self->priv->session_id,
-                  gabble_auth_manager_start_fallback_cb, user_data);
+                  gabble_auth_manager_start_parent_cb, user_data);
           /* we've transferred ownership of the result */
           goto finally;
         }
@@ -305,6 +305,8 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
     gpointer user_data)
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+  GSimpleAsyncResult *result = g_simple_async_result_new ((GObject *) self,
+      callback, user_data, gabble_auth_manager_start_auth_async);
 
   /* assumption: Wocky's API guarantees that we never have more than one
    * auth request outstanding */
@@ -359,8 +361,7 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
 
       gabble_server_sasl_channel_start_auth_async (self->priv->channel,
           gabble_auth_manager_start_auth_cb,
-          g_simple_async_result_new ((GObject *) self,
-            callback, user_data, gabble_auth_manager_start_auth_async));
+          result);
 
       g_assert (!tp_base_channel_is_destroyed (
             (TpBaseChannel *) self->priv->channel));
@@ -374,7 +375,8 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
       WOCKY_AUTH_REGISTRY_CLASS (
           gabble_auth_manager_parent_class)->start_auth_async_func (
               registry, mechanisms, allow_plain, is_secure_channel,
-              username, password, server, session_id, callback, user_data);
+              username, password, server, session_id,
+              gabble_auth_manager_start_parent_cb, result);
     }
 }
 
@@ -386,19 +388,9 @@ gabble_auth_manager_start_auth_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL)
-    {
-      wocky_implement_finish_copy_pointer (self,
-          gabble_auth_manager_start_auth_async,
-          wocky_auth_registry_start_data_dup, start_data);
-    }
-  else
-    {
-      return WOCKY_AUTH_REGISTRY_CLASS
-        (gabble_auth_manager_parent_class)->start_auth_finish_func (
-            registry, result, start_data, error);
-    }
-
+  wocky_implement_finish_copy_pointer (self,
+      gabble_auth_manager_start_auth_async,
+      wocky_auth_registry_start_data_dup, start_data);
 }
 
 static void

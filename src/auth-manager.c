@@ -445,7 +445,11 @@ gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
         }
       else
         {
-          g_assert_not_reached ();
+          g_assert (self->priv->error != NULL);
+
+          g_simple_async_result_set_from_error (result, self->priv->error->wocky_error);
+          g_simple_async_result_complete_in_idle (result);
+          g_object_unref (result);
         }
     }
 }

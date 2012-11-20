@@ -187,7 +187,7 @@ if __name__ == '__main__':
     exec_test_(test_disconnect_mid)
     exec_test_(test_abort_connected)
     exec_test_(test_close_then_challenge)
-    # exec_test_(test_close_then_success)
+    exec_test_(test_close_then_success)
     exec_test_(test_close_then_failure)
     exec_test_(test_abort_then_challenge)
     # exec_test_(test_abort_then_success)

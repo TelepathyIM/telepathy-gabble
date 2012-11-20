@@ -477,22 +477,95 @@ gabble_auth_manager_challenge_finish (WockyAuthRegistry *registry,
 }
 
 static void
+channel_success_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleServerSaslChannel *channel = GABBLE_SERVER_SASL_CHANNEL (source);
+  GSimpleAsyncResult *our_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GError *error = NULL;
+
+  if (!gabble_server_sasl_channel_success_finish (channel, result, &error))
+    g_simple_async_result_take_error (our_result, error);
+
+  g_simple_async_result_complete (our_result);
+  g_object_unref (our_result);
+}
+
+static void
+gabble_auth_manager_channel_success (
+    GabbleAuthManager *self,
+    GSimpleAsyncResult *our_result,
+    gboolean need_idle)
+{
+  GabbleAuthManagerPrivate *priv = self->priv;
+
+  if (priv->channel != NULL)
+    {
+      gabble_server_sasl_channel_success_async (self->priv->channel,
+          channel_success_cb, our_result);
+      return;
+    }
+
+  if (priv->error != NULL)
+    g_simple_async_result_set_from_error (our_result, priv->error->wocky_error);
+
+  if (need_idle)
+    g_simple_async_result_complete_in_idle (our_result);
+  else
+    g_simple_async_result_complete (our_result);
+
+  g_object_unref (our_result);
+}
+
+static void
+gabble_auth_manager_success_parent_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleAuthManager *self = GABBLE_AUTH_MANAGER (source);
+  WockyAuthRegistry *registry = WOCKY_AUTH_REGISTRY (source);
+  GSimpleAsyncResult *our_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GError *error = NULL;
+
+  if (!WOCKY_AUTH_REGISTRY_CLASS (gabble_auth_manager_parent_class)->
+          success_finish_func (registry, result, &error))
+    {
+      g_simple_async_result_take_error (our_result, error);
+      g_simple_async_result_complete (our_result);
+      g_object_unref (our_result);
+    }
+  else
+    {
+      gabble_auth_manager_channel_success (self, our_result, FALSE);
+    }
+}
+
+static void
 gabble_auth_manager_success_async (WockyAuthRegistry *registry,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
+  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
+      callback, user_data, gabble_auth_manager_success_async);
 
-  if (self->priv->channel != NULL)
-    {
-      gabble_server_sasl_channel_success_async (self->priv->channel,
-          callback, user_data);
-    }
-  else
+  /* Annoyingly, in the X-TELEPATHY-PASSWORD case we actually want to both
+   * chain up to the parent class, *and* pass the success notification out to
+   * the client for consistency with other mechanisms.
+   */
+
+  if (self->priv->chaining_up)
     {
       WOCKY_AUTH_REGISTRY_CLASS (
           gabble_auth_manager_parent_class)->success_async_func (
-              registry, callback, user_data);
+              registry, gabble_auth_manager_success_parent_cb, result);
+    }
+  else
+    {
+      gabble_auth_manager_channel_success (self, result, TRUE);
     }
 }
 
@@ -503,17 +576,7 @@ gabble_auth_manager_success_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL)
-    {
-      return gabble_server_sasl_channel_success_finish (self->priv->channel,
-          result, error);
-    }
-  else
-    {
-      return WOCKY_AUTH_REGISTRY_CLASS
-        (gabble_auth_manager_parent_class)->success_finish_func (
-            registry, result, error);
-    }
+  wocky_implement_finish_void (self, gabble_auth_manager_success_async);
 }
 
 static void

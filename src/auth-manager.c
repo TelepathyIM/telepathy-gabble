@@ -398,6 +398,28 @@ gabble_auth_manager_start_auth_finish (WockyAuthRegistry *registry,
 }
 
 static void
+channel_challenge_cb (
+    GObject *source,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleServerSaslChannel *channel = GABBLE_SERVER_SASL_CHANNEL (source);
+  GSimpleAsyncResult *our_result = G_SIMPLE_ASYNC_RESULT (user_data);
+  GString *response_data = NULL;
+  GError *error = NULL;
+
+  if (gabble_server_sasl_channel_challenge_finish (channel, result,
+          &response_data, &error))
+    g_simple_async_result_set_op_res_gpointer (our_result, response_data,
+        (GDestroyNotify) wocky_g_string_free);
+  else
+    g_simple_async_result_take_error (our_result, error);
+
+  g_simple_async_result_complete (our_result);
+  g_object_unref (our_result);
+}
+
+static void
 gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
     const GString *challenge_data,
     GAsyncReadyCallback callback,
@@ -405,16 +427,26 @@ gabble_auth_manager_challenge_async (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL && !self->priv->chaining_up)
-    {
-      gabble_server_sasl_channel_challenge_async (self->priv->channel,
-          challenge_data, callback, user_data);
-    }
-  else
+  if (self->priv->chaining_up)
     {
       WOCKY_AUTH_REGISTRY_CLASS (
           gabble_auth_manager_parent_class)->challenge_async_func (
               registry, challenge_data, callback, user_data);
+    }
+  else
+    {
+      GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (self),
+          callback, user_data, gabble_auth_manager_challenge_async);
+
+      if (self->priv->channel != NULL)
+        {
+          gabble_server_sasl_channel_challenge_async (self->priv->channel,
+              challenge_data, channel_challenge_cb, result);
+        }
+      else
+        {
+          g_assert_not_reached ();
+        }
     }
 }
 
@@ -426,16 +458,17 @@ gabble_auth_manager_challenge_finish (WockyAuthRegistry *registry,
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (registry);
 
-  if (self->priv->channel != NULL && !self->priv->chaining_up)
-    {
-      return gabble_server_sasl_channel_challenge_finish (self->priv->channel,
-          result, response, error);
-    }
-  else
+  if (self->priv->chaining_up)
     {
       return WOCKY_AUTH_REGISTRY_CLASS
         (gabble_auth_manager_parent_class)->challenge_finish_func (
             registry, result, response, error);
+    }
+  else
+    {
+      wocky_implement_finish_copy_pointer (self,
+          gabble_auth_manager_challenge_async,
+          wocky_g_string_dup, response);
     }
 }
 

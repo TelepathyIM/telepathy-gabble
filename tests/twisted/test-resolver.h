@@ -42,7 +42,6 @@ GType test_resolver_get_type (void);
 
 typedef struct {
   GResolver parent_instance;
-  GResolver *real_resolver;
   GList *fake_A;
   GList *fake_SRV;
 } TestResolver;

@@ -24,9 +24,9 @@ def test_stun_server(stun_server_prop,
         expected_stun_server=None, expected_stun_port=None):
     if expected_stun_server == None:
         # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.collabora.co.uk)
+        # default fallback stun server (stun.telepathy.im)
         # This test uses the test-resolver which is set to
-        # have 'stun.collabora.co.uk' resolve to '6.7.8.9'
+        # have 'stun.telepathy.im' resolve to '6.7.8.9'
         expected_stun_server = '6.7.8.9'
         expected_stun_port = 3478
 
@@ -128,21 +128,8 @@ def test_streamed_media(q, bus, conn, stream,
     assert sh_props['NATTraversal'] == 'gtalk-p2p'
     assert sh_props['CreatedLocally'] == False
 
-    if expected_stun_server == None:
-        # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.telepathy.im)
-        # This test uses the test-resolver which is set to
-        # have 'stun.telepathy.im' resolve to '6.7.8.9'
-        expected_stun_server = '6.7.8.9'
-        expected_stun_port = 3478
-
-    if expected_stun_server is None:
-        assert sh_props['STUNServers'] == [], sh_props['STUNServers']
-    else:
-        assert sh_props['STUNServers'] == \
-            [(expected_stun_server, expected_stun_port)], \
-            sh_props['STUNServers']
-
+    test_stun_server(sh_props['STUNServers'],
+        expected_stun_server, expected_stun_port)
     assert sh_props['RelayInfo'] == expected_relays
 
     # consistency check, since we currently reimplement Get separately

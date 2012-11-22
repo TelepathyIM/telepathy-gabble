@@ -4,6 +4,7 @@ attempts to call a contact. Gabble should delay the RequestStreams
 call until caps have arrived.
 """
 
+from functools import partial
 from gabbletest import exec_test
 from servicetest import make_channel_proxy, call_async, sync_dbus
 import jingletest
@@ -93,8 +94,8 @@ def run_test(q, bus, conn, stream, jt, request_before_presence, channel_type):
         q.expect('dbus-return', method='CreateChannel')
 
 if __name__ == '__main__':
-    exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, cs.CHANNEL_TYPE_STREAMED_MEDIA), timeout=10)
-    exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, cs.CHANNEL_TYPE_CALL), timeout=10)
+    exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_STREAMED_MEDIA),
+        timeout=10)
+    exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_CALL),
+        timeout=10)
 

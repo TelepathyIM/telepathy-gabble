@@ -6,6 +6,7 @@ This also exercises calls to a contact on a SIP gateway, who has no resource,
 only a bare JID.
 """
 
+from functools import partial
 from gabbletest import exec_test
 from servicetest import (
     wrap_channel,
@@ -212,7 +213,5 @@ def test(q, bus, conn, stream, channel_type):
     chan.Close()
 
 if __name__ == '__main__':
-    exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, cs.CHANNEL_TYPE_STREAMED_MEDIA))
-    exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, cs.CHANNEL_TYPE_CALL))
+    exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_STREAMED_MEDIA))
+    exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_CALL))

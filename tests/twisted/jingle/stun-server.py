@@ -2,6 +2,7 @@
 Test getting STUN server from Google jingleinfo
 """
 
+from functools import partial
 import dbus
 import socket
 
@@ -268,23 +269,23 @@ def test_call(q, bus, conn, stream,
 
 if __name__ == '__main__':
     # StreamedMedia tests
-    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+    exec_test(partial(test_streamed_media,
         google=False), do_connect=False)
-    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+    exec_test(partial(test_streamed_media,
         google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
 
     if GOOGLE_RELAY_ENABLED:
-        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+        exec_test(partial(test_streamed_media,
             google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
             protocol=GoogleXmlStream, do_connect=False)
-        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+        exec_test(partial(test_streamed_media,
             google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
             protocol=GoogleXmlStream,
             params={'stun-server': 'resolves-to-5.4.3.2',
                 'stun-port': dbus.UInt16(54321)}, do_connect=False)
-        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
+        exec_test(partial(test_streamed_media,
             google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
             protocol=GoogleXmlStream,
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
@@ -294,9 +295,9 @@ if __name__ == '__main__':
 
     # Call tests
     if CHANNEL_TYPE_CALL_ENABLED:
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        exec_test(partial(test_call,
             google=False), do_connect=False)
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        exec_test(partial(test_call,
             google=False, expected_stun_server='5.4.3.2',
             expected_stun_port=54321),
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
@@ -305,17 +306,17 @@ if __name__ == '__main__':
         print "NOTE: built with --disable-channel-type-call; omitting Call tests"
 
     if CHANNEL_TYPE_CALL_ENABLED and GOOGLE_RELAY_ENABLED:
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        exec_test(partial(test_call,
             google=True, expected_stun_server='1.2.3.4',
             expected_stun_port=12345),
             protocol=GoogleXmlStream, do_connect=False)
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        exec_test(partial(test_call,
             google=True, expected_stun_server='5.4.3.2',
             expected_stun_port=54321),
             protocol=GoogleXmlStream,
             params={'stun-server': 'resolves-to-5.4.3.2',
                 'stun-port': dbus.UInt16(54321)}, do_connect=False)
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
+        exec_test(partial(test_call,
             google=True, expected_stun_server='1.2.3.4',
             expected_stun_port=12345),
             protocol=GoogleXmlStream,

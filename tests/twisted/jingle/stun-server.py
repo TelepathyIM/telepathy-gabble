@@ -40,21 +40,10 @@ def init_test(q, conn, stream, google=False):
     # If we need to override remote caps, feats, codecs or caps,
     # this is a good time to do it
 
-    # Connecting
-    conn.Connect()
-
-    expected = [EventPattern('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])]
-
     if google:
         # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
-        expected.append(EventPattern('stream-iq', query_ns=ns.GOOGLE_JINGLE_INFO,
-                to='test@localhost'))
-
-    events = q.expect_many(*expected)
-
-    if google:
-        event = events[-1]
+        event = q.expect('stream-iq', query_ns=ns.GOOGLE_JINGLE_INFO,
+            to='test@localhost')
         jingleinfo = make_result_iq(stream, event.stanza)
         stun = jingleinfo.firstChildElement().addElement('stun')
         server = stun.addElement('server')
@@ -270,38 +259,38 @@ def test_call(q, bus, conn, stream,
 if __name__ == '__main__':
     # StreamedMedia tests
     exec_test(partial(test_streamed_media,
-        google=False), do_connect=False)
+        google=False))
     exec_test(partial(test_streamed_media,
         google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-            'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+            'fallback-stun-port': dbus.UInt16(54321)})
 
     if GOOGLE_RELAY_ENABLED:
         exec_test(partial(test_streamed_media,
             google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
-            protocol=GoogleXmlStream, do_connect=False)
+            protocol=GoogleXmlStream)
         exec_test(partial(test_streamed_media,
             google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
             protocol=GoogleXmlStream,
             params={'stun-server': 'resolves-to-5.4.3.2',
-                'stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'stun-port': dbus.UInt16(54321)})
         exec_test(partial(test_streamed_media,
             google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
             protocol=GoogleXmlStream,
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'fallback-stun-port': dbus.UInt16(54321)})
     else:
         print "NOTE: built with --disable-google-relay; omitting StreamedMedia tests with Google relay"
 
     # Call tests
     if CHANNEL_TYPE_CALL_ENABLED:
         exec_test(partial(test_call,
-            google=False), do_connect=False)
+            google=False))
         exec_test(partial(test_call,
             google=False, expected_stun_server='5.4.3.2',
             expected_stun_port=54321),
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'fallback-stun-port': dbus.UInt16(54321)})
     else:
         print "NOTE: built with --disable-channel-type-call; omitting Call tests"
 
@@ -309,19 +298,19 @@ if __name__ == '__main__':
         exec_test(partial(test_call,
             google=True, expected_stun_server='1.2.3.4',
             expected_stun_port=12345),
-            protocol=GoogleXmlStream, do_connect=False)
+            protocol=GoogleXmlStream)
         exec_test(partial(test_call,
             google=True, expected_stun_server='5.4.3.2',
             expected_stun_port=54321),
             protocol=GoogleXmlStream,
             params={'stun-server': 'resolves-to-5.4.3.2',
-                'stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'stun-port': dbus.UInt16(54321)})
         exec_test(partial(test_call,
             google=True, expected_stun_server='1.2.3.4',
             expected_stun_port=12345),
             protocol=GoogleXmlStream,
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'fallback-stun-port': dbus.UInt16(54321)})
     else:
         print "NOTE: built with --disable-channel-type-call or with --disable-google-relay; omitting Call tests with Google relay"
 

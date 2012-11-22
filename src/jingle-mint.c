@@ -229,11 +229,12 @@ connection_status_changed_cb (
             gabble_jingle_info_take_stun_server (info,
                 stun_server, stun_port, TRUE);
 
-          if (priv->conn->features &
-              GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO)
-            {
-              gabble_jingle_info_send_request (info);
-            }
+          gabble_jingle_info_send_request (info,
+              /* FIXME: one day Wocky will know about caps and then we won't
+               * have to pass in a flag here.
+               */
+              !!(priv->conn->features &
+                 GABBLE_CONNECTION_FEATURES_GOOGLE_JINGLE_INFO));
         }
       break;
 

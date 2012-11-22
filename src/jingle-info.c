@@ -145,11 +145,6 @@ gabble_jingle_info_constructed (GObject *object)
     parent_class->constructed (object);
 
   g_assert (priv->porter != NULL);
-  priv->jingle_info_handler_id = wocky_c2s_porter_register_handler_from_server (
-      WOCKY_C2S_PORTER (priv->porter),
-      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
-      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_info_cb, self,
-      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
 }
 
 static void
@@ -161,8 +156,10 @@ gabble_jingle_info_dispose (GObject *object)
 
   if (priv->porter != NULL)
     {
-      g_assert (priv->jingle_info_handler_id != 0);
-      wocky_porter_unregister_handler (priv->porter, priv->jingle_info_handler_id);
+      if (priv->jingle_info_handler_id != 0)
+        wocky_porter_unregister_handler (priv->porter,
+            priv->jingle_info_handler_id);
+
       g_clear_object (&priv->porter);
     }
 
@@ -504,8 +501,9 @@ jingle_info_reply_cb (
   g_object_unref (self);
 }
 
-void
-gabble_jingle_info_send_request (GabbleJingleInfo *self)
+static void
+gabble_jingle_info_send_google_request (
+    GabbleJingleInfo *self)
 {
   GabbleJingleInfoPrivate *priv = self->priv;
   WockyStanza *stanza = wocky_stanza_build (
@@ -516,6 +514,21 @@ gabble_jingle_info_send_request (GabbleJingleInfo *self)
   wocky_porter_send_iq_async (priv->porter, stanza, NULL, jingle_info_reply_cb,
       g_object_ref (self));
   g_object_unref (stanza);
+
+  priv->jingle_info_handler_id = wocky_c2s_porter_register_handler_from_server (
+      WOCKY_C2S_PORTER (priv->porter),
+      WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      WOCKY_PORTER_HANDLER_PRIORITY_NORMAL, jingle_info_cb, self,
+      '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
+}
+
+void
+gabble_jingle_info_send_request (
+    GabbleJingleInfo *self,
+    gboolean google_jingleinfo_supported)
+{
+  if (google_jingleinfo_supported)
+    gabble_jingle_info_send_google_request (self);
 }
 
 gboolean

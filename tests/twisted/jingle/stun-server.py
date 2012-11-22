@@ -52,6 +52,12 @@ def init_test(q, conn, stream, google=False):
         relay = jingleinfo.firstChildElement().addElement('relay')
         relay.addElement('token', content='jingle all the way')
         stream.send(jingleinfo)
+    else:
+        # We shouldn't be sending google:jingleinfo queries if the server
+        # doesn't support it.
+        q.forbid_events([
+            EventPattern('stream-iq', query_ns=ns.GOOGLE_JINGLE_INFO),
+            ])
 
     # We need remote end's presence for capabilities
     jt.send_remote_presence()

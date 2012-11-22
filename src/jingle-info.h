@@ -47,7 +47,9 @@ void gabble_jingle_info_take_stun_server (
     gchar *stun_server,
     guint16 stun_port,
     gboolean is_fallback);
-void gabble_jingle_info_send_request (GabbleJingleInfo *self);
+void gabble_jingle_info_send_request (
+    GabbleJingleInfo *self,
+    gboolean google_jingleinfo_supported);
 
 gboolean gabble_jingle_info_get_stun_server (
     GabbleJingleInfo *self,

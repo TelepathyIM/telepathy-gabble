@@ -12,6 +12,7 @@ from servicetest import (
     )
 import jingletest
 import constants as cs
+import ns
 
 from config import CHANNEL_TYPE_CALL_ENABLED, GOOGLE_RELAY_ENABLED, VOIP_ENABLED
 
@@ -46,7 +47,7 @@ def init_test(q, conn, stream, google=False):
 
     if google:
         # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
-        expected.append(EventPattern('stream-iq', query_ns='google:jingleinfo',
+        expected.append(EventPattern('stream-iq', query_ns=ns.GOOGLE_JINGLE_INFO,
                 to='test@localhost'))
 
     events = q.expect_many(*expected)

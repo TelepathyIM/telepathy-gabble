@@ -101,24 +101,24 @@ get_stun_servers (GabbleCallStream *self)
 {
   GPtrArray *arr;
   GabbleJingleFactory *jf;
-  gchar *stun_server;
-  guint stun_port;
+  GList *stun_servers;
 
   arr = g_ptr_array_new_with_free_func ((GDestroyNotify) g_value_array_free);
   jf = gabble_jingle_session_get_factory (self->priv->content->session);
+  stun_servers = gabble_jingle_info_get_stun_servers (
+      gabble_jingle_factory_get_jingle_info (jf));
 
-  /* maybe one day we'll support multiple STUN servers */
-  if (gabble_jingle_info_get_stun_server (
-          gabble_jingle_factory_get_jingle_info (jf),
-          &stun_server, &stun_port))
+  while (stun_servers != NULL)
     {
+      GabbleStunServer *stun_server = stun_servers->data;
       GValueArray *va = tp_value_array_build (2,
-          G_TYPE_STRING, stun_server,
-          G_TYPE_UINT, stun_port,
+          G_TYPE_STRING, stun_server->address,
+          G_TYPE_UINT, (guint) stun_server->port,
           G_TYPE_INVALID);
 
-      g_free (stun_server);
       g_ptr_array_add (arr, va);
+
+      stun_servers = g_list_delete_link (stun_servers, stun_servers);
     }
 
   return arr;

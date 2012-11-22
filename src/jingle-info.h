@@ -51,10 +51,13 @@ void gabble_jingle_info_send_request (
     GabbleJingleInfo *self,
     gboolean google_jingleinfo_supported);
 
-gboolean gabble_jingle_info_get_stun_server (
-    GabbleJingleInfo *self,
-    gchar **stun_server,
-    guint *stun_port);
+typedef struct {
+    gchar *address;
+    guint16 port;
+} GabbleStunServer;
+
+GList *gabble_jingle_info_get_stun_servers (
+    GabbleJingleInfo *self);
 
 const gchar *gabble_jingle_info_get_google_relay_token (
     GabbleJingleInfo *self);

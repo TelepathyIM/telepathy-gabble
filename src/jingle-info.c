@@ -41,10 +41,9 @@ struct _GabbleJingleInfoPrivate {
 
     GabbleGoogleRelayResolver *google_resolver;
 
-    gchar *stun_server;
-    guint16 stun_port;
-    gchar *fallback_stun_server;
-    guint16 fallback_stun_port;
+    GabbleStunServer *stun_server;
+    GabbleStunServer *fallback_stun_server;
+
     gchar *relay_token;
 
     /* TRUE if the user has not explicitly specified a STUN server, and hence
@@ -77,6 +76,26 @@ void
 gabble_jingle_info_set_test_mode (void)
 {
   test_mode = TRUE;
+}
+
+static GabbleStunServer *
+gabble_stun_server_new (
+    gchar *address,
+    guint16 port)
+{
+  GabbleStunServer stun_server = { address, port };
+
+  return g_slice_dup (GabbleStunServer, &stun_server);
+}
+
+static void
+gabble_stun_server_free (GabbleStunServer *stun_server)
+{
+  if (stun_server != NULL)
+    {
+      g_free (stun_server->address);
+      g_slice_free (GabbleStunServer, stun_server);
+    }
 }
 
 G_DEFINE_TYPE (GabbleJingleInfo, gabble_jingle_info, G_TYPE_OBJECT)
@@ -169,9 +188,9 @@ gabble_jingle_info_dispose (GObject *object)
       priv->google_resolver = NULL;
     }
 
-  g_free (priv->stun_server);
+  gabble_stun_server_free (priv->stun_server);
   priv->stun_server = NULL;
-  g_free (priv->fallback_stun_server);
+  gabble_stun_server_free (priv->fallback_stun_server);
   priv->fallback_stun_server = NULL;
   g_free (priv->relay_token);
   priv->relay_token = NULL;
@@ -245,8 +264,10 @@ stun_server_resolved_cb (GObject *resolver,
 {
   PendingStunServer *data = user_data;
   GabbleJingleInfo *self = data->factory;
+  GabbleJingleInfoPrivate *priv = self->priv;
   GError *e = NULL;
-  gchar *stun_server;
+  GabbleStunServer *stun_server;
+  gchar *address;
   GList *entries;
 
   if (self != NULL)
@@ -264,29 +285,29 @@ stun_server_resolved_cb (GObject *resolver,
       goto out;
     }
 
-  stun_server = g_inet_address_to_string (entries->data);
+  address = g_inet_address_to_string (entries->data);
   g_resolver_free_addresses (entries);
 
   DEBUG ("Resolved STUN server %s:%u to %s:%u", data->stun_server,
-      data->stun_port, stun_server, data->stun_port);
+      data->stun_port, address, data->stun_port);
 
   if (self == NULL)
     {
-      g_free (stun_server);
+      g_free (address);
       goto out;
     }
 
+  stun_server = gabble_stun_server_new (address, data->stun_port);
+
   if (data->fallback)
     {
-      g_free (self->priv->fallback_stun_server);
-      self->priv->fallback_stun_server = stun_server;
-      self->priv->fallback_stun_port = data->stun_port;
+      gabble_stun_server_free (priv->fallback_stun_server);
+      priv->fallback_stun_server = stun_server;
     }
   else
     {
-      g_free (self->priv->stun_server);
-      self->priv->stun_server = stun_server;
-      self->priv->stun_port = data->stun_port;
+      gabble_stun_server_free (priv->stun_server);
+      priv->stun_server = stun_server;
 
       g_signal_emit (self, signals[STUN_SERVER_CHANGED], 0,
           stun_server, data->stun_port);
@@ -531,34 +552,29 @@ gabble_jingle_info_send_request (
     gabble_jingle_info_send_google_request (self);
 }
 
-gboolean
-gabble_jingle_info_get_stun_server (
-    GabbleJingleInfo *self,
-    gchar **stun_server,
-    guint *stun_port)
+/*
+ * gabble_jingle_info_get_stun_servers:
+ *
+ * Grabs the currently known and resolved stun servers.
+ *
+ * Returns: (transfer container): a list of GabbleJingleInfo structs
+ */
+GList *
+gabble_jingle_info_get_stun_servers (
+    GabbleJingleInfo *self)
 {
-  if (self->priv->stun_server == NULL || self->priv->stun_port == 0)
-    {
-      if (self->priv->fallback_stun_server == NULL ||
-          self->priv->fallback_stun_port == 0)
-        return FALSE;
+  GabbleJingleInfoPrivate *priv = self->priv;
+  GQueue stun_servers = G_QUEUE_INIT;
 
-      if (stun_server != NULL)
-        *stun_server = g_strdup (self->priv->fallback_stun_server);
+  if (priv->stun_server != NULL)
+    g_queue_push_head (&stun_servers, priv->stun_server);
 
-      if (stun_port != NULL)
-        *stun_port = self->priv->fallback_stun_port;
+  /* Only add the fallback server as a last resort. */
+  if (stun_servers.length == 0 &&
+      priv->fallback_stun_server != NULL)
+    g_queue_push_tail (&stun_servers, priv->fallback_stun_server);
 
-      return TRUE;
-    }
-
-  if (stun_server != NULL)
-    *stun_server = g_strdup (self->priv->stun_server);
-
-  if (stun_port != NULL)
-    *stun_port = self->priv->stun_port;
-
-  return TRUE;
+  return stun_servers.head;
 }
 
 const gchar *

@@ -47,8 +47,6 @@ class TlsAuthenticator(XmppAuthenticator):
         starttls = features.addElement((ns.NS_XMPP_TLS, 'starttls'))
         starttls.addElement('required')
 
-        mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
-        mechanism = mechanisms.addElement('mechanism', content='PLAIN')
         self.xmlstream.send(features)
 
         self.xmlstream.addOnetimeObserver("/starttls", self.tlsAuth)

@@ -188,6 +188,8 @@ class XmppAuthenticator(GabbleAuthenticator):
         GabbleAuthenticator.__init__(self, username, password, resource)
         self.authenticated = False
 
+        self._mechanisms = ['PLAIN']
+
     def streamInitialize(self, root):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
@@ -212,7 +214,8 @@ class XmppAuthenticator(GabbleAuthenticator):
     def streamSASL(self):
         features = domish.Element((xmlstream.NS_STREAMS, 'features'))
         mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
-        mechanism = mechanisms.addElement('mechanism', content='PLAIN')
+        for mechanism in self._mechanisms:
+            mechanisms.addElement('mechanism', content=mechanism)
         self.xmlstream.send(features)
 
         self.xmlstream.addOnetimeObserver("/auth", self.auth)

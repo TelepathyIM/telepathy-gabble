@@ -20,6 +20,7 @@
 #include "config.h"
 
 #include "jingle-info.h"
+#include "jingle-info-internal.h"
 
 #include <stdlib.h>
 #include <telepathy-glib/telepathy-glib.h>
@@ -27,6 +28,7 @@
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 #include "debug.h"
 #include "google-relay.h"
+#include "gabble-enumtypes.h"
 #include "gabble-signals-marshal.h"
 #include "namespaces.h"
 
@@ -239,7 +241,7 @@ typedef struct {
     GabbleJingleInfo *factory;
     gchar *stun_server;
     guint16 stun_port;
-    gboolean fallback;
+    GabbleStunServerSource source;
     GCancellable *cancellable;
 } PendingStunServer;
 
@@ -299,7 +301,7 @@ stun_server_resolved_cb (GObject *resolver,
 
   stun_server = gabble_stun_server_new (address, data->stun_port);
 
-  if (data->fallback)
+  if (data->source == GABBLE_STUN_SERVER_FALLBACK)
     {
       gabble_stun_server_free (priv->fallback_stun_server);
       priv->fallback_stun_server = stun_server;
@@ -318,12 +320,12 @@ out:
   g_object_unref (resolver);
 }
 
-void
-gabble_jingle_info_take_stun_server (
+static void
+gabble_jingle_info_take_stun_server_internal (
     GabbleJingleInfo *self,
     gchar *stun_server,
     guint16 stun_port,
-    gboolean is_fallback)
+    GabbleStunServerSource source)
 {
   GResolver *resolver;
   PendingStunServer *data;
@@ -331,19 +333,20 @@ gabble_jingle_info_take_stun_server (
   if (stun_server == NULL)
     return;
 
-  if (!is_fallback)
+  if (source == GABBLE_STUN_SERVER_USER_SPECIFIED)
     self->priv->get_stun_from_jingle = FALSE;
 
   resolver = g_resolver_get_default ();
   data = g_slice_new0 (PendingStunServer);
 
   DEBUG ("Resolving %s STUN server %s:%u",
-      is_fallback ? "fallback" : "primary", stun_server, stun_port);
+      wocky_enum_to_nick (GABBLE_TYPE_STUN_SERVER_SOURCE, data->source),
+      stun_server, stun_port);
   data->factory = self;
   g_object_add_weak_pointer (G_OBJECT (self), (gpointer *) &data->factory);
   data->stun_server = stun_server;
   data->stun_port = stun_port;
-  data->fallback = is_fallback;
+  data->source = source;
 
   data->cancellable = g_cancellable_new ();
   g_object_weak_ref (G_OBJECT (self), (GWeakNotify)g_cancellable_cancel,
@@ -351,6 +354,30 @@ gabble_jingle_info_take_stun_server (
 
   g_resolver_lookup_by_name_async (resolver, stun_server,
       data->cancellable, stun_server_resolved_cb, data);
+}
+
+/*
+ * gabble_jingle_info_take_stun_server:
+ * @self: a #GabbleJingleInfo object
+ * @stun_server: (transfer full): the STUN server's address
+ * @stun_port: the STUN server's port
+ * @is_fallback: %TRUE if this is a last resort; %FALSE if this STUN server was
+ *  provided by the user (whether by explicitly setting one, or by asking the
+ *  user's XMPP server).
+ */
+void
+gabble_jingle_info_take_stun_server (
+    GabbleJingleInfo *self,
+    gchar *stun_server,
+    guint16 stun_port,
+    gboolean is_fallback)
+{
+  GabbleStunServerSource source = is_fallback
+      ? GABBLE_STUN_SERVER_FALLBACK
+      : GABBLE_STUN_SERVER_USER_SPECIFIED;
+
+  gabble_jingle_info_take_stun_server_internal (self, stun_server, stun_port,
+      source);
 }
 
 static void
@@ -392,8 +419,8 @@ got_jingle_info_stanza (
             {
               DEBUG ("jingle info: got stun server %s, port %u", server,
                   port);
-              gabble_jingle_info_take_stun_server (self,
-                  g_strdup (server), port, FALSE);
+              gabble_jingle_info_take_stun_server_internal (self,
+                  g_strdup (server), port, GABBLE_STUN_SERVER_DISCOVERED);
             }
         }
     }

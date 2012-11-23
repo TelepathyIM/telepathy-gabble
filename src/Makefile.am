@@ -163,6 +163,7 @@ libgabble_convenience_la_SOURCES += \
     jingle-content.c \
     jingle-factory.h \
     jingle-factory.c \
+    jingle-info-internal.h \
     jingle-info.c \
     jingle-info.h \
     jingle-share.h \
@@ -203,6 +204,7 @@ endif
 enumtype_sources = \
     $(top_srcdir)/src/connection.h \
     $(top_srcdir)/src/jingle-types.h \
+    $(top_srcdir)/src/jingle-info-internal.h \
     $(top_srcdir)/src/room-config.h \
     $(top_srcdir)/src/presence.h
 

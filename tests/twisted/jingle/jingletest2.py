@@ -17,7 +17,7 @@ import ns
 import os
 import constants as cs
 
-class JingleProtocol:
+class JingleProtocol(object):
     """
     Defines a simple DSL for constructing Jingle messages.
     """
@@ -496,7 +496,7 @@ class JingleProtocol031(JingleProtocol):
 
         return (self._extract_session_id(query), audio, video)
 
-class JingleTest2:
+class JingleTest2(object):
     # Default caps for the remote end
     remote_caps = { 'ext': '', 'ver': '0.0.0',
              'node': 'http://example.com/fake-client0' }

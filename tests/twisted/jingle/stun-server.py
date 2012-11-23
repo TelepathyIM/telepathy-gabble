@@ -285,6 +285,9 @@ if __name__ == '__main__':
         google=False, expected_stun_servers=[('5.4.3.2', 54321)]),
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)})
+    exec_test(partial(test_streamed_media, google=False,
+                expected_stun_servers=[('5.4.3.2', 1)]),
+        params={'account': 'test@stunning.localhost'})
 
     if GOOGLE_RELAY_ENABLED:
         exec_test(partial(test_streamed_media,
@@ -315,6 +318,9 @@ if __name__ == '__main__':
             google=False, expected_stun_servers=[('5.4.3.2', 54321)]),
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
                 'fallback-stun-port': dbus.UInt16(54321)})
+        exec_test(partial(test_call,
+            google=False, expected_stun_servers=[('5.4.3.2', 1)]),
+            params={'account': 'test@stunning.localhost'})
     else:
         print "NOTE: built with --disable-channel-type-call; omitting Call tests"
 

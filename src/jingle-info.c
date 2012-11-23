@@ -40,6 +40,7 @@ static gboolean jingle_info_cb (
 struct _GabbleJingleInfoPrivate {
     WockyPorter *porter;
     guint jingle_info_handler_id;
+    gchar *jid_domain;
 
     GabbleGoogleRelayResolver *google_resolver;
 
@@ -166,6 +167,10 @@ gabble_jingle_info_constructed (GObject *object)
     parent_class->constructed (object);
 
   g_assert (priv->porter != NULL);
+
+  if (!wocky_decode_jid (wocky_porter_get_bare_jid (priv->porter), NULL,
+          &priv->jid_domain, NULL))
+    g_assert_not_reached ();
 }
 
 static void
@@ -190,6 +195,8 @@ gabble_jingle_info_dispose (GObject *object)
       priv->google_resolver = NULL;
     }
 
+  g_free (priv->jid_domain);
+  priv->jid_domain = NULL;
   gabble_stun_server_free (priv->stun_server);
   priv->stun_server = NULL;
   gabble_stun_server_free (priv->fallback_stun_server);
@@ -570,13 +577,77 @@ gabble_jingle_info_send_google_request (
       '(', "query", ':', NS_GOOGLE_JINGLE_INFO, ')', NULL);
 }
 
+static void
+discover_stun_servers_cb (GObject *resolver,
+    GAsyncResult *result,
+    gpointer user_data)
+{
+  GabbleJingleInfo *self = GABBLE_JINGLE_INFO (user_data);
+  GabbleJingleInfoPrivate *priv = self->priv;
+  GError *error = NULL;
+  GList *targets;
+
+  targets = g_resolver_lookup_service_finish (G_RESOLVER (resolver),
+      result, &error);
+
+  if (error != NULL)
+    {
+      DEBUG ("Failed to discover STUN servers on %s: %s",
+          priv->jid_domain, error->message);
+      g_clear_error (&error);
+    }
+  else
+    {
+      DEBUG ("Discovered %d STUN servers on %s", g_list_length (targets),
+          priv->jid_domain);
+
+      /* TODO: use more than just the first. */
+      if (targets != NULL)
+        {
+          GSrvTarget *target = targets->data;
+          const gchar *hostname = g_srv_target_get_hostname (target);
+          guint16 port = g_srv_target_get_port (target);
+
+          DEBUG ("Found STUN server: %s:%d", hostname, port);
+
+          gabble_jingle_info_take_stun_server (self, g_strdup (hostname), port,
+              FALSE);
+        }
+
+      g_resolver_free_targets (targets);
+    }
+
+  g_object_unref (resolver);
+  g_object_unref (self);
+}
+
+static void
+gabble_jingle_info_lookup_srv (
+    GabbleJingleInfo *self)
+{
+  GabbleJingleInfoPrivate *priv = self->priv;
+  GResolver *resolver;
+
+  g_assert (priv->jid_domain != NULL);
+  DEBUG ("Discovering STUN servers on %s", priv->jid_domain);
+
+  resolver = g_resolver_get_default ();
+  g_resolver_lookup_service_async (resolver, "stun", "udp", priv->jid_domain,
+      NULL, discover_stun_servers_cb, g_object_ref (self));
+}
+
 void
 gabble_jingle_info_send_request (
     GabbleJingleInfo *self,
     gboolean google_jingleinfo_supported)
 {
+  /* FIXME: we probably don't want to send either query if the user specified a
+   * stun server (that is, get_stun_from_jingle is FALSE).
+   */
   if (google_jingleinfo_supported)
     gabble_jingle_info_send_google_request (self);
+  else
+    gabble_jingle_info_lookup_srv (self);
 }
 
 /*

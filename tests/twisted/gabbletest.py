@@ -130,6 +130,7 @@ class JabberAuthenticator(GabbleAuthenticator):
     def streamStarted(self, root=None):
         if root:
             self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
+            self.xmlstream.domain = root.getAttribute('to')
 
         self.xmlstream.sendHeader()
         self.xmlstream.addOnetimeObserver(
@@ -175,7 +176,7 @@ class JabberAuthenticator(GabbleAuthenticator):
         if self.resource is not None:
             assertEquals(self.resource, str(resource[0]))
 
-        self.bare_jid = '%s@localhost' % self.username
+        self.bare_jid = '%s@%s' % (self.username, self.xmlstream.domain)
         self.full_jid = '%s/%s' % (self.bare_jid, resource)
 
         result = IQ(self.xmlstream, "result")
@@ -193,6 +194,7 @@ class XmppAuthenticator(GabbleAuthenticator):
     def streamInitialize(self, root):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
+            self.xmlstream.domain = root.getAttribute('to')
 
         if self.xmlstream.sid is None:
             self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
@@ -248,7 +250,7 @@ class XmppAuthenticator(GabbleAuthenticator):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         bind = result.addElement((ns.NS_XMPP_BIND, 'bind'))
-        self.bare_jid = '%s@localhost' % self.username
+        self.bare_jid = '%s@%s' % (self.username, self.xmlstream.domain)
         self.full_jid = '%s/%s' % (self.bare_jid, resource)
         jid = bind.addElement('jid', content=self.full_jid)
         self.xmlstream.send(result)
@@ -415,7 +417,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         assert self.authenticator.bare_jid is not None
 
         self.addObserver(
-            "/iq[@to='localhost']/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            "/iq[@to='%s']/query[@xmlns='http://jabber.org/protocol/disco#info']" % self.domain,
             self._cb_disco_iq)
         self.addObserver(
             "/iq[@to='%s']/query[@xmlns='http://jabber.org/protocol/disco#info']"

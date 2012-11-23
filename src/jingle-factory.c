@@ -367,7 +367,7 @@ ensure_session (GabbleJingleFactory *self,
         }
       else
         {
-          g_set_error (error, WOCKY_XMPP_ERROR,
+          g_set_error (error, WOCKY_JINGLE_ERROR,
               WOCKY_JINGLE_ERROR_UNKNOWN_SESSION,
               "session %s is unknown", sid);
           return NULL;

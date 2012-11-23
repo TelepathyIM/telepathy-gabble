@@ -215,6 +215,7 @@ TWISTED_JINGLE_TESTS = \
 	jingle/test-wait-for-caps-incomplete.py \
 	jingle/test-wait-for-caps.py \
 	jingle/transport-info-parsing.py \
+	jingle/unknown-session.py \
 	$(NULL)
 
 TWISTED_FT_TESTS = \

@@ -407,9 +407,11 @@ got_jingle_info_stanza (
 
   if (node != NULL)
     {
-      node = wocky_node_get_child (node, "server");
+      WockyNodeIter iter;
 
-      if (node != NULL)
+      /* TODO: use more than just the first stun server returned. */
+      wocky_node_iter_init (&iter, node, "server", NULL);
+      if (wocky_node_iter_next (&iter, &node))
         {
           const gchar *server;
           const gchar *port_attr;

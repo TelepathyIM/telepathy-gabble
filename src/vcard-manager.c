@@ -154,7 +154,7 @@ struct _GabbleVCardManagerPrivate
   /* Patched vCard that we sent to the server to update, but haven't
    * got confirmation yet. We don't want to store it in cache (visible
    * to others) before we're sure the server accepts it. */
-  WockyNode *patched_vcard;
+  WockyNodeTree *patched_vcard;
 };
 
 struct _GabbleVCardManagerRequest
@@ -208,7 +208,7 @@ struct _GabbleVCardCacheEntry
   guint suspended_timer_id;
 
   /* VCard node for this entry (owned reference), or NULL if there's no node */
-  WockyNode *vcard_node;
+  WockyNodeTree *vcard_node;
 
   /* If @vcard_node is not NULL, the time the message will expire */
   time_t expires;
@@ -350,42 +350,6 @@ gabble_vcard_manager_set_property (GObject *object,
   }
 }
 
-static gboolean
-copy_attribute (const gchar *key,
-    const gchar *value,
-    const gchar *prefix,
-    const gchar *ns,
-    gpointer user_data)
-{
-  WockyNode *copy = (WockyNode *) user_data;
-
-  wocky_node_set_attribute_ns (copy, key, value, ns);
-  return TRUE;
-}
-
-static WockyNode *
-copy_node (WockyNode *node)
-{
-  WockyNode *copy;
-  GSList *l;
-
-  copy = wocky_node_new (node->name, wocky_node_get_ns (node));
-  wocky_node_set_content (copy, node->content);
-  wocky_node_set_language (copy, wocky_node_get_language (node));
-
-  wocky_node_each_attribute (node, copy_attribute, copy);
-
-  for (l = node->children; l != NULL; l = g_slist_next (l))
-    {
-      WockyNode *child = l->data;
-
-      copy->children = g_slist_prepend (copy->children, copy_node (child));
-    }
-  copy->children = g_slist_reverse (copy->children);
-
-  return copy;
-}
-
 static void delete_request (GabbleVCardManagerRequest *request);
 static void cancel_request (GabbleVCardManagerRequest *request);
 static void cancel_all_edit_requests (GabbleVCardManager *manager);
@@ -415,7 +379,7 @@ cache_entry_free (gpointer data)
       gabble_request_pipeline_item_cancel (entry->pipeline_item);
     }
 
-  tp_clear_pointer (&entry->vcard_node, wocky_node_free);
+  g_clear_object (&entry->vcard_node);
 
   g_slice_free (GabbleVCardCacheEntry, entry);
 }
@@ -531,7 +495,7 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager,
 
   tp_heap_remove (priv->timed_cache, entry);
 
-  tp_clear_pointer (&entry->vcard_node, wocky_node_free);
+  g_clear_object (&entry->vcard_node);
 
   cache_entry_attempt_to_free (entry);
 }
@@ -543,14 +507,18 @@ static void
 cache_entry_complete_requests (GabbleVCardCacheEntry *entry, GError *error)
 {
   GSList *cur, *tmp;
+  WockyNode *vcard_node = NULL;
 
   tmp = g_slist_copy (entry->pending_requests);
+
+  if (entry->vcard_node != NULL)
+    vcard_node = wocky_node_tree_get_top_node (entry->vcard_node);
 
   for (cur = tmp; cur != NULL; cur = cur->next)
     {
       GabbleVCardManagerRequest *request = cur->data;
 
-      complete_one_request (request, error ? NULL : entry->vcard_node, error);
+      complete_one_request (request, error ? NULL : vcard_node, error);
     }
 
   g_slist_free (tmp);
@@ -940,7 +908,7 @@ replace_reply_cb (GabbleConnection *conn,
   if (error)
     {
       /* We won't need our patched vcard after all */
-      tp_clear_pointer (&priv->patched_vcard, wocky_node_free);
+      g_clear_object (&priv->patched_vcard);
     }
   else
     {
@@ -951,16 +919,17 @@ replace_reply_cb (GabbleConnection *conn,
       g_assert (priv->patched_vcard != NULL);
 
       /* Finally we may put the new vcard in the cache. */
-      tp_clear_pointer (&entry->vcard_node, wocky_node_free);
+      g_clear_object (&entry->vcard_node);
 
       entry->vcard_node = priv->patched_vcard;
       priv->patched_vcard = NULL;
 
+      node = wocky_node_tree_get_top_node (entry->vcard_node);
+
       /* observe it so we pick up alias updates */
       observe_vcard (conn, self, tp_base_connection_get_self_handle (base),
-          entry->vcard_node);
+          node);
 
-      node = entry->vcard_node;
     }
 
   /* Scan all edit requests, call and remove ones whose data made it
@@ -1239,15 +1208,10 @@ vcard_copy (WockyNode *parent,
     const gchar *exclude,
     gboolean *exclude_mattered)
 {
-    WockyNode *new = wocky_node_add_child_with_content (parent, src->name,
-        src->content);
-    const gchar *xmlns;
+    WockyNode *new = wocky_node_add_child_with_content_ns_q (parent, src->name,
+        src->content, src->ns);
     WockyNodeIter i;
     WockyNode *child;
-
-    xmlns = wocky_node_get_ns (src);
-    if (xmlns != NULL)
-      new->ns = g_quark_from_string (xmlns);
 
     wocky_node_iter_init (&i, src, NULL, NULL);
     while (wocky_node_iter_next (&i, &child))
@@ -1312,7 +1276,7 @@ manager_patch_vcard (GabbleVCardManager *self,
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the
    * original vcard in the cache until that happens. */
-  priv->patched_vcard = copy_node (vcard_node);
+  priv->patched_vcard = wocky_node_tree_new_from_node (vcard_node);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
       priv->connection->req_pipeline, msg, default_request_timeout,
@@ -1453,7 +1417,7 @@ pipeline_reply_cb (GabbleConnection *conn,
     }
 
   /* Put the message in the cache */
-  entry->vcard_node = copy_node (vcard_node);
+  entry->vcard_node = wocky_node_tree_new_from_node (vcard_node);
 
   entry->expires = time (NULL) + VCARD_CACHE_ENTRY_TTL;
   tp_heap_add (priv->timed_cache, entry);
@@ -1741,7 +1705,7 @@ gabble_vcard_manager_get_cached (GabbleVCardManager *self,
       return FALSE;
 
   if (node != NULL)
-      *node = entry->vcard_node;
+    *node = wocky_node_tree_get_top_node (entry->vcard_node);
 
   return TRUE;
 }

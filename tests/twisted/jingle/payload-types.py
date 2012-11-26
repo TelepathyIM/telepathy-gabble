@@ -43,17 +43,6 @@ def test(q, bus, conn, stream):
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
     group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
 
-    # FIXME: Hack to make sure the disco info has been processed - we need to
-    # send Gabble some XML that will cause an event when processed, and
-    # wait for that event (until
-    # https://bugs.freedesktop.org/show_bug.cgi?id=15769 is fixed)
-    el = domish.Element(('jabber:client', 'presence'))
-    el['from'] = 'bob@example.com/Bar'
-    stream.send(el.toXml())
-    q.expect('dbus-signal', signal='PresencesChanged')
-    # OK, now we can continue. End of hack
-
-
     # Test that codec parameters are correctly sent in <parameter> children of
     # <payload-type> rather than as attributes of the latter.
 

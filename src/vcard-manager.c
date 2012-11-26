@@ -992,6 +992,8 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
       if (seen)
         return TRUE;
 
+      seen = TRUE;
+
       /* consider NULL and "" to be different representations for the
        * same thing */
       value = node->content;
@@ -1197,7 +1199,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
         }
     }
 
-  if ((!maybe_changed) || wocky_node_equal (old_vcard, vcard_node))
+  if (!maybe_changed)
     {
       /* nothing actually happened, forget it */
       g_object_unref (msg);

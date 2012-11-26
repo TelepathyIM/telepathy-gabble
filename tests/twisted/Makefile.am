@@ -262,7 +262,6 @@ TWISTED_OTHER_FILES = \
 	jingle/callutils.py \
 	jingle/__init__.py \
 	jingle/jingletest2.py \
-	jingle/jingletest.py \
 	jingle-share/file_transfer_helper.py \
 	jingle-share/jingleshareutils.py \
 	mucutil.py \

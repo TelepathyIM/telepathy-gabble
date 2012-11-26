@@ -3,9 +3,6 @@
 # unreadable), but to make the expressions denser and more concise.
 # Helper classes support different dialects so the test can
 # be invoked for different (possibly all) dialects.
-#
-# This can be used in parallel with the old API, but should
-# obsolete it in time.
 
 from functools import partial
 from twisted.words.xish import domish, xpath

@@ -7,7 +7,6 @@ incomplete requests.
 from functools import partial
 from gabbletest import exec_test, disconnect_conn
 from servicetest import make_channel_proxy, call_async, sync_dbus, EventPattern
-import jingletest
 
 import constants as cs
 
@@ -18,13 +17,12 @@ if not VOIP_ENABLED:
     raise SystemExit(77)
 
 def test(q, bus, conn, stream, channel_type):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
-
+    peer = 'foo@bar.com/Foo'
     # We intentionally DON'T set remote presence yet. Since Gabble is still
     # unsure whether to treat contact as offline for this purpose, it
     # will tentatively allow channel creation and contact handle addition
 
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [peer])[0]
 
     if channel_type == cs.CHANNEL_TYPE_STREAMED_MEDIA:
         path = conn.RequestChannel(cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -55,7 +53,7 @@ def test(q, bus, conn, stream, channel_type):
         call_async(q, conn.Requests, 'CreateChannel',
             { cs.CHANNEL_TYPE: channel_type,
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-              cs.TARGET_ID: jt.remote_jid,
+              cs.TARGET_ID: peer,
               cs.CALL_INITIAL_AUDIO: True
             })
 

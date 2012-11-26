@@ -1132,8 +1132,7 @@ add_metadata_forms (GabbleFileTransferChannel *self,
 {
   if (!tp_str_empty (self->priv->service_name))
     {
-      WockyStanza *tmp = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
-          WOCKY_STANZA_SUB_TYPE_RESULT, NULL, NULL,
+      wocky_node_add_build (file,
           '(', "x",
             ':', NS_X_DATA,
             '@', "type", "result",
@@ -1152,21 +1151,19 @@ add_metadata_forms (GabbleFileTransferChannel *self,
             ')',
           ')',
           NULL);
-      WockyNode *x = wocky_node_get_first_child (wocky_stanza_get_top_node (tmp));
-      WockyNodeTree *tree = wocky_node_tree_new_from_node (x);
-
-      wocky_node_add_node_tree (file, tree);
-      g_object_unref (tree);
-      g_object_unref (tmp);
     }
 
   if (self->priv->metadata != NULL
       && g_hash_table_size (self->priv->metadata) > 0)
     {
-      WockyStanza *tmp = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
-          WOCKY_STANZA_SUB_TYPE_RESULT, NULL, NULL,
+      WockyNode *x;
+      GHashTableIter iter;
+      gpointer key, val;
+
+      wocky_node_add_build (file,
           '(', "x",
             ':', NS_X_DATA,
+            '*', &x,
             '@', "type", "result",
             '(', "field",
               '@', "var", "FORM_TYPE",
@@ -1177,10 +1174,6 @@ add_metadata_forms (GabbleFileTransferChannel *self,
             ')',
           ')',
           NULL);
-      WockyNode *x = wocky_node_get_first_child (wocky_stanza_get_top_node (tmp));
-      WockyNodeTree *tree;
-      GHashTableIter iter;
-      gpointer key, val;
 
       g_hash_table_iter_init (&iter, self->priv->metadata);
       while (g_hash_table_iter_next (&iter, &key, &val))
@@ -1195,11 +1188,6 @@ add_metadata_forms (GabbleFileTransferChannel *self,
               wocky_node_add_child_with_content (field, "value", *values);
             }
         }
-
-      tree = wocky_node_tree_new_from_node (x);
-      wocky_node_add_node_tree (file, tree);
-      g_object_unref (tree);
-      g_object_unref (tmp);
     }
 }
 

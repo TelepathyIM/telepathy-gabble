@@ -69,8 +69,5 @@ def test(q, bus, conn, stream, channel_type):
 if __name__ == '__main__':
     exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_STREAMED_MEDIA),
         timeout=10)
-    print "FIXME: leaks connection, everyone dies"
-    raise SystemExit(77)
     exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_CALL),
         timeout=10)
-

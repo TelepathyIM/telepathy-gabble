@@ -1049,6 +1049,56 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
 static WockyNode *vcard_copy (WockyNode *parent, WockyNode *src,
     const gchar *exclude, gboolean *exclude_mattered);
 
+/* SET_ALIAS is shorthand for a REPLACE operation or nothing */
+static gboolean
+resolve_set_alias_edit (
+    GabbleVCardManagerEditInfo *info,
+    WockyNode *old_vcard,
+    GabbleVCardManager *vcard_manager)
+{
+  GabbleConnection *conn = vcard_manager->priv->connection;
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+
+  g_assert (info->element_name == NULL);
+
+  if (gabble_vcard_manager_can_use_vcard_field (vcard_manager, "NICKNAME"))
+    {
+      info->element_name = g_strdup ("NICKNAME");
+    }
+  else
+    {
+      /* Google Talk servers won't let us set a NICKNAME; recover by
+       * setting the FN */
+      info->element_name = g_strdup ("FN");
+    }
+
+  if (info->element_value == NULL)
+    {
+      /* We're just trying to fix a possibly-incomplete SetContactInfo() */
+      WockyNode *node = wocky_node_get_child (old_vcard, info->element_name);
+      gchar *alias;
+
+      /* If the user has set this field explicitly via SetContactInfo(),
+       * that takes precedence */
+      if (node != NULL)
+        return FALSE;
+
+      if (_gabble_connection_get_cached_alias (conn,
+            tp_base_connection_get_self_handle (base),
+            &alias) < GABBLE_CONNECTION_ALIAS_FROM_VCARD)
+        {
+          /* not good enough to want to put it in the vCard */
+          g_free (alias);
+          return FALSE;
+        }
+
+      info->element_value = alias;
+    }
+
+  info->edit_type = GABBLE_VCARD_EDIT_REPLACE;
+  return TRUE;
+}
+
 static WockyStanza *
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
     WockyNode *old_vcard,
@@ -1059,52 +1109,11 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   WockyNode *node;
   GList *iter;
   gboolean maybe_changed = FALSE;
-  GabbleConnection *conn = vcard_manager->priv->connection;
-  TpBaseConnection *base = (TpBaseConnection *) conn;
 
   if (info->edit_type == GABBLE_VCARD_EDIT_SET_ALIAS)
     {
-      /* SET_ALIAS is shorthand for a REPLACE operation or nothing */
-
-      g_assert (info->element_name == NULL);
-
-      if (gabble_vcard_manager_can_use_vcard_field (vcard_manager, "NICKNAME"))
-        {
-          info->element_name = g_strdup ("NICKNAME");
-        }
-      else
-        {
-          /* Google Talk servers won't let us set a NICKNAME; recover by
-           * setting the FN */
-          info->element_name = g_strdup ("FN");
-        }
-
-      if (info->element_value == NULL)
-        {
-          /* We're just trying to fix a possibly-incomplete SetContactInfo() -
-           * */
-          gchar *alias;
-
-          node = wocky_node_get_child (old_vcard, info->element_name);
-
-          /* If the user has set this field explicitly via SetContactInfo(),
-           * that takes precedence */
-          if (node != NULL)
-            return NULL;
-
-          if (_gabble_connection_get_cached_alias (conn,
-                tp_base_connection_get_self_handle (base),
-                &alias) < GABBLE_CONNECTION_ALIAS_FROM_VCARD)
-            {
-              /* not good enough to want to put it in the vCard */
-              g_free (alias);
-              return NULL;
-            }
-
-          info->element_value = alias;
-        }
-
-      info->edit_type = GABBLE_VCARD_EDIT_REPLACE;
+      if (!resolve_set_alias_edit (info, old_vcard, vcard_manager))
+        return NULL;
     }
 
   if (info->edit_type == GABBLE_VCARD_EDIT_APPEND ||

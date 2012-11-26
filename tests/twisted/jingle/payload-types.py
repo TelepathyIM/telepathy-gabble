@@ -5,11 +5,9 @@ Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=18918
 import dbus
 
 from gabbletest import exec_test, sync_stream
-from servicetest import make_channel_proxy
+from servicetest import wrap_channel, make_channel_proxy
 import jingletest
 import constants as cs
-
-from twisted.words.xish import domish
 
 from config import VOIP_ENABLED
 
@@ -38,15 +36,12 @@ def test(q, bus, conn, stream):
     path = conn.RequestChannel(
         cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT, handle, True)
 
-    channel = bus.get_object(conn.bus_name, path)
-    signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
-    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
-    group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
+    channel = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamedMedia')
 
     # Test that codec parameters are correctly sent in <parameter> children of
     # <payload-type> rather than as attributes of the latter.
 
-    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
+    channel.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')

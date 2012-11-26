@@ -850,11 +850,11 @@ class JingleTest2:
             signature='(usqa{sv})')
 
 
-def test_dialects(f, dialects):
+def test_dialects(f, dialects, params=None, protocol=None):
     for dialect in dialects:
-        exec_test(partial(f, dialect()))
+        exec_test(partial(f, dialect()), params=params, protocol=protocol)
 
-def test_all_dialects(f):
+def test_all_dialects(f, params=None, protocol=None):
     dialectmap = { "jingle015": JingleProtocol015,
         "jingle031": JingleProtocol031,
         "gtalk03": GtalkProtocol03,
@@ -868,4 +868,4 @@ def test_all_dialects(f):
     else:
         for d in jd.split (','):
             dialects.append(dialectmap[d])
-    test_dialects(f,  dialects)
+    test_dialects(f,  dialects, params=params, protocol=protocol)

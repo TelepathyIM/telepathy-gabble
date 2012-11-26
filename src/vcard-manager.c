@@ -1048,9 +1048,6 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
   return !seen;
 }
 
-static WockyNode *vcard_copy (WockyNode *parent, WockyNode *src,
-    const gchar *exclude, gboolean *exclude_mattered);
-
 /* SET_ALIAS is shorthand for a REPLACE operation or nothing */
 static gboolean
 resolve_set_alias_edit (
@@ -1101,21 +1098,18 @@ resolve_set_alias_edit (
   return TRUE;
 }
 
-static WockyStanza *
+static gboolean
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
-    WockyNode *old_vcard,
+    WockyNode *vcard_node,
     GabbleVCardManager *vcard_manager)
 {
-  WockyStanza *msg;
-  WockyNode *vcard_node;
   WockyNode *node;
-  GList *iter;
   gboolean maybe_changed = FALSE;
 
   if (info->edit_type == GABBLE_VCARD_EDIT_SET_ALIAS)
     {
-      if (!resolve_set_alias_edit (info, old_vcard, vcard_manager))
-        return NULL;
+      if (!resolve_set_alias_edit (info, vcard_node, vcard_manager))
+        return FALSE;
     }
 
   if (info->edit_type == GABBLE_VCARD_EDIT_APPEND ||
@@ -1126,7 +1120,7 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
         {
           DEBUG ("ignoring vcard node %s because this server doesn't "
               "support it", info->element_name);
-          return NULL;
+          return FALSE;
         }
     }
 
@@ -1136,56 +1130,50 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
    * the vCard too often can cause a memory leak in OpenFire (see fd.o#25341).
    */
   if (info->edit_type == GABBLE_VCARD_EDIT_REPLACE &&
-      ! gabble_vcard_manager_replace_is_significant (info, old_vcard))
+      ! gabble_vcard_manager_replace_is_significant (info, vcard_node))
     {
       DEBUG ("ignoring no-op vCard %s replacement", info->element_name);
-      return NULL;
+      return FALSE;
     }
-
-  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
-      NULL, NULL, NULL);
 
   if (info->edit_type == GABBLE_VCARD_EDIT_CLEAR)
     {
-      /* start from a clean slate... */
-      vcard_node = wocky_node_add_child_ns (
-          wocky_stanza_get_top_node (msg), "vCard", NS_VCARD_TEMP);
+      /* Blow almost everything away! As a special case, the photo gets left in
+       * place from the old vCard, because SetContactInfo doesn't touch
+       * photos, and CLEAR is only used by SetContactInfo */
+      WockyNodeIter iter;
+      gboolean changed = FALSE;
 
-      /* ... but as a special case, the photo gets copied in from the old
-       * vCard, because SetContactInfo doesn't touch photos, and CLEAR is only
-       * used by SetContactInfo */
-      node = wocky_node_get_child (old_vcard, "PHOTO");
-
-      if (node != NULL)
-        vcard_copy (vcard_node, node, NULL, NULL);
-
-      if (wocky_node_equal (old_vcard, vcard_node))
+      wocky_node_iter_init (&iter, vcard_node, NULL, NULL);
+      while (wocky_node_iter_next (&iter, &node))
         {
-          /* nothing actually happened, forget it */
-          g_object_unref (msg);
-          return NULL;
+          if (tp_strdiff (node->name, "PHOTO"))
+            {
+              wocky_node_iter_remove (&iter);
+              changed = TRUE;
+            }
         }
 
-      return msg;
+      return changed;
     }
 
-  if (info->edit_type == GABBLE_VCARD_EDIT_APPEND)
+  if (info->edit_type != GABBLE_VCARD_EDIT_APPEND)
     {
-      /* appending: keep all child nodes */
-      vcard_node = vcard_copy (
-          wocky_stanza_get_top_node (msg), old_vcard, NULL, NULL);
-    }
-  else
-    {
-      /* replacing or deleting: exclude all matching child nodes from
-       * copying */
-      vcard_node = vcard_copy (
-          wocky_stanza_get_top_node (msg), old_vcard, info->element_name,
-          &maybe_changed);
+      /* replacing or deleting, so delete the element we're modifying */
+      WockyNodeIter iter;
+
+      wocky_node_iter_init (&iter, vcard_node, info->element_name, NULL);
+      while (wocky_node_iter_next (&iter, NULL))
+        {
+          maybe_changed = TRUE;
+          wocky_node_iter_remove (&iter);
+        }
     }
 
   if (info->edit_type != GABBLE_VCARD_EDIT_DELETE)
     {
+      GList *iter;
+
       maybe_changed = TRUE;
 
       node = wocky_node_add_child_with_content (vcard_node,
@@ -1201,79 +1189,43 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
 
   if (!maybe_changed)
     {
-      /* nothing actually happened, forget it */
-      g_object_unref (msg);
-      return NULL;
+      return FALSE;
     }
 
-  return msg;
-}
-
-static WockyNode *
-vcard_copy (WockyNode *parent,
-    WockyNode *src,
-    const gchar *exclude,
-    gboolean *exclude_mattered)
-{
-  WockyNodeTree *copy = wocky_node_tree_new_from_node (src);
-  /* FIXME: this copies 'src' a second time. */
-  WockyNode *new = wocky_node_add_node_tree (parent, copy);
-
-  g_object_unref (copy);
-
-  if (exclude != NULL)
-    {
-      WockyNodeIter i;
-      WockyNode *excluded;
-
-      wocky_node_iter_init (&i, new, exclude, NULL);
-      while (wocky_node_iter_next (&i, &excluded))
-        {
-          *exclude_mattered = TRUE;
-          wocky_node_iter_remove (&i);
-        }
-    }
-
-  return new;
+  return TRUE;
 }
 
 static void
 manager_patch_vcard (GabbleVCardManager *self,
-                     WockyNode *vcard_node)
+                     WockyNode *old_vcard_node)
 {
   GabbleVCardManagerPrivate *priv = self->priv;
-  WockyStanza *msg = NULL;
+  WockyNodeTree *vcard_node_tree;
+  WockyNode *vcard_node;
+  WockyStanza *msg;
   GList *li;
+  gboolean changed = FALSE;
 
   /* Bail out if we don't have outstanding edits to make, or if we already
    * have a set request in progress.
    */
   if (priv->edits == NULL || priv->edit_pipeline_item != NULL)
-      return;
+    return;
+
+  vcard_node_tree = wocky_node_tree_new_from_node (old_vcard_node);
+  vcard_node = wocky_node_tree_get_top_node (vcard_node_tree);
 
   /* Apply any unsent edits to the patched vCard */
   for (li = priv->edits; li != NULL; li = li->next)
     {
-      WockyStanza *new_msg = gabble_vcard_manager_edit_info_apply (
-          li->data, vcard_node, self);
-
-      /* edit_info_apply returns NULL if nothing happened */
-      if (new_msg == NULL)
-        continue;
-
-      tp_clear_pointer (&msg, g_object_unref);
-
-      msg = new_msg;
-      /* gabble_vcard_manager_edit_info_apply always returns an IQ message
-       * with one vCard child */
-      vcard_node = wocky_node_get_child (
-          wocky_stanza_get_top_node (msg), "vCard");
-      g_assert (vcard_node != NULL);
+      if (gabble_vcard_manager_edit_info_apply (li->data, vcard_node, self))
+        changed = TRUE;
     }
 
-  if (msg == NULL)
+  if (!changed)
     {
       DEBUG ("nothing really changed, not updating vCard");
+      g_clear_object (&vcard_node_tree);
       goto out;
     }
 
@@ -1282,7 +1234,11 @@ manager_patch_vcard (GabbleVCardManager *self,
   /* We'll save the patched vcard, and if the server says
    * we're ok, put it into the cache. But we want to leave the
    * original vcard in the cache until that happens. */
-  priv->patched_vcard = wocky_node_tree_new_from_node (vcard_node);
+  priv->patched_vcard = vcard_node_tree;
+
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_SET,
+      NULL, NULL, NULL);
+  wocky_node_add_node_tree (wocky_stanza_get_top_node (msg), vcard_node_tree);
 
   priv->edit_pipeline_item = gabble_request_pipeline_enqueue (
       priv->connection->req_pipeline, msg, default_request_timeout,

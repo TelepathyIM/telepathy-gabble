@@ -1168,9 +1168,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   if (info->edit_type == GABBLE_VCARD_EDIT_CLEAR)
     {
       /* start from a clean slate... */
-      vcard_node = wocky_node_add_child_with_content (
-          wocky_stanza_get_top_node (msg), "vCard", "");
-      vcard_node->ns = g_quark_from_string ("vcard-temp");
+      vcard_node = wocky_node_add_child_ns (
+          wocky_stanza_get_top_node (msg), "vCard", NS_VCARD_TEMP);
 
       /* ... but as a special case, the photo gets copied in from the old
        * vCard, because SetContactInfo doesn't touch photos */
@@ -1448,10 +1447,9 @@ pipeline_reply_cb (GabbleConnection *conn,
       DEBUG ("successful lookup response contained no <vCard> node, "
           "creating an empty one");
 
-      vcard_node = wocky_node_add_child_with_content (
+      vcard_node = wocky_node_add_child_ns (
           wocky_stanza_get_top_node (reply_msg), "vCard",
-          NULL);
-      vcard_node->ns = g_quark_from_string (NS_VCARD_TEMP);
+          NS_VCARD_TEMP);
     }
 
   /* Put the message in the cache */

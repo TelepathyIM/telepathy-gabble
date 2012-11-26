@@ -621,18 +621,22 @@ class JingleTest2(object):
         if send_presence:
             self.send_presence_and_caps()
 
-    def send_presence_and_caps(self):
+    def send_presence(self):
         # We need remote end's presence for capabilities
         self.stream.send(self.jp.xml(
             self.jp.Presence(self.peer, self.jid, self.remote_caps)))
 
         # Gabble doesn't trust it, so makes a disco
-        event = self.q.expect('stream-iq', query_ns=ns.DISCO_INFO, to=self.peer)
+        return self.q.expect('stream-iq', query_ns=ns.DISCO_INFO, to=self.peer)
 
-        # jt.send_remote_disco_reply(event.stanza)
-        self.stream.send(self.jp.xml(self.jp.ResultIq(self.jid, event.stanza,
+    def send_remote_disco_reply(self, query_stanza):
+        self.stream.send(self.jp.xml(self.jp.ResultIq(self.jid, query_stanza,
             [ self.jp.Query(None, ns.DISCO_INFO,
                 [ self.jp.Feature(x) for x in self.jp.features ]) ]) ))
+
+    def send_presence_and_caps(self):
+        event = self.send_presence()
+        self.send_remote_disco_reply(event.stanza)
 
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)

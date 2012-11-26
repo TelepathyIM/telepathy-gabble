@@ -1150,7 +1150,8 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
           wocky_stanza_get_top_node (msg), "vCard", NS_VCARD_TEMP);
 
       /* ... but as a special case, the photo gets copied in from the old
-       * vCard, because SetContactInfo doesn't touch photos */
+       * vCard, because SetContactInfo doesn't touch photos, and CLEAR is only
+       * used by SetContactInfo */
       node = wocky_node_get_child (old_vcard, "PHOTO");
 
       if (node != NULL)

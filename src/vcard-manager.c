@@ -1147,7 +1147,6 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
       if (node != NULL)
         vcard_copy (vcard_node, node, NULL, NULL);
 
-      /* Yes, we can do this: "WockyNode" is really a WockyNode */
       if (wocky_node_equal (old_vcard, vcard_node))
         {
           /* nothing actually happened, forget it */
@@ -1198,37 +1197,32 @@ gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
   return msg;
 }
 
-/* Loudmouth hates me. The feelings are mutual.
- *
- * Note that this function doesn't copy any attributes other than
- * xmlns, because LM provides no way to iterate over attributes. Thanks, LM. */
 static WockyNode *
 vcard_copy (WockyNode *parent,
     WockyNode *src,
     const gchar *exclude,
     gboolean *exclude_mattered)
 {
-    WockyNode *new = wocky_node_add_child_with_content_ns_q (parent, src->name,
-        src->content, src->ns);
-    WockyNodeIter i;
-    WockyNode *child;
+  WockyNodeTree *copy = wocky_node_tree_new_from_node (src);
+  /* FIXME: this copies 'src' a second time. */
+  WockyNode *new = wocky_node_add_node_tree (parent, copy);
 
-    wocky_node_iter_init (&i, src, NULL, NULL);
-    while (wocky_node_iter_next (&i, &child))
-      {
+  g_object_unref (copy);
 
-        if (tp_strdiff (child->name, exclude))
-          {
-            vcard_copy (new, child, NULL, NULL);
-          }
-        else
-          {
-            if (exclude_mattered != NULL)
-              *exclude_mattered = TRUE;
-          }
-      }
+  if (exclude != NULL)
+    {
+      WockyNodeIter i;
+      WockyNode *excluded;
 
-    return new;
+      wocky_node_iter_init (&i, new, exclude, NULL);
+      while (wocky_node_iter_next (&i, &excluded))
+        {
+          *exclude_mattered = TRUE;
+          wocky_node_iter_remove (&i);
+        }
+    }
+
+  return new;
 }
 
 static void

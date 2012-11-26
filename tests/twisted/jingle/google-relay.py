@@ -14,7 +14,7 @@ from gabbletest import exec_test, make_result_iq, sync_stream, \
         GoogleXmlStream, disconnect_conn
 from servicetest import make_channel_proxy, \
         EventPattern, call_async, sync_dbus, assertEquals, assertLength
-import jingletest
+import jingletest2
 import gabbletest
 import constants as cs
 import dbus
@@ -85,7 +85,9 @@ TOO_SLOW_DISCONNECT = 3
 TOO_SLOW_DISCONNECT_IMMEDIATELY = 4
 
 def test(q, bus, conn, stream, incoming=True, too_slow=None, use_call=False):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+    jp = jingletest2.JingleProtocol031()
+    jt = jingletest2.JingleTest2(jp, conn, q, stream, 'test@localhost',
+        'foo@bar.com/Foo')
 
     if use_call:
         # wjt only updated just about enough of this test for Call to check for
@@ -181,17 +183,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None, use_call=False):
 
     stream.send(iq)
 
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
-
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the capabilities
-    sync_stream(q, stream)
+    jt.send_presence_and_caps()
 
     remote_handle = conn.RequestHandles(cs.HT_CONTACT, ["foo@bar.com/Foo"])[0]
     self_handle = conn.GetSelfHandle()

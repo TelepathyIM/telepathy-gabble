@@ -706,10 +706,7 @@ create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
   GError *error = NULL;
 
   if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
-    {
-      g_simple_async_result_set_from_error (result, error);
-      g_free (error);
-    }
+    g_simple_async_result_take_error (result, error);
 
   g_simple_async_result_complete_in_idle (result);
 

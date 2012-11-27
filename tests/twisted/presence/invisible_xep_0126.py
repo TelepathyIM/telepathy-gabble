@@ -49,6 +49,35 @@ def test_create_invisible_list(q, bus, conn, stream):
     assertContains("hidden",
         conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
 
+def test_create_invisible_list_failed(q, bus, conn, stream):
+    conn.SimplePresence.SetPresence("away", "")
+
+    conn.Connect()
+
+    stream.handle_get_all_privacy_lists(q, bus, conn)
+
+    get_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='get')
+    list_node = xpath.queryForNodes('//list', get_list.query)[0]
+    assertEquals('invisible', list_node['name'])
+
+    error = domish.Element((None, 'error'))
+    error['type'] = 'cancel'
+    error.addElement((ns.STANZA, 'item-not-found'))
+    send_error_reply (stream, get_list.stanza, error)
+
+    create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
+    list_node = xpath.queryForNodes('//list', create_list.query)[0]
+    assertEquals('invisible', list_node['name'])
+    assertNotEquals([],
+        xpath.queryForNodes('/query/list/item/presence-out', create_list.query))
+    send_error_reply(stream, create_list.stanza)
+
+    q.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
+    assertDoesNotContain("hidden",
+        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+
 def test_invisible_on_connect_fail_no_list(q, bus, conn, stream):
     props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
@@ -315,6 +344,8 @@ if __name__ == '__main__':
     exec_test(test_invisible_on_connect, protocol=ManualPrivacyListStream,
               do_connect=False)
     exec_test(test_create_invisible_list, protocol=ManualPrivacyListStream,
+              do_connect=False)
+    exec_test(test_create_invisible_list_failed, protocol=ManualPrivacyListStream,
               do_connect=False)
     exec_test(test_invisible_on_connect_fail_no_list,
               protocol=ManualPrivacyListStream, do_connect=False)

@@ -791,31 +791,17 @@ _foreach_content (GabbleJingleSession *sess,
 
 struct idle_content_reject_ctx {
     GabbleJingleSession *session;
-    gchar *creator;
-    gchar *name;
+    WockyStanza *msg;
 };
 
 static gboolean
 idle_content_reject (gpointer data)
 {
-  WockyStanza *msg;
-  WockyNode *sess_node, *node;
   struct idle_content_reject_ctx *ctx = data;
 
-  msg = gabble_jingle_session_new_message (ctx->session,
-      JINGLE_ACTION_CONTENT_REJECT, &sess_node);
-
-  g_debug ("name = %s, intiiator = %s", ctx->name, ctx->creator);
-
-  node = wocky_node_add_child_with_content (sess_node, "content", NULL);
-  wocky_node_set_attributes (node,
-      "name", ctx->name, "creator", ctx->creator, NULL);
-
-  gabble_jingle_session_send (ctx->session, msg);
+  gabble_jingle_session_send (ctx->session, ctx->msg);
 
   g_object_unref (ctx->session);
-  g_free (ctx->name);
-  g_free (ctx->creator);
   g_free (ctx);
 
   return FALSE;
@@ -826,13 +812,20 @@ fire_idle_content_reject (GabbleJingleSession *sess, const gchar *name,
     const gchar *creator)
 {
   struct idle_content_reject_ctx *ctx = g_new0 (struct idle_content_reject_ctx, 1);
+  WockyNode *sess_node, *node;
 
   if (creator == NULL)
       creator = "";
 
   ctx->session = g_object_ref (sess);
-  ctx->name = g_strdup (name);
-  ctx->creator = g_strdup (creator);
+  ctx->msg = gabble_jingle_session_new_message (ctx->session,
+      JINGLE_ACTION_CONTENT_REJECT, &sess_node);
+
+  g_debug ("name = %s, initiator = %s", name, creator);
+
+  node = wocky_node_add_child_with_content (sess_node, "content", NULL);
+  wocky_node_set_attributes (node,
+      "name", name, "creator", creator, NULL);
 
   /* FIXME: add API for ordering IQs rather than using g_idle_add. */
   g_idle_add (idle_content_reject, ctx);

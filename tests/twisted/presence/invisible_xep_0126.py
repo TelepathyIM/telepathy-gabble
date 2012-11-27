@@ -8,8 +8,7 @@ XEP-0016 or XEP-0126. Some servers silently support it, like certain
 version of Ejabberd and all released versions of Prosody (as of 7.0).
 """
 from gabbletest import (
-    exec_test, XmppXmlStream, acknowledge_iq, send_error_reply,
-    disconnect_conn, elem, elem_iq
+    exec_test, acknowledge_iq, send_error_reply, elem, elem_iq
 )
 from servicetest import (
     EventPattern, assertEquals, assertNotEquals, assertContains,
@@ -296,8 +295,7 @@ def test_privacy_list_push_conflict(q, bus, conn, stream):
     set_id = stream.send_privacy_list_push_iq("invisible")
 
     _, req_list = q.expect_many(
-        EventPattern('stream-iq', iq_type='result', predicate=lambda event: \
-                         event.stanza['id'] == set_id),
+        EventPattern('stream-iq', iq_type='result', iq_id=set_id),
         EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
 
     stream.send_privacy_list(req_list.stanza,
@@ -322,8 +320,7 @@ def test_privacy_list_push_valid(q, bus, conn, stream):
     set_id = stream.send_privacy_list_push_iq("invisible")
 
     _, req_list = q.expect_many(
-        EventPattern('stream-iq', iq_type='result', predicate=lambda event: \
-                         event.stanza['id'] == set_id),
+        EventPattern('stream-iq', iq_type='result', iq_id=set_id),
         EventPattern('stream-iq', query_ns=ns.PRIVACY, iq_type="get"))
 
     stream.send_privacy_list(req_list.stanza,

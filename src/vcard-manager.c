@@ -1048,9 +1048,133 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
   return !seen;
 }
 
+static gboolean
+remove_all_children_named (
+    WockyNode *node,
+    const gchar *name)
+{
+  WockyNodeIter iter;
+  gboolean changed = FALSE;
+
+  wocky_node_iter_init (&iter, node, name, NULL);
+  while (wocky_node_iter_next (&iter, NULL))
+    {
+      wocky_node_iter_remove (&iter);
+      changed = TRUE;
+    }
+
+  return changed;
+}
+
+static void
+add_new_child (
+    GabbleVCardManagerEditInfo *info,
+    WockyNode *vcard_node)
+{
+  WockyNode *node;
+  GList *iter;
+
+  node = wocky_node_add_child_with_content (vcard_node,
+      info->element_name, info->element_value);
+
+  for (iter = info->children; iter != NULL; iter = iter->next)
+    {
+      GabbleVCardChild *child = iter->data;
+
+      wocky_node_add_child_with_content (node, child->key, child->value);
+    }
+}
+
+static gboolean
+gabble_vcard_manager_edit_info_apply_replace (
+    GabbleVCardManagerEditInfo *info,
+    WockyNode *vcard_node,
+    GabbleVCardManager *vcard_manager)
+{
+  g_return_val_if_fail (info->edit_type == GABBLE_VCARD_EDIT_REPLACE, FALSE);
+
+  if (!gabble_vcard_manager_can_use_vcard_field (vcard_manager,
+        info->element_name))
+    {
+      DEBUG ("ignoring vcard node %s because this server doesn't "
+          "support it", info->element_name);
+      return FALSE;
+    }
+
+  /* A special case for replacing one field with another: we detect no-op
+   * changes more actively, because we make changes of this type quite
+   * frequently (on every login), and as well as wasting bandwidth, setting
+   * the vCard too often can cause a memory leak in OpenFire (see fd.o#25341).
+   */
+  if (! gabble_vcard_manager_replace_is_significant (info, vcard_node))
+    {
+      DEBUG ("ignoring no-op vCard %s replacement", info->element_name);
+      return FALSE;
+    }
+
+  remove_all_children_named (vcard_node, info->element_name);
+  add_new_child (info, vcard_node);
+
+  return TRUE;
+}
+
+static gboolean
+gabble_vcard_manager_edit_info_apply_append (
+    GabbleVCardManagerEditInfo *info,
+    WockyNode *vcard_node,
+    GabbleVCardManager *vcard_manager)
+{
+  if (!gabble_vcard_manager_can_use_vcard_field (vcard_manager,
+        info->element_name))
+    {
+      DEBUG ("ignoring vcard node %s because this server doesn't "
+          "support it", info->element_name);
+      return FALSE;
+    }
+
+  add_new_child (info, vcard_node);
+
+  return TRUE;
+}
+
+static gboolean
+gabble_vcard_manager_edit_info_apply_delete (
+    GabbleVCardManagerEditInfo *info,
+    WockyNode *vcard_node,
+    GabbleVCardManager *vcard_manager)
+{
+  return remove_all_children_named (vcard_node, info->element_name);
+}
+
+static gboolean
+gabble_vcard_manager_edit_info_apply_clear (
+    GabbleVCardManagerEditInfo *info,
+    WockyNode *vcard_node,
+    GabbleVCardManager *vcard_manager)
+{
+  /* Blow almost everything away! As a special case, the photo gets left in
+   * place from the old vCard, because SetContactInfo doesn't touch
+   * photos, and CLEAR is only used by SetContactInfo */
+  WockyNodeIter iter;
+  WockyNode *node;
+  gboolean changed = FALSE;
+
+  wocky_node_iter_init (&iter, vcard_node, NULL, NULL);
+  while (wocky_node_iter_next (&iter, &node))
+    {
+      if (tp_strdiff (node->name, "PHOTO"))
+        {
+          wocky_node_iter_remove (&iter);
+          changed = TRUE;
+        }
+    }
+
+  return changed;
+}
+
 /* SET_ALIAS is shorthand for a REPLACE operation or nothing */
 static gboolean
-resolve_set_alias_edit (
+gabble_vcard_manager_edit_info_apply_set_alias (
     GabbleVCardManagerEditInfo *info,
     WockyNode *old_vcard,
     GabbleVCardManager *vcard_manager)
@@ -1095,104 +1219,29 @@ resolve_set_alias_edit (
     }
 
   info->edit_type = GABBLE_VCARD_EDIT_REPLACE;
-  return TRUE;
+  return gabble_vcard_manager_edit_info_apply_replace (info, old_vcard,
+      vcard_manager);
 }
+
+typedef gboolean (*EditFunction) (
+    GabbleVCardManagerEditInfo *info,
+    WockyNode *vcard_node,
+    GabbleVCardManager *vcard_manager);
+
+static const EditFunction edit_functions[] = {
+    gabble_vcard_manager_edit_info_apply_replace,
+    gabble_vcard_manager_edit_info_apply_append,
+    gabble_vcard_manager_edit_info_apply_delete,
+    gabble_vcard_manager_edit_info_apply_clear,
+    gabble_vcard_manager_edit_info_apply_set_alias,
+};
 
 static gboolean
 gabble_vcard_manager_edit_info_apply (GabbleVCardManagerEditInfo *info,
     WockyNode *vcard_node,
     GabbleVCardManager *vcard_manager)
 {
-  WockyNode *node;
-  gboolean maybe_changed = FALSE;
-
-  if (info->edit_type == GABBLE_VCARD_EDIT_SET_ALIAS)
-    {
-      if (!resolve_set_alias_edit (info, vcard_node, vcard_manager))
-        return FALSE;
-    }
-
-  if (info->edit_type == GABBLE_VCARD_EDIT_APPEND ||
-      info->edit_type == GABBLE_VCARD_EDIT_REPLACE)
-    {
-      if (!gabble_vcard_manager_can_use_vcard_field (vcard_manager,
-            info->element_name))
-        {
-          DEBUG ("ignoring vcard node %s because this server doesn't "
-              "support it", info->element_name);
-          return FALSE;
-        }
-    }
-
-  /* A special case for replacing one field with another: we detect no-op
-   * changes more actively, because we make changes of this type quite
-   * frequently (on every login), and as well as wasting bandwidth, setting
-   * the vCard too often can cause a memory leak in OpenFire (see fd.o#25341).
-   */
-  if (info->edit_type == GABBLE_VCARD_EDIT_REPLACE &&
-      ! gabble_vcard_manager_replace_is_significant (info, vcard_node))
-    {
-      DEBUG ("ignoring no-op vCard %s replacement", info->element_name);
-      return FALSE;
-    }
-
-  if (info->edit_type == GABBLE_VCARD_EDIT_CLEAR)
-    {
-      /* Blow almost everything away! As a special case, the photo gets left in
-       * place from the old vCard, because SetContactInfo doesn't touch
-       * photos, and CLEAR is only used by SetContactInfo */
-      WockyNodeIter iter;
-      gboolean changed = FALSE;
-
-      wocky_node_iter_init (&iter, vcard_node, NULL, NULL);
-      while (wocky_node_iter_next (&iter, &node))
-        {
-          if (tp_strdiff (node->name, "PHOTO"))
-            {
-              wocky_node_iter_remove (&iter);
-              changed = TRUE;
-            }
-        }
-
-      return changed;
-    }
-
-  if (info->edit_type != GABBLE_VCARD_EDIT_APPEND)
-    {
-      /* replacing or deleting, so delete the element we're modifying */
-      WockyNodeIter iter;
-
-      wocky_node_iter_init (&iter, vcard_node, info->element_name, NULL);
-      while (wocky_node_iter_next (&iter, NULL))
-        {
-          maybe_changed = TRUE;
-          wocky_node_iter_remove (&iter);
-        }
-    }
-
-  if (info->edit_type != GABBLE_VCARD_EDIT_DELETE)
-    {
-      GList *iter;
-
-      maybe_changed = TRUE;
-
-      node = wocky_node_add_child_with_content (vcard_node,
-          info->element_name, info->element_value);
-
-      for (iter = info->children; iter != NULL; iter = iter->next)
-        {
-          GabbleVCardChild *child = iter->data;
-
-          wocky_node_add_child_with_content (node, child->key, child->value);
-        }
-    }
-
-  if (!maybe_changed)
-    {
-      return FALSE;
-    }
-
-  return TRUE;
+  return edit_functions[info->edit_type] (info, vcard_node, vcard_manager);
 }
 
 static void

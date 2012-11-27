@@ -511,14 +511,13 @@ start_stream_initiation (GabbleTubeStream *self,
 
   if (cls->target_handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      node = wocky_node_add_child_with_content (si_node, "stream", NULL);
+      node = wocky_node_add_child_ns (si_node, "stream", NS_TUBES);
     }
   else
     {
-      node = wocky_node_add_child_with_content (si_node, "muc-stream", NULL);
+      node = wocky_node_add_child_ns (si_node, "muc-stream", NS_TUBES);
     }
 
-  node->ns = g_quark_from_static_string (NS_TUBES);
   wocky_node_set_attribute (node, "tube", id_str);
 
   result = gabble_bytestream_factory_negotiate_stream (
@@ -1768,10 +1767,7 @@ static void
 augment_si_accept_iq (WockyNode *si,
                       gpointer user_data)
 {
-  WockyNode *tube_node;
-
-  tube_node = wocky_node_add_child_with_content (si, "tube", "");
-  tube_node->ns = g_quark_from_string (NS_TUBES);
+  wocky_node_add_child_ns (si, "tube", NS_TUBES);
 }
 
 /**

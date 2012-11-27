@@ -2389,14 +2389,13 @@ gabble_connection_fill_in_caps (GabbleConnection *self,
 
   /* XEP-0115 version 1.5 uses a verification string in the 'ver' attribute */
   caps_hash = caps_hash_compute_from_self_presence (self);
-  node = wocky_node_add_child_with_content (node, "c", NULL);
+  node = wocky_node_add_child_ns (node, "c", NS_CAPS);
   wocky_node_set_attributes (
     node,
     "hash",  "sha-1",
     "node",  NS_GABBLE_CAPS,
     "ver",   caps_hash,
     NULL);
-  node->ns = g_quark_from_string (NS_CAPS);
 
   /* Ensure this set of capabilities is in the cache. */
   gabble_presence_cache_add_own_caps (self->presence_cache, caps_hash,
@@ -2478,9 +2477,8 @@ gabble_connection_request_decloak (GabbleConnection *self,
 
   gabble_connection_fill_in_caps (self, message);
 
-  decloak = wocky_node_add_child_with_content (wocky_stanza_get_top_node (message),
-      "temppres", NULL);
-  decloak->ns = g_quark_from_string (NS_TEMPPRES);
+  decloak = wocky_node_add_child_ns (wocky_stanza_get_top_node (message),
+      "temppres", NS_TEMPPRES);
 
   if (reason != NULL && *reason != '\0')
     {

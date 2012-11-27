@@ -2019,11 +2019,9 @@ try_session_initiate_or_accept (GabbleJingleSession *sess)
 
       if (has_video || has_audio)
         {
-          sess_node = wocky_node_add_child_with_content (sess_node, "description",
-              NULL);
-
-          sess_node->ns = g_quark_from_static_string (
-              has_video ? NS_GOOGLE_SESSION_VIDEO : NS_GOOGLE_SESSION_PHONE);
+          sess_node = wocky_node_add_child_ns_q (sess_node, "description",
+              g_quark_from_static_string (has_video
+                  ? NS_GOOGLE_SESSION_VIDEO : NS_GOOGLE_SESSION_PHONE));
         }
     }
 
@@ -2357,7 +2355,7 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
     const gchar *name)
 {
   WockyStanza *message;
-  WockyNode *jingle, *notification;
+  WockyNode *jingle;
 
   if (!gabble_jingle_session_defines_action (sess, JINGLE_ACTION_SESSION_INFO))
     {
@@ -2367,9 +2365,8 @@ gabble_jingle_session_send_rtp_info (GabbleJingleSession *sess,
 
   message = gabble_jingle_session_new_message (sess,
       JINGLE_ACTION_SESSION_INFO, &jingle);
-
-  notification = wocky_node_add_child_with_content (jingle, name, NULL);
-  notification->ns = g_quark_from_static_string (NS_JINGLE_RTP_INFO);
+  wocky_node_add_child_ns_q (jingle, name,
+      g_quark_from_static_string (NS_JINGLE_RTP_INFO));
 
   /* This is just informational, so ignoring the reply. */
   gabble_jingle_session_send (sess, message);

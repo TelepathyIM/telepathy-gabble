@@ -1223,8 +1223,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
 
   size_str = g_strdup_printf ("%" G_GUINT64_FORMAT, self->priv->size);
 
-  file_node = wocky_node_add_child_with_content (si_node, "file", NULL);
-  file_node->ns = g_quark_from_string (NS_FILE_TRANSFER);
+  file_node = wocky_node_add_child_ns (si_node, "file", NS_FILE_TRANSFER);
   wocky_node_set_attributes (file_node,
       "name", self->priv->filename,
       "size", size_str,
@@ -1649,8 +1648,7 @@ augment_si_reply (WockyNode *si,
   GabbleFileTransferChannel *self = GABBLE_FILE_TRANSFER_CHANNEL (user_data);
   WockyNode *file;
 
-  file = wocky_node_add_child_with_content (si, "file", NULL);
-  file->ns = g_quark_from_string (NS_FILE_TRANSFER);
+  file = wocky_node_add_child_ns (si, "file", NS_FILE_TRANSFER);
 
   if (self->priv->initial_offset != 0)
     {

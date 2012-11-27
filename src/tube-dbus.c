@@ -1082,8 +1082,7 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
           wocky_stanza_get_top_node (msg), "si", NS_SI);
       g_assert (si_node != NULL);
 
-      tube_node = wocky_node_add_child_with_content (si_node, "tube", NULL);
-      tube_node->ns = g_quark_from_string (NS_TUBES);
+      tube_node = wocky_node_add_child_ns (si_node, "tube", NS_TUBES);
       gabble_tube_iface_publish_in_node (GABBLE_TUBE_IFACE (tube),
           base_conn, tube_node);
 
@@ -1381,10 +1380,7 @@ static void
 augment_si_accept_iq (WockyNode *si,
                       gpointer user_data)
 {
-  WockyNode *tube_node;
-
-  tube_node = wocky_node_add_child_with_content (si, "tube", "");
-  tube_node->ns = g_quark_from_string (NS_TUBES);
+  wocky_node_add_child_ns (si, "tube", NS_TUBES);
 }
 
 /*

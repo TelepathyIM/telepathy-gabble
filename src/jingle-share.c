@@ -458,9 +458,8 @@ produce_description (GabbleJingleContent *content, WockyNode *content_node)
 
   ensure_manifest (self);
 
-  desc_node = wocky_node_add_child_with_content (content_node, "description", NULL);
-
-  desc_node->ns = g_quark_from_string (NS_GOOGLE_SESSION_SHARE);
+  desc_node = wocky_node_add_child_ns (content_node, "description",
+      NS_GOOGLE_SESSION_SHARE);
 
   manifest_node = wocky_node_add_child_with_content (desc_node, "manifest", NULL);
 

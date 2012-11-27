@@ -132,16 +132,6 @@ gabble_generate_id (void)
   return str;
 }
 
-
-static void
-lm_message_node_add_nick (WockyNode *node, const gchar *nick)
-{
-  WockyNode *nick_node;
-
-  nick_node = wocky_node_add_child_with_content (node, "nick", nick);
-  nick_node->ns = g_quark_from_string (NS_NICK);
-}
-
 void
 lm_message_node_add_own_nick (WockyNode *node,
                               GabbleConnection *connection)
@@ -154,7 +144,8 @@ lm_message_node_add_own_nick (WockyNode *node,
       tp_base_connection_get_self_handle (base), &nick);
 
   if (source > GABBLE_CONNECTION_ALIAS_FROM_JID)
-    lm_message_node_add_nick (node, nick);
+    wocky_node_add_child_with_content_ns_q (node, "nick", nick,
+        g_quark_from_static_string (NS_NICK));
 
   g_free (nick);
 }

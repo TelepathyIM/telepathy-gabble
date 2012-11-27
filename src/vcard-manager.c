@@ -963,9 +963,6 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
   wocky_node_iter_init (&i, old_vcard, info->element_name, NULL);
   while (wocky_node_iter_next (&i, &node))
     {
-      const gchar *value;
-      const gchar *new_value;
-
       /* if there are >= 2 copies of this field, we're going to reduce that
        * to 1 */
       if (seen)
@@ -973,50 +970,11 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
 
       seen = TRUE;
 
-      /* consider NULL and "" to be different representations for the
-       * same thing */
-      value = node->content;
-      new_value = replacement_node->content;
-
-      if (value == NULL)
-        value = "";
-
-      if (new_value == NULL)
-        new_value = "";
-
-      if (tp_strdiff (value, new_value))
+      /* This depends on PHOTO's children being TYPE, BINVAL in the correct
+       * order—which is required by the vcard-temp schema, soooo...
+       */
+      if (!wocky_node_equal (node, replacement_node))
         return TRUE;
-
-      /* we assume that a change to child nodes is always significant,
-       * unless it's the <PHOTO/> */
-      if (!tp_strdiff (node->name, "PHOTO"))
-        {
-          /* For the special case of PHOTO, we know that the child nodes
-           * are only meant to appear once, so we can be more aggressive
-           * about avoiding unnecessary edits: assume that the PHOTO on
-           * the server doesn't have extra children, and that one matching
-           * child is enough. */
-          WockyNodeIter child_iter;
-          WockyNode *new_child_node;
-
-          wocky_node_iter_init (&child_iter, replacement_node, NULL, NULL);
-          while (wocky_node_iter_next (&child_iter, &new_child_node))
-            {
-              WockyNode *old_child_node = wocky_node_get_child (node,
-                  new_child_node->name);
-
-              if (old_child_node == NULL ||
-                  tp_strdiff (old_child_node->content, new_child_node->content))
-                {
-                  return TRUE;
-                }
-            }
-        }
-      else
-        {
-          if (replacement_node->children != NULL)
-            return TRUE;
-        }
     }
 
   /* if there are no copies of this field, we're going to add one; otherwise,

@@ -823,7 +823,7 @@ fire_idle_content_reject (GabbleJingleSession *sess, const gchar *name,
 
   g_debug ("name = %s, initiator = %s", name, creator);
 
-  node = wocky_node_add_child_with_content (sess_node, "content", NULL);
+  node = wocky_node_add_child (sess_node, "content");
   wocky_node_set_attributes (node,
       "name", name, "creator", creator, NULL);
 
@@ -2131,7 +2131,7 @@ gabble_jingle_session_terminate (GabbleJingleSession *sess,
           WockyNode *r = wocky_node_add_child_with_content (session_node, "reason",
               NULL);
 
-          wocky_node_add_child_with_content (r, reason_elt, NULL);
+          wocky_node_add_child (r, reason_elt);
 
           if (text != NULL && *text != '\0')
             wocky_node_add_child_with_content (r, "text", text);

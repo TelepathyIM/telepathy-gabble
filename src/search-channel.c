@@ -885,7 +885,7 @@ build_extended_query (GabbleSearchChannel *self,
   wocky_node_set_attribute (x, "type", "submit");
 
   /* add FORM_TYPE */
-  field = wocky_node_add_child_with_content (x, "field", "");
+  field = wocky_node_add_child (x, "field");
   wocky_node_set_attributes (field,
       "type", "hidden",
       "var", "FORM_TYPE",
@@ -902,7 +902,7 @@ build_extended_query (GabbleSearchChannel *self,
 
       g_assert (xmpp_field != NULL);
 
-      field = wocky_node_add_child_with_content (x, "field", "");
+      field = wocky_node_add_child (x, "field");
       wocky_node_set_attribute (field, "var", xmpp_field);
       wocky_node_add_child_with_content (field, "value", value);
 
@@ -915,7 +915,7 @@ build_extended_query (GabbleSearchChannel *self,
             {
               xmpp_field = g_ptr_array_index (self->priv->boolean_keys, i);
 
-              field = wocky_node_add_child_with_content (x, "field", "");
+              field = wocky_node_add_child (x, "field");
               wocky_node_set_attributes (field,
                   "var", xmpp_field,
                   "type", "boolean",

@@ -1256,7 +1256,7 @@ offer_bytestream (GabbleFileTransferChannel *self, const gchar *jid,
   wocky_node_add_child_with_content (file_node, "desc", self->priv->description);
 
   /* we support resume */
-  wocky_node_add_child_with_content (file_node, "range", NULL);
+  wocky_node_add_child (file_node, "range");
 
   result = gabble_bytestream_factory_negotiate_stream (
       conn->bytestream_factory, msg, stream_id,
@@ -1655,7 +1655,7 @@ augment_si_reply (WockyNode *si,
       WockyNode *range;
       gchar *offset_str;
 
-      range = wocky_node_add_child_with_content (file, "range", NULL);
+      range = wocky_node_add_child (file, "range");
       offset_str = g_strdup_printf ("%" G_GUINT64_FORMAT,
           self->priv->initial_offset);
       wocky_node_set_attribute (range, "offset", offset_str);

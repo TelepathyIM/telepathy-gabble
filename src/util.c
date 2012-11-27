@@ -502,7 +502,7 @@ set_child_from_property (gpointer key,
       return;
     }
 
-  child = wocky_node_add_child_with_content (data->node, data->prop, "");
+  child = wocky_node_add_child (data->node, data->prop);
 
   if (G_VALUE_TYPE (gvalue) == G_TYPE_STRING)
     {

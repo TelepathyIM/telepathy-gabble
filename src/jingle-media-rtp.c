@@ -883,7 +883,7 @@ _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
   gchar *param_name = key;
   gchar *param_value = value;
 
-  param = wocky_node_add_child_with_content (pt_node, "parameter", NULL);
+  param = wocky_node_add_child (pt_node, "parameter");
   wocky_node_set_attribute (param, "name", param_name);
   wocky_node_set_attribute (param, "value", param_value);
 }
@@ -931,7 +931,7 @@ produce_payload_type (GabbleJingleContent *content,
   WockyNode *pt_node;
   gchar buf[16];
 
-  pt_node = wocky_node_add_child_with_content (desc_node, "payload-type", NULL);
+  pt_node = wocky_node_add_child (desc_node, "payload-type");
 
   /* id: required */
   sprintf (buf, "%d", p->id);

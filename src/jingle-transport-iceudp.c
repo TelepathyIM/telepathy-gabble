@@ -479,7 +479,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
           "pwd", c->password,
           NULL);
 
-      cnode = wocky_node_add_child_with_content (transport_node, "candidate", NULL);
+      cnode = wocky_node_add_child (transport_node, "candidate");
       wocky_node_set_attributes (cnode,
           "ip", c->address,
           "port", port_str,

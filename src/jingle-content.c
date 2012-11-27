@@ -835,7 +835,7 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
     }
   else
     {
-      content_node = wocky_node_add_child_with_content (parent, "content", NULL);
+      content_node = wocky_node_add_child (parent, "content");
       wocky_node_set_attributes (content_node,
           "name", priv->name,
           "senders", produce_senders (priv->senders),

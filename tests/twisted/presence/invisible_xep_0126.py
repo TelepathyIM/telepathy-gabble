@@ -18,6 +18,7 @@ import ns
 import constants as cs
 from twisted.words.xish import xpath, domish
 from invisible_helper import ManualPrivacyListStream
+from functools import partial
 
 def test_create_invisible_list(q, bus, conn, stream):
     conn.SimplePresence.SetPresence("away", "")
@@ -111,7 +112,8 @@ def test_invisible_on_connect_fail_no_list(q, bus, conn, stream):
     assertDoesNotContain("hidden",
         conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
 
-def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream):
+def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream,
+                                                really_invalid=False):
     props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
 
@@ -129,10 +131,15 @@ def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream):
     list_node = xpath.queryForNodes('//list', get_list.query)[0]
     assertEquals('invisible', list_node['name'])
 
-    stream.send_privacy_list(get_list.stanza,
-        [elem('item', type='jid', value='tybalt@example.com', action='allow',
-             order='1')(elem('presence-out')),
-        elem('item', action='deny', order='2')(elem('presence-out'))])
+    if really_invalid:
+        # At one point Gabble would crash if the reply was of type 'result' but
+        # wasn't well-formed.
+        acknowledge_iq(stream, get_list.stanza)
+    else:
+        stream.send_privacy_list(get_list.stanza,
+            [elem('item', type='jid', value='tybalt@example.com', action='allow',
+                 order='1')(elem('presence-out')),
+            elem('item', action='deny', order='2')(elem('presence-out'))])
 
     create_list = q.expect('stream-iq', query_ns=ns.PRIVACY, iq_type='set')
     created = xpath.queryForNodes('//list', create_list.stanza)[0]
@@ -347,6 +354,9 @@ if __name__ == '__main__':
     exec_test(test_invisible_on_connect_fail_no_list,
               protocol=ManualPrivacyListStream, do_connect=False)
     exec_test(test_invisible_on_connect_fail_invalid_list,
+              protocol=ManualPrivacyListStream, do_connect=False)
+    exec_test(partial(test_invisible_on_connect_fail_invalid_list,
+                      really_invalid=True),
               protocol=ManualPrivacyListStream, do_connect=False)
     exec_test(test_privacy_list_push_valid, protocol=ManualPrivacyListStream,
               do_connect=False)

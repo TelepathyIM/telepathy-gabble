@@ -854,8 +854,8 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
 
       edit_info = gabble_vcard_manager_edit_info_new ("PHOTO",
           NULL, GABBLE_VCARD_EDIT_REPLACE,
-          "TYPE", mime_type,
-          "BINVAL", base64,
+          '(', "TYPE", '$', mime_type, ')',
+          '(', "BINVAL", '$', base64, ')',
           NULL);
 
       g_free (base64);

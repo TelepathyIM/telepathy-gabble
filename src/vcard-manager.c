@@ -48,53 +48,29 @@ static guint request_wait_delay = 5 * 60;
 
 static const gchar *NO_ALIAS = "none";
 
-typedef struct {
-    gchar *key;
-    gchar *value;
-} GabbleVCardChild;
-
-static GabbleVCardChild *
-gabble_vcard_child_new (const gchar *key,
-    const gchar *value)
-{
-  GabbleVCardChild *child = g_slice_new (GabbleVCardChild);
-
-  child->key = g_strdup (key);
-  child->value = g_strdup (value);
-  return child;
-}
-
-static void
-gabble_vcard_child_free (GabbleVCardChild *child)
-{
-  g_free (child->key);
-  g_free (child->value);
-  g_slice_free (GabbleVCardChild, child);
-}
-
 struct _GabbleVCardManagerEditInfo {
     /* name of element to edit */
     gchar *element_name;
-
-    /* value of element to edit or NULL if no value should be used */
-    gchar *element_value;
-
-    /* list of GabbleVCardChild */
-    GList *children;
 
     /* If REPLACE, the first element with this name (if any) will be updated;
      * if APPEND, an element with this name will be added;
      * if DELETE, all elements with this name will be removed;
      * if CLEAR, everything except PHOTO and NICKNAME will be deleted, in
      *    preparation for a SetContactInfo operation
-     * if SET_ALIAS and element_value is NULL, set the best alias we have
+     * if SET_ALIAS and new_alias is NULL, set the best alias we have
      *    as the NICKNAME or FN (as appropriate) if that field doesn't already
      *    have a value
-     * if SET_ALIAS and element_value is non-NULL, set that
+     * if SET_ALIAS and new_alias is non-NULL, set that
      *    as the NICKNAME or FN (as appropriate), overriding anything already
      *    there
      */
     GabbleVCardEditType edit_type;
+
+    /* the element to fill in, if edit_type is REPLACE or APPEND. */
+    WockyNodeTree *element;
+
+    /* only meaningful if edit_type is SET_ALIAS; see above. */
+    gchar *new_alias;
 };
 
 /* signal enum */
@@ -978,7 +954,10 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
 {
   gboolean seen = FALSE;
   WockyNodeIter i;
-  WockyNode *node;
+  WockyNode *node, *replacement_node;
+
+  g_return_val_if_fail (info->element != NULL, FALSE);
+  replacement_node = wocky_node_tree_get_top_node (info->element);
 
   /* Find the first node matching the one we want to edit */
   wocky_node_iter_init (&i, old_vcard, info->element_name, NULL);
@@ -997,7 +976,7 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
       /* consider NULL and "" to be different representations for the
        * same thing */
       value = node->content;
-      new_value = info->element_value;
+      new_value = replacement_node->content;
 
       if (value == NULL)
         value = "";
@@ -1017,19 +996,17 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
            * about avoiding unnecessary edits: assume that the PHOTO on
            * the server doesn't have extra children, and that one matching
            * child is enough. */
-          GList *child_iter;
+          WockyNodeIter child_iter;
+          WockyNode *new_child_node;
 
-          for (child_iter = info->children;
-              child_iter != NULL;
-              child_iter = child_iter->next)
+          wocky_node_iter_init (&child_iter, replacement_node, NULL, NULL);
+          while (wocky_node_iter_next (&child_iter, &new_child_node))
             {
-              GabbleVCardChild *child = child_iter->data;
-              WockyNode *child_node = wocky_node_get_child (node,
-                  child->key);
+              WockyNode *old_child_node = wocky_node_get_child (node,
+                  new_child_node->name);
 
-              if (child_node == NULL ||
-                  tp_strdiff (child_node->content,
-                    child->value))
+              if (old_child_node == NULL ||
+                  tp_strdiff (old_child_node->content, new_child_node->content))
                 {
                   return TRUE;
                 }
@@ -1037,7 +1014,7 @@ gabble_vcard_manager_replace_is_significant (GabbleVCardManagerEditInfo *info,
         }
       else
         {
-          if (info->children != NULL)
+          if (replacement_node->children != NULL)
             return TRUE;
         }
     }
@@ -1064,25 +1041,6 @@ remove_all_children_named (
     }
 
   return changed;
-}
-
-static void
-add_new_child (
-    GabbleVCardManagerEditInfo *info,
-    WockyNode *vcard_node)
-{
-  WockyNode *node;
-  GList *iter;
-
-  node = wocky_node_add_child_with_content (vcard_node,
-      info->element_name, info->element_value);
-
-  for (iter = info->children; iter != NULL; iter = iter->next)
-    {
-      GabbleVCardChild *child = iter->data;
-
-      wocky_node_add_child_with_content (node, child->key, child->value);
-    }
 }
 
 static gboolean
@@ -1113,7 +1071,7 @@ gabble_vcard_manager_edit_info_apply_replace (
     }
 
   remove_all_children_named (vcard_node, info->element_name);
-  add_new_child (info, vcard_node);
+  wocky_node_add_node_tree (vcard_node, info->element);
 
   return TRUE;
 }
@@ -1132,7 +1090,7 @@ gabble_vcard_manager_edit_info_apply_append (
       return FALSE;
     }
 
-  add_new_child (info, vcard_node);
+  wocky_node_add_node_tree (vcard_node, info->element);
 
   return TRUE;
 }
@@ -1195,7 +1153,7 @@ gabble_vcard_manager_edit_info_apply_set_alias (
       info->element_name = g_strdup ("FN");
     }
 
-  if (info->element_value == NULL)
+  if (info->new_alias == NULL)
     {
       /* We're just trying to fix a possibly-incomplete SetContactInfo() */
       WockyNode *node = wocky_node_get_child (old_vcard, info->element_name);
@@ -1215,9 +1173,11 @@ gabble_vcard_manager_edit_info_apply_set_alias (
           return FALSE;
         }
 
-      info->element_value = alias;
+      info->new_alias = alias;
     }
 
+  info->element = wocky_node_tree_new (info->element_name, NS_VCARD_TEMP,
+      '$', info->new_alias, NULL);
   info->edit_type = GABBLE_VCARD_EDIT_REPLACE;
   return gabble_vcard_manager_edit_info_apply_replace (info, old_vcard,
       vcard_manager);
@@ -1797,36 +1757,49 @@ gabble_vcard_manager_edit_info_new (const gchar *element_name,
 {
   GabbleVCardManagerEditInfo *info;
   va_list ap;
-  const gchar *key;
-  const gchar *value;
 
-  if (edit_type == GABBLE_VCARD_EDIT_DELETE)
-    {
-      const gchar *first_edit = NULL;
-
-      g_return_val_if_fail (element_value == NULL, NULL);
-
-      va_start (ap, edit_type);
-      first_edit = va_arg (ap, const gchar *);
-      va_end (ap);
-      g_return_val_if_fail (first_edit == NULL, NULL);
-    }
-
-  info = g_slice_new (GabbleVCardManagerEditInfo);
+  info = g_slice_new0 (GabbleVCardManagerEditInfo);
   info->element_name = g_strdup (element_name);
-  info->element_value = g_strdup (element_value);
   info->edit_type = edit_type;
-  info->children = NULL;
 
   va_start (ap, edit_type);
 
-  while ((key = va_arg (ap, const gchar *)))
+  switch (edit_type)
     {
-      value = va_arg (ap, const gchar *);
-      gabble_vcard_manager_edit_info_add_child (info, key, value);
-    }
+      case GABBLE_VCARD_EDIT_REPLACE:
+      case GABBLE_VCARD_EDIT_APPEND:
+        g_return_val_if_fail (element_name != NULL, NULL);
 
-  va_end (ap);
+        info->element = wocky_node_tree_new_va (element_name, NS_VCARD_TEMP,
+            ap);
+        va_end (ap);
+
+        if (element_value != NULL)
+          wocky_node_set_content (wocky_node_tree_get_top_node (info->element),
+              element_value);
+
+        break;
+
+      case GABBLE_VCARD_EDIT_SET_ALIAS:
+        g_return_val_if_fail (element_name == NULL, NULL);
+
+        info->new_alias = g_strdup (element_value);
+        element_value = NULL;
+
+        /* deliberate fall-through to check the varargs... */
+      case GABBLE_VCARD_EDIT_DELETE:
+      case GABBLE_VCARD_EDIT_CLEAR:
+      {
+        const gchar *first_edit = NULL;
+
+        g_return_val_if_fail (element_value == NULL, NULL);
+
+        first_edit = va_arg (ap, const gchar *);
+        va_end (ap);
+        g_return_val_if_fail (first_edit == NULL, NULL);
+        break;
+      }
+    }
 
   return info;
 }
@@ -1837,17 +1810,19 @@ gabble_vcard_manager_edit_info_add_child (
     const gchar *key,
     const gchar *value)
 {
-  edit_info->children = g_list_append (edit_info->children,
-      gabble_vcard_child_new (key, value));
+  g_return_if_fail (edit_info->element != NULL);
+
+  wocky_node_add_child_with_content (
+      wocky_node_tree_get_top_node (edit_info->element),
+      key, value);
 }
 
 void
 gabble_vcard_manager_edit_info_free (GabbleVCardManagerEditInfo *info)
 {
   g_free (info->element_name);
-  g_free (info->element_value);
-  g_list_foreach (info->children, (GFunc) gabble_vcard_child_free, NULL);
-  g_list_free (info->children);
+  g_free (info->new_alias);
+  g_clear_object (&info->element);
   g_slice_free (GabbleVCardManagerEditInfo, info);
 }
 

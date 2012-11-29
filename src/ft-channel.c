@@ -540,6 +540,19 @@ gabble_file_transfer_channel_get_object_path_suffix (TpBaseChannel *chan)
   return g_strdup_printf ("FileTransferChannel/%p", chan);
 }
 
+static GPtrArray *
+gabble_file_transfer_channel_get_interfaces (TpBaseChannel *base)
+{
+  GPtrArray *interfaces;
+
+  interfaces = TP_BASE_CHANNEL_CLASS (
+      gabble_file_transfer_channel_parent_class)->get_interfaces (base);
+
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA);
+
+  return interfaces;
+}
+
 static void
 gabble_file_transfer_channel_class_init (
     GabbleFileTransferChannelClass *gabble_file_transfer_channel_class)
@@ -607,6 +620,7 @@ gabble_file_transfer_channel_class_init (
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER;
   base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_class->get_interfaces = gabble_file_transfer_channel_get_interfaces;
   base_class->close = gabble_file_transfer_channel_close;
   base_class->fill_immutable_properties =
     gabble_file_transfer_channel_fill_immutable_properties;

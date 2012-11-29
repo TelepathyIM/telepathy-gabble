@@ -548,6 +548,7 @@ gabble_file_transfer_channel_get_interfaces (TpBaseChannel *base)
   interfaces = TP_BASE_CHANNEL_CLASS (
       gabble_file_transfer_channel_parent_class)->get_interfaces (base);
 
+  g_ptr_array_add (interfaces, GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE);
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA);
 
   return interfaces;

@@ -57,6 +57,7 @@ OLPC_CURRENT_ACTIVITY = "http://laptop.org/xmpp/current-activity"
 OLPC_CURRENT_ACTIVITY_NOTIFY = "%s+notify" % OLPC_CURRENT_ACTIVITY
 PUBSUB = "http://jabber.org/protocol/pubsub"
 PUBSUB_EVENT = "%s#event" % PUBSUB
+RECEIPTS = "urn:xmpp:receipts"
 REGISTER = "jabber:iq:register"
 ROSTER = "jabber:iq:roster"
 SEARCH = 'jabber:iq:search'

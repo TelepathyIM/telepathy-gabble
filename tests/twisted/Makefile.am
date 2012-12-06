@@ -113,6 +113,7 @@ TWISTED_TESTS = \
 	text/facebook-own-message.py \
 	text/initiate.py \
 	text/initiate-requestotron.py \
+	text/receipts.py \
 	text/respawn.py \
 	text/send-error.py \
 	text/send-to-correct-resource.py \
@@ -268,6 +269,7 @@ TWISTED_OTHER_FILES = \
 	mucutil.py \
 	ns.py \
 	olpc/util.py \
+	presence/__init__.py \
 	presence/invisible_helper.py \
 	rostertest.py \
 	sasl/saslutil.py \

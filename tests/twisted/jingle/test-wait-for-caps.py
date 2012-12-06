@@ -7,12 +7,11 @@ call until caps have arrived.
 from functools import partial
 from gabbletest import exec_test
 from servicetest import make_channel_proxy, call_async, sync_dbus
-import jingletest
+import jingletest2
 
 import dbus
 
 import constants as cs
-import ns
 
 from config import VOIP_ENABLED
 
@@ -21,8 +20,11 @@ if not VOIP_ENABLED:
     raise SystemExit(77)
 
 def test(q, bus, conn, stream, channel_type):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
-    jt2 = jingletest.JingleTest(stream, 'test@localhost', 'foo2@bar.com/Foo')
+    jp = jingletest2.JingleProtocol031()
+    jt = jingletest2.JingleTest2(jp, conn, q, stream, 'test@localhost',
+        'foo@bar.com/Foo')
+    jt2 = jingletest2.JingleTest2(jp, conn, q, stream, 'test@localhost',
+        'foo2@bar.com/Foo')
     # Make gabble think this is a different client
     jt2.remote_caps['node'] = 'http://example.com/fake-client1'
 
@@ -31,7 +33,7 @@ def test(q, bus, conn, stream, channel_type):
 
 def run_test(q, bus, conn, stream, jt, request_before_presence, channel_type):
     """
-    Requests streams on a media channel to jt.remote_jid, either before their
+    Requests streams on a media channel to jt.peer, either before their
     presence is received (if request_before_presence is True) or after their
     presence is received but before we've got a disco response for their
     capabilities (otherwise).
@@ -42,7 +44,7 @@ def run_test(q, bus, conn, stream, jt, request_before_presence, channel_type):
     # will tentatively allow channel creation and contact handle addition
     request = dbus.Dictionary({ cs.CHANNEL_TYPE: channel_type,
                                 cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-                                cs.TARGET_ID: jt.remote_jid
+                                cs.TARGET_ID: jt.peer,
                               }, signature='sv')
 
     if channel_type == cs.CHANNEL_TYPE_CALL:
@@ -65,10 +67,6 @@ def run_test(q, bus, conn, stream, jt, request_before_presence, channel_type):
         else:
             call_async(q, conn.Requests, 'CreateChannel', request)
 
-    def send_presence():
-        jt.send_remote_presence()
-        return q.expect('stream-iq', query_ns=ns.DISCO_INFO, to=jt.remote_jid)
-
     if request_before_presence:
         # Request streams before either <presence> or caps have arrived. Gabble
         # should wait for both to arrive before returning from RequestStreams.
@@ -78,9 +76,9 @@ def run_test(q, bus, conn, stream, jt, request_before_presence, channel_type):
         sync_dbus(bus, q, conn)
 
         # Now send the presence.
-        info_event = send_presence()
+        info_event = jt.send_presence()
     else:
-        info_event = send_presence()
+        info_event = jt.send_presence()
 
         # Now call RequestStreams; it should wait for the disco reply.
         call_request_streams()

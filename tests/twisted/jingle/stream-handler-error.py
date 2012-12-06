@@ -8,7 +8,7 @@ from functools import partial
 
 from gabbletest import exec_test
 from servicetest import make_channel_proxy
-import jingletest
+import jingletest2
 
 import constants as cs
 
@@ -19,9 +19,11 @@ if not VOIP_ENABLED:
     raise SystemExit(77)
 
 def test(q, bus, conn, stream, call_error_on):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+    jp = jingletest2.JingleProtocol031()
+    jt = jingletest2.JingleTest2(jp, conn, q, stream, 'test@localhost',
+        'foo@bar.com/Foo')
 
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.RequestHandles(1, [jt.peer])[0]
 
     # Remote end calls us
     jt.incoming_call()

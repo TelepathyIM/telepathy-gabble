@@ -9,7 +9,7 @@ import dbus
 from gabbletest import exec_test, sync_stream
 from servicetest import (
     make_channel_proxy, call_async, EventPattern)
-import jingletest
+import jingletest2
 import gabbletest
 
 import constants as cs
@@ -25,23 +25,13 @@ def test(q, bus, conn, stream):
     worker(q, bus, conn, stream, 'foo@sip.bar.com')
 
 def worker(q, bus, conn, stream, peer):
-    jt = jingletest.JingleTest(stream, 'test@localhost', peer)
+    jp = jingletest2.JingleProtocol031()
+    jt = jingletest2.JingleTest2(jp, conn, q, stream, 'test@localhost', peer)
 
     self_handle = conn.GetSelfHandle()
+    jt.send_presence_and_caps()
 
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
-
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to=jt.remote_jid)
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
-
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.peer])[0]
 
     call_async(q, conn.Requests, 'CreateChannel',
             { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
@@ -77,7 +67,7 @@ def worker(q, bus, conn, stream, peer):
     assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAMED_MEDIA
     assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
     assert emitted_props[cs.TARGET_HANDLE] == handle
-    assert emitted_props[cs.TARGET_ID] == jt.remote_bare_jid, emitted_props
+    assert emitted_props[cs.TARGET_ID] == jt.peer_bare_jid, emitted_props
     assert emitted_props[cs.REQUESTED] == True
     assert emitted_props[cs.INITIATOR_HANDLE] == self_handle
     assert emitted_props[cs.INITIATOR_ID]  == 'test@localhost'
@@ -103,7 +93,7 @@ def worker(q, bus, conn, stream, peer):
               cs.TP_AWKWARD_PROPERTIES, cs.CHANNEL_IFACE_HOLD]:
         assert i in interfaces, (i, interfaces)
 
-    assert channel_props['TargetID'] == jt.remote_bare_jid, channel_props
+    assert channel_props['TargetID'] == jt.peer_bare_jid, channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
     assert channel_props['InitiatorHandle'] == self_handle
@@ -205,8 +195,9 @@ def worker(q, bus, conn, stream, peer):
     assert e.query.name == 'jingle'
     assert e.query['action'] == 'session-initiate'
     stream.send(gabbletest.make_result_iq(stream, e.stanza))
+    jt.parse_session_initiate(e.query)
 
-    jt.outgoing_call_reply(e.query['sid'], True)
+    jt.accept()
 
     q.expect('stream-iq', iq_type='result')
 

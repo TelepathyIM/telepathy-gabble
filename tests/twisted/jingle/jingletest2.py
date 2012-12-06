@@ -3,9 +3,6 @@
 # unreadable), but to make the expressions denser and more concise.
 # Helper classes support different dialects so the test can
 # be invoked for different (possibly all) dialects.
-#
-# This can be used in parallel with the old API, but should
-# obsolete it in time.
 
 from functools import partial
 from twisted.words.xish import domish, xpath
@@ -17,7 +14,7 @@ import ns
 import os
 import constants as cs
 
-class JingleProtocol:
+class JingleProtocol(object):
     """
     Defines a simple DSL for constructing Jingle messages.
     """
@@ -496,7 +493,7 @@ class JingleProtocol031(JingleProtocol):
 
         return (self._extract_session_id(query), audio, video)
 
-class JingleTest2:
+class JingleTest2(object):
     # Default caps for the remote end
     remote_caps = { 'ext': '', 'ver': '0.0.0',
              'node': 'http://example.com/fake-client0' }
@@ -621,18 +618,22 @@ class JingleTest2:
         if send_presence:
             self.send_presence_and_caps()
 
-    def send_presence_and_caps(self):
+    def send_presence(self):
         # We need remote end's presence for capabilities
         self.stream.send(self.jp.xml(
             self.jp.Presence(self.peer, self.jid, self.remote_caps)))
 
         # Gabble doesn't trust it, so makes a disco
-        event = self.q.expect('stream-iq', query_ns=ns.DISCO_INFO, to=self.peer)
+        return self.q.expect('stream-iq', query_ns=ns.DISCO_INFO, to=self.peer)
 
-        # jt.send_remote_disco_reply(event.stanza)
-        self.stream.send(self.jp.xml(self.jp.ResultIq(self.jid, event.stanza,
+    def send_remote_disco_reply(self, query_stanza):
+        self.stream.send(self.jp.xml(self.jp.ResultIq(self.jid, query_stanza,
             [ self.jp.Query(None, ns.DISCO_INFO,
                 [ self.jp.Feature(x) for x in self.jp.features ]) ]) ))
+
+    def send_presence_and_caps(self):
+        event = self.send_presence()
+        self.send_remote_disco_reply(event.stanza)
 
         # Force Gabble to process the caps before doing any more Jingling
         sync_stream(self.q, self.stream)

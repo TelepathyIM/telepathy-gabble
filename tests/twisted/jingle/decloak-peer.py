@@ -6,10 +6,9 @@ should ask them to "de-cloak".
 from gabbletest import exec_test
 from servicetest import (make_channel_proxy, call_async, sync_dbus,
         assertEquals, assertLength)
-import jingletest
+from jingletest2 import JingleProtocol031, JingleTest2
 
 import dbus
-from twisted.words.xish import xpath
 
 import constants as cs
 import ns
@@ -21,8 +20,10 @@ if not VOIP_ENABLED:
     raise SystemExit(77)
 
 def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
-    jt2 = jingletest.JingleTest(stream, 'test@localhost', 'foo2@bar.com/Foo')
+    jp = JingleProtocol031()
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
+    jt2 = JingleTest2(jp, conn, q, stream, 'test@localhost',
+        'foo2@bar.com/Foo')
     # Make gabble think this is a different client
     jt2.remote_caps['node'] = 'http://example.com/fake-client1'
 
@@ -37,7 +38,7 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
 
     request = dbus.Dictionary({ cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
                                 cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-                                cs.TARGET_ID: jt.remote_jid
+                                cs.TARGET_ID: jt.peer,
                               }, signature='sv')
     path, props = conn.CreateChannel(request, dbus_interface=cs.CONN_IFACE_REQUESTS)
     media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
@@ -47,18 +48,13 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
         [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     e = q.expect('stream-presence',
-            to=jt.remote_bare_jid, presence_type=None)
-    nodes = xpath.queryForNodes('/presence/temppres[@xmlns="%s"]'
-            % ns.TEMPPRES, e.stanza)
+            to=jt.peer_bare_jid, presence_type=None)
+    nodes = [ node for node in e.stanza.elements(uri=ns.TEMPPRES, name='temppres') ]
     assertLength(1, nodes)
     assertEquals('media', nodes[0].getAttribute('reason'))
 
     if decloak_allowed:
-        jt.send_remote_presence()
-        info_event = q.expect('stream-iq', query_ns=ns.DISCO_INFO,
-                to=jt.remote_jid)
-
-        jt.send_remote_disco_reply(info_event.stanza)
+        jt.send_presence_and_caps()
 
         # RequestStreams should now happily complete
         q.expect('dbus-return', method='RequestStreams')

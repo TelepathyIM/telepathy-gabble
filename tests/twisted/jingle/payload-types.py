@@ -4,12 +4,10 @@ Regression test for https://bugs.freedesktop.org/show_bug.cgi?id=18918
 
 import dbus
 
-from gabbletest import exec_test, sync_stream
-from servicetest import make_channel_proxy
-import jingletest
+from gabbletest import exec_test
+from servicetest import wrap_channel, make_channel_proxy
+import jingletest2
 import constants as cs
-
-from twisted.words.xish import domish
 
 from config import VOIP_ENABLED
 
@@ -18,46 +16,24 @@ if not VOIP_ENABLED:
     raise SystemExit(77)
 
 def test(q, bus, conn, stream):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+    jp = jingletest2.JingleProtocol031()
+    jt = jingletest2.JingleTest2(jp, conn, q, stream, 'test@localhost',
+        'foo@bar.com/Foo')
 
     self_handle = conn.GetSelfHandle()
 
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
+    jt.send_presence_and_caps()
 
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
-
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.remote_jid])[0]
+    handle = conn.RequestHandles(cs.HT_CONTACT, [jt.peer])[0]
     path = conn.RequestChannel(
         cs.CHANNEL_TYPE_STREAMED_MEDIA, cs.HT_CONTACT, handle, True)
 
-    channel = bus.get_object(conn.bus_name, path)
-    signalling_iface = make_channel_proxy(conn, path, 'Channel.Interface.MediaSignalling')
-    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
-    group_iface = make_channel_proxy(conn, path, 'Channel.Interface.Group')
-
-    # FIXME: Hack to make sure the disco info has been processed - we need to
-    # send Gabble some XML that will cause an event when processed, and
-    # wait for that event (until
-    # https://bugs.freedesktop.org/show_bug.cgi?id=15769 is fixed)
-    el = domish.Element(('jabber:client', 'presence'))
-    el['from'] = 'bob@example.com/Bar'
-    stream.send(el.toXml())
-    q.expect('dbus-signal', signal='PresencesChanged')
-    # OK, now we can continue. End of hack
-
+    channel = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamedMedia')
 
     # Test that codec parameters are correctly sent in <parameter> children of
     # <payload-type> rather than as attributes of the latter.
 
-    media_iface.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
+    channel.StreamedMedia.RequestStreams(handle, [cs.MEDIA_STREAM_TYPE_AUDIO])
 
     # S-E gets notified about new session handler, and calls Ready on it
     e = q.expect('dbus-signal', signal='NewSessionHandler')
@@ -107,7 +83,8 @@ def test(q, bus, conn, stream):
     # Test that codec parameters are correctly extracted from <parameter>
     # children of <payload-type> rather than from attributes of the latter.
 
-    jt.incoming_call({'misc': 'other'})
+    jt.audio_codecs = [ ('GSM', 3, 8000, {'misc': 'other'}) ]
+    jt.incoming_call()
 
     e = q.expect('dbus-signal', signal='NewSessionHandler')
     assert e.args[1] == 'rtp'

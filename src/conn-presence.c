@@ -707,10 +707,7 @@ create_invisible_privacy_list_reply_cb (GabbleConnection *conn,
   GError *error = NULL;
 
   if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
-    {
-      g_simple_async_result_set_from_error (result, error);
-      g_free (error);
-    }
+    g_simple_async_result_take_error (result, error);
 
   g_simple_async_result_complete_in_idle (result);
 
@@ -1291,10 +1288,10 @@ verify_invisible_privacy_list_cb (GabbleConnection *conn,
   if (query_node != NULL)
     list_node = wocky_node_get_child (query_node, "list");
 
-  if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL) &&
-      list_node != NULL)
+  if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
-      if (!is_valid_invisible_list (list_node))
+      if (list_node == NULL ||
+          !is_valid_invisible_list (list_node))
         {
           g_free (priv->invisible_list_name);
           priv->invisible_list_name = g_strdup ("invisible-gabble");

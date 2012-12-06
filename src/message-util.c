@@ -42,30 +42,31 @@ void
 gabble_message_util_add_chat_state (WockyStanza *stanza,
                  TpChannelChatState state)
 {
-  WockyNode *node = NULL;
   WockyNode *n = wocky_stanza_get_top_node (stanza);
+  const gchar *node_name = NULL;
 
   switch (state)
     {
       case TP_CHANNEL_CHAT_STATE_GONE:
-        node = wocky_node_add_child_with_content (n, "gone", NULL);
+        node_name = "gone";
         break;
       case TP_CHANNEL_CHAT_STATE_INACTIVE:
-        node = wocky_node_add_child_with_content (n, "inactive", NULL);
+        node_name = "inactive";
         break;
       case TP_CHANNEL_CHAT_STATE_ACTIVE:
-        node = wocky_node_add_child_with_content (n, "active", NULL);
+        node_name = "active";
         break;
       case TP_CHANNEL_CHAT_STATE_PAUSED:
-        node = wocky_node_add_child_with_content (n, "paused", NULL);
+        node_name = "paused";
         break;
       case TP_CHANNEL_CHAT_STATE_COMPOSING:
-        node = wocky_node_add_child_with_content (n, "composing", NULL);
+        node_name = "composing";
         break;
     }
 
-  if (node != NULL)
-    node->ns = g_quark_from_static_string (NS_CHAT_STATES);
+  if (node_name != NULL)
+    wocky_node_add_child_ns_q (n, node_name,
+        g_quark_from_static_string (NS_CHAT_STATES));
 }
 
 /**

@@ -96,13 +96,12 @@ activity_info_contribute_properties (GabbleOlpcActivity *activity,
   if (only_public && !gabble_olpc_activity_is_visible (activity))
     return FALSE;
 
-  props_node = wocky_node_add_child_with_content (parent,
-      "properties", "");
+  props_node = wocky_node_add_child_ns (parent,
+      "properties", NS_OLPC_ACTIVITY_PROPS);
   wocky_node_set_attributes (props_node,
       "room", gabble_olpc_activity_get_room (activity),
       "activity", activity->id,
       NULL);
-  props_node->ns = g_quark_from_string (NS_OLPC_ACTIVITY_PROPS);
 
   lm_message_node_add_children_from_properties (props_node,
       activity->properties, "property");

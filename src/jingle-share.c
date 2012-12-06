@@ -458,11 +458,10 @@ produce_description (GabbleJingleContent *content, WockyNode *content_node)
 
   ensure_manifest (self);
 
-  desc_node = wocky_node_add_child_with_content (content_node, "description", NULL);
+  desc_node = wocky_node_add_child_ns (content_node, "description",
+      NS_GOOGLE_SESSION_SHARE);
 
-  desc_node->ns = g_quark_from_string (NS_GOOGLE_SESSION_SHARE);
-
-  manifest_node = wocky_node_add_child_with_content (desc_node, "manifest", NULL);
+  manifest_node = wocky_node_add_child (desc_node, "manifest");
 
   for (i = priv->manifest->entries; i; i = i->next)
     {
@@ -472,9 +471,9 @@ produce_description (GabbleJingleContent *content, WockyNode *content_node)
       gchar *size_str, *width_str, *height_str;
 
       if (m->folder)
-        file_node = wocky_node_add_child_with_content (manifest_node, "folder", NULL);
+        file_node = wocky_node_add_child (manifest_node, "folder");
       else
-        file_node = wocky_node_add_child_with_content (manifest_node, "file", NULL);
+        file_node = wocky_node_add_child (manifest_node, "file");
 
       if (m->size > 0)
         {
@@ -487,7 +486,7 @@ produce_description (GabbleJingleContent *content, WockyNode *content_node)
       if (m->image &&
           (m->image_width > 0 || m->image_height > 0))
         {
-          image_node = wocky_node_add_child_with_content (file_node, "image", NULL);
+          image_node = wocky_node_add_child (file_node, "image");
           if (m->image_width > 0)
             {
               width_str = g_strdup_printf ("%d", m->image_width);
@@ -504,8 +503,8 @@ produce_description (GabbleJingleContent *content, WockyNode *content_node)
         }
     }
 
-  protocol_node = wocky_node_add_child_with_content (desc_node, "protocol", NULL);
-  http_node = wocky_node_add_child_with_content (protocol_node, "http", NULL);
+  protocol_node = wocky_node_add_child (desc_node, "protocol");
+  http_node = wocky_node_add_child (protocol_node, "http");
   url_node = wocky_node_add_child_with_content (http_node, "url",
       priv->manifest->source_url);
   wocky_node_set_attribute (url_node, "name", "source-path");

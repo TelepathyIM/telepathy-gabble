@@ -469,13 +469,12 @@ send_gtalk4_transport_accept (gpointer user_data)
 {
   GabbleJingleContent *c = GABBLE_JINGLE_CONTENT (user_data);
   GabbleJingleContentPrivate *priv = c->priv;
-  WockyNode *sess_node, *tnode;
+  WockyNode *sess_node;
   WockyStanza *msg = gabble_jingle_session_new_message (c->session,
       JINGLE_ACTION_TRANSPORT_ACCEPT, &sess_node);
 
   DEBUG ("Sending Gtalk4 'transport-accept' message to peer");
-  tnode = wocky_node_add_child_with_content (sess_node, "transport", NULL);
-  tnode->ns = g_quark_from_string (priv->transport_ns);
+  wocky_node_add_child_ns (sess_node, "transport", priv->transport_ns);
 
   gabble_jingle_session_send (c->session, msg);
 
@@ -684,8 +683,8 @@ gabble_jingle_content_create_share_channel (GabbleJingleContent *self,
       JINGLE_ACTION_INFO, &sess_node);
 
   DEBUG ("Sending 'info' message to peer : channel %s", name);
-  channel_node = wocky_node_add_child_with_content (sess_node, "channel", NULL);
-  channel_node->ns = g_quark_from_string (priv->content_ns);
+  channel_node = wocky_node_add_child_ns (sess_node, "channel",
+      priv->content_ns);
   wocky_node_set_attribute (channel_node, "name", name);
 
   gabble_jingle_session_send (self->session, msg);
@@ -697,15 +696,14 @@ void
 gabble_jingle_content_send_complete (GabbleJingleContent *self)
 {
   GabbleJingleContentPrivate *priv = self->priv;
-  WockyNode *sess_node, *complete_node;
+  WockyNode *sess_node;
   WockyStanza *msg = NULL;
 
   msg = gabble_jingle_session_new_message (self->session,
       JINGLE_ACTION_INFO, &sess_node);
 
   DEBUG ("Sending 'info' message to peer : complete");
-  complete_node = wocky_node_add_child_with_content (sess_node, "complete", NULL);
-  complete_node->ns = g_quark_from_string (priv->content_ns);
+  wocky_node_add_child_ns (sess_node, "complete", priv->content_ns);
 
   gabble_jingle_session_send (self->session, msg);
 
@@ -837,7 +835,7 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
     }
   else
     {
-      content_node = wocky_node_add_child_with_content (parent, "content", NULL);
+      content_node = wocky_node_add_child (parent, "content");
       wocky_node_set_attributes (content_node,
           "name", priv->name,
           "senders", produce_senders (priv->senders),
@@ -861,8 +859,8 @@ gabble_jingle_content_produce_node (GabbleJingleContent *c,
         }
       else
         {
-          trans_node = wocky_node_add_child_with_content (content_node, "transport", NULL);
-          trans_node->ns = g_quark_from_string (priv->transport_ns);
+          trans_node = wocky_node_add_child_ns (content_node, "transport",
+              priv->transport_ns);
         }
 
       if (trans_node_out != NULL)

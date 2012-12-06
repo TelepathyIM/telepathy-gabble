@@ -310,7 +310,7 @@ inject_candidates (GabbleJingleTransportIface *obj,
       sprintf (port_str, "%d", c->port);
       sprintf (comp_str, "%d", c->component);
 
-      cnode = wocky_node_add_child_with_content (transport_node, "candidate", NULL);
+      cnode = wocky_node_add_child (transport_node, "candidate");
       wocky_node_set_attributes (cnode,
           "ip", c->address,
           "port", port_str,

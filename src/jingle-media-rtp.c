@@ -883,7 +883,7 @@ _produce_extra_param (gpointer key, gpointer value, gpointer user_data)
   gchar *param_name = key;
   gchar *param_value = value;
 
-  param = wocky_node_add_child_with_content (pt_node, "parameter", NULL);
+  param = wocky_node_add_child (pt_node, "parameter");
   wocky_node_set_attribute (param, "name", param_name);
   wocky_node_set_attribute (param, "value", param_value);
 }
@@ -931,7 +931,7 @@ produce_payload_type (GabbleJingleContent *content,
   WockyNode *pt_node;
   gchar buf[16];
 
-  pt_node = wocky_node_add_child_with_content (desc_node, "payload-type", NULL);
+  pt_node = wocky_node_add_child (desc_node, "payload-type");
 
   /* id: required */
   sprintf (buf, "%d", p->id);
@@ -1008,12 +1008,10 @@ produce_description_node (JingleDialect dialect, JingleMediaType media_type,
    WockyNode *content_node)
 {
   WockyNode *desc_node;
-  const gchar *xmlns = NULL;
+  const gchar *xmlns = NULL, *media_attr = NULL;
 
   if (dialect == JINGLE_DIALECT_GTALK3)
     return NULL;
-
-  desc_node = wocky_node_add_child_with_content (content_node, "description", NULL);
 
   switch (dialect)
     {
@@ -1035,15 +1033,18 @@ produce_description_node (JingleDialect dialect, JingleMediaType media_type,
       default:
         xmlns = NS_JINGLE_RTP;
         if (media_type == JINGLE_MEDIA_TYPE_AUDIO)
-            wocky_node_set_attribute (desc_node, "media", "audio");
+            media_attr = "audio";
         else if (media_type == JINGLE_MEDIA_TYPE_VIDEO)
-            wocky_node_set_attribute (desc_node, "media", "video");
+            media_attr = "video";
         else
             g_assert_not_reached ();
         break;
     }
 
-  desc_node->ns = g_quark_from_string (xmlns);
+  desc_node = wocky_node_add_child_ns (content_node, "description", xmlns);
+
+  if (media_attr != NULL)
+    wocky_node_set_attribute (desc_node, "media", media_attr);
 
   return desc_node;
 }

@@ -434,7 +434,7 @@ transmit_candidates (GabbleJingleTransportGoogle *transport,
           g_assert_not_reached ();
       }
 
-      cnode = wocky_node_add_child_with_content (trans_node, "candidate", NULL);
+      cnode = wocky_node_add_child (trans_node, "candidate");
       wocky_node_set_attributes (cnode,
           "address", c->address,
           "port", port_str,

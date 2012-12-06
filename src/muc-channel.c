@@ -3312,7 +3312,7 @@ gabble_muc_channel_send_invite (GabbleMucChannel *self,
 
   if (continue_)
     {
-      wocky_node_add_child_with_content (invite_node, "continue", NULL);
+      wocky_node_add_child (invite_node, "continue");
     }
 
   DEBUG ("sending MUC invitation for room %s to contact %s with reason "

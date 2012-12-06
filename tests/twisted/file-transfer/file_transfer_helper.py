@@ -5,7 +5,7 @@ import time
 import datetime
 import os
 
-from servicetest import EventPattern, assertEquals, call_async
+from servicetest import EventPattern, assertEquals, assertSameSets, call_async
 from gabbletest import exec_test, sync_stream, make_result_iq
 import ns
 from bytestream import create_from_si_offer, announce_socks5_proxy
@@ -218,7 +218,10 @@ class ReceiveFileTest(FileTransferTest):
         # check channel properties
         # org.freedesktop.Telepathy.Channel D-Bus properties
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER
-        assert props[cs.INTERFACES] == []
+        assertSameSets(
+            [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
+              cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE',
+            ], props[cs.INTERFACES])
         assert props[cs.TARGET_HANDLE] == self.handle
         assert props[cs.TARGET_ID] == self.contact_name
         assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
@@ -408,7 +411,10 @@ class SendFileTest(FileTransferTest):
 
         # org.freedesktop.Telepathy.Channel D-Bus properties
         assertEquals(cs.CHANNEL_TYPE_FILE_TRANSFER, props[cs.CHANNEL_TYPE])
-        assertEquals([], props[cs.INTERFACES])
+        assertSameSets(
+            [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
+              cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE',
+            ], props[cs.INTERFACES])
         assertEquals(self.handle, props[cs.TARGET_HANDLE])
         assertEquals(self.contact_name, props[cs.TARGET_ID])
         assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])

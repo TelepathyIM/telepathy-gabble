@@ -3,8 +3,8 @@ import dbus
 from twisted.words.xish import xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from servicetest import (assertEquals, EventPattern, TimeoutError)
-from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
+from servicetest import assertEquals, assertSameSets, EventPattern, TimeoutError
+from gabbletest import exec_test
 import constants as cs
 
 from caps_helper import compute_caps_hash, \
@@ -102,7 +102,10 @@ def test(q, bus, conn, stream):
                 assert props[cs.FT_SIZE] == size, props
 
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER, props
-        assert props[cs.INTERFACES] == [], props
+        assertSameSets(
+            [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
+              cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE',
+            ], props[cs.INTERFACES])
         assert props[cs.TARGET_HANDLE] == 2L, props
         assert props[cs.TARGET_ID] == contact.replace("/Resource", ""), props
         assert props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT, props

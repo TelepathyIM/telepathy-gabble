@@ -904,8 +904,7 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   NiceAgent *agent = nice_agent_new_reliable (g_main_context_default (),
       NICE_COMPATIBILITY_GOOGLE);
   guint stream_id = nice_agent_add_stream (agent, 1);
-  gchar *stun_server;
-  guint stun_port;
+  GList *stun_servers;
   GoogleRelaySessionData *relay_data = NULL;
 
   DEBUG ("New Share channel %s was created and linked to id %d", name,
@@ -945,15 +944,18 @@ content_new_share_channel_cb (GabbleJingleContent *content, const gchar *name,
   nice_agent_attach_recv (agent, stream_id, share_channel->component_id,
       g_main_context_default (), nice_data_received_cb, self);
 
-  if (gabble_jingle_info_get_stun_server (
-          gabble_jingle_factory_get_jingle_info (self->priv->jingle_factory),
-          &stun_server, &stun_port))
+  stun_servers = gabble_jingle_info_get_stun_servers (
+      gabble_jingle_factory_get_jingle_info (self->priv->jingle_factory));
+  if (stun_servers != NULL)
     {
+      GabbleStunServer *stun_server = stun_servers->data;
+
       g_object_set (agent,
-          "stun-server", stun_server,
-          "stun-server-port", stun_port,
+          "stun-server", stun_server->address,
+          "stun-server-port", (guint) stun_server->port,
           NULL);
-      g_free (stun_server);
+
+      g_list_free (stun_servers);
     }
 
   relay_data = g_slice_new0 (GoogleRelaySessionData);

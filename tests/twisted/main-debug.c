@@ -104,6 +104,9 @@ main (int argc,
   test_resolver_add_A (TEST_RESOLVER (kludged),
       "stun.telepathy.im", "6.7.8.9");
 
+  test_resolver_add_SRV (TEST_RESOLVER (kludged),
+      "stun", "udp", "stunning.localhost", "resolves-to-5.4.3.2", 1);
+
 #ifdef ENABLE_VOIP
   gabble_jingle_info_set_test_mode ();
 #endif

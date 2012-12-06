@@ -4,6 +4,7 @@ and returns an error when Disconnect is called and there are
 incomplete requests.
 """
 
+from functools import partial
 from gabbletest import exec_test, disconnect_conn
 from servicetest import make_channel_proxy, call_async, sync_dbus, EventPattern
 import jingletest
@@ -66,10 +67,10 @@ def test(q, bus, conn, stream, channel_type):
             before_events[0].error
 
 if __name__ == '__main__':
-    exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, cs.CHANNEL_TYPE_STREAMED_MEDIA), timeout=10)
+    exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_STREAMED_MEDIA),
+        timeout=10)
     print "FIXME: leaks connection, everyone dies"
     raise SystemExit(77)
-    exec_test(lambda q, bus, conn, stream:
-        test(q, bus, conn, stream, cs.CHANNEL_TYPE_CALL), timeout=10)
+    exec_test(partial(test, channel_type=cs.CHANNEL_TYPE_CALL),
+        timeout=10)
 

@@ -130,6 +130,7 @@ class JabberAuthenticator(GabbleAuthenticator):
     def streamStarted(self, root=None):
         if root:
             self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
+            self.xmlstream.domain = root.getAttribute('to')
 
         self.xmlstream.sendHeader()
         self.xmlstream.addOnetimeObserver(
@@ -175,7 +176,7 @@ class JabberAuthenticator(GabbleAuthenticator):
         if self.resource is not None:
             assertEquals(self.resource, str(resource[0]))
 
-        self.bare_jid = '%s@localhost' % self.username
+        self.bare_jid = '%s@%s' % (self.username, self.xmlstream.domain)
         self.full_jid = '%s/%s' % (self.bare_jid, resource)
 
         result = IQ(self.xmlstream, "result")
@@ -188,9 +189,12 @@ class XmppAuthenticator(GabbleAuthenticator):
         GabbleAuthenticator.__init__(self, username, password, resource)
         self.authenticated = False
 
+        self._mechanisms = ['PLAIN']
+
     def streamInitialize(self, root):
         if root:
             self.xmlstream.sid = root.getAttribute('id')
+            self.xmlstream.domain = root.getAttribute('to')
 
         if self.xmlstream.sid is None:
             self.xmlstream.sid = '%x' % random.randint(1, sys.maxint)
@@ -212,7 +216,8 @@ class XmppAuthenticator(GabbleAuthenticator):
     def streamSASL(self):
         features = domish.Element((xmlstream.NS_STREAMS, 'features'))
         mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
-        mechanism = mechanisms.addElement('mechanism', content='PLAIN')
+        for mechanism in self._mechanisms:
+            mechanisms.addElement('mechanism', content=mechanism)
         self.xmlstream.send(features)
 
         self.xmlstream.addOnetimeObserver("/auth", self.auth)
@@ -245,7 +250,7 @@ class XmppAuthenticator(GabbleAuthenticator):
         result = IQ(self.xmlstream, "result")
         result["id"] = iq["id"]
         bind = result.addElement((ns.NS_XMPP_BIND, 'bind'))
-        self.bare_jid = '%s@localhost' % self.username
+        self.bare_jid = '%s@%s' % (self.username, self.xmlstream.domain)
         self.full_jid = '%s/%s' % (self.bare_jid, resource)
         jid = bind.addElement('jid', content=self.full_jid)
         self.xmlstream.send(result)
@@ -412,7 +417,7 @@ class BaseXmlStream(xmlstream.XmlStream):
         assert self.authenticator.bare_jid is not None
 
         self.addObserver(
-            "/iq[@to='localhost']/query[@xmlns='http://jabber.org/protocol/disco#info']",
+            "/iq[@to='%s']/query[@xmlns='http://jabber.org/protocol/disco#info']" % self.domain,
             self._cb_disco_iq)
         self.addObserver(
             "/iq[@to='%s']/query[@xmlns='http://jabber.org/protocol/disco#info']"

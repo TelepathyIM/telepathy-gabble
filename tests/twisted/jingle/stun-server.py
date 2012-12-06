@@ -2,16 +2,18 @@
 Test getting STUN server from Google jingleinfo
 """
 
+from functools import partial
 import dbus
 import socket
 
-from gabbletest import exec_test, make_result_iq, sync_stream, GoogleXmlStream
+from gabbletest import make_result_iq, GoogleXmlStream, elem_iq, elem
 from servicetest import (
     make_channel_proxy, EventPattern,
     assertEquals, assertLength, assertNotEquals, assertEquals
     )
-import jingletest
+from jingletest2 import test_all_dialects, JingleTest2
 import constants as cs
+import ns
 
 from config import CHANNEL_TYPE_CALL_ENABLED, GOOGLE_RELAY_ENABLED, VOIP_ENABLED
 
@@ -19,70 +21,71 @@ if not VOIP_ENABLED:
     print "NOTE: built with --disable-voip"
     raise SystemExit(77)
 
-def test_stun_server(stun_server_prop,
-        expected_stun_server=None, expected_stun_port=None):
-    if expected_stun_server == None:
-        # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.collabora.co.uk)
+def test_stun_server(stun_server_prop, expected_stun_servers=None):
+    if expected_stun_servers is None:
+        # If there is no stun server set, and it can't discover some from the
+        # network, then gabble should fallback on the default fallback stun
+        # server (stun.telepathy.im)
+        #
         # This test uses the test-resolver which is set to
-        # have 'stun.collabora.co.uk' resolve to '6.7.8.9'
-        expected_stun_server = '6.7.8.9'
-        expected_stun_port = 3478
+        # have 'stun.telepathy.im' resolve to '6.7.8.9'
+        expected_stun_servers=[('6.7.8.9', 3478)]
 
-    assertEquals ([(expected_stun_server, expected_stun_port)],
-        stun_server_prop)
+    assertEquals(expected_stun_servers, stun_server_prop)
 
-def init_test(q, conn, stream, google=False):
-    jt = jingletest.JingleTest(stream, 'test@localhost', 'foo@bar.com/Foo')
+def add_jingle_info(jingleinfo, stun_server, stun_port):
+    stun = jingleinfo.firstChildElement().addElement('stun')
+    server = stun.addElement('server')
+    server['host'] = stun_server
+    server['udp'] = stun_port
+    relay = jingleinfo.firstChildElement().addElement('relay')
+    relay.addElement('token', content='jingle all the way')
+
+def handle_jingle_info_query(q, stream, stun_server, stun_port):
+    # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
+    event = q.expect('stream-iq', query_ns=ns.GOOGLE_JINGLE_INFO,
+        to=stream.authenticator.bare_jid)
+    jingleinfo = make_result_iq(stream, event.stanza)
+    add_jingle_info(jingleinfo, stun_server, stun_port)
+    stream.send(jingleinfo)
+
+def push_jingle_info(q, stream, stun_server, stun_port):
+    iq = elem_iq(stream, 'set')(elem(ns.GOOGLE_JINGLE_INFO, 'query'))
+    add_jingle_info(iq, stun_server, stun_port)
+    stream.send(iq)
+    q.expect('stream-iq', iq_type='result', iq_id=iq['id'])
+
+def init_test(jp, q, conn, stream, google=False, google_push_replacements=None):
+    jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'foo@bar.com/Foo')
 
     # If we need to override remote caps, feats, codecs or caps,
     # this is a good time to do it
 
-    # Connecting
-    conn.Connect()
-
-    expected = [EventPattern('dbus-signal', signal='StatusChanged',
-                args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])]
-
     if google:
-        # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
-        expected.append(EventPattern('stream-iq', query_ns='google:jingleinfo',
-                to='test@localhost'))
+        handle_jingle_info_query(q, stream, 'resolves-to-1.2.3.4', '12345')
 
-    events = q.expect_many(*expected)
+        if google_push_replacements is not None:
+            # oh no! the server changed its mind!
+            server, port = google_push_replacements
+            push_jingle_info(q, stream, server, port)
+    else:
+        # We shouldn't be sending google:jingleinfo queries if the server
+        # doesn't support it.
+        q.forbid_events([
+            EventPattern('stream-iq', query_ns=ns.GOOGLE_JINGLE_INFO),
+            ])
 
-    if google:
-        event = events[-1]
-        jingleinfo = make_result_iq(stream, event.stanza)
-        stun = jingleinfo.firstChildElement().addElement('stun')
-        server = stun.addElement('server')
-        server['host'] = 'resolves-to-1.2.3.4'
-        server['udp'] = '12345'
-        relay = jingleinfo.firstChildElement().addElement('relay')
-        relay.addElement('token', content='jingle all the way')
-        stream.send(jingleinfo)
-
-    # We need remote end's presence for capabilities
-    jt.send_remote_presence()
-
-    # Gabble doesn't trust it, so makes a disco
-    event = q.expect('stream-iq', query_ns='http://jabber.org/protocol/disco#info',
-             to='foo@bar.com/Foo')
-
-    jt.send_remote_disco_reply(event.stanza)
-
-    # Force Gabble to process the caps before calling RequestChannel
-    sync_stream(q, stream)
+    jt.send_presence_and_caps()
 
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 
     return jt, remote_handle
 
-def test_streamed_media(q, bus, conn, stream,
-         expected_stun_server=None, expected_stun_port=None, google=False,
+def test_streamed_media(jp, q, bus, conn, stream,
+         expected_stun_servers=None, google=False, google_push_replacements=None,
          expected_relays=[]):
     # Initialize the test values
-    jt, remote_handle = init_test(q, conn, stream, google)
+    jt, remote_handle = init_test(jp, q, conn, stream, google, google_push_replacements)
 
     # Remote end calls us
     jt.incoming_call()
@@ -127,21 +130,7 @@ def test_streamed_media(q, bus, conn, stream,
     assert sh_props['NATTraversal'] == 'gtalk-p2p'
     assert sh_props['CreatedLocally'] == False
 
-    if expected_stun_server == None:
-        # If there is no stun server set then gabble should fallback on the
-        # default fallback stunserver (stun.telepathy.im)
-        # This test uses the test-resolver which is set to
-        # have 'stun.telepathy.im' resolve to '6.7.8.9'
-        expected_stun_server = '6.7.8.9'
-        expected_stun_port = 3478
-
-    if expected_stun_server is None:
-        assert sh_props['STUNServers'] == [], sh_props['STUNServers']
-    else:
-        assert sh_props['STUNServers'] == \
-            [(expected_stun_server, expected_stun_port)], \
-            sh_props['STUNServers']
-
+    test_stun_server(sh_props['STUNServers'], expected_stun_servers)
     assert sh_props['RelayInfo'] == expected_relays
 
     # consistency check, since we currently reimplement Get separately
@@ -187,10 +176,9 @@ def test_streamed_media(q, bus, conn, stream,
 
     assert tp_props['nat-traversal']['value'] == 'gtalk-p2p'
 
-    if expected_stun_server is not None:
+    if expected_stun_servers is not None:
+        expected_stun_server, expected_stun_port = expected_stun_servers[0]
         assert tp_props['stun-server']['value'] == expected_stun_server
-
-    if expected_stun_port is not None:
         assert tp_props['stun-port']['value'] == expected_stun_port
 
     if google:
@@ -200,17 +188,15 @@ def test_streamed_media(q, bus, conn, stream,
 
     q.expect_many(
             EventPattern('stream-iq',
-                predicate=lambda e: e.query is not None and
-                    e.query.name == 'jingle' and
-                    e.query['action'] == 'session-terminate'),
+                predicate=jp.action_predicate('session-terminate')),
             EventPattern('dbus-signal', signal='Closed'),
             )
 
-def test_call(q, bus, conn, stream,
-         expected_stun_server=None, expected_stun_port=None, google=False,
+def test_call(jp, q, bus, conn, stream,
+         expected_stun_servers=None, google=False, google_push_replacements=None,
          expected_relays=[]):
     # Initialize the test values
-    jt, remote_handle = init_test(q, conn, stream, google)
+    jt, remote_handle = init_test(jp, q, conn, stream, google, google_push_replacements)
 
     # Advertise that we can do new style calls
     conn.ContactCapabilities.UpdateCapabilities([
@@ -272,67 +258,76 @@ def test_call(q, bus, conn, stream,
         dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals(cs.CALL_STREAM_TRANSPORT_GTALK_P2P, stream_props['Transport'])
 
-    test_stun_server(stream_props['STUNServers'],
-            expected_stun_server, expected_stun_port)
+    test_stun_server(stream_props['STUNServers'], expected_stun_servers)
 
     assertEquals(expected_relays, stream_props['RelayInfo'])
     assertEquals(True, stream_props['HasServerInfo'])
 
 if __name__ == '__main__':
     # StreamedMedia tests
-    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-        google=False), do_connect=False)
-    exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-        google=False, expected_stun_server='5.4.3.2', expected_stun_port=54321),
+    test_all_dialects(partial(test_streamed_media,
+        google=False))
+    test_all_dialects(partial(test_streamed_media,
+        google=False, expected_stun_servers=[('5.4.3.2', 54321)]),
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-            'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+            'fallback-stun-port': dbus.UInt16(54321)})
+    test_all_dialects(partial(test_streamed_media, google=False,
+                expected_stun_servers=[('5.4.3.2', 1)]),
+        params={'account': 'test@stunning.localhost'})
 
     if GOOGLE_RELAY_ENABLED:
-        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-            google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
-            protocol=GoogleXmlStream, do_connect=False)
-        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-            google=True, expected_stun_server='5.4.3.2', expected_stun_port=54321),
+        test_all_dialects(partial(test_streamed_media,
+            google=True, expected_stun_servers=[('1.2.3.4', 12345)]),
+            protocol=GoogleXmlStream)
+        test_all_dialects(partial(test_streamed_media,
+            google=True, expected_stun_servers=[('5.4.3.2', 54321)]),
             protocol=GoogleXmlStream,
             params={'stun-server': 'resolves-to-5.4.3.2',
-                'stun-port': dbus.UInt16(54321)}, do_connect=False)
-        exec_test(lambda q, b, c, s: test_streamed_media(q, b, c, s,
-            google=True, expected_stun_server='1.2.3.4', expected_stun_port=12345),
+                'stun-port': dbus.UInt16(54321)})
+        test_all_dialects(partial(test_streamed_media,
+            google=True, expected_stun_servers=[('1.2.3.4', 12345)]),
             protocol=GoogleXmlStream,
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'fallback-stun-port': dbus.UInt16(54321)})
+        test_all_dialects(partial(test_streamed_media,
+            google=True, google_push_replacements=('resolves-to-5.4.3.2', '3838'),
+            expected_stun_servers=[('5.4.3.2', 3838)]),
+            protocol=GoogleXmlStream)
     else:
         print "NOTE: built with --disable-google-relay; omitting StreamedMedia tests with Google relay"
 
     # Call tests
     if CHANNEL_TYPE_CALL_ENABLED:
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-            google=False), do_connect=False)
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-            google=False, expected_stun_server='5.4.3.2',
-            expected_stun_port=54321),
+        test_all_dialects(partial(test_call,
+            google=False))
+        test_all_dialects(partial(test_call,
+            google=False, expected_stun_servers=[('5.4.3.2', 54321)]),
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'fallback-stun-port': dbus.UInt16(54321)})
+        test_all_dialects(partial(test_call,
+            google=False, expected_stun_servers=[('5.4.3.2', 1)]),
+            params={'account': 'test@stunning.localhost'})
     else:
         print "NOTE: built with --disable-channel-type-call; omitting Call tests"
 
     if CHANNEL_TYPE_CALL_ENABLED and GOOGLE_RELAY_ENABLED:
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-            google=True, expected_stun_server='1.2.3.4',
-            expected_stun_port=12345),
-            protocol=GoogleXmlStream, do_connect=False)
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-            google=True, expected_stun_server='5.4.3.2',
-            expected_stun_port=54321),
+        test_all_dialects(partial(test_call,
+            google=True, expected_stun_servers=[('1.2.3.4', 12345)]),
+            protocol=GoogleXmlStream)
+        test_all_dialects(partial(test_call,
+            google=True, expected_stun_servers=[('5.4.3.2', 54321)]),
             protocol=GoogleXmlStream,
             params={'stun-server': 'resolves-to-5.4.3.2',
-                'stun-port': dbus.UInt16(54321)}, do_connect=False)
-        exec_test(lambda q, b, c, s: test_call(q, b, c, s,
-            google=True, expected_stun_server='1.2.3.4',
-            expected_stun_port=12345),
+                'stun-port': dbus.UInt16(54321)})
+        test_all_dialects(partial(test_call,
+            google=True, expected_stun_servers=[('1.2.3.4', 12345)]),
             protocol=GoogleXmlStream,
             params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)}, do_connect=False)
+                'fallback-stun-port': dbus.UInt16(54321)})
+        test_all_dialects(partial(test_call,
+            google=True, google_push_replacements=('resolves-to-5.4.3.2', '3838'),
+            expected_stun_servers=[('5.4.3.2', 3838)]),
+            protocol=GoogleXmlStream)
     else:
         print "NOTE: built with --disable-channel-type-call or with --disable-google-relay; omitting Call tests with Google relay"
 

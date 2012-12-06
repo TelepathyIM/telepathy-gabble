@@ -1,5 +1,4 @@
 # hey, Python: encoding: utf-8
-from twisted.words.protocols.jabber.xmlstream import NS_STREAMS
 from gabbletest import XmppAuthenticator
 from base64 import b64decode, b64encode
 from twisted.words.xish import domish
@@ -19,31 +18,11 @@ class SaslEventAuthenticator(XmppAuthenticator):
         XmppAuthenticator.__init__(self, jid, '')
         self._mechanisms = mechanisms
 
-    def streamStarted(self, root=None):
-        if root:
-            self.xmlstream.sid = root.getAttribute('id')
+    def streamSASL(self):
+        XmppAuthenticator.streamSASL(self)
 
-        self.xmlstream.sendHeader()
-
-        if self.authenticated:
-            # Initiator authenticated itself, and has started a new stream.
-
-            features = domish.Element((NS_STREAMS, 'features'))
-            bind = features.addElement((ns.NS_XMPP_BIND, 'bind'))
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver(
-                "/iq/bind[@xmlns='%s']" % ns.NS_XMPP_BIND, self.bindIq)
-        else:
-            features = domish.Element((NS_STREAMS, 'features'))
-            mechanisms = features.addElement((ns.NS_XMPP_SASL, 'mechanisms'))
-            for mechanism in self._mechanisms:
-                mechanisms.addElement('mechanism', content=mechanism)
-            self.xmlstream.send(features)
-
-            self.xmlstream.addOnetimeObserver("/auth", self._auth)
-            self.xmlstream.addObserver("/response", self._response)
-            self.xmlstream.addObserver("/abort", self._abort)
+        self.xmlstream.addObserver("/response", self._response)
+        self.xmlstream.addObserver("/abort", self._abort)
 
     def failure(self, fail_str):
         reply = domish.Element((ns.NS_XMPP_SASL, 'failure'))
@@ -72,7 +51,7 @@ class SaslEventAuthenticator(XmppAuthenticator):
         reply.addContent(b64encode(data))
         self.xmlstream.send(reply)
 
-    def _auth(self, auth):
+    def auth(self, auth):
         # Special case in XMPP: '=' means a zero-byte blob, whereas an empty
         # or self-terminating XML element means no initial response.
         # (RFC 3920 §6.2 (3))

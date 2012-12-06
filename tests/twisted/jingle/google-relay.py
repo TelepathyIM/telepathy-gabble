@@ -108,7 +108,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None, use_call=False):
             ])
 
     # See: http://code.google.com/apis/talk/jep_extensions/jingleinfo.html
-    ji_event = q.expect('stream-iq', query_ns='google:jingleinfo',
+    ji_event = q.expect('stream-iq', query_ns=ns.GOOGLE_JINGLE_INFO,
                 to='test@localhost')
 
     # Regression test for a bug where Gabble would crash if it disconnected

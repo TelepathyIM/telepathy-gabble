@@ -268,8 +268,7 @@ gabble_media_stream_constructor (GType type, guint n_props,
   GabbleMediaStream *stream;
   GabbleMediaStreamPrivate *priv;
   GabbleJingleFactory *jf;
-  gchar *stun_server;
-  guint stun_port;
+  GList *stun_servers;
 
   /* call base class constructor */
   obj = G_OBJECT_CLASS (gabble_media_stream_parent_class)->
@@ -283,21 +282,19 @@ gabble_media_stream_constructor (GType type, guint n_props,
    * point in waiting for them - either they've already been resolved, or
    * we're too late to use them for this stream */
   jf = gabble_jingle_session_get_factory (priv->content->session);
-
-  /* maybe one day we'll support multiple STUN servers */
-  if (gabble_jingle_info_get_stun_server (
-        gabble_jingle_factory_get_jingle_info (jf),
-        &stun_server, &stun_port))
+  stun_servers = gabble_jingle_info_get_stun_servers (
+      gabble_jingle_factory_get_jingle_info (jf));
+  while (stun_servers != NULL)
     {
-      GValueArray *va = g_value_array_new (2);
+      GabbleStunServer *stun_server = stun_servers->data;
+      GValueArray *va = tp_value_array_build (2,
+          G_TYPE_STRING, stun_server->address,
+          G_TYPE_UINT, (guint) stun_server->port,
+          G_TYPE_INVALID);
 
-      g_value_array_append (va, NULL);
-      g_value_array_append (va, NULL);
-      g_value_init (va->values + 0, G_TYPE_STRING);
-      g_value_init (va->values + 1, G_TYPE_UINT);
-      g_value_take_string (va->values + 0, stun_server);
-      g_value_set_uint (va->values + 1, stun_port);
       g_ptr_array_add (priv->stun_servers, va);
+
+      stun_servers = g_list_delete_link (stun_servers, stun_servers);
     }
 
   /* go for the bus */

@@ -3,8 +3,8 @@ import dbus
 from twisted.words.xish import xpath
 from twisted.words.protocols.jabber.client import IQ
 
-from servicetest import assertEquals, assertSameSets, EventPattern, TimeoutError
-from gabbletest import exec_test
+from servicetest import assertEquals, assertSameSets, EventPattern
+from gabbletest import exec_test, sync_stream
 import constants as cs
 
 from caps_helper import compute_caps_hash, \
@@ -135,30 +135,31 @@ def test(q, bus, conn, stream):
     session_node = xpath.queryForNodes('/iq/session', event.stanza)[0]
     assert session_node.attributes['type'] == 'transport-accept'
 
-    # Lower the timeout because we will do a q.expect where we expect it to
-    # timeout since we check for the *not* reception of the terminate
-    q.timeout = 2
+    # Close all but one of the channels, and make sure Gabble doesn't cancel
+    # the multi-FT yet.
+    terminate_pattern = EventPattern('stream-iq', to=contact, iq_type='set',
+        query_name='session',
+        predicate=lambda event: event.query['type'] == 'terminate')
 
-    # Cancel all the channels and make sure gabble cancels the multiFT only
-    # once the last channel has been closed
-    last_path, props = channels[-1]
-    for i in range(len(channels)):
-        path, props = channels[i]
+    q.forbid_events([terminate_pattern])
+
+    for path, props in channels[:-1]:
         ft_chan = bus.get_object(conn.object.bus_name, path)
         channel = dbus.Interface(ft_chan, cs.CHANNEL)
         channel.Close()
-        try:
-            event = q.expect('stream-iq', to=contact,
-                             iq_type='set', query_name='session')
-            # If the iq is received, it must be for the last channel closed
-            assert path == last_path, event
-            # Make sure it's a terminate message
-            stanza = event.stanza
-            session_node = xpath.queryForNodes('/iq/session', event.stanza)[0]
-            assert session_node.attributes['type'] == 'terminate'
-        except TimeoutError, e:
-            # Timeout only for the non last channel getting closed
-            assert path != last_path
+        q.expect('dbus-signal', signal='Closed', path=path)
+
+    sync_stream(q, stream)
+    q.unforbid_all()
+
+    # Now close the final channel, and make sure Gabble terminates the session.
+    last_path, props = channels[-1]
+
+    ft_chan = bus.get_object(conn.object.bus_name, last_path)
+    channel = dbus.Interface(ft_chan, cs.CHANNEL)
+    channel.Close()
+
+    q.expect_many(terminate_pattern)
 
 if __name__ == '__main__':
     exec_test(test)

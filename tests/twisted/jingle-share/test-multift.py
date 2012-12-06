@@ -1,21 +1,12 @@
 import dbus
 
-from twisted.words.xish import xpath
 from twisted.words.protocols.jabber.client import IQ
 
 from servicetest import assertEquals, assertSameSets, EventPattern
 from gabbletest import exec_test, sync_stream
 import constants as cs
 
-from caps_helper import compute_caps_hash, \
-    text_fixed_properties, text_allowed_properties, \
-    stream_tube_fixed_properties, stream_tube_allowed_properties, \
-    dbus_tube_fixed_properties, dbus_tube_allowed_properties, \
-    ft_fixed_properties, ft_allowed_properties
-
 from jingleshareutils import test_ft_caps_from_contact
-
-import ns
 
 from config import JINGLE_FILE_TRANSFER_ENABLED
 
@@ -131,8 +122,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('stream-iq', to=contact,
                      iq_type='set', query_name='session')
-    stanza = event.stanza
-    session_node = xpath.queryForNodes('/iq/session', event.stanza)[0]
+    session_node = event.query
     assert session_node.attributes['type'] == 'transport-accept'
 
     # Close all but one of the channels, and make sure Gabble doesn't cancel

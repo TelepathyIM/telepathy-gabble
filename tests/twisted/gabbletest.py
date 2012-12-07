@@ -555,11 +555,19 @@ def disconnect_conn(q, conn, stream, expected_before=[], expected_after=[]):
 
     return before_events[:-2], after_events[:-1]
 
+def element_repr(element):
+    """__repr__ cannot safely return non-ASCII: see
+    <http://bugs.python.org/issue5876>. So we print non-ASCII characters as
+    \uXXXX escapes in debug output
+
+    """
+    return element.toXml().encode('unicode-escape')
+
 def exec_test_deferred(fun, params, protocol=None, timeout=None,
                         authenticator=None, num_instances=1,
                         do_connect=True):
     # hack to ease debugging
-    domish.Element.__repr__ = domish.Element.toXml
+    domish.Element.__repr__ = element_repr
     colourer = None
 
     if sys.stdout.isatty() or 'CHECK_FORCE_COLOR' in os.environ:

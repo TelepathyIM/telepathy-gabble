@@ -53,6 +53,7 @@ struct _GabbleJingleShareClass {
 };
 
 typedef struct _GabbleJingleSharePrivate GabbleJingleSharePrivate;
+typedef struct _GabbleJingleShare GabbleJingleShare;
 
 struct _GabbleJingleShare {
     WockyJingleContent parent;

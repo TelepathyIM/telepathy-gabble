@@ -27,7 +27,6 @@ typedef struct _WockyJingleTransportGoogle WockyJingleTransportGoogle;
 typedef struct _WockyJingleTransportRawUdp WockyJingleTransportRawUdp;
 typedef struct _WockyJingleTransportIceUdp WockyJingleTransportIceUdp;
 typedef struct _WockyJingleMediaRtp WockyJingleMediaRtp;
-typedef struct _GabbleJingleShare GabbleJingleShare;
 typedef struct _WockyJingleCandidate WockyJingleCandidate;
 
 typedef enum { /*< skip >*/

@@ -34,6 +34,7 @@
 #include "conn-presence.h"
 #include "jingle-factory.h"
 #include "jingle-session.h"
+#include "jingle-share.h"
 #include "presence-cache.h"
 
 struct _GabbleJingleMintPrivate {
@@ -259,6 +260,8 @@ connection_porter_available_cb (
 
   g_assert (priv->factory == NULL);
   priv->factory = wocky_jingle_factory_new (conn->session);
+
+  jingle_share_register (priv->factory);
 
   tp_g_signal_connect_object (priv->factory, "new-session",
       (GCallback) factory_new_session_cb, self, 0);

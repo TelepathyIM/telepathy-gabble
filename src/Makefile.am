@@ -157,34 +157,12 @@ libgabble_convenience_la_SOURCES += \
     call-member-content.c \
     call-stream.h \
     call-stream.c \
-    google-relay.c \
-    google-relay.h \
-    jingle-content.h \
-    jingle-content.c \
-    jingle-factory.h \
-    jingle-factory.c \
-    jingle-info-internal.h \
-    jingle-info.c \
-    jingle-info.h \
     jingle-share.h \
     jingle-share.c \
-    jingle-media-rtp.h \
-    jingle-media-rtp.c \
     jingle-mint.h \
     jingle-mint.c \
-    jingle-session.h \
-    jingle-session.c \
     jingle-tp-util.h \
     jingle-tp-util.c \
-    jingle-transport-google.h \
-    jingle-transport-google.c \
-    jingle-transport-rawudp.h \
-    jingle-transport-rawudp.c \
-    jingle-transport-iceudp.h \
-    jingle-transport-iceudp.c \
-    jingle-transport-iface.h \
-    jingle-transport-iface.c \
-    jingle-types.h \
     media-channel.h \
     media-channel-internal.h \
     media-channel.c \
@@ -203,8 +181,6 @@ endif
 
 enumtype_sources = \
     $(top_srcdir)/src/connection.h \
-    $(top_srcdir)/src/jingle-types.h \
-    $(top_srcdir)/src/jingle-info-internal.h \
     $(top_srcdir)/src/room-config.h \
     $(top_srcdir)/src/presence.h
 

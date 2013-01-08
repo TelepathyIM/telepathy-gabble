@@ -92,7 +92,6 @@ struct _GabbleMediaStreamPrivate
 {
   WockyJingleContent *content;
 
-  GabbleMediaSessionMode mode;
   TpDBusDaemon *dbus_daemon;
   gchar *object_path;
   guint id;

@@ -22,9 +22,9 @@
 #define __GABBLE_CALL_MUC_CHANNEL_H__
 
 #include <glib-object.h>
+#include <wocky/wocky.h>
 
 #include "base-call-channel.h"
-#include "jingle-session.h"
 
 G_BEGIN_DECLS
 

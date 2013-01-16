@@ -29,8 +29,6 @@
 #define DEBUG_FLAG GABBLE_DEBUG_SHARE
 
 #include "debug.h"
-#include "jingle-factory.h"
-#include "jingle-session.h"
 #include "jingle-share.h"
 #include "namespaces.h"
 #include "util.h"

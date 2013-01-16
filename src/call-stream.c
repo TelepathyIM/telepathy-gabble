@@ -28,8 +28,6 @@
 
 #include "call-stream.h"
 #include "connection.h"
-#include "jingle-session.h"
-#include "jingle-content.h"
 #include "jingle-tp-util.h"
 #include "util.h"
 

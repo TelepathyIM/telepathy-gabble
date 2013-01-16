@@ -28,13 +28,13 @@
 
 #include <telepathy-glib/telepathy-glib.h>
 #include <telepathy-glib/telepathy-glib-dbus.h>
+#include <wocky/wocky.h>
 
 #include "util.h"
 #include "call-channel.h"
 #include "call-content.h"
 
 #include "connection.h"
-#include "jingle-session.h"
 #include "jingle-tp-util.h"
 #include "presence-cache.h"
 

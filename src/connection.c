@@ -77,7 +77,6 @@
 
 #ifdef ENABLE_VOIP
 #include "media-channel.h"
-#include "jingle-factory.h"
 #include "media-factory.h"
 #endif
 

@@ -21,9 +21,7 @@
 #define __JINGLE_SHARE_H__
 
 #include <glib-object.h>
-
-#include "jingle-content.h"
-#include "jingle-types.h"
+#include <wocky/wocky.h>
 
 G_BEGIN_DECLS
 

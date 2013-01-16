@@ -31,7 +31,6 @@
 #include <glib/gstdio.h>
 
 #ifdef ENABLE_JINGLE_FILE_TRANSFER
-#include "jingle-session.h"
 #include "jingle-share.h"
 #endif
 #include "gabble/caps-channel-manager.h"

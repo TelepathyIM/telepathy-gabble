@@ -26,9 +26,6 @@
 #include <wocky/wocky.h>
 
 #include "bytestream-iface.h"
-#ifdef ENABLE_VOIP
-#include "jingle-types.h"
-#endif
 #include "types.h"
 
 G_BEGIN_DECLS

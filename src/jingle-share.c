@@ -34,9 +34,6 @@
 
 #include "connection.h"
 #include "debug.h"
-#include "jingle-content.h"
-#include "jingle-factory.h"
-#include "jingle-session.h"
 #include "namespaces.h"
 #include "util.h"
 

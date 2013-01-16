@@ -22,10 +22,9 @@
 #define __CALL_MEMBER_CONTENT_H__
 
 #include <glib-object.h>
+#include <wocky/wocky.h>
 
 #include "types.h"
-#include "jingle-content.h"
-#include "jingle-media-rtp.h"
 
 G_BEGIN_DECLS
 

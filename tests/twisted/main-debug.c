@@ -31,10 +31,6 @@
 #include "gabble.h"
 #include "connection.h"
 #include "vcard-manager.h"
-#ifdef ENABLE_VOIP
-#include "jingle-factory.h"
-#include "jingle-session.h"
-#endif
 #ifdef ENABLE_JINGLE_FILE_TRANSFER
 #include "gtalk-file-collection.h"
 #endif

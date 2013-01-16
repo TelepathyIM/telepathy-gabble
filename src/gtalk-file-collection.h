@@ -21,7 +21,7 @@
 #define __GTALK_FILE_COLLECTION_H__
 
 #include <glib-object.h>
-#include "jingle-session.h"
+#include <wocky/wocky.h>
 #include "connection.h"
 
 typedef struct _GTalkFileCollection GTalkFileCollection;

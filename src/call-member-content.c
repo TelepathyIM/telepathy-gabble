@@ -25,7 +25,6 @@
 
 #include "call-member.h"
 #include "call-member-content.h"
-#include "jingle-media-rtp.h"
 #include "util.h"
 #include "namespaces.h"
 

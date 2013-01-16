@@ -27,10 +27,9 @@
 #include <glib.h>
 
 #include <telepathy-glib/telepathy-glib.h>
+#include <wocky/wocky.h>
 
 #include "media-stream.h"
-#include "jingle-session.h"
-#include "jingle-media-rtp.h"
 
 G_BEGIN_DECLS
 

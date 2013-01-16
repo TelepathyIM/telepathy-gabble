@@ -28,11 +28,6 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <wocky/wocky.h>
 
-#ifdef ENABLE_VOIP
-#include "jingle-factory.h"
-#include "jingle-content.h"
-#endif
-
 #include "types.h"
 
 /* Guarantees that the resulting hash is in lower-case */

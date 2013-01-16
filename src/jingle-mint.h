@@ -23,8 +23,7 @@
 #include <glib-object.h>
 #include "types.h"
 
-#include "jingle-info.h"
-#include "jingle-types.h"
+#include <wocky/wocky.h>
 
 typedef struct _GabbleJingleMint GabbleJingleMint;
 typedef struct _GabbleJingleMintClass GabbleJingleMintClass;

@@ -23,8 +23,7 @@
 
 #include <glib-object.h>
 #include <telepathy-glib/telepathy-glib.h>
-
-#include "jingle-types.h"
+#include <wocky/wocky.h>
 
 G_BEGIN_DECLS
 

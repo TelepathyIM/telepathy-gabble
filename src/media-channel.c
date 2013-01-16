@@ -29,14 +29,12 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <telepathy-glib/telepathy-glib-dbus.h>
 
+#include <wocky/wocky.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "connection.h"
 #include "debug.h"
-#include "jingle-content.h"
-#include "jingle-factory.h"
-#include "jingle-media-rtp.h"
-#include "jingle-session.h"
 #include "jingle-tp-util.h"
 #include "media-factory.h"
 #include "media-stream.h"

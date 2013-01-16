@@ -24,8 +24,8 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/telepathy-glib.h>
+#include <wocky/wocky.h>
 
-#include "jingle-content.h"
 #include "call-member-content.h"
 
 G_BEGIN_DECLS

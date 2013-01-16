@@ -32,8 +32,6 @@
 
 #include "connection.h"
 #include "conn-presence.h"
-#include "jingle-factory.h"
-#include "jingle-session.h"
 #include "jingle-share.h"
 #include "presence-cache.h"
 

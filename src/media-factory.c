@@ -29,14 +29,13 @@
 #include <telepathy-glib/telepathy-glib.h>
 #include <telepathy-glib/telepathy-glib-dbus.h>
 
+#include <wocky/wocky.h>
+
 #define DEBUG_FLAG GABBLE_DEBUG_MEDIA
 
 #include "gabble/caps-channel-manager.h"
 #include "connection.h"
 #include "debug.h"
-#include "jingle-factory.h"
-#include "jingle-media-rtp.h"
-#include "jingle-session.h"
 
 #include "call-channel.h"
 #include "media-channel.h"

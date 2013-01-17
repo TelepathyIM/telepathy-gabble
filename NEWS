@@ -3,6 +3,12 @@ telepathy-gabble 0.17.3 (UNRELEASED)
 
 :-O
 
+Enhancements:
+
+• fd.o#58198: the Jingle protocol code now lives in Wocky. This should make no
+  functional difference to Gabble. (wjt)
+
+
 telepathy-gabble 0.17.2 (2012-12-07)
 ====================================
 

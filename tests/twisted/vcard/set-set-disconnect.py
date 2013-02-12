@@ -4,7 +4,7 @@ Regression test for crash when disconnecting in the middle of a set.
 """
 
 from servicetest import EventPattern, call_async, sync_dbus
-from gabbletest import exec_test, acknowledge_iq, expect_and_handle_get_vcard, sync_stream
+from gabbletest import exec_test, acknowledge_iq, expect_and_handle_get_vcard, sync_stream, disconnect_conn
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -18,9 +18,9 @@ def test(q, bus, conn, stream):
         'stream-iq', iq_type='set', query_ns='vcard-temp', query_name='vCard')
     call_async(
         q, conn.Avatars, 'SetAvatar', 'LeChuck.brush', 'image/x-ghost-pirate')
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged',
-        args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED]),
+
+    disconnect_conn(q, conn, stream)
+
     q.expect('dbus-error', method='SetAvatar', name=cs.NOT_AVAILABLE)
     q.expect('dbus-error', method='SetAvatar', name=cs.NOT_AVAILABLE)
     sync_dbus(bus, q, conn)

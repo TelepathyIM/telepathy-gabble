@@ -2,7 +2,7 @@
 Test closing the muc channel while a muji request is in flight
 """
 
-from gabbletest import exec_test
+from gabbletest import exec_test, disconnect_conn
 from servicetest import call_async
 
 import constants as cs
@@ -25,7 +25,7 @@ def run_cancel_test(q, bus, conn, stream):
 
     q.expect('stream-presence', to = muc + "/test")
 
-    conn.Disconnect()
+    disconnect_conn(q, conn, stream)
 
 if __name__ == '__main__':
     exec_test (run_cancel_test)

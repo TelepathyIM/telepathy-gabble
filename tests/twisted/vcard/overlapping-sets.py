@@ -8,7 +8,7 @@ from servicetest import (EventPattern, call_async, sync_dbus, assertEquals,
         assertLength)
 from gabbletest import (
     acknowledge_iq, exec_test, expect_and_handle_get_vcard, make_result_iq,
-    sync_stream)
+    sync_stream, disconnect_conn)
 import ns
 
 def test(q, bus, conn, stream):
@@ -129,8 +129,7 @@ def test(q, bus, conn, stream):
 
     # Now Gabble gets disconnected.
     sync_stream(q, stream)
-    conn.Disconnect()
-    q.expect('dbus-signal', signal='StatusChanged', args=[2, 1])
+    disconnect_conn(q, conn, stream)
 
 if __name__ == '__main__':
     exec_test(test)

@@ -339,7 +339,7 @@ static void handle_errmsg (GObject *source,
 static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
     TpHandleType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *subject,
-    WockyStanza *msg);
+    WockyStanza *msg, const GError *error);
 static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
     TpChannelTextMessageType msg_type, TpHandleType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *id, const gchar *text,
@@ -2836,7 +2836,7 @@ handle_message (GObject *source,
 
   if (subject != NULL)
     _gabble_muc_channel_handle_subject (gmuc, handle_type, from,
-        datetime, subject, stanza);
+        datetime, subject, stanza, NULL);
 }
 
 static void
@@ -2847,7 +2847,7 @@ handle_errmsg (GObject *source,
     GDateTime *datetime,
     WockyMucMember *who,
     const gchar *text,
-    WockyXmppError error,
+    WockyXmppError error_code,
     WockyXmppErrorType etype,
     gpointer data)
 {
@@ -2862,6 +2862,7 @@ handle_errmsg (GObject *source,
   TpHandleType handle_type;
   TpHandle from = 0;
   const gchar *subject;
+  GError *error = NULL;
 
   if (from_member)
     {
@@ -2883,12 +2884,18 @@ handle_errmsg (GObject *source,
       from = tp_base_channel_get_target_handle (base);
     }
 
-  tp_err = gabble_tp_send_error_from_wocky_xmpp_error (error);
+  tp_err = gabble_tp_send_error_from_wocky_xmpp_error (error_code);
 
   if (etype == WOCKY_XMPP_ERROR_TYPE_WAIT)
     ds = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
   else
     ds = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
+
+  /* FIXME: this is also stupid. Wocky should give us the whole GError, or
+   * nothing.
+   */
+  if (!wocky_stanza_extract_errors (stanza, NULL, &error, NULL, NULL))
+    g_return_if_reached();
 
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
@@ -2908,7 +2915,9 @@ handle_errmsg (GObject *source,
       (priv->set_subject_stanza_id != NULL &&
        !tp_strdiff (xmpp_id, priv->set_subject_stanza_id)))
     _gabble_muc_channel_handle_subject (gmuc,
-        handle_type, from, datetime, subject, stanza);
+        handle_type, from, datetime, subject, stanza, error);
+
+  g_clear_error (&error);
 }
 
 /* ************************************************************************* */
@@ -2921,11 +2930,11 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
                                     TpHandle sender,
                                     GDateTime *datetime,
                                     const gchar *subject,
-                                    WockyStanza *msg)
+                                    WockyStanza *msg,
+                                    const GError *error)
 {
   GabbleMucChannelPrivate *priv;
   const gchar *actor;
-  GError *error = NULL;
   gint64 timestamp = datetime != NULL ?
     g_date_time_to_unix (datetime) : G_MAXINT64;
 
@@ -2933,7 +2942,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
   priv = chan->priv;
 
-  if (wocky_stanza_extract_errors (msg, NULL, &error, NULL, NULL))
+  if (error != NULL)
     {
       if (priv->set_subject_context != NULL)
         {
@@ -2950,7 +2959,6 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
           room_properties_update (chan);
         }
 
-      g_clear_error (&error);
       return;
     }
 

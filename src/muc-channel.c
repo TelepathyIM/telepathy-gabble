@@ -3099,9 +3099,21 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
       if (id != NULL)
         tp_message_set_string (delivery_report, 0, "delivery-token", id);
 
-      if (is_error)
-        tp_message_set_uint32 (delivery_report, 0, "delivery-error",
-            gabble_tp_send_error_from_wocky_xmpp_error (send_error->code));
+      if (send_error != NULL)
+        {
+          tp_message_set_uint32 (delivery_report, 0, "delivery-error",
+              gabble_tp_send_error_from_wocky_xmpp_error (send_error->code));
+
+          if (!tp_str_empty (send_error->message))
+            {
+              guint body_part_number = tp_message_append_part (delivery_report);
+
+              tp_message_set_string (delivery_report, body_part_number,
+                  "content-type", "text/plain");
+              tp_message_set_string (delivery_report, body_part_number,
+                  "content", send_error->message);
+            }
+        }
 
       /* We do not set a message-sender on the report: the intended recipient
        * of the original message was the MUC, so the spec says we should omit

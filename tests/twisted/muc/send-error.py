@@ -26,6 +26,16 @@ def test(q, bus, conn, stream):
         delivery_status=cs.DELIVERY_STATUS_PERMANENTLY_FAILED,
         send_error_value=cs.SendError.PERMISSION_DENIED)
 
+    # This time, we get rate-limited.
+    # <https://bugs.freedesktop.org/show_bug.cgi?id=43166>
+    send_message_and_expect_error(q, stream,
+        text_chan, test_handle, bob_handle,
+        "faster faster",
+        '500', 'wait', 'resource-constraint',
+        delivery_status=cs.DELIVERY_STATUS_TEMPORARILY_FAILED,
+        # Yuck this isn't a very good name is it?
+        send_error_value=cs.SendError.TOO_LONG)
+
     # How about an error message in the reply? This is from Prosody. See
     # https://bugs.freedesktop.org/show_bug.cgi?id=43166#c9
     send_message_and_expect_error(q, stream,

@@ -463,6 +463,20 @@ MT_NOTICE = 2
 MT_AUTO_REPLY = 3
 MT_DELIVERY_REPORT = 4
 
+class MessageFlag(object):
+    TRUNCATED = 1
+    NON_TEXT_CONTENT = 2
+    SCROLLBACK = 4
+    RESCUED = 8
+
+class SendError(object):
+    UNKNOWN = 0
+    OFFLINE = 1
+    INVALID_CONTACT = 2
+    PERMISSION_DENIED = 3
+    TOO_LONG = 4
+    NOT_IMPLEMENTED = 5
+
 PROTOCOL = 'org.freedesktop.Telepathy.Protocol'
 PROTOCOL_IFACE_PRESENCES = PROTOCOL + '.Interface.Presence'
 PROTOCOL_IFACE_ADDRESSING = PROTOCOL + '.Interface.Addressing'

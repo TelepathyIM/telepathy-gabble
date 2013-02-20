@@ -2,6 +2,7 @@
 Test incoming error messages in MUC channels.
 """
 
+import warnings
 import dbus
 
 from gabbletest import exec_test
@@ -22,14 +23,33 @@ def test(q, bus, conn, stream):
         text_chan, test_handle, bob_handle,
         u"hi r ther ne warez n this chanel?",
         '401', 'auth', 'not-authorized',
-        cs.DELIVERY_STATUS_PERMANENTLY_FAILED,
-        cs.SendError.PERMISSION_DENIED)
+        delivery_status=cs.DELIVERY_STATUS_PERMANENTLY_FAILED,
+        send_error_value=cs.SendError.PERMISSION_DENIED)
+
+    # How about an error message in the reply? This is from Prosody. See
+    # https://bugs.freedesktop.org/show_bug.cgi?id=43166#c9
+    send_message_and_expect_error(q, stream,
+        text_chan, test_handle, bob_handle,
+        content=u"fair enough",
+        code=None,
+        type_='wait',
+        element='policy-violation',
+        error_message='The room is currently overactive, please try again later',
+        delivery_status=cs.DELIVERY_STATUS_TEMPORARILY_FAILED,
+        # Maybe we should expand the SendError codes some day, because this one
+        # is l-a-m-e.
+        send_error_value=cs.SendError.PERMISSION_DENIED)
+
 
 def send_message_and_expect_error(q, stream,
                                   text_chan, test_handle, bob_handle,
                                   content,
-                                  code, type_, element,
-                                  delivery_status, send_error_value):
+                                  code=None,
+                                  type_=None,
+                                  element=None,
+                                  error_message=None,
+                                  delivery_status=None,
+                                  send_error_value=None):
     greeting = [
         dbus.Dictionary({ }, signature='sv'),
         { 'content-type': 'text/plain',
@@ -51,9 +71,14 @@ def send_message_and_expect_error(q, stream,
     elem['to'] = 'chat@conf.localhost/test'
     elem['type'] = 'error'
     error = elem.addElement('error')
-    error['code'] = code
-    error['type'] = type_
-    error.addElement((ns.STANZA, element))
+    if code is not None:
+        error['code'] = code
+    if type_ is not None:
+        error['type'] = type_
+    if element is not None:
+        error.addElement((ns.STANZA, element))
+    if error_message is not None:
+        error.addElement((ns.STANZA, 'text')).addContent(error_message)
 
     stream.send(elem)
 
@@ -74,15 +99,30 @@ def send_message_and_expect_error(q, stream,
 
     # The Text.Received signal should be a "you're not tall enough" stub
     id, timestamp, sender, type, flags, text = received.args
-    assertEquals(
-        (0, cs.MT_DELIVERY_REPORT, cs.MessageFlag.NON_TEXT_CONTENT, ''),
-        (sender, type, flags, text))
+
+    assertEquals(0, sender)
+    assertEquals(type, cs.MT_DELIVERY_REPORT)
+
+    if flags == 0:
+        warnings.warn("ignoring tp-glib bug #61254")
+    else:
+        assertEquals(cs.MessageFlag.NON_TEXT_CONTENT, flags)
+
+    if error_message is None:
+        assertEquals('', text)
+    else:
+        assertEquals(error_message, text)
 
     # Check that the Messages.MessageReceived signal was a failed delivery report
     assertLength(1, message_received.args)
     parts = message_received.args[0]
-    # The delivery report should just be a header, no body.
-    assertLength(1, parts)
+
+    if error_message is None:
+        # The delivery report should just be a header, no body.
+        assertLength(1, parts)
+    else:
+        assertLength(2, parts)
+
     part = parts[0]
     # The intended recipient was the MUC, so there's no contact handle
     # suitable for being 'message-sender'.
@@ -105,6 +145,13 @@ def send_message_and_expect_error(q, stream,
         for key in greeting[i]:
             assert key in echo[i], (i, key, echo)
             assert echo[i][key] == greeting[i][key], (i, key, echo, greeting)
+
+    if error_message is not None:
+        body = parts[1]
+
+        assertEquals('text/plain', body['content-type'])
+        assertEquals(error_message, body['content'])
+
 
 if __name__ == '__main__':
     exec_test(test)

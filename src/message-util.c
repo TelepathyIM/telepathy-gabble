@@ -241,6 +241,7 @@ gabble_tp_send_error_from_wocky_xmpp_error (WockyXmppError err)
 
       case WOCKY_XMPP_ERROR_FORBIDDEN:
       case WOCKY_XMPP_ERROR_NOT_AUTHORIZED:
+      case WOCKY_XMPP_ERROR_POLICY_VIOLATION:
         return TP_CHANNEL_TEXT_SEND_ERROR_PERMISSION_DENIED;
 
       case WOCKY_XMPP_ERROR_RESOURCE_CONSTRAINT:

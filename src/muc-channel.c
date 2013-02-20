@@ -272,8 +272,8 @@ static void handle_renamed (GObject *source,
 
 static void handle_error (GObject *source,
     WockyStanza *stanza,
-    WockyXmppError errnum,
-    const gchar *message,
+    WockyXmppErrorType errtype,
+    const GError *error,
     gpointer data);
 
 static void handle_join (WockyMuc *muc,
@@ -330,8 +330,8 @@ static void handle_errmsg (GObject *source,
     GDateTime *datetime,
     WockyMucMember *who,
     const gchar *text,
-    WockyXmppError error,
     WockyXmppErrorType etype,
+    const GError *error,
     gpointer data);
 
 /* Signatures for some other stuff. */
@@ -1883,8 +1883,8 @@ update_permissions (GabbleMucChannel *chan)
 static void
 handle_error (GObject *source,
     WockyStanza *stanza,
-    WockyXmppError errnum,
-    const gchar *message,
+    WockyXmppErrorType errtype,
+    const GError *error,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
@@ -1899,7 +1899,7 @@ handle_error (GObject *source,
       return;
     }
 
-  if (errnum == WOCKY_XMPP_ERROR_NOT_AUTHORIZED)
+  if (error->code == WOCKY_XMPP_ERROR_NOT_AUTHORIZED)
     {
       /* channel can sit requiring a password indefinitely */
       clear_join_timer (gmuc);
@@ -1919,7 +1919,7 @@ handle_error (GObject *source,
     {
       GError *tp_error = NULL;
 
-      switch (errnum)
+      switch (error->code)
         {
           case WOCKY_XMPP_ERROR_FORBIDDEN:
             tp_error = g_error_new (TP_ERROR, TP_ERROR_CHANNEL_BANNED,
@@ -1944,7 +1944,7 @@ handle_error (GObject *source,
 
           default:
             tp_error = g_error_new (TP_ERROR, TP_ERROR_NOT_AVAILABLE,
-                "%s", wocky_xmpp_error_description (errnum));
+                "%s", wocky_xmpp_error_description (error->code));
             break;
         }
 
@@ -2849,8 +2849,8 @@ handle_errmsg (GObject *source,
     GDateTime *datetime,
     WockyMucMember *who,
     const gchar *text,
-    WockyXmppError error_code,
     WockyXmppErrorType etype,
+    const GError *error,
     gpointer data)
 {
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
@@ -2863,7 +2863,6 @@ handle_errmsg (GObject *source,
   TpHandleType handle_type;
   TpHandle from = 0;
   const gchar *subject;
-  GError *error = NULL;
 
   if (from_member)
     {
@@ -2890,12 +2889,6 @@ handle_errmsg (GObject *source,
   else
     ds = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
 
-  /* FIXME: this is also stupid. Wocky should give us the whole GError, or
-   * nothing.
-   */
-  if (!wocky_stanza_extract_errors (stanza, NULL, &error, NULL, NULL))
-    g_return_if_reached();
-
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
         handle_type, from, datetime, xmpp_id, text, stanza, error, ds);
@@ -2915,8 +2908,6 @@ handle_errmsg (GObject *source,
        !tp_strdiff (xmpp_id, priv->set_subject_stanza_id)))
     _gabble_muc_channel_handle_subject (gmuc,
         handle_type, from, datetime, subject, stanza, error);
-
-  g_clear_error (&error);
 }
 
 /* ************************************************************************* */

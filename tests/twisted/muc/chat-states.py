@@ -3,7 +3,7 @@ Regression test for <https://bugs.freedesktop.org/show_bug.cgi?id=32952>,
 wherein chat states in MUCs were misparsed, and MUC chat states in general.
 """
 
-from servicetest import assertEquals
+from servicetest import assertEquals, assertLength
 from gabbletest import exec_test, elem
 from mucutil import join_muc_and_check
 import ns
@@ -111,13 +111,9 @@ def test(q, bus, conn, stream):
     assertEquals(cs.CHAT_STATE_ACTIVE,
             states.get(user, cs.CHAT_STATE_INACTIVE))
 
-    def is_body(e):
-        if e.name == 'body':
-            assert e.children[0] == u'hi.', e.toXml()
-            return True
-        return False
-
-    assert len([x for x in stanza.elements() if is_body(x)]) == 1, stanza.toXml()
+    bodies = list(stanza.elements(uri=ns.CLIENT, name='body'))
+    assertLength(1, bodies)
+    assertEquals(u'hi.', bodies[0].children[0])
 
 if __name__ == '__main__':
       exec_test(test)

@@ -4,7 +4,7 @@ wherein chat states in MUCs were misparsed, and MUC chat states in general.
 """
 
 from servicetest import assertEquals, assertLength
-from gabbletest import exec_test, elem
+from gabbletest import exec_test, elem, make_muc_presence
 from mucutil import join_muc_and_check
 import ns
 import constants as cs
@@ -71,21 +71,21 @@ def test(q, bus, conn, stream):
     assertEquals(cs.CHAT_STATE_PAUSED,
             states.get(bob, cs.CHAT_STATE_INACTIVE))
 
-#    # Bob leaves
-#    stream.send(
-#        elem('presence', from_=BOB, to='test@localhost/Resource',
-#                        type='unavailable'))
+    # Bob leaves
+    presence = make_muc_presence('owner', 'none', MUC, 'bob')
+    presence['type'] = 'unavailable'
+    stream.send(presence)
 
-#    e = q.expect('dbus-signal', signal='ChatStateChanged')
-#    contact, state = e.args
-#    assertEquals(bob, contact)
-#    assertEquals(cs.CHAT_STATE_GONE, state)
+    e = q.expect('dbus-signal', signal='ChatStateChanged')
+    contact, state = e.args
+    assertEquals(bob, contact)
+    assertEquals(cs.CHAT_STATE_GONE, state)
 
-#    states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')
-#    assertEquals(cs.CHAT_STATE_INACTIVE,
-#            states.get(user, cs.CHAT_STATE_INACTIVE))
-#    # Bob no longer has any chat state at all
-#    assertEquals(None, states.get(bob, None))
+    states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')
+    assertEquals(cs.CHAT_STATE_INACTIVE,
+            states.get(user, cs.CHAT_STATE_INACTIVE))
+    # Bob no longer has any chat state at all
+    assertEquals(None, states.get(bob, None))
 
     # Sending chat states:
 

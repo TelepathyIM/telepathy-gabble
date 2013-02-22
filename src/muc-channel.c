@@ -214,6 +214,8 @@ struct _GabbleMucChannelPrivate
   GPtrArray *initial_channels;
   GArray *initial_handles;
   char **initial_ids;
+
+  gboolean have_received_error_type_wait;
 };
 
 typedef struct {
@@ -2885,9 +2887,25 @@ handle_errmsg (GObject *source,
     }
 
   if (etype == WOCKY_XMPP_ERROR_TYPE_WAIT)
-    ds = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
+    {
+      ds = TP_DELIVERY_STATUS_TEMPORARILY_FAILED;
+      /* Some MUCs have very strict rate limiting like "at most one stanza per
+       * second". Since chat state notifications count towards this, if the
+       * user types a message very quickly then the typing notification is
+       * accepted but then the stanza containing the actual message is
+       * rejected.
+       *
+       * So: if we ever get rate-limited, let's just stop sending chat states.
+       *
+       * https://bugs.freedesktop.org/show_bug.cgi?id=43166
+       */
+      DEBUG ("got <error type='wait'>, disabling chat state notifications");
+      priv->have_received_error_type_wait = TRUE;
+    }
   else
-    ds = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
+    {
+      ds = TP_DELIVERY_STATUS_PERMANENTLY_FAILED;
+    }
 
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
@@ -3830,6 +3848,9 @@ gabble_muc_channel_send_chat_state (GObject *object,
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (object);
   GabbleMucChannelPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
+
+  if (priv->have_received_error_type_wait)
+    return TRUE;
 
   return gabble_message_util_send_chat_state (G_OBJECT (self),
       GABBLE_CONNECTION (tp_base_channel_get_connection (base)),

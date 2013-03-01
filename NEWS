@@ -1,7 +1,20 @@
 telepathy-gabble 0.17.3 (UNRELEASED)
 ====================================
 
-:-O
+This fixes a remotely-triggered denial-of-service bug. You
+should upgrade.
+
+Fixes:
+
+• fd.o#57521: don't crash when the server sends back malformed or error
+  replies to privacy list queries. (wjt)
+
+• fd.o#61433: don't crash on weirdly-shaped data forms in caps query
+  replies. This issue is tracked as CVE-2013-1769. Unfortunately, this
+  bug can be triggered by any XMPP user who knows your bare JID, not
+  just by people you've authorized to see your presence. Fortunately, it
+  is just a NULL pointer dereference, rather than allowing the attacker
+  to do anything more nefarious like execute code. (wjt)
 
 Enhancements:
 

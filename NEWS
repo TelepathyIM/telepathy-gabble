@@ -1,8 +1,9 @@
-telepathy-gabble 0.17.3 (UNRELEASED)
+telepathy-gabble 0.17.3 (2013-03-01)
 ====================================
 
-This fixes a remotely-triggered denial-of-service bug. You
-should upgrade.
+The “less resplendent backup ruffs” release. This includes the fixes
+from telepathy-gabble 0.16.5, including fixing a remotely-triggered
+denial-of-service bug. You should upgrade.
 
 Fixes:
 
@@ -15,6 +16,11 @@ Fixes:
   just by people you've authorized to see your presence. Fortunately, it
   is just a NULL pointer dereference, rather than allowing the attacker
   to do anything more nefarious like execute code. (wjt)
+
+• fd.o#43166: handle rate-limiting by MUCs better, including disabling
+  typing notifications if we get rate-limited, and including the error
+  message from the server in the D-Bus signal so that the user interface
+  could, in principle, show it to the user. (wjt)
 
 Enhancements:
 

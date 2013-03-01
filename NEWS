@@ -1,3 +1,22 @@
+telepathy-gabble 0.16.5 (2013-03-01)
+====================================
+
+The “In Actuality You Are A Gigantic, Bloodthirsty Grizzly Bear”
+release. This fixes a remotely-triggered denial-of-service bug. You
+should upgrade.
+
+Fixes:
+
+• fd.o#57521: don't crash when the server sends back malformed or error
+  replies to privacy list queries. (wjt)
+
+• fd.o#61433: don't crash on weirdly-shaped data forms in caps query
+  replies. This issue is tracked as CVE-2013-1769. Unfortunately, this
+  bug can be triggered by any XMPP user who knows your bare JID, not
+  just by people you've authorized to see your presence. Fortunately, it
+  is just a NULL pointer dereference, rather than allowing the attacker
+  to do anything more nefarious like execute code. (wjt)
+
 telepathy-gabble 0.16.4 (2012-11-09)
 ====================================
 

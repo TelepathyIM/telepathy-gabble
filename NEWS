@@ -1,8 +1,11 @@
 telepathy-gabble 0.17.4 (UNRELEASED)
 ====================================
 
-:D
+Fixes:
 
+• update Wocky:
+  · fd.o #61792: fix linking an example program with ld versions that
+    default to --no-copy-dt-needed-entries
 
 telepathy-gabble 0.17.3 (2013-03-01)
 ====================================

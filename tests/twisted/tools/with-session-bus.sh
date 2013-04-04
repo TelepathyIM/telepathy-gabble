@@ -81,6 +81,12 @@ if [ -n "$CHECK_TWISTED_VERBOSE" ] || [ -n "$VERBOSE_TESTS" ]; then
 fi
 
 e=0
+
+# These might be non-null when run from e.g. gnome-terminal 3.8, which uses
+# an activatable service for its windows; we don't want to inherit them either
+unset DBUS_STARTER_ADDRESS
+unset DBUS_STARTER_BUS_TYPE
+
 DBUS_SESSION_BUS_ADDRESS="`cat $me-$$.address`"
 export DBUS_SESSION_BUS_ADDRESS
 

@@ -563,9 +563,20 @@ def element_repr(element):
     """
     return element.toXml().encode('unicode-escape')
 
+def expect_connected(queue):
+    queue.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
+    queue.expect('stream-authenticated')
+    queue.expect('dbus-signal', signal='PresencesChanged',
+        args=[{1L: (cs.PRESENCE_AVAILABLE, u'available', '')}])
+    queue.expect('dbus-signal', signal='StatusChanged',
+        args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+
 def exec_test_deferred(fun, params, protocol=None, timeout=None,
                         authenticator=None, num_instances=1,
-                        do_connect=True):
+                        do_connect=True,
+                        make_connection_func=make_connection,
+                        expect_connected_func=expect_connected):
     # hack to ease debugging
     domish.Element.__repr__ = element_repr
     colourer = None
@@ -595,7 +606,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
             suffix = str(i)
 
         try:
-            (conn, jid) = make_connection(bus, queue.append, params, suffix)
+            (conn, jid) = make_connection_func(bus, queue.append, params, suffix)
         except Exception, e:
             # Crap. This is normally because the connection's still kicking
             # around on the bus. Let's bin any connections we *did* manage to
@@ -649,13 +660,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
         if do_connect:
             for conn in conns:
                 conn.Connect()
-                queue.expect('dbus-signal', signal='StatusChanged',
-                    args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
-                queue.expect('stream-authenticated')
-                queue.expect('dbus-signal', signal='PresencesChanged',
-                    args=[{1L: (cs.PRESENCE_AVAILABLE, u'available', '')}])
-                queue.expect('dbus-signal', signal='StatusChanged',
-                    args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
+                expect_connected_func(queue)
 
         if len(conns) == 1:
             fun(queue, bus, conns[0], streams[0])

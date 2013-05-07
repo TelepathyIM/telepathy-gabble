@@ -1801,10 +1801,11 @@ gabble_vcard_manager_can_use_vcard_field (GabbleVCardManager *self,
   if (self->priv->connection->features &
       GABBLE_CONNECTION_FEATURES_GOOGLE_ROSTER)
     {
-      /* Google's server only allows N, FN and PHOTO */
+      /* Google's server only allows N, FN, PHOTO and URL */
       if (tp_strdiff (field_name, "N") &&
           tp_strdiff (field_name, "FN") &&
-          tp_strdiff (field_name, "PHOTO"))
+          tp_strdiff (field_name, "PHOTO") &&
+          tp_strdiff (field_name, "URL"))
         {
           return FALSE;
         }

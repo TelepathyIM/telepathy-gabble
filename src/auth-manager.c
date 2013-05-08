@@ -320,6 +320,17 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
       GPtrArray *mech_array = g_ptr_array_new ();
       GSList *iter;
 
+      if (username == NULL)
+        {
+          g_object_get (self->priv->conn,
+              "username", &self->priv->username,
+              NULL);
+        }
+      else
+        {
+          self->priv->username = g_strdup (username);
+        }
+
       for (iter = mechanisms; iter != NULL; iter = iter->next)
         {
           self->priv->mechanisms = g_slist_prepend (self->priv->mechanisms,
@@ -330,7 +341,8 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
             g_ptr_array_add (mech_array, iter->data);
         }
 
-      if (wocky_auth_registry_supports_one_of (registry, mechanisms,
+      if (self->priv->username != NULL &&
+          wocky_auth_registry_supports_one_of (registry, mechanisms,
               allow_plain))
         g_ptr_array_add (mech_array, X_TELEPATHY_PASSWORD);
 
@@ -343,17 +355,6 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
       self->priv->is_secure_channel = is_secure_channel;
       self->priv->server = g_strdup (server);
       self->priv->session_id = g_strdup (session_id);
-
-      if (username == NULL)
-        {
-          g_object_get (self->priv->conn,
-              "username", &self->priv->username,
-              NULL);
-        }
-      else
-        {
-          self->priv->username = g_strdup (username);
-        }
 
       self->priv->channel = gabble_server_sasl_channel_new (self->priv->conn,
           (GStrv) mech_array->pdata, is_secure_channel, session_id);

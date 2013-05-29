@@ -1,3 +1,24 @@
+telepathy-gabble 0.16.6 (UNRELEASED)
+====================================
+
+This release fixes a man-in-the-middle attack. You should upgrade.
+
+If you use an unencrypted connection to a "legacy Jabber" (pre-XMPP)
+server, this version of Gabble will not connect until you make
+one of these configuration changes:
+
+• upgrade the server software to something that supports XMPP 1.0; or
+• use an encrypted "old SSL" connection, typically on port 5223 (old-ssl); or
+• turn off "Encryption required (TLS/SSL)" (require-encryption)
+
+Fixes:
+
+• fd.o #65036 (CVE-2013-1431): update Wocky to respect the tls-required
+  flag on legacy Jabber servers (Simon)
+
+• fd.o #63119: improve regression tests' isolation from the session bus
+  (Simon)
+
 telepathy-gabble 0.16.5 (2013-03-01)
 ====================================
 

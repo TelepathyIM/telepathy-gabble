@@ -1,5 +1,7 @@
-telepathy-gabble 0.16.6 (UNRELEASED)
+telepathy-gabble 0.16.6 (2013-05-30)
 ====================================
+
+The “repeated gas boiler replacement” release.
 
 This release fixes a man-in-the-middle attack. You should upgrade.
 

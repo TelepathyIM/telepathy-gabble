@@ -41,6 +41,7 @@ def check_google_props(props):
     assertEquals([
         ('fn', [], PARAMS_EXACT | OVERWRITTEN_BY_NICKNAME, 1),
         ('n', [], PARAMS_EXACT, 1),
+        ('url', [], PARAMS_EXACT, UNLIMITED),
         ], sf)
 
 def check_normal_props(props):

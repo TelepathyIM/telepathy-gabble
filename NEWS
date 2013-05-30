@@ -1,7 +1,7 @@
-telepathy-gabble 0.17.4 (UNRELEASED)
+telepathy-gabble 0.17.4 (2013-05-30)
 ====================================
 
-This release fixes the same man-in-the-middle attack as 0.16.6.
+This development release fixes the same man-in-the-middle attack as 0.16.6.
 
 If you use an unencrypted connection to a "legacy Jabber" (pre-XMPP)
 server, this version of Gabble will not connect until you make
@@ -21,6 +21,12 @@ Fixes:
 
 • fd.o #63119: improve regression tests' isolation from the session bus
   (Simon)
+
+• fd.o #64319: consider the <URL> field to be "supported" on Google servers
+  (it's currently read-only and contains a Google+ URL) (Xavier)
+
+• fd.o #64354: don't claim we support X-TELEPATHY-PASSWORD if we don't
+  know the username (Xavier)
 
 telepathy-gabble 0.17.3 (2013-03-01)
 ====================================

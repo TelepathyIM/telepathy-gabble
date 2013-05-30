@@ -11,6 +11,6 @@ Name: Telepathy-Gabble
 Description: XMPP backend for the Telepathy framework
 Version: @VERSION@
 Requires: pkg-config >= 0.21
-Requires.private: glib-2.0 >= 2.16, gobject-2.0 >= 2.16, gio-2.0, telepathy-glib >= 0.7.37
+Requires.private: glib-2.0 >= 2.32, gobject-2.0, gio-2.0, telepathy-glib >= 0.19.9
 Libs: -L${pluginexeclibdir} -lgabble-plugins -lwocky
 Cflags: -I${includedir}/telepathy-gabble-0

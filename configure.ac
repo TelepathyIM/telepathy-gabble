@@ -224,11 +224,11 @@ AM_CONDITIONAL([ENABLE_GTK_DOC], [test "x$enable_gtk_doc" = xyes])
 
 dnl Check for Glib
 PKG_CHECK_MODULES(GLIB,
-    [glib-2.0 >= 2.30, gobject-2.0 >= 2.30, gthread-2.0 >= 2.30, gio-2.0])
-PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.30])
+    [glib-2.0 >= 2.32, gobject-2.0, gthread-2.0, gio-2.0])
+PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.32])
 
 AC_DEFINE(GLIB_VERSION_MIN_REQUIRED, GLIB_VERSION_2_30, [Ignore post 2.30 deprecations])
-AC_DEFINE(GLIB_VERSION_MAX_ALLOWED, GLIB_VERSION_2_30, [Prevent post 2.30 APIs])
+AC_DEFINE(GLIB_VERSION_MAX_ALLOWED, GLIB_VERSION_2_32, [Prevent post 2.32 APIs])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)

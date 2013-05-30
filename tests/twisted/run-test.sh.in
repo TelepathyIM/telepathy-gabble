@@ -51,19 +51,19 @@ for i in $list ; do
     --config-file="${config_file}" \
     -- \
     @TEST_PYTHON@ -u "${test_src}/twisted/$i"
-    e=$?
-    case "$e" in
-        (0)
-            echo "PASS: $i"
-            ;;
-        (77)
-            echo "SKIP: $i"
-            ;;
-        (*)
-            any_failed=1
-            echo "FAIL: $i ($e)"
-            ;;
-    esac
+  e=$?
+  case "$e" in
+    (0)
+      echo "PASS: $i"
+      ;;
+    (77)
+      echo "SKIP: $i"
+      ;;
+    (*)
+      any_failed=1
+      echo "FAIL: $i ($e)"
+      ;;
+  esac
 done
 
 exit $any_failed

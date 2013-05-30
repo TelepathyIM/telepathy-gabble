@@ -73,6 +73,7 @@ core
 tags
 cscope.out
 /telepathy-gabble-0*
+/test-driver
 /tests/gabble-C-tests.list
 /tests/test-base64
 /tests/test-dtube-unique-names

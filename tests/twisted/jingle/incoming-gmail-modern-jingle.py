@@ -31,7 +31,8 @@ def test(q, bus, conn, stream):
     jt.prepare(send_roster=False)
 
     sid = 'c1025763497'
-    si = elem_iq(stream, 'set', from_=peer, to=self)(
+    iq_id = 'session_init_iq'
+    si = elem_iq(stream, 'set', from_=peer, to=self, id=iq_id)(
       elem(ns.JINGLE, 'jingle', action='session-initiate', sid=sid, initiator=peer)(
         elem('content', name='video')(
           elem(ns.JINGLE_RTP, 'description', media='video')(
@@ -73,7 +74,11 @@ def test(q, bus, conn, stream):
     )
     stream.send(si)
 
-    nc, nsh = q.expect_many(
+    ok, nc, nsh = q.expect_many(
+        # fd.o #65131: we have to tell Google which dialect we're speaking
+        EventPattern('stream-iq', iq_type='result',
+            query_name='jingle', query_ns=ns.JINGLE,
+            iq_id=iq_id),
         EventPattern('dbus-signal', signal='NewChannels'),
         EventPattern('dbus-signal', signal='NewSessionHandler'),
         )

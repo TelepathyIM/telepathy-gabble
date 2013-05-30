@@ -161,7 +161,7 @@ class JabberAuthenticator(GabbleAuthenticator):
             self._event_func(Event('auth-second-iq', authenticator=self,
                 iq=iq, id=iq["id"]))
         else:
-            self.respondToSecondIq(self, iq)
+            self.respondToSecondIq(iq)
 
     def respondToSecondIq(self, iq):
         username = xpath.queryForNodes('/iq/query/username', iq)

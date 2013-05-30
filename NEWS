@@ -1,5 +1,12 @@
+telepathy-gabble 0.17.5 (UNRELEASED)
+====================================
+
+...
+
 telepathy-gabble 0.17.4 (2013-05-30)
 ====================================
+
+The “unattainably high curry standards” release.
 
 This development release fixes the same man-in-the-middle attack as 0.16.6.
 

@@ -1,30 +1,56 @@
 #!/bin/sh
 
-script_fullname=`readlink -e "@gabbletestsdir@/twisted/run-test.sh"`
-if [ `readlink -e "$0"` != "$script_fullname" ] ; then
-  echo "This script is meant to be installed at $script_fullname"
-  exit 1
+if test "x$GABBLE_TEST_UNINSTALLED" = x; then
+  script_fullname=`readlink -e "@gabbletestsdir@/twisted/run-test.sh"`
+  if [ `readlink -e "$0"` != "$script_fullname" ] ; then
+    echo "This script is meant to be installed at $script_fullname" >&2
+    exit 1
+  fi
+
+  test_src="@gabbletestsdir@"
+  test_build="@gabbletestsdir@"
+  config_file="@gabbletestsdir@/twisted/tools/servicedir/tmp-session-bus.conf"
+
+  PYTHONPATH="@gabbletestsdir@/twisted"
+  export PYTHONPATH
+
+  GABBLE_TWISTED_PATH="@gabbletestsdir@/twisted"
+  export GABBLE_TWISTED_PATH
+else
+  if test -z "$GABBLE_ABS_TOP_SRCDIR"; then
+    echo "GABBLE_ABS_TOP_SRCDIR must be set" >&2
+    exit 1
+  fi
+  if test -z "$GABBLE_ABS_TOP_BUILDDIR"; then
+    echo "GABBLE_ABS_TOP_BUILDDIR must be set" >&2
+    exit 1
+  fi
+
+  test_src="${GABBLE_ABS_TOP_SRCDIR}/tests"
+  test_build="${GABBLE_ABS_TOP_BUILDDIR}/tests"
+  config_file="${test_build}/twisted/tools/servicedir-uninstalled/tmp-session-bus.conf"
+
+  PYTHONPATH="${test_src}/twisted:${test_build}/twisted"
+  export PYTHONPATH
+
+  GABBLE_TWISTED_PATH="${test_src}/twisted"
+  export GABBLE_TWISTED_PATH
 fi
-
-PYTHONPATH=@gabbletestsdir@/twisted
-export PYTHONPATH
-
-GABBLE_TWISTED_PATH=@gabbletestsdir@/twisted
-export GABBLE_TWISTED_PATH
 
 if [ -n "$1" ] ; then
   list="$1"
 else
-  list=$(cat @gabbletestsdir@/twisted/gabble-twisted-tests.list)
+  list=$(cat "${test_build}"/twisted/gabble-twisted-tests.list)
 fi
 
 any_failed=0
 for i in $list ; do
   echo "Testing $i ..."
-  sh @gabbletestsdir@/twisted/tools/with-session-bus.sh \
-    --config-file=@gabbletestsdir@/twisted/tools/servicedir/tmp-session-bus.conf \
+  sh "${test_src}/twisted/tools/with-session-bus.sh" \
+    ${GABBLE_TEST_SLEEP} \
+    --config-file="${config_file}" \
     -- \
-    @PYTHON@ @gabbletestsdir@/twisted/$i
+    @TEST_PYTHON@ -u "${test_src}/twisted/$i"
     e=$?
     case "$e" in
         (0)

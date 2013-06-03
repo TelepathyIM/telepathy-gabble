@@ -451,6 +451,7 @@ gabble-twisted-tests.list:
 run-test.sh: run-test.sh.in Makefile
 	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
 		-e "s|[@]PYTHON[@]|$(PYTHON)|g" \
+		-e "s|[@]TEST_PYTHON[@]|$(TEST_PYTHON)|g" \
 		 $< > $@
 	@chmod +x $@
 

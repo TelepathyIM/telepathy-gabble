@@ -305,18 +305,12 @@ nobase_nodist_twistedtests_DATA = \
 	$(NULL)
 endif
 
-TESTS =
-
-TESTS_ENVIRONMENT = \
-	PYTHONPATH=@abs_top_srcdir@/tests/twisted:@abs_top_builddir@/tests/twisted \
-	GABBLE_TWISTED_PATH=@srcdir@
-
 check-local: check-coding-style check-twisted
 
 # set to 6 when using refdbg, to give Gabble time to exit
 CHECK_TWISTED_SLEEP=0
 
-check-twisted:
+check-twisted: $(BUILT_SOURCES)
 if WANT_TWISTED_TESTS
 	rm -f tools/core
 	rm -f tools/vgcore.*
@@ -328,13 +322,11 @@ if WANT_TWISTED_TESTS
 	  sleep=$(CHECK_TWISTED_SLEEP); \
 	fi; \
 	failed=0; \
-	sh $(srcdir)/tools/with-session-bus.sh \
-		--sleep=$$sleep \
-		--config-file=tools/servicedir-uninstalled/tmp-session-bus.conf \
-		-- $(MAKE) check-TESTS \
-		TESTS="$(TWISTED_TESTS)" \
-		TESTS_ENVIRONMENT="$(TESTS_ENVIRONMENT) $(TEST_PYTHON) -u" || \
-		failed=1; \
+	GABBLE_TEST_UNINSTALLED=1 \
+	  GABBLE_TEST_SLEEP="--sleep=$$sleep" \
+	  GABBLE_ABS_TOP_SRCDIR=@abs_top_srcdir@ \
+	  GABBLE_ABS_TOP_BUILDDIR=@abs_top_builddir@ \
+	  sh run-test.sh "$(TWISTED_TESTS)" || failed=1; \
 	if test -e tools/core; then\
 		echo -e "\033[0;31;1mCore dump exists: tools/core\033[0m";\
 		exit 1;\
@@ -445,7 +437,7 @@ check_misc_sources = $(TESTS)
 # the following used to be in tools/
 include $(top_srcdir)/tools/check-coding-style.mk
 
-gabble-twisted-tests.list:
+gabble-twisted-tests.list: Makefile
 	$(AM_V_GEN)echo $(TWISTED_TESTS) > $@
 
 run-test.sh: run-test.sh.in Makefile
@@ -504,6 +496,7 @@ BUILT_SOURCES += \
 	$(installed_conf_files) \
 	$(uninstalled_service_files) \
 	$(uninstalled_conf_files) \
+	gabble-twisted-tests.list \
 	run-test.sh \
 	tools/exec-with-log.sh \
 	tools/run-gabble.sh \

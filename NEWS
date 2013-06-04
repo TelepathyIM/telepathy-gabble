@@ -1,7 +1,20 @@
 telepathy-gabble 0.17.5 (UNRELEASED)
 ====================================
 
-...
+Dependencies:
+
+• GLib 2.32 is now directly required. It was already indirectly required
+  by telepathy-glib 0.19.x.
+
+Fixes:
+
+• update Wocky:
+  · fd.o #65131: interoperate with non-XMPP-Core-compliant Jingle IQs
+    sent by Google's webmail UI (Simon)
+  · improve reference-counting for better stability (Simon)
+
+• fd.o #64285: avoid running the same commands twice in parallel when doing a
+  highly parallel build (Simon)
 
 telepathy-gabble 0.17.4 (2013-05-30)
 ====================================

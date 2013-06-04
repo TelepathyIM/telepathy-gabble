@@ -25,6 +25,8 @@
 # include <unistd.h>
 #endif
 
+#include <dbus/dbus.h>
+
 #include <glib/gstdio.h>
 
 #include <telepathy-glib/debug.h>
@@ -115,6 +117,9 @@ gabble_init (void)
   if (!g_thread_supported ())
     g_thread_init (NULL);
 #endif
+
+  if (!dbus_threads_init_default ())
+    g_error ("Unable to initialize libdbus thread-safety (out of memory?)");
 
   g_type_init ();
   wocky_init ();

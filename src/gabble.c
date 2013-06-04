@@ -108,13 +108,6 @@ log_handler (const gchar *log_domain,
 void
 gabble_init (void)
 {
-#if !GLIB_CHECK_VERSION (2, 31, 0)
-  /* libsoup uses glib in multiple threads and don't have this, so we have to
-   * enable it manually here */
-  if (!g_thread_supported ())
-    g_thread_init (NULL);
-#endif
-
   if (!dbus_threads_init_default ())
     g_error ("Unable to initialize libdbus thread-safety (out of memory?)");
 

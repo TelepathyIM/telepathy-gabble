@@ -617,11 +617,7 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_string (value, priv->resource);
       break;
     case PROP_PRIORITY:
-#if GLIB_CHECK_VERSION (2, 31, 0)
       g_value_set_schar (value, priv->priority);
-#else
-      g_value_set_char (value, priv->priority);
-#endif
       break;
     case PROP_HTTPS_PROXY_SERVER:
       g_value_set_string (value, priv->https_proxy_server);
@@ -760,11 +756,7 @@ gabble_connection_set_property (GObject      *object,
         }
       break;
     case PROP_PRIORITY:
-#if GLIB_CHECK_VERSION (2, 31, 0)
       priv->priority = g_value_get_schar (value);
-#else
-      priv->priority = g_value_get_char (value);
-#endif
       break;
     case PROP_HTTPS_PROXY_SERVER:
       g_free (priv->https_proxy_server);

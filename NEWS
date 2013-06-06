@@ -1,5 +1,7 @@
-telepathy-gabble 0.17.5 (UNRELEASED)
+telepathy-gabble 0.17.5 (2013-06-06)
 ====================================
+
+The “4.5kg of laptops” release.
 
 Dependencies:
 
@@ -13,8 +15,12 @@ Fixes:
     sent by Google's webmail UI (Simon)
   · improve reference-counting for better stability (Simon)
 
+• fd.o #65296: initialize libdbus for thread-safety (Simon)
+
 • fd.o #64285: avoid running the same commands twice in parallel when doing a
   highly parallel build (Simon)
+
+• fd.o #49595: disable an unreliable test-case (Simon)
 
 telepathy-gabble 0.17.4 (2013-05-30)
 ====================================

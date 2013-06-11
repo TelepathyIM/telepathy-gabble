@@ -1,7 +1,21 @@
 telepathy-gabble 0.16.7 (UNRELEASED)
 ====================================
 
-...
+Known incompatibilities:
+
+• The regression tests (make check/make distcheck) will not work if
+  the build system is refreshed with Automake 1.13 or later.
+  This is fixed in the 0.17.x branch. Tarball releases from this
+  branch should be made using Automake 1.12 or older.
+
+Fixes:
+
+• fd.o #65296: initialize libdbus for thread-safety (Simon)
+
+• fd.o #49595: disable an unreliable test-case (Simon)
+
+• fd.o #64285: avoid running the same commands twice in parallel when doing a
+  highly parallel build (Simon)
 
 telepathy-gabble 0.16.6 (2013-05-30)
 ====================================

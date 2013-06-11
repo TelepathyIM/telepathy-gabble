@@ -1,7 +1,15 @@
 telepathy-gabble 0.17.6 (UNRELEASED)
 ====================================
 
-...
+Enhancements:
+
+• Check for GLib 2.32 in the top-level configure.ac, and drop fallback paths
+  for older GLib (Simon)
+
+Fixes:
+
+• fd.o #65290: wrap uninstalled regression tests in run-test.sh so they
+  can work under Automake ≥ 1.13 (Simon)
 
 telepathy-gabble 0.17.5 (2013-06-06)
 ====================================

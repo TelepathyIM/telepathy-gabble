@@ -62,8 +62,11 @@ extensions.html: _gen/all.xml $(tools_dir)/doc-generator.xsl Makefile.am
 		$(tools_dir)/doc-generator.xsl \
 		$< > $@
 
-_gen/svc.c _gen/svc.h _gen/svc-gtk-doc.h: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py \
-	Makefile.am
+_gen/svc.h: _gen/svc.c
+	@: # do nothing, output as a side-effect
+_gen/svc-gtk-doc.h: _gen/svc.c
+	@: # do nothing, output as a side-effect
+_gen/svc.c: _gen/all.xml $(tools_dir)/glib-ginterface-gen.py Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-ginterface-gen.py \
 		--filename=_gen/svc --signal-marshal-prefix=_gabble_ext \
 		--include='<telepathy-glib/dbus.h>' \
@@ -84,18 +87,25 @@ _gen/signals-marshal.c: _gen/signals-marshal.list Makefile.am
 	$(AM_V_GEN){ echo '#include "_gen/signals-marshal.h"' && \
 	$(GLIB_GENMARSHAL) --body --prefix=_gabble_ext_marshal $< ; } > $@
 
-_gen/enums.h _gen/enums-gtk-doc.h: _gen/all.xml $(tools_dir)/c-constants-gen.py \
-	Makefile.am
+_gen/enums-gtk-doc.h: _gen/enums.h
+	@: # do nothing, output as a side-effect
+_gen/enums.h: _gen/all.xml $(tools_dir)/c-constants-gen.py Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/c-constants-gen.py Gabble $< _gen/enums
 
-_gen/interfaces.h _gen/interfaces-body.h _gen/interfaces-gtk-doc.h: _gen/all.xml \
-	$(tools_dir)/glib-interfaces-gen.py \
-	Makefile.am
+_gen/interfaces-body.h: _gen/interfaces.h
+	@: # do nothing, output as a side-effect
+_gen/interfaces-gtk-doc.h: _gen/interfaces.h
+	@: # do nothing, output as a side-effect
+_gen/interfaces.h: _gen/all.xml $(tools_dir)/glib-interfaces-gen.py Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-interfaces-gen.py \
 		Gabble _gen/interfaces-body.h _gen/interfaces.h $<
 
-_gen/gtypes.h _gen/gtypes-body.h _gen/gtypes-gtk-doc.h: _gen/all.xml \
-	$(tools_dir)/glib-gtypes-generator.py Makefile.am
+_gen/gtypes.h: _gen/gtypes-body.h
+	@: # do nothing, output as a side-effect
+_gen/gtypes-gtk-doc.h: _gen/gtypes-body.h
+	@: # do nothing, output as a side-effect
+
+_gen/gtypes-body.h: _gen/all.xml $(tools_dir)/glib-gtypes-generator.py Makefile.am
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/glib-gtypes-generator.py \
 		$< _gen/gtypes Gabble
 

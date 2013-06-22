@@ -19,10 +19,6 @@
 
 #include <glib-object.h>
 
-#include <gio/gio.h>
-#include <wocky/wocky.h>
-#include <telepathy-glib/telepathy-glib.h>
-
 typedef struct _GabbleConsolePlugin GabbleConsolePlugin;
 typedef struct _GabbleConsolePluginClass GabbleConsolePluginClass;
 typedef struct _GabbleConsolePluginPrivate GabbleConsolePluginPrivate;
@@ -53,36 +49,3 @@ GType gabble_console_plugin_get_type (void);
 #define GABBLE_CONSOLE_PLUGIN_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONSOLE_PLUGIN, \
                               GabbleConsolePluginClass))
-
-typedef struct _GabbleConsoleSidecar GabbleConsoleSidecar;
-typedef struct _GabbleConsoleSidecarClass GabbleConsoleSidecarClass;
-typedef struct _GabbleConsoleSidecarPrivate GabbleConsoleSidecarPrivate;
-
-struct _GabbleConsoleSidecar {
-    GObject parent;
-    GabbleConsoleSidecarPrivate *priv;
-};
-
-struct _GabbleConsoleSidecarClass {
-    GObjectClass parent;
-
-    TpDBusPropertiesMixinClass props_class;
-};
-
-GType gabble_console_sidecar_get_type (void);
-
-#define GABBLE_TYPE_CONSOLE_SIDECAR \
-  (gabble_console_sidecar_get_type ())
-#define GABBLE_CONSOLE_SIDECAR(obj) \
-  (G_TYPE_CHECK_INSTANCE_CAST ((obj), GABBLE_TYPE_CONSOLE_SIDECAR, \
-                               GabbleConsoleSidecar))
-#define GABBLE_CONSOLE_SIDECAR_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_CAST ((klass), GABBLE_TYPE_CONSOLE_SIDECAR, \
-                            GabbleConsoleSidecarClass))
-#define GABBLE_IS_CONSOLE_SIDECAR(obj) \
-  (G_TYPE_CHECK_INSTANCE_TYPE ((obj), GABBLE_TYPE_CONSOLE_SIDECAR))
-#define GABBLE_IS_CONSOLE_SIDECAR_CLASS(klass) \
-  (G_TYPE_CHECK_CLASS_TYPE ((klass), GABBLE_TYPE_CONSOLE_SIDECAR))
-#define GABBLE_CONSOLE_SIDECAR_GET_CLASS(obj) \
-  (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_CONSOLE_SIDECAR, \
-                              GabbleConsoleSidecarClass))

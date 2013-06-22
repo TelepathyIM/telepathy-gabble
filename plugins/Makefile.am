@@ -62,6 +62,8 @@ libgateways_la_SOURCES = \
 	gateways.h
 
 libconsole_la_SOURCES = \
+	console/channel-manager.c \
+	console/channel-manager.h \
 	console/debug.c \
 	console/debug.h \
 	console/plugin.c \

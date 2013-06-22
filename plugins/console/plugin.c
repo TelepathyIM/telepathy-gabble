@@ -25,6 +25,7 @@
 #include <gabble/gabble.h>
 #include "extensions/extensions.h"
 
+#include "console/channel-manager.h"
 #include "console/debug.h"
 #include "console/sidecar.h"
 
@@ -108,6 +109,20 @@ gabble_console_plugin_create_sidecar_finish (
   return g_object_ref (sidecar);
 }
 
+static GPtrArray *
+gabble_console_plugin_create_channel_managers (GabblePlugin *plugin,
+    GabblePluginConnection *plugin_connection)
+{
+  GPtrArray *ret = g_ptr_array_new ();
+
+  g_ptr_array_add (ret,
+      g_object_new (GABBLE_TYPE_CONSOLE_CHANNEL_MANAGER,
+          "plugin-connection", plugin_connection,
+          NULL));
+
+  return ret;
+}
+
 static void
 plugin_iface_init (
     gpointer g_iface,
@@ -120,6 +135,7 @@ plugin_iface_init (
   iface->sidecar_interfaces = sidecar_interfaces;
   iface->create_sidecar_async = gabble_console_plugin_create_sidecar_async;
   iface->create_sidecar_finish = gabble_console_plugin_create_sidecar_finish;
+  iface->create_channel_managers = gabble_console_plugin_create_channel_managers;
 }
 
 GabblePlugin *

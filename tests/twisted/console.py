@@ -10,6 +10,7 @@ from gabbletest import exec_test, acknowledge_iq, elem, elem_iq
 from config import PLUGINS_ENABLED
 from twisted.words.xish import domish
 import ns
+import constants as cs
 
 CONSOLE_PLUGIN_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
 STACY = 'stacy@pilgrim.lit'
@@ -27,6 +28,16 @@ def send_unrecognised_get(q, stream):
     return q.expect('stream-iq', iq_type='error')
 
 def test(q, bus, conn, stream):
+    rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
+        'RequestableChannelClasses')
+
+    fixed = {
+        cs.CHANNEL_TYPE: CONSOLE_PLUGIN_IFACE,
+        cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
+    }
+    allowed = []
+    assertContains((fixed, allowed), rccs)
+
     path, _ = conn.Future.EnsureSidecar(CONSOLE_PLUGIN_IFACE)
     console = ProxyWrapper(bus.get_object(conn.bus_name, path),
         CONSOLE_PLUGIN_IFACE)

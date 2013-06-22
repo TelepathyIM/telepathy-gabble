@@ -29,7 +29,6 @@
 
 enum {
     PROP_0,
-    PROP_CONNECTION,
     PROP_SESSION,
     PROP_SPEW
 };
@@ -37,7 +36,6 @@ enum {
 struct _GabbleConsoleSidecarPrivate
 {
   WockySession *session;
-  TpBaseConnection *connection;
   WockyXmppReader *reader;
   WockyXmppWriter *writer;
 
@@ -63,7 +61,7 @@ static void gabble_console_sidecar_set_spew (
     gboolean spew);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleConsoleSidecar, gabble_console_sidecar,
-    G_TYPE_OBJECT,
+    TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SIDECAR, sidecar_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_GABBLE_PLUGIN_CONSOLE,
       console_iface_init);
@@ -112,11 +110,6 @@ gabble_console_sidecar_set_property (
 
   switch (property_id)
     {
-      case PROP_CONNECTION:
-        g_assert (self->priv->connection == NULL);    /* construct-only */
-        self->priv->connection = g_value_dup_object (value);
-        break;
-
       case PROP_SESSION:
         g_assert (self->priv->session == NULL);       /* construct-only */
         self->priv->session = g_value_dup_object (value);
@@ -140,7 +133,6 @@ gabble_console_sidecar_dispose (GObject *object)
 
   gabble_console_sidecar_set_spew (self, FALSE);
 
-  tp_clear_object (&self->priv->connection);
   tp_clear_object (&self->priv->reader);
   tp_clear_object (&self->priv->writer);
   tp_clear_object (&self->priv->session);
@@ -157,33 +149,12 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
       { "SpewStanzas", "spew-stanzas", "spew-stanzas" },
       { NULL },
   };
-  static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
-      { GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        /* FIXME: if we were feeling clever, we'd override the setter so that
-         * we can monitor the bus name of any application which sets
-         * SpewStanzas to TRUE and flip it back to false when that application
-         * dies.
-         *
-         * Alternatively, we could just replace this sidecar with a channel.
-         */
-        tp_dbus_properties_mixin_setter_gobject_properties,
-        console_props
-      },
-      { NULL },
-  };
 
   object_class->get_property = gabble_console_sidecar_get_property;
   object_class->set_property = gabble_console_sidecar_set_property;
   object_class->dispose = gabble_console_sidecar_dispose;
 
   g_type_class_add_private (klass, sizeof (GabbleConsoleSidecarPrivate));
-
-  g_object_class_install_property (object_class, PROP_CONNECTION,
-      g_param_spec_object ("connection", "Connection",
-          "Gabble connection",
-          GABBLE_TYPE_PLUGIN_CONNECTION,
-          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (object_class, PROP_SESSION,
       g_param_spec_object ("session", "Session",
@@ -197,9 +168,18 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  klass->props_class.interfaces = interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleConsoleSidecarClass, props_class));
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      GABBLE_IFACE_QUARK_GABBLE_PLUGIN_CONSOLE,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      /* FIXME: if we were feeling clever, we'd override the setter so that
+       * we can monitor the bus name of any application which sets
+       * SpewStanzas to TRUE and flip it back to false when that application
+       * dies.
+       *
+       * Alternatively, we could just replace this sidecar with a channel.
+       */
+      tp_dbus_properties_mixin_setter_gobject_properties,
+      console_props);
 }
 
 static void sidecar_iface_init (

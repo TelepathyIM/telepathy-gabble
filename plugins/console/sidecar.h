@@ -25,14 +25,13 @@ typedef struct _GabbleConsoleSidecarClass GabbleConsoleSidecarClass;
 typedef struct _GabbleConsoleSidecarPrivate GabbleConsoleSidecarPrivate;
 
 struct _GabbleConsoleSidecar {
-    GObject parent;
+    TpBaseChannel parent;
+
     GabbleConsoleSidecarPrivate *priv;
 };
 
 struct _GabbleConsoleSidecarClass {
-    GObjectClass parent;
-
-    TpDBusPropertiesMixinClass props_class;
+    TpBaseChannelClass parent;
 };
 
 GType gabble_console_sidecar_get_type (void);

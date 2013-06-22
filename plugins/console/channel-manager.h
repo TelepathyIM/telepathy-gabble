@@ -31,6 +31,7 @@ struct _GabbleConsoleChannelManager {
   GObject parent;
 
   GabblePluginConnection *plugin_connection;
+  GQueue console_channels;
 };
 
 GType gabble_console_channel_manager_get_type (void);

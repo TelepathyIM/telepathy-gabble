@@ -38,9 +38,10 @@ def test(q, bus, conn, stream):
     allowed = []
     assertContains((fixed, allowed), rccs)
 
-    path, _ = conn.Future.EnsureSidecar(CONSOLE_PLUGIN_IFACE)
+    path, _ = conn.Requests.CreateChannel({ cs.CHANNEL_TYPE: CONSOLE_PLUGIN_IFACE })
     console = ProxyWrapper(bus.get_object(conn.bus_name, path),
-        CONSOLE_PLUGIN_IFACE)
+        CONSOLE_PLUGIN_IFACE,
+        {'Channel': cs.CHANNEL})
 
     assert not console.Properties.Get(CONSOLE_PLUGIN_IFACE, 'SpewStanzas')
     es = [
@@ -98,6 +99,8 @@ def test(q, bus, conn, stream):
     body = message.firstChildElement()
     assertEquals('body', body.name)
     assertEquals(ns.CLIENT, body.uri)
+
+    console.Channel.Close()
 
 if __name__ == '__main__':
     exec_test(test)

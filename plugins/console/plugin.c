@@ -53,62 +53,6 @@ gabble_console_plugin_class_init (GabbleConsolePluginClass *klass)
 {
 }
 
-static void
-gabble_console_plugin_create_sidecar_async (
-    GabblePlugin *plugin,
-    const gchar *sidecar_interface,
-    GabblePluginConnection *connection,
-    WockySession *session,
-    GAsyncReadyCallback callback,
-    gpointer user_data)
-{
-  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (plugin),
-      callback, user_data,
-      gabble_console_plugin_create_sidecar_async);
-  GabbleSidecar *sidecar = NULL;
-
-  if (!tp_strdiff (sidecar_interface, GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE))
-    {
-      sidecar = g_object_new (GABBLE_TYPE_CONSOLE_SIDECAR,
-          "connection", connection,
-          "session", session,
-          NULL);
-    }
-  else
-    {
-      g_simple_async_result_set_error (result, TP_ERROR,
-          TP_ERROR_NOT_IMPLEMENTED, "'%s' not implemented", sidecar_interface);
-    }
-
-  if (sidecar != NULL)
-    g_simple_async_result_set_op_res_gpointer (result, sidecar,
-        g_object_unref);
-
-  g_simple_async_result_complete_in_idle (result);
-  g_object_unref (result);
-}
-
-static GabbleSidecar *
-gabble_console_plugin_create_sidecar_finish (
-    GabblePlugin *plugin,
-    GAsyncResult *result,
-    GError **error)
-{
-  GabbleSidecar *sidecar;
-
-  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
-        error))
-    return NULL;
-
-  g_return_val_if_fail (g_simple_async_result_is_valid (result,
-        G_OBJECT (plugin), gabble_console_plugin_create_sidecar_async), NULL);
-
-  sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
-        G_SIMPLE_ASYNC_RESULT (result)));
-
-  return g_object_ref (sidecar);
-}
-
 static GPtrArray *
 gabble_console_plugin_create_channel_managers (GabblePlugin *plugin,
     GabblePluginConnection *plugin_connection)
@@ -132,9 +76,6 @@ plugin_iface_init (
 
   iface->name = "XMPP console";
   iface->version = PACKAGE_VERSION;
-  iface->sidecar_interfaces = sidecar_interfaces;
-  iface->create_sidecar_async = gabble_console_plugin_create_sidecar_async;
-  iface->create_sidecar_finish = gabble_console_plugin_create_sidecar_finish;
   iface->create_channel_managers = gabble_console_plugin_create_channel_managers;
 }
 

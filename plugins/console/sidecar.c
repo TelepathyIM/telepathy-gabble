@@ -29,7 +29,6 @@
 
 enum {
     PROP_0,
-    PROP_SESSION,
     PROP_SPEW
 };
 
@@ -50,23 +49,18 @@ struct _GabbleConsoleSidecarPrivate
   gulong sending_id;
 };
 
-static void sidecar_iface_init (
-    gpointer g_iface,
-    gpointer data);
 static void console_iface_init (
     gpointer g_iface,
     gpointer data);
 static void gabble_console_sidecar_set_spew (
     GabbleConsoleSidecar *self,
     gboolean spew);
+static void gabble_console_sidecar_close (TpBaseChannel *chan);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleConsoleSidecar, gabble_console_sidecar,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SIDECAR, sidecar_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_GABBLE_PLUGIN_CONSOLE,
       console_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-      tp_dbus_properties_mixin_iface_init);
     )
 
 static void
@@ -77,6 +71,25 @@ gabble_console_sidecar_init (GabbleConsoleSidecar *self)
   self->priv->reader = wocky_xmpp_reader_new_no_stream_ns (
       WOCKY_XMPP_NS_JABBER_CLIENT);
   self->priv->writer = wocky_xmpp_writer_new_no_stream ();
+}
+
+
+static void
+gabble_console_sidecar_constructed (GObject *object)
+{
+  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+  void (*chain_up)(GObject *) =
+      G_OBJECT_CLASS (gabble_console_sidecar_parent_class)->constructed;
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+  self->priv->session = g_object_ref (
+      gabble_plugin_connection_get_session (
+          GABBLE_PLUGIN_CONNECTION (
+              tp_base_channel_get_connection (
+                  TP_BASE_CHANNEL (self)))));
+  g_return_if_fail (self->priv->session != NULL);
 }
 
 static void
@@ -110,11 +123,6 @@ gabble_console_sidecar_set_property (
 
   switch (property_id)
     {
-      case PROP_SESSION:
-        g_assert (self->priv->session == NULL);       /* construct-only */
-        self->priv->session = g_value_dup_object (value);
-        break;
-
       case PROP_SPEW:
         gabble_console_sidecar_set_spew (self, g_value_get_boolean (value));
         break;
@@ -145,22 +153,21 @@ static void
 gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  TpBaseChannelClass *channel_class = TP_BASE_CHANNEL_CLASS (klass);
   static TpDBusPropertiesMixinPropImpl console_props[] = {
       { "SpewStanzas", "spew-stanzas", "spew-stanzas" },
       { NULL },
   };
 
+  object_class->constructed = gabble_console_sidecar_constructed;
   object_class->get_property = gabble_console_sidecar_get_property;
   object_class->set_property = gabble_console_sidecar_set_property;
   object_class->dispose = gabble_console_sidecar_dispose;
 
-  g_type_class_add_private (klass, sizeof (GabbleConsoleSidecarPrivate));
+  channel_class->channel_type = GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE;
+  channel_class->close = gabble_console_sidecar_close;
 
-  g_object_class_install_property (object_class, PROP_SESSION,
-      g_param_spec_object ("session", "Session",
-          "Wocky session",
-          WOCKY_TYPE_SESSION,
-          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+  g_type_class_add_private (klass, sizeof (GabbleConsoleSidecarPrivate));
 
   g_object_class_install_property (object_class, PROP_SPEW,
       g_param_spec_boolean ("spew-stanzas", "SpewStanzas",
@@ -171,25 +178,17 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
   tp_dbus_properties_mixin_implement_interface (object_class,
       GABBLE_IFACE_QUARK_GABBLE_PLUGIN_CONSOLE,
       tp_dbus_properties_mixin_getter_gobject_properties,
-      /* FIXME: if we were feeling clever, we'd override the setter so that
-       * we can monitor the bus name of any application which sets
-       * SpewStanzas to TRUE and flip it back to false when that application
-       * dies.
-       *
-       * Alternatively, we could just replace this sidecar with a channel.
-       */
       tp_dbus_properties_mixin_setter_gobject_properties,
       console_props);
 }
 
-static void sidecar_iface_init (
-    gpointer g_iface,
-    gpointer data)
+static void
+gabble_console_sidecar_close (TpBaseChannel *chan)
 {
-  GabbleSidecarInterface *iface = g_iface;
+  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (chan);
 
-  iface->interface = GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE;
-  iface->get_immutable_properties = NULL;
+  gabble_console_sidecar_set_spew (self, FALSE);
+  tp_base_channel_destroyed (chan);
 }
 
 static gboolean

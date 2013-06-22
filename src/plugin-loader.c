@@ -89,12 +89,17 @@ plugin_loader_try_to_load (
     }
   else
     {
-      gchar *sidecars = g_strjoinv (", ",
-          (gchar **) gabble_plugin_get_sidecar_interfaces (plugin));
+      const gchar * const *interfaces = gabble_plugin_get_sidecar_interfaces (plugin);
       const gchar *version = gabble_plugin_get_version (plugin);
+      gchar *sidecars;
 
       if (version == NULL)
         version = "(unspecified)";
+
+      if (interfaces != NULL)
+        sidecars = g_strjoinv (", ", (gchar **) interfaces);
+      else
+        sidecars = g_strdup ("none (maybe it implements some channels instead?)");
 
       DEBUG ("loaded '%s' version %s (%s), implementing these sidecars: %s",
           gabble_plugin_get_name (plugin), version, path, sidecars);

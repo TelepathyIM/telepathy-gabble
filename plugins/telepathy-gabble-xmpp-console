@@ -3,10 +3,10 @@
 """
 The world's worst XMPP console user interface.
 
-Pass it the bus name of a Gabble connection; type some words; get minimalistic
+Pass it a Gabble account name; type some words; get minimalistic
 error reporting.
 
-Copyright © 2011 Collabora Ltd. <http://www.collabora.co.uk/>
+Copyright © 2011–2013 Collabora Ltd. <http://www.collabora.co.uk/>
 
 This library is free software; you can redistribute it and/or
 modify it under the terms of the GNU Lesser General Public
@@ -24,23 +24,13 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 """
 
 import sys
-import re
 from xml.dom import minidom
 
-from gi.repository import Gtk
-from gi.repository import GLib
-from gi.repository import Gio
-from gi.repository import GtkSource
+from gi.repository import Gtk, GLib, Gio, GtkSource
+from gi.repository import TelepathyGLib as Tp
 
 PADDING = 6
 
-def pathify(name):
-    return '/' + name.replace('.', '/')
-
-def nameify(path):
-    return (path[1:]).replace('/', '.')
-
-CONN_FUTURE_IFACE = "org.freedesktop.Telepathy.Connection.FUTURE"
 CONSOLE_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
 
 class StanzaViewer(Gtk.ScrolledWindow):
@@ -302,30 +292,21 @@ class Window(Gtk.Window):
     STANZA_PAGE = 1
     SNOOPY_PAGE = 2
 
-    def __init__(self, bus, connection_bus_name):
+    def __init__(self, account):
         Gtk.Window.__init__(self)
 
         self.set_title('XMPP Console')
         self.set_default_size(600, 371)
 
-        conn_future_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
-            connection_bus_name, pathify(connection_bus_name),
-            CONN_FUTURE_IFACE, None)
-        try:
-            sidecar_path, _ = conn_future_proxy.EnsureSidecar('(s)', CONSOLE_IFACE)
-        except Exception, e:
-            print """
-Couldn't connect to the XMPP console interface on '%(connection_bus_name)s':
-  %(e)s
-Check that it's a running Jabber connection, and that you have the console
-plugin installed.""" % locals()
+        request = Tp.AccountChannelRequest.new(
+            account,
+            { Tp.PROP_CHANNEL_CHANNEL_TYPE: CONSOLE_IFACE },
+            0)
+        request.create_and_handle_channel_async(None, self.__create_cb, None)
 
-            raise SystemExit(2)
+        self.connect('destroy', Window.__destroy_cb)
 
-        self.console_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
-            connection_bus_name, sidecar_path, CONSOLE_IFACE, None)
-        self.console_proxy.connect('notify::g-name-owner', self.__console_noc_cb)
-
+    def __build_ui(self):
         # Build up the UI
         self.grid = Gtk.Grid()
         self.add(self.grid)
@@ -361,14 +342,42 @@ plugin installed.""" % locals()
         self.grid.attach_next_to(self.infobar, self.nb,
             Gtk.PositionType.BOTTOM, 1, 1)
 
-        self.connect('destroy', Window.__destroy_cb)
+    def __create_cb(self, request, result, _):
+        try:
+            channel, context = request.create_and_handle_channel_finish(result)
+            channel.prepare_async(None, self.__channel_prepared_cb, None)
+            channel.connect('invalidated', self.__channel_invalidated_cb)
 
-    def __console_noc_cb(self, *args):
-        if self.console_proxy.get_name_owner() is None:
-            self.infobar.show()
-            self.infobar_close_button.grab_focus()
-            self.nb.set_sensitive(False)
-        # TODO: reconnect if the connection comes back.
+            bus_name = channel.get_bus_name()
+            sidecar_path = channel.get_object_path()
+
+            bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+            self.console_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
+                bus_name, sidecar_path, CONSOLE_IFACE, None)
+
+        except GLib.GError as e:
+            print """
+Couldn't connect to the XMPP console interface on '%(name)s':
+%(e)s
+Check that you have the console plugin installed.""" % {
+                'name': request.get_account().get_path_suffix(),
+                'e': e,
+            }
+            raise SystemExit(2)
+
+        self.__build_ui()
+        self.show_all()
+
+    def __channel_prepared_cb(self, channel, result, user_data):
+        # We only prepare the channel so that ::invalidated will be emitted
+        # when it closes.
+        pass
+
+    def __channel_invalidated_cb(self, channel, domain, code, message):
+        self.infobar.show()
+        self.infobar_close_button.grab_focus()
+        self.nb.set_sensitive(False)
+        # TODO: try to reconnect?
 
     def __destroy_cb(self):
         try:
@@ -378,66 +387,51 @@ plugin installed.""" % locals()
             print e
         Gtk.main_quit()
 
-GABBLE_PREFIX = 'org.freedesktop.Telepathy.Connection.gabble.jabber.'
-
-AM_BUS_NAME = 'org.freedesktop.Telepathy.AccountManager'
-AM_PATH = '/org/freedesktop/Telepathy/AccountManager'
-AM_IFACE = 'org.freedesktop.Telepathy.AccountManager'
-ACCOUNT_PREFIX = '/org/freedesktop/Telepathy/Account'
-ACCOUNT_IFACE = 'org.freedesktop.Telepathy.Account'
-
-def usage(bus):
-    am_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
-        AM_BUS_NAME, AM_PATH, AM_IFACE, None)
-    valid_accounts = am_proxy.get_cached_property('ValidAccounts').get_objv()
+def usage(am):
     xmpp_accounts = sorted(
-        path[len(ACCOUNT_PREFIX + '/'):]
-        for path in valid_accounts
-        if path.startswith(ACCOUNT_PREFIX + '/gabble/')
-        )
+        account.get_path_suffix()
+        for account in am.dup_valid_accounts()
+        if account.get_cm_name() == 'gabble')
 
     print """
 Usage:
 
   %(arg0)s gabble/jabber/blahblah
-  %(arg0)s %(prefix)sblahblah
 
 Here are some account identifiers:
 
   %(accounts)s
-
-List connection bus names using `qdbus | grep gabble`.
 """ % { 'arg0': sys.argv[0],
-        'prefix': GABBLE_PREFIX,
         'accounts': '\n  '.join(xmpp_accounts),
       }
     raise SystemExit(1)
 
+def am_prepared_cb(am, result, account_suffix):
+    try:
+        am.prepare_finish(result)
+    except GLib.GError as e:
+        print e
+        raise SystemExit(2)
+
+    if account_suffix is None:
+        usage(am)
+
+    for account in am.dup_valid_accounts():
+        if account.get_path_suffix() == account_suffix:
+            if account.get_connection() is None:
+                print "%s is not online." % account_suffix
+                raise SystemExit(2)
+            else:
+                win = Window(account)
+                return
+
+    usage(am)
+
 if __name__ == '__main__':
-    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    account_suffix = sys.argv[1] if len(sys.argv) == 2 else None
 
-    if len(sys.argv) != 2:
-        usage(bus)
-
-    thing = sys.argv[1]
-
-    if re.match('^gabble/jabber/[a-zA-Z0-9_]+$', thing):
-        # Looks like an account path to me.
-        account_proxy = Gio.DBusProxy.new_sync(bus, 0, None,
-            AM_BUS_NAME, '%s/%s' % (ACCOUNT_PREFIX, thing),
-            ACCOUNT_IFACE, None)
-        path = account_proxy.get_cached_property('Connection').get_string()
-        if path == '/':
-            print "%s is not online" % thing
-            raise SystemExit(1)
-        else:
-            thing = nameify(path)
-
-    if not re.match('^%s[a-zA-Z0-9_]+$' % GABBLE_PREFIX, thing):
-        usage(bus)
-
-    win = Window(bus, thing)
-    win.show_all()
+    am = Tp.AccountManager.dup()
+    am.prepare_async([], am_prepared_cb, account_suffix)
 
     Gtk.main()
 

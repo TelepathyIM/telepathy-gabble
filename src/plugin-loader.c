@@ -108,7 +108,6 @@ plugin_loader_try_to_load (
 static void
 gabble_plugin_loader_probe (GabblePluginLoader *self)
 {
-  GError *error = NULL;
   const gchar *directory_names = g_getenv ("GABBLE_PLUGIN_DIR");
   gchar **dir_array;
   gchar **ptr;
@@ -132,13 +131,15 @@ gabble_plugin_loader_probe (GabblePluginLoader *self)
 
   for (ptr = dir_array ; *ptr != NULL ; ptr++)
     {
+      GError *error = NULL;
+
       DEBUG ("probing %s", *ptr);
       d = g_dir_open (*ptr, 0, &error);
 
       if (d == NULL)
         {
           DEBUG ("%s", error->message);
-          g_error_free (error);
+          g_clear_error (&error);
           continue;
         }
 

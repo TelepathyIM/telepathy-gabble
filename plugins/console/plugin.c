@@ -26,8 +26,8 @@
 #include "extensions/extensions.h"
 
 #include "console/channel-manager.h"
+#include "console/channel.h"
 #include "console/debug.h"
-#include "console/sidecar.h"
 
 static void plugin_iface_init (
     gpointer g_iface,

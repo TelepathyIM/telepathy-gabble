@@ -21,7 +21,7 @@
 #include "console/channel-manager.h"
 
 #include "extensions/extensions.h"
-#include "console/sidecar.h"
+#include "console/channel.h"
 
 static void channel_manager_iface_init (gpointer, gpointer);
 
@@ -139,7 +139,7 @@ gabble_console_channel_manager_type_foreach_channel_class (GType type,
 
 static void
 console_channel_closed_cb (
-    GabbleConsoleSidecar *channel,
+    GabbleConsoleChannel *channel,
     gpointer user_data)
 {
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (user_data);
@@ -184,7 +184,7 @@ gabble_console_channel_manager_create_channel (
           &error))
     goto error;
 
-  channel = g_object_new (GABBLE_TYPE_CONSOLE_SIDECAR,
+  channel = g_object_new (GABBLE_TYPE_CONSOLE_CHANNEL,
       "connection", self->plugin_connection,
       NULL);
   tp_base_channel_register (channel);

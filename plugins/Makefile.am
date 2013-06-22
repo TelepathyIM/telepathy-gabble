@@ -64,12 +64,12 @@ libgateways_la_SOURCES = \
 libconsole_la_SOURCES = \
 	console/channel-manager.c \
 	console/channel-manager.h \
+	console/channel.c \
+	console/channel.h \
 	console/debug.c \
 	console/debug.h \
 	console/plugin.c \
 	console/plugin.h \
-	console/sidecar.c \
-	console/sidecar.h \
 	$(NULL)
 
 AM_CFLAGS = $(ERROR_CFLAGS) \

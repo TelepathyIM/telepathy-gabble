@@ -18,7 +18,7 @@
  */
 
 #include "config.h"
-#include "console/sidecar.h"
+#include "console/channel.h"
 
 #include <string.h>
 #include <wocky/wocky.h>
@@ -32,7 +32,7 @@ enum {
     PROP_SPEW
 };
 
-struct _GabbleConsoleSidecarPrivate
+struct _GabbleConsoleChannelPrivate
 {
   WockySession *session;
   WockyXmppReader *reader;
@@ -52,22 +52,22 @@ struct _GabbleConsoleSidecarPrivate
 static void console_iface_init (
     gpointer g_iface,
     gpointer data);
-static void gabble_console_sidecar_set_spew (
-    GabbleConsoleSidecar *self,
+static void gabble_console_channel_set_spew (
+    GabbleConsoleChannel *self,
     gboolean spew);
-static void gabble_console_sidecar_close (TpBaseChannel *chan);
+static void gabble_console_channel_close (TpBaseChannel *chan);
 
-G_DEFINE_TYPE_WITH_CODE (GabbleConsoleSidecar, gabble_console_sidecar,
+G_DEFINE_TYPE_WITH_CODE (GabbleConsoleChannel, gabble_console_channel,
     TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_GABBLE_PLUGIN_CONSOLE,
       console_iface_init);
     )
 
 static void
-gabble_console_sidecar_init (GabbleConsoleSidecar *self)
+gabble_console_channel_init (GabbleConsoleChannel *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_CONSOLE_SIDECAR,
-      GabbleConsoleSidecarPrivate);
+  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_CONSOLE_CHANNEL,
+      GabbleConsoleChannelPrivate);
   self->priv->reader = wocky_xmpp_reader_new_no_stream_ns (
       WOCKY_XMPP_NS_JABBER_CLIENT);
   self->priv->writer = wocky_xmpp_writer_new_no_stream ();
@@ -75,11 +75,11 @@ gabble_console_sidecar_init (GabbleConsoleSidecar *self)
 
 
 static void
-gabble_console_sidecar_constructed (GObject *object)
+gabble_console_channel_constructed (GObject *object)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
   void (*chain_up)(GObject *) =
-      G_OBJECT_CLASS (gabble_console_sidecar_parent_class)->constructed;
+      G_OBJECT_CLASS (gabble_console_channel_parent_class)->constructed;
 
   if (chain_up != NULL)
     chain_up (object);
@@ -93,13 +93,13 @@ gabble_console_sidecar_constructed (GObject *object)
 }
 
 static void
-gabble_console_sidecar_get_property (
+gabble_console_channel_get_property (
     GObject *object,
     guint property_id,
     GValue *value,
     GParamSpec *pspec)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
 
   switch (property_id)
     {
@@ -113,18 +113,18 @@ gabble_console_sidecar_get_property (
 }
 
 static void
-gabble_console_sidecar_set_property (
+gabble_console_channel_set_property (
     GObject *object,
     guint property_id,
     const GValue *value,
     GParamSpec *pspec)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
 
   switch (property_id)
     {
       case PROP_SPEW:
-        gabble_console_sidecar_set_spew (self, g_value_get_boolean (value));
+        gabble_console_channel_set_spew (self, g_value_get_boolean (value));
         break;
 
       default:
@@ -133,13 +133,13 @@ gabble_console_sidecar_set_property (
 }
 
 static void
-gabble_console_sidecar_dispose (GObject *object)
+gabble_console_channel_dispose (GObject *object)
 {
   void (*chain_up) (GObject *) =
-    G_OBJECT_CLASS (gabble_console_sidecar_parent_class)->dispose;
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+    G_OBJECT_CLASS (gabble_console_channel_parent_class)->dispose;
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
 
-  gabble_console_sidecar_set_spew (self, FALSE);
+  gabble_console_channel_set_spew (self, FALSE);
 
   tp_clear_object (&self->priv->reader);
   tp_clear_object (&self->priv->writer);
@@ -150,7 +150,7 @@ gabble_console_sidecar_dispose (GObject *object)
 }
 
 static void
-gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
+gabble_console_channel_class_init (GabbleConsoleChannelClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   TpBaseChannelClass *channel_class = TP_BASE_CHANNEL_CLASS (klass);
@@ -159,15 +159,15 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
       { NULL },
   };
 
-  object_class->constructed = gabble_console_sidecar_constructed;
-  object_class->get_property = gabble_console_sidecar_get_property;
-  object_class->set_property = gabble_console_sidecar_set_property;
-  object_class->dispose = gabble_console_sidecar_dispose;
+  object_class->constructed = gabble_console_channel_constructed;
+  object_class->get_property = gabble_console_channel_get_property;
+  object_class->set_property = gabble_console_channel_set_property;
+  object_class->dispose = gabble_console_channel_dispose;
 
   channel_class->channel_type = GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE;
-  channel_class->close = gabble_console_sidecar_close;
+  channel_class->close = gabble_console_channel_close;
 
-  g_type_class_add_private (klass, sizeof (GabbleConsoleSidecarPrivate));
+  g_type_class_add_private (klass, sizeof (GabbleConsoleChannelPrivate));
 
   g_object_class_install_property (object_class, PROP_SPEW,
       g_param_spec_boolean ("spew-stanzas", "SpewStanzas",
@@ -183,11 +183,11 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
 }
 
 static void
-gabble_console_sidecar_close (TpBaseChannel *chan)
+gabble_console_channel_close (TpBaseChannel *chan)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (chan);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (chan);
 
-  gabble_console_sidecar_set_spew (self, FALSE);
+  gabble_console_channel_set_spew (self, FALSE);
   tp_base_channel_destroyed (chan);
 }
 
@@ -197,7 +197,7 @@ incoming_cb (
     WockyStanza *stanza,
     gpointer user_data)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (user_data);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (user_data);
   const guint8 *body;
   gsize length;
 
@@ -213,7 +213,7 @@ sending_cb (
     WockyStanza *stanza,
     gpointer user_data)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (user_data);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (user_data);
 
   if (stanza != NULL)
     {
@@ -228,11 +228,11 @@ sending_cb (
 }
 
 static void
-gabble_console_sidecar_set_spew (
-    GabbleConsoleSidecar *self,
+gabble_console_channel_set_spew (
+    GabbleConsoleChannel *self,
     gboolean spew)
 {
-  GabbleConsoleSidecarPrivate *priv = self->priv;
+  GabbleConsoleChannelPrivate *priv = self->priv;
 
   if (!spew != !priv->spew)
     {
@@ -273,7 +273,7 @@ return_from_send_iq (
     GAsyncResult *result,
     gpointer user_data)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (source);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (source);
   DBusGMethodInvocation *context = user_data;
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
   GError *error = NULL;
@@ -372,12 +372,12 @@ validate_jid (const gchar **to,
  */
 static gboolean
 parse_me_a_stanza (
-    GabbleConsoleSidecar *self,
+    GabbleConsoleChannel *self,
     const gchar *xml,
     WockyStanza **stanza_out,
     GError **error)
 {
-  GabbleConsoleSidecarPrivate *priv = self->priv;
+  GabbleConsoleChannelPrivate *priv = self->priv;
   WockyStanza *stanza;
 
   wocky_xmpp_reader_reset (priv->reader);
@@ -403,13 +403,13 @@ parse_me_a_stanza (
 
 static void
 console_send_iq (
-    GabbleSvcGabblePluginConsole *sidecar,
+    GabbleSvcGabblePluginConsole *channel,
     const gchar *type_str,
     const gchar *to,
     const gchar *body,
     DBusGMethodInvocation *context)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (sidecar);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (channel);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
   WockyStanzaSubType sub_type;
   WockyStanza *fragment;
@@ -489,11 +489,11 @@ stanza_looks_coherent (
 
 static void
 console_send_stanza (
-    GabbleSvcGabblePluginConsole *sidecar,
+    GabbleSvcGabblePluginConsole *channel,
     const gchar *xml,
     DBusGMethodInvocation *context)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (sidecar);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (channel);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
   WockyStanza *stanza = NULL;
   GError *error = NULL;

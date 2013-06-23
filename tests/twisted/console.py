@@ -39,6 +39,11 @@ def test(q, bus, conn, stream):
     assertContains((fixed, allowed), rccs)
 
     path, _ = conn.Requests.CreateChannel({ cs.CHANNEL_TYPE: CONSOLE_PLUGIN_IFACE })
+    other_path, _ = conn.Requests.CreateChannel({ cs.CHANNEL_TYPE: CONSOLE_PLUGIN_IFACE })
+
+    assertNotEquals(path, other_path)
+    # leave the other one open, to test we don't crash on disconnect
+
     console = ProxyWrapper(bus.get_object(conn.bus_name, path),
         CONSOLE_PLUGIN_IFACE,
         {'Channel': cs.CHANNEL})

@@ -35,10 +35,32 @@ enum {
     PROP_CONNECTION = 1,
 };
 
+static void connection_status_changed_cb (
+    TpBaseConnection *conn,
+    guint status,
+    guint reason,
+    GabbleConsoleChannelManager *self);
+static void gabble_console_channel_manager_close_all (
+    GabbleConsoleChannelManager *self);
+
 static void
 gabble_console_channel_manager_init (GabbleConsoleChannelManager *self)
 {
 }
+
+
+static void
+gabble_console_channel_manager_constructed (GObject *object)
+{
+  GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (object);
+
+  G_OBJECT_CLASS (gabble_console_channel_manager_parent_class)->constructed (object);
+
+  g_return_if_fail (self->plugin_connection != NULL);
+  g_signal_connect_object (self->plugin_connection, "status-changed",
+      G_CALLBACK (connection_status_changed_cb), self, 0);
+}
+
 
 static void
 gabble_console_channel_manager_set_property (
@@ -87,14 +109,41 @@ gabble_console_channel_manager_dispose (
     GObject *object)
 {
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (object);
+
+  gabble_console_channel_manager_close_all (self);
+
+  G_OBJECT_CLASS (gabble_console_channel_manager_parent_class)->dispose (object);
+}
+
+
+static void
+connection_status_changed_cb (
+    TpBaseConnection *conn,
+    guint status,
+    guint reason,
+    GabbleConsoleChannelManager *self)
+{
+  switch (status)
+    {
+      case TP_CONNECTION_STATUS_DISCONNECTED:
+        gabble_console_channel_manager_close_all (self);
+        break;
+
+      default:
+        return;
+    }
+}
+
+static void
+gabble_console_channel_manager_close_all (
+    GabbleConsoleChannelManager *self)
+{
   TpBaseChannel *channel;
 
   while ((channel = g_queue_peek_head (&self->console_channels)) != NULL)
     {
       tp_base_channel_close (channel);
     }
-
-  G_OBJECT_CLASS (gabble_console_channel_manager_parent_class)->dispose (object);
 }
 
 
@@ -103,6 +152,7 @@ gabble_console_channel_manager_class_init (GabbleConsoleChannelManagerClass *kla
 {
   GObjectClass *oclass = G_OBJECT_CLASS (klass);
 
+  oclass->constructed = gabble_console_channel_manager_constructed;
   oclass->set_property = gabble_console_channel_manager_set_property;
   oclass->get_property = gabble_console_channel_manager_get_property;
   oclass->dispose = gabble_console_channel_manager_dispose;

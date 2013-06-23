@@ -55,6 +55,7 @@ static void console_iface_init (
 static void gabble_console_channel_set_spew (
     GabbleConsoleChannel *self,
     gboolean spew);
+gchar *gabble_console_channel_get_path (TpBaseChannel *chan);
 static void gabble_console_channel_close (TpBaseChannel *chan);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleConsoleChannel, gabble_console_channel,
@@ -165,6 +166,7 @@ gabble_console_channel_class_init (GabbleConsoleChannelClass *klass)
   object_class->dispose = gabble_console_channel_dispose;
 
   channel_class->channel_type = GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE;
+  channel_class->get_object_path_suffix = gabble_console_channel_get_path;
   channel_class->close = gabble_console_channel_close;
 
   g_type_class_add_private (klass, sizeof (GabbleConsoleChannelPrivate));
@@ -180,6 +182,12 @@ gabble_console_channel_class_init (GabbleConsoleChannelClass *klass)
       tp_dbus_properties_mixin_getter_gobject_properties,
       tp_dbus_properties_mixin_setter_gobject_properties,
       console_props);
+}
+
+gchar *
+gabble_console_channel_get_path (TpBaseChannel *chan)
+{
+  return g_strdup_printf ("console%p", chan);
 }
 
 static void

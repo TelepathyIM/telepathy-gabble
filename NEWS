@@ -17,6 +17,9 @@ Fixes:
 • fd.o #64285: avoid running the same commands twice in parallel when doing a
   highly parallel build (Simon)
 
+• fd.o #67828: fix a test failure with telepathy-glib 0.20.3/0.21.1 or later
+  (Simon)
+
 telepathy-gabble 0.16.6 (2013-05-30)
 ====================================
 

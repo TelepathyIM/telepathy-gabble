@@ -11,6 +11,9 @@ Fixes:
 • fd.o #65290: wrap uninstalled regression tests in run-test.sh so they
   can work under Automake ≥ 1.13 (Simon)
 
+• fd.o #67828: fix a test failure with telepathy-glib 0.20.3/0.21.1 or later
+  (Simon)
+
 telepathy-gabble 0.17.5 (2013-06-06)
 ====================================
 

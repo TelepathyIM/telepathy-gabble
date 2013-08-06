@@ -53,24 +53,35 @@ def test(q, bus, conn, stream):
 
     stream.send(event.stanza)
 
-    # slight implementation detail: TpBaseContactList emits ContactsChanged
-    # etc. before it announces its channels, and it emits one CGC per group.
-    s1, s2 = q.expect_many(
-        EventPattern('dbus-signal', signal='GroupsChanged',
-            interface=cs.CONN_IFACE_CONTACT_GROUPS, path=conn.object_path,
-            predicate=lambda e: 'women' in e.args[1]),
-        EventPattern('dbus-signal', signal='GroupsChanged',
-            interface=cs.CONN_IFACE_CONTACT_GROUPS, path=conn.object_path,
-            predicate=lambda e: 'men' in e.args[1]),
-        )
+    # Avoid relying on the implementation detail of exactly when
+    # TpBaseContactList emits ContactsChanged, relative to when it
+    # announces its channels. Prior to 0.20.3, 0.21.1 it would
+    # announce the channels, emit GroupsChanged, then announce the channels
+    # again... which was a bug, but it turned out this test relied on it.
+    #
+    # We do still rely on the implementation detail that we emit GroupsChanged
+    # once per group with all of its members, not once per contact with all
+    # of their groups. On a typical contact list, there are more contacts
+    # than groups, so that'll work out smaller.
+
+    pairs, groups_changed = expect_contact_list_signals(q, bus, conn, [],
+            ['men', 'women'],
+            [
+                EventPattern('dbus-signal', signal='GroupsChanged',
+                    interface=cs.CONN_IFACE_CONTACT_GROUPS,
+                    path=conn.object_path,
+                    predicate=lambda e: 'women' in e.args[1]),
+                EventPattern('dbus-signal', signal='GroupsChanged',
+                    interface=cs.CONN_IFACE_CONTACT_GROUPS,
+                    path=conn.object_path,
+                    predicate=lambda e: 'men' in e.args[1]),
+            ])
 
     amy, bob, che = conn.RequestHandles(cs.HT_CONTACT,
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
 
-    assertEquals([[amy], ['women'], []], s1.args)
-    assertEquals([[bob, che], ['men'], []], s2.args)
-
-    pairs = expect_contact_list_signals(q, bus, conn, [], ['men', 'women'])
+    assertEquals([[amy], ['women'], []], groups_changed[0].args)
+    assertEquals([[bob, che], ['men'], []], groups_changed[1].args)
 
     q.expect('dbus-signal', signal='ContactListStateChanged',
             args=[cs.CONTACT_LIST_STATE_SUCCESS])

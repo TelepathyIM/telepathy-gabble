@@ -68,10 +68,14 @@ def get_contact_list_event_patterns(q, bus, conn, expected_handle_type, name):
                 predicate=new_channels_predicate)
             )
 
-def expect_contact_list_signals(q, bus, conn, lists, groups=[]):
+def expect_contact_list_signals(q, bus, conn, lists, groups=[],
+        expect_more=None):
     assert lists or groups
 
-    eps = []
+    if expect_more is None:
+        eps = []
+    else:
+        eps = expect_more[:]
 
     for name in lists:
         eps.extend(get_contact_list_event_patterns(q, bus, conn,
@@ -83,6 +87,11 @@ def expect_contact_list_signals(q, bus, conn, lists, groups=[]):
 
     events = q.expect_many(*eps)
     ret = []
+    more = []
+
+    if expect_more is not None:
+        for ep in expect_more:
+            more.append(events.pop(0))
 
     for name in lists:
         old_signal = events.pop(0)
@@ -95,6 +104,10 @@ def expect_contact_list_signals(q, bus, conn, lists, groups=[]):
         ret.append((old_signal, new_signal))
 
     assert len(events) == 0
+
+    if expect_more is not None:
+        return ret, more
+
     return ret
 
 def check_contact_list_signals(q, bus, conn, signals,

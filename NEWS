@@ -32,7 +32,8 @@ Fixes since 0.17.6:
   (Simon)
 
 • Debian #714534: avoid naming a function parameter "errno", which
-  is technically a reserved word (Samuel Thibault)
+  is technically a reserved word and might be a macro expanding to an
+  lvalue expression (Samuel Thibault)
 
 telepathy-gabble 0.17.5 (2013-06-06)
 ====================================

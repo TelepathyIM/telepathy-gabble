@@ -1,12 +1,29 @@
-telepathy-gabble 0.17.6 (UNRELEASED)
+telepathy-gabble 0.18.0 (UNRELEASED)
 ====================================
 
-Enhancements:
+This is a new stable branch, recommended for use with GNOME 3.10.
+
+Summary of changes since 0.16.x:
+
+• GLib 2.32 is (directly) required
+• better interop with Google webmail for audio/video calls
+• better interop with Google and MSN servers
+• better interop with iChat
+• don't claim to support X-TELEPATHY-PASSWORD if the username is unknown
+• look up a STUN server automatically, using DNS SRV
+• old-style Tubes channels have been removed
+• bug fixes
+
+Enhancements since 0.17.6:
 
 • Check for GLib 2.32 in the top-level configure.ac, and drop fallback paths
   for older GLib (Simon)
 
-Fixes:
+Fixes since 0.17.6:
+
+• Update Wocky to its new gabble-0.18 branch:
+  · fd.o #67875: make the documentation build successfully (Simon)
+  · fd.o #67900: make the tests pass with GLib 2.36 (Simon)
 
 • fd.o #65290: wrap uninstalled regression tests in run-test.sh so they
   can work under Automake ≥ 1.13 (Simon)

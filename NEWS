@@ -31,6 +31,9 @@ Fixes since 0.17.6:
 • fd.o #67828: fix a test failure with telepathy-glib 0.20.3/0.21.1 or later
   (Simon)
 
+• Debian #714534: avoid naming a function parameter "errno", which
+  is technically a reserved word (Samuel Thibault)
+
 telepathy-gabble 0.17.5 (2013-06-06)
 ====================================
 

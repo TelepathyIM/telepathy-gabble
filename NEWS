@@ -3,8 +3,10 @@ telepathy-gabble 0.19.0 (UNRELEASED)
 
 …
 
-telepathy-gabble 0.18.0 (UNRELEASED)
+telepathy-gabble 0.18.0 (2013-08-09)
 ====================================
+
+The “sea view over the steelworks” release.
 
 This is a new stable branch, recommended for use with GNOME 3.10.
 
@@ -35,6 +37,10 @@ Fixes since 0.17.6:
 
 • fd.o #67828: fix a test failure with telepathy-glib 0.20.3/0.21.1 or later
   (Simon)
+
+• Debian #714534: avoid naming a function parameter "errno", which
+  is technically a reserved word and might be a macro expanding to an
+  lvalue expression (Samuel Thibault)
 
 telepathy-gabble 0.17.5 (2013-06-06)
 ====================================

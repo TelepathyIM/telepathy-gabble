@@ -86,7 +86,7 @@ GType gabble_media_stream_get_type (void);
 #define MAKE_COMBINED_DIRECTION(d, p) \
     ((CombinedStreamDirection) ((d) | ((p) << 2)))
 
-gboolean gabble_media_stream_error (GabbleMediaStream *self, guint errno,
+gboolean gabble_media_stream_error (GabbleMediaStream *self, guint errnum,
     const gchar *message, GError **error);
 
 void gabble_media_stream_close (GabbleMediaStream *close);

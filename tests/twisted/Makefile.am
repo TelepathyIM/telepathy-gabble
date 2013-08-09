@@ -464,7 +464,8 @@ tools/exec-with-log.sh: tools/exec-with-log.sh.in
 
 # The wildcard % matches both config files!
 tools/%.conf: tools/%.conf.in Makefile
-	$(MKDIR_P) tools
+	$(MKDIR_P) tools/servicedir
+	$(MKDIR_P) tools/servicedir-uninstalled
 	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
 		-e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 

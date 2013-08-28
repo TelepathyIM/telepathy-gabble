@@ -30,7 +30,7 @@ struct _GabbleConsoleChannelManagerClass {
 struct _GabbleConsoleChannelManager {
   GObject parent;
 
-  GabblePluginConnection *plugin_connection;
+  GWeakRef plugin_connection_ref;
   GQueue console_channels;
 };
 

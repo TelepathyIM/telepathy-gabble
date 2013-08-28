@@ -46,6 +46,7 @@ static void gabble_console_channel_manager_close_all (
 static void
 gabble_console_channel_manager_init (GabbleConsoleChannelManager *self)
 {
+  g_weak_ref_init (&self->plugin_connection_ref, NULL);
 }
 
 
@@ -53,12 +54,17 @@ static void
 gabble_console_channel_manager_constructed (GObject *object)
 {
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (object);
+  GabblePluginConnection *plugin_connection;
 
   G_OBJECT_CLASS (gabble_console_channel_manager_parent_class)->constructed (object);
 
-  g_return_if_fail (self->plugin_connection != NULL);
-  g_signal_connect_object (self->plugin_connection, "status-changed",
-      G_CALLBACK (connection_status_changed_cb), self, 0);
+  plugin_connection = g_weak_ref_get (&self->plugin_connection_ref);
+  if (plugin_connection != NULL)
+    {
+      g_signal_connect_object (plugin_connection, "status-changed",
+          G_CALLBACK (connection_status_changed_cb), self, 0);
+      g_object_unref (plugin_connection);
+    }
 }
 
 
@@ -74,10 +80,7 @@ gabble_console_channel_manager_set_property (
   switch (property_id)
     {
       case PROP_CONNECTION:
-        /* Not reffing this: the connection owns all channel managers, so it
-         * must outlive us. Taking a reference leads to a cycle.
-         */
-        self->plugin_connection = g_value_get_object (value);
+        g_weak_ref_set (&self->plugin_connection_ref, g_value_get_object (value));
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -96,7 +99,7 @@ gabble_console_channel_manager_get_property (
   switch (property_id)
     {
       case PROP_CONNECTION:
-        g_value_set_object (value, self->plugin_connection);
+        g_value_take_object (value, g_weak_ref_get (&self->plugin_connection_ref));
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -111,6 +114,7 @@ gabble_console_channel_manager_dispose (
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (object);
 
   gabble_console_channel_manager_close_all (self);
+  g_weak_ref_clear (&self->plugin_connection_ref);
 
   G_OBJECT_CLASS (gabble_console_channel_manager_parent_class)->dispose (object);
 }
@@ -211,6 +215,7 @@ gabble_console_channel_manager_create_channel (
     GHashTable *request_properties)
 {
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (manager);
+  GabblePluginConnection *connection;
   TpBaseChannel *channel = NULL;
   GError *error = NULL;
   GSList *request_tokens;
@@ -234,8 +239,11 @@ gabble_console_channel_manager_create_channel (
           &error))
     goto error;
 
+  connection = g_weak_ref_get (&self->plugin_connection_ref);
+  g_return_val_if_fail (connection != NULL, FALSE);
+
   channel = g_object_new (GABBLE_TYPE_CONSOLE_CHANNEL,
-      "connection", self->plugin_connection,
+      "connection", connection,
       NULL);
   tp_base_channel_register (channel);
   g_signal_connect (channel, "closed", (GCallback) console_channel_closed_cb,
@@ -247,6 +255,7 @@ gabble_console_channel_manager_create_channel (
       TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
 
+  g_object_unref (connection);
   return TRUE;
 
 error:

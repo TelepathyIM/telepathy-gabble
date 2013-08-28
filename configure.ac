@@ -24,7 +24,7 @@ AC_INIT([Telepathy Gabble], [gabble_version],
 
 AC_CONFIG_MACRO_DIR([m4])
 
-AM_INIT_AUTOMAKE([1.9 -Wno-portability tar-ustar])
+AM_INIT_AUTOMAKE([1.9 -Wno-portability tar-ustar subdir-objects])
 AM_CONFIG_HEADER(config.h)
 
 AC_USE_SYSTEM_EXTENSIONS

@@ -21,6 +21,7 @@ TWISTED_TESTS = \
 	client-types.py \
 	cm/protocol.py \
 	connect/disco-error-from-bare-jid.py \
+	connect/disco-facebook.py \
 	connect/disconnect-timeout.py \
 	connect/disco-no-reply.py \
 	connect/network-error.py \

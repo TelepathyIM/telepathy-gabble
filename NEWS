@@ -3,6 +3,18 @@ telepathy-gabble 0.19.0 (UNRELEASED)
 
 …
 
+telepathy-gabble 0.18.1 (2013-09-06)
+====================================
+
+This stable release fixes connection issues with Facebook which have been
+recently introduced because of a change in their XMPP servers.
+
+Fixes:
+
+• update Wocky:
+  · fd.o #68829: If we send an IQ to a server allow "from" to be empty (David
+      Edmundson)
+
 telepathy-gabble 0.18.0 (2013-08-09)
 ====================================
 

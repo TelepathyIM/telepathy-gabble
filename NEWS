@@ -5,10 +5,14 @@ Known incompatibilities:
 
 • The regression tests (make check/make distcheck) will not work if
   the build system is refreshed with Automake 1.13 or later.
-  This is fixed in the 0.17.x branch. Tarball releases from this
+  This is fixed in 0.18.x and newer branches. All tarball releases from this
   branch should be made using Automake 1.12 or older.
 
 Fixes:
+
+• update Wocky:
+  · fd.o #68829: If we send an IQ to a server allow "from" to be empty
+    (David Edmundson)
 
 • fd.o #65296: initialize libdbus for thread-safety (Simon)
 

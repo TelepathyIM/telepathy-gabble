@@ -266,43 +266,16 @@ muc_ready_cb (GabbleMucChannel *text_chan,
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (data);
   GabbleMucFactoryPrivate *priv = fac->priv;
-  GHashTable *channels;
   TpBaseChannel *base = TP_BASE_CHANNEL (text_chan);
-
   GSList *requests_satisfied_text = NULL;
   GQueue *tube_channels;
 
   DEBUG ("text chan=%p", text_chan);
 
-  channels = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-      NULL, (GDestroyNotify) g_slist_free);
-
   requests_satisfied_text = g_hash_table_lookup (
       priv->queued_requests, text_chan);
   g_hash_table_steal (priv->queued_requests, text_chan);
   requests_satisfied_text = g_slist_reverse (requests_satisfied_text);
-
-  /* Announce tube channels now */
-  tube_channels = g_hash_table_lookup (priv->text_needed_for_tube, text_chan);
-  if (tube_channels != NULL)
-    {
-      GList *l;
-
-      for (l = tube_channels->head; l != NULL; l = l->next)
-        {
-          GabbleTubeIface *tube_chan = GABBLE_TUBE_IFACE (l->data);
-          GSList *requests_satisfied_tube;
-
-          requests_satisfied_tube = g_hash_table_lookup (
-              priv->queued_requests, tube_chan);
-          g_hash_table_steal (priv->queued_requests, tube_chan);
-          requests_satisfied_tube = g_slist_reverse (requests_satisfied_tube);
-
-          g_hash_table_insert (channels, tube_chan, requests_satisfied_tube);
-        }
-
-      g_hash_table_remove (priv->text_needed_for_tube, text_chan);
-    }
 
   /* only announce channels which are on the bus (requested or
    * requested with an invite, not channels only around because they
@@ -313,9 +286,31 @@ muc_ready_cb (GabbleMucChannel *text_chan,
           TP_EXPORTABLE_CHANNEL (text_chan), requests_satisfied_text);
     }
 
-  tp_channel_manager_emit_new_channels (fac, channels);
+  /* Announce tube channels now */
+  tube_channels = g_hash_table_lookup (priv->text_needed_for_tube, text_chan);
 
-  g_hash_table_unref (channels);
+  if (tube_channels != NULL)
+    {
+      GList *l;
+
+      for (l = tube_channels->head; l != NULL; l = l->next)
+        {
+          TpExportableChannel *tube_chan = TP_EXPORTABLE_CHANNEL (l->data);
+          GSList *requests_satisfied_tube;
+
+          requests_satisfied_tube = g_hash_table_lookup (
+              priv->queued_requests, tube_chan);
+          g_hash_table_steal (priv->queued_requests, tube_chan);
+
+          requests_satisfied_tube = g_slist_reverse (requests_satisfied_tube);
+
+          tp_channel_manager_emit_new_channel (fac, tube_chan,
+              requests_satisfied_tube);
+          g_slist_free (requests_satisfied_tube);
+        }
+
+      g_hash_table_remove (priv->text_needed_for_tube, text_chan);
+    }
 }
 
 static void

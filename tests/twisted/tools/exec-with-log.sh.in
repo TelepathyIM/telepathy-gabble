@@ -46,7 +46,7 @@ elif test -n "$GABBLE_TEST_REFDBG"; then
 elif test -n "$GABBLE_TEST_STRACE"; then
         GABBLE_WRAPPER="strace -o strace.log"
 elif test -n "$GABBLE_TEST_BACKTRACE"; then
-        GABBLE_WRAPPER="gdb -x run_and_bt.gdb"
+        GABBLE_WRAPPER="gdb -x @abs_top_srcdir@/tests/twisted/tools/run_and_bt.gdb"
 fi
 
 # Prevent libproxy from hitting the network for wpad configuration

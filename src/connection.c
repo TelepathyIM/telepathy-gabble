@@ -1367,6 +1367,7 @@ gabble_connection_finalize (GObject *object)
 
   tp_contacts_mixin_finalize (G_OBJECT(self));
 
+  conn_aliasing_finalize (self);
   conn_presence_finalize (self);
   conn_contact_info_finalize (self);
 

@@ -39,15 +39,11 @@
 
 static void gabble_conn_aliasing_pep_nick_reply_handler (
     GabbleConnection *conn, WockyStanza *msg, TpHandle handle);
-static GQuark gabble_conn_aliasing_pep_alias_quark (void);
 
 static GabbleConnectionAliasSource _gabble_connection_get_cached_remote_alias (
     GabbleConnection *, TpHandle, gchar **);
 static void maybe_request_vcard (GabbleConnection *self, TpHandle handle,
   GabbleConnectionAliasSource source);
-
-/* distinct from any strdup()d pointer - used for negative caching */
-static const gchar *NO_ALIAS = "";
 
 /**
  * gabble_connection_get_alias_flags
@@ -202,12 +198,10 @@ static void
 _cache_negatively (GabbleConnection *self,
                    TpHandle handle)
 {
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-
-  tp_handle_set_qdata (contact_handles, handle,
-      gabble_conn_aliasing_pep_alias_quark (), (gchar *) NO_ALIAS, NULL);
+  /* We don't actually need to distinguish between "uncached" and
+   * "known to have no alias" because of how PEP works, so just
+   * remove it from the cache. */
+  g_hash_table_remove (self->pep_alias_cache, GUINT_TO_POINTER (handle));
 }
 
 /* Cache pep if successful */
@@ -632,20 +626,6 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
     }
 }
 
-
-GQuark
-gabble_conn_aliasing_pep_alias_quark (void)
-{
-  static GQuark quark = 0;
-
-  if (G_UNLIKELY (quark == 0))
-    quark = g_quark_from_static_string
-        ("gabble_conn_aliasing_pep_alias_quark");
-
-  return quark;
-}
-
-
 static gboolean
 _grab_nickname (GabbleConnection *self,
                 TpHandle handle,
@@ -654,7 +634,6 @@ _grab_nickname (GabbleConnection *self,
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
-  GQuark quark = gabble_conn_aliasing_pep_alias_quark ();
   const gchar *old, *nickname;
 
   node = wocky_node_get_child_ns (node, "nick", NS_NICK);
@@ -668,23 +647,26 @@ _grab_nickname (GabbleConnection *self,
     }
 
   nickname = node->content;
-  old = tp_handle_get_qdata (contact_handles, handle, quark);
+
+  old = g_hash_table_lookup (self->pep_alias_cache, GUINT_TO_POINTER (handle));
 
   if (tp_strdiff (old, nickname))
     {
       if (nickname == NULL)
         {
-          DEBUG ("got empty <nick/> node, caching as NO_ALIAS");
+          DEBUG ("got empty <nick/> node, caching negatively");
           _cache_negatively (self, handle);
         }
       else
         {
-          tp_handle_set_qdata (contact_handles, handle, quark, g_strdup (nickname),
-              g_free);
+          DEBUG ("caching positively");
+          g_hash_table_insert (self->pep_alias_cache, GUINT_TO_POINTER (handle),
+              g_strdup (nickname));
         }
 
       gabble_conn_aliasing_nickname_updated ((GObject *) self, handle, self);
     }
+
   return TRUE;
 }
 
@@ -909,9 +891,9 @@ get_cached_remote_alias (
   const gchar *tmp;
   gchar *resource;
 
-  tmp = tp_handle_get_qdata (contact_handles, handle,
-      gabble_conn_aliasing_pep_alias_quark ());
-  if (tmp != NULL && tmp != NO_ALIAS)
+  tmp = g_hash_table_lookup (conn->pep_alias_cache, GUINT_TO_POINTER (handle));
+
+  if (tmp != NULL)
     {
       maybe_set (alias, tmp);
       return GABBLE_CONNECTION_ALIAS_FROM_PRESENCE;
@@ -1183,9 +1165,16 @@ conn_aliasing_init (GabbleConnection *conn)
     conn_aliasing_fill_contact_attributes);
 
   conn->pep_nick = wocky_pep_service_new (NS_NICK, TRUE);
+  conn->pep_alias_cache = g_hash_table_new_full (NULL, NULL, NULL, g_free);
 
   g_signal_connect (conn->pep_nick, "changed",
       G_CALLBACK (pep_nick_node_changed), conn);
+}
+
+void
+conn_aliasing_finalize (GabbleConnection *conn)
+{
+  tp_clear_pointer (&conn->pep_alias_cache, g_hash_table_unref);
 }
 
 void

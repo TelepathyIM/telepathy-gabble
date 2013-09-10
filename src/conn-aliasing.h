@@ -28,6 +28,7 @@
 G_BEGIN_DECLS
 
 void conn_aliasing_init (GabbleConnection *conn);
+void conn_aliasing_finalize (GabbleConnection *conn);
 void conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data);
 
 void gabble_conn_aliasing_nickname_updated (GObject *object,

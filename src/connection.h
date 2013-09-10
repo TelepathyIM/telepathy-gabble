@@ -248,6 +248,12 @@ struct _GabbleConnection {
     /* ContactInfo.SupportedFields, or NULL to use the generic one */
     GPtrArray *contact_info_fields;
 
+    /* Contacts' aliases from PEP. Private to conn-aliasing.c.
+     * TpHandle => (transfer full) gchar *
+     * We don't distinguish between "not cached" and "known to have
+     * no PEP alias" here. */
+    GHashTable *pep_alias_cache;
+
     GabbleConnectionPrivate *priv;
 };
 

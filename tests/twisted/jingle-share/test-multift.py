@@ -59,17 +59,46 @@ def test(q, bus, conn, stream):
     url['name'] = 'preview-path'
 
     stream.send(iq)
-    event = q.expect('dbus-signal', signal="NewChannels")
-    channels = event.args[0]
 
-    # Make sure we get the right amout of channels
-    assert len(channels) == len(files)
+    patterns = []
+    found = {}
+
+    def get_predicate(name, found, i):
+        # This needs to be a function so that name, found, i
+        # are part of a closure.
+
+        # /!\ This predicate has side-effects: it writes to 'found'
+        def predicate(e):
+            path, props = e.args[0][0]
+            if props[cs.CHANNEL_TYPE] != cs.CHANNEL_TYPE_FILE_TRANSFER:
+                return False
+
+            if props[cs.FT_FILENAME] == name:
+                found[i] = (path, props)
+                return True
+        return predicate
+
+    for i, f in enumerate(files):
+        type, name, size, image = f
+        if type == "folder":
+            name = "%s.tar" % name
+
+            return False
+
+        patterns.append(EventPattern('dbus-signal',
+            signal='NewChannels',
+            predicate=get_predicate(name, found, i)))
 
     # Make sure every file transfer has a channel associated with it
-    found = [False for i in files]
     file_collection = None
-    for channel in channels:
-        path, props = channel
+    q.expect_many(*patterns)
+    assertLength(len(files), found)
+
+    channels = []
+    for i in found:
+        assert found[i] is not None
+        path, props = found[i]
+        channels.append((path, props))
 
         # Get the FileCollection and make sure it exists
         if file_collection is None:
@@ -80,17 +109,11 @@ def test(q, bus, conn, stream):
         # FileCollection must be the same for every channel
         assert props[cs.FT_FILE_COLLECTION] == file_collection, props
 
-        for i, f in enumerate(files):
-            type, name, size, image = f
-            if type == "folder":
-                name = "%s.tar" % name
-            if size is None:
-                size = 0
+        type, name, size, image = files[i]
+        if size is None:
+            size = 0
 
-            if props[cs.FT_FILENAME].encode('utf=8') == name:
-                assert found[i] == False
-                found[i] = True
-                assert props[cs.FT_SIZE] == size, props
+        assertEquals(size, props[cs.FT_SIZE])
 
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER, props
         assertSameSets(
@@ -117,8 +140,6 @@ def test(q, bus, conn, stream):
             props[cs.FT_AVAILABLE_SOCKET_TYPES]
         assert props[cs.FT_TRANSFERRED_BYTES] == 0, props
         assert props[cs.FT_INITIAL_OFFSET] == 0, props
-
-    assert False not in found
 
     event = q.expect('stream-iq', to=contact,
                      iq_type='set', query_name='session')

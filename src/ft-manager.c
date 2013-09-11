@@ -289,8 +289,6 @@ static void
 gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
 {
   GList *i;
-  GHashTable *new_channels = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, NULL);
 
   for (i = channels; i ; i = i->next)
     {
@@ -304,12 +302,9 @@ gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
       self->priv->channels = g_list_append (self->priv->channels, chan);
       /* The channels can't satisfy a request because this will always be called
          when we receive an incoming jingle-share session */
-      g_hash_table_insert (new_channels, chan, NULL);
+      tp_channel_manager_emit_new_channel (self,
+          TP_EXPORTABLE_CHANNEL (chan), NULL);
     }
-
-  tp_channel_manager_emit_new_channels (self, new_channels);
-
-  g_hash_table_unref (new_channels);
 }
 #endif
 

@@ -5,13 +5,13 @@ Test the verification string introduced in version 1.5 of XEP-0115
 This test changes the caps several times:
 - Initial presence to be online
 - Change presence to handle audio calls, using XEP-0115-v1.3. Check that
-  'CapabilitiesChanged' *is* fired
+  'ContactCapabilitiesChanged' *is* fired
 - Change presence *not* to handle audio calls, using XEP-0115-v1.5, but with a
-  *bogus* hash. Check that 'CapabilitiesChanged' is *not* fired
+  *bogus* hash. Check that 'ContactCapabilitiesChanged' is *not* fired
 - Change presence *not* to handle audio calls, using XEP-0115-v1.5, with a
-  *good* hash. Check that 'CapabilitiesChanged' *is* fired
+  *good* hash. Check that 'ContactCapabilitiesChanged' *is* fired
 - Change presence to handle audio calls, using XEP-0115-v1.5, with a XEP-0128
-  dataform. Check that 'CapabilitiesChanged' is fired
+  dataform. Check that 'ContactCapabilitiesChanged' is fired
 This is done for 2 contacts
 
 Then, this test announce 2 contacts with the same hash.
@@ -60,8 +60,6 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
                 (2, u'available', 'hello')}])
 
     # no special capabilities
-    basic_caps = [(contact_handle, cs.CHANNEL_TYPE_TEXT, 3, 0)]
-    assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
     for rcc in conn.ContactCapabilities.GetContactCapabilities([contact_handle])[contact_handle]:
         assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 
@@ -83,18 +81,12 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     send_disco_reply(stream, event.stanza, [], jingle_av_features)
 
     # we can now do audio calls
-    old, new = q.expect_many(
-        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+    cc, = q.expect_many(
         EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
         )
 
-    caps_diff = old.args[0]
-    media_diff = [c for c in caps_diff
-                    if c[1] == cs.CHANNEL_TYPE_STREAMED_MEDIA][0]
-    assert media_diff[5] & cs.MEDIA_CAP_AUDIO, media_diff[5]
-
-    assert_rccs_callable(new.args[0][contact_handle])
-    assertEquals(new.args[0],
+    assert_rccs_callable(cc.args[0][contact_handle])
+    assertEquals(cc.args[0],
             conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
     # Send presence without any capabilities. XEP-0115 §8.4 Caps Optimization
@@ -104,12 +96,8 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(make_presence(contact, status='very capable'))
     q.expect('dbus-signal', signal='PresencesChanged',
         args=[{contact_handle: (2, u'available', 'very capable')}])
-    ye_olde_caps = conn.Capabilities.GetCapabilities([contact_handle])
-    assertLength(1, [c for c in ye_olde_caps
-                       if c[1] == cs.CHANNEL_TYPE_STREAMED_MEDIA and
-                          c[3] & cs.MEDIA_CAP_AUDIO])
     # still exactly the same capabilities
-    assertEquals(new.args[0],
+    assertEquals(cc.args[0],
             conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
     # send bogus presence
@@ -134,7 +122,6 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # don't receive any D-Bus signal
     forbidden = [
-        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
         EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
         ]
     q.forbid_events(forbidden)
@@ -165,14 +152,13 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     stream.send(result)
 
     # we can now do nothing
-    old, new = q.expect_many(
-        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+    cc, = q.expect_many(
         EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
         )
-    for rcc in new.args[0][contact_handle]:
+    for rcc in cc.args[0][contact_handle]:
         assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
-    assert_rccs_not_callable(new.args[0][contact_handle])
-    assertEquals(new.args[0],
+    assert_rccs_not_callable(cc.args[0][contact_handle])
+    assertEquals(cc.args[0],
             conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
     # send correct presence
@@ -202,12 +188,11 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         stream, event.stanza, some_identities, jingle_av_features, fake_client_dataforms)
 
     # we can now do audio calls
-    old, new = q.expect_many(
-        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+    cc, = q.expect_many(
         EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
         )
-    assert_rccs_callable(new.args[0][contact_handle])
-    assertEquals(new.args[0],
+    assert_rccs_callable(cc.args[0][contact_handle])
+    assertEquals(cc.args[0],
             conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
 def test_two_clients(q, bus, conn, stream, contact1, contact2,
@@ -228,11 +213,6 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
                 (2, u'available', 'hello')}])
 
     # no special capabilities
-    basic_caps = [(contact_handle1, cs.CHANNEL_TYPE_TEXT, 3, 0)]
-    assert conn.Capabilities.GetCapabilities([contact_handle1]) == basic_caps
-    basic_caps = [(contact_handle2, cs.CHANNEL_TYPE_TEXT, 3, 0)]
-    assert conn.Capabilities.GetCapabilities([contact_handle2]) == basic_caps
-
     for h in (contact_handle1, contact_handle2):
         for rcc in conn.ContactCapabilities.GetContactCapabilities([h])[h]:
             assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
@@ -258,7 +238,6 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
     # don't receive any D-Bus signal
     forbidden = [
-        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
         EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
         ]
     q.forbid_events(forbidden)
@@ -293,26 +272,20 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         send_disco_reply(stream, event.stanza, some_identities, jingle_av_features)
 
     # we can now do audio calls
-    old, new = q.expect_many(
-        EventPattern('dbus-signal', signal='CapabilitiesChanged',
-            args=[[(contact_handle2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0,
-                cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]]),
+    cc, = q.expect_many(
         EventPattern('dbus-signal', signal='ContactCapabilitiesChanged',
             predicate=lambda e: contact_handle2 in e.args[0]),
         )
-    assert_rccs_callable(new.args[0][contact_handle2])
+    assert_rccs_callable(cc.args[0][contact_handle2])
 
     if not broken_hash:
         # if the first contact failed to provide a good hash, it does not
         # deserve its capabilities to be understood by Gabble!
-        old, new = q.expect_many(
-            EventPattern('dbus-signal', signal='CapabilitiesChanged',
-                args=[[(contact_handle1, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0,
-                    cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]]),
+        cc, = q.expect_many(
             EventPattern('dbus-signal', signal='ContactCapabilitiesChanged',
                 predicate=lambda e: contact_handle1 in e.args[0]),
             )
-        assert_rccs_callable(new.args[0][contact_handle1])
+        assert_rccs_callable(cc.args[0][contact_handle1])
 
     # don't receive any further signals
     q.forbid_events(forbidden)

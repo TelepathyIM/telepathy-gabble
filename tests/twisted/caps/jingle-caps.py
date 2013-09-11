@@ -68,20 +68,9 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
     else:
         call_expected_media_caps.append(cs.CALL_MUTABLE_CONTENTS)
 
-    _, event = q.expect_many(
-            EventPattern('dbus-signal', signal='CapabilitiesChanged',
-                    args = [[ ( h,
-                        cs.CHANNEL_TYPE_STREAMED_MEDIA,
-                        0, # old generic
-                        3, # new generic (can create and receive these)
-                        0, # old specific
-                        cflags ) ]] # new specific
-                ),
+    event, = q.expect_many(
             EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
         )
-
-    assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, cflags),
-        conn.Capabilities.GetCapabilities([h]))
 
     # Check Contact capabilities for streamed media
     assertEquals(len(event.args), 1)

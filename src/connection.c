@@ -57,7 +57,6 @@
 #include "debug.h"
 #include "disco.h"
 #include "im-factory.h"
-#include "legacy-caps.h"
 #include "muc-factory.h"
 #include "namespaces.h"
 #include "presence-cache.h"
@@ -84,10 +83,7 @@ static guint disco_reply_timeout = 5;
 
 #define DISCONNECT_TIMEOUT 5
 
-static void capabilities_service_iface_init (gpointer, gpointer);
 static void gabble_conn_contact_caps_iface_init (gpointer, gpointer);
-static void conn_capabilities_fill_contact_attributes (GObject *obj,
-  const GArray *contacts, GHashTable *attributes_hash);
 static void conn_contact_capabilities_fill_contact_attributes (GObject *obj,
   const GArray *contacts, GHashTable *attributes_hash);
 static void gabble_plugin_connection_iface_init (
@@ -107,8 +103,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_avatars_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO,
       conn_contact_info_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CAPABILITIES,
-      capabilities_service_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
        tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
@@ -251,11 +245,8 @@ struct _GabbleConnectionPrivate
   /* subscriptions on behalf of the Connection, like PEP "+notify"
    * namespaces (this one is add-only) */
   GabbleCapabilitySet *notify_caps;
-  /* caps provided by Capabilities.AdvertiseCapabilities (tp-spec 0.16) */
-  GabbleCapabilitySet *legacy_caps;
   /* additional caps that we advertise until the first call to
-   * AdvertiseCapabilities or UpdateCapabilities, for vague historical
-   * reasons */
+   * UpdateCapabilities, for vague historical reasons */
   GabbleCapabilitySet *bonus_caps;
   /* sidecar caps set by gabble_connection_update_sidecar_capabilities */
   GabbleCapabilitySet *sidecar_caps;
@@ -457,10 +448,6 @@ gabble_connection_constructor (GType type,
   conn_addressing_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
-      TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
-          conn_capabilities_fill_contact_attributes);
-
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
       TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
           conn_contact_capabilities_fill_contact_attributes);
 
@@ -480,7 +467,6 @@ gabble_connection_constructor (GType type,
 
   priv->all_caps = gabble_capability_set_new ();
   priv->notify_caps = gabble_capability_set_new ();
-  priv->legacy_caps = gabble_capability_set_new ();
   priv->sidecar_caps = gabble_capability_set_new ();
   priv->client_caps = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, (GDestroyNotify) gabble_capability_set_free);
@@ -489,7 +475,7 @@ gabble_connection_constructor (GType type,
       g_free, (GDestroyNotify) g_ptr_array_unref);
 
   /* Historically, the optional Jingle transports were in our initial
-   * presence, but could be removed by AdvertiseCapabilities(). Emulate
+   * presence, but could be removed by UpdateCapabilities(). Emulate
    * that here for now. */
   priv->bonus_caps = gabble_capability_set_new ();
 #ifdef ENABLE_VOIP
@@ -888,7 +874,6 @@ static const gchar *implemented_interfaces[] = {
     /* always present interfaces */
     TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
     TP_IFACE_CONNECTION_INTERFACE_ALIASING,
-    TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES,
     TP_IFACE_CONNECTION_INTERFACE_SIMPLE_PRESENCE,
     TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
     TP_IFACE_CONNECTION_INTERFACE_AVATARS,
@@ -1312,7 +1297,6 @@ gabble_connection_dispose (GObject *object)
   g_hash_table_unref (priv->client_caps);
   gabble_capability_set_free (priv->all_caps);
   gabble_capability_set_free (priv->notify_caps);
-  gabble_capability_set_free (priv->legacy_caps);
   gabble_capability_set_free (priv->sidecar_caps);
   gabble_capability_set_free (priv->bonus_caps);
 
@@ -2502,7 +2486,6 @@ gabble_connection_refresh_capabilities (GabbleConnection *self,
   gabble_capability_set_update (self->priv->all_caps,
       gabble_capabilities_get_fixed_caps ());
   gabble_capability_set_update (self->priv->all_caps, self->priv->notify_caps);
-  gabble_capability_set_update (self->priv->all_caps, self->priv->legacy_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->sidecar_caps);
   gabble_capability_set_update (self->priv->all_caps, self->priv->bonus_caps);
 
@@ -3133,66 +3116,11 @@ _emit_capabilities_changed (GabbleConnection *conn,
                             const GabbleCapabilitySet *old_set,
                             const GabbleCapabilitySet *new_set)
 {
-  GPtrArray *caps_arr;
-  const CapabilityConversionData *ccd;
   GHashTable *hash;
-  guint i;
+  GPtrArray *caps_arr;
 
   if (gabble_capability_set_equals (old_set, new_set))
     return;
-
-  /* o.f.T.C.Capabilities */
-
-  caps_arr = g_ptr_array_new ();
-
-  for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-    {
-      guint old_specific = ccd->c2tf_fn (old_set);
-      guint new_specific = ccd->c2tf_fn (new_set);
-
-      if (old_specific != 0 || new_specific != 0)
-        {
-          GValue caps_monster_struct = {0, };
-          guint old_generic = old_specific ?
-            TP_CONNECTION_CAPABILITY_FLAG_CREATE |
-            TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
-          guint new_generic = new_specific ?
-            TP_CONNECTION_CAPABILITY_FLAG_CREATE |
-            TP_CONNECTION_CAPABILITY_FLAG_INVITE : 0;
-
-          if (0 == (old_specific ^ new_specific))
-            continue;
-
-          g_value_init (&caps_monster_struct,
-              TP_STRUCT_TYPE_CAPABILITY_CHANGE);
-          g_value_take_boxed (&caps_monster_struct,
-              dbus_g_type_specialized_construct
-                (TP_STRUCT_TYPE_CAPABILITY_CHANGE));
-
-          dbus_g_type_struct_set (&caps_monster_struct,
-              0, handle,
-              1, ccd->iface,
-              2, old_generic,
-              3, new_generic,
-              4, old_specific,
-              5, new_specific,
-              G_MAXUINT);
-
-          g_ptr_array_add (caps_arr, g_value_get_boxed (&caps_monster_struct));
-        }
-    }
-
-  if (caps_arr->len)
-    tp_svc_connection_interface_capabilities_emit_capabilities_changed (
-        conn, caps_arr);
-
-
-  for (i = 0; i < caps_arr->len; i++)
-    {
-      g_boxed_free (TP_STRUCT_TYPE_CAPABILITY_CHANGE,
-          g_ptr_array_index (caps_arr, i));
-    }
-  g_ptr_array_unref (caps_arr);
 
   /* o.f.T.C.ContactCapabilities */
   caps_arr = gabble_connection_build_contact_caps (conn, handle, new_set);
@@ -3255,125 +3183,6 @@ connection_capabilities_update_cb (GabblePresenceCache *cache,
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
 
   _emit_capabilities_changed (conn, handle, old_cap_set, new_cap_set);
-}
-
-/**
- * gabble_connection_advertise_capabilities
- *
- * Implements D-Bus method AdvertiseCapabilities
- * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_advertise_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
-                                          const GPtrArray *add,
-                                          const gchar **del,
-                                          DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  guint i;
-  GabbleConnectionPrivate *priv = self->priv;
-  const CapabilityConversionData *ccd;
-  GPtrArray *ret;
-  GabbleCapabilitySet *save_set;
-  GabbleCapabilitySet *add_set, *remove_set;
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  /* Now that someone has told us our *actual* capabilities, we can stop
-   * advertising spurious caps in initial presence */
-  gabble_capability_set_clear (self->priv->bonus_caps);
-
-  add_set = gabble_capability_set_new ();
-  remove_set = gabble_capability_set_new ();
-
-  for (i = 0; i < add->len; i++)
-    {
-      GValue iface_flags_pair = {0, };
-      gchar *channel_type;
-      guint flags;
-
-      g_value_init (&iface_flags_pair, TP_STRUCT_TYPE_CAPABILITY_PAIR);
-      g_value_set_static_boxed (&iface_flags_pair, g_ptr_array_index (add, i));
-
-      dbus_g_type_struct_get (&iface_flags_pair,
-                              0, &channel_type,
-                              1, &flags,
-                              G_MAXUINT);
-
-      for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-          if (g_str_equal (channel_type, ccd->iface))
-            ccd->tf2c_fn (flags, add_set);
-
-      g_free (channel_type);
-    }
-
-  for (i = 0; NULL != del[i]; i++)
-    {
-      for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-          if (g_str_equal (del[i], ccd->iface))
-            ccd->tf2c_fn (~0, remove_set);
-    }
-
-  gabble_capability_set_update (priv->legacy_caps, add_set);
-  gabble_capability_set_exclude (priv->legacy_caps, remove_set);
-
-  if (DEBUGGING)
-    {
-      gchar *add_str = gabble_capability_set_dump (add_set, "  ");
-      gchar *remove_str = gabble_capability_set_dump (remove_set, "  ");
-
-      DEBUG ("caps to add:\n%s", add_str);
-      DEBUG ("caps to remove:\n%s", remove_str);
-      g_free (add_str);
-      g_free (remove_str);
-    }
-
-  gabble_capability_set_free (add_set);
-  gabble_capability_set_free (remove_set);
-
-  if (gabble_connection_refresh_capabilities (self, &save_set))
-    {
-      _emit_capabilities_changed (self,
-          tp_base_connection_get_self_handle (base), save_set, priv->all_caps);
-      gabble_capability_set_free (save_set);
-    }
-
-  ret = g_ptr_array_new ();
-
-  for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-    {
-      guint tp_caps = ccd->c2tf_fn (self->priv->all_caps);
-
-      if (tp_caps != 0)
-        {
-          GValue iface_flags_pair = {0, };
-
-          g_value_init (&iface_flags_pair, TP_STRUCT_TYPE_CAPABILITY_PAIR);
-          g_value_take_boxed (&iface_flags_pair,
-              dbus_g_type_specialized_construct (
-                  TP_STRUCT_TYPE_CAPABILITY_PAIR));
-
-          dbus_g_type_struct_set (&iface_flags_pair,
-                                  0, ccd->iface,
-                                  1, tp_caps,
-                                  G_MAXUINT);
-
-          g_ptr_array_add (ret, g_value_get_boxed (&iface_flags_pair));
-        }
-    }
-
-  tp_svc_connection_interface_capabilities_return_from_advertise_capabilities (
-      context, ret);
-
-  g_ptr_array_foreach (ret, (GFunc) g_value_array_free, NULL);
-  g_ptr_array_unref (ret);
 }
 
 static const gchar *
@@ -3614,126 +3423,6 @@ gabble_connection_update_capabilities (
       context);
 }
 
-static const gchar *assumed_caps[] =
-{
-  TP_IFACE_CHANNEL_TYPE_TEXT,
-  NULL
-};
-
-
-/**
- * gabble_connection_get_handle_capabilities
- *
- * Add capabilities of handle to the given GPtrArray
- */
-static void
-gabble_connection_get_handle_capabilities (GabbleConnection *self,
-  TpHandle handle, GPtrArray *arr)
-{
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  GabblePresence *pres;
-  const CapabilityConversionData *ccd;
-  guint typeflags;
-  const gchar **assumed;
-
-  if (0 == handle)
-    {
-      /* obsolete request for the connection's capabilities, do nothing */
-      return;
-    }
-
-  if (handle == tp_base_connection_get_self_handle (base))
-    pres = self->self_presence;
-  else
-    pres = gabble_presence_cache_get (self->presence_cache, handle);
-
-  if (NULL != pres)
-    {
-      const GabbleCapabilitySet *cap_set = gabble_presence_peek_caps (pres);
-
-      for (ccd = capabilities_conversions; NULL != ccd->iface; ccd++)
-        {
-          typeflags = ccd->c2tf_fn (cap_set);
-
-          if (typeflags)
-            {
-              GValue monster = {0, };
-
-              g_value_init (&monster, TP_STRUCT_TYPE_CONTACT_CAPABILITY);
-              g_value_take_boxed (&monster,
-                  dbus_g_type_specialized_construct (
-                    TP_STRUCT_TYPE_CONTACT_CAPABILITY));
-
-              dbus_g_type_struct_set (&monster,
-                  0, handle,
-                  1, ccd->iface,
-                  2, TP_CONNECTION_CAPABILITY_FLAG_CREATE |
-                      TP_CONNECTION_CAPABILITY_FLAG_INVITE,
-                  3, typeflags,
-                  G_MAXUINT);
-
-              g_ptr_array_add (arr, g_value_get_boxed (&monster));
-            }
-        }
-    }
-
-  for (assumed = assumed_caps; NULL != *assumed; assumed++)
-    {
-      GValue monster = {0, };
-
-      g_value_init (&monster, TP_STRUCT_TYPE_CONTACT_CAPABILITY);
-      g_value_take_boxed (&monster,
-          dbus_g_type_specialized_construct (
-              TP_STRUCT_TYPE_CONTACT_CAPABILITY));
-
-      dbus_g_type_struct_set (&monster,
-          0, handle,
-          1, *assumed,
-          2, TP_CONNECTION_CAPABILITY_FLAG_CREATE |
-              TP_CONNECTION_CAPABILITY_FLAG_INVITE,
-          3, 0,
-          G_MAXUINT);
-
-      g_ptr_array_add (arr, g_value_get_boxed (&monster));
-    }
-}
-
-
-static void
-conn_capabilities_fill_contact_attributes (GObject *obj,
-  const GArray *contacts, GHashTable *attributes_hash)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (obj);
-  guint i;
-  GPtrArray *array = NULL;
-
-  for (i = 0; i < contacts->len; i++)
-    {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
-
-      if (array == NULL)
-        array = g_ptr_array_new ();
-
-      gabble_connection_get_handle_capabilities (self, handle, array);
-
-      if (array->len > 0)
-        {
-          GValue *val =  tp_g_value_slice_new (
-            TP_ARRAY_TYPE_CONTACT_CAPABILITY_LIST);
-
-          g_value_take_boxed (val, array);
-          tp_contacts_mixin_set_contact_attribute (attributes_hash,
-            handle, TP_IFACE_CONNECTION_INTERFACE_CAPABILITIES"/caps",
-            val);
-
-          array = NULL;
-        }
-    }
-
-    if (array != NULL)
-      g_ptr_array_unref (array);
-}
-
 static void
 conn_contact_capabilities_fill_contact_attributes (GObject *obj,
   const GArray *contacts, GHashTable *attributes_hash)
@@ -3753,54 +3442,6 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
           TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/capabilities",
           val);
     }
-}
-
-/**
- * gabble_connection_get_capabilities
- *
- * Implements D-Bus method GetCapabilities
- * on interface org.freedesktop.Telepathy.Connection.Interface.Capabilities
- */
-static void
-gabble_connection_get_capabilities (TpSvcConnectionInterfaceCapabilities *iface,
-                                    const GArray *handles,
-                                    DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  guint i;
-  GPtrArray *ret;
-  GError *error = NULL;
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  if (!tp_handles_are_valid (contact_handles, handles, TRUE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  ret = g_ptr_array_new ();
-
-  for (i = 0; i < handles->len; i++)
-    {
-      TpHandle handle = g_array_index (handles, TpHandle, i);
-
-      gabble_connection_get_handle_capabilities (self, handle, ret);
-    }
-
-  tp_svc_connection_interface_capabilities_return_from_get_capabilities (
-      context, ret);
-
-  for (i = 0; i < ret->len; i++)
-    {
-      g_value_array_free (g_ptr_array_index (ret, i));
-    }
-
-  g_ptr_array_unref (ret);
 }
 
 /**
@@ -3931,19 +3572,6 @@ gabble_connection_send_presence (GabbleConnection *conn,
   g_object_unref (message);
 
   return result;
-}
-
-static void
-capabilities_service_iface_init (gpointer g_iface, gpointer iface_data)
-{
-  TpSvcConnectionInterfaceCapabilitiesClass *klass =
-    (TpSvcConnectionInterfaceCapabilitiesClass *) g_iface;
-
-#define IMPLEMENT(x) tp_svc_connection_interface_capabilities_implement_##x (\
-    klass, gabble_connection_##x)
-  IMPLEMENT(advertise_capabilities);
-  IMPLEMENT(get_capabilities);
-#undef IMPLEMENT
 }
 
 static void

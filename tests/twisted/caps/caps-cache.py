@@ -32,21 +32,16 @@ features = [
 
 def expect_caps(q, conn, h):
     # we can now do audio and video calls
-    old, new = q.expect_many(
-        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+    cc, = q.expect_many(
         EventPattern('dbus-signal', signal='ContactCapabilitiesChanged',
             predicate=lambda e: h in e.args[0]),
         )
-    assert_rccs_callable(new.args[0][h], require_video=True)
+    assert_rccs_callable(cc.args[0][h], require_video=True)
     check_caps(conn, h)
 
 def check_caps(conn, h):
     caps = conn.ContactCapabilities.GetContactCapabilities([h])
     assert_rccs_callable(caps[h], require_video=True)
-
-    assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3,
-            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO),
-        conn.Capabilities.GetCapabilities([h]))
 
 def update_contact_caps(q, conn, stream, contact, caps, disco = True,
     dataforms = {}, initial = True):

@@ -40,13 +40,5 @@ def test(q, bus, conn, stream):
                   cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT}, fixed)
     assertSameSets([cs.TARGET_HANDLE], allowed)
 
-    # old Capabilities
-    all_caps = conn.Capabilities.GetCapabilities([bob_handle])
-    assertLength(1, all_caps)
-
-    caps = all_caps[0]
-
-    assertEquals((bob_handle, cs.CHANNEL_TYPE_TEXT, 3, 0), caps)
-
 if __name__ == '__main__':
     exec_test(test, do_connect=False)

@@ -326,9 +326,6 @@ def send_presence(q, conn, stream, contact, caps, initial=True, show=None):
                    (2, u'available', 'hello')}])
 
         # no special capabilities
-        assertEquals([(h, cs.CHANNEL_TYPE_TEXT, 3, 0)],
-            conn.Capabilities.GetCapabilities([h]))
-
         for rcc in conn.ContactCapabilities.GetContactCapabilities([h])[h]:
             assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 

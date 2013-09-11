@@ -47,10 +47,6 @@ def handle_disco(q, stream, contact_jid, identity):
     send_disco_reply(stream, event.stanza, [identity], features)
 
 def capabilities_changed(q, contact_handle):
-    streamed_media_caps = (contact_handle, cs.CHANNEL_TYPE_STREAMED_MEDIA,
-        0, 3, 0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)
-    e = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    assertContains(streamed_media_caps, e.args[0])
     e = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
     assertContains(contact_handle, e.args[0])
     assert_rccs_callable(e.args[0][contact_handle], require_video=True)

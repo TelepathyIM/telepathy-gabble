@@ -73,8 +73,6 @@ libgabble_convenience_la_SOURCES = \
     im-channel.c \
     im-factory.h \
     im-factory.c \
-    legacy-caps.h \
-    legacy-caps.c \
     message-util.h \
     message-util.c \
     muc-channel.h \

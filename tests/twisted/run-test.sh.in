@@ -11,7 +11,7 @@ if test "x$GABBLE_TEST_UNINSTALLED" = x; then
   test_build="@gabbletestsdir@"
   config_file="@gabbletestsdir@/twisted/tools/servicedir/tmp-session-bus.conf"
 
-  PYTHONPATH="@gabbletestsdir@/twisted"
+  PYTHONPATH="@gabbletestsdir@/twisted:@gabbletestsdir@/twisted/jingle"
   export PYTHONPATH
 
   GABBLE_TWISTED_PATH="@gabbletestsdir@/twisted"
@@ -31,6 +31,8 @@ else
   config_file="${test_build}/twisted/tools/servicedir-uninstalled/tmp-session-bus.conf"
 
   PYTHONPATH="${test_src}/twisted:${test_build}/twisted"
+  PYTHONPATH="$PYTHONPATH:${test_src}/twisted/jingle"
+  PYTHONPATH="$PYTHONPATH:${test_build}/twisted/jingle"
   export PYTHONPATH
 
   GABBLE_TWISTED_PATH="${test_src}/twisted"

@@ -15,6 +15,7 @@ import constants as cs
 import ns
 from caps_helper import presence_and_disco, compute_caps_hash, send_presence
 from jingle.jingletest2 import JingleTest2, JingleProtocol031
+from call_helper import CallTest
 
 from config import VOIP_ENABLED
 
@@ -131,6 +132,11 @@ def test(q, bus, conn, stream):
 def test_prefer_phones(q, bus, conn, stream, expect_disco):
     cat = 'cat@windowsill'
 
+    # This needs to be done once per connection
+    jp = JingleProtocol031()
+    JingleTest2(jp, conn, q, stream, 'test@localhost',
+            cat).prepare()
+
     def sign_in_a_cat(jid, identities, show=None):
         caps['ver'] = compute_caps_hash(identities, features, {})
 
@@ -140,32 +146,19 @@ def test_prefer_phones(q, bus, conn, stream, expect_disco):
         sync_stream(q, stream)
 
     def make_call(expected_recipient):
-        jp = JingleProtocol031()
-        jt = JingleTest2(jp, conn, q, stream, 'test@localhost', 'dummy')
 
-        conn.Requests.CreateChannel({
-            cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-            cs.TARGET_ID: cat,
-            cs.INITIAL_AUDIO: True,
-        })
+        class MyTest(CallTest):
+            PEER_JID = expected_recipient
 
-        e = q.expect('dbus-signal', signal='NewSessionHandler')
-        session = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
-        session.Ready()
+            def check_session_initiate_iq(self, e):
+                assertEquals(expected_recipient, e.to)
 
-        e = q.expect('dbus-signal', signal='NewStreamHandler')
+            def prepare(self):
+                # Don't do the preparation step: we did that already
+                pass
 
-        stream_handler = make_channel_proxy(conn, e.args[0],
-            'Media.StreamHandler')
-        stream_handler.NewNativeCandidate("fake",
-            jt.get_remote_transports_dbus())
-        stream_handler.Ready(jt.get_audio_codecs_dbus())
-        stream_handler.StreamState(cs.MEDIA_STREAM_STATE_CONNECTED)
-
-        e = q.expect('stream-iq',
-            predicate=jp.action_predicate('session-initiate'))
-        assertEquals(expected_recipient, e.to)
+        test = MyTest(jp, q, bus, conn, stream, incoming=False, params={})
+        test.run()
 
     features = [ ns.JINGLE_RTP, ns.JINGLE_RTP_AUDIO, ns.JINGLE_RTP_VIDEO
                ] + all_transports

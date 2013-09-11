@@ -61,8 +61,7 @@ class CallTest(object):
         self.can_change_direction = (jp.dialect not in ['gtalk-v0.3',
                 'gtalk-v0.4'])
         self.self_handle = conn.GetSelfHandle()
-        self.peer_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
-
+        self.peer_handle = conn.RequestHandles(1, [self.PEER_JID])[0]
 
     def check_channel_state(self, state, wait = False):
         """Optionnally wait for channel state to be reached and check that the
@@ -460,8 +459,9 @@ class CallTest(object):
         ret = self.q.expect_many(*expected)
         # Check the first LocalCandidatesAdded signal (third in the array)
         assertEquals(candidates, ret[2].args[0])
-
         if not self.incoming:
+            self.check_session_initiate_iq(ret[-1])
+
             if expect_after_si is not None:
                 sync_stream(self.q, self.stream)
                 self.q.unforbid_events(expect_after_si)
@@ -606,6 +606,10 @@ class CallTest(object):
             self.enable_endpoint(endpoint)
 
         self.check_channel_state(cs.CALL_STATE_INITIALISED)
+
+    def check_session_initiate_iq(self, e):
+        """e is the session-initiate stream-iq event."""
+        pass
 
     def connect(self, expect_after_si=None):
         """Negotiate all the codecs, bringing the channel to INITIALISED

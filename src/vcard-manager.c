@@ -46,8 +46,6 @@ static guint default_request_timeout = 180;
  * the same recipient */
 static guint request_wait_delay = 5 * 60;
 
-static const gchar *NO_ALIAS = "none";
-
 struct _GabbleVCardManagerEditInfo {
     /* name of element to edit */
     gchar *element_name;
@@ -100,7 +98,13 @@ struct _GabbleVCardManagerPrivate
   gboolean dispose_has_run;
   GabbleConnection *connection;
 
-  /* TpHandle borrowed from the entry => owned (GabbleVCardCacheEntry *) */
+  /* TpHandle => owned string, or NULL for negative cache
+   * Note that NULL as an item is considered to be distinct from
+   * a missing item. We keep aliases indefinitely, whereas
+   * the rest of the vCard is cached for a finite time. */
+  GHashTable *alias_cache;
+
+  /* TpHandle => owned (GabbleVCardCacheEntry *) */
   GHashTable *cache;
 
   /* Those (GabbleVCardCacheEntry *) s that have not expired, ordered by
@@ -199,15 +203,6 @@ gabble_vcard_manager_error_quark (void)
   return quark;
 }
 
-GQuark
-gabble_vcard_manager_cache_quark (void)
-{
-  static GQuark quark = 0;
-  if (!quark)
-    quark = g_quark_from_static_string ("gabble-vcard-manager-cache");
-  return quark;
-}
-
 static void cache_entry_free (void *data);
 static gint cache_entry_compare (gconstpointer a, gconstpointer b);
 static void manager_patch_vcard (
@@ -223,6 +218,7 @@ gabble_vcard_manager_init (GabbleVCardManager *obj)
          GabbleVCardManagerPrivate);
   obj->priv = priv;
 
+  priv->alias_cache = g_hash_table_new_full (NULL, NULL, NULL, g_free);
   priv->cache = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       cache_entry_free);
   /* no destructor here - the hash table is responsible for freeing it */
@@ -576,7 +572,12 @@ gabble_vcard_manager_dispose (GObject *object)
 static void
 gabble_vcard_manager_finalize (GObject *object)
 {
+  GabbleVCardManager *self = GABBLE_VCARD_MANAGER (object);
+
   DEBUG ("%p", object);
+
+  tp_clear_pointer (&self->priv->alias_cache, g_hash_table_unref);
+
   G_OBJECT_CLASS (gabble_vcard_manager_parent_class)->finalize (object);
 }
 
@@ -804,8 +805,6 @@ observe_vcard (GabbleConnection *conn,
                TpHandle handle,
                WockyNode *vcard_node)
 {
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *field = "<NICKNAME>";
   gchar *alias;
   const gchar *old_alias;
@@ -846,15 +845,16 @@ observe_vcard (GabbleConnection *conn,
           handle, field);
 
       /* takes ownership of alias */
-      tp_handle_set_qdata (contact_repo, handle,
-          gabble_vcard_manager_cache_quark (), alias, g_free);
+      g_hash_table_insert (manager->priv->alias_cache,
+          GUINT_TO_POINTER (handle), alias);
     }
   else
     {
       DEBUG ("got no vCard alias for handle %u", handle);
 
-      tp_handle_set_qdata (contact_repo, handle,
-          gabble_vcard_manager_cache_quark (), (gchar *) NO_ALIAS, NULL);
+      /* cache negatively */
+      g_hash_table_insert (manager->priv->alias_cache,
+          GUINT_TO_POINTER (handle), NULL);
     }
 
   if ((old_alias != NULL) || (alias != NULL))
@@ -1649,7 +1649,6 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *self,
 {
   GabbleVCardManagerPrivate *priv;
   TpHandleRepoIface *contact_repo;
-  const gchar *s;
 
   g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (self), NULL);
 
@@ -1659,13 +1658,8 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *self,
 
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
 
-  s = tp_handle_get_qdata (contact_repo, handle,
-      gabble_vcard_manager_cache_quark ());
-
-  if (s == NO_ALIAS)
-    s = NULL;
-
-  return s;
+  /* Return NULL for uncached or negatively cached contacts. */
+  return g_hash_table_lookup (priv->alias_cache, GUINT_TO_POINTER (handle));
 }
 
 /**
@@ -1677,7 +1671,6 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *self,
 {
   GabbleVCardManagerPrivate *priv;
   TpHandleRepoIface *contact_repo;
-  gpointer p;
 
   g_return_val_if_fail (GABBLE_IS_VCARD_MANAGER (self), FALSE);
 
@@ -1688,10 +1681,8 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *self,
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
 
-  p = tp_handle_get_qdata (contact_repo, handle,
-      gabble_vcard_manager_cache_quark ());
-
-  return p != NULL;
+  /* Return TRUE for positively or negatively cached contacts. */
+  return g_hash_table_contains (priv->alias_cache, GUINT_TO_POINTER (handle));
 }
 
 /* For unit tests only */

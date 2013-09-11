@@ -49,12 +49,25 @@ def test(q, bus, conn, stream):
     stream.send(p)
     sync_stream(q, stream)
 
-    # Advertise some different capabilities, to change our own caps hash.
-    add = [(cs.CHANNEL_TYPE_STREAMED_MEDIA, 2L**32-1),
-           (cs.CHANNEL_TYPE_STREAM_TUBE, 2L**32-1),
-           (cs.CHANNEL_TYPE_STREAM_TUBE, 2L**32-1)]
-    remove = []
-    caps = conn.Capabilities.AdvertiseCapabilities(add, remove)
+    conn.ContactCapabilities.UpdateCapabilities([
+        (cs.CLIENT + '.AbiWord', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+            cs.STREAM_TUBE_SERVICE: 'x-abiword' },
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
+            cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+            cs.STREAM_TUBE_SERVICE: 'x-abiword' },
+        ], []),
+        (cs.CLIENT + '.KCall', [
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL },
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL, cs.CALL_INITIAL_AUDIO: True},
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL, cs.CALL_INITIAL_VIDEO: True},
+        ], [
+            cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
+            cs.CHANNEL_TYPE_CALL + '/ice-udp',
+            cs.CHANNEL_TYPE_CALL + '/video/h264',
+            ]),
+        ])
 
     self_presence = q.expect('stream-presence')
     c_ = xpath.queryForNodes('/presence/c', self_presence.stanza)[0]

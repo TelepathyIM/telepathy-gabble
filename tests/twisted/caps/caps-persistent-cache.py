@@ -5,7 +5,8 @@ from servicetest import (
     assertEquals, assertContains, assertDoesNotContain, EventPattern,
     )
 from gabbletest import make_presence, exec_test
-from caps_helper import compute_caps_hash, send_disco_reply
+from caps_helper import (compute_caps_hash, send_disco_reply,
+        assert_rccs_callable)
 import constants as cs
 import ns
 
@@ -52,6 +53,7 @@ def capabilities_changed(q, contact_handle):
     assertContains(streamed_media_caps, e.args[0])
     e = q.expect('dbus-signal', signal='ContactCapabilitiesChanged')
     assertContains(contact_handle, e.args[0])
+    assert_rccs_callable(e.args[0][contact_handle], require_video=True)
     assertContains(xiangqi_tube_cap, e.args[0][contact_handle])
 
 def test1(q, bus, conn, stream):

@@ -329,6 +329,9 @@ def send_presence(q, conn, stream, contact, caps, initial=True, show=None):
         assertEquals([(h, cs.CHANNEL_TYPE_TEXT, 3, 0)],
             conn.Capabilities.GetCapabilities([h]))
 
+        for rcc in conn.ContactCapabilities.GetContactCapabilities([h])[h]:
+            assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
+
     # send updated presence with caps info
     stream.send(make_presence(contact, show=show, status='hello', caps=caps))
 
@@ -344,6 +347,73 @@ def expect_disco(q, contact, client, caps):
 def send_disco_reply(stream, stanza, identities, features, dataforms={}):
     stream.send(
         make_caps_disco_reply(stream, stanza, identities, features, dataforms))
+
+def assert_rccs_callable(rccs, **kwargs):
+    assert check_rccs_callable(rccs, **kwargs), rccs
+
+def assert_rccs_not_callable(rccs, **kwargs):
+    assert not check_rccs_callable(rccs, **kwargs), rccs
+
+def check_rccs_callable(rccs,
+        require_audio=True,
+        require_video=False,
+        mutable_contents=None):
+    """rccs: a list of RequestableChannelClass tuples"""
+
+    audio_callable = False
+    video_callable = False
+    av_callable = False
+
+    for rcc in rccs:
+        fixed, allowed = rcc
+
+        if fixed.get(cs.CHANNEL_TYPE) != cs.CHANNEL_TYPE_CALL:
+            continue
+
+        if fixed.get(cs.TARGET_HANDLE_TYPE) != cs.HT_CONTACT:
+            continue
+
+        if len(fixed) > (int(cs.CHANNEL_TYPE in fixed) +
+                int(cs.TARGET_HANDLE_TYPE in fixed) +
+                int(cs.CALL_INITIAL_AUDIO in fixed) +
+                int(cs.CALL_INITIAL_VIDEO in fixed)):
+            continue
+
+        assert fixed.get(cs.CALL_INITIAL_AUDIO) in (True, None)
+        assert fixed.get(cs.CALL_INITIAL_VIDEO) in (True, None)
+
+        if mutable_contents is not None:
+            if mutable_contents:
+                assertContains(cs.CALL_MUTABLE_CONTENTS, allowed)
+            else:
+                assertDoesNotContain(cs.CALL_MUTABLE_CONTENTS, allowed)
+
+        if (fixed.get(cs.CALL_INITIAL_AUDIO) == True or
+                cs.CALL_INITIAL_AUDIO in allowed):
+            audio_callable = True
+            assertContains(cs.CALL_INITIAL_AUDIO_NAME, allowed)
+
+        if (fixed.get(cs.CALL_INITIAL_VIDEO) == True or
+                cs.CALL_INITIAL_VIDEO in allowed):
+            video_callable = True
+            assertContains(cs.CALL_INITIAL_VIDEO_NAME, allowed)
+
+        if ((fixed.get(cs.CALL_INITIAL_AUDIO) == True or
+                cs.CALL_INITIAL_AUDIO in allowed) and
+            (fixed.get(cs.CALL_INITIAL_VIDEO) == True or
+                cs.CALL_INITIAL_VIDEO in allowed)):
+            av_callable = True
+
+    if require_audio and not audio_callable:
+        return False
+
+    if require_video and not video_callable:
+        return False
+
+    if require_audio and require_video and not av_callable:
+        return False
+
+    return True
 
 if __name__ == '__main__':
     # example from XEP-0115

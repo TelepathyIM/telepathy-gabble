@@ -8,7 +8,8 @@ from servicetest import (
     assertEquals, assertContains, assertDoesNotContain, EventPattern,
     )
 from gabbletest import make_presence, exec_test
-from caps_helper import compute_caps_hash, send_disco_reply
+from caps_helper import (compute_caps_hash, send_disco_reply,
+        assert_rccs_callable, assert_rccs_not_callable)
 import constants as cs
 import ns
 
@@ -49,10 +50,14 @@ def test(q, bus, conn, stream):
 
     # Gabble lets us know their caps have changed. (Gabble used to ignore the
     # reply.)
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        )
     streamed_media_caps = (contact_handle, cs.CHANNEL_TYPE_STREAMED_MEDIA,
         0, 3, 0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)
-    e = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    assertContains(streamed_media_caps, e.args[0])
+    assertContains(streamed_media_caps, old.args[0])
+    assert_rccs_callable(new.args[0][contact_handle])
 
     # Gabble gets another presence stanza from the bare JID, with different
     # caps.
@@ -83,13 +88,15 @@ def test(q, bus, conn, stream):
     # Gabble throws away presence from the bare JID when it gets presence from
     # a resource (and vice versa), so it should now say the contact is
     # incapable.  Gabble also looks up the resourceful JID's hash.
-    cc, disco3 = q.expect_many(
+    old, new, disco3 = q.expect_many(
         EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
         EventPattern('stream-iq', to=contact_with_resource,
             query_ns='http://jabber.org/protocol/disco#info'),
         )
 
-    assertDoesNotContain(streamed_media_caps, cc.args[0])
+    assertDoesNotContain(streamed_media_caps, old.args[0])
+    assert_rccs_not_callable(new.args[0][contact_handle])
 
     query_node = xpath.queryForNodes('/iq/query', disco3.stanza)[0]
     assertEquals(client + '#' + caps['ver'], query_node.attributes['node'])
@@ -103,8 +110,14 @@ def test(q, bus, conn, stream):
     send_disco_reply(stream, disco3.stanza, [], features_)
 
     # Gabble should announce that the contact has acquired some caps.
-    e = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    assertContains(streamed_media_caps, e.args[0])
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        )
+    streamed_media_caps = (contact_handle, cs.CHANNEL_TYPE_STREAMED_MEDIA,
+        0, 3, 0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)
+    assertContains(streamed_media_caps, old.args[0])
+    assert_rccs_callable(new.args[0][contact_handle])
 
 if __name__ == '__main__':
     exec_test(test)

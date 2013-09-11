@@ -6,6 +6,8 @@ import dbus
 
 from servicetest import EventPattern, assertEquals, sync_dbus
 from gabbletest import exec_test, make_result_iq, make_presence, sync_stream
+from caps_helper import (assert_rccs_callable, assert_rccs_not_callable,
+        check_rccs_callable)
 import constants as cs
 
 from config import VOIP_ENABLED
@@ -15,25 +17,37 @@ if not VOIP_ENABLED:
     raise SystemExit(77)
 
 icaps_attr  = cs.CONN_IFACE_CAPS + "/caps"
-basic_caps = [(2, cs.CHANNEL_TYPE_TEXT, 3, 0)]
 
 def test(q, bus, conn, stream):
+    bob, = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])
+
     presence = make_presence('bob@foo.com/Foo', status='hello')
     stream.send(presence)
 
     q.expect('dbus-signal', signal='PresencesChanged',
-           args=[{2L: (2, u'available', 'hello')}])
+           args=[{bob: (cs.PRESENCE_AVAILABLE, u'available', 'hello')}])
 
-    # FIXME: throughout this test, Bob's handle is assumed to be 2.
+    basic_caps = [(bob, cs.CHANNEL_TYPE_TEXT, 3, 0)]
 
     # no special capabilities
-    assert conn.Capabilities.GetCapabilities([2]) == basic_caps
+    assert conn.Capabilities.GetCapabilities([bob]) == basic_caps
+    # only Text
+    for rcc in conn.ContactCapabilities.GetContactCapabilities([bob])[bob]:
+        assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 
     # holding the handle here: see below
     assert conn.Contacts.GetContactAttributes(
-        [2], [cs.CONN_IFACE_CAPS], True) == \
-        { 2L: { icaps_attr: basic_caps,
+        [bob], [cs.CONN_IFACE_CAPS], True) == \
+        { bob: { icaps_attr: basic_caps,
                 cs.CONN + '/contact-id': 'bob@foo.com'}}
+    assertEquals(
+            { bob: {
+                cs.ATTR_CONTACT_CAPABILITIES:
+                    conn.ContactCapabilities.GetContactCapabilities([bob])[bob],
+                cs.CONN + '/contact-id': 'bob@foo.com',
+                },
+            },
+            conn.Contacts.GetContactAttributes([bob], [cs.CONN_IFACE_CONTACT_CAPS], True))
 
     # send updated presence with Jingle audio/video caps info. we turn on both
     # audio and video at the same time to test that all of the capabilities are
@@ -76,16 +90,32 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     # we can now do audio and video calls
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3,
-            0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]])
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged',
+            args=[[(bob, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3,
+                0, cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]]),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged',
+            predicate=lambda e: check_rccs_callable(e.args[0][bob])),
+        )
+    assert_rccs_callable(new.args[0][bob], require_video=True,
+            mutable_contents=True)
 
-    caps = conn.Contacts.GetContactAttributes([2], [cs.CONN_IFACE_CAPS], False)
-    assert caps.keys() == [2L]
-    assert icaps_attr in caps[2L]
-    assert len(caps[2L][icaps_attr]) == 2
-    assert basic_caps[0] in caps[2L][icaps_attr]
-    assert (2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3) in caps[2L][icaps_attr]
+    caps = conn.Contacts.GetContactAttributes([bob], [cs.CONN_IFACE_CAPS], False)
+    assert caps.keys() == [bob]
+    assert icaps_attr in caps[bob]
+    assert len(caps[bob][icaps_attr]) == 2
+    assert basic_caps[0] in caps[bob][icaps_attr]
+    assert (bob, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3) in caps[bob][icaps_attr]
+
+    assertEquals(
+            { bob: {
+                cs.ATTR_CONTACT_CAPABILITIES:
+                    new.args[0][bob],
+                cs.CONN + '/contact-id': 'bob@foo.com',
+                },
+            },
+            conn.Contacts.GetContactAttributes([bob],
+                [cs.CONN_IFACE_CONTACT_CAPS], True))
 
     # send updated presence without video support
     presence = make_presence('bob@foo.com/Foo', status='hello',
@@ -97,19 +127,35 @@ def test(q, bus, conn, stream):
 
     # we can now do only audio calls (and as a result have the ImmutableStreams
     # cap)
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3,
-            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO,
-            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS)]])
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged',
+            args=[[(bob, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 3,
+                cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO,
+                cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS)]]),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        )
+    assert_rccs_callable(new.args[0][bob])
+    assert_rccs_not_callable(new.args[0][bob], require_audio=False,
+            require_video=True, mutable_contents=False)
 
-    caps = conn.Contacts.GetContactAttributes([2], [cs.CONN_IFACE_CAPS], False)
-    assert caps.keys() == [2L]
-    assert icaps_attr in caps[2L]
-    assert len(caps[2L][icaps_attr]) == 2
-    assert basic_caps[0] in caps[2L][icaps_attr]
-    assert (2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3,
+    caps = conn.Contacts.GetContactAttributes([bob], [cs.CONN_IFACE_CAPS], False)
+    assert caps.keys() == [bob]
+    assert icaps_attr in caps[bob]
+    assert len(caps[bob][icaps_attr]) == 2
+    assert basic_caps[0] in caps[bob][icaps_attr]
+    assert (bob, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3,
         cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS) \
-        in caps[2L][icaps_attr]
+        in caps[bob][icaps_attr]
+
+    assertEquals(
+            { bob: {
+                cs.ATTR_CONTACT_CAPABILITIES:
+                    new.args[0][bob],
+                cs.CONN + '/contact-id': 'bob@foo.com',
+                },
+            },
+            conn.Contacts.GetContactAttributes([bob],
+                [cs.CONN_IFACE_CONTACT_CAPS], True))
 
     # go offline
     presence = make_presence('bob@foo.com/Foo', type='unavailable')
@@ -118,21 +164,34 @@ def test(q, bus, conn, stream):
     # can't do audio calls any more
     q.expect_many(
             EventPattern('dbus-signal', signal='CapabilitiesChanged',
-                args=[[(2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 0,
+                args=[[(bob, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3, 0,
                     cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_IMMUTABLE_STREAMS,
                     0)]],
                 ),
             EventPattern('dbus-signal', signal='PresencesChanged',
-                args=[{2: (cs.PRESENCE_OFFLINE, 'offline', '')}]),
+                args=[{bob: (cs.PRESENCE_OFFLINE, 'offline', '')}]),
+            EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
             )
 
     # Contact went offline. Previously, this test asserted that the handle
     # became invalid, but that's not guaranteed to happen immediately; so we
     # now hold the handle (above), to guarantee that it does *not* become
     # invalid.
+    rccs = conn.ContactCapabilities.GetContactCapabilities([bob])[bob]
+    for rcc in rccs:
+        assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
+
+    assertEquals(
+            { bob: {
+                cs.ATTR_CONTACT_CAPABILITIES: rccs,
+                cs.CONN + '/contact-id': 'bob@foo.com',
+                },
+            },
+            conn.Contacts.GetContactAttributes([bob],
+                [cs.CONN_IFACE_CONTACT_CAPS], True))
     assert conn.Contacts.GetContactAttributes(
-        [2], [cs.CONN_IFACE_CAPS], False) == \
-        { 2L: { icaps_attr: basic_caps,
+        [bob], [cs.CONN_IFACE_CAPS], False) == \
+        { bob: { icaps_attr: basic_caps,
                 cs.CONN + '/contact-id': 'bob@foo.com'}}
 
     # What about a handle that's not valid?

@@ -12,7 +12,8 @@ import constants as cs
 import ns
 from caps_helper import (
     compute_caps_hash, fake_client_dataforms, presence_and_disco,
-    send_presence, expect_disco, send_disco_reply)
+    send_presence, expect_disco, send_disco_reply,
+    assert_rccs_callable)
 
 from config import VOIP_ENABLED
 
@@ -31,10 +32,18 @@ features = [
 
 def expect_caps(q, conn, h):
     # we can now do audio and video calls
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged')
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged',
+            predicate=lambda e: h in e.args[0]),
+        )
+    assert_rccs_callable(new.args[0][h], require_video=True)
     check_caps(conn, h)
 
 def check_caps(conn, h):
+    caps = conn.ContactCapabilities.GetContactCapabilities([h])
+    assert_rccs_callable(caps[h], require_video=True)
+
     assertContains((h, cs.CHANNEL_TYPE_STREAMED_MEDIA, 3,
             cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO),
         conn.Capabilities.GetCapabilities([h]))

@@ -27,20 +27,18 @@ from twisted.words.xish import xpath
 from gabbletest import (
     exec_test, make_result_iq, make_presence, sync_stream, elem,
 )
-from servicetest import sync_dbus, EventPattern, assertLength
+from servicetest import sync_dbus, EventPattern, assertLength, assertEquals
 import constants as cs
 import ns
 from caps_helper import (
     compute_caps_hash, make_caps_disco_reply, send_disco_reply,
-    fake_client_dataforms)
+    fake_client_dataforms, assert_rccs_callable, assert_rccs_not_callable)
 
 from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
     print "NOTE: built with --disable-voip"
     raise SystemExit(77)
-
-caps_changed_flag = False
 
 some_identities = [
     'client/pc/fr/le gabble',
@@ -53,15 +51,7 @@ jingle_av_features = [
     ns.GOOGLE_P2P,
     ]
 
-def caps_changed_cb(dummy):
-    # Workaround to bug 9980: do not raise an error but use a flag
-    # https://bugs.freedesktop.org/show_bug.cgi?id=9980
-    global caps_changed_flag
-    caps_changed_flag = True
-
 def test_hash(q, bus, conn, stream, contact, contact_handle, client):
-    global caps_changed_flag
-
     presence = make_presence(contact, status='hello')
     stream.send(presence)
 
@@ -72,6 +62,8 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     # no special capabilities
     basic_caps = [(contact_handle, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle]) == basic_caps
+    for rcc in conn.ContactCapabilities.GetContactCapabilities([contact_handle])[contact_handle]:
+        assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 
     # send updated presence with Jingle caps info
     presence = make_presence(contact, status='hello',
@@ -91,12 +83,19 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     send_disco_reply(stream, event.stanza, [], jingle_av_features)
 
     # we can now do audio calls
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    caps_diff = event.args[0]
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        )
+
+    caps_diff = old.args[0]
     media_diff = [c for c in caps_diff
                     if c[1] == cs.CHANNEL_TYPE_STREAMED_MEDIA][0]
     assert media_diff[5] & cs.MEDIA_CAP_AUDIO, media_diff[5]
-    caps_changed_flag = False
+
+    assert_rccs_callable(new.args[0][contact_handle])
+    assertEquals(new.args[0],
+            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
     # Send presence without any capabilities. XEP-0115 §8.4 Caps Optimization
     # says “receivers of presence notifications MUST NOT expect an annotation
@@ -109,6 +108,9 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
     assertLength(1, [c for c in ye_olde_caps
                        if c[1] == cs.CHANNEL_TYPE_STREAMED_MEDIA and
                           c[3] & cs.MEDIA_CAP_AUDIO])
+    # still exactly the same capabilities
+    assertEquals(new.args[0],
+            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
     # send bogus presence
     caps = {
@@ -131,10 +133,13 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         ['http://jabber.org/protocol/bogus-feature'])
 
     # don't receive any D-Bus signal
+    forbidden = [
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        ]
+    q.forbid_events(forbidden)
     sync_dbus(bus, q, conn)
     sync_stream(q, stream)
-    assert caps_changed_flag == False
-
 
     # send presence with empty caps
     presence = make_presence(contact, status='hello',
@@ -152,18 +157,23 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     # still don't receive any D-Bus signal
     sync_dbus(bus, q, conn)
-    assert caps_changed_flag == False
 
     # send good reply
+    q.unforbid_events(forbidden)
     result = make_result_iq(stream, event.stanza)
     query = result.firstChildElement()
     stream.send(result)
 
     # we can now do nothing
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged')
-    assert caps_changed_flag == True
-    caps_changed_flag = False
-
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        )
+    for rcc in new.args[0][contact_handle]:
+        assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
+    assert_rccs_not_callable(new.args[0][contact_handle])
+    assertEquals(new.args[0],
+            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
     # send correct presence
     ver = compute_caps_hash(some_identities, jingle_av_features, fake_client_dataforms)
@@ -183,22 +193,25 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         client + '#' + caps['ver']
 
     # don't receive any D-Bus signal
+    q.forbid_events(forbidden)
     sync_dbus(bus, q, conn)
-    assert caps_changed_flag == False
+    q.unforbid_events(forbidden)
 
     # send good reply
     send_disco_reply(
         stream, event.stanza, some_identities, jingle_av_features, fake_client_dataforms)
 
     # we can now do audio calls
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-    )
-    assert caps_changed_flag == True
-    caps_changed_flag = False
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        )
+    assert_rccs_callable(new.args[0][contact_handle])
+    assertEquals(new.args[0],
+            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
 
 def test_two_clients(q, bus, conn, stream, contact1, contact2,
         contact_handle1, contact_handle2, client, broken_hash):
-    global caps_changed_flag
 
     presence = make_presence(contact1, status='hello')
     stream.send(presence)
@@ -220,6 +233,10 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
     basic_caps = [(contact_handle2, cs.CHANNEL_TYPE_TEXT, 3, 0)]
     assert conn.Capabilities.GetCapabilities([contact_handle2]) == basic_caps
 
+    for h in (contact_handle1, contact_handle2):
+        for rcc in conn.ContactCapabilities.GetContactCapabilities([h])[h]:
+            assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
+
     # send updated presence with Jingle caps info
     ver = compute_caps_hash(some_identities, jingle_av_features, {})
     caps = {
@@ -240,8 +257,13 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
         client + '#' + ver
 
     # don't receive any D-Bus signal
+    forbidden = [
+        EventPattern('dbus-signal', signal='CapabilitiesChanged'),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged'),
+        ]
+    q.forbid_events(forbidden)
     sync_dbus(bus, q, conn)
-    assert caps_changed_flag == False
+    q.unforbid_events(forbidden)
 
     result = make_caps_disco_reply(
         stream, event.stanza, some_identities, jingle_av_features)
@@ -263,28 +285,39 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
             client + '#' + ver
 
         # don't receive any D-Bus signal
+        q.forbid_events(forbidden)
         sync_dbus(bus, q, conn)
-        assert caps_changed_flag == False
+        q.unforbid_events(forbidden)
 
         # send good reply
         send_disco_reply(stream, event.stanza, some_identities, jingle_av_features)
 
-    # we can now do audio calls with both contacts
-    event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-        args=[[(contact_handle2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0,
-            cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]])
+    # we can now do audio calls
+    old, new = q.expect_many(
+        EventPattern('dbus-signal', signal='CapabilitiesChanged',
+            args=[[(contact_handle2, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0,
+                cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]]),
+        EventPattern('dbus-signal', signal='ContactCapabilitiesChanged',
+            predicate=lambda e: contact_handle2 in e.args[0]),
+        )
+    assert_rccs_callable(new.args[0][contact_handle2])
+
     if not broken_hash:
         # if the first contact failed to provide a good hash, it does not
         # deserve its capabilities to be understood by Gabble!
-        event = q.expect('dbus-signal', signal='CapabilitiesChanged',
-            args=[[(contact_handle1, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0,
-                cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]])
+        old, new = q.expect_many(
+            EventPattern('dbus-signal', signal='CapabilitiesChanged',
+                args=[[(contact_handle1, cs.CHANNEL_TYPE_STREAMED_MEDIA, 0, 3, 0,
+                    cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO)]]),
+            EventPattern('dbus-signal', signal='ContactCapabilitiesChanged',
+                predicate=lambda e: contact_handle1 in e.args[0]),
+            )
+        assert_rccs_callable(new.args[0][contact_handle1])
 
-    caps_changed_flag = False
-
-    # don't receive any D-Bus signal
+    # don't receive any further signals
+    q.forbid_events(forbidden)
     sync_dbus(bus, q, conn)
-    assert caps_changed_flag == False
+    q.unforbid_events(forbidden)
 
 def test_39464(q, bus, conn, stream):
     """
@@ -318,10 +351,6 @@ def test_39464(q, bus, conn, stream):
     sync_stream(q, stream)
 
 def test(q, bus, conn, stream):
-    # be notified when the signal CapabilitiesChanged is fired
-    conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CAPS)
-    conn_caps_iface.connect_to_signal('CapabilitiesChanged', caps_changed_cb)
-
     test_hash(q, bus, conn, stream, 'bob@foo.com/Foo', 2L, 'http://telepathy.freedesktop.org/fake-client')
     test_hash(q, bus, conn, stream, 'bob2@foo.com/Foo', 3L, 'http://telepathy.freedesktop.org/fake-client2')
 

@@ -36,16 +36,13 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
     presence at all.
     """
 
-    request = dbus.Dictionary({ cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-                                cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
-                                cs.TARGET_ID: jt.peer,
-                              }, signature='sv')
-    path, props = conn.CreateChannel(request, dbus_interface=cs.CONN_IFACE_REQUESTS)
-    media_iface = make_channel_proxy(conn, path, 'Channel.Type.StreamedMedia')
-    handle = props[cs.TARGET_HANDLE]
-
-    call_async(q, media_iface, 'RequestStreams', handle,
-        [cs.MEDIA_STREAM_TYPE_AUDIO])
+    call_async(q, conn.Requests, 'CreateChannel',
+        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
+          cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+          cs.TARGET_ID: jt.peer,
+          cs.CALL_INITIAL_AUDIO: True,
+          cs.CALL_INITIAL_VIDEO: False,
+        })
 
     e = q.expect('stream-presence',
             to=jt.peer_bare_jid, presence_type=None)
@@ -57,10 +54,13 @@ def run_test(q, bus, conn, stream, jt, decloak_allowed):
         jt.send_presence_and_caps()
 
         # RequestStreams should now happily complete
-        q.expect('dbus-return', method='RequestStreams')
+        q.expect('dbus-return', method='CreateChannel')
     else:
-        q.expect('dbus-error', method='RequestStreams',
+        q.expect('dbus-error', method='CreateChannel',
                 name=cs.OFFLINE)
 
 if __name__ == '__main__':
+    print "FIXME: needs to be ported to Call1"
+    raise SystemExit(77)
+
     exec_test(test, timeout=10)

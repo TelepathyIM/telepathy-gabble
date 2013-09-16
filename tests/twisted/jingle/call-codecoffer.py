@@ -13,11 +13,7 @@ import constants as cs
 
 from jingletest2 import JingleTest2, test_dialects, JingleProtocol031
 
-from config import CHANNEL_TYPE_CALL_ENABLED, VOIP_ENABLED
-
-if not CHANNEL_TYPE_CALL_ENABLED:
-    print "NOTE: built with --disable-channel-type-call"
-    raise SystemExit(77)
+from config import VOIP_ENABLED
 
 if not VOIP_ENABLED:
     print "NOTE: built with --disable-voip"

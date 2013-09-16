@@ -15,7 +15,7 @@ from jingletest2 import test_all_dialects, JingleTest2
 import constants as cs
 import ns
 
-from config import CHANNEL_TYPE_CALL_ENABLED, GOOGLE_RELAY_ENABLED, VOIP_ENABLED
+from config import GOOGLE_RELAY_ENABLED, VOIP_ENABLED
 
 if not VOIP_ENABLED:
     print "NOTE: built with --disable-voip"
@@ -80,117 +80,6 @@ def init_test(jp, q, conn, stream, google=False, google_push_replacements=None):
     remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
 
     return jt, remote_handle
-
-def test_streamed_media(jp, q, bus, conn, stream,
-         expected_stun_servers=None, google=False, google_push_replacements=None,
-         expected_relays=[]):
-    # Initialize the test values
-    jt, remote_handle = init_test(jp, q, conn, stream, google, google_push_replacements)
-
-    # Remote end calls us
-    jt.incoming_call()
-
-    # FIXME: these signals are not observable by real clients, since they
-    #        happen before NewChannels.
-    # The caller is in members
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [remote_handle], [], [], [], 0, 0])
-
-    # We're pending because of remote_handle
-    e = q.expect('dbus-signal', signal='MembersChanged',
-             args=[u'', [], [], [1L], [], remote_handle, cs.GC_REASON_INVITED])
-
-    # S-E gets notified about new session handler, and calls Ready on it
-    e = q.expect('dbus-signal', signal='NewSessionHandler')
-    assert e.args[1] == 'rtp'
-
-    session_handler = make_channel_proxy(conn, e.args[0], 'Media.SessionHandler')
-    session_handler.Ready()
-
-    e = q.expect('dbus-signal', signal='NewStreamHandler')
-    stream_handler = make_channel_proxy(conn, e.args[0], 'Media.StreamHandler')
-
-    media_chan = make_channel_proxy(conn, e.path, 'Channel.Interface.Group')
-
-    # Exercise channel properties
-    channel_props = media_chan.GetAll(
-        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props['TargetHandle'] == remote_handle
-    assert channel_props['TargetHandleType'] == 1
-    assert channel_props['TargetID'] == 'foo@bar.com'
-    assert channel_props['Requested'] == False
-    assert channel_props['InitiatorID'] == 'foo@bar.com'
-    assert channel_props['InitiatorHandle'] == remote_handle
-
-    # The new API for STUN servers etc.
-    sh_props = stream_handler.GetAll(
-            'org.freedesktop.Telepathy.Media.StreamHandler',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-
-    assert sh_props['NATTraversal'] == 'gtalk-p2p'
-    assert sh_props['CreatedLocally'] == False
-
-    test_stun_server(sh_props['STUNServers'], expected_stun_servers)
-    assert sh_props['RelayInfo'] == expected_relays
-
-    # consistency check, since we currently reimplement Get separately
-    for k in sh_props:
-        assert sh_props[k] == stream_handler.Get(
-                'org.freedesktop.Telepathy.Media.StreamHandler', k,
-                dbus_interface=dbus.PROPERTIES_IFACE), k
-
-    # The old API for STUN servers etc. still needs supporting, for farsight 1
-    tp_prop_list = media_chan.ListProperties(dbus_interface=cs.TP_AWKWARD_PROPERTIES)
-    tp_props = {}
-    tp_prop_ids = {}
-
-    for spec in tp_prop_list:
-        tp_prop_ids[spec[0]] = spec[1]
-        tp_props[spec[1]] = { 'id': spec[0], 'sig': spec[2], 'flags': spec[3] }
-
-    assert 'nat-traversal' in tp_props
-    assert tp_props['nat-traversal']['sig'] == 's'
-    assert tp_props['nat-traversal']['flags'] == cs.PROPERTY_FLAG_READ
-    assert 'stun-server' in tp_props
-    assert tp_props['stun-server']['sig'] == 's'
-    assert 'stun-port' in tp_props
-    assert tp_props['stun-port']['sig'] in ('u', 'q')
-    assert 'gtalk-p2p-relay-token' in tp_props
-    assert tp_props['gtalk-p2p-relay-token']['sig'] == 's'
-
-    assert tp_props['stun-server']['flags'] == cs.PROPERTY_FLAG_READ
-    assert tp_props['stun-port']['flags'] == cs.PROPERTY_FLAG_READ
-
-    if google:
-        assert tp_props['gtalk-p2p-relay-token']['flags'] == cs.PROPERTY_FLAG_READ
-    else:
-        assert tp_props['gtalk-p2p-relay-token']['flags'] == 0
-
-    tp_prop_values = media_chan.GetProperties(
-            [tp_props[k]['id'] for k in tp_props if tp_props[k]['flags']],
-            dbus_interface=cs.TP_AWKWARD_PROPERTIES)
-
-    for value in tp_prop_values:
-        assert value[0] in tp_prop_ids
-        tp_props[tp_prop_ids[value[0]]]['value'] = value[1]
-
-    assert tp_props['nat-traversal']['value'] == 'gtalk-p2p'
-
-    if expected_stun_servers is not None:
-        expected_stun_server, expected_stun_port = expected_stun_servers[0]
-        assert tp_props['stun-server']['value'] == expected_stun_server
-        assert tp_props['stun-port']['value'] == expected_stun_port
-
-    if google:
-        assert tp_props['gtalk-p2p-relay-token']['value'] == 'jingle all the way'
-
-    media_chan.RemoveMembers([dbus.UInt32(1)], 'rejected')
-
-    q.expect_many(
-            EventPattern('stream-iq',
-                predicate=jp.action_predicate('session-terminate')),
-            EventPattern('dbus-signal', signal='Closed'),
-            )
 
 def test_call(jp, q, bus, conn, stream,
          expected_stun_servers=None, google=False, google_push_replacements=None,
@@ -264,53 +153,18 @@ def test_call(jp, q, bus, conn, stream,
     assertEquals(True, stream_props['HasServerInfo'])
 
 if __name__ == '__main__':
-    # StreamedMedia tests
-    test_all_dialects(partial(test_streamed_media,
+    # Call tests
+    test_all_dialects(partial(test_call,
         google=False))
-    test_all_dialects(partial(test_streamed_media,
+    test_all_dialects(partial(test_call,
         google=False, expected_stun_servers=[('5.4.3.2', 54321)]),
         params={'fallback-stun-server': 'resolves-to-5.4.3.2',
             'fallback-stun-port': dbus.UInt16(54321)})
-    test_all_dialects(partial(test_streamed_media, google=False,
-                expected_stun_servers=[('5.4.3.2', 1)]),
+    test_all_dialects(partial(test_call,
+        google=False, expected_stun_servers=[('5.4.3.2', 1)]),
         params={'account': 'test@stunning.localhost'})
 
     if GOOGLE_RELAY_ENABLED:
-        test_all_dialects(partial(test_streamed_media,
-            google=True, expected_stun_servers=[('1.2.3.4', 12345)]),
-            protocol=GoogleXmlStream)
-        test_all_dialects(partial(test_streamed_media,
-            google=True, expected_stun_servers=[('5.4.3.2', 54321)]),
-            protocol=GoogleXmlStream,
-            params={'stun-server': 'resolves-to-5.4.3.2',
-                'stun-port': dbus.UInt16(54321)})
-        test_all_dialects(partial(test_streamed_media,
-            google=True, expected_stun_servers=[('1.2.3.4', 12345)]),
-            protocol=GoogleXmlStream,
-            params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)})
-        test_all_dialects(partial(test_streamed_media,
-            google=True, google_push_replacements=('resolves-to-5.4.3.2', '3838'),
-            expected_stun_servers=[('5.4.3.2', 3838)]),
-            protocol=GoogleXmlStream)
-    else:
-        print "NOTE: built with --disable-google-relay; omitting StreamedMedia tests with Google relay"
-
-    # Call tests
-    if CHANNEL_TYPE_CALL_ENABLED:
-        test_all_dialects(partial(test_call,
-            google=False))
-        test_all_dialects(partial(test_call,
-            google=False, expected_stun_servers=[('5.4.3.2', 54321)]),
-            params={'fallback-stun-server': 'resolves-to-5.4.3.2',
-                'fallback-stun-port': dbus.UInt16(54321)})
-        test_all_dialects(partial(test_call,
-            google=False, expected_stun_servers=[('5.4.3.2', 1)]),
-            params={'account': 'test@stunning.localhost'})
-    else:
-        print "NOTE: built with --disable-channel-type-call; omitting Call tests"
-
-    if CHANNEL_TYPE_CALL_ENABLED and GOOGLE_RELAY_ENABLED:
         test_all_dialects(partial(test_call,
             google=True, expected_stun_servers=[('1.2.3.4', 12345)]),
             protocol=GoogleXmlStream)
@@ -329,5 +183,5 @@ if __name__ == '__main__':
             expected_stun_servers=[('5.4.3.2', 3838)]),
             protocol=GoogleXmlStream)
     else:
-        print "NOTE: built with --disable-channel-type-call or with --disable-google-relay; omitting Call tests with Google relay"
+        print "NOTE: built with --disable-google-relay; omitting Call tests with Google relay"
 

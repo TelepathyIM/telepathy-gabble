@@ -4,10 +4,6 @@ Base classes for Call tests
 
 import config
 
-if not config.CHANNEL_TYPE_CALL_ENABLED:
-    print "NOTE: built with --disable-channel-type-call"
-    raise SystemExit(77)
-
 import dbus
 from dbus.exceptions import DBusException
 

@@ -47,17 +47,14 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
         client, caps, features)
 
     cflags = 0
-    stream_expected_media_caps = []
     call_expected_media_caps = []
 
     if audio:
       cflags |= cs.MEDIA_CAP_AUDIO
-      stream_expected_media_caps.append (cs.INITIAL_AUDIO)
       call_expected_media_caps.append (cs.CALL_INITIAL_AUDIO)
       call_expected_media_caps.append (cs.CALL_INITIAL_AUDIO_NAME)
     if video:
       cflags |= cs.MEDIA_CAP_VIDEO
-      stream_expected_media_caps.append (cs.INITIAL_VIDEO)
       call_expected_media_caps.append (cs.CALL_INITIAL_VIDEO)
       call_expected_media_caps.append (cs.CALL_INITIAL_VIDEO_NAME)
 
@@ -65,7 +62,6 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
     # client, they'll have the ImmutableStreams cap.
     if cflags < (cs.MEDIA_CAP_AUDIO | cs.MEDIA_CAP_VIDEO) or google:
         cflags |= cs.MEDIA_CAP_IMMUTABLE_STREAMS
-        stream_expected_media_caps.append(cs.IMMUTABLE_STREAMS)
     else:
         call_expected_media_caps.append(cs.CALL_MUTABLE_CONTENTS)
 
@@ -73,13 +69,10 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
             EventPattern('dbus-signal', signal='ContactCapabilitiesChanged')
         )
 
-    # Check Contact capabilities for streamed media
+    # Check Contact capabilities
     assertEquals(len(event.args), 1)
     assertEquals (event.args[0],
         conn.ContactCapabilities.GetContactCapabilities([h]))
-
-    check_contact_caps (event.args[0][h],
-        cs.CHANNEL_TYPE_STREAMED_MEDIA, stream_expected_media_caps)
 
     check_contact_caps (event.args[0][h],
         cs.CHANNEL_TYPE_CALL, call_expected_media_caps)

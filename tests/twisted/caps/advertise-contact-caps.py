@@ -221,16 +221,6 @@ def run_mixed_test (q, bus, conn, stream):
     conn.Connect()
 
     conn.ContactCapabilities.UpdateCapabilities([
-        (cs.CLIENT + '.SquareWheel', [
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_AUDIO: True},
-        { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            cs.INITIAL_VIDEO: True},
-        ], [
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/gtalk-p2p',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/ice-udp',
-            cs.CHANNEL_IFACE_MEDIA_SIGNALLING + '/video/h264',
-            ]),
         (cs.CLIENT + '.FlyingCar', [
         { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CALL,
             cs.CALL_INITIAL_AUDIO: True},
@@ -248,14 +238,6 @@ def run_mixed_test (q, bus, conn, stream):
     check_caps(namespaces, JINGLE_CAPS)
 
 if __name__ == '__main__':
-    exec_test(
-        partial(run_test,
-            media_channel_type=cs.CHANNEL_TYPE_STREAMED_MEDIA,
-            media_interface=cs.CHANNEL_IFACE_MEDIA_SIGNALLING,
-            initial_audio=cs.INITIAL_AUDIO,
-            initial_video=cs.INITIAL_VIDEO),
-        do_connect=False)
-
     exec_test(
         partial(run_test,
             media_channel_type=cs.CHANNEL_TYPE_CALL,

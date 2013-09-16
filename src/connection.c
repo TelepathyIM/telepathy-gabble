@@ -75,7 +75,6 @@
 #include "conn-addressing.h"
 
 #ifdef ENABLE_VOIP
-#include "media-channel.h"
 #include "media-factory.h"
 #endif
 

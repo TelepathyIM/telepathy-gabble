@@ -108,17 +108,6 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA</p>
   <tp:external-type name="Connection_Status" type="u"
     from="Telepathy specification"/>
 
-  <!-- use types from Channel_Type_Streamed_Media.xml -->
-  <tp:enum name="Media_Stream_Type" type="u"
-    array-name="Media_Stream_Type_List">
-    <tp:enumvalue suffix="Audio" value="0">
-      <tp:docstring>An audio stream</tp:docstring>
-    </tp:enumvalue>
-    <tp:enumvalue suffix="Video" value="1">
-      <tp:docstring>A video stream</tp:docstring>
-    </tp:enumvalue>
-  </tp:enum>
-
   <!-- use types from generic-types.xml -->
   <tp:struct name="Socket_Address_IP" array-name="Socket_Address_IP_List">
     <tp:docstring>An IP address and port.</tp:docstring>

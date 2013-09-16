@@ -161,12 +161,6 @@ libgabble_convenience_la_SOURCES += \
     jingle-mint.c \
     jingle-tp-util.h \
     jingle-tp-util.c \
-    media-channel.h \
-    media-channel-internal.h \
-    media-channel.c \
-    media-channel-hold.c \
-    media-stream.h \
-    media-stream.c \
     media-factory.h \
     media-factory.c
 endif

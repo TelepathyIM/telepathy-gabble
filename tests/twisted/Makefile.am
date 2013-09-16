@@ -175,7 +175,6 @@ TWISTED_VCARD_TESTS = \
 	$(NULL)
 
 TWISTED_JINGLE_TESTS = \
-	jingle/accept-extra-stream.py \
 	jingle/call-basics.py \
 	jingle/call-codecoffer.py \
 	jingle/call-content-adding-removal.py \
@@ -186,38 +185,10 @@ TWISTED_JINGLE_TESTS = \
 	jingle/call-muc-cancel.py \
 	jingle/call-muc.py \
 	jingle/call-muc-re-re-request.py \
-	jingle/call-state.py \
 	jingle/decloak-peer.py \
-	jingle/dtmf-no-audio.py \
-	jingle/dtmf.py \
-	jingle/google-relay.py \
-	jingle/hold-audio.py \
-	jingle/hold-av.py \
-	jingle/incoming-basics.py \
-	jingle/incoming-call-stream-error.py \
-	jingle/incoming-gmail-modern-jingle.py \
-	jingle/initial-audio-video.py \
-	jingle/misuse.py \
-	jingle/outgoing-basics.py \
-	jingle/outgoing-ensure.py \
-	jingle/outgoing-many-streams.py \
-	jingle/payload-types.py \
 	jingle/preload-caps-crash.py \
 	jingle/session-id-collision.py \
-	jingle/stream-errors-on-content-reject.py \
-	jingle/stream-errors-on-terminate.py \
-	jingle/stream-handler-error.py \
 	jingle/stun-server.py \
-	jingle/test-content-adding-removal.py \
-	jingle/test-content-complex.py \
-	jingle/test-description-info.py \
-	jingle/test-incoming-call-reject.py \
-	jingle/test-incoming-iceudp.py \
-	jingle/test-outgoing-call-rejected.py \
-	jingle/test-outgoing-iceudp.py \
-	jingle/test-wait-for-caps-incomplete.py \
-	jingle/test-wait-for-caps.py \
-	jingle/transport-info-parsing.py \
 	jingle/unknown-session.py \
 	$(NULL)
 

@@ -278,17 +278,6 @@ AC_SUBST(ENABLE_PLUGINS)
 
 AM_CONDITIONAL(ENABLE_PLUGIN_API, test x$enable_plugin_api = xyes)
 
-AC_ARG_ENABLE(channel-type-call,
-  AC_HELP_STRING([--disable-channel-type-call],
-                 [disable support for the draft Channel.Type.Call]),
-    [enable_channel_type_call=$enableval], [enable_channel_type_call=yes])
-
-if test x$enable_channel_type_call = xyes; then
-  AC_DEFINE(ENABLE_CHANNEL_TYPE_CALL, [], [Enable Channel.Type.Call])
-fi
-
-AM_CONDITIONAL(ENABLE_CHANNEL_TYPE_CALL, test x$enable_channel_type_call = xyes)
-
 dnl Check for D-Bus
 PKG_CHECK_MODULES(DBUS, [dbus-1 >= 1.1.0, dbus-glib-1 >= 0.82])
 
@@ -470,7 +459,6 @@ Configure summary:
         Client type.................:  \"${CLIENT_TYPE}\"
         Plugin support..............:  ${enable_plugins}
         Plugin headers installed....:  ${enable_plugin_api}
-        Channel.Type.Call support...:  ${enable_channel_type_call}
         Google relay support........:  ${enable_google_relay}
         File transfer support.......:  ${enable_ft}
         Jingle file transfer support:  ${enable_jingle_ft}

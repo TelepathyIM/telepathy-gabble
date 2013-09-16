@@ -22,7 +22,9 @@
 
 #include <glib-object.h>
 
-#include "media-channel.h"
+#include <telepathy-glib/telepathy-glib.h>
+
+#include "gabble/capabilities-set.h"
 
 G_BEGIN_DECLS
 
@@ -58,16 +60,6 @@ GType gabble_media_factory_get_type (void);
 #define GABBLE_MEDIA_FACTORY_GET_CLASS(obj) \
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_FACTORY,\
                               GabbleMediaFactoryClass))
-
-const gchar * _gabble_media_factory_allocate_sid (GabbleMediaFactory *fac,
-    GabbleMediaChannel *chan);
-const gchar * _gabble_media_factory_register_sid (GabbleMediaFactory *fac,
-    const gchar *sid, GabbleMediaChannel *chan);
-void _gabble_media_factory_free_sid (GabbleMediaFactory *fac,
-    const gchar *sid);
-
-void _gabble_media_factory_typeflags_to_caps (TpChannelMediaCapabilities flags,
-    GabbleCapabilitySet *caps);
 
 TpChannelMediaCapabilities
 _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps);

@@ -186,6 +186,7 @@ CONN_IFACE_CONTACT_BLOCKING = CONN + '.Interface.ContactBlocking'
 CONN_IFACE_ADDRESSING = CONN + '.Interface.Addressing1'
 
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
+ATTR_PRESENCE = CONN_IFACE_SIMPLE_PRESENCE + '/presence'
 
 STREAM_HANDLER = 'org.freedesktop.Telepathy.Media.StreamHandler'
 

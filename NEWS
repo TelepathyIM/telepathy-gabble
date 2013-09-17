@@ -1,7 +1,30 @@
 telepathy-gabble 0.19.0 (UNRELEASED)
 ====================================
 
-…
+The “very confused owl” release.
+
+Dependencies:
+
+• telepathy-glib ≥ 0.21.1 is required.
+
+External changes:
+
+• Remove support for legacy StreamedMedia calls, and legacy Capabilities;
+  Gabble only implements Call1 calls and ContactCapabilities now
+  (fd.o #69194; Xavier, Simon, Guillaume)
+
+• Always announce channels one at a time (fd.o #69194, Simon)
+
+Fixes:
+
+• Stop claiming to implement legacy Presence, which was deleted in 2011
+  (fd.o #69194, Guillaume)
+
+Internal changes:
+
+• Fix various deprecated things (fd.o #69194, Simon)
+
+• Improved regression test coverage (fd.o #69474, Simon)
 
 telepathy-gabble 0.18.1 (2013-09-06)
 ====================================

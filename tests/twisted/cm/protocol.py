@@ -67,6 +67,15 @@ def test(q, bus, conn, stream):
     assertEquals(test_params['account'], acc_name)
 
     assertContains(cs.PROTOCOL_IFACE_AVATARS, proto_props['Interfaces'])
+    avatar_props = unwrap(proto_prop_iface.GetAll(cs.PROTOCOL_IFACE_AVATARS))
+    assertEquals(8192, avatar_props['MaximumAvatarBytes'])
+    assertEquals(96, avatar_props['MaximumAvatarHeight'])
+    assertEquals(96, avatar_props['MaximumAvatarWidth'])
+    assertEquals(32, avatar_props['MinimumAvatarHeight'])
+    assertEquals(32, avatar_props['MinimumAvatarWidth'])
+    assertEquals(64, avatar_props['RecommendedAvatarHeight'])
+    assertEquals(64, avatar_props['RecommendedAvatarWidth'])
+    assertEquals(['image/png', 'image/jpeg', 'image/gif'], avatar_props['SupportedAvatarMIMETypes'])
 
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])

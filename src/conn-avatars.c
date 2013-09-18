@@ -991,3 +991,37 @@ conn_avatars_properties_getter (GObject *object,
       g_value_set_uint (value, GPOINTER_TO_UINT (getter_data));
     }
 }
+
+void
+gabble_connection_dup_avatar_requirements (GStrv *supported_mime_types,
+    guint *min_height,
+    guint *min_width,
+    guint *rec_height,
+    guint *rec_width,
+    guint *max_height,
+    guint *max_width,
+    guint *max_bytes)
+{
+  if (supported_mime_types != NULL)
+    {
+      *supported_mime_types = g_strdupv ((gchar **) mimetypes);
+    }
+
+  if (min_height != NULL)
+    *min_height = AVATAR_MIN_PX;
+  if (min_width != NULL)
+    *min_width = AVATAR_MIN_PX;
+
+  if (rec_height != NULL)
+    *rec_height = AVATAR_REC_PX;
+  if (rec_width != NULL)
+    *rec_width = AVATAR_REC_PX;
+
+  if (max_height != NULL)
+    *max_height = AVATAR_MAX_PX;
+  if (max_width != NULL)
+    *max_width = AVATAR_MAX_PX;
+
+  if (max_bytes != NULL)
+    *max_bytes = AVATAR_MAX_BYTES;
+}

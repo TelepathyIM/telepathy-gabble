@@ -32,6 +32,15 @@ extern TpDBusPropertiesMixinPropImpl *conn_avatars_properties;
 void conn_avatars_properties_getter (GObject *object, GQuark interface,
     GQuark name, GValue *value, gpointer getter_data);
 
+void gabble_connection_dup_avatar_requirements (GStrv *supported_mime_types,
+    guint *min_height,
+    guint *min_width,
+    guint *rec_height,
+    guint *rec_width,
+    guint *max_height,
+    guint *max_width,
+    guint *max_bytes);
+
 G_END_DECLS
 
 #endif /* __CONN_AVATARS_H__ */

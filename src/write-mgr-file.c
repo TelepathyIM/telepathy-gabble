@@ -277,6 +277,45 @@ write_rccs (GKeyFile *f, const gchar *section_name, GHashTable *props)
   g_strfreev (group_names);
 }
 
+static void
+write_presence (GKeyFile *f,
+    const gchar *section_name,
+    GHashTable *props)
+{
+  GHashTable *statuses;
+  GHashTableIter iter;
+  gpointer k, v;
+
+  statuses = tp_asv_get_boxed (props,
+      TP_PROP_PROTOCOL_INTERFACE_PRESENCE_STATUSES,
+      TP_HASH_TYPE_SIMPLE_STATUS_SPEC_MAP);
+  g_return_if_fail (statuses != NULL);
+
+  g_hash_table_iter_init (&iter, statuses);
+  while (g_hash_table_iter_next (&iter, &k, &v))
+    {
+      const gchar *id = k;
+      GValueArray *status = v;
+      TpConnectionPresenceType type;
+      gboolean may_set_on_self, can_have_msg;
+      gchar *key, *value;
+
+      key = g_strdup_printf("status-%s", id);
+
+      tp_value_array_unpack (status, 3, &type, &may_set_on_self, &can_have_msg);
+
+      value = g_strdup_printf ("%u%s%s",
+              type,
+              may_set_on_self ? " settable" : "",
+              can_have_msg ? " message" : "");
+
+      g_key_file_set_string (f, section_name, key, value);
+
+      g_free (key);
+      g_free (value);
+    }
+}
+
 static gchar *
 mgr_file_contents (const char *busname,
                    const char *objpath,
@@ -368,6 +407,8 @@ mgr_file_contents (const char *busname,
           tp_asv_get_uint32 (props,
               TP_PROP_PROTOCOL_INTERFACE_AVATARS_MAXIMUM_AVATAR_BYTES,
               NULL));
+
+      write_presence (f, section_name, props);
 
       WRITE_STR (TP_PROP_PROTOCOL_VCARD_FIELD, "VCardField");
       WRITE_STR (TP_PROP_PROTOCOL_ENGLISH_NAME, "EnglishName");

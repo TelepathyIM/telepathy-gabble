@@ -302,6 +302,7 @@ mgr_file_contents (const char *busname,
       const gchar * const *addr_vcard_fields;
       const gchar * const *addr_uri_schemes;
       const gchar * const *auth_types;
+      const gchar * const *mime_types;
 
       g_object_get (G_OBJECT (protocol),
           "immutable-properties", &props,
@@ -319,6 +320,8 @@ mgr_file_contents (const char *busname,
           TP_PROP_PROTOCOL_INTERFACE_ADDRESSING_ADDRESSABLE_VCARD_FIELDS);
       addr_uri_schemes = tp_asv_get_strv (props,
           TP_PROP_PROTOCOL_INTERFACE_ADDRESSING_ADDRESSABLE_URI_SCHEMES);
+      mime_types = tp_asv_get_strv (props,
+          TP_PROP_PROTOCOL_INTERFACE_AVATARS_SUPPORTED_AVATAR_MIME_TYPES);
 
       write_parameters (f, section_name, TP_BASE_PROTOCOL (protocol));
       write_rccs (f, section_name, props);
@@ -333,6 +336,38 @@ mgr_file_contents (const char *busname,
           addr_vcard_fields, g_strv_length ((gchar **) addr_vcard_fields));
       g_key_file_set_string_list (f, section_name, "AddressableURISchemes",
           addr_uri_schemes, g_strv_length ((gchar **) addr_uri_schemes));
+
+      /* Avatars */
+      g_key_file_set_string_list (f, section_name, "SupportedAvatarMIMETypes",
+          mime_types, g_strv_length ((gchar **) mime_types));
+      g_key_file_set_integer (f, section_name, "MinimumAvatarHeight",
+          tp_asv_get_uint32 (props,
+              TP_PROP_PROTOCOL_INTERFACE_AVATARS_MINIMUM_AVATAR_HEIGHT,
+              NULL));
+      g_key_file_set_integer (f, section_name, "RecommendedAvatarHeight",
+          tp_asv_get_uint32 (props,
+              TP_PROP_PROTOCOL_INTERFACE_AVATARS_RECOMMENDED_AVATAR_HEIGHT,
+              NULL));
+      g_key_file_set_integer (f, section_name, "MaximumAvatarHeight",
+          tp_asv_get_uint32 (props,
+              TP_PROP_PROTOCOL_INTERFACE_AVATARS_MAXIMUM_AVATAR_HEIGHT,
+              NULL));
+      g_key_file_set_integer (f, section_name, "MinimumAvatarWidth",
+          tp_asv_get_uint32 (props,
+              TP_PROP_PROTOCOL_INTERFACE_AVATARS_MINIMUM_AVATAR_WIDTH,
+              NULL));
+      g_key_file_set_integer (f, section_name, "RecommendedAvatarWidth",
+          tp_asv_get_uint32 (props,
+              TP_PROP_PROTOCOL_INTERFACE_AVATARS_RECOMMENDED_AVATAR_WIDTH,
+              NULL));
+      g_key_file_set_integer (f, section_name, "MaximumAvatarWidth",
+          tp_asv_get_uint32 (props,
+              TP_PROP_PROTOCOL_INTERFACE_AVATARS_MAXIMUM_AVATAR_WIDTH,
+              NULL));
+      g_key_file_set_integer (f, section_name, "MaximumAvatarBytes",
+          tp_asv_get_uint32 (props,
+              TP_PROP_PROTOCOL_INTERFACE_AVATARS_MAXIMUM_AVATAR_BYTES,
+              NULL));
 
       WRITE_STR (TP_PROP_PROTOCOL_VCARD_FIELD, "VCardField");
       WRITE_STR (TP_PROP_PROTOCOL_ENGLISH_NAME, "EnglishName");

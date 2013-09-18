@@ -330,6 +330,7 @@ get_interfaces_array (TpBaseProtocol *self)
 
   g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_PRESENCE);
   g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_ADDRESSING);
+  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_AVATARS);
 
   return interfaces;
 }

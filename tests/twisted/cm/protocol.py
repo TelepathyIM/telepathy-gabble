@@ -3,7 +3,7 @@ Test Gabble's o.T.Protocol implementation
 """
 
 import dbus
-from servicetest import unwrap, tp_path_prefix, assertEquals
+from servicetest import unwrap, tp_path_prefix, assertEquals, assertContains
 from gabbletest import exec_test, call_async
 import constants as cs
 import time
@@ -65,6 +65,8 @@ def test(q, bus, conn, stream):
     test_params = { 'account': 'test@localhost' }
     acc_name = unwrap(proto_iface.IdentifyAccount(test_params))
     assertEquals(test_params['account'], acc_name)
+
+    assertContains(cs.PROTOCOL_IFACE_AVATARS, proto_props['Interfaces'])
 
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged', args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])

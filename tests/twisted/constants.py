@@ -472,6 +472,7 @@ class SendError(object):
 PROTOCOL = 'org.freedesktop.Telepathy.Protocol'
 PROTOCOL_IFACE_PRESENCES = PROTOCOL + '.Interface.Presence'
 PROTOCOL_IFACE_ADDRESSING = PROTOCOL + '.Interface.Addressing'
+PROTOCOL_IFACE_AVATARS = PROTOCOL + '.Interface.Avatars'
 
 PARAM_REQUIRED = 1
 PARAM_REGISTER = 2

@@ -36,16 +36,14 @@ def test(q, bus, conn, stream):
             tp_name_prefix + '.Connection.Interface.Requests',
             dbus_interface=dbus.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
-    assert ({tp_name_prefix + '.Channel.ChannelType':
-                tp_name_prefix + '.Channel.Type.RoomList',
+    assert ({tp_name_prefix + '.Channel.ChannelType': cs.CHANNEL_TYPE_ROOM_LIST,
              tp_name_prefix + '.Channel.TargetHandleType': 0,
              },
-             [tp_name_prefix + '.Channel.Type.RoomList.Server'],
+             [cs.CHANNEL_TYPE_ROOM_LIST + '.Server'],
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
-    call_async(q, conn, 'RequestChannel',
-        tp_name_prefix + '.Channel.Type.RoomList', 0, 0, True)
+    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_ROOM_LIST, 0, 0, True)
 
     ret, old_sig, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
@@ -61,7 +59,7 @@ def test(q, bus, conn, stream):
 
     props = new_sig.args[0][0][1]
     assert props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            tp_name_prefix + '.Channel.Type.RoomList'
+            cs.CHANNEL_TYPE_ROOM_LIST
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
@@ -70,11 +68,11 @@ def test(q, bus, conn, stream):
             == conn.GetSelfHandle()
     assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
-    assert props[tp_name_prefix + '.Channel.Type.RoomList.Server'] == \
+    assert props[cs.CHANNEL_TYPE_ROOM_LIST + '.Server'] == \
             'conf.localhost'
 
     assert old_sig.args[0] == path1
-    assert old_sig.args[1] == tp_name_prefix + '.Channel.Type.RoomList'
+    assert old_sig.args[1] == cs.CHANNEL_TYPE_ROOM_LIST
     assert old_sig.args[2] == 0     # handle type
     assert old_sig.args[3] == 0     # handle
     assert old_sig.args[4] == 1     # suppress handler
@@ -89,24 +87,22 @@ def test(q, bus, conn, stream):
     assert channel_props.get('TargetHandleType') == 0,\
             channel_props.get('TargetHandleType')
     assert channel_props.get('ChannelType') == \
-            tp_name_prefix + '.Channel.Type.RoomList',\
+            cs.CHANNEL_TYPE_ROOM_LIST,\
             channel_props.get('ChannelType')
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
     assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
 
-    assert chan.Get(
-            tp_name_prefix + '.Channel.Type.RoomList', 'Server',
+    assert chan.Get(cs.CHANNEL_TYPE_ROOM_LIST, 'Server',
             dbus_interface=dbus.PROPERTIES_IFACE) == \
                     'conf.localhost'
 
     # FIXME: actually list the rooms!
 
     call_async(q, conn.Requests, 'CreateChannel',
-            { tp_name_prefix + '.Channel.ChannelType':
-                tp_name_prefix + '.Channel.Type.RoomList',
+            { tp_name_prefix + '.Channel.ChannelType': cs.CHANNEL_TYPE_ROOM_LIST,
               tp_name_prefix + '.Channel.TargetHandleType': 0,
-              tp_name_prefix + '.Channel.Type.RoomList.Server':
+              cs.CHANNEL_TYPE_ROOM_LIST + '.Server':
                 'conference.example.net',
               })
 
@@ -120,7 +116,7 @@ def test(q, bus, conn, stream):
 
     props = ret.value[1]
     assert props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            tp_name_prefix + '.Channel.Type.RoomList'
+            cs.CHANNEL_TYPE_ROOM_LIST
     assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
     assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
@@ -129,20 +125,19 @@ def test(q, bus, conn, stream):
             == conn.GetSelfHandle()
     assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
-    assert props[tp_name_prefix + '.Channel.Type.RoomList.Server'] == \
+    assert props[cs.CHANNEL_TYPE_ROOM_LIST+ '.Server'] == \
             'conference.example.net'
 
     assert new_sig.args[0][0][0] == path2
     assert new_sig.args[0][0][1] == props
 
     assert old_sig.args[0] == path2
-    assert old_sig.args[1] == tp_name_prefix + '.Channel.Type.RoomList'
+    assert old_sig.args[1] == cs.CHANNEL_TYPE_ROOM_LIST
     assert old_sig.args[2] == 0     # handle type
     assert old_sig.args[3] == 0     # handle
     assert old_sig.args[4] == 1     # suppress handler
 
-    assert chan.Get(
-            tp_name_prefix + '.Channel.Type.RoomList', 'Server',
+    assert chan.Get(cs.CHANNEL_TYPE_ROOM_LIST, 'Server',
             dbus_interface=dbus.PROPERTIES_IFACE) == \
                     'conference.example.net'
 
@@ -150,9 +145,9 @@ def test(q, bus, conn, stream):
 
     call_async(q, conn.Requests, 'EnsureChannel',
             { tp_name_prefix + '.Channel.ChannelType':
-                tp_name_prefix + '.Channel.Type.RoomList',
+                cs.CHANNEL_TYPE_ROOM_LIST,
               tp_name_prefix + '.Channel.TargetHandleType': 0,
-              tp_name_prefix + '.Channel.Type.RoomList.Server':
+              cs.CHANNEL_TYPE_ROOM_LIST + '.Server':
                 'conference.example.net',
               })
 

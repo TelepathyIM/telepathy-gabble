@@ -10,18 +10,6 @@ from servicetest import assertLength
 import constants as cs
 import ns
 
-def _expect_group_channel(q, bus, conn, name, contacts):
-    event = q.expect('dbus-signal', signal='NewChannel')
-    path, type, handle_type, handle, suppress_handler = event.args
-    assert type == cs.CHANNEL_TYPE_CONTACT_LIST, type
-    assert handle_type == cs.HT_GROUP, handle_type
-    inspected = conn.InspectHandles(handle_type, [handle])[0]
-    assert inspected == name, (inspected, name)
-    chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
-    inspected = conn.InspectHandles(cs.HT_CONTACT, group_iface.GetMembers())
-    assert inspected == contacts, (inspected, contacts)
-
 def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'

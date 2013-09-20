@@ -43,60 +43,6 @@ def test(q, bus, conn, stream):
              ) in properties.get('RequestableChannelClasses'),\
                      properties['RequestableChannelClasses']
 
-    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_ROOM_LIST, 0, 0, True)
-
-    ret, old_sig, new_sig = q.expect_many(
-        EventPattern('dbus-return', method='RequestChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
-        )
-
-    bus = dbus.SessionBus()
-    path1 = ret.value[0]
-    chan = bus.get_object(conn.bus_name, path1)
-
-    assert new_sig.args[0][0][0] == path1
-
-    props = new_sig.args[0][0][1]
-    assert props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            cs.CHANNEL_TYPE_ROOM_LIST
-    assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
-    assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
-    assert props[tp_name_prefix + '.Channel.TargetID'] == ''
-    assert props[tp_name_prefix + '.Channel.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == conn.Properties.Get(cs.CONN, "SelfHandle")
-    assert props[tp_name_prefix + '.Channel.InitiatorID'] \
-            == 'test@localhost'
-    assert props[cs.CHANNEL_TYPE_ROOM_LIST + '.Server'] == \
-            'conf.localhost'
-
-    assert old_sig.args[0] == path1
-    assert old_sig.args[1] == cs.CHANNEL_TYPE_ROOM_LIST
-    assert old_sig.args[2] == 0     # handle type
-    assert old_sig.args[3] == 0     # handle
-    assert old_sig.args[4] == 1     # suppress handler
-
-    # Exercise basic Channel Properties from spec 0.17.7
-    channel_props = chan.GetAll(
-            tp_name_prefix + '.Channel',
-            dbus_interface=dbus.PROPERTIES_IFACE)
-    assert channel_props.get('TargetHandle') == 0,\
-            channel_props.get('TargetHandle')
-    assert channel_props['TargetID'] == '', channel_props
-    assert channel_props.get('TargetHandleType') == 0,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            cs.CHANNEL_TYPE_ROOM_LIST,\
-            channel_props.get('ChannelType')
-    assert channel_props['Requested'] == True
-    assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.Properties.Get(cs.CONN, "SelfHandle")
-
-    assert chan.Get(cs.CHANNEL_TYPE_ROOM_LIST, 'Server',
-            dbus_interface=dbus.PROPERTIES_IFACE) == \
-                    'conf.localhost'
-
     # FIXME: actually list the rooms!
 
     call_async(q, conn.Requests, 'CreateChannel',
@@ -106,9 +52,8 @@ def test(q, bus, conn, stream):
                 'conference.example.net',
               })
 
-    ret, old_sig, new_sig = q.expect_many(
+    ret, sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
     path2 = ret.value[0]
@@ -128,14 +73,8 @@ def test(q, bus, conn, stream):
     assert props[cs.CHANNEL_TYPE_ROOM_LIST+ '.Server'] == \
             'conference.example.net'
 
-    assert new_sig.args[0][0][0] == path2
-    assert new_sig.args[0][0][1] == props
-
-    assert old_sig.args[0] == path2
-    assert old_sig.args[1] == cs.CHANNEL_TYPE_ROOM_LIST
-    assert old_sig.args[2] == 0     # handle type
-    assert old_sig.args[3] == 0     # handle
-    assert old_sig.args[4] == 1     # suppress handler
+    assert sig.args[0][0][0] == path2
+    assert sig.args[0][0][1] == props
 
     assert chan.Get(cs.CHANNEL_TYPE_ROOM_LIST, 'Server',
             dbus_interface=dbus.PROPERTIES_IFACE) == \
@@ -158,9 +97,7 @@ def test(q, bus, conn, stream):
     assert ensured_path == path2, (ensured_path, path2)
 
     disconnect_conn(q, conn, stream, [
-    EventPattern('dbus-signal', signal='Closed', path=path1),
     EventPattern('dbus-signal', signal='Closed', path=path2),
-    EventPattern('dbus-signal', signal='ChannelClosed', args=[path1]),
     EventPattern('dbus-signal', signal='ChannelClosed', args=[path2])])
 
 if __name__ == '__main__':

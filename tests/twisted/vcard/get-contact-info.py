@@ -62,7 +62,7 @@ def test(q, bus, conn, stream):
     # check the ContactAttribute
     assertEquals(
         {handle: {cs.CONN_IFACE_CONTACT_INFO + '/info': contact_info,
-                  'org.freedesktop.Telepathy.Connection/contact-id': 'bob@foo.com'}},
+                  cs.ATTR_CONTACT_ID: 'bob@foo.com'}},
         conn.Contacts.GetContactAttributes([handle],
                                            [cs.CONN_IFACE_CONTACT_INFO], False))
 

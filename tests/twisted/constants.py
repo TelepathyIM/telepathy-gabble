@@ -188,6 +188,7 @@ CONN_IFACE_POWER_SAVING = CONN + '.Interface.PowerSaving'
 CONN_IFACE_CONTACT_BLOCKING = CONN + '.Interface.ContactBlocking'
 CONN_IFACE_ADDRESSING = CONN + '.Interface.Addressing1'
 
+ATTR_CONTACT_ID = CONN + '/contact-id'
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
 ATTR_PRESENCE = CONN_IFACE_SIMPLE_PRESENCE + '/presence'
 
@@ -535,3 +536,6 @@ ROOM_SERVER = CHANNEL_IFACE_ROOM + '.Server'
 SUBJECT = CHANNEL_IFACE_ROOM + '.Subject'
 SUBJECT_PRESENT = 1
 SUBJECT_CAN_SET = 2
+
+DEBUG_IFACE = PREFIX + '.Debug'
+DEBUG_PATH = '/' + PREFIX.replace('.', '/') + '/debug'

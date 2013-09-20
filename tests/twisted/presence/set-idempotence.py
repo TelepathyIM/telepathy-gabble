@@ -24,7 +24,7 @@ def run_test(q, bus, conn, stream):
     assert simple_signal.args == [{1L: (3L, u'away',  u'gone')}]
     assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
       { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
-        'org.freedesktop.Telepathy.Connection/contact-id':
+        cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 
     children = list(presence.stanza.elements())
@@ -38,7 +38,7 @@ def run_test(q, bus, conn, stream):
     conn.SimplePresence.SetPresence('away', 'gone')
     assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
       { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
-        'org.freedesktop.Telepathy.Connection/contact-id':
+        cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 
     # Set presence a third time. This call is not redundant, and should
@@ -55,7 +55,7 @@ def run_test(q, bus, conn, stream):
     assert str(children[0]) == 'yo'
     assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
       { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (2L, u'available', u'yo'),
-        'org.freedesktop.Telepathy.Connection/contact-id':
+        cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 
     # call SetPresence with an empty message, as this used to cause a
@@ -68,7 +68,7 @@ def run_test(q, bus, conn, stream):
     assert simple_signal.args == [{1L: (2L, u'available',  u'')}]
     assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE], False) == { 1L:
       { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (2L, u'available', u''),
-        'org.freedesktop.Telepathy.Connection/contact-id':
+        cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 
 if __name__ == '__main__':

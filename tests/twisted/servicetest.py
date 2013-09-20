@@ -19,8 +19,8 @@ from twisted.internet import reactor
 
 import constants as cs
 
-tp_name_prefix = 'org.freedesktop.Telepathy'
-tp_path_prefix = '/org/freedesktop/Telepathy'
+tp_name_prefix = cs.PREFIX
+tp_path_prefix = '/' + cs.PREFIX.replace('.', '/')
 
 class DictionarySupersetOf (object):
     """Utility class for expecting "a dictionary with at least these keys"."""
@@ -433,7 +433,7 @@ def sync_dbus(bus, q, conn):
     assert conn.object.bus_name.startswith(':')
     root_object = bus.get_object(conn.object.bus_name, '/', introspect=False)
     call_async(q,
-        dbus.Interface(root_object, 'org.freedesktop.Telepathy.Tests'),
+        dbus.Interface(root_object, cs.PREFIX + '.Tests'),
         'DummySyncDBus')
     q.expect('dbus-error', method='DummySyncDBus')
 

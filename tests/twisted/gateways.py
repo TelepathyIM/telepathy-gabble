@@ -16,7 +16,7 @@ import constants as cs
 import ns
 from config import PLUGINS_ENABLED
 
-PLUGIN_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Gateways"
+PLUGIN_IFACE = cs.PREFIX + ".Gabble.Plugin.Gateways"
 
 if not PLUGINS_ENABLED:
     print "NOTE: built without --enable-plugins, not testing plugins"

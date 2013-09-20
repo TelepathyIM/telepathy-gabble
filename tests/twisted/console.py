@@ -10,8 +10,9 @@ from gabbletest import exec_test, acknowledge_iq, elem, elem_iq
 from config import PLUGINS_ENABLED
 from twisted.words.xish import domish
 import ns
+import constants as cs
 
-CONSOLE_PLUGIN_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
+CONSOLE_PLUGIN_IFACE = cs.PREFIX + ".Gabble.Plugin.Console"
 STACY = 'stacy@pilgrim.lit'
 
 if not PLUGINS_ENABLED:

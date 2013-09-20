@@ -10,8 +10,6 @@ from servicetest import EventPattern
 from gabbletest import exec_test
 import constants as cs
 from config import DEBUGGING
-path = '/org/freedesktop/Telepathy/debug'
-iface = 'org.freedesktop.Telepathy.Debug'
 
 def test(q, bus, conn, stream):
     messages = []
@@ -19,7 +17,8 @@ def test(q, bus, conn, stream):
     def new_message(timestamp, domain, level, string):
         messages.append((timestamp, domain, level, string))
 
-    debug = ProxyWrapper(bus.get_object(conn.bus_name, path), iface)
+    debug = ProxyWrapper(bus.get_object(conn.bus_name, cs.DEBUG_PATH),
+            cs.DEBUG_IFACE)
     debug.connect_to_signal('NewDebugMessage', new_message)
 
     if not DEBUGGING:
@@ -34,8 +33,8 @@ def test(q, bus, conn, stream):
     # Turn signalling on and generate some messages.
 
     assert len(messages) == 0
-    assert debug.Properties.Get(iface, 'Enabled') == False
-    debug.Properties.Set(iface, 'Enabled', True)
+    assert debug.Properties.Get(cs.DEBUG_IFACE, 'Enabled') == False
+    debug.Properties.Set(cs.DEBUG_IFACE, 'Enabled', True)
 
     channel_path = conn.RequestChannel(
         cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.Properties.Get(cs.CONN, "SelfHandle"), True)
@@ -47,7 +46,7 @@ def test(q, bus, conn, stream):
 
     # Turn signalling off and check we don't get any more messages.
 
-    debug.Properties.Set(iface, 'Enabled', False)
+    debug.Properties.Set(cs.DEBUG_IFACE, 'Enabled', False)
     sync_dbus(bus, q, conn)
     snapshot = list(messages)
 

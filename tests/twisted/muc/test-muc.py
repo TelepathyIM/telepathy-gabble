@@ -265,7 +265,8 @@ def test(q, bus, conn, stream):
     assert x_muc_nodes is None, elem.toXml()
 
     # test that leaving the channel results in an unavailable message
-    chan.Group.RemoveMembers([chan.Group.GetSelfHandle()], 'booo')
+    chan.Group.RemoveMembers([chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
+        "SelfHandle")], 'booo')
 
     event = q.expect('stream-presence', to='chat@conf.localhost/test')
     elem = event.stanza

@@ -7,7 +7,7 @@ import dbus
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_muc_presence
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, wrap_channel
 import constants as cs
 import ns
 
@@ -79,8 +79,9 @@ def test(q, bus, conn, stream):
     assert event.args[2] == 2   # handle type
     assert event.args[3] == handles['chat']   # handle
 
-    text_chan = bus.get_object(conn.bus_name, event.args[0])
-    group_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_GROUP)
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, event.args[0]),
+            'Text')
+    group_iface = text_chan.Group
 
     members = group_iface.GetAllMembers()[0]
     local_pending = group_iface.GetAllMembers()[1]
@@ -94,7 +95,8 @@ def test(q, bus, conn, stream):
             'chat@conf.localhost/test'
     assert len(remote_pending) == 0
 
-    handles['chat_self'] = group_iface.GetSelfHandle()
+    handles['chat_self'] = text_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
+            "SelfHandle")
     assert handles['chat_self'] == local_pending[0]
 
     # by now, we should have picked up the extra activity properties

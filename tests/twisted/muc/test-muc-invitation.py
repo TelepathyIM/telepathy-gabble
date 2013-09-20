@@ -7,7 +7,7 @@ import dbus
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_muc_presence
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, wrap_channel
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -30,12 +30,12 @@ def test(q, bus, conn, stream):
     assert event.args[3] == 1   # handle
     room_handle = 1
 
-    text_chan = bus.get_object(conn.bus_name, event.args[0])
-    group_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_GROUP)
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, event.args[0]),
+            'Text')
 
-    members = group_iface.GetMembers()
-    local_pending = group_iface.GetLocalPendingMembers()
-    remote_pending = group_iface.GetRemotePendingMembers()
+    members = text_chan.Group.GetMembers()
+    local_pending = text_chan.Group.GetLocalPendingMembers()
+    remote_pending = text_chan.Group.GetRemotePendingMembers()
 
     assert len(members) == 1
     assert conn.InspectHandles(1, members)[0] == 'bob@localhost'
@@ -46,11 +46,11 @@ def test(q, bus, conn, stream):
             'chat@conf.localhost/test'
     assert len(remote_pending) == 0
 
-    room_self_handle = group_iface.GetSelfHandle()
+    room_self_handle = text_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
+            "SelfHandle")
     assert room_self_handle == local_pending[0]
 
-    channel_props = text_chan.GetAll(
-        cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
+    channel_props = text_chan.Properties.GetAll(cs.CHANNEL)
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == False
     assert channel_props['InitiatorID'] == 'bob@localhost'
@@ -62,7 +62,7 @@ def test(q, bus, conn, stream):
     conn.SimplePresence.SetPresence('available', 'success')
 
     # accept the invitation
-    call_async(q, group_iface, 'AddMembers', [room_self_handle], 'Oh, OK then')
+    call_async(q, text_chan.Group, 'AddMembers', [room_self_handle], 'Oh, OK then')
 
     event, event2, _ = q.expect_many(
             EventPattern('stream-presence', to='chat@conf.localhost/test'),
@@ -97,7 +97,7 @@ def test(q, bus, conn, stream):
 
     # Test sending an invitation
     alice_handle = conn.RequestHandles(1, ['alice@localhost'])[0]
-    call_async(q, group_iface, 'AddMembers', [alice_handle],
+    call_async(q, text_chan.Group, 'AddMembers', [alice_handle],
             'I want to test invitations')
 
     event = q.expect('stream-message', to='chat@conf.localhost')

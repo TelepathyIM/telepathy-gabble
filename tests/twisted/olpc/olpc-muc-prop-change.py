@@ -7,7 +7,7 @@ import dbus
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, acknowledge_iq, make_muc_presence
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, wrap_channel
 import constants as cs
 import ns
 
@@ -61,9 +61,9 @@ def test(q, bus, conn, stream):
     assert event.args[3] == 1   # handle
     room_handle = 1
 
-    text_chan = bus.get_object(conn.bus_name, event.args[0])
-    chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
-    group_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_GROUP)
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, event.args[0]),
+            'Text')
+    group_iface = text_chan.Group
 
     members = group_iface.GetAllMembers()[0]
     local_pending = group_iface.GetAllMembers()[1]
@@ -78,7 +78,8 @@ def test(q, bus, conn, stream):
             'chat@conf.localhost/test'
     assert len(remote_pending) == 0
 
-    room_self_handle = group_iface.GetSelfHandle()
+    room_self_handle = text_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
+            "SelfHandle")
     assert room_self_handle == local_pending[0]
 
     # by now, we should have picked up the extra activity properties
@@ -359,7 +360,7 @@ def test(q, bus, conn, stream):
 
     q.expect('dbus-return', method='SetProperties')
 
-    chan_iface.Close()
+    text_chan.Close()
 
     # we must echo the MUC presence so the room will actually close
     event = q.expect('stream-presence', to='chat@conf.localhost/test',

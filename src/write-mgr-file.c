@@ -300,7 +300,7 @@ write_presence (GKeyFile *f,
       gboolean may_set_on_self, can_have_msg;
       gchar *key, *value;
 
-      key = g_strdup_printf("status-%s", id);
+      key = g_strdup_printf ("status-%s", id);
 
       tp_value_array_unpack (status, 3, &type, &may_set_on_self, &can_have_msg);
 

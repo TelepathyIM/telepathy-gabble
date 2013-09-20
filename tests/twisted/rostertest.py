@@ -130,7 +130,7 @@ def check_contact_list_signals(q, bus, conn, signals,
     members = chan.Group.GetMembers()
 
     assertEquals(sorted(contacts),
-        sorted(conn.InspectHandles(cs.HT_CONTACT, members)))
+        sorted(conn.inspect_contacts_sync(members)))
 
     lp_handles = conn.RequestHandles(cs.HT_CONTACT, lp_contacts)
     rp_handles = conn.RequestHandles(cs.HT_CONTACT, rp_contacts)

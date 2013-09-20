@@ -26,7 +26,7 @@ def test(q, bus, conn, stream):
         2L, client)
 
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-    jid =  conn.InspectHandles(cs.HT_CONTACT, [self_handle])[0]
+    jid =  conn.inspect_contact_sync(self_handle)
 
     iq = IQ(stream, "set")
     iq['to'] = jid

@@ -29,7 +29,7 @@ def test(q, bus, conn, stream):
     # first message should be from Bob, not Alice
     event = q.expect('dbus-signal', signal='NewChannel')
     assert event.args[1] == cs.CHANNEL_TYPE_TEXT
-    jid = conn.InspectHandles(cs.HT_CONTACT, [event.args[3]])[0]
+    jid = conn.inspect_contact_sync(event.args[3])
     assert jid == 'bob@foo.com'
 
 if __name__ == '__main__':

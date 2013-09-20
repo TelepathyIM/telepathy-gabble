@@ -78,7 +78,7 @@ class FileTransferTest(object):
                       path=self.conn.object.object_path)
 
         self.self_handle = self.conn.Properties.Get(cs.CONN, "SelfHandle")
-        self.self_handle_name =  self.conn.InspectHandles(cs.HT_CONTACT, [self.self_handle])[0]
+        self.self_handle_name =  self.conn.inspect_contact_sync(self.self_handle)
 
     def set_target(self, jid):
         self.target = jid

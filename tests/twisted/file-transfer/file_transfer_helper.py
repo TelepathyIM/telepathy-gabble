@@ -89,7 +89,7 @@ class FileTransferTest(object):
         announce_socks5_proxy(self.q, self.stream, disco_event.stanza)
 
         self.self_handle = self.conn.Properties.Get(cs.CONN, "SelfHandle")
-        self.self_handle_name =  self.conn.InspectHandles(cs.HT_CONTACT, [self.self_handle])[0]
+        self.self_handle_name =  self.conn.inspect_contact_sync(self.self_handle)
 
     def announce_contact(self, name=CONTACT_NAME, metadata=True):
         self.contact_name = name

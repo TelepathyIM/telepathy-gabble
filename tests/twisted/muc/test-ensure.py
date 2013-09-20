@@ -57,7 +57,7 @@ def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
     assert local_pending == [], mc.args
     assert remote_pending == [], mc.args
 
-    members = conn.InspectHandles(1, added)
+    members = conn.inspect_contacts_sync(added)
     members.sort()
     assert members == ['%s/bob' % room_jid, '%s/test' % room_jid], members
 
@@ -121,7 +121,7 @@ def test_ensure_ensure(q, conn, bus, stream, room_jid, room_handle):
     assert local_pending == [], mc.args
     assert remote_pending == [], mc.args
 
-    members = conn.InspectHandles(1, added)
+    members = conn.inspect_contacts_sync(added)
     members.sort()
     assert members == ['%s/bob' % room_jid, '%s/test' % room_jid], members
 

@@ -74,8 +74,7 @@ def test(q, bus, conn, stream):
     marco = badger(m3)
 
     assertEquals([our_jid, bob_jid, marco_jid],
-        conn.InspectHandles(cs.HT_CONTACT,
-            [ me, bob, marco ]))
+        conn.inspect_contacts_sync([ me, bob, marco ]))
 
 if __name__ == '__main__':
     exec_test(test)

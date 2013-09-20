@@ -457,8 +457,19 @@ class ProxyWrapper:
 
         return getattr(self.default_interface, name)
 
+class ConnWrapper(ProxyWrapper):
+    def inspect_contact_sync(self, handle):
+        return self.inspect_contacts_sync([handle])[0]
+
+    def inspect_contacts_sync(self, handles):
+        h2asv = self.Contacts.GetContactAttributes(handles, [], True)
+        ret = []
+        for h in handles:
+            ret.append(h2asv[h][cs.ATTR_CONTACT_ID])
+        return ret
+
 def wrap_connection(conn):
-    return ProxyWrapper(conn, tp_name_prefix + '.Connection',
+    return ConnWrapper(conn, tp_name_prefix + '.Connection',
         dict([
             (name, tp_name_prefix + '.Connection.Interface.' + name)
             for name in ['Aliasing', 'Avatars', 'Capabilities', 'Contacts',

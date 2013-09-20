@@ -26,7 +26,7 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='NewChannel')
     assert event.args[1] == cs.CHANNEL_TYPE_TEXT
     assert event.args[2] == cs.HT_CONTACT
-    jid = conn.InspectHandles(cs.HT_CONTACT, [event.args[3]])[0]
+    jid = conn.inspect_contact_sync(event.args[3])
     assert jid == 'foo@bar.com'
 
     received, message_received = q.expect_many(

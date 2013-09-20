@@ -31,7 +31,7 @@ def test(q, bus, conn, stream):
     assert event.args[1] == cs.CHANNEL_TYPE_TEXT
     assert event.args[2] == cs.HT_CONTACT
     foo_at_bar_dot_com_handle = event.args[3]
-    jid = conn.InspectHandles(1, [foo_at_bar_dot_com_handle])[0]
+    jid = conn.inspect_contact_sync(foo_at_bar_dot_com_handle)
     assert jid == 'foo@bar.com'
     assert event.args[4] == False   # suppress handler
 

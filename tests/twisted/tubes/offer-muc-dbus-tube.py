@@ -115,7 +115,7 @@ def test(q, bus, conn, stream, access_control):
     t.check_conn_properties(q, conn)
 
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-    self_name = conn.InspectHandles(1, [self_handle])[0]
+    self_name = conn.inspect_contact_sync(self_handle)
 
     # offer a D-Bus tube to another room using new API
     muc = 'chat2@conf.localhost'

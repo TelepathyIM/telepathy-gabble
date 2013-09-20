@@ -17,7 +17,7 @@ def test(q, bus, conn, stream):
     _, chan, _, _ = join_muc(q, bus, conn, stream, MUC)
     muc_self_handle = chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
             "SelfHandle")
-    muc_self_jid, = conn.InspectHandles(cs.HT_CONTACT, [muc_self_handle])
+    muc_self_jid = conn.inspect_contact_sync(muc_self_handle)
 
     # But then Bob kicks us.
     bob_jid = '%s/bob' % MUC

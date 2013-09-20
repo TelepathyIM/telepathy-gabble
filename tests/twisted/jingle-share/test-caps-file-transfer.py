@@ -65,9 +65,9 @@ def test2(q, bus, connections, streams):
     conn1, conn2 = connections
     stream1, stream2 = streams
     conn1_handle = conn1.Properties.Get(cs.CONN, 'SelfHandle')
-    conn1_jid = conn1.InspectHandles(cs.HT_CONTACT, [conn1_handle])[0]
+    conn1_jid = conn1.inspect_contact_sync(conn1_handle)
     conn2_handle = conn2.Properties.Get(cs.CONN, 'SelfHandle')
-    conn2_jid = conn2.InspectHandles(cs.HT_CONTACT, [conn2_handle])[0]
+    conn2_jid = conn2.inspect_contact_sync(conn2_handle)
     handle1 = conn2.RequestHandles(cs.HT_CONTACT, [conn1_jid])[0]
     handle2 = conn1.RequestHandles(cs.HT_CONTACT, [conn2_jid])[0]
 

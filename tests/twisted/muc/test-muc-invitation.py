@@ -38,11 +38,11 @@ def test(q, bus, conn, stream):
     remote_pending = text_chan.Group.GetRemotePendingMembers()
 
     assert len(members) == 1
-    assert conn.InspectHandles(1, members)[0] == 'bob@localhost'
+    assert conn.inspect_contact_sync(members[0]) == 'bob@localhost'
     bob_handle = members[0]
     assert len(local_pending) == 1
     # FIXME: the username-part-is-nickname assumption
-    assert conn.InspectHandles(1, local_pending)[0] == \
+    assert conn.inspect_contact_sync(local_pending[0]) == \
             'chat@conf.localhost/test'
     assert len(remote_pending) == 0
 

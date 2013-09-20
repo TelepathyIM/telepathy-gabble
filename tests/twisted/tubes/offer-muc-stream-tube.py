@@ -136,7 +136,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]))
 
     tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
-    assert conn.InspectHandles(cs.HT_CONTACT, [tube_self_handle]) == ['chat@conf.localhost/test']
+    assert conn.inspect_contact_sync(tube_self_handle) == 'chat@conf.localhost/test'
 
     presence = stream_event.stanza
     tubes_nodes = xpath.queryForNodes('/presence/tubes[@xmlns="%s"]'

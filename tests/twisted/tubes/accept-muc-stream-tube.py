@@ -40,22 +40,22 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     announce_socks5_proxy(q, stream, disco_event.stanza)
 
-    call_async(q, conn, 'RequestHandles', 2,
-        ['chat@conf.localhost'])
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    handles = event.value[0]
-    room_handle = handles[0]
-
     # join the muc
     call_async(q, conn.Requests, 'CreateChannel', {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-            cs.TARGET_HANDLE: room_handle})
+            cs.TARGET_ID: 'chat@conf.localhost'})
 
-    _, stream_event = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [], [], [], [2], 0, 0]),
+    q.expect_many(
+        EventPattern('dbus-signal', signal='MembersChangedDetailed',
+            predicate=lambda e:
+                e.args[0] == [] and         # added
+                e.args[1] == [] and         # removed
+                e.args[2] == [] and         # local pending
+                len(e.args[3]) == 1 and     # remote pending
+                e.args[4].get('actor', 0) == 0 and
+                e.args[4].get('change-reason', 0) == 0 and
+                e.args[4]['contact-ids'][e.args[3][0]] == 'chat@conf.localhost/test'),
         EventPattern('stream-presence', to='chat@conf.localhost/test'))
 
     # Send presence for other member of room.
@@ -64,12 +64,20 @@ def test(q, bus, conn, stream, bytestream_cls,
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', 'chat@conf.localhost', 'test'))
 
-    q.expect('dbus-signal', signal='MembersChanged',
-            args=[u'', [2, 3], [], [], [], 0, 0])
+    event = q.expect('dbus-signal', signal='MembersChangedDetailed',
+            predicate=lambda e:
+                len(e.args[0]) == 2 and     # added
+                e.args[1] == [] and         # removed
+                e.args[2] == [] and         # local pending
+                e.args[3] == [] and         # remote pending
+                e.args[4].get('actor', 0) == 0 and
+                e.args[4].get('change-reason', 0) == 0 and
+                set([e.args[4]['contact-ids'][h] for h in e.args[0]]) ==
+                set(['chat@conf.localhost/test', 'chat@conf.localhost/bob']))
 
-    assert conn.InspectHandles(1, [2]) == ['chat@conf.localhost/test']
-    assert conn.InspectHandles(1, [3]) == ['chat@conf.localhost/bob']
-    bob_handle = 3
+    for h in event.args[0]:
+        if event.args[4]['contact-ids'][h] == 'chat@conf.localhost/bob':
+            bob_handle = h
 
     event = q.expect('dbus-return', method='CreateChannel')
 
@@ -130,7 +138,6 @@ def test(q, bus, conn, stream, bytestream_cls,
     assertSameSets([cs.CHANNEL_IFACE_GROUP, cs.CHANNEL_IFACE_TUBE],
             props[cs.INTERFACES])
     assert props[cs.REQUESTED] == False
-    assert props[cs.TARGET_HANDLE] == room_handle
     assert props[cs.TARGET_ID] == 'chat@conf.localhost'
     assert props[cs.STREAM_TUBE_SERVICE] == 'echo'
     assert props[cs.TUBE_PARAMETERS] == {'s': 'hello', 'ay': 'hello', 'u': 123, 'i': -123}

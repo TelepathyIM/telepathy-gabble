@@ -39,9 +39,17 @@ def test(q, bus, conn, stream):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
-    members, event = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [2, 3], [], [], [], 0, 0]),
+    _, event = q.expect_many(
+            EventPattern('dbus-signal', signal='MembersChangedDetailed',
+                predicate=lambda e:
+                    len(e.args[0]) == 2 and     # added
+                    e.args[1] == [] and         # removed
+                    e.args[2] == [] and         # local pending
+                    e.args[3] == [] and         # remote pending
+                    e.args[4].get('actor', 0) == 0 and
+                    e.args[4].get('change-reason', 0) == 0 and
+                    set([e.args[4]['contact-ids'][h] for h in e.args[0]]) ==
+                    set(['chat@conf.localhost/test', 'chat@conf.localhost/bob'])),
         EventPattern('dbus-return', method='CreateChannel'))
 
     path = event.value[0]

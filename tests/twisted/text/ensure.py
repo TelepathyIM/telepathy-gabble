@@ -12,10 +12,7 @@ def test(q, bus, conn, stream):
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jids = ['foo@bar.com', 'truc@cafe.fr']
-    call_async(q, conn, 'RequestHandles', 1, jids)
-
-    event = q.expect('dbus-return', method='RequestHandles')
-    handles = event.value[0]
+    handles = conn.get_contact_handles_sync(jids)
 
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=cs.PROPERTIES_IFACE)

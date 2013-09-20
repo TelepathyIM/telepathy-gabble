@@ -74,7 +74,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     t.check_conn_properties(q, conn)
 
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat@conf.localhost/bob'])[0]
+    bob_handle = conn.get_contact_handle_sync('chat@conf.localhost/bob')
 
     address = t.create_server(q, address_type)
 
@@ -165,7 +165,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         params[node['name']] = (node['type'], str(node))
     assert params == {'foo': ('str', 'bar')}
 
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat@conf.localhost/bob'])[0]
+    bob_handle = conn.get_contact_handle_sync('chat@conf.localhost/bob')
 
     bytestream = connect_to_tube(stream, q, bytestream_cls, 'chat@conf.localhost', stream_tube_id)
 

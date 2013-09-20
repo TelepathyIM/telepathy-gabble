@@ -138,7 +138,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
 
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     contact = 'bob@foo.com'
-    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
+    handle = conn.get_contact_handle_sync('bob@foo.com')
 
     # request subscription
     call_async(q, subscribe.Group, 'AddMembers', [handle], "")
@@ -274,7 +274,7 @@ def test_local_pending(q, bus, conn, stream, subscribe):
     """
 
     contact = 'alice@foo.com'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+    handle = conn.get_contact_handle_sync(contact)
 
     # Alice asks to subscribes to us
     presence = domish.Element(('jabber:client', 'presence'))
@@ -350,7 +350,7 @@ def test_deny_simple(q, bus, conn, stream, stored, deny):
     remaining on 'deny'.
     """
     contact = 'blocked-but-subscribed@boards.ca'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+    handle = conn.get_contact_handle_sync(contact)
     assertContains(handle,
         stored.Properties.Get(cs.CHANNEL_IFACE_GROUP, "Members"))
     call_async(q, stored.Group, 'RemoveMembers', [handle], "")
@@ -398,7 +398,7 @@ def test_deny_overlap_one(q, bus, conn, stream, subscribe, stored, deny):
     # As we saw in test_flickering(), we have a subscription to Bob,
     # everything's peachy.
     contact = 'bob@foo.com'
-    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
+    handle = conn.get_contact_handle_sync(contact)
 
     assertContains(handle,
         stored.Properties.Get(cs.CHANNEL_IFACE_GROUP, "Members"))
@@ -475,7 +475,7 @@ def test_deny_overlap_two(q, bus, conn, stream,
 
     # This contact was on our roster when we started.
     contact = 'lp-bug-398293@gmail.com'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+    handle = conn.get_contact_handle_sync(contact)
 
     assertContains(handle,
         stored.Properties.Get(cs.CHANNEL_IFACE_GROUP, "Members"))
@@ -533,7 +533,7 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
 
     # This contact was on our roster, blocked and subscribed, when we started.
     contact = 'music-is-math@boards.ca'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+    handle = conn.get_contact_handle_sync(contact)
 
     # They're blocked, and we have a bidi subscription, so they should be on
     # deny and stored. (We already checked this earlier, but we've been messing

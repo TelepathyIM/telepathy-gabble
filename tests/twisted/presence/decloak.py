@@ -21,7 +21,7 @@ def test(q, bus, conn, stream, should_decloak=False):
     worker(q, bus, conn, stream, should_decloak)
 
     # Trivial test for SendDirectedPresence()
-    bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    bob_handle = conn.get_contact_handle_sync('bob@foo.com')
     conn.SendDirectedPresence(bob_handle, False,
             dbus_interface=cs.CONN_IFACE_GABBLE_DECLOAK)
     q.expect('stream-presence', to='bob@foo.com')
@@ -31,7 +31,7 @@ def worker(q, bus, conn, stream, should_decloak):
             'DecloakAutomatically', dbus_interface=cs.PROPERTIES_IFACE)
     assertEquals(should_decloak, decloak_automatically)
 
-    amy_handle = conn.RequestHandles(1, ['amy@foo.com'])[0]
+    amy_handle = conn.get_contact_handle_sync('amy@foo.com')
 
     # Amy directs presence to us
 

@@ -316,7 +316,7 @@ def presence_and_disco(q, conn, stream, contact, disco,
     return h
 
 def send_presence(q, conn, stream, contact, caps, initial=True, show=None):
-    h = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+    h = conn.get_contact_handle_sync(contact)
 
     if initial:
         stream.send(make_presence(contact, status='hello'))

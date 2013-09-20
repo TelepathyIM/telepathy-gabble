@@ -53,7 +53,7 @@ def capabilities_changed(q, contact_handle):
     assertContains(xiangqi_tube_cap, e.args[0][contact_handle])
 
 def test1(q, bus, conn, stream):
-    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact_bare_jid])[0]
+    contact_handle = conn.get_contact_handle_sync(contact_bare_jid)
     send_presence(q, stream, contact_jid, 'client/pc//thane')
     handle_disco(q, stream, contact_jid, 'client/pc//thane')
     capabilities_changed(q, contact_handle)
@@ -61,7 +61,7 @@ def test1(q, bus, conn, stream):
 def test2(q, bus, conn, stream):
     # The second time around, the capabilities are retrieved from the cache,
     # so no disco request is sent.
-    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact_bare_jid])[0]
+    contact_handle = conn.get_contact_handle_sync(contact_bare_jid)
     send_presence(q, stream, contact_jid, 'client/pc//thane')
     capabilities_changed(q, contact_handle)
 

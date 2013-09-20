@@ -90,7 +90,7 @@ def join_muc_and_check(q, bus, conn, stream, muc, request=None):
     q.expect('dbus-signal', signal='NewChannel',
         args=[path, cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM, muc_handle, True])
 
-    test_handle, bob_handle = conn.RequestHandles(cs.HT_CONTACT,
+    test_handle, bob_handle = conn.get_contact_handles_sync(
         ['%s/test' % muc, '%s/bob' % muc])
 
     members = chan.Get(cs.CHANNEL_IFACE_GROUP, 'Members',

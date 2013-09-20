@@ -295,7 +295,7 @@ def test_message(q, bus, conn, stream):
     tube_chan, tube_path, _ = stream_tube(q, bus, conn, stream, 'CreateChannel', jid)
 
     bob_jid = '%s/bob' % jid
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, [bob_jid])[0]
+    bob_handle = conn.get_contact_handle_sync(bob_jid)
 
     # now let's send a message
     stream.send(
@@ -337,7 +337,7 @@ def test_requested_message(q, bus, conn, stream):
                                           presence=False)
 
     bob_jid = '%s/bob' % jid
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, [bob_jid])[0]
+    bob_handle = conn.get_contact_handle_sync(bob_jid)
 
     # make sure it says we requested it
     props = text_chan.Properties.GetAll(cs.CHANNEL)

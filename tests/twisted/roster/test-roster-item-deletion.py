@@ -29,7 +29,7 @@ def test(q, bus, conn, stream, modern=True, queued=False):
     item['jid'] = 'quux@foo.com'
     item['subscription'] = 'none'
 
-    quux_handle = conn.RequestHandles(cs.HT_CONTACT, ['quux@foo.com'])[0]
+    quux_handle = conn.get_contact_handle_sync('quux@foo.com')
 
     stream.send(event.stanza)
 

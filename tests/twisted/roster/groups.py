@@ -77,7 +77,7 @@ def test(q, bus, conn, stream):
                     predicate=lambda e: 'men' in e.args[1]),
             ])
 
-    amy, bob, che = conn.RequestHandles(cs.HT_CONTACT,
+    amy, bob, che = conn.get_contact_handles_sync(
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
 
     assertEquals([[amy], ['women'], []], groups_changed[0].args)

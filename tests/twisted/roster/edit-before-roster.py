@@ -30,7 +30,7 @@ def test(q, bus, conn, stream):
     item.addElement('group', content='men')
 
     # Before we get the roster, try to change something. It won't work.
-    amy, bob, che = conn.RequestHandles(cs.HT_CONTACT,
+    amy, bob, che = conn.get_contact_handles_sync(
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
 
     call_async(q, conn.ContactGroups, 'AddToGroup', 'Amy & Bob', [amy, bob])

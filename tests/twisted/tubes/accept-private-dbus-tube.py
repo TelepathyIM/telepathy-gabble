@@ -81,7 +81,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
     # RequestChannel are the ones we wanted.
     sync_dbus(bus, q, conn)
 
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@localhost'])[0]
+    bob_handle = conn.get_contact_handle_sync('bob@localhost')
 
     # let's try to accept a D-Bus tube using the new API
     bytestream = bytestream_cls(stream, q, 'gamma', bob_full_jid,

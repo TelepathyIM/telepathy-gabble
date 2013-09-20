@@ -94,7 +94,7 @@ class FileTransferTest(object):
     def announce_contact(self, name=CONTACT_NAME, metadata=True):
         self.contact_name = name
         self.contact_full_jid = '%s/Telepathy' % name
-        self.handle = self.conn.RequestHandles(cs.HT_CONTACT, [name])[0]
+        self.handle = self.conn.get_contact_handle_sync(name)
 
         presence = domish.Element(('jabber:client', 'presence'))
         presence['from'] = self.contact_full_jid

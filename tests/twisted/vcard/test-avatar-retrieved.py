@@ -16,7 +16,7 @@ def test(q, bus, conn, stream):
 
     acknowledge_iq(stream, iq_event.stanza)
 
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    handle = conn.get_contact_handle_sync('bob@foo.com')
     conn.Avatars.RequestAvatars([handle])
     conn.Avatars.RequestAvatars([handle])
     conn.Avatars.RequestAvatars([handle])

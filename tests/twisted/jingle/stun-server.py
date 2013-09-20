@@ -77,7 +77,7 @@ def init_test(jp, q, conn, stream, google=False, google_push_replacements=None):
 
     jt.send_presence_and_caps()
 
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.get_contact_handle_sync("foo@bar.com/Foo")
 
     return jt, remote_handle
 

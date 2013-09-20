@@ -468,6 +468,12 @@ class ConnWrapper(ProxyWrapper):
             ret.append(h2asv[h][cs.ATTR_CONTACT_ID])
         return ret
 
+    def get_contact_handle_sync(self, identifier):
+        return self.Contacts.GetContactByID(identifier, [])[0]
+
+    def get_contact_handles_sync(self, ids):
+        return [self.get_contact_handle_sync(i) for i in ids]
+
 def wrap_connection(conn):
     return ConnWrapper(conn, tp_name_prefix + '.Connection',
         dict([

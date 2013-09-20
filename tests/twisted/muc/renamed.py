@@ -54,7 +54,7 @@ def test(q, bus, conn, stream):
     group_props = unwrap(text_chan.GetAll(CHANNEL_IFACE_GROUP,
         dbus_interface=dbus.PROPERTIES_IFACE))
 
-    liz, toofer, expected_handle = conn.RequestHandles(HT_CONTACT,
+    liz, toofer, expected_handle = conn.get_contact_handles_sync(
         ["%s/%s" % (room_jid, m) for m in ['liz', 'toofer', 'test']])
 
     # Check that Gabble think our nickname in the room is toofer not test

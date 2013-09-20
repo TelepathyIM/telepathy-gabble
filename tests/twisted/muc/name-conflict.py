@@ -78,7 +78,7 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     text_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
     group_props = unwrap(text_chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP))
 
-    t, t_ = conn.RequestHandles(cs.HT_CONTACT, [member, member_])
+    t, t_ = conn.get_contact_handles_sync([member, member_])
 
     # Check that Gabble think our nickname in the room is test_, not test
     muc_self_handle = group_props['SelfHandle']

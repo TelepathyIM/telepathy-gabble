@@ -17,7 +17,7 @@ def test(q, bus, conn, stream):
     # returning an empty vcard will cause ContactInfoChanged to fire
     q.expect('dbus-signal', signal='ContactInfoChanged')
 
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    handle = conn.get_contact_handle_sync('bob@foo.com')
     call_async(q, conn.ContactInfo, 'RefreshContactInfo', [handle])
 
     event = q.expect('stream-iq', to='bob@foo.com', query_ns='vcard-temp',

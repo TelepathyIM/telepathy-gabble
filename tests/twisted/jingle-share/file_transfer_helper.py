@@ -82,7 +82,7 @@ class FileTransferTest(object):
 
     def set_target(self, jid):
         self.target = jid
-        self.handle = self.conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+        self.handle = self.conn.get_contact_handle_sync(jid)
 
     def set_ft_caps(self):
         caps_iface = dbus.Interface(self.conn, cs.CONN_IFACE_CONTACT_CAPS)

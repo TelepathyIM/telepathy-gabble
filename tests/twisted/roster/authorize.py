@@ -27,7 +27,7 @@ def test(q, bus, conn, stream, modern=True, remove=False):
     event.stanza['type'] = 'result'
     stream.send(event.stanza)
 
-    holly, dave, arnold, kristine, cat = conn.RequestHandles(cs.HT_CONTACT,
+    holly, dave, arnold, kristine, cat = conn.get_contact_handles_sync(
             ['holly@example.com', 'dave@example.com', 'arnold@example.com',
                 'kristine@example.com', 'cat@example.com'])
 

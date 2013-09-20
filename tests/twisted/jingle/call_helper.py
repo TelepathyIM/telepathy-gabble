@@ -57,7 +57,7 @@ class CallTest(object):
         self.can_change_direction = (jp.dialect not in ['gtalk-v0.3',
                 'gtalk-v0.4'])
         self.self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-        self.peer_handle = conn.RequestHandles(1, [self.PEER_JID])[0]
+        self.peer_handle = conn.get_contact_handle_sync(self.PEER_JID)
 
     def check_channel_state(self, state, wait = False):
         """Optionnally wait for channel state to be reached and check that the

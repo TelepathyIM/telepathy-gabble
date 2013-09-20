@@ -78,7 +78,7 @@ def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
             'ContactList')
 
     # request subscription
-    alice, bob = conn.RequestHandles(cs.HT_CONTACT,
+    alice, bob = conn.get_contact_handles_sync(
             ['alice@foo.com', 'bob@foo.com'])
 
     # Repeated subscription requests are *not* idempotent: the second request

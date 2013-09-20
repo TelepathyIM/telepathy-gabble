@@ -92,11 +92,11 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='MembersChanged')
 
-    room_bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat@conf.localhost/bob'])[0]
+    room_bob_handle = conn.get_contact_handle_sync('chat@conf.localhost/bob')
     assert event.args == ['', [room_self_handle, room_bob_handle], [], [], [], 0, 0]
 
     # Test sending an invitation
-    alice_handle = conn.RequestHandles(1, ['alice@localhost'])[0]
+    alice_handle = conn.get_contact_handle_sync('alice@localhost')
     call_async(q, text_chan.Group, 'AddMembers', [alice_handle],
             'I want to test invitations')
 

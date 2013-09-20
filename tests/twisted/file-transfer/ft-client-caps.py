@@ -119,7 +119,7 @@ def receive_caps(q, conn, stream, contact, contact_handle, features,
     assertSameElements(caps[contact_handle], caps_via_contacts_iface)
 
 def test_ft_caps_from_contact(q, bus, conn, stream, contact):
-    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+    contact_handle = conn.get_contact_handle_sync(contact)
 
     # Check that we don't crash if we haven't seen any caps/presence for this
     # contact yet.

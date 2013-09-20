@@ -19,7 +19,7 @@ def test(q, bus, conn, stream):
 
     jid = u'bora.horza.gobuchul@culture.lit'
     alias = u'Horza'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    handle = conn.get_contact_handle_sync(jid)
 
     # We don't have an interesting alias for Horza
     assertEquals({handle: jid}, conn.Aliasing.GetAliases([handle]))
@@ -71,7 +71,7 @@ def test(q, bus, conn, stream):
     _, muc, _, _ = join_muc(q, bus, conn, stream, room_jid)
 
     bob_jid = room_jid + '/bob'
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, [bob_jid])[0]
+    bob_handle = conn.get_contact_handle_sync(bob_jid)
 
     assertEquals({bob_handle: 'bob'}, conn.Aliasing.GetAliases([bob_handle]))
 

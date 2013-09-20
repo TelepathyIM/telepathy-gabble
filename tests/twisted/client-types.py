@@ -50,7 +50,7 @@ def build_stuff(identities):
 def contact_online(q, conn, stream, contact, identities,
                   disco=True, dataforms={}, initial=True, show=None):
     (caps, client, types) = build_stuff(identities)
-    handle = conn.RequestHandles(cs.HT_CONTACT, [contact])[0]
+    handle = conn.get_contact_handle_sync(contact)
 
     # make contact come online
     presence_and_disco (q, conn, stream, contact,
@@ -76,7 +76,7 @@ def test(q, bus, conn, stream):
     meredith_one = 'meredith@foo.com/One'
     meredith_two = 'meredith@foo.com/Two'
     meredith_three = 'meredith@foo.com/Three'
-    meredith_handle = conn.RequestHandles(cs.HT_CONTACT, [meredith_one])[0]
+    meredith_handle = conn.get_contact_handle_sync(meredith_one)
 
     # Meredith signs in from one resource
     contact_online(q, conn, stream, meredith_one, PC, show='chat')
@@ -201,7 +201,7 @@ def test(q, bus, conn, stream):
 def test2(q, bus, conn, stream):
     marco_pidgin = 'marco@fancy.italian.restaurant/Pidgin'
     marco_phone = 'marco@fancy.italian.restaurant/N900'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [marco_pidgin])[0]
+    handle = conn.get_contact_handle_sync(marco_pidgin)
 
     # pidgin comes online
     contact_online(q, conn, stream, marco_pidgin, PC)
@@ -249,7 +249,7 @@ def two_contacts_with_the_same_hash(q, bus, conn, stream, bare_jids):
         contact1 += '/lol'
         contact2 += '/whut'
 
-    h1, h2 = conn.RequestHandles(cs.HT_CONTACT, [contact1, contact2])
+    h1, h2 = conn.get_contact_handles_sync([contact1, contact2])
     ver = compute_caps_hash(BANANAPHONE, features, {})
     caps = {
         # Uniquify slightly with a stringified boolean ;-)

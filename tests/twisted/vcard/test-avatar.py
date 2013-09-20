@@ -15,7 +15,7 @@ def test(q, bus, conn, stream):
 
     acknowledge_iq(stream, event.stanza)
 
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    handle = conn.get_contact_handle_sync('bob@foo.com')
     call_async(q, conn.Avatars, 'RequestAvatar', handle, byte_arrays=True)
 
     event = q.expect('stream-iq', iq_type='get', to='bob@foo.com',

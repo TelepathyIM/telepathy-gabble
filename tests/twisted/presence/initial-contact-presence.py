@@ -29,7 +29,7 @@ def make_roster_item(jid, subscription):
 def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
-    amy, bob, che, dre, eve = conn.RequestHandles(cs.HT_CONTACT,
+    amy, bob, che, dre, eve = conn.get_contact_handles_sync(
         ['amy@foo.com', 'bob@foo.com', 'che@foo.com', 'dre@foo.com',
          'eve@foo.com'])
     assertEquals({amy: UNKNOWN,

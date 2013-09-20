@@ -17,7 +17,7 @@ class SendFileTransferToUnknownContactTest(SendFileTest):
 
     def my_request_ft_channel(self):
         self.contact_name = 'jean@localhost'
-        self.handle = self.conn.RequestHandles(cs.HT_CONTACT, [self.contact_name])[0]
+        self.handle = self.conn.get_contact_handle_sync(self.contact_name)
 
         try:
             self.request_ft_channel()

@@ -41,7 +41,7 @@ def test(q, bus, conn, stream):
     stream.send(make_presence('che@foo.com', None))
 
     q.expect('dbus-signal', signal='AvatarUpdated')
-    handles = conn.RequestHandles(1, [
+    handles = conn.get_contact_handles_sync([
         'amy@foo.com', 'bob@foo.com', 'che@foo.com', 'daf@foo.com' ])
 
     tokens = unwrap(conn.Avatars.GetAvatarTokens(handles))

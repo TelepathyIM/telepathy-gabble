@@ -24,7 +24,7 @@ def test(q, bus, conn, stream):
     handles = {}
 
     # Alice is one of our friend so we receive her PEP notifications
-    handles['alice'] = conn.RequestHandles(1, ['alice@localhost'])[0]
+    handles['alice'] = conn.get_contact_handle_sync('alice@localhost')
 
     # Try to get Alice's currrent-activity
     call_async(q, buddy_info_iface, "GetCurrentActivity", handles['alice'])

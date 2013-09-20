@@ -21,7 +21,7 @@ def test(q, bus, conn, stream):
 
     # But then Bob kicks us.
     bob_jid = '%s/bob' % MUC
-    bob_handle, = conn.RequestHandles(cs.HT_CONTACT, [bob_jid])
+    bob_handle = conn.get_contact_handle_sync(bob_jid)
     stream.send(
         elem('presence', from_=muc_self_jid, type='unavailable')(
           elem(ns.MUC_USER, 'x')(

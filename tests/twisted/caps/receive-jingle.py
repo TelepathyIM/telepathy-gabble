@@ -17,7 +17,7 @@ if not VOIP_ENABLED:
     raise SystemExit(77)
 
 def test(q, bus, conn, stream):
-    bob, = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])
+    bob = conn.get_contact_handle_sync('bob@foo.com')
 
     presence = make_presence('bob@foo.com/Foo', status='hello')
     stream.send(presence)

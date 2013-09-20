@@ -12,7 +12,7 @@ import constants as cs
 def test(q, bus, conn, stream):
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
 
-    amy_handle = conn.RequestHandles(1, ['amy@foo.com'])[0]
+    amy_handle = conn.get_contact_handle_sync('amy@foo.com')
 
     event.stanza['type'] = 'result'
 

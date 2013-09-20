@@ -14,7 +14,7 @@ def test(q, bus, conn, stream):
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jid = 'foo@bar.com'
-    foo_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    foo_handle = conn.get_contact_handle_sync(jid)
 
     call_async(q, conn, 'RequestChannel',
         cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, foo_handle, True)

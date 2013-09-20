@@ -13,7 +13,7 @@ import ns
 
 def test(q, bus, conn, stream):
     handles = {}
-    handles['bob'] = conn.RequestHandles(1, ['bob@localhost'])[0]
+    handles['bob'] = conn.get_contact_handle_sync('bob@localhost')
 
     buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
@@ -150,8 +150,7 @@ def test(q, bus, conn, stream):
 
     q.expect('dbus-return', method='SetProperties')
     # Test sending an invitation
-    handles['alice'] = conn.RequestHandles(1,
-        ['alice@localhost'])[0]
+    handles['alice'] = conn.get_contact_handle_sync('alice@localhost')
     call_async(q, group_iface, 'AddMembers', [handles['alice']],
             'I want to test invitations')
 

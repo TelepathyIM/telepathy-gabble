@@ -188,7 +188,7 @@ def test(q, bus, conn, stream, access_control):
     dbus_tube_adr = return_event.value[0]
 
     bob_bus_name = ':2.Ym9i'
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, ['chat2@conf.localhost/bob'])[0]
+    bob_handle = conn.get_contact_handle_sync('chat2@conf.localhost/bob')
 
     def bob_in_tube():
         presence = elem('presence', from_='chat2@conf.localhost/bob', to='chat2@conf.localhost')(

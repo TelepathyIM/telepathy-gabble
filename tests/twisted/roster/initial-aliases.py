@@ -45,8 +45,8 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='AliasesChanged')
     added = event.args[0]
 
-    bob_handle, alice_handle = conn.RequestHandles(cs.HT_CONTACT,
-                                                   [bob_jid, alice_jid])
+    bob_handle, alice_handle = conn.get_contact_handles_sync(
+            [bob_jid, alice_jid])
 
     assertLength(2, added)
     assertContains((bob_handle, bob_alias), added)

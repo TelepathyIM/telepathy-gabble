@@ -26,7 +26,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='StatusChanged',
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]),
 
-    bob_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    bob_handle = conn.get_contact_handle_sync(jid)
 
     # new ContactCapabilities
     ccaps_map = conn.ContactCapabilities.GetContactCapabilities([bob_handle])

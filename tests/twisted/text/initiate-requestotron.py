@@ -13,7 +13,7 @@ def test(q, bus, conn, stream):
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jid = 'foo@bar.com'
-    foo_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    foo_handle = conn.get_contact_handle_sync(jid)
 
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)

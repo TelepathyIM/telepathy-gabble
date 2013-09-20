@@ -189,7 +189,7 @@ def test_google_caps(q, bus, conn, stream):
                       'ver':  '1.1',
                       'ext': ' '.join(ext_set) }
 
-            handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+            handle = conn.get_contact_handle_sync(jid)
 
             send_presence(q, conn, stream, jid, gcaps, initial=True)
 

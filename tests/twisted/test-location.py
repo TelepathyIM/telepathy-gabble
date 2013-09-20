@@ -158,7 +158,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-error', method='SetLocation')
 
     # Request Bob's location
-    bob_handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    bob_handle = conn.get_contact_handle_sync('bob@foo.com')
     call_async(q, conn.Location, 'GetLocations', [bob_handle])
 
     # Gabble should not send a pubsub query. The point of PEP is that we don't
@@ -214,7 +214,7 @@ def test(q, bus, conn, stream):
     assertLength(1, locations)
     assertEquals(locations[bob_handle], location)
 
-    charles_handle = conn.RequestHandles(cs.HT_CONTACT, ['charles@foo.com'])[0]
+    charles_handle = conn.get_contact_handle_sync('charles@foo.com')
 
     # check that Contacts interface supports location
     attributes = conn.Contacts.GetContactAttributes(

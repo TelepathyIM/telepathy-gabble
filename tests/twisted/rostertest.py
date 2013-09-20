@@ -132,8 +132,8 @@ def check_contact_list_signals(q, bus, conn, signals,
     assertEquals(sorted(contacts),
         sorted(conn.inspect_contacts_sync(members)))
 
-    lp_handles = conn.RequestHandles(cs.HT_CONTACT, lp_contacts)
-    rp_handles = conn.RequestHandles(cs.HT_CONTACT, rp_contacts)
+    lp_handles = conn.get_contact_handles_sync(lp_contacts)
+    rp_handles = conn.get_contact_handles_sync(rp_contacts)
 
     # NB. comma: we're unpacking args. Thython!
     info, = new_signal.args

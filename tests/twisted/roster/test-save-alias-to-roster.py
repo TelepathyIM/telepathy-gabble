@@ -60,7 +60,7 @@ def test(q, bus, conn, stream):
     chan = bus.get_object(conn.bus_name, path)
     group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
     assert group_iface.GetMembers() == []
-    handle = conn.RequestHandles(1, ['bob@foo.com'])[0]
+    handle = conn.get_contact_handle_sync('bob@foo.com')
     call_async(q, group_iface, 'AddMembers', [handle], '')
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
@@ -88,7 +88,7 @@ def test(q, bus, conn, stream):
     # the current semantics where the alias is always meant to be something you
     # could show, even if it's just their JID), so let's forbid that.
     jid = 'parts@labor.lit'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    handle = conn.get_contact_handle_sync(jid)
     q.forbid_events([EventPattern('dbus-signal', signal='AliasesChanged',
         args=[[(handle, '')]])])
 
@@ -110,7 +110,7 @@ def test(q, bus, conn, stream):
     # because we've cached that they have no alias. Gabble shouldn't make
     # unsolicited PEP or vCard queries to them.
     jid = 'friendly@faith.plate'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    handle = conn.get_contact_handle_sync(jid)
 
     q.forbid_events([
         EventPattern('stream-iq', query_ns=ns.PUBSUB, to=jid),
@@ -148,7 +148,7 @@ def test(q, bus, conn, stream):
     # Here's a contact we haven't seen before, pushed to our roster with a
     # nickname already there.
     jid = 'glados@aperture.lit'
-    handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    handle = conn.get_contact_handle_sync(jid)
     nick = 'Potato'
 
     send_roster_push(stream, jid, 'both', name=nick)

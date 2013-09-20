@@ -107,7 +107,7 @@ def test(q, bus, conn, stream):
     members = chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'Members')
     assertLength(3, members)
 
-    fredrik, wendy, muc_self_handle = conn.RequestHandles(cs.HT_CONTACT,
+    fredrik, wendy, muc_self_handle = conn.get_contact_handles_sync(
         ['%s/%s' % (MUC, x) for x in ["fredrik", "wendy", "test"]])
 
     known = conn.Avatars.GetKnownAvatarTokens(members)

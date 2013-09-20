@@ -42,7 +42,7 @@ def test(q, bus, conn, stream):
 
     jid = 'foo@bar.com'
     full_jid = 'foo@bar.com/Foo'
-    foo_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    foo_handle = conn.get_contact_handle_sync(jid)
 
     path = conn.Requests.CreateChannel(
             { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,

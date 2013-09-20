@@ -23,7 +23,7 @@ def test(q, bus, conn, stream):
     client = 'http://example.com/perverse-client'
     contact_bare_jid = 'edgecase@example.com'
     contact_with_resource = 'edgecase@example.com/hi'
-    contact_handle = conn.RequestHandles(cs.HT_CONTACT, [contact_bare_jid])[0]
+    contact_handle = conn.get_contact_handle_sync(contact_bare_jid)
 
     # Gabble gets a presence stanza from a bare JID, which is a tad surprising.
     features = [

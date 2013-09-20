@@ -70,7 +70,7 @@ def test(q, bus, conn, stream):
     feature['var'] = ns.TUBES
     stream.send(result)
 
-    bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
+    bob_handle = conn.get_contact_handle_sync('bob@localhost')
 
     def new_chan_predicate(e):
         types = []

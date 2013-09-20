@@ -13,7 +13,7 @@ def test(q, bus, conn, stream):
             'thehawk@unreachable.example.net',
            ]
     gregory, hawk = jids
-    gregory_handle, hawk_handle = conn.RequestHandles(cs.HT_CONTACT, jids)
+    gregory_handle, hawk_handle = conn.get_contact_handles_sync(jids)
 
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     event.stanza['type'] = 'result'

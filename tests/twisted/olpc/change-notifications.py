@@ -19,7 +19,7 @@ def test(q, bus, conn, stream):
 
     handles = {}
 
-    handles['alice'] = conn.RequestHandles(1, ['alice@localhost'])[0]
+    handles['alice'] = conn.get_contact_handle_sync('alice@localhost')
 
     # Alice, one our friends changed her properties
     send_buddy_changed_properties_msg(stream, 'alice@localhost',

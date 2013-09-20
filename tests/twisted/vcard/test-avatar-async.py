@@ -66,7 +66,7 @@ def test(q, bus, conn, stream):
     q.unforbid_events([avatar_request_event, avatar_retrieved_event])
 
     # Request on the first contact. Test the cache.
-    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
+    handle = conn.get_contact_handle_sync('bob@foo.com')
     test_get_avatar(q, bus, conn, stream, 'bob@foo.com', handle,
             in_cache=False)
     test_get_avatar(q, bus, conn, stream, 'bob@foo.com', handle,
@@ -74,7 +74,7 @@ def test(q, bus, conn, stream):
 
     # Request another vCard and get resource-constraint
     busy_contact = 'jean@busy-server.com'
-    busy_handle = conn.RequestHandles(cs.HT_CONTACT, [busy_contact])[0]
+    busy_handle = conn.get_contact_handle_sync(busy_contact)
     conn.Avatars.RequestAvatars([busy_handle])
 
     iq_event = q.expect('stream-iq', to=busy_contact, query_ns='vcard-temp',
@@ -97,7 +97,7 @@ def test(q, bus, conn, stream):
     
     # Request on a different contact, on another server
     # We should get the avatar
-    handle = conn.RequestHandles(cs.HT_CONTACT, ['bob2@foo.com'])[0]
+    handle = conn.get_contact_handle_sync('bob2@foo.com')
     test_get_avatar(q, bus, conn, stream, 'bob2@foo.com', handle)
 
     # Try again the contact on the busy server.
@@ -188,7 +188,7 @@ def test(q, bus, conn, stream):
 
     # First, ensure the pipeline is full
     contacts = ['random_user_%s@bigserver.com' % i for i in range(1, 100) ]
-    handles = conn.RequestHandles(cs.HT_CONTACT, contacts)
+    handles = conn.get_contact_handles_sync(contacts)
     conn.Avatars.RequestAvatars(handles)
     # Then, request yet another avatar. The request will time out before
     # the IQ is sent, which used to trigger a crash in Gabble

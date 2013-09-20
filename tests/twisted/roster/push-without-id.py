@@ -29,7 +29,7 @@ def test(q, bus, conn, stream):
     del iq['id']
     stream.send(iq)
 
-    h = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    h = conn.get_contact_handle_sync(jid)
     q.expect_many(
         EventPattern('dbus-signal', signal='MembersChanged',
             args=['', [h], [], [], [], 0, 0], path=stored.object_path),

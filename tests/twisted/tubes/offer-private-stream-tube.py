@@ -96,7 +96,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     sync_dbus(bus, q, conn)
 
     # Test tubes with Bob. Bob has tube capabilities.
-    bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
+    bob_handle = conn.get_contact_handle_sync('bob@localhost')
 
     # Try CreateChannel with correct properties
     # Gabble must succeed

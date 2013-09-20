@@ -42,7 +42,7 @@ def test(q, bus, conn, stream):
     s = q.expect('dbus-signal', signal='ContactsChanged',
             interface=cs.CONN_IFACE_CONTACT_LIST, path=conn.object_path)
 
-    amy, bob, che = conn.RequestHandles(cs.HT_CONTACT,
+    amy, bob, che = conn.get_contact_handles_sync(
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
 
     assertEquals([{

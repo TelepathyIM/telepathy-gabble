@@ -77,7 +77,7 @@ def prepare_test(jp, q, bus, conn, stream):
     jt2.prepare()
 
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-    remote_handle = conn.RequestHandles(1, ["foo@bar.com/Foo"])[0]
+    remote_handle = conn.get_contact_handle_sync("foo@bar.com/Foo")
 
     # Advertise that we can do new style calls
     conn.ContactCapabilities.UpdateCapabilities([

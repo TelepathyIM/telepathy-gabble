@@ -21,7 +21,7 @@ def test(q, bus, conn, stream):
 
     buddy_iface = dbus.Interface(conn, 'org.laptop.Telepathy.BuddyInfo')
     act_prop_iface = dbus.Interface(conn, 'org.laptop.Telepathy.ActivityProperties')
-    bob_handle = conn.RequestHandles(1, ['bob@localhost'])[0]
+    bob_handle = conn.get_contact_handle_sync('bob@localhost')
 
     # Bob invites us to a chatroom, pre-seeding properties
     message = domish.Element(('jabber:client', 'message'))

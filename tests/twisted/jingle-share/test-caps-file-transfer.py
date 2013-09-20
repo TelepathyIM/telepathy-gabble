@@ -68,8 +68,8 @@ def test2(q, bus, connections, streams):
     conn1_jid = conn1.inspect_contact_sync(conn1_handle)
     conn2_handle = conn2.Properties.Get(cs.CONN, 'SelfHandle')
     conn2_jid = conn2.inspect_contact_sync(conn2_handle)
-    handle1 = conn2.RequestHandles(cs.HT_CONTACT, [conn1_jid])[0]
-    handle2 = conn1.RequestHandles(cs.HT_CONTACT, [conn2_jid])[0]
+    handle1 = conn2.get_contact_handle_sync(conn1_jid)
+    handle2 = conn1.get_contact_handle_sync(conn2_jid)
 
     q.expect_many(EventPattern('dbus-signal',
                                signal='ContactCapabilitiesChanged',

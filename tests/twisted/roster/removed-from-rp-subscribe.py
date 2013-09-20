@@ -31,7 +31,7 @@ def test(q, bus, conn, stream, remove, local, modern):
     assertLength(0, pairs)      # i.e. we've checked all of them
 
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-    h = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
+    h = conn.get_contact_handle_sync(jid)
 
     # Another client logged into our account (Gajim, say) wants to subscribe to
     # Marco's presence. First, per RFC 3921 it 'SHOULD perform a "roster set"

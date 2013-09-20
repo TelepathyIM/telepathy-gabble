@@ -11,7 +11,7 @@ from servicetest import call_async, EventPattern
 import constants as cs
 
 def test(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jid = 'foo@bar.com'
     call_async(q, conn, 'RequestHandles', cs.HT_CONTACT, [jid])

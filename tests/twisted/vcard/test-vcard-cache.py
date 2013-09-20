@@ -17,7 +17,7 @@ def test(q, bus, conn, stream):
 
     # Request our alias and avatar, expect them to be resolved from cache.
 
-    handle = conn.GetSelfHandle()
+    handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     call_async(q, conn.Avatars, 'RequestAvatar', handle)
     call_async(q, conn.Aliasing, 'RequestAliases', [handle])
 

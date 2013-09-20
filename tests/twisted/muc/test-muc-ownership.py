@@ -17,7 +17,7 @@ from servicetest import (
 import constants as cs
 
 def test(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     room_handle = conn.RequestHandles(cs.HT_ROOM, ['chat@conf.localhost'])[0]
 
     call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,

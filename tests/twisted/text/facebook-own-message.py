@@ -51,7 +51,7 @@ def test(q, bus, conn, stream):
     echo = header['delivery-echo']
     echo_header, echo_body = echo
 
-    assertEquals(conn.GetSelfHandle(), echo_header['message-sender'])
+    assertEquals(conn.Properties.Get(cs.CONN, "SelfHandle"), echo_header['message-sender'])
     assertEquals('text/plain', echo_body['content-type'])
     assertEquals(text, echo_body['content'])
 

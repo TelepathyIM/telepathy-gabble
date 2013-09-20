@@ -65,7 +65,7 @@ def test(q, bus, conn, stream):
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
     assert props[tp_name_prefix + '.Channel.Requested'] == True
     assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == conn.GetSelfHandle()
+            == conn.Properties.Get(cs.CONN, "SelfHandle")
     assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
     assert props[cs.CHANNEL_TYPE_ROOM_LIST + '.Server'] == \
@@ -91,7 +91,7 @@ def test(q, bus, conn, stream):
             channel_props.get('ChannelType')
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['InitiatorHandle'] == conn.Properties.Get(cs.CONN, "SelfHandle")
 
     assert chan.Get(cs.CHANNEL_TYPE_ROOM_LIST, 'Server',
             dbus_interface=dbus.PROPERTIES_IFACE) == \
@@ -122,7 +122,7 @@ def test(q, bus, conn, stream):
     assert props[tp_name_prefix + '.Channel.TargetID'] == ''
     assert props[tp_name_prefix + '.Channel.Requested'] == True
     assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == conn.GetSelfHandle()
+            == conn.Properties.Get(cs.CONN, "SelfHandle")
     assert props[tp_name_prefix + '.Channel.InitiatorID'] \
             == 'test@localhost'
     assert props[cs.CHANNEL_TYPE_ROOM_LIST+ '.Server'] == \

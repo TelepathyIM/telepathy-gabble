@@ -38,7 +38,7 @@ def test(q, bus, conn, stream):
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['InitiatorHandle'] == conn.Properties.Get(cs.CONN, "SelfHandle")
 
     # Exercise Group Properties from spec 0.17.6 (in a basic way)
     group_props = chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)

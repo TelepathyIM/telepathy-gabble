@@ -17,7 +17,7 @@ def test(q, bus, conn, stream):
         query_ns=ns.VCARD_TEMP, query_name='vCard')
     sync_stream(q, stream)
 
-    handle = conn.GetSelfHandle()
+    handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     call_async(q, conn.Aliasing, 'SetAliases', {handle: 'Robert the Bruce'})
     sync_dbus(bus, q, conn)
     acknowledge_iq(stream, vcard_get_event.stanza)

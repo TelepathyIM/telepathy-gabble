@@ -17,7 +17,7 @@ def test(q, bus, conn, stream):
     # Force Gabble to process the vCard before calling any methods.
     sync_stream(q, stream)
 
-    handle = conn.GetSelfHandle()
+    handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     call_async(q, conn.Avatars, 'SetAvatar', 'william shatner',
         'image/x-actor-name')
 

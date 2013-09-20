@@ -10,7 +10,7 @@ from servicetest import (call_async, EventPattern, assertContains,
 import constants as cs
 
 def test(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jid = 'foo@bar.com'
     foo_handle = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]

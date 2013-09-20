@@ -25,7 +25,7 @@ def test(q, bus, conn, stream):
     test_ft_caps_from_contact(q, bus, conn, stream, contact,
         2L, client)
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     jid =  conn.InspectHandles(cs.HT_CONTACT, [self_handle])[0]
 
     iq = IQ(stream, "set")

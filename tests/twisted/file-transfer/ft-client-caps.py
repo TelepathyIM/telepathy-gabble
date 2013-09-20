@@ -179,7 +179,7 @@ def advertise_caps(q, bus, conn, stream, filters, expected_features, unexpected_
     # make sure nothing from a previous update is still running
     sync_dbus(bus, q, conn)
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     ret_caps = conn.ContactCapabilities.UpdateCapabilities(
             [(cs.CLIENT + '.Foo', filters, [])])
 
@@ -207,7 +207,7 @@ def advertise_caps(q, bus, conn, stream, filters, expected_features, unexpected_
     assertSameElements(caps[self_handle], caps_via_contacts_iface)
 
 def test_ft_caps_to_contact(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     basic_caps = [
         (text_fixed_properties, text_allowed_properties),

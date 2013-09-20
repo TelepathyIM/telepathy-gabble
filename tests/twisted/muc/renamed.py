@@ -16,7 +16,7 @@ from constants import (
 import constants as cs
 
 def test(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     requests = dbus.Interface(conn, CONN_IFACE_REQUESTS)
 

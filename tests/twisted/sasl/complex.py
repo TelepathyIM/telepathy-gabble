@@ -108,7 +108,7 @@ def test_complex_success(q, bus, conn, stream, with_extra_data=True,
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
     chan.Close()
     # ... and check that the Connection is still OK
-    conn.GetSelfHandle()
+    conn.Properties.Get(cs.CONN, "SelfHandle")
 
 def test_complex_success_data(q, bus, conn, stream):
     test_complex_success(q, bus, conn, stream, True)

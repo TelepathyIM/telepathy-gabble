@@ -48,7 +48,7 @@ def test(q, bus, conn, stream):
 
     # When we start, there is no avatar
     acknowledge_iq(stream, iq_event.stanza)
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     # Another resource confirms we have no avatar. We don't request our vCard
     # because we already know there is no avatar

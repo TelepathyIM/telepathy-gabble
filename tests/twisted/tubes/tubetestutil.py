@@ -181,7 +181,7 @@ def check_channel_properties(q, bus, conn, channel, channel_type,
     assert channel_props['TargetID'] == contact_id
     assert channel_props['Requested'] == True
     assert channel_props['InitiatorID'] == 'test@localhost'
-    assert channel_props['InitiatorHandle'] == conn.GetSelfHandle()
+    assert channel_props['InitiatorHandle'] == conn.Properties.Get(cs.CONN, "SelfHandle")
 
     if channel_type == cs.CHANNEL_TYPE_TUBES:
         assert state is None

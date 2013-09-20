@@ -30,7 +30,7 @@ def test(q, bus, conn, stream, remove, local, modern):
 
     assertLength(0, pairs)      # i.e. we've checked all of them
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     h = conn.RequestHandles(cs.HT_CONTACT, [jid])[0]
 
     # Another client logged into our account (Gajim, say) wants to subscribe to

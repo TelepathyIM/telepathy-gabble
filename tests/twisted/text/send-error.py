@@ -11,7 +11,7 @@ import constants as cs
 import ns
 
 def test_temporary_error(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jid = 'foo@bar.com'
     call_async(q, conn, 'RequestHandles', 1, [jid])
@@ -92,7 +92,7 @@ def test_temporary_error(q, bus, conn, stream):
 
 
 def test_permanent_error(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jid = 'wee@ninja.jp'
     call_async(q, conn, 'RequestHandles', 1, [jid])

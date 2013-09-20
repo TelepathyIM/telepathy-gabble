@@ -202,7 +202,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
 
     t.check_conn_properties(q, conn)
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     alice_handle = conn.RequestHandles(cs.HT_CONTACT, ["alice@localhost"])[0]
 
     # send Alice's presence

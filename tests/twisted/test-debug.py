@@ -38,7 +38,7 @@ def test(q, bus, conn, stream):
     debug.Properties.Set(iface, 'Enabled', True)
 
     channel_path = conn.RequestChannel(
-        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.GetSelfHandle(), True)
+        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.Properties.Get(cs.CONN, "SelfHandle"), True)
     q.expect_many(
         EventPattern ('dbus-signal', signal='NewChannel'),
         EventPattern ('dbus-signal', signal = 'NewDebugMessage'))
@@ -56,7 +56,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='Closed')
 
     conn.RequestChannel(
-        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.GetSelfHandle(), True)
+        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.Properties.Get(cs.CONN, "SelfHandle"), True)
     q.expect('dbus-signal', signal='NewChannel')
 
     assertEquals (snapshot, messages)

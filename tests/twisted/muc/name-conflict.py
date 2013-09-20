@@ -101,7 +101,7 @@ def test_join(q, bus, conn, stream, room_jid, transient_conflict):
     # Check that test_'s handle owner is us, and that test (if it's there) has
     # no owner.
     handle_owners = group_props['HandleOwners']
-    assertEquals (conn.GetSelfHandle(), handle_owners[t_])
+    assertEquals (conn.Properties.Get(cs.CONN, "SelfHandle"), handle_owners[t_])
     if not transient_conflict:
         assertEquals (0, handle_owners[t])
 

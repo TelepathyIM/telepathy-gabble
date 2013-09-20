@@ -35,7 +35,7 @@ def extract_hash_from_presence(stanza):
         stanza)
 
 def test(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     # When Gabble initially requests its avatar from the server, it discovers
     # it has none.

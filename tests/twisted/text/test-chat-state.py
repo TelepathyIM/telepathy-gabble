@@ -38,7 +38,7 @@ def make_message(jid, body=None, state=None):
     return m
 
 def test(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     jid = 'foo@bar.com'
     full_jid = 'foo@bar.com/Foo'

@@ -11,7 +11,7 @@ import constants as cs
 def test(q, bus, conn, stream):
     expect_and_handle_get_vcard(q, stream)
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     conn.Aliasing.SetAliases({self_handle: 'lala'})
 
     expect_and_handle_set_vcard(q, stream)

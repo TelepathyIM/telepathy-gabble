@@ -136,7 +136,7 @@ def test_flickering(q, bus, conn, stream, subscribe):
     Gabble is suppressing the flickers.
     """
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     contact = 'bob@foo.com'
     handle = conn.RequestHandles(cs.HT_CONTACT, ['bob@foo.com'])[0]
 
@@ -393,7 +393,7 @@ def test_deny_overlap_one(q, bus, conn, stream, subscribe, stored, deny):
     Here's a tricker case: blocking a contact, and then removing them before
     the server's responded to the block request.
     """
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     # As we saw in test_flickering(), we have a subscription to Bob,
     # everything's peachy.
@@ -529,7 +529,7 @@ def test_deny_unblock_remove(q, bus, conn, stream, stored, deny):
     Test unblocking a contact, and, while that request is pending, deleting
     them.
     """
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     # This contact was on our roster, blocked and subscribed, when we started.
     contact = 'music-is-math@boards.ca'

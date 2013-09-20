@@ -22,7 +22,7 @@ def validate_pep_update(pep_update, expected_nickname):
         assertLength(0, nick.children)
 
 def test(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     conn.Aliasing.SetAliases({self_handle: 'lala'})
     expect_and_handle_get_vcard(q, stream)
 

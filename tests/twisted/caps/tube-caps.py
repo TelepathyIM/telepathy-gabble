@@ -227,7 +227,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
 
 def advertise_caps(q, conn, stream, filters, expected_features, unexpected_features,
                    expected_caps):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     ret_caps = conn.ContactCapabilities.UpdateCapabilities(
             [(cs.CLIENT + '.Foo', filters, [])])
 
@@ -255,7 +255,7 @@ def advertise_caps(q, conn, stream, filters, expected_features, unexpected_featu
     assertSameElements(caps[self_handle], caps_via_contacts_iface)
 
 def test_tube_caps_to_contact(q, bus, conn, stream):
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     basic_caps = dbus.Dictionary({self_handle:
         [(text_fixed_properties, text_allowed_properties),

@@ -37,7 +37,7 @@ def _show_to_shared_status_show(show):
     return shared_show, shared_invisible
 
 def _test_remote_status(q, bus, conn, stream, msg, show, list_attrs):
-    self = conn.GetSelfHandle()
+    self = conn.Properties.Get(cs.CONN, "SelfHandle")
     presence = conn.SimplePresence.GetPresences([self])[self]
     is_away = presence[0] in (cs.PRESENCE_AWAY, cs.PRESENCE_EXTENDED_AWAY)
 
@@ -78,7 +78,7 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     expected_show = expected_show or show
     away = expected_show in ('away', 'xa')
 
-    self = conn.GetSelfHandle()
+    self = conn.Properties.Get(cs.CONN, "SelfHandle")
     prev_presence = conn.SimplePresence.GetPresences([self])[self]
     was_away = prev_presence[0] in (cs.PRESENCE_AWAY,
                                     cs.PRESENCE_EXTENDED_AWAY)

@@ -35,7 +35,7 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     jt.prepare()
     forbidden = [ no_muji_presences (muc) ]
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     _, _, test_handle, bob_handle = \
         join_muc_and_check(q, bus, conn, stream, muc)
@@ -173,7 +173,7 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
     jt = JingleTest2(jp, conn, q, stream, 'test@localhost', muc + '/bob')
     jt.prepare()
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     # Not allowed to have muji related presences before we accept the channel
     forbidden = [ no_muji_presences (muc) ]

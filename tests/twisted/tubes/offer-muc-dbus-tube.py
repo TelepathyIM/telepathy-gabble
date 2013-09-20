@@ -114,7 +114,7 @@ def test(q, bus, conn, stream, access_control):
     # check if we can request muc D-Bus tube
     t.check_conn_properties(q, conn)
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
     self_name = conn.InspectHandles(1, [self_handle])[0]
 
     # offer a D-Bus tube to another room using new API

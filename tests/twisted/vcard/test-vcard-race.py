@@ -18,6 +18,7 @@ from gabbletest import (
     exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard,
     make_result_iq, sync_stream)
 import ns
+import constants as cs
 
 def test(q, bus, conn, stream):
     expect_and_handle_get_vcard(q, stream)
@@ -27,7 +28,7 @@ def test(q, bus, conn, stream):
     # to reply and then set immediately.
     sync_stream(q, stream)
 
-    handle = conn.GetSelfHandle()
+    handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     call_async(q, conn.Aliasing, 'SetAliases', {handle: 'Some Guy'})
 

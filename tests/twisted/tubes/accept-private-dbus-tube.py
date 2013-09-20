@@ -37,7 +37,7 @@ def test(q, bus, conn, stream, bytestream_cls, access_control):
             query_name='vCard'),
         EventPattern('stream-iq', query_ns=ns.ROSTER))
 
-    self_handle = conn.GetSelfHandle()
+    self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
 
     acknowledge_iq(stream, vcard_event.stanza)
 

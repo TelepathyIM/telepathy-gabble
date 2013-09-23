@@ -13,7 +13,9 @@ import os
 import pprint
 import unittest
 
-import dbus.glib
+import dbus
+from dbus.mainloop.glib import DBusGMainLoop
+DBusGMainLoop(set_as_default=True)
 
 from twisted.internet import reactor
 

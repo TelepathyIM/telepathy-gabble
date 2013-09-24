@@ -682,7 +682,7 @@ def exec_test_deferred(fun, params, protocol=None, timeout=None,
             # Connection has already been disconnected and destroyed
             continue
         try:
-            if conn.GetStatus() == cs.CONN_STATUS_CONNECTED:
+            if conn.Properties.Get(cs.CONN, 'Status') == cs.CONN_STATUS_CONNECTED:
                 # Connection is connected, properly disconnect it
                 disconnect_conn(queue, conn, streams[i])
             else:

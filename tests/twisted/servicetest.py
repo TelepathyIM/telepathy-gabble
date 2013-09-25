@@ -569,17 +569,13 @@ def call_async(test, proxy, method, *args, **kw):
     kw.update({'reply_handler': reply_func, 'error_handler': error_func})
     method_proxy(*args, **kw)
 
-def sync_dbus(bus, q, conn):
+def sync_dbus(bus, q, proxy):
     # Dummy D-Bus method call. We can't use DBus.Peer.Ping() because libdbus
     # replies to that message immediately, rather than handing it up to
-    # dbus-glib and thence Gabble, which means that Ping()ing Gabble doesn't
-    # ensure that it's processed all D-Bus messages prior to our ping.
-    #
-    # This won't do the right thing unless the proxy has a unique name.
-    assert conn.object.bus_name.startswith(':')
-    root_object = bus.get_object(conn.object.bus_name, '/', introspect=False)
-    call_async(q,
-        dbus.Interface(root_object, cs.PREFIX + '.Tests'),
+    # dbus-glib and thence the application, which means that Ping()ing the
+    # application doesn't ensure that it's processed all D-Bus messages prior
+    # to our ping.
+    call_async(q, dbus.Interface(proxy, 'org.freedesktop.Telepathy.Tests'),
         'DummySyncDBus')
     q.expect('dbus-error', method='DummySyncDBus')
 

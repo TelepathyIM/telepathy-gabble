@@ -133,7 +133,7 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_client_types_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_POWER_SAVING,
       conn_power_saving_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_ADDRESSING,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ADDRESSING,
       conn_addressing_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_PLUGIN_CONNECTION,
       gabble_plugin_connection_iface_init);
@@ -885,7 +885,7 @@ static const gchar *implemented_interfaces[] = {
     GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
     GABBLE_IFACE_CONNECTION_FUTURE,
     TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
-    GABBLE_IFACE_CONNECTION_INTERFACE_ADDRESSING,
+    TP_IFACE_CONNECTION_INTERFACE_ADDRESSING,
     NULL
 };
 static const gchar **interfaces_always_present = implemented_interfaces + 3;

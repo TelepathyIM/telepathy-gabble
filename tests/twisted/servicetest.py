@@ -22,7 +22,7 @@ from twisted.internet import reactor
 import constants as cs
 
 tp_name_prefix = cs.PREFIX
-tp_path_prefix = '/' + cs.PREFIX.replace('.', '/')
+tp_path_prefix = cs.PATH_PREFIX
 
 class DictionarySupersetOf (object):
     """Utility class for expecting "a dictionary with at least these keys"."""

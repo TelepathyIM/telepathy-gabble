@@ -1,10 +1,32 @@
+# Copyright (C) 2009 Nokia Corporation
+# Copyright (C) 2009-2013 Collabora Ltd.
+#
+# This library is free software; you can redistribute it and/or
+# modify it under the terms of the GNU Lesser General Public
+# License as published by the Free Software Foundation; either
+# version 2.1 of the License, or (at your option) any later version.
+#
+# This library is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
+# Lesser General Public License for more details.
+#
+# You should have received a copy of the GNU Lesser General Public
+# License along with this library; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
 """
 Some handy constants for other tests to share and enjoy.
 """
 
-from dbus import PROPERTIES_IFACE
+from dbus import PROPERTIES_IFACE, INTROSPECTABLE_IFACE
 
 PREFIX = "org.freedesktop.Telepathy"
+PATH_PREFIX = '/' + PREFIX.replace('.', '/')
+
+tp_name_prefix = PREFIX
+tp_path_prefix = PATH_PREFIX
 
 CM = PREFIX + ".ConnectionManager"
 
@@ -183,6 +205,7 @@ CONN_IFACE_CLIENT_TYPES = CONN + '.Interface.ClientTypes'
 CONN_IFACE_POWER_SAVING = CONN + '.Interface.PowerSaving'
 CONN_IFACE_CONTACT_BLOCKING = CONN + '.Interface.ContactBlocking'
 CONN_IFACE_ADDRESSING = CONN + '.Interface.Addressing1'
+CONN_IFACE_SERVICE_POINT = CONN + '.Interface.ServicePoint'
 
 ATTR_CONTACT_ID = CONN + '/contact-id'
 ATTR_CONTACT_CAPABILITIES = CONN_IFACE_CONTACT_CAPS + '/capabilities'
@@ -204,6 +227,7 @@ CONNECTION_REFUSED = ERROR + '.ConnectionRefused'
 CONNECTION_FAILED = ERROR + '.ConnectionFailed'
 CONNECTION_LOST = ERROR + '.ConnectionLost'
 CANCELLED = ERROR + '.Cancelled'
+NOT_YOURS = ERROR + '.NotYours'
 DISCONNECTED = ERROR + '.Disconnected'
 REGISTRATION_EXISTS = ERROR + '.RegistrationExists'
 AUTHENTICATION_FAILED = ERROR + '.AuthenticationFailed'
@@ -218,7 +242,8 @@ SERVICE_CONFUSED = ERROR + '.ServiceConfused'
 
 BANNED = ERROR + '.Channel.Banned'
 
-UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
+DBUS_ERROR_UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
+DBUS_ERROR_NO_REPLY = 'org.freedesktop.DBus.Error.NoReply'
 
 TUBE_PARAMETERS = CHANNEL_IFACE_TUBE + '.Parameters'
 TUBE_STATE = CHANNEL_IFACE_TUBE + '.State'
@@ -404,6 +429,7 @@ MEDIA_CAP_IMMUTABLE_STREAMS = 32
 
 CLIENT = PREFIX + '.Client'
 
+PRESENCE_UNSET = 0
 PRESENCE_OFFLINE = 1
 PRESENCE_AVAILABLE = 2
 PRESENCE_AWAY = 3
@@ -537,4 +563,47 @@ SUBJECT_PRESENT = 1
 SUBJECT_CAN_SET = 2
 
 DEBUG_IFACE = PREFIX + '.Debug'
-DEBUG_PATH = '/' + PREFIX.replace('.', '/') + '/debug'
+DEBUG_PATH = PATH_PREFIX + '/debug'
+
+SERVICE_POINT_TYPE_NONE = 0
+SERVICE_POINT_TYPE_EMERGENCY = 1
+SERVICE_POINT_TYPE_COUNSELING = 2
+
+CLIENT = PREFIX + '.Client'
+CLIENT_PATH = PATH_PREFIX + '/Client'
+OBSERVER = PREFIX + '.Client.Observer'
+APPROVER = PREFIX + '.Client.Approver'
+HANDLER = PREFIX + '.Client.Handler'
+CLIENT_IFACE_REQUESTS = CLIENT + '.Interface.Requests'
+
+ACCOUNT = PREFIX + '.Account'
+ACCOUNT_IFACE_AVATAR = ACCOUNT + '.Interface.Avatar'
+ACCOUNT_IFACE_ADDRESSING = ACCOUNT + '.Interface.Addressing'
+ACCOUNT_IFACE_HIDDEN = ACCOUNT + '.Interface.Hidden.DRAFT1'
+ACCOUNT_IFACE_NOKIA_CONDITIONS = 'com.nokia.Account.Interface.Conditions'
+ACCOUNT_PATH_PREFIX = PATH_PREFIX + '/Account/'
+
+AM = PREFIX + '.AccountManager'
+AM_IFACE_HIDDEN = AM + '.Interface.Hidden.DRAFT1'
+AM_PATH = PATH_PREFIX + '/AccountManager'
+
+CR = PREFIX + '.ChannelRequest'
+CDO = PREFIX + '.ChannelDispatchOperation'
+
+CD = PREFIX + '.ChannelDispatcher'
+CD_IFACE_OP_LIST = PREFIX + '.ChannelDispatcher.Interface.OperationList'
+CD_PATH = PATH_PREFIX + '/ChannelDispatcher'
+CD_REDISPATCH = CD + '.Interface.Redispatch.DRAFT'
+
+MC = PREFIX + '.MissionControl5'
+MC_PATH = PATH_PREFIX + '/MissionControl5'
+
+TESTDOT = PREFIX + ".Test."
+TESTSLASH = PATH_PREFIX + "/Test/"
+
+TEST_DBUS_ACCOUNT_SERVICE = TESTDOT + "DBusAccountService"
+TEST_DBUS_ACCOUNT_SERVICE_PATH = TESTSLASH + "DBusAccountService"
+TEST_DBUS_ACCOUNT_SERVICE_IFACE = TEST_DBUS_ACCOUNT_SERVICE
+
+TEST_DBUS_ACCOUNT_PLUGIN_PATH = TESTSLASH + "DBusAccountPlugin"
+TEST_DBUS_ACCOUNT_PLUGIN_IFACE = TESTDOT + "DBusAccountPlugin"

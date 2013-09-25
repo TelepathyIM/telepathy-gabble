@@ -259,7 +259,7 @@ class CallGoogleRelayTest(CallTest):
             except dbus.DBusException, e:
                 # This should fail because the object's gone away, not because
                 # Gabble's crashed.
-                assert cs.UNKNOWN_METHOD == e.get_dbus_name(), \
+                assert cs.DBUS_ERROR_UNKNOWN_METHOD == e.get_dbus_name(), \
                     "maybe Gabble crashed? %s" % e
             else:
                 # Gabble will probably also crash in a moment, because the http

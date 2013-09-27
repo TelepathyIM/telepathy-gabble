@@ -239,6 +239,7 @@ INVALID_HANDLE = ERROR + '.InvalidHandle'
 CERT_UNTRUSTED = ERROR + '.Cert.Untrusted'
 SERVICE_BUSY = ERROR + '.ServiceBusy'
 SERVICE_CONFUSED = ERROR + '.ServiceConfused'
+SOFTWARE_UPGRADE_REQUIRED = ERROR + '.SoftwareUpgradeRequired'
 
 BANNED = ERROR + '.Channel.Banned'
 

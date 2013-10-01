@@ -62,7 +62,7 @@ class CallHoldAVTest(CallTest):
         [path, _] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
         offer = bus.get_object (conn.bus_name, path)
-        offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
+        offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIA_DESCRIPTION)
     
         assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
                 cstream.Get(cs.CALL_STREAM_IFACE_MEDIA, 'SendingState',
@@ -104,7 +104,7 @@ class CallHoldAVTest(CallTest):
         [path, _] = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "MediaDescriptionOffer", dbus_interface=dbus.PROPERTIES_IFACE)
         offer = bus.get_object (conn.bus_name, path)
-        offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
+        offer.Accept (md, dbus_interface=cs.CALL_CONTENT_MEDIA_DESCRIPTION)
     
         assertEquals(cs.CALL_STREAM_FLOW_STATE_STOPPED,
                 cstream.Get(cs.CALL_STREAM_IFACE_MEDIA, 'SendingState',

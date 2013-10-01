@@ -107,13 +107,13 @@ class CallTest(object):
         assertNotEquals("/", path)
 
         offer = self.bus.get_object(self.conn.bus_name, path)
-        codecmap_property = offer.Get(cs.CALL_CONTENT_MEDIADESCRIPTION,
+        codecmap_property = offer.Get(cs.CALL_CONTENT_MEDIA_DESCRIPTION,
                 "Codecs", dbus_interface=dbus.PROPERTIES_IFACE)
 
-        assertEquals(remote_md[cs.CALL_CONTENT_MEDIADESCRIPTION + '.Codecs'],
+        assertEquals(remote_md[cs.CALL_CONTENT_MEDIA_DESCRIPTION + '.Codecs'],
                 codecmap_property)
 
-        offer.Accept(md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
+        offer.Accept(md, dbus_interface=cs.CALL_CONTENT_MEDIA_DESCRIPTION)
 
         current_md = content.Get(cs.CALL_CONTENT_IFACE_MEDIA,
                 "LocalMediaDescriptions", dbus_interface=dbus.PROPERTIES_IFACE)

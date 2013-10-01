@@ -231,7 +231,7 @@ def run_outgoing_test(q, bus, conn, stream, close_channel=False):
 
     e = q.expect('dbus-signal', signal = 'NewMediaDescriptionOffer')
     offer = bus.get_object (conn.bus_name, e.args[0])
-    offer.Accept(md, dbus_interface=cs.CALL_CONTENT_MEDIADESCRIPTION)
+    offer.Accept(md, dbus_interface=cs.CALL_CONTENT_MEDIA_DESCRIPTION)
 
     jt.incoming_call(audio = "Audio")
 

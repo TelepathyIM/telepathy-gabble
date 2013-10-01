@@ -599,6 +599,10 @@ CD_REDISPATCH = CD + '.Interface.Redispatch.DRAFT'
 MC = PREFIX + '.MissionControl5'
 MC_PATH = PATH_PREFIX + '/MissionControl5'
 
+DTMF_CURRENTLY_SENDING_TONES = CHANNEL_IFACE_DTMF + '.CurrentlySendingTones'
+DTMF_INITIAL_TONES = CHANNEL_IFACE_DTMF + '.InitialTones'
+DTMF_DEFERRED_TONES = CHANNEL_IFACE_DTMF + '.DeferredTones'
+
 TESTDOT = PREFIX + ".Test."
 TESTSLASH = PATH_PREFIX + "/Test/"
 

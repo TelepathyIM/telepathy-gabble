@@ -48,7 +48,7 @@ DROP_NAMESPACE = sed -e 's@xmlns:tp="http://telepathy\.freedesktop\.org/wiki/Dbu
 XSLTPROCFLAGS = --nonet --novalid
 
 _gen/all.xml: all.xml $(wildcard *.xml) Makefile.am
-	@$(mkdir_p) _gen
+	@$(MKDIR_P) _gen
 	$(AM_V_GEN)$(PYTHON) $(tools_dir)/xincludator.py \
 		$< > $@.tmp && mv $@.tmp $@
 

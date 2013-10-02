@@ -996,7 +996,7 @@ channel_closed_cb (GabbleTubeIface *tube,
 {
   GabblePrivateTubesFactoryPrivate *priv =
     GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
-  guint id;
+  guint64 id;
 
   g_object_get (tube,
       "id", &id,

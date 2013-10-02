@@ -24,6 +24,7 @@ Makefile.in
 _gen
 /aclocal.m4
 /autom4te.cache
+/build-aux
 /compile
 /config.cache
 /config.guess

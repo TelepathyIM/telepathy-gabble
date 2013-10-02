@@ -23,6 +23,7 @@ AC_INIT([Telepathy Gabble], [gabble_version],
         [https://bugs.freedesktop.org/enter_bug.cgi?product=Telepathy&component=gabble])
 
 AC_CONFIG_MACRO_DIR([m4])
+AC_CONFIG_AUX_DIR([build-aux])
 
 AM_INIT_AUTOMAKE([1.9 -Wno-portability tar-ustar subdir-objects])
 AM_CONFIG_HEADER(config.h)

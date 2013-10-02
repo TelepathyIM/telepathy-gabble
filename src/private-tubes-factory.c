@@ -89,8 +89,6 @@ struct _GabblePrivateTubesFactoryPrivate
   gboolean dispose_has_run;
 };
 
-#define GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE(obj) ((obj)->priv)
-
 static const gchar * const tubes_channel_fixed_properties[] = {
     TP_PROP_CHANNEL_CHANNEL_TYPE,
     TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
@@ -197,16 +195,14 @@ gabble_private_tubes_factory_extract_tube_information (
 static void
 gabble_private_tubes_factory_init (GabblePrivateTubesFactory *self)
 {
-  GabblePrivateTubesFactoryPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_PRIVATE_TUBES_FACTORY, GabblePrivateTubesFactoryPrivate);
 
-  self->priv = priv;
-
-  priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
+  self->priv->tubes = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, (GDestroyNotify) g_object_unref);
 
-  priv->conn = NULL;
-  priv->dispose_has_run = FALSE;
+  self->priv->conn = NULL;
+  self->priv->dispose_has_run = FALSE;
 }
 
 
@@ -220,15 +216,15 @@ porter_available_cb (
     gpointer user_data)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
-  GabblePrivateTubesFactoryPrivate *priv = self->priv;
 
-  priv->msg_tube_cb = wocky_porter_register_handler_from_anyone (porter,
+  self->priv->msg_tube_cb = wocky_porter_register_handler_from_anyone (porter,
       WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX,
       private_tubes_factory_msg_tube_cb, self,
       '(', "tube", ':', NS_TUBES,
       ')', NULL);
-  priv->msg_close_cb = wocky_porter_register_handler_from_anyone (porter,
+
+  self->priv->msg_close_cb = wocky_porter_register_handler_from_anyone (porter,
       WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
       WOCKY_PORTER_HANDLER_PRIORITY_MAX,
       private_tubes_factory_tube_close_cb, self,
@@ -258,17 +254,15 @@ gabble_private_tubes_factory_constructor (GType type,
 {
   GObject *obj;
   GabblePrivateTubesFactory *self;
-  GabblePrivateTubesFactoryPrivate *priv;
 
   obj = G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->
            constructor (type, n_props, props);
 
   self = GABBLE_PRIVATE_TUBES_FACTORY (obj);
-  priv = GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
 
   self->priv->status_changed_id = g_signal_connect (self->priv->conn,
       "status-changed", (GCallback) connection_status_changed_cb, obj);
-  tp_g_signal_connect_object (priv->conn, "porter-available",
+  tp_g_signal_connect_object (self->priv->conn, "porter-available",
       (GCallback) porter_available_cb, obj, 0);
 
   return obj;
@@ -278,18 +272,16 @@ gabble_private_tubes_factory_constructor (GType type,
 static void
 gabble_private_tubes_factory_dispose (GObject *object)
 {
-  GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (object);
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (object);
 
-  if (priv->dispose_has_run)
+  if (self->priv->dispose_has_run)
     return;
 
   DEBUG ("dispose called");
-  priv->dispose_has_run = TRUE;
+  self->priv->dispose_has_run = TRUE;
 
-  gabble_private_tubes_factory_close_all (fac);
-  g_assert (priv->tubes == NULL);
+  gabble_private_tubes_factory_close_all (self);
+  g_assert (self->priv->tubes == NULL);
 
   if (G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_private_tubes_factory_parent_class)->dispose (
@@ -302,14 +294,12 @@ gabble_private_tubes_factory_get_property (GObject *object,
                                    GValue *value,
                                    GParamSpec *pspec)
 {
-  GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (object);
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (object);
 
   switch (property_id)
     {
       case PROP_CONNECTION:
-        g_value_set_object (value, priv->conn);
+        g_value_set_object (value, self->priv->conn);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -323,14 +313,12 @@ gabble_private_tubes_factory_set_property (GObject *object,
                                    const GValue *value,
                                    GParamSpec *pspec)
 {
-  GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (object);
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (object);
 
   switch (property_id)
     {
       case PROP_CONNECTION:
-        priv->conn = g_value_get_object (value);
+        self->priv->conn = g_value_get_object (value);
         break;
       default:
         G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -366,31 +354,29 @@ gabble_private_tubes_factory_class_init (
 }
 
 static void
-gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *fac)
+gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *self)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
-
   DEBUG ("closing 1-1 tubes channels");
 
-  if (priv->status_changed_id != 0)
+  if (self->priv->status_changed_id != 0)
     {
-      g_signal_handler_disconnect (priv->conn,
-          priv->status_changed_id);
-      priv->status_changed_id = 0;
+      g_signal_handler_disconnect (self->priv->conn,
+          self->priv->status_changed_id);
+      self->priv->status_changed_id = 0;
     }
 
-  if (priv->msg_tube_cb != 0)
+  if (self->priv->msg_tube_cb != 0)
     {
-      WockyPorter *porter = wocky_session_get_porter (priv->conn->session);
+      WockyPorter *porter = wocky_session_get_porter (
+          self->priv->conn->session);
 
-      wocky_porter_unregister_handler (porter, priv->msg_tube_cb);
-      priv->msg_tube_cb = 0;
-      wocky_porter_unregister_handler (porter, priv->msg_close_cb);
-      priv->msg_close_cb = 0;
+      wocky_porter_unregister_handler (porter, self->priv->msg_tube_cb);
+      self->priv->msg_tube_cb = 0;
+      wocky_porter_unregister_handler (porter, self->priv->msg_close_cb);
+      self->priv->msg_close_cb = 0;
     }
 
-  tp_clear_pointer (&priv->tubes, g_hash_table_unref);
+  tp_clear_pointer (&self->priv->tubes, g_hash_table_unref);
 }
 
 static void
@@ -665,15 +651,13 @@ gabble_private_tubes_factory_foreach_channel (TpChannelManager *manager,
     TpExportableChannelFunc foreach,
     gpointer user_data)
 {
-  GabblePrivateTubesFactory *fac = GABBLE_PRIVATE_TUBES_FACTORY (manager);
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (fac);
+  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
   struct _ForeachData data;
 
   data.user_data = user_data;
   data.foreach = foreach;
 
-  g_hash_table_foreach (priv->tubes, _foreach_slave, &data);
+  g_hash_table_foreach (self->priv->tubes, _foreach_slave, &data);
 }
 
 void
@@ -684,9 +668,8 @@ gabble_private_tubes_factory_handle_si_tube_request (
     const gchar *stream_id,
     WockyStanza *msg)
 {
-  GabblePrivateTubesFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+              (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   WockyNode *si_node, *tube_node;
   WockyStanzaType stanza_type;
   WockyStanzaSubType sub_type;
@@ -718,7 +701,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
       return;
     }
 
-  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  tube = g_hash_table_lookup (self->priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube != NULL)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
@@ -742,10 +725,8 @@ gabble_private_tubes_factory_handle_si_stream_request (
     const gchar *stream_id,
     WockyStanza *msg)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *tmp;
   guint64 tube_id;
   WockyNode *si_node, *stream_node;
@@ -789,7 +770,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
       return;
     }
 
-  tube = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  tube = g_hash_table_lookup (self->priv->tubes, GUINT_TO_POINTER (tube_id));
   if (tube == NULL)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_BAD_REQUEST,
@@ -814,10 +795,8 @@ tube_msg_checks (GabblePrivateTubesFactory *self,
     TpHandle *out_handle,
     guint64 *out_tube_id)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
   const gchar *from, *tmp;
   TpHandle handle;
   guint64 tube_id;
@@ -867,8 +846,6 @@ private_tubes_factory_msg_tube_cb (
     gpointer user_data)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   WockyNode *node;
   guint64 tube_id;
   GabbleTubeIface *channel;
@@ -881,7 +858,7 @@ private_tubes_factory_msg_tube_cb (
   if (!tube_msg_checks (self, msg, node, &handle, &tube_id))
     return FALSE;
 
-  channel = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  channel = g_hash_table_lookup (self->priv->tubes, GUINT_TO_POINTER (tube_id));
 
   if (channel != NULL)
     {
@@ -914,8 +891,6 @@ private_tubes_factory_tube_close_cb (
     gpointer user_data)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (user_data);
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   WockyNode *node;
   guint64 tube_id;
   GabbleTubeIface *channel;
@@ -928,7 +903,7 @@ private_tubes_factory_tube_close_cb (
   if (!tube_msg_checks (self, msg, node, NULL, &tube_id))
     return FALSE;
 
-  channel = g_hash_table_lookup (priv->tubes, GUINT_TO_POINTER (tube_id));
+  channel = g_hash_table_lookup (self->priv->tubes, GUINT_TO_POINTER (tube_id));
 
   if (channel == NULL)
     {
@@ -955,12 +930,10 @@ gabble_private_tubes_factory_lookup (GabblePrivateTubesFactory *self,
     TpHandle handle,
     const gchar *service)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   GHashTableIter iter;
   gpointer value;
 
-  g_hash_table_iter_init (&iter, priv->tubes);
+  g_hash_table_iter_init (&iter, self->priv->tubes);
   while (g_hash_table_iter_next (&iter, NULL, &value))
     {
       GabbleTubeIface *tube = value;
@@ -994,8 +967,6 @@ static void
 channel_closed_cb (GabbleTubeIface *tube,
     GabblePrivateTubesFactory *self)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   guint id;
 
   g_object_get (tube,
@@ -1005,15 +976,13 @@ channel_closed_cb (GabbleTubeIface *tube,
   tp_channel_manager_emit_channel_closed_for_object (self,
       TP_EXPORTABLE_CHANNEL (tube));
 
-  if (priv->tubes != NULL)
-    g_hash_table_remove (priv->tubes, GUINT_TO_POINTER (id));
+  if (self->priv->tubes != NULL)
+    g_hash_table_remove (self->priv->tubes, GUINT_TO_POINTER (id));
 }
 
 static guint64
 generate_tube_id (GabblePrivateTubesFactory *self)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   guint out;
 
   /* probably totally overkill */
@@ -1021,7 +990,7 @@ generate_tube_id (GabblePrivateTubesFactory *self)
     {
       out = g_random_int_range (1, G_MAXINT32);
     }
-  while (g_hash_table_lookup (priv->tubes,
+  while (g_hash_table_lookup (self->priv->tubes,
           GUINT_TO_POINTER (out)) != NULL);
 
   return out;
@@ -1033,10 +1002,8 @@ static GabbleTubeIface *
 new_channel_from_request (GabblePrivateTubesFactory *self,
     GHashTable *request)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   GabbleTubeIface *tube;
-  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->conn);
 
   gchar *stream_id;
 
@@ -1063,7 +1030,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
       service = tp_asv_get_string (request,
           TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
 
-      tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
+      tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (self->priv->conn,
               handle, handle_type,
               tp_base_connection_get_self_handle (base_conn),
               tp_base_connection_get_self_handle (base_conn),
@@ -1076,7 +1043,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
 
       stream_id = gabble_bytestream_factory_generate_stream_id ();
 
-      tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
+      tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (self->priv->conn,
               handle, handle_type,
               tp_base_connection_get_self_handle (base_conn),
               tp_base_connection_get_self_handle (base_conn),
@@ -1094,7 +1061,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
   g_signal_connect (tube, "closed",
       G_CALLBACK (channel_closed_cb), self);
 
-  g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id),
+  g_hash_table_insert (self->priv->tubes, GUINT_TO_POINTER (tube_id),
       tube);
 
   g_hash_table_unref (parameters);
@@ -1107,15 +1074,13 @@ send_tube_close_msg (GabblePrivateTubesFactory *self,
     const gchar *jid,
     guint64 tube_id)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   WockyPorter *porter;
   WockyStanza *msg;
   gchar *id_str;
 
   id_str = g_strdup_printf ("%" G_GUINT64_FORMAT, tube_id);
 
-  porter = gabble_connection_dup_porter (priv->conn);
+  porter = gabble_connection_dup_porter (self->priv->conn);
 
   /* Send the close message */
   msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
@@ -1143,12 +1108,10 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
     guint64 tube_id,
     GabbleBytestreamIface *bytestream)
 {
-  GabblePrivateTubesFactoryPrivate *priv =
-    GABBLE_PRIVATE_TUBES_FACTORY_GET_PRIVATE (self);
   GabbleTubeIface *tube;
-  TpBaseConnection *base_conn = TP_BASE_CONNECTION (priv->conn);
+  TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->conn);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
 
   TpTubeType type;
   TpHandle handle;
@@ -1187,7 +1150,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
 
   if (type == TP_TUBE_TYPE_STREAM)
     {
-      tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (priv->conn,
+      tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (self->priv->conn,
               handle, TP_HANDLE_TYPE_CONTACT,
               tp_base_connection_get_self_handle (base_conn),
               handle, service, parameters, tube_id, NULL, FALSE));
@@ -1204,7 +1167,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
       stream_id = wocky_node_get_attribute (si_node, "id");
       g_return_val_if_fail (stream_id != NULL, NULL);
 
-      tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (priv->conn,
+      tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (self->priv->conn,
               handle, TP_HANDLE_TYPE_CONTACT,
               tp_base_connection_get_self_handle (base_conn),
               handle, service, parameters,
@@ -1216,7 +1179,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
   g_signal_connect (tube, "closed",
       G_CALLBACK (channel_closed_cb), self);
 
-  g_hash_table_insert (priv->tubes, GUINT_TO_POINTER (tube_id),
+  g_hash_table_insert (self->priv->tubes, GUINT_TO_POINTER (tube_id),
       tube);
 
   g_hash_table_unref (parameters);

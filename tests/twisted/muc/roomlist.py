@@ -6,7 +6,7 @@ Test MUC support.
 import dbus
 
 from gabbletest import make_result_iq, exec_test, sync_stream, disconnect_conn
-from servicetest import call_async, EventPattern, tp_name_prefix
+from servicetest import call_async, EventPattern, assertEquals
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -32,12 +32,10 @@ def test(q, bus, conn, stream):
     # Make sure the stream has been processed
     sync_stream(q, stream)
 
-    properties = conn.GetAll(
-            tp_name_prefix + '.Connection.Interface.Requests',
-            dbus_interface=dbus.PROPERTIES_IFACE)
+    properties = conn.Properties.GetAll(cs.CONN_IFACE_REQUESTS)
     assert properties.get('Channels') == [], properties['Channels']
-    assert ({tp_name_prefix + '.Channel.ChannelType': cs.CHANNEL_TYPE_ROOM_LIST,
-             tp_name_prefix + '.Channel.TargetHandleType': 0,
+    assert ({ cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_ROOM_LIST,
+              cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
              },
              [cs.CHANNEL_TYPE_ROOM_LIST + '.Server'],
              ) in properties.get('RequestableChannelClasses'),\
@@ -46,8 +44,8 @@ def test(q, bus, conn, stream):
     # FIXME: actually list the rooms!
 
     call_async(q, conn.Requests, 'CreateChannel',
-            { tp_name_prefix + '.Channel.ChannelType': cs.CHANNEL_TYPE_ROOM_LIST,
-              tp_name_prefix + '.Channel.TargetHandleType': 0,
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_ROOM_LIST,
+              cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
               cs.CHANNEL_TYPE_ROOM_LIST + '.Server':
                 'conference.example.net',
               })
@@ -60,18 +58,14 @@ def test(q, bus, conn, stream):
     chan = bus.get_object(conn.bus_name, path2)
 
     props = ret.value[1]
-    assert props[tp_name_prefix + '.Channel.ChannelType'] ==\
-            cs.CHANNEL_TYPE_ROOM_LIST
-    assert props[tp_name_prefix + '.Channel.TargetHandleType'] == 0
-    assert props[tp_name_prefix + '.Channel.TargetHandle'] == 0
-    assert props[tp_name_prefix + '.Channel.TargetID'] == ''
-    assert props[tp_name_prefix + '.Channel.Requested'] == True
-    assert props[tp_name_prefix + '.Channel.InitiatorHandle'] \
-            == conn.Properties.Get(cs.CONN, "SelfHandle")
-    assert props[tp_name_prefix + '.Channel.InitiatorID'] \
-            == 'test@localhost'
-    assert props[cs.CHANNEL_TYPE_ROOM_LIST+ '.Server'] == \
-            'conference.example.net'
+    assertEquals(cs.CHANNEL_TYPE_ROOM_LIST, props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_NONE, props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(0, props[cs.TARGET_HANDLE])
+    assertEquals('', props[cs.TARGET_ID])
+    assertEquals(True, props[cs.REQUESTED])
+    assertEquals(conn.Properties.Get(cs.CONN, "SelfHandle"), props[cs.INITIATOR_HANDLE])
+    assertEquals('test@localhost', props[cs.INITIATOR_ID])
+    assertEquals('conference.example.net', props[cs.CHANNEL_TYPE_ROOM_LIST+ '.Server'])
 
     assert sig.args[0][0][0] == path2
     assert sig.args[0][0][1] == props
@@ -83,12 +77,10 @@ def test(q, bus, conn, stream):
     # FIXME: actually list the rooms!
 
     call_async(q, conn.Requests, 'EnsureChannel',
-            { tp_name_prefix + '.Channel.ChannelType':
-                cs.CHANNEL_TYPE_ROOM_LIST,
-              tp_name_prefix + '.Channel.TargetHandleType': 0,
-              cs.CHANNEL_TYPE_ROOM_LIST + '.Server':
-                'conference.example.net',
-              })
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_ROOM_LIST,
+              cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
+              cs.CHANNEL_TYPE_ROOM_LIST + '.Server': 'conference.example.net',
+            })
 
     ret = q.expect('dbus-return', method='EnsureChannel')
     yours, ensured_path, ensured_props = ret.value

@@ -98,4 +98,4 @@ def join_muc_and_check(q, bus, conn, stream, muc, request=None):
     assert set(members) == set([test_handle, bob_handle]), \
         (members, (test_handle, bob_handle))
 
-    return (muc_handle, chan, test_handle, bob_handle)
+    return (chan, test_handle, bob_handle)

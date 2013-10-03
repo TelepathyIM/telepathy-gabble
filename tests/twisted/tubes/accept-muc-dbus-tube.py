@@ -19,7 +19,7 @@ def test(q, bus, conn, stream, access_control):
     acknowledge_iq(stream, iq_event.stanza)
 
     muc = 'chat@conf.localhost'
-    _, _, test_handle, bob_handle = \
+    _, test_handle, bob_handle = \
         join_muc_and_check(q, bus, conn, stream, muc)
 
     # Bob offers a stream tube

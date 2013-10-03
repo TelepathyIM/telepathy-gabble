@@ -20,7 +20,7 @@ def test(q, bus, conn, stream):
     bob_jid = room + '/bob'
     marco_jid = room + '/marco'
 
-    room_handle, chan, test_handle, bob_handle = \
+    chan, test_handle, bob_handle = \
         join_muc_and_check(q, bus, conn, stream, room)
 
     # Here are a few scrollback messages. One from us; one from bob; and one

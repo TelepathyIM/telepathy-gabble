@@ -19,12 +19,11 @@ from mucutil import join_muc_and_check
 
 def test(q, bus, conn, stream):
     room = 'chat@conf.localhost'
-    room_handle, chan, test_handle, bob_handle = \
+    chan, test_handle, bob_handle = \
         join_muc_and_check(q, bus, conn, stream, room)
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = chan.Properties.GetAll(cs.CHANNEL)
-    assertEquals(room_handle, channel_props.get('TargetHandle'))
     assertEquals(cs.HT_ROOM, channel_props.get('TargetHandleType'))
     assertEquals(cs.CHANNEL_TYPE_TEXT, channel_props.get('ChannelType'))
 

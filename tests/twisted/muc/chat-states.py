@@ -31,7 +31,7 @@ def check_state_notification(elem, name, allow_body=False):
         assert len(elem.children) == 1, elem.toXml()
 
 def test(q, bus, conn, stream):
-    (muc_handle, chan, user, bob) = join_muc_and_check(q, bus, conn, stream,
+    (chan, user, bob) = join_muc_and_check(q, bus, conn, stream,
         MUC)
 
     states = chan.Properties.Get(cs.CHANNEL_IFACE_CHAT_STATE, 'ChatStates')

@@ -14,7 +14,7 @@ from mucutil import join_muc_and_check
 
 def test(q, bus, conn, stream):
     muc = 'chat@conf.localhost'
-    _, text_chan, test_handle, bob_handle = \
+    text_chan, test_handle, bob_handle = \
         join_muc_and_check(q, bus, conn, stream, muc)
 
     # Suppose we don't have permission to speak in this MUC.  Send a message to

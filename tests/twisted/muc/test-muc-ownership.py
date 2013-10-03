@@ -62,7 +62,7 @@ def test(q, bus, conn, stream):
     added = event.args[1]
 
     [test, bob, brian, che, che_owner, chris, chris_owner] = \
-        conn.RequestHandles(cs.HT_CONTACT,
+        conn.get_contact_handles_sync(
             [ 'chat@conf.localhost/test', 'chat@conf.localhost/bob',
               'chat@conf.localhost/brian', 'chat@conf.localhost/che',
               'che@foo.com', 'chat@conf.localhost/chris', 'chris@foo.com',

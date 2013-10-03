@@ -184,8 +184,8 @@ def test_gtalk_weirdness(q, bus, conn, stream, room_jid):
     # resources of the same contact. There is no race between this method
     # returning and MembersChangedDetailed firing, because libdbus reorders
     # messages when you make blocking calls.
-    handle, handle_, handle__, foobar_handle = conn.RequestHandles(
-        cs.HT_CONTACT, jids + ['%s/foobar_gmail.com' % room_jid])
+    handle, handle_, handle__, foobar_handle = conn.get_contact_handles_sync(
+        jids + ['%s/foobar_gmail.com' % room_jid])
 
     q.expect('dbus-signal', signal='MembersChangedDetailed',
         predicate=lambda e: e.args[0:4] == [[foobar_handle], [], [], []])

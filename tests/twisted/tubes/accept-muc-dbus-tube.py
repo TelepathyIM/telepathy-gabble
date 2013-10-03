@@ -11,6 +11,7 @@ from twisted.words.xish import xpath
 import ns
 
 from mucutil import join_muc_and_check
+import tubetestutil as t
 
 def test(q, bus, conn, stream, access_control):
     iq_event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
@@ -75,7 +76,7 @@ def test(q, bus, conn, stream, access_control):
         EventPattern('dbus-return', method='Accept'),
         EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE),
         EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE),
-        EventPattern('stream-presence', to='chat@conf.localhost/test'))
+        EventPattern('stream-presence', to='chat@conf.localhost/test', predicate=lambda e: t.presence_contains_tube(e)))
 
     tube_addr = return_event.value[0]
     assert len(tube_addr) > 0

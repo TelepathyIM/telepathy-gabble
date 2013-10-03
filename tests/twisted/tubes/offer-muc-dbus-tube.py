@@ -163,7 +163,7 @@ def test(q, bus, conn, stream, access_control):
     call_async(q, tube_chan.DBusTube, 'Offer', sample_parameters, access_control)
 
     presence_event, return_event, status_event, dbus_changed_event = q.expect_many(
-        EventPattern('stream-presence', to='chat2@conf.localhost/test'),
+        EventPattern('stream-presence', to='chat2@conf.localhost/test', predicate=lambda e: t.presence_contains_tube(e)),
         EventPattern('dbus-return', method='Offer'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]),
         EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE))

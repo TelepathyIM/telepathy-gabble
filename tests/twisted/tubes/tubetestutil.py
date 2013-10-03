@@ -21,6 +21,7 @@ from twisted.internet import reactor
 from twisted.internet.protocol import Factory, Protocol
 from twisted.internet.error import CannotListenError
 from twisted.internet import tcp
+from twisted.words.xish import xpath
 
 _to_cleanup = []
 
@@ -373,3 +374,7 @@ def exec_stream_tube_test(test):
 def exec_dbus_tube_test(test):
     exec_tube_test(test, cs.SOCKET_ACCESS_CONTROL_CREDENTIALS)
     exec_tube_test(test, cs.SOCKET_ACCESS_CONTROL_LOCALHOST)
+
+def presence_contains_tube(e):
+    return xpath.queryForNodes('/presence/tubes[@xmlns="%s"]/tube'
+        % ns.TUBES, e.stanza) is not None

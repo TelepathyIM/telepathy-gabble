@@ -101,7 +101,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         cs.TARGET_ID: 'chat@conf.localhost',
         cs.STREAM_TUBE_SERVICE: 'newecho',
     }
-    _, _, new_tube_path, new_tube_props = \
+    _, new_tube_path, new_tube_props = \
         join_muc(q, bus, conn, stream, 'chat@conf.localhost', request)
 
     e = q.expect('dbus-signal', signal='NewChannels',
@@ -129,7 +129,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     call_async(q, tube_chan.StreamTube, 'Offer', address_type, address, access_control, {'foo': 'bar'})
 
     stream_event, _, status_event = q.expect_many(
-        EventPattern('stream-presence', to='chat@conf.localhost/test'),
+        EventPattern('stream-presence', to='chat@conf.localhost/test', predicate=lambda e: t.presence_contains_tube(e)),
         EventPattern('dbus-return', method='Offer'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]))
 

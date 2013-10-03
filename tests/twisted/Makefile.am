@@ -77,7 +77,6 @@ TWISTED_TESTS = \
 	pubsub.py \
 	roster/authorize.py \
 	roster/edit-before-roster.py \
-	roster/ensure.py \
 	roster/groups-12791.py \
 	roster/groups.py \
 	roster/initial-aliases.py \

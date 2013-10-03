@@ -118,7 +118,7 @@ def handle_disco_info_iq(stream, stanza):
     stream.send(iq)
 
 def test_some_stuff(q, bus, conn, stream):
-    _, text_chan, _, _, disco_iq, owner_iq, _ = join_muc(q, bus, conn, stream,
+    text_chan, _, _, disco_iq, owner_iq, _ = join_muc(q, bus, conn, stream,
         'chat@conf.localhost', role='moderator', affiliation='owner',
         also_capture=[
             EventPattern('stream-iq', to='chat@conf.localhost', iq_type='get',
@@ -255,7 +255,7 @@ def test_role_changes(q, bus, conn, stream):
     # The test user joins a room. Bob is an owner (and moderator); the test
     # user starts out with no affiliation and the rôle of participant.
     MUC = 'aoeu@snth'
-    _, chan, _, immutable_props, disco = join_muc(q, bus, conn, stream,
+    chan, _, immutable_props, disco = join_muc(q, bus, conn, stream,
         MUC, role='participant',
         also_capture=[
             EventPattern('stream-iq', to=MUC, iq_type='get',
@@ -331,7 +331,7 @@ def test_role_changes(q, bus, conn, stream):
 
 def test_broken_server(q, bus, conn, stream):
     MUC = 'bro@ken'
-    _, chan, _ , _ = join_muc(q, bus, conn, stream, MUC, affiliation='owner')
+    chan, _ , _ = join_muc(q, bus, conn, stream, MUC, affiliation='owner')
     owner_iq = q.expect('stream-iq', to=MUC, iq_type='get', query_ns=ns.MUC_OWNER)
     handle_muc_owner_get_iq(stream, owner_iq.stanza)
 
@@ -350,7 +350,7 @@ def test_disconnect_during_update_configuration(q, bus, conn, stream):
     changes to be acked.
     """
     def join_me_up_buttercup(muc):
-        _, chan, _, _ = join_muc(q, bus, conn, stream, muc, affiliation='owner')
+        chan, _, _ = join_muc(q, bus, conn, stream, muc, affiliation='owner')
         # Gabble grabs the owner configuration form to see whether it's
         # possible to change the room description.
         owner_iq = q.expect('stream-iq', to=muc, iq_type='get',

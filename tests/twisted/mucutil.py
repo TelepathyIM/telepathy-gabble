@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import xpath
 
 from servicetest import call_async, wrap_channel, EventPattern, assertLength
-from gabbletest import make_muc_presence, request_muc_handle
+from gabbletest import make_muc_presence
 
 import constants as cs
 import ns
@@ -56,11 +56,10 @@ def try_to_join_muc(q, bus, conn, stream, muc, request=None):
 def join_muc(q, bus, conn, stream, muc, request=None,
         also_capture=[], role='participant', affiliation='none'):
     """
-    Joins 'muc', returning the muc's handle, a proxy object for the channel,
+    Joins 'muc', returning a proxy object for the channel,
     its path and its immutable properties just after the CreateChannel event
     has fired. The room contains one other member.
     """
-    muc_handle = request_muc_handle(q, conn, stream, muc)
     try_to_join_muc(q, bus, conn, stream, muc, request=request)
 
     # Send presence for other member of room.
@@ -76,19 +75,18 @@ def join_muc(q, bus, conn, stream, muc, request=None,
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
         ['Messages', 'Subject.DRAFT', 'RoomConfig1', 'ChatState'])
 
-    return (muc_handle, chan, path, props) + tuple(captured[1:])
+
+    return (chan, path, props) + tuple(captured[1:])
 
 def join_muc_and_check(q, bus, conn, stream, muc, request=None):
     """
     Like join_muc(), but also checks the NewChannels and NewChannel signals and
     the Members property, and returns both members' handles.
     """
-    muc_handle, chan, path, props = \
+    chan, path, props = \
         join_muc(q, bus, conn, stream, muc, request=request)
 
     q.expect('dbus-signal', signal='NewChannels', args=[[(path, props)]])
-    q.expect('dbus-signal', signal='NewChannel',
-        args=[path, cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM, muc_handle, True])
 
     test_handle, bob_handle = conn.get_contact_handles_sync(
         ['%s/test' % muc, '%s/bob' % muc])

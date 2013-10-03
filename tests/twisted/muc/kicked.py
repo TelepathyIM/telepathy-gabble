@@ -14,7 +14,7 @@ MUC = 'deerhoof@evil.lit'
 
 def test(q, bus, conn, stream):
     # The user happily joins a MUC
-    _, chan, _, _ = join_muc(q, bus, conn, stream, MUC)
+    chan, _, _ = join_muc(q, bus, conn, stream, MUC)
     muc_self_handle = chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
             "SelfHandle")
     muc_self_jid = conn.inspect_contact_sync(muc_self_handle)

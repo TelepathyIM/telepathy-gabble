@@ -45,7 +45,7 @@ def test_subject(q, bus, conn, stream, change_subject, send_first,
         moderator):
     room = 'test@conf.localhost'
 
-    room_handle, chan, path, props, disco = join_muc(q, bus, conn, stream,
+    chan, path, props, disco = join_muc(q, bus, conn, stream,
             room,
             also_capture=[EventPattern('stream-iq', iq_type='get',
                 query_name='query', query_ns=ns.DISCO_INFO, to=room)],

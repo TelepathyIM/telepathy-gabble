@@ -68,7 +68,7 @@ def test(q, bus, conn, stream):
     # make it explicit.  Perhaps in future we might change this test to verify
     # that it doesn't "work".
     room_jid = 'clear-air-turbulence@culture.lit'
-    _, muc, _, _ = join_muc(q, bus, conn, stream, room_jid)
+    muc, _, _ = join_muc(q, bus, conn, stream, room_jid)
 
     bob_jid = room_jid + '/bob'
     bob_handle = conn.get_contact_handle_sync(bob_jid)

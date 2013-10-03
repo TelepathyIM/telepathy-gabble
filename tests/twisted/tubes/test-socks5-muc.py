@@ -27,7 +27,7 @@ def test(q, bus, conn, stream):
 
     announce_socks5_proxy(q, stream, disco_event.stanza)
 
-    text_chan = join_muc(q, bus, conn, stream, 'chat@conf.localhost')
+    join_muc(q, bus, conn, stream, 'chat@conf.localhost')
 
     # bob offers a stream tube
     stream_tube_id = 1

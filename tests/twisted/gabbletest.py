@@ -57,11 +57,6 @@ def send_error_reply(stream, iq, error_stanza=None):
 
     stream.send(result)
 
-def request_muc_handle(q, conn, stream, muc_jid):
-    servicetest.call_async(q, conn, 'RequestHandles', 2, [muc_jid])
-    event = q.expect('dbus-return', method='RequestHandles')
-    return event.value[0][0]
-
 def make_muc_presence(affiliation, role, muc_jid, alias, jid=None, photo=None):
     presence = domish.Element((None, 'presence'))
     presence['from'] = '%s/%s' % (muc_jid, alias)

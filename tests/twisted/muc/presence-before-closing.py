@@ -15,7 +15,7 @@ from mucutil import join_muc, echo_muc_presence
 def test(q, bus, conn, stream):
     room = 'test@conf.localhost'
 
-    room_handle, chan, path, props, disco = join_muc(q, bus, conn, stream,
+    chan, path, props, disco = join_muc(q, bus, conn, stream,
             room,
             also_capture=[EventPattern('stream-iq', iq_type='get',
                 query_name='query', query_ns=ns.DISCO_INFO, to=room)])
@@ -52,7 +52,7 @@ def test(q, bus, conn, stream):
 
     # now that the channel has finally closed, let's try and request
     # it again which should succeed!
-    _, chan, _, _ = join_muc(q, bus, conn, stream, room)
+    chan, _, _ = join_muc(q, bus, conn, stream, room)
 
     # let's clear up though.
     chan.Close()
@@ -64,7 +64,7 @@ def test(q, bus, conn, stream):
 def test_then_disconnect(q, bus, conn, stream):
     room = 'test@conf.localhost'
 
-    room_handle, chan, path, props, disco = join_muc(q, bus, conn, stream,
+    chan, path, props, disco = join_muc(q, bus, conn, stream,
             room,
             also_capture=[EventPattern('stream-iq', iq_type='get',
                 query_name='query', query_ns=ns.DISCO_INFO, to=room)])

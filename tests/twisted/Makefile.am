@@ -83,8 +83,6 @@ TWISTED_TESTS = \
 	roster/push-from-contact.py \
 	roster/push-without-id.py \
 	roster/removed-from-rp-subscribe.py \
-	roster/request-group-after-roster.py \
-	roster/request-group-before-roster.py \
 	roster/test-google-roster.py \
 	roster/test-roster-item-deletion.py \
 	roster/test-roster.py \

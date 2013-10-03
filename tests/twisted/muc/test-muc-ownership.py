@@ -7,9 +7,7 @@ By default, MUC channels should have the flag set. The flag should be unset
 when presence is received that includes the MUC JID's owner JID.
 """
 
-import dbus
-
-from gabbletest import make_result_iq, exec_test, make_muc_presence
+from gabbletest import exec_test, make_muc_presence
 from servicetest import (
     call_async, EventPattern, assertEquals, assertFlagsSet, assertFlagsUnset,
     wrap_channel,

@@ -7,8 +7,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test, make_result_iq, make_muc_presence
-from servicetest import (EventPattern, assertEquals, assertLength,
-        assertContains, call_async)
+from servicetest import (EventPattern, assertEquals, call_async)
 import constants as cs
 import ns
 

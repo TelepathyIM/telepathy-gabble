@@ -2,8 +2,6 @@
 Test broken groups on the roster (regression test for fd.o #12791)
 """
 
-import dbus
-
 from gabbletest import exec_test
 from rostertest import expect_contact_list_signals, check_contact_list_signals
 from servicetest import assertLength

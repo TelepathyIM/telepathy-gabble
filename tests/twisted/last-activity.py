@@ -1,7 +1,7 @@
 """
 Trivial smoke-test for XEP-0012 support.
 """
-from servicetest import assertEquals, assertContains
+from servicetest import assertEquals
 from gabbletest import exec_test, elem, elem_iq
 import ns
 

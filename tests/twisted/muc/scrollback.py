@@ -7,12 +7,9 @@ MUC's bare JID.
 Also acts as a scrollback messages in general!
 """
 
-import dbus
-
 from servicetest import assertEquals, assertContains
 from gabbletest import exec_test, elem
 
-import constants as cs
 import ns
 
 from mucutil import join_muc_and_check

@@ -64,7 +64,6 @@ def test(q, bus, conn, stream):
     call_async(q, group_iface, 'AddMembers', [handle], '')
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
-    item = event.query.firstChildElement()
 
     acknowledge_iq(stream, event.stanza)
     q.expect('dbus-return', method='AddMembers')

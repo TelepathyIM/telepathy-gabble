@@ -2,13 +2,11 @@
 Test Gabble's different addressing interfaces.
 """
 
-import dbus
-from servicetest import unwrap, tp_path_prefix, assertEquals, ProxyWrapper, \
-    assertContains, assertSameSets, assertDoesNotContain, pretty
+from servicetest import tp_path_prefix, assertEquals, ProxyWrapper, \
+    assertContains, assertSameSets
 from gabbletest import exec_test, call_async
 import constants as cs
 import ns
-import time
 
 def test_protocol(q, bus, conn, stream):
     proto = ProxyWrapper(

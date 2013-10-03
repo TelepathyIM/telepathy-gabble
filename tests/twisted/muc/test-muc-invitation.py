@@ -2,8 +2,6 @@
 Test MUC invitations.
 """
 
-import dbus
-
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_muc_presence

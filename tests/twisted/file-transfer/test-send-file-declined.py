@@ -24,8 +24,8 @@ class SendFileDeclinedTest(SendFileTest):
         error = reply.addElement((None, 'error'))
         error['code'] = '403'
         error['type'] = 'cancel'
-        forbidden = error.addElement((ns.STANZA, 'forbidden'))
-        text = error.addElement((ns.STANZA, 'text'), content='Offer Declined')
+        error.addElement((ns.STANZA, 'forbidden'))
+        error.addElement((ns.STANZA, 'text'), content='Offer Declined')
         self.stream.send(reply)
 
         e = self.q.expect('dbus-signal', signal='FileTransferStateChanged')

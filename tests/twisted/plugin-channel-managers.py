@@ -2,10 +2,8 @@
 Test Gabble's implementation of channel managers from plugins.
 """
 
-from servicetest import (
-    sync_dbus, call_async, EventPattern, assertEquals, assertContains,
-    )
-from gabbletest import exec_test, send_error_reply, acknowledge_iq, sync_stream
+from servicetest import assertContains
+from gabbletest import exec_test
 import constants as cs
 from config import PLUGINS_ENABLED
 

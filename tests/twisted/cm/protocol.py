@@ -6,7 +6,6 @@ import dbus
 from servicetest import unwrap, tp_path_prefix, assertEquals, assertContains
 from gabbletest import exec_test, call_async
 import constants as cs
-import time
 
 def test(q, bus, conn, stream):
     cm = bus.get_object(cs.CM + '.gabble',

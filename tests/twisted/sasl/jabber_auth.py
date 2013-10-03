@@ -2,20 +2,14 @@
 Test the server sasl channel with Jabber auth pseudomechanisms
 """
 
-from twisted.words.xish import domish
-from twisted.words.protocols.jabber import xmlstream
 from twisted.words.protocols.jabber.client import IQ
 
-import hashlib
-
-import dbus
-
-from servicetest import (EventPattern, assertEquals, assertSameSets,
+from servicetest import (assertEquals, assertSameSets,
         assertContains)
 from gabbletest import exec_test, JabberXmlStream, JabberAuthenticator
 import constants as cs
 import ns
-from saslutil import expect_sasl_channel, abort_auth
+from saslutil import expect_sasl_channel
 
 JID = "test@localhost"
 PASSWORD = "pass"

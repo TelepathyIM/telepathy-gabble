@@ -4,7 +4,7 @@ Tests Gabble's implementation of XEP-0092.
 """
 
 from twisted.words.xish import xpath
-from servicetest import assertLength, assertEquals
+from servicetest import assertLength
 from gabbletest import exec_test, elem_iq, elem
 import ns
 

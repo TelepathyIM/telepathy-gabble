@@ -5,7 +5,7 @@ Utility functions for tests that need to interact with MUCs.
 
 import dbus
 
-from twisted.words.xish import domish, xpath
+from twisted.words.xish import xpath
 
 from servicetest import call_async, wrap_channel, EventPattern, assertLength
 from gabbletest import make_muc_presence, request_muc_handle

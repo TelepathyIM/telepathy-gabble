@@ -1,7 +1,5 @@
 """Test the SASL channel being undispatchable."""
 
-import dbus
-
 from servicetest import EventPattern
 from gabbletest import exec_test
 import constants as cs

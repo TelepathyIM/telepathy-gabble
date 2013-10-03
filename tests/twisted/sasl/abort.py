@@ -2,9 +2,7 @@
 Test the server sasl aborting at different stages
 """
 
-import dbus
-
-from servicetest import EventPattern, assertEquals
+from servicetest import EventPattern
 from gabbletest import exec_test, call_async
 import constants as cs
 from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel, \

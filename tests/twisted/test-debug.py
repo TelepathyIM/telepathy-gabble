@@ -3,8 +3,6 @@
 Test the debug message interface.
 """
 
-import dbus
-
 from servicetest import assertEquals, sync_dbus, call_async, ProxyWrapper
 from servicetest import EventPattern
 from gabbletest import exec_test

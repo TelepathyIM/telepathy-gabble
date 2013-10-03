@@ -5,7 +5,7 @@ Test Gabble's implementation of sidecars own caps, using the test plugin.
 from twisted.words.protocols.jabber.client import IQ
 from twisted.words.xish import xpath
 
-from servicetest import call_async, EventPattern, assertEquals, assertContains
+from servicetest import call_async, EventPattern, assertEquals
 from gabbletest import exec_test, acknowledge_iq
 from caps_helper import compute_caps_hash
 import constants as cs
@@ -35,7 +35,6 @@ def test(q, bus, conn, stream):
     ver = compute_caps_hash(identities, features, {})
 
     iq = IQ(stream, "get")
-    id = iq['id']
     query = iq.addElement((ns.DISCO_INFO, 'query'))
     query['node'] = ns.GABBLE_CAPS + '#' + ver
     stream.send(iq)

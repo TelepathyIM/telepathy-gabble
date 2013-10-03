@@ -334,7 +334,6 @@ class ReceiveFileTest(FileTransferTest):
     def _read_file_from_socket(self, s):
         # Read the file from Gabble's socket
         data = ''
-        read = 0
         to_receive = self.file.size - self.file.offset
 
         e = self.q.expect('dbus-signal', signal='TransferredBytesChanged')

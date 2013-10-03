@@ -4,11 +4,10 @@ A smoketest for the XMPP console API.
 
 from servicetest import (
     ProxyWrapper, EventPattern,
-    call_async, assertEquals, assertContains, assertNotEquals, sync_dbus,
+    call_async, assertEquals, assertContains, sync_dbus,
 )
 from gabbletest import exec_test, acknowledge_iq, elem, elem_iq
 from config import PLUGINS_ENABLED
-from twisted.words.xish import domish
 import ns
 import constants as cs
 

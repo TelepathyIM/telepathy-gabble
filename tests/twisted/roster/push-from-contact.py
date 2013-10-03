@@ -34,7 +34,7 @@ def test(q, bus, conn, stream):
           EventPattern('dbus-signal', signal='ContactsChanged'),
         ])
 
-    e = q.expect('stream-iq', iq_type='error')
+    q.expect('stream-iq', iq_type='error')
 
 if __name__ == '__main__':
     exec_test(test)

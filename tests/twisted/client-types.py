@@ -1,7 +1,6 @@
 """
 Test Conn.I.ClientTypes
 """
-import random
 from functools import partial
 
 from servicetest import EventPattern, assertEquals, assertLength, assertContains, assertSameSets

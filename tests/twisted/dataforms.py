@@ -2,10 +2,8 @@
 Test dataforms
 """
 
-from servicetest import sync_dbus, assertEquals
-from gabbletest import exec_test, sync_stream
-import ns
-import constants as cs
+from servicetest import assertEquals
+from gabbletest import exec_test
 from caps_helper import receive_presence_and_ask_caps
 
 from config import VOIP_ENABLED

@@ -2,11 +2,11 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from servicetest import (assertEquals, EventPattern)
-from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
+from servicetest import EventPattern
+from gabbletest import exec_test
 import constants as cs
 
-from caps_helper import compute_caps_hash, \
+from caps_helper import \
     text_fixed_properties, text_allowed_properties, \
     stream_tube_fixed_properties, stream_tube_allowed_properties, \
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, \

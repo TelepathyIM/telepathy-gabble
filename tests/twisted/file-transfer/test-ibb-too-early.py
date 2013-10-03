@@ -25,7 +25,7 @@ class IbbTooEarlyTest (ReceiveFileTest):
         # Instead of us accepting the other side starts sending the iq open
         # skip the open step explicitely
         self.bytestream.checked = True
-        event = self.bytestream.open_bytestream(
+        self.bytestream.open_bytestream(
             expected_after = [ EventPattern ('stream-iq', iq_type = 'error') ] )
         return True
 

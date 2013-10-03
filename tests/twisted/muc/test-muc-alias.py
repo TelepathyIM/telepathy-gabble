@@ -2,7 +2,7 @@
 Test that our alias is used to create MUC JIDs.
 """
 
-from gabbletest import exec_test, make_muc_presence, request_muc_handle, \
+from gabbletest import exec_test, make_muc_presence, \
     expect_and_handle_get_vcard, expect_and_handle_set_vcard
 from servicetest import call_async, EventPattern
 

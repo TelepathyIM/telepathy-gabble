@@ -2,21 +2,15 @@
 Test entering and leaving power saving mode.
 """
 
-import config
-
 import constants as cs
 
 from gabbletest import exec_test, GoogleXmlStream, make_result_iq, \
     send_error_reply, disconnect_conn, make_presence, sync_stream, elem, \
     acknowledge_iq
-from servicetest import call_async, Event, assertEquals, EventPattern, \
-    assertContains, assertDoesNotContain, sync_dbus
+from servicetest import call_async, assertEquals, EventPattern, \
+    assertContains, sync_dbus
 import ns
 
-import dbus
-import dbus.service
-
-from twisted.internet import reactor
 from twisted.words.xish import domish
 
 def expect_command(q, name):

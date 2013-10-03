@@ -3,8 +3,7 @@ Test the different ways to request a channel using the Conference interface
 """
 
 from gabbletest import exec_test, make_muc_presence
-from servicetest import (call_async, EventPattern, assertEquals,
-        assertContains)
+from servicetest import (call_async, assertEquals, assertContains)
 import constants as cs
 
 import dbus

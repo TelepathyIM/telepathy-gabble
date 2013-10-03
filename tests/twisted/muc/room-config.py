@@ -8,9 +8,9 @@ from twisted.words.xish import xpath
 
 from gabbletest import (
     exec_test, make_result_iq, acknowledge_iq, make_muc_presence,
-    request_muc_handle, sync_stream, disconnect_conn)
+    disconnect_conn)
 from servicetest import (
-    call_async, wrap_channel, EventPattern, assertEquals, assertSameSets,
+    call_async, EventPattern, assertEquals, assertSameSets,
     assertContains,
 )
 from mucutil import join_muc

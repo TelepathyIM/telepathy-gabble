@@ -3,7 +3,7 @@ Test the server sasl channel with the PLAIN mechanism
 """
 import dbus
 
-from servicetest import EventPattern, assertEquals, assertSameSets, call_async
+from servicetest import EventPattern, assertSameSets, call_async
 from gabbletest import exec_test
 import constants as cs
 from saslutil import SaslEventAuthenticator, connect_and_get_sasl_channel

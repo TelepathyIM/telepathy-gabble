@@ -2,8 +2,8 @@ import dbus
 
 from twisted.words.xish import xpath
 
-from servicetest import (assertEquals, EventPattern)
-from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
+from servicetest import (assertEquals)
+from gabbletest import make_result_iq, sync_stream, make_presence
 import constants as cs
 
 from caps_helper import compute_caps_hash, \

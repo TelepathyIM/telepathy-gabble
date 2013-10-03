@@ -2,10 +2,9 @@ import dbus
 import socket
 import hashlib
 import time
-import datetime
 
 from servicetest import EventPattern, assertEquals, assertLength, assertSameSets
-from gabbletest import exec_test, sync_stream, make_result_iq, elem_iq, elem
+from gabbletest import exec_test, elem_iq, elem
 import ns
 
 from caps_helper import text_fixed_properties, text_allowed_properties, \
@@ -17,8 +16,6 @@ from caps_helper import text_fixed_properties, text_allowed_properties, \
 from twisted.words.xish import domish, xpath
 
 import constants as cs
-import sys
-
 
 class File(object):
     DEFAULT_DATA = "What a nice file"

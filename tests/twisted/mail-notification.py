@@ -56,7 +56,6 @@ def test_google_featured(q, bus, conn, stream):
     # Email thread 3 data
     thread3_id = "3"
     thread3_date = 1235L
-    thread3_url = 'http://mail.google.com/mail/#inbox/%x' % long(thread3_id)
     thread3_senders = [('Le Chat', 'le@chat.fr'),]
     thread3_subject = "subject3"
     thread3_snippet = "body3"

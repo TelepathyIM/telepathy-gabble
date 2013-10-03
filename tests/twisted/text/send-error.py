@@ -6,7 +6,7 @@ and a delivery report on a 1-1 text channel to that contact.
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import call_async, EventPattern
+from servicetest import EventPattern
 import constants as cs
 import ns
 
@@ -16,12 +16,11 @@ def test_temporary_error(q, bus, conn, stream):
     jid = 'foo@bar.com'
     foo_handle = conn.get_contact_handle_sync(jid)
 
-    path = conn.Requests.CreateChannel(
+    conn.Requests.CreateChannel(
             { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_HANDLE: foo_handle,
               })[0]
-    text_chan = bus.get_object(conn.bus_name, path)
 
     # <message from='foo@bar.com' type='error'>
     #   <body>what is up, my good sir?</body>
@@ -94,12 +93,11 @@ def test_permanent_error(q, bus, conn, stream):
     jid = 'wee@ninja.jp'
     ninja_handle = conn.get_contact_handle_sync(jid)
 
-    path = conn.Requests.CreateChannel(
+    conn.Requests.CreateChannel(
             { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_HANDLE: ninja_handle,
               })[0]
-    text_chan = bus.get_object(conn.bus_name, path)
 
     # <message from='wee@ninja.jp' type='error'>
     #   <body>hello? is there anyone there?</body>

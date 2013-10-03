@@ -2,7 +2,7 @@
 import socket
 
 from gabbletest import (
-    exec_test, elem, elem_iq, sync_stream, make_presence, send_error_reply,
+    exec_test, elem, elem_iq, make_presence, send_error_reply,
     make_result_iq, sync_stream)
 from servicetest import (
     EventPattern, call_async, assertEquals, assertLength,

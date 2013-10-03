@@ -9,7 +9,7 @@ from gabbletest import (
     )
 from servicetest import call_async, unwrap
 from constants import (
-    HT_CONTACT, HT_ROOM,
+    HT_ROOM,
     CONN_IFACE_REQUESTS, CHANNEL_TYPE_TEXT, CHANNEL_IFACE_GROUP,
     CHANNEL_TYPE, TARGET_HANDLE_TYPE, TARGET_HANDLE,
     )

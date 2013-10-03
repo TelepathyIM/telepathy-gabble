@@ -42,7 +42,7 @@ def test_close_straight_after_accept(q, bus, conn, stream):
              interface=cs.CHANNEL_IFACE_SASL_AUTH,
              args=[cs.SASL_STATUS_SUCCEEDED, '', {}])
 
-    e = q.expect('dbus-signal', signal='StatusChanged',
+    q.expect('dbus-signal', signal='StatusChanged',
                  args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
 if __name__ == '__main__':

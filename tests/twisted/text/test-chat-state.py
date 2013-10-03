@@ -7,8 +7,7 @@ channels.
 from twisted.words.xish import domish
 
 from servicetest import (assertEquals, assertNotEquals,
-    assertLength, wrap_channel, EventPattern, call_async,
-    sync_dbus)
+    assertLength, wrap_channel, EventPattern, sync_dbus)
 from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
 import constants as cs
 import ns

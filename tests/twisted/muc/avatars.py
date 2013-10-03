@@ -7,12 +7,11 @@
 
 import hashlib
 from servicetest import (
-    call_async, EventPattern, assertEquals, assertLength, sync_dbus,
-    wrap_channel,
+    call_async, EventPattern, assertEquals, assertLength, wrap_channel,
     )
 from gabbletest import (
     exec_test, expect_and_handle_get_vcard, expect_and_handle_set_vcard,
-    make_muc_presence, elem,
+    make_muc_presence,
     )
 from twisted.words.xish import xpath
 import ns

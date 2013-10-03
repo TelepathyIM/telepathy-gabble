@@ -1,5 +1,4 @@
-from servicetest import call_async, EventPattern
-from gabbletest import exec_test, acknowledge_iq, make_result_iq
+from gabbletest import exec_test
 import constants as cs
 
 def test_get_all(conn):

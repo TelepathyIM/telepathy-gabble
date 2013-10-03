@@ -2,15 +2,11 @@
 Test for fd.o#19930.
 """
 
-import dbus
-
-from twisted.words.xish import domish
-
 from gabbletest import (
-    exec_test, make_result_iq, request_muc_handle, wrap_channel, elem,
+    exec_test, request_muc_handle, wrap_channel, elem,
 )
-from servicetest import (EventPattern, assertEquals, assertLength,
-        assertContains, sync_dbus, call_async)
+from servicetest import (EventPattern, assertEquals,
+        sync_dbus, call_async)
 import constants as cs
 import ns
 

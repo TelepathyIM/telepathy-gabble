@@ -5,13 +5,8 @@ Test the gateways plugin
 import dbus
 from twisted.words.xish import domish, xpath
 
-from servicetest import (
-    sync_dbus, call_async, EventPattern, assertEquals, assertContains,
-    )
-from gabbletest import (
-    exec_test, send_error_reply, acknowledge_iq, sync_stream,
-    make_presence,
-    )
+from servicetest import call_async, EventPattern, assertEquals
+from gabbletest import exec_test, send_error_reply, acknowledge_iq, make_presence
 import constants as cs
 import ns
 from config import PLUGINS_ENABLED

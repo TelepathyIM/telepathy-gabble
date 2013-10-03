@@ -1,7 +1,4 @@
-import dbus
-
-from gabbletest import exec_test, GoogleXmlStream, acknowledge_iq, BaseXmlStream,\
-    sync_stream
+from gabbletest import exec_test, GoogleXmlStream, acknowledge_iq, BaseXmlStream
 from servicetest import call_async, EventPattern
 
 from twisted.words.protocols.jabber.client import IQ

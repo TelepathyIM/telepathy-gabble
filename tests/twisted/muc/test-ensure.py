@@ -3,7 +3,7 @@ Test that EnsureChannel works for MUCs, particularly in the case when there
 are several pending requests for the same MUC.
 """
 
-from gabbletest import make_result_iq, exec_test, make_muc_presence
+from gabbletest import exec_test, make_muc_presence
 from servicetest import (call_async, EventPattern, assertContains,
         assertEquals)
 import constants as cs

@@ -3,7 +3,7 @@
 import dbus
 
 from file_transfer_helper import exec_file_transfer_test, ReceiveFileTest, SendFileTest
-from servicetest import assertEquals, call_async
+from servicetest import call_async
 
 import constants as cs
 

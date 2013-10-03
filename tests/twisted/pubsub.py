@@ -1,7 +1,6 @@
 """Send malformed pubsub notifications to be sure that Gabble isn't confused about those"""
 from gabbletest import exec_test, elem, sync_stream
 
-import constants as cs
 import ns
 
 def make_pubsub_event(from_, node, *contents):

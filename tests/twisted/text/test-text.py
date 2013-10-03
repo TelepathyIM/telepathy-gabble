@@ -8,10 +8,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test, elem
-from servicetest import (
-    EventPattern, wrap_channel,
-    assertEquals, assertNotEquals, assertLength,
-    )
+from servicetest import (EventPattern, wrap_channel, assertEquals, assertLength)
 import constants as cs
 
 def test(q, bus, conn, stream):

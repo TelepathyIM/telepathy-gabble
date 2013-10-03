@@ -36,17 +36,15 @@ make a FT service advertised as a cap.
 
 import dbus
 
-from twisted.words.xish import xpath
-
 from servicetest import assertEquals, assertLength, assertContains,\
         assertDoesNotContain, sync_dbus
-from gabbletest import exec_test, make_result_iq, sync_stream, make_presence
+from gabbletest import exec_test, sync_stream
 import constants as cs
 
 from caps_helper import compute_caps_hash, text_fixed_properties,\
     text_allowed_properties, stream_tube_fixed_properties, stream_tube_allowed_properties,\
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, receive_presence_and_ask_caps,\
-    caps_contain, ft_fixed_properties, ft_allowed_properties, ft_allowed_properties_with_metadata, \
+    ft_fixed_properties, ft_allowed_properties, ft_allowed_properties_with_metadata, \
     presence_and_disco
 import ns
 

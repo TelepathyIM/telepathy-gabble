@@ -8,7 +8,6 @@ from servicetest import (
 from gabbletest import (
     exec_test, make_result_iq
     )
-import constants as cs
 import ns
 
 def add_contact(iq, jid, alias):

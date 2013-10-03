@@ -2,13 +2,6 @@
 Test the server sasl channel with the PLAIN mechanism
 """
 
-from twisted.words.xish import domish
-from twisted.words.protocols.jabber import xmlstream
-
-from base64 import b64decode
-
-import dbus
-
 from servicetest import EventPattern, assertEquals, assertContains, call_async
 from gabbletest import exec_test
 import constants as cs

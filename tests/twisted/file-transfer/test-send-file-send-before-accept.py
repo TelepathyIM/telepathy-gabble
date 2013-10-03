@@ -1,10 +1,6 @@
-import dbus
 import constants as cs
 from servicetest import EventPattern
 from file_transfer_helper import SendFileTest, exec_file_transfer_test
-
-from twisted.words.xish import domish
-import ns
 
 from config import FILE_TRANSFER_ENABLED
 

@@ -39,7 +39,7 @@ def test(q, bus, conn, stream):
     assertEquals('foo@mit.edu',
         unwrap(proto_iface.NormalizeContact('foo@MIT.Edu/Telepathy')))
 
-    # org.freedesktop.Telepathy.Protocol.Interface.Presence
+    # Protocol.Interface.Presence
     expected_status = {'available': (cs.PRESENCE_AVAILABLE,     True,  True),
                        'dnd'      : (cs.PRESENCE_BUSY,          True,  True),
                        'unknown'  : (cs.PRESENCE_UNKNOWN,       False, False),

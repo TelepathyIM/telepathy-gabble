@@ -121,14 +121,12 @@ def test(q, bus, conn, stream, bytestream_cls,
     assertContains((path, prop), all_channels)
 
     tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamTube')
-    stream_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_STREAM_TUBE)
-    chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
     tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE)
 
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
-    call_async(q, stream_tube_iface, 'Offer', address_type, address, access_control, {'foo': 'bar'})
+    call_async(q, tube_chan.StreamTube, 'Offer', address_type, address, access_control, {'foo': 'bar'})
 
     stream_event, _, status_event = q.expect_many(
         EventPattern('stream-presence', to='chat@conf.localhost/test'),
@@ -190,7 +188,7 @@ def test(q, bus, conn, stream, bytestream_cls,
 
     use_tube(q, bytestream, protocol, conn_id)
 
-    chan_iface.Close()
+    tube_chan.Channel.Close()
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'))

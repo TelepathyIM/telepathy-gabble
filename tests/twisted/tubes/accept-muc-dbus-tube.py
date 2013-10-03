@@ -64,14 +64,12 @@ def test(q, bus, conn, stream, access_control):
         props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS])
 
     tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'DBusTube')
-    dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
-    tube_chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
 
     # only Bob is in DBusNames
     dbus_names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assertEquals({bob_handle: bob_bus_name}, dbus_names)
 
-    call_async(q, dbus_tube_iface, 'Accept', access_control)
+    call_async(q, tube_chan.DBusTube, 'Accept', access_control)
 
     return_event, names_changed1, names_changed2, presence_event = q.expect_many(
         EventPattern('dbus-return', method='Accept'),
@@ -106,7 +104,7 @@ def test(q, bus, conn, stream, access_control):
     assertEquals({tubes_self_handle: self_bus_name}, added)
     assertEquals([], removed)
 
-    tube_chan_iface.Close()
+    tube_chan.Channel.Close()
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'))

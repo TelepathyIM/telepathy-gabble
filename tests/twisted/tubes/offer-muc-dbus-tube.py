@@ -147,23 +147,20 @@ def test(q, bus, conn, stream, access_control):
     assertContains((path, prop), all_channels)
 
     tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'DBusTube')
-    dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
-    chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
-    tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE,
-        byte_arrays=True)
+    tube_props = tube_chan.Properties.GetAll(cs.CHANNEL_IFACE_TUBE, byte_arrays=True)
 
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # try to offer using a wrong access control
     try:
-        dbus_tube_iface.Offer(sample_parameters, cs.SOCKET_ACCESS_CONTROL_PORT)
+        tube_chan.DBusTube.Offer(sample_parameters, cs.SOCKET_ACCESS_CONTROL_PORT)
     except dbus.DBusException, e:
         assertEquals(e.get_dbus_name(), cs.INVALID_ARGUMENT)
     else:
         assert False
 
     # offer the tube
-    call_async(q, dbus_tube_iface, 'Offer', sample_parameters, access_control)
+    call_async(q, tube_chan.DBusTube, 'Offer', sample_parameters, access_control)
 
     presence_event, return_event, status_event, dbus_changed_event = q.expect_many(
         EventPattern('stream-presence', to='chat2@conf.localhost/test'),
@@ -242,7 +239,7 @@ def test(q, bus, conn, stream, access_control):
     names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assert names == {tube_self_handle: my_bus_name}
 
-    chan_iface.Close()
+    tube_chan.Channel.Close()
     _, _, event = q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),
         EventPattern('dbus-signal', signal='ChannelClosed'),

@@ -5,7 +5,7 @@ import os
 
 import dbus
 
-from servicetest import call_async, EventPattern, unwrap, assertContains, assertEquals
+from servicetest import call_async, EventPattern, unwrap, assertContains, assertEquals, wrap_channel
 from gabbletest import acknowledge_iq, make_muc_presence
 import constants as cs
 import ns
@@ -120,7 +120,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
     assertContains((path, prop), all_channels)
 
-    tube_chan = bus.get_object(conn.bus_name, path)
+    tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamTube')
     stream_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_STREAM_TUBE)
     chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
     tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE)
@@ -135,7 +135,7 @@ def test(q, bus, conn, stream, bytestream_cls,
         EventPattern('dbus-return', method='Offer'),
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]))
 
-    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
+    tube_self_handle = tube_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'SelfHandle')
     assert conn.inspect_contact_sync(tube_self_handle) == 'chat@conf.localhost/test'
 
     presence = stream_event.stanza

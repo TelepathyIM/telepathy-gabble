@@ -2,7 +2,7 @@ import dbus
 
 from servicetest import (
     assertEquals, assertNotEquals, assertSameSets,
-    call_async, EventPattern,
+    call_async, EventPattern, wrap_channel
 )
 from gabbletest import exec_test, acknowledge_iq, make_muc_presence
 import constants as cs
@@ -63,8 +63,7 @@ def test(q, bus, conn, stream, access_control):
                     cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
         props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS])
 
-    tube_chan = bus.get_object(conn.bus_name, path)
-    tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_IFACE_TUBE)
+    tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'DBusTube')
     dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
     tube_chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
 
@@ -92,7 +91,7 @@ def test(q, bus, conn, stream, access_control):
     assertEquals('1', tube_node['id'])
     self_bus_name = tube_node['dbus-name']
 
-    tubes_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
+    tubes_self_handle = tube_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'SelfHandle')
     assertNotEquals(0, tubes_self_handle)
 
     # both of us are in DBusNames now

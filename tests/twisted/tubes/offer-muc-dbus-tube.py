@@ -6,7 +6,7 @@ import dbus
 from dbus.connection import Connection
 from dbus.lowlevel import SignalMessage
 
-from servicetest import call_async, EventPattern, assertContains, assertEquals
+from servicetest import call_async, EventPattern, assertContains, assertEquals, wrap_channel
 from gabbletest import exec_test, acknowledge_iq, elem, make_muc_presence, sync_stream
 import ns
 import constants as cs
@@ -146,7 +146,7 @@ def test(q, bus, conn, stream, access_control):
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
     assertContains((path, prop), all_channels)
 
-    tube_chan = bus.get_object(conn.bus_name, path)
+    tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'DBusTube')
     dbus_tube_iface = dbus.Interface(tube_chan, cs.CHANNEL_TYPE_DBUS_TUBE)
     chan_iface = dbus.Interface(tube_chan, cs.CHANNEL)
     tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE,
@@ -171,7 +171,7 @@ def test(q, bus, conn, stream, access_control):
         EventPattern('dbus-signal', signal='TubeChannelStateChanged', args=[cs.TUBE_CHANNEL_STATE_OPEN]),
         EventPattern('dbus-signal', signal='DBusNamesChanged', interface=cs.CHANNEL_TYPE_DBUS_TUBE))
 
-    tube_self_handle = tube_chan.GetSelfHandle(dbus_interface=cs.CHANNEL_IFACE_GROUP)
+    tube_self_handle = tube_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'SelfHandle')
     assert tube_self_handle != 0
 
     # handle presence_event

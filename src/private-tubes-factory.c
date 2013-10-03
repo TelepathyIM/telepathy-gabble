@@ -967,7 +967,7 @@ static void
 channel_closed_cb (GabbleTubeIface *tube,
     GabblePrivateTubesFactory *self)
 {
-  guint id;
+  guint64 id;
 
   g_object_get (tube,
       "id", &id,

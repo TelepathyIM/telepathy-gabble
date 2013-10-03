@@ -1,4 +1,4 @@
-from gabbletest import exec_test, elem, request_muc_handle, make_muc_presence
+from gabbletest import exec_test, elem, make_muc_presence
 from servicetest import call_async, EventPattern, wrap_channel, assertEquals
 import constants as cs
 import ns
@@ -12,12 +12,11 @@ def expect_attempt(q, expected_muc_jid, expected_password):
 
 def test(q, bus, conn, stream):
     room = 'chat@conf.localhost'
-    handle = request_muc_handle(q, conn, stream, room)
 
     call_async(q, conn.Requests, 'CreateChannel', {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
             cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-            cs.TARGET_HANDLE: handle})
+            cs.TARGET_ID: room })
 
     expected_muc_jid = '%s/%s' % (room, 'test')
     q.expect('stream-presence', to=expected_muc_jid)

@@ -5,13 +5,13 @@ Test dealing with the server giving you a nick you didn't ask for.
 import dbus
 
 from gabbletest import (
-    exec_test, make_muc_presence, request_muc_handle
+    exec_test, make_muc_presence
     )
 from servicetest import call_async, unwrap
 from constants import (
     HT_ROOM,
     CONN_IFACE_REQUESTS, CHANNEL_TYPE_TEXT, CHANNEL_IFACE_GROUP,
-    CHANNEL_TYPE, TARGET_HANDLE_TYPE, TARGET_HANDLE,
+    CHANNEL_TYPE, TARGET_HANDLE_TYPE, TARGET_ID,
     )
 import constants as cs
 
@@ -21,12 +21,11 @@ def test(q, bus, conn, stream):
     requests = dbus.Interface(conn, CONN_IFACE_REQUESTS)
 
     room_jid = 'chat@conf.localhost'
-    room_handle = request_muc_handle(q, conn, stream, room_jid)
 
     call_async(q, requests, 'CreateChannel',
         dbus.Dictionary({ CHANNEL_TYPE: CHANNEL_TYPE_TEXT,
                           TARGET_HANDLE_TYPE: HT_ROOM,
-                          TARGET_HANDLE: room_handle,
+                          TARGET_ID: room_jid,
                         }, signature='sv'))
 
     expected_jid = '%s/%s' % (room_jid, 'test')

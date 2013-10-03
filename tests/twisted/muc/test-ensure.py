@@ -12,25 +12,21 @@ def test(q, bus, conn, stream):
     # Need to call this asynchronously as it involves Gabble sending us a
     # query.
     jids = ['chat@conf.localhost', 'chien@conf.localhost']
-    call_async(q, conn, 'RequestHandles', 2, jids)
 
-    event = q.expect('dbus-return', method='RequestHandles')
-    room_handles = event.value[0]
+    test_create_ensure(q, conn, bus, stream, jids[0])
+    test_ensure_ensure(q, conn, bus, stream, jids[1])
 
-    test_create_ensure(q, conn, bus, stream, jids[0], room_handles[0])
-    test_ensure_ensure(q, conn, bus, stream, jids[1], room_handles[1])
-
-def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
+def test_create_ensure(q, conn, bus, stream, room_jid):
     # Call both Create and Ensure for the same channel.
     call_async(q, conn.Requests, 'CreateChannel',
            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
              cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-             cs.TARGET_HANDLE: room_handle,
+             cs.TARGET_ID: room_jid,
            })
     call_async(q, conn.Requests, 'EnsureChannel',
            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
              cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-             cs.TARGET_HANDLE: room_handle,
+             cs.TARGET_ID: room_jid,
            })
 
     mc, _ = q.expect_many(
@@ -84,17 +80,17 @@ def test_create_ensure(q, conn, bus, stream, room_jid, room_handle):
             c_props[cs.DELIVERY_REPORTING_SUPPORT])
 
 
-def test_ensure_ensure(q, conn, bus, stream, room_jid, room_handle):
+def test_ensure_ensure(q, conn, bus, stream, room_jid):
     # Call Ensure twice for the same channel.
     call_async(q, conn.Requests, 'EnsureChannel',
            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
              cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-             cs.TARGET_HANDLE: room_handle,
+             cs.TARGET_ID: room_jid,
            })
     call_async(q, conn.Requests, 'EnsureChannel',
            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
              cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
-             cs.TARGET_HANDLE: room_handle,
+             cs.TARGET_ID: room_jid,
            })
 
     mc, _ = q.expect_many(

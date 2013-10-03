@@ -16,10 +16,12 @@ import constants as cs
 
 def test(q, bus, conn, stream):
     self_handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-    room_handle = conn.RequestHandles(cs.HT_ROOM, ['chat@conf.localhost'])[0]
 
-    call_async(q, conn, 'RequestChannel', cs.CHANNEL_TYPE_TEXT, cs.HT_ROOM,
-        room_handle, True)
+    call_async(q, conn.Requests, 'CreateChannel',
+            { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+              cs.TARGET_HANDLE_TYPE: cs.HT_ROOM,
+              cs.TARGET_ID: 'chat@conf.localhost'
+            })
 
     gfc, _, _, _ = q.expect_many(
         # Initial group flags
@@ -77,7 +79,7 @@ def test(q, bus, conn, stream):
     assertEquals(expected_members, sorted(added))
     assertEquals(expected_owners, owners)
 
-    event = q.expect('dbus-return', method='RequestChannel')
+    event = q.expect('dbus-return', method='CreateChannel')
 
     chan = wrap_channel(bus.get_object(conn.bus_name, event.value[0]), 'Text')
 

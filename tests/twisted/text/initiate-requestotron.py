@@ -31,9 +31,8 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE: foo_handle,
               })
 
-    ret, old_sig, new_sig = q.expect_many(
+    ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 
@@ -50,12 +49,6 @@ def test(q, bus, conn, stream):
     assertEquals(0, emitted_props[cs.MESSAGE_PART_SUPPORT_FLAGS])
     assertEquals(cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_FAILURES,
             emitted_props[cs.DELIVERY_REPORTING_SUPPORT])
-
-    assert old_sig.args[0] == ret.value[0]
-    assert old_sig.args[1] == cs.CHANNEL_TYPE_TEXT
-    assert old_sig.args[2] == cs.HT_CONTACT
-    assert old_sig.args[3] == foo_handle
-    assert old_sig.args[4] == True      # suppress handler
 
     assert len(new_sig.args) == 1
     assert len(new_sig.args[0]) == 1        # one channel

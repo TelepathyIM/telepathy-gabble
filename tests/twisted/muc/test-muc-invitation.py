@@ -5,7 +5,7 @@ Test MUC invitations.
 from twisted.words.xish import domish, xpath
 
 from gabbletest import exec_test, make_muc_presence
-from servicetest import call_async, EventPattern, wrap_channel
+from servicetest import call_async, EventPattern, wrap_channel, assertEquals
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -21,15 +21,13 @@ def test(q, bus, conn, stream):
 
     stream.send(message)
 
-    event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
+    event = q.expect('dbus-signal', signal='NewChannels')
+    path, props = event.args[0][0]
+    assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(1, props[cs.TARGET_HANDLE])
 
-    assert event.args[2] == 2   # handle type
-    assert event.args[3] == 1   # handle
-    room_handle = 1
-
-    text_chan = wrap_channel(bus.get_object(conn.bus_name, event.args[0]),
-            'Text')
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     members = text_chan.Group.GetMembers()
     local_pending = text_chan.Group.GetLocalPendingMembers()

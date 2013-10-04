@@ -7,7 +7,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, assertEquals
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -21,18 +21,17 @@ def test(q, bus, conn, stream):
 
     ret, sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
+        EventPattern('dbus-signal', signal='NewChannels'),
         )
 
     text_chan = bus.get_object(conn.bus_name, ret.value[0])
 
-    assert sig.args[0] == ret.value[0], \
-            (sig.args[0], ret.value[0])
-    assert sig.args[1] == cs.CHANNEL_TYPE_TEXT, sig.args[1]
+    path, props = sig.args[0][0]
+    assertEquals(ret.value[0], path)
+    assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     # check that handle type == contact handle
-    assert sig.args[2] == 1, sig.args[1]
-    assert sig.args[3] == foo_handle, (sig.args[3], foo_handle)
-    assert sig.args[4] == True      # suppress handler
+    assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(foo_handle, props[cs.TARGET_HANDLE])
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = text_chan.GetAll(

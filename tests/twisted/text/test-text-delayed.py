@@ -8,7 +8,7 @@ import datetime
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import EventPattern
+from servicetest import EventPattern, assertEquals
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -23,11 +23,12 @@ def test(q, bus, conn, stream):
 
     stream.send(m)
 
-    event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
-    assert event.args[2] == cs.HT_CONTACT
-    jid = conn.inspect_contact_sync(event.args[3])
-    assert jid == 'foo@bar.com'
+    event = q.expect('dbus-signal', signal='NewChannels')
+    path, props = event.args[0][0]
+    assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
+    jid = conn.inspect_contact_sync(props[cs.TARGET_HANDLE])
+    assertEquals('foo@bar.com', jid)
 
     received, message_received = q.expect_many(
         EventPattern('dbus-signal', signal='Received'),

@@ -110,11 +110,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     stream.send(presence)
 
     # text channel
-    event, new_event = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'))
-
-    assert event.args[1] == cs.CHANNEL_TYPE_TEXT, event.args
+    new_event = q.expect('dbus-signal', signal='NewChannels')
 
     channels = new_event.args[0]
     assert len(channels) == 1

@@ -168,10 +168,9 @@ def test(q, bus, conn, stream):
     # get a <gone/> notification, and the channel should respawn.
     chan.Close()
 
-    gone, _, _ = q.expect_many(
+    gone, _ = q.expect_many(
         EventPattern('stream-message'),
         EventPattern('dbus-signal', signal='Closed'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         )
     check_state_notification(gone.stanza, 'gone')
 

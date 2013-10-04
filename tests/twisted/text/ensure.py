@@ -36,9 +36,8 @@ def test_ensure_ensure(q, conn, self_handle, jid, handle):
     # Check that Ensuring a channel that doesn't exist succeeds
     call_async(q, conn.Requests, 'EnsureChannel', request_props (handle))
 
-    ret, old_sig, new_sig = q.expect_many(
+    ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='EnsureChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 
@@ -50,15 +49,6 @@ def test_ensure_ensure(q, conn, self_handle, jid, handle):
     assert yours, ret.value
 
     check_props(emitted_props, self_handle, handle, jid)
-
-    assert len(old_sig.args) == 5
-    old_path, old_ct, old_ht, old_h, old_sh = old_sig.args
-
-    assert old_path == path
-    assert old_ct == cs.CHANNEL_TYPE_TEXT
-    assert old_ht == cs.HT_CONTACT
-    assert old_h == handle
-    assert old_sh == True      # suppress handler
 
     assert len(new_sig.args) == 1
     assert len(new_sig.args[0]) == 1        # one channel
@@ -95,9 +85,8 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
 
     call_async(q, conn.Requests, 'CreateChannel', request_props(handle))
 
-    ret, old_sig, new_sig = q.expect_many(
+    ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 
@@ -105,15 +94,6 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
     path, emitted_props = ret.value
 
     check_props(emitted_props, self_handle, handle, jid)
-
-    assert len(old_sig.args) == 5
-    old_path, old_ct, old_ht, old_h, old_sh = old_sig.args
-
-    assert old_path == path
-    assert old_ct == cs.CHANNEL_TYPE_TEXT
-    assert old_ht == cs.HT_CONTACT
-    assert old_h == handle
-    assert old_sh == True      # suppress handler
 
     assert len(new_sig.args) == 1
     assert len(new_sig.args[0]) == 1        # one channel

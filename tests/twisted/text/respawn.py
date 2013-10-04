@@ -19,21 +19,14 @@ def test(q, bus, conn, stream):
     call_async(q, conn, 'RequestChannel',
         cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, foo_handle, True)
 
-    ret, old_sig, new_sig = q.expect_many(
+    ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='RequestChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 
     text_chan = bus.get_object(conn.bus_name, ret.value[0])
     chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
     text_iface = dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT)
-
-    assert old_sig.args[0] == ret.value[0]
-    assert old_sig.args[1] == cs.CHANNEL_TYPE_TEXT
-    assert old_sig.args[2] == cs.HT_CONTACT
-    assert old_sig.args[3] == foo_handle
-    assert old_sig.args[4] == True      # suppress handler
 
     assert len(new_sig.args) == 1
     assert len(new_sig.args[0]) == 1        # one channel
@@ -107,12 +100,12 @@ def test(q, bus, conn, stream):
     assert new.args[0] == text_chan.object_path,\
             (new.args[0], text_chan.object_path)
 
-    event = q.expect('dbus-signal', signal='NewChannel')
-    assert event.args[0] == text_chan.object_path
-    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
-    assert event.args[2] == cs.HT_CONTACT
-    assert event.args[3] == foo_handle
-    assert event.args[4] == False   # suppress handler
+    event = q.expect('dbus-signal', signal='NewChannels')
+    path, props = event.args[0][0]
+    assertEquals(text_chan.object_path, path)
+    assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
+    assertEquals(foo_handle, props[cs.TARGET_HANDLE])
 
     event = q.expect('dbus-return', method='Close')
 

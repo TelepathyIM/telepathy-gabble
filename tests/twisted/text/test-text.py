@@ -8,7 +8,8 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test, elem
-from servicetest import (EventPattern, wrap_channel, assertEquals, assertLength)
+from servicetest import (EventPattern, wrap_channel, assertEquals, assertLength,
+        assertContains)
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -22,38 +23,27 @@ def test(q, bus, conn, stream):
     m.addElement('body', content='hello')
     stream.send(m)
 
-    event = q.expect('dbus-signal', signal='NewChannel')
+    event = q.expect('dbus-signal', signal='NewChannels')
+    path, props = event.args[0][0]
     text_chan = wrap_channel(
-        bus.get_object(conn.bus_name, event.args[0]), 'Text', ['Messages'])
-    assert event.args[1] == cs.CHANNEL_TYPE_TEXT
-    assert event.args[2] == cs.HT_CONTACT
-    foo_at_bar_dot_com_handle = event.args[3]
+        bus.get_object(conn.bus_name, path), 'Text', ['Messages'])
+    assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
+    assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
+    foo_at_bar_dot_com_handle = props[cs.TARGET_HANDLE]
     jid = conn.inspect_contact_sync(foo_at_bar_dot_com_handle)
-    assert jid == 'foo@bar.com'
-    assert event.args[4] == False   # suppress handler
+    assertEquals('foo@bar.com', jid)
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = text_chan.Properties.GetAll(cs.CHANNEL)
-    assert channel_props.get('TargetHandle') == event.args[3],\
-            (channel_props.get('TargetHandle'), event.args[3])
-    assert channel_props.get('TargetHandleType') == cs.HT_CONTACT,\
-            channel_props.get('TargetHandleType')
-    assert channel_props.get('ChannelType') == \
-            cs.CHANNEL_TYPE_TEXT,\
-            channel_props.get('ChannelType')
-    assert cs.CHANNEL_IFACE_CHAT_STATE in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert cs.CHANNEL_IFACE_MESSAGES in \
-            channel_props.get('Interfaces', ()), \
-            channel_props.get('Interfaces')
-    assert channel_props['TargetID'] == jid,\
-            (channel_props['TargetID'], jid)
-    assert channel_props['Requested'] == False
-    assert channel_props['InitiatorHandle'] == event.args[3],\
-            (channel_props['InitiatorHandle'], event.args[3])
-    assert channel_props['InitiatorID'] == jid,\
-            (channel_props['InitiatorID'], jid)
+    assertEquals(props[cs.TARGET_HANDLE], channel_props.get('TargetHandle'))
+    assertEquals(cs.HT_CONTACT, channel_props.get('TargetHandleType'))
+    assertEquals(cs.CHANNEL_TYPE_TEXT, channel_props.get('ChannelType'))
+    assertContains(cs.CHANNEL_IFACE_CHAT_STATE, channel_props.get('Interfaces'))
+    assertContains(cs.CHANNEL_IFACE_MESSAGES, channel_props.get('Interfaces'))
+    assertEquals(jid, channel_props['TargetID'])
+    assertEquals(False, channel_props['Requested'])
+    assertEquals(props[cs.INITIATOR_HANDLE], channel_props['InitiatorHandle'])
+    assertEquals(jid, channel_props['InitiatorID'])
 
     received, message_received = q.expect_many(
         EventPattern('dbus-signal', signal='Received'),

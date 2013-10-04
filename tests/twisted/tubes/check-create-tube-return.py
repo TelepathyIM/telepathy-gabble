@@ -39,9 +39,8 @@ def test(q, bus, conn, stream):
     stream.send(make_muc_presence('owner', 'moderator', muc, 'bob'))
     stream.send(make_muc_presence('none', 'participant', muc, 'test'))
 
-    ret, _, _ = q.expect_many(
+    ret, _ = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 
@@ -62,9 +61,8 @@ def test(q, bus, conn, stream):
           cs.TARGET_ID: muc,
           cs.DBUS_TUBE_SERVICE_NAME: 'com.example.LolDongs'})
 
-    ret, _, _ = q.expect_many(
+    ret, _ = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 

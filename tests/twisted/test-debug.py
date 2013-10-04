@@ -36,9 +36,7 @@ def test(q, bus, conn, stream):
 
     channel_path = conn.RequestChannel(
         cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.Properties.Get(cs.CONN, "SelfHandle"), True)
-    q.expect_many(
-        EventPattern ('dbus-signal', signal='NewChannel'),
-        EventPattern ('dbus-signal', signal = 'NewDebugMessage'))
+    q.expect('dbus-signal', signal = 'NewDebugMessage')
 
     assert len(messages) > 0
 
@@ -54,7 +52,7 @@ def test(q, bus, conn, stream):
 
     conn.RequestChannel(
         cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, conn.Properties.Get(cs.CONN, "SelfHandle"), True)
-    q.expect('dbus-signal', signal='NewChannel')
+    q.expect('dbus-signal', signal='NewChannels')
 
     assertEquals (snapshot, messages)
 

@@ -117,7 +117,7 @@ def test_local_queueing(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='AliasesChanged')
 
     # .. and finally the message that flushed the stanza queue
-    q.expect('dbus-signal', signal='NewChannel')
+    q.expect('dbus-signal', signal='NewChannels')
 
     sync_stream(q, stream)
 

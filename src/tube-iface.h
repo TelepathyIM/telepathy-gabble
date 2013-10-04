@@ -27,6 +27,12 @@
 
 G_BEGIN_DECLS
 
+typedef enum
+{
+  TUBE_TYPE_DBUS = 0,
+  TUBE_TYPE_STREAM
+} TubeType;
+
 typedef struct _GabbleTubeIface GabbleTubeIface;
 typedef struct _GabbleTubeIfaceClass GabbleTubeIfaceClass;
 

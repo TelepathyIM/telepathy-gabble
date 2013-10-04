@@ -1234,7 +1234,7 @@ gabble_tube_stream_get_property (GObject *object,
         g_value_set_uint64 (value, priv->id);
         break;
       case PROP_TYPE:
-        g_value_set_uint (value, TP_TUBE_TYPE_STREAM);
+        g_value_set_uint (value, TUBE_TYPE_STREAM);
         break;
       case PROP_SERVICE:
         g_value_set_string (value, priv->service);

@@ -26,6 +26,7 @@
 
 #include "connection.h"
 #include "bytestream-iface.h"
+#include "tube-iface.h"
 
 G_BEGIN_DECLS
 
@@ -77,7 +78,7 @@ void gabble_private_tubes_factory_handle_si_stream_request (
 
 gboolean gabble_private_tubes_factory_extract_tube_information (
     TpHandleRepoIface *contact_repo, WockyNode *tube_node,
-    TpTubeType *type, TpHandle *initiator_handle,
+    TubeType *type, TpHandle *initiator_handle,
     const gchar **service, GHashTable **parameters,
     guint64 *tube_id);
 

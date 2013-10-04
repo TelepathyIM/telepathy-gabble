@@ -84,7 +84,7 @@ gabble_tube_iface_base_init (gpointer klass)
       param_spec = g_param_spec_uint (
           "type",
           "Tube type",
-          "The TpTubeType this tube object.",
+          "The TubeType this tube object.",
           0, G_MAXUINT32, 0,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);
@@ -150,7 +150,7 @@ gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
 {
   WockyNode *parameters_node;
   GHashTable *parameters;
-  TpTubeType type;
+  TubeType type;
   gchar *service, *id_str;
   guint64 tube_id;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
@@ -176,7 +176,7 @@ gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
 
   switch (type)
     {
-      case TP_TUBE_TYPE_DBUS:
+      case TUBE_TYPE_DBUS:
         {
           gchar *name, *stream_id;
 
@@ -198,7 +198,7 @@ gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
           g_free (stream_id);
         }
         break;
-      case TP_TUBE_TYPE_STREAM:
+      case TUBE_TYPE_STREAM:
         {
           wocky_node_set_attribute (node, "type", "stream");
         }

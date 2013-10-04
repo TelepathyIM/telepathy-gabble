@@ -105,7 +105,7 @@ gboolean
 gabble_private_tubes_factory_extract_tube_information (
     TpHandleRepoIface *contact_repo,
     WockyNode *tube_node,
-    TpTubeType *type,
+    TubeType *type,
     TpHandle *initiator_handle,
     const gchar **service,
     GHashTable **parameters,
@@ -119,11 +119,11 @@ gabble_private_tubes_factory_extract_tube_information (
 
       if (!tp_strdiff (_type, "stream"))
         {
-          *type = TP_TUBE_TYPE_STREAM;
+          *type = TUBE_TYPE_STREAM;
         }
       else if (!tp_strdiff (_type, "dbus"))
         {
-          *type = TP_TUBE_TYPE_DBUS;
+          *type = TUBE_TYPE_DBUS;
         }
       else
         {
@@ -382,7 +382,7 @@ gabble_private_tubes_factory_close_all (GabblePrivateTubesFactory *self)
 static void
 add_service_to_array (const gchar *service,
                       GPtrArray *arr,
-                      TpTubeType type,
+                      TubeType type,
                       TpHandle handle)
 {
   GValue monster = {0, };
@@ -396,7 +396,7 @@ add_service_to_array (const gchar *service,
         NULL
     };
 
-  g_assert (type == TP_TUBE_TYPE_STREAM || type == TP_TUBE_TYPE_DBUS);
+  g_assert (type == TUBE_TYPE_STREAM || type == TUBE_TYPE_DBUS);
 
   g_value_init (&monster, TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS);
   g_value_take_boxed (&monster,
@@ -407,7 +407,7 @@ add_service_to_array (const gchar *service,
       (GDestroyNotify) tp_g_value_slice_free);
 
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
-  if (type == TP_TUBE_TYPE_STREAM)
+  if (type == TUBE_TYPE_STREAM)
     g_value_set_static_string (channel_type_value,
         TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
   else
@@ -423,7 +423,7 @@ add_service_to_array (const gchar *service,
 
   target_handle_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   g_value_set_string (target_handle_type_value, service);
-  if (type == TP_TUBE_TYPE_STREAM)
+  if (type == TUBE_TYPE_STREAM)
     g_hash_table_insert (fixed_properties,
         TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE,
         target_handle_type_value);
@@ -532,10 +532,10 @@ get_contact_caps_foreach (gpointer data,
 
   if (g_str_has_prefix (ns, STREAM_CAP_PREFIX))
     add_service_to_array (ns + strlen (STREAM_CAP_PREFIX), closure->arr,
-        TP_TUBE_TYPE_STREAM, closure->handle);
+        TUBE_TYPE_STREAM, closure->handle);
   else if (g_str_has_prefix (ns, DBUS_CAP_PREFIX))
     add_service_to_array (ns + strlen (DBUS_CAP_PREFIX), closure->arr,
-        TP_TUBE_TYPE_DBUS, closure->handle);
+        TUBE_TYPE_DBUS, closure->handle);
 }
 
 static void
@@ -894,7 +894,7 @@ private_tubes_factory_tube_close_cb (
   WockyNode *node;
   guint64 tube_id;
   GabbleTubeIface *channel;
-  TpTubeType type;
+  TubeType type;
 
   node = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "close", NS_TUBES);
@@ -912,7 +912,7 @@ private_tubes_factory_tube_close_cb (
     }
 
   g_object_get (channel, "type", &type, NULL);
-  if (type != TP_TUBE_TYPE_STREAM)
+  if (type != TUBE_TYPE_STREAM)
     {
       DEBUG ("Only stream tubes can be closed using a close message");
       return TRUE;
@@ -1113,7 +1113,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
 
-  TpTubeType type;
+  TubeType type;
   TpHandle handle;
   const gchar *service;
   GHashTable *parameters;
@@ -1132,13 +1132,13 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
       return NULL;
     }
 
-  if (bytestream == NULL && type != TP_TUBE_TYPE_STREAM)
+  if (bytestream == NULL && type != TUBE_TYPE_STREAM)
     {
       DEBUG ("Only stream tubes are allowed to be created using messages");
       send_tube_close_msg (self, wocky_stanza_get_from (stanza), tube_id);
       return NULL;
     }
-  else if (bytestream != NULL && type != TP_TUBE_TYPE_DBUS)
+  else if (bytestream != NULL && type != TUBE_TYPE_DBUS)
     {
       GError e = { WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN,
           "Only D-Bus tubes are allowed to be created using SI" };
@@ -1148,7 +1148,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
       return NULL;
     }
 
-  if (type == TP_TUBE_TYPE_STREAM)
+  if (type == TUBE_TYPE_STREAM)
     {
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (self->priv->conn,
               handle, TP_HANDLE_TYPE_CONTACT,

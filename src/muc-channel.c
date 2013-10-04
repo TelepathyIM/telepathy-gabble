@@ -815,7 +815,7 @@ tube_pre_presence (GabbleMucChannel *gmuc,
       GabbleTubeIface *tube = value;
       TpTubeChannelState state;
       WockyNode *tube_node;
-      TpTubeType type;
+      TubeType type;
       TpHandle initiator;
 
       g_object_get (tube,
@@ -827,7 +827,7 @@ tube_pre_presence (GabbleMucChannel *gmuc,
       if (state != TP_TUBE_CHANNEL_STATE_OPEN)
         continue;
 
-      if (type == TP_TUBE_TYPE_STREAM
+      if (type == TUBE_TYPE_STREAM
           && initiator != TP_GROUP_MIXIN (gmuc)->self_handle)
         /* We only announce stream tubes we initiated */
         continue;
@@ -1971,7 +1971,7 @@ tube_closed_cb (GabbleTubeIface *tube,
 
 static GabbleTubeIface *
 create_new_tube (GabbleMucChannel *gmuc,
-    TpTubeType type,
+    TubeType type,
     TpHandle initiator,
     const gchar *service,
     GHashTable *parameters,
@@ -1990,13 +1990,13 @@ create_new_tube (GabbleMucChannel *gmuc,
 
   switch (type)
     {
-    case TP_TUBE_TYPE_DBUS:
+    case TUBE_TYPE_DBUS:
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (conn,
           handle, TP_HANDLE_TYPE_ROOM, self_handle, initiator,
           service, parameters, stream_id, tube_id, bytestream, gmuc,
           requested));
       break;
-    case TP_TUBE_TYPE_STREAM:
+    case TUBE_TYPE_STREAM:
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (conn,
           handle, TP_HANDLE_TYPE_ROOM, self_handle, initiator,
           service, parameters, tube_id, gmuc, requested));
@@ -2044,7 +2044,7 @@ gabble_muc_channel_tube_request (GabbleMucChannel *self,
   GHashTable *parameters = NULL;
   guint64 tube_id;
   gchar *stream_id;
-  TpTubeType type;
+  TubeType type;
 
   tube_id = generate_tube_id (self);
 
@@ -2053,14 +2053,14 @@ gabble_muc_channel_tube_request (GabbleMucChannel *self,
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
     {
-      type = TP_TUBE_TYPE_STREAM;
+      type = TUBE_TYPE_STREAM;
       service = tp_asv_get_string (request_properties,
           TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
 
     }
   else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     {
-      type = TP_TUBE_TYPE_DBUS;
+      type = TUBE_TYPE_DBUS;
       service = tp_asv_get_string (request_properties,
           TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
     }
@@ -2231,7 +2231,7 @@ tubes_presence_update (GabbleMucChannel *gmuc,
       const gchar *stream_id;
       GabbleTubeIface *tube;
       guint64 tube_id;
-      TpTubeType type;
+      TubeType type;
 
       stream_id = wocky_node_get_attribute (tube_node, "stream-id");
 
@@ -2255,13 +2255,13 @@ tubes_presence_update (GabbleMucChannel *gmuc,
                   contact_repo, tube_node, &type, &initiator_handle,
                   &service, &parameters, NULL))
             {
-              if (type == TP_TUBE_TYPE_DBUS && initiator_handle == 0)
+              if (type == TUBE_TYPE_DBUS && initiator_handle == 0)
                 {
                   DEBUG ("D-Bus tube initiator missing");
                   /* skip to the next child of <tubes> */
                   continue;
                 }
-              else if (type == TP_TUBE_TYPE_STREAM)
+              else if (type == TUBE_TYPE_STREAM)
                 {
                   initiator_handle = contact;
                 }
@@ -2287,7 +2287,7 @@ tubes_presence_update (GabbleMucChannel *gmuc,
 
       g_object_get (tube, "type", &type, NULL);
 
-      if (type == TP_TUBE_TYPE_DBUS)
+      if (type == TUBE_TYPE_DBUS)
         {
           /* Update mapping of handle -> D-Bus name. */
           if (!gabble_tube_dbus_handle_in_names (GABBLE_TUBE_DBUS (tube),

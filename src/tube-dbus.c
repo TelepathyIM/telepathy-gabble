@@ -611,7 +611,7 @@ gabble_tube_dbus_get_property (GObject *object,
         g_value_set_string (value, priv->stream_id);
         break;
       case PROP_TYPE:
-        g_value_set_uint (value, TP_TUBE_TYPE_DBUS);
+        g_value_set_uint (value, TUBE_TYPE_DBUS);
         break;
       case PROP_SERVICE:
         g_value_set_string (value, priv->service);

@@ -111,51 +111,6 @@ get_cached_location (GabbleConnection *conn,
   return location;
 }
 
-static void
-location_get_locations (TpSvcConnectionInterfaceLocation *iface,
-                        const GArray *contacts,
-                        DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_handles;
-  guint i;
-  GError *error = NULL;
-  GHashTable *return_locations = g_hash_table_new_full (g_direct_hash,
-      g_direct_equal, NULL, (GDestroyNotify) g_hash_table_unref);
-
-  DEBUG ("GetLocation for contacts:");
-
-  gabble_connection_ensure_capabilities (conn,
-      gabble_capabilities_get_geoloc_notify ());
-
-  /* Validate contacts */
-  contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-
-  if (!tp_handles_are_valid (contact_handles, contacts, TRUE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      g_hash_table_unref (return_locations);
-      return;
-    }
-
-  for (i = 0; i < contacts->len; i++)
-    {
-      TpHandle contact = g_array_index (contacts, TpHandle, i);
-      GHashTable *location = get_cached_location (conn, contact);
-
-      if (location != NULL)
-        g_hash_table_insert (return_locations, GUINT_TO_POINTER (contact),
-            location);
-    }
-
-  tp_svc_connection_interface_location_return_from_get_locations
-      (context, return_locations);
-  g_hash_table_unref (return_locations);
-}
-
 typedef struct {
     GabbleConnection *self;
     TpHandle handle;
@@ -412,7 +367,6 @@ location_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_interface_location_implement_##x \
   (klass, location_##x)
-  IMPLEMENT(get_locations);
   IMPLEMENT(set_location);
   IMPLEMENT(request_location);
 #undef IMPLEMENT

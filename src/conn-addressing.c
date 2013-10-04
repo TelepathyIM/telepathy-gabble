@@ -85,7 +85,6 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing *iface,
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) uris));
-  gchar *sender = dbus_g_method_get_sender (context);
 
   for (uri = uris; *uri != NULL; uri++)
     {
@@ -99,7 +98,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing *iface,
     }
 
   attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
-      interfaces, assumed_interfaces, sender);
+      interfaces, assumed_interfaces);
 
   tp_svc_connection_interface_addressing_return_from_get_contacts_by_uri (
       context, requested, attributes);
@@ -107,7 +106,6 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing *iface,
   g_array_unref (handles);
   g_hash_table_unref (requested);
   g_hash_table_unref (attributes);
-  g_free (sender);
 }
 
 static void
@@ -124,7 +122,6 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing 
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) addresses));
-  gchar *sender = dbus_g_method_get_sender (context);
 
   for (address = addresses; *address != NULL; address++)
     {
@@ -139,7 +136,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing 
     }
 
   attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
-      interfaces, assumed_interfaces, sender);
+      interfaces, assumed_interfaces);
 
   tp_svc_connection_interface_addressing_return_from_get_contacts_by_vcard_field (
       context, requested, attributes);
@@ -147,7 +144,6 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing 
   g_array_unref (handles);
   g_hash_table_unref (requested);
   g_hash_table_unref (attributes);
-  g_free (sender);
 }
 
 void

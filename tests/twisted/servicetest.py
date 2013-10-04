@@ -632,6 +632,7 @@ def wrap_connection(conn):
          ('ContactGroups', cs.CONN_IFACE_CONTACT_GROUPS),
          ('PowerSaving', cs.CONN_IFACE_POWER_SAVING),
          ('Addressing', cs.CONN_IFACE_ADDRESSING),
+         ('ClientTypes', cs.CONN_IFACE_CLIENT_TYPES),
         ]))
 
 def wrap_channel(chan, type_, extra=None):

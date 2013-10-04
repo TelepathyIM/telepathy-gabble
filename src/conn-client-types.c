@@ -132,6 +132,44 @@ client_types_get_client_types (TpSvcConnectionInterfaceClientTypes *iface,
   g_hash_table_unref (client_types);
 }
 
+static void
+client_types_request_client_types (TpSvcConnectionInterfaceClientTypes *iface,
+    TpHandle contact,
+    DBusGMethodInvocation *context)
+{
+  GabbleConnection *conn = GABBLE_CONNECTION (iface);
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_handles;
+  GError *error = NULL;
+  gchar **types;
+
+  /* Validate contact */
+  contact_handles = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
+
+  if (!tp_handle_is_valid (contact_handles, contact, &error))
+    {
+      dbus_g_method_return_error (context, error);
+      g_error_free (error);
+      return;
+    }
+
+  DEBUG ("RequestClientTypes called on the following handle: %u", contact);
+
+  if (!get_client_types_from_handle (conn, contact, &types))
+    {
+      /* FIXME fdo#70140 : we should wait for the disco reply before
+       * returning. */
+      static gchar *empty[] = { NULL };
+      types = g_strdupv (empty);
+    }
+
+  tp_svc_connection_interface_client_types_return_from_request_client_types (
+      context, (const gchar **) types);
+
+  g_strfreev (types);
+}
+
 void
 conn_client_types_iface_init (gpointer g_iface,
     gpointer iface_data)
@@ -141,6 +179,7 @@ conn_client_types_iface_init (gpointer g_iface,
 #define IMPLEMENT(x) tp_svc_connection_interface_client_types_implement_##x \
   (klass, client_types_##x)
   IMPLEMENT (get_client_types);
+  IMPLEMENT (request_client_types);
 #undef IMPLEMENT
 }
 

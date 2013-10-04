@@ -3,7 +3,8 @@ Test Conn.I.ClientTypes
 """
 from functools import partial
 
-from servicetest import EventPattern, assertEquals, assertLength, assertContains, assertSameSets
+from servicetest import (EventPattern, assertEquals, assertLength,
+        assertContains, assertSameSets, call_async)
 from gabbletest import exec_test, make_presence, sync_stream
 import constants as cs
 import ns
@@ -97,6 +98,12 @@ def test(q, bus, conn, stream):
     assertLength(1, types)
     assertLength(1, types[meredith_handle])
     assertEquals('pc', types[meredith_handle][0])
+
+    types = conn.RequestClientTypes(meredith_handle,
+            dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
+
+    assertLength(1, types)
+    assertEquals('pc', types[0])
 
     # Two now becomes more available
     stream.send(make_presence(meredith_two, show='chat'))

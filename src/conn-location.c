@@ -384,7 +384,7 @@ conn_location_properties_getter (GObject *object,
   if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControlTypes"))
     {
       guint access_control_type =
-        TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
+        TP_ACCESS_CONTROL_TYPE_PUBLISH_LIST;
       GArray *access_control = g_array_sized_new (FALSE, FALSE,
           sizeof (guint), 1);
 
@@ -401,7 +401,7 @@ conn_location_properties_getter (GObject *object,
       /* G_TYPE_UINT is the D-Bus type of TpRichPresenceAccessControlType */
       g_value_init (&type, G_TYPE_UINT);
       g_value_set_uint (&type,
-          TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST);
+          TP_ACCESS_CONTROL_TYPE_PUBLISH_LIST);
       g_value_array_append (access_control, &type);
       g_value_unset (&type);
 
@@ -442,7 +442,7 @@ conn_location_properties_setter (GObject *object,
 {
   GValueArray *access_control;
   GValue *access_control_type_value;
-  TpRichPresenceAccessControlType access_control_type;
+  TpAccessControlType access_control_type;
   g_return_val_if_fail (interface ==
       TP_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
 
@@ -463,7 +463,7 @@ conn_location_properties_setter (GObject *object,
   access_control_type = g_value_get_uint (access_control_type_value);
 
   if (access_control_type !=
-      TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST)
+      TP_ACCESS_CONTROL_TYPE_PUBLISH_LIST)
     {
       g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Access control type not implemented");

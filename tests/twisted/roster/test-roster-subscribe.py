@@ -5,77 +5,37 @@ Test subscribing to a contact's presence.
 
 from twisted.words.xish import domish
 
-from servicetest import (EventPattern, assertLength, assertEquals,
-        call_async, wrap_channel, sync_dbus)
+from servicetest import (EventPattern, assertEquals, call_async, sync_dbus)
 from gabbletest import (acknowledge_iq, exec_test, sync_stream)
 from rostertest import send_roster_push
 import constants as cs
 import ns
 
-def test_ancient(q, bus, conn, stream):
-    test(q, bus, conn, stream, False)
-
 def test_modern(q, bus, conn, stream):
-    test(q, bus, conn, stream, True)
-
-def test_ancient_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, False, True)
+    test(q, bus, conn, stream)
 
 def test_modern_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, True, True)
-
-def test_ancient_reject(q, bus, conn, stream):
-    test(q, bus, conn, stream, False, 'reject')
+    test(q, bus, conn, stream, True)
 
 def test_modern_reject(q, bus, conn, stream):
-    test(q, bus, conn, stream, True, 'reject')
-
-def test_ancient_reject_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, False, True, 'reject')
+    test(q, bus, conn, stream, False, 'reject')
 
 def test_modern_reject_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, True, True, 'reject')
-
-def test_ancient_revoke(q, bus, conn, stream):
-    test(q, bus, conn, stream, False, 'revoke')
+    test(q, bus, conn, stream, True, 'reject')
 
 def test_modern_revoke(q, bus, conn, stream):
-    test(q, bus, conn, stream, True, 'revoke')
-
-def test_ancient_revoke_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, False, True, 'revoke')
+    test(q, bus, conn, stream, 'revoke')
 
 def test_modern_revoke_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, True, True, 'revoke')
+    test(q, bus, conn, stream, True, 'revoke')
 
-def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
+def test(q, bus, conn, stream, remove=False, remote='accept'):
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     # send back empty roster
     event.stanza['type'] = 'result'
     stream.send(event.stanza)
 
-    while True:
-        event = q.expect('dbus-signal', signal='NewChannel')
-        path, type, handle_type, handle, suppress_handler = event.args
-
-        if type != cs.CHANNEL_TYPE_CONTACT_LIST:
-            continue
-
-        chan_name = conn.InspectHandles(handle_type, [handle])[0]
-
-        if chan_name == 'subscribe':
-            break
-
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'ContactList')
-    assertLength(0, chan.Group.GetMembers())
-
-    stored_path = conn.Requests.EnsureChannel({
-        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_LIST,
-        cs.TARGET_HANDLE_TYPE: cs.HT_LIST,
-        cs.TARGET_ID: 'stored',
-        })[1]
-    stored = wrap_channel(bus.get_object(conn.bus_name, stored_path),
-            'ContactList')
+    q.expect('dbus-signal', signal='ContactListStateChanged', args=[cs.CONTACT_LIST_STATE_SUCCESS])
 
     # request subscription
     alice, bob = conn.get_contact_handles_sync(
@@ -84,12 +44,8 @@ def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
     # Repeated subscription requests are *not* idempotent: the second request
     # should nag the contact again.
     for first_time in True, False, False:
-        if modern:
-            call_async(q, conn.ContactList, 'RequestSubscription', [bob],
-                    'plz add kthx')
-        else:
-            call_async(q, chan.Group, 'AddMembers', [bob],
-                    'plz add kthx')
+        call_async(q, conn.ContactList, 'RequestSubscription', [bob],
+                'plz add kthx')
 
         if first_time:
             event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
@@ -101,9 +57,8 @@ def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
                 EventPattern('stream-presence', presence_type='subscribe'),
                 ]
 
-        if modern:
-            expectations.append(EventPattern('dbus-return',
-                method='RequestSubscription'))
+        expectations.append(EventPattern('dbus-return',
+            method='RequestSubscription'))
 
         event = q.expect_many(*expectations)[0]
         assertEquals('plz add kthx', event.presence_status)
@@ -206,26 +161,12 @@ def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
         # (Unsubscribing from pending-subscribe is tested in
         # roster/removed-from-rp-subscribe.py so we don't test it here.)
 
-    # If Bob removed us, we have to use modern APIs from now on, because from
-    # the point of view of the old Group interface, removed remotely and
-    # removed locally are synonymous.
-    if remote in ('reject', 'revoke'):
-        modern = True
-
-    if modern:
-        if remove:
-            returning_method = 'RemoveContacts'
-            call_async(q, conn.ContactList, 'RemoveContacts', [bob])
-        else:
-            returning_method = 'Unsubscribe'
-            call_async(q, conn.ContactList, 'Unsubscribe', [bob])
+    if remove:
+        returning_method = 'RemoveContacts'
+        call_async(q, conn.ContactList, 'RemoveContacts', [bob])
     else:
-        returning_method = 'RemoveMembers'
-
-        if remove:
-            call_async(q, stored.Group, 'RemoveMembers', [bob], '')
-        else:
-            call_async(q, chan.Group, 'RemoveMembers', [bob], '')
+        returning_method = 'Unsubscribe'
+        call_async(q, conn.ContactList, 'Unsubscribe', [bob])
 
     if remove:
         iq = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER,
@@ -233,8 +174,7 @@ def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
 
         acknowledge_iq(stream, iq.stanza)
 
-        if modern:
-            q.expect('dbus-return', method='RemoveContacts')
+        q.expect('dbus-return', method='RemoveContacts')
         # FIXME: when we depend on a new enough tp-glib, expect RemoveMembers
         # to return here too
 
@@ -261,15 +201,9 @@ def test(q, bus, conn, stream, modern=True, remove=False, remote='accept'):
                 )
 
 if __name__ == '__main__':
-    exec_test(test_ancient)
     exec_test(test_modern)
-    exec_test(test_ancient_remove)
     exec_test(test_modern_remove)
-    exec_test(test_ancient_revoke)
     exec_test(test_modern_revoke)
-    exec_test(test_ancient_revoke_remove)
     exec_test(test_modern_revoke_remove)
-    exec_test(test_ancient_reject)
     exec_test(test_modern_reject)
-    exec_test(test_ancient_reject_remove)
     exec_test(test_modern_reject_remove)

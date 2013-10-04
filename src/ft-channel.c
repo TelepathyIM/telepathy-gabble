@@ -633,7 +633,7 @@ gabble_file_transfer_channel_class_init (
       "TpFileTransferState state",
       "State of the file transfer in this channel",
       0,
-      NUM_TP_FILE_TRANSFER_STATES,
+      TP_NUM_FILE_TRANSFER_STATES,
       TP_FILE_TRANSFER_STATE_NONE,
       G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
@@ -674,7 +674,7 @@ gabble_file_transfer_channel_class_init (
       "TpFileHashType content-hash-type",
       "Hash type",
       0,
-      NUM_TP_FILE_HASH_TYPES,
+      TP_NUM_FILE_HASH_TYPES,
       TP_FILE_HASH_TYPE_NONE,
       G_PARAM_CONSTRUCT_ONLY |
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);

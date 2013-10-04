@@ -382,7 +382,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 
   param_spec = g_param_spec_uint ("sasl-status", "SASLStatus",
       "Status of this channel",
-      0, NUM_TP_SASL_STATUSES, 0,
+      0, TP_NUM_SASL_STATUSES, 0,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_SASL_STATUS,
       param_spec);

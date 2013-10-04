@@ -216,7 +216,7 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
   pspec = g_param_spec_uint ("state",
       "State of this certificate",
       "The state of this TLS certificate.",
-      0, NUM_TP_TLS_CERTIFICATE_STATES - 1,
+      0, TP_NUM_TLS_CERTIFICATE_STATES - 1,
       TP_TLS_CERTIFICATE_STATE_PENDING,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_STATE, pspec);

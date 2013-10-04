@@ -521,7 +521,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
     }
   else
     {
-      if (content_hash_type >= NUM_TP_FILE_HASH_TYPES)
+      if (content_hash_type >= TP_NUM_FILE_HASH_TYPES)
         {
           g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "%u is not a valid ContentHashType", content_hash_type);

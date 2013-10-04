@@ -1483,7 +1483,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "address type",
       "a TpSocketAddressType representing the type of the listening"
       "address of the local service",
-      0, NUM_TP_SOCKET_ADDRESS_TYPES - 1,
+      0, TP_NUM_SOCKET_ADDRESS_TYPES - 1,
       TP_SOCKET_ADDRESS_TYPE_UNIX,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ADDRESS_TYPE,
@@ -1502,7 +1502,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "access control",
       "a TpSocketAccessControl representing the access control "
       "the local service applies to the local socket",
-      0, NUM_TP_SOCKET_ACCESS_CONTROLS - 1,
+      0, TP_NUM_SOCKET_ACCESS_CONTROLS - 1,
       TP_SOCKET_ACCESS_CONTROL_LOCALHOST,
       G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_ACCESS_CONTROL,

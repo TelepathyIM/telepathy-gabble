@@ -26,6 +26,7 @@
 #include <dbus/dbus-glib.h>
 #include <dbus/dbus-protocol.h>
 #include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include "extensions/extensions.h"
 #include "protocol.h"

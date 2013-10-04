@@ -23,6 +23,7 @@
 #include <glib-object.h>
 
 #include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include "connection.h"
 #include "bytestream-iface.h"

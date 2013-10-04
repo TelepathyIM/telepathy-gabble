@@ -5,6 +5,7 @@
 #include <stdio.h>
 
 #include <telepathy-glib/telepathy-glib.h>
+#include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include <wocky/wocky.h>
 

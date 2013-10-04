@@ -917,6 +917,21 @@ _gabble_connection_get_interfaces_always_present (TpBaseConnection *base)
   return interfaces;
 }
 
+static TpDBusPropertiesMixinPropImpl conn_aliasing_properties[] = {
+    { "AliasFlags", GUINT_TO_POINTER (TP_CONNECTION_ALIAS_FLAG_USER_SET), NULL },
+    { NULL }
+};
+
+static void
+conn_aliasing_properties_getter (GObject *object,
+    GQuark interface,
+    GQuark name,
+    GValue *value,
+    gpointer getter_data)
+{
+  g_value_set_uint (value, GPOINTER_TO_UINT (getter_data));
+}
+
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
 {
@@ -974,6 +989,11 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           tp_dbus_properties_mixin_getter_gobject_properties,
           NULL,
           power_saving_props,
+        },
+        { TP_IFACE_CONNECTION_INTERFACE_ALIASING,
+          conn_aliasing_properties_getter,
+          NULL,
+          conn_aliasing_properties,
         },
         { NULL }
   };

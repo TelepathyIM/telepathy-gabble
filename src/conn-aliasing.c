@@ -45,33 +45,6 @@ static GabbleConnectionAliasSource _gabble_connection_get_cached_remote_alias (
 static void maybe_request_vcard (GabbleConnection *self, TpHandle handle,
   GabbleConnectionAliasSource source);
 
-/**
- * gabble_connection_get_alias_flags
- *
- * Implements D-Bus method GetAliasFlags
- * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
- *
- * @error: Used to return a pointer to a GError detailing any error
- *         that occurred, D-Bus will throw the error only if this
- *         function returns FALSE.
- *
- * Returns: TRUE if successful, FALSE if an error was thrown.
- */
-static void
-gabble_connection_get_alias_flags (TpSvcConnectionInterfaceAliasing *iface,
-                                   DBusGMethodInvocation *context)
-{
-  TpBaseConnection *base = TP_BASE_CONNECTION (iface);
-
-  g_assert (GABBLE_IS_CONNECTION (base));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  tp_svc_connection_interface_aliasing_return_from_get_alias_flags (
-      context, TP_CONNECTION_ALIAS_FLAG_USER_SET);
-}
-
-
 typedef struct _AliasesRequest AliasesRequest;
 
 struct _AliasesRequest
@@ -778,7 +751,7 @@ gabble_conn_aliasing_nicknames_updated (GObject *object,
 {
   GabbleConnection *conn = GABBLE_CONNECTION (user_data);
   GabbleConnectionAliasSource signal_source;
-  GPtrArray *aliases;
+  GHashTable *aliases;
   guint i;
 
   g_return_if_fail (handles->len > 0);
@@ -806,14 +779,13 @@ gabble_conn_aliasing_nicknames_updated (GObject *object,
       return;
     }
 
-  aliases = g_ptr_array_sized_new (handles->len);
+  aliases = g_hash_table_new_full (NULL, NULL, NULL, g_free);
 
   for (i = 0; i < handles->len; i++)
     {
       TpHandle handle = g_array_index (handles, TpHandle, i);
       GabbleConnectionAliasSource current_source;
       gchar *alias = NULL;
-      GValue entry = { 0, };
 
       current_source = _gabble_connection_get_cached_alias (conn, handle,
           &alias);
@@ -831,16 +803,8 @@ gabble_conn_aliasing_nicknames_updated (GObject *object,
           continue;
         }
 
-      g_value_init (&entry, TP_STRUCT_TYPE_ALIAS_PAIR);
-      g_value_take_boxed (&entry,
-          dbus_g_type_specialized_construct (TP_STRUCT_TYPE_ALIAS_PAIR));
-
-      dbus_g_type_struct_set (&entry,
-          0, handle,
-          1, alias,
-          G_MAXUINT);
-
-      g_ptr_array_add (aliases, g_value_get_boxed (&entry));
+      g_hash_table_insert (aliases, GUINT_TO_POINTER (handle),
+          g_strdup (alias));
 
       /* Check whether the roster has an entry for the handle and if so, set
        * the roster alias so the vCard isn't fetched on every connect. */
@@ -851,13 +815,10 @@ gabble_conn_aliasing_nicknames_updated (GObject *object,
       g_free (alias);
     }
 
-  if (aliases->len > 0)
+  if (g_hash_table_size (aliases) > 0)
     tp_svc_connection_interface_aliasing_emit_aliases_changed (conn, aliases);
 
-  for (i = 0; i < aliases->len; i++)
-    g_boxed_free (TP_STRUCT_TYPE_ALIAS_PAIR, g_ptr_array_index (aliases, i));
-
-  g_ptr_array_unref (aliases);
+  g_hash_table_unref (aliases);
 }
 
 static void
@@ -1099,64 +1060,6 @@ conn_aliasing_fill_contact_attributes (GObject *obj,
     }
 }
 
-/**
- * gabble_connection_get_aliases
- *
- * Implements D-Bus method GetAliases
- * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
-static void
-gabble_connection_get_aliases (TpSvcConnectionInterfaceAliasing *iface,
-                               const GArray *contacts,
-                               DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  GHashTable *result;
-  GError *error = NULL;
-  guint i;
-
-  g_assert (GABBLE_IS_CONNECTION (self));
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  result = g_hash_table_new_full (g_direct_hash, g_direct_equal,
-    NULL, g_free);
-
-  for (i = 0; i < contacts->len; i++)
-    {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
-      GabbleConnectionAliasSource source;
-      gchar *alias;
-
-      source = _gabble_connection_get_cached_alias (self, handle, &alias);
-      g_assert (alias != NULL);
-
-      g_hash_table_insert (result, GUINT_TO_POINTER (handle), alias);
-
-      maybe_request_vcard (self, handle, source);
-    }
-
-  tp_svc_connection_interface_aliasing_return_from_get_aliases (context,
-    result);
-
-  g_hash_table_unref (result);
-}
-
-
-
 void
 conn_aliasing_init (GabbleConnection *conn)
 {
@@ -1184,10 +1087,7 @@ conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_interface_aliasing_implement_##x (\
     klass, gabble_connection_##x)
-  IMPLEMENT(get_alias_flags);
   IMPLEMENT(request_aliases);
-  IMPLEMENT(get_aliases);
   IMPLEMENT(set_aliases);
 #undef IMPLEMENT
 }
-

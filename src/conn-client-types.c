@@ -79,60 +79,6 @@ get_client_types_from_handle (GabbleConnection *conn,
 }
 
 static void
-client_types_get_client_types (TpSvcConnectionInterfaceClientTypes *iface,
-    const GArray *contacts,
-    DBusGMethodInvocation *context)
-{
-  GabbleConnection *conn = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) conn;
-  TpHandleRepoIface *contact_handles;
-  guint i;
-  GHashTable *client_types;
-  GError *error = NULL;
-
-  /* Validate contacts */
-  contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-
-  if (!tp_handles_are_valid (contact_handles, contacts, TRUE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  if (DEBUGGING)
-    {
-      DEBUG ("GetClientTypes called on the following handles:");
-
-      for (i = 0; i < contacts->len; i++)
-        {
-          DEBUG (" * %u", g_array_index (contacts, TpHandle, i));
-        }
-    }
-
-  client_types = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
-      (GDestroyNotify) g_strfreev);
-
-  for (i = 0; i < contacts->len; i++)
-    {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
-      gchar **types;
-
-      if (!get_client_types_from_handle (conn, handle, &types))
-        continue;
-
-      g_hash_table_insert (client_types, GUINT_TO_POINTER (handle),
-          types);
-    }
-
-  tp_svc_connection_interface_client_types_return_from_get_client_types (
-      context, client_types);
-
-  g_hash_table_unref (client_types);
-}
-
-static void
 client_types_request_client_types (TpSvcConnectionInterfaceClientTypes *iface,
     TpHandle contact,
     DBusGMethodInvocation *context)
@@ -178,7 +124,6 @@ conn_client_types_iface_init (gpointer g_iface,
 
 #define IMPLEMENT(x) tp_svc_connection_interface_client_types_implement_##x \
   (klass, client_types_##x)
-  IMPLEMENT (get_client_types);
   IMPLEMENT (request_client_types);
 #undef IMPLEMENT
 }

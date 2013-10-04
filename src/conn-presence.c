@@ -170,8 +170,7 @@ conn_presence_error_quark (void)
 
 static GHashTable *
 construct_contact_statuses_cb (GObject *obj,
-                               const GArray *contact_handles,
-                               GError **error)
+                               const GArray *contact_handles)
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -186,7 +185,7 @@ construct_contact_statuses_cb (GObject *obj,
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
-  if (!tp_handles_are_valid (handle_repo, contact_handles, FALSE, error))
+  if (!tp_handles_are_valid (handle_repo, contact_handles, FALSE, NULL))
     return NULL;
 
   contact_statuses = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
@@ -253,7 +252,7 @@ conn_presence_emit_presence_update (
   GHashTable *contact_statuses;
 
   contact_statuses = construct_contact_statuses_cb ((GObject *) self,
-      contact_handles, NULL);
+      contact_handles);
   tp_presence_mixin_emit_presence_update ((GObject *) self, contact_statuses);
   g_hash_table_unref (contact_statuses);
 }

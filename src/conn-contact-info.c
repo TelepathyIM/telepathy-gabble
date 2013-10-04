@@ -409,70 +409,6 @@ _request_vcards_cb (GabbleVCardManager *manager,
    * in vcard_updated. */
 }
 
-/**
- * gabble_connection_get_contact_info
- *
- * Implements D-Bus method GetContactInfo
- * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
-static void
-gabble_connection_get_contact_info (
-    TpSvcConnectionInterfaceContactInfo *iface,
-    const GArray *contacts,
-    DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  TpHandleRepoIface *contacts_repo =
-      tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
-  GError *error = NULL;
-  guint i;
-  GHashTable *ret;
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (TP_BASE_CONNECTION (iface),
-      context);
-
-  if (!tp_handles_are_valid (contacts_repo, contacts, FALSE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  ret = dbus_g_type_specialized_construct (TP_HASH_TYPE_CONTACT_INFO_MAP);
-
-  for (i = 0; i < contacts->len; i++)
-    {
-      WockyNode *vcard_node;
-      TpHandle contact = g_array_index (contacts, TpHandle, i);
-
-      if (gabble_vcard_manager_get_cached (self->vcard_manager,
-                                           contact, &vcard_node))
-        {
-          GPtrArray *contact_info = _parse_vcard (vcard_node, NULL);
-
-          /* we have the cached vcard but it cannot be parsed, skipping */
-          if (contact_info == NULL)
-            {
-              DEBUG ("contact %d vcard is cached but cannot be parsed, "
-                     "skipping.", contact);
-              continue;
-            }
-
-          g_hash_table_insert (ret, GUINT_TO_POINTER (contact),
-              contact_info);
-        }
-    }
-
-  tp_svc_connection_interface_contact_info_return_from_get_contact_info (
-      context, ret);
-
-  g_boxed_free (TP_HASH_TYPE_CONTACT_INFO_MAP, ret);
-}
-
 static void
 _return_from_request_contact_info (WockyNode *vcard_node,
                                    GError *vcard_error,
@@ -1161,7 +1097,6 @@ conn_contact_info_iface_init (gpointer g_iface, gpointer iface_data)
 
 #define IMPLEMENT(x) tp_svc_connection_interface_contact_info_implement_##x (\
     klass, gabble_connection_##x)
-  IMPLEMENT(get_contact_info);
   IMPLEMENT(refresh_contact_info);
   IMPLEMENT(request_contact_info);
   IMPLEMENT(set_contact_info);

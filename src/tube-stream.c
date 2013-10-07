@@ -839,6 +839,10 @@ fire_new_remote_connection (GabbleTubeStream *self,
   GabbleTubeStreamPrivate *priv = self->priv;
   GValue access_control_param = {0,};
   guint connection_id;
+  TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          base_conn, TP_HANDLE_TYPE_CONTACT);
 
 #ifdef GIBBER_TYPE_UNIX_TRANSPORT
   if (priv->access_control == TP_SOCKET_ACCESS_CONTROL_CREDENTIALS)
@@ -874,7 +878,9 @@ fire_new_remote_connection (GabbleTubeStream *self,
   g_assert (connection_id != 0);
 
   tp_svc_channel_type_stream_tube_emit_new_remote_connection (self,
-      contact, &access_control_param, connection_id);
+      contact, tp_handle_inspect (contact_repo, contact),
+      &access_control_param, connection_id);
+
   g_value_unset (&access_control_param);
 }
 

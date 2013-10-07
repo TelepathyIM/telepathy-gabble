@@ -3461,55 +3461,6 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
     }
 }
 
-/**
- * gabble_connection_get_contact_capabilities
- *
- * Implements D-Bus method GetContactCapabilities
- * on interface
- * org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities
- */
-static void
-gabble_connection_get_contact_capabilities (
-    TpSvcConnectionInterfaceContactCapabilities *iface,
-    const GArray *handles,
-    DBusGMethodInvocation *context)
-{
-  GabbleConnection *self = GABBLE_CONNECTION (iface);
-  TpBaseConnection *base = (TpBaseConnection *) self;
-  TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
-  guint i;
-  GHashTable *ret;
-  GError *error = NULL;
-
-  TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, context);
-
-  if (!tp_handles_are_valid (contact_handles, handles, FALSE, &error))
-    {
-      dbus_g_method_return_error (context, error);
-      g_error_free (error);
-      return;
-    }
-
-  ret = g_hash_table_new_full (NULL, NULL, NULL,
-      (GDestroyNotify) gabble_free_rcc_list);
-
-  for (i = 0; i < handles->len; i++)
-    {
-      TpHandle handle = g_array_index (handles, TpHandle, i);
-      GPtrArray *arr;
-
-      arr = gabble_connection_get_handle_contact_capabilities (self, handle);
-      g_hash_table_insert (ret, GUINT_TO_POINTER (handle), arr);
-    }
-
-  tp_svc_connection_interface_contact_capabilities_return_from_get_contact_capabilities
-      (context, ret);
-
-  g_hash_table_unref (ret);
-}
-
-
 const char *
 _gabble_connection_find_conference_server (GabbleConnection *conn)
 {
@@ -3599,7 +3550,6 @@ gabble_conn_contact_caps_iface_init (gpointer g_iface, gpointer iface_data)
 #define IMPLEMENT(x) \
     tp_svc_connection_interface_contact_capabilities_implement_##x (\
     klass, gabble_connection_##x)
-  IMPLEMENT(get_contact_capabilities);
   IMPLEMENT(update_capabilities);
 #undef IMPLEMENT
 }

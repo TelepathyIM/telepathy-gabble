@@ -240,6 +240,7 @@ TWISTED_OTHER_FILES = \
 	olpc/util.py \
 	presence/__init__.py \
 	presence/invisible_helper.py \
+	rostertest.py \
 	sasl/saslutil.py \
 	search/search_helper.py \
 	test-helper.py \

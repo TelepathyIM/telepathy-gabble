@@ -577,8 +577,7 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
             TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   /* this channel is not for this factory */
-  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TUBES) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
       tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
     return;
 

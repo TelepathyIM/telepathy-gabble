@@ -433,7 +433,8 @@ gabble_connection_constructor (GType type,
       G_STRUCT_OFFSET (GabbleConnection, contacts));
 
   tp_base_connection_register_with_contacts_mixin (base);
-  tp_base_contact_list_mixin_register_with_contacts_mixin (base);
+  tp_base_contact_list_mixin_register_with_contacts_mixin (
+      gabble_connection_get_contact_list (self), base);
 
   conn_aliasing_init (self);
   conn_avatars_init (self);

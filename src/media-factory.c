@@ -704,12 +704,21 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
     }
 }
 
+typedef enum {
+  MEDIA_CAPABILITY_AUDIO = 1,
+  MEDIA_CAPABILITY_VIDEO = 2,
+  MEDIA_CAPABILITY_NAT_TRAVERSAL_STUN = 4,
+  MEDIA_CAPABILITY_NAT_TRAVERSAL_GTALK_P2P = 8,
+  MEDIA_CAPABILITY_NAT_TRAVERSAL_ICE_UDP = 16,
+  MEDIA_CAPABILITY_IMMUTABLE_STREAMS = 32,
+} MediaCapabilities;
+
 /* The switch in gabble_media_factory_get_contact_caps needs to be kept in
  * sync with the possible returns from this function. */
-static TpChannelMediaCapabilities
+static MediaCapabilities
 _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
 {
-  TpChannelMediaCapabilities typeflags = 0;
+  MediaCapabilities typeflags = 0;
   gboolean has_a_transport, just_google, one_media_type;
 
   has_a_transport = gabble_capability_set_has_one (caps,
@@ -718,12 +727,12 @@ _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
   if (has_a_transport &&
       gabble_capability_set_has_one (caps,
         gabble_capabilities_get_any_audio ()))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+    typeflags |= MEDIA_CAPABILITY_AUDIO;
 
   if (has_a_transport &&
       gabble_capability_set_has_one (caps,
         gabble_capabilities_get_any_video ()))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+    typeflags |= MEDIA_CAPABILITY_VIDEO;
 
   /* The checks below are an intentional asymmetry with the function going the
    * other way - we don't require the other end to advertise the GTalk-P2P
@@ -731,10 +740,10 @@ _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
    * Having Google voice implied Google session and GTalk-P2P. */
 
   if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VOICE))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_AUDIO;
+    typeflags |= MEDIA_CAPABILITY_AUDIO;
 
   if (gabble_capability_set_has (caps, NS_GOOGLE_FEAT_VIDEO))
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_VIDEO;
+    typeflags |= MEDIA_CAPABILITY_VIDEO;
 
   just_google =
       gabble_capability_set_has_one (caps,
@@ -742,11 +751,11 @@ _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
       !gabble_capability_set_has_one (caps,
           gabble_capabilities_get_any_jingle_av ());
 
-  one_media_type = (typeflags == TP_CHANNEL_MEDIA_CAPABILITY_AUDIO)
-      || (typeflags == TP_CHANNEL_MEDIA_CAPABILITY_VIDEO);
+  one_media_type = (typeflags == MEDIA_CAPABILITY_AUDIO)
+      || (typeflags == MEDIA_CAPABILITY_VIDEO);
 
   if (just_google || one_media_type)
-    typeflags |= TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS;
+    typeflags |= MEDIA_CAPABILITY_IMMUTABLE_STREAMS;
 
   return typeflags;
 }
@@ -757,14 +766,14 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
     const GabbleCapabilitySet *caps,
     GPtrArray *arr)
 {
-  TpChannelMediaCapabilities typeflags =
+  MediaCapabilities typeflags =
     _gabble_media_factory_caps_to_typeflags (caps);
   GValueArray *va;
   const gchar * const *call_allowed;
 
-  typeflags &= (TP_CHANNEL_MEDIA_CAPABILITY_AUDIO |
-      TP_CHANNEL_MEDIA_CAPABILITY_VIDEO |
-      TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS);
+  typeflags &= (MEDIA_CAPABILITY_AUDIO |
+      MEDIA_CAPABILITY_VIDEO |
+      MEDIA_CAPABILITY_IMMUTABLE_STREAMS);
 
   /* This switch is over the values of several bits from a
    * bitfield-represented-as-an-enum, simultaneously, which upsets gcc-4.5;
@@ -776,24 +785,24 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
       case 0:
         return;
 
-      case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
-          | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
+      case MEDIA_CAPABILITY_AUDIO
+          | MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
         call_allowed = call_audio_allowed;
         break;
 
-      case TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
-          | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
+      case MEDIA_CAPABILITY_VIDEO
+          | MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
         call_allowed = call_video_allowed;
         break;
 
-      case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO
-          | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO: /* both */
+      case MEDIA_CAPABILITY_AUDIO
+          | MEDIA_CAPABILITY_VIDEO: /* both */
         call_allowed = call_both_allowed;
         break;
 
-      case TP_CHANNEL_MEDIA_CAPABILITY_AUDIO /* both but immutable */
-          | TP_CHANNEL_MEDIA_CAPABILITY_VIDEO
-          | TP_CHANNEL_MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
+      case MEDIA_CAPABILITY_AUDIO /* both but immutable */
+          | MEDIA_CAPABILITY_VIDEO
+          | MEDIA_CAPABILITY_IMMUTABLE_STREAMS:
         call_allowed = call_both_allowed_immutable;
         break;
 

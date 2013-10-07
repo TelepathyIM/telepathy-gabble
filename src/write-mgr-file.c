@@ -281,7 +281,7 @@ write_presence (GKeyFile *f,
 
   statuses = tp_asv_get_boxed (props,
       TP_PROP_PROTOCOL_INTERFACE_PRESENCE_STATUSES,
-      TP_HASH_TYPE_SIMPLE_STATUS_SPEC_MAP);
+      TP_HASH_TYPE_STATUS_SPEC_MAP);
   g_return_if_fail (statuses != NULL);
 
   g_hash_table_iter_init (&iter, statuses);

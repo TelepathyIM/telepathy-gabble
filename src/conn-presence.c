@@ -1940,7 +1940,7 @@ conn_presence_class_init (GabbleConnectionClass *klass)
   mixin_cls->get_maximum_status_message_length =
       get_maximum_status_message_length_cb;
 
-  tp_presence_mixin_simple_presence_init_dbus_properties (
+  tp_presence_mixin_init_dbus_properties (
     (GObjectClass *) klass);
 }
 
@@ -1963,8 +1963,7 @@ conn_presence_init (GabbleConnection *conn)
   tp_presence_mixin_init ((GObject *) conn,
       G_STRUCT_OFFSET (GabbleConnection, presence));
 
-  tp_presence_mixin_simple_presence_register_with_contacts_mixin (
-      G_OBJECT (conn));
+  tp_presence_mixin_register_with_contacts_mixin (G_OBJECT (conn));
 }
 
 void

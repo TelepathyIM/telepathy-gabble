@@ -466,7 +466,6 @@ gabble_muc_channel_constructed (GObject *obj)
 
   /* set initial group flags */
   tp_group_mixin_change_flags (obj,
-      TP_CHANNEL_GROUP_FLAG_PROPERTIES |
       TP_CHANNEL_GROUP_FLAG_CHANNEL_SPECIFIC_HANDLES |
       TP_CHANNEL_GROUP_FLAG_HANDLE_OWNERS_NOT_AVAILABLE |
       TP_CHANNEL_GROUP_FLAG_CAN_ADD,

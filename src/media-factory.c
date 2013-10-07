@@ -831,25 +831,18 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     GabbleCapabilitySet *cap_set,
     GPtrArray *data_forms)
 {
-  static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
   static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;
   gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
            ice_udp = FALSE;
   guint i;
 
   /* One-time initialization - turn the tokens we care about into quarks */
-  if (G_UNLIKELY (q_gtalk_p2p == 0))
+  if (G_UNLIKELY (qc_gtalk_p2p == 0))
     {
-      q_gtalk_p2p = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/gtalk-p2p");
       qc_gtalk_p2p = g_quark_from_static_string (
           TP_IFACE_CHANNEL_TYPE_CALL "/gtalk-p2p");
-      q_ice_udp = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/ice-udp");
       qc_ice_udp = g_quark_from_static_string (
           TP_IFACE_CHANNEL_TYPE_CALL "/ice-udp");
-      q_h264 = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/video/h264");
       qc_h264 = g_quark_from_static_string (
           TP_IFACE_CHANNEL_TYPE_CALL "/video/h264");
     }
@@ -865,9 +858,9 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
             GQuark quark;
             gboolean *cap;
           } q2cap[] = {
-              { q_gtalk_p2p, &gtalk_p2p }, { qc_gtalk_p2p, &gtalk_p2p },
-              { q_ice_udp, &ice_udp }, { qc_ice_udp, &ice_udp },
-              { q_h264, &h264 }, { qc_h264, &h264 },
+              { qc_gtalk_p2p, &gtalk_p2p },
+              { qc_ice_udp, &ice_udp },
+              { qc_h264, &h264 },
               { 0, NULL },
           };
 

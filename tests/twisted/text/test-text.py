@@ -113,8 +113,7 @@ def test(q, bus, conn, stream):
 
     assert message_sent.args[2] == sent_token
 
-    # Send a message using Channel.Type.Text API
-    text_chan.Text.Send(0, 'goodbye')
+    text_chan.send_msg_sync('goodbye')
 
     stream_message, message_sent = q.expect_many(
         EventPattern('stream-message'),

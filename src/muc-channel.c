@@ -75,9 +75,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD,
       password_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
-      tp_message_mixin_text_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_MESSAGES,
-      tp_message_mixin_messages_iface_init);
+      tp_message_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
       tp_message_mixin_chat_state_iface_init)
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
@@ -235,7 +233,6 @@ gabble_muc_channel_get_interfaces (TpBaseChannel *base)
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_GROUP);
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_PASSWORD);
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_MESSAGES);
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CONFERENCE);
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM);
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG);
@@ -1011,10 +1008,10 @@ gabble_muc_channel_fill_immutable_properties (
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
       TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
-      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessagePartSupportFlags",
-      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "DeliveryReportingSupport",
-      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "SupportedContentTypes",
-      TP_IFACE_CHANNEL_INTERFACE_MESSAGES, "MessageTypes",
+      TP_IFACE_CHANNEL_TYPE_TEXT, "MessagePartSupportFlags",
+      TP_IFACE_CHANNEL_TYPE_TEXT, "DeliveryReportingSupport",
+      TP_IFACE_CHANNEL_TYPE_TEXT, "SupportedContentTypes",
+      TP_IFACE_CHANNEL_TYPE_TEXT, "MessageTypes",
       TP_IFACE_CHANNEL_INTERFACE_ROOM, "RoomName",
       TP_IFACE_CHANNEL_INTERFACE_ROOM, "Server",
       NULL);

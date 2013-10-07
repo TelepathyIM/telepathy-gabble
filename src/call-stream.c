@@ -250,7 +250,7 @@ _endpoint_state_changed_cb (
     GParamSpec *spec,
     WockyJingleContent *content)
 {
-  TpMediaStreamState state;
+  TpStreamEndpointState state;
 
   /* We only care about connecting RTP, RTCP is optional */
   state = tp_call_stream_endpoint_get_state (endpoint, 1);

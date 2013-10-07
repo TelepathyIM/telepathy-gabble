@@ -347,6 +347,32 @@ static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
     TpDeliveryStatus delivery_status);
 
 static void
+change_members (GObject *obj,
+    const gchar *message,
+    const TpIntset *add,
+    const TpIntset *del,
+    const TpIntset *add_local_pending,
+    const TpIntset *add_remote_pending,
+    TpHandle actor,
+    TpChannelGroupChangeReason reason)
+{
+  GHashTable *details;
+
+  details = tp_asv_new (
+      "actor", G_TYPE_UINT, actor,
+      "change-reason", G_TYPE_UINT, reason,
+      NULL);
+
+  if (message != NULL)
+    tp_asv_set_string (details, "message", message);
+
+  tp_group_mixin_change_members (obj,
+      add, del, add_local_pending, add_remote_pending, details);
+
+  g_hash_table_unref (details);
+}
+
+static void
 gabble_muc_channel_constructed (GObject *obj)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
@@ -514,7 +540,7 @@ gabble_muc_channel_constructed (GObject *obj)
       TpIntset *members = tp_intset_new_containing (initiator);
       TpIntset *pending = tp_intset_new_containing (self_handle);
 
-      tp_group_mixin_change_members (obj, priv->invitation_message,
+      change_members (obj, priv->invitation_message,
           members, NULL, pending, NULL,
           initiator, TP_CHANNEL_GROUP_CHANGE_REASON_INVITED);
 
@@ -1590,7 +1616,7 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
 #endif
 
   set = tp_intset_new_containing (TP_GROUP_MIXIN (chan)->self_handle);
-  tp_group_mixin_change_members ((GObject *) chan, reason,
+  change_members ((GObject *) chan, reason,
       NULL, set, NULL, NULL, actor, reason_code);
   tp_intset_destroy (set);
 
@@ -1718,7 +1744,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
   tp_intset_add (remove_rp, mixin->self_handle);
 
   tp_group_mixin_change_self_handle ((GObject *) chan, self_handle);
-  tp_group_mixin_change_members ((GObject *) chan, NULL, NULL, remove_rp, NULL,
+  change_members ((GObject *) chan, NULL, NULL, remove_rp, NULL,
       add_rp, 0, TP_CHANNEL_GROUP_CHANGE_REASON_RENAMED);
 
   tp_intset_destroy (add_rp);
@@ -2468,7 +2494,7 @@ handle_left (GObject *source,
   /* handle_tube_presence creates tubes if need be, so bypass it here: */
   tubes_presence_update (gmuc, member, wocky_stanza_get_top_node (stanza));
 
-  tp_group_mixin_change_members (data, why, NULL, handles, NULL, NULL,
+  change_members (data, why, NULL, handles, NULL, NULL,
       actor, reason);
   tp_message_mixin_change_chat_state (data, member,
       TP_CHANNEL_CHAT_STATE_GONE);
@@ -2561,7 +2587,7 @@ handle_renamed (GObject *source,
   tp_intset_add (old_self, TP_GROUP_MIXIN (gmuc)->self_handle);
   tp_group_mixin_change_self_handle (data, myself);
   tp_group_mixin_add_handle_owner (data, myself, userid);
-  tp_group_mixin_change_members (data, "", NULL, old_self, NULL, NULL, 0, 0);
+  change_members (data, "", NULL, old_self, NULL, NULL, 0, 0);
 
   handle_tube_presence (gmuc, myself, stanza);
 
@@ -2649,7 +2675,7 @@ handle_join (WockyMuc *muc,
 
   tp_handle_set_add (members, myself);
   tp_group_mixin_add_handle_owners (G_OBJECT (gmuc), omap);
-  tp_group_mixin_change_members (G_OBJECT (gmuc), "",
+  change_members (G_OBJECT (gmuc), "",
       tp_handle_set_peek (members), NULL, NULL, NULL, 0, 0);
 
   /* accept the config of the room if it was created for us: */
@@ -2721,7 +2747,7 @@ handle_presence (GObject *source,
 
   /* add the member in quesion */
   tp_handle_set_add (handles, handle);
-  tp_group_mixin_change_members (data, "", tp_handle_set_peek (handles),
+  change_members (data, "", tp_handle_set_peek (handles),
       NULL, NULL, NULL, 0, 0);
 
   /* record the owner (0 for no owner) */
@@ -3397,7 +3423,7 @@ gabble_muc_channel_add_member (GObject *obj,
 
       tp_group_mixin_add_handle_owner (obj, mixin->self_handle,
           tp_base_connection_get_self_handle (conn));
-      tp_group_mixin_change_members (obj, "", NULL, set_remove_members,
+      change_members (obj, "", NULL, set_remove_members,
           NULL, set_remote_pending, 0,
           priv->invited
             ? TP_CHANNEL_GROUP_CHANGE_REASON_INVITED

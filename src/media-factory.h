@@ -61,9 +61,6 @@ GType gabble_media_factory_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_MEDIA_FACTORY,\
                               GabbleMediaFactoryClass))
 
-TpChannelMediaCapabilities
-_gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps);
-
 const gchar * const * gabble_media_factory_call_channel_allowed_properties (
     void);
 

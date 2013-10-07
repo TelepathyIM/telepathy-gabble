@@ -706,7 +706,7 @@ gabble_media_factory_add_caps (GabbleCapabilitySet *caps,
 
 /* The switch in gabble_media_factory_get_contact_caps needs to be kept in
  * sync with the possible returns from this function. */
-TpChannelMediaCapabilities
+static TpChannelMediaCapabilities
 _gabble_media_factory_caps_to_typeflags (const GabbleCapabilitySet *caps)
 {
   TpChannelMediaCapabilities typeflags = 0;

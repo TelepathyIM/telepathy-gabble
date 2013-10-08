@@ -3,9 +3,9 @@ Test basic roster group functionality.
 """
 
 from gabbletest import exec_test, acknowledge_iq, sync_stream
-from rostertest import expect_contact_list_signals, check_contact_list_signals
-from servicetest import (assertLength, EventPattern, assertEquals, call_async,
+from servicetest import (EventPattern, assertEquals, call_async,
         sync_dbus, assertContains, assertDoesNotContain)
+from rostertest import groups_changed_predicate, groups_created_predicate
 import constants as cs
 import ns
 
@@ -64,34 +64,26 @@ def test(q, bus, conn, stream):
     # of their groups. On a typical contact list, there are more contacts
     # than groups, so that'll work out smaller.
 
-    pairs, groups_changed = expect_contact_list_signals(q, bus, conn, [],
-            ['men', 'women'],
-            [
-                EventPattern('dbus-signal', signal='GroupsChanged',
-                    interface=cs.CONN_IFACE_CONTACT_GROUPS,
-                    path=conn.object_path,
-                    predicate=lambda e: 'women' in e.args[1]),
-                EventPattern('dbus-signal', signal='GroupsChanged',
-                    interface=cs.CONN_IFACE_CONTACT_GROUPS,
-                    path=conn.object_path,
-                    predicate=lambda e: 'men' in e.args[1]),
-            ])
+    q.expect_many(
+            EventPattern('dbus-signal', signal='GroupsCreated',
+                interface=cs.CONN_IFACE_CONTACT_GROUPS,
+                path=conn.object_path,
+                predicate=lambda e: groups_created_predicate(e, ['men', 'women'])),
+            EventPattern('dbus-signal', signal='GroupsChanged',
+                interface=cs.CONN_IFACE_CONTACT_GROUPS,
+                path=conn.object_path,
+                predicate=lambda e: groups_changed_predicate(e, conn, ['amy@foo.com'], ['women'], [])),
+            EventPattern('dbus-signal', signal='GroupsChanged',
+                interface=cs.CONN_IFACE_CONTACT_GROUPS,
+                path=conn.object_path,
+                predicate=lambda e: groups_changed_predicate(e, conn, ['bob@foo.com', 'che@foo.com'], ['men'], [])),
+            )
 
     amy, bob, che = conn.get_contact_handles_sync(
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
 
-    assertEquals([[amy], ['women'], []], groups_changed[0].args)
-    assertEquals([[bob, che], ['men'], []], groups_changed[1].args)
-
     q.expect('dbus-signal', signal='ContactListStateChanged',
             args=[cs.CONTACT_LIST_STATE_SUCCESS])
-
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
-            'men', ['bob@foo.com', 'che@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
-            'women', ['amy@foo.com'])
-
-    assertLength(0, pairs)      # i.e. we've checked all of them
 
     # change Amy's groups
     call_async(q, conn.ContactGroups, 'SetContactGroups', amy,

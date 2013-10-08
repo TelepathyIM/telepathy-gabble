@@ -5,7 +5,8 @@ Test basic roster group functionality.
 from gabbletest import exec_test, acknowledge_iq, sync_stream
 from servicetest import (EventPattern, assertEquals, call_async,
         sync_dbus, assertContains, assertDoesNotContain)
-from rostertest import groups_changed_predicate, groups_created_predicate
+from rostertest import (groups_changed_predicate, groups_created_predicate,
+        check_contact_roster)
 import constants as cs
 import ns
 
@@ -162,13 +163,8 @@ def test(q, bus, conn, stream):
 
             sync_dbus(bus, q, conn)
             sync_stream(q, stream)
-            assertEquals({
-                    cs.CONN_IFACE_CONTACT_GROUPS + '/groups':
-                        ['ladies', 'people starting with A'],
-                    cs.CONN + '/contact-id':
-                        'amy@foo.com' },
-                conn.Contacts.GetContactAttributes([amy],
-                    [cs.CONN_IFACE_CONTACT_GROUPS], False)[amy])
+
+            check_contact_roster(conn, 'amy@foo.com', ['ladies', 'people starting with A'])
 
     # sanity check: after all that, we expect Amy to be in group 'ladies' only
     sync_dbus(bus, q, conn)

@@ -3363,6 +3363,7 @@ finally:
 
 typedef struct {
     TpHandle group_handle;
+    gchar *group;
     GAsyncReadyCallback callback;
     gpointer user_data;
     TpHandleSet *contacts;
@@ -3441,6 +3442,7 @@ gabble_roster_remove_group_removed_cb (GObject *source,
 
   context->callback (source, result, context->user_data);
   tp_clear_pointer (&context->contacts, tp_handle_set_destroy);
+  g_free (context->group);
   g_slice_free (RemoveGroupContext, context);
 }
 
@@ -3462,6 +3464,7 @@ gabble_roster_remove_group_async (TpBaseContactList *base,
 
   context = g_slice_new0 (RemoveGroupContext);
   context->group_handle = tp_handle_lookup (group_repo, group, NULL, NULL);
+  context->group = g_strdup (group);
   context->callback = callback;
   context->user_data = user_data;
   context->contacts = tp_handle_set_new (contact_repo);

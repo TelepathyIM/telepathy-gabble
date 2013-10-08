@@ -3,8 +3,8 @@ Test basic roster functionality.
 """
 
 from gabbletest import exec_test
-from rostertest import expect_contact_list_signals, check_contact_list_signals
-from servicetest import (assertEquals, assertLength, call_async)
+from rostertest import check_contact_roster, contacts_changed_predicate
+from servicetest import (assertEquals, call_async)
 import constants as cs
 import ns
 
@@ -37,22 +37,20 @@ def test(q, bus, conn, stream):
     # roster query twice. This used to crash Gabble.
     stream.send(event.stanza)
 
+    contacts = [
+        ('amy@foo.com', cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_YES, ''),
+        ('bob@foo.com', cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_YES, ''),
+        ('che@foo.com', cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
+        ]
+
     # slight implementation detail: TpBaseContactList emits ContactsChanged
     # before it announces its channels
-    s = q.expect('dbus-signal', signal='ContactsChanged',
-            interface=cs.CONN_IFACE_CONTACT_LIST, path=conn.object_path)
+    q.expect('dbus-signal', signal='ContactsChangedWithID',
+            interface=cs.CONN_IFACE_CONTACT_LIST, path=conn.object_path,
+            predicate=lambda e: contacts_changed_predicate(e, conn, contacts))
 
     amy, bob, che = conn.get_contact_handles_sync(
             ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
-
-    assertEquals([{
-        amy: (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_YES, ''),
-        bob: (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_YES, ''),
-        che: (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
-        }, []], s.args)
-
-    pairs = expect_contact_list_signals(q, bus, conn,
-            ['publish', 'subscribe', 'stored'])
 
     # this is emitted last, so clients can tell when the initial state dump
     # has finished
@@ -81,15 +79,6 @@ def test(q, bus, conn, stream):
             cs.CONN + '/contact-id': 'che@foo.com',
             },
         },), r.value)
-
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'publish', ['amy@foo.com', 'bob@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'subscribe', ['amy@foo.com', 'che@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'stored', ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
-
-    assertLength(0, pairs)      # i.e. we've checked all of them
 
 if __name__ == '__main__':
     exec_test(test)

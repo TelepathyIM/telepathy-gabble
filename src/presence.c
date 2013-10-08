@@ -69,7 +69,6 @@ struct _GabblePresencePrivate {
 
     gchar *no_resource_status_message;
     GSList *resources;
-    guint olpc_views;
 
     gchar *active_resource;
 };
@@ -444,15 +443,6 @@ aggregate_resources (GabblePresence *presence)
       priv->active_resource = g_strdup (best->name);
     }
 
-  if (presence->status <= GABBLE_PRESENCE_HIDDEN && priv->olpc_views > 0)
-    {
-      /* Contact is in at least one view and we didn't receive a better
-       * presence from him so announce it as available */
-      presence->status = GABBLE_PRESENCE_AVAILABLE;
-      g_free (presence->status_message);
-      presence->status_message = NULL;
-    }
-
   return old_client_types != presence->client_types;
 }
 
@@ -739,7 +729,6 @@ gabble_presence_dump (GabblePresence *presence)
 gboolean
 gabble_presence_added_to_view (GabblePresence *self)
 {
-  GabblePresencePrivate *priv = self->priv;
   GabblePresenceId old_status;
   gchar *old_status_message;
   gboolean ret = FALSE;
@@ -748,7 +737,6 @@ gabble_presence_added_to_view (GabblePresence *self)
   old_status = self->status;
   old_status_message = g_strdup (self->status_message);
 
-  priv->olpc_views++;
   aggregate_resources (self);
 
   /* detect changes */
@@ -763,7 +751,6 @@ gabble_presence_added_to_view (GabblePresence *self)
 gboolean
 gabble_presence_removed_from_view (GabblePresence *self)
 {
-  GabblePresencePrivate *priv = self->priv;
   GabblePresenceId old_status;
   gchar *old_status_message;
   gboolean ret = FALSE;
@@ -772,7 +759,6 @@ gabble_presence_removed_from_view (GabblePresence *self)
   old_status = self->status;
   old_status_message = g_strdup (self->status_message);
 
-  priv->olpc_views--;
   aggregate_resources (self);
 
   /* detect changes */

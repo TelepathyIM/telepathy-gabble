@@ -55,12 +55,6 @@ TWISTED_TESTS = \
 	muc/test-muc-invitation.py \
 	muc/test-muc-ownership.py \
 	muc/test-muc.py \
-	olpc/change-notifications.py \
-	olpc/current-activity.py \
-	olpc/olpc-muc-invitation.py \
-	olpc/olpc-muc-prop-change.py \
-	olpc/test-olpc-bundle.py \
-	olpc/test-olpc-set-props-preload.py \
 	pep-support.py \
 	plugin-channel-managers.py \
 	power-save.py \
@@ -237,7 +231,6 @@ TWISTED_OTHER_FILES = \
 	jingle-share/jingleshareutils.py \
 	mucutil.py \
 	ns.py \
-	olpc/util.py \
 	presence_helper.py \
 	presence/__init__.py \
 	presence/invisible_helper.py \

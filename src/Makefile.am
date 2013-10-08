@@ -45,8 +45,6 @@ libgabble_convenience_la_SOURCES = \
     conn-contact-info.c \
     conn-location.h \
     conn-location.c \
-    conn-olpc.h \
-    conn-olpc.c \
     conn-power-saving.h \
     conn-power-saving.c \
     conn-presence.h \
@@ -84,8 +82,6 @@ libgabble_convenience_la_SOURCES = \
     muc-tube-stream.h \
     muc-tube-stream.c \
     namespaces.h \
-    olpc-activity.h \
-    olpc-activity.c \
     plugin-loader.h \
     plugin-loader.c \
     presence.h \

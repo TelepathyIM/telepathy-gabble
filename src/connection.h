@@ -204,12 +204,6 @@ struct _GabbleConnection {
     /* vCard lookup helper */
     GabbleVCardManager *vcard_manager;
 
-    /* OLPC hash tables */
-    GHashTable *olpc_activities_info;
-    GHashTable *olpc_pep_activities;
-    GHashTable *olpc_invited_activities;
-    GHashTable *olpc_current_act;
-
     /* bytestream factory */
     GabbleBytestreamFactory *bytestream_factory;
 
@@ -231,10 +225,6 @@ struct _GabbleConnection {
     /* PEP */
     WockyPepService *pep_nick;
     WockyPepService *pep_location;
-    WockyPepService *pep_olpc_buddy_props;
-    WockyPepService *pep_olpc_activities;
-    WockyPepService *pep_olpc_current_act;
-    WockyPepService *pep_olpc_act_props;
 
     /* Sidecars */
     /* gchar *interface → GabbleSidecar */

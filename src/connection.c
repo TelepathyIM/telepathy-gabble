@@ -52,7 +52,6 @@
 #include "conn-presence.h"
 #include "conn-sidecars.h"
 #include "conn-mail-notif.h"
-#include "conn-olpc.h"
 #include "conn-power-saving.h"
 #include "debug.h"
 #include "disco.h"
@@ -118,10 +117,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_decloak_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION,
       location_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_BUDDY_INFO,
-      olpc_buddy_info_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_OLPC_ACTIVITY_PROPERTIES,
-      olpc_activity_properties_iface_init);
     G_IMPLEMENT_INTERFACE
       (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
       gabble_conn_contact_caps_iface_init);
@@ -440,7 +435,6 @@ gabble_connection_constructor (GType type,
   conn_avatars_init (self);
   conn_contact_info_init (self);
   conn_presence_init (self);
-  conn_olpc_activity_properties_init (self);
   conn_location_init (self);
   conn_sidecars_init (self);
   conn_mail_notif_init (self);
@@ -868,8 +862,6 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
 static const gchar *implemented_interfaces[] = {
     /* conditionally present interfaces */
     TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
-    GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
-    GABBLE_IFACE_OLPC_BUDDY_INFO,
 
     /* always present interfaces */
     TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
@@ -889,7 +881,7 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_ADDRESSING,
     NULL
 };
-static const gchar **interfaces_always_present = implemented_interfaces + 3;
+static const gchar **interfaces_always_present = implemented_interfaces + 1;
 
 const gchar **
 gabble_connection_get_implemented_interfaces (void)
@@ -1294,8 +1286,6 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&self->self_presence);
   tp_clear_object (&self->presence_cache);
 
-  conn_olpc_activity_properties_dispose (self);
-
   g_hash_table_unref (self->avatar_requests);
   g_hash_table_unref (self->vcard_requests);
 
@@ -1328,10 +1318,6 @@ gabble_connection_dispose (GObject *object)
 
   tp_clear_object (&self->pep_location);
   tp_clear_object (&self->pep_nick);
-  tp_clear_object (&self->pep_olpc_buddy_props);
-  tp_clear_object (&self->pep_olpc_activities);
-  tp_clear_object (&self->pep_olpc_current_act);
-  tp_clear_object (&self->pep_olpc_act_props);
 
   conn_sidecars_dispose (self);
 
@@ -1954,10 +1940,6 @@ connector_connected (GabbleConnection *self,
 
   wocky_pep_service_start (self->pep_location, self->session);
   wocky_pep_service_start (self->pep_nick, self->session);
-  wocky_pep_service_start (self->pep_olpc_buddy_props, self->session);
-  wocky_pep_service_start (self->pep_olpc_activities, self->session);
-  wocky_pep_service_start (self->pep_olpc_current_act, self->session);
-  wocky_pep_service_start (self->pep_olpc_act_props, self->session);
 
   /* Don't use wocky_session_start as we don't want to start all the
    * components (Roster, presence-manager, etc) for now */
@@ -2791,15 +2773,6 @@ set_status_to_connected (GabbleConnection *conn)
       /* We already failed to connect, but at the time an async thing was
        * still pending, and now it has finished. Do nothing special. */
       return;
-    }
-
-  if (conn->features & GABBLE_CONNECTION_FEATURES_PEP)
-    {
-      const gchar *ifaces[] = { GABBLE_IFACE_OLPC_BUDDY_INFO,
-          GABBLE_IFACE_OLPC_ACTIVITY_PROPERTIES,
-          NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)

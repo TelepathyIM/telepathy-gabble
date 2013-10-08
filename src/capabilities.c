@@ -38,7 +38,6 @@ struct _Feature
   enum {
     FEATURE_FIXED,
     FEATURE_OPTIONAL,
-    FEATURE_OLPC
   } feature_type;
   gchar *ns;
 };
@@ -84,11 +83,6 @@ static const Feature self_advertised_features[] =
   { FEATURE_OPTIONAL, NS_JINGLE_RTP_VIDEO },
 #endif
 
-  { FEATURE_OLPC, NS_OLPC_BUDDY_PROPS "+notify" },
-  { FEATURE_OLPC, NS_OLPC_ACTIVITIES "+notify" },
-  { FEATURE_OLPC, NS_OLPC_CURRENT_ACTIVITY "+notify" },
-  { FEATURE_OLPC, NS_OLPC_ACTIVITY_PROPS "+notify" },
-
   { FEATURE_OPTIONAL, NS_GEOLOC "+notify" },
 
   { 0, NULL }
@@ -112,7 +106,6 @@ static GabbleCapabilitySet *any_jingle_av_caps = NULL;
 static GabbleCapabilitySet *any_transport_caps = NULL;
 static GabbleCapabilitySet *fixed_caps = NULL;
 static GabbleCapabilitySet *geoloc_caps = NULL;
-static GabbleCapabilitySet *olpc_caps = NULL;
 
 const GabbleCapabilitySet *
 gabble_capabilities_get_legacy (void)
@@ -190,12 +183,6 @@ const GabbleCapabilitySet *
 gabble_capabilities_get_geoloc_notify (void)
 {
   return geoloc_caps;
-}
-
-const GabbleCapabilitySet *
-gabble_capabilities_get_olpc_notify (void)
-{
-  return olpc_caps;
 }
 
 static gboolean
@@ -318,14 +305,6 @@ gabble_capabilities_init (gpointer conn)
 
       geoloc_caps = gabble_capability_set_new ();
       gabble_capability_set_add (geoloc_caps, NS_GEOLOC "+notify");
-
-      olpc_caps = gabble_capability_set_new ();
-
-      for (feat = self_advertised_features; feat->ns != NULL; feat++)
-        {
-          if (feat->feature_type == FEATURE_OLPC)
-            gabble_capability_set_add (olpc_caps, feat->ns);
-        }
     }
 
   g_assert (feature_handles != NULL);
@@ -355,7 +334,6 @@ gabble_capabilities_finalize (gpointer conn)
 #endif
       gabble_capability_set_free (fixed_caps);
       gabble_capability_set_free (geoloc_caps);
-      gabble_capability_set_free (olpc_caps);
 
       legacy_caps = NULL;
       share_v1_caps = NULL;
@@ -370,7 +348,6 @@ gabble_capabilities_finalize (gpointer conn)
       any_transport_caps = NULL;
       fixed_caps = NULL;
       geoloc_caps = NULL;
-      olpc_caps = NULL;
 
       tp_clear_object (&feature_handles);
     }

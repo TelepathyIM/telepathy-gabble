@@ -36,7 +36,6 @@ static GDebugKey keys[] = {
   { "vcard",          GABBLE_DEBUG_VCARD },
   { "pipeline",       GABBLE_DEBUG_PIPELINE },
   { "jid",            GABBLE_DEBUG_JID },
-  { "olpc",           GABBLE_DEBUG_OLPC },
   { "bytestream",     GABBLE_DEBUG_BYTESTREAM },
   { "tubes",          GABBLE_DEBUG_TUBES },
   { "location",       GABBLE_DEBUG_LOCATION },

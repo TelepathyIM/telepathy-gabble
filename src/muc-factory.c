@@ -33,7 +33,6 @@
 
 #include "gabble/caps-channel-manager.h"
 #include "connection.h"
-#include "conn-olpc.h"
 #include "debug.h"
 #include "disco.h"
 #include "im-channel.h"
@@ -772,7 +771,6 @@ muc_factory_message_cb (
     gpointer user_data)
 {
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
-  GabbleMucFactoryPrivate *priv = fac->priv;
 
   const gchar *from, *body, *id;
   time_t stamp;
@@ -783,14 +781,6 @@ muc_factory_message_cb (
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
         &msgtype, &id, &body, &state, &send_error, &delivery_status))
-    return TRUE;
-
-  if (conn_olpc_process_activity_properties_message (priv->conn, message,
-        from))
-    return TRUE;
-
-  if (conn_olpc_process_activity_uninvite_message (priv->conn, message,
-        from))
     return TRUE;
 
   if (process_muc_invite (fac, message, from, send_error))

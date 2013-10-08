@@ -45,7 +45,6 @@ const GabbleCapabilitySet *gabble_capabilities_get_any_google_av (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_jingle_av (void);
 const GabbleCapabilitySet *gabble_capabilities_get_any_transport (void);
 const GabbleCapabilitySet *gabble_capabilities_get_geoloc_notify (void);
-const GabbleCapabilitySet *gabble_capabilities_get_olpc_notify (void);
 
 /* XEP-0115 version 1.3:
  *

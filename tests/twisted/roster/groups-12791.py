@@ -3,8 +3,8 @@ Test broken groups on the roster (regression test for fd.o #12791)
 """
 
 from gabbletest import exec_test
-from rostertest import expect_contact_list_signals, check_contact_list_signals
-from servicetest import assertLength
+from servicetest import assertLength, assertSameSets, EventPattern
+from rostertest import check_contact_roster, contacts_changed_predicate, groups_created_predicate
 import constants as cs
 import ns
 
@@ -47,24 +47,28 @@ def test(q, bus, conn, stream):
 
     stream.send(event.stanza)
 
-    pairs = expect_contact_list_signals(q, bus, conn,
-            ['publish', 'subscribe', 'stored'],
-            ['men', 'women', 'affected-by-fdo-12791'])
+    contacts = [
+        ('amy@foo.com', cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_YES, ''),
+        ('bob@foo.com', cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_YES, ''),
+        ('che@foo.com', cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
+        ]
 
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'publish', ['amy@foo.com', 'bob@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'subscribe', ['amy@foo.com', 'che@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'stored', ['amy@foo.com', 'bob@foo.com', 'che@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
-            'men', ['bob@foo.com', 'che@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
-            'women', ['amy@foo.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_GROUP,
-            'affected-by-fdo-12791', [])
+    q.expect_many(
+        EventPattern('dbus-signal', signal='ContactsChangedWithID',
+            predicate=lambda e: contacts_changed_predicate(e, conn, contacts)),
+        EventPattern('dbus-signal', signal='GroupsCreated',
+            predicate=lambda e: groups_created_predicate(e, ['women', 'men', 'affected-by-fdo-12791'])),
+        )
 
-    assertLength(0, pairs)      # i.e. we've checked all of them
+    contacts = conn.ContactList.GetContactListAttributes([cs.CONN_IFACE_CONTACT_GROUPS], False)
+    assertLength(3, contacts)
+
+    check_contact_roster(conn, 'amy@foo.com', ['women'])
+    check_contact_roster(conn, 'bob@foo.com', ['men'])
+    check_contact_roster(conn, 'che@foo.com', ['men'])
+
+    groups = conn.Properties.Get(cs.CONN_IFACE_CONTACT_GROUPS, 'Groups')
+    assertSameSets(['men', 'women', 'affected-by-fdo-12791'], groups)
 
 if __name__ == '__main__':
     exec_test(test)

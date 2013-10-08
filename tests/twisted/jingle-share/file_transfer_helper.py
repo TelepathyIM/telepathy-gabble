@@ -266,7 +266,7 @@ class ReceiveFileTest(FileTransferTest):
         path, props = channels[0]
 
         # check channel properties
-        # org.freedesktop.Telepathy.Channel D-Bus properties
+        # Channel D-Bus properties
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER, props
         assertSameSets(
             [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
@@ -279,7 +279,7 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.INITIATOR_HANDLE] == self.handle, props
         assert props[cs.INITIATOR_ID] == self.target, props
 
-        # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
+        # Channel.Type.FileTransfer D-Bus properties
         assert props[cs.FT_STATE] == cs.FT_STATE_PENDING, props
         assert props[cs.FT_CONTENT_TYPE] == '', props
         assert props[cs.FT_FILENAME].encode('utf-8') == self.file.name, props
@@ -421,7 +421,7 @@ class SendFileTest(FileTransferTest):
             cs.FT_INITIAL_OFFSET: 0,
             })
 
-        # org.freedesktop.Telepathy.Channel D-Bus properties
+        # Telepathy.Channel D-Bus properties
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER
         assertSameSets(
             [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
@@ -434,7 +434,7 @@ class SendFileTest(FileTransferTest):
         assert props[cs.INITIATOR_HANDLE] == self.self_handle
         assert props[cs.INITIATOR_ID] == self.self_handle_name
 
-        # org.freedesktop.Telepathy.Channel.Type.FileTransfer D-Bus properties
+        # Telepathy.Channel.Type.FileTransfer D-Bus properties
         assert props[cs.FT_STATE] == cs.FT_STATE_PENDING
         assert props[cs.FT_CONTENT_TYPE] == self.file.content_type
         assert props[cs.FT_FILENAME].encode('utf-8') == self.file.name, props

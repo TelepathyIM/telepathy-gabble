@@ -3194,7 +3194,7 @@ gabble_muc_channel_close (TpBaseChannel *base)
  * gabble_muc_channel_get_password_flags
  *
  * Implements D-Bus method GetPasswordFlags
- * on interface org.freedesktop.Telepathy.Channel.Interface.Password
+ * on interface Channel.Interface.Password
  */
 static void
 gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
@@ -3216,7 +3216,7 @@ gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
  * gabble_muc_channel_provide_password
  *
  * Implements D-Bus method ProvidePassword
- * on interface org.freedesktop.Telepathy.Channel.Interface.Password
+ * on interface Channel.Interface.Password
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
@@ -3281,7 +3281,7 @@ _gabble_muc_channel_message_sent_cb (GObject *source,
  * gabble_muc_channel_send
  *
  * Indirectly implements (via TpMessageMixin) D-Bus method Send on interface
- * org.freedesktop.Telepathy.Channel.Type.Text and D-Bus method SendMessage on
+ * Channel.Type.Text and D-Bus method SendMessage on
  * Channel.Interface.Messages
  */
 static void

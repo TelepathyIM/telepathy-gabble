@@ -2162,9 +2162,9 @@ destroy_socket_control_list (gpointer data)
  * gabble_tube_stream_get_supported_socket_types
  *
  * Used to implement D-Bus property
- * org.freedesktop.Telepathy.Channel.Type.StreamTube.SupportedSocketTypes
+ * Channel.Type.StreamTube.SupportedSocketTypes
  * and D-Bus method GetAvailableStreamTubeTypes
- * on org.freedesktop.Telepathy.Channel.Type.Tubes
+ * on Channel.Type.Tubes
  */
 GHashTable *
 gabble_tube_stream_get_supported_socket_types (void)
@@ -2225,7 +2225,7 @@ gabble_tube_stream_get_supported_socket_types (void)
  * gabble_tube_stream_offer_async
  *
  * Implements D-Bus method Offer
- * on org.freedesktop.Telepathy.Channel.Type.StreamTube
+ * on Channel.Type.StreamTube
  */
 static void
 gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube *iface,
@@ -2297,7 +2297,7 @@ gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube *iface,
  * gabble_tube_stream_accept_async
  *
  * Implements D-Bus method Accept
- * on org.freedesktop.Telepathy.Channel.Type.StreamTube
+ * on Channel.Type.StreamTube
  */
 static void
 gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube *iface,

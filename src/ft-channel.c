@@ -1671,7 +1671,7 @@ augment_si_reply (WockyNode *si,
  * gabble_file_transfer_channel_accept_file
  *
  * Implements D-Bus method AcceptFile
- * on interface org.freedesktop.Telepathy.Channel.Type.FileTransfer
+ * on interface Channel.Type.FileTransfer
  */
 static void
 gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
@@ -1772,7 +1772,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
  * gabble_file_transfer_channel_provide_file
  *
  * Implements D-Bus method ProvideFile
- * on interface org.freedesktop.Telepathy.Channel.Type.FileTransfer
+ * on interface Channel.Type.FileTransfer
  */
 static void
 gabble_file_transfer_channel_provide_file (

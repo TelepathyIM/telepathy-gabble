@@ -1656,7 +1656,7 @@ gabble_tube_dbus_check_access_control (GabbleTubeDBus *self,
  * gabble_tube_dbus_offer_async
  *
  * Implemnets D-Bus method Offer on interface
- * org.freedesktop.Telepathy.Channel.Type.DBusTube
+ * Channel.Type.DBusTube
  */
 static void
 gabble_tube_dbus_offer_async (TpSvcChannelTypeDBusTube *self,
@@ -1696,7 +1696,7 @@ gabble_tube_dbus_offer_async (TpSvcChannelTypeDBusTube *self,
  * gabble_tube_dbus_accept_async
  *
  * Implements D-Bus method Accept on interface
- * org.freedesktop.Telepathy.Channel.Type.DBusTube
+ * Channel.Type.DBusTube
  */
 static void
 gabble_tube_dbus_accept_async (TpSvcChannelTypeDBusTube *self,

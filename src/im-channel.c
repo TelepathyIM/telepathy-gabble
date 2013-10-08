@@ -600,7 +600,7 @@ _gabble_im_channel_report_delivery (
  * _gabble_im_channel_state_receive
  *
  * Send the D-BUS signal ChatStateChanged
- * on org.freedesktop.Telepathy.Channel.Interface.ChatState
+ * on Channel.Interface.ChatState
  */
 
 void
@@ -658,7 +658,7 @@ gabble_im_channel_close (TpBaseChannel *base_chan)
  * gabble_im_channel_destroy
  *
  * Implements D-Bus method Destroy
- * on interface org.freedesktop.Telepathy.Channel.Interface.Destroyable
+ * on interface Channel.Interface.Destroyable
  */
 static void
 gabble_im_channel_destroy (TpSvcChannelInterfaceDestroyable *iface,

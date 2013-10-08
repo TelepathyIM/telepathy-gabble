@@ -350,7 +350,7 @@ gabble_do_pep_request (GabbleConnection *self,
  * gabble_connection_request_aliases
  *
  * Implements D-Bus method RequestAliases
- * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
+ * on interface Connection.Interface.Aliasing
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
@@ -561,7 +561,7 @@ set_one_alias (
  * gabble_connection_set_aliases
  *
  * Implements D-Bus method SetAliases
- * on interface org.freedesktop.Telepathy.Connection.Interface.Aliasing
+ * on interface Connection.Interface.Aliasing
  */
 static void
 gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,

@@ -3286,7 +3286,7 @@ check_data_form_is_valid (GabbleConnection *self,
  *
  * Implements D-Bus method UpdateCapabilities
  * on interface
- * org.freedesktop.Telepathy.Connection.Interface.ContactCapabilities
+ * Telepathy.Connection.Interface.ContactCapabilities
  */
 static void
 gabble_connection_update_capabilities (

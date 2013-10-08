@@ -156,7 +156,7 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
  * gabble_connection_get_known_avatar_tokens
  *
  * Implements D-Bus method GetKnownAvatarTokens
- * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ * on interface Connection.Interface.Avatars
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
@@ -504,7 +504,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
  * gabble_connection_set_avatar
  *
  * Implements D-Bus method SetAvatar
- * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ * on interface Connection.Interface.Avatars
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
@@ -572,7 +572,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
  * gabble_connection_clear_avatar
  *
  * Implements D-Bus method ClearAvatar
- * on interface org.freedesktop.Telepathy.Connection.Interface.Avatars
+ * on interface Connection.Interface.Avatars
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.

@@ -474,7 +474,7 @@ _request_vcard_cb (GabbleVCardManager *self,
  * gabble_connection_refresh_contact_info
  *
  * Implements D-Bus method RefreshContactInfo
- * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
+ * on interface Connection.Interface.ContactInfo
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
@@ -529,7 +529,7 @@ gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo *ifa
  * gabble_connection_request_contact_info
  *
  * Implements D-Bus method RequestContactInfo
- * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
+ * on interface Connection.Interface.ContactInfo
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.
@@ -659,7 +659,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
  * gabble_connection_set_contact_info
  *
  * Implements D-Bus method SetContactInfo
- * on interface org.freedesktop.Telepathy.Connection.Interface.ContactInfo
+ * on interface Connection.Interface.ContactInfo
  *
  * @context: The D-Bus invocation context to use to return values
  *           or throw an error.

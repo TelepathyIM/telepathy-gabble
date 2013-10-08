@@ -9,8 +9,6 @@ import dbus
 
 import constants as cs
 from gabbletest import exec_test
-from rostertest import expect_contact_list_signals, check_contact_list_signals
-from servicetest import assertLength
 
 def test(q, bus, conns, streams):
 
@@ -30,16 +28,8 @@ def test(q, bus, conns, streams):
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
              path=conn1.object.object_path)
 
-    pairs = expect_contact_list_signals(q, bus, conn1,
-            ['publish', 'subscribe', 'stored'])
-
-    check_contact_list_signals(q, bus, conn1, pairs.pop(0), cs.HT_LIST,
-            'publish', [])
-    check_contact_list_signals(q, bus, conn1, pairs.pop(0), cs.HT_LIST,
-            'subscribe', [])
-    check_contact_list_signals(q, bus, conn1, pairs.pop(0), cs.HT_LIST,
-            'stored', [])
-    assertLength(0, pairs)      # i.e. we popped and checked all of them
+    q.expect('dbus-signal', signal='ContactListStateChanged',
+             args=[cs.CONTACT_LIST_STATE_SUCCESS], path=conn1.object.object_path)
 
     # Connection 2
     conn2.Connect()
@@ -54,16 +44,8 @@ def test(q, bus, conns, streams):
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED],
              path=conn2.object.object_path)
 
-    pairs = expect_contact_list_signals(q, bus, conn2,
-            ['publish', 'subscribe', 'stored'])
-
-    check_contact_list_signals(q, bus, conn2, pairs.pop(0), cs.HT_LIST,
-            'publish', [])
-    check_contact_list_signals(q, bus, conn2, pairs.pop(0), cs.HT_LIST,
-            'subscribe', [])
-    check_contact_list_signals(q, bus, conn2, pairs.pop(0), cs.HT_LIST,
-            'stored', [])
-    assertLength(0, pairs)      # i.e. we popped and checked all of them
+    q.expect('dbus-signal', signal='ContactListStateChanged',
+             args=[cs.CONTACT_LIST_STATE_SUCCESS], path=conn2.object.object_path)
 
 if __name__ == '__main__':
     exec_test(test, num_instances=2, do_connect=False)

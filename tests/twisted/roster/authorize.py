@@ -4,16 +4,15 @@ Test receiving and authorizing publish requests, including "pre-authorization"
 """
 
 from gabbletest import (exec_test, sync_stream, acknowledge_iq)
-from rostertest import (expect_contact_list_signals,
-        check_contact_list_signals, send_roster_push)
-from servicetest import (assertEquals, assertLength, call_async, EventPattern,
+from rostertest import send_roster_push
+from servicetest import (assertEquals, call_async, EventPattern,
         sync_dbus)
 import constants as cs
 import ns
 
 from twisted.words.xish import domish
 
-def test(q, bus, conn, stream, modern=True, remove=False):
+def test(q, bus, conn, stream, remove=False):
 
     call_async(q, conn.ContactList, 'GetContactListAttributes', [], False)
     q.expect('dbus-error', method='GetContactListAttributes',
@@ -39,9 +38,6 @@ def test(q, bus, conn, stream, modern=True, remove=False):
         holly: (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_YES, ''),
         }, []], s.args)
 
-    pairs = expect_contact_list_signals(q, bus, conn,
-            ['publish', 'subscribe', 'stored'])
-
     # this is emitted last, so clients can tell when the initial state dump
     # has finished
     q.expect('dbus-signal', signal='ContactListStateChanged',
@@ -59,23 +55,10 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             }
         },), r.value)
 
-    # check that the channels were as we expected too
-    publish = check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'publish', ['holly@example.com'])
-    check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'subscribe', ['holly@example.com'])
-    stored = check_contact_list_signals(q, bus, conn, pairs.pop(0), cs.HT_LIST,
-            'stored', ['holly@example.com'])
-    assertLength(0, pairs)      # i.e. we've checked all of them
-
     # publication authorized for Dave, Holly (the former is pre-authorization,
     # the latter is a no-op)
-    if modern:
-        call_async(q, conn.ContactList, 'AuthorizePublication', [dave, holly])
-        event = q.expect('dbus-return', method='AuthorizePublication')
-    else:
-        call_async(q, publish.Group, 'AddMembers', [dave, holly], '')
-        event = q.expect('dbus-return', method='AddMembers')
+    call_async(q, conn.ContactList, 'AuthorizePublication', [dave, holly])
+    event = q.expect('dbus-return', method='AuthorizePublication')
 
     # Receive authorization requests from the contacts
 
@@ -119,13 +102,9 @@ def test(q, bus, conn, stream, modern=True, remove=False):
             args=[{arnold: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_ASK, '')}, []])
 
-    if modern:
-        returning_method = 'AuthorizePublication'
-        call_async(q, conn.ContactList, 'AuthorizePublication',
-                [kristine, holly])
-    else:
-        returning_method = 'AddMembers'
-        call_async(q, publish.Group, 'AddMembers', [kristine, holly], '')
+    returning_method = 'AuthorizePublication'
+    call_async(q, conn.ContactList, 'AuthorizePublication',
+            [kristine, holly])
 
     q.expect_many(
             EventPattern('dbus-return', method=returning_method),
@@ -189,20 +168,12 @@ def test(q, bus, conn, stream, modern=True, remove=False):
                 cs.SUBSCRIPTION_STATE_ASK,
                 '')}, []])
 
-    if modern:
-        if remove:
-            returning_method = 'RemoveContacts'
-            call_async(q, conn.ContactList, 'RemoveContacts', [cat])
-        else:
-            returning_method = 'Unpublish'
-            call_async(q, conn.ContactList, 'Unpublish', [cat])
+    if remove:
+        returning_method = 'RemoveContacts'
+        call_async(q, conn.ContactList, 'RemoveContacts', [cat])
     else:
-        returning_method = 'RemoveMembers'
-
-        if remove:
-            call_async(q, stored.Group, 'RemoveMembers', [cat], '')
-        else:
-            call_async(q, publish.Group, 'RemoveMembers', [cat], '')
+        returning_method = 'Unpublish'
+        call_async(q, conn.ContactList, 'Unpublish', [cat])
 
     # As above, the only reason the Cat is on our contact list is the pending
     # publish request, so Unpublish really results in removal.
@@ -237,20 +208,12 @@ def test(q, bus, conn, stream, modern=True, remove=False):
     # There's one more case: revoking the publish permission of someone who is
     # genuinely on the roster.
 
-    if modern:
-        if remove:
-            returning_method = 'RemoveContacts'
-            call_async(q, conn.ContactList, 'RemoveContacts', [holly])
-        else:
-            returning_method = 'Unpublish'
-            call_async(q, conn.ContactList, 'Unpublish', [holly])
+    if remove:
+        returning_method = 'RemoveContacts'
+        call_async(q, conn.ContactList, 'RemoveContacts', [holly])
     else:
-        returning_method = 'RemoveMembers'
-
-        if remove:
-            call_async(q, stored.Group, 'RemoveMembers', [holly], '')
-        else:
-            call_async(q, publish.Group, 'RemoveMembers', [holly], '')
+        returning_method = 'Unpublish'
+        call_async(q, conn.ContactList, 'Unpublish', [holly])
 
     if remove:
         iq = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER,
@@ -258,8 +221,7 @@ def test(q, bus, conn, stream, modern=True, remove=False):
 
         acknowledge_iq(stream, iq.stanza)
 
-        if modern:
-            q.expect('dbus-return', method='RemoveContacts')
+        q.expect('dbus-return', method='RemoveContacts')
         # FIXME: when we depend on a new enough tp-glib, expect RemoveMembers
         # to return here too
 
@@ -285,20 +247,12 @@ def test(q, bus, conn, stream, modern=True, remove=False):
                         }, []]),
                 )
 
-def test_ancient(q, bus, conn, stream):
-    test(q, bus, conn, stream, modern=False)
-
-def test_ancient_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, modern=False, remove=True)
-
 def test_modern(q, bus, conn, stream):
-    test(q, bus, conn, stream, modern=True)
+    test(q, bus, conn, stream)
 
 def test_modern_remove(q, bus, conn, stream):
-    test(q, bus, conn, stream, modern=True, remove=True)
+    test(q, bus, conn, stream, remove=True)
 
 if __name__ == '__main__':
-    exec_test(test_ancient)
-    exec_test(test_ancient_remove)
     exec_test(test_modern)
     exec_test(test_modern_remove)

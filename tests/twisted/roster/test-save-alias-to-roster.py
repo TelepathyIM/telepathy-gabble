@@ -3,15 +3,13 @@
 Test that updating an alias saves it to the roster.
 """
 
-import dbus
-
 from servicetest import EventPattern, call_async, assertEquals
 from gabbletest import (
     acknowledge_iq, exec_test, make_result_iq, sync_stream, elem
     )
 import constants as cs
 import ns
-from rostertest import expect_contact_list_signals, send_roster_push
+from rostertest import send_roster_push
 from pubsub import make_pubsub_event
 
 def send_pep_nick_reply(stream, stanza, nickname):
@@ -52,21 +50,16 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
     acknowledge_iq(stream, event2.stanza)
 
-    signals = expect_contact_list_signals(q, bus, conn, lists=['subscribe'])
-    old_signal, new_signal = signals[0]
-    path = old_signal.args[0]
+    q.expect('dbus-signal', signal='ContactListStateChanged', args=[cs.CONTACT_LIST_STATE_SUCCESS])
 
     # request subscription
-    chan = bus.get_object(conn.bus_name, path)
-    group_iface = dbus.Interface(chan, cs.CHANNEL_IFACE_GROUP)
-    assert group_iface.GetMembers() == []
     handle = conn.get_contact_handle_sync('bob@foo.com')
-    call_async(q, group_iface, 'AddMembers', [handle], '')
+    call_async(q, conn.ContactList, 'RequestSubscription', [handle], '')
 
     event = q.expect('stream-iq', iq_type='set', query_ns=ns.ROSTER)
 
     acknowledge_iq(stream, event.stanza)
-    q.expect('dbus-return', method='AddMembers')
+    q.expect('dbus-return', method='RequestSubscription')
 
     call_async(q, conn.Aliasing, 'RequestAliases', [handle])
 

@@ -214,14 +214,6 @@ generate_group_name (GHashTable *props)
       handle_type_name = "-multi";
       break;
 
-    case TP_HANDLE_TYPE_GROUP:
-      handle_type_name = "-group";
-      break;
-
-    case TP_HANDLE_TYPE_LIST:
-      handle_type_name = "-list";
-      break;
-
     default:
       handle_type_name = "";
     }

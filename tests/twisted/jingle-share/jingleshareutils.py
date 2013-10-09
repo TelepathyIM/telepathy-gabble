@@ -54,7 +54,7 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     assert caps == basic_caps, caps
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
-            [contact_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [contact_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [contact_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assert caps_via_contacts_iface == caps[contact_handle], \
                                     caps_via_contacts_iface
@@ -96,7 +96,7 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     assert caps == generic_ft_caps, caps
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
-            [contact_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [contact_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [contact_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assert caps_via_contacts_iface == caps[contact_handle], \
                                     caps_via_contacts_iface

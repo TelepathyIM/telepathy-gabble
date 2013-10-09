@@ -316,7 +316,7 @@ def presence_and_disco(q, conn, stream, contact, disco,
     return h
 
 def get_contacts_capabilities_sync(conn, contacts):
-    h2asv = conn.Contacts.GetContactAttributes(contacts, [cs.CONN_IFACE_CONTACT_CAPS], False)
+    h2asv = conn.Contacts.GetContactAttributes(contacts, [cs.CONN_IFACE_CONTACT_CAPS])
     ret = {}
     for h in contacts:
         ret[h] = h2asv[h][cs.ATTR_CONTACT_CAPABILITIES]

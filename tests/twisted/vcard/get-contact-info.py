@@ -56,7 +56,7 @@ def test(q, bus, conn, stream):
                                   u'Exemplary Team']),
                    ]
     # The request should be satisfied from the cache.
-    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_CONTACT_INFO], False)
+    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_CONTACT_INFO])
     assertEquals(contact_info, h2asv[handle][cs.ATTR_CONTACT_INFO])
 
 if __name__ == '__main__':

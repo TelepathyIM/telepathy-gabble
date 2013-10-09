@@ -63,7 +63,7 @@ def contact_online(q, conn, stream, contact, identities,
         assertEquals([handle, types], event.args)
 
 def get_client_types(conn, handle):
-    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_CLIENT_TYPES], False)
+    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_CLIENT_TYPES])
     return h2asv[handle][cs.ATTR_CLIENT_TYPES]
 
 def test(q, bus, conn, stream):
@@ -239,7 +239,7 @@ def test2(q, bus, conn, stream):
              args=[handle, ['pc']])
 
     attrs = conn.Contacts.GetContactAttributes([handle],
-        [cs.CONN_IFACE_CLIENT_TYPES], False)
+        [cs.CONN_IFACE_CLIENT_TYPES])
     assertContains(handle, attrs)
     attr = cs.CONN_IFACE_CLIENT_TYPES + '/client-types'
     assertContains(attr, attrs[handle])

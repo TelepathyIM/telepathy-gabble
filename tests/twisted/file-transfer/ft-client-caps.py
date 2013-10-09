@@ -112,7 +112,7 @@ def receive_caps(q, conn, stream, contact, contact_handle, features,
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [contact_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [contact_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [contact_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assertSameElements(caps[contact_handle], caps_via_contacts_iface)
 
@@ -200,7 +200,7 @@ def advertise_caps(q, bus, conn, stream, filters, expected_features, unexpected_
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [self_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assertSameElements(caps[self_handle], caps_via_contacts_iface)
 
@@ -236,7 +236,7 @@ def test_ft_caps_to_contact(q, bus, conn, stream):
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [self_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assertEquals(caps[self_handle], caps_via_contacts_iface)
 
@@ -253,7 +253,7 @@ def test_ft_caps_to_contact(q, bus, conn, stream):
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [self_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assertEquals(caps[self_handle], caps_via_contacts_iface)
 
@@ -272,7 +272,7 @@ def test_ft_caps_to_contact(q, bus, conn, stream):
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [self_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assertEquals(caps[self_handle], caps_via_contacts_iface)
 
@@ -291,7 +291,7 @@ def test_ft_caps_to_contact(q, bus, conn, stream):
 
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn.Contacts.GetContactAttributes(
-            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [self_handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [self_handle][cs.ATTR_CONTACT_CAPABILITIES]
     assertEquals(caps[self_handle], caps_via_contacts_iface)
 

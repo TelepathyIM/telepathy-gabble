@@ -116,7 +116,7 @@ def test(q, bus, conn, stream):
 
     # check that Amy's state is what we expected
     attrs = conn.Contacts.GetContactAttributes([amy],
-            [cs.CONN_IFACE_CONTACT_GROUPS], False)[amy]
+            [cs.CONN_IFACE_CONTACT_GROUPS])[amy]
     # make the group list order-independent
     attrs[cs.CONN_IFACE_CONTACT_GROUPS + '/groups'] = \
         set(attrs[cs.CONN_IFACE_CONTACT_GROUPS + '/groups'])
@@ -172,7 +172,7 @@ def test(q, bus, conn, stream):
     assertEquals({ cs.CONN_IFACE_CONTACT_GROUPS + '/groups': ['ladies'],
             cs.CONN + '/contact-id': 'amy@foo.com' },
         conn.Contacts.GetContactAttributes([amy],
-            [cs.CONN_IFACE_CONTACT_GROUPS], False)[amy])
+            [cs.CONN_IFACE_CONTACT_GROUPS])[amy])
 
     # Rename group 'ladies' to 'girls'
     call_async(q, conn.ContactGroups, 'RenameGroup', 'ladies', 'girls')

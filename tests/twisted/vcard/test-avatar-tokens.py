@@ -44,7 +44,7 @@ def test(q, bus, conn, stream):
     handles = conn.get_contact_handles_sync([
         'amy@foo.com', 'bob@foo.com', 'che@foo.com', 'daf@foo.com' ])
 
-    h2asv = conn.Contacts.GetContactAttributes(handles, [cs.CONN_IFACE_AVATARS], False)
+    h2asv = conn.Contacts.GetContactAttributes(handles, [cs.CONN_IFACE_AVATARS])
     assertEquals('SHA1SUM-FOR-AMY', h2asv[handles[0]][cs.ATTR_AVATAR_TOKEN])
     assertEquals('SHA1SUM-FOR-BOB', h2asv[handles[1]][cs.ATTR_AVATAR_TOKEN])
     assertEquals('', h2asv[handles[2]][cs.ATTR_AVATAR_TOKEN])

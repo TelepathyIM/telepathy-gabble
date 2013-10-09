@@ -39,7 +39,7 @@ def test(q, bus, conn, stream):
                 cs.CONN + '/contact-id': 'bob@foo.com',
                 },
             },
-            conn.Contacts.GetContactAttributes([bob], [cs.CONN_IFACE_CONTACT_CAPS], True))
+            conn.Contacts.GetContactAttributes([bob], [cs.CONN_IFACE_CONTACT_CAPS]))
 
     # send updated presence with Jingle audio/video caps info. we turn on both
     # audio and video at the same time to test that all of the capabilities are
@@ -97,7 +97,7 @@ def test(q, bus, conn, stream):
                 },
             },
             conn.Contacts.GetContactAttributes([bob],
-                [cs.CONN_IFACE_CONTACT_CAPS], True))
+                [cs.CONN_IFACE_CONTACT_CAPS]))
 
     # send updated presence without video support
     presence = make_presence('bob@foo.com/Foo', status='hello',
@@ -124,7 +124,7 @@ def test(q, bus, conn, stream):
                 },
             },
             conn.Contacts.GetContactAttributes([bob],
-                [cs.CONN_IFACE_CONTACT_CAPS], True))
+                [cs.CONN_IFACE_CONTACT_CAPS]))
 
     # go offline
     presence = make_presence('bob@foo.com/Foo', type='unavailable')
@@ -152,11 +152,11 @@ def test(q, bus, conn, stream):
                 },
             },
             conn.Contacts.GetContactAttributes([bob],
-                [cs.CONN_IFACE_CONTACT_CAPS], True))
+                [cs.CONN_IFACE_CONTACT_CAPS]))
 
     # What about a handle that's not valid?
     assertEquals({}, conn.Contacts.GetContactAttributes(
-        [31337], [cs.CONN_IFACE_CONTACT_CAPS], False))
+        [31337], [cs.CONN_IFACE_CONTACT_CAPS]))
 
 if __name__ == '__main__':
     exec_test(test)

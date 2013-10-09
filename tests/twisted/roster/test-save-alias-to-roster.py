@@ -91,7 +91,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='MembersChangedDetailed')
 
     # But if we ask for it, Gabble should probably send a PEP query.
-    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_ALIASING], False)
+    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_ALIASING])
     assertEquals(jid, h2asv[handle][cs.ATTR_ALIAS])
     event = q.expect('stream-iq', iq_type='get', query_ns=ns.PUBSUB, to=jid)
     nick = 'Constant Future'

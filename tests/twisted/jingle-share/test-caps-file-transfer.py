@@ -55,7 +55,7 @@ def check_contact_caps(conn, handle, with_ft):
     assert caps == expected_caps, caps
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
-            [handle], [cs.CONN_IFACE_CONTACT_CAPS], False) \
+            [handle], [cs.CONN_IFACE_CONTACT_CAPS]) \
             [handle][cs.ATTR_CONTACT_CAPABILITIES]
     assert caps_via_contacts_iface == caps[handle], \
         caps_via_contacts_iface

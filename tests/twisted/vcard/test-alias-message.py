@@ -15,7 +15,7 @@ import constants as cs
 import ns
 
 def get_aliases(conn, contacts):
-    h2asv = conn.Contacts.GetContactAttributes(contacts, [cs.CONN_IFACE_ALIASING], False)
+    h2asv = conn.Contacts.GetContactAttributes(contacts, [cs.CONN_IFACE_ALIASING])
     ret = {}
     for h in contacts:
         ret[h] = h2asv[h][cs.ATTR_ALIAS]

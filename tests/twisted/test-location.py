@@ -18,7 +18,7 @@ import ns
 Rich_Presence_Access_Control_Type_Publish_List = 1
 
 def get_location(conn, contact):
-    h2asv = conn.Contacts.GetContactAttributes([contact], [cs.CONN_IFACE_LOCATION], False)
+    h2asv = conn.Contacts.GetContactAttributes([contact], [cs.CONN_IFACE_LOCATION])
     return h2asv[contact].get(cs.ATTR_LOCATION)
 
 def test(q, bus, conn, stream):
@@ -213,7 +213,7 @@ def test(q, bus, conn, stream):
 
     # check that Contacts interface supports location
     attributes = conn.Contacts.GetContactAttributes(
-        [bob_handle, charles_handle], [cs.CONN_IFACE_LOCATION], False)
+        [bob_handle, charles_handle], [cs.CONN_IFACE_LOCATION])
     assertLength(2, attributes)
     assertContains(bob_handle, attributes)
     assertContains(charles_handle, attributes)

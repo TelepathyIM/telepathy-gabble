@@ -216,8 +216,9 @@ def test(q, bus, conn, stream, bytestream_cls,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    handle, access, id = new_conn_event.args
+    handle, identifier, access, id = new_conn_event.args
     assert handle == bob_handle
+    assertEquals('bob@localhost', identifier)
     protocol = socket_event.protocol
     # we don't want to echo the access control byte
     protocol.echoed = False
@@ -247,8 +248,9 @@ def test(q, bus, conn, stream, bytestream_cls,
         si_reply_event.stanza)
     assert len(tube) == 1
 
-    handle, access, conn_id = new_conn_event.args
+    handle, identifier, access, conn_id = new_conn_event.args
     assert handle == bob_handle
+    assertEquals('bob@localhost', identifier)
     protocol = socket_event.protocol
     # we don't want to echo the access control byte
     protocol.echoed = False

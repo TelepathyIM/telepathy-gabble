@@ -173,8 +173,9 @@ def test(q, bus, conn, stream, bytestream_cls,
         EventPattern('dbus-signal', signal='NewRemoteConnection',
             interface=cs.CHANNEL_TYPE_STREAM_TUBE))
 
-    handle, access, conn_id = conn_event.args
+    handle, identifier, access, conn_id = conn_event.args
     assert handle == bob_handle
+    assertEquals('chat@conf.localhost/bob', identifier)
 
     protocol = socket_event.protocol
     # start to read from the transport so we can read the control byte

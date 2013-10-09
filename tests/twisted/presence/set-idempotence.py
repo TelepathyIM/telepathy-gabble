@@ -16,14 +16,14 @@ def run_test(q, bus, conn, stream):
 
     # Set presence to away. This should cause PresencesChanged to be emitted,
     # and a new <presence> stanza to be sent to the server.
-    conn.SimplePresence.SetPresence('away', 'gone')
+    conn.Presence.SetPresence('away', 'gone')
 
     simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
     assert simple_signal.args == [{1L: (3L, u'away',  u'gone')}]
-    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE]) == { 1L:
-      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_PRESENCE]) == { 1L:
+      { cs.CONN_IFACE_PRESENCE + "/presence": (3L, u'away', u'gone'),
         cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 
@@ -35,15 +35,15 @@ def run_test(q, bus, conn, stream):
 
     # Set presence a second time. Since this call is redundant, there should
     # be no PresencesChanged or <presence> sent to the server.
-    conn.SimplePresence.SetPresence('away', 'gone')
-    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE]) == { 1L:
-      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (3L, u'away', u'gone'),
+    conn.Presence.SetPresence('away', 'gone')
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_PRESENCE]) == { 1L:
+      { cs.CONN_IFACE_PRESENCE + "/presence": (3L, u'away', u'gone'),
         cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 
     # Set presence a third time. This call is not redundant, and should
     # generate a signal/message.
-    conn.SimplePresence.SetPresence('available', 'yo')
+    conn.Presence.SetPresence('available', 'yo')
 
     simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresencesChanged'),
@@ -53,21 +53,21 @@ def run_test(q, bus, conn, stream):
     children = list(presence.stanza.elements())
     assert children[0].name == 'status'
     assert str(children[0]) == 'yo'
-    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE]) == { 1L:
-      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (2L, u'available', u'yo'),
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_PRESENCE]) == { 1L:
+      { cs.CONN_IFACE_PRESENCE + "/presence": (2L, u'available', u'yo'),
         cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 
     # call SetPresence with an empty message, as this used to cause a
     # crash in tp-glib
-    conn.SimplePresence.SetPresence('available', '')
+    conn.Presence.SetPresence('available', '')
 
     simple_signal, presence = q.expect_many (
         EventPattern('dbus-signal', signal='PresencesChanged'),
         EventPattern('stream-presence'))
     assert simple_signal.args == [{1L: (2L, u'available',  u'')}]
-    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_SIMPLE_PRESENCE]) == { 1L:
-      { cs.CONN_IFACE_SIMPLE_PRESENCE + "/presence": (2L, u'available', u''),
+    assert conn.Contacts.GetContactAttributes([1], [cs.CONN_IFACE_PRESENCE]) == { 1L:
+      { cs.CONN_IFACE_PRESENCE + "/presence": (2L, u'available', u''),
         cs.ATTR_CONTACT_ID:
             'test@localhost'}}
 

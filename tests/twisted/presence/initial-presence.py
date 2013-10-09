@@ -13,9 +13,9 @@ from invisible_helper import ValidInvisibleListStream, Xep0186Stream, \
     Xep0186AndValidInvisibleListStream
 
 def test(q, bus, conn, stream):
-    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    props = conn.Properties.GetAll(cs.CONN_IFACE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
-    conn.SimplePresence.SetPresence("away", "watching bees")
+    conn.Presence.SetPresence("away", "watching bees")
 
     conn.Connect()
     _, presence = q.expect_many(

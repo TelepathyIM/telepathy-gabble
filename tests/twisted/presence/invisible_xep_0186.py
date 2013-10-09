@@ -12,14 +12,14 @@ import constants as cs
 from invisible_helper import Xep0186AndValidInvisibleListStream, Xep0186Stream
 
 def test_invisible_on_connect(q, bus, conn, stream):
-    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    props = conn.Properties.GetAll(cs.CONN_IFACE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
 
     presence_event_pattern = EventPattern('stream-presence')
 
     q.forbid_events([presence_event_pattern])
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     conn.Connect()
 
@@ -32,7 +32,7 @@ def test_invisible_on_connect(q, bus, conn, stream):
              args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
 def test_invisible_on_connect_fails(q, bus, conn, stream):
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
     conn.Connect()
 
     event = q.expect('stream-iq', query_name='invisible')
@@ -41,16 +41,16 @@ def test_invisible_on_connect_fails(q, bus, conn, stream):
     # Darn! At least we should have our presence set to DND.
     q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (6, 'dnd', '')}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
 def test_invisible(q, bus, conn, stream):
     assertContains("hidden",
-        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+        conn.Properties.Get(cs.CONN_IFACE_PRESENCE, "Statuses"))
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     # First we send an <invisible/> command.
     event = q.expect('stream-iq', query_name='invisible')
@@ -58,10 +58,10 @@ def test_invisible(q, bus, conn, stream):
 
     # When that's returned successfully, we can signal the change on D-Bus.
     q.expect('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (5, 'hidden', '')}])
 
-    conn.SimplePresence.SetPresence("away", "gone")
+    conn.Presence.SetPresence("away", "gone")
 
     # First Gabble sends a <visible/> command.
     event = q.expect('stream-iq', query_name='visible')
@@ -73,14 +73,14 @@ def test_invisible(q, bus, conn, stream):
     q.expect_many(
         EventPattern('stream-presence', to=None),
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (3, 'away', 'gone')}]))
 
 def test_invisible_fails(q, bus, conn, stream):
     assertContains("hidden",
-        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+        conn.Properties.Get(cs.CONN_IFACE_PRESENCE, "Statuses"))
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     # First we send an <invisible/> command.
     event = q.expect('stream-iq', query_name='invisible')
@@ -88,7 +88,7 @@ def test_invisible_fails(q, bus, conn, stream):
 
     # When that fails, we should expect our status to change to dnd.
     q.expect('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (6, 'dnd', '')}])
 
 

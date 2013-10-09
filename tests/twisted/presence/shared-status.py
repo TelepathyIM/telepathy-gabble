@@ -53,7 +53,7 @@ def _test_remote_status(q, bus, conn, stream, msg, show, list_attrs):
 
 def _test_remote_status_away(q, bus, conn, stream, msg, show, list_attrs):
     events = [EventPattern('dbus-signal', signal='PresencesChanged',
-                           interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                           interface=cs.CONN_IFACE_PRESENCE,
                            args=[{1: (presence_types[show], show, msg)}])]
     q.forbid_events(events)
 
@@ -72,7 +72,7 @@ def _test_remote_status_not_away(q, stream, msg, show, list_attrs):
 
     q.expect('stream-iq', iq_type='result')
     q.expect('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (presence_types[show], show, msg)}])
 
 def _test_local_status(q, conn, stream, msg, show, expected_show=None):
@@ -110,7 +110,7 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     if wrong_presence_pattern:
         q.forbid_events([wrong_presence_pattern])
 
-    conn.SimplePresence.SetPresence(show, msg)
+    conn.Presence.SetPresence(show, msg)
 
     max_status_message_length = int(stream.max_status_message_length)
 
@@ -133,7 +133,7 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
         q.expect('stream-presence')
 
     q.expect('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (presence_types[expected_show], expected_show,
                             msg[:max_status_message_length])}])
 
@@ -211,7 +211,7 @@ def test(q, bus, conn, stream):
     q.expect('stream-iq', iq_type='result')
 
     q.expect('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (cs.PRESENCE_BUSY, 'dnd', "Peekabo")}])
 
 def _test_on_connect(q, bus, conn, stream, shared_status, show, msg,
@@ -227,7 +227,7 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg,
                                              iq_type='get')]
     q.forbid_events(forbidden_event_patterns)
 
-    conn.SimplePresence.SetPresence(show, msg)
+    conn.Presence.SetPresence(show, msg)
     conn.Connect()
 
     _, event = q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
@@ -246,7 +246,7 @@ def _test_on_connect(q, bus, conn, stream, shared_status, show, msg,
 
     q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (presence_types[expected_show],
                                 expected_show, msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
@@ -287,7 +287,7 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
     presence_event_pattern = EventPattern('stream-presence')
     q.forbid_events([presence_event_pattern])
 
-    conn.SimplePresence.SetPresence(show, msg)
+    conn.Presence.SetPresence(show, msg)
     conn.Connect()
 
     _, event = q.expect_many(EventPattern('stream-iq', query_ns=ns.GOOGLE_SHARED_STATUS,
@@ -304,7 +304,7 @@ def test_connect_hidden_not_available(q, bus, conn, stream):
 
     q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (cs.PRESENCE_BUSY, "dnd", msg)}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
@@ -362,7 +362,7 @@ def test_shared_status_chat(q, bus, conn, stream):
                   EventPattern('stream-presence'))
 
     try:
-        conn.SimplePresence.SetPresence('chat', 'This is not going to work')
+        conn.Presence.SetPresence('chat', 'This is not going to work')
     except dbus.DBusException, e:
         assert e.get_dbus_name() == cs.NOT_AVAILABLE
     else:

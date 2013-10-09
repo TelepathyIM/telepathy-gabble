@@ -21,7 +21,7 @@ from invisible_helper import ManualPrivacyListStream
 from functools import partial
 
 def test_create_invisible_list(q, bus, conn, stream):
-    conn.SimplePresence.SetPresence("away", "")
+    conn.Presence.SetPresence("away", "")
 
     conn.Connect()
 
@@ -47,10 +47,10 @@ def test_create_invisible_list(q, bus, conn, stream):
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     assertContains("hidden",
-        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+        conn.Properties.Get(cs.CONN_IFACE_PRESENCE, "Statuses"))
 
 def test_create_invisible_list_failed(q, bus, conn, stream):
-    conn.SimplePresence.SetPresence("away", "")
+    conn.Presence.SetPresence("away", "")
 
     conn.Connect()
 
@@ -76,17 +76,17 @@ def test_create_invisible_list_failed(q, bus, conn, stream):
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     assertDoesNotContain("hidden",
-        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+        conn.Properties.Get(cs.CONN_IFACE_PRESENCE, "Statuses"))
 
 def test_invisible_on_connect_fail_no_list(q, bus, conn, stream):
-    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    props = conn.Properties.GetAll(cs.CONN_IFACE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
 
     presence_event_pattern = EventPattern('stream-presence')
 
     q.forbid_events([presence_event_pattern])
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     conn.Connect()
 
@@ -103,25 +103,25 @@ def test_invisible_on_connect_fail_no_list(q, bus, conn, stream):
     # Darn! At least we should have our presence set to DND.
     q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (6, 'dnd', '')}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
     # 'hidden' should not be an available status.
     assertDoesNotContain("hidden",
-        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+        conn.Properties.Get(cs.CONN_IFACE_PRESENCE, "Statuses"))
 
 def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream,
                                                 really_invalid=False):
-    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    props = conn.Properties.GetAll(cs.CONN_IFACE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
 
     presence_event_pattern = EventPattern('stream-presence')
 
     q.forbid_events([presence_event_pattern])
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     conn.Connect()
 
@@ -155,24 +155,24 @@ def test_invisible_on_connect_fail_invalid_list(q, bus, conn, stream,
 
     q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (5, 'hidden', '')}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
     # 'hidden' should not be an available status.
     assertContains("hidden",
-        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+        conn.Properties.Get(cs.CONN_IFACE_PRESENCE, "Statuses"))
 
 def test_invisible_on_connect_fail(q, bus, conn, stream):
-    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    props = conn.Properties.GetAll(cs.CONN_IFACE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
 
     presence_event_pattern = EventPattern('stream-presence')
 
     q.forbid_events([presence_event_pattern])
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     conn.Connect()
 
@@ -194,20 +194,20 @@ def test_invisible_on_connect_fail(q, bus, conn, stream):
     # Darn! At least we should have our presence set to DND.
     q.expect_many(
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (6, 'dnd', '')}]),
         EventPattern('dbus-signal', signal='StatusChanged',
                      args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED]))
 
 def test_invisible_on_connect(q, bus, conn, stream):
-    props = conn.Properties.GetAll(cs.CONN_IFACE_SIMPLE_PRESENCE)
+    props = conn.Properties.GetAll(cs.CONN_IFACE_PRESENCE)
     assertNotEquals({}, props['Statuses'])
 
     presence_event_pattern = EventPattern('stream-presence')
 
     q.forbid_events([presence_event_pattern])
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     conn.Connect()
 
@@ -244,9 +244,9 @@ def test_invisible(q, bus, conn, stream):
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     assertContains("hidden",
-        conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE, "Statuses"))
+        conn.Properties.Get(cs.CONN_IFACE_PRESENCE, "Statuses"))
 
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
 
     # §3.5 Become Globally Invisible
     #   <http://xmpp.org/extensions/xep-0126.html#invis-global>
@@ -268,10 +268,10 @@ def test_invisible(q, bus, conn, stream):
     q.expect_many(
         EventPattern('stream-presence', to=None, presence_type=None),
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (5, 'hidden', '')}]))
 
-    conn.SimplePresence.SetPresence("away", "gone")
+    conn.Presence.SetPresence("away", "gone")
 
 
     # §3.3 Become Globally Visible
@@ -293,7 +293,7 @@ def test_invisible(q, bus, conn, stream):
     q.expect_many(
         EventPattern('stream-presence', to=None, presence_type=None),
         EventPattern('dbus-signal', signal='PresencesChanged',
-                     interface=cs.CONN_IFACE_SIMPLE_PRESENCE,
+                     interface=cs.CONN_IFACE_PRESENCE,
                      args=[{1: (3, 'away', 'gone')}]))
 
 def test_privacy_list_push_conflict(q, bus, conn, stream):

@@ -150,7 +150,7 @@ def replying_to_requests(q, bus, conn, stream):
     q.unforbid_all()
 
     # If we're invisible, LeChuck shouldn't get receipts.
-    conn.SimplePresence.SetPresence("hidden", "")
+    conn.Presence.SetPresence("hidden", "")
     event = q.expect('stream-iq', query_name='invisible')
     acknowledge_iq(stream, event.stanza)
 

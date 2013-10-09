@@ -1,5 +1,5 @@
 """
-A simple smoke-test for C.I.SimplePresence
+A simple smoke-test for C.I.Presence
 """
 
 from twisted.words.xish import domish
@@ -34,11 +34,11 @@ def test(q, bus, conn, stream):
             (cs.PRESENCE_AVAILABLE, 'chat', 'I may have been drinking')}])
 
     amy_handle, asv = conn.Contacts.GetContactByID('amy@foo.com',
-            [cs.CONN_IFACE_SIMPLE_PRESENCE])
+            [cs.CONN_IFACE_PRESENCE])
     assertEquals(e.args[0][amy_handle], asv.get(cs.ATTR_PRESENCE))
 
     bob_handle, asv = conn.Contacts.GetContactByID('bob@foo.com',
-            [cs.CONN_IFACE_SIMPLE_PRESENCE])
+            [cs.CONN_IFACE_PRESENCE])
     assertEquals((cs.PRESENCE_UNKNOWN, 'unknown', ''),
             asv.get(cs.ATTR_PRESENCE))
 

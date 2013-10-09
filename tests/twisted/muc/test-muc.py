@@ -207,7 +207,7 @@ def test(q, bus, conn, stream):
 
 
     # test that presence changes are sent via the MUC
-    conn.SimplePresence.SetPresence('away', 'hurrah')
+    conn.Presence.SetPresence('away', 'hurrah')
 
     event = q.expect('stream-presence', to='chat@conf.localhost/test')
     elem = event.stanza

@@ -18,7 +18,7 @@ from invisible_helper import Xep0186AndManualPrivacyListStream, \
     ManualPrivacyListStream
 
 def test(q, bus, conn, stream):
-    statuses = conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE,
+    statuses = conn.Properties.Get(cs.CONN_IFACE_PRESENCE,
         'Statuses')
 
     # testbusy and testaway are provided by test plugin
@@ -28,7 +28,7 @@ def test(q, bus, conn, stream):
     assertEquals(statuses['testbusy'][0], cs.PRESENCE_BUSY)
     assertEquals(statuses['testaway'][0], cs.PRESENCE_AWAY)
 
-    conn.SimplePresence.SetPresence('testbusy', '')
+    conn.Presence.SetPresence('testbusy', '')
 
     conn.Connect()
 
@@ -69,11 +69,11 @@ def test(q, bus, conn, stream):
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     # ... testaway is not supposed to be settable on us
-    call_async(q, conn.SimplePresence, 'SetPresence', 'testaway', '')
+    call_async(q, conn.Presence, 'SetPresence', 'testaway', '')
     q.expect('dbus-error', method='SetPresence', name=cs.INVALID_ARGUMENT)
 
 def test_with_xep0186(q, bus, conn, stream):
-    statuses = conn.Properties.Get(cs.CONN_IFACE_SIMPLE_PRESENCE,
+    statuses = conn.Properties.Get(cs.CONN_IFACE_PRESENCE,
         'Statuses')
 
     # testbusy and testaway are provided by test plugin
@@ -83,7 +83,7 @@ def test_with_xep0186(q, bus, conn, stream):
     assertEquals(statuses['testbusy'][0], cs.PRESENCE_BUSY)
     assertEquals(statuses['testaway'][0], cs.PRESENCE_AWAY)
 
-    conn.SimplePresence.SetPresence('testbusy', '')
+    conn.Presence.SetPresence('testbusy', '')
 
     conn.Connect()
 
@@ -105,7 +105,7 @@ def test_with_xep0186(q, bus, conn, stream):
         args=[cs.CONN_STATUS_CONNECTED, cs.CSR_REQUESTED])
 
     # ... testaway is not supposed to be settable on us
-    call_async(q, conn.SimplePresence, 'SetPresence', 'testaway', '')
+    call_async(q, conn.Presence, 'SetPresence', 'testaway', '')
     q.expect('dbus-error', method='SetPresence', name=cs.INVALID_ARGUMENT)
 
 

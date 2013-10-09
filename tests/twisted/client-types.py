@@ -62,6 +62,10 @@ def contact_online(q, conn, stream, contact, identities,
         event = q.expect('dbus-signal', signal='ClientTypesUpdated')
         assertEquals([handle, types], event.args)
 
+def get_client_types(conn, handle):
+    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_CLIENT_TYPES], False)
+    return h2asv[handle][cs.ATTR_CLIENT_TYPES]
+
 def test(q, bus, conn, stream):
     # check all these types appear as they should
     contact_online(q, conn, stream, 'bot@bot.com/lol', BOT)
@@ -92,12 +96,10 @@ def test(q, bus, conn, stream):
     # ClientTypes should be: ['pc']
 
     # check we're still a PC
-    types = conn.GetClientTypes([meredith_handle],
-                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
+    types = get_client_types(conn, meredith_handle)
 
     assertLength(1, types)
-    assertLength(1, types[meredith_handle])
-    assertEquals('pc', types[meredith_handle][0])
+    assertEquals('pc', types[0])
 
     types = conn.RequestClientTypes(meredith_handle,
             dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
@@ -112,9 +114,8 @@ def test(q, bus, conn, stream):
     # * Two: chat: phone
     # ClientTypes should be: ['pc']
 
-    types = conn.GetClientTypes([meredith_handle],
-                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
-    assertEquals('pc', types[meredith_handle][0])
+    types = get_client_types(conn, meredith_handle)
+    assertEquals('pc', types[0])
 
     # One now becomes less available
     stream.send(make_presence(meredith_one, show='away'))
@@ -164,9 +165,8 @@ def test(q, bus, conn, stream):
              args=[{meredith_handle: (cs.PRESENCE_AWAY, 'away', '')}])
 
     # check it still thinks we're a PC
-    types = conn.GetClientTypes([meredith_handle],
-                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
-    assertEquals('pc', types[meredith_handle][0])
+    types = get_client_types(conn, meredith_handle)
+    assertEquals('pc', types[0])
 
     # Three, with multiple identities, signs in
     identities = [PHONE[0], CONSOLE[0], HANDHELD[0], BOT[0]]
@@ -212,16 +212,14 @@ def test2(q, bus, conn, stream):
     # pidgin comes online
     contact_online(q, conn, stream, marco_pidgin, PC)
 
-    types = conn.GetClientTypes([handle],
-                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
-    assertSameSets(['pc'], types[handle])
+    types = get_client_types(conn, handle)
+    assertSameSets(['pc'], types)
 
     # phone comes online
     contact_online(q, conn, stream, marco_phone, PHONE, initial=False)
 
-    types = conn.GetClientTypes([handle],
-                                dbus_interface=cs.CONN_IFACE_CLIENT_TYPES)
-    assertSameSets(['pc'], types[handle])
+    types = get_client_types(conn, handle)
+    assertSameSets(['pc'], types)
 
     sync_stream(q, stream)
 

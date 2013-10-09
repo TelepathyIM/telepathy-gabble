@@ -14,6 +14,9 @@ from mucutil import join_muc, make_muc_presence
 import constants as cs
 import ns
 
+def get_aliases(conn, contacts):
+    return conn.Aliasing.GetAliases(contacts)
+
 def test(q, bus, conn, stream):
     expect_and_handle_get_vcard(q, stream)
 
@@ -22,7 +25,7 @@ def test(q, bus, conn, stream):
     handle = conn.get_contact_handle_sync(jid)
 
     # We don't have an interesting alias for Horza
-    assertEquals({handle: jid}, conn.Aliasing.GetAliases([handle]))
+    assertEquals({handle: jid}, get_aliases(conn, [handle]))
 
     # Horza sends us a message containing his preferred nickname.
     stream.send(
@@ -39,7 +42,7 @@ def test(q, bus, conn, stream):
     channel = wrap_channel(bus.get_object(conn.bus_name, mr.path), 'Text')
 
     # So now we know his alias.
-    assertEquals({handle: alias}, conn.Aliasing.GetAliases([handle]))
+    assertEquals({handle: alias}, get_aliases(conn, [handle]))
 
     # Presumably to avoid non-contacts being able to make Gabble's memory
     # footprint grow forever, Gabble throws the alias away when we close the
@@ -51,7 +54,7 @@ def test(q, bus, conn, stream):
     # FIXME: Gabble forgets the alias, but it doesn't signal that it has done
     # so; it probably should.
     # q.expect('dbus-signal', signal='AliasesChanged', args=[[(handle, jid)]])
-    assertEquals({handle: jid}, conn.Aliasing.GetAliases([handle]))
+    assertEquals({handle: jid}, get_aliases(conn, [handle]))
 
 
     # Basically the same test, but in a MUC.
@@ -73,7 +76,7 @@ def test(q, bus, conn, stream):
     bob_jid = room_jid + '/bob'
     bob_handle = conn.get_contact_handle_sync(bob_jid)
 
-    assertEquals({bob_handle: 'bob'}, conn.Aliasing.GetAliases([bob_handle]))
+    assertEquals({bob_handle: 'bob'}, get_aliases(conn, [bob_handle]))
 
     stream.send(
         elem('message', from_=bob_jid, type='groupchat')(
@@ -86,7 +89,7 @@ def test(q, bus, conn, stream):
             args=[[(bob_handle, alias)]]),
         EventPattern('dbus-signal', signal='MessageReceived'),)
 
-    assertEquals({bob_handle: alias}, conn.Aliasing.GetAliases([bob_handle]))
+    assertEquals({bob_handle: alias}, get_aliases(conn, [bob_handle]))
 
     muc.Close()
     q.expect('stream-presence', to=room_jid + '/test')
@@ -99,7 +102,7 @@ def test(q, bus, conn, stream):
     # so; it probably should.
     # q.expect('dbus-signal', signal='AliasesChanged',
     #     args=[[(bob_handle, 'bob')]])
-    assertEquals({bob_handle: 'bob'}, conn.Aliasing.GetAliases([bob_handle]))
+    assertEquals({bob_handle: 'bob'}, get_aliases(conn, [bob_handle]))
 
 if __name__ == '__main__':
     exec_test(test)

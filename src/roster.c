@@ -174,8 +174,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleRoster, gabble_roster,
     G_IMPLEMENT_INTERFACE (TP_TYPE_MUTABLE_CONTACT_GROUP_LIST,
       mutable_contact_groups_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_BLOCKABLE_CONTACT_LIST,
-      blockable_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_CAPS_CHANNEL_MANAGER, NULL))
+      blockable_iface_init))
 
 static void
 gabble_roster_init (GabbleRoster *obj)

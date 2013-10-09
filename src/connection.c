@@ -314,11 +314,6 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
   GabblePluginLoader *loader;
   GPtrArray *tmp;
 
-  self->roster = gabble_roster_new (self);
-  g_signal_connect (self->roster, "nicknames-update", G_CALLBACK
-      (gabble_conn_aliasing_nicknames_updated), self);
-  g_ptr_array_add (channel_managers, self->roster);
-
   self->priv->im_factory = g_object_new (GABBLE_TYPE_IM_FACTORY,
       "connection", self,
       NULL);
@@ -426,6 +421,10 @@ gabble_connection_constructor (GType type,
 
   tp_contacts_mixin_init (G_OBJECT (self),
       G_STRUCT_OFFSET (GabbleConnection, contacts));
+
+  self->roster = gabble_roster_new (self);
+  g_signal_connect (self->roster, "nicknames-update", G_CALLBACK
+      (gabble_conn_aliasing_nicknames_updated), self);
 
   tp_base_connection_register_with_contacts_mixin (base);
   tp_base_contact_list_mixin_register_with_contacts_mixin (

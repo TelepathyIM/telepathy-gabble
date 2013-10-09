@@ -56,16 +56,8 @@ def test(q, bus, conn, stream):
                                   u'Exemplary Team']),
                    ]
     # The request should be satisfied from the cache.
-    assertEquals(
-        {handle: contact_info}, conn.ContactInfo.GetContactInfo([handle]))
-
-    # check the ContactAttribute
-    assertEquals(
-        {handle: {cs.CONN_IFACE_CONTACT_INFO + '/info': contact_info,
-                  cs.ATTR_CONTACT_ID: 'bob@foo.com'}},
-        conn.Contacts.GetContactAttributes([handle],
-                                           [cs.CONN_IFACE_CONTACT_INFO], False))
-
+    h2asv = conn.Contacts.GetContactAttributes([handle], [cs.CONN_IFACE_CONTACT_INFO], False)
+    assertEquals(contact_info, h2asv[handle][cs.ATTR_CONTACT_INFO])
 
 if __name__ == '__main__':
     exec_test(test)

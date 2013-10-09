@@ -15,7 +15,11 @@ import constants as cs
 import ns
 
 def get_aliases(conn, contacts):
-    return conn.Aliasing.GetAliases(contacts)
+    h2asv = conn.Contacts.GetContactAttributes(contacts, [cs.CONN_IFACE_ALIASING], False)
+    ret = {}
+    for h in contacts:
+        ret[h] = h2asv[h][cs.ATTR_ALIAS]
+    return ret
 
 def test(q, bus, conn, stream):
     expect_and_handle_get_vcard(q, stream)

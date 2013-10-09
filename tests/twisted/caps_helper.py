@@ -315,6 +315,9 @@ def presence_and_disco(q, conn, stream, contact, disco,
 
     return h
 
+def get_contacts_capabilities_sync(conn, contacts):
+    return conn.ContactCapabilities.GetContactCapabilities(contacts)
+
 def send_presence(q, conn, stream, contact, caps, initial=True, show=None):
     h = conn.get_contact_handle_sync(contact)
 
@@ -326,7 +329,7 @@ def send_presence(q, conn, stream, contact, caps, initial=True, show=None):
                    (2, u'available', 'hello')}])
 
         # no special capabilities
-        for rcc in conn.ContactCapabilities.GetContactCapabilities([h])[h]:
+        for rcc in get_contacts_capabilities_sync(conn, [h])[h]:
             assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 
     # send updated presence with caps info

@@ -30,7 +30,7 @@ def test_create_ensure(q, conn, bus, stream, room_jid):
            })
 
     mc, _ = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChangedDetailed'),
+        EventPattern('dbus-signal', signal='MembersChanged'),
         EventPattern('stream-presence', to=('%s/test' % room_jid)))
     added, removed, local_pending, remote_pending, details = mc.args
 
@@ -45,7 +45,7 @@ def test_create_ensure(q, conn, bus, stream, room_jid):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', room_jid, 'test'))
 
-    mc = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    mc = q.expect('dbus-signal', signal='MembersChanged')
     added, removed, local_pending, remote_pending, details = mc.args
 
     assert len(added) == 2, mc.args
@@ -94,7 +94,7 @@ def test_ensure_ensure(q, conn, bus, stream, room_jid):
            })
 
     mc, _ = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChangedDetailed'),
+        EventPattern('dbus-signal', signal='MembersChanged'),
         EventPattern('stream-presence', to=('%s/test' % room_jid)))
     added, removed, local_pending, remote_pending, details = mc.args
 
@@ -109,7 +109,7 @@ def test_ensure_ensure(q, conn, bus, stream, room_jid):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', room_jid, 'test'))
 
-    mc = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    mc = q.expect('dbus-signal', signal='MembersChanged')
     added, removed, local_pending, remote_pending, details = mc.args
 
     assert len(added) == 2, mc.args

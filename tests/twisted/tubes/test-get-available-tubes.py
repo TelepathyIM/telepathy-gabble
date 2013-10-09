@@ -40,7 +40,7 @@ def test(q, bus, conn, stream):
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
     _, event = q.expect_many(
-            EventPattern('dbus-signal', signal='MembersChangedDetailed',
+            EventPattern('dbus-signal', signal='MembersChanged',
                 predicate=lambda e:
                     len(e.args[0]) == 2 and     # added
                     e.args[1] == [] and         # removed

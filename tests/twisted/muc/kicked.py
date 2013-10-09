@@ -35,7 +35,7 @@ def test(q, bus, conn, stream):
           )
         ))
 
-    mcd_event = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    mcd_event = q.expect('dbus-signal', signal='MembersChanged')
     added, removed, local_pending, remote_pending, details = mcd_event.args
     assertEquals([], added)
     assertEquals([muc_self_handle], removed)

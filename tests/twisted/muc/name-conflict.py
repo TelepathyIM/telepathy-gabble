@@ -182,14 +182,14 @@ def test_gtalk_weirdness(q, bus, conn, stream, room_jid):
     # try to join the MUC, because until we do so, Gabble doesn't know that
     # room_jid is a MUC, and so considers these three JIDs to be different
     # resources of the same contact. There is no race between this method
-    # returning and MembersChangedDetailed firing, because libdbus reorders
+    # returning and MembersChanged firing, because libdbus reorders
     # messages when you make blocking calls.
     handle, handle_, handle__, foobar_handle = conn.get_contact_handles_sync(
         jids + ['%s/foobar_gmail.com' % room_jid])
 
-    q.expect('dbus-signal', signal='MembersChangedDetailed',
+    q.expect('dbus-signal', signal='MembersChanged',
         predicate=lambda e: e.args[0:4] == [[foobar_handle], [], [], []])
-    q.expect('dbus-signal', signal='MembersChangedDetailed',
+    q.expect('dbus-signal', signal='MembersChanged',
         predicate=lambda e: e.args[0:4] == [[handle], [], [], []])
 
     group_props = text_chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)

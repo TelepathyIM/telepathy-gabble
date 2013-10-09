@@ -27,7 +27,7 @@ def test(q, bus, conn, stream):
         # Initial group flags
         EventPattern('dbus-signal', signal='GroupFlagsChanged',
             predicate=lambda e: e.args[0] != 0),
-        EventPattern('dbus-signal', signal='MembersChangedDetailed',
+        EventPattern('dbus-signal', signal='MembersChanged',
             predicate=lambda e: e.args[3] == [2]),
         # Removing CAN_ADD
         EventPattern('dbus-signal', signal='GroupFlagsChanged',
@@ -60,7 +60,7 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='HandleOwnersChanged')
     owners = event.args[0]
 
-    event = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    event = q.expect('dbus-signal', signal='MembersChanged')
     added = event.args[0]
 
     [test, bob, brian, che, che_owner, chris, chris_owner] = \

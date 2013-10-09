@@ -62,7 +62,7 @@ def test(q, bus, conn, stream):
 
     event, event2, _ = q.expect_many(
             EventPattern('stream-presence', to='chat@conf.localhost/test'),
-            EventPattern('dbus-signal', signal='MembersChangedDetailed'),
+            EventPattern('dbus-signal', signal='MembersChanged'),
             EventPattern('dbus-return', method='AddMembers')
             )
 
@@ -90,7 +90,7 @@ def test(q, bus, conn, stream):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
-    event = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    event = q.expect('dbus-signal', signal='MembersChanged')
 
     room_bob_handle = conn.get_contact_handle_sync('chat@conf.localhost/bob')
 

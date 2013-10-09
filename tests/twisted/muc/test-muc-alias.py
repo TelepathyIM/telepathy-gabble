@@ -29,7 +29,7 @@ def test(q, bus, conn, stream):
 
     gfc, _, _ = q.expect_many(
         EventPattern('dbus-signal', signal='GroupFlagsChanged'),
-        EventPattern('dbus-signal', signal='MembersChangedDetailed',
+        EventPattern('dbus-signal', signal='MembersChanged',
             predicate=lambda e:
                 e.args[0] == [] and         # added
                 e.args[1] == [] and         # removed
@@ -47,7 +47,7 @@ def test(q, bus, conn, stream):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', room_jid, 'lala'))
 
-    event = q.expect('dbus-signal', signal='MembersChangedDetailed',
+    event = q.expect('dbus-signal', signal='MembersChanged',
             predicate=lambda e:
                 len(e.args[0]) == 2 and     # added
                 e.args[1] == [] and         # removed

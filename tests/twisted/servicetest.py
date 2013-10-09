@@ -646,8 +646,14 @@ def wrap_connection(conn):
 def wrap_channel(chan, type_, extra=None):
     interfaces = {
         type_: tp_name_prefix + '.Channel.Type.' + type_,
-        'Channel': tp_name_prefix + '.Channel',
-        'Group': tp_name_prefix + '.Channel.Interface.Group',
+        'Channel': cs.CHANNEL,
+        'Group': cs.CHANNEL_IFACE_GROUP,
+        'Hold': cs.CHANNEL_IFACE_HOLD,
+        'Messages': cs.CHANNEL_IFACE_MESSAGES,
+        'RoomConfig1': cs.CHANNEL_IFACE_ROOM_CONFIG,
+        'ChatState': cs.CHANNEL_IFACE_CHAT_STATE,
+        'Destroyable': cs.CHANNEL_IFACE_DESTROYABLE,
+        'Password': cs.CHANNEL_IFACE_PASSWORD,
         }
 
     if extra:
@@ -659,7 +665,10 @@ def wrap_channel(chan, type_, extra=None):
 
 
 def wrap_content(chan, extra=None):
-    interfaces = { }
+    interfaces = {
+        'DTMF': cs.CALL_CONTENT_IFACE_DTMF,
+        'Media': cs.CALL_CONTENT_IFACE_MEDIA,
+        }
 
     if extra:
         interfaces.update(dict([

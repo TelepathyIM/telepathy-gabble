@@ -73,7 +73,7 @@ def join_muc(q, bus, conn, stream, muc, request=None,
             *also_capture)
     path, props = captured[0].value
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['Messages', 'Subject.DRAFT', 'RoomConfig1', 'ChatState'])
+        ['Subject.DRAFT'])
 
 
     return (chan, path, props) + tuple(captured[1:])

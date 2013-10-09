@@ -25,8 +25,7 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='NewChannels')
     path, props = event.args[0][0]
-    text_chan = wrap_channel(
-        bus.get_object(conn.bus_name, path), 'Text', ['Messages'])
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
     foo_at_bar_dot_com_handle = props[cs.TARGET_HANDLE]

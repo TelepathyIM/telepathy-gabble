@@ -38,8 +38,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='PasswordFlagsChanged',
             args=[cs.PASSWORD_FLAG_PROVIDE, 0]))
 
-    chan = wrap_channel(bus.get_object(conn.bus_name, cc.value[0]), 'Text',
-        ['Password'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, cc.value[0]), 'Text')
 
     flags = chan.Password.GetPasswordFlags()
     assertEquals(cs.PASSWORD_FLAG_PROVIDE, flags)

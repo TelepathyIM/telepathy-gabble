@@ -100,8 +100,7 @@ def test(q, bus, conn, stream):
           photo=AVATAR_1_SHA1))
 
     path, _ = q.expect('dbus-return', method='CreateChannel').value
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['Messages'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     members = chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'Members')
     assertLength(3, members)

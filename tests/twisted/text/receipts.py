@@ -172,8 +172,7 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_ID: GUYBRUSH,
               })[0]
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['Messages'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     # Let's start out with an empty roster, eh?
     e = q.expect('stream-iq', iq_type='get', query_ns=ns.ROSTER)

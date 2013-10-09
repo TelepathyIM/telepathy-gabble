@@ -48,8 +48,7 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_HANDLE: foo_handle,
               })[0]
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['ChatState', 'Destroyable'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     presence = make_presence(full_jid, status='hello',
         caps={
@@ -192,8 +191,7 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_HANDLE: foo_handle,
               })[0]
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['ChatState', 'Destroyable'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     # Close it immediately; the peer should again not get a <gone/>
     # notification, since we haven't sent any notifications on that channel.
@@ -216,8 +214,7 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_ID: jid,
               })[0]
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['ChatState'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     stream.send(make_message(full_jid, body='i am invisible', state='active'))
 
@@ -251,8 +248,7 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_ID: jid,
               })[0]
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['ChatState'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     # We shouldn't send any notifications until we actually send a message.
     # But ChatStateChanged is still emitted locally
@@ -342,8 +338,7 @@ def test(q, bus, conn, stream):
               cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
               cs.TARGET_ID: jid,
               })[0]
-    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text',
-        ['ChatState'])
+    chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     # We shouldn't send any notifications until we actually send a message.
     e = EventPattern('stream-message', to=jid)

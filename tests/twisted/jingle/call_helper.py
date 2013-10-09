@@ -130,7 +130,7 @@ class CallTest(object):
             incoming = self.incoming
 
         content = wrap_content(self.bus.get_object(self.conn.bus_name,
-                    content_path), ['DTMF', 'Media'])
+                    content_path))
         content_props = content.GetAll(cs.CALL_CONTENT,
                 dbus_interface=dbus.PROPERTIES_IFACE)
 
@@ -316,8 +316,7 @@ class CallTest(object):
 
         chan_path = signal.args[0][0][0]
         self.chan = wrap_channel(
-                self.bus.get_object(self.conn.bus_name, chan_path),
-                'Call', ['Hold'])
+                self.bus.get_object(self.conn.bus_name, chan_path), 'Call')
 
         properties = self.chan.GetAll(cs.CHANNEL_TYPE_CALL,
             dbus_interface=dbus.PROPERTIES_IFACE)

@@ -44,10 +44,10 @@ def test(q, bus, conn, stream, remove, local):
 
     # In response, Gabble should add Marco to stored:
     q.expect_many(
-            EventPattern('dbus-signal', signal='ContactsChanged',
+            EventPattern('dbus-signal', signal='ContactsChangedWithID',
                 args=[{ h: (cs.SUBSCRIPTION_STATE_NO,
                         cs.SUBSCRIPTION_STATE_NO, ''), },
-                    []],
+                        { h :jid }, {}],
                 ),
             )
 
@@ -64,10 +64,10 @@ def test(q, bus, conn, stream, remove, local):
 
     # In response, Gabble should add Marco to subscribe:remote-pending:
     q.expect_many(
-            EventPattern('dbus-signal', signal='ContactsChanged',
+            EventPattern('dbus-signal', signal='ContactsChangedWithID',
                 args=[{ h: (cs.SUBSCRIPTION_STATE_ASK,
                         cs.SUBSCRIPTION_STATE_NO, ''),
-                    }, []],
+                        }, { h:jid }, {}],
                 ),
             )
 
@@ -103,8 +103,8 @@ def test(q, bus, conn, stream, remove, local):
         # In response, Gabble should announce that Marco has been removed from
         # subscribe:remote-pending and stored:members:
         q.expect_many(
-            EventPattern('dbus-signal', signal='ContactsChanged',
-                args=[{}, [h]],
+            EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                args=[{}, {}, { h: jid }],
                 ),
             )
 
@@ -143,11 +143,11 @@ def test(q, bus, conn, stream, remove, local):
         # type='unsubscribed'/> ack before doing so: empirical tests reveal
         # that it's never delivered.
         q.expect_many(
-                EventPattern('dbus-signal', signal='ContactsChanged',
+                EventPattern('dbus-signal', signal='ContactsChangedWithID',
                     args=[{ h:
                         (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO,
                             ''),
-                        }, []],
+                        }, { h: jid}, {}],
                     ),
                 )
 

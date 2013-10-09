@@ -26,10 +26,9 @@ def test(q, bus, conn, stream):
 
     h = conn.get_contact_handle_sync(jid)
     q.expect_many(
-        EventPattern('dbus-signal', signal='ContactsChanged',
+        EventPattern('dbus-signal', signal='ContactsChangedWithID',
             args=[{ h: (cs.SUBSCRIPTION_STATE_YES,
-                    cs.SUBSCRIPTION_STATE_YES, ''), },
-                []],
+                    cs.SUBSCRIPTION_STATE_YES, ''), }, {h: jid}, {}],
             ),
         )
 
@@ -45,7 +44,7 @@ def test(q, bus, conn, stream):
     stream.send(iq)
 
     q.forbid_events(
-        [ EventPattern('dbus-signal', signal='ContactsChanged'),
+        [ EventPattern('dbus-signal', signal='ContactsChangedWithID'),
         ])
     # Make sure Gabble's got the evil push...
     sync_stream(q, stream)

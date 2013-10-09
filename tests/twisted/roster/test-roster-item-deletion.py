@@ -28,10 +28,10 @@ def test(q, bus, conn, stream, queued=False):
 
     # slight implementation detail: TpBaseContactList emits ContactsChanged
     # before it announces its channels
-    q.expect('dbus-signal', signal='ContactsChanged',
+    q.expect('dbus-signal', signal='ContactsChangedWithID',
             interface=cs.CONN_IFACE_CONTACT_LIST, path=conn.object_path,
             args=[{quux_handle:
-                (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO, '')}, []])
+                (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO, '')}, {quux_handle: 'quux@foo.com'}, {}])
 
     check_contact_roster(conn, 'quux@foo.com', [], cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO)
 
@@ -62,8 +62,8 @@ def test(q, bus, conn, stream, queued=False):
 
     q.expect_many(
             EventPattern('dbus-signal', interface=cs.CONN_IFACE_CONTACT_LIST,
-                path=conn.object_path, signal='ContactsChanged',
-                args=[{}, [quux_handle]]),
+                path=conn.object_path, signal='ContactsChangedWithID',
+                args=[{}, {}, {quux_handle: 'quux@foo.com'}]),
             EventPattern('stream-iq', iq_id='push', iq_type='result'),
             )
 

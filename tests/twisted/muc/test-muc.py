@@ -199,7 +199,7 @@ def test(q, bus, conn, stream):
 
 
     # Send a normal message using the Channel.Type.Text API
-    chan.Text.Send(0, 'goodbye')
+    chan.send_msg_sync('goodbye')
 
     event, sent, message_sent = q.expect_many(
         EventPattern('stream-message'),

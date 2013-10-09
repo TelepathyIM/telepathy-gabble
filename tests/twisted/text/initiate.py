@@ -7,7 +7,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import call_async, EventPattern, assertEquals
+from servicetest import call_async, EventPattern, assertEquals, wrap_channel
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -26,7 +26,7 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 
-    text_chan = bus.get_object(conn.bus_name, ret.value[0])
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, ret.value[0]), 'Text')
 
     path, props = sig.args[0][0]
     assertEquals(ret.value[0], path)
@@ -56,7 +56,7 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorID'] == 'test@localhost',\
             channel_props['InitiatorID']
 
-    dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT).Send(0, 'hey')
+    text_chan.send_msg_sync('hey')
 
     event = q.expect('stream-message')
 

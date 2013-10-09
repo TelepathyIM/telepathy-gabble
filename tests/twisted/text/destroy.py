@@ -8,7 +8,7 @@ import dbus
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, wrap_channel
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -27,9 +27,8 @@ def test(q, bus, conn, stream):
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 
-    text_chan = bus.get_object(conn.bus_name, ret.value[0])
+    text_chan = wrap_channel(bus.get_object(conn.bus_name, ret.value[0]), 'Text')
     chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
-    text_iface = dbus.Interface(text_chan, cs.CHANNEL_TYPE_TEXT)
     destroyable_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_DESTROYABLE)
 
     assert len(new_sig.args) == 1
@@ -54,7 +53,7 @@ def test(q, bus, conn, stream):
     assert channel_props['InitiatorID'] == 'test@localhost',\
             channel_props['InitiatorID']
 
-    text_iface.Send(0, 'hey')
+    text_chan.send_msg_sync('hey')
 
     event = q.expect('stream-message')
 

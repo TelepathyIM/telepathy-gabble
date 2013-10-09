@@ -24,7 +24,7 @@ def test(q, bus, conn, stream):
     chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
     # When we start a conversation, Gabble should send to the bare JID.
-    chan.Text.Send(0, 'hey, you around?')
+    chan.send_msg_sync('hey, you around?')
     q.expect('stream-message', to=contact)
 
     # A particular resource replies.
@@ -38,7 +38,7 @@ def test(q, bus, conn, stream):
 
     # Now that we got a reply from a particular resource, Gabble should reply
     # there.
-    chan.Text.Send(0, 'nice')
+    chan.send_msg_sync('nice')
     q.expect('stream-message', to=contact_a)
 
     # Now another resource messages us
@@ -51,7 +51,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='Received')
 
     # Gabble should have updated the resource it's sending to.
-    chan.Text.Send(0, "don't get sand in the keyboard")
+    chan.send_msg_sync("don't get sand in the keyboard")
     e = q.expect('stream-message', to=contact_b)
 
     # But actually that resource has gone offline:
@@ -68,7 +68,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='SendError')
 
     # So as a result, Gabble should send the next message to the bare JID.
-    chan.Text.Send(0, "... i guess my warning was too late")
+    chan.send_msg_sync("... i guess my warning was too late")
     q.expect('stream-message', to=contact)
 
 if __name__ == '__main__':

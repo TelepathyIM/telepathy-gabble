@@ -141,7 +141,7 @@ def test(q, bus, conn, stream):
 
     # XEP 0085:
     #   every content message SHOULD contain an <active/> notification.
-    chan.Text.Send(0, 'hi.')
+    chan.send_msg_sync('hi.')
 
     stream_message = q.expect('stream-message')
     elem = stream_message.stanza
@@ -234,7 +234,7 @@ def test(q, bus, conn, stream):
     assertEquals(cs.CHAT_STATE_COMPOSING, state)
     assertEquals(self_handle, handle)
 
-    chan.Text.Send(0, 'very convincing')
+    chan.send_msg_sync('very convincing')
     stream_message = q.expect('stream-message', to=full_jid)
     check_state_notification(stream_message.stanza, 'active', allow_body=True)
 
@@ -267,7 +267,7 @@ def test(q, bus, conn, stream):
     q.unforbid_events([e])
 
     # When we send a message, say we're active.
-    chan.Text.Send(0, 'is anyone there?')
+    chan.send_msg_sync('is anyone there?')
     stream_message = q.expect('stream-message', to=jid)
     check_state_notification(stream_message.stanza, 'active', allow_body=True)
 
@@ -350,7 +350,7 @@ def test(q, bus, conn, stream):
     q.unforbid_events([e])
 
     # When we send a message, say we're active.
-    chan.Text.Send(0, '#n900 #maemo #zomg #woo #yay http://bit.ly/n900')
+    chan.send_msg_sync('#n900 #maemo #zomg #woo #yay http://bit.ly/n900')
     stream_message = q.expect('stream-message', to=jid)
     check_state_notification(stream_message.stanza, 'active', allow_body=True)
 
@@ -367,7 +367,7 @@ def test(q, bus, conn, stream):
     sync_stream(q, stream)
     q.unforbid_events([e])
 
-    chan.Text.Send(0, '@stephenfry simmer down')
+    chan.send_msg_sync('@stephenfry simmer down')
     message = q.expect('stream-message')
     states = [x for x in message.stanza.elements() if x.uri == ns.CHAT_STATES]
     assertLength(0, states)

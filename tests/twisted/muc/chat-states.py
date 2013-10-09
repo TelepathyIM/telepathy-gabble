@@ -108,7 +108,7 @@ def test(q, bus, conn, stream):
 
     # XEP 0085:
     #   every content message SHOULD contain an <active/> notification.
-    chan.Text.Send(0, 'hi.')
+    chan.send_msg_sync('hi.')
 
     stream_message = q.expect('stream-message')
     stanza = stream_message.stanza

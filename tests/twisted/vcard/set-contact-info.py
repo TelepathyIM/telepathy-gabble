@@ -129,7 +129,7 @@ def test(q, bus, conn, stream):
     q.expect_many(
             EventPattern('dbus-return', method='SetContactInfo'),
             EventPattern('dbus-signal', signal='AliasesChanged',
-                predicate=lambda e: e.args[0][0][1] == 'HR Ninja'),
+                predicate=lambda e: e.args[0].values()[0] == 'HR Ninja'),
             EventPattern('dbus-signal', signal='ContactInfoChanged'),
             )
 

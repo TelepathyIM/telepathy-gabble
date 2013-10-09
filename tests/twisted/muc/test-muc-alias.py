@@ -17,7 +17,7 @@ def test(q, bus, conn, stream):
     expect_and_handle_set_vcard(q, stream)
 
     event = q.expect('dbus-signal', signal='AliasesChanged',
-        args=[[(self_handle, u'lala')]])
+            args=[{self_handle: u'lala'}])
 
     room_jid = 'chat@conf.localhost'
 

@@ -2,9 +2,7 @@
 Test retrieving the aliases after connection.
 """
 
-from servicetest import (
-    assertContains, assertLength
-    )
+from servicetest import assertEquals
 from gabbletest import (
     exec_test, make_result_iq
     )
@@ -47,9 +45,7 @@ def test(q, bus, conn, stream):
     bob_handle, alice_handle = conn.get_contact_handles_sync(
             [bob_jid, alice_jid])
 
-    assertLength(2, added)
-    assertContains((bob_handle, bob_alias), added)
-    assertContains((alice_handle, alice_alias), added)
+    assertEquals({bob_handle: bob_alias, alice_handle: alice_alias}, added)
 
 if __name__ == '__main__':
     exec_test(test, do_connect=False)

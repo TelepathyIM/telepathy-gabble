@@ -32,7 +32,7 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     q.expect('dbus-signal', signal='AliasesChanged',
-        args=[[(handle, u'Bobby')]])
+            args=[{handle: u'Bobby'}])
     q.expect('dbus-return', method='RequestAliases',
         value=(['Bobby'],))
 
@@ -56,12 +56,9 @@ def test(q, bus, conn, stream):
 
     event = q.expect('dbus-signal', signal='AliasesChanged')
     aliases = event.args[0]
-    assertLength(1, aliases)
-    h, a = aliases[0]
-    assertEquals(handle, h)
     # The contact explicitly cleared their PEP nick; Gabble should fall back to
     # their JID.
-    assertEquals(a, 'bob@foo.com')
+    assertEquals({handle: 'bob@foo.com'}, aliases)
 
 if __name__ == '__main__':
     exec_test(test)

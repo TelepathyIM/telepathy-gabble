@@ -39,7 +39,7 @@ def expect_AliasesChanged_and_roster_write(q, stream, handle, jid, nick):
     check_roster_write(stream, roster_write, jid, nick)
 
     q.expect('dbus-signal', signal='AliasesChanged',
-        args=[[(handle, nick if nick else jid)]])
+            args=[{handle: nick if nick else jid}])
 
 def test(q, bus, conn, stream):
     event, event2 = q.expect_many(
@@ -82,7 +82,7 @@ def test(q, bus, conn, stream):
     jid = 'parts@labor.lit'
     handle = conn.get_contact_handle_sync(jid)
     q.forbid_events([EventPattern('dbus-signal', signal='AliasesChanged',
-        args=[[(handle, '')]])])
+        args=[{handle: ''}])])
 
     send_roster_push(stream, jid, 'both', name='')
     # I don't really have very strong opinions on whether Gabble should be
@@ -110,7 +110,7 @@ def test(q, bus, conn, stream):
         EventPattern('stream-iq', query_ns=ns.VCARD_TEMP, to=jid),
     ])
     send_roster_push(stream, jid, 'both', name=jid)
-    q.expect('dbus-signal', signal='AliasesChanged', args=[[(handle, jid)]])
+    q.expect('dbus-signal', signal='AliasesChanged', args=[{handle: jid}])
     sync_stream(q, stream)
 
     # But if we get a PEP nickname update for this contact, Gabble should use
@@ -145,7 +145,7 @@ def test(q, bus, conn, stream):
     nick = 'Potato'
 
     send_roster_push(stream, jid, 'both', name=nick)
-    q.expect('dbus-signal', signal='AliasesChanged', args=[[(handle, nick)]])
+    q.expect('dbus-signal', signal='AliasesChanged', args=[{handle: nick}])
 
     # If the user clears their alias, we should expect Gabble to say over D-Bus
     # that their nickname is their jid, and send a roster push removing the

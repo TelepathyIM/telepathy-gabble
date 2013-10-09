@@ -37,7 +37,7 @@ def test(q, bus, conn, stream):
     stream.send(result)
 
     q.expect('dbus-signal', signal='AliasesChanged',
-        args=[[(handle, u'Bobby')]])
+            args=[{handle: u'Bobby'}])
     q.expect('dbus-return', method='RequestAliases',
         value=(['Bobby'],))
 

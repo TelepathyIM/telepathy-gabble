@@ -39,7 +39,7 @@ def test(q, bus, conn, stream):
         ))
     _, mr = q.expect_many(
         EventPattern('dbus-signal', signal='AliasesChanged',
-            args=[[(handle, alias)]]),
+            args=[{handle: alias}]),
         EventPattern('dbus-signal', signal='MessageReceived'),
         )
 
@@ -57,7 +57,7 @@ def test(q, bus, conn, stream):
 
     # FIXME: Gabble forgets the alias, but it doesn't signal that it has done
     # so; it probably should.
-    # q.expect('dbus-signal', signal='AliasesChanged', args=[[(handle, jid)]])
+    # q.expect('dbus-signal', signal='AliasesChanged', args=[{handle: jid}])
     assertEquals({handle: jid}, get_aliases(conn, [handle]))
 
 
@@ -90,7 +90,7 @@ def test(q, bus, conn, stream):
 
     q.expect_many(
         EventPattern('dbus-signal', signal='AliasesChanged',
-            args=[[(bob_handle, alias)]]),
+            args=[{bob_handle: alias}]),
         EventPattern('dbus-signal', signal='MessageReceived'),)
 
     assertEquals({bob_handle: alias}, get_aliases(conn, [bob_handle]))
@@ -105,7 +105,7 @@ def test(q, bus, conn, stream):
     # FIXME: Gabble forgets the alias, but it doesn't signal that it has done
     # so; it probably should.
     # q.expect('dbus-signal', signal='AliasesChanged',
-    #     args=[[(bob_handle, 'bob')]])
+    #     args=[{bob_handle: 'bob'}])
     assertEquals({bob_handle: 'bob'}, get_aliases(conn, [bob_handle]))
 
 if __name__ == '__main__':

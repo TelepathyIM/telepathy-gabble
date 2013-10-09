@@ -35,8 +35,8 @@ def test(q, bus, conn, stream):
         assertEquals('lala', nickname.children[0])
     expect_and_handle_set_vcard(q, stream, check=check)
 
-    event = q.expect('dbus-signal', signal='AliasesChanged',
-        args=[[(self_handle, u'lala')]])
+    q.expect('dbus-signal', signal='AliasesChanged',
+            args=[{self_handle: u'lala'}])
 
     conn.Aliasing.SetAliases({self_handle: ''})
     pep_update = q.expect('stream-iq', iq_type='set', query_ns=ns.PUBSUB, query_name='pubsub')
@@ -49,8 +49,8 @@ def test(q, bus, conn, stream):
         assertLength(0, vCard.children)
     expect_and_handle_set_vcard(q, stream, check=check)
 
-    event = q.expect('dbus-signal', signal='AliasesChanged',
-        args=[[(self_handle, u'test@localhost')]])
+    q.expect('dbus-signal', signal='AliasesChanged',
+            args=[{self_handle: u'test@localhost'}])
 
 if __name__ == '__main__':
     exec_test(test)

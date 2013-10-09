@@ -582,8 +582,7 @@ def sync_dbus(bus, q, proxy):
     # dbus-glib and thence the application, which means that Ping()ing the
     # application doesn't ensure that it's processed all D-Bus messages prior
     # to our ping.
-    call_async(q, dbus.Interface(proxy, 'org.freedesktop.Telepathy.Tests'),
-        'DummySyncDBus')
+    call_async(q, dbus.Interface(proxy, cs.TESTS), 'DummySyncDBus')
     q.expect('dbus-error', method='DummySyncDBus')
 
 class ProxyWrapper:
@@ -611,7 +610,7 @@ class ConnWrapper(ProxyWrapper):
         return self.inspect_contacts_sync([handle])[0]
 
     def inspect_contacts_sync(self, handles):
-        h2asv = self.Contacts.GetContactAttributes(handles, [], True)
+        h2asv = self.Contacts.GetContactAttributes(handles, [])
         ret = []
         for h in handles:
             ret.append(h2asv[h][cs.ATTR_CONTACT_ID])
@@ -625,14 +624,16 @@ class ConnWrapper(ProxyWrapper):
 
 def wrap_connection(conn):
     return ConnWrapper(conn, tp_name_prefix + '.Connection',
-        dict([
-            (name, tp_name_prefix + '.Connection.Interface.' + name)
-            for name in ['Aliasing', 'Avatars', 'Capabilities', 'Contacts',
-              'SimplePresence', 'Requests']] +
+        dict(
         [('Peer', 'org.freedesktop.DBus.Peer'),
+         ('Aliasing', cs.CONN_IFACE_ALIASING),
+         ('Avatars', cs.CONN_IFACE_AVATARS),
+         ('Contacts', cs.CONN_IFACE_CONTACTS),
          ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),
          ('ContactInfo', cs.CONN_IFACE_CONTACT_INFO),
          ('Location', cs.CONN_IFACE_LOCATION),
+         ('Presence', cs.CONN_IFACE_PRESENCE),
+         ('Requests', cs.CONN_IFACE_REQUESTS),
          ('Future', tp_name_prefix + '.Connection.FUTURE'),
          ('MailNotification', cs.CONN_IFACE_MAIL_NOTIFICATION),
          ('ContactList', cs.CONN_IFACE_CONTACT_LIST),
@@ -658,7 +659,6 @@ def wrap_channel(chan, type_, extra=None):
         'Channel': cs.CHANNEL,
         'Group': cs.CHANNEL_IFACE_GROUP,
         'Hold': cs.CHANNEL_IFACE_HOLD,
-        'Messages': cs.CHANNEL_IFACE_MESSAGES,
         'RoomConfig1': cs.CHANNEL_IFACE_ROOM_CONFIG,
         'ChatState': cs.CHANNEL_IFACE_CHAT_STATE,
         'Destroyable': cs.CHANNEL_IFACE_DESTROYABLE,

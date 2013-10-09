@@ -88,8 +88,8 @@ gflags = {
 def write_manager(f, manager, protos):
     # pointless backwards compat section
     print >> f, '[ConnectionManager]'
-    print >> f, 'BusName=org.freedesktop.Telepathy.ConnectionManager.' + manager
-    print >> f, 'ObjectPath=/org/freedesktop/Telepathy/ConnectionManager/' + manager
+    print >> f, 'BusName=im.telepathy1.ConnectionManager.' + manager
+    print >> f, 'ObjectPath=/im/telepathy1/ConnectionManager/' + manager
 
     # protocols
     for proto, params in protos.iteritems():

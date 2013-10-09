@@ -17,7 +17,7 @@ Lesser General Public License for more details.</p>
 License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</p>
   </tp:license>
-  <interface name="org.freedesktop.Telepathy.Channel.Type.FileTransfer.FUTURE"
+  <interface name="im.telepathy1.Channel.Type.FileTransfer1.FUTURE"
     tp:causes-havoc="a staging area for future File Transfer Channel functionality">
 
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
@@ -43,7 +43,7 @@ Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.</
 
     <property name="FileCollection" tp:name-for-bindings="FileCollection"
       type="s" access="read">
-      <tp:added version="0.19.2">(in Channel.Type.FileTransfer.FUTURE
+      <tp:added version="0.19.2">(in Channel.Type.FileTransfer1.FUTURE
         pseudo-interface)</tp:added>
       <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
         <p>The FileCollection to which this channel belongs.</p>

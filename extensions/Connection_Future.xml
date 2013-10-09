@@ -20,9 +20,9 @@ License along with this library; if not, write to the Free Software
 Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301,
 USA.</p>
   </tp:license>
-  <interface name="org.freedesktop.Telepathy.Connection.FUTURE"
+  <interface name="im.telepathy1.Connection.FUTURE"
              tp:causes-havoc='experimental'>
-    <tp:requires interface="org.freedesktop.Telepathy.Connection"/>
+    <tp:requires interface="im.telepathy1.Connection"/>
 
     <method name="EnsureSidecar" tp:name-for-bindings="Ensure_Sidecar">
       <tp:added version="0.19.UNRELEASED"/>
@@ -75,12 +75,12 @@ USA.</p>
             in a dictionary, build a proxy object from the value). More
             “plural” plugins are likely to want to implement new types of
             <tp:dbus-ref
-              namespace="org.freedesktop.Telepathy">Channel</tp:dbus-ref>
+              namespace="im.telepathy1">Channel</tp:dbus-ref>
             instead.</p>
         </tp:rationale>
       </tp:docstring>
 
-      <tp:error name="org.freedesktop.Telepathy.Error.NotImplemented">
+      <tp:error name="im.telepathy1.Error.NotImplemented">
         <tp:docstring>
           The requested sidecar is not implemented by this connection manager,
           or a necessary server-side component does not exist. (FIXME: split
@@ -91,7 +91,7 @@ USA.</p>
         </tp:docstring>
       </tp:error>
 
-      <tp:error name="org.freedesktop.Telepathy.Error.ServiceBusy">
+      <tp:error name="im.telepathy1.Error.ServiceBusy">
         <tp:docstring>
           A server-side component needed by the requested sidecar reported it
           is currently too busy, or did not respond for some
@@ -99,7 +99,7 @@ USA.</p>
         </tp:docstring>
       </tp:error>
 
-      <tp:error name="org.freedesktop.Telepathy.Error.Cancelled">
+      <tp:error name="im.telepathy1.Error.Cancelled">
         <tp:docstring>
           The connection was disconnected while the sidecar was being set up.
         </tp:docstring>

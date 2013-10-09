@@ -31,7 +31,7 @@ from gi.repository import TelepathyGLib as Tp
 
 PADDING = 6
 
-CONSOLE_IFACE = "org.freedesktop.Telepathy.Gabble.Plugin.Console"
+CONSOLE_IFACE = "im.telepathy1.Gabble.Plugin.Console"
 
 class StanzaViewer(Gtk.ScrolledWindow):
     def __init__(self):

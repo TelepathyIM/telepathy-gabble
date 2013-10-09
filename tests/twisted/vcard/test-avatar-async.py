@@ -180,10 +180,12 @@ def test(q, bus, conn, stream):
     # Gabble must reply without asking the vCard to the server because the
     # avatar must be in the cache
     q.forbid_events([avatar_request_event])
-    data, mime = conn.Avatars.RequestAvatar(self_handle, byte_arrays=True)
-    assertEquals('\o/', data)
-    data, mime = conn.Avatars.RequestAvatar(handle, byte_arrays=True)
-    assertEquals('hello', data)
+    conn.Avatars.RequestAvatars([self_handle])
+    e = q.expect('dbus-signal', signal='AvatarRetrieved')
+    assertEquals('\o/', e.args[2])
+    conn.Avatars.RequestAvatars([handle])
+    e = q.expect('dbus-signal', signal='AvatarRetrieved')
+    assertEquals('hello', e.args[2])
     q.unforbid_events([avatar_request_event])
 
     # First, ensure the pipeline is full
@@ -192,14 +194,9 @@ def test(q, bus, conn, stream):
     conn.Avatars.RequestAvatars(handles)
     # Then, request yet another avatar. The request will time out before
     # the IQ is sent, which used to trigger a crash in Gabble
-    # (LP#445847). So, we assert that the error is NotAvailable (rather
-    # than the error returned when the service crashes).
-    try:
-        conn.Avatars.RequestAvatar(handles[-1])
-    except dbus.DBusException, e:
-        assertEquals(cs.NOT_AVAILABLE, e.get_dbus_name())
-    else:
-        assert False
+    # (LP#445847).
+    conn.Avatars.RequestAvatars([handles[-1]])
+    sync_dbus(bus, q, conn)
 
 if __name__ == '__main__':
     exec_test(test)

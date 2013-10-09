@@ -18,7 +18,7 @@ def test(q, bus, conn, stream):
     # Request our alias and avatar, expect them to be resolved from cache.
 
     handle = conn.Properties.Get(cs.CONN, "SelfHandle")
-    call_async(q, conn.Avatars, 'RequestAvatar', handle)
+    call_async(q, conn.Avatars, 'RequestAvatars', [handle])
     call_async(q, conn.Aliasing, 'RequestAliases', [handle])
 
     # FIXME - find out why RequestAliases returns before RequestAvatar even
@@ -30,15 +30,10 @@ def test(q, bus, conn, stream):
 
     r1, r2 = q.expect_many(
         EventPattern('dbus-return', method='RequestAliases'),
-        EventPattern('dbus-error', method='RequestAvatar'))
+        EventPattern('dbus-return', method='RequestAvatars'))
 
     # Default alias is our jid
     assert r1.value[0] == ['test@localhost']
-
-    # We don't have a vCard yet
-    assert r2.error.get_dbus_name() == cs.NOT_AVAILABLE, \
-        r2.error.get_dbus_name()
-    assert r2.error.args[0] == 'contact vCard has no photo'
 
 if __name__ == '__main__':
     exec_test(test)

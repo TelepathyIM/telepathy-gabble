@@ -5,9 +5,8 @@ Test avatar support.
 
 import base64
 
-from servicetest import call_async, EventPattern
+from servicetest import call_async, assertEquals
 from gabbletest import exec_test, acknowledge_iq, make_result_iq
-import constants as cs
 
 def test(q, bus, conn, stream):
     event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
@@ -16,7 +15,7 @@ def test(q, bus, conn, stream):
     acknowledge_iq(stream, event.stanza)
 
     handle = conn.get_contact_handle_sync('bob@foo.com')
-    call_async(q, conn.Avatars, 'RequestAvatar', handle, byte_arrays=True)
+    call_async(q, conn.Avatars, 'RequestAvatars', [handle])
 
     event = q.expect('stream-iq', iq_type='get', to='bob@foo.com',
         query_ns='vcard-temp', query_name='vCard')
@@ -26,8 +25,9 @@ def test(q, bus, conn, stream):
     photo.addElement('BINVAL', content=base64.b64encode('hello'))
     stream.send(result)
 
-    q.expect('dbus-return', method='RequestAvatar',
-        value=('hello', 'image/png'))
+    e = q.expect('dbus-signal', signal='AvatarRetrieved')
+    assertEquals('hello', e.args[2])
+    assertEquals('image/png', e.args[3])
 
 if __name__ == '__main__':
     exec_test(test)

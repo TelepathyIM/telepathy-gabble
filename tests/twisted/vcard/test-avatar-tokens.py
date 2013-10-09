@@ -5,7 +5,7 @@ Test GetAvatarTokens() and GetKnownAvatarTokens().
 
 from twisted.words.xish import domish
 
-from servicetest import unwrap, EventPattern
+from servicetest import unwrap, assertEquals
 from gabbletest import exec_test, make_result_iq
 import ns
 import constants as cs
@@ -44,8 +44,11 @@ def test(q, bus, conn, stream):
     handles = conn.get_contact_handles_sync([
         'amy@foo.com', 'bob@foo.com', 'che@foo.com', 'daf@foo.com' ])
 
-    tokens = unwrap(conn.Avatars.GetAvatarTokens(handles))
-    assert tokens == ['SHA1SUM-FOR-AMY', 'SHA1SUM-FOR-BOB', '', '']
+    h2asv = conn.Contacts.GetContactAttributes(handles, [cs.CONN_IFACE_AVATARS], False)
+    assertEquals('SHA1SUM-FOR-AMY', h2asv[handles[0]][cs.ATTR_AVATAR_TOKEN])
+    assertEquals('SHA1SUM-FOR-BOB', h2asv[handles[1]][cs.ATTR_AVATAR_TOKEN])
+    assertEquals('', h2asv[handles[2]][cs.ATTR_AVATAR_TOKEN])
+    assertEquals(None, h2asv[handles[3]].get(cs.ATTR_AVATAR_TOKEN))
 
     tokens = unwrap(conn.Avatars.GetKnownAvatarTokens(handles))
     tokens = sorted(tokens.items())

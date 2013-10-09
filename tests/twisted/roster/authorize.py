@@ -14,7 +14,7 @@ from twisted.words.xish import domish
 
 def test(q, bus, conn, stream, remove=False):
 
-    call_async(q, conn.ContactList, 'GetContactListAttributes', [], False)
+    call_async(q, conn.ContactList, 'GetContactListAttributes', [])
     q.expect('dbus-error', method='GetContactListAttributes',
             name=cs.NOT_YET)
 
@@ -43,7 +43,7 @@ def test(q, bus, conn, stream, remove=False):
     q.expect('dbus-signal', signal='ContactListStateChanged',
             args=[cs.CONTACT_LIST_STATE_SUCCESS])
 
-    call_async(q, conn.ContactList, 'GetContactListAttributes', [], False)
+    call_async(q, conn.ContactList, 'GetContactListAttributes', [])
     r = q.expect('dbus-return', method='GetContactListAttributes')
     assertEquals(({
         holly: {

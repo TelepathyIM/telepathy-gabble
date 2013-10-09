@@ -32,7 +32,7 @@ def send_roster_push(stream, jid, subscription, ask_subscribe=False, name=None):
 def check_contact_roster(conn, contact, groups=None, subscribe=None, publish=None):
     h = conn.get_contact_handle_sync(contact)
     attrs = conn.Contacts.GetContactAttributes([h],
-            [cs.CONN_IFACE_CONTACT_LIST, cs.CONN_IFACE_CONTACT_GROUPS], True)[h]
+            [cs.CONN_IFACE_CONTACT_LIST, cs.CONN_IFACE_CONTACT_GROUPS])[h]
 
     if groups is not None:
         assertSameSets(groups, attrs[cs.ATTR_GROUPS])

@@ -202,7 +202,7 @@ def test(q, bus, conn, stream):
     assertContains('girls', groups)
     assertDoesNotContain('ladies', groups)
 
-    contacts = conn.ContactList.GetContactListAttributes([cs.CONN_IFACE_CONTACT_GROUPS], False)
+    contacts = conn.ContactList.GetContactListAttributes([cs.CONN_IFACE_CONTACT_GROUPS])
     assertEquals(['girls'], contacts[amy][cs.CONN_IFACE_CONTACT_GROUPS + '/groups'])
 
 if __name__ == '__main__':

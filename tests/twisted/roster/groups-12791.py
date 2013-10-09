@@ -60,7 +60,7 @@ def test(q, bus, conn, stream):
             predicate=lambda e: groups_created_predicate(e, ['women', 'men', 'affected-by-fdo-12791'])),
         )
 
-    contacts = conn.ContactList.GetContactListAttributes([cs.CONN_IFACE_CONTACT_GROUPS], False)
+    contacts = conn.ContactList.GetContactListAttributes([cs.CONN_IFACE_CONTACT_GROUPS])
     assertLength(3, contacts)
 
     check_contact_roster(conn, 'amy@foo.com', ['women'])

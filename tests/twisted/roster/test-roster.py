@@ -10,7 +10,7 @@ import ns
 
 def test(q, bus, conn, stream):
 
-    call_async(q, conn.ContactList, 'GetContactListAttributes', [], False)
+    call_async(q, conn.ContactList, 'GetContactListAttributes', [])
     q.expect('dbus-error', method='GetContactListAttributes',
             name=cs.NOT_YET)
 
@@ -57,7 +57,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='ContactListStateChanged',
             args=[cs.CONTACT_LIST_STATE_SUCCESS])
 
-    call_async(q, conn.ContactList, 'GetContactListAttributes', [], False)
+    call_async(q, conn.ContactList, 'GetContactListAttributes', [])
     r = q.expect('dbus-return', method='GetContactListAttributes')
     assertEquals(({
         amy: {

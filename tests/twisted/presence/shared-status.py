@@ -17,6 +17,7 @@ import constants as cs
 import dbus
 from twisted.words.xish import xpath, domish
 from invisible_helper import SharedStatusStream
+from presence_helper import get_contacts_presences_sync
 
 presence_types = {'available' : cs.PRESENCE_AVAILABLE,
                   'away'      : cs.PRESENCE_AWAY,
@@ -38,7 +39,7 @@ def _show_to_shared_status_show(show):
 
 def _test_remote_status(q, bus, conn, stream, msg, show, list_attrs):
     self = conn.Properties.Get(cs.CONN, "SelfHandle")
-    presence = conn.SimplePresence.GetPresences([self])[self]
+    presence = get_contacts_presences_sync(conn, [self])[self]
     is_away = presence[0] in (cs.PRESENCE_AWAY, cs.PRESENCE_EXTENDED_AWAY)
 
     if is_away:
@@ -79,7 +80,7 @@ def _test_local_status(q, conn, stream, msg, show, expected_show=None):
     away = expected_show in ('away', 'xa')
 
     self = conn.Properties.Get(cs.CONN, "SelfHandle")
-    prev_presence = conn.SimplePresence.GetPresences([self])[self]
+    prev_presence = get_contacts_presences_sync(conn, [self])[self]
     was_away = prev_presence[0] in (cs.PRESENCE_AWAY,
                                     cs.PRESENCE_EXTENDED_AWAY)
     was_invisible = (prev_presence[0] == cs.PRESENCE_HIDDEN)

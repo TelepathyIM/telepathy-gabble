@@ -10,6 +10,7 @@ This serves as a regression test for
 
 from gabbletest import exec_test, make_presence, sync_stream, elem
 from servicetest import assertEquals, EventPattern, sync_dbus
+from presence_helper import get_contacts_presences_sync
 
 import constants as cs
 import ns
@@ -32,13 +33,14 @@ def test(q, bus, conn, stream):
     amy, bob, che, dre, eve = conn.get_contact_handles_sync(
         ['amy@foo.com', 'bob@foo.com', 'che@foo.com', 'dre@foo.com',
          'eve@foo.com'])
+
     assertEquals({amy: UNKNOWN,
                   bob: UNKNOWN,
                   che: UNKNOWN,
                   dre: UNKNOWN,
                   eve: UNKNOWN,
                  },
-        conn.SimplePresence.GetPresences([amy, bob, che, dre, eve]))
+        get_contacts_presences_sync(conn, [amy, bob, che, dre, eve]))
 
     # Before the server sends Gabble the roster, it relays an 'unavailable'
     # presence for one of the contacts we're subscribed to. This seems to
@@ -94,7 +96,7 @@ def test(q, bus, conn, stream):
                   dre: OFFLINE,
                   eve: AVAILABLE,
                  },
-        conn.SimplePresence.GetPresences([amy, bob, che, dre, eve]))
+        get_contacts_presences_sync(conn, [amy, bob, che, dre, eve]))
 
 if __name__ == '__main__':
     exec_test(test)

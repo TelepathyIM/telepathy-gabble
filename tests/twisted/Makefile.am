@@ -238,6 +238,7 @@ TWISTED_OTHER_FILES = \
 	mucutil.py \
 	ns.py \
 	olpc/util.py \
+	presence_helper.py \
 	presence/__init__.py \
 	presence/invisible_helper.py \
 	rostertest.py \

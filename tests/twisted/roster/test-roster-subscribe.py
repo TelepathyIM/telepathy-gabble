@@ -82,10 +82,6 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
         stream.send(presence)
 
         q.expect_many(
-                EventPattern('dbus-signal', signal='MembersChanged',
-                    predicate=lambda e: e.args[0] == [] and e.args[1] == [bob] and
-                        e.args[2] == [] and e.args[3] == [] and
-                        e.args[4]['change-reason'] == cs.GC_REASON_PERMISSION_DENIED),
                 #EventPattern('stream-presence'),
                 EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{bob:
@@ -104,9 +100,6 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
         stream.send(presence)
 
         q.expect_many(
-                EventPattern('dbus-signal', signal='MembersChanged',
-                    predicate=lambda e: e.args[0] == [bob] and e.args[1] == [] and
-                        e.args[2] == [] and e.args[3] == []),
                 EventPattern('stream-presence'),
                 EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{bob:
@@ -145,10 +138,6 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
             stream.send(presence)
 
             q.expect_many(
-                    EventPattern('dbus-signal', signal='MembersChanged',
-                        predicate=lambda e: e.args[0] == [] and e.args[1] == [bob] and
-                            e.args[2] == [] and e.args[3] == [] and
-                            e.args[4]['change-reason'] == cs.GC_REASON_PERMISSION_DENIED),
                     EventPattern('stream-presence'),
                     EventPattern('dbus-signal', signal='ContactsChanged',
                         args=[{bob:

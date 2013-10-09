@@ -27,8 +27,8 @@ def test(q, bus, conn, stream):
         # Initial group flags
         EventPattern('dbus-signal', signal='GroupFlagsChanged',
             predicate=lambda e: e.args[0] != 0),
-        EventPattern('dbus-signal', signal='MembersChanged',
-            args=[u'', [], [], [], [2], 0, 0]),
+        EventPattern('dbus-signal', signal='MembersChangedDetailed',
+            predicate=lambda e: e.args[3] == [2]),
         # Removing CAN_ADD
         EventPattern('dbus-signal', signal='GroupFlagsChanged',
           args = [0, cs.GF_CAN_ADD], predicate=lambda e: e.args[0] == 0),
@@ -60,8 +60,8 @@ def test(q, bus, conn, stream):
     event = q.expect('dbus-signal', signal='HandleOwnersChanged')
     owners = event.args[0]
 
-    event = q.expect('dbus-signal', signal='MembersChanged')
-    added = event.args[1]
+    event = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    added = event.args[0]
 
     [test, bob, brian, che, che_owner, chris, chris_owner] = \
         conn.get_contact_handles_sync(

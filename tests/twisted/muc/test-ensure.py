@@ -30,9 +30,9 @@ def test_create_ensure(q, conn, bus, stream, room_jid):
            })
 
     mc, _ = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged'),
+        EventPattern('dbus-signal', signal='MembersChangedDetailed'),
         EventPattern('stream-presence', to=('%s/test' % room_jid)))
-    msg, added, removed, local_pending, remote_pending, actor, reason = mc.args
+    added, removed, local_pending, remote_pending, details = mc.args
 
     assert added == [], mc.args
     assert removed == [], mc.args
@@ -45,8 +45,8 @@ def test_create_ensure(q, conn, bus, stream, room_jid):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', room_jid, 'test'))
 
-    mc = q.expect('dbus-signal', signal='MembersChanged')
-    msg, added, removed, local_pending, remote_pending, actor, reason = mc.args
+    mc = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    added, removed, local_pending, remote_pending, details = mc.args
 
     assert len(added) == 2, mc.args
     assert removed == [], mc.args
@@ -94,9 +94,9 @@ def test_ensure_ensure(q, conn, bus, stream, room_jid):
            })
 
     mc, _ = q.expect_many(
-        EventPattern('dbus-signal', signal='MembersChanged'),
+        EventPattern('dbus-signal', signal='MembersChangedDetailed'),
         EventPattern('stream-presence', to=('%s/test' % room_jid)))
-    msg, added, removed, local_pending, remote_pending, actor, reason = mc.args
+    added, removed, local_pending, remote_pending, details = mc.args
 
     assert added == [], mc.args
     assert removed == [], mc.args
@@ -109,8 +109,8 @@ def test_ensure_ensure(q, conn, bus, stream, room_jid):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('none', 'participant', room_jid, 'test'))
 
-    mc = q.expect('dbus-signal', signal='MembersChanged')
-    msg, added, removed, local_pending, remote_pending, actor, reason = mc.args
+    mc = q.expect('dbus-signal', signal='MembersChangedDetailed')
+    added, removed, local_pending, remote_pending, details = mc.args
 
     assert len(added) == 2, mc.args
     assert removed == [], mc.args

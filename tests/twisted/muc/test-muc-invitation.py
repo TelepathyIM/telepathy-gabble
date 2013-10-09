@@ -62,7 +62,7 @@ def test(q, bus, conn, stream):
 
     event, event2, _ = q.expect_many(
             EventPattern('stream-presence', to='chat@conf.localhost/test'),
-            EventPattern('dbus-signal', signal='MembersChanged'),
+            EventPattern('dbus-signal', signal='MembersChangedDetailed'),
             EventPattern('dbus-return', method='AddMembers')
             )
 
@@ -77,8 +77,12 @@ def test(q, bus, conn, stream):
     # We are added as remote pending while joining the room. The inviter (Bob)
     # is removed for now. It will be re-added with his channel specific handle
     # once we have joined.
-    assert event2.args == ['', [], [bob_handle], [],
-            [room_self_handle], 0, cs.GC_REASON_INVITED]
+    added, removed, local_pending, remote_pending, details = event2.args
+    assertEquals([], added)
+    assertEquals([bob_handle], removed)
+    assertEquals([], local_pending)
+    assertEquals([room_self_handle], remote_pending)
+    assertEquals(cs.GC_REASON_INVITED, details['change-reason'])
 
     # Send presence for Bob's membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'bob'))
@@ -86,10 +90,15 @@ def test(q, bus, conn, stream):
     # Send presence for own membership of room.
     stream.send(make_muc_presence('owner', 'moderator', 'chat@conf.localhost', 'test'))
 
-    event = q.expect('dbus-signal', signal='MembersChanged')
+    event = q.expect('dbus-signal', signal='MembersChangedDetailed')
 
     room_bob_handle = conn.get_contact_handle_sync('chat@conf.localhost/bob')
-    assert event.args == ['', [room_self_handle, room_bob_handle], [], [], [], 0, 0]
+
+    added, removed, local_pending, remote_pending, details = event.args
+    assertEquals([room_self_handle, room_bob_handle], added)
+    assertEquals([], removed)
+    assertEquals([], local_pending)
+    assertEquals([], remote_pending)
 
     # Test sending an invitation
     alice_handle = conn.get_contact_handle_sync('alice@localhost')

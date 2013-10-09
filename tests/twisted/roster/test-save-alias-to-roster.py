@@ -88,7 +88,7 @@ def test(q, bus, conn, stream):
     # I don't really have very strong opinions on whether Gabble should be
     # signalling that this contact's alias has *changed* per se, so am not
     # explicitly expecting that.
-    q.expect('dbus-signal', signal='MembersChanged')
+    q.expect('dbus-signal', signal='MembersChangedDetailed')
 
     # But if we ask for it, Gabble should probably send a PEP query.
     assertEquals(jid, conn.Aliasing.GetAliases([handle])[handle])

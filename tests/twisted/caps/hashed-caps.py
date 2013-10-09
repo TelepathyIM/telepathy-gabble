@@ -32,7 +32,8 @@ import constants as cs
 import ns
 from caps_helper import (
     compute_caps_hash, make_caps_disco_reply, send_disco_reply,
-    fake_client_dataforms, assert_rccs_callable, assert_rccs_not_callable)
+    fake_client_dataforms, assert_rccs_callable, assert_rccs_not_callable,
+    get_contacts_capabilities_sync)
 
 from config import VOIP_ENABLED
 
@@ -60,7 +61,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
                 (2, u'available', 'hello')}])
 
     # no special capabilities
-    for rcc in conn.ContactCapabilities.GetContactCapabilities([contact_handle])[contact_handle]:
+    for rcc in get_contacts_capabilities_sync(conn, [contact_handle])[contact_handle]:
         assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 
     # send updated presence with Jingle caps info
@@ -87,7 +88,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
 
     assert_rccs_callable(cc.args[0][contact_handle])
     assertEquals(cc.args[0],
-            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
+            get_contacts_capabilities_sync(conn, [contact_handle]))
 
     # Send presence without any capabilities. XEP-0115 §8.4 Caps Optimization
     # says “receivers of presence notifications MUST NOT expect an annotation
@@ -98,7 +99,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         args=[{contact_handle: (2, u'available', 'very capable')}])
     # still exactly the same capabilities
     assertEquals(cc.args[0],
-            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
+            get_contacts_capabilities_sync(conn, [contact_handle]))
 
     # send bogus presence
     caps = {
@@ -159,7 +160,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
     assert_rccs_not_callable(cc.args[0][contact_handle])
     assertEquals(cc.args[0],
-            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
+            get_contacts_capabilities_sync(conn, [contact_handle]))
 
     # send correct presence
     ver = compute_caps_hash(some_identities, jingle_av_features, fake_client_dataforms)
@@ -193,7 +194,7 @@ def test_hash(q, bus, conn, stream, contact, contact_handle, client):
         )
     assert_rccs_callable(cc.args[0][contact_handle])
     assertEquals(cc.args[0],
-            conn.ContactCapabilities.GetContactCapabilities([contact_handle]))
+            get_contacts_capabilities_sync(conn, [contact_handle]))
 
 def test_two_clients(q, bus, conn, stream, contact1, contact2,
         contact_handle1, contact_handle2, client, broken_hash):
@@ -214,7 +215,7 @@ def test_two_clients(q, bus, conn, stream, contact1, contact2,
 
     # no special capabilities
     for h in (contact_handle1, contact_handle2):
-        for rcc in conn.ContactCapabilities.GetContactCapabilities([h])[h]:
+        for rcc in get_contacts_capabilities_sync(conn, [h])[h]:
             assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 
     # send updated presence with Jingle caps info

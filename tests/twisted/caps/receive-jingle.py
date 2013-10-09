@@ -7,7 +7,7 @@ import dbus
 from servicetest import EventPattern, assertEquals, sync_dbus
 from gabbletest import exec_test, make_result_iq, make_presence, sync_stream
 from caps_helper import (assert_rccs_callable, assert_rccs_not_callable,
-        check_rccs_callable)
+        check_rccs_callable, get_contacts_capabilities_sync)
 import constants as cs
 
 from config import VOIP_ENABLED
@@ -28,14 +28,14 @@ def test(q, bus, conn, stream):
     basic_caps = [(bob, cs.CHANNEL_TYPE_TEXT, 3, 0)]
 
     # only Text
-    for rcc in conn.ContactCapabilities.GetContactCapabilities([bob])[bob]:
+    for rcc in get_contacts_capabilities_sync(conn, [bob])[bob]:
         assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 
     # holding the handle here: see below
     assertEquals(
             { bob: {
                 cs.ATTR_CONTACT_CAPABILITIES:
-                    conn.ContactCapabilities.GetContactCapabilities([bob])[bob],
+                    get_contacts_capabilities_sync(conn, [bob])[bob],
                 cs.CONN + '/contact-id': 'bob@foo.com',
                 },
             },
@@ -141,7 +141,7 @@ def test(q, bus, conn, stream):
     # became invalid, but that's not guaranteed to happen immediately; so we
     # now hold the handle (above), to guarantee that it does *not* become
     # invalid.
-    rccs = conn.ContactCapabilities.GetContactCapabilities([bob])[bob]
+    rccs = get_contacts_capabilities_sync(conn, [bob])[bob]
     for rcc in rccs:
         assertEquals(cs.CHANNEL_TYPE_TEXT, rcc[0].get(cs.CHANNEL_TYPE))
 

@@ -4,6 +4,7 @@ Test for fd.o#32874 -- Offline contacts do not have capabilities.
 
 from gabbletest import exec_test
 from servicetest import assertEquals, assertSameSets, assertLength
+from caps_helper import get_contacts_capabilities_sync
 import constants as cs
 import ns
 
@@ -29,7 +30,7 @@ def test(q, bus, conn, stream):
     bob_handle = conn.get_contact_handle_sync(jid)
 
     # new ContactCapabilities
-    ccaps_map = conn.ContactCapabilities.GetContactCapabilities([bob_handle])
+    ccaps_map = get_contacts_capabilities_sync(conn, [bob_handle])
     assertLength(1, ccaps_map)
 
     assertLength(1, ccaps_map[bob_handle])

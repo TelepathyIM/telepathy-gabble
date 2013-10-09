@@ -8,7 +8,7 @@ import constants as cs
 
 from caps_helper import compute_caps_hash, \
     text_fixed_properties, text_allowed_properties, \
-    ft_fixed_properties, ft_allowed_properties
+    ft_fixed_properties, ft_allowed_properties, get_contacts_capabilities_sync
 
 import ns
 
@@ -47,10 +47,10 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     # no special capabilities
     basic_caps = dbus.Dictionary({contact_handle:
             [(text_fixed_properties, text_allowed_properties)]})
-    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    caps = get_contacts_capabilities_sync(conn, [contact_handle])
     assert caps == basic_caps, caps
     # test again, to check GetContactCapabilities does not have side effect
-    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    caps = get_contacts_capabilities_sync(conn, [contact_handle])
     assert caps == basic_caps, caps
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(
@@ -89,10 +89,10 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     assert len(event.args) == 1
     assert event.args[0] == generic_ft_caps
 
-    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    caps = get_contacts_capabilities_sync(conn, [contact_handle])
     assert caps == generic_ft_caps, caps
     # test again, to check GetContactCapabilities does not have side effect
-    caps = conn_caps_iface.GetContactCapabilities([contact_handle])
+    caps = get_contacts_capabilities_sync(conn, [contact_handle])
     assert caps == generic_ft_caps, caps
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(

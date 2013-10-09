@@ -47,7 +47,7 @@ import constants as cs
 from caps_helper import compute_caps_hash, text_fixed_properties,\
     text_allowed_properties, stream_tube_fixed_properties, stream_tube_allowed_properties,\
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, receive_presence_and_ask_caps,\
-    caps_contain, ft_fixed_properties, ft_allowed_properties
+    caps_contain, ft_fixed_properties, ft_allowed_properties, get_contacts_capabilities_sync
 import ns
 
 specialized_tube_allowed_properties = dbus.Array([cs.TARGET_HANDLE,
@@ -130,11 +130,11 @@ def receive_caps(q, conn, stream, contact, contact_handle, features,
         # Make sure Gabble's got the caps
         sync_stream(q, stream)
 
-    caps = conn.ContactCapabilities.GetContactCapabilities([contact_handle])
+    caps = get_contacts_capabilities_sync(conn, [contact_handle])
     assertSameElements(expected_caps, caps)
 
     # test again, to check GetContactCapabilities does not have side effect
-    caps = conn.ContactCapabilities.GetContactCapabilities([contact_handle])
+    caps = get_contacts_capabilities_sync(conn, [contact_handle])
     assertSameElements(expected_caps, caps)
 
     # check the Contacts interface give the same caps
@@ -148,7 +148,7 @@ def test_tube_caps_from_contact(q, bus, conn, stream, contact):
 
     # Check that we don't crash if we haven't seen any caps/presence for this
     # contact yet.
-    caps = conn.ContactCapabilities.GetContactCapabilities([contact_handle])
+    caps = get_contacts_capabilities_sync(conn, [contact_handle])
 
     basic_caps = dbus.Dictionary({contact_handle:
             [(text_fixed_properties, text_allowed_properties)]})
@@ -245,7 +245,7 @@ def advertise_caps(q, conn, stream, filters, expected_features, unexpected_featu
         assertDoesNotContain(var, namespaces)
 
     # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    caps = get_contacts_capabilities_sync(conn, [self_handle])
     assertSameElements(expected_caps, caps)
 
     # check the Contacts interface give the same caps
@@ -292,7 +292,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
         (ft_fixed_properties, ft_allowed_properties)]})
 
     # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    caps = get_contacts_capabilities_sync(conn, [self_handle])
     assertEquals(basic_caps, caps)
 
     # check the Contacts interface give the same caps
@@ -306,7 +306,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
             [(cs.CLIENT + '.Foo', {}, [])])
 
     # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    caps = get_contacts_capabilities_sync(conn, [self_handle])
     assertLength(1, caps)
     assertEquals(basic_caps, caps)
 
@@ -323,7 +323,7 @@ def test_tube_caps_to_contact(q, bus, conn, stream):
             [(cs.CLIENT + '.Foo', [outgoing_daap_fixed_properties], [])])
 
     # Check our own caps
-    caps = conn.ContactCapabilities.GetContactCapabilities([self_handle])
+    caps = get_contacts_capabilities_sync(conn, [self_handle])
     assertLength(1, caps)
     assertEquals(basic_caps, caps)
 

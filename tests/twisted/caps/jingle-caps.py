@@ -13,7 +13,8 @@ from servicetest import (
     )
 import constants as cs
 import ns
-from caps_helper import presence_and_disco, compute_caps_hash, send_presence
+from caps_helper import (presence_and_disco, compute_caps_hash, send_presence,
+    get_contacts_capabilities_sync)
 from jingle.jingletest2 import JingleTest2, JingleProtocol031
 from call_helper import CallTest
 
@@ -72,7 +73,7 @@ def test_caps(q, conn, stream, contact, features, audio, video, google=False):
     # Check Contact capabilities
     assertEquals(len(event.args), 1)
     assertEquals (event.args[0],
-        conn.ContactCapabilities.GetContactCapabilities([h]))
+        get_contacts_capabilities_sync(conn, [h]))
 
     check_contact_caps (event.args[0][h],
         cs.CHANNEL_TYPE_CALL, call_expected_media_caps)

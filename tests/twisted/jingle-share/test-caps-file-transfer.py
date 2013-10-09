@@ -10,7 +10,8 @@ from caps_helper import \
     text_fixed_properties, text_allowed_properties, \
     stream_tube_fixed_properties, stream_tube_allowed_properties, \
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, \
-    ft_fixed_properties, ft_allowed_properties_with_metadata
+    ft_fixed_properties, ft_allowed_properties_with_metadata,\
+    get_contacts_capabilities_sync
 
 import ns
 from jingleshareutils import test_ft_caps_from_contact
@@ -43,7 +44,6 @@ generic_caps = [(text_fixed_properties, text_allowed_properties),
                    (dbus_tube_fixed_properties, dbus_tube_allowed_properties)]
 
 def check_contact_caps(conn, handle, with_ft):
-    conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACT_CAPS)
     conn_contacts_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACTS)
 
     if with_ft:
@@ -51,7 +51,7 @@ def check_contact_caps(conn, handle, with_ft):
     else:
         expected_caps = dbus.Dictionary({handle: generic_caps})
 
-    caps = conn_caps_iface.GetContactCapabilities([handle])
+    caps = get_contacts_capabilities_sync(conn, [handle])
     assert caps == expected_caps, caps
     # check the Contacts interface give the same caps
     caps_via_contacts_iface = conn_contacts_iface.GetContactAttributes(

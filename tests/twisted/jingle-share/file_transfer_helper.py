@@ -11,7 +11,7 @@ from caps_helper import text_fixed_properties, text_allowed_properties, \
     stream_tube_fixed_properties, stream_tube_allowed_properties, \
     dbus_tube_fixed_properties, dbus_tube_allowed_properties, \
     ft_fixed_properties, ft_allowed_properties, compute_caps_hash, \
-    extract_disco_parts
+    extract_disco_parts, get_contacts_capabilities_sync
 
 from twisted.words.xish import domish, xpath
 
@@ -92,15 +92,13 @@ class FileTransferTest(object):
                  args=[{self.self_handle:generic_ft_caps}])
 
     def wait_for_ft_caps(self):
-        conn_caps_iface = dbus.Interface(self.conn, cs.CONN_IFACE_CONTACT_CAPS)
-
-        caps = conn_caps_iface.GetContactCapabilities([self.handle])
+        caps = get_contacts_capabilities_sync(self.conn, [self.handle])
         if caps != dbus.Dictionary({self.handle:generic_ft_caps}):
             self.q.expect('dbus-signal',
                           signal='ContactCapabilitiesChanged',
                           path=self.conn.object.object_path,
                           args=[{self.handle:generic_ft_caps}])
-            caps = conn_caps_iface.GetContactCapabilities([self.handle])
+            caps = get_contacts_capabilities_sync(self.conn, [self.handle])
         assert caps == dbus.Dictionary({self.handle:generic_ft_caps}), caps
 
     def create_ft_channel(self):

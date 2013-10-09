@@ -13,7 +13,7 @@ import ns
 from caps_helper import (
     compute_caps_hash, fake_client_dataforms, presence_and_disco,
     send_presence, expect_disco, send_disco_reply,
-    assert_rccs_callable)
+    assert_rccs_callable, get_contacts_capabilities_sync)
 
 from config import VOIP_ENABLED
 
@@ -40,7 +40,7 @@ def expect_caps(q, conn, h):
     check_caps(conn, h)
 
 def check_caps(conn, h):
-    caps = conn.ContactCapabilities.GetContactCapabilities([h])
+    caps = get_contacts_capabilities_sync(conn, [h])
     assert_rccs_callable(caps[h], require_video=True)
 
 def update_contact_caps(q, conn, stream, contact, caps, disco = True,

@@ -643,6 +643,10 @@ def wrap_connection(conn):
          ('ClientTypes', cs.CONN_IFACE_CLIENT_TYPES),
         ]))
 
+class ChannelWrapper(ProxyWrapper):
+    def send_msg_sync(self, txt):
+        self.Text.Send(0, txt)
+
 def wrap_channel(chan, type_, extra=None):
     interfaces = {
         type_: tp_name_prefix + '.Channel.Type.' + type_,
@@ -661,7 +665,7 @@ def wrap_channel(chan, type_, extra=None):
             (name, tp_name_prefix + '.Channel.Interface.' + name)
             for name in extra]))
 
-    return ProxyWrapper(chan, tp_name_prefix + '.Channel', interfaces)
+    return ChannelWrapper(chan, tp_name_prefix + '.Channel', interfaces)
 
 
 def wrap_content(chan, extra=None):

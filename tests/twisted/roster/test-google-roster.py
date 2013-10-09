@@ -104,7 +104,7 @@ def test_inital_roster(q, bus, conn, stream):
         'music-is-math@boards.ca']
 
     q.expect_many(
-        EventPattern('dbus-signal', signal='ContactsChangedWithID',
+        EventPattern('dbus-signal', signal='ContactsChanged',
             predicate=lambda e: contacts_changed_predicate(e, conn, contacts)),
         EventPattern('dbus-signal', signal='BlockedContactsChanged',
             predicate=lambda e: blocked_contacts_changed_predicate(e, blocked_contacts, [])),
@@ -157,7 +157,7 @@ def test_flickering(q, bus, conn, stream):
 
     # Gabble should report this update to the UI.
     q.expect_many(
-        EventPattern('dbus-signal', signal='ContactsChangedWithID',
+        EventPattern('dbus-signal', signal='ContactsChanged',
             args=[{handle:
                 (cs.SUBSCRIPTION_STATE_ASK, cs.SUBSCRIPTION_STATE_NO, ''),
                 }, {handle: contact}, {}]),
@@ -166,7 +166,7 @@ def test_flickering(q, bus, conn, stream):
     # Gabble shouldn't report any changes to subscribe or stored's members in
     # response to the next two roster updates.
     change_events = [
-        EventPattern('dbus-signal', signal='ContactsChangedWithID'),
+        EventPattern('dbus-signal', signal='ContactsChanged'),
         ]
     q.forbid_events(change_events)
 
@@ -205,7 +205,7 @@ def test_flickering(q, bus, conn, stream):
     stream.send(presence)
 
     # Gabble should report this update to the UI.
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             args=[{handle:
                 (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
                 }, {handle: contact}, {}])
@@ -247,7 +247,7 @@ def test_local_pending(q, bus, conn, stream):
     presence['type'] = 'subscribe'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             args=[{handle: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_ASK, '')}, {handle: contact}, {}])
 
@@ -264,7 +264,7 @@ def test_local_pending(q, bus, conn, stream):
 
     # Now we send the spurious roster update with subscribe="none" and verify
     # that nothing happens to her publish state in reaction to that
-    change_event = EventPattern('dbus-signal', signal='ContactsChangedWithID',
+    change_event = EventPattern('dbus-signal', signal='ContactsChanged',
             predicate=alice_state_changed)
     q.forbid_events([change_event])
 
@@ -283,7 +283,7 @@ def test_local_pending(q, bus, conn, stream):
     presence['type'] = 'unsubscribe'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             args=[{handle: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY, '')}, {handle: contact}, {}])
 
@@ -342,7 +342,7 @@ def test_deny_simple(q, bus, conn, stream):
 
     # As a result they should drop off all three non-deny lists, but not fall
     # off deny:
-    q.expect('dbus-signal', signal='ContactsChangedWithID', args=[{}, {}, {handle: contact}])
+    q.expect('dbus-signal', signal='ContactsChanged', args=[{}, {}, {handle: contact}])
 
     assertContains(handle,
         conn.ContactBlocking.RequestBlockedContacts().keys())
@@ -407,7 +407,7 @@ def test_deny_overlap_one(q, bus, conn, stream):
             "none", False, attrs={'gr:t': 'B'}))
 
     # As a result, Gabble makes Bob fall off subscribe and stored.
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             args=[{}, {}, {handle: contact}])
 
     # And he should definitely still be on deny. That rascal.

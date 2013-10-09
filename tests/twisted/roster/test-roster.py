@@ -45,7 +45,7 @@ def test(q, bus, conn, stream):
 
     # slight implementation detail: TpBaseContactList emits ContactsChanged
     # before it announces its channels
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             interface=cs.CONN_IFACE_CONTACT_LIST, path=conn.object_path,
             predicate=lambda e: contacts_changed_predicate(e, conn, contacts))
 

@@ -87,7 +87,7 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
                         e.args[2] == [] and e.args[3] == [] and
                         e.args[4]['change-reason'] == cs.GC_REASON_PERMISSION_DENIED),
                 #EventPattern('stream-presence'),
-                EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{bob:
                         (cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY,
                             cs.SUBSCRIPTION_STATE_NO, ''),
@@ -108,7 +108,7 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
                     predicate=lambda e: e.args[0] == [bob] and e.args[1] == [] and
                         e.args[2] == [] and e.args[3] == []),
                 EventPattern('stream-presence'),
-                EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{bob:
                         (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
                         }, {bob: 'bob@foo.com'}, {}]),
@@ -150,7 +150,7 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
                             e.args[2] == [] and e.args[3] == [] and
                             e.args[4]['change-reason'] == cs.GC_REASON_PERMISSION_DENIED),
                     EventPattern('stream-presence'),
-                    EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                    EventPattern('dbus-signal', signal='ContactsChanged',
                         args=[{bob:
                             (cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY,
                                 cs.SUBSCRIPTION_STATE_NO, ''),
@@ -184,7 +184,7 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
         send_roster_push(stream, 'bob@foo.com', 'remove')
         q.expect_many(
                 EventPattern('stream-iq', iq_type='result', iq_id='push'),
-                EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{}, {}, {bob: 'bob@foo.com'}]),
                 )
     else:
@@ -197,7 +197,7 @@ def test(q, bus, conn, stream, remove=False, remote='accept'):
         send_roster_push(stream, 'bob@foo.com', 'none')
         q.expect_many(
                 EventPattern('stream-iq', iq_type='result', iq_id='push'),
-                EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{bob:
                         (cs.SUBSCRIPTION_STATE_NO, cs.SUBSCRIPTION_STATE_NO, ''),
                         }, {bob: 'bob@foo.com'}, {}]),

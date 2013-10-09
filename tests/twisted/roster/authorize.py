@@ -30,9 +30,9 @@ def test(q, bus, conn, stream, remove=False):
             ['holly@example.com', 'dave@example.com', 'arnold@example.com',
                 'kristine@example.com', 'cat@example.com'])
 
-    # slight implementation detail: TpBaseContactList emits ContactsChangedWithID
+    # slight implementation detail: TpBaseContactList emits ContactsChanged
     # before it announces its channels
-    s = q.expect('dbus-signal', signal='ContactsChangedWithID',
+    s = q.expect('dbus-signal', signal='ContactsChanged',
             interface=cs.CONN_IFACE_CONTACT_LIST, path=conn.object_path)
     assertEquals([{
         holly: (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_YES, ''),
@@ -69,7 +69,7 @@ def test(q, bus, conn, stream, remove=False):
     stream.send(presence)
 
     q.expect_many(
-            EventPattern('dbus-signal', signal='ContactsChangedWithID',
+            EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{dave: (cs.SUBSCRIPTION_STATE_NO,
                     cs.SUBSCRIPTION_STATE_ASK,
                     '')}, { dave: 'dave@example.com' }, {}]),
@@ -81,7 +81,7 @@ def test(q, bus, conn, stream, remove=False):
     send_roster_push(stream, 'dave@example.com', 'from')
     q.expect_many(
             EventPattern('stream-iq', iq_type='result', iq_id='push'),
-            EventPattern('dbus-signal', signal='ContactsChangedWithID',
+            EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{dave: (cs.SUBSCRIPTION_STATE_NO,
                     cs.SUBSCRIPTION_STATE_YES, '')}, { dave: 'dave@example.com' }, {}]),
             )
@@ -90,7 +90,7 @@ def test(q, bus, conn, stream, remove=False):
     presence['from'] = 'kristine@example.com'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             args=[{kristine: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_ASK, '')}, { kristine: 'kristine@example.com' }, {}])
 
@@ -98,7 +98,7 @@ def test(q, bus, conn, stream, remove=False):
     presence['from'] = 'arnold@example.com'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             args=[{arnold: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_ASK, '')}, { arnold: 'arnold@example.com' }, {}])
 
@@ -116,7 +116,7 @@ def test(q, bus, conn, stream, remove=False):
     # does not change.
     send_roster_push(stream, 'kristine@example.com', 'from')
     q.expect_many(
-            EventPattern('dbus-signal', signal='ContactsChangedWithID',
+            EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{kristine: (cs.SUBSCRIPTION_STATE_NO,
                     cs.SUBSCRIPTION_STATE_YES,
                     '')}, { kristine: 'kristine@example.com' }, {}]),
@@ -129,7 +129,7 @@ def test(q, bus, conn, stream, remove=False):
     stream.send(presence)
 
     q.expect_many(
-            EventPattern('dbus-signal', signal='ContactsChangedWithID',
+            EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{arnold: (cs.SUBSCRIPTION_STATE_NO,
                     cs.SUBSCRIPTION_STATE_REMOVED_REMOTELY, '')}, { arnold: 'arnold@example.com' }, {}]),
             EventPattern('stream-presence', presence_type='unsubscribed',
@@ -153,7 +153,7 @@ def test(q, bus, conn, stream, remove=False):
     # in his removal.
     q.expect_many(
             EventPattern('dbus-return', method=returning_method),
-            EventPattern('dbus-signal', signal='ContactsChangedWithID',
+            EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{}, {}, {arnold: 'arnold@example.com' }]),
             )
 
@@ -163,7 +163,7 @@ def test(q, bus, conn, stream, remove=False):
     presence['from'] = 'cat@example.com'
     stream.send(presence)
 
-    q.expect('dbus-signal', signal='ContactsChangedWithID',
+    q.expect('dbus-signal', signal='ContactsChanged',
             args=[{cat: (cs.SUBSCRIPTION_STATE_NO,
                 cs.SUBSCRIPTION_STATE_ASK,
                 '')}, { cat: 'cat@example.com' }, {}])
@@ -179,7 +179,7 @@ def test(q, bus, conn, stream, remove=False):
     # publish request, so Unpublish really results in removal.
     q.expect_many(
             EventPattern('dbus-return', method=returning_method),
-            EventPattern('dbus-signal', signal='ContactsChangedWithID',
+            EventPattern('dbus-signal', signal='ContactsChanged',
                 args=[{}, {}, { cat: 'cat@example.com' }]),
             )
 
@@ -228,7 +228,7 @@ def test(q, bus, conn, stream, remove=False):
         send_roster_push(stream, 'holly@example.com', 'remove')
         q.expect_many(
                 EventPattern('stream-iq', iq_type='result', iq_id='push'),
-                EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{}, {}, { holly: 'holly@example.com' }]),
                 )
     else:
@@ -241,7 +241,7 @@ def test(q, bus, conn, stream, remove=False):
         send_roster_push(stream, 'holly@example.com', 'to')
         q.expect_many(
                 EventPattern('stream-iq', iq_type='result', iq_id='push'),
-                EventPattern('dbus-signal', signal='ContactsChangedWithID',
+                EventPattern('dbus-signal', signal='ContactsChanged',
                     args=[{holly:
                         (cs.SUBSCRIPTION_STATE_YES, cs.SUBSCRIPTION_STATE_NO, ''),
                         }, { holly: 'holly@example.com' }, {}]),

@@ -41,7 +41,7 @@ def check_contact_roster(conn, contact, groups=None, subscribe=None, publish=Non
     if publish is not None:
         assertEquals(publish, attrs[cs.ATTR_PUBLISH])
 
-# function to pass as 'ContactsChangedWithID' dbus-signal even predicate
+# function to pass as 'ContactsChanged' dbus-signal even predicate
 # checking if the (contact-id, subscribe-state, publish-state, message) tuples
 # from @contacts are the arguments of the signal.
 def contacts_changed_predicate(e, conn, contacts):

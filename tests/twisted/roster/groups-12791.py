@@ -54,7 +54,7 @@ def test(q, bus, conn, stream):
         ]
 
     q.expect_many(
-        EventPattern('dbus-signal', signal='ContactsChangedWithID',
+        EventPattern('dbus-signal', signal='ContactsChanged',
             predicate=lambda e: contacts_changed_predicate(e, conn, contacts)),
         EventPattern('dbus-signal', signal='GroupsCreated',
             predicate=lambda e: groups_created_predicate(e, ['women', 'men', 'affected-by-fdo-12791'])),

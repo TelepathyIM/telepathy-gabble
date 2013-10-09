@@ -25,7 +25,7 @@ def test(q, bus, conn, stream):
 
     q.forbid_events(
         [
-          EventPattern('dbus-signal', signal='ContactsChangedWithID'),
+          EventPattern('dbus-signal', signal='ContactsChanged'),
         ])
 
     q.expect('stream-iq', iq_type='error')

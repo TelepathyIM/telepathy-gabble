@@ -64,13 +64,13 @@ def test(q, bus, conn, stream, access_control):
                     cs.SOCKET_ACCESS_CONTROL_LOCALHOST],
         props[cs.DBUS_TUBE_SUPPORTED_ACCESS_CONTROLS])
 
-    tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'DBusTube')
+    tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'DBusTube1')
 
     # only Bob is in DBusNames
     dbus_names = tube_chan.Get(cs.CHANNEL_TYPE_DBUS_TUBE, 'DBusNames', dbus_interface=cs.PROPERTIES_IFACE)
     assertEquals({bob_handle: bob_bus_name}, dbus_names)
 
-    call_async(q, tube_chan.DBusTube, 'Accept', access_control)
+    call_async(q, tube_chan.DBusTube1, 'Accept', access_control)
 
     return_event, names_changed1, names_changed2, presence_event = q.expect_many(
         EventPattern('dbus-return', method='Accept'),

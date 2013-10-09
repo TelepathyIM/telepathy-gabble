@@ -120,13 +120,13 @@ def test(q, bus, conn, stream, bytestream_cls,
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
     assertContains((path, prop), all_channels)
 
-    tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamTube')
+    tube_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'StreamTube1')
     tube_props = tube_chan.GetAll(cs.CHANNEL_IFACE_TUBE, dbus_interface=cs.PROPERTIES_IFACE)
 
     assert tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
     # offer the tube
-    call_async(q, tube_chan.StreamTube, 'Offer', address_type, address, access_control, {'foo': 'bar'})
+    call_async(q, tube_chan.StreamTube1, 'Offer', address_type, address, access_control, {'foo': 'bar'})
 
     stream_event, _, status_event = q.expect_many(
         EventPattern('stream-presence', to='chat@conf.localhost/test', predicate=lambda e: t.presence_contains_tube(e)),

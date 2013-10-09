@@ -332,7 +332,7 @@ def test_no_google_featured(q, bus, conn, stream):
 
 
 def test(q, bus, conn, stream):
-    interfaces = conn.GetInterfaces()
+    interfaces = conn.Properties.Get(cs.CONN, 'Interfaces')
 
     if stream.__class__ is GoogleXmlStream:
         assert cs.CONN_IFACE_MAIL_NOTIFICATION in interfaces

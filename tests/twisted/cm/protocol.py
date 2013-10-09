@@ -10,19 +10,12 @@ import constants as cs
 def test(q, bus, conn, stream):
     cm = bus.get_object(cs.CM + '.gabble',
         tp_path_prefix + '/ConnectionManager/gabble')
-    cm_iface = dbus.Interface(cm, cs.CM)
     cm_prop_iface = dbus.Interface(cm, cs.PROPERTIES_IFACE)
 
     protocols = unwrap(cm_prop_iface.Get(cs.CM, 'Protocols'))
     assertEquals(set(['jabber']), set(protocols.keys()))
 
-    protocol_names = unwrap(cm_iface.ListProtocols())
-    assertEquals(set(['jabber']), set(protocol_names))
-
-    cm_params = cm_iface.GetParameters('jabber')
     jabber_props = protocols['jabber']
-    jabber_params = jabber_props[cs.PROTOCOL + '.Parameters']
-    assertEquals(cm_params, jabber_params)
 
     proto = bus.get_object(cm.bus_name, cm.object_path + '/jabber')
     proto_iface = dbus.Interface(proto, cs.PROTOCOL)

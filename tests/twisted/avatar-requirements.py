@@ -1,4 +1,5 @@
 from gabbletest import exec_test
+from servicetest import assertEquals
 import constants as cs
 
 def test_get_all(conn):
@@ -34,15 +35,13 @@ def test(q, bus, conn, stream):
     test_get_all(conn)
 
     # deprecated version
-    types, minw, minh, maxw, maxh, maxb = conn.Avatars.GetAvatarRequirements()
-    assert types[0] == 'image/png', types
-    assert 'image/jpeg' in types, types
-    assert 'image/gif' in types, types
-    assert minw == 32, minw
-    assert minh == 32, minh
-    assert maxw == 96, maxw
-    assert maxh == 96, maxh
-    assert maxb == 8192, maxb
+    props = conn.Properties.GetAll(cs.CONN_IFACE_AVATARS)
+    assertEquals(['image/png', 'image/jpeg', 'image/gif'], props['SupportedAvatarMIMETypes'])
+    assertEquals(32, props['MinimumAvatarWidth'])
+    assertEquals(32, props['MinimumAvatarHeight'])
+    assertEquals(96, props['MaximumAvatarWidth'])
+    assertEquals(96, props['MaximumAvatarHeight'])
+    assertEquals(8192, props['MaximumAvatarBytes'])
 
 if __name__ == '__main__':
     exec_test(test, do_connect=False)

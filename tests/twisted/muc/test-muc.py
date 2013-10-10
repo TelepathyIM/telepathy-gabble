@@ -30,7 +30,6 @@ def test(q, bus, conn, stream):
     interfaces = channel_props.get('Interfaces')
     assertContains(cs.CHANNEL_IFACE_GROUP, interfaces)
     assertContains(cs.CHANNEL_IFACE_PASSWORD, interfaces)
-    assertDoesNotContain(cs.TP_AWKWARD_PROPERTIES, interfaces)
     assertContains(cs.CHANNEL_IFACE_CHAT_STATE, interfaces)
     assertContains(cs.CHANNEL_IFACE_MESSAGES, interfaces)
 

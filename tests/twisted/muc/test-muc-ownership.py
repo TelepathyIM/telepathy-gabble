@@ -98,7 +98,7 @@ def test(q, bus, conn, stream):
     assert all[u'HandleOwners'] == expected_owners, all
 
     flags = all[u'GroupFlags']
-    assertFlagsSet(cs.GF_PROPERTIES | cs.GF_CHANNEL_SPECIFIC_HANDLES, flags)
+    assertFlagsSet(cs.GF_CHANNEL_SPECIFIC_HANDLES, flags)
     assertFlagsUnset(cs.GF_HANDLE_OWNERS_NOT_AVAILABLE, flags)
 
 if __name__ == '__main__':

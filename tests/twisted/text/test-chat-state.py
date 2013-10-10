@@ -317,7 +317,7 @@ def test(q, bus, conn, stream):
     # support notifications.
     other_jid = jid + '/Library'
     stream.send(make_message(other_jid, body='grr, library computers'))
-    q.expect('dbus-signal', signal='Received')
+    q.expect('dbus-signal', signal='MessageReceived')
 
     # Okay, we should stop sending typing notifications.
     e = EventPattern('stream-message', to=other_jid)
@@ -356,7 +356,7 @@ def test(q, bus, conn, stream):
 
     # They reply without a chat state.
     stream.send(make_message(full_jid, body="posted."))
-    q.expect('dbus-signal', signal='Received')
+    q.expect('dbus-signal', signal='MessageReceived')
 
     # Okay, we shouldn't send any more.
     e = EventPattern('stream-message', to=other_jid)

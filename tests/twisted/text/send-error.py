@@ -1,12 +1,11 @@
 """
-Test that an incoming <message><error/></> for a contact gives both a SendError
-and a delivery report on a 1-1 text channel to that contact.
+Test that an incoming <message><error/></> for a contact gives
+a delivery report on a 1-1 text channel to that contact.
 """
 
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import EventPattern
 import constants as cs
 import ns
 
@@ -44,25 +43,9 @@ def test_temporary_error(q, bus, conn, stream):
 
     stream.send(m)
 
-    send_error, received, message_received = q.expect_many(
-        EventPattern('dbus-signal', signal='SendError'),
-        EventPattern('dbus-signal', signal='Received'),
-        EventPattern('dbus-signal', signal='MessageReceived'),
-        )
+    message_received = q.expect('dbus-signal', signal='MessageReceived')
 
     expected_send_error = 4 # Too_Long
-
-    assert send_error.args[0] == expected_send_error, send_error.args
-    # FIXME: It doesn't look like it's possible to know what the original
-    # message type is, given that the type attribute of <message> is 'error'
-    # for error reports.
-    #assert send_error.args[2] == 0, send_error.args
-    assert send_error.args[3] == message_body, send_error.args
-
-    assert received.args[2] == foo_handle, (received.args, foo_handle)
-    assert received.args[3] == 4, received.args # Channel_Text_Message_Type_Delivery_Report
-    assert received.args[4] == 2, received.args # Channel_Text_Message_Flag_Non_Text_Content
-    assert received.args[5] == '', received.args
 
     delivery_report = message_received.args[0]
     assert len(delivery_report) == 1, delivery_report
@@ -120,25 +103,9 @@ def test_permanent_error(q, bus, conn, stream):
 
     stream.send(m)
 
-    send_error, received, message_received = q.expect_many(
-        EventPattern('dbus-signal', signal='SendError'),
-        EventPattern('dbus-signal', signal='Received'),
-        EventPattern('dbus-signal', signal='MessageReceived'),
-        )
+    message_received = q.expect('dbus-signal', signal='MessageReceived')
 
     expected_send_error = 2 # Invalid_Contact
-
-    assert send_error.args[0] == expected_send_error, send_error.args
-    # FIXME: It doesn't look like it's possible to know what the original
-    # message type is, given that the type attribute of <message> is 'error'
-    # for error reports.
-    #assert send_error.args[2] == 0, send_error.args
-    assert send_error.args[3] == message_body, send_error.args
-
-    assert received.args[2] == ninja_handle, (received.args, ninja_handle)
-    assert received.args[3] == 4, received.args # Channel_Text_Message_Type_Delivery_Report
-    assert received.args[4] == 2, received.args # Channel_Text_Message_Flag_Non_Text_Content
-    assert received.args[5] == '', received.args
 
     delivery_report = message_received.args[0]
     assert len(delivery_report) == 1, delivery_report

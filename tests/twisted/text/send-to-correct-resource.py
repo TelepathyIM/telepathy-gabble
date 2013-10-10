@@ -34,7 +34,7 @@ def test(q, bus, conn, stream):
     m.addElement('body', content="i'm on a beach at Gran Canaria!")
     stream.send(m)
 
-    q.expect('dbus-signal', signal='Received')
+    q.expect('dbus-signal', signal='MessageReceived')
 
     # Now that we got a reply from a particular resource, Gabble should reply
     # there.
@@ -48,7 +48,7 @@ def test(q, bus, conn, stream):
     m.addElement('body', content="I brought my laptop to the Empathy hackfest")
     stream.send(m)
 
-    q.expect('dbus-signal', signal='Received')
+    q.expect('dbus-signal', signal='MessageReceived')
 
     # Gabble should have updated the resource it's sending to.
     chan.send_msg_sync("don't get sand in the keyboard")
@@ -65,7 +65,7 @@ def test(q, bus, conn, stream):
     err.addElement((ns.STANZA, 'item-not-found'))
 
     stream.send(m)
-    q.expect('dbus-signal', signal='SendError')
+    q.expect('dbus-signal', signal='MessageReceived')
 
     # So as a result, Gabble should send the next message to the bare JID.
     chan.send_msg_sync("... i guess my warning was too late")

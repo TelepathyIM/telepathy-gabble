@@ -645,7 +645,12 @@ def wrap_connection(conn):
 
 class ChannelWrapper(ProxyWrapper):
     def send_msg_sync(self, txt):
-        self.Text.Send(0, txt)
+        message = [
+                { 'message-type': cs.MT_NORMAL, },
+                { 'content-type': 'text/plain',
+                  'content': txt
+                }]
+        self.Messages.SendMessage(message, 0)
 
 def wrap_channel(chan, type_, extra=None):
     interfaces = {

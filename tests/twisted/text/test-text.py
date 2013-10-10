@@ -44,19 +44,7 @@ def test(q, bus, conn, stream):
     assertEquals(props[cs.INITIATOR_HANDLE], channel_props['InitiatorHandle'])
     assertEquals(jid, channel_props['InitiatorID'])
 
-    received, message_received = q.expect_many(
-        EventPattern('dbus-signal', signal='Received'),
-        EventPattern('dbus-signal', signal='MessageReceived'),
-        )
-
-    # Check that C.T.Text.Received looks right
-    # message type: normal
-    assert received.args[3] == 0
-    # flags: none
-    assert received.args[4] == 0
-    # body
-    assert received.args[5] == 'hello'
-
+    message_received = q.expect('dbus-signal', signal='MessageReceived')
 
     # Check that C.I.Messages.MessageReceived looks right.
     message = message_received.args[0]
@@ -100,9 +88,8 @@ def test(q, bus, conn, stream):
 
     sent_token = text_chan.Messages.SendMessage(greeting, dbus.UInt32(0))
 
-    stream_message, sent, message_sent = q.expect_many(
+    stream_message, message_sent = q.expect_many(
         EventPattern('stream-message'),
-        EventPattern('dbus-signal', signal='Sent'),
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
@@ -126,16 +113,11 @@ def test(q, bus, conn, stream):
 
     assert message_sent.args[2] == sent_token
 
-    assert sent.args[1] == 2, sent.args # Notice
-    assert sent.args[2] == u'what up', sent.args
-
-
     # Send a message using Channel.Type.Text API
     text_chan.Text.Send(0, 'goodbye')
 
-    stream_message, sent, message_sent = q.expect_many(
+    stream_message, message_sent = q.expect_many(
         EventPattern('stream-message'),
-        EventPattern('dbus-signal', signal='Sent'),
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
@@ -155,9 +137,6 @@ def test(q, bus, conn, stream):
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'goodbye', body
-
-    assert sent.args[1] == 0, sent.args # message type normal
-    assert sent.args[2] == u'goodbye', sent.args
 
     # And now let's try a message with a malformed type='' attribute.
     malformed = elem(

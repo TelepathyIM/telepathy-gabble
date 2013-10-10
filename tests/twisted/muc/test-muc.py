@@ -55,20 +55,7 @@ def test(q, bus, conn, stream):
     body = message.addElement('body', content='hello')
     stream.send(message)
 
-    received, message_received = q.expect_many(
-        EventPattern('dbus-signal', signal='Received'),
-        EventPattern('dbus-signal', signal='MessageReceived'),
-        )
-
-    # Check Channel.Type.Text.Received:
-    # sender: bob
-    assert received.args[2] == bob_handle
-    # message type: normal
-    assert received.args[3] == 0
-    # flags: none
-    assert received.args[4] == 0
-    # body
-    assert received.args[5] == 'hello'
+    message_received = q.expect('dbus-signal', signal='MessageReceived')
 
     # Check Channel.Interface.Messages.MessageReceived:
     message = message_received.args[0]
@@ -116,9 +103,8 @@ def test(q, bus, conn, stream):
 
     assert sent_token
 
-    stream_message, sent, message_sent = q.expect_many(
+    stream_message, message_sent = q.expect_many(
         EventPattern('stream-message'),
-        EventPattern('dbus-signal', signal='Sent'),
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
@@ -136,9 +122,6 @@ def test(q, bus, conn, stream):
     # DELIVERY flag, since the other is not supported.
     assertEquals(cs.MSG_SENDING_FLAGS_REPORT_DELIVERY, flags)
     assertEquals(sent_token, token)
-
-    assert sent.args[1] == 1, sent.args # Action
-    assert sent.args[2] == u'peers through a gap in the curtains', sent.args
 
     assert message_sent.args[2] == sent_token
 
@@ -160,10 +143,7 @@ def test(q, bus, conn, stream):
     stream.send(elem)
 
     # Check that we got the corresponding delivery report
-    report, old_received = q.expect_many(
-        EventPattern('dbus-signal', signal='MessageReceived'),
-        EventPattern('dbus-signal', signal='Received'),
-        )
+    report = q.expect('dbus-signal', signal='MessageReceived')
 
     assert len(report.args) == 1, report.args
     parts = report.args[0]
@@ -190,27 +170,17 @@ def test(q, bus, conn, stream):
             assert key in echo[i], (i, key, echo)
             assert echo[i][key] == greeting[i][key], (i, key, echo, greeting)
 
-    # The Text.Received signal should be a "you're not tall enough" stub
-    id, timestamp, sender, type, flags, text = old_received.args
-    assert sender == 0, old_received.args
-    assert type == 4, old_received.args # Message_Type_Delivery_Report
-    assert flags == 2, old_received.args # Non_Text_Content
-    assert text == '', old_received.args
-
-
     # Send a normal message using the Channel.Type.Text API
     chan.send_msg_sync('goodbye')
 
-    event, sent, message_sent = q.expect_many(
+    event, message_sent = q.expect_many(
         EventPattern('stream-message'),
-        EventPattern('dbus-signal', signal='Sent'),
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
     sent_message, flags, _ = message_sent.args
     assert len(sent_message) == 2, sent_message
     header = sent_message[0]
-    assert 'message-type' not in header, header # Normal
     body = sent_message[1]
     assert body['content-type'] == 'text/plain', body
     assert body['content'] == u'goodbye', body
@@ -219,9 +189,6 @@ def test(q, bus, conn, stream):
     # the old API), but the server's going to send us an echo anyway, so
     # Gabble's within its rights to pretend that the caller asked.
     assert flags in [0, cs.MSG_SENDING_FLAGS_REPORT_DELIVERY], flags
-
-    assert sent.args[1] == 0, sent.args # Normal
-    assert sent.args[2] == u'goodbye', sent.args
 
     sent_token = message_sent.args[2]
 

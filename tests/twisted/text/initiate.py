@@ -74,14 +74,10 @@ def test(q, bus, conn, stream):
     m.addElement('body', content='hello')
     stream.send(m)
 
-    event = q.expect('dbus-signal', signal='Received')
+    event = q.expect('dbus-signal', signal='MessageReceived')
 
-    # message type: normal
-    assert event.args[3] == 0
-    # flags: none
-    assert event.args[4] == 0
-    # body
-    assert event.args[5] == 'hello'
+    msg = event.args[0]
+    assertEquals('hello', msg[1]['content'])
 
 if __name__ == '__main__':
     exec_test(test)

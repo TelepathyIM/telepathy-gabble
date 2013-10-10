@@ -8,7 +8,7 @@ import datetime
 from twisted.words.xish import domish
 
 from gabbletest import exec_test
-from servicetest import EventPattern, assertEquals
+from servicetest import assertEquals
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -30,14 +30,7 @@ def test(q, bus, conn, stream):
     jid = conn.inspect_contact_sync(props[cs.TARGET_HANDLE])
     assertEquals('foo@bar.com', jid)
 
-    received, message_received = q.expect_many(
-        EventPattern('dbus-signal', signal='Received'),
-        EventPattern('dbus-signal', signal='MessageReceived'),
-        )
-
-    assert (str(datetime.datetime.utcfromtimestamp(received.args[1]))
-        == '2007-05-17 16:15:01')
-    assert received.args[5] == 'hello'
+    message_received = q.expect('dbus-signal', signal='MessageReceived')
 
     message = message_received.args[0]
     header = message[0]

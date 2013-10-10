@@ -2,7 +2,6 @@
 Test incoming error messages in MUC channels.
 """
 
-import warnings
 import dbus
 
 from gabbletest import exec_test
@@ -69,9 +68,8 @@ def send_message_and_expect_error(q, stream,
 
     sent_token = text_chan.Messages.SendMessage(greeting, dbus.UInt32(0))
 
-    stream_message, _, _ = q.expect_many(
+    stream_message, _ = q.expect_many(
         EventPattern('stream-message'),
-        EventPattern('dbus-signal', signal='Sent'),
         EventPattern('dbus-signal', signal='MessageSent'),
         )
 
@@ -92,36 +90,7 @@ def send_message_and_expect_error(q, stream,
 
     stream.send(elem)
 
-    # check that we got a failed delivery report and a SendError
-    send_error, received, message_received = q.expect_many(
-        EventPattern('dbus-signal', signal='SendError'),
-        EventPattern('dbus-signal', signal='Received'),
-        EventPattern('dbus-signal', signal='MessageReceived'),
-        )
-
-    err, timestamp, type, text = send_error.args
-    assertEquals(send_error_value, err)
-    # there's no way to tell when the original message was sent from the error stanza
-    assertEquals(0, timestamp)
-    # Gabble can't determine the type of the original message; see muc/test-muc.py
-    # assert type == 0, send_error.args
-    assertEquals(content, text)
-
-    # The Text.Received signal should be a "you're not tall enough" stub
-    id, timestamp, sender, type, flags, text = received.args
-
-    assertEquals(0, sender)
-    assertEquals(type, cs.MT_DELIVERY_REPORT)
-
-    if flags == 0:
-        warnings.warn("ignoring tp-glib bug #61254")
-    else:
-        assertEquals(cs.MessageFlag.NON_TEXT_CONTENT, flags)
-
-    if error_message is None:
-        assertEquals('', text)
-    else:
-        assertEquals(error_message, text)
+    message_received = q.expect('dbus-signal', signal='MessageReceived')
 
     # Check that the Messages.MessageReceived signal was a failed delivery report
     assertLength(1, message_received.args)

@@ -70,23 +70,14 @@ def test(q, bus, conn, stream):
     m.addElement('body', content='hello')
     stream.send(m)
 
-    event = q.expect('dbus-signal', signal='Received')
+    event = q.expect('dbus-signal', signal='MessageReceived')
 
-    hello_message_id = event.args[0]
-    hello_message_time = event.args[1]
-    assert event.args[2] == foo_handle
-    # message type: normal
-    assert event.args[3] == 0
-    # flags: none
-    assert event.args[4] == 0
-    # body
-    assert event.args[5] == 'hello'
+    msg = event.args[0]
+    assertEquals(foo_handle, msg[0]['message-sender'])
+    assertEquals('hello', msg[1]['content'])
 
-    messages = text_chan.ListPendingMessages(False,
-        dbus_interface=cs.CHANNEL_TYPE_TEXT)
-    assert messages == \
-            [(hello_message_id, hello_message_time, foo_handle,
-                0, 0, 'hello')], messages
+    messages = text_chan.Properties.Get(cs.CHANNEL_IFACE_MESSAGES, 'PendingMessages')
+    assertEquals([msg], messages)
 
     # close the channel without acking the message; it comes back
 
@@ -124,20 +115,16 @@ def test(q, bus, conn, stream):
 
     # the message is still there
 
-    messages = text_chan.ListPendingMessages(False,
-        dbus_interface=cs.CHANNEL_TYPE_TEXT)
-    assertEquals(
-        [(hello_message_id, hello_message_time, foo_handle, 0, 8, 'hello')],
-        messages)
+    messages = text_chan.Properties.Get(cs.CHANNEL_IFACE_MESSAGES, 'PendingMessages')
+    msg[0]['rescued'] = True
+    assertEquals([msg], messages)
 
     # acknowledge it
 
-    text_chan.AcknowledgePendingMessages([hello_message_id],
-        dbus_interface=cs.CHANNEL_TYPE_TEXT)
+    text_chan.Text.AcknowledgePendingMessages([msg[0]['pending-message-id']])
 
-    messages = text_chan.ListPendingMessages(False,
-        dbus_interface=cs.CHANNEL_TYPE_TEXT)
-    assert messages == []
+    messages = text_chan.Properties.Get(cs.CHANNEL_IFACE_MESSAGES, 'PendingMessages')
+    assertEquals([], messages)
 
     # close the channel again
 

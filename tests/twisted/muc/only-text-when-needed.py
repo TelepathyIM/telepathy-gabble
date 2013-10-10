@@ -7,6 +7,7 @@ from servicetest import call_async, EventPattern, assertEquals, \
     sync_dbus, wrap_channel
 from gabbletest import exec_test, make_muc_presence, \
     sync_stream, elem
+import constants as cs
 
 from mucutil import echo_muc_presence
 

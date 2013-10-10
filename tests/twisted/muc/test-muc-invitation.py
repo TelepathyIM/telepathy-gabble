@@ -29,22 +29,22 @@ def test(q, bus, conn, stream):
 
     text_chan = wrap_channel(bus.get_object(conn.bus_name, path), 'Text')
 
-    members = text_chan.Group.GetMembers()
-    local_pending = text_chan.Group.GetLocalPendingMembers()
-    remote_pending = text_chan.Group.GetRemotePendingMembers()
+    members = text_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'Members')
+    local_pending = text_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'LocalPendingMembers')
+    remote_pending = text_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'RemotePendingMembers')
 
     assert len(members) == 1
     assert conn.inspect_contact_sync(members[0]) == 'bob@localhost'
     bob_handle = members[0]
     assert len(local_pending) == 1
     # FIXME: the username-part-is-nickname assumption
-    assert conn.inspect_contact_sync(local_pending[0]) == \
+    assert conn.inspect_contact_sync(local_pending[0][0]) == \
             'chat@conf.localhost/test'
     assert len(remote_pending) == 0
 
     room_self_handle = text_chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
             "SelfHandle")
-    assert room_self_handle == local_pending[0]
+    assert room_self_handle == local_pending[0][0]
 
     channel_props = text_chan.Properties.GetAll(cs.CHANNEL)
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props

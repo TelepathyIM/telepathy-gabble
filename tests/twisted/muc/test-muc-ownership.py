@@ -1,7 +1,7 @@
 
 """
 Test support for the HANDLE_OWNERS_NOT_AVAILABLE group flag, and calling
-GetHandleOwners on MUC members.
+HandleOwners on MUC members.
 
 By default, MUC channels should have the flag set. The flag should be unset
 when presence is received that includes the MUC JID's owner JID.
@@ -83,9 +83,10 @@ def test(q, bus, conn, stream):
 
     chan = wrap_channel(bus.get_object(conn.bus_name, event.value[0]), 'Text')
 
-    # Exercise GetHandleOwners
-    assertEquals([che_owner, chris_owner],
-        chan.Group.GetHandleOwners([che, chris]))
+    # Exercise HandleOwners
+    owners = chan.Properties.Get(cs.CHANNEL_IFACE_GROUP, 'HandleOwners')
+    assertEquals(che_owner, owners[che])
+    assertEquals(chris_owner, owners[chris])
 
     # Exercise D-Bus properties
     all = chan.Properties.GetAll(cs.CHANNEL_IFACE_GROUP)

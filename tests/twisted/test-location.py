@@ -17,6 +17,10 @@ import ns
 
 Rich_Presence_Access_Control_Type_Publish_List = 1
 
+def get_location(conn, contact):
+    h2asv = conn.Contacts.GetContactAttributes([contact], [cs.CONN_IFACE_LOCATION], False)
+    return h2asv[contact].get(cs.ATTR_LOCATION)
+
 def test(q, bus, conn, stream):
     # we don't yet know we have PEP
     assertEquals(0, conn.Get(cs.CONN_IFACE_LOCATION,
@@ -159,7 +163,6 @@ def test(q, bus, conn, stream):
 
     # Request Bob's location
     bob_handle = conn.get_contact_handle_sync('bob@foo.com')
-    call_async(q, conn.Location, 'GetLocations', [bob_handle])
 
     # Gabble should not send a pubsub query. The point of PEP is that we don't
     # have to do this.
@@ -167,11 +170,9 @@ def test(q, bus, conn, stream):
         query_ns=ns.PUBSUB)
     q.forbid_events([ pubsub_get_pattern ])
 
-    # GetLocations returns immediately.
-    get_locations = q.expect('dbus-return', method='GetLocations')
-    locations = get_locations.value[0]
+    location = get_location(conn, bob_handle)
     # Location isn't known yet
-    assertLength(0, locations)
+    assertEquals(None, location)
 
     # Sync the XMPP stream to ensure Gabble hasn't sent a query.
     sync_stream(q, stream)
@@ -210,9 +211,8 @@ def test(q, bus, conn, stream):
     assertEquals(location['timestamp'], date)
 
     # Get location again; Gabble should return the cached location
-    locations = conn.Location.GetLocations([bob_handle])
-    assertLength(1, locations)
-    assertEquals(locations[bob_handle], location)
+    loc = get_location(conn, bob_handle)
+    assertEquals(loc, location)
 
     charles_handle = conn.get_contact_handle_sync('charles@foo.com')
 

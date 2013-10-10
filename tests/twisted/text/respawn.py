@@ -16,11 +16,13 @@ def test(q, bus, conn, stream):
     jid = 'foo@bar.com'
     foo_handle = conn.get_contact_handle_sync(jid)
 
-    call_async(q, conn, 'RequestChannel',
-        cs.CHANNEL_TYPE_TEXT, cs.HT_CONTACT, foo_handle, True)
+    call_async(q, conn.Requests, 'CreateChannel', {
+        cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
+        cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
+        cs.TARGET_HANDLE: foo_handle })
 
     ret, new_sig = q.expect_many(
-        EventPattern('dbus-return', method='RequestChannel'),
+        EventPattern('dbus-return', method='CreateChannel'),
         EventPattern('dbus-signal', signal='NewChannels'),
         )
 

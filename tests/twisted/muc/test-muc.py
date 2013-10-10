@@ -230,7 +230,7 @@ def test(q, bus, conn, stream):
 
     # test that leaving the channel results in an unavailable message
     chan.Group.RemoveMembers([chan.Properties.Get(cs.CHANNEL_IFACE_GROUP,
-        "SelfHandle")], 'booo')
+        "SelfHandle")], 'booo', cs.GC_REASON_NONE)
 
     event = q.expect('stream-presence', to='chat@conf.localhost/test')
     elem = event.stanza

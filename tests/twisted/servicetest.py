@@ -197,7 +197,14 @@ class BaseEventQueue:
         t = time.time()
 
         while True:
-            event = self.wait([pattern.subqueue])
+            try:
+                event = self.wait([pattern.subqueue])
+            except TimeoutError:
+                self.log('timeout')
+                self.log('still expecting:')
+                self.log(' - %r' % pattern)
+                raise
+
             self._check_forbidden(event)
 
             if pattern.match(event):

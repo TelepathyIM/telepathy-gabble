@@ -76,7 +76,7 @@ def test(q, bus, conn, stream):
     assertEquals(foo_handle, msg[0]['message-sender'])
     assertEquals('hello', msg[1]['content'])
 
-    messages = text_chan.Properties.Get(cs.CHANNEL_IFACE_MESSAGES, 'PendingMessages')
+    messages = text_chan.Properties.Get(cs.CHANNEL_TYPE_TEXT, 'PendingMessages')
     assertEquals([msg], messages)
 
     # close the channel without acking the message; it comes back
@@ -115,7 +115,7 @@ def test(q, bus, conn, stream):
 
     # the message is still there
 
-    messages = text_chan.Properties.Get(cs.CHANNEL_IFACE_MESSAGES, 'PendingMessages')
+    messages = text_chan.Properties.Get(cs.CHANNEL_TYPE_TEXT, 'PendingMessages')
     msg[0]['rescued'] = True
     assertEquals([msg], messages)
 
@@ -123,7 +123,7 @@ def test(q, bus, conn, stream):
 
     text_chan.Text.AcknowledgePendingMessages([msg[0]['pending-message-id']])
 
-    messages = text_chan.Properties.Get(cs.CHANNEL_IFACE_MESSAGES, 'PendingMessages')
+    messages = text_chan.Properties.Get(cs.CHANNEL_TYPE_TEXT, 'PendingMessages')
     assertEquals([], messages)
 
     # close the channel again

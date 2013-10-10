@@ -651,7 +651,7 @@ class ChannelWrapper(ProxyWrapper):
                 { 'content-type': 'text/plain',
                   'content': txt
                 }]
-        self.Messages.SendMessage(message, 0)
+        self.Text.SendMessage(message, 0)
 
 def wrap_channel(chan, type_, extra=None):
     interfaces = {

@@ -66,7 +66,7 @@ def send_message_and_expect_error(q, stream,
         }
     ]
 
-    sent_token = text_chan.Messages.SendMessage(greeting, dbus.UInt32(0))
+    sent_token = text_chan.Text.SendMessage(greeting, dbus.UInt32(0))
 
     stream_message, _ = q.expect_many(
         EventPattern('stream-message'),

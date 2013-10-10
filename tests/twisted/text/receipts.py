@@ -48,7 +48,7 @@ def not_sending_request_to_contact(q, bus, conn, stream, chan):
       { 'content-type': 'text/plain',
         'content': 'Mancomb Seepgood?',
       }]
-    chan.Messages.SendMessage(message, 0)
+    chan.Text.SendMessage(message, 0)
 
     e = q.expect('stream-message', to=GUYBRUSH)
     assertLength(0, list(e.stanza.elements(uri=ns.RECEIPTS, name='request')))
@@ -64,7 +64,7 @@ def sending_request_to_presenceless_contact(q, bus, conn, stream, chan):
       { 'content-type': 'text/plain',
         'content': 'Thriftweed?',
       }]
-    chan.Messages.SendMessage(message, cs.MSG_SENDING_FLAGS_REPORT_DELIVERY)
+    chan.Text.SendMessage(message, cs.MSG_SENDING_FLAGS_REPORT_DELIVERY)
 
     e = q.expect('stream-message', to=GUYBRUSH)
     assertLength(1, list(e.stanza.elements(uri=ns.RECEIPTS, name='request')))
@@ -97,7 +97,7 @@ def sending_request_to_cappy_contact(q, bus, conn, stream, chan):
       { 'content-type': 'text/plain',
         'content': 'Ulysses?',
       }]
-    chan.Messages.SendMessage(message, cs.MSG_SENDING_FLAGS_REPORT_DELIVERY)
+    chan.Text.SendMessage(message, cs.MSG_SENDING_FLAGS_REPORT_DELIVERY)
 
     e = q.expect('stream-message', to=GUYBRUSH)
     assertLength(1, list(e.stanza.elements(uri=ns.RECEIPTS, name='request')))

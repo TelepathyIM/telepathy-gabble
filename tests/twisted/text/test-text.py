@@ -38,7 +38,6 @@ def test(q, bus, conn, stream):
     assertEquals(cs.HT_CONTACT, channel_props.get('TargetHandleType'))
     assertEquals(cs.CHANNEL_TYPE_TEXT, channel_props.get('ChannelType'))
     assertContains(cs.CHANNEL_IFACE_CHAT_STATE, channel_props.get('Interfaces'))
-    assertContains(cs.CHANNEL_IFACE_MESSAGES, channel_props.get('Interfaces'))
     assertEquals(jid, channel_props['TargetID'])
     assertEquals(False, channel_props['Requested'])
     assertEquals(props[cs.INITIATOR_HANDLE], channel_props['InitiatorHandle'])
@@ -86,7 +85,7 @@ def test(q, bus, conn, stream):
         }
     ]
 
-    sent_token = text_chan.Messages.SendMessage(greeting, dbus.UInt32(0))
+    sent_token = text_chan.Text.SendMessage(greeting, dbus.UInt32(0))
 
     stream_message, message_sent = q.expect_many(
         EventPattern('stream-message'),

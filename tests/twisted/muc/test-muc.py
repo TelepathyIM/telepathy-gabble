@@ -31,7 +31,6 @@ def test(q, bus, conn, stream):
     assertContains(cs.CHANNEL_IFACE_GROUP, interfaces)
     assertContains(cs.CHANNEL_IFACE_PASSWORD, interfaces)
     assertContains(cs.CHANNEL_IFACE_CHAT_STATE, interfaces)
-    assertContains(cs.CHANNEL_IFACE_MESSAGES, interfaces)
 
     assert channel_props['TargetID'] == 'chat@conf.localhost', channel_props
     assert channel_props['Requested'] == True
@@ -96,7 +95,7 @@ def test(q, bus, conn, stream):
 
     # We ask for delivery reports (which MUCs provide) and read reports (which
     # MUCs do not provide).
-    sent_token = chan.Messages.SendMessage(greeting,
+    sent_token = chan.Text.SendMessage(greeting,
         cs.MSG_SENDING_FLAGS_REPORT_DELIVERY |
         cs.MSG_SENDING_FLAGS_REPORT_READ)
 

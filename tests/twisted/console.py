@@ -4,7 +4,7 @@ A smoketest for the XMPP console API.
 
 from servicetest import (
     ProxyWrapper, EventPattern,
-    call_async, assertEquals, assertContains, sync_dbus,
+    call_async, assertEquals, assertNotEquals, assertContains, sync_dbus,
 )
 from gabbletest import exec_test, acknowledge_iq, elem, elem_iq
 from config import PLUGINS_ENABLED

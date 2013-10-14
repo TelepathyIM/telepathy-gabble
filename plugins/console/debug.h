@@ -17,11 +17,11 @@
  * Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-extern int debug;
+extern int gabble_console_debug;
 
 #define DEBUG(format, ...) \
 G_STMT_START { \
-    if (debug != 0) \
+    if (gabble_console_debug != 0) \
       g_debug ("%s: " format, G_STRFUNC, ## __VA_ARGS__); \
 } G_STMT_END
 

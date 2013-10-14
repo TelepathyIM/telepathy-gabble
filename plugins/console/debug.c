@@ -21,7 +21,7 @@
 
 #include "console/debug.h"
 
-int debug = 0;
+int gabble_console_debug = 0;
 
 static const GDebugKey debug_keys[] = {
       { "console", 1 },
@@ -31,6 +31,6 @@ static const GDebugKey debug_keys[] = {
 void
 gabble_console_debug_init (void)
 {
-  debug = g_parse_debug_string (g_getenv ("GABBLE_DEBUG"), debug_keys,
-      G_N_ELEMENTS (debug_keys) - 1);
+  gabble_console_debug = g_parse_debug_string (g_getenv ("GABBLE_DEBUG"),
+      debug_keys, G_N_ELEMENTS (debug_keys) - 1);
 }

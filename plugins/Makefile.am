@@ -62,8 +62,15 @@ libgateways_la_SOURCES = \
 	gateways.h
 
 libconsole_la_SOURCES = \
-	console.c \
-	console.h
+	console/channel-manager.c \
+	console/channel-manager.h \
+	console/channel.c \
+	console/channel.h \
+	console/debug.c \
+	console/debug.h \
+	console/plugin.c \
+	console/plugin.h \
+	$(NULL)
 
 AM_CFLAGS = $(ERROR_CFLAGS) \
     -I $(top_srcdir) -I $(top_builddir) \

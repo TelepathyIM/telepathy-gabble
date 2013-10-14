@@ -18,8 +18,7 @@
  */
 
 #include "config.h"
-
-#include "console.h"
+#include "console/channel.h"
 
 #include <string.h>
 
@@ -27,148 +26,19 @@
 #include <telepathy-glib/telepathy-glib-dbus.h>
 
 #include <wocky/wocky.h>
-
+#include <gabble/gabble.h>
 #include "extensions/extensions.h"
 
-#include <gabble/gabble.h>
-
-/*************************
- * Plugin implementation *
- *************************/
-
-static guint debug = 0;
-
-#define DEBUG(format, ...) \
-G_STMT_START { \
-    if (debug != 0) \
-      g_debug ("%s: " format, G_STRFUNC, ## __VA_ARGS__); \
-} G_STMT_END
-
-static const GDebugKey debug_keys[] = {
-      { "console", 1 },
-      { NULL, 0 }
-};
-
-static void plugin_iface_init (
-    gpointer g_iface,
-    gpointer data);
-
-static const gchar * const sidecar_interfaces[] = {
-    GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE,
-    NULL
-};
-
-G_DEFINE_TYPE_WITH_CODE (GabbleConsolePlugin, gabble_console_plugin,
-    G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_PLUGIN, plugin_iface_init);
-    )
-
-static void
-gabble_console_plugin_init (GabbleConsolePlugin *self)
-{
-}
-
-static void
-gabble_console_plugin_class_init (GabbleConsolePluginClass *klass)
-{
-}
-
-static void
-gabble_console_plugin_create_sidecar_async (
-    GabblePlugin *plugin,
-    const gchar *sidecar_interface,
-    GabblePluginConnection *connection,
-    WockySession *session,
-    GAsyncReadyCallback callback,
-    gpointer user_data)
-{
-  GSimpleAsyncResult *result = g_simple_async_result_new (G_OBJECT (plugin),
-      callback, user_data,
-      gabble_console_plugin_create_sidecar_async);
-  GabbleSidecar *sidecar = NULL;
-
-  if (!tp_strdiff (sidecar_interface, GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE))
-    {
-      sidecar = g_object_new (GABBLE_TYPE_CONSOLE_SIDECAR,
-          "connection", connection,
-          "session", session,
-          NULL);
-    }
-  else
-    {
-      g_simple_async_result_set_error (result, TP_ERROR,
-          TP_ERROR_NOT_IMPLEMENTED, "'%s' not implemented", sidecar_interface);
-    }
-
-  if (sidecar != NULL)
-    g_simple_async_result_set_op_res_gpointer (result, sidecar,
-        g_object_unref);
-
-  g_simple_async_result_complete_in_idle (result);
-  g_object_unref (result);
-}
-
-static GabbleSidecar *
-gabble_console_plugin_create_sidecar_finish (
-    GabblePlugin *plugin,
-    GAsyncResult *result,
-    GError **error)
-{
-  GabbleSidecar *sidecar;
-
-  if (g_simple_async_result_propagate_error (G_SIMPLE_ASYNC_RESULT (result),
-        error))
-    return NULL;
-
-  g_return_val_if_fail (g_simple_async_result_is_valid (result,
-        G_OBJECT (plugin), gabble_console_plugin_create_sidecar_async), NULL);
-
-  sidecar = GABBLE_SIDECAR (g_simple_async_result_get_op_res_gpointer (
-        G_SIMPLE_ASYNC_RESULT (result)));
-  
-  return g_object_ref (sidecar);
-}
-
-static void
-plugin_iface_init (
-    gpointer g_iface,
-    gpointer data G_GNUC_UNUSED)
-{
-  GabblePluginInterface *iface = g_iface;
-
-  iface->name = "XMPP console";
-  iface->version = PACKAGE_VERSION;
-  iface->sidecar_interfaces = sidecar_interfaces;
-  iface->create_sidecar_async = gabble_console_plugin_create_sidecar_async;
-  iface->create_sidecar_finish = gabble_console_plugin_create_sidecar_finish;
-}
-
-GabblePlugin *
-gabble_plugin_create (void)
-{
-  debug = g_parse_debug_string (g_getenv ("GABBLE_DEBUG"), debug_keys,
-      G_N_ELEMENTS (debug_keys) - 1);
-  DEBUG ("loaded");
-
-  return g_object_new (GABBLE_TYPE_CONSOLE_PLUGIN,
-      NULL);
-}
-
-/**************************
- * Sidecar implementation *
- **************************/
+#include "console/debug.h"
 
 enum {
     PROP_0,
-    PROP_CONNECTION,
-    PROP_SESSION,
     PROP_SPEW
 };
 
-struct _GabbleConsoleSidecarPrivate
+struct _GabbleConsoleChannelPrivate
 {
   WockySession *session;
-  TpBaseConnection *connection;
   WockyXmppReader *reader;
   WockyXmppWriter *writer;
 
@@ -183,43 +53,58 @@ struct _GabbleConsoleSidecarPrivate
   gulong sending_id;
 };
 
-static void sidecar_iface_init (
-    gpointer g_iface,
-    gpointer data);
 static void console_iface_init (
     gpointer g_iface,
     gpointer data);
-static void gabble_console_sidecar_set_spew (
-    GabbleConsoleSidecar *self,
+static void gabble_console_channel_set_spew (
+    GabbleConsoleChannel *self,
     gboolean spew);
+gchar *gabble_console_channel_get_path (TpBaseChannel *chan);
+static void gabble_console_channel_close (TpBaseChannel *chan);
 
-G_DEFINE_TYPE_WITH_CODE (GabbleConsoleSidecar, gabble_console_sidecar,
-    G_TYPE_OBJECT,
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SIDECAR, sidecar_iface_init);
+G_DEFINE_TYPE_WITH_CODE (GabbleConsoleChannel, gabble_console_channel,
+    TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_GABBLE_PLUGIN_CONSOLE,
       console_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-      tp_dbus_properties_mixin_iface_init);
     )
 
 static void
-gabble_console_sidecar_init (GabbleConsoleSidecar *self)
+gabble_console_channel_init (GabbleConsoleChannel *self)
 {
-  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_CONSOLE_SIDECAR,
-      GabbleConsoleSidecarPrivate);
+  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self, GABBLE_TYPE_CONSOLE_CHANNEL,
+      GabbleConsoleChannelPrivate);
   self->priv->reader = wocky_xmpp_reader_new_no_stream_ns (
       WOCKY_XMPP_NS_JABBER_CLIENT);
   self->priv->writer = wocky_xmpp_writer_new_no_stream ();
 }
 
+
 static void
-gabble_console_sidecar_get_property (
+gabble_console_channel_constructed (GObject *object)
+{
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
+  void (*chain_up)(GObject *) =
+      G_OBJECT_CLASS (gabble_console_channel_parent_class)->constructed;
+
+  if (chain_up != NULL)
+    chain_up (object);
+
+  self->priv->session = g_object_ref (
+      gabble_plugin_connection_get_session (
+          GABBLE_PLUGIN_CONNECTION (
+              tp_base_channel_get_connection (
+                  TP_BASE_CHANNEL (self)))));
+  g_return_if_fail (self->priv->session != NULL);
+}
+
+static void
+gabble_console_channel_get_property (
     GObject *object,
     guint property_id,
     GValue *value,
     GParamSpec *pspec)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
 
   switch (property_id)
     {
@@ -233,28 +118,18 @@ gabble_console_sidecar_get_property (
 }
 
 static void
-gabble_console_sidecar_set_property (
+gabble_console_channel_set_property (
     GObject *object,
     guint property_id,
     const GValue *value,
     GParamSpec *pspec)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
 
   switch (property_id)
     {
-      case PROP_CONNECTION:
-        g_assert (self->priv->connection == NULL);    /* construct-only */
-        self->priv->connection = g_value_dup_object (value);
-        break;
-
-      case PROP_SESSION:
-        g_assert (self->priv->session == NULL);       /* construct-only */
-        self->priv->session = g_value_dup_object (value);
-        break;
-
       case PROP_SPEW:
-        gabble_console_sidecar_set_spew (self, g_value_get_boolean (value));
+        gabble_console_channel_set_spew (self, g_value_get_boolean (value));
         break;
 
       default:
@@ -263,15 +138,14 @@ gabble_console_sidecar_set_property (
 }
 
 static void
-gabble_console_sidecar_dispose (GObject *object)
+gabble_console_channel_dispose (GObject *object)
 {
   void (*chain_up) (GObject *) =
-    G_OBJECT_CLASS (gabble_console_sidecar_parent_class)->dispose;
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (object);
+    G_OBJECT_CLASS (gabble_console_channel_parent_class)->dispose;
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
 
-  gabble_console_sidecar_set_spew (self, FALSE);
+  gabble_console_channel_set_spew (self, FALSE);
 
-  tp_clear_object (&self->priv->connection);
   tp_clear_object (&self->priv->reader);
   tp_clear_object (&self->priv->writer);
   tp_clear_object (&self->priv->session);
@@ -281,46 +155,25 @@ gabble_console_sidecar_dispose (GObject *object)
 }
 
 static void
-gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
+gabble_console_channel_class_init (GabbleConsoleChannelClass *klass)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
+  TpBaseChannelClass *channel_class = TP_BASE_CHANNEL_CLASS (klass);
   static TpDBusPropertiesMixinPropImpl console_props[] = {
       { "SpewStanzas", "spew-stanzas", "spew-stanzas" },
       { NULL },
   };
-  static TpDBusPropertiesMixinIfaceImpl interfaces[] = {
-      { GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        /* FIXME: if we were feeling clever, we'd override the setter so that
-         * we can monitor the bus name of any application which sets
-         * SpewStanzas to TRUE and flip it back to false when that application
-         * dies.
-         *
-         * Alternatively, we could just replace this sidecar with a channel.
-         */
-        tp_dbus_properties_mixin_setter_gobject_properties,
-        console_props
-      },
-      { NULL },
-  };
 
-  object_class->get_property = gabble_console_sidecar_get_property;
-  object_class->set_property = gabble_console_sidecar_set_property;
-  object_class->dispose = gabble_console_sidecar_dispose;
+  object_class->constructed = gabble_console_channel_constructed;
+  object_class->get_property = gabble_console_channel_get_property;
+  object_class->set_property = gabble_console_channel_set_property;
+  object_class->dispose = gabble_console_channel_dispose;
 
-  g_type_class_add_private (klass, sizeof (GabbleConsoleSidecarPrivate));
+  channel_class->channel_type = GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE;
+  channel_class->get_object_path_suffix = gabble_console_channel_get_path;
+  channel_class->close = gabble_console_channel_close;
 
-  g_object_class_install_property (object_class, PROP_CONNECTION,
-      g_param_spec_object ("connection", "Connection",
-          "Gabble connection",
-          GABBLE_TYPE_PLUGIN_CONNECTION,
-          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
-
-  g_object_class_install_property (object_class, PROP_SESSION,
-      g_param_spec_object ("session", "Session",
-          "Wocky session",
-          WOCKY_TYPE_SESSION,
-          G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS));
+  g_type_class_add_private (klass, sizeof (GabbleConsoleChannelPrivate));
 
   g_object_class_install_property (object_class, PROP_SPEW,
       g_param_spec_boolean ("spew-stanzas", "SpewStanzas",
@@ -328,19 +181,26 @@ gabble_console_sidecar_class_init (GabbleConsoleSidecarClass *klass)
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  klass->props_class.interfaces = interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleConsoleSidecarClass, props_class));
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      GABBLE_IFACE_QUARK_GABBLE_PLUGIN_CONSOLE,
+      tp_dbus_properties_mixin_getter_gobject_properties,
+      tp_dbus_properties_mixin_setter_gobject_properties,
+      console_props);
 }
 
-static void sidecar_iface_init (
-    gpointer g_iface,
-    gpointer data)
+gchar *
+gabble_console_channel_get_path (TpBaseChannel *chan)
 {
-  GabbleSidecarInterface *iface = g_iface;
+  return g_strdup_printf ("console%p", chan);
+}
 
-  iface->interface = GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE;
-  iface->get_immutable_properties = NULL;
+static void
+gabble_console_channel_close (TpBaseChannel *chan)
+{
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (chan);
+
+  gabble_console_channel_set_spew (self, FALSE);
+  tp_base_channel_destroyed (chan);
 }
 
 static gboolean
@@ -349,7 +209,7 @@ incoming_cb (
     WockyStanza *stanza,
     gpointer user_data)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (user_data);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (user_data);
   const guint8 *body;
   gsize length;
 
@@ -365,7 +225,7 @@ sending_cb (
     WockyStanza *stanza,
     gpointer user_data)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (user_data);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (user_data);
 
   if (stanza != NULL)
     {
@@ -380,11 +240,11 @@ sending_cb (
 }
 
 static void
-gabble_console_sidecar_set_spew (
-    GabbleConsoleSidecar *self,
+gabble_console_channel_set_spew (
+    GabbleConsoleChannel *self,
     gboolean spew)
 {
-  GabbleConsoleSidecarPrivate *priv = self->priv;
+  GabbleConsoleChannelPrivate *priv = self->priv;
 
   if (!spew != !priv->spew)
     {
@@ -425,7 +285,7 @@ return_from_send_iq (
     GAsyncResult *result,
     gpointer user_data)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (source);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (source);
   DBusGMethodInvocation *context = user_data;
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
   GError *error = NULL;
@@ -524,12 +384,12 @@ validate_jid (const gchar **to,
  */
 static gboolean
 parse_me_a_stanza (
-    GabbleConsoleSidecar *self,
+    GabbleConsoleChannel *self,
     const gchar *xml,
     WockyStanza **stanza_out,
     GError **error)
 {
-  GabbleConsoleSidecarPrivate *priv = self->priv;
+  GabbleConsoleChannelPrivate *priv = self->priv;
   WockyStanza *stanza;
 
   wocky_xmpp_reader_reset (priv->reader);
@@ -555,13 +415,13 @@ parse_me_a_stanza (
 
 static void
 console_send_iq (
-    GabbleSvcGabblePluginConsole *sidecar,
+    GabbleSvcGabblePluginConsole *channel,
     const gchar *type_str,
     const gchar *to,
     const gchar *body,
     DBusGMethodInvocation *context)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (sidecar);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (channel);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
   WockyStanzaSubType sub_type;
   WockyStanza *fragment;
@@ -641,11 +501,11 @@ stanza_looks_coherent (
 
 static void
 console_send_stanza (
-    GabbleSvcGabblePluginConsole *sidecar,
+    GabbleSvcGabblePluginConsole *channel,
     const gchar *xml,
     DBusGMethodInvocation *context)
 {
-  GabbleConsoleSidecar *self = GABBLE_CONSOLE_SIDECAR (sidecar);
+  GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (channel);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
   WockyStanza *stanza = NULL;
   GError *error = NULL;

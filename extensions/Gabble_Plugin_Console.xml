@@ -23,7 +23,7 @@
     <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal"
                 value="true"/>
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
-      <p>A sidecar interface providing an XMPP console.</p>
+      <p>A channel type providing an XMPP console.</p>
     </tp:docstring>
 
     <method name="SendIQ" tp:name-for-bindings="Send_IQ">

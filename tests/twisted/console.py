@@ -27,9 +27,25 @@ def send_unrecognised_get(q, stream):
     return q.expect('stream-iq', iq_type='error')
 
 def test(q, bus, conn, stream):
-    path, _ = conn.Future.EnsureSidecar(CONSOLE_PLUGIN_IFACE)
+    rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
+        'RequestableChannelClasses')
+
+    fixed = {
+        cs.CHANNEL_TYPE: CONSOLE_PLUGIN_IFACE,
+        cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
+    }
+    allowed = []
+    assertContains((fixed, allowed), rccs)
+
+    path, _ = conn.Requests.CreateChannel({ cs.CHANNEL_TYPE: CONSOLE_PLUGIN_IFACE })
+    other_path, _ = conn.Requests.CreateChannel({ cs.CHANNEL_TYPE: CONSOLE_PLUGIN_IFACE })
+
+    assertNotEquals(path, other_path)
+    # leave the other one open, to test we don't crash on disconnect
+
     console = ProxyWrapper(bus.get_object(conn.bus_name, path),
-        CONSOLE_PLUGIN_IFACE)
+        CONSOLE_PLUGIN_IFACE,
+        {'Channel': cs.CHANNEL})
 
     assert not console.Properties.Get(CONSOLE_PLUGIN_IFACE, 'SpewStanzas')
     es = [
@@ -87,6 +103,8 @@ def test(q, bus, conn, stream):
     body = message.firstChildElement()
     assertEquals('body', body.name)
     assertEquals(ns.CLIENT, body.uri)
+
+    console.Channel.Close()
 
 if __name__ == '__main__':
     exec_test(test)

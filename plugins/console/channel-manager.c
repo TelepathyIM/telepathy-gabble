@@ -20,6 +20,8 @@
 #include "config.h"
 #include "console/channel-manager.h"
 
+#include <telepathy-glib/telepathy-glib-dbus.h>
+
 #include "extensions/extensions.h"
 #include "console/channel.h"
 

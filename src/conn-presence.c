@@ -185,8 +185,8 @@ construct_contact_statuses_cb (GObject *obj,
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
-  if (!tp_handles_are_valid (handle_repo, contact_handles, FALSE, NULL))
-    return NULL;
+  g_return_val_if_fail (tp_handles_are_valid (handle_repo, contact_handles,
+        FALSE, NULL), NULL);
 
   contact_statuses = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify) tp_presence_status_free);

@@ -38,7 +38,6 @@ EXTRA_DIST = \
     libglibcodegen.py \
     make-release-mail.py \
     make-version-script.py \
-    manager-file.py \
     shave.mk \
     telepathy.am \
     telepathy-glib.supp \

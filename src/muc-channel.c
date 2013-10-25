@@ -70,19 +70,19 @@ static void muc_call_channel_finish_requests (GabbleMucChannel *self,
 
 G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP1,
       tp_group_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD1,
       password_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
       tp_message_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE1,
       tp_message_mixin_chat_state_iface_init)
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE1, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM1, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG1,
       tp_base_room_config_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT1,
       subject_iface_init);
     )
 
@@ -230,13 +230,13 @@ gabble_muc_channel_get_interfaces (TpBaseChannel *base)
   interfaces = TP_BASE_CHANNEL_CLASS (
       gabble_muc_channel_parent_class)->get_interfaces (base);
 
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_GROUP);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_PASSWORD);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CONFERENCE);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SUBJECT);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_GROUP1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_PASSWORD1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SUBJECT1);
 
   return interfaces;
 }
@@ -1029,16 +1029,16 @@ gabble_muc_channel_fill_immutable_properties (
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialChannels",
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeHandles",
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InitialInviteeIDs",
-      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE, "InvitationMessage",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1, "InitialChannels",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1, "InitialInviteeHandles",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1, "InitialInviteeIDs",
+      TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1, "InvitationMessage",
       TP_IFACE_CHANNEL_TYPE_TEXT, "MessagePartSupportFlags",
       TP_IFACE_CHANNEL_TYPE_TEXT, "DeliveryReportingSupport",
       TP_IFACE_CHANNEL_TYPE_TEXT, "SupportedContentTypes",
       TP_IFACE_CHANNEL_TYPE_TEXT, "MessageTypes",
-      TP_IFACE_CHANNEL_INTERFACE_ROOM, "RoomName",
-      TP_IFACE_CHANNEL_INTERFACE_ROOM, "Server",
+      TP_IFACE_CHANNEL_INTERFACE_ROOM1, "RoomName",
+      TP_IFACE_CHANNEL_INTERFACE_ROOM1, "Server",
       NULL);
 }
 
@@ -1068,17 +1068,17 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   };
 
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-    { TP_IFACE_CHANNEL_INTERFACE_CONFERENCE,
+    { TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       conference_props,
     },
-    { TP_IFACE_CHANNEL_INTERFACE_ROOM,
+    { TP_IFACE_CHANNEL_INTERFACE_ROOM1,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       room_props,
     },
-    { TP_IFACE_CHANNEL_INTERFACE_SUBJECT,
+    { TP_IFACE_CHANNEL_INTERFACE_SUBJECT1,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       subject_props,
@@ -1441,7 +1441,7 @@ change_must_provide_password (
   DEBUG ("emitting password flags changed, added 0x%X, removed 0x%X",
           added, removed);
 
-  tp_svc_channel_interface_password_emit_password_flags_changed (
+  tp_svc_channel_interface_password1_emit_password_flags_changed (
       chan, added, removed);
 }
 
@@ -1549,7 +1549,7 @@ return_from_set_subject (
   GabbleMucChannelPrivate *priv = self->priv;
 
   if (error == NULL)
-    tp_svc_channel_interface_subject_return_from_set_subject (
+    tp_svc_channel_interface_subject1_return_from_set_subject (
         priv->set_subject_context);
   else
     dbus_g_method_return_error (priv->set_subject_context, error);
@@ -1842,7 +1842,7 @@ emit_subject_changed (GabbleMucChannel *chan)
   const gchar *changed[] = { "Subject", "Actor", "Timestamp", NULL };
 
   tp_dbus_properties_mixin_emit_properties_changed (G_OBJECT (chan),
-      TP_IFACE_CHANNEL_INTERFACE_SUBJECT, changed);
+      TP_IFACE_CHANNEL_INTERFACE_SUBJECT1, changed);
 }
 
 static void
@@ -2073,18 +2073,18 @@ gabble_muc_channel_tube_request (GabbleMucChannel *self,
   channel_type = tp_asv_get_string (request_properties,
       TP_PROP_CHANNEL_CHANNEL_TYPE);
 
-  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1))
     {
       type = TUBE_TYPE_STREAM;
       service = tp_asv_get_string (request_properties,
-          TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
+          TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
 
     }
-  else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1))
     {
       type = TUBE_TYPE_DBUS;
       service = tp_asv_get_string (request_properties,
-          TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
+          TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME);
     }
   else
     /* This assertion is safe: this function's caller only calls it in one of
@@ -3197,7 +3197,7 @@ gabble_muc_channel_close (TpBaseChannel *base)
  * on interface Channel.Interface.Password
  */
 static void
-gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
+gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword1 *iface,
                                        DBusGMethodInvocation *context)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
@@ -3207,7 +3207,7 @@ gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
 
   priv = self->priv;
 
-  tp_svc_channel_interface_password_return_from_get_password_flags (context,
+  tp_svc_channel_interface_password1_return_from_get_password_flags (context,
       priv->must_provide_password ? TP_CHANNEL_PASSWORD_FLAG_PROVIDE : 0);
 }
 
@@ -3222,7 +3222,7 @@ gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword *iface,
  *           or throw an error.
  */
 static void
-gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword *iface,
+gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword1 *iface,
                                      const gchar *password,
                                      DBusGMethodInvocation *context)
 {
@@ -4164,7 +4164,7 @@ sent_subject_cb (
 }
 
 static void
-gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
+gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject1 *iface,
     const gchar *subject,
     DBusGMethodInvocation *context)
 {
@@ -4225,10 +4225,10 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject *iface,
 static void
 password_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfacePasswordClass *klass =
-    (TpSvcChannelInterfacePasswordClass *) g_iface;
+  TpSvcChannelInterfacePassword1Class *klass =
+    (TpSvcChannelInterfacePassword1Class *) g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_interface_password_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_interface_password1_implement_##x (\
     klass, gabble_muc_channel_##x)
   IMPLEMENT(get_password_flags);
   IMPLEMENT(provide_password);
@@ -4238,10 +4238,10 @@ password_iface_init (gpointer g_iface, gpointer iface_data)
 static void
 subject_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelInterfaceSubjectClass *klass =
-    (TpSvcChannelInterfaceSubjectClass *) g_iface;
+  TpSvcChannelInterfaceSubject1Class *klass =
+    (TpSvcChannelInterfaceSubject1Class *) g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_interface_subject_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_interface_subject1_implement_##x (\
     klass, gabble_muc_channel_##x)
   IMPLEMENT(set_subject);
 #undef IMPLEMENT

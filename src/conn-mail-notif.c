@@ -115,7 +115,7 @@ return_from_request_inbox_url (GabbleConnection *conn)
     if (error != NULL)
       dbus_g_method_return_error (context, error);
     else
-      tp_svc_connection_interface_mail_notification_return_from_request_inbox_url (
+      tp_svc_connection_interface_mail_notification1_return_from_request_inbox_url (
           context, result);
 
     it = g_list_next (it);
@@ -159,7 +159,7 @@ check_supported_or_dbus_return (GabbleConnection *conn,
 
 static void
 gabble_mail_notification_request_inbox_url (
-    TpSvcConnectionInterfaceMailNotification *iface,
+    TpSvcConnectionInterfaceMailNotification1 *iface,
     DBusGMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
@@ -179,7 +179,7 @@ gabble_mail_notification_request_inbox_url (
 
 static void
 gabble_mail_notification_request_mail_url (
-    TpSvcConnectionInterfaceMailNotification *iface,
+    TpSvcConnectionInterfaceMailNotification1 *iface,
     const gchar *in_id,
     const GValue *in_url_data,
     DBusGMethodInvocation *context)
@@ -211,7 +211,7 @@ gabble_mail_notification_request_mail_url (
           TP_ARRAY_TYPE_HTTP_POST_DATA_LIST, empty_array,
           G_TYPE_INVALID);
 
-      tp_svc_connection_interface_mail_notification_return_from_request_mail_url (
+      tp_svc_connection_interface_mail_notification1_return_from_request_mail_url (
           context, result);
 
       g_value_array_free (result);
@@ -457,7 +457,7 @@ store_unread_mails (GabbleConnection *conn,
   else
     priv->unread_count = g_hash_table_size (priv->unread_mails);
 
-  tp_svc_connection_interface_mail_notification_emit_unread_mails_changed (
+  tp_svc_connection_interface_mail_notification1_emit_unread_mails_changed (
       conn, priv->unread_count, collector.mails_added,
       (const char **)mails_removed->pdata);
 
@@ -706,10 +706,10 @@ conn_mail_notif_init (GabbleConnection *conn)
       G_CALLBACK (connection_status_changed), conn);
 
   g_signal_connect (conn,
-      "clients-interested::" TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+      "clients-interested::" TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
       G_CALLBACK (mail_clients_interested_cb), NULL);
   g_signal_connect (conn,
-      "clients-uninterested::" TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+      "clients-uninterested::" TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
       G_CALLBACK (mail_clients_uninterested_cb), NULL);
 }
 
@@ -748,9 +748,9 @@ void
 conn_mail_notif_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
-  TpSvcConnectionInterfaceMailNotificationClass *klass = g_iface;
+  TpSvcConnectionInterfaceMailNotification1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_connection_interface_mail_notification_implement_##x (\
+#define IMPLEMENT(x) tp_svc_connection_interface_mail_notification1_implement_##x (\
     klass, gabble_mail_notification_##x)
   IMPLEMENT (request_inbox_url);
   IMPLEMENT (request_mail_url);

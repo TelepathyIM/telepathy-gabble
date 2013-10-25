@@ -117,7 +117,7 @@ aliases_request_try_return (AliasesRequest *request)
       /* Cast to (const gchar **) necessary because no-one understands 'const'
        * in C.
        */
-      tp_svc_connection_interface_aliasing_return_from_request_aliases (
+      tp_svc_connection_interface_aliasing1_return_from_request_aliases (
           request->request_call, (const gchar **)request->aliases);
       return TRUE;
     }
@@ -356,7 +356,7 @@ gabble_do_pep_request (GabbleConnection *self,
  *           or throw an error.
  */
 static void
-gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing *iface,
+gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing1 *iface,
                                    const GArray *contacts,
                                    DBusGMethodInvocation *context)
 {
@@ -564,7 +564,7 @@ set_one_alias (
  * on interface Connection.Interface.Aliasing
  */
 static void
-gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
+gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing1 *iface,
                                GHashTable *aliases,
                                DBusGMethodInvocation *context)
 {
@@ -589,7 +589,7 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing *iface,
 
   if (retval)
     {
-      tp_svc_connection_interface_aliasing_return_from_set_aliases (
+      tp_svc_connection_interface_aliasing1_return_from_set_aliases (
           context);
     }
   else
@@ -816,7 +816,7 @@ gabble_conn_aliasing_nicknames_updated (GObject *object,
     }
 
   if (g_hash_table_size (aliases) > 0)
-    tp_svc_connection_interface_aliasing_emit_aliases_changed (conn, aliases);
+    tp_svc_connection_interface_aliasing1_emit_aliases_changed (conn, aliases);
 
   g_hash_table_unref (aliases);
 }
@@ -1053,7 +1053,7 @@ conn_aliasing_fill_contact_attributes (GObject *obj,
       g_value_take_string (val, alias);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash,
-        handle, TP_IFACE_CONNECTION_INTERFACE_ALIASING"/alias",
+        handle, TP_IFACE_CONNECTION_INTERFACE_ALIASING1"/alias",
         val);
 
       maybe_request_vcard (self, handle, source);
@@ -1064,7 +1064,7 @@ void
 conn_aliasing_init (GabbleConnection *conn)
 {
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_ALIASING,
+    TP_IFACE_CONNECTION_INTERFACE_ALIASING1,
     conn_aliasing_fill_contact_attributes);
 
   conn->pep_nick = wocky_pep_service_new (NS_NICK, TRUE);
@@ -1083,9 +1083,9 @@ conn_aliasing_finalize (GabbleConnection *conn)
 void
 conn_aliasing_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceAliasingClass *klass = g_iface;
+  TpSvcConnectionInterfaceAliasing1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_connection_interface_aliasing_implement_##x (\
+#define IMPLEMENT(x) tp_svc_connection_interface_aliasing1_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(request_aliases);
   IMPLEMENT(set_aliases);

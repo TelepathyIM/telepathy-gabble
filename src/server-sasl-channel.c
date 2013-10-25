@@ -52,11 +52,11 @@ static void sasl_auth_iface_init (gpointer, gpointer);
 G_DEFINE_TYPE_WITH_CODE (GabbleServerSaslChannel, gabble_server_sasl_channel,
     TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (
-        TP_TYPE_SVC_CHANNEL_TYPE_SERVER_AUTHENTICATION,
+        TP_TYPE_SVC_CHANNEL_TYPE_SERVER_AUTHENTICATION1,
         NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SECURABLE, NULL);
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SECURABLE1, NULL);
     G_IMPLEMENT_INTERFACE (
-        TP_TYPE_SVC_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+        TP_TYPE_SVC_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
         sasl_auth_iface_init));
 
 enum
@@ -106,8 +106,8 @@ gabble_server_sasl_channel_get_interfaces (TpBaseChannel *base)
   interfaces = TP_BASE_CHANNEL_CLASS (
       gabble_server_sasl_channel_parent_class)->get_interfaces (base);
 
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SECURABLE);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SECURABLE1);
 
   return interfaces;
 }
@@ -136,18 +136,18 @@ gabble_server_sasl_channel_fill_immutable_properties (TpBaseChannel *channel,
 
   tp_dbus_properties_mixin_fill_properties_hash (G_OBJECT (channel),
       properties,
-      TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION, "AuthenticationMethod",
-      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+      TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION1, "AuthenticationMethod",
+      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
           "AvailableMechanisms",
-      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "HasInitialData",
-      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "CanTryAgain",
-      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1, "HasInitialData",
+      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1, "CanTryAgain",
+      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
           "AuthorizationIdentity",
-      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION, "DefaultRealm",
-      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1, "DefaultRealm",
+      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
           "DefaultUsername",
-      TP_IFACE_CHANNEL_INTERFACE_SECURABLE, "Encrypted",
-      TP_IFACE_CHANNEL_INTERFACE_SECURABLE, "Verified",
+      TP_IFACE_CHANNEL_INTERFACE_SECURABLE1, "Encrypted",
+      TP_IFACE_CHANNEL_INTERFACE_SECURABLE1, "Verified",
       NULL);
 }
 
@@ -181,7 +181,7 @@ gabble_server_sasl_channel_get_property (GObject *object,
       break;
     case PROP_AUTH_METHOD:
       g_value_set_static_string (value,
-          TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION);
+          TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1);
       break;
     case PROP_AVAILABLE_MECHANISMS:
       g_value_set_boxed (value, priv->available_mechanisms);
@@ -311,17 +311,17 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
     { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION,
+      { TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION1,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         server_auth_props,
       },
-      { TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+      { TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         sasl_auth_props,
       },
-      { TP_IFACE_CHANNEL_INTERFACE_SECURABLE,
+      { TP_IFACE_CHANNEL_INTERFACE_SECURABLE1,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         securable_props,
@@ -339,7 +339,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   object_class->finalize = gabble_server_sasl_channel_finalize;
 
   channel_class->channel_type =
-    TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION;
+    TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION1;
   channel_class->get_interfaces = gabble_server_sasl_channel_get_interfaces;
   channel_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   channel_class->fill_immutable_properties =
@@ -351,7 +351,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   param_spec = g_param_spec_string ("auth-method",
       "Authentication method",
       "Method of authentication (D-Bus interface)",
-      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+      TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
       G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_AUTH_METHOD,
       param_spec);
@@ -458,7 +458,7 @@ change_current_state (GabbleServerSaslChannel *self,
 {
   self->priv->sasl_status = status;
 
-  tp_svc_channel_interface_sasl_authentication_emit_sasl_status_changed (
+  tp_svc_channel_interface_sasl_authentication1_emit_sasl_status_changed (
       self, self->priv->sasl_status,
       self->priv->sasl_error,
       self->priv->sasl_error_details);
@@ -512,7 +512,7 @@ gabble_server_sasl_channel_raise (DBusGMethodInvocation *context,
  * from D-Bus as StartMechanismWithData, it can't. */
 static void
 gabble_server_sasl_channel_start_mechanism_with_data (
-    TpSvcChannelInterfaceSASLAuthentication *iface,
+    TpSvcChannelInterfaceSASLAuthentication1 *iface,
     const gchar *in_Mechanism,
     const GArray *in_InitialData,
     DBusGMethodInvocation *context)
@@ -578,7 +578,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
 
 static void
 gabble_server_sasl_channel_start_mechanism (
-    TpSvcChannelInterfaceSASLAuthentication *iface,
+    TpSvcChannelInterfaceSASLAuthentication1 *iface,
     const gchar *mech,
     DBusGMethodInvocation *context)
 {
@@ -588,7 +588,7 @@ gabble_server_sasl_channel_start_mechanism (
 
 static void
 gabble_server_sasl_channel_respond (
-    TpSvcChannelInterfaceSASLAuthentication *channel,
+    TpSvcChannelInterfaceSASLAuthentication1 *channel,
     const GArray *in_Response_Data,
     DBusGMethodInvocation *context)
 {
@@ -632,13 +632,13 @@ gabble_server_sasl_channel_respond (
       (GDestroyNotify) wocky_g_string_free);
   complete_operation (self, TRUE);
 
-  tp_svc_channel_interface_sasl_authentication_return_from_respond (
+  tp_svc_channel_interface_sasl_authentication1_return_from_respond (
       context);
 }
 
 static void
 gabble_server_sasl_channel_accept_sasl (
-    TpSvcChannelInterfaceSASLAuthentication *channel,
+    TpSvcChannelInterfaceSASLAuthentication1 *channel,
     DBusGMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
@@ -722,13 +722,13 @@ gabble_server_sasl_channel_accept_sasl (
       complete_operation (self, FALSE);
     }
 
-  tp_svc_channel_interface_sasl_authentication_return_from_accept_sasl (
+  tp_svc_channel_interface_sasl_authentication1_return_from_accept_sasl (
       context);
 }
 
 static void
 gabble_server_sasl_channel_abort_sasl (
-    TpSvcChannelInterfaceSASLAuthentication *channel,
+    TpSvcChannelInterfaceSASLAuthentication1 *channel,
     guint in_Reason,
     const gchar *in_Debug_Message,
     DBusGMethodInvocation *context)
@@ -805,7 +805,7 @@ gabble_server_sasl_channel_abort_sasl (
         g_assert_not_reached ();
     }
 
-  tp_svc_channel_interface_sasl_authentication_return_from_abort_sasl (
+  tp_svc_channel_interface_sasl_authentication1_return_from_abort_sasl (
       context);
 }
 
@@ -814,7 +814,7 @@ sasl_auth_iface_init (gpointer klass,
     gpointer unused G_GNUC_UNUSED)
 {
 #define IMPLEMENT(x) \
-  tp_svc_channel_interface_sasl_authentication_implement_##x (   \
+  tp_svc_channel_interface_sasl_authentication1_implement_##x (   \
       klass, gabble_server_sasl_channel_##x)
   IMPLEMENT (start_mechanism);
   IMPLEMENT (start_mechanism_with_data);
@@ -878,7 +878,7 @@ gabble_server_sasl_channel_challenge_async (GabbleServerSaslChannel *self,
         g_array_append_vals (challenge_ay, challenge_data->str,
             challenge_data->len);
 
-        tp_svc_channel_interface_sasl_authentication_emit_new_challenge (
+        tp_svc_channel_interface_sasl_authentication1_emit_new_challenge (
             self, challenge_ay);
         break;
       case TP_SASL_STATUS_CLIENT_FAILED:

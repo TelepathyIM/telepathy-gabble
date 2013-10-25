@@ -58,7 +58,7 @@ static void call_muc_channel_close (TpBaseChannel *base);
 G_DEFINE_TYPE_WITH_CODE (GabbleCallMucChannel,
   gabble_call_muc_channel, GABBLE_TYPE_BASE_CALL_CHANNEL,
   G_IMPLEMENT_INTERFACE (G_TYPE_ASYNC_INITABLE, async_initable_iface_init);
-  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+  G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP1,
     tp_external_group_mixin_iface_init));
 
 typedef enum
@@ -292,7 +292,7 @@ call_muc_channel_got_codecs (GabbleCallMucChannel *self)
       tp_md = tp_base_media_call_content_get_local_media_description (content,
           0);
       codecs = tp_asv_get_boxed (tp_md,
-          TP_PROP_CALL_CONTENT_MEDIA_DESCRIPTION_CODECS,
+          TP_PROP_CALL1_CONTENT_MEDIA_DESCRIPTION_CODECS,
           TP_ARRAY_TYPE_CODEC_LIST);
 
       if (codecs == NULL)
@@ -555,7 +555,7 @@ call_muc_channel_send_new_state (GabbleCallMucChannel *self)
       tp_md = tp_base_media_call_content_get_local_media_description (
           TP_BASE_MEDIA_CALL_CONTENT (content), 0);
       codecs = tp_asv_get_boxed (tp_md,
-          TP_PROP_CALL_CONTENT_MEDIA_DESCRIPTION_CODECS,
+          TP_PROP_CALL1_CONTENT_MEDIA_DESCRIPTION_CODECS,
           TP_ARRAY_TYPE_CODEC_LIST);
       for (i = 0; i < codecs->len; i++)
         {
@@ -1064,14 +1064,14 @@ gabble_call_muc_channel_new_async (GabbleConnection *connection,
   if (request != NULL)
     {
       initial_audio = tp_asv_get_boolean (request,
-          TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
+          TP_PROP_CHANNEL_TYPE_CALL1_INITIAL_AUDIO, NULL);
       initial_video = tp_asv_get_boolean (request,
-          TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
+          TP_PROP_CHANNEL_TYPE_CALL1_INITIAL_VIDEO, NULL);
 
       initial_audio_name = tp_asv_get_string (request,
-          TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO_NAME);
+          TP_PROP_CHANNEL_TYPE_CALL1_INITIAL_AUDIO_NAME);
       initial_video_name = tp_asv_get_string (request,
-          TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO_NAME);
+          TP_PROP_CHANNEL_TYPE_CALL1_INITIAL_VIDEO_NAME);
     }
 
   g_async_initable_new_async (GABBLE_TYPE_CALL_MUC_CHANNEL,

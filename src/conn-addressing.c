@@ -34,7 +34,7 @@
 
 static const char *assumed_interfaces[] = {
     TP_IFACE_CONNECTION,
-    TP_IFACE_CONNECTION_INTERFACE_ADDRESSING,
+    TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1,
     NULL
   };
 
@@ -48,11 +48,11 @@ _fill_contact_attributes (TpHandleRepoIface *contact_repo,
   GHashTable *addresses = gabble_vcard_addresses_for_handle (contact_repo, contact);
 
   tp_contacts_mixin_set_contact_attribute (attributes_hash,
-      contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING_URIS,
+      contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_URIS,
       tp_g_value_slice_new_take_boxed (G_TYPE_STRV, uris));
 
   tp_contacts_mixin_set_contact_attribute (attributes_hash,
-      contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING_ADDRESSES,
+      contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_ADDRESSES,
       tp_g_value_slice_new_take_boxed (TP_HASH_TYPE_STRING_STRING_MAP, addresses));
 }
 
@@ -73,7 +73,7 @@ conn_addressing_fill_contact_attributes (GObject *obj,
 }
 
 static void
-conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing *iface,
+conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
     const gchar **uris,
     const gchar **interfaces,
     DBusGMethodInvocation *context)
@@ -100,7 +100,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing *iface,
   attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
       interfaces, assumed_interfaces);
 
-  tp_svc_connection_interface_addressing_return_from_get_contacts_by_uri (
+  tp_svc_connection_interface_addressing1_return_from_get_contacts_by_uri (
       context, requested, attributes);
 
   g_array_unref (handles);
@@ -109,7 +109,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing *iface,
 }
 
 static void
-conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing *iface,
+conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1 *iface,
     const gchar *field,
     const gchar **addresses,
     const gchar **interfaces,
@@ -138,7 +138,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing 
   attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
       interfaces, assumed_interfaces);
 
-  tp_svc_connection_interface_addressing_return_from_get_contacts_by_vcard_field (
+  tp_svc_connection_interface_addressing1_return_from_get_contacts_by_vcard_field (
       context, requested, attributes);
 
   g_array_unref (handles);
@@ -149,7 +149,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing 
 void
 conn_addressing_init (GabbleConnection *self) {
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
-      TP_IFACE_CONNECTION_INTERFACE_ADDRESSING,
+      TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1,
       conn_addressing_fill_contact_attributes);
 }
 
@@ -158,7 +158,7 @@ conn_addressing_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
 #define IMPLEMENT(x) \
-  tp_svc_connection_interface_addressing_implement_##x (\
+  tp_svc_connection_interface_addressing1_implement_##x (\
   g_iface, conn_addressing_##x)
 
   IMPLEMENT (get_contacts_by_uri);

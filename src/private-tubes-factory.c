@@ -409,10 +409,10 @@ add_service_to_array (const gchar *service,
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   if (type == TUBE_TYPE_STREAM)
     g_value_set_static_string (channel_type_value,
-        TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+        TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1);
   else
     g_value_set_static_string (channel_type_value,
-        TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+        TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1);
   g_hash_table_insert (fixed_properties, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
 
@@ -425,11 +425,11 @@ add_service_to_array (const gchar *service,
   g_value_set_string (target_handle_type_value, service);
   if (type == TUBE_TYPE_STREAM)
     g_hash_table_insert (fixed_properties,
-        TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE,
+        TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE,
         target_handle_type_value);
   else
     g_hash_table_insert (fixed_properties,
-        TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME,
+        TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME,
         target_handle_type_value);
 
   dbus_g_type_struct_set (&monster,
@@ -461,7 +461,7 @@ add_generic_tube_caps (GPtrArray *arr)
 
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   g_value_set_static_string (channel_type_value,
-      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1);
 
   g_hash_table_insert (fixed_properties, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
@@ -490,7 +490,7 @@ add_generic_tube_caps (GPtrArray *arr)
 
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   g_value_set_static_string (channel_type_value,
-      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1);
 
   g_hash_table_insert (fixed_properties, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
@@ -577,26 +577,26 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
             TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   /* this channel is not for this factory */
-  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1) &&
+      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1))
     return;
 
   if (tp_asv_get_uint32 (cap,
         TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL) != TP_HANDLE_TYPE_CONTACT)
     return;
 
-  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+  if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1))
     {
       service = tp_asv_get_string (cap,
-          TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
+          TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
 
       if (service != NULL)
         ns = g_strconcat (STREAM_CAP_PREFIX, service, NULL);
     }
-  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  else if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1))
     {
       service = tp_asv_get_string (cap,
-          TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
+          TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME);
 
       if (service != NULL)
         ns = g_strconcat (DBUS_CAP_PREFIX, service, NULL);
@@ -1024,10 +1024,10 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
   parameters = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
       (GDestroyNotify) tp_g_value_slice_free);
 
-  if (!tp_strdiff (ctype, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+  if (!tp_strdiff (ctype, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1))
     {
       service = tp_asv_get_string (request,
-          TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
+          TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (self->priv->conn,
               handle, handle_type,
@@ -1035,10 +1035,10 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
               tp_base_connection_get_self_handle (base_conn),
               service, parameters, tube_id, NULL, TRUE));
     }
-  else if (!tp_strdiff (ctype, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  else if (!tp_strdiff (ctype, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1))
     {
       service = tp_asv_get_string (request,
-          TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
+          TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME);
 
       stream_id = gabble_bytestream_factory_generate_stream_id ();
 
@@ -1213,7 +1213,7 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
       (GDestroyNotify) tp_g_value_slice_free);
 
   value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1);
   g_hash_table_insert (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
       value);
 
@@ -1232,7 +1232,7 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
       (GDestroyNotify) tp_g_value_slice_free);
 
   value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1);
   g_hash_table_insert (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
       value);
 
@@ -1268,11 +1268,11 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   channel_type = tp_asv_get_string (request_properties,
             TP_PROP_CHANNEL_CHANNEL_TYPE);
 
-  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE) &&
-      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1) &&
+      tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1))
     return FALSE;
 
-  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE))
+  if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1))
     {
       if (tp_channel_manager_asv_has_unknown_properties (request_properties,
               tubes_channel_fixed_properties,
@@ -1282,16 +1282,16 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
       /* "Service" is a mandatory, not-fixed property */
       service = tp_asv_get_string (request_properties,
-                TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
+                TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
       if (service == NULL)
         {
           g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
               "Request does not contain the mandatory property '%s'",
-              TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
+              TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
           goto error;
         }
     }
-  else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE))
+  else if (! tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1))
     {
       GError *err = NULL;
 
@@ -1303,12 +1303,12 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
 
       /* "ServiceName" is a mandatory, not-fixed property */
       service = tp_asv_get_string (request_properties,
-                TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
+                TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME);
       if (service == NULL)
         {
           g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
               "Request does not contain the mandatory property '%s'",
-              TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
+              TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME);
           goto error;
         }
 

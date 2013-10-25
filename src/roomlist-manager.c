@@ -263,7 +263,7 @@ static const gchar * const roomlist_channel_fixed_properties[] = {
 };
 
 static const gchar * const roomlist_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL_TYPE_ROOM_LIST ".Server",
+    TP_IFACE_CHANNEL_TYPE_ROOM_LIST1 ".Server",
     NULL
 };
 
@@ -278,7 +278,7 @@ gabble_roomlist_manager_type_foreach_channel_class (GType type,
   GValue *value;
 
   value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_ROOM_LIST);
+  g_value_set_static_string (value, TP_IFACE_CHANNEL_TYPE_ROOM_LIST1);
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
   value = tp_g_value_slice_new (G_TYPE_UINT);
@@ -322,7 +322,7 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"),
-        TP_IFACE_CHANNEL_TYPE_ROOM_LIST))
+        TP_IFACE_CHANNEL_TYPE_ROOM_LIST1))
     return FALSE;
 
   if (tp_asv_get_uint32 (request_properties,
@@ -340,7 +340,7 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
     goto error;
 
   server = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL_TYPE_ROOM_LIST ".Server");
+      TP_IFACE_CHANNEL_TYPE_ROOM_LIST1 ".Server");
 
   if (server == NULL || server[0] == '\0')
     {

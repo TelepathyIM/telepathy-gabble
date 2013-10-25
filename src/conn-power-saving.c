@@ -71,7 +71,7 @@ maybe_emit_power_saving_changed (GabbleConnection *self,
   if (enabling != enabled)
     {
       g_object_set (self, "power-saving", enabling, NULL);
-      tp_svc_connection_interface_power_saving_emit_power_saving_changed (
+      tp_svc_connection_interface_power_saving1_emit_power_saving_changed (
           self, enabling);
     }
 }
@@ -103,7 +103,7 @@ toggle_google_queueing_cb (GObject *source_object,
     {
       DEBUG ("%sabled queueing", enabling ? "en" : "dis");
 
-      tp_svc_connection_interface_power_saving_return_from_set_power_saving (
+      tp_svc_connection_interface_power_saving1_return_from_set_power_saving (
           queueing_context->dbus_context);
 
       if (!enabling)
@@ -117,7 +117,7 @@ toggle_google_queueing_cb (GObject *source_object,
 
 static void
 conn_power_saving_set_power_saving (
-    TpSvcConnectionInterfacePowerSaving *conn,
+    TpSvcConnectionInterfacePowerSaving1 *conn,
     gboolean enable,
     DBusGMethodInvocation *context)
 {
@@ -132,7 +132,7 @@ conn_power_saving_set_power_saving (
   if (enable == enabled)
     {
       /* no-op */
-      tp_svc_connection_interface_power_saving_return_from_set_power_saving (
+      tp_svc_connection_interface_power_saving1_return_from_set_power_saving (
           context);
       return;
     }
@@ -165,7 +165,7 @@ conn_power_saving_set_power_saving (
       g_object_unref (porter);
       maybe_emit_power_saving_changed (self, enable);
 
-      tp_svc_connection_interface_power_saving_return_from_set_power_saving (
+      tp_svc_connection_interface_power_saving1_return_from_set_power_saving (
           context);
     }
 }
@@ -175,7 +175,7 @@ conn_power_saving_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
 #define IMPLEMENT(x) \
-  tp_svc_connection_interface_power_saving_implement_##x (\
+  tp_svc_connection_interface_power_saving1_implement_##x (\
   g_iface, conn_power_saving_##x)
   IMPLEMENT (set_power_saving);
 #undef IMPLEMENT

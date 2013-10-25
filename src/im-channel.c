@@ -45,9 +45,9 @@ G_DEFINE_TYPE_WITH_CODE (GabbleIMChannel, gabble_im_channel,
     TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_TEXT,
       tp_message_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE1,
       tp_message_mixin_chat_state_iface_init)
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DESTROYABLE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_DESTROYABLE1,
       destroyable_iface_init));
 
 static void _gabble_im_channel_send_message (GObject *object,
@@ -90,8 +90,8 @@ gabble_im_channel_get_interfaces (TpBaseChannel *base)
   interfaces = TP_BASE_CHANNEL_CLASS (
       gabble_im_channel_parent_class)->get_interfaces (base);
 
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_DESTROYABLE);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE1);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_DESTROYABLE1);
 
   return interfaces;
 }
@@ -661,7 +661,7 @@ gabble_im_channel_close (TpBaseChannel *base_chan)
  * on interface Channel.Interface.Destroyable
  */
 static void
-gabble_im_channel_destroy (TpSvcChannelInterfaceDestroyable *iface,
+gabble_im_channel_destroy (TpSvcChannelInterfaceDestroyable1 *iface,
                            DBusGMethodInvocation *context)
 {
   g_assert (GABBLE_IS_IM_CHANNEL (iface));
@@ -670,7 +670,7 @@ gabble_im_channel_destroy (TpSvcChannelInterfaceDestroyable *iface,
   tp_message_mixin_clear ((GObject *) iface);
   gabble_im_channel_close (TP_BASE_CHANNEL (iface));
 
-  tp_svc_channel_interface_destroyable_return_from_destroy (context);
+  tp_svc_channel_interface_destroyable1_return_from_destroy (context);
 }
 
 static gboolean
@@ -697,9 +697,9 @@ static void
 destroyable_iface_init (gpointer g_iface,
                         gpointer iface_data)
 {
-  TpSvcChannelInterfaceDestroyableClass *klass = g_iface;
+  TpSvcChannelInterfaceDestroyable1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_interface_destroyable_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_interface_destroyable1_implement_##x (\
     klass, gabble_im_channel_##x)
   IMPLEMENT(destroy);
 #undef IMPLEMENT

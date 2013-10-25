@@ -162,7 +162,7 @@ static TpCMParamSpec jabber_params[] = {
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER (30),
     0 /* unused */, NULL, NULL },
 
-  { TP_PROP_CONNECTION_INTERFACE_CONTACT_LIST_DOWNLOAD_AT_CONNECTION,
+  { TP_PROP_CONNECTION_INTERFACE_CONTACT_LIST1_DOWNLOAD_AT_CONNECTION,
     DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT | TP_CONN_MGR_PARAM_FLAG_DBUS_PROPERTY,
     GUINT_TO_POINTER (TRUE),
@@ -255,7 +255,7 @@ struct ParamMapping {
   SAME ("alias"),
   SAME ("fallback-socks5-proxies"),
   SAME ("keepalive-interval"),
-  MAP (TP_PROP_CONNECTION_INTERFACE_CONTACT_LIST_DOWNLOAD_AT_CONNECTION,
+  MAP (TP_PROP_CONNECTION_INTERFACE_CONTACT_LIST1_DOWNLOAD_AT_CONNECTION,
        "download-roster-at-connection"),
   MAP (GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
        "decloak-automatically"),
@@ -329,9 +329,9 @@ get_interfaces_array (TpBaseProtocol *self)
   interfaces = TP_BASE_PROTOCOL_CLASS (
       gabble_jabber_protocol_parent_class)->get_interfaces_array (self);
 
-  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_PRESENCE);
-  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_ADDRESSING);
-  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_AVATARS);
+  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_PRESENCE1);
+  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_ADDRESSING1);
+  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_AVATARS1);
 
   return interfaces;
 }
@@ -395,8 +395,8 @@ static GStrv
 dup_authentication_types (TpBaseProtocol *self)
 {
   const gchar * const types[] = {
-    TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION,
-    TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION,
+    TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION1,
+    TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
     NULL };
 
   return g_strdupv ((GStrv) types);

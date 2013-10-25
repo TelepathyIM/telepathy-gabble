@@ -67,18 +67,18 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTubeStream, gabble_tube_stream,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
       tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_TUBE_IFACE, tube_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE1,
       streamtube_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_TUBE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_TUBE1,
       NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP1,
       tp_external_group_mixin_iface_init);
 );
 
 static const gchar * const gabble_tube_stream_channel_allowed_properties[] = {
     TP_IFACE_CHANNEL ".TargetHandle",
     TP_IFACE_CHANNEL ".TargetID",
-    TP_IFACE_CHANNEL_TYPE_STREAM_TUBE ".Service",
+    TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1 ".Service",
     NULL
 };
 
@@ -178,7 +178,7 @@ gabble_tube_stream_get_interfaces (TpBaseChannel *base)
   interfaces = TP_BASE_CHANNEL_CLASS (
       gabble_tube_stream_parent_class)->get_interfaces (base);
 
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_TUBE);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_TUBE1);
 
   return interfaces;
 }
@@ -252,7 +252,7 @@ fire_connection_closed (GabbleTubeStream *self,
    * same connection. */
   g_hash_table_remove (priv->transport_to_id, transport);
 
-  tp_svc_channel_type_stream_tube_emit_connection_closed (self,
+  tp_svc_channel_type_stream_tube1_emit_connection_closed (self,
       connection_id, error, debug_msg);
 }
 
@@ -554,7 +554,7 @@ fire_new_local_connection (GabbleTubeStream *self,
 
   connection_id = generate_connection_id (self, transport);
 
-  tp_svc_channel_type_stream_tube_emit_new_local_connection (self,
+  tp_svc_channel_type_stream_tube1_emit_new_local_connection (self,
       connection_id);
 }
 
@@ -877,7 +877,7 @@ fire_new_remote_connection (GabbleTubeStream *self,
         transport));
   g_assert (connection_id != 0);
 
-  tp_svc_channel_type_stream_tube_emit_new_remote_connection (self,
+  tp_svc_channel_type_stream_tube1_emit_new_remote_connection (self,
       contact, tp_handle_inspect (contact_repo, contact),
       &access_control_param, connection_id);
 
@@ -1385,15 +1385,15 @@ gabble_tube_stream_fill_immutable_properties (TpBaseChannel *chan,
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, "Service",
-      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, "SupportedSocketTypes",
+      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1, "Service",
+      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1, "SupportedSocketTypes",
       NULL);
 
   if (!tp_base_channel_is_requested (chan))
     {
       tp_dbus_properties_mixin_fill_properties_hash (
           G_OBJECT (chan), properties,
-          TP_IFACE_CHANNEL_INTERFACE_TUBE, "Parameters",
+          TP_IFACE_CHANNEL_INTERFACE_TUBE1, "Parameters",
           NULL);
     }
 }
@@ -1428,12 +1428,12 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE,
+      { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         stream_tube_props,
       },
-      { TP_IFACE_CHANNEL_INTERFACE_TUBE,
+      { TP_IFACE_CHANNEL_INTERFACE_TUBE1,
         tp_dbus_properties_mixin_getter_gobject_properties,
         NULL,
         tube_iface_props,
@@ -1450,7 +1450,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   object_class->dispose = gabble_tube_stream_dispose;
   object_class->finalize = gabble_tube_stream_finalize;
 
-  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_STREAM_TUBE;
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1;
   base_class->get_interfaces = gabble_tube_stream_get_interfaces;
   base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
   base_class->close = gabble_tube_stream_close;
@@ -1680,7 +1680,7 @@ gabble_tube_stream_accept (GabbleTubeIface *tube,
 
   priv->state = TP_TUBE_CHANNEL_STATE_OPEN;
 
-  tp_svc_channel_interface_tube_emit_tube_channel_state_changed (self,
+  tp_svc_channel_interface_tube1_emit_tube_channel_state_changed (self,
       TP_TUBE_CHANNEL_STATE_OPEN);
 
   g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
@@ -1805,7 +1805,7 @@ gabble_tube_stream_add_bytestream (GabbleTubeIface *tube,
           DEBUG ("Received first connection. Tube is now open");
           priv->state = TP_TUBE_CHANNEL_STATE_OPEN;
 
-          tp_svc_channel_interface_tube_emit_tube_channel_state_changed (
+          tp_svc_channel_interface_tube1_emit_tube_channel_state_changed (
               self, TP_TUBE_CHANNEL_STATE_OPEN);
 
           g_signal_emit (G_OBJECT (self), signals[OPENED], 0);
@@ -2228,7 +2228,7 @@ gabble_tube_stream_get_supported_socket_types (void)
  * on Channel.Type.StreamTube
  */
 static void
-gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube *iface,
+gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube1 *iface,
     guint address_type,
     const GValue *address,
     guint access_control,
@@ -2281,16 +2281,16 @@ gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube *iface,
 
   if (cls->target_handle_type == TP_HANDLE_TYPE_CONTACT)
     {
-      tp_svc_channel_interface_tube_emit_tube_channel_state_changed (
+      tp_svc_channel_interface_tube1_emit_tube_channel_state_changed (
           self, TP_TUBE_CHANNEL_STATE_REMOTE_PENDING);
     }
   else
     {
-      tp_svc_channel_interface_tube_emit_tube_channel_state_changed (
+      tp_svc_channel_interface_tube1_emit_tube_channel_state_changed (
           self, TP_TUBE_CHANNEL_STATE_OPEN);
     }
 
-  tp_svc_channel_type_stream_tube_return_from_offer (context);
+  tp_svc_channel_type_stream_tube1_return_from_offer (context);
 }
 
 /**
@@ -2300,7 +2300,7 @@ gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube *iface,
  * on Channel.Type.StreamTube
  */
 static void
-gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube *iface,
+gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube1 *iface,
     guint address_type,
     guint access_control,
     const GValue *access_control_param,
@@ -2330,7 +2330,7 @@ gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube *iface,
     gabble_muc_channel_send_presence (self->muc, NULL);
 #endif
 
-  tp_svc_channel_type_stream_tube_return_from_accept (context,
+  tp_svc_channel_type_stream_tube1_return_from_accept (context,
       priv->address);
 }
 
@@ -2355,10 +2355,10 @@ static void
 streamtube_iface_init (gpointer g_iface,
                        gpointer iface_data)
 {
-  TpSvcChannelTypeStreamTubeClass *klass =
-      (TpSvcChannelTypeStreamTubeClass *) g_iface;
+  TpSvcChannelTypeStreamTube1Class *klass =
+      (TpSvcChannelTypeStreamTube1Class *) g_iface;
 
-#define IMPLEMENT(x, suffix) tp_svc_channel_type_stream_tube_implement_##x (\
+#define IMPLEMENT(x, suffix) tp_svc_channel_type_stream_tube1_implement_##x (\
     klass, gabble_tube_stream_##x##suffix)
   IMPLEMENT(offer,_async);
   IMPLEMENT(accept,_async);

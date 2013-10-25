@@ -95,40 +95,40 @@ static TpBaseContactList *_gabble_plugin_connection_get_contact_list (
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     gabble_connection,
     TP_TYPE_BASE_CONNECTION,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING1,
       conn_aliasing_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS1,
       conn_avatars_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO1,
       conn_contact_info_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
        tp_dbus_properties_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
       tp_contacts_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST1,
       tp_base_contact_list_mixin_list_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS1,
       tp_base_contact_list_mixin_groups_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_BLOCKING,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_BLOCKING1,
       tp_base_contact_list_mixin_blocking_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE1,
       tp_presence_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_GABBLE_DECLOAK,
       conn_decloak_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION1,
       location_iface_init);
     G_IMPLEMENT_INTERFACE
-      (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1,
       gabble_conn_contact_caps_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_FUTURE,
       conn_future_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
       conn_mail_notif_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES1,
       conn_client_types_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_POWER_SAVING,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_POWER_SAVING1,
       conn_power_saving_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ADDRESSING,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ADDRESSING1,
       conn_addressing_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_PLUGIN_CONNECTION,
       gabble_plugin_connection_iface_init);
@@ -405,7 +405,7 @@ gabble_connection_constructor (GType type,
   DEBUG("Post-construction: (GabbleConnection *)%p", self);
 
   tp_base_connection_add_possible_client_interest (base,
-      TP_IFACE_QUARK_CONNECTION_INTERFACE_MAIL_NOTIFICATION);
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_MAIL_NOTIFICATION1);
 
   self->req_pipeline = gabble_request_pipeline_new (self);
   self->disco = gabble_disco_new (self);
@@ -441,7 +441,7 @@ gabble_connection_constructor (GType type,
   conn_addressing_init (self);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
-      TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
+      TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1,
           conn_contact_capabilities_fill_contact_attributes);
 
   self->bytestream_factory = gabble_bytestream_factory_new (self);
@@ -860,24 +860,24 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
 
 static const gchar *implemented_interfaces[] = {
     /* conditionally present interfaces */
-    TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+    TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
 
     /* always present interfaces */
-    TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
-    TP_IFACE_CONNECTION_INTERFACE_ALIASING,
-    TP_IFACE_CONNECTION_INTERFACE_PRESENCE,
-    TP_IFACE_CONNECTION_INTERFACE_AVATARS,
-    TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+    TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING1,
+    TP_IFACE_CONNECTION_INTERFACE_ALIASING1,
+    TP_IFACE_CONNECTION_INTERFACE_PRESENCE1,
+    TP_IFACE_CONNECTION_INTERFACE_AVATARS1,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1,
     TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
-    TP_IFACE_CONNECTION_INTERFACE_CONTACT_LIST,
-    TP_IFACE_CONNECTION_INTERFACE_CONTACT_GROUPS,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_LIST1,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_GROUPS1,
     TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
-    TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES,
-    TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1,
+    TP_IFACE_CONNECTION_INTERFACE_LOCATION1,
     GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
     GABBLE_IFACE_CONNECTION_FUTURE,
-    TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
-    TP_IFACE_CONNECTION_INTERFACE_ADDRESSING,
+    TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1,
+    TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1,
     NULL
 };
 static const gchar **interfaces_always_present = implemented_interfaces + 1;
@@ -952,17 +952,17 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { NULL }
   };
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-        /* 0 */ { TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+        /* 0 */ { TP_IFACE_CONNECTION_INTERFACE_LOCATION1,
           conn_location_properties_getter,
           conn_location_properties_setter,
           location_props,
         },
-        /* 1 */ { TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+        /* 1 */ { TP_IFACE_CONNECTION_INTERFACE_AVATARS1,
           conn_avatars_properties_getter,
           NULL,
           NULL,
         },
-        /* 2 */ { TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+        /* 2 */ { TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1,
           conn_contact_info_properties_getter,
           NULL,
           NULL,
@@ -972,17 +972,17 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           tp_dbus_properties_mixin_setter_gobject_properties,
           decloak_props,
         },
-        { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION,
+        { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
           conn_mail_notif_properties_getter,
           NULL,
           mail_notif_props,
         },
-        { TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING,
+        { TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING1,
           tp_dbus_properties_mixin_getter_gobject_properties,
           NULL,
           power_saving_props,
         },
-        { TP_IFACE_CONNECTION_INTERFACE_ALIASING,
+        { TP_IFACE_CONNECTION_INTERFACE_ALIASING1,
           conn_aliasing_properties_getter,
           NULL,
           conn_aliasing_properties,
@@ -2777,7 +2777,7 @@ set_status_to_connected (GabbleConnection *conn)
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
     {
        const gchar *ifaces[] =
-         { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION, NULL };
+         { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
@@ -2785,7 +2785,7 @@ set_status_to_connected (GabbleConnection *conn)
   if (tp_base_contact_list_can_block (gabble_connection_get_contact_list (conn)))
     {
       const gchar *ifaces[] =
-        { TP_IFACE_CONNECTION_INTERFACE_CONTACT_BLOCKING, NULL };
+        { TP_IFACE_CONNECTION_INTERFACE_CONTACT_BLOCKING1, NULL };
 
       tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
     }
@@ -3119,7 +3119,7 @@ _emit_capabilities_changed (GabbleConnection *conn,
       (GDestroyNotify) gabble_free_rcc_list);
   g_hash_table_insert (hash, GUINT_TO_POINTER (handle), caps_arr);
 
-  tp_svc_connection_interface_contact_capabilities_emit_contact_capabilities_changed (
+  tp_svc_connection_interface_contact_capabilities1_emit_contact_capabilities_changed (
       conn, hash);
 
   g_hash_table_unref (hash);
@@ -3289,7 +3289,7 @@ check_data_form_is_valid (GabbleConnection *self,
  */
 static void
 gabble_connection_update_capabilities (
-    TpSvcConnectionInterfaceContactCapabilities *iface,
+    TpSvcConnectionInterfaceContactCapabilities1 *iface,
     const GPtrArray *clients,
     DBusGMethodInvocation *context)
 {
@@ -3409,7 +3409,7 @@ gabble_connection_update_capabilities (
       gabble_capability_set_free (old_caps);
     }
 
-  tp_svc_connection_interface_contact_capabilities_return_from_update_capabilities (
+  tp_svc_connection_interface_contact_capabilities1_return_from_update_capabilities (
       context);
 }
 
@@ -3429,7 +3429,7 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash,
           handle,
-          TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES"/capabilities",
+          TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1"/capabilities",
           val);
     }
 }
@@ -3518,10 +3518,10 @@ gabble_connection_send_presence (GabbleConnection *conn,
 static void
 gabble_conn_contact_caps_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceContactCapabilitiesClass *klass = g_iface;
+  TpSvcConnectionInterfaceContactCapabilities1Class *klass = g_iface;
 
 #define IMPLEMENT(x) \
-    tp_svc_connection_interface_contact_capabilities_implement_##x (\
+    tp_svc_connection_interface_contact_capabilities1_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(update_capabilities);
 #undef IMPLEMENT

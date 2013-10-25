@@ -158,7 +158,7 @@ request_location_reply_cb (GObject *source,
           location = g_hash_table_new (NULL, NULL);
         }
 
-      tp_svc_connection_interface_location_return_from_request_location (
+      tp_svc_connection_interface_location1_return_from_request_location (
           ctx->context, location);
       g_hash_table_unref (location);
     }
@@ -170,7 +170,7 @@ request_location_reply_cb (GObject *source,
 
 static void
 location_request_location (
-    TpSvcConnectionInterfaceLocation *iface,
+    TpSvcConnectionInterfaceLocation1 *iface,
     TpHandle handle,
     DBusGMethodInvocation *context)
 {
@@ -302,7 +302,7 @@ set_location_sent_cb (GabbleConnection *conn,
 }
 
 static void
-location_set_location (TpSvcConnectionInterfaceLocation *iface,
+location_set_location (TpSvcConnectionInterfaceLocation1 *iface,
                        GHashTable *location,
                        DBusGMethodInvocation *context)
 {
@@ -363,9 +363,9 @@ out:
 void
 location_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceLocationClass *klass = g_iface;
+  TpSvcConnectionInterfaceLocation1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_connection_interface_location_implement_##x \
+#define IMPLEMENT(x) tp_svc_connection_interface_location1_implement_##x \
   (klass, location_##x)
   IMPLEMENT(set_location);
   IMPLEMENT(request_location);
@@ -444,7 +444,7 @@ conn_location_properties_setter (GObject *object,
   GValue *access_control_type_value;
   TpAccessControlType access_control_type;
   g_return_val_if_fail (interface ==
-      TP_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION1, FALSE);
 
   /* There is only one property with write access. So TpDBusPropertiesMixin
    * already checked this. */
@@ -567,7 +567,7 @@ update_location_from_item (
       g_hash_table_insert (location, g_strdup (mapping->tp_name), value);
     }
 
-  tp_svc_connection_interface_location_emit_location_updated (conn,
+  tp_svc_connection_interface_location1_emit_location_updated (conn,
       contact, location);
   gabble_presence_cache_update_location (conn->presence_cache, contact,
       location);
@@ -622,7 +622,7 @@ conn_location_fill_contact_attributes (GObject *obj,
               TP_HASH_TYPE_STRING_VARIANT_MAP, location);
 
           tp_contacts_mixin_set_contact_attribute (attributes_hash,
-              handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION"/location", val);
+              handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION1"/location", val);
         }
     }
 }
@@ -631,7 +631,7 @@ void
 conn_location_init (GabbleConnection *conn)
 {
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_LOCATION,
+    TP_IFACE_CONNECTION_INTERFACE_LOCATION1,
     conn_location_fill_contact_attributes);
 
   conn->pep_location = wocky_pep_service_new (NS_GEOLOC, TRUE);

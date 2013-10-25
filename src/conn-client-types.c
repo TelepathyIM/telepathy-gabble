@@ -79,7 +79,7 @@ get_client_types_from_handle (GabbleConnection *conn,
 }
 
 static void
-client_types_request_client_types (TpSvcConnectionInterfaceClientTypes *iface,
+client_types_request_client_types (TpSvcConnectionInterfaceClientTypes1 *iface,
     TpHandle contact,
     DBusGMethodInvocation *context)
 {
@@ -110,7 +110,7 @@ client_types_request_client_types (TpSvcConnectionInterfaceClientTypes *iface,
       types = g_strdupv (empty);
     }
 
-  tp_svc_connection_interface_client_types_return_from_request_client_types (
+  tp_svc_connection_interface_client_types1_return_from_request_client_types (
       context, (const gchar **) types);
 
   g_strfreev (types);
@@ -120,9 +120,9 @@ void
 conn_client_types_iface_init (gpointer g_iface,
     gpointer iface_data)
 {
-  TpSvcConnectionInterfaceClientTypesClass *klass = g_iface;
+  TpSvcConnectionInterfaceClientTypes1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_connection_interface_client_types_implement_##x \
+#define IMPLEMENT(x) tp_svc_connection_interface_client_types1_implement_##x \
   (klass, client_types_##x)
   IMPLEMENT (request_client_types);
 #undef IMPLEMENT
@@ -148,7 +148,7 @@ conn_client_types_fill_contact_attributes (GObject *obj,
       val = tp_g_value_slice_new_take_boxed (G_TYPE_STRV, types);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
-          TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES "/client-types", val);
+          TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1 "/client-types", val);
     }
 }
 
@@ -181,7 +181,7 @@ idle_timeout (gpointer user_data)
 
   if (get_client_types_from_handle (data->conn, data->handle, &types))
     {
-      tp_svc_connection_interface_client_types_emit_client_types_updated (
+      tp_svc_connection_interface_client_types1_emit_client_types_updated (
           data->conn, data->handle, (const gchar **) types);
       g_strfreev (types);
     }
@@ -221,7 +221,7 @@ void
 conn_client_types_init (GabbleConnection *conn)
 {
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES,
+    TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1,
     conn_client_types_fill_contact_attributes);
 
   g_signal_connect (conn->presence_cache, "client-types-updated",

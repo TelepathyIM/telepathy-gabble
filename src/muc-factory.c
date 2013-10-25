@@ -1104,12 +1104,12 @@ static const gchar * const * muc_tubes_channel_fixed_properties =
 static const gchar * const muc_channel_allowed_properties[] = {
     TP_PROP_CHANNEL_TARGET_HANDLE,
     TP_PROP_CHANNEL_TARGET_ID,
-    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS,
-    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES,
-    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS,
-    TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INVITATION_MESSAGE,
-    TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME,
-    TP_PROP_CHANNEL_INTERFACE_ROOM_SERVER,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_CHANNELS,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_HANDLES,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_IDS,
+    TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INVITATION_MESSAGE,
+    TP_PROP_CHANNEL_INTERFACE_ROOM1_ROOM_NAME,
+    TP_PROP_CHANNEL_INTERFACE_ROOM1_SERVER,
     NULL
 };
 
@@ -1139,20 +1139,20 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
 
   /* Muc Channel.Type.StreamTube */
   g_value_set_static_string (channel_type_value,
-      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE);
+      TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1);
   func (type, table, gabble_tube_stream_channel_get_allowed_properties (),
       user_data);
 
   /* Muc Channel.Type.DBusTube */
   g_value_set_static_string (channel_type_value,
-      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE);
+      TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1);
   func (type, table, gabble_tube_dbus_channel_get_allowed_properties (),
       user_data);
 
 #ifdef ENABLE_VOIP
   /* Muc Channel.Type.Call */
   g_value_set_static_string (channel_type_value,
-      TP_IFACE_CHANNEL_TYPE_CALL);
+      TP_IFACE_CHANNEL_TYPE_CALL1);
   func (type, table,
       gabble_media_factory_call_channel_allowed_properties (),
       user_data);
@@ -1196,21 +1196,21 @@ handle_text_channel_request (GabbleMucFactory *self,
     return FALSE;
 
   initial_channels = tp_asv_get_boxed (request_properties,
-      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS,
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_CHANNELS,
       TP_ARRAY_TYPE_OBJECT_PATH_LIST);
   initial_handles = tp_asv_get_boxed (request_properties,
-      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES,
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_HANDLES,
       DBUS_TYPE_G_UINT_ARRAY);
   initial_ids = tp_asv_get_boxed (request_properties,
-      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS,
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_IDS,
       G_TYPE_STRV);
   invite_msg = tp_asv_get_string (request_properties,
-      TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INVITATION_MESSAGE);
+      TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INVITATION_MESSAGE);
 
   room_name = tp_asv_get_string (request_properties,
-      TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME);
+      TP_PROP_CHANNEL_INTERFACE_ROOM1_ROOM_NAME);
   server_prop = tp_asv_get_string (request_properties,
-      TP_PROP_CHANNEL_INTERFACE_ROOM_SERVER);
+      TP_PROP_CHANNEL_INTERFACE_ROOM1_SERVER);
 
   handles = tp_handle_set_new (contact_handles);
   continue_handles = tp_intset_new ();
@@ -1584,12 +1584,12 @@ handle_stream_tube_channel_request (GabbleMucFactory *self,
 
   /* "Service" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-            TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
+            TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
   if (service == NULL)
     {
       g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          TP_PROP_CHANNEL_TYPE_STREAM_TUBE_SERVICE);
+          TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
       return FALSE;
     }
 
@@ -1615,12 +1615,12 @@ handle_dbus_tube_channel_request (GabbleMucFactory *self,
 
   /* "ServiceName" is a mandatory, not-fixed property */
   service = tp_asv_get_string (request_properties,
-      TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
+      TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME);
   if (service == NULL)
     {
       g_set_error (error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Request does not contain the mandatory property '%s'",
-          TP_PROP_CHANNEL_TYPE_DBUS_TUBE_SERVICE_NAME);
+          TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME);
       return FALSE;
     }
 
@@ -1676,9 +1676,9 @@ handle_call_channel_request (GabbleMucFactory *self,
     return FALSE;
 
   initial_audio = tp_asv_get_boolean (request_properties,
-      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_AUDIO, NULL);
+      TP_PROP_CHANNEL_TYPE_CALL1_INITIAL_AUDIO, NULL);
   initial_video = tp_asv_get_boolean (request_properties,
-      TP_PROP_CHANNEL_TYPE_CALL_INITIAL_VIDEO, NULL);
+      TP_PROP_CHANNEL_TYPE_CALL1_INITIAL_VIDEO, NULL);
 
   if (!initial_audio && !initial_video)
     {
@@ -1742,10 +1742,10 @@ typedef struct {
 
 static ChannelTypeHandler channel_type_handlers[] = {
     { TP_IFACE_CHANNEL_TYPE_TEXT, handle_text_channel_request },
-    { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE, handle_stream_tube_channel_request },
-    { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE, handle_dbus_tube_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1, handle_stream_tube_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1, handle_dbus_tube_channel_request },
 #ifdef ENABLE_VOIP
-    { TP_IFACE_CHANNEL_TYPE_CALL, handle_call_channel_request },
+    { TP_IFACE_CHANNEL_TYPE_CALL1, handle_call_channel_request },
 #endif
     { NULL }
 };
@@ -1772,16 +1772,16 @@ gabble_muc_factory_request (GabbleMucFactory *self,
   conference = (handle_type == TP_HANDLE_TYPE_NONE &&
       !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
       (g_hash_table_lookup (request_properties,
-         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_CHANNELS) ||
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_CHANNELS) ||
        g_hash_table_lookup (request_properties,
-         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_HANDLES) ||
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_HANDLES) ||
        g_hash_table_lookup (request_properties,
-         TP_PROP_CHANNEL_INTERFACE_CONFERENCE_INITIAL_INVITEE_IDS)));
+         TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_IDS)));
 
   room = (handle_type == TP_HANDLE_TYPE_NONE
       && !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT)
       && g_hash_table_lookup (request_properties,
-          TP_PROP_CHANNEL_INTERFACE_ROOM_ROOM_NAME));
+          TP_PROP_CHANNEL_INTERFACE_ROOM1_ROOM_NAME));
 
   /* the channel must either be a room, or a new conference */
   if (handle_type != TP_HANDLE_TYPE_ROOM && !conference && !room)

@@ -40,7 +40,7 @@ static void roomlist_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleRoomlistChannel, gabble_roomlist_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST1,
       roomlist_iface_init);
     );
 
@@ -153,7 +153,7 @@ gabble_roomlist_channel_fill_immutable_properties (
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      TP_IFACE_CHANNEL_TYPE_ROOM_LIST, "Server",
+      TP_IFACE_CHANNEL_TYPE_ROOM_LIST1, "Server",
       NULL);
 }
 
@@ -182,7 +182,7 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *klass)
   object_class->dispose = gabble_roomlist_channel_dispose;
   object_class->finalize = gabble_roomlist_channel_finalize;
 
-  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_ROOM_LIST;
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_ROOM_LIST1;
   base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   base_class->get_object_path_suffix =
       gabble_roomlist_channel_get_object_path_suffix;
@@ -199,7 +199,7 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *klass)
       param_spec);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
-      TP_IFACE_QUARK_CHANNEL_TYPE_ROOM_LIST,
+      TP_IFACE_QUARK_CHANNEL_TYPE_ROOM_LIST1,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,
       roomlist_props);
 }
@@ -279,8 +279,8 @@ emit_room_signal (gpointer data)
   if (priv->pending_room_signals->len == 0)
       return TRUE;
 
-  tp_svc_channel_type_room_list_emit_got_rooms (
-      (TpSvcChannelTypeRoomList *) chan, priv->pending_room_signals);
+  tp_svc_channel_type_room_list1_emit_got_rooms (
+      (TpSvcChannelTypeRoomList1 *) chan, priv->pending_room_signals);
 
   while (priv->pending_room_signals->len != 0)
     {
@@ -431,8 +431,8 @@ rooms_end_cb (gpointer data, gpointer user_data)
   emit_room_signal (chan);
 
   priv->listing = FALSE;
-  tp_svc_channel_type_room_list_emit_listing_rooms (
-      (TpSvcChannelTypeRoomList *) chan, FALSE);
+  tp_svc_channel_type_room_list1_emit_listing_rooms (
+      (TpSvcChannelTypeRoomList1 *) chan, FALSE);
 
   g_source_remove (priv->timer_source_id);
   priv->timer_source_id = 0;
@@ -448,8 +448,8 @@ stop_listing (GabbleRoomlistChannel *self)
     {
       emit_room_signal (self);
       priv->listing = FALSE;
-      tp_svc_channel_type_room_list_emit_listing_rooms (
-          (TpSvcChannelTypeRoomList *) self, FALSE);
+      tp_svc_channel_type_room_list1_emit_listing_rooms (
+          (TpSvcChannelTypeRoomList1 *) self, FALSE);
     }
 
   if (priv->disco_pipeline != NULL)
@@ -479,7 +479,7 @@ gabble_roomlist_channel_close (TpBaseChannel *base)
 }
 
 static void
-gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList *iface,
+gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList1 *iface,
                                            DBusGMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
@@ -488,12 +488,12 @@ gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList *iface,
   g_assert (GABBLE_IS_ROOMLIST_CHANNEL (self));
 
   priv = self->priv;
-  tp_svc_channel_type_room_list_return_from_get_listing_rooms (
+  tp_svc_channel_type_room_list1_return_from_get_listing_rooms (
       context, priv->listing);
 }
 
 static void
-gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
+gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList1 *iface,
                                     DBusGMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
@@ -503,7 +503,7 @@ gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
       GABBLE_CONNECTION (tp_base_channel_get_connection (base));
 
   priv->listing = TRUE;
-  tp_svc_channel_type_room_list_emit_listing_rooms (iface, TRUE);
+  tp_svc_channel_type_room_list1_emit_listing_rooms (iface, TRUE);
 
   if (priv->disco_pipeline == NULL)
     priv->disco_pipeline = gabble_disco_pipeline_init (conn->disco,
@@ -514,11 +514,11 @@ gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList *iface,
   priv->timer_source_id = g_timeout_add (ROOM_SIGNAL_INTERVAL,
       emit_room_signal, self);
 
-  tp_svc_channel_type_room_list_return_from_list_rooms (context);
+  tp_svc_channel_type_room_list1_return_from_list_rooms (context);
 }
 
 static void
-gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList *iface,
+gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList1 *iface,
                                       DBusGMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
@@ -527,16 +527,16 @@ gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList *iface,
 
   stop_listing (self);
 
-  tp_svc_channel_type_room_list_return_from_stop_listing (context);
+  tp_svc_channel_type_room_list1_return_from_stop_listing (context);
 }
 
 static void
 roomlist_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcChannelTypeRoomListClass *klass =
-    (TpSvcChannelTypeRoomListClass *) g_iface;
+  TpSvcChannelTypeRoomList1Class *klass =
+    (TpSvcChannelTypeRoomList1Class *) g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_type_room_list_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_type_room_list1_implement_##x (\
     klass, gabble_roomlist_channel_##x)
   IMPLEMENT(get_listing_rooms);
   IMPLEMENT(list_rooms);

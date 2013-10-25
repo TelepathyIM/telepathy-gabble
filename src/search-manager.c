@@ -319,7 +319,7 @@ static const gchar * const search_channel_fixed_properties[] = {
 };
 
 static const gchar * const search_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server",
+    TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1 ".Server",
     NULL
 };
 
@@ -334,7 +334,7 @@ gabble_search_manager_type_foreach_channel_class (GType type,
   GValue *value;
 
   value = tp_g_value_slice_new_string (
-      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH);
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1);
   g_hash_table_insert (table, (gchar *) search_channel_fixed_properties[0],
       value);
 
@@ -471,7 +471,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   channel_type = tp_asv_get_string (request_properties,
       TP_IFACE_CHANNEL ".ChannelType");
 
-  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH))
+  if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1))
     return FALSE;
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
@@ -480,7 +480,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
     goto error;
 
   server = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH ".Server");
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1 ".Server");
 
   if (tp_str_empty (server))
     {

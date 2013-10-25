@@ -237,7 +237,7 @@ call_content_local_media_description_updated (GabbleCallContent *self,
   WockyJingleMediaDescription *md = wocky_jingle_media_description_new ();
 
   md->codecs = codec_array_to_list (tp_asv_get_boxed (properties,
-          TP_PROP_CALL_CONTENT_MEDIA_DESCRIPTION_CODECS,
+          TP_PROP_CALL1_CONTENT_MEDIA_DESCRIPTION_CODECS,
           TP_ARRAY_TYPE_CODEC_LIST));
 
   for (l = self->priv->contents; l != NULL; l = g_list_next (l))
@@ -313,7 +313,7 @@ call_content_setup_jingle (GabbleCallContent *self,
   if (tp_md != NULL)
     {
       md->codecs = codec_array_to_list (tp_asv_get_boxed (tp_md,
-          TP_PROP_CALL_CONTENT_MEDIA_DESCRIPTION_CODECS,
+          TP_PROP_CALL1_CONTENT_MEDIA_DESCRIPTION_CODECS,
           TP_ARRAY_TYPE_CODEC_LIST));
     }
 

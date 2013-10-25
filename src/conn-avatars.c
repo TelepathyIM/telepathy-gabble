@@ -54,7 +54,7 @@ update_own_avatar_sha1 (GabbleConnection *conn,
   if (!tp_strdiff (sha1, conn->self_presence->avatar_sha1))
     return TRUE;
 
-  tp_svc_connection_interface_avatars_emit_avatar_updated (conn,
+  tp_svc_connection_interface_avatars1_emit_avatar_updated (conn,
       tp_base_connection_get_self_handle (base), sha1);
 
   g_free (conn->self_presence->avatar_sha1);
@@ -89,7 +89,7 @@ connection_avatar_update_cb (GabblePresenceCache *cache,
   if (handle == tp_base_connection_get_self_handle (base))
     update_own_avatar_sha1 (conn, sha1, NULL);
   else
-    tp_svc_connection_interface_avatars_emit_avatar_updated (conn,
+    tp_svc_connection_interface_avatars1_emit_avatar_updated (conn,
         handle, sha1);
 }
 
@@ -144,7 +144,7 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
       GUINT_TO_POINTER (tp_base_connection_get_self_handle (base)),
       g_strdup (sha1));
 
-  tp_svc_connection_interface_avatars_return_from_get_known_avatar_tokens (
+  tp_svc_connection_interface_avatars1_return_from_get_known_avatar_tokens (
       context->invocation, context->ret);
   g_hash_table_unref (context->ret);
 
@@ -162,7 +162,7 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
  *           or throw an error.
  */
 static void
-gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *iface,
+gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars1 *iface,
                                            const GArray *contacts,
                                            DBusGMethodInvocation *invocation)
 {
@@ -243,7 +243,7 @@ gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars *ifac
       return;
     }
 
-  tp_svc_connection_interface_avatars_return_from_get_known_avatar_tokens (
+  tp_svc_connection_interface_avatars1_return_from_get_known_avatar_tokens (
       invocation, ret);
 
   g_hash_table_unref (ret);
@@ -317,7 +317,7 @@ parse_avatar (WockyNode *vcard,
 }
 
 static void
-emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
+emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars1 *iface,
                        TpHandle contact,
                        WockyNode *vcard_node)
 {
@@ -332,7 +332,7 @@ emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
   sha1 = sha1_hex (avatar_str->str, avatar_str->len);
   arr = g_array_new (FALSE, FALSE, sizeof (gchar));
   g_array_append_vals (arr, avatar_str->str, avatar_str->len);
-  tp_svc_connection_interface_avatars_emit_avatar_retrieved (iface, contact,
+  tp_svc_connection_interface_avatars1_emit_avatar_retrieved (iface, contact,
       sha1, arr, mime_type);
   g_array_unref (arr);
   g_free (sha1);
@@ -343,7 +343,7 @@ emit_avatar_retrieved (TpSvcConnectionInterfaceAvatars *iface,
 typedef struct {
     TpHandle handle;
     GabbleConnection *conn;
-    TpSvcConnectionInterfaceAvatars *iface;
+    TpSvcConnectionInterfaceAvatars1 *iface;
 } RequestAvatarsContext;
 
 static void
@@ -369,7 +369,7 @@ request_avatars_cb (GabbleVCardManager *manager,
 }
 
 static void
-gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
+gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars1 *iface,
                                    const GArray *contacts,
                                    DBusGMethodInvocation *context)
 {
@@ -419,7 +419,7 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
         }
     }
 
-  tp_svc_connection_interface_avatars_return_from_request_avatars (context);
+  tp_svc_connection_interface_avatars1_return_from_request_avatars (context);
 }
 
 
@@ -483,9 +483,9 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
 
       if (conn_presence_signal_own_presence (ctx->conn, NULL, &error))
         {
-          tp_svc_connection_interface_avatars_return_from_set_avatar (
+          tp_svc_connection_interface_avatars1_return_from_set_avatar (
               ctx->invocation, presence->avatar_sha1);
-          tp_svc_connection_interface_avatars_emit_avatar_updated (
+          tp_svc_connection_interface_avatars1_emit_avatar_updated (
               ctx->conn, tp_base_connection_get_self_handle (base),
               presence->avatar_sha1);
         }
@@ -510,7 +510,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
  *           or throw an error.
  */
 static void
-gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
+gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
                               const GArray *avatar,
                               const gchar *mime_type,
                               DBusGMethodInvocation *context)
@@ -578,7 +578,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars *iface,
  *           or throw an error.
  */
 static void
-gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars *iface,
+gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
                                 DBusGMethodInvocation *context)
 {
   gabble_connection_set_avatar (iface, NULL, NULL, context);
@@ -612,7 +612,7 @@ conn_avatars_fill_contact_attributes (GObject *obj,
             g_value_set_string (val, "");
 
           tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
-            TP_IFACE_CONNECTION_INTERFACE_AVATARS"/token", val);
+            TP_IFACE_CONNECTION_INTERFACE_AVATARS1"/token", val);
         }
     }
 }
@@ -629,7 +629,7 @@ conn_avatars_init (GabbleConnection *conn)
       (connection_avatar_update_cb), conn);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-      TP_IFACE_CONNECTION_INTERFACE_AVATARS,
+      TP_IFACE_CONNECTION_INTERFACE_AVATARS1,
           conn_avatars_fill_contact_attributes);
 }
 
@@ -637,9 +637,9 @@ conn_avatars_init (GabbleConnection *conn)
 void
 conn_avatars_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceAvatarsClass *klass = g_iface;
+  TpSvcConnectionInterfaceAvatars1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_connection_interface_avatars_implement_##x (\
+#define IMPLEMENT(x) tp_svc_connection_interface_avatars1_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(get_known_avatar_tokens);
   IMPLEMENT(request_avatars);

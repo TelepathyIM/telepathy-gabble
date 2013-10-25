@@ -96,7 +96,7 @@ static void contact_search_iface_init (gpointer, gpointer);
 
 G_DEFINE_TYPE_WITH_CODE (GabbleSearchChannel, gabble_search_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_SEARCH,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_SEARCH1,
         contact_search_iface_init);
     )
 
@@ -502,7 +502,7 @@ change_search_state (GabbleSearchChannel *chan,
       states[state], error_name == NULL ? "" : error_name);
   priv->state = state;
 
-  tp_svc_channel_type_contact_search_emit_search_state_changed (
+  tp_svc_channel_type_contact_search1_emit_search_state_changed (
       chan, state, (error_name == NULL ? "" : error_name), details);
 
   g_hash_table_unref (details);
@@ -807,7 +807,7 @@ search_reply_cb (GabbleConnection *conn,
   if (err == NULL)
     {
       /* fire SearchStateChanged */
-      tp_svc_channel_type_contact_search_emit_search_result_received (chan,
+      tp_svc_channel_type_contact_search1_emit_search_result_received (chan,
           chan->priv->results);
 
       change_search_state (chan, TP_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED,
@@ -1110,9 +1110,9 @@ gabble_search_channel_fill_immutable_properties (
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "AvailableSearchKeys",
-      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Server",
-      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH, "Limit",
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1, "AvailableSearchKeys",
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1, "Server",
+      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1, "Limit",
       NULL);
 }
 
@@ -1151,7 +1151,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
   object_class->get_property = gabble_search_channel_get_property;
   object_class->set_property = gabble_search_channel_set_property;
 
-  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH;
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1;
   base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
   base_class->fill_immutable_properties =
       gabble_search_channel_fill_immutable_properties;
@@ -1209,7 +1209,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
                   G_TYPE_NONE, 3, G_TYPE_UINT, G_TYPE_INT, G_TYPE_STRING);
 
   tp_dbus_properties_mixin_implement_interface (object_class,
-      TP_IFACE_QUARK_CHANNEL_TYPE_CONTACT_SEARCH,
+      TP_IFACE_QUARK_CHANNEL_TYPE_CONTACT_SEARCH1,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,
       search_channel_props);
 
@@ -1217,7 +1217,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
 }
 
 static void
-gabble_search_channel_search (TpSvcChannelTypeContactSearch *self,
+gabble_search_channel_search (TpSvcChannelTypeContactSearch1 *self,
                               GHashTable *terms,
                               DBusGMethodInvocation *context)
 {
@@ -1234,7 +1234,7 @@ gabble_search_channel_search (TpSvcChannelTypeContactSearch *self,
 
   if (do_search (chan, terms, &error))
     {
-      tp_svc_channel_type_contact_search_return_from_search (context);
+      tp_svc_channel_type_contact_search1_return_from_search (context);
       return;
     }
 
@@ -1244,7 +1244,7 @@ err:
 }
 
 static void
-gabble_search_channel_stop (TpSvcChannelTypeContactSearch *self,
+gabble_search_channel_stop (TpSvcChannelTypeContactSearch1 *self,
                             DBusGMethodInvocation *context)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (self);
@@ -1262,7 +1262,7 @@ gabble_search_channel_stop (TpSvcChannelTypeContactSearch *self,
         }
       case TP_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
       case TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
-        tp_svc_channel_type_contact_search_return_from_stop (context);
+        tp_svc_channel_type_contact_search1_return_from_stop (context);
         break;
       case TP_CHANNEL_CONTACT_SEARCH_STATE_NOT_STARTED:
         {
@@ -1287,9 +1287,9 @@ static void
 contact_search_iface_init (gpointer g_iface,
                            gpointer iface_data)
 {
-  TpSvcChannelTypeContactSearchClass *klass = g_iface;
+  TpSvcChannelTypeContactSearch1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_type_contact_search_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_type_contact_search1_implement_##x (\
     klass, gabble_search_channel_##x)
   IMPLEMENT(search);
   IMPLEMENT(stop);

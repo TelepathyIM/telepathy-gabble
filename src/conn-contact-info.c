@@ -372,7 +372,7 @@ _parse_vcard (WockyNode *vcard_node,
 }
 
 static void
-_emit_contact_info_changed (TpSvcConnectionInterfaceContactInfo *iface,
+_emit_contact_info_changed (TpSvcConnectionInterfaceContactInfo1 *iface,
                             TpHandle contact,
                             WockyNode *vcard_node)
 {
@@ -383,7 +383,7 @@ _emit_contact_info_changed (TpSvcConnectionInterfaceContactInfo *iface,
   if (contact_info == NULL)
    return;
 
-  tp_svc_connection_interface_contact_info_emit_contact_info_changed (
+  tp_svc_connection_interface_contact_info1_emit_contact_info_changed (
       iface, contact, contact_info);
 
   g_boxed_free (TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
@@ -451,7 +451,7 @@ _return_from_request_contact_info (WockyNode *vcard_node,
       return;
     }
 
-  tp_svc_connection_interface_contact_info_return_from_request_contact_info (
+  tp_svc_connection_interface_contact_info1_return_from_request_contact_info (
       context, contact_info);
 
   g_boxed_free (TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
@@ -480,7 +480,7 @@ _request_vcard_cb (GabbleVCardManager *self,
  *           or throw an error.
  */
 static void
-gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
+gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo1 *iface,
                                         const GArray *contacts,
                                         DBusGMethodInvocation *context)
 {
@@ -521,7 +521,7 @@ gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo *ifa
         }
     }
 
-  tp_svc_connection_interface_contact_info_return_from_refresh_contact_info (
+  tp_svc_connection_interface_contact_info1_return_from_refresh_contact_info (
       context);
 }
 
@@ -535,7 +535,7 @@ gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo *ifa
  *           or throw an error.
  */
 static void
-gabble_connection_request_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
+gabble_connection_request_contact_info (TpSvcConnectionInterfaceContactInfo1 *iface,
                                         guint contact,
                                         DBusGMethodInvocation *context)
 {
@@ -650,7 +650,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
     }
   else
     {
-      tp_svc_connection_interface_contact_info_return_from_set_contact_info (
+      tp_svc_connection_interface_contact_info1_return_from_set_contact_info (
           context);
     }
 }
@@ -665,7 +665,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
  *           or throw an error.
  */
 static void
-gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo *iface,
+gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo1 *iface,
                                     const GPtrArray *contact_info,
                                     DBusGMethodInvocation *context)
 {
@@ -878,7 +878,7 @@ _vcard_updated (GObject *object,
         contact, &vcard_node))
     {
       _emit_contact_info_changed (
-          TP_SVC_CONNECTION_INTERFACE_CONTACT_INFO (conn),
+          TP_SVC_CONNECTION_INTERFACE_CONTACT_INFO1 (conn),
           contact, vcard_node);
     }
 }
@@ -1057,7 +1057,7 @@ conn_contact_info_fill_contact_attributes (GObject *obj,
                       TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 
               tp_contacts_mixin_set_contact_attribute (attributes_hash,
-                      contact, TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO"/info",
+                      contact, TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1"/info",
                       val);
             }
         }
@@ -1070,7 +1070,7 @@ conn_contact_info_init (GabbleConnection *conn)
   g_assert (conn->vcard_manager != NULL);
 
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO,
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1,
     conn_contact_info_fill_contact_attributes);
 
   conn->contact_info_fields =
@@ -1093,9 +1093,9 @@ conn_contact_info_finalize (GabbleConnection *conn)
 void
 conn_contact_info_iface_init (gpointer g_iface, gpointer iface_data)
 {
-  TpSvcConnectionInterfaceContactInfoClass *klass = g_iface;
+  TpSvcConnectionInterfaceContactInfo1Class *klass = g_iface;
 
-#define IMPLEMENT(x) tp_svc_connection_interface_contact_info_implement_##x (\
+#define IMPLEMENT(x) tp_svc_connection_interface_contact_info1_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT(refresh_contact_info);
   IMPLEMENT(request_contact_info);

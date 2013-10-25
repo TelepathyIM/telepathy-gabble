@@ -63,11 +63,11 @@ static gboolean set_gtalk_file_collection (GabbleFileTransferChannel *self,
 
 G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel,
     TP_TYPE_BASE_CHANNEL,
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_FILE_TRANSFER,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_FILE_TRANSFER1,
                            file_transfer_iface_init);
     G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_FILETRANSFER_FUTURE,
                            NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA1,
                            NULL);
 );
 
@@ -144,7 +144,7 @@ struct _GabbleFileTransferChannelPrivate {
 };
 
 static void gabble_file_transfer_channel_set_state (
-    TpSvcChannelTypeFileTransfer *iface, TpFileTransferState state,
+    TpSvcChannelTypeFileTransfer1 *iface, TpFileTransferState state,
     TpFileTransferStateChangeReason reason);
 static void close_session_and_transport (GabbleFileTransferChannel *self);
 
@@ -157,7 +157,7 @@ gabble_file_transfer_channel_close (TpBaseChannel *base)
       self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
     {
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED);
 
@@ -271,7 +271,7 @@ gabble_file_transfer_channel_set_property (GObject *object,
     {
       case PROP_STATE:
         gabble_file_transfer_channel_set_state (
-            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (object),
+            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (object),
             g_value_get_uint (value),
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
         break;
@@ -373,7 +373,7 @@ connection_presences_updated_cb (GabblePresenceCache *cache,
                   DEBUG ("peer disconnected. FileTransfer is cancelled");
 
                   gabble_file_transfer_channel_set_state (
-                      TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+                      TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
                       TP_FILE_TRANSFER_STATE_CANCELLED,
                       TP_FILE_TRANSFER_STATE_CHANGE_REASON_REMOTE_STOPPED);
                 }
@@ -461,7 +461,7 @@ file_transfer_channel_properties_setter (GObject *object,
   GabbleFileTransferChannel *self = (GabbleFileTransferChannel *) object;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
 
-  g_return_val_if_fail (interface == TP_IFACE_QUARK_CHANNEL_TYPE_FILE_TRANSFER,
+  g_return_val_if_fail (interface == TP_IFACE_QUARK_CHANNEL_TYPE_FILE_TRANSFER1,
       FALSE);
 
   /* There is only one property with write access. So TpDBusPropertiesMixin
@@ -494,7 +494,7 @@ file_transfer_channel_properties_setter (GObject *object,
 
   self->priv->uri = g_value_dup_string (value);
 
-  tp_svc_channel_type_file_transfer_emit_uri_defined (self, self->priv->uri);
+  tp_svc_channel_type_file_transfer1_emit_uri_defined (self, self->priv->uri);
 
   return TRUE;
 }
@@ -510,27 +510,27 @@ gabble_file_transfer_channel_fill_immutable_properties (TpBaseChannel *chan,
 
   tp_dbus_properties_mixin_fill_properties_hash (
       G_OBJECT (chan), properties,
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "State",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentType",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Filename",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Size",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHashType",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "ContentHash",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Description",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "Date",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
-      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "State",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "ContentType",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "Filename",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "Size",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "ContentHashType",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "ContentHash",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "Description",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "Date",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "AvailableSocketTypes",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "TransferredBytes",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "InitialOffset",
       GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
-      TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
-      TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
+      TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA1, "ServiceName",
+      TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA1, "Metadata",
       NULL);
 
   /* URI is immutable only for outgoing transfers */
   if (tp_base_channel_is_requested (chan))
     {
       tp_dbus_properties_mixin_fill_properties_hash (G_OBJECT (chan), properties,
-          TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "URI", NULL);
+          TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1, "URI", NULL);
     }
 }
 
@@ -549,7 +549,7 @@ gabble_file_transfer_channel_get_interfaces (TpBaseChannel *base)
       gabble_file_transfer_channel_parent_class)->get_interfaces (base);
 
   g_ptr_array_add (interfaces, GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA);
+  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA1);
 
   return interfaces;
 }
@@ -592,7 +592,7 @@ gabble_file_transfer_channel_class_init (
   };
 
   static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-    { TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER,
+    { TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1,
       tp_dbus_properties_mixin_getter_gobject_properties,
       file_transfer_channel_properties_setter,
       file_props
@@ -602,7 +602,7 @@ gabble_file_transfer_channel_class_init (
       NULL,
       file_future_props
     },
-    { TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
+    { TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA1,
       tp_dbus_properties_mixin_getter_gobject_properties,
       NULL,
       file_metadata_props
@@ -619,7 +619,7 @@ gabble_file_transfer_channel_class_init (
   object_class->get_property = gabble_file_transfer_channel_get_property;
   object_class->set_property = gabble_file_transfer_channel_set_property;
 
-  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER;
+  base_class->channel_type = TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1;
   base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
   base_class->get_interfaces = gabble_file_transfer_channel_get_interfaces;
   base_class->close = gabble_file_transfer_channel_close;
@@ -908,7 +908,7 @@ static gboolean setup_local_socket (GabbleFileTransferChannel *self,
 
 static void
 gabble_file_transfer_channel_set_state (
-    TpSvcChannelTypeFileTransfer *iface,
+    TpSvcChannelTypeFileTransfer1 *iface,
     TpFileTransferState state,
     TpFileTransferStateChangeReason reason)
 {
@@ -918,7 +918,7 @@ gabble_file_transfer_channel_set_state (
     return;
 
   self->priv->state = state;
-  tp_svc_channel_type_file_transfer_emit_file_transfer_state_changed (iface,
+  tp_svc_channel_type_file_transfer1_emit_file_transfer_state_changed (iface,
       state, reason);
 }
 
@@ -971,11 +971,11 @@ channel_open (GabbleFileTransferChannel *self)
   if (self->priv->socket_address != NULL)
     {
       /* ProvideFile has already been called. Channel is Open */
-      tp_svc_channel_type_file_transfer_emit_initial_offset_defined (self,
+      tp_svc_channel_type_file_transfer1_emit_initial_offset_defined (self,
           self->priv->initial_offset);
 
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_OPEN,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
 
@@ -986,7 +986,7 @@ channel_open (GabbleFileTransferChannel *self)
     {
       /* Client has to call ProvideFile to open the channel */
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_ACCEPTED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
     }
@@ -1003,7 +1003,7 @@ bytestream_closed (GabbleFileTransferChannel *self)
 
       /* Something did wrong */
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_CANCELLED,
           receiver ?
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR :
@@ -1091,7 +1091,7 @@ bytestream_negotiate_cb (GabbleBytestreamIface *bytestream,
     {
       DEBUG ("receiver refused file offer");
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_REMOTE_STOPPED);
       return;
@@ -1280,7 +1280,7 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
     {
       case GTALK_FILE_COLLECTION_STATE_PENDING:
         gabble_file_transfer_channel_set_state (
-            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
             TP_FILE_TRANSFER_STATE_PENDING,
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
         break;
@@ -1288,7 +1288,7 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
         if (self->priv->state == TP_FILE_TRANSFER_STATE_PENDING)
           {
             gabble_file_transfer_channel_set_state (
-                TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+                TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
                 TP_FILE_TRANSFER_STATE_ACCEPTED,
                 TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
           }
@@ -1301,7 +1301,7 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
             self->priv->state != TP_FILE_TRANSFER_STATE_CANCELLED)
           {
             gabble_file_transfer_channel_set_state (
-                TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+                TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
                 TP_FILE_TRANSFER_STATE_CANCELLED,
                 local_terminator ?
                 TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_STOPPED:
@@ -1312,7 +1312,7 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
       case GTALK_FILE_COLLECTION_STATE_ERROR:
       case GTALK_FILE_COLLECTION_STATE_CONNECTION_FAILED:
         gabble_file_transfer_channel_set_state (
-            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
             TP_FILE_TRANSFER_STATE_CANCELLED,
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
 
@@ -1320,7 +1320,7 @@ gabble_file_transfer_channel_gtalk_file_collection_state_changed (
         break;
       case GTALK_FILE_COLLECTION_STATE_COMPLETED:
         gabble_file_transfer_channel_set_state (
-            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+            TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
             TP_FILE_TRANSFER_STATE_COMPLETED,
             TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
 
@@ -1491,12 +1491,12 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
 static void
 emit_progress_update (GabbleFileTransferChannel *self)
 {
-  TpSvcChannelTypeFileTransfer *iface =
-      TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self);
+  TpSvcChannelTypeFileTransfer1 *iface =
+      TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self);
 
   g_get_current_time (&self->priv->last_transferred_bytes_emitted);
 
-  tp_svc_channel_type_file_transfer_emit_transferred_bytes_changed (
+  tp_svc_channel_type_file_transfer1_emit_transferred_bytes_changed (
     iface, self->priv->transferred_bytes);
 
   if (self->priv->progress_timer != 0)
@@ -1585,7 +1585,7 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
       g_error_free (error);
 
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
       return;
@@ -1599,7 +1599,7 @@ data_received_cb (GabbleFileTransferChannel *self, const guint8 *data, guint len
     {
       DEBUG ("Received all the file. Transfer is complete");
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_COMPLETED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
 
@@ -1674,7 +1674,7 @@ augment_si_reply (WockyNode *si,
  * on interface Channel.Type.FileTransfer
  */
 static void
-gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
+gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer1 *iface,
                                           guint address_type,
                                           guint access_control,
                                           const GValue *access_control_param,
@@ -1726,7 +1726,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
       TP_FILE_TRANSFER_STATE_ACCEPTED,
       TP_FILE_TRANSFER_STATE_CHANGE_REASON_REQUESTED);
 
-  tp_svc_channel_type_file_transfer_return_from_accept_file (context,
+  tp_svc_channel_type_file_transfer1_return_from_accept_file (context,
       self->priv->socket_address);
 
   if (self->priv->resume_supported)
@@ -1776,7 +1776,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer *iface,
  */
 static void
 gabble_file_transfer_channel_provide_file (
-    TpSvcChannelTypeFileTransfer *iface,
+    TpSvcChannelTypeFileTransfer1 *iface,
     guint address_type,
     guint access_control,
     const GValue *access_control_param,
@@ -1836,7 +1836,7 @@ gabble_file_transfer_channel_provide_file (
     {
       /* Remote already accepted the file. Channel is Open.
        * If not channel stay Pending. */
-      tp_svc_channel_type_file_transfer_emit_initial_offset_defined (self,
+      tp_svc_channel_type_file_transfer1_emit_initial_offset_defined (self,
           self->priv->initial_offset);
 
       gabble_file_transfer_channel_set_state (iface,
@@ -1844,7 +1844,7 @@ gabble_file_transfer_channel_provide_file (
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_REQUESTED);
     }
 
-  tp_svc_channel_type_file_transfer_return_from_provide_file (context,
+  tp_svc_channel_type_file_transfer1_return_from_provide_file (context,
       self->priv->socket_address);
 }
 
@@ -1852,10 +1852,10 @@ static void
 file_transfer_iface_init (gpointer g_iface,
                           gpointer iface_data)
 {
-  TpSvcChannelTypeFileTransferClass *klass =
-      (TpSvcChannelTypeFileTransferClass *) g_iface;
+  TpSvcChannelTypeFileTransfer1Class *klass =
+      (TpSvcChannelTypeFileTransfer1Class *) g_iface;
 
-#define IMPLEMENT(x) tp_svc_channel_type_file_transfer_implement_##x (\
+#define IMPLEMENT(x) tp_svc_channel_type_file_transfer1_implement_##x (\
     klass, gabble_file_transfer_channel_##x)
   IMPLEMENT (accept_file);
   IMPLEMENT (provide_file);
@@ -1935,7 +1935,7 @@ transport_handler (GibberTransport *transport,
         {
           DEBUG ("All the file has been sent. Closing the bytestream");
           gabble_file_transfer_channel_set_state (
-              TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+              TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
               TP_FILE_TRANSFER_STATE_COMPLETED,
               TP_FILE_TRANSFER_STATE_CHANGE_REASON_NONE);
           gabble_bytestream_iface_close (self->priv->bytestream, NULL);
@@ -2019,7 +2019,7 @@ transport_disconnected_cb (GibberTransport *transport,
     {
 
       gabble_file_transfer_channel_set_state (
-          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER (self),
+          TP_SVC_CHANNEL_TYPE_FILE_TRANSFER1 (self),
           TP_FILE_TRANSFER_STATE_CANCELLED,
           TP_FILE_TRANSFER_STATE_CHANGE_REASON_LOCAL_ERROR);
 

@@ -1053,7 +1053,7 @@ conn_aliasing_fill_contact_attributes (GObject *obj,
       g_value_take_string (val, alias);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash,
-        handle, TP_IFACE_CONNECTION_INTERFACE_ALIASING1"/alias",
+        handle, TP_TOKEN_CONNECTION_INTERFACE_ALIASING1_ALIAS,
         val);
 
       maybe_request_vcard (self, handle, source);

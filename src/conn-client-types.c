@@ -148,7 +148,7 @@ conn_client_types_fill_contact_attributes (GObject *obj,
       val = tp_g_value_slice_new_take_boxed (G_TYPE_STRV, types);
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
-          TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1 "/client-types", val);
+          TP_TOKEN_CONNECTION_INTERFACE_CLIENT_TYPES1_CLIENT_TYPES, val);
     }
 }
 

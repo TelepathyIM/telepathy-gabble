@@ -3429,7 +3429,7 @@ conn_contact_capabilities_fill_contact_attributes (GObject *obj,
 
       tp_contacts_mixin_set_contact_attribute (attributes_hash,
           handle,
-          TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1"/capabilities",
+          TP_TOKEN_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1_CAPABILITIES,
           val);
     }
 }

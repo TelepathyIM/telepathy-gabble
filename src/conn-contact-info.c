@@ -1057,7 +1057,7 @@ conn_contact_info_fill_contact_attributes (GObject *obj,
                       TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 
               tp_contacts_mixin_set_contact_attribute (attributes_hash,
-                      contact, TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1"/info",
+                      contact, TP_TOKEN_CONNECTION_INTERFACE_CONTACT_INFO1_INFO,
                       val);
             }
         }

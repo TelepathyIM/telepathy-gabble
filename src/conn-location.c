@@ -622,7 +622,7 @@ conn_location_fill_contact_attributes (GObject *obj,
               TP_HASH_TYPE_STRING_VARIANT_MAP, location);
 
           tp_contacts_mixin_set_contact_attribute (attributes_hash,
-              handle, TP_IFACE_CONNECTION_INTERFACE_LOCATION1"/location", val);
+              handle, TP_TOKEN_CONNECTION_INTERFACE_LOCATION1_LOCATION, val);
         }
     }
 }

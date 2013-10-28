@@ -612,7 +612,7 @@ conn_avatars_fill_contact_attributes (GObject *obj,
             g_value_set_string (val, "");
 
           tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
-            TP_IFACE_CONNECTION_INTERFACE_AVATARS1"/token", val);
+            TP_TOKEN_CONNECTION_INTERFACE_AVATARS1_TOKEN, val);
         }
     }
 }

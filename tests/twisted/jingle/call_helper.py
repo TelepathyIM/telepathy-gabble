@@ -259,7 +259,7 @@ class CallTest(object):
                 cs.CALL_INITIAL_VIDEO: initial_video},
             ], [
                 cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
-                cs.CHANNEL_TYPE_CALL + '/ice-udp',
+                cs.CHANNEL_TYPE_CALL + '/ice',
                 cs.CHANNEL_TYPE_CALL + '/video/h264',
             ]),
         ])

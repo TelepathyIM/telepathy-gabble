@@ -104,7 +104,7 @@ def test(q, bus, conn, stream, incoming=True, too_slow=None, use_call=False):
                     cs.CALL_INITIAL_VIDEO: True},
                 ], [
                     cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
-                    cs.CHANNEL_TYPE_CALL + '/ice-udp',
+                    cs.CHANNEL_TYPE_CALL + '/ice',
                     cs.CHANNEL_TYPE_CALL + '/video/h264',
                 ]),
             ])

@@ -1211,7 +1211,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     GPtrArray *data_forms)
 {
   static GQuark q_gtalk_p2p = 0, q_ice_udp = 0, q_h264 = 0;
-  static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;
+  static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0, qc_ice = 0;
   gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
            ice_udp = FALSE;
   guint i;
@@ -1220,11 +1220,15 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
   if (G_UNLIKELY (q_gtalk_p2p == 0))
     {
       q_gtalk_p2p = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/gtalk-p2p");
+          TP_TOKEN_CHANNEL_INTERFACE_MEDIA_SIGNALLING_GTALK_P2P);
       qc_gtalk_p2p = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_TYPE_CALL "/gtalk-p2p");
+          TP_TOKEN_CHANNEL_TYPE_CALL_GTALK_P2P);
       q_ice_udp = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_INTERFACE_MEDIA_SIGNALLING "/ice-udp");
+          TP_TOKEN_CHANNEL_INTERFACE_MEDIA_SIGNALLING_ICE_UDP);
+      qc_ice = g_quark_from_static_string (
+          TP_TOKEN_CHANNEL_TYPE_CALL_ICE);
+      /* 'ice-udp' isn't the proper cap name, 'ice' is. We keep supporting
+       * 'ice-udp' for now to not break existing clients. */
       qc_ice_udp = g_quark_from_static_string (
           TP_IFACE_CHANNEL_TYPE_CALL "/ice-udp");
       q_h264 = g_quark_from_static_string (
@@ -1246,6 +1250,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
           } q2cap[] = {
               { q_gtalk_p2p, &gtalk_p2p }, { qc_gtalk_p2p, &gtalk_p2p },
               { q_ice_udp, &ice_udp }, { qc_ice_udp, &ice_udp },
+              { qc_ice, &ice_udp },
               { q_h264, &h264 }, { qc_h264, &h264 },
               { 0, NULL },
           };

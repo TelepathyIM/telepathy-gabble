@@ -1,6 +1,6 @@
 EXTRA_DIST = gabble.service.in
 
-managerdir = $(datadir)/telepathy/managers
+managerdir = $(datadir)/telepathy-1/managers
 manager_DATA = gabble.manager
 
 servicedir = $(datadir)/dbus-1/services

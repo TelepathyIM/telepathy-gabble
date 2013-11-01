@@ -63,9 +63,9 @@ def main(abifiles, symbols=None, unreleased_version=None,
 
     if dpkg:
         assert dpkg_first_line is not None
-        print dpkg_first_line
+        print(dpkg_first_line)
         if dpkg_build_depends_package is not None:
-            print "* Build-Depends-Package: %s" % dpkg_build_depends_package
+            print("* Build-Depends-Package: %s" % dpkg_build_depends_package)
 
     for filename in abifiles:
         lines = open(filename, 'r').readlines()
@@ -120,8 +120,8 @@ def main(abifiles, symbols=None, unreleased_version=None,
         lines = lines[cut:]
 
         if gnuld:
-            print "%s {" % version
-            print "    global:"
+            print("%s {" % version)
+            print("    global:")
 
         for symbol in lines:
             symbol = symbol.strip()
@@ -130,7 +130,7 @@ def main(abifiles, symbols=None, unreleased_version=None,
                 continue
 
             if gnuld:
-                print "        %s;" % symbol
+                print("        %s;" % symbol)
             elif dpkg:
                 dpkg_symbols.append('%s@%s %s' % (symbol, version, release))
 
@@ -142,22 +142,22 @@ def main(abifiles, symbols=None, unreleased_version=None,
 
         if gnuld:
             if extends == '-':
-                print "    local:"
-                print "        *;"
-                print "};"
+                print("    local:")
+                print("        *;")
+                print("};")
             else:
-                print "} %s;" % extends
-                print
+                print("} %s;" % extends)
+                print("")
 
     if dpkg:
         dpkg_symbols.sort()
         dpkg_versions.sort()
 
         for x in dpkg_versions:
-            print " %s" % x
+            print(" %s" % x)
 
         for x in dpkg_symbols:
-            print " %s" % x
+            print(" %s" % x)
 
     if symbol_set is not None:
         missing = versioned_symbols - symbol_set
@@ -182,13 +182,13 @@ def main(abifiles, symbols=None, unreleased_version=None,
                 raise SystemExit(1)
 
             if gnuld:
-                print "%s {" % unreleased_version
-                print "    global:"
+                print("%s {" % unreleased_version)
+                print("    global:")
 
                 for symbol in unreleased:
-                    print "        %s;" % symbol
+                    print("        %s;" % symbol)
 
-                print "} %s;" % version
+                print("} %s;" % version)
 
 
 if __name__ == '__main__':

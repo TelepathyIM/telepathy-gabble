@@ -768,7 +768,6 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
 {
   MediaCapabilities typeflags =
     _gabble_media_factory_caps_to_typeflags (caps);
-  GValueArray *va;
   const gchar * const *call_allowed;
 
   typeflags &= (MEDIA_CAPABILITY_AUDIO |
@@ -811,16 +810,11 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
     }
 
   /* Call channel */
-  va = g_value_array_new (2);
-  g_value_array_append (va, NULL);
-  g_value_array_append (va, NULL);
-  g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
-  g_value_init (va->values + 1, G_TYPE_STRV);
-  g_value_take_boxed (va->values + 0,
-    gabble_media_factory_call_channel_class ());
-  g_value_set_static_boxed (va->values + 1, call_allowed);
-
-  g_ptr_array_add (arr, va);
+  g_ptr_array_add (arr,
+      tp_value_array_build (2,
+        TP_HASH_TYPE_CHANNEL_CLASS, gabble_media_factory_call_channel_class (),
+        G_TYPE_STRV, call_allowed,
+        G_TYPE_INVALID));
 }
 
 static void

@@ -439,28 +439,21 @@ conn_location_properties_getter (GObject *object,
     }
   else if (!tp_strdiff (g_quark_to_string (name), "LocationAccessControl"))
     {
-      GValueArray *access_control = g_value_array_new (2);
-      GValue type = {0,};
-      GValue variant = {0,};
-      GValue *allocated_value;
+      GValueArray *access_control;
+      GValue dummy = G_VALUE_INIT;
 
-      /* G_TYPE_UINT is the D-Bus type of TpRichPresenceAccessControlType */
-      g_value_init (&type, G_TYPE_UINT);
-      g_value_set_uint (&type,
-          TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST);
-      g_value_array_append (access_control, &type);
-      g_value_unset (&type);
-
-      g_value_init (&variant, G_TYPE_VALUE);
       /* For Publish_List, the variant isn't used, so we set a dummy value,
        * (guint) 0 */
-      allocated_value = tp_g_value_slice_new (G_TYPE_UINT);
-      g_value_set_uint (allocated_value, 0);
-      g_value_set_boxed (&variant, allocated_value);
-      g_value_array_append (access_control, &variant);
-      g_value_unset (&variant);
-      tp_g_value_slice_free (allocated_value);
+      g_value_init (&dummy, G_TYPE_UINT);
+      g_value_set_uint (&dummy, 0);
 
+      access_control = tp_value_array_build (2,
+          G_TYPE_UINT,
+              (guint) TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST,
+          G_TYPE_VALUE, &dummy,
+          G_TYPE_INVALID);
+
+      g_value_unset (&dummy);
       g_value_take_boxed (value, access_control);
     }
   else if (name == g_quark_from_static_string ("SupportedLocationFeatures"))
@@ -486,9 +479,9 @@ conn_location_properties_setter (GObject *object,
                                 gpointer setter_data,
                                 GError **error)
 {
-  GValueArray *access_control;
-  GValue *access_control_type_value;
-  TpRichPresenceAccessControlType access_control_type;
+  guint access_control_type;
+  GValue *access_control_argument;
+
   g_return_val_if_fail (interface ==
       TP_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION, FALSE);
 
@@ -496,17 +489,13 @@ conn_location_properties_setter (GObject *object,
    * already checked this. */
   g_assert (name == g_quark_from_static_string ("LocationAccessControl"));
 
-  access_control = g_value_get_boxed (value);
+  /* TpDBusPropertiesMixin already checked that it was a (uv). */
+  g_assert (G_VALUE_HOLDS (value,
+        TP_STRUCT_TYPE_RICH_PRESENCE_ACCESS_CONTROL));
 
-  /* TpDBusPropertiesMixin already checked this */
-  g_assert (access_control->n_values == 2);
-
-  access_control_type_value = g_value_array_get_nth (access_control, 0);
-
-  /* TpDBusPropertiesMixin already checked this */
-  g_assert (G_VALUE_TYPE (access_control_type_value) == G_TYPE_UINT);
-
-  access_control_type = g_value_get_uint (access_control_type_value);
+  tp_value_array_unpack (g_value_get_boxed (value), 2,
+      &access_control_type,
+      &access_control_argument);
 
   if (access_control_type !=
       TP_RICH_PRESENCE_ACCESS_CONTROL_TYPE_PUBLISH_LIST)

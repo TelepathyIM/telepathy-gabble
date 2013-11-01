@@ -118,7 +118,6 @@ def test(q, bus, conn, stream):
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER, props
         assertSameSets(
             [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
-              cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE',
             ], props[cs.INTERFACES])
         assert props[cs.TARGET_HANDLE] == 2L, props
         assert props[cs.TARGET_ID] == contact.replace("/Resource", ""), props

@@ -65,8 +65,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleFileTransferChannel, gabble_file_transfer_channel
     TP_TYPE_BASE_CHANNEL,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_TYPE_FILE_TRANSFER,
                            file_transfer_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CHANNEL_TYPE_FILETRANSFER_FUTURE,
-                           NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
                            NULL);
 );
@@ -96,7 +94,6 @@ enum
   PROP_BYTESTREAM,
 
 #ifdef ENABLE_JINGLE_FILE_TRANSFER
-  /* Chan.Type.FileTransfer.FUTURE */
   PROP_GTALK_FILE_COLLECTION,
 #endif
 
@@ -521,7 +518,7 @@ gabble_file_transfer_channel_fill_immutable_properties (TpBaseChannel *chan,
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "AvailableSocketTypes",
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "TransferredBytes",
       TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "InitialOffset",
-      GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE, "FileCollection",
+      TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER, "FileCollection",
       TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "ServiceName",
       TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA, "Metadata",
       NULL);
@@ -548,7 +545,6 @@ gabble_file_transfer_channel_get_interfaces (TpBaseChannel *base)
   interfaces = TP_BASE_CHANNEL_CLASS (
       gabble_file_transfer_channel_parent_class)->get_interfaces (base);
 
-  g_ptr_array_add (interfaces, GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE);
   g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA);
 
   return interfaces;
@@ -577,10 +573,6 @@ gabble_file_transfer_channel_class_init (
     { "InitialOffset", "initial-offset", NULL },
     { "Date", "date", NULL },
     { "URI", "uri", NULL },
-    { NULL }
-  };
-
-  static TpDBusPropertiesMixinPropImpl file_future_props[] = {
     { "FileCollection", "file-collection", NULL },
     { NULL }
   };
@@ -596,11 +588,6 @@ gabble_file_transfer_channel_class_init (
       tp_dbus_properties_mixin_getter_gobject_properties,
       file_transfer_channel_properties_setter,
       file_props
-    },
-    { GABBLE_IFACE_CHANNEL_TYPE_FILETRANSFER_FUTURE,
-      tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
-      file_future_props
     },
     { TP_IFACE_CHANNEL_INTERFACE_FILE_TRANSFER_METADATA,
       tp_dbus_properties_mixin_getter_gobject_properties,

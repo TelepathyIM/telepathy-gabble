@@ -312,12 +312,6 @@ else
 	@echo "and then re-run configure."
 endif
 
-if ENABLE_DEBUG
-DEBUGGING_PYBOOL = True
-else
-DEBUGGING_PYBOOL = False
-endif
-
 if ENABLE_PLUGINS
 PLUGINS_ENABLED_PYBOOL = True
 else
@@ -352,7 +346,6 @@ config.py: Makefile
 	$(AM_V_GEN) { \
 		echo "PACKAGE_STRING = \"$(PACKAGE_STRING)\""; \
 		echo "CLIENT_TYPE = '$(CLIENT_TYPE)'"; \
-		echo "DEBUGGING = $(DEBUGGING_PYBOOL)"; \
 		echo "PLUGINS_ENABLED = $(PLUGINS_ENABLED_PYBOOL)"; \
 		echo "GOOGLE_RELAY_ENABLED = $(GOOGLE_RELAY_ENABLED_PYBOOL)"; \
 		echo "FILE_TRANSFER_ENABLED = $(FILE_TRANSFER_ENABLED_PYBOOL)"; \

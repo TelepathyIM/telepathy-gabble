@@ -149,10 +149,6 @@ if test -n "$with_ca_certificates"; then
     fi
 fi
 
-AC_ARG_ENABLE(debug,
-  AC_HELP_STRING([--disable-debug],[compile without debug code]),
-    enable_debug=$enableval, enable_debug=yes )
-
 ifelse(gabble_nano_version, 0,
     [ # Gabble is version x.y.z - disable coding style checks by default
 AC_ARG_ENABLE(coding-style-checks,
@@ -166,11 +162,6 @@ AC_ARG_ENABLE(coding-style-checks,
                  [do not check coding style using grep]),
     [ENABLE_CODING_STYLE_CHECKS=$enableval], [ENABLE_CODING_STYLE_CHECKS=yes])
     ])
-
-if test x$enable_debug = xyes; then
-  AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
-fi
-AM_CONDITIONAL([ENABLE_DEBUG], [test "x$enable_debug" = xyes])
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
@@ -451,7 +442,6 @@ Configure summary:
         Compiler Flags..............:  ${CFLAGS} ${ERROR_CFLAGS}
         Prefix......................:  ${prefix}
         Coding style checks.........:  ${ENABLE_CODING_STYLE_CHECKS}
-        Enable debug................:  ${enable_debug}
         Python tests................:  ${tests_enabled}
         Install unit tests..........:  ${installed_tests}
 

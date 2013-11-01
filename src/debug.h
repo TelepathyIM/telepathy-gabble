@@ -73,48 +73,20 @@ G_END_DECLS
   gabble_log (G_LOG_LEVEL_INFO, DEBUG_FLAG, "%s (%s): " format, \
       G_STRFUNC, G_STRLOC, ##__VA_ARGS__)
 
-#ifdef ENABLE_DEBUG
-#   define DEBUG(format, ...) \
+#define DEBUG(format, ...) \
       gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s (%s): " format, \
           G_STRFUNC, G_STRLOC, ##__VA_ARGS__)
-#   define DEBUGGING gabble_debug_flag_is_set (DEBUG_FLAG)
+#define DEBUGGING gabble_debug_flag_is_set (DEBUG_FLAG)
 
-#   define STANZA_DEBUG(st, s) \
+#define STANZA_DEBUG(st, s) \
       NODE_DEBUG (wocky_stanza_get_top_node (st), s)
 
-#   define NODE_DEBUG(n, s) \
+#define NODE_DEBUG(n, s) \
     G_STMT_START { \
       gchar *debug_tmp = wocky_node_to_string (n); \
       gabble_log (G_LOG_LEVEL_DEBUG, DEBUG_FLAG, "%s: %s:\n%s", G_STRFUNC, s, debug_tmp); \
       g_free (debug_tmp); \
     } G_STMT_END
-
-#else /* !defined (ENABLE_DEBUG) */
-static inline void
-DEBUG (
-    const gchar *format,
-    ...)
-{
-}
-
-#   define DEBUGGING 0
-
-static inline void
-STANZA_DEBUG (
-    WockyStanza *stanza,
-    const gchar *format,
-    ...)
-{
-}
-
-static inline void
-NODE_DEBUG (
-    WockyNode *node,
-    const gchar *format,
-    ...)
-{
-}
-#endif /* !defined (ENABLE_DEBUG) */
 
 #endif /* DEBUG_FLAG */
 

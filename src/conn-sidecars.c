@@ -178,7 +178,7 @@ create_sidecar_cb (
       GList *l;
 
       for (l = contexts; l != NULL; l = l->next)
-        gabble_svc_connection_future_return_from_ensure_sidecar (l->data,
+        tp_svc_connection_interface_sidecars1_return_from_ensure_sidecar (l->data,
             path, props);
 
       g_hash_table_unref (props);
@@ -200,7 +200,7 @@ out:
 
 static void
 gabble_connection_ensure_sidecar (
-    GabbleSvcConnectionFUTURE *iface,
+    TpSvcConnectionInterfaceSidecars1 *iface,
     const gchar *sidecar_iface,
     DBusGMethodInvocation *context)
 {
@@ -238,7 +238,7 @@ gabble_connection_ensure_sidecar (
       GHashTable *props = gabble_sidecar_get_immutable_properties (sidecar);
 
       DEBUG ("sidecar %s already exists at %s", sidecar_iface, path);
-      gabble_svc_connection_future_return_from_ensure_sidecar (context, path,
+      tp_svc_connection_interface_sidecars1_return_from_ensure_sidecar (context, path,
           props);
 
       g_free (path);
@@ -340,14 +340,12 @@ sidecars_conn_status_changed_cb (
 }
 
 void
-conn_future_iface_init (
-    gpointer g_iface,
-    gpointer iface_data)
+conn_sidecars_iface_init (gpointer g_iface)
 {
-  GabbleSvcConnectionFUTUREClass *klass = g_iface;
+  TpSvcConnectionInterfaceSidecars1Class *klass = g_iface;
 
 #define IMPLEMENT(x) \
-    gabble_svc_connection_future_implement_##x (\
+    tp_svc_connection_interface_sidecars1_implement_##x (\
     klass, gabble_connection_##x)
   IMPLEMENT (ensure_sidecar);
 #undef IMPLEMENT

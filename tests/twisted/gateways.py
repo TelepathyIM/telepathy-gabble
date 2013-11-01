@@ -63,7 +63,7 @@ def test_not_acceptable(q, gateways_iface, stream):
 def test(q, bus, conn, stream):
     # Request a sidecar thate we support before we're connected; it should just
     # wait around until we're connected.
-    call_async(q, conn.Future, 'EnsureSidecar', PLUGIN_IFACE)
+    call_async(q, conn.Sidecars1, 'EnsureSidecar', PLUGIN_IFACE)
 
     conn.Connect()
     q.expect('dbus-signal', signal='StatusChanged',

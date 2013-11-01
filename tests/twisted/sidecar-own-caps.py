@@ -23,7 +23,7 @@ def test(q, bus, conn, stream):
     # created.
     pattern = EventPattern('stream-iq', to='sidecar.example.com',
         query_ns='http://example.com/sidecar')
-    call_async(q, conn.Future, 'EnsureSidecar', TEST_PLUGIN_IFACE + ".IQ")
+    call_async(q, conn.Sidecars1, 'EnsureSidecar', TEST_PLUGIN_IFACE + ".IQ")
     e = q.expect_many(pattern)[0]
 
     # The server said yes, so we should get a sidecar back!

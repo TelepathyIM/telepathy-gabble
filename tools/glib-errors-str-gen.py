@@ -3,7 +3,7 @@
 import sys
 import xml.dom.minidom
 
-from libtpcodegen import file_set_contents
+from libtpcodegen import file_set_contents, u
 from libglibcodegen import NS_TP, get_docstring, xml_escape
 
 class Generator(object):
@@ -17,18 +17,12 @@ class Generator(object):
         self.__docs = []
 
     def h(self, s):
-        if isinstance(s, unicode):
-            s = s.encode('utf-8')
         self.__header.append(s)
 
     def b(self, s):
-        if isinstance(s, unicode):
-            s = s.encode('utf-8')
         self.__body.append(s)
 
     def d(self, s):
-        if isinstance(s, unicode):
-            s = s.encode('utf-8')
         self.__docs.append(s)
 
     def __call__(self):
@@ -72,9 +66,9 @@ class Generator(object):
         self.h('')
         self.b('')
 
-        file_set_contents(self.basename + '.h', '\n'.join(self.__header))
-        file_set_contents(self.basename + '.c', '\n'.join(self.__body))
-        file_set_contents(self.basename + '-gtk-doc.h', '\n'.join(self.__docs))
+        file_set_contents(self.basename + '.h', u('\n').join(self.__header).encode('utf-8'))
+        file_set_contents(self.basename + '.c', u('\n').join(self.__body).encode('utf-8'))
+        file_set_contents(self.basename + '-gtk-doc.h', u('\n').join(self.__docs).encode('utf-8'))
 
 if __name__ == '__main__':
     argv = sys.argv[1:]

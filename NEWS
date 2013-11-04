@@ -3,9 +3,16 @@ telepathy-gabble 0.19.0 (UNRELEASED)
 
 The “very confused owl” release.
 
+Compile-time configuration:
+
+• The --disable-debug option has gone away. The new configuration is
+  equivalent to --enable-debug.
+
 Dependencies:
 
-• telepathy-glib ≥ 0.21.1 is required.
+• telepathy-glib ≥ 0.23.0 is required
+
+• Autoconf 2.60 is required
 
 External changes:
 
@@ -15,16 +22,35 @@ External changes:
 
 • Always announce channels one at a time (fd.o #69194, Simon)
 
+• Improve XMPP console (fd.o #66085, Will)
+
 Fixes:
 
 • Stop claiming to implement legacy Presence, which was deleted in 2011
   (fd.o #69194, Guillaume)
 
+• Use the correct capability token to control whether we advertise ICE-UDP
+  support (Guillaume)
+
+• Implement RequestClientTypes (fd.o #70134, Guillaume)
+
+• Correct the type of private tubes' IDs, fixing a crash on 64-bit platforms
+  (fd.o #70038, Guillaume)
+
+• Use telepathy-glib to implement Addressing, Sidecars1,
+  FileTransfer.FileCollection (fd.o #26609, #69817; Simon)
+
+• Implement Protocol.I.Avatars correctly (Guillaume)
+
 Internal changes:
 
-• Fix various deprecated things (fd.o #69194, Simon)
+• Fix various deprecated things (fd.o #69194, #69618, #69767, #70045;
+  Simon, Guillaume)
 
 • Improved regression test coverage (fd.o #69474, Simon)
+
+• Remove regression tests for obsolete APIs to reduce delta between
+  0.20 and 1.0 branches (Simon, Guillaume)
 
 telepathy-gabble 0.18.1 (2013-09-06)
 ====================================

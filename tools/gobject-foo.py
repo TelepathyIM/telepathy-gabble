@@ -87,4 +87,4 @@ if __name__ == '__main__':
 
     head, tail = argv
 
-    print '\n'.join(gobject_header(head, tail, as_interface=as_interface))
+    print('\n'.join(gobject_header(head, tail, as_interface=as_interface)))

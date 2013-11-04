@@ -519,26 +519,13 @@ static GValueArray *
 make_field (const gchar *field_name,
             gchar **values)
 {
-  GValueArray *field = g_value_array_new (3);
-  GValue *value;
   static const gchar **empty = { NULL };
 
-  g_value_array_append (field, NULL);
-  value = g_value_array_get_nth (field, 0);
-  g_value_init (value, G_TYPE_STRING);
-  g_value_set_static_string (value, field_name);
-
-  g_value_array_append (field, NULL);
-  value = g_value_array_get_nth (field, 1);
-  g_value_init (value, G_TYPE_STRV);
-  g_value_set_static_boxed (value, empty);
-
-  g_value_array_append (field, NULL);
-  value = g_value_array_get_nth (field, 2);
-  g_value_init (value, G_TYPE_STRV);
-  g_value_set_boxed (value, values);
-
-  return field;
+  return tp_value_array_build (3,
+      G_TYPE_STRING, field_name,
+      G_TYPE_STRV, empty,
+      G_TYPE_STRV, values,
+      G_TYPE_INVALID);
 }
 
 static gchar *

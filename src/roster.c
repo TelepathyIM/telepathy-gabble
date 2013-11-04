@@ -727,8 +727,6 @@ _gabble_roster_item_update (GabbleRoster *roster,
   return item;
 }
 
-
-#ifdef ENABLE_DEBUG
 static void
 _gabble_roster_item_dump_group (gpointer k,
     gpointer v,
@@ -767,8 +765,6 @@ _gabble_roster_item_dump (GabbleRosterItem *item)
 
   return g_string_free (str, FALSE);
 }
-#endif /* ENABLE_DEBUG */
-
 
 static WockyStanza *
 _gabble_roster_message_new (GabbleRoster *roster,
@@ -1154,14 +1150,13 @@ process_roster (
 
       item = _gabble_roster_item_update (roster, handle, item_node,
                                          google_roster, &nickname_updated);
-#ifdef ENABLE_DEBUG
+
       if (DEBUGGING)
         {
           gchar *dump = _gabble_roster_item_dump (item);
           DEBUG ("jid: %s, %s", jid, dump);
           g_free (dump);
         }
-#endif
 
       if (nickname_updated)
         g_array_append_val (updated_nicknames, handle);
@@ -2026,14 +2021,12 @@ roster_item_apply_edits (GabbleRoster *roster,
 
   memcpy (&edited_item, item, sizeof (GabbleRosterItem));
 
-#ifdef ENABLE_DEBUG
   if (DEBUGGING)
     {
       gchar *dump = _gabble_roster_item_dump (&edited_item);
       DEBUG ("Before, contact#%u: %s", contact, dump);
       g_free (dump);
     }
-#endif
 
   if (edits->create)
     {
@@ -2109,7 +2102,6 @@ roster_item_apply_edits (GabbleRoster *roster,
   if (edits->add_to_groups != NULL || edits->remove_from_groups != NULL ||
       edits->remove_from_all_other_groups)
     {
-#ifdef ENABLE_DEBUG
       if (DEBUGGING)
         {
           if (edits->add_to_groups != NULL)
@@ -2141,7 +2133,7 @@ roster_item_apply_edits (GabbleRoster *roster,
               DEBUG ("Not removing from any groups");
             }
         }
-#endif
+
       edited_item.groups = g_hash_table_new_full (g_str_hash, g_str_equal,
           g_free, NULL);
 
@@ -2183,14 +2175,12 @@ roster_item_apply_edits (GabbleRoster *roster,
       edited_item.subscription = GABBLE_ROSTER_SUBSCRIPTION_NONE;
     }
 
-#ifdef ENABLE_DEBUG
   if (DEBUGGING)
     {
       gchar *dump = _gabble_roster_item_dump (&edited_item);
       DEBUG ("After, contact#%u: %s", contact, dump);
       g_free (dump);
     }
-#endif
 
   if (!altered)
     {

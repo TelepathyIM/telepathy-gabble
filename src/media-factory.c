@@ -768,7 +768,6 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
 {
   MediaCapabilities typeflags =
     _gabble_media_factory_caps_to_typeflags (caps);
-  GValueArray *va;
   const gchar * const *call_allowed;
 
   typeflags &= (MEDIA_CAPABILITY_AUDIO |
@@ -811,16 +810,11 @@ gabble_media_factory_get_contact_caps (GabbleCapsChannelManager *manager,
     }
 
   /* Call channel */
-  va = g_value_array_new (2);
-  g_value_array_append (va, NULL);
-  g_value_array_append (va, NULL);
-  g_value_init (va->values + 0, TP_HASH_TYPE_CHANNEL_CLASS);
-  g_value_init (va->values + 1, G_TYPE_STRV);
-  g_value_take_boxed (va->values + 0,
-    gabble_media_factory_call_channel_class ());
-  g_value_set_static_boxed (va->values + 1, call_allowed);
-
-  g_ptr_array_add (arr, va);
+  g_ptr_array_add (arr,
+      tp_value_array_build (2,
+        TP_HASH_TYPE_CHANNEL_CLASS, gabble_media_factory_call_channel_class (),
+        G_TYPE_STRV, call_allowed,
+        G_TYPE_INVALID));
 }
 
 static void
@@ -831,7 +825,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
     GabbleCapabilitySet *cap_set,
     GPtrArray *data_forms)
 {
-  static GQuark qc_gtalk_p2p = 0, qc_ice_udp = 0, qc_h264 = 0;
+  static GQuark qc_gtalk_p2p = 0, qc_h264 = 0, qc_ice = 0;
   gboolean gtalk_p2p = FALSE, h264 = FALSE, audio = FALSE, video = FALSE,
            ice_udp = FALSE;
   guint i;
@@ -840,9 +834,9 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
   if (G_UNLIKELY (qc_gtalk_p2p == 0))
     {
       qc_gtalk_p2p = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_TYPE_CALL1 "/gtalk-p2p");
-      qc_ice_udp = g_quark_from_static_string (
-          TP_IFACE_CHANNEL_TYPE_CALL1 "/ice-udp");
+          TP_TOKEN_CHANNEL_TYPE_CALL1_GTALK_P2P);
+      qc_ice = g_quark_from_static_string (
+          TP_TOKEN_CHANNEL_TYPE_CALL1_ICE);
       qc_h264 = g_quark_from_static_string (
           TP_IFACE_CHANNEL_TYPE_CALL1 "/video/h264");
     }
@@ -859,7 +853,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
             gboolean *cap;
           } q2cap[] = {
               { qc_gtalk_p2p, &gtalk_p2p },
-              { qc_ice_udp, &ice_udp },
+              { qc_ice, &ice_udp },
               { qc_h264, &h264 },
               { 0, NULL },
           };

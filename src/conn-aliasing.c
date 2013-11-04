@@ -443,7 +443,6 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
                            GObject *object,
                            gpointer user_data)
 {
-#ifdef ENABLE_DEBUG
   GError *error = NULL;
 
   if (wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
@@ -453,7 +452,6 @@ nick_publish_msg_reply_cb (GabbleConnection *conn,
 
       g_clear_error (&error);
     }
-#endif
 }
 
 static gboolean

@@ -27,9 +27,9 @@ import os.path
 import xml.dom.minidom
 from getopt import gnu_getopt
 
-from libtpcodegen import file_set_contents
-from libglibcodegen import Signature, type_to_gtype, cmp_by_name, \
-        get_docstring, xml_escape, get_deprecated
+from libtpcodegen import file_set_contents, key_by_name, u
+from libglibcodegen import (Signature, type_to_gtype,
+        get_docstring, xml_escape, get_deprecated, copy_into_gvalue)
 
 
 NS_TP = "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
@@ -74,18 +74,12 @@ class Generator(object):
         self.guard = opts.get('--guard', None)
 
     def h(self, s):
-        if isinstance(s, unicode):
-            s = s.encode('utf-8')
         self.__header.append(s)
 
     def b(self, s):
-        if isinstance(s, unicode):
-            s = s.encode('utf-8')
         self.__body.append(s)
 
     def d(self, s):
-        if isinstance(s, unicode):
-            s = s.encode('utf-8')
         self.__docs.append(s)
 
     def get_iface_quark(self):
@@ -192,6 +186,7 @@ class Generator(object):
 
             self.b('    TpProxySignalConnection *sc)')
             self.b('{')
+            self.b('  G_GNUC_BEGIN_IGNORE_DEPRECATIONS')
             self.b('  GValueArray *args = g_value_array_new (%d);' % len(args))
             self.b('  GValue blank = { 0 };')
             self.b('  guint i;')
@@ -200,6 +195,7 @@ class Generator(object):
             self.b('')
             self.b('  for (i = 0; i < %d; i++)' % len(args))
             self.b('    g_value_array_append (args, &blank);')
+            self.b('  G_GNUC_END_IGNORE_DEPRECATIONS')
             self.b('')
 
             for i, arg in enumerate(args):
@@ -209,36 +205,8 @@ class Generator(object):
                 self.b('  g_value_unset (args->values + %d);' % i)
                 self.b('  g_value_init (args->values + %d, %s);' % (i, gtype))
 
-                if gtype == 'G_TYPE_STRING':
-                    self.b('  g_value_set_string (args->values + %d, %s);'
-                           % (i, name))
-                elif marshaller == 'BOXED':
-                    self.b('  g_value_set_boxed (args->values + %d, %s);'
-                           % (i, name))
-                elif gtype == 'G_TYPE_UCHAR':
-                    self.b('  g_value_set_uchar (args->values + %d, %s);'
-                           % (i, name))
-                elif gtype == 'G_TYPE_BOOLEAN':
-                    self.b('  g_value_set_boolean (args->values + %d, %s);'
-                           % (i, name))
-                elif gtype == 'G_TYPE_INT':
-                    self.b('  g_value_set_int (args->values + %d, %s);'
-                           % (i, name))
-                elif gtype == 'G_TYPE_UINT':
-                    self.b('  g_value_set_uint (args->values + %d, %s);'
-                           % (i, name))
-                elif gtype == 'G_TYPE_INT64':
-                    self.b('  g_value_set_int (args->values + %d, %s);'
-                           % (i, name))
-                elif gtype == 'G_TYPE_UINT64':
-                    self.b('  g_value_set_uint64 (args->values + %d, %s);'
-                           % (i, name))
-                elif gtype == 'G_TYPE_DOUBLE':
-                    self.b('  g_value_set_double (args->values + %d, %s);'
-                           % (i, name))
-                else:
-                    assert False, ("Don't know how to put %s in a GValue"
-                                   % gtype)
+                self.b('  ' + copy_into_gvalue('args->values + %d' % i,
+                    gtype, marshaller, name))
                 self.b('')
 
             self.b('  tp_proxy_signal_connection_v0_take_results (sc, args);')
@@ -288,12 +256,14 @@ class Generator(object):
         self.b('      weak_object);')
         self.b('')
 
+        self.b('  G_GNUC_BEGIN_IGNORE_DEPRECATIONS')
         if len(args) > 0:
             self.b('  g_value_array_free (args);')
         else:
             self.b('  if (args != NULL)')
             self.b('    g_value_array_free (args);')
             self.b('')
+        self.b('  G_GNUC_END_IGNORE_DEPRECATIONS')
 
         self.b('  g_object_unref (tpproxy);')
         self.b('}')
@@ -559,11 +529,13 @@ class Generator(object):
             self.b('      return;')
             self.b('    }')
             self.b('')
+            self.b('  G_GNUC_BEGIN_IGNORE_DEPRECATIONS')
             self.b('  args = g_value_array_new (%d);' % len(out_args))
             self.b('  g_value_init (&blank, G_TYPE_INT);')
             self.b('')
             self.b('  for (i = 0; i < %d; i++)' % len(out_args))
             self.b('    g_value_array_append (args, &blank);')
+            self.b('  G_GNUC_END_IGNORE_DEPRECATIONS')
 
             for i, arg in enumerate(out_args):
                 name, info, tp_type, elt = arg
@@ -573,36 +545,8 @@ class Generator(object):
                 self.b('  g_value_unset (args->values + %d);' % i)
                 self.b('  g_value_init (args->values + %d, %s);' % (i, gtype))
 
-                if gtype == 'G_TYPE_STRING':
-                    self.b('  g_value_take_string (args->values + %d, %s);'
-                           % (i, name))
-                elif marshaller == 'BOXED':
-                    self.b('  g_value_take_boxed (args->values + %d, %s);'
-                            % (i, name))
-                elif gtype == 'G_TYPE_UCHAR':
-                    self.b('  g_value_set_uchar (args->values + %d, %s);'
-                            % (i, name))
-                elif gtype == 'G_TYPE_BOOLEAN':
-                    self.b('  g_value_set_boolean (args->values + %d, %s);'
-                            % (i, name))
-                elif gtype == 'G_TYPE_INT':
-                    self.b('  g_value_set_int (args->values + %d, %s);'
-                            % (i, name))
-                elif gtype == 'G_TYPE_UINT':
-                    self.b('  g_value_set_uint (args->values + %d, %s);'
-                            % (i, name))
-                elif gtype == 'G_TYPE_INT64':
-                    self.b('  g_value_set_int (args->values + %d, %s);'
-                            % (i, name))
-                elif gtype == 'G_TYPE_UINT64':
-                    self.b('  g_value_set_uint (args->values + %d, %s);'
-                            % (i, name))
-                elif gtype == 'G_TYPE_DOUBLE':
-                    self.b('  g_value_set_double (args->values + %d, %s);'
-                            % (i, name))
-                else:
-                    assert False, ("Don't know how to put %s in a GValue"
-                                   % gtype)
+                self.b('  ' + copy_into_gvalue('args->values + %d' % i,
+                    gtype, marshaller, name))
 
             self.b('  tp_proxy_pending_call_v0_take_results (user_data, '
                    'NULL, args);')
@@ -671,11 +615,13 @@ class Generator(object):
         self.b('      error, user_data, weak_object);')
         self.b('')
 
+        self.b('  G_GNUC_BEGIN_IGNORE_DEPRECATIONS')
         if len(out_args) > 0:
             self.b('  g_value_array_free (args);')
         else:
             self.b('  if (args != NULL)')
             self.b('    g_value_array_free (args);')
+        self.b('  G_GNUC_END_IGNORE_DEPRECATIONS')
 
         self.b('}')
         self.b('')
@@ -948,11 +894,13 @@ class Generator(object):
 
             self.b('')
 
+        self.b('  G_GNUC_BEGIN_IGNORE_DEPRECATIONS')
         if len(out_args) > 0:
             self.b('  g_value_array_free (args);')
         else:
             self.b('  if (args != NULL)')
             self.b('    g_value_array_free (args);')
+        self.b('  G_GNUC_END_IGNORE_DEPRECATIONS')
 
         self.b('}')
         self.b('')
@@ -1191,7 +1139,7 @@ class Generator(object):
         self.b('')
 
         nodes = self.dom.getElementsByTagName('node')
-        nodes.sort(cmp_by_name)
+        nodes.sort(key=key_by_name)
 
         for node in nodes:
             self.do_interface(node)
@@ -1244,9 +1192,9 @@ class Generator(object):
             self.h('#endif /* defined (%s) */' % self.guard)
             self.h('')
 
-        file_set_contents(self.basename + '.h', '\n'.join(self.__header))
-        file_set_contents(self.basename + '-body.h', '\n'.join(self.__body))
-        file_set_contents(self.basename + '-gtk-doc.h', '\n'.join(self.__docs))
+        file_set_contents(self.basename + '.h', u('\n').join(self.__header).encode('utf-8'))
+        file_set_contents(self.basename + '-body.h', u('\n').join(self.__body).encode('utf-8'))
+        file_set_contents(self.basename + '-gtk-doc.h', u('\n').join(self.__docs).encode('utf-8'))
 
 def types_to_gtypes(types):
     return [type_to_gtype(t)[1] for t in types]

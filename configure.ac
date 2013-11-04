@@ -149,10 +149,6 @@ if test -n "$with_ca_certificates"; then
     fi
 fi
 
-AC_ARG_ENABLE(debug,
-  AC_HELP_STRING([--disable-debug],[compile without debug code]),
-    enable_debug=$enableval, enable_debug=yes )
-
 ifelse(gabble_nano_version, 0,
     [ # Gabble is version x.y.z - disable coding style checks by default
 AC_ARG_ENABLE(coding-style-checks,
@@ -166,11 +162,6 @@ AC_ARG_ENABLE(coding-style-checks,
                  [do not check coding style using grep]),
     [ENABLE_CODING_STYLE_CHECKS=$enableval], [ENABLE_CODING_STYLE_CHECKS=yes])
     ])
-
-if test x$enable_debug = xyes; then
-  AC_DEFINE(ENABLE_DEBUG, [], [Enable debug code])
-fi
-AM_CONDITIONAL([ENABLE_DEBUG], [test "x$enable_debug" = xyes])
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
@@ -228,7 +219,7 @@ PKG_CHECK_MODULES(GLIB,
     [glib-2.0 >= 2.32, gobject-2.0, gthread-2.0, gio-2.0])
 PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.32])
 
-AC_DEFINE(GLIB_VERSION_MIN_REQUIRED, GLIB_VERSION_2_30, [Ignore post 2.30 deprecations])
+AC_DEFINE(GLIB_VERSION_MIN_REQUIRED, GLIB_VERSION_2_32, [Ignore post 2.32 deprecations])
 AC_DEFINE(GLIB_VERSION_MAX_ALLOWED, GLIB_VERSION_2_32, [Prevent post 2.32 APIs])
 
 AC_SUBST(GLIB_CFLAGS)
@@ -287,8 +278,8 @@ AC_SUBST(DBUS_LIBS)
 
 AC_DEFINE(TP_SEAL_ENABLE, [], [Prevent to use sealed variables])
 AC_DEFINE(TP_DISABLE_SINGLE_INCLUDE, [], [Disable single header include])
-AC_DEFINE([TP_VERSION_MIN_REQUIRED], [TP_VERSION_0_22], [Ignore post 0.22 deprecations])
-AC_DEFINE([TP_VERSION_MAX_ALLOWED], [TP_VERSION_0_22], [Prevent post 0.22 APIs])
+AC_DEFINE([TP_VERSION_MIN_REQUIRED], [TP_VERSION_1_0], [Ignore post 1.0 deprecations])
+AC_DEFINE([TP_VERSION_MAX_ALLOWED], [TP_VERSION_1_0], [Prevent post 1.0 APIs])
 PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib-1 >= 0.99.2, telepathy-glib-1-dbus >= 0.99.2])
 
 AC_SUBST(TP_GLIB_CFLAGS)
@@ -451,7 +442,6 @@ Configure summary:
         Compiler Flags..............:  ${CFLAGS} ${ERROR_CFLAGS}
         Prefix......................:  ${prefix}
         Coding style checks.........:  ${ENABLE_CODING_STYLE_CHECKS}
-        Enable debug................:  ${enable_debug}
         Python tests................:  ${tests_enabled}
         Install unit tests..........:  ${installed_tests}
 

@@ -73,7 +73,7 @@ def run_test(q, bus, conn, stream,
             initial_video: True},
         ], [
             media_interface + '/gtalk-p2p',
-            media_interface + '/ice-udp',
+            media_interface + '/ice',
             media_interface + '/video/h264',
             ]),
         ])
@@ -91,7 +91,7 @@ def run_test(q, bus, conn, stream,
             initial_video: True},
         ], [
             media_interface + '/gtalk-p2p',
-            media_interface + '/ice-udp',
+            media_interface + '/ice',
             ]),
         ])
     (disco_response, namespaces, _, _) = receive_presence_and_ask_caps(q, stream,
@@ -127,7 +127,7 @@ def run_test(q, bus, conn, stream,
             cs.STREAM_TUBE_SERVICE: 'x-abiword' },
         ], [
             media_interface + '/gtalk-p2p',
-            media_interface + '/ice-udp',
+            media_interface + '/ice',
             media_interface + '/video/h264',
             ]),
         ])
@@ -186,7 +186,7 @@ def run_test(q, bus, conn, stream,
         { cs.CHANNEL_TYPE: media_channel_type,
             initial_video: True},
         ], [
-            media_interface + '/ice-udp',
+            media_interface + '/ice',
             media_interface + '/video/theora',
             ]),
         ])
@@ -228,7 +228,7 @@ def run_mixed_test (q, bus, conn, stream):
             cs.CALL_INITIAL_VIDEO: True},
         ], [
             cs.CHANNEL_TYPE_CALL + '/gtalk-p2p',
-            cs.CHANNEL_TYPE_CALL + '/ice-udp',
+            cs.CHANNEL_TYPE_CALL + '/ice',
             cs.CHANNEL_TYPE_CALL + '/video/h264',
             ]),
         ])

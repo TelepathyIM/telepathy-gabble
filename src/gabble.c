@@ -44,7 +44,6 @@ construct_cm (void)
       GABBLE_TYPE_CONNECTION_MANAGER, NULL);
 }
 
-#ifdef ENABLE_DEBUG
 static TpDebugSender *debug_sender = NULL;
 
 static void
@@ -102,9 +101,6 @@ log_handler (const gchar *log_domain,
     log_to_debug_sender (log_domain, log_level, message);
 }
 
-#endif
-
-
 void
 gabble_init (void)
 {
@@ -148,7 +144,6 @@ gabble_main (int argc,
   g_log_set_always_fatal (fatal_mask);
 #endif
 
-#ifdef ENABLE_DEBUG
   gabble_debug_set_flags_from_env ();
 
   stamp_logs = (g_getenv ("GABBLE_TIMING") != NULL);
@@ -168,7 +163,6 @@ gabble_main (int argc,
 
   if (g_getenv ("GABBLE_PERSIST") != NULL)
     tp_debug_set_persistent (TRUE);
-#endif
 
   loader = gabble_plugin_loader_dup ();
 
@@ -179,10 +173,8 @@ gabble_main (int argc,
 
   g_object_unref (loader);
 
-#ifdef ENABLE_DEBUG
   g_log_set_default_handler (g_log_default_handler, NULL);
   g_object_unref (debug_sender);
-#endif
 
   wocky_deinit ();
 

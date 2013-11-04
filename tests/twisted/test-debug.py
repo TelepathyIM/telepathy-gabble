@@ -7,7 +7,6 @@ from servicetest import assertEquals, sync_dbus, call_async, ProxyWrapper
 from servicetest import EventPattern
 from gabbletest import exec_test
 import constants as cs
-from config import DEBUGGING
 
 def test(q, bus, conn, stream):
     messages = []
@@ -18,13 +17,6 @@ def test(q, bus, conn, stream):
     debug = ProxyWrapper(bus.get_object(conn.bus_name, cs.DEBUG_PATH),
             cs.DEBUG_IFACE)
     debug.connect_to_signal('NewDebugMessage', new_message)
-
-    if not DEBUGGING:
-        # If we're built with --disable-debug, check that the Debug object
-        # isn't present.
-        call_async(q, debug, 'GetMessages')
-        q.expect('dbus-error', method='GetMessages')
-        return
 
     assert len(debug.GetMessages()) > 0
 

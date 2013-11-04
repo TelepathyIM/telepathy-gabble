@@ -556,7 +556,9 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
   GabbleTLSCertificate *certificate;
   GPtrArray *rejections;
   GValueArray *rejection;
-  TpTLSCertificateRejectReason tls_reason;
+  guint tls_reason;
+  const gchar *dbus_error_tmp;
+  GHashTable *details_tmp;
 
   /* We probably want the rejection details of last completed operation */
   g_return_if_fail (self->priv->completed_channels != NULL);
@@ -574,9 +576,13 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
 
   rejection = g_ptr_array_index (rejections, 0);
 
-  tls_reason = g_value_get_uint (g_value_array_get_nth (rejection, 0));
-  *dbus_error = g_value_dup_string (g_value_array_get_nth (rejection, 1));
-  *details = g_value_dup_boxed (g_value_array_get_nth (rejection, 2));
+  tp_value_array_unpack (rejection, 3,
+      &tls_reason,
+      &dbus_error_tmp,
+      &details_tmp);
+
+  *dbus_error = g_strdup (dbus_error_tmp);
+  *details = g_boxed_copy (TP_HASH_TYPE_STRING_VARIANT_MAP, details_tmp);
 
   *reason = cert_reject_reason_to_conn_reason (tls_reason);
 

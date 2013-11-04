@@ -101,7 +101,7 @@ get_stun_servers (GabbleCallStream *self)
   WockyJingleFactory *jf;
   GList *stun_servers;
 
-  arr = g_ptr_array_new_with_free_func ((GDestroyNotify) g_value_array_free);
+  arr = g_ptr_array_new_with_free_func ((GDestroyNotify) tp_value_array_free);
   jf = wocky_jingle_session_get_factory (self->priv->content->session);
   stun_servers = wocky_jingle_info_get_stun_servers (
       wocky_jingle_factory_get_jingle_info (jf));

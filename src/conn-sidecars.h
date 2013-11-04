@@ -27,7 +27,7 @@ G_BEGIN_DECLS
 
 void conn_sidecars_init (GabbleConnection *conn);
 void conn_sidecars_dispose (GabbleConnection *conn);
-void conn_future_iface_init (gpointer g_iface, gpointer iface_data);
+void conn_sidecars_iface_init (gpointer g_iface);
 
 G_END_DECLS
 

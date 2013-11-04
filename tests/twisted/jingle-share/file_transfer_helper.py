@@ -270,7 +270,6 @@ class ReceiveFileTest(FileTransferTest):
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER, props
         assertSameSets(
             [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
-              cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE',
             ], props[cs.INTERFACES])
         assert props[cs.TARGET_HANDLE] == self.handle, props
         assert props[cs.TARGET_ID] == self.target, props
@@ -425,7 +424,6 @@ class SendFileTest(FileTransferTest):
         assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER
         assertSameSets(
             [ cs.CHANNEL_IFACE_FILE_TRANSFER_METADATA,
-              cs.CHANNEL_TYPE_FILE_TRANSFER + '.FUTURE',
             ], props[cs.INTERFACES])
         assert props[cs.TARGET_HANDLE] == self.handle
         assert props[cs.TARGET_ID] == self.target

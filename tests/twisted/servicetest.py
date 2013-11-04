@@ -634,7 +634,6 @@ def wrap_connection(conn):
          ('Location', cs.CONN_IFACE_LOCATION),
          ('Presence', cs.CONN_IFACE_PRESENCE),
          ('Requests', cs.CONN_IFACE_REQUESTS),
-         ('Future', tp_name_prefix + '.Connection.FUTURE'),
          ('MailNotification', cs.CONN_IFACE_MAIL_NOTIFICATION),
          ('ContactList', cs.CONN_IFACE_CONTACT_LIST),
          ('ContactGroups', cs.CONN_IFACE_CONTACT_GROUPS),
@@ -642,6 +641,8 @@ def wrap_connection(conn):
          ('PowerSaving', cs.CONN_IFACE_POWER_SAVING),
          ('Addressing', cs.CONN_IFACE_ADDRESSING),
          ('ClientTypes', cs.CONN_IFACE_CLIENT_TYPES),
+         ('Renaming', cs.CONN_IFACE_RENAMING),
+         ('Sidecars1', cs.CONN_IFACE_SIDECARS1),
         ]))
 
 class ChannelWrapper(ProxyWrapper):

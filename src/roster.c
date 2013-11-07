@@ -3014,6 +3014,16 @@ gabble_roster_download_async (TpBaseContactList *base,
   g_clear_error (&error);
 }
 
+static gboolean
+gabble_roster_is_blocked (TpBaseContactList *base,
+    TpHandle contact)
+{
+  GabbleRoster *self = GABBLE_ROSTER (base);
+  GabbleRosterItem *item = _gabble_roster_item_lookup (self, contact);
+
+  return (item != NULL && item->blocked);
+}
+
 static TpHandleSet *
 gabble_roster_dup_blocked_contacts (TpBaseContactList *base)
 {
@@ -3484,6 +3494,7 @@ static void
 blockable_iface_init (TpBlockableContactListInterface *iface)
 {
   iface->can_block = gabble_roster_can_block;
+  iface->is_blocked = gabble_roster_is_blocked;
   iface->dup_blocked_contacts = gabble_roster_dup_blocked_contacts;
   iface->block_contacts_async = gabble_roster_block_contacts_async;
   iface->unblock_contacts_async = gabble_roster_unblock_contacts_async;

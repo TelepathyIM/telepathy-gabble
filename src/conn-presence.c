@@ -168,20 +168,61 @@ conn_presence_error_quark (void)
   return quark;
 }
 
-static GHashTable *
-construct_contact_statuses_cb (GObject *obj,
-                               const GArray *contact_handles)
+static TpPresenceStatus *construct_contact_status (GObject *obj,
+    TpHandle handle)
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) self;
-  guint i;
-  TpHandle handle;
-  GHashTable *contact_statuses, *parameters;
+  GHashTable *parameters;
   TpPresenceStatus *contact_status;
   GValue *message;
   GabblePresence *presence;
   GabblePresenceId status;
   const gchar *status_message;
+
+  if (handle == tp_base_connection_get_self_handle (base))
+    presence = self->self_presence;
+  else
+    presence = gabble_presence_cache_get (self->presence_cache, handle);
+
+  if (presence)
+    {
+      status = presence->status;
+      status_message = presence->status_message;
+    }
+  else
+    {
+     if (gabble_roster_handle_sends_presence_to_us (self->roster, handle))
+       status = GABBLE_PRESENCE_OFFLINE;
+     else
+       status = GABBLE_PRESENCE_UNKNOWN;
+
+     status_message = NULL;
+    }
+
+  parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
+      (GDestroyNotify) tp_g_value_slice_free);
+
+  if (status_message != NULL)
+    {
+      message = tp_g_value_slice_new (G_TYPE_STRING);
+      g_value_set_static_string (message, status_message);
+      g_hash_table_insert (parameters, "message", message);
+    }
+
+  contact_status = tp_presence_status_new (status, parameters);
+  g_hash_table_unref (parameters);
+  return contact_status;
+}
+
+static GHashTable *
+construct_contact_statuses (GabbleConnection *self,
+    const GArray *contact_handles)
+{
+  TpBaseConnection *base = (TpBaseConnection *) self;
+  guint i;
+  TpHandle handle;
+  GHashTable *contact_statuses;
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
@@ -195,41 +236,8 @@ construct_contact_statuses_cb (GObject *obj,
     {
       handle = g_array_index (contact_handles, TpHandle, i);
 
-      if (handle == tp_base_connection_get_self_handle (base))
-        presence = self->self_presence;
-      else
-        presence = gabble_presence_cache_get (self->presence_cache, handle);
-
-      if (presence)
-        {
-          status = presence->status;
-          status_message = presence->status_message;
-        }
-      else
-        {
-         if (gabble_roster_handle_sends_presence_to_us (self->roster, handle))
-           status = GABBLE_PRESENCE_OFFLINE;
-         else
-           status = GABBLE_PRESENCE_UNKNOWN;
-
-         status_message = NULL;
-        }
-
-      parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-          (GDestroyNotify) tp_g_value_slice_free);
-
-      if (status_message != NULL)
-        {
-          message = tp_g_value_slice_new (G_TYPE_STRING);
-          g_value_set_static_string (message, status_message);
-          g_hash_table_insert (parameters, "message", message);
-        }
-
-      contact_status = tp_presence_status_new (status, parameters);
-      g_hash_table_unref (parameters);
-
       g_hash_table_insert (contact_statuses, GUINT_TO_POINTER (handle),
-          contact_status);
+          construct_contact_status ((GObject *) self, handle));
     }
 
   return contact_statuses;
@@ -251,7 +259,7 @@ conn_presence_emit_presence_update (
 {
   GHashTable *contact_statuses;
 
-  contact_statuses = construct_contact_statuses_cb ((GObject *) self,
+  contact_statuses = construct_contact_statuses (self,
       contact_handles);
   tp_presence_mixin_emit_presence_update ((GObject *) self, contact_statuses);
   g_hash_table_unref (contact_statuses);
@@ -1934,7 +1942,7 @@ conn_presence_class_init (GabbleConnectionClass *klass)
 
   tp_presence_mixin_class_init ((GObjectClass *) klass,
       G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
-      status_available_cb, construct_contact_statuses_cb,
+      status_available_cb, construct_contact_status,
       set_own_status_cb, conn_presence_statuses ());
   mixin_cls = TP_PRESENCE_MIXIN_CLASS (klass);
   mixin_cls->get_maximum_status_message_length =

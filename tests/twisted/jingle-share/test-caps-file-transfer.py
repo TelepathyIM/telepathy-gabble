@@ -44,7 +44,7 @@ generic_caps = [(text_fixed_properties, text_allowed_properties),
                    (dbus_tube_fixed_properties, dbus_tube_allowed_properties)]
 
 def check_contact_caps(conn, handle, with_ft):
-    conn_contacts_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACTS)
+    conn_contacts_iface = dbus.Interface(conn, cs.CONN)
 
     if with_ft:
         expected_caps = dbus.Dictionary({handle: generic_ft_caps})

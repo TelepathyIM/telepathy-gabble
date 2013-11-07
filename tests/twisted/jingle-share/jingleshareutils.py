@@ -19,7 +19,7 @@ def test_ft_caps_from_contact(q, bus, conn, stream, contact, contact_handle, cli
     run += 1
 
     conn_caps_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACT_CAPS)
-    conn_contacts_iface = dbus.Interface(conn, cs.CONN_IFACE_CONTACTS)
+    conn_contacts_iface = dbus.Interface(conn, cs.CONN)
 
     # send presence with no FT cap
     presence = make_presence(contact, status='hello')

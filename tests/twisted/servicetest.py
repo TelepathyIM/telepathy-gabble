@@ -626,9 +626,9 @@ def wrap_connection(conn):
     return ConnWrapper(conn, tp_name_prefix + '.Connection',
         dict(
         [('Peer', 'org.freedesktop.DBus.Peer'),
+         ('Contacts', cs.CONN),
          ('Aliasing', cs.CONN_IFACE_ALIASING),
          ('Avatars', cs.CONN_IFACE_AVATARS),
-         ('Contacts', cs.CONN_IFACE_CONTACTS),
          ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),
          ('ContactInfo', cs.CONN_IFACE_CONTACT_INFO),
          ('Location', cs.CONN_IFACE_LOCATION),

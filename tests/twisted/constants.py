@@ -186,7 +186,6 @@ CONTACT_LIST_STATE_SUCCESS = 3
 CONN = PREFIX + ".Connection"
 CONN_IFACE_AVATARS = CONN + '.Interface.Avatars1'
 CONN_IFACE_ALIASING = CONN + '.Interface.Aliasing1'
-CONN_IFACE_CONTACTS = CONN + '.Interface.Contacts'
 CONN_IFACE_CONTACT_CAPS = CONN + '.Interface.ContactCapabilities1'
 CONN_IFACE_CONTACT_INFO = CONN + ".Interface.ContactInfo1"
 CONN_IFACE_PRESENCE = CONN + '.Interface.Presence1'

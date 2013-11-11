@@ -25,7 +25,7 @@ static void plugin_iface_init (
     gpointer g_iface,
     gpointer data);
 
-#define IFACE_TEST "im.telepathy1.Gabble.Plugin.Test"
+#define IFACE_TEST "im.telepathy.v1.Gabble.Plugin.Test"
 #define IFACE_TEST_PROPS IFACE_TEST ".Props"
 #define IFACE_TEST_BUGGY IFACE_TEST ".Buggy"
 #define IFACE_TEST_IQ IFACE_TEST ".IQ"

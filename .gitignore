@@ -38,7 +38,7 @@ _gen
 /configure.lineno
 core
 /data/gabble.manager
-/data/im.telepathy1.ConnectionManager.gabble.service
+/data/im.telepathy.v1.ConnectionManager.gabble.service
 /debian
 /depcomp
 /docs/*.html

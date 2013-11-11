@@ -22,7 +22,7 @@ Some handy constants for other tests to share and enjoy.
 
 from dbus import PROPERTIES_IFACE, INTROSPECTABLE_IFACE
 
-PREFIX = "im.telepathy1"
+PREFIX = "im.telepathy.v1"
 PATH_PREFIX = '/' + PREFIX.replace('.', '/')
 
 tp_name_prefix = PREFIX

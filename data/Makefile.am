@@ -4,12 +4,12 @@ managerdir = $(datadir)/telepathy-1/managers
 manager_DATA = gabble.manager
 
 servicedir = $(datadir)/dbus-1/services
-service_DATA = im.telepathy1.ConnectionManager.gabble.service
+service_DATA = im.telepathy.v1.ConnectionManager.gabble.service
 
 # We don't use the full filename for the .in because > 99 character filenames
 # in tarballs are non-portable (and automake 1.8 doesn't let us build
 # non-archaic tarballs)
-im.telepathy1.ConnectionManager.gabble.service: gabble.service.in \
+im.telepathy.v1.ConnectionManager.gabble.service: gabble.service.in \
 		Makefile
 	$(AM_V_GEN)sed -e "s|[@]libexecdir[@]|$(libexecdir)|" $< > $@
 

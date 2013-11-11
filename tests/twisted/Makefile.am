@@ -420,19 +420,19 @@ tools/%.conf: tools/%.conf.in Makefile
 # We don't use the full filename for the .in because > 99 character filenames
 # in tarballs are non-portable (and automake 1.8 doesn't let us build
 # non-archaic tarballs)
-tools/servicedir/im.telepathy1.ConnectionManager.%.service: tools/servicedir/%.service.in  Makefile
+tools/servicedir/im.telepathy.v1.ConnectionManager.%.service: tools/servicedir/%.service.in  Makefile
 	$(MKDIR_P) tools/servicedir
 	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" $< > $@
 
-tools/servicedir-uninstalled/im.telepathy1.ConnectionManager.%.service: tools/servicedir-uninstalled/%.service.in
+tools/servicedir-uninstalled/im.telepathy.v1.ConnectionManager.%.service: tools/servicedir-uninstalled/%.service.in
 	$(MKDIR_P) tools/servicedir-uninstalled
 	$(AM_V_GEN)sed -e "s|[@]abs_top_builddir[@]|@abs_top_builddir@|g" $< > $@
 
 # D-Bus service file for testing
 installed_service_in_files = tools/servicedir/gabble.service.in
-service_files = tools/servicedir/im.telepathy1.ConnectionManager.gabble.service
+service_files = tools/servicedir/im.telepathy.v1.ConnectionManager.gabble.service
 uninstalled_service_in_files = tools/servicedir-uninstalled/gabble.service.in
-uninstalled_service_files = tools/servicedir-uninstalled/im.telepathy1.ConnectionManager.gabble.service
+uninstalled_service_files = tools/servicedir-uninstalled/im.telepathy.v1.ConnectionManager.gabble.service
 
 # D-Bus config file for testing
 installed_conf_in_files = tools/servicedir/tmp-session-bus.conf.in

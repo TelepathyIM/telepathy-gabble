@@ -19,7 +19,7 @@
       USA.</p>
   </tp:license>
 
-  <interface name="im.telepathy1.Gabble.Plugin.Console">
+  <interface name="im.telepathy.v1.Gabble.Plugin.Console">
     <annotation name="org.freedesktop.DBus.Property.EmitsChangedSignal"
                 value="true"/>
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">

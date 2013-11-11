@@ -19,7 +19,7 @@
       USA.</p>
   </tp:license>
 
-  <interface name="im.telepathy1.Gabble.Plugin.Gateways">
+  <interface name="im.telepathy.v1.Gabble.Plugin.Gateways">
     <tp:docstring xmlns="http://www.w3.org/1999/xhtml">
       <p>A sidecar interface to register with XEP-0100 gateways.</p>
     </tp:docstring>
@@ -63,10 +63,10 @@
       </arg>
 
       <tp:possible-errors>
-        <tp:error name="im.telepathy1.Error.NetworkError"/>
-        <tp:error name="im.telepathy1.Error.NotAvailable"/>
-        <tp:error name="im.telepathy1.Error.NotImplemented"/>
-        <tp:error name="im.telepathy1.Error.PermissionDenied"/>
+        <tp:error name="im.telepathy.v1.Error.NetworkError"/>
+        <tp:error name="im.telepathy.v1.Error.NotAvailable"/>
+        <tp:error name="im.telepathy.v1.Error.NotImplemented"/>
+        <tp:error name="im.telepathy.v1.Error.PermissionDenied"/>
       </tp:possible-errors>
     </method>
 

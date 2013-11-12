@@ -42,7 +42,7 @@ core
 /debian
 /depcomp
 /docs/*.html
-/docs/telepathy-gabble.8
+/docs/telepathy-gabble-1.8
 /extensions/extensions.html
 /gtk-doc.make
 /install-sh
@@ -68,7 +68,7 @@ core
 /src/gabble-enumtypes.c
 /src/media-session-enumtypes.c
 /src/media-session-enumtypes.h
-/src/telepathy-gabble
+/src/telepathy-gabble-1
 /src/write-mgr-file
 /stamp-h1
 tags

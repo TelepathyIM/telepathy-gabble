@@ -176,7 +176,7 @@ if test x$installed_tests = xyes; then
 fi
 AM_CONDITIONAL([ENABLE_INSTALLED_TESTS], [test "x$installed_tests" = xyes])
 
-gabbletestsdir=${libdir}/telepathy-gabble-tests
+gabbletestsdir=${libdir}/telepathy-gabble-1-tests
 AC_SUBST(gabbletestsdir)
 
 AC_ARG_ENABLE([is-a-phone],
@@ -234,12 +234,12 @@ AC_SUBST(GLIB_GENMARSHAL)
 #
 # Private directory for Wocky and the gabble-plugins library
 if test "x$pluginexeclibdir" = x; then
-  pluginexeclibdir='${libdir}/telepathy/gabble-0/lib'
+  pluginexeclibdir='${libdir}/telepathy/gabble-1'
 fi
 AC_ARG_VAR([pluginexeclibdir])
 # The actual plugins
 if test "x$pluginexecdir" = x; then
-  pluginexecdir='${libdir}/telepathy/gabble-0/plugins'
+  pluginexecdir='${libdir}/telepathy/gabble-1/plugins'
 fi
 AC_ARG_VAR([pluginexecdir])
 
@@ -257,7 +257,7 @@ if test x$enable_plugins = xyes; then
                    [install headers for third-party plugins (experimental)]),
     [
       enable_plugin_api=$enableval
-      wocky_install_headers_dir="${includedir}/telepathy-gabble-0"
+      wocky_install_headers_dir="${includedir}/telepathy-gabble-1"
     ],
     [enable_plugin_api=no])
 fi
@@ -425,8 +425,8 @@ AC_OUTPUT( Makefile \
            lib/gibber/Makefile \
            plugins/Makefile \
            gabble/Makefile \
-           gabble/telepathy-gabble-uninstalled.pc \
-           gabble/telepathy-gabble.pc
+           gabble/telepathy-gabble-1-uninstalled.pc \
+           gabble/telepathy-gabble-1.pc
 )
 
 if test false != "$TEST_PYTHON"; then

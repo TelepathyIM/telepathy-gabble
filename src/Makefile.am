@@ -9,7 +9,7 @@ CLEANFILES = $(BUILT_SOURCES)
 
 EXTRA_DIST =
 
-libexec_PROGRAMS=telepathy-gabble
+libexec_PROGRAMS = telepathy-gabble-1
 noinst_PROGRAMS = write-mgr-file
 
 libgabble_convenience_la_SOURCES = \
@@ -185,19 +185,19 @@ write_mgr_file_SOURCES = write-mgr-file.c
 
 write_mgr_file_LDADD = libgabble-convenience.la
 
-telepathy_gabble_SOURCES = \
+telepathy_gabble_1_SOURCES = \
     main.c
 
 check_c_sources = \
-    $(telepathy_gabble_SOURCES) \
+    $(telepathy_gabble_1_SOURCES) \
     $(libgabble_convenience_la_SOURCES) \
     $(write_mgr_file_SOURCES)
 include $(top_srcdir)/tools/check-coding-style.mk
 check-local: check-coding-style
 
-telepathy_gabble_LDADD = libgabble-convenience.la
+telepathy_gabble_1_LDADD = libgabble-convenience.la
 
-telepathy_gabble_LDFLAGS = -export-dynamic
+telepathy_gabble_1_LDFLAGS = -export-dynamic
 
 noinst_LTLIBRARIES = libgabble-convenience.la
 
@@ -293,12 +293,12 @@ Android.mk: Makefile.am $(BUILT_SOURCES)
 	-:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) \
 	-:LDFLAGS $(libgabble_plugins_la_LDFLAGS) \
 	$(libgabble_plugins_la_LIBADD) \
-	-:SHARED telepathy-gabble -:TAGS eng debug \
+	-:SHARED telepathy-gabble-1 -:TAGS eng debug \
 	-:SOURCES $(libgabble_convenience_la_SOURCES) \
 	$(nodist_libgabble_convenience_la_SOURCES) main.c \
 	-:CFLAGS $(DEFS) $(CFLAGS) $(DEFAULT_INCLUDES) $(INCLUDES) \
 	$(AM_CFLAGS) -DBUILD_AS_ANDROID_SERVICE \
-	-:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) $(telepathy_gabble_LDFLAGS) \
-	-:LDFLAGS $(telepathy_gabble_LDADD) $(libgabble_convenience_la_LIBADD) \
+	-:CPPFLAGS $(CPPFLAGS) $(AM_CPPFLAGS) $(telepathy_gabble_1_LDFLAGS) \
+	-:LDFLAGS $(telepathy_gabble_1_LDADD) $(libgabble_convenience_la_LIBADD) \
 	$(lib_LTLIBRARIES) \
 	> $@

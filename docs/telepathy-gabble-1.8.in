@@ -1,12 +1,12 @@
-.TH TELEPATHY-GABBLE "8" "October 2007" "Telepathy" "D-Bus services"
+.TH TELEPATHY-GABBLE-1 "8" "October 2007" "Telepathy" "D-Bus services"
 \" This man page was written by Simon McVittie for the Debian project,
 \" but may be used by others.
 \" Copyright © 2007 Collabora Ltd. <http://www.collabora.co.uk/>
 \" It may be distributed under the same terms as telepathy-gabble itself.
 .SH NAME
-telepathy-gabble \- Telepathy connection manager for XMPP (Jabber)
+telepathy-gabble-1 \- Telepathy connection manager for XMPP (Jabber)
 .SH SYNOPSIS
-\fB@libexecdir@/telepathy\-gabble\fR
+\fB@libexecdir@/telepathy\-gabble\-1\fR
 .SH DESCRIPTION
 Gabble implements the Telepathy D-Bus specification for XMPP (Jabber),
 allowing Telepathy clients like

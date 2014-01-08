@@ -626,7 +626,7 @@ def wrap_connection(conn):
     return ConnWrapper(conn, tp_name_prefix + '.Connection',
         dict(
         [('Peer', 'org.freedesktop.DBus.Peer'),
-         ('Contacts', cs.CONN),
+         ('Contacts', cs.CONN),     # backwards compat with Telepathy 0
          ('Aliasing', cs.CONN_IFACE_ALIASING),
          ('Avatars', cs.CONN_IFACE_AVATARS),
          ('ContactCapabilities', cs.CONN_IFACE_CONTACT_CAPS),

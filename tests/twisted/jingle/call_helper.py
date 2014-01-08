@@ -286,9 +286,7 @@ class CallTest(object):
                   cs.CALL_INITIAL_VIDEO: self.initial_video,
                 })
 
-        signal = self.q.expect('dbus-signal', signal='NewChannels',
-            predicate=lambda e:
-                cs.CHANNEL_TYPE_CONTACT_LIST not in e.args[0][0][1].values())
+        signal = self.q.expect('dbus-signal', signal='NewChannels')
 
         assertLength(1, signal.args)
         assertLength(1, signal.args[0])       # one channel

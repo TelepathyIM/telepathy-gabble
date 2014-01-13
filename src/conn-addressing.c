@@ -38,38 +38,34 @@ static const char *assumed_interfaces[] = {
     NULL
   };
 
-
-static void
-_fill_contact_attributes (TpHandleRepoIface *contact_repo,
+gboolean
+conn_addressing_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
     TpHandle contact,
-    GHashTable *attributes_hash)
+    TpContactAttributeMap *attributes)
 {
-  gchar **uris = gabble_uris_for_handle (contact_repo, contact);
-  GHashTable *addresses = gabble_vcard_addresses_for_handle (contact_repo, contact);
+  TpHandleRepoIface *contact_repo;
+  gchar **uris;
+  GHashTable *addresses;
 
-  tp_contacts_mixin_set_contact_attribute (attributes_hash,
+  if (tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1))
+    return FALSE;
+
+  contact_repo = tp_base_connection_get_handles ((TpBaseConnection *) self,
+      TP_HANDLE_TYPE_CONTACT);
+  uris = gabble_uris_for_handle (contact_repo, contact);
+  addresses = gabble_vcard_addresses_for_handle (contact_repo, contact);
+
+  tp_contact_attribute_map_take_sliced_gvalue (attributes,
       contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_URIS,
       tp_g_value_slice_new_take_boxed (G_TYPE_STRV, uris));
 
-  tp_contacts_mixin_set_contact_attribute (attributes_hash,
+  tp_contact_attribute_map_take_sliced_gvalue (attributes,
       contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_ADDRESSES,
-      tp_g_value_slice_new_take_boxed (TP_HASH_TYPE_STRING_STRING_MAP, addresses));
-}
+      tp_g_value_slice_new_take_boxed (TP_HASH_TYPE_STRING_STRING_MAP,
+        addresses));
 
-static void
-conn_addressing_fill_contact_attributes (GObject *obj,
-    const GArray *contacts,
-    GHashTable *attributes_hash)
-{
-  guint i;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) obj, TP_HANDLE_TYPE_CONTACT);
-
-  for (i = 0; i < contacts->len; i++)
-    {
-      TpHandle contact = g_array_index (contacts, TpHandle, i);
-      _fill_contact_attributes (contact_repo, contact, attributes_hash);
-    }
+  return TRUE;
 }
 
 static void
@@ -79,8 +75,9 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
     DBusGMethodInvocation *context)
 {
   const gchar **uri;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) iface, TP_HANDLE_TYPE_CONTACT);
+  TpBaseConnection *base = TP_BASE_CONNECTION (iface);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
   GHashTable *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
@@ -97,7 +94,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
       g_array_append_val (handles, h);
     }
 
-  attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
+  attributes = tp_base_connection_dup_contact_attributes_hash (base, handles,
       interfaces, assumed_interfaces);
 
   tp_svc_connection_interface_addressing1_return_from_get_contacts_by_uri (
@@ -116,8 +113,9 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
     DBusGMethodInvocation *context)
 {
   const gchar **address;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) iface, TP_HANDLE_TYPE_CONTACT);
+  TpBaseConnection *base = TP_BASE_CONNECTION (iface);
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
+      TP_HANDLE_TYPE_CONTACT);
   GHashTable *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
@@ -135,7 +133,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
       g_array_append_val (handles, h);
     }
 
-  attributes = tp_contacts_mixin_get_contact_attributes (G_OBJECT (iface), handles,
+  attributes = tp_base_connection_dup_contact_attributes_hash (base, handles,
       interfaces, assumed_interfaces);
 
   tp_svc_connection_interface_addressing1_return_from_get_contacts_by_vcard_field (
@@ -147,10 +145,8 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
 }
 
 void
-conn_addressing_init (GabbleConnection *self) {
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
-      TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1,
-      conn_addressing_fill_contact_attributes);
+conn_addressing_init (GabbleConnection *self)
+{
 }
 
 void

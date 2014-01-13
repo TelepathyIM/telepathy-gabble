@@ -128,28 +128,29 @@ conn_client_types_iface_init (gpointer g_iface,
 #undef IMPLEMENT
 }
 
-static void
-conn_client_types_fill_contact_attributes (GObject *obj,
-    const GArray *contacts,
-    GHashTable *attributes_hash)
+gboolean
+conn_client_types_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (obj);
-  guint i;
-
-  for (i = 0; i < contacts->len; i++)
+  if (!tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1))
     {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
       GValue *val;
       gchar **types;
 
-      if (!get_client_types_from_handle (conn, handle, &types))
-        continue;
+      if (!get_client_types_from_handle (self, handle, &types))
+        return TRUE;
 
       val = tp_g_value_slice_new_take_boxed (G_TYPE_STRV, types);
 
-      tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
+      tp_contact_attribute_map_take_sliced_gvalue (attributes, handle,
           TP_TOKEN_CONNECTION_INTERFACE_CLIENT_TYPES1_CLIENT_TYPES, val);
+
+      return TRUE;
     }
+
+  return FALSE;
 }
 
 typedef struct
@@ -220,10 +221,6 @@ presence_cache_client_types_updated_cb (GabblePresenceCache *presence_cache,
 void
 conn_client_types_init (GabbleConnection *conn)
 {
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1,
-    conn_client_types_fill_contact_attributes);
-
   g_signal_connect (conn->presence_cache, "client-types-updated",
       G_CALLBACK (presence_cache_client_types_updated_cb), conn);
 }

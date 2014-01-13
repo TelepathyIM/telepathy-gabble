@@ -1032,46 +1032,44 @@ conn_contact_info_status_changed_cb (GabbleConnection *conn,
     }
 }
 
-static void
-conn_contact_info_fill_contact_attributes (GObject *obj,
-    const GArray *contacts,
-    GHashTable *attributes_hash)
+gboolean
+conn_contact_info_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle contact,
+    TpContactAttributeMap *attributes)
 {
-  guint i;
-  GabbleConnection *self = GABBLE_CONNECTION (obj);
-
   g_assert (self->vcard_manager != NULL);
 
-  for (i = 0; i < contacts->len; i++)
+  if (!tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1))
     {
-      TpHandle contact = g_array_index (contacts, TpHandle, i);
       WockyNode *vcard_node;
 
       if (gabble_vcard_manager_get_cached (self->vcard_manager,
                                            contact, &vcard_node))
         {
           GPtrArray *contact_info = _parse_vcard (vcard_node, NULL);
+
           if (contact_info != NULL)
             {
               GValue *val =  tp_g_value_slice_new_take_boxed (
                       TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
 
-              tp_contacts_mixin_set_contact_attribute (attributes_hash,
+              tp_contact_attribute_map_take_sliced_gvalue (attributes,
                       contact, TP_TOKEN_CONNECTION_INTERFACE_CONTACT_INFO1_INFO,
                       val);
             }
         }
+
+      return TRUE;
     }
+
+  return FALSE;
 }
 
 void
 conn_contact_info_init (GabbleConnection *conn)
 {
   g_assert (conn->vcard_manager != NULL);
-
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1,
-    conn_contact_info_fill_contact_attributes);
 
   conn->contact_info_fields =
     conn_contact_info_build_supported_fields (conn, conn->vcard_manager);

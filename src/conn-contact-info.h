@@ -34,6 +34,11 @@ extern TpDBusPropertiesMixinPropImpl *conn_contact_info_properties;
 void conn_contact_info_properties_getter (GObject *object, GQuark interface,
     GQuark name, GValue *value, gpointer getter_data);
 
+gboolean conn_contact_info_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle contact,
+    TpContactAttributeMap *attributes);
+
 G_END_DECLS
 
 #endif /* __CONN_CONTACT_INFO_H__ */

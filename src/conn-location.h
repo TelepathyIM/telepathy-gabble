@@ -16,6 +16,11 @@ gboolean conn_location_properties_setter (GObject *object, GQuark interface,
 
 void conn_location_init (GabbleConnection *conn);
 
+gboolean conn_location_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes);
+
 G_END_DECLS
 
 #endif /* __CONN_LOCATION_H__ */

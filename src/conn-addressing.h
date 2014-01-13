@@ -29,6 +29,11 @@ G_BEGIN_DECLS
 void conn_addressing_iface_init (gpointer g_iface, gpointer iface_data);
 void conn_addressing_init (GabbleConnection *self);
 
+gboolean conn_addressing_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle contact,
+    TpContactAttributeMap *attributes);
+
 G_END_DECLS
 
 #endif /* GABBLE_CONN_ADDRESSING_H */

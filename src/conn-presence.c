@@ -1962,8 +1962,6 @@ conn_presence_init (GabbleConnection *conn)
 
   tp_presence_mixin_init ((GObject *) conn,
       G_STRUCT_OFFSET (GabbleConnection, presence));
-
-  tp_presence_mixin_register_with_contacts_mixin (G_OBJECT (conn));
 }
 
 void

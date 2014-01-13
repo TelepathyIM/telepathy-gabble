@@ -82,8 +82,6 @@ static guint disco_reply_timeout = 5;
 #define DISCONNECT_TIMEOUT 5
 
 static void gabble_conn_contact_caps_iface_init (gpointer, gpointer);
-static void conn_contact_capabilities_fill_contact_attributes (GObject *obj,
-  const GArray *contacts, GHashTable *attributes_hash);
 static void gabble_plugin_connection_iface_init (
     GabblePluginConnectionInterface *iface,
     gpointer conn);
@@ -103,8 +101,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_contact_info_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
        tp_dbus_properties_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACTS,
-      tp_contacts_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST1,
       tp_base_contact_list_mixin_list_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS1,
@@ -419,16 +415,9 @@ gabble_connection_constructor (GType type,
   g_signal_connect (self->presence_cache, "capabilities-update", G_CALLBACK
       (connection_capabilities_update_cb), self);
 
-  tp_contacts_mixin_init (G_OBJECT (self),
-      G_STRUCT_OFFSET (GabbleConnection, contacts));
-
   self->roster = gabble_roster_new (self);
   g_signal_connect (self->roster, "nicknames-update", G_CALLBACK
       (gabble_conn_aliasing_nicknames_updated), self);
-
-  tp_base_connection_register_with_contacts_mixin (base);
-  tp_base_contact_list_mixin_register_with_contacts_mixin (
-      gabble_connection_get_contact_list (self), base);
 
   conn_aliasing_init (self);
   conn_avatars_init (self);
@@ -439,10 +428,6 @@ gabble_connection_constructor (GType type,
   conn_mail_notif_init (self);
   conn_client_types_init (self);
   conn_addressing_init (self);
-
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (self),
-      TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1,
-          conn_contact_capabilities_fill_contact_attributes);
 
   self->bytestream_factory = gabble_bytestream_factory_new (self);
 
@@ -868,7 +853,6 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_PRESENCE1,
     TP_IFACE_CONNECTION_INTERFACE_AVATARS1,
     TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1,
-    TP_IFACE_CONNECTION_INTERFACE_CONTACTS,
     TP_IFACE_CONNECTION_INTERFACE_CONTACT_LIST1,
     TP_IFACE_CONNECTION_INTERFACE_CONTACT_GROUPS1,
     TP_IFACE_CONNECTION_INTERFACE_REQUESTS,
@@ -923,6 +907,11 @@ conn_aliasing_properties_getter (GObject *object,
 {
   g_value_set_uint (value, GPOINTER_TO_UINT (getter_data));
 }
+
+static void gabble_connection_fill_contact_attributes (TpBaseConnection *base,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes);
 
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
@@ -1008,6 +997,8 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   parent_class->start_connecting = _gabble_connection_connect;
   parent_class->get_interfaces_always_present =
       _gabble_connection_get_interfaces_always_present;
+  parent_class->fill_contact_attributes =
+    gabble_connection_fill_contact_attributes;
 
   g_type_class_add_private (gabble_connection_class,
       sizeof (GabbleConnectionPrivate));
@@ -1238,9 +1229,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   tp_dbus_properties_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
 
-  tp_contacts_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleConnectionClass, contacts_class));
-
   conn_presence_class_init (gabble_connection_class);
 
   conn_contact_info_class_init (gabble_connection_class);
@@ -1351,8 +1339,6 @@ gabble_connection_finalize (GObject *object)
 
   g_free (priv->alias);
   g_free (priv->stream_id);
-
-  tp_contacts_mixin_finalize (G_OBJECT(self));
 
   conn_aliasing_finalize (self);
   conn_presence_finalize (self);
@@ -3414,24 +3400,62 @@ gabble_connection_update_capabilities (
 }
 
 static void
-conn_contact_capabilities_fill_contact_attributes (GObject *obj,
-  const GArray *contacts, GHashTable *attributes_hash)
+gabble_connection_fill_contact_attributes (TpBaseConnection *base,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (obj);
-  guint i;
+  GabbleConnection *self = GABBLE_CONNECTION (base);
 
-  for (i = 0; i < contacts->len; i++)
+  if (!tp_strdiff (dbus_interface,
+        TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1))
     {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
       GValue *val = tp_g_value_slice_new_take_boxed (
           TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST,
           gabble_connection_get_handle_contact_capabilities (self, handle));
 
-      tp_contacts_mixin_set_contact_attribute (attributes_hash,
+      tp_contact_attribute_map_take_sliced_gvalue (attributes,
           handle,
           TP_TOKEN_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1_CAPABILITIES,
           val);
+      return;
     }
+
+  if (tp_base_contact_list_fill_contact_attributes (
+        gabble_connection_get_contact_list (self), dbus_interface, handle,
+        attributes))
+    return;
+
+  if (tp_presence_mixin_fill_contact_attributes ((GObject *) self,
+        dbus_interface, handle, attributes))
+    return;
+
+  if (conn_addressing_fill_contact_attributes (self,
+        dbus_interface, handle, attributes))
+    return;
+
+  if (conn_aliasing_fill_contact_attributes (self,
+        dbus_interface, handle, attributes))
+    return;
+
+  if (conn_avatars_fill_contact_attributes (self,
+        dbus_interface, handle, attributes))
+    return;
+
+  if (conn_client_types_fill_contact_attributes (self,
+        dbus_interface, handle, attributes))
+    return;
+
+  if (conn_contact_info_fill_contact_attributes (self,
+        dbus_interface, handle, attributes))
+    return;
+
+  if (conn_location_fill_contact_attributes (self,
+        dbus_interface, handle, attributes))
+    return;
+
+  TP_BASE_CONNECTION_CLASS (gabble_connection_parent_class)->
+    fill_contact_attributes (base, dbus_interface, handle, attributes);
 }
 
 const char *

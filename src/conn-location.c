@@ -591,17 +591,14 @@ location_pep_node_changed (WockyPepService *pep,
   update_location_from_item (conn, handle, item_node);
 }
 
-static void
-conn_location_fill_contact_attributes (GObject *obj,
-    const GArray *contacts,
-    GHashTable *attributes_hash)
+gboolean
+conn_location_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (obj);
-  guint i;
-
-  for (i = 0; i < contacts->len; i++)
+  if (!tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_LOCATION1))
     {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
       GHashTable *location = get_cached_location (self, handle);
 
       if (location != NULL)
@@ -609,19 +606,19 @@ conn_location_fill_contact_attributes (GObject *obj,
           GValue *val = tp_g_value_slice_new_take_boxed (
               TP_HASH_TYPE_STRING_VARIANT_MAP, location);
 
-          tp_contacts_mixin_set_contact_attribute (attributes_hash,
+          tp_contact_attribute_map_take_sliced_gvalue (attributes,
               handle, TP_TOKEN_CONNECTION_INTERFACE_LOCATION1_LOCATION, val);
         }
+
+      return TRUE;
     }
+
+  return FALSE;
 }
 
 void
 conn_location_init (GabbleConnection *conn)
 {
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_LOCATION1,
-    conn_location_fill_contact_attributes);
-
   conn->pep_location = wocky_pep_service_new (NS_GEOLOC, TRUE);
 
   g_signal_connect (conn->pep_location, "changed",

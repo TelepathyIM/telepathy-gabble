@@ -168,13 +168,11 @@ struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
     TpDBusPropertiesMixinClass properties_class;
     TpPresenceMixinClass presence_class;
-    TpContactsMixinClass contacts_class;
 };
 
 struct _GabbleConnection {
     TpBaseConnection parent;
     TpPresenceMixin presence;
-    TpContactsMixin contacts;
 
     /* DBus daemon instance */
     TpDBusDaemon *daemon;

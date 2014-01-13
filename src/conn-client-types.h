@@ -29,6 +29,11 @@ void conn_client_types_iface_init (gpointer g_iface, gpointer iface_data);
 
 void conn_client_types_init (GabbleConnection *conn);
 
+gboolean conn_client_types_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes);
+
 G_END_DECLS
 
 #endif /* __CONN_CLIENT_TYPES_H__ */

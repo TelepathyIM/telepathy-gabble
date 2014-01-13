@@ -1031,16 +1031,14 @@ maybe_request_vcard (GabbleConnection *self, TpHandle handle,
     }
 }
 
-static void
-conn_aliasing_fill_contact_attributes (GObject *obj,
-    const GArray *contacts, GHashTable *attributes_hash)
+gboolean
+conn_aliasing_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes)
 {
-  guint i;
-  GabbleConnection *self = GABBLE_CONNECTION(obj);
-
-  for (i = 0; i < contacts->len; i++)
+  if (!tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_ALIASING1))
     {
-      TpHandle handle = g_array_index (contacts, TpHandle, i);
       GabbleConnectionAliasSource source;
       gchar *alias;
       GValue *val = tp_g_value_slice_new (G_TYPE_STRING);
@@ -1050,21 +1048,20 @@ conn_aliasing_fill_contact_attributes (GObject *obj,
 
       g_value_take_string (val, alias);
 
-      tp_contacts_mixin_set_contact_attribute (attributes_hash,
+      tp_contact_attribute_map_take_sliced_gvalue (attributes,
         handle, TP_TOKEN_CONNECTION_INTERFACE_ALIASING1_ALIAS,
         val);
 
       maybe_request_vcard (self, handle, source);
+      return TRUE;
     }
+
+  return FALSE;
 }
 
 void
 conn_aliasing_init (GabbleConnection *conn)
 {
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-    TP_IFACE_CONNECTION_INTERFACE_ALIASING1,
-    conn_aliasing_fill_contact_attributes);
-
   conn->pep_nick = wocky_pep_service_new (NS_NICK, TRUE);
   conn->pep_alias_cache = g_hash_table_new_full (NULL, NULL, NULL, g_free);
 

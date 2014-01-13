@@ -40,6 +40,11 @@ void gabble_conn_aliasing_nicknames_updated (GObject *object,
 GabbleConnectionAliasSource _gabble_connection_get_cached_alias (
     GabbleConnection *, TpHandle, gchar **);
 
+gboolean conn_aliasing_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes);
+
 G_END_DECLS
 
 #endif /* __CONN_ALIASING_H__ */

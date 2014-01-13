@@ -584,17 +584,16 @@ gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
   gabble_connection_set_avatar (iface, NULL, NULL, context);
 }
 
-static void
-conn_avatars_fill_contact_attributes (GObject *obj,
-    const GArray *contacts, GHashTable *attributes_hash)
+gboolean
+conn_avatars_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes)
 {
-  guint i;
-  GabbleConnection *self = GABBLE_CONNECTION(obj);
-  TpBaseConnection *base = (TpBaseConnection *) self;
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
 
-  for (i = 0; i < contacts->len; i++)
+  if (!tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_AVATARS1))
     {
-      TpHandle handle = g_array_index (contacts, guint, i);
       GabblePresence *presence = NULL;
 
       if (tp_base_connection_get_self_handle (base) == handle)
@@ -611,10 +610,14 @@ conn_avatars_fill_contact_attributes (GObject *obj,
           else
             g_value_set_string (val, "");
 
-          tp_contacts_mixin_set_contact_attribute (attributes_hash, handle,
+          tp_contact_attribute_map_take_sliced_gvalue (attributes, handle,
             TP_TOKEN_CONNECTION_INTERFACE_AVATARS1_TOKEN, val);
         }
+
+      return TRUE;
     }
+
+  return FALSE;
 }
 
 
@@ -627,10 +630,6 @@ conn_avatars_init (GabbleConnection *conn)
       (connection_got_self_initial_avatar_cb), conn);
   g_signal_connect (conn->presence_cache, "avatar-update", G_CALLBACK
       (connection_avatar_update_cb), conn);
-
-  tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
-      TP_IFACE_CONNECTION_INTERFACE_AVATARS1,
-          conn_avatars_fill_contact_attributes);
 }
 
 

@@ -41,6 +41,11 @@ void gabble_connection_dup_avatar_requirements (GStrv *supported_mime_types,
     guint *max_width,
     guint *max_bytes);
 
+gboolean conn_avatars_fill_contact_attributes (GabbleConnection *self,
+    const gchar *dbus_interface,
+    TpHandle handle,
+    TpContactAttributeMap *attributes);
+
 G_END_DECLS
 
 #endif /* __CONN_AVATARS_H__ */

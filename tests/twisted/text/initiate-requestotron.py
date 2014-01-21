@@ -18,6 +18,9 @@ def test(q, bus, conn, stream):
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
+
+    properties = conn.GetAll(
+        cs.CONN, dbus_interface=dbus.PROPERTIES_IFACE)
     assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              },
@@ -33,7 +36,7 @@ def test(q, bus, conn, stream):
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     assert len(ret.value) == 2
@@ -50,17 +53,13 @@ def test(q, bus, conn, stream):
     assertEquals(cs.DELIVERY_REPORTING_SUPPORT_FLAGS_RECEIVE_FAILURES,
             emitted_props[cs.DELIVERY_REPORTING_SUPPORT])
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == ret.value[0]
-    assert new_sig.args[0][0][1] == ret.value[1]
+    assert new_sig.args[0] == ret.value[0]
+    assert new_sig.args[1] == ret.value[1]
 
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assert new_sig.args[0][0] in properties['Channels'], \
-            (new_sig.args[0][0], properties['Channels'])
+    assertContains((new_sig.args[0], new_sig.args[1]), properties['Channels'])
 
 if __name__ == '__main__':
     exec_test(test)

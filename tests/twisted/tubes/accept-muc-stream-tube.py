@@ -110,24 +110,20 @@ def test(q, bus, conn, stream, bytestream_cls,
     stream.send(presence)
 
     # text channel
-    new_event = q.expect('dbus-signal', signal='NewChannels')
+    new_event = q.expect('dbus-signal', signal='NewChannel')
 
-    channels = new_event.args[0]
-    assert len(channels) == 1
-    path, props = channels[0]
+    path, props = new_event.args
     assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
 
     def new_chan_predicate(e):
-        path, props = e.args[0][0]
+        path, props = e.args
         return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
     # tube channel is announced
-    new_event = q.expect('dbus-signal', signal='NewChannels',
+    new_event = q.expect('dbus-signal', signal='NewChannel',
                          predicate=new_chan_predicate)
 
-    channels = new_event.args[0]
-    assert len(channels) == 1
-    path, props = channels[0]
+    path, props = new_event.args
     assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
     assert props[cs.INITIATOR_HANDLE] == bob_handle
     assert props[cs.INITIATOR_ID] == 'chat@conf.localhost/bob'

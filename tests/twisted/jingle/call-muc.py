@@ -50,9 +50,9 @@ def run_incoming_test(q, bus, conn, stream, bob_leaves_room = False):
     stream.send(presence)
 
     e = q.expect ('dbus-signal',
-        signal='NewChannels',
+        signal='NewChannel',
         predicate=lambda e: \
-            e.args[0][0][1][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CALL )
+            e.args[1][cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_CALL )
 
     (path, props) = e.args[0][0]
 

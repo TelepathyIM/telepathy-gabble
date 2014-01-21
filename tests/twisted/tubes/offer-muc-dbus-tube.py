@@ -127,11 +127,9 @@ def test(q, bus, conn, stream, access_control):
     }
     join_muc(q, bus, conn, stream, muc, request=request)
 
-    e = q.expect('dbus-signal', signal='NewChannels')
+    e = q.expect('dbus-signal', signal='NewChannel')
 
-    channels = e.args[0]
-    assert len(channels) == 1
-    path, prop = channels[0]
+    path, prop = e.args
     assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
     assert prop[cs.INITIATOR_ID] == 'chat2@conf.localhost/test'
     assert prop[cs.REQUESTED] == True
@@ -267,28 +265,27 @@ def test(q, bus, conn, stream, access_control):
     stream.send(make_muc_presence('none', 'participant', muc, 'test'))
 
     def new_tube(e):
-        path, props = e.args[0][0]
+        path, props = e.args
         return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
 
     def new_text(e):
-        path, props = e.args[0][0]
+        path, props = e.args
         return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
 
     # tube and text is created
-    text_event, tube_event = q.expect_many(EventPattern('dbus-signal', signal='NewChannels',
+    text_event, tube_event = q.expect_many(EventPattern('dbus-signal', signal='NewChannel',
                                                         predicate=new_text),
-                                           EventPattern('dbus-signal', signal='NewChannels',
+                                           EventPattern('dbus-signal', signal='NewChannel',
                                                         predicate=new_tube))
 
-    channels = e.args[0]
-    tube_path, props = tube_event.args[0][0]
+    tube_path, props = tube_event.args
     assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
     assertEquals('chat2@conf.localhost/test', props[cs.INITIATOR_ID])
     assertEquals(False, props[cs.REQUESTED])
     assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])
     assertEquals('com.example.TestCase', props[cs.DBUS_TUBE_SERVICE_NAME])
 
-    _, props = text_event.args[0][0]
+    _, props = text_event.args
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     assertEquals(True, props[cs.REQUESTED])
 

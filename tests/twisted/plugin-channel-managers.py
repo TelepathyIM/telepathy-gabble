@@ -14,7 +14,7 @@ if not PLUGINS_ENABLED:
     raise SystemExit(77) # which makes the test show up as skipped
 
 def test(q, bus, conn, stream):
-    rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
+    rccs = conn.Properties.Get(cs.CONN,
         'RequestableChannelClasses')
 
     # These values are from plugins/test.c

@@ -24,18 +24,15 @@ def test(q, bus, conn, stream):
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     text_chan = wrap_channel(bus.get_object(conn.bus_name, ret.value[0]), 'Text')
     chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
     destroyable_iface = dbus.Interface(text_chan, cs.CHANNEL_IFACE_DESTROYABLE)
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == ret.value[0]
-    emitted_props = new_sig.args[0][0][1]
+    assert new_sig.args[0] == ret.value[0]
+    emitted_props = new_sig.args[1]
     assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
     assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
     assert emitted_props[cs.TARGET_HANDLE] == foo_handle

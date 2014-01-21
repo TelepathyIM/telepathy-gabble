@@ -24,7 +24,7 @@ def stream_tube(q, bus, conn, stream, method, jid, presence=True):
     if presence:
         send_muc_presence(q, stream, jid)
     e, _ = q.expect_many(EventPattern('dbus-return', method=method),
-                         EventPattern('dbus-signal', signal='NewChannels'))
+                         EventPattern('dbus-signal', signal='NewChannel'))
 
     # sigh
     if method == 'EnsureChannel':
@@ -48,7 +48,7 @@ def text_channel(q, bus, conn, stream, method, jid, presence=True):
     if presence:
         send_muc_presence(q, stream, jid)
     e, _ = q.expect_many(EventPattern('dbus-return', method=method),
-                         EventPattern('dbus-signal', signal='NewChannels'))
+                         EventPattern('dbus-signal', signal='NewChannel'))
 
     # sigh
     if method == 'EnsureChannel':
@@ -110,16 +110,14 @@ def tube_no_text(q, bus, conn, stream):
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'))
+        EventPattern('dbus-signal', signal='NewChannel'))
 
-    q.forbid_events([EventPattern('dbus-signal', signal='NewChannels')])
+    q.forbid_events([EventPattern('dbus-signal', signal='NewChannel')])
 
     tube_path, tube_props = ret.value
     assertEquals(cs.CHANNEL_TYPE_STREAM_TUBE, tube_props[cs.CHANNEL_TYPE])
 
-    channels = new_sig.args[0]
-    assertEquals(1, len(channels))
-    path, props = channels[0]
+    path, props = new_sig.args
 
     assertEquals(tube_path, path)
     assertEquals(tube_props, props)
@@ -144,11 +142,9 @@ def tube_then_text(q, bus, conn, stream):
     assertEquals(True, yours)
     assertEquals(cs.CHANNEL_TYPE_TEXT, text_props[cs.CHANNEL_TYPE])
 
-    new_sig = q.expect('dbus-signal', signal='NewChannels')
+    new_sig = q.expect('dbus-signal', signal='NewChannel')
 
-    channels = new_sig.args[0]
-    assertEquals(1, len(channels))
-    path, props = channels[0]
+    path, props = new_sig.args
 
     assertEquals(text_path, path)
     assertEquals(text_props, props)
@@ -248,13 +244,10 @@ def recreate_text(q, bus, conn, stream):
     path, props = ret.value
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
 
-    new_sig = q.expect('dbus-signal', signal='NewChannels')
+    new_sig = q.expect('dbus-signal', signal='NewChannel')
 
-    channels = new_sig.args[0]
-    assertEquals(1, len(channels))
-
-    assertEquals(path, channels[0][0])
-    assertEquals(props, channels[0][1])
+    assertEquals(path, new_sig.args[0])
+    assertEquals(props, new_sig.args[1])
 
     # the channel should be identical given it's the same MucChannel
     assertEquals(text_path, path)
@@ -304,10 +297,8 @@ def test_message(q, bus, conn, stream):
       )
 
     # the text channel appears!
-    e = q.expect('dbus-signal', signal='NewChannels')
-    channels = e.args[0]
-    assertEquals(1, len(channels))
-    path, props = channels[0]
+    e = q.expect('dbus-signal', signal='NewChannel')
+    path, props = e.args
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     # make sure we didn't request it
     assertEquals(False, props[cs.REQUESTED])
@@ -356,10 +347,8 @@ def test_requested_message(q, bus, conn, stream):
         )
       )
 
-    e = q.expect('dbus-signal', signal='NewChannels')
-    channels = e.args[0]
-    assertEquals(1, len(channels))
-    path, props = channels[0]
+    e = q.expect('dbus-signal', signal='NewChannel')
+    path, props = e.args
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     # now make sure we didn't request it
     assertEquals(False, props[cs.REQUESTED])

@@ -28,8 +28,8 @@ def test(q, bus, conn, stream):
     stream.send(m)
 
     # first message should be from Bob, not Alice
-    event = q.expect('dbus-signal', signal='NewChannels')
-    path, props = event.args[0][0]
+    event = q.expect('dbus-signal', signal='NewChannel')
+    path, props = event.args
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     jid = conn.inspect_contact_sync(props[cs.TARGET_HANDLE])
     assertEquals('bob@foo.com', jid)

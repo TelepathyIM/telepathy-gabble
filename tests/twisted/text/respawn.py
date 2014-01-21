@@ -23,17 +23,14 @@ def test(q, bus, conn, stream):
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     text_chan = wrap_channel(bus.get_object(conn.bus_name, ret.value[0]), 'Text')
     chan_iface = dbus.Interface(text_chan, cs.CHANNEL)
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == ret.value[0]
-    emitted_props = new_sig.args[0][0][1]
+    assert new_sig.args[0] == ret.value[0]
+    emitted_props = new_sig.args[1]
     assert emitted_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_TEXT
     assert emitted_props[cs.TARGET_HANDLE_TYPE] == cs.HT_CONTACT
     assert emitted_props[cs.TARGET_HANDLE] == foo_handle
@@ -92,8 +89,8 @@ def test(q, bus, conn, stream):
     assert new.args[0] == text_chan.object_path,\
             (new.args[0], text_chan.object_path)
 
-    event = q.expect('dbus-signal', signal='NewChannels')
-    path, props = event.args[0][0]
+    event = q.expect('dbus-signal', signal='NewChannel')
+    path, props = event.args
     assertEquals(text_chan.object_path, path)
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])

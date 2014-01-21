@@ -27,6 +27,9 @@ def test(q, bus, conn, stream):
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=cs.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
+
+    properties = conn.GetAll(
+        cs.CONN, dbus_interface=cs.PROPERTIES_IFACE)
     assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              },
@@ -73,11 +76,8 @@ def test(q, bus, conn, stream):
     bob_handle = conn.get_contact_handle_sync('bob@localhost')
 
     def new_chan_predicate(e):
-        types = []
-        for _, props in e.args[0]:
-            types.append(props[cs.CHANNEL_TYPE])
-
-        return cs.CHANNEL_TYPE_STREAM_TUBE in types
+        _, props = e.args
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
     call_async(q, conn.Requests, 'CreateChannel',
             { cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_STREAM_TUBE,
@@ -88,7 +88,7 @@ def test(q, bus, conn, stream):
 
     ret, _ = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels',
+        EventPattern('dbus-signal', signal='NewChannel',
                      predicate=new_chan_predicate),
         )
 
@@ -122,14 +122,14 @@ def test(q, bus, conn, stream):
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='EnsureChannel'),
-        EventPattern('dbus-signal', signal='NewChannels',
+        EventPattern('dbus-signal', signal='NewChannel',
                      predicate=new_chan_predicate),
         )
 
     yours, path, props = ret.value
     assert yours
 
-    emitted_props = new_sig.args[0][0][1]
+    emitted_props = new_sig.args[1]
     assert props == emitted_props, (props, emitted_props)
 
     chan = bus.get_object(conn.bus_name, path)

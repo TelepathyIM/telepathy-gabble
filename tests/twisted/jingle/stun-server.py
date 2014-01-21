@@ -108,10 +108,9 @@ def test_call(jp, q, bus, conn, stream,
     assertLength(0, e.args)
     assertEquals(e.interface, cs.CALL_STREAM_IFACE_MEDIA)
 
-    e = q.expect('dbus-signal', signal='NewChannels')
-    assert e.args[0][0][0]
+    e = q.expect('dbus-signal', signal='NewChannel')
 
-    call_chan = make_channel_proxy(conn, e.args[0][0][0], 'Channel')
+    call_chan = make_channel_proxy(conn, e.args[0], 'Channel')
 
     # Exercise channel properties
     channel_props = call_chan.GetAll(

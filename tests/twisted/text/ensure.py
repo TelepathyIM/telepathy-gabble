@@ -5,7 +5,7 @@ Test text channel initiated by me, using Requests.EnsureChannel
 import dbus
 
 from gabbletest import exec_test
-from servicetest import call_async, EventPattern
+from servicetest import call_async, EventPattern, assertContains
 import constants as cs
 
 def test(q, bus, conn, stream):
@@ -17,6 +17,9 @@ def test(q, bus, conn, stream):
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=cs.PROPERTIES_IFACE)
     assert properties.get('Channels') == [], properties['Channels']
+
+    properties = conn.GetAll(
+        cs.CONN, dbus_interface=cs.PROPERTIES_IFACE)
     assert ({cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_TEXT,
              cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
              },
@@ -38,7 +41,7 @@ def test_ensure_ensure(q, conn, self_handle, jid, handle):
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='EnsureChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     assert len(ret.value) == 3
@@ -50,18 +53,13 @@ def test_ensure_ensure(q, conn, self_handle, jid, handle):
 
     check_props(emitted_props, self_handle, handle, jid)
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == path
-    assert new_sig.args[0][0][1] == emitted_props
+    assert new_sig.args[0] == path
+    assert new_sig.args[1] == emitted_props
 
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assert new_sig.args[0][0] in properties['Channels'], \
-            (new_sig.args[0][0], properties['Channels'])
-
+    assertContains((new_sig.args[0], new_sig.args[1]), properties['Channels'])
 
     # Now try Ensuring a channel which already exists
     call_async(q, conn.Requests, 'EnsureChannel', request_props(handle))
@@ -87,7 +85,7 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     assert len(ret.value) == 2
@@ -95,18 +93,13 @@ def test_request_ensure(q, conn, self_handle, jid, handle):
 
     check_props(emitted_props, self_handle, handle, jid)
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1        # one channel
-    assert len(new_sig.args[0][0]) == 2     # two struct members
-    assert new_sig.args[0][0][0] == path
-    assert new_sig.args[0][0][1] == emitted_props
+    assert new_sig.args[0] == path
+    assert new_sig.args[1] == emitted_props
 
     properties = conn.GetAll(
         cs.CONN_IFACE_REQUESTS, dbus_interface=dbus.PROPERTIES_IFACE)
 
-    assert new_sig.args[0][0] in properties['Channels'], \
-            (new_sig.args[0][0], properties['Channels'])
-
+    assertContains((new_sig.args[0], new_sig.args[1]), properties['Channels'])
 
     # Now try Ensuring that same channel.
     call_async(q, conn.Requests, 'EnsureChannel', request_props(handle))

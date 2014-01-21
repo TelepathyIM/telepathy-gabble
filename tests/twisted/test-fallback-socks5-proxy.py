@@ -127,20 +127,20 @@ def accept_stream_tube(q, bus, conn, stream):
       elem(ns.TUBES, 'tube', type='stream', service='http', id='10'))
     stream.send(message)
 
-    # we are interested in the 'NewChannels' announcing the tube channel
+    # we are interested in the 'NewChannel' announcing the tube channel
     def new_chan_predicate(e):
-        path, props = e.args[0][0]
+        path, props = e.args
         return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
     # Proxy queries are send when receiving an incoming stream tube
     new_chan, e1, e2 = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannels', predicate=new_chan_predicate),
+        EventPattern('dbus-signal', signal='NewChannel', predicate=new_chan_predicate),
         proxy_query_events[0], proxy_query_events[1])
 
     send_socks5_reply(stream, e1.stanza)
     send_socks5_reply(stream, e2.stanza)
 
-    path, props = new_chan.args[0][0]
+    path, props = new_chan.args
     assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
     tube_chan = bus.get_object(conn.bus_name, path)

@@ -34,7 +34,7 @@ def test(q, bus, conn, stream):
 
     cc, _, _ = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         EventPattern('dbus-signal', signal='PasswordFlagsChanged',
             args=[cs.PASSWORD_FLAG_PROVIDE, 0]))
 

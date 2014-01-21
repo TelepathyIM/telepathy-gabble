@@ -199,21 +199,14 @@ class ReceiveFileTest(FileTransferTest):
 
     def check_new_channel(self):
         def is_ft_channel_event(event):
-            channels, = event.args
-
-            if len(channels) > 1:
-                return False
-
-            path, props = channels[0]
+            path, props = event.args
             return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_FILE_TRANSFER
 
-        e = self.q.expect('dbus-signal', signal='NewChannels',
+        e = self.q.expect('dbus-signal', signal='NewChannel',
             path=self.conn.object.object_path,
             predicate=is_ft_channel_event)
 
-        channels = e.args[0]
-        assert len(channels) == 1
-        path, props = channels[0]
+        path, props = e.args
 
         # check channel properties
         # Channel D-Bus properties
@@ -365,7 +358,7 @@ class SendFileTest(FileTransferTest):
             self.close_channel, self.done]
 
     def check_ft_available(self):
-        properties = self.conn.GetAll(cs.CONN_IFACE_REQUESTS,
+        properties = self.conn.GetAll(cs.CONN,
                 dbus_interface=cs.PROPERTIES_IFACE)
 
         # general FT class

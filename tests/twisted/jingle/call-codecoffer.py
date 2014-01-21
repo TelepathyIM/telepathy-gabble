@@ -110,12 +110,12 @@ def test_incoming(jp, q, bus, conn, stream):
 
     jt2.incoming_call()
 
-    ret = q.expect_many(EventPattern('dbus-signal', signal='NewChannels',
+    ret = q.expect_many(EventPattern('dbus-signal', signal='NewChannel',
             predicate=lambda e:
-                cs.CHANNEL_TYPE_CALL in e.args[0][0][1].values()),
+                cs.CHANNEL_TYPE_CALL in e.args[1].values()),
         EventPattern('dbus-signal', signal='NewMediaDescriptionOffer'))
 
-    chan = bus.get_object(conn.bus_name, ret[0].args[0][0][0])
+    chan = bus.get_object(conn.bus_name, ret[0].args[0])
 
     properties = chan.GetAll(cs.CHANNEL_TYPE_CALL,
         dbus_interface=dbus.PROPERTIES_IFACE)
@@ -172,14 +172,14 @@ def test_outgoing(jp, q, bus, conn, stream):
             cs.CALL_INITIAL_VIDEO: False
             }, dbus_interface=cs.CONN_IFACE_REQUESTS)
 
-    ret = q.expect_many(EventPattern('dbus-signal', signal='NewChannels',
+    ret = q.expect_many(EventPattern('dbus-signal', signal='NewChannel',
             predicate=lambda e:
-                cs.CHANNEL_TYPE_CALL in e.args[0][0][1].values()),
+                cs.CHANNEL_TYPE_CALL in e.args[1].values()),
         # a codec offer appears already!
         EventPattern('dbus-signal', signal='NewMediaDescriptionOffer'))
 
     # all the basic stuff is already tested in call-basics.py
-    chan = bus.get_object(conn.bus_name, ret[0].args[0][0][0])
+    chan = bus.get_object(conn.bus_name, ret[0].args[0])
 
     # there is no remote codec information, so this should be empty
     assertEquals(ret[1].args[1][cs.CALL_CONTENT_MEDIA_DESCRIPTION + ".Codecs"], [])

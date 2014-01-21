@@ -96,14 +96,14 @@ def test(q, bus, conn, stream):
     stream.send(presence)
 
     def new_chan_predicate(e):
-        path, props = e.args[0][0]
+        path, props = e.args
         return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
 
     # tube channel is automatically created
-    event = q.expect('dbus-signal', signal='NewChannels',
+    event = q.expect('dbus-signal', signal='NewChannel',
                      predicate=new_chan_predicate)
 
-    path, props = event.args[0][0]
+    path, props = event.args
 
     assertEquals(cs.CHANNEL_TYPE_DBUS_TUBE, props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_ROOM, props[cs.TARGET_HANDLE_TYPE])

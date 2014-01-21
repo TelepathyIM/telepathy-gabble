@@ -286,12 +286,9 @@ class CallTest(object):
                   cs.CALL_INITIAL_VIDEO: self.initial_video,
                 })
 
-        signal = self.q.expect('dbus-signal', signal='NewChannels')
+        signal = self.q.expect('dbus-signal', signal='NewChannel')
 
-        assertLength(1, signal.args)
-        assertLength(1, signal.args[0])       # one channel
-        assertLength(2, signal.args[0][0])    # two struct members
-        emitted_props = signal.args[0][0][1]
+        emitted_props = signal.args[1]
 
         assertEquals(
             cs.CHANNEL_TYPE_CALL, emitted_props[cs.CHANNEL_TYPE])
@@ -312,7 +309,7 @@ class CallTest(object):
         assertEquals(self.initial_audio, emitted_props[cs.CALL_INITIAL_AUDIO])
         assertEquals(self.initial_video, emitted_props[cs.CALL_INITIAL_VIDEO])
 
-        chan_path = signal.args[0][0][0]
+        chan_path = signal.args[0]
         self.chan = wrap_channel(
                 self.bus.get_object(self.conn.bus_name, chan_path), 'Call')
 
@@ -322,7 +319,7 @@ class CallTest(object):
         # Check if all the properties are there
         assertEquals(sorted([ "Contents", "CallMembers",
             "CallState", "CallFlags", "CallStateReason", "CallStateDetails",
-            "HardwareStreaming", "InitialAudio", "InitialAudioName",
+            "HardwareStreaming", "InitialAudio", "InitialAudioName", "InitialTones",
             "InitialVideo", "InitialVideoName", "MutableContents",
             "InitialTransport", "MemberIdentifiers" ]),
             sorted(properties.keys()))

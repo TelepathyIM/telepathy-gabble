@@ -23,12 +23,12 @@ def test(q, bus, conn, stream):
 
     ret, sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     text_chan = wrap_channel(bus.get_object(conn.bus_name, ret.value[0]), 'Text')
 
-    path, props = sig.args[0][0]
+    path, props = sig.args
     assertEquals(ret.value[0], path)
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     # check that handle type == contact handle

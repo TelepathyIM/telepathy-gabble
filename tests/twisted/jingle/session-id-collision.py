@@ -27,14 +27,14 @@ def test(jp, q, bus, conn, stream):
     jt2.sid = '1'
 
     jt1.incoming_call()
-    q.expect('dbus-signal', signal='NewChannels',
-        predicate=lambda e: cs.CHANNEL_TYPE_CALL in e.args[0][0][1][cs.CHANNEL_TYPE])
+    q.expect('dbus-signal', signal='NewChannel',
+        predicate=lambda e: cs.CHANNEL_TYPE_CALL in e.args[1][cs.CHANNEL_TYPE])
 
     # If Gabble confuses the two sessions, it'll NAK the IQ rather than
     # realising this is a new call.
     jt2.incoming_call()
-    q.expect('dbus-signal', signal='NewChannels',
-        predicate=lambda e: cs.CHANNEL_TYPE_CALL in e.args[0][0][1][cs.CHANNEL_TYPE])
+    q.expect('dbus-signal', signal='NewChannel',
+        predicate=lambda e: cs.CHANNEL_TYPE_CALL in e.args[1][cs.CHANNEL_TYPE])
 
     # On the other hand, if the same person calls twice with the same sid,
     # Gabble _should_ NAK the second s-i.

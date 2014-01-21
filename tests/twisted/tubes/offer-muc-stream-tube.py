@@ -79,11 +79,8 @@ def test(q, bus, conn, stream, bytestream_cls,
     address = t.create_server(q, address_type)
 
     def new_chan_predicate(e):
-        types = []
-        for _, props in e.args[0]:
-            types.append(props[cs.CHANNEL_TYPE])
-
-        return cs.CHANNEL_TYPE_STREAM_TUBE in types
+        _, props = e.args
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
     def find_stream_tube(channels):
         for path, props in channels:
@@ -104,10 +101,10 @@ def test(q, bus, conn, stream, bytestream_cls,
     _, new_tube_path, new_tube_props = \
         join_muc(q, bus, conn, stream, 'chat@conf.localhost', request)
 
-    e = q.expect('dbus-signal', signal='NewChannels',
+    e = q.expect('dbus-signal', signal='NewChannel',
                  predicate=new_chan_predicate)
 
-    path, prop = find_stream_tube(e.args[0])
+    path, prop = e.args
     assert prop[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
     assert prop[cs.INITIATOR_ID] == 'chat@conf.localhost/test'
     assert prop[cs.REQUESTED] == True

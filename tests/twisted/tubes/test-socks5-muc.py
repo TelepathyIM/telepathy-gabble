@@ -42,14 +42,12 @@ def test(q, bus, conn, stream):
     stream.send(presence)
 
     def new_chan_predicate(e):
-        path, props = e.args[0][0]
+        path, props = e.args
         return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
-    e = q.expect('dbus-signal', signal='NewChannels',
+    e = q.expect('dbus-signal', signal='NewChannel',
                  predicate=new_chan_predicate)
-    channels = e.args[0]
-    assert len(channels) == 1
-    path, props = channels[0]
+    path, props = e.args
     assert props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
     tube_chan = bus.get_object(conn.bus_name, path)

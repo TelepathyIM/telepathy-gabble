@@ -80,13 +80,13 @@ def join_muc(q, bus, conn, stream, muc, request=None,
 
 def join_muc_and_check(q, bus, conn, stream, muc, request=None):
     """
-    Like join_muc(), but also checks the NewChannels and NewChannel signals and
+    Like join_muc(), but also checks the NewChannel signals and
     the Members property, and returns both members' handles.
     """
     chan, path, props = \
         join_muc(q, bus, conn, stream, muc, request=request)
 
-    q.expect('dbus-signal', signal='NewChannels', args=[[(path, props)]])
+    q.expect('dbus-signal', signal='NewChannel', args=[path, props])
 
     test_handle, bob_handle = conn.get_contact_handles_sync(
         ['%s/test' % muc, '%s/bob' % muc])

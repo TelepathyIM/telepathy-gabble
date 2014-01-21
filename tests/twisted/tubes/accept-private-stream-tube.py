@@ -36,16 +36,13 @@ def receive_tube_offer(q, bus, conn, stream):
     stream.send(message)
 
     def new_chan_predicate(e):
-        path, props = e.args[0][0]
+        path, props = e.args
         return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE
 
-    new_sig = q.expect('dbus-signal', signal='NewChannels',
+    new_sig = q.expect('dbus-signal', signal='NewChannel',
                        predicate=new_chan_predicate)
 
-    assert len(new_sig.args) == 1
-    assert len(new_sig.args[0]) == 1
-
-    path, props = new_sig.args[0][0]
+    path, props = new_sig.args
     assertEquals(cs.CHANNEL_TYPE_STREAM_TUBE, props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
     assertEquals(False, props[cs.REQUESTED])

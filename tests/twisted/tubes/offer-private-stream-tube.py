@@ -107,20 +107,20 @@ def test(q, bus, conn, stream, bytestream_cls,
              cs.STREAM_TUBE_SERVICE: "newecho",
             })
 
-    def find_stream_tube(channels):
-        for path, props in channels:
-            if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE:
-                return path, props
+    def find_stream_tube(e):
+        path, props = e.args
+        if props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_STREAM_TUBE:
+            return path, props
 
         return None, None
 
     def new_chan_predicate(e):
-        path, _ = find_stream_tube(e.args[0])
+        path, _ = find_stream_tube(e)
         return path is not None
 
     ret, new_sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels',
+        EventPattern('dbus-signal', signal='NewChannel',
                      predicate=new_chan_predicate),
         )
 
@@ -142,7 +142,7 @@ def test(q, bus, conn, stream, bytestream_cls,
     # the tube created using the new API is in the "not offered" state
     assert new_tube_props['State'] == cs.TUBE_CHANNEL_STATE_NOT_OFFERED
 
-    _, stream_tube_channel_properties = find_stream_tube(new_sig.args[0])
+    _, stream_tube_channel_properties = find_stream_tube(new_sig)
     assert cs.TUBE_STATE not in stream_tube_channel_properties
     assert cs.TUBE_PARAMETERS not in stream_tube_channel_properties
 

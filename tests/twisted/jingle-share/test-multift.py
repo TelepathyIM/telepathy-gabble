@@ -69,7 +69,7 @@ def test(q, bus, conn, stream):
 
         # /!\ This predicate has side-effects: it writes to 'found'
         def predicate(e):
-            path, props = e.args[0][0]
+            path, props = e.args
             if props[cs.CHANNEL_TYPE] != cs.CHANNEL_TYPE_FILE_TRANSFER:
                 return False
 
@@ -86,7 +86,7 @@ def test(q, bus, conn, stream):
             return False
 
         patterns.append(EventPattern('dbus-signal',
-            signal='NewChannels',
+            signal='NewChannel',
             predicate=get_predicate(name, found, i)))
 
     # Make sure every file transfer has a channel associated with it

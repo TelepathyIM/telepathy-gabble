@@ -34,6 +34,8 @@ def test(q, bus, conn, stream):
 
     properties = conn.Properties.GetAll(cs.CONN_IFACE_REQUESTS)
     assert properties.get('Channels') == [], properties['Channels']
+
+    properties = conn.Properties.GetAll(cs.CONN)
     assert ({ cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_ROOM_LIST,
               cs.TARGET_HANDLE_TYPE: cs.HT_NONE,
              },
@@ -52,7 +54,7 @@ def test(q, bus, conn, stream):
 
     ret, sig = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
     path2 = ret.value[0]
     chan = bus.get_object(conn.bus_name, path2)
@@ -67,8 +69,8 @@ def test(q, bus, conn, stream):
     assertEquals('test@localhost', props[cs.INITIATOR_ID])
     assertEquals('conference.example.net', props[cs.CHANNEL_TYPE_ROOM_LIST+ '.Server'])
 
-    assert sig.args[0][0][0] == path2
-    assert sig.args[0][0][1] == props
+    assert sig.args[0] == path2
+    assert sig.args[1] == props
 
     assert chan.Get(cs.CHANNEL_TYPE_ROOM_LIST, 'Server',
             dbus_interface=dbus.PROPERTIES_IFACE) == \

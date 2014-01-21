@@ -41,7 +41,7 @@ def test(q, bus, conn, stream):
 
     ret, _ = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     _, props = ret.value
@@ -63,7 +63,7 @@ def test(q, bus, conn, stream):
 
     ret, _ = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels'),
+        EventPattern('dbus-signal', signal='NewChannel'),
         )
 
     _, props = ret.value

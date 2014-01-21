@@ -50,7 +50,7 @@ def test(q, bus, conn, stream):
         cs.TARGET_HANDLE_TYPE: cs.HT_CONTACT,
         cs.TARGET_HANDLE: conn.Properties.Get(cs.CONN, "SelfHandle")
         })
-    q.expect('dbus-signal', signal='NewChannels')
+    q.expect('dbus-signal', signal='NewChannel')
 
     assertEquals (snapshot, messages)
 

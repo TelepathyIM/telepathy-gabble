@@ -32,7 +32,7 @@ def _send_server_reply(q, stream, result):
     stream.send(result)
 
     ret = q.expect('dbus-return', method='CreateChannel')
-    nc_sig = q.expect('dbus-signal', signal='NewChannels')
+    nc_sig = q.expect('dbus-signal', signal='NewChannel')
 
     return (ret, nc_sig)
 

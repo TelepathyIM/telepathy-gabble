@@ -23,8 +23,8 @@ def test(q, bus, conn, stream):
 
     stream.send(m)
 
-    event = q.expect('dbus-signal', signal='NewChannels')
-    path, props = event.args[0][0]
+    event = q.expect('dbus-signal', signal='NewChannel')
+    path, props = event.args
     assertEquals(cs.CHANNEL_TYPE_TEXT, props[cs.CHANNEL_TYPE])
     assertEquals(cs.HT_CONTACT, props[cs.TARGET_HANDLE_TYPE])
     jid = conn.inspect_contact_sync(props[cs.TARGET_HANDLE])

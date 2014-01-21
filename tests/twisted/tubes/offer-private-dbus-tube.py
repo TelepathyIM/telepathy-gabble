@@ -104,11 +104,8 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
     # Offer a tube to Alice (new API)
 
     def new_chan_predicate(e):
-        types = []
-        for _, props in e.args[0]:
-            types.append(props[cs.CHANNEL_TYPE])
-
-        return cs.CHANNEL_TYPE_DBUS_TUBE in types
+        _, props = e.args
+        return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
 
     def find_dbus_tube(channels):
         for path, props in channels:
@@ -125,11 +122,11 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
             }, byte_arrays=True)
     cc_ret, nc = q.expect_many(
         EventPattern('dbus-return', method='CreateChannel'),
-        EventPattern('dbus-signal', signal='NewChannels',
+        EventPattern('dbus-signal', signal='NewChannel',
                      predicate=new_chan_predicate),
         )
     tube_path, tube_props = cc_ret.value
-    _, new_channel_props = find_dbus_tube(nc.args[0])
+    _, new_channel_props = nc.args
 
     # check tube channel properties
     assert tube_props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_DBUS_TUBE
@@ -151,8 +148,8 @@ def offer_new_dbus_tube(q, bus, conn, stream, self_handle, alice_handle,
     all_channels = conn.Get(cs.CONN_IFACE_REQUESTS, 'Channels',
         dbus_interface=cs.PROPERTIES_IFACE, byte_arrays=True)
 
-    for path, props in nc.args[0]:
-        assertContains((path, props), all_channels)
+    path, props = nc.args
+    assertContains((path, props), all_channels)
 
     assertEquals(tube_props, new_channel_props)
 

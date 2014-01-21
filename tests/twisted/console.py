@@ -27,7 +27,7 @@ def send_unrecognised_get(q, stream):
     return q.expect('stream-iq', iq_type='error')
 
 def test(q, bus, conn, stream):
-    rccs = conn.Properties.Get(cs.CONN_IFACE_REQUESTS,
+    rccs = conn.Properties.Get(cs.CONN,
         'RequestableChannelClasses')
 
     fixed = {

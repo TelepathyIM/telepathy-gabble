@@ -101,12 +101,7 @@ def test_disconnect_inbetween(q, bus, conn, stream):
              args=[cs.CONN_STATUS_DISCONNECTED, cs.CSR_REQUESTED])
 
 def is_server_tls_chan_event(event):
-    channels = event.args[0];
-
-    if len(channels) > 1:
-        return False
-
-    path, props = channels[0]
+    path, props = event.args
     return props[cs.CHANNEL_TYPE] == cs.CHANNEL_TYPE_SERVER_TLS_CONNECTION
 
 def connect_and_get_tls_objects(q, bus, conn, expect_example_jid=True):
@@ -116,11 +111,10 @@ def connect_and_get_tls_objects(q, bus, conn, expect_example_jid=True):
              args=[cs.CONN_STATUS_CONNECTING, cs.CSR_REQUESTED])
 
     ev, = q.expect_many(
-        EventPattern('dbus-signal', signal='NewChannels',
+        EventPattern('dbus-signal', signal='NewChannel',
                      predicate=is_server_tls_chan_event))
 
-    channels = ev.args[0]
-    path, props = channels[0]
+    path, props = ev.args
 
     chan = ServerTlsChanWrapper(bus.get_object(conn.bus_name, path))
     hostname = props[cs.TLS_HOSTNAME]

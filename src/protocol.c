@@ -181,6 +181,9 @@ static TpCMParamSpec jabber_params[] = {
   { "extra-certificate-identities", "as", 0,
     0, NULL, 0 /* unused */, NULL, NULL },
 
+  { "account-path-suffix", "s", G_TYPE_STRING,
+    0, NULL, 0 /* unused */, NULL, NULL },
+
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -277,6 +280,8 @@ new_connection (TpBaseProtocol *protocol,
   conn = g_object_new (GABBLE_TYPE_CONNECTION,
                        "protocol", PROTOCOL_NAME,
                        "password", tp_asv_get_string (params, "password"),
+                       "account-path-suffix", tp_asv_get_string (params,
+                           "account-path-suffix"),
                        NULL);
 
   /* split up account into username, stream-server and resource */

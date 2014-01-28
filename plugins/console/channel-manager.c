@@ -200,7 +200,7 @@ console_channel_closed_cb (
 {
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (user_data);
 
-  tp_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
       TP_EXPORTABLE_CHANNEL (channel));
 
   if (g_queue_remove (&self->console_channels, channel))
@@ -213,14 +213,14 @@ console_channel_closed_cb (
 static gboolean
 gabble_console_channel_manager_create_channel (
     TpChannelManager *manager,
-    gpointer request_token,
+    TpChannelManagerRequest *request,
     GHashTable *request_properties)
 {
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (manager);
   GabblePluginConnection *connection;
   TpBaseChannel *channel = NULL;
   GError *error = NULL;
-  GSList *request_tokens;
+  GSList *requests;
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"),
@@ -252,17 +252,17 @@ gabble_console_channel_manager_create_channel (
       self);
   g_queue_push_tail (&self->console_channels, channel);
 
-  request_tokens = g_slist_prepend (NULL, request_token);
-  tp_channel_manager_emit_new_channel (self,
-      TP_EXPORTABLE_CHANNEL (channel), request_tokens);
-  g_slist_free (request_tokens);
+  requests = g_slist_prepend (NULL, request);
+  tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
+      TP_EXPORTABLE_CHANNEL (channel), requests);
+  g_slist_free (requests);
 
   g_object_unref (connection);
   return TRUE;
 
 error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
+  tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+      request, error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
 }

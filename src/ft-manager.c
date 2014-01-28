@@ -302,7 +302,7 @@ gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
       self->priv->channels = g_list_append (self->priv->channels, chan);
       /* The channels can't satisfy a request because this will always be called
          when we receive an incoming jingle-share session */
-      tp_channel_manager_emit_new_channel (self,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
           TP_EXPORTABLE_CHANNEL (chan), NULL);
     }
 }
@@ -325,8 +325,8 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
   if (request_token != NULL)
     requests = g_slist_prepend (requests, request_token);
 
-  tp_channel_manager_emit_new_channel (self, TP_EXPORTABLE_CHANNEL (chan),
-      requests);
+  tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
+      TP_EXPORTABLE_CHANNEL (chan), requests);
 
   g_slist_free (requests);
 }
@@ -440,8 +440,8 @@ connection_status_changed_cb (GabbleConnection *conn,
 
 static gboolean
 gabble_ft_manager_handle_request (TpChannelManager *manager,
-                                 gpointer request_token,
-                                 GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (manager);
   GabbleFileTransferChannel *chan;
@@ -588,13 +588,13 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
       goto error;
     }
 
-  gabble_ft_manager_channel_created (self, chan, request_token);
+  gabble_ft_manager_channel_created (self, chan, request);
 
   return TRUE;
 
 error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
+  tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+      request, error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
 }

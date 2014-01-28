@@ -972,7 +972,7 @@ channel_closed_cb (GabbleTubeIface *tube,
       "id", &id,
       NULL);
 
-  tp_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
       TP_EXPORTABLE_CHANNEL (tube));
 
   if (self->priv->tubes != NULL)
@@ -1183,7 +1183,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
 
   g_hash_table_unref (parameters);
 
-  tp_channel_manager_emit_new_channel (self,
+  tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
       TP_EXPORTABLE_CHANNEL (tube), NULL);
 
   return tube;
@@ -1347,7 +1347,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
       if (request_token != NULL)
         request_tokens = g_slist_prepend (NULL, request_token);
 
-      tp_channel_manager_emit_new_channel (self,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
           TP_EXPORTABLE_CHANNEL (channel), request_tokens);
 
       g_slist_free (request_tokens);
@@ -1362,15 +1362,16 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
           goto error;
         }
 
-      tp_channel_manager_emit_request_already_satisfied (self,
-          request_token, TP_EXPORTABLE_CHANNEL (channel));
+      tp_channel_manager_emit_request_already_satisfied (
+          TP_CHANNEL_MANAGER (self), request_token,
+          TP_EXPORTABLE_CHANNEL (channel));
     }
 
   return TRUE;
 
 error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
+  tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+      request_token, error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
 }
@@ -1378,36 +1379,23 @@ error:
 
 static gboolean
 gabble_private_tubes_factory_create_channel (TpChannelManager *manager,
-                                             gpointer request_token,
-                                             GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
 
-  return gabble_private_tubes_factory_requestotron (self, request_token,
+  return gabble_private_tubes_factory_requestotron (self, request,
       request_properties, TRUE);
 }
 
-
-static gboolean
-gabble_private_tubes_factory_request_channel (TpChannelManager *manager,
-                                              gpointer request_token,
-                                              GHashTable *request_properties)
-{
-  GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
-
-  return gabble_private_tubes_factory_requestotron (self, request_token,
-      request_properties, FALSE);
-}
-
-
 static gboolean
 gabble_private_tubes_factory_ensure_channel (TpChannelManager *manager,
-                                             gpointer request_token,
-                                             GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
 
-  return gabble_private_tubes_factory_requestotron (self, request_token,
+  return gabble_private_tubes_factory_requestotron (self, request,
       request_properties, FALSE);
 }
 
@@ -1421,7 +1409,6 @@ channel_manager_iface_init (gpointer g_iface,
   iface->type_foreach_channel_class =
       gabble_private_tubes_factory_type_foreach_channel_class;
   iface->create_channel = gabble_private_tubes_factory_create_channel;
-  iface->request_channel = gabble_private_tubes_factory_request_channel;
   iface->ensure_channel = gabble_private_tubes_factory_ensure_channel;
 }
 

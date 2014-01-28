@@ -147,8 +147,8 @@ disco_done_cb (GabbleDisco *disco,
         }
       else
         {
-          tp_channel_manager_emit_request_failed (self, request_token,
-              TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
+          tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+              request_token, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
               "No Server has been specified and no server has been "
               "discovered on the connection");
         }
@@ -354,7 +354,7 @@ static void
 search_channel_closed_cb (GabbleSearchChannel *chan,
                           GabbleSearchManager *self)
 {
-  tp_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
       (TpExportableChannel *) chan);
   remove_search_channel (self, chan);
 }
@@ -398,7 +398,7 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
     {
       GSList *request_tokens = g_slist_prepend (NULL, ctx->request_token);
 
-      tp_channel_manager_emit_new_channel (ctx->self,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (ctx->self),
           (TpExportableChannel *) chan, request_tokens);
 
       g_slist_free (request_tokens);
@@ -426,7 +426,7 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
           g_assert (domain == TP_ERROR);
         }
 
-      tp_channel_manager_emit_request_failed (ctx->self,
+      tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (ctx->self),
           ctx->request_token, domain, code, message);
       remove_search_channel (ctx->self, chan);
     }
@@ -460,8 +460,8 @@ new_search_channel (GabbleSearchManager *self,
 
 static gboolean
 gabble_search_manager_create_channel (TpChannelManager *manager,
-                                      gpointer request_token,
-                                      GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabbleSearchManager *self = GABBLE_SEARCH_MANAGER (manager);
   GError *error = NULL;
@@ -513,7 +513,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
               "the disco process");
 
           self->priv->requests_waiting_disco = g_slist_append (
-              self->priv->requests_waiting_disco, request_token);
+              self->priv->requests_waiting_disco, request);
           return TRUE;
         }
 
@@ -521,12 +521,12 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
       server = self->priv->default_jud;
     }
 
-  new_search_channel (self, server, request_token);
+  new_search_channel (self, server, request);
   return TRUE;
 
 error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
+  tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+      request, error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
 }
@@ -542,7 +542,6 @@ channel_manager_iface_init (gpointer g_iface,
       gabble_search_manager_type_foreach_channel_class;
 
   iface->create_channel = gabble_search_manager_create_channel;
-  iface->request_channel = gabble_search_manager_create_channel;
 
   /* Ensuring these channels doesn't really make much sense. */
   iface->ensure_channel = NULL;

@@ -324,8 +324,8 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
   if (tp_base_channel_is_registered (base))
     {
-      tp_channel_manager_emit_channel_closed_for_object (self,
-          (TpExportableChannel *) chan);
+      tp_channel_manager_emit_channel_closed_for_object (
+          TP_CHANNEL_MANAGER (self), (TpExportableChannel *) chan);
     }
 
   if (priv->channels != NULL)
@@ -340,7 +340,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
         {
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
-          tp_channel_manager_emit_new_channel (self,
+          tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
               (TpExportableChannel *) chan, NULL);
         }
       else
@@ -400,7 +400,7 @@ new_im_channel (GabbleImFactory *fac,
   else
     request_tokens = NULL;
 
-  tp_channel_manager_emit_new_channel (fac,
+  tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
       (TpExportableChannel *) chan, request_tokens);
 
   g_slist_free (request_tokens);
@@ -759,13 +759,13 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
       goto error;
     }
 
-  tp_channel_manager_emit_request_already_satisfied (self, request_token,
-      channel);
+  tp_channel_manager_emit_request_already_satisfied (TP_CHANNEL_MANAGER (self),
+      request_token, channel);
   return TRUE;
 
 error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
+  tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+      request_token, error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
 }
@@ -773,36 +773,23 @@ error:
 
 static gboolean
 gabble_im_factory_create_channel (TpChannelManager *manager,
-                                  gpointer request_token,
-                                  GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
 
-  return gabble_im_factory_requestotron (self, request_token,
+  return gabble_im_factory_requestotron (self, request,
       request_properties, TRUE);
 }
 
-
-static gboolean
-gabble_im_factory_request_channel (TpChannelManager *manager,
-                                   gpointer request_token,
-                                   GHashTable *request_properties)
-{
-  GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
-
-  return gabble_im_factory_requestotron (self, request_token,
-      request_properties, FALSE);
-}
-
-
 static gboolean
 gabble_im_factory_ensure_channel (TpChannelManager *manager,
-                                  gpointer request_token,
-                                  GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
 
-  return gabble_im_factory_requestotron (self, request_token,
+  return gabble_im_factory_requestotron (self, request,
       request_properties, FALSE);
 }
 
@@ -817,7 +804,6 @@ channel_manager_iface_init (gpointer g_iface,
   iface->type_foreach_channel_class =
       gabble_im_factory_type_foreach_channel_class;
   iface->create_channel = gabble_im_factory_create_channel;
-  iface->request_channel = gabble_im_factory_request_channel;
   iface->ensure_channel = gabble_im_factory_ensure_channel;
 }
 

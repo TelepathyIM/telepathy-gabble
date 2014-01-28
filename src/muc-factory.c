@@ -237,15 +237,15 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
   /* channel is actually reappearing, announce it */
   if (tp_base_channel_is_respawning (base))
     {
-      tp_channel_manager_emit_new_channel (fac,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
           TP_EXPORTABLE_CHANNEL (chan), NULL);
       return;
     }
 
   if (tp_base_channel_is_registered (base))
     {
-      tp_channel_manager_emit_channel_closed_for_object (fac,
-          TP_EXPORTABLE_CHANNEL (chan));
+      tp_channel_manager_emit_channel_closed_for_object (
+          TP_CHANNEL_MANAGER (fac), TP_EXPORTABLE_CHANNEL (chan));
     }
 
   if (tp_base_channel_is_destroyed (base)
@@ -281,7 +281,7 @@ muc_ready_cb (GabbleMucChannel *text_chan,
    * have to be) */
   if (tp_base_channel_is_registered (base))
     {
-      tp_channel_manager_emit_new_channel (fac,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
           TP_EXPORTABLE_CHANNEL (text_chan), requests_satisfied_text);
     }
 
@@ -303,7 +303,8 @@ muc_ready_cb (GabbleMucChannel *text_chan,
 
           requests_satisfied_tube = g_slist_reverse (requests_satisfied_tube);
 
-          tp_channel_manager_emit_new_channel (fac, tube_chan,
+          tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
+              tube_chan,
               requests_satisfied_tube);
           g_slist_free (requests_satisfied_tube);
         }
@@ -331,8 +332,8 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
-      tp_channel_manager_emit_request_failed (fac, iter->data,
-          error->domain, error->code, error->message);
+      tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (fac),
+          iter->data, error->domain, error->code, error->message);
     }
 
   g_slist_free (requests_satisfied);
@@ -355,8 +356,8 @@ muc_join_error_cb (GabbleMucChannel *chan,
 
           for (iter = requests_satisfied; iter != NULL; iter = iter->next)
             {
-              tp_channel_manager_emit_request_failed (fac, iter->data,
-                  error->domain, error->code, error->message);
+              tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (fac),
+                  iter->data, error->domain, error->code, error->message);
             }
 
           g_slist_free (requests_satisfied);
@@ -373,7 +374,7 @@ muc_sub_channel_closed_cb (TpSvcChannel *chan,
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucChannel *muc;
 
-  tp_channel_manager_emit_channel_closed_for_object (fac,
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (fac),
       TP_EXPORTABLE_CHANNEL (chan));
 
   /* GabbleTubeDBus, GabbleTubeStream, and GabbleMucCallChannel all
@@ -401,7 +402,7 @@ muc_channel_new_call (GabbleMucChannel *muc,
 
   DEBUG ("Emitting new Call channel");
 
-  tp_channel_manager_emit_new_channel (fac,
+  tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
       TP_EXPORTABLE_CHANNEL (call), requests);
 
   g_signal_connect (call, "closed",
@@ -419,7 +420,7 @@ muc_channel_new_tube (GabbleMucChannel *channel,
   /* If the muc channel is ready announce the tube channel right away
    * otherwise wait for the text channel to be ready */
   if (_gabble_muc_channel_is_ready (channel))
-    tp_channel_manager_emit_new_channel (fac,
+    tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
         TP_EXPORTABLE_CHANNEL (tube), NULL);
   else
     gabble_muc_factory_associate_tube (fac, channel, tube);
@@ -860,7 +861,7 @@ cancel_queued_requests (
 
   for (iter = requests_satisfied; iter != NULL; iter = iter->next)
     {
-      tp_channel_manager_emit_request_failed (self,
+      tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
           iter->data, TP_ERROR, TP_ERROR_DISCONNECTED,
           "Unable to complete this channel request, we're disconnecting!");
     }
@@ -1451,8 +1452,9 @@ handle_text_channel_request (GabbleMucFactory *self,
             {
               if (tp_base_channel_is_registered (TP_BASE_CHANNEL (text_chan)))
                 {
-                  tp_channel_manager_emit_request_already_satisfied (self,
-                      request_token, TP_EXPORTABLE_CHANNEL (text_chan));
+                  tp_channel_manager_emit_request_already_satisfied (
+                      TP_CHANNEL_MANAGER (self), request_token,
+                      TP_EXPORTABLE_CHANNEL (text_chan));
                 }
               else
                 {
@@ -1461,7 +1463,8 @@ handle_text_channel_request (GabbleMucFactory *self,
                   tp_base_channel_register (TP_BASE_CHANNEL (text_chan));
 
                   tokens = g_slist_append (NULL, request_token);
-                  tp_channel_manager_emit_new_channel (self,
+                  tp_channel_manager_emit_new_channel (
+                      TP_CHANNEL_MANAGER (self),
                       TP_EXPORTABLE_CHANNEL (text_chan), tokens);
                   g_slist_free (tokens);
                 }
@@ -1548,7 +1551,7 @@ handle_tube_channel_request (GabbleMucFactory *self,
 
       request_tokens = g_slist_prepend (NULL, request_token);
 
-      tp_channel_manager_emit_new_channel (self,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
           TP_EXPORTABLE_CHANNEL (new_channel), request_tokens);
 
       g_slist_free (request_tokens);
@@ -1643,7 +1646,7 @@ call_muc_channel_request_cb (GObject *source,
   if (!gabble_muc_channel_request_call_finish (channel,
       result, &error))
     {
-      tp_channel_manager_emit_request_failed (self,
+      tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
         request_token, error->domain, error->code, error->message);
       g_error_free (error);
     }
@@ -1701,9 +1704,9 @@ handle_call_channel_request (GabbleMucFactory *self,
         }
       else
         {
-          tp_channel_manager_emit_request_already_satisfied (self,
-            request_token,
-            TP_EXPORTABLE_CHANNEL (call));
+          tp_channel_manager_emit_request_already_satisfied (
+              TP_CHANNEL_MANAGER (self), request_token,
+              TP_EXPORTABLE_CHANNEL (call));
           goto out;
         }
     }
@@ -1800,8 +1803,8 @@ gabble_muc_factory_request (GabbleMucFactory *self,
       if (!h->f (self, request_token, request_properties, require_new,
             handle, &error))
         {
-          tp_channel_manager_emit_request_failed (self, request_token,
-              error->domain, error->code, error->message);
+          tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+              request_token, error->domain, error->code, error->message);
           g_error_free (error);
         }
 
@@ -1815,36 +1818,24 @@ gabble_muc_factory_request (GabbleMucFactory *self,
 
 static gboolean
 gabble_muc_factory_create_channel (TpChannelManager *manager,
-                                   gpointer request_token,
-                                   GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabbleMucFactory *self = GABBLE_MUC_FACTORY (manager);
 
-  return gabble_muc_factory_request (self, request_token, request_properties,
+  return gabble_muc_factory_request (self, request, request_properties,
       TRUE);
 }
 
 
 static gboolean
-gabble_muc_factory_request_channel (TpChannelManager *manager,
-                                    gpointer request_token,
-                                    GHashTable *request_properties)
-{
-  GabbleMucFactory *self = GABBLE_MUC_FACTORY (manager);
-
-  return gabble_muc_factory_request (self, request_token, request_properties,
-      FALSE);
-}
-
-
-static gboolean
 gabble_muc_factory_ensure_channel (TpChannelManager *manager,
-                                    gpointer request_token,
-                                    GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
   GabbleMucFactory *self = GABBLE_MUC_FACTORY (manager);
 
-  return gabble_muc_factory_request (self, request_token, request_properties,
+  return gabble_muc_factory_request (self, request, request_properties,
       FALSE);
 }
 
@@ -1885,7 +1876,6 @@ channel_manager_iface_init (gpointer g_iface,
   iface->foreach_channel = gabble_muc_factory_foreach_channel;
   iface->type_foreach_channel_class =
       gabble_muc_factory_type_foreach_channel_class;
-  iface->request_channel = gabble_muc_factory_request_channel;
   iface->create_channel = gabble_muc_factory_create_channel;
   iface->ensure_channel = gabble_muc_factory_ensure_channel;
 }

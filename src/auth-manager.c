@@ -114,7 +114,7 @@ auth_channel_closed_cb (GabbleServerSaslChannel *channel,
 {
   SavedError tmp = { NULL, NULL, 0, NULL };
 
-  tp_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
       TP_EXPORTABLE_CHANNEL (channel));
 
   g_assert (self->priv->channel == channel);
@@ -371,7 +371,7 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
             (TpBaseChannel *) self->priv->channel));
       g_assert (tp_base_channel_is_registered (
             (TpBaseChannel *) self->priv->channel));
-      tp_channel_manager_emit_new_channel (self,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
           TP_EXPORTABLE_CHANNEL (self->priv->channel), NULL);
     }
   else
@@ -661,7 +661,6 @@ channel_manager_iface_init (gpointer g_iface,
   /* These channels are not requestable. */
   iface->ensure_channel = NULL;
   iface->create_channel = NULL;
-  iface->request_channel = NULL;
   iface->foreach_channel_class = NULL;
 }
 

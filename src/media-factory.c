@@ -208,7 +208,7 @@ call_channel_closed_cb (GabbleCallChannel *chan, gpointer user_data)
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = fac->priv;
 
-  tp_channel_manager_emit_channel_closed_for_object (fac,
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (fac),
       TP_EXPORTABLE_CHANNEL (chan));
 
   DEBUG ("removing media channel %p with ref count %d",
@@ -236,7 +236,7 @@ call_channel_initialized (GObject *source,
       priv->call_channels = g_list_prepend (priv->call_channels,
           g_object_ref (mcr->channel));
 
-      tp_channel_manager_emit_new_channel (mcr->self,
+      tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (mcr->self),
         mcr->channel, mcr->request_tokens);
 
       g_signal_connect (mcr->channel, "closed",
@@ -246,8 +246,8 @@ call_channel_initialized (GObject *source,
     {
       GSList *l;
       for (l = mcr->request_tokens; l != NULL; l = g_slist_next (l))
-        tp_channel_manager_emit_request_failed (mcr->self, l->data,
-          error->domain, error->code, error->message);
+        tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (mcr->self),
+            l->data, error->domain, error->code, error->message);
     }
 
   media_channel_request_free (mcr);
@@ -554,8 +554,9 @@ gabble_media_factory_create_call (TpChannelManager *manager,
               /* Per the spec, we ignore InitialAudio and InitialVideo when
                * looking for an existing channel.
                */
-              tp_channel_manager_emit_request_already_satisfied (self,
-                  request_token, TP_EXPORTABLE_CHANNEL (channel));
+              tp_channel_manager_emit_request_already_satisfied (
+                  TP_CHANNEL_MANAGER (self), request_token,
+                  TP_EXPORTABLE_CHANNEL (channel));
               return TRUE;
             }
         }
@@ -608,28 +609,28 @@ gabble_media_factory_create_call (TpChannelManager *manager,
   return TRUE;
 
 error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
+  tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+      request_token, error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
 }
 
 static gboolean
 gabble_media_factory_create_channel (TpChannelManager *manager,
-                                     gpointer request_token,
-                                     GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
-  return gabble_media_factory_create_call (manager, request_token,
+  return gabble_media_factory_create_call (manager, request,
       request_properties, METHOD_CREATE);
 }
 
 
 static gboolean
 gabble_media_factory_ensure_channel (TpChannelManager *manager,
-                                     gpointer request_token,
-                                     GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
-  return gabble_media_factory_create_call (manager, request_token,
+  return gabble_media_factory_create_call (manager, request,
       request_properties, METHOD_ENSURE);
 }
 

@@ -297,7 +297,7 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *channel,
 {
   GabbleRoomlistManager *self = GABBLE_ROOMLIST_MANAGER (user_data);
 
-  tp_channel_manager_emit_channel_closed_for_object (self,
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
       TP_EXPORTABLE_CHANNEL (channel));
 
   if (self->priv->channels != NULL)
@@ -375,8 +375,9 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
 
           if (good)
             {
-              tp_channel_manager_emit_request_already_satisfied (self,
-                  request_token, TP_EXPORTABLE_CHANNEL (channel));
+              tp_channel_manager_emit_request_already_satisfied (
+                  TP_CHANNEL_MANAGER (self), request_token,
+                  TP_EXPORTABLE_CHANNEL (channel));
               return TRUE;
             }
         }
@@ -389,15 +390,15 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
   g_ptr_array_add (self->priv->channels, channel);
 
   request_tokens = g_slist_prepend (NULL, request_token);
-  tp_channel_manager_emit_new_channel (self,
+  tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
       TP_EXPORTABLE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
 
   return TRUE;
 
 error:
-  tp_channel_manager_emit_request_failed (self, request_token,
-      error->domain, error->code, error->message);
+  tp_channel_manager_emit_request_failed (TP_CHANNEL_MANAGER (self),
+      request_token, error->domain, error->code, error->message);
   g_error_free (error);
   return TRUE;
 }
@@ -405,30 +406,20 @@ error:
 
 static gboolean
 gabble_roomlist_manager_create_channel (TpChannelManager *manager,
-                                        gpointer request_token,
-                                        GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
-  return gabble_roomlist_manager_handle_request (manager, request_token,
+  return gabble_roomlist_manager_handle_request (manager, request,
       request_properties, TRUE);
 }
 
 
 static gboolean
-gabble_roomlist_manager_request_channel (TpChannelManager *manager,
-                                         gpointer request_token,
-                                         GHashTable *request_properties)
-{
-  return gabble_roomlist_manager_handle_request (manager, request_token,
-      request_properties, FALSE);
-}
-
-
-static gboolean
 gabble_roomlist_manager_ensure_channel (TpChannelManager *manager,
-                                        gpointer request_token,
-                                        GHashTable *request_properties)
+    TpChannelManagerRequest *request,
+    GHashTable *request_properties)
 {
-  return gabble_roomlist_manager_handle_request (manager, request_token,
+  return gabble_roomlist_manager_handle_request (manager, request,
       request_properties, FALSE);
 }
 
@@ -442,7 +433,6 @@ channel_manager_iface_init (gpointer g_iface,
   iface->foreach_channel = gabble_roomlist_manager_foreach_channel;
   iface->type_foreach_channel_class =
       gabble_roomlist_manager_type_foreach_channel_class;
-  iface->request_channel = gabble_roomlist_manager_request_channel;
   iface->create_channel = gabble_roomlist_manager_create_channel;
   iface->ensure_channel = gabble_roomlist_manager_ensure_channel;
 }

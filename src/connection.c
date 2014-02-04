@@ -109,8 +109,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_base_contact_list_mixin_blocking_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE1,
       tp_presence_mixin_iface_init);
-    G_IMPLEMENT_INTERFACE (GABBLE_TYPE_SVC_CONNECTION_INTERFACE_GABBLE_DECLOAK,
-      conn_decloak_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION1,
       location_iface_init);
     G_IMPLEMENT_INTERFACE
@@ -156,7 +154,6 @@ enum
     PROP_ALIAS,
     PROP_FALLBACK_SOCKS5_PROXIES,
     PROP_KEEPALIVE_INTERVAL,
-    PROP_DECLOAK_AUTOMATICALLY,
     PROP_FALLBACK_SERVERS,
     PROP_EXTRA_CERTIFICATE_IDENTITIES,
     PROP_POWER_SAVING,
@@ -203,8 +200,6 @@ struct _GabbleConnectionPrivate
   gchar *fallback_conference_server;
 
   GStrv fallback_socks5_proxies;
-
-  gboolean decloak_automatically;
 
   GStrv fallback_servers;
   guint fallback_server_index;
@@ -617,10 +612,6 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_uint (value, priv->keepalive_interval);
       break;
 
-    case PROP_DECLOAK_AUTOMATICALLY:
-      g_value_set_boolean (value, priv->decloak_automatically);
-      break;
-
     case PROP_FALLBACK_SERVERS:
       g_value_set_boxed (value, priv->fallback_servers);
       break;
@@ -766,10 +757,6 @@ gabble_connection_set_property (GObject      *object,
             priv->keepalive_interval, NULL);
       break;
 
-    case PROP_DECLOAK_AUTOMATICALLY:
-      priv->decloak_automatically = g_value_get_boolean (value);
-      break;
-
     case PROP_FALLBACK_SERVERS:
       if (priv->fallback_servers != NULL)
         g_strfreev (priv->fallback_servers);
@@ -857,7 +844,6 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_CONTACT_GROUPS1,
     TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1,
     TP_IFACE_CONNECTION_INTERFACE_LOCATION1,
-    GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
     TP_IFACE_CONNECTION_INTERFACE_SIDECARS1,
     TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1,
     TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1,
@@ -924,10 +910,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "SupportedLocationFeatures", NULL, NULL },
         { NULL }
   };
-  static TpDBusPropertiesMixinPropImpl decloak_props[] = {
-        { "DecloakAutomatically", TWICE ("decloak-automatically") },
-        { NULL }
-  };
   static TpDBusPropertiesMixinPropImpl mail_notif_props[] = {
         { "MailNotificationFlags", NULL, NULL },
         { "UnreadMailCount", NULL, NULL },
@@ -954,11 +936,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           conn_contact_info_properties_getter,
           NULL,
           NULL,
-        },
-        /* 3 */ { GABBLE_IFACE_CONNECTION_INTERFACE_GABBLE_DECLOAK,
-          tp_dbus_properties_mixin_getter_gobject_properties,
-          tp_dbus_properties_mixin_setter_gobject_properties,
-          decloak_props,
         },
         { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
           conn_mail_notif_properties_getter,
@@ -1181,14 +1158,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           "Seconds between keepalive packets, or 0 to disable",
           0, G_MAXUINT, 30,
           G_PARAM_CONSTRUCT | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
-
-  g_object_class_install_property (
-      object_class, PROP_DECLOAK_AUTOMATICALLY,
-      g_param_spec_boolean (
-          "decloak-automatically", "Decloak automatically?",
-          "Leak presence and capabilities when requested",
-          FALSE,
-          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
   g_object_class_install_property (
       object_class, PROP_DOWNLOAD_AT_CONNECTION,
@@ -2419,33 +2388,6 @@ gabble_connection_send_capabilities (GabbleConnection *self,
 
   ret = _gabble_connection_send (self, message, error);
 
-  g_object_unref (message);
-
-  return ret;
-}
-
-gboolean
-gabble_connection_request_decloak (GabbleConnection *self,
-    const gchar *to,
-    const gchar *reason,
-    GError **error)
-{
-  GabblePresence *presence = self->self_presence;
-  WockyStanza *message = gabble_presence_as_message (presence, to);
-  WockyNode *decloak;
-  gboolean ret;
-
-  gabble_connection_fill_in_caps (self, message);
-
-  decloak = wocky_node_add_child_ns (wocky_stanza_get_top_node (message),
-      "temppres", NS_TEMPPRES);
-
-  if (reason != NULL && *reason != '\0')
-    {
-      wocky_node_set_attribute (decloak, "reason", reason);
-    }
-
-  ret = _gabble_connection_send (self, message, error);
   g_object_unref (message);
 
   return ret;

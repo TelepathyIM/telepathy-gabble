@@ -55,10 +55,6 @@
  * got initial presence from all the contacts. */
 #define UNSURE_PERIOD 5
 
-/* Time period from a de-cloak request in which we're unsure whether the
- * contact will disclose their presence later, or not at all. */
-#define DECLOAK_PERIOD 5
-
 G_DEFINE_TYPE (GabblePresenceCache, gabble_presence_cache, G_TYPE_OBJECT);
 
 /* properties */
@@ -100,9 +96,6 @@ struct _GabblePresenceCachePrivate
   guint caps_serial;
 
   guint unsure_id;
-  /* handle => DecloakContext */
-  GHashTable *decloak_requests;
-  TpHandleSet *decloak_handles;
 
   /* The cached contacts' location.
    * The key is the contact's TpHandle.
@@ -309,40 +302,6 @@ capability_info_recvd (GabblePresenceCache *cache,
   return info->trust;
 }
 
-typedef struct {
-    GabblePresenceCache *cache;
-    TpHandle handle;
-    guint timeout_id;
-    const gchar *reason;
-} DecloakContext;
-
-static DecloakContext *
-decloak_context_new (GabblePresenceCache *cache,
-    TpHandle handle,
-    const gchar *reason)
-{
-  DecloakContext *dc = g_slice_new0 (DecloakContext);
-
-  dc->cache = cache;
-  dc->handle = handle;
-  dc->reason = reason;
-  dc->timeout_id = 0;
-  return dc;
-}
-
-static void
-decloak_context_free (gpointer data)
-{
-  DecloakContext *dc = data;
-
-  tp_handle_set_remove (dc->cache->priv->decloak_handles, dc->handle);
-
-  if (dc->timeout_id != 0)
-    g_source_remove (dc->timeout_id);
-
-  g_slice_free (DecloakContext, dc);
-}
-
 static void gabble_presence_cache_init (GabblePresenceCache *presence_cache);
 static GObject * gabble_presence_cache_constructor (GType type, guint n_props,
     GObjectConstructParam *props);
@@ -484,9 +443,6 @@ gabble_presence_cache_init (GabblePresenceCache *cache)
     g_free, (GDestroyNotify) disco_waiter_list_free);
   priv->caps_serial = 1;
 
-  priv->decloak_requests = g_hash_table_new_full (NULL, NULL, NULL,
-      decloak_context_free);
-
   priv->location = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL,
       (GDestroyNotify) g_hash_table_unref);
 }
@@ -524,7 +480,6 @@ gabble_presence_cache_constructor (GType type, guint n_props,
 
   g_assert (priv->conn != NULL);
   g_assert (priv->presence_handles != NULL);
-  g_assert (priv->decloak_handles != NULL);
 
   gabble_presence_cache_add_bundles ((GabblePresenceCache *) obj);
 
@@ -554,9 +509,6 @@ gabble_presence_cache_dispose (GObject *object)
       g_source_remove (priv->unsure_id);
       priv->unsure_id = 0;
     }
-
-  tp_clear_pointer (&priv->decloak_requests, g_hash_table_unref);
-  tp_clear_pointer (&priv->decloak_handles, tp_handle_set_destroy);
 
   g_assert (priv->message_cb == 0);
   g_assert (priv->presence_cb == 0);
@@ -614,13 +566,11 @@ gabble_presence_cache_set_property (GObject     *object,
     case PROP_CONNECTION:
       g_assert (priv->conn == NULL);              /* construct-only */
       g_assert (priv->presence_handles == NULL);  /* construct-only */
-      g_assert (priv->decloak_handles == NULL);   /* construct-only */
 
       priv->conn = g_value_get_object (value);
       contact_repo = tp_base_connection_get_handles (
           (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
       priv->presence_handles = tp_handle_set_new (contact_repo);
-      priv->decloak_handles = tp_handle_set_new (contact_repo);
       break;
 
     default:
@@ -1756,53 +1706,6 @@ _process_caps (GabblePresenceCache *cache,
   g_slist_free (uris);
 }
 
-static void
-presence_cache_check_for_decloak_request (
-    GabblePresenceCache *cache,
-    WockyStanza *stanza,
-    TpHandle handle,
-    const gchar *from)
-{
-  GabblePresenceCachePrivate *priv = cache->priv;
-  WockyNode *presence_node = wocky_stanza_get_top_node (stanza);
-  WockyNode *child_node;
-
-  /* If we receive (directed or broadcast) presence of any sort from someone,
-   * it counts as a reply to any pending de-cloak request we might have been
-   * tracking */
-  g_hash_table_remove (priv->decloak_requests, GUINT_TO_POINTER (handle));
-
-  child_node = wocky_node_get_child_ns (presence_node, "temppres",
-      NS_TEMPPRES);
-
-  if (child_node != NULL)
-    {
-      gboolean decloak;
-      const gchar *reason;
-
-      /* this is a request to de-cloak, i.e. leak a minimal version of our
-       * presence to the peer */
-      g_object_get (priv->conn,
-          "decloak-automatically", &decloak,
-          NULL);
-
-      reason = wocky_node_get_attribute (child_node, "reason");
-
-      if (reason == NULL)
-        reason = "";
-
-      DEBUG ("Considering whether to decloak, reason='%s', conclusion=%d",
-          reason, decloak);
-
-      conn_decloak_emit_requested (priv->conn, handle, reason, decloak);
-
-      if (decloak)
-        gabble_connection_send_capabilities (priv->conn, from, NULL);
-    }
-
-}
-
-
 /* FIXME: in a cruel twist of fate, this is called by GabbleMucChannel!
  * Presumably this is because the handler priority here is MIN, so WockyMuc
  * steals the presence stanza before we can scrape our information out of it?
@@ -1855,8 +1758,6 @@ gabble_presence_parse_presence_message (
 
   if (prio != NULL)
     priority = CLAMP (atoi (prio), G_MININT8, G_MAXINT8);
-
-  presence_cache_check_for_decloak_request (cache, message, handle, from);
 
   wocky_stanza_get_type_info (message, NULL, &sub_type);
   switch (sub_type)
@@ -2411,92 +2312,8 @@ gabble_presence_cache_is_unsure (GabblePresenceCache *cache,
       return TRUE;
     }
 
-  /* if we're waiting for a de-cloak response, we're unsure */
-  if (tp_handle_set_is_member (priv->decloak_handles, handle))
-    {
-      DEBUG ("Waiting to see if %u will decloak", handle);
-      return TRUE;
-    }
-
   DEBUG ("No, I'm sure about %u by now", handle);
   return FALSE;
-}
-
-static gboolean
-gabble_presence_cache_decloak_timeout_cb (gpointer data)
-{
-  DecloakContext *dc = data;
-  GabblePresenceCache *self = dc->cache;
-  TpHandle handle = dc->handle;
-
-  DEBUG ("De-cloak request for %u timed out", handle);
-
-  /* This frees @dc, do not dereference it afterwards. This needs to be done
-   * before emitting the signal, so that when recipients of the channel ask
-   * whether we're unsure about the handle, there is no pending decloak
-   * request that would make us unsure. */
-  g_hash_table_remove (self->priv->decloak_requests,
-      GUINT_TO_POINTER (handle));
-  /* As a side-effect of freeing @dc, this should have happened. */
-  g_assert (!tp_handle_set_is_member (self->priv->decloak_handles, handle));
-
-  /* FIXME: this is an abuse of this signal, but it serves the same
-   * purpose: poking any pending media channels to tell them that @handle
-   * might have left the "unsure" state */
-  emit_capabilities_discovered (self, handle);
-
-  return FALSE;
-}
-
-/* @reason must be a statically-allocated string. */
-gboolean
-gabble_presence_cache_request_decloaking (GabblePresenceCache *self,
-    TpHandle handle,
-    const gchar *reason)
-{
-  DecloakContext *dc;
-  GabblePresence *presence;
-  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
-
-  presence = gabble_presence_cache_get (self, handle);
-
-  if (presence != NULL &&
-      presence->status != GABBLE_PRESENCE_OFFLINE &&
-      presence->status != GABBLE_PRESENCE_UNKNOWN)
-    {
-      DEBUG ("We know that this contact is online, no point asking for "
-          "decloak");
-      return FALSE;
-    }
-
-  /* if we've already asked them to de-cloak for the same reason, do nothing */
-  if (tp_handle_set_is_member (self->priv->decloak_handles, handle))
-    {
-      dc = g_hash_table_lookup (self->priv->decloak_requests,
-          GUINT_TO_POINTER (handle));
-
-      if (dc != NULL && !tp_strdiff (reason, dc->reason))
-        {
-          DEBUG ("Already asked %u to decloak for reason '%s'", handle,
-              reason);
-          return TRUE;
-        }
-    }
-
-  DEBUG ("Asking %u to decloak", handle);
-
-  dc = decloak_context_new (self, handle, reason);
-  dc->timeout_id = g_timeout_add_seconds (DECLOAK_PERIOD,
-      gabble_presence_cache_decloak_timeout_cb, dc);
-  g_hash_table_insert (self->priv->decloak_requests, GUINT_TO_POINTER (handle),
-      dc);
-  tp_handle_set_add (self->priv->decloak_handles, handle);
-
-  gabble_connection_request_decloak (self->priv->conn,
-      tp_handle_inspect (contact_repo, handle), reason, NULL);
-
-  return TRUE;
 }
 
 void

@@ -58,7 +58,6 @@ TWISTED_TESTS = \
 	pep-support.py \
 	plugin-channel-managers.py \
 	power-save.py \
-	presence/decloak.py \
 	presence/error.py \
 	presence/initial-contact-presence.py \
 	presence/initial-presence.py \
@@ -176,7 +175,6 @@ TWISTED_JINGLE_TESTS = \
 	jingle/call-muc-cancel.py \
 	jingle/call-muc.py \
 	jingle/call-muc-re-re-request.py \
-	jingle/decloak-peer.py \
 	jingle/preload-caps-crash.py \
 	jingle/session-id-collision.py \
 	jingle/stun-server.py \

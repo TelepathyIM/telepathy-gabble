@@ -283,9 +283,6 @@ gboolean gabble_connection_send_presence (GabbleConnection *conn,
 gboolean gabble_connection_send_capabilities (GabbleConnection *self,
     const gchar *recipient, GError **error);
 
-gboolean gabble_connection_request_decloak (GabbleConnection *self,
-    const gchar *to, const gchar *reason, GError **error);
-
 void gabble_connection_fill_in_caps (GabbleConnection *self,
     WockyStanza *presence_message);
 

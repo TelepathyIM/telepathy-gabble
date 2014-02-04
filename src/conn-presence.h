@@ -56,10 +56,6 @@ void conn_presence_set_initial_presence_async (GabbleConnection *self,
 gboolean conn_presence_set_initial_presence_finish (GabbleConnection *self,
     GAsyncResult *result, GError **error);
 
-void conn_decloak_iface_init (gpointer g_iface, gpointer iface_data);
-void conn_decloak_emit_requested (GabbleConnection *conn,
-    TpHandle contact, const gchar *reason, gboolean decloaked);
-
 TpConnectionPresenceType conn_presence_get_type (GabblePresence *presence);
 
 const TpPresenceStatusSpec *conn_presence_statuses (void);

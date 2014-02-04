@@ -168,13 +168,6 @@ static TpCMParamSpec jabber_params[] = {
     GUINT_TO_POINTER (TRUE),
     0 /* unused */, NULL, NULL },
 
-  { GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
-    DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT |
-    TP_CONN_MGR_PARAM_FLAG_DBUS_PROPERTY,
-    GINT_TO_POINTER (TRUE),
-    0 /* unused */, NULL, NULL },
-
   { "fallback-servers", "as", 0,
     0, NULL, 0 /* unused */, NULL, NULL },
 
@@ -257,8 +250,6 @@ struct ParamMapping {
   SAME ("keepalive-interval"),
   MAP (TP_PROP_CONNECTION_INTERFACE_CONTACT_LIST1_DOWNLOAD_AT_CONNECTION,
        "download-roster-at-connection"),
-  MAP (GABBLE_PROP_CONNECTION_INTERFACE_GABBLE_DECLOAK_DECLOAK_AUTOMATICALLY,
-       "decloak-automatically"),
   SAME ("fallback-servers"),
   SAME ("extra-certificate-identities"),
   SAME (NULL)

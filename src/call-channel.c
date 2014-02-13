@@ -214,7 +214,7 @@ gabble_call_channel_class_init (
   object_class->dispose = gabble_call_channel_dispose;
   object_class->finalize = gabble_call_channel_finalize;
 
-  base_channel_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_channel_class->target_entity_type = TP_ENTITY_TYPE_CONTACT;
 
   tp_base_call_class->add_content = call_channel_add_content;
 
@@ -403,7 +403,7 @@ contact_is_media_capable (GabbleCallChannel *self,
 
   GabblePresence *presence;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   gboolean wait = FALSE;
 
   presence = gabble_presence_cache_get (conn->presence_cache, handle);

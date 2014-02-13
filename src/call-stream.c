@@ -388,7 +388,7 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
   TpSendingState remote_state;
   TpBaseConnection *conn = tp_base_call_stream_get_connection (base);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      conn, TP_HANDLE_TYPE_CONTACT);
+      conn, TP_ENTITY_TYPE_CONTACT);
   TpHandle peer;
 
   g_object_get (priv->content, "state", &state, NULL);

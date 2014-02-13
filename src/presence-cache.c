@@ -569,7 +569,7 @@ gabble_presence_cache_set_property (GObject     *object,
 
       priv->conn = g_value_get_object (value);
       contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+          (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
       priv->presence_handles = tp_handle_set_new (contact_repo);
       break;
 
@@ -1237,7 +1237,7 @@ _caps_disco_cb (GabbleDisco *disco,
   priv = cache->priv;
   base_conn = TP_BASE_CONNECTION (priv->conn);
   contact_repo = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   if (NULL == node)
     {
@@ -1477,7 +1477,7 @@ _process_caps_uri (GabblePresenceCache *cache,
 
   priv = cache->priv;
   contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   info = capability_info_get (cache, uri);
 
   caps_cache = wocky_caps_cache_dup_shared ();
@@ -1838,7 +1838,7 @@ _parse_message_message (
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
   GabblePresenceCachePrivate *priv = cache->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   const gchar *from = wocky_stanza_get_from (message);
   TpHandle handle;
   WockyStanzaSubType sub_type;
@@ -1900,7 +1900,7 @@ gabble_presence_cache_presence_cb (
   GabblePresenceCache *cache = GABBLE_PRESENCE_CACHE (user_data);
   GabblePresenceCachePrivate *priv = cache->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   const char *from = wocky_stanza_get_from (message);
   TpHandle handle;
 
@@ -1934,7 +1934,7 @@ gabble_presence_cache_get (GabblePresenceCache *cache, TpHandle handle)
 {
   GabblePresenceCachePrivate *priv = cache->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
 
   g_assert (tp_handle_is_valid (contact_repo, handle, NULL));
 
@@ -1959,7 +1959,7 @@ gabble_presence_cache_maybe_remove (
 {
   GabblePresenceCachePrivate *priv = cache->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   GabblePresence *presence;
 
   presence = gabble_presence_cache_get (cache, handle);
@@ -2014,7 +2014,7 @@ gabble_presence_cache_do_update (
   if (DEBUGGING)
     {
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+          (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
       const gchar *jid = tp_handle_inspect (contact_repo, handle);
       const gchar *presence_name = wocky_enum_to_nick (
           GABBLE_TYPE_PRESENCE_ID, presence_id);
@@ -2228,7 +2228,7 @@ gabble_presence_cache_really_remove (
 {
   GabblePresenceCachePrivate *priv = cache->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   const gchar *jid;
 
   jid = tp_handle_inspect (contact_repo, handle);

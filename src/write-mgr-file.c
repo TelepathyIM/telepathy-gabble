@@ -198,7 +198,7 @@ generate_group_name (GHashTable *props)
   gchar *chan_type_suffix;
   gchar *handle_type_name;
   guint handle_type = tp_asv_get_uint32 (props,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL);
 
   g_assert (chan_type != NULL);
   chan_type_suffix = strrchr (chan_type, '.');
@@ -207,11 +207,11 @@ generate_group_name (GHashTable *props)
 
   switch (handle_type)
     {
-    case TP_HANDLE_TYPE_CONTACT:
+    case TP_ENTITY_TYPE_CONTACT:
       handle_type_name = "-1on1";
       break;
 
-    case TP_HANDLE_TYPE_ROOM:
+    case TP_ENTITY_TYPE_ROOM:
       handle_type_name = "-multi";
       break;
 

@@ -66,7 +66,7 @@ GType gabble_tube_stream_get_type (void);
                               GabbleTubeStreamClass))
 
 GabbleTubeStream *gabble_tube_stream_new (GabbleConnection *conn,
-    TpHandle handle, TpHandleType handle_type, TpHandle self_handle,
+    TpHandle handle, TpEntityType handle_type, TpHandle self_handle,
     TpHandle initiator, const gchar *service, GHashTable *parameters,
     guint64 id, GabbleMucChannel *muc, gboolean requested);
 

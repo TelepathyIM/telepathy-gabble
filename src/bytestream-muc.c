@@ -66,7 +66,7 @@ struct _GabbleBytestreamMucPrivate
 {
   GabbleConnection *conn;
   TpHandle peer_handle;
-  TpHandleType peer_handle_type;
+  TpEntityType peer_handle_type;
   gchar *stream_id;
   GabbleBytestreamState state;
   const gchar *peer_jid;
@@ -149,7 +149,7 @@ gabble_bytestream_muc_get_property (GObject *object,
         g_value_set_uint (value, priv->peer_handle);
         break;
       case PROP_PEER_HANDLE_TYPE:
-        g_value_set_uint (value, TP_HANDLE_TYPE_ROOM);
+        g_value_set_uint (value, TP_ENTITY_TYPE_ROOM);
         break;
       case PROP_STREAM_ID:
         g_value_set_string (value, priv->stream_id);
@@ -222,7 +222,7 @@ gabble_bytestream_muc_constructor (GType type,
 
 
   room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_ROOM);
 
   priv->peer_jid = tp_handle_inspect (room_repo,
         priv->peer_handle);
@@ -401,7 +401,7 @@ gabble_bytestream_muc_receive (GabbleBytestreamMuc *self,
 {
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   const gchar *from;
   WockyNode *data;
   GString *str;
@@ -575,7 +575,7 @@ gabble_bytestream_muc_send_to (GabbleBytestreamMuc *self,
 {
   GabbleBytestreamMucPrivate *priv = GABBLE_BYTESTREAM_MUC_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   const gchar *to;
 
   to = tp_handle_inspect (contact_repo, contact);

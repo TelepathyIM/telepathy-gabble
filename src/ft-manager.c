@@ -379,7 +379,7 @@ new_jingle_session_cb (GabbleJingleMint *jm,
               gchar *filename = NULL;
               TpHandleRepoIface *contacts = tp_base_connection_get_handles (
                   TP_BASE_CONNECTION (self->priv->connection),
-                  TP_HANDLE_TYPE_CONTACT);
+                  TP_ENTITY_TYPE_CONTACT);
               TpHandle peer = tp_handle_ensure (contacts,
                   wocky_jingle_session_get_peer_jid (sess), NULL, NULL);
 
@@ -447,7 +447,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
   GabbleFileTransferChannel *chan;
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->connection);
   TpHandleRepoIface *contact_repo =
-      tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
+      tp_base_connection_get_handles (base_conn, TP_ENTITY_TYPE_CONTACT);
   TpHandle handle;
   const gchar *content_type, *filename, *content_hash, *description;
   const gchar *file_uri, *service_name;
@@ -467,7 +467,7 @@ gabble_ft_manager_handle_request (TpChannelManager *manager,
 
   /* And only contact handles */
   if (tp_asv_get_uint32 (request_properties,
-        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
+        TP_IFACE_CHANNEL ".TargetEntityType", NULL) != TP_ENTITY_TYPE_CONTACT)
     return FALSE;
 
   handle = tp_asv_get_uint32 (request_properties,
@@ -603,7 +603,7 @@ error:
  */
 static const gchar * const file_transfer_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
+    TP_IFACE_CHANNEL ".TargetEntityType",
     NULL
 };
 
@@ -655,8 +655,8 @@ gabble_ft_manager_type_foreach_channel_class (GType type,
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType" ,
       tp_g_value_slice_new_string (TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1));
 
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType",
-      tp_g_value_slice_new_uint (TP_HANDLE_TYPE_CONTACT));
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetEntityType",
+      tp_g_value_slice_new_uint (TP_ENTITY_TYPE_CONTACT));
 
   func (type, table, file_transfer_channel_allowed_properties_with_both_metadata_props,
       user_data);
@@ -936,7 +936,7 @@ add_file_transfer_channel_class (GPtrArray *arr,
   GValue monster = {0, };
   GHashTable *fixed_properties;
   GValue *channel_type_value;
-  GValue *target_handle_type_value;
+  GValue *target_entity_type_value;
   GValue *service_name_value;
   const gchar * const *allowed_properties;
 
@@ -953,9 +953,9 @@ add_file_transfer_channel_class (GPtrArray *arr,
   g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
       channel_type_value);
 
-  target_handle_type_value = tp_g_value_slice_new_uint (TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetHandleType",
-      target_handle_type_value);
+  target_entity_type_value = tp_g_value_slice_new_uint (TP_ENTITY_TYPE_CONTACT);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetEntityType",
+      target_entity_type_value);
 
   if (service_name_str != NULL)
     {
@@ -1041,8 +1041,8 @@ gabble_ft_manager_represent_client (
         continue;
 
       if (tp_asv_get_uint32 (channel_class,
-            TP_IFACE_CHANNEL ".TargetHandleType", NULL)
-          != TP_HANDLE_TYPE_CONTACT)
+            TP_IFACE_CHANNEL ".TargetEntityType", NULL)
+          != TP_ENTITY_TYPE_CONTACT)
         continue;
 
       DEBUG ("client %s supports file transfer", client_name);

@@ -116,7 +116,7 @@ def test_call(jp, q, bus, conn, stream,
     channel_props = call_chan.GetAll(
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assertEquals(remote_handle, channel_props['TargetHandle'])
-    assertEquals(1, channel_props['TargetHandleType'])
+    assertEquals(1, channel_props['TargetEntityType'])
     assertEquals('foo@bar.com', channel_props['TargetID'])
     assertEquals(False, channel_props['Requested'])
     assertEquals('foo@bar.com', channel_props['InitiatorID'])

@@ -173,7 +173,7 @@ gabble_console_channel_manager_class_init (GabbleConsoleChannelManagerClass *kla
 
 static const gchar * const allowed[] = {
     TP_PROP_CHANNEL_CHANNEL_TYPE,
-    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
+    TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
     NULL
 };
 
@@ -184,7 +184,7 @@ gabble_console_channel_manager_type_foreach_channel_class (GType type,
 {
   GHashTable *table = tp_asv_new (
       TP_PROP_CHANNEL_CHANNEL_TYPE, G_TYPE_STRING, GABBLE_IFACE_GABBLE_PLUGIN_CONSOLE,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, G_TYPE_UINT, TP_HANDLE_TYPE_NONE,
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, G_TYPE_UINT, TP_ENTITY_TYPE_NONE,
       NULL);
 
   func (type, table, NULL, user_data);
@@ -228,7 +228,7 @@ gabble_console_channel_manager_create_channel (
     return FALSE;
 
   if (tp_asv_get_uint32 (request_properties,
-       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0)
+       TP_IFACE_CHANNEL ".TargetEntityType", NULL) != 0)
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Console channels can't have a target handle");

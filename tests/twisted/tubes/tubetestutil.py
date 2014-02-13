@@ -134,8 +134,8 @@ def check_channel_properties(q, bus, conn, channel, channel_type,
     channel_props = channel.GetAll(cs.CHANNEL, dbus_interface=cs.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == contact_handle, \
             (channel_props.get('TargetHandle'), contact_handle)
-    assert channel_props.get('TargetHandleType') == cs.HT_CONTACT, \
-            channel_props.get('TargetHandleType')
+    assert channel_props.get('TargetEntityType') == cs.HT_CONTACT, \
+            channel_props.get('TargetEntityType')
     assert channel_props.get('ChannelType') == channel_type, \
             channel_props.get('ChannelType')
     assert 'Interfaces' in channel_props, channel_props

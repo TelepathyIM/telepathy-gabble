@@ -818,13 +818,13 @@ gabble_connection_get_unique_name (TpBaseConnection *self)
  */
 void
 _gabble_connection_create_handle_repos (TpBaseConnection *conn,
-    TpHandleRepoIface *repos[TP_NUM_HANDLE_TYPES])
+    TpHandleRepoIface *repos[TP_NUM_ENTITY_TYPES])
 {
-  repos[TP_HANDLE_TYPE_CONTACT] =
-      tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_CONTACT,
+  repos[TP_ENTITY_TYPE_CONTACT] =
+      tp_dynamic_handle_repo_new (TP_ENTITY_TYPE_CONTACT,
           gabble_normalize_contact, GUINT_TO_POINTER (GABBLE_JID_ANY));
-  repos[TP_HANDLE_TYPE_ROOM] =
-      tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_ROOM, gabble_normalize_room,
+  repos[TP_ENTITY_TYPE_ROOM] =
+      tp_dynamic_handle_repo_new (TP_ENTITY_TYPE_ROOM, gabble_normalize_room,
           conn);
 }
 
@@ -1845,7 +1845,7 @@ connector_connected (GabbleConnection *self,
   GabbleConnectionPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   /* cleanup the cancellable */
   tp_clear_object (&priv->cancellable);
@@ -2036,7 +2036,7 @@ connection_iq_last_cb (
   if (from != NULL)
     {
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          (TpBaseConnection *) self, TP_HANDLE_TYPE_CONTACT);
+          (TpBaseConnection *) self, TP_ENTITY_TYPE_CONTACT);
       TpHandle handle = tp_handle_lookup (contact_repo, from, NULL, NULL);
 
       /* If there's no handle for them, they're certainly not on the roster. */
@@ -2363,7 +2363,7 @@ gabble_connection_send_capabilities (GabbleConnection *self,
     GError **error)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) self, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self, TP_ENTITY_TYPE_CONTACT);
   WockyStanza *message;
   gboolean ret;
   TpHandle handle;
@@ -2929,7 +2929,7 @@ connection_disco_cb (GabbleDisco *disco,
   if ((conn->features & GABBLE_CONNECTION_FEATURES_WLM_JID_LOOKUP) != 0)
     {
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
-          TP_HANDLE_TYPE_CONTACT);
+          TP_ENTITY_TYPE_CONTACT);
 
       tp_dynamic_handle_repo_set_normalize_async (
           (TpDynamicHandleRepo *) contact_repo,
@@ -3607,7 +3607,7 @@ gabble_connection_get_jid_for_caps (GabblePluginConnection *plugin_conn,
     }
 
   contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   return tp_handle_inspect (contact_handles, handle);
 }
@@ -3630,7 +3630,7 @@ gabble_connection_pick_best_resource_for_caps (
 
   base = (TpBaseConnection *) connection;
   contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   handle = tp_handle_ensure (contact_handles, jid,
       NULL, NULL);

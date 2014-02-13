@@ -243,7 +243,7 @@ gabble_capabilities_init (gpointer conn)
       /* TpDynamicHandleRepo wants a handle type, which isn't relevant here
        * (we're just using it as a string pool). Use an arbitrary handle type
        * to shut it up. */
-      feature_handles = tp_dynamic_handle_repo_new (TP_HANDLE_TYPE_CONTACT,
+      feature_handles = tp_dynamic_handle_repo_new (TP_ENTITY_TYPE_CONTACT,
           NULL, NULL);
 
       /* make the pre-cooked bundles */

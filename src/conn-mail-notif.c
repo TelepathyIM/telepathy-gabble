@@ -833,7 +833,7 @@ conn_mail_notif_properties_getter (GObject *object,
     {
       TpBaseConnection *base = TP_BASE_CONNECTION (object);
       TpHandleRepoIface *contact_handles =
-        tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+        tp_base_connection_get_handles (base, TP_ENTITY_TYPE_CONTACT);
       TpHandle self = tp_base_connection_get_self_handle (base);
       const gchar *bare_jid = tp_handle_inspect (contact_handles, self);
 

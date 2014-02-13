@@ -93,7 +93,7 @@ gabble_bytestream_iface_base_init (gpointer klass)
       param_spec = g_param_spec_uint (
           "peer-handle-type",
           "Peer handle type",
-          "The TpHandleType of the remote peer's associated handle",
+          "The TpEntityType of the remote peer's associated handle",
           0, G_MAXUINT32, 0,
           G_PARAM_READABLE | G_PARAM_STATIC_STRINGS);
       g_object_interface_install_property (klass, param_spec);

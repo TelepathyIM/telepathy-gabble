@@ -430,7 +430,7 @@ tube_dbus_open (GabbleTubeDBus *self)
       dbus_server_setup_with_g_main (priv->dbus_srv, NULL);
     }
 
-  if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+  if (cls->target_entity_type == TP_ENTITY_TYPE_ROOM)
     {
       /* add yourself in dbus names */
       gabble_tube_dbus_add_name (self, priv->self_handle,
@@ -496,7 +496,7 @@ bytestream_state_changed_cb (GabbleBytestreamIface *bytestream,
       tp_clear_object (&priv->bytestream);
       g_signal_emit (G_OBJECT (self), signals[CLOSED], 0);
 
-      if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+      if (cls->target_entity_type == TP_ENTITY_TYPE_ROOM)
         gabble_muc_channel_send_presence (priv->muc);
     }
   else if (state == GABBLE_BYTESTREAM_STATE_OPEN)
@@ -710,7 +710,7 @@ gabble_tube_dbus_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
+      base_conn, TP_ENTITY_TYPE_CONTACT);
   guint access_control;
 
   void (*chain_up) (GObject *) =
@@ -723,7 +723,7 @@ gabble_tube_dbus_constructed (GObject *obj)
       NULL, g_free);
 
   g_assert (priv->self_handle != 0);
-  if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+  if (cls->target_entity_type == TP_ENTITY_TYPE_ROOM)
     {
       /* We have to create a pseudo-IBB bytestream that will be
        * used by this MUC tube to communicate.
@@ -880,7 +880,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1;
   base_class->get_interfaces = gabble_tube_dbus_get_interfaces;
-  base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_class->target_entity_type = TP_ENTITY_TYPE_CONTACT;
   base_class->close = gabble_tube_dbus_close;
   base_class->fill_immutable_properties =
     gabble_tube_dbus_fill_immutable_properties;
@@ -1039,10 +1039,10 @@ gabble_tube_dbus_offer (GabbleTubeDBus *tube,
       return FALSE;
     }
 
-  if (cls->target_handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (cls->target_entity_type == TP_ENTITY_TYPE_CONTACT)
     {
       TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-          base_conn, TP_HANDLE_TYPE_CONTACT);
+          base_conn, TP_ENTITY_TYPE_CONTACT);
       const gchar *jid, *resource;
       gchar *full_jid;
       GabblePresence *presence;
@@ -1141,7 +1141,7 @@ message_received (GabbleTubeDBus *tube,
       return;
     }
 
-  if (cls->target_handle_type == TP_HANDLE_TYPE_ROOM)
+  if (cls->target_entity_type == TP_ENTITY_TYPE_ROOM)
     {
       destination = dbus_message_get_destination (msg);
       /* If destination is NULL this msg is broadcasted (signals) so we don't
@@ -1227,7 +1227,7 @@ data_received_cb (GabbleBytestreamIface *stream,
   TpBaseChannel *base = TP_BASE_CHANNEL (tube);
   TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
 
-  if (cls->target_handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (cls->target_entity_type == TP_ENTITY_TYPE_CONTACT)
     {
       GString *buf = priv->reassembly_buffer;
 
@@ -1333,7 +1333,7 @@ data_received_cb (GabbleBytestreamIface *stream,
 GabbleTubeDBus *
 gabble_tube_dbus_new (GabbleConnection *conn,
                       TpHandle handle,
-                      TpHandleType handle_type,
+                      TpEntityType handle_type,
                       TpHandle self_handle,
                       TpHandle initiator,
                       const gchar *service,
@@ -1347,7 +1347,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
   GabbleTubeDBus *tube;
   GType gtype = GABBLE_TYPE_TUBE_DBUS;
 
-  if (handle_type == TP_HANDLE_TYPE_ROOM)
+  if (handle_type == TP_ENTITY_TYPE_ROOM)
     gtype = GABBLE_TYPE_MUC_TUBE_DBUS;
 
   tube = g_object_new (gtype,
@@ -1400,7 +1400,7 @@ gabble_tube_dbus_accept (GabbleTubeIface *tube,
   if (state != GABBLE_BYTESTREAM_STATE_LOCAL_PENDING)
     return TRUE;
 
-  if (cls->target_handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (cls->target_entity_type == TP_ENTITY_TYPE_CONTACT)
     {
       /* Bytestream was created using a SI request so
        * we have to accept it */
@@ -1461,12 +1461,12 @@ gabble_tube_dbus_add_name (GabbleTubeDBus *self,
   TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
+      base_conn, TP_ENTITY_TYPE_CONTACT);
   gchar *name_copy;
   GHashTable *added;
   GArray *removed;
 
-  g_assert (cls->target_handle_type == TP_HANDLE_TYPE_ROOM);
+  g_assert (cls->target_entity_type == TP_ENTITY_TYPE_ROOM);
   g_assert (g_hash_table_size (priv->dbus_names) ==
       g_hash_table_size (priv->dbus_name_to_handle));
 
@@ -1536,7 +1536,7 @@ gabble_tube_dbus_remove_name (GabbleTubeDBus *self,
   GHashTable *added;
   GArray *removed;
 
-  g_assert (cls->target_handle_type == TP_HANDLE_TYPE_ROOM);
+  g_assert (cls->target_entity_type == TP_ENTITY_TYPE_ROOM);
 
   name = g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle));
   if (name == NULL)
@@ -1569,7 +1569,7 @@ gabble_tube_dbus_handle_in_names (GabbleTubeDBus *self,
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (self);
   TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (self);
 
-  g_assert (cls->target_handle_type == TP_HANDLE_TYPE_ROOM);
+  g_assert (cls->target_entity_type == TP_ENTITY_TYPE_ROOM);
 
   return (g_hash_table_lookup (priv->dbus_names, GUINT_TO_POINTER (handle))
       != NULL);

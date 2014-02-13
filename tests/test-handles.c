@@ -12,7 +12,7 @@
 static void
 test_handles (guint handle_type)
 {
-  TpHandleRepoIface *repos[TP_NUM_HANDLE_TYPES];
+  TpHandleRepoIface *repos[TP_NUM_ENTITY_TYPES];
   TpHandleRepoIface *tp_repo = NULL;
   GError *error = NULL;
   guint i;
@@ -21,7 +21,7 @@ test_handles (guint handle_type)
   const gchar *jid = "handle.test@foobar";
   const gchar *return_jid;
 
-  for (i = 0; i < TP_NUM_HANDLE_TYPES; i++)
+  for (i = 0; i < TP_NUM_ENTITY_TYPES; i++)
     {
       repos[i] = NULL;
     }
@@ -64,7 +64,7 @@ test_handles (guint handle_type)
   return_jid = tp_handle_inspect (tp_repo, handle);
   g_assert (!strcmp (return_jid, jid));
 
-  for (i = 0; i < TP_NUM_HANDLE_TYPES; i++)
+  for (i = 0; i < TP_NUM_ENTITY_TYPES; i++)
     {
       if (repos[i])
         g_object_unref ((GObject *) repos[i]);
@@ -75,7 +75,7 @@ int main (int argc, char **argv)
 {
   g_type_init ();
 
-  test_handles (TP_HANDLE_TYPE_CONTACT);
-  test_handles (TP_HANDLE_TYPE_ROOM);
+  test_handles (TP_ENTITY_TYPE_CONTACT);
+  test_handles (TP_ENTITY_TYPE_ROOM);
   return 0;
 }

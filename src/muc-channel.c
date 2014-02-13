@@ -336,11 +336,11 @@ static void handle_errmsg (GObject *source,
 /* Signatures for some other stuff. */
 
 static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-    TpHandleType handle_type,
+    TpEntityType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *subject,
     WockyStanza *msg, const GError *error);
 static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
-    TpChannelTextMessageType msg_type, TpHandleType handle_type,
+    TpChannelTextMessageType msg_type, TpEntityType handle_type,
     TpHandle sender, GDateTime *datetime, const gchar *id, const gchar *text,
     WockyStanza *msg,
     const GError *send_error,
@@ -399,9 +399,9 @@ gabble_muc_channel_constructed (GObject *obj)
     chain_up (obj);
 
   room_handles = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_ROOM);
+      TP_ENTITY_TYPE_ROOM);
   contact_handles = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   /* get, and sanity-check, the room's jid */
   target = tp_base_channel_get_target_handle (base);
@@ -777,7 +777,7 @@ create_room_identity (GabbleMucChannel *chan)
   gchar *alias = NULL;
   GabbleConnectionAliasSource source;
 
-  contact_repo = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT);
+  contact_repo = tp_base_connection_get_handles (conn, TP_ENTITY_TYPE_CONTACT);
 
   g_assert (priv->self_jid == NULL);
 
@@ -1100,7 +1100,7 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
   object_class->finalize = gabble_muc_channel_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_TEXT;
-  base_class->target_handle_type = TP_HANDLE_TYPE_ROOM;
+  base_class->target_entity_type = TP_ENTITY_TYPE_ROOM;
   base_class->get_interfaces = gabble_muc_channel_get_interfaces;
   base_class->fill_immutable_properties = gabble_muc_channel_fill_immutable_properties;
   base_class->close = gabble_muc_channel_close;
@@ -1698,7 +1698,7 @@ handle_nick_conflict (GabbleMucChannel *chan,
   TpBaseChannel *base = TP_BASE_CHANNEL (chan);
   TpGroupMixin *mixin = TP_GROUP_MIXIN (chan);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      tp_base_channel_get_connection (base), TP_HANDLE_TYPE_CONTACT);
+      tp_base_channel_get_connection (base), TP_ENTITY_TYPE_CONTACT);
   TpHandle self_handle;
   TpIntset *add_rp, *remove_rp;
   const gchar *from = wocky_stanza_get_from (stanza);
@@ -2014,13 +2014,13 @@ create_new_tube (GabbleMucChannel *gmuc,
     {
     case TUBE_TYPE_DBUS:
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (conn,
-          handle, TP_HANDLE_TYPE_ROOM, self_handle, initiator,
+          handle, TP_ENTITY_TYPE_ROOM, self_handle, initiator,
           service, parameters, stream_id, tube_id, bytestream, gmuc,
           requested));
       break;
     case TUBE_TYPE_STREAM:
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (conn,
-          handle, TP_HANDLE_TYPE_ROOM, self_handle, initiator,
+          handle, TP_ENTITY_TYPE_ROOM, self_handle, initiator,
           service, parameters, tube_id, gmuc, requested));
       break;
     default:
@@ -2196,7 +2196,7 @@ tubes_presence_update (GabbleMucChannel *gmuc,
   GabbleMucChannelPrivate *priv = gmuc->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       tp_base_channel_get_connection (TP_BASE_CHANNEL (gmuc)),
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   const gchar *presence_type;
   WockyNode *tubes_node;
   GHashTable *old_dbus_tubes;
@@ -2395,7 +2395,7 @@ handle_parted (GObject *source,
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles (tp_base_channel_get_connection (base),
-        TP_HANDLE_TYPE_CONTACT);
+        TP_ENTITY_TYPE_CONTACT);
   TpIntset *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
@@ -2465,7 +2465,7 @@ handle_left (GObject *source,
   TpChannelGroupChangeReason reason = TP_CHANNEL_GROUP_CHANGE_REASON_NONE;
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles (tp_base_channel_get_connection (base),
-        TP_HANDLE_TYPE_CONTACT);
+        TP_ENTITY_TYPE_CONTACT);
   TpIntset *handles = NULL;
   TpHandle member = 0;
   TpHandle actor = 0;
@@ -2536,7 +2536,7 @@ handle_fill_presence (WockyMuc *muc,
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base_conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   TpHandle self_handle;
 
   self_handle = tp_handle_ensure (contact_repo, priv->self_jid->str,
@@ -2574,7 +2574,7 @@ handle_renamed (GObject *source,
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   TpHandleRepoIface *contact_repo =
     tp_base_connection_get_handles (tp_base_channel_get_connection (base),
-        TP_HANDLE_TYPE_CONTACT);
+        TP_ENTITY_TYPE_CONTACT);
   TpIntset *old_self = tp_intset_new ();
   const gchar *me = wocky_muc_jid (wmuc);
   const gchar *me2 = wocky_muc_user (wmuc);
@@ -2651,7 +2651,7 @@ handle_join (WockyMuc *muc,
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base_conn,
-        TP_HANDLE_TYPE_CONTACT);
+        TP_ENTITY_TYPE_CONTACT);
   TpHandleSet *members = tp_handle_set_new (contact_repo);
   TpHandleSet *owners = tp_handle_set_new (contact_repo);
   GHashTable *omap = g_hash_table_new (g_direct_hash, g_direct_equal);
@@ -2719,7 +2719,7 @@ handle_presence (GObject *source,
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   TpHandleRepoIface *contact_repo =
-      tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
+      tp_base_connection_get_handles (base_conn, TP_ENTITY_TYPE_CONTACT);
   TpHandle owner = 0;
   TpHandle handle = tp_handle_ensure (contact_repo, who->from,
       GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
@@ -2795,12 +2795,12 @@ handle_message (GObject *source,
 
   TpChannelTextMessageType msg_type;
   TpHandleRepoIface *repo;
-  TpHandleType handle_type;
+  TpEntityType handle_type;
   TpHandle from;
 
   if (from_member)
     {
-      handle_type = TP_HANDLE_TYPE_CONTACT;
+      handle_type = TP_ENTITY_TYPE_CONTACT;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_handle_ensure (repo, who->from,
           GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
@@ -2813,7 +2813,7 @@ handle_message (GObject *source,
     }
   else /* directly from MUC itself */
     {
-      handle_type = TP_HANDLE_TYPE_ROOM;
+      handle_type = TP_ENTITY_TYPE_ROOM;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_base_channel_get_target_handle (base);
     }
@@ -2884,13 +2884,13 @@ handle_errmsg (GObject *source,
   gboolean from_member = (who != NULL);
   TpDeliveryStatus ds = TP_DELIVERY_STATUS_DELIVERED;
   TpHandleRepoIface *repo = NULL;
-  TpHandleType handle_type;
+  TpEntityType handle_type;
   TpHandle from = 0;
   const gchar *subject;
 
   if (from_member)
     {
-      handle_type = TP_HANDLE_TYPE_CONTACT;
+      handle_type = TP_ENTITY_TYPE_CONTACT;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_handle_ensure (repo, who->from,
           GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
@@ -2903,7 +2903,7 @@ handle_errmsg (GObject *source,
     }
   else /* directly from MUC itself */
     {
-      handle_type = TP_HANDLE_TYPE_ROOM;
+      handle_type = TP_ENTITY_TYPE_ROOM;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_base_channel_get_target_handle (base);
     }
@@ -2956,7 +2956,7 @@ handle_errmsg (GObject *source,
  */
 void
 _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-                                    TpHandleType handle_type,
+                                    TpEntityType handle_type,
                                     TpHandle sender,
                                     GDateTime *datetime,
                                     const gchar *subject,
@@ -2994,7 +2994,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
 
   /* Channel.Interface.Subject properties */
-  if (handle_type == TP_HANDLE_TYPE_CONTACT)
+  if (handle_type == TP_ENTITY_TYPE_CONTACT)
     {
       TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
           tp_base_channel_get_connection (TP_BASE_CHANNEL (chan)),
@@ -3029,7 +3029,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 static void
 _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              TpChannelTextMessageType msg_type,
-                             TpHandleType sender_handle_type,
+                             TpEntityType sender_handle_type,
                              TpHandle sender,
                              GDateTime *datetime,
                              const gchar *id,
@@ -3079,7 +3079,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
    * messages like "foo has set the subject to: ..." and "This room is not
    * anonymous".
    */
-  if (!is_echo && !is_error && sender_handle_type == TP_HANDLE_TYPE_ROOM)
+  if (!is_echo && !is_error && sender_handle_type == TP_ENTITY_TYPE_ROOM)
     {
       STANZA_DEBUG (msg, "ignoring message from muc");
 
@@ -3168,7 +3168,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   else
     {
       /* Messages from the MUC itself should have no sender. */
-      if (sender_handle_type == TP_HANDLE_TYPE_CONTACT)
+      if (sender_handle_type == TP_ENTITY_TYPE_CONTACT)
         tp_cm_message_set_sender (message, sender);
 
       if (timestamp != 0)

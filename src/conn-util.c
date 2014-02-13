@@ -108,7 +108,7 @@ conn_util_get_bare_self_jid (GabbleConnection *conn)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (conn);
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   TpHandle self = tp_base_connection_get_self_handle (base);
 
   return tp_handle_inspect (contact_handles, self);

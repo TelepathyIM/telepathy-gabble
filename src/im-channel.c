@@ -114,7 +114,7 @@ gabble_im_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   TpHandleRepoIface *contact_handles =
-      tp_base_connection_get_handles (base_conn, TP_HANDLE_TYPE_CONTACT);
+      tp_base_connection_get_handles (base_conn, TP_ENTITY_TYPE_CONTACT);
   TpHandle target = tp_base_channel_get_target_handle (base);
 
   TpChannelTextMessageType types[] = {
@@ -200,7 +200,7 @@ gabble_im_channel_class_init (GabbleIMChannelClass *gabble_im_channel_class)
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_TEXT;
   base_class->get_interfaces = gabble_im_channel_get_interfaces;
-  base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_class->target_entity_type = TP_ENTITY_TYPE_CONTACT;
   base_class->close = gabble_im_channel_close;
   base_class->fill_immutable_properties =
     gabble_im_channel_fill_immutable_properties;

@@ -387,7 +387,7 @@ gabble_file_transfer_channel_constructed (GObject *obj)
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      base_conn, TP_HANDLE_TYPE_CONTACT);
+      base_conn, TP_ENTITY_TYPE_CONTACT);
   GArray *socket_access;
   TpSocketAccessControl access_control;
 
@@ -607,7 +607,7 @@ gabble_file_transfer_channel_class_init (
   object_class->set_property = gabble_file_transfer_channel_set_property;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_FILE_TRANSFER1;
-  base_class->target_handle_type = TP_HANDLE_TYPE_CONTACT;
+  base_class->target_entity_type = TP_ENTITY_TYPE_CONTACT;
   base_class->get_interfaces = gabble_file_transfer_channel_get_interfaces;
   base_class->close = gabble_file_transfer_channel_close;
   base_class->fill_immutable_properties =
@@ -1408,9 +1408,9 @@ gabble_file_transfer_channel_offer_file (GabbleFileTransferChannel *self,
     }
 
   contact_repo = tp_base_connection_get_handles (base_conn,
-     TP_HANDLE_TYPE_CONTACT);
+     TP_ENTITY_TYPE_CONTACT);
   room_repo = tp_base_connection_get_handles (base_conn,
-     TP_HANDLE_TYPE_ROOM);
+     TP_ENTITY_TYPE_ROOM);
 
   jid = tp_handle_inspect (contact_repo,
       tp_base_channel_get_target_handle (base));

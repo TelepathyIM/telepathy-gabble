@@ -62,7 +62,7 @@ CHANNEL_TYPE_SERVER_TLS_CONNECTION = \
     CHANNEL + ".Type.ServerTLSConnection1"
 
 CHANNEL_TYPE = CHANNEL + '.ChannelType'
-TARGET_HANDLE_TYPE = CHANNEL + '.TargetHandleType'
+TARGET_HANDLE_TYPE = CHANNEL + '.TargetEntityType'
 TARGET_HANDLE = CHANNEL + '.TargetHandle'
 TARGET_ID = CHANNEL + '.TargetID'
 REQUESTED = CHANNEL + '.Requested'

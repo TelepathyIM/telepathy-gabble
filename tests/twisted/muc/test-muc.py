@@ -24,7 +24,7 @@ def test(q, bus, conn, stream):
 
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = chan.Properties.GetAll(cs.CHANNEL)
-    assertEquals(cs.HT_ROOM, channel_props.get('TargetHandleType'))
+    assertEquals(cs.HT_ROOM, channel_props.get('TargetEntityType'))
     assertEquals(cs.CHANNEL_TYPE_TEXT, channel_props.get('ChannelType'))
 
     interfaces = channel_props.get('Interfaces')

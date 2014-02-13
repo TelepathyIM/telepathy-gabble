@@ -222,7 +222,7 @@ gabble_call_muc_channel_class_init (
   object_class->dispose = gabble_call_muc_channel_dispose;
   object_class->finalize = gabble_call_muc_channel_finalize;
 
-  base_channel_class->target_handle_type = TP_HANDLE_TYPE_ROOM;
+  base_channel_class->target_entity_type = TP_ENTITY_TYPE_ROOM;
   base_channel_class->close = call_muc_channel_close;
 
   base_call_class->add_content = call_muc_channel_add_content;
@@ -707,7 +707,7 @@ call_muc_channel_got_participant_presence (GabbleCallMucChannel *self,
   GabbleCallMucChannelPrivate *priv = self->priv;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   GabbleCallMember *call_member;
   TpHandle handle;
   WockyNode *muji;
@@ -796,7 +796,7 @@ call_muc_channel_left_cb (GObject *source,
   GabbleCallMucChannel *self = GABBLE_CALL_MUC_CHANNEL (user_data);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   TpHandle handle;
   GabbleCallMember *call_member;
 
@@ -1113,7 +1113,7 @@ gabble_call_muc_channel_incoming_session (GabbleCallMucChannel *self,
   GabbleCallMember *member;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       tp_base_channel_get_connection (TP_BASE_CHANNEL (self)),
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   const gchar *jid = wocky_jingle_session_get_peer_jid (session);
   TpHandle peer = tp_handle_ensure (contact_repo, jid, NULL, NULL);
 

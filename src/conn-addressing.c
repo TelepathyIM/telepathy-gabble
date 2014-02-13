@@ -52,7 +52,7 @@ conn_addressing_fill_contact_attributes (GabbleConnection *self,
     return FALSE;
 
   contact_repo = tp_base_connection_get_handles ((TpBaseConnection *) self,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   uris = gabble_uris_for_handle (contact_repo, contact);
   addresses = gabble_vcard_addresses_for_handle (contact_repo, contact);
 
@@ -77,7 +77,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
   const gchar **uri;
   TpBaseConnection *base = TP_BASE_CONNECTION (iface);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   GHashTable *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
@@ -115,7 +115,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
   const gchar **address;
   TpBaseConnection *base = TP_BASE_CONNECTION (iface);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   GHashTable *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),

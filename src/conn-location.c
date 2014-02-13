@@ -98,7 +98,7 @@ get_cached_location (GabbleConnection *conn,
   const gchar *jid;
   TpHandleRepoIface *contact_repo;
 
-  contact_repo = tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+  contact_repo = tp_base_connection_get_handles (base, TP_ENTITY_TYPE_CONTACT);
   jid = tp_handle_inspect (contact_repo, handle);
 
   location = gabble_presence_cache_get_location (conn->presence_cache, handle);
@@ -177,7 +177,7 @@ location_request_location (
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   const gchar *jid;
   WockyBareContact *contact;
   YetAnotherContextStruct *ctx;
@@ -471,7 +471,7 @@ update_location_from_item (
   GHashTable *location = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       g_free, (GDestroyNotify) tp_g_value_slice_free);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_ENTITY_TYPE_CONTACT);
   const gchar *from = tp_handle_inspect (contact_repo, contact);
   WockyNodeIter i;
   WockyNode *subloc_node;
@@ -571,7 +571,7 @@ location_pep_node_changed (WockyPepService *pep,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_ENTITY_TYPE_CONTACT);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandle handle;
   const gchar *jid;

@@ -185,7 +185,7 @@ gabble_bytestream_ibb_get_property (GObject *object,
         g_value_set_uint (value, priv->peer_handle);
         break;
       case PROP_PEER_HANDLE_TYPE:
-        g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+        g_value_set_uint (value, TP_ENTITY_TYPE_CONTACT);
         break;
       case PROP_STREAM_ID:
         g_value_set_string (value, priv->stream_id);
@@ -279,7 +279,7 @@ gabble_bytestream_ibb_constructor (GType type,
   g_assert (priv->stream_id != NULL);
 
   contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
 
   jid = tp_handle_inspect (contact_repo, priv->peer_handle);
 

@@ -91,7 +91,7 @@ struct _GabblePrivateTubesFactoryPrivate
 
 static const gchar * const tubes_channel_fixed_properties[] = {
     TP_PROP_CHANNEL_CHANNEL_TYPE,
-    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
+    TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
     NULL
 };
 
@@ -388,7 +388,7 @@ add_service_to_array (const gchar *service,
   GValue monster = {0, };
   GHashTable *fixed_properties;
   GValue *channel_type_value;
-  GValue *target_handle_type_value;
+  GValue *target_entity_type_value;
   gchar *tube_allowed_properties[] =
     {
         TP_PROP_CHANNEL_TARGET_HANDLE,
@@ -416,21 +416,21 @@ add_service_to_array (const gchar *service,
   g_hash_table_insert (fixed_properties, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
 
-  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  target_entity_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_entity_type_value, TP_ENTITY_TYPE_CONTACT);
   g_hash_table_insert (fixed_properties,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, target_handle_type_value);
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, target_entity_type_value);
 
-  target_handle_type_value = tp_g_value_slice_new (G_TYPE_STRING);
-  g_value_set_string (target_handle_type_value, service);
+  target_entity_type_value = tp_g_value_slice_new (G_TYPE_STRING);
+  g_value_set_string (target_entity_type_value, service);
   if (type == TUBE_TYPE_STREAM)
     g_hash_table_insert (fixed_properties,
         TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE,
-        target_handle_type_value);
+        target_entity_type_value);
   else
     g_hash_table_insert (fixed_properties,
         TP_PROP_CHANNEL_TYPE_DBUS_TUBE1_SERVICE_NAME,
-        target_handle_type_value);
+        target_entity_type_value);
 
   dbus_g_type_struct_set (&monster,
       0, fixed_properties,
@@ -448,7 +448,7 @@ add_generic_tube_caps (GPtrArray *arr)
   GValue monster1 = {0,}, monster2 = {0,};
   GHashTable *fixed_properties;
   GValue *channel_type_value;
-  GValue *target_handle_type_value;
+  GValue *target_entity_type_value;
 
   /* StreamTube */
   g_value_init (&monster1, TP_STRUCT_TYPE_REQUESTABLE_CHANNEL_CLASS);
@@ -466,10 +466,10 @@ add_generic_tube_caps (GPtrArray *arr)
   g_hash_table_insert (fixed_properties, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
 
-  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  target_entity_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_entity_type_value, TP_ENTITY_TYPE_CONTACT);
   g_hash_table_insert (fixed_properties,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, target_handle_type_value);
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, target_entity_type_value);
 
   dbus_g_type_struct_set (&monster1,
       0, fixed_properties,
@@ -495,10 +495,10 @@ add_generic_tube_caps (GPtrArray *arr)
   g_hash_table_insert (fixed_properties, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
 
-  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
+  target_entity_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_entity_type_value, TP_ENTITY_TYPE_CONTACT);
   g_hash_table_insert (fixed_properties,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, target_handle_type_value);
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, target_entity_type_value);
 
   dbus_g_type_struct_set (&monster2,
       0, fixed_properties,
@@ -582,7 +582,7 @@ gabble_private_tubes_factory_add_cap (GabbleCapsChannelManager *manager,
     return;
 
   if (tp_asv_get_uint32 (cap,
-        TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL) != TP_HANDLE_TYPE_CONTACT)
+        TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL) != TP_ENTITY_TYPE_CONTACT)
     return;
 
   if (!tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1))
@@ -668,7 +668,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
     WockyStanza *msg)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-              (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+              (TpBaseConnection *) self->priv->conn, TP_ENTITY_TYPE_CONTACT);
   WockyNode *si_node, *tube_node;
   WockyStanzaType stanza_type;
   WockyStanzaSubType sub_type;
@@ -725,7 +725,7 @@ gabble_private_tubes_factory_handle_si_stream_request (
     WockyStanza *msg)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->priv->conn, TP_ENTITY_TYPE_CONTACT);
   const gchar *tmp;
   guint64 tube_id;
   WockyNode *si_node, *stream_node;
@@ -795,7 +795,7 @@ tube_msg_checks (GabblePrivateTubesFactory *self,
     guint64 *out_tube_id)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->priv->conn, TP_ENTITY_TYPE_CONTACT);
   const gchar *from, *tmp;
   TpHandle handle;
   guint64 tube_id;
@@ -1008,7 +1008,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
 
   TpHandle handle;
   const gchar *ctype, *service;
-  TpHandleType handle_type;
+  TpEntityType handle_type;
   GHashTable *parameters;
   guint64 tube_id;
 
@@ -1016,7 +1016,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
   handle = tp_asv_get_uint32 (request, TP_PROP_CHANNEL_TARGET_HANDLE,
       NULL);
   handle_type = tp_asv_get_uint32 (request,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL);
 
   tube_id = generate_tube_id (self);
 
@@ -1110,7 +1110,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
   GabbleTubeIface *tube;
   TpBaseConnection *base_conn = TP_BASE_CONNECTION (self->priv->conn);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) self->priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) self->priv->conn, TP_ENTITY_TYPE_CONTACT);
 
   TubeType type;
   TpHandle handle;
@@ -1150,7 +1150,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
   if (type == TUBE_TYPE_STREAM)
     {
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (self->priv->conn,
-              handle, TP_HANDLE_TYPE_CONTACT,
+              handle, TP_ENTITY_TYPE_CONTACT,
               tp_base_connection_get_self_handle (base_conn),
               handle, service, parameters, tube_id, NULL, FALSE));
     }
@@ -1167,7 +1167,7 @@ new_channel_from_stanza (GabblePrivateTubesFactory *self,
       g_return_val_if_fail (stream_id != NULL, NULL);
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (self->priv->conn,
-              handle, TP_HANDLE_TYPE_CONTACT,
+              handle, TP_ENTITY_TYPE_CONTACT,
               tp_base_connection_get_self_handle (base_conn),
               handle, service, parameters,
               stream_id, tube_id, bytestream, NULL, FALSE));
@@ -1218,8 +1218,8 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
       value);
 
   value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
+  g_value_set_uint (value, TP_ENTITY_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
       value);
 
   func (type, table, gabble_tube_stream_channel_get_allowed_properties (),
@@ -1237,8 +1237,8 @@ gabble_private_tubes_factory_type_foreach_channel_class (GType type,
       value);
 
   value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
+  g_value_set_uint (value, TP_ENTITY_TYPE_CONTACT);
+  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
       value);
 
   func (type, table, gabble_tube_dbus_channel_get_allowed_properties (),
@@ -1262,7 +1262,7 @@ gabble_private_tubes_factory_requestotron (GabblePrivateTubesFactory *self,
   const gchar *service = NULL;
 
   if (tp_asv_get_uint32 (request_properties,
-        TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL) != TP_HANDLE_TYPE_CONTACT)
+        TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL) != TP_ENTITY_TYPE_CONTACT)
     return FALSE;
 
   channel_type = tp_asv_get_string (request_properties,

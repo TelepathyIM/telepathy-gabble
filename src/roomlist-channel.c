@@ -95,7 +95,7 @@ gabble_roomlist_channel_constructed (GObject *obj)
   if (parent_class->constructed != NULL)
     parent_class->constructed (obj);
 
-  room_handles = tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_ROOM);
+  room_handles = tp_base_connection_get_handles (conn, TP_ENTITY_TYPE_ROOM);
   self->priv->signalled_rooms = tp_handle_set_new (room_handles);
 
   tp_base_channel_register (TP_BASE_CHANNEL (obj));
@@ -183,7 +183,7 @@ gabble_roomlist_channel_class_init (GabbleRoomlistChannelClass *klass)
   object_class->finalize = gabble_roomlist_channel_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_ROOM_LIST1;
-  base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
+  base_class->target_entity_type = TP_ENTITY_TYPE_NONE;
   base_class->get_object_path_suffix =
       gabble_roomlist_channel_get_object_path_suffix;
   base_class->fill_immutable_properties =
@@ -319,7 +319,7 @@ room_info_cb (gpointer pipeline, GabbleDiscoItem *item, gpointer user_data)
   base = TP_BASE_CHANNEL (chan);
   priv = chan->priv;
   room_handles = tp_base_connection_get_handles (
-      tp_base_channel_get_connection (base), TP_HANDLE_TYPE_ROOM);
+      tp_base_channel_get_connection (base), TP_ENTITY_TYPE_ROOM);
 
   jid = item->jid;
   name = item->name;

@@ -174,7 +174,7 @@ gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars1 *ifa
   GHashTable *ret;
   GError *err = NULL;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   TP_BASE_CONNECTION_ERROR_IF_NOT_CONNECTED (base, invocation);
 
@@ -376,7 +376,7 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars1 *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contacts_repo =
-      tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+      tp_base_connection_get_handles (base, TP_ENTITY_TYPE_CONTACT);
   GError *error = NULL;
   guint i;
 

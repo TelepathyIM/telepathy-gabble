@@ -276,7 +276,7 @@ session_about_to_initiate_cb (
   GabbleJingleMintPrivate *priv = self->priv;
   const gchar *peer_jid = wocky_jingle_session_get_peer_jid (session);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   TpHandle peer = tp_handle_ensure (contact_repo, peer_jid, NULL, NULL);
 
   /* send directed presence (including our own caps, avatar etc.) to

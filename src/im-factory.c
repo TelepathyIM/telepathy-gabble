@@ -431,7 +431,7 @@ get_channel_for_incoming_message (
   GabbleImFactoryPrivate *priv = self->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   TpHandle handle;
   GabbleIMChannel *chan;
 
@@ -610,7 +610,7 @@ gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
   GValue monster = {0, };
   GHashTable *fixed_properties;
   GValue *channel_type_value;
-  GValue *target_handle_type_value;
+  GValue *target_entity_type_value;
   gchar *text_allowed_properties[] =
       {
         TP_IFACE_CHANNEL ".TargetHandle",
@@ -632,10 +632,10 @@ gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
   g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".ChannelType",
       channel_type_value);
 
-  target_handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (target_handle_type_value, TP_HANDLE_TYPE_CONTACT);
-  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetHandleType",
-      target_handle_type_value);
+  target_entity_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (target_entity_type_value, TP_ENTITY_TYPE_CONTACT);
+  g_hash_table_insert (fixed_properties, TP_IFACE_CHANNEL ".TargetEntityType",
+      target_entity_type_value);
 
   dbus_g_type_struct_set (&monster,
       0, fixed_properties,
@@ -679,7 +679,7 @@ gabble_im_factory_foreach_channel (TpChannelManager *manager,
 
 static const gchar * const im_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
+    TP_IFACE_CHANNEL ".TargetEntityType",
     NULL
 };
 
@@ -705,7 +705,7 @@ gabble_im_factory_type_foreach_channel_class (GType type,
       value);
 
   value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_CONTACT);
+  g_value_set_uint (value, TP_ENTITY_TYPE_CONTACT);
   g_hash_table_insert (table, (gchar *) im_channel_fixed_properties[1],
       value);
 
@@ -730,7 +730,7 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
     return FALSE;
 
   if (tp_asv_get_uint32 (request_properties,
-        TP_IFACE_CHANNEL ".TargetHandleType", NULL) != TP_HANDLE_TYPE_CONTACT)
+        TP_IFACE_CHANNEL ".TargetEntityType", NULL) != TP_ENTITY_TYPE_CONTACT)
     return FALSE;
 
   /* validity already checked by TpBaseConnection */

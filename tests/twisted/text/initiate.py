@@ -40,8 +40,8 @@ def test(q, bus, conn, stream):
         cs.CHANNEL, dbus_interface=dbus.PROPERTIES_IFACE)
     assert channel_props.get('TargetHandle') == foo_handle,\
             (channel_props.get('TargetHandle'), foo_handle)
-    assert channel_props.get('TargetHandleType') == 1,\
-            channel_props.get('TargetHandleType')
+    assert channel_props.get('TargetEntityType') == 1,\
+            channel_props.get('TargetEntityType')
     assert channel_props.get('ChannelType') == \
             cs.CHANNEL_TYPE_TEXT,\
             channel_props.get('ChannelType')

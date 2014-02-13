@@ -222,7 +222,7 @@ construct_contact_statuses (GabbleConnection *self,
   TpHandle handle;
   GHashTable *contact_statuses;
   TpHandleRepoIface *handle_repo = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   g_return_val_if_fail (tp_handles_are_valid (handle_repo, contact_handles,
         FALSE, NULL), NULL);

@@ -613,7 +613,7 @@ test_channel_manager_type_foreach_channel_class (GType type,
 {
   GHashTable *table = tp_asv_new (
       TP_PROP_CHANNEL_CHANNEL_TYPE, G_TYPE_STRING, "com.jonnylamb.lolbags",
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, G_TYPE_UINT, TP_HANDLE_TYPE_NONE,
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, G_TYPE_UINT, TP_ENTITY_TYPE_NONE,
       NULL);
   const gchar * const chock_a_block_full_of_strings[] = {
       "com.jonnylamb.omg", "com.jonnylamb.brokethebuild", NULL };

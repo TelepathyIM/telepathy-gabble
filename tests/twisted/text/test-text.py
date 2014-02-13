@@ -35,7 +35,7 @@ def test(q, bus, conn, stream):
     # Exercise basic Channel Properties from spec 0.17.7
     channel_props = text_chan.Properties.GetAll(cs.CHANNEL)
     assertEquals(props[cs.TARGET_HANDLE], channel_props.get('TargetHandle'))
-    assertEquals(cs.HT_CONTACT, channel_props.get('TargetHandleType'))
+    assertEquals(cs.HT_CONTACT, channel_props.get('TargetEntityType'))
     assertEquals(cs.CHANNEL_TYPE_TEXT, channel_props.get('ChannelType'))
     assertContains(cs.CHANNEL_IFACE_CHAT_STATE, channel_props.get('Interfaces'))
     assertEquals(jid, channel_props['TargetID'])

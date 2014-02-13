@@ -256,7 +256,7 @@ gabble_server_tls_channel_class_init (GabbleServerTLSChannelClass *klass)
   oclass->constructed = gabble_server_tls_channel_constructed;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_SERVER_TLS_CONNECTION1;
-  base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
+  base_class->target_entity_type = TP_ENTITY_TYPE_NONE;
   base_class->fill_immutable_properties =
       gabble_server_tls_channel_fill_immutable_properties;
   base_class->get_object_path_suffix =

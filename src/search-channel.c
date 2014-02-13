@@ -996,7 +996,7 @@ gabble_search_channel_constructor (GType type,
   conn = tp_base_channel_get_connection (base);
 
   chan->priv->result_handles = tp_handle_set_new (
-      tp_base_connection_get_handles (conn, TP_HANDLE_TYPE_CONTACT));
+      tp_base_connection_get_handles (conn, TP_ENTITY_TYPE_CONTACT));
 
   chan->priv->tp_to_xmpp = g_hash_table_new_full (g_str_hash, g_str_equal,
       g_free, g_free);
@@ -1139,7 +1139,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
   object_class->set_property = gabble_search_channel_set_property;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1;
-  base_class->target_handle_type = TP_HANDLE_TYPE_NONE;
+  base_class->target_entity_type = TP_ENTITY_TYPE_NONE;
   base_class->fill_immutable_properties =
       gabble_search_channel_fill_immutable_properties;
   base_class->get_object_path_suffix =

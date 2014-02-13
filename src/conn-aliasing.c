@@ -363,7 +363,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing1 *iface,
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   guint i;
   AliasesRequest *request;
   GError *error = NULL;
@@ -463,7 +463,7 @@ set_one_alias (
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   gboolean ret = TRUE;
 
   g_assert (tp_base_connection_get_status (base) ==
@@ -604,7 +604,7 @@ _grab_nickname (GabbleConnection *self,
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   const gchar *old, *nickname;
 
   node = wocky_node_get_child_ns (node, "nick", NS_NICK);
@@ -650,7 +650,7 @@ pep_nick_node_changed (WockyPepService *pep,
     GabbleConnection *conn)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_ENTITY_TYPE_CONTACT);
   TpHandle handle;
   const gchar *jid;
 
@@ -926,7 +926,7 @@ _gabble_connection_get_cached_alias (GabbleConnection *conn,
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   const gchar *tmp, *jid;
   gboolean roster_alias_was_jid = FALSE;
   GabbleConnectionAliasSource source;
@@ -997,7 +997,7 @@ _gabble_connection_get_cached_remote_alias (
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   const gchar *jid = tp_handle_inspect (contact_handles, handle);
 
   g_assert (NULL != jid);
@@ -1018,7 +1018,7 @@ maybe_request_vcard (GabbleConnection *self, TpHandle handle,
       if (self->features & GABBLE_CONNECTION_FEATURES_PEP)
         {
           TpHandleRepoIface *contact_handles =
-            tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+            tp_base_connection_get_handles (base, TP_ENTITY_TYPE_CONTACT);
 
           gabble_do_pep_request (self, handle, contact_handles,
             aliases_request_basic_pep_cb, GUINT_TO_POINTER (handle));

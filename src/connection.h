@@ -296,7 +296,7 @@ const gchar **gabble_connection_get_guaranteed_interfaces (void);
 
 /* extern only for the benefit of the unit tests */
 void _gabble_connection_create_handle_repos (TpBaseConnection *conn,
-    TpHandleRepoIface *repos[TP_NUM_HANDLE_TYPES]);
+    TpHandleRepoIface *repos[TP_NUM_ENTITY_TYPES]);
 
 /* For unit tests only */
 void gabble_connection_set_disco_reply_timeout (guint timeout);

@@ -91,7 +91,7 @@ client_types_request_client_types (TpSvcConnectionInterfaceClientTypes1 *iface,
 
   /* Validate contact */
   contact_handles = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   if (!tp_handle_is_valid (contact_handles, contact, &error))
     {

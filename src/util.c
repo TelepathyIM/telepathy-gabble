@@ -152,7 +152,7 @@ lm_message_node_add_own_nick (WockyNode *node,
 
 /**
  * gabble_get_room_handle_from_jid:
- * @room_repo: The %TP_HANDLE_TYPE_ROOM handle repository
+ * @room_repo: The %TP_ENTITY_TYPE_ROOM handle repository
  * @jid: A JID
  *
  * Given a JID seen in the from="" attribute on a stanza, work out whether
@@ -277,7 +277,7 @@ gabble_encode_jid (
 
 /*
  * gabble_normalize_contact
- * @repo: The %TP_HANDLE_TYPE_ROOM handle repository or NULL
+ * @repo: The %TP_ENTITY_TYPE_ROOM handle repository or NULL
  * @jid: A JID
  * @context: One of %GabbleNormalizeContactJIDMode casted into gpointer
  * @error: pointer in which to return a GError in case of failure.
@@ -758,7 +758,7 @@ ensure_handle_from_contact (
     WockyContact *contact)
 {
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_ENTITY_TYPE_CONTACT);
   gchar *jid = wocky_contact_dup_jid (contact);
   GError *error = NULL;
   TpHandle handle = tp_handle_ensure (contact_repo, jid, NULL, &error);
@@ -1053,7 +1053,7 @@ gabble_peer_to_jid (GabbleConnection *conn,
     const gchar *resource)
 {
   TpHandleRepoIface *repo = tp_base_connection_get_handles (
-    TP_BASE_CONNECTION (conn), TP_HANDLE_TYPE_CONTACT);
+    TP_BASE_CONNECTION (conn), TP_ENTITY_TYPE_CONTACT);
   const gchar *target = tp_handle_inspect (repo, peer);
 
   if (resource == NULL)

@@ -458,7 +458,7 @@ gabble_vcard_manager_invalidate_cache (GabbleVCardManager *manager,
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache,
       GUINT_TO_POINTER (handle));
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->connection, TP_ENTITY_TYPE_CONTACT);
 
   g_return_if_fail (tp_handle_is_valid (contact_repo, handle, NULL));
 
@@ -1261,7 +1261,7 @@ pipeline_reply_cb (GabbleConnection *conn,
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_repo =
-      tp_base_connection_get_handles (base, TP_HANDLE_TYPE_CONTACT);
+      tp_base_connection_get_handles (base, TP_ENTITY_TYPE_CONTACT);
   WockyNode *vcard_node = NULL;
 
   DEBUG("called for entry %p", entry);
@@ -1390,7 +1390,7 @@ request_send (GabbleVCardManagerRequest *request, guint timeout)
   GabbleConnection *conn = entry->manager->priv->connection;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   g_assert (request->timer_id == 0);
 
@@ -1465,7 +1465,7 @@ gabble_vcard_manager_request (GabbleVCardManager *self,
   GabbleVCardManagerPrivate *priv = self->priv;
   TpBaseConnection *base = (TpBaseConnection *) priv->connection;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   GabbleVCardManagerRequest *request;
   GabbleVCardCacheEntry *entry = cache_entry_get (self, handle);
 
@@ -1625,7 +1625,7 @@ gabble_vcard_manager_get_cached (GabbleVCardManager *self,
   GabbleVCardCacheEntry *entry = g_hash_table_lookup (priv->cache,
       GUINT_TO_POINTER (handle));
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->connection, TP_ENTITY_TYPE_CONTACT);
 
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);
@@ -1654,7 +1654,7 @@ gabble_vcard_manager_get_cached_alias (GabbleVCardManager *self,
 
   priv = self->priv;
   contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->connection, TP_ENTITY_TYPE_CONTACT);
 
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL), NULL);
 
@@ -1676,7 +1676,7 @@ gabble_vcard_manager_has_cached_alias (GabbleVCardManager *self,
 
   priv = self->priv;
   contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->connection, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->connection, TP_ENTITY_TYPE_CONTACT);
 
   g_return_val_if_fail (tp_handle_is_valid (contact_repo, handle, NULL),
       FALSE);

@@ -524,7 +524,7 @@ do_invite (GabbleMucFactory *fac,
 {
   GabbleMucFactoryPrivate *priv = fac->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_ROOM);
   TpHandle room_handle;
 
   room_handle = tp_handle_ensure (room_repo, room, NULL, NULL);
@@ -616,7 +616,7 @@ process_muc_invite (GabbleMucFactory *fac,
   GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   WockyNode *x_node, *invite_node, *reason_node;
   const gchar *invite_from, *reason = NULL;
@@ -688,7 +688,7 @@ process_obsolete_invite (GabbleMucFactory *fac,
   GabbleMucFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
 
   WockyNode *x_node;
   const gchar *room;
@@ -1056,7 +1056,7 @@ gabble_muc_factory_handle_si_stream_request (GabbleMucFactory *self,
 {
   GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+     (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_ROOM);
   GabbleMucChannel *gmuc = NULL;
   WockyStanzaType stanza_type;
   WockyStanzaSubType sub_type;
@@ -1095,7 +1095,7 @@ gabble_muc_factory_find_text_channel (GabbleMucFactory *self,
 
 static const gchar * const muc_channel_fixed_properties[] = {
     TP_PROP_CHANNEL_CHANNEL_TYPE,
-    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
+    TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
     NULL
 };
 
@@ -1129,8 +1129,8 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
       channel_type_value);
 
   handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (handle_type_value, TP_HANDLE_TYPE_ROOM);
-  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
+  g_value_set_uint (handle_type_value, TP_ENTITY_TYPE_ROOM);
+  g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
       handle_type_value);
 
   /* Channel.Type.Text */
@@ -1179,9 +1179,9 @@ handle_text_channel_request (GabbleMucFactory *self,
   gboolean ret = TRUE;
 
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   TpHandleRepoIface *room_handles = tp_base_connection_get_handles (conn,
-      TP_HANDLE_TYPE_ROOM);
+      TP_ENTITY_TYPE_ROOM);
 
   GPtrArray *initial_channels;
   GHashTable *final_channels; /* used as a set: (char *) -> NULL */
@@ -1308,7 +1308,7 @@ handle_text_channel_request (GabbleMucFactory *self,
       final_ids[i] = (char *) id;
     }
 
-  /* TargetHandleType=None and TargetHandle=0 */
+  /* TargetEntityType=None and TargetHandle=0 */
   if (room == 0)
     {
       char *uuid, *id, *server = "";
@@ -1760,19 +1760,19 @@ gabble_muc_factory_request (GabbleMucFactory *self,
                             gboolean require_new)
 {
   GError *error = NULL;
-  TpHandleType handle_type;
+  TpEntityType handle_type;
   TpHandle handle;
   gboolean conference, room;
   const gchar *channel_type;
   ChannelTypeHandler *h;
 
   handle_type = tp_asv_get_uint32 (request_properties,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL);
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL);
   channel_type = tp_asv_get_string (request_properties,
       TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   /* Conference channels can be anonymous (HandleTypeNone) */
-  conference = (handle_type == TP_HANDLE_TYPE_NONE &&
+  conference = (handle_type == TP_ENTITY_TYPE_NONE &&
       !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
       (g_hash_table_lookup (request_properties,
          TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_CHANNELS) ||
@@ -1781,13 +1781,13 @@ gabble_muc_factory_request (GabbleMucFactory *self,
        g_hash_table_lookup (request_properties,
          TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_IDS)));
 
-  room = (handle_type == TP_HANDLE_TYPE_NONE
+  room = (handle_type == TP_ENTITY_TYPE_NONE
       && !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT)
       && g_hash_table_lookup (request_properties,
           TP_PROP_CHANNEL_INTERFACE_ROOM1_ROOM_NAME));
 
   /* the channel must either be a room, or a new conference */
-  if (handle_type != TP_HANDLE_TYPE_ROOM && !conference && !room)
+  if (handle_type != TP_ENTITY_TYPE_ROOM && !conference && !room)
     return FALSE;
 
   /* validity already checked by TpBaseConnection */
@@ -1846,7 +1846,7 @@ gabble_muc_factory_handle_jingle_session (GabbleMucFactory *self,
 {
   GabbleMucFactoryPrivate *priv = self->priv;
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-     (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+     (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_ROOM);
   TpHandle room;
 
   room = gabble_get_room_handle_from_jid (room_repo,

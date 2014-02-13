@@ -356,7 +356,7 @@ new_jingle_session_cb (GabbleJingleMint *jm,
     }
 
   contacts = tp_base_connection_get_handles (TP_BASE_CONNECTION (priv->conn),
-      TP_HANDLE_TYPE_CONTACT);
+      TP_ENTITY_TYPE_CONTACT);
   peer = tp_handle_ensure (contacts, wocky_jingle_session_get_peer_jid (sess),
       NULL, NULL);
 
@@ -419,7 +419,7 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
 
 static const gchar * const media_channel_fixed_properties[] = {
     TP_PROP_CHANNEL_CHANNEL_TYPE,
-    TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
+    TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
     NULL
 };
 
@@ -479,8 +479,8 @@ static GHashTable *
 gabble_media_factory_call_channel_class (void)
 {
   GHashTable *table = tp_asv_new (
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, G_TYPE_UINT,
-          TP_HANDLE_TYPE_CONTACT,
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, G_TYPE_UINT,
+          TP_ENTITY_TYPE_CONTACT,
       NULL);
 
   tp_asv_set_static_string (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
@@ -528,7 +528,7 @@ gabble_media_factory_create_call (TpChannelManager *manager,
   DEBUG ("Creating a new call channel");
 
   if (tp_asv_get_uint32 (request_properties,
-      TP_PROP_CHANNEL_TARGET_HANDLE_TYPE, NULL) != TP_HANDLE_TYPE_CONTACT)
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL) != TP_ENTITY_TYPE_CONTACT)
     return FALSE;
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,
@@ -888,10 +888,10 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
           continue;
         }
 
-      if (tp_asv_lookup (filter, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE)
+      if (tp_asv_lookup (filter, TP_PROP_CHANNEL_TARGET_ENTITY_TYPE)
           != NULL &&
-          tp_asv_get_uint32 (filter, TP_PROP_CHANNEL_TARGET_HANDLE_TYPE,
-            NULL) != TP_HANDLE_TYPE_CONTACT)
+          tp_asv_get_uint32 (filter, TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
+            NULL) != TP_ENTITY_TYPE_CONTACT)
         {
           /* not interesting to this channel manager: we only care about
            * Jingle calls involving contacts (or about clients that support

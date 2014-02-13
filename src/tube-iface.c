@@ -154,7 +154,7 @@ gabble_tube_iface_publish_in_node (GabbleTubeIface *tube,
   gchar *service, *id_str;
   guint64 tube_id;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-    conn, TP_HANDLE_TYPE_CONTACT);
+    conn, TP_ENTITY_TYPE_CONTACT);
   TpHandle initiator_handle;
 
   g_object_get (G_OBJECT (tube),

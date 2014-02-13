@@ -258,7 +258,7 @@ gabble_roomlist_manager_foreach_channel (TpChannelManager *manager,
 
 static const gchar * const roomlist_channel_fixed_properties[] = {
     TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
+    TP_IFACE_CHANNEL ".TargetEntityType",
     NULL
 };
 
@@ -282,8 +282,8 @@ gabble_roomlist_manager_type_foreach_channel_class (GType type,
   g_hash_table_insert (table, TP_IFACE_CHANNEL ".ChannelType", value);
 
   value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (value, TP_HANDLE_TYPE_NONE);
-  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetHandleType", value);
+  g_value_set_uint (value, TP_ENTITY_TYPE_NONE);
+  g_hash_table_insert (table, TP_IFACE_CHANNEL ".TargetEntityType", value);
 
   func (type, table, roomlist_channel_allowed_properties, user_data);
 
@@ -326,7 +326,7 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
     return FALSE;
 
   if (tp_asv_get_uint32 (request_properties,
-       TP_IFACE_CHANNEL ".TargetHandleType", NULL) != 0)
+       TP_IFACE_CHANNEL ".TargetEntityType", NULL) != 0)
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "RoomList channels can't have a target handle");

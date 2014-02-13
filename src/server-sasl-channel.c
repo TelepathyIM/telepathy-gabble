@@ -341,7 +341,7 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   channel_class->channel_type =
     TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION1;
   channel_class->get_interfaces = gabble_server_sasl_channel_get_interfaces;
-  channel_class->target_handle_type = TP_HANDLE_TYPE_NONE;
+  channel_class->target_entity_type = TP_ENTITY_TYPE_NONE;
   channel_class->fill_immutable_properties =
     gabble_server_sasl_channel_fill_immutable_properties;
   channel_class->get_object_path_suffix =

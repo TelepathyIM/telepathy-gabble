@@ -811,7 +811,7 @@ remove_bytestream (GabbleBytestreamFactory *self,
       "peer-handle-type", &handle_type,
       NULL);
 
-  if (handle_type == TP_HANDLE_TYPE_ROOM)
+  if (handle_type == TP_ENTITY_TYPE_ROOM)
     {
       table = priv->muc_bytestreams;
     }
@@ -1123,9 +1123,9 @@ bytestream_factory_iq_si_cb (
   GabbleBytestreamFactoryPrivate *priv =
     GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) priv->conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) priv->conn, TP_ENTITY_TYPE_ROOM);
   WockyNode *si;
   TpHandle peer_handle = 0, room_handle;
   GabbleBytestreamIface *bytestream = NULL;
@@ -2009,9 +2009,9 @@ streaminit_reply_cb (
   WockyNode *si;
   const gchar *from;
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+      (TpBaseConnection *) conn, TP_ENTITY_TYPE_CONTACT);
   TpHandleRepoIface *room_repo = tp_base_connection_get_handles (
-      (TpBaseConnection *) conn, TP_HANDLE_TYPE_ROOM);
+      (TpBaseConnection *) conn, TP_ENTITY_TYPE_ROOM);
   TpHandle peer_handle = 0;
   TpHandle room_handle;
   gboolean success = FALSE;

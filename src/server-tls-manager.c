@@ -549,7 +549,7 @@ cert_reject_reason_to_conn_reason (TpTLSCertificateRejectReason tls_reason)
 void
 gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
     gchar **dbus_error,
-    GHashTable **details,
+    GVariant **details,
     TpConnectionStatusReason *reason)
 {
   GabbleTLSCertificate *certificate;
@@ -581,7 +581,7 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
       &details_tmp);
 
   *dbus_error = g_strdup (dbus_error_tmp);
-  *details = g_boxed_copy (TP_HASH_TYPE_STRING_VARIANT_MAP, details_tmp);
+  *details = tp_asv_to_vardict (details_tmp);
 
   *reason = cert_reject_reason_to_conn_reason (tls_reason);
 

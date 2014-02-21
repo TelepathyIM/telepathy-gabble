@@ -60,7 +60,7 @@ GType gabble_auth_manager_get_type (void);
                               GabbleAuthManagerClass))
 
 gboolean gabble_auth_manager_get_failure_details (GabbleAuthManager *self,
-    gchar **dbus_error, GHashTable **details,
+    gchar **dbus_error, GVariant **details,
     TpConnectionStatusReason *reason);
 
 G_END_DECLS

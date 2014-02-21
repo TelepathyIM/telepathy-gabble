@@ -66,7 +66,7 @@ GQuark gabble_server_tls_error_quark (void);
 void gabble_server_tls_manager_get_rejection_details (
     GabbleServerTLSManager *self,
     gchar **dbus_error,
-    GHashTable **details,
+    GVariant **details,
     TpConnectionStatusReason *reason);
 
 G_END_DECLS

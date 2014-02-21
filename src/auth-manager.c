@@ -51,7 +51,7 @@ enum
 
 typedef struct {
   gchar *name;
-  GHashTable *details;
+  GVariant *details;
   TpConnectionStatusReason reason;
   GError *wocky_error;
 } SavedError;
@@ -176,7 +176,7 @@ gabble_auth_manager_finalize (GObject *object)
   if (self->priv->error != NULL)
     {
       g_free (self->priv->error->name);
-      g_hash_table_unref (self->priv->error->details);
+      g_variant_unref (self->priv->error->details);
       g_slice_free (SavedError, self->priv->error);
     }
 
@@ -667,7 +667,7 @@ channel_manager_iface_init (gpointer g_iface,
 gboolean
 gabble_auth_manager_get_failure_details (GabbleAuthManager *self,
     gchar **dbus_error,
-    GHashTable **details,
+    GVariant **details,
     TpConnectionStatusReason *reason)
 {
   if (self->priv->channel != NULL)
@@ -681,7 +681,7 @@ gabble_auth_manager_get_failure_details (GabbleAuthManager *self,
         *dbus_error = g_strdup (self->priv->error->name);
 
       if (details != NULL)
-        *details = g_hash_table_ref (self->priv->error->details);
+        *details = g_variant_ref (self->priv->error->details);
 
       if (reason != NULL)
         *reason = self->priv->error->reason;

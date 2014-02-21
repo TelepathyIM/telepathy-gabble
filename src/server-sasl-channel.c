@@ -1030,8 +1030,7 @@ gabble_server_sasl_channel_close (TpBaseChannel *channel)
 
 /**
  * @dbus_error: (out) (transfer full): the D-Bus error name
- * @details: (out) (transfer full) (element-type utf8 GObject.Value): the
- *  error details
+ * @details: (out) (transfer full): the error details
  * @reason: (out): the reason with which to disconnect
  * @error: (out): an error in a domain Wocky understands describing what went
  *  wrong
@@ -1042,7 +1041,7 @@ gabble_server_sasl_channel_close (TpBaseChannel *channel)
 gboolean
 gabble_server_sasl_channel_get_failure_details (GabbleServerSaslChannel *self,
     gchar **dbus_error,
-    GHashTable **details,
+    GVariant **details,
     TpConnectionStatusReason *reason,
     GError **error)
 {
@@ -1052,7 +1051,7 @@ gabble_server_sasl_channel_get_failure_details (GabbleServerSaslChannel *self,
         *dbus_error = g_strdup (self->priv->sasl_error);
 
       if (details != NULL)
-        *details = g_hash_table_ref (self->priv->sasl_error_details);
+        *details = tp_asv_to_vardict (self->priv->sasl_error_details);
 
       if (reason != NULL)
         *reason = self->priv->disconnect_reason;

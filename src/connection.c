@@ -1588,14 +1588,12 @@ gabble_connection_disconnect_with_tp_error (GabbleConnection *self,
     TpConnectionStatusReason reason)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
-  GHashTable *details = tp_asv_new (
-      "debug-message", G_TYPE_STRING, tp_error->message,
-      NULL);
+  GVariant *details = g_variant_new_parsed (
+      "{ 'debug-message': <%s> }", tp_error->message);
 
   g_assert (tp_error->domain == TP_ERROR);
   tp_base_connection_disconnect_with_dbus_error (base,
       tp_error_get_dbus_name (tp_error->code), details, reason);
-  g_hash_table_unref (details);
 }
 
 static void
@@ -1678,7 +1676,7 @@ connector_error_disconnect (GabbleConnection *self,
   TpBaseConnection *base = (TpBaseConnection *) self;
   TpConnectionStatusReason reason = TP_CONNECTION_STATUS_REASON_NETWORK_ERROR;
   gchar *dbus_error = NULL;
-  GHashTable *details = NULL;
+  GVariant *details = NULL;
 
   if (error->domain == GABBLE_SERVER_TLS_ERROR)
     {
@@ -1692,7 +1690,6 @@ connector_error_disconnect (GabbleConnection *self,
       tp_base_connection_disconnect_with_dbus_error (base, dbus_error,
           details, reason);
 
-      tp_clear_pointer (&details, g_hash_table_unref);
       g_free (dbus_error);
 
       return;
@@ -1708,7 +1705,6 @@ connector_error_disconnect (GabbleConnection *self,
       tp_base_connection_disconnect_with_dbus_error (base, dbus_error,
           details, reason);
 
-      tp_clear_pointer (&details, g_hash_table_unref);
       g_free (dbus_error);
       return;
     }

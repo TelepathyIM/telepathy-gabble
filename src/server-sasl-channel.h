@@ -93,7 +93,7 @@ void gabble_server_sasl_channel_fail (GabbleServerSaslChannel *self,
     const GError *error);
 
 gboolean gabble_server_sasl_channel_get_failure_details (
-    GabbleServerSaslChannel *self, gchar **dbus_error, GHashTable **details,
+    GabbleServerSaslChannel *self, gchar **dbus_error, GVariant **details,
     TpConnectionStatusReason *reason,
     GError **error);
 

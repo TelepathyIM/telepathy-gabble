@@ -280,7 +280,7 @@ AC_DEFINE(TP_SEAL_ENABLE, [], [Prevent to use sealed variables])
 AC_DEFINE(TP_DISABLE_SINGLE_INCLUDE, [], [Disable single header include])
 AC_DEFINE([TP_VERSION_MIN_REQUIRED], [TP_VERSION_0_24], [Ignore post 0.24 deprecations])
 AC_DEFINE([TP_VERSION_MAX_ALLOWED], [TP_VERSION_0_24], [Prevent post 0.24 APIs])
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.23])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib >= 0.23.2])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)

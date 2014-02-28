@@ -581,7 +581,7 @@ gabble_server_tls_manager_get_rejection_details (GabbleServerTLSManager *self,
       &details_tmp);
 
   *dbus_error = g_strdup (dbus_error_tmp);
-  *details = tp_asv_to_vardict (details_tmp);
+  *details = g_variant_ref_sink (tp_asv_to_vardict (details_tmp));
 
   *reason = cert_reject_reason_to_conn_reason (tls_reason);
 

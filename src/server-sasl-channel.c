@@ -1051,7 +1051,8 @@ gabble_server_sasl_channel_get_failure_details (GabbleServerSaslChannel *self,
         *dbus_error = g_strdup (self->priv->sasl_error);
 
       if (details != NULL)
-        *details = tp_asv_to_vardict (self->priv->sasl_error_details);
+        *details = g_variant_ref_sink (tp_asv_to_vardict (
+              self->priv->sasl_error_details));
 
       if (reason != NULL)
         *reason = self->priv->disconnect_reason;

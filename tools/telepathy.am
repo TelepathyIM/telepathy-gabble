@@ -55,7 +55,7 @@ maintainer-prepare-release:
 	$(MAKE) all
 	$(MAKE) distcheck
 	$(MAKE) release-mail
-	git tag -s @PACKAGE@-@VERSION@ -m @PACKAGE@' '@VERSION@
+	cd $(srcdir) && git tag -s @PACKAGE@-@VERSION@ -m @PACKAGE@' '@VERSION@
 	gpg --detach-sign --armor @PACKAGE@-@VERSION@.tar.gz
 
 release-mail: NEWS

@@ -10,7 +10,7 @@ check-coding-style:
 		sh $(top_srcdir)/tools/check-c-style.sh \
 			$(addprefix $(srcdir)/,$(check_c_sources)) || fail=1; \
 	fi;\
-	if test yes = "$(ENABLE_CODING_STYLE_CHECKS)"; then \
+	if test yes = "$(enable_fatal_warnings)"; then \
 		exit "$$fail";\
 	else \
 		exit 0;\

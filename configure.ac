@@ -165,6 +165,11 @@ AC_ARG_ENABLE(coding-style-checks,
 
 AC_SUBST([ENABLE_CODING_STYLE_CHECKS])
 
+# check-coding-style.mk, from telepathy-glib, uses a different variable name...
+# compensate
+enable_fatal_warnings="$ENABLE_CODING_STYLE_CHECKS"
+AC_SUBST([enable_fatal_warnings])
+
 AC_ARG_ENABLE([installed-tests],
   AC_HELP_STRING([--enable-installed-tests],
     [make tests installable]),

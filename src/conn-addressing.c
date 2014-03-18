@@ -72,7 +72,7 @@ static void
 conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
     const gchar **uris,
     const gchar **interfaces,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   const gchar **uri;
   TpBaseConnection *base = TP_BASE_CONNECTION (iface);
@@ -110,7 +110,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
     const gchar *field,
     const gchar **addresses,
     const gchar **interfaces,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   const gchar **address;
   TpBaseConnection *base = TP_BASE_CONNECTION (iface);

@@ -286,7 +286,7 @@ return_from_send_iq (
     gpointer user_data)
 {
   GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (source);
-  DBusGMethodInvocation *context = user_data;
+  GDBusMethodInvocation *context = user_data;
   GSimpleAsyncResult *simple = G_SIMPLE_ASYNC_RESULT (result);
   GError *error = NULL;
 
@@ -419,7 +419,7 @@ console_send_iq (
     const gchar *type_str,
     const gchar *to,
     const gchar *body,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (channel);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);
@@ -456,7 +456,7 @@ console_stanza_sent_cb (
     gpointer user_data)
 {
   WockyPorter *porter = WOCKY_PORTER (source);
-  DBusGMethodInvocation *context = user_data;
+  GDBusMethodInvocation *context = user_data;
   GError *error = NULL;
 
   if (wocky_porter_send_finish (porter, result, &error))
@@ -503,7 +503,7 @@ static void
 console_send_stanza (
     GabbleSvcGabblePluginConsole *channel,
     const gchar *xml,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (channel);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);

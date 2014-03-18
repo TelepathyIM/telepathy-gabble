@@ -412,7 +412,7 @@ _request_vcards_cb (GabbleVCardManager *manager,
 static void
 _return_from_request_contact_info (WockyNode *vcard_node,
                                    GError *vcard_error,
-                                   DBusGMethodInvocation *context)
+                                   GDBusMethodInvocation *context)
 {
   GError *error = NULL;
   GPtrArray *contact_info;
@@ -465,7 +465,7 @@ _request_vcard_cb (GabbleVCardManager *self,
                    GError *vcard_error,
                    gpointer user_data)
 {
-  DBusGMethodInvocation *context = user_data;
+  GDBusMethodInvocation *context = user_data;
 
   _return_from_request_contact_info (vcard_node, vcard_error, context);
 }
@@ -482,7 +482,7 @@ _request_vcard_cb (GabbleVCardManager *self,
 static void
 gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo1 *iface,
                                         const GArray *contacts,
-                                        DBusGMethodInvocation *context)
+                                        GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -537,7 +537,7 @@ gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo1 *if
 static void
 gabble_connection_request_contact_info (TpSvcConnectionInterfaceContactInfo1 *iface,
                                         guint contact,
-                                        DBusGMethodInvocation *context)
+                                        GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -634,7 +634,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
                       GError *vcard_error,
                       gpointer user_data)
 {
-  DBusGMethodInvocation *context = user_data;
+  GDBusMethodInvocation *context = user_data;
 
   if (vcard_node == NULL)
     {
@@ -667,7 +667,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
 static void
 gabble_connection_set_contact_info (TpSvcConnectionInterfaceContactInfo1 *iface,
                                     const GPtrArray *contact_info,
-                                    DBusGMethodInvocation *context)
+                                    GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;

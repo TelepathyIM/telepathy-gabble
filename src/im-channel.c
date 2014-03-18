@@ -662,7 +662,7 @@ gabble_im_channel_close (TpBaseChannel *base_chan)
  */
 static void
 gabble_im_channel_destroy (TpSvcChannelInterfaceDestroyable1 *iface,
-                           DBusGMethodInvocation *context)
+                           GDBusMethodInvocation *context)
 {
   g_assert (GABBLE_IS_IM_CHANNEL (iface));
 

@@ -1206,7 +1206,7 @@ gabble_search_channel_class_init (GabbleSearchChannelClass *klass)
 static void
 gabble_search_channel_search (TpSvcChannelTypeContactSearch1 *self,
                               GHashTable *terms,
-                              DBusGMethodInvocation *context)
+                              GDBusMethodInvocation *context)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (self);
   GabbleSearchChannelPrivate *priv = chan->priv;
@@ -1232,7 +1232,7 @@ err:
 
 static void
 gabble_search_channel_stop (TpSvcChannelTypeContactSearch1 *self,
-                            DBusGMethodInvocation *context)
+                            GDBusMethodInvocation *context)
 {
   GabbleSearchChannel *chan = GABBLE_SEARCH_CHANNEL (self);
   GabbleSearchChannelPrivate *priv = chan->priv;

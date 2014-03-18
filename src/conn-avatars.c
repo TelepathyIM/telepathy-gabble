@@ -122,7 +122,7 @@ static const char *mimetypes[] = {
 
 typedef struct {
   GabbleConnection *conn;
-  DBusGMethodInvocation *invocation;
+  GDBusMethodInvocation *invocation;
   GHashTable *ret;
   gulong signal_conn;
 } GetKnownAvatarTokensContext;
@@ -164,7 +164,7 @@ _got_self_avatar_for_get_known_avatar_tokens (GObject *obj,
 static void
 gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars1 *iface,
                                            const GArray *contacts,
-                                           DBusGMethodInvocation *invocation)
+                                           GDBusMethodInvocation *invocation)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -371,7 +371,7 @@ request_avatars_cb (GabbleVCardManager *manager,
 static void
 gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars1 *iface,
                                    const GArray *contacts,
-                                   DBusGMethodInvocation *context)
+                                   GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -425,7 +425,7 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars1 *iface,
 
 struct _set_avatar_ctx {
   GabbleConnection *conn;
-  DBusGMethodInvocation *invocation;
+  GDBusMethodInvocation *invocation;
   GString *avatar;
 };
 
@@ -513,7 +513,7 @@ static void
 gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
                               const GArray *avatar,
                               const gchar *mime_type,
-                              DBusGMethodInvocation *context)
+                              GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -579,7 +579,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
  */
 static void
 gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
-                                DBusGMethodInvocation *context)
+                                GDBusMethodInvocation *context)
 {
   gabble_connection_set_avatar (iface, NULL, NULL, context);
 }

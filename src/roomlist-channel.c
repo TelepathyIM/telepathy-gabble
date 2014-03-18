@@ -480,7 +480,7 @@ gabble_roomlist_channel_close (TpBaseChannel *base)
 
 static void
 gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList1 *iface,
-                                           DBusGMethodInvocation *context)
+                                           GDBusMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
   GabbleRoomlistChannelPrivate *priv;
@@ -494,7 +494,7 @@ gabble_roomlist_channel_get_listing_rooms (TpSvcChannelTypeRoomList1 *iface,
 
 static void
 gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList1 *iface,
-                                    DBusGMethodInvocation *context)
+                                    GDBusMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
   GabbleRoomlistChannelPrivate *priv = self->priv;
@@ -519,7 +519,7 @@ gabble_roomlist_channel_list_rooms (TpSvcChannelTypeRoomList1 *iface,
 
 static void
 gabble_roomlist_channel_stop_listing (TpSvcChannelTypeRoomList1 *iface,
-                                      DBusGMethodInvocation *context)
+                                      GDBusMethodInvocation *context)
 {
   GabbleRoomlistChannel *self = GABBLE_ROOMLIST_CHANNEL (iface);
 

@@ -2233,7 +2233,7 @@ gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube1 *iface,
     const GValue *address,
     guint access_control,
     GHashTable *parameters,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
   GabbleTubeStreamPrivate *priv = self->priv;
@@ -2304,7 +2304,7 @@ gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube1 *iface,
     guint address_type,
     guint access_control,
     const GValue *access_control_param,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (iface);
   GabbleTubeStreamPrivate *priv = self->priv;

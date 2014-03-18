@@ -114,7 +114,7 @@ get_cached_location (GabbleConnection *conn,
 typedef struct {
     GabbleConnection *self;
     TpHandle handle;
-    DBusGMethodInvocation *context;
+    GDBusMethodInvocation *context;
 } YetAnotherContextStruct;
 
 static void
@@ -172,7 +172,7 @@ static void
 location_request_location (
     TpSvcConnectionInterfaceLocation1 *iface,
     TpHandle handle,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -281,7 +281,7 @@ set_location_sent_cb (GabbleConnection *conn,
     GObject *object,
     gpointer user_data)
 {
-  DBusGMethodInvocation *context = user_data;
+  GDBusMethodInvocation *context = user_data;
   GError *error = NULL;
 
   if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
@@ -304,7 +304,7 @@ set_location_sent_cb (GabbleConnection *conn,
 static void
 location_set_location (TpSvcConnectionInterfaceLocation1 *iface,
                        GHashTable *location,
-                       DBusGMethodInvocation *context)
+                       GDBusMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   WockyStanza *msg;

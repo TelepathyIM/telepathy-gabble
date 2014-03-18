@@ -488,11 +488,11 @@ complete_operation (
  */
 
 static void gabble_server_sasl_channel_raise (
-    DBusGMethodInvocation *context, TpError code, const gchar *message,
+    GDBusMethodInvocation *context, TpError code, const gchar *message,
     ...) G_GNUC_PRINTF (3, 4);
 
 static void
-gabble_server_sasl_channel_raise (DBusGMethodInvocation *context,
+gabble_server_sasl_channel_raise (GDBusMethodInvocation *context,
     TpError code,
     const gchar *message,
     ...)
@@ -515,7 +515,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
     TpSvcChannelInterfaceSASLAuthentication1 *iface,
     const gchar *in_Mechanism,
     const GArray *in_InitialData,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (iface);
   GabbleServerSaslChannelPrivate *priv = self->priv;
@@ -580,7 +580,7 @@ static void
 gabble_server_sasl_channel_start_mechanism (
     TpSvcChannelInterfaceSASLAuthentication1 *iface,
     const gchar *mech,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   gabble_server_sasl_channel_start_mechanism_with_data (iface, mech, NULL,
       context);
@@ -590,7 +590,7 @@ static void
 gabble_server_sasl_channel_respond (
     TpSvcChannelInterfaceSASLAuthentication1 *channel,
     const GArray *in_Response_Data,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleServerSaslChannel *self =
     GABBLE_SERVER_SASL_CHANNEL (channel);
@@ -639,7 +639,7 @@ gabble_server_sasl_channel_respond (
 static void
 gabble_server_sasl_channel_accept_sasl (
     TpSvcChannelInterfaceSASLAuthentication1 *channel,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
   GabbleServerSaslChannelPrivate *priv = self->priv;
@@ -731,7 +731,7 @@ gabble_server_sasl_channel_abort_sasl (
     TpSvcChannelInterfaceSASLAuthentication1 *channel,
     guint in_Reason,
     const gchar *in_Debug_Message,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleServerSaslChannel *self = GABBLE_SERVER_SASL_CHANNEL (channel);
   GabbleServerSaslChannelPrivate *priv = self->priv;

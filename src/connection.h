@@ -228,7 +228,7 @@ struct _GabbleConnection {
     /* gchar *interface → GabbleSidecar */
     GHashTable *sidecars;
 
-    /* gchar *interface → GList<DBusGMethodInvocation> */
+    /* gchar *interface → GList<GDBusMethodInvocation> */
     GHashTable *pending_sidecars;
 
     /* Mail Notification */

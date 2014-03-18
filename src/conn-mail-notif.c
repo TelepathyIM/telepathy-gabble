@@ -70,7 +70,7 @@ struct _GabbleConnectionMailNotificationPrivate
   guint new_mail_handler_id;
   guint poll_timeout_id;
   guint poll_count;
-  GList *inbox_url_requests; /* list of DBusGMethodInvocation */
+  GList *inbox_url_requests; /* list of GDBusMethodInvocation */
   gboolean should_set_google_settings;
 };
 
@@ -110,7 +110,7 @@ return_from_request_inbox_url (GabbleConnection *conn)
 
   while (it != NULL)
   {
-    DBusGMethodInvocation *context = it->data;
+    GDBusMethodInvocation *context = it->data;
 
     if (error != NULL)
       dbus_g_method_return_error (context, error);
@@ -137,7 +137,7 @@ return_from_request_inbox_url (GabbleConnection *conn)
 
 static inline gboolean
 check_supported_or_dbus_return (GabbleConnection *conn,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (conn);
 
@@ -160,7 +160,7 @@ check_supported_or_dbus_return (GabbleConnection *conn,
 static void
 gabble_mail_notification_request_inbox_url (
     TpSvcConnectionInterfaceMailNotification1 *iface,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;
@@ -182,7 +182,7 @@ gabble_mail_notification_request_mail_url (
     TpSvcConnectionInterfaceMailNotification1 *iface,
     const gchar *in_id,
     const GValue *in_url_data,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   GabbleConnectionMailNotificationPrivate *priv = conn->mail_priv;

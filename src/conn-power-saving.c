@@ -36,7 +36,7 @@ enum
 };
 
 typedef struct {
-  DBusGMethodInvocation *dbus_context;
+  GDBusMethodInvocation *dbus_context;
   gboolean enabling;
 } ToggleQueueingContext;
 
@@ -119,7 +119,7 @@ static void
 conn_power_saving_set_power_saving (
     TpSvcConnectionInterfacePowerSaving1 *conn,
     gboolean enable,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (conn);
   TpBaseConnection *base = TP_BASE_CONNECTION (self);

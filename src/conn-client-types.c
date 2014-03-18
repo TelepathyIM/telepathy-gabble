@@ -81,7 +81,7 @@ get_client_types_from_handle (GabbleConnection *conn,
 static void
 client_types_request_client_types (TpSvcConnectionInterfaceClientTypes1 *iface,
     TpHandle contact,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) conn;

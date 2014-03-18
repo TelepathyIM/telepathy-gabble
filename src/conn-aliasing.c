@@ -50,7 +50,7 @@ typedef struct _AliasesRequest AliasesRequest;
 struct _AliasesRequest
 {
   GabbleConnection *conn;
-  DBusGMethodInvocation *request_call;
+  GDBusMethodInvocation *request_call;
   guint pending_vcard_requests;
   guint pending_pep_requests;
   GArray *contacts;
@@ -67,7 +67,7 @@ typedef struct
 
 static AliasesRequest *
 aliases_request_new (GabbleConnection *conn,
-                     DBusGMethodInvocation *request_call,
+                     GDBusMethodInvocation *request_call,
                      const GArray *contacts)
 {
   AliasesRequest *request;
@@ -358,7 +358,7 @@ gabble_do_pep_request (GabbleConnection *self,
 static void
 gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing1 *iface,
                                    const GArray *contacts,
-                                   DBusGMethodInvocation *context)
+                                   GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -564,7 +564,7 @@ set_one_alias (
 static void
 gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing1 *iface,
                                GHashTable *aliases,
-                               DBusGMethodInvocation *context)
+                               GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;

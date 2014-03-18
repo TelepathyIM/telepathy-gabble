@@ -1662,7 +1662,7 @@ static void
 gabble_tube_dbus_offer_async (TpSvcChannelTypeDBusTube1 *self,
     GHashTable *parameters,
     guint access_control,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GabbleTubeDBusPrivate *priv = GABBLE_TUBE_DBUS_GET_PRIVATE (tube);
@@ -1701,7 +1701,7 @@ gabble_tube_dbus_offer_async (TpSvcChannelTypeDBusTube1 *self,
 static void
 gabble_tube_dbus_accept_async (TpSvcChannelTypeDBusTube1 *self,
     guint access_control,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleTubeDBus *tube = GABBLE_TUBE_DBUS (self);
   GError *error = NULL;

@@ -3214,7 +3214,7 @@ static void
 gabble_connection_update_capabilities (
     TpSvcConnectionInterfaceContactCapabilities1 *iface,
     const GPtrArray *clients,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;

@@ -158,7 +158,7 @@ struct _GabbleMucChannelPrivate
   guint leave_timer_id;
 
   gboolean must_provide_password;
-  DBusGMethodInvocation *password_ctx;
+  GDBusMethodInvocation *password_ctx;
 
   const gchar *jid;
   gboolean requested;
@@ -182,7 +182,7 @@ struct _GabbleMucChannelPrivate
   gchar *subject_actor;
   gint64 subject_timestamp;
   gboolean can_set_subject;
-  DBusGMethodInvocation *set_subject_context;
+  GDBusMethodInvocation *set_subject_context;
   gchar *set_subject_stanza_id;
 
   gboolean ready;
@@ -3198,7 +3198,7 @@ gabble_muc_channel_close (TpBaseChannel *base)
  */
 static void
 gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword1 *iface,
-                                       DBusGMethodInvocation *context)
+                                       GDBusMethodInvocation *context)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
@@ -3224,7 +3224,7 @@ gabble_muc_channel_get_password_flags (TpSvcChannelInterfacePassword1 *iface,
 static void
 gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword1 *iface,
                                      const gchar *password,
-                                     DBusGMethodInvocation *context)
+                                     GDBusMethodInvocation *context)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv;
@@ -4166,7 +4166,7 @@ sent_subject_cb (
 static void
 gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject1 *iface,
     const gchar *subject,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (iface);
   GabbleMucChannelPrivate *priv = self->priv;

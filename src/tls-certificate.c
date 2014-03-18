@@ -256,7 +256,7 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
 
 static void
 gabble_tls_certificate_accept (TpSvcAuthenticationTLSCertificate *cert,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (cert);
 
@@ -285,7 +285,7 @@ gabble_tls_certificate_accept (TpSvcAuthenticationTLSCertificate *cert,
 static void
 gabble_tls_certificate_reject (TpSvcAuthenticationTLSCertificate *cert,
     const GPtrArray *rejections,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleTLSCertificate *self = GABBLE_TLS_CERTIFICATE (cert);
 

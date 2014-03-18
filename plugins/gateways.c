@@ -373,12 +373,12 @@ static void sidecar_iface_init (
 
 typedef struct
 {
-  DBusGMethodInvocation *context;
+  GDBusMethodInvocation *context;
   gchar *gateway;
 } PendingRegistration;
 
 static PendingRegistration *
-pending_registration_new (DBusGMethodInvocation *context,
+pending_registration_new (GDBusMethodInvocation *context,
     const gchar *gateway)
 {
   PendingRegistration *pr = g_slice_new (PendingRegistration);
@@ -477,7 +477,7 @@ gateways_register (
     const gchar *gateway,
     const gchar *username,
     const gchar *password,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleGatewaySidecar *self = GABBLE_GATEWAY_SIDECAR (sidecar);
   WockyPorter *porter = wocky_session_get_porter (self->priv->session);

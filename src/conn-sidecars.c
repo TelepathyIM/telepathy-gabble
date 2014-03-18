@@ -202,7 +202,7 @@ static void
 gabble_connection_ensure_sidecar (
     TpSvcConnectionInterfaceSidecars1 *iface,
     const gchar *sidecar_iface,
-    DBusGMethodInvocation *context)
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *conn = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = TP_BASE_CONNECTION (conn);

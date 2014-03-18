@@ -41,6 +41,9 @@ struct _GabbleImFactory {
 
 GType gabble_im_factory_get_type (void);
 
+GabbleIMChannel *gabble_im_factory_dup_channel (GabbleImFactory *self,
+    const gchar *path);
+
 /* TYPE MACROS */
 #define GABBLE_TYPE_IM_FACTORY \
   (gabble_im_factory_get_type ())

@@ -332,6 +332,7 @@ _gabble_connection_create_channel_managers (TpBaseConnection *conn)
 
   self->muc_factory = g_object_new (GABBLE_TYPE_MUC_FACTORY,
       "connection", self,
+      "im-factory", self->priv->im_factory,
       NULL);
   g_ptr_array_add (channel_managers, self->muc_factory);
 

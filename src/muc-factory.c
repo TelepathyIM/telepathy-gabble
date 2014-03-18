@@ -36,6 +36,7 @@
 #include "debug.h"
 #include "disco.h"
 #include "im-channel.h"
+#include "im-factory.h"
 #ifdef ENABLE_VOIP
 #include "media-factory.h"
 #endif
@@ -61,6 +62,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucFactory, gabble_muc_factory, G_TYPE_OBJECT,
 enum
 {
   PROP_CONNECTION = 1,
+  PROP_IM_FACTORY,
   LAST_PROPERTY
 };
 
@@ -73,6 +75,9 @@ struct _GabbleMucFactoryPrivate
 {
   GabbleConnection *conn;
   gulong status_changed_id;
+
+  /* (transfer full) */
+  GabbleImFactory *im_factory;
 
   guint message_cb_id;
   /* GUINT_TO_POINTER(room_handle) => (GabbleMucChannel *) */
@@ -148,6 +153,7 @@ gabble_muc_factory_dispose (GObject *object)
   priv->dispose_has_run = TRUE;
 
   gabble_muc_factory_close_all (fac);
+  g_assert (priv->im_factory == NULL);
   g_assert (priv->text_channels == NULL);
   g_assert (priv->text_needed_for_tube == NULL);
   g_assert (priv->queued_requests == NULL);
@@ -173,6 +179,9 @@ gabble_muc_factory_get_property (GObject    *object,
     case PROP_CONNECTION:
       g_value_set_object (value, priv->conn);
       break;
+    case PROP_IM_FACTORY:
+      g_value_set_object (value, priv->im_factory);
+      break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -191,6 +200,9 @@ gabble_muc_factory_set_property (GObject      *object,
   switch (property_id) {
     case PROP_CONNECTION:
       priv->conn = g_value_get_object (value);
+      break;
+    case PROP_IM_FACTORY:
+      priv->im_factory = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
@@ -218,6 +230,12 @@ gabble_muc_factory_class_init (GabbleMucFactoryClass *gabble_muc_factory_class)
       GABBLE_TYPE_CONNECTION,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_CONNECTION, param_spec);
+
+  param_spec = g_param_spec_object ("im-factory", "GabbleImFactory object",
+      "IM channel factory",
+      GABBLE_TYPE_IM_FACTORY,
+      G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
+  g_object_class_install_property (object_class, PROP_IM_FACTORY, param_spec);
 }
 
 /**
@@ -877,6 +895,8 @@ gabble_muc_factory_close_all (GabbleMucFactory *self)
 
   DEBUG ("closing channels");
 
+  g_clear_object (&self->priv->im_factory);
+
   if (priv->status_changed_id != 0)
     {
       g_signal_handler_disconnect (priv->conn,
@@ -1220,41 +1240,32 @@ handle_text_channel_request (GabbleMucFactory *self,
   /* look at the list of initial channels, build a set of handles to invite */
   if (initial_channels != NULL)
     {
-      TpDBusDaemon *dbus_daemon = tp_base_connection_get_dbus_daemon (conn);
-      DBusGConnection *bus = tp_proxy_get_dbus_connection (dbus_daemon);
-
       for (i = 0; i < initial_channels->len; i++)
         {
           const char *object_path = g_ptr_array_index (initial_channels, i);
-          GObject *object;
+          GabbleIMChannel *channel;
           TpHandle handle;
-          TpBaseConnection *connection;
 
-          object = dbus_g_connection_lookup_g_object (bus, object_path);
+          /* FIXME: this is O(number of channels * number of paths) but
+           * neither is likely to be very large so it'll do for now */
+          channel = gabble_im_factory_dup_channel (priv->im_factory,
+              object_path);
 
-          if (!GABBLE_IS_IM_CHANNEL (object))
+          if (channel == NULL)
             {
-              DEBUG ("Channel %s is not an ImChannel, ignoring",
-                  object_path);
-              continue;
-            }
-
-          connection = tp_base_channel_get_connection (
-              TP_BASE_CHANNEL (object));
-
-          if ((GabbleConnection *) connection != priv->conn)
-            {
-              DEBUG ("Channel %s is from a different Connection, ignoring",
+              /* FIXME: shouldn't this raise an error? */
+              DEBUG ("Channel %s does not exist on this connection, ignoring",
                   object_path);
               continue;
             }
 
           handle = tp_base_channel_get_target_handle (
-              TP_BASE_CHANNEL (object));
+              TP_BASE_CHANNEL (channel));
 
           tp_handle_set_add (handles, handle);
           tp_intset_add (continue_handles, handle);
           g_hash_table_insert (final_channels, (char *) object_path, NULL);
+          g_object_unref (channel);
         }
     }
 

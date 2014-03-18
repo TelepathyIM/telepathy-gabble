@@ -815,3 +815,21 @@ caps_channel_manager_iface_init (gpointer g_iface,
 
   iface->get_contact_caps = gabble_im_factory_get_contact_caps;
 }
+
+GabbleIMChannel *
+gabble_im_factory_dup_channel (GabbleImFactory *self,
+    const gchar *path)
+{
+  GHashTableIter iter;
+  gpointer v;
+
+  g_hash_table_iter_init (&iter, self->priv->channels);
+
+  while (g_hash_table_iter_next (&iter, NULL, &v))
+    {
+      if (!tp_strdiff (tp_base_channel_get_object_path (v), path))
+        return GABBLE_IM_CHANNEL (g_object_ref (v));
+    }
+
+  return NULL;
+}

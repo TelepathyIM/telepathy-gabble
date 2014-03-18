@@ -47,59 +47,6 @@ def dbus_gutils_wincaps_to_uscore(s):
             ret += c
     return ret
 
-
-def signal_to_marshal_type(signal):
-    """
-    return a list of strings indicating the marshalling type for this signal.
-    """
-
-    mtype=[]
-    for i in signal.getElementsByTagName("arg"):
-        name =i.getAttribute("name")
-        type = i.getAttribute("type")
-        mtype.append(type_to_gtype(type)[2])
-
-    return mtype
-
-
-_glib_marshallers = ['VOID', 'BOOLEAN', 'CHAR', 'UCHAR', 'INT',
-        'STRING', 'UINT', 'LONG', 'ULONG', 'ENUM', 'FLAGS', 'FLOAT',
-        'DOUBLE', 'STRING', 'PARAM', 'BOXED', 'POINTER', 'OBJECT',
-        'UINT_POINTER']
-
-
-def signal_to_marshal_name(signal, prefix):
-
-    mtype = signal_to_marshal_type(signal)
-    if len(mtype):
-        name = '_'.join(mtype)
-    else:
-        name = 'VOID'
-
-    if name in _glib_marshallers:
-        return 'g_cclosure_marshal_VOID__' + name
-    else:
-        return prefix + '_marshal_VOID__' + name
-
-
-def method_to_glue_marshal_name(method, prefix):
-
-    mtype = []
-    for i in method.getElementsByTagName("arg"):
-        if i.getAttribute("direction") != "out":
-            type = i.getAttribute("type")
-            mtype.append(type_to_gtype(type)[2])
-
-    mtype.append('POINTER')
-
-    name = '_'.join(mtype)
-
-    if name in _glib_marshallers:
-        return 'g_cclosure_marshal_VOID__' + name
-    else:
-        return prefix + '_marshal_VOID__' + name
-
-
 def type_to_gtype(s):
     if s == 'y': #byte
         return ("guchar ", "G_TYPE_UCHAR","UCHAR", False)
@@ -171,25 +118,227 @@ def type_to_gtype(s):
     # we just don't know ..
     raise Exception("don't know the GType for " + s)
 
-
-def copy_into_gvalue(gvaluep, gtype, marshaller, name):
-    if gtype == 'G_TYPE_STRING':
-        return 'g_value_set_string (%s, %s);' % (gvaluep, name)
-    elif marshaller == 'BOXED':
-        return 'g_value_set_boxed (%s, %s);' % (gvaluep, name)
+def value_getter(gtype, marshaller):
+    if marshaller == 'BOXED':
+        return 'g_value_get_boxed'
+    elif gtype == 'G_TYPE_STRING':
+        return 'g_value_get_string'
     elif gtype == 'G_TYPE_UCHAR':
-        return 'g_value_set_uchar (%s, %s);' % (gvaluep, name)
+        return 'g_value_get_uchar'
     elif gtype == 'G_TYPE_BOOLEAN':
-        return 'g_value_set_boolean (%s, %s);' % (gvaluep, name)
-    elif gtype == 'G_TYPE_INT':
-        return 'g_value_set_int (%s, %s);' % (gvaluep, name)
+        return 'g_value_get_boolean'
     elif gtype == 'G_TYPE_UINT':
-        return 'g_value_set_uint (%s, %s);' % (gvaluep, name)
-    elif gtype == 'G_TYPE_INT64':
-        return 'g_value_set_int (%s, %s);' % (gvaluep, name)
+        return 'g_value_get_uint'
+    elif gtype == 'G_TYPE_INT':
+        return 'g_value_get_int'
     elif gtype == 'G_TYPE_UINT64':
-        return 'g_value_set_uint64 (%s, %s);' % (gvaluep, name)
+        return 'g_value_get_uint64'
+    elif gtype == 'G_TYPE_INT64':
+        return 'g_value_get_int64'
     elif gtype == 'G_TYPE_DOUBLE':
-        return 'g_value_set_double (%s, %s);' % (gvaluep, name)
+        return 'g_value_get_double'
     else:
-        raise AssertionError("Don't know how to put %s in a GValue" % gtype)
+        raise AssertionError("Don't know how to get %s from a GValue" % marshaller)
+
+class GDBusInterfaceInfo(object):
+    def __init__(self, ugly_name, iface_element, c_name):
+        self.ugly_name = ugly_name
+        self.mixed_name = ugly_name.replace('_', '')
+        self.lc_name = ugly_name.lower()
+        self.uc_name = ugly_name.upper()
+        self.c_name = c_name
+        self.iface_element = iface_element
+
+        self.method_elements = iface_element.getElementsByTagName('method')
+        self.signal_elements = iface_element.getElementsByTagName('signal')
+        self.property_elements = iface_element.getElementsByTagName('property')
+
+    def do_methods(self):
+        method_args = [
+        ]
+        method_in_arg_pointers = [
+        ]
+        method_out_arg_pointers = [
+        ]
+        methods = [
+        ]
+        method_pointers = [
+            'static const GDBusMethodInfo *const method_pointers_%s[] = {'
+                % self.c_name,
+        ]
+
+        for meth in self.method_elements:
+            lc_name = meth.getAttribute('tp:name-for-bindings')
+            if meth.getAttribute('name') != lc_name.replace('_', ''):
+                raise AssertionError('Method %s tp:name-for-bindings (%s) '
+                        'does not match' %
+                        (meth.getAttribute('name'), lc_name))
+            lc_name = lc_name.lower()
+
+            c_name = 'method_%s_%s' % (self.c_name, lc_name)
+
+            method_in_arg_pointers.append('static const GDBusArgInfo *const '
+                    'method_in_arg_pointers_%s_%s[] = {' %
+                    (self.c_name, lc_name))
+            method_out_arg_pointers.append('static const GDBusArgInfo *const '
+                    'method_out_arg_pointers_%s_%s[] = {'
+                    % (self.c_name, lc_name))
+
+            for i, arg in enumerate(meth.getElementsByTagName('arg')):
+                name = arg.getAttribute('name')
+                if not name:
+                    name = 'arg%d' % i
+
+                method_args.append('static const GDBusArgInfo '
+                        'method_arg_%s_%s_%d = {' % (self.c_name, lc_name, i))
+                method_args.append('  -1, /* refcount */')
+                method_args.append('  "%s",' % name)
+                method_args.append('  "%s",' % arg.getAttribute('type'))
+                method_args.append('  NULL /* annotations */')
+                method_args.append('};')
+
+                if arg.getAttribute('direction') == 'out':
+                    method_out_arg_pointers.append('  &method_arg_%s_%s_%d,' %
+                            (self.c_name, lc_name, i))
+                else:
+                    method_in_arg_pointers.append('  &method_arg_%s_%s_%d,' %
+                            (self.c_name, lc_name, i))
+
+            method_in_arg_pointers.append('  NULL')
+            method_in_arg_pointers.append('};')
+            method_out_arg_pointers.append('  NULL')
+            method_out_arg_pointers.append('};')
+
+            methods.append('static const GDBusMethodInfo %s = {' % c_name)
+            methods.append('  -1, /* refcount */')
+            methods.append('  "%s",' % meth.getAttribute("name"))
+            methods.append('  (GDBusArgInfo **) method_in_arg_pointers_%s_%s,'
+                    % (self.c_name, lc_name))
+            methods.append('  (GDBusArgInfo **) method_out_arg_pointers_%s_%s,'
+                    % (self.c_name, lc_name))
+            methods.append('  NULL /* annotations */')
+            methods.append('};')
+
+            method_pointers.append('  &%s,' % c_name)
+
+        method_pointers.append('  NULL')
+        method_pointers.append('};')
+
+        return (method_args + method_in_arg_pointers +
+                method_out_arg_pointers + methods + method_pointers)
+
+    def do_signals(self):
+        signal_args = [
+        ]
+        signal_arg_pointers = [
+        ]
+        signals = [
+        ]
+        signal_pointers = [
+            'static const GDBusSignalInfo *const signal_pointers_%s[] = {'
+                % self.c_name,
+        ]
+
+        for sig in self.signal_elements:
+            lc_name = sig.getAttribute('tp:name-for-bindings')
+            if sig.getAttribute('name') != lc_name.replace('_', ''):
+                raise AssertionError('Signal %s tp:name-for-bindings (%s) '
+                        'does not match' %
+                        (sig.getAttribute('name'), lc_name))
+            lc_name = lc_name.lower()
+
+            c_name = 'signal_%s_%s' % (self.c_name, lc_name)
+
+            signal_arg_pointers.append('static const GDBusArgInfo *const '
+                    'signal_arg_pointers_%s_%s[] = {' % (self.c_name, lc_name))
+
+            for i, arg in enumerate(sig.getElementsByTagName('arg')):
+                name = arg.getAttribute('name')
+                if not name:
+                    name = 'arg%d' % i
+
+                signal_args.append('static const GDBusArgInfo '
+                        'signal_arg_%s_%s_%d = {' % (self.c_name, lc_name, i))
+                signal_args.append('  -1, /* refcount */')
+                signal_args.append('  "%s",' % name)
+                signal_args.append('  "%s",' % arg.getAttribute('type'))
+                signal_args.append('  NULL /* annotations */')
+                signal_args.append('};')
+
+                signal_arg_pointers.append('  &signal_arg_%s_%s_%d,' %
+                        (self.c_name, lc_name, i))
+
+            signal_arg_pointers.append('  NULL')
+            signal_arg_pointers.append('};')
+
+            signals.append('static const GDBusSignalInfo %s = {' % c_name)
+            signals.append('  -1, /* refcount */')
+            signals.append('  "%s",' % sig.getAttribute("name"))
+            signals.append('  (GDBusArgInfo **) signal_arg_pointers_%s_%s,'
+                    % (self.c_name, lc_name))
+            signals.append('  NULL /* annotations */')
+            signals.append('};')
+
+            signal_pointers.append('  &%s,' % c_name)
+
+        signal_pointers.append('  NULL')
+        signal_pointers.append('};')
+
+        return signal_args + signal_arg_pointers + signals + signal_pointers
+
+    def do_properties(self):
+        properties = [
+        ]
+        property_pointers = [
+            'static const GDBusPropertyInfo *const property_pointers_%s[] = {'
+                % self.c_name,
+        ]
+
+        for prop in self.property_elements:
+            access = prop.getAttribute('access')
+            flags = {
+                'read': 'G_DBUS_PROPERTY_INFO_FLAGS_READABLE',
+                'write': 'G_DBUS_PROPERTY_INFO_FLAGS_WRITABLE',
+                'readwrite':
+                    'G_DBUS_PROPERTY_INFO_FLAGS_READABLE | '
+                    'G_DBUS_PROPERTY_INFO_FLAGS_WRITABLE',
+            }[access]
+
+            lc_name = prop.getAttribute('tp:name-for-bindings')
+            if prop.getAttribute('name') != lc_name.replace('_', ''):
+                raise AssertionError('Property %s tp:name-for-bindings (%s) '
+                        'does not match' %
+                        (prop.getAttribute('name'), lc_name))
+            lc_name = lc_name.lower()
+
+            c_name = 'property_%s_%s' % (self.c_name, lc_name)
+
+            properties.append('static const GDBusPropertyInfo %s = {' % c_name)
+            properties.append('  -1, /* refcount */')
+            properties.append('  "%s",' % prop.getAttribute("name"))
+            properties.append('  "%s",' % prop.getAttribute("type"))
+            properties.append('  %s,' % flags)
+            # FIXME: add annotations?
+            properties.append('  NULL /* annotations */')
+            properties.append('};')
+
+            property_pointers.append('  &%s,' % c_name)
+
+        property_pointers.append('  NULL')
+        property_pointers.append('};')
+
+        return properties + property_pointers
+
+    def to_lines(self, linkage='static'):
+        return (self.do_methods() +
+                self.do_signals() +
+                self.do_properties() + [
+            '%s const GDBusInterfaceInfo %s = {' % (linkage, self.c_name),
+            '  -1, /* refcount */',
+            '  "%s",' % self.iface_element.getAttribute('name'),
+            '  (GDBusMethodInfo **) method_pointers_%s,' % self.c_name,
+            '  (GDBusSignalInfo **) signal_pointers_%s,' % self.c_name,
+            '  (GDBusPropertyInfo **) property_pointers_%s,' % self.c_name,
+            '  NULL /* annotations */',
+            '};'
+        ])

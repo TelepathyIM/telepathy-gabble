@@ -276,7 +276,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
       <xsl:when test="tp:property">
         <h2 xmlns="http://www.w3.org/1999/xhtml">Telepathy Properties:</h2>
         <p xmlns="http://www.w3.org/1999/xhtml">Accessed using the
-          <a href="#im.telepathy1.Properties">Telepathy
+          <a href="#org.freedesktop.Telepathy.Properties">Telepathy
             Properties</a> interface.</p>
         <dl xmlns="http://www.w3.org/1999/xhtml">
           <xsl:apply-templates select="tp:property"/>

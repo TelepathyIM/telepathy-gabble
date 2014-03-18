@@ -245,3 +245,13 @@ class Signature(str):
 def xml_escape(s):
     s = s.replace('&', '&amp;').replace("'", '&apos;').replace('"', '&quot;')
     return s.replace('<', '&lt;').replace('>', '&gt;')
+
+def get_emits_changed(node):
+    try:
+        return [
+            annotation.getAttribute('value')
+            for annotation in node.getElementsByTagName('annotation')
+            if annotation.getAttribute('name') == 'org.freedesktop.DBus.Property.EmitsChangedSignal'
+            ][0]
+    except IndexError:
+        return None

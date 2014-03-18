@@ -130,13 +130,6 @@ extern "C" {
  *
  * 1 higher than the highest valid value of #%(mixed-name)s.
  */
-
-/**
- * NUM_%(upper-prefix)s%(upper-plural)s: (skip)
- *
- * 1 higher than the highest valid value of #%(mixed-name)s.
- * In new code, use %(upper-prefix)sNUM_%(upper-plural)s instead.
- */
 """ % {'mixed-name' : (self.prefix + name).replace('_', ''),
        'upper-prefix' : self.prefix.upper(),
        'upper-plural' : name_plural.upper(),
@@ -144,7 +137,6 @@ extern "C" {
 
         self.write("""\
 #define %(upper-prefix)sNUM_%(upper-plural)s (%(last-val)s+1)
-#define NUM_%(upper-prefix)s%(upper-plural)s %(upper-prefix)sNUM_%(upper-plural)s
 
 """ % {'mixed-name' : (self.prefix + name).replace('_', ''),
        'upper-prefix' : self.prefix.upper(),

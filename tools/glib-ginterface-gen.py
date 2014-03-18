@@ -26,28 +26,19 @@ import sys
 import os.path
 import xml.dom.minidom
 
-from libtpcodegen import file_set_contents, key_by_name, u
-from libglibcodegen import Signature, type_to_gtype, \
-        NS_TP, dbus_gutils_wincaps_to_uscore
+from libtpcodegen import file_set_contents, key_by_name, u, get_emits_changed
+from libglibcodegen import (Signature, type_to_gtype,
+        NS_TP, dbus_gutils_wincaps_to_uscore, value_getter,
+        GDBusInterfaceInfo)
 
 
 NS_TP = "http://telepathy.freedesktop.org/wiki/DbusSpec#extensions-v0"
-
-def get_emits_changed(node):
-    try:
-        return [
-            annotation.getAttribute('value')
-            for annotation in node.getElementsByTagName('annotation')
-            if annotation.getAttribute('name') == 'org.freedesktop.DBus.Property.EmitsChangedSignal'
-            ][0]
-    except IndexError:
-        return None
 
 class Generator(object):
 
     def __init__(self, dom, prefix, basename, signal_marshal_prefix,
                  headers, end_headers, not_implemented_func,
-                 allow_havoc):
+                 allow_havoc, allow_single_include):
         self.dom = dom
         self.__header = []
         self.__body = []
@@ -83,6 +74,7 @@ class Generator(object):
         self.end_headers = end_headers
         self.not_implemented_func = not_implemented_func
         self.allow_havoc = allow_havoc
+        self.allow_single_include = allow_single_include
 
     def h(self, s):
         self.__header.append(s)
@@ -114,15 +106,9 @@ class Generator(object):
 
         iface_emits_changed = get_emits_changed(interface)
 
-        self.b('static const DBusGObjectInfo _%s%s_object_info;'
-               % (self.prefix_, node_name_lc))
-        self.b('')
-
         methods = interface.getElementsByTagName('method')
         signals = interface.getElementsByTagName('signal')
         properties = interface.getElementsByTagName('property')
-        # Don't put properties in dbus-glib glue
-        glue_properties = []
 
         self.b('struct _%s%sClass {' % (self.Prefix, node_name_mixed))
         self.b('    GTypeInterface parent_class;')
@@ -245,16 +231,75 @@ class Generator(object):
                '  (G_TYPE_INSTANCE_GET_INTERFACE((obj), %s, %sClass))'
                % (self.PREFIX_, node_name_uc, gtype, classname))
         self.h('')
-        self.h('')
 
         base_init_code = []
+        method_call_code = []
 
         for method in methods:
-            self.do_method(method)
+            self.do_method(method, method_call_code)
+
+        signal_table = [
+            'static const gchar * const _gsignals_%s[] = {' %
+                self.node_name_lc
+        ]
 
         for signal in signals:
-            base_init_code.extend(self.do_signal(signal))
+            # we rely on this being in the same order as the interface info
+            self.do_signal(signal, in_base_init=base_init_code,
+                    in_signal_table=signal_table)
 
+        signal_table.append('  NULL')
+        signal_table.append('};')
+        signal_table.append('')
+        for line in signal_table:
+            self.b(line)
+
+        # e.g. _interface_info_connection_interface_contact_info1
+        for line in GDBusInterfaceInfo(node_name, interface,
+                '_interface_info_%s' % node_name_lc).to_lines(linkage='static'):
+            self.b(line)
+
+        self.b('')
+        self.b('static void')
+        self.b('_method_call_%s (GDBusConnection *connection,' % node_name_lc)
+        self.b('    const gchar *sender,')
+        self.b('    const gchar *object_path,')
+        self.b('    const gchar *interface_name,')
+        self.b('    const gchar *method_name,')
+        self.b('    GVariant *parameters,')
+        self.b('    GDBusMethodInvocation *invocation,')
+        self.b('    gpointer user_data)')
+        self.b('{')
+
+        for line in method_call_code:
+            self.b(line)
+
+        # Deliberately not using self.not_implemented_func here so that callers
+        # can distinguish between "you called Protocol.NormalizeContact() but
+        # that isn't implemented here" and "you called Protocol.Badger()
+        # which isn't even in the spec" if required.
+        self.b('  g_dbus_method_invocation_return_error (invocation,')
+        self.b('       G_DBUS_ERROR,')
+        self.b('       G_DBUS_ERROR_UNKNOWN_METHOD,')
+        self.b('       "Method not implemented");')
+        self.b('}')
+        self.b('')
+        self.b('static const GDBusInterfaceVTable _vtable_%s = {' %
+                node_name_lc)
+        self.b('  _method_call_%s,' % node_name_lc)
+        self.b('  NULL, /* get property */')
+        self.b('  NULL /* set property */')
+        self.b('};')
+        self.b('')
+        self.b('static const TpSvcInterfaceInfo _tp_interface_info_%s = {' %
+                node_name_lc)
+        self.b('  -1,')
+        self.b('  (GDBusInterfaceInfo *) &_interface_info_%s,' % node_name_lc)
+        self.b('  (GDBusInterfaceVTable *) &_vtable_%s,' % node_name_lc)
+        self.b('  (gchar **) _gsignals_%s' % node_name_lc)
+        self.b('  /* _future is implicitly zero-filled */')
+        self.b('};')
+        self.b('')
         self.b('static inline void')
         self.b('%s%s_base_init_once (gpointer klass G_GNUC_UNUSED)'
                % (self.prefix_, node_name_lc))
@@ -295,13 +340,6 @@ class Generator(object):
             self.b('      { 0, properties, NULL, NULL };')
             self.b('')
 
-
-        self.b('  dbus_g_object_type_install_info (%s%s_get_type (),'
-               % (self.prefix_, node_name_lc))
-        self.b('      &_%s%s_object_info);'
-               % (self.prefix_, node_name_lc))
-        self.b('')
-
         if properties:
             self.b('  interface.dbus_interface = g_quark_from_static_string '
                    '("%s");' % self.iface_name)
@@ -316,6 +354,10 @@ class Generator(object):
                    % self.current_gtype)
 
             self.b('')
+
+        self.b('  tp_svc_interface_set_dbus_interface_info (%s,'
+               % (self.current_gtype))
+        self.b('      &_tp_interface_info_%s);' % node_name_lc)
 
         for s in base_init_code:
             self.b(s)
@@ -338,99 +380,9 @@ class Generator(object):
 
         self.h('')
 
-        self.b('static const DBusGMethodInfo _%s%s_methods[] = {'
-               % (self.prefix_, node_name_lc))
-
-        method_blob, offsets = self.get_method_glue(methods)
-
-        for method, offset in zip(methods, offsets):
-            self.do_method_glue(method, offset)
-
-        if len(methods) == 0:
-            # empty arrays are a gcc extension, so put in a dummy member
-            self.b("  { NULL, NULL, 0 }")
-
-        self.b('};')
-        self.b('')
-
-        self.b('static const DBusGObjectInfo _%s%s_object_info = {'
-               % (self.prefix_, node_name_lc))
-        self.b('  0,')  # version
-        self.b('  _%s%s_methods,' % (self.prefix_, node_name_lc))
-        self.b('  %d,' % len(methods))
-        self.b('"' + method_blob.replace('\0', '\\0') + '",')
-        self.b('"' + self.get_signal_glue(signals).replace('\0', '\\0') + '",')
-        self.b('"' +
-               self.get_property_glue(glue_properties).replace('\0', '\\0') +
-               '",')
-        self.b('};')
-        self.b('')
-
         self.node_name_mixed = None
         self.node_name_lc = None
         self.node_name_uc = None
-
-    def get_method_glue(self, methods):
-        info = []
-        offsets = []
-
-        for method in methods:
-            offsets.append(len(''.join(info)))
-
-            info.append(self.iface_name + '\0')
-            info.append(method.getAttribute('name') + '\0')
-
-            info.append('A\0')    # async
-
-            counter = 0
-            for arg in method.getElementsByTagName('arg'):
-                out = arg.getAttribute('direction') == 'out'
-
-                name = arg.getAttribute('name')
-                if not name:
-                    assert out
-                    name = 'arg%u' % counter
-                counter += 1
-
-                info.append(name + '\0')
-
-                if out:
-                    info.append('O\0')
-                else:
-                    info.append('I\0')
-
-                if out:
-                    info.append('F\0')    # not const
-                    info.append('N\0')    # not error or return
-                info.append(arg.getAttribute('type') + '\0')
-
-            info.append('\0')
-
-        return ''.join(info) + '\0', offsets
-
-    def do_method_glue(self, method, offset):
-        lc_name = method.getAttribute('tp:name-for-bindings')
-        if method.getAttribute('name') != lc_name.replace('_', ''):
-            raise AssertionError('Method %s tp:name-for-bindings (%s) does '
-                    'not match' % (method.getAttribute('name'), lc_name))
-        lc_name = lc_name.lower()
-
-        marshaller = 'g_cclosure_marshal_generic'
-        wrapper = self.prefix_ + self.node_name_lc + '_' + lc_name
-
-        self.b("  { (GCallback) %s, %s, %d }," % (wrapper, marshaller, offset))
-
-    def get_signal_glue(self, signals):
-        info = []
-
-        for signal in signals:
-            info.append(self.iface_name)
-            info.append(signal.getAttribute('name'))
-
-        return '\0'.join(info) + '\0\0'
-
-    # the implementation can be the same
-    get_property_glue = get_signal_glue
 
     def get_method_impl_names(self, method):
         dbus_method_name = method.getAttribute('name')
@@ -445,10 +397,8 @@ class Generator(object):
                      class_member_name)
         return (stub_name + '_impl', class_member_name + '_cb')
 
-    def do_method(self, method):
+    def do_method(self, method, method_call_code):
         assert self.node_name_mixed is not None
-
-        in_class = []
 
         # Examples refer to Thing.DoStuff (su) -> ii
 
@@ -461,20 +411,20 @@ class Generator(object):
                     'not match' % (dbus_method_name, class_member_name))
         class_member_name = class_member_name.lower()
 
-        # void tp_svc_thing_do_stuff (TpSvcThing *, const char *, guint,
-        #   DBusGMethodInvocation *);
+        # tp_svc_thing_do_stuff (signature of GDBusInterfaceMethodCallFunc)
         stub_name = (self.prefix_ + self.node_name_lc + '_' +
                      class_member_name)
         # typedef void (*tp_svc_thing_do_stuff_impl) (TpSvcThing *,
-        #   const char *, guint, DBusGMethodInvocation);
+        #   const char *, guint, GDBusMethodInvocation);
         impl_name = stub_name + '_impl'
-        # void tp_svc_thing_return_from_do_stuff (DBusGMethodInvocation *,
+        # void tp_svc_thing_return_from_do_stuff (GDBusMethodInvocation *,
         #   gint, gint);
         ret_name = (self.prefix_ + self.node_name_lc + '_return_from_' +
                     class_member_name)
 
         # Gather arguments
         in_args = []
+        in_arg_value_getters = []
         out_args = []
         for i in method.getElementsByTagName('arg'):
             name = i.getAttribute('name')
@@ -498,9 +448,22 @@ class Generator(object):
             struct = (ctype, name)
 
             if direction == 'in':
-                in_args.append(struct)
+                in_args.append((ctype, name))
+                in_arg_value_getters.append(value_getter(gtype, marshaller))
             else:
-                out_args.append(struct)
+                out_args.append((gtype, ctype, name))
+
+        # bits of _method_call_myiface
+        method_call_code.extend([
+            '  if (g_strcmp0 (method_name, "%s") == 0)' % dbus_method_name,
+            '    {',
+            '      %s (connection, sender, object_path, interface_name, ' %
+                stub_name,
+            '          method_name, parameters, invocation, user_data);',
+            '      return;',
+            '    }',
+            ''
+        ])
 
         # Implementation type declaration (in header, docs separated)
         self.d('/**')
@@ -509,7 +472,7 @@ class Generator(object):
         for (ctype, name) in in_args:
             self.d(' * @%s: %s (FIXME, generate documentation)'
                    % (name, ctype))
-        self.d(' * @context: Used to return values or throw an error')
+        self.d(' * @invocation: Used to return values or throw an error')
         self.d(' *')
         self.d(' * The signature of an implementation of the D-Bus method')
         self.d(' * %s on interface %s.' % (dbus_method_name, self.iface_name))
@@ -519,37 +482,59 @@ class Generator(object):
           % (impl_name, self.Prefix, self.node_name_mixed))
         for (ctype, name) in in_args:
             self.h('    %s%s,' % (ctype, name))
-        self.h('    DBusGMethodInvocation *context);')
-
-        # Class member (in class definition)
-        in_class.append('    %s %s;' % (impl_name, class_member_name))
+        self.h('    GDBusMethodInvocation *invocation);')
 
         # Stub definition (in body only - it's static)
         self.b('static void')
-        self.b('%s (%s%s *self,'
-           % (stub_name, self.Prefix, self.node_name_mixed))
-        for (ctype, name) in in_args:
-            self.b('    %s%s,' % (ctype, name))
-        self.b('    DBusGMethodInvocation *context)')
+        self.b('%s (GDBusConnection *connection,' % stub_name)
+        self.b('    const gchar *sender,')
+        self.b('    const gchar *object_path,')
+        self.b('    const gchar *interface_name,')
+        self.b('    const gchar *method_name,')
+        self.b('    GVariant *parameters,')
+        self.b('    GDBusMethodInvocation *invocation,')
+        self.b('    gpointer user_data)')
         self.b('{')
-        self.b('  %s impl = (%s%s_GET_CLASS (self)->%s_cb);'
-          % (impl_name, self.PREFIX_, self.node_name_uc, class_member_name))
+        self.b('  %s%s *self = %s%s (user_data);'
+                % (self.Prefix, self.node_name_mixed, self.PREFIX_,
+                    self.node_name_uc))
+        self.b('  %s%sClass *cls = %s%s_GET_CLASS (self);'
+          % (self.Prefix, self.node_name_mixed, self.PREFIX_,
+              self.node_name_uc))
+        self.b('  %s impl = cls->%s_cb;' % (impl_name, class_member_name))
         self.b('')
         self.b('  if (impl != NULL)')
-        tmp = ['self'] + [name for (ctype, name) in in_args] + ['context']
+        tmp = ['self'] + [name for (ctype, name) in in_args] + ['invocation']
         self.b('    {')
-        self.b('      (impl) (%s);' % ',\n        '.join(tmp))
+
+        if in_args:
+            self.b('      GValue args_val = G_VALUE_INIT;')
+            self.b('      GValueArray *va;')
+            self.b('')
+            self.b('      dbus_g_value_parse_g_variant (parameters, &args_val);')
+            self.b('      va = g_value_get_boxed (&args_val);')
+            self.b('')
+
+        self.b('      (impl) (self,')
+
+        for i, getter in enumerate(in_arg_value_getters):
+            self.b('          %s (va->values + %d),' % (getter, i))
+
+        self.b('          invocation);')
+
+        if in_args:
+            self.b('      g_value_unset (&args_val);')
+
         self.b('    }')
         self.b('  else')
         self.b('    {')
         if self.not_implemented_func:
-            self.b('      %s (context);' % self.not_implemented_func)
+            self.b('      %s (invocation);' % self.not_implemented_func)
         else:
-            self.b('      GError e = { DBUS_GERROR, ')
-            self.b('           DBUS_GERROR_UNKNOWN_METHOD,')
-            self.b('           "Method not implemented" };')
-            self.b('')
-            self.b('      dbus_g_method_return_error (context, &e);')
+            self.b('      g_dbus_method_invocation_return_error (invocation,')
+            self.b('           G_DBUS_ERROR,')
+            self.b('           G_DBUS_ERROR_UNKNOWN_METHOD,')
+            self.b('           "Method not implemented");')
         self.b('    }')
         self.b('}')
         self.b('')
@@ -581,43 +566,58 @@ class Generator(object):
         self.b('}')
         self.b('')
 
-        # Return convenience function (static inline, in header)
+        # Return convenience function
         self.d('/**')
         self.d(' * %s:' % ret_name)
-        self.d(' * @context: The D-Bus method invocation context')
-        for (ctype, name) in out_args:
+        self.d(' * @invocation: The D-Bus method invocation context')
+        for (gtype, ctype, name) in out_args:
             self.d(' * @%s: %s (FIXME, generate documentation)'
                    % (name, ctype))
         self.d(' *')
-        self.d(' * Return successfully by calling dbus_g_method_return().')
-        self.d(' * This inline function exists only to provide type-safety.')
+        self.d(' * Return successfully by calling g_dbus_method_invocation_return_value().')
         self.d(' */')
         self.d('')
 
-        tmp = (['DBusGMethodInvocation *context'] +
-               [ctype + name for (ctype, name) in out_args])
-        self.h('static inline')
-        self.h('/* this comment is to stop gtkdoc realising this is static */')
+        tmp = (['GDBusMethodInvocation *invocation'] +
+               [ctype + name for (gtype, ctype, name) in out_args])
         self.h(('void %s (' % ret_name) + (',\n    '.join(tmp)) + ');')
-        self.h('static inline void')
-        self.h(('%s (' % ret_name) + (',\n    '.join(tmp)) + ')')
-        self.h('{')
-        tmp = ['context'] + [name for (ctype, name) in out_args]
-        self.h('  dbus_g_method_return (' + ',\n      '.join(tmp) + ');')
-        self.h('}')
-        self.h('')
 
-        return in_class
+        self.b('void')
+        self.b(('%s (' % ret_name) + (',\n    '.join(tmp)) + ')')
+        self.b('{')
+        self.b('  GValueArray *tmp = tp_value_array_build (%d,' % len(out_args))
+
+        for (gtype, ctype, name) in out_args:
+            self.b('      %s, %s,' % (gtype, name))
+
+        self.b('      G_TYPE_INVALID);')
+        self.b('  GValue args_val = G_VALUE_INIT;')
+        self.b('')
+
+        self.b('  g_value_init (&args_val, '
+                'dbus_g_type_get_struct ("GValueArray",')
+
+        for (gtype, ctype, name) in out_args:
+            self.b('      %s,' % gtype)
+
+        self.b('      G_TYPE_INVALID));')
+
+        self.b('  g_value_take_boxed (&args_val, tmp);')
+
+        self.b('  g_dbus_method_invocation_return_value (invocation,')
+        self.b('      /* consume floating ref */')
+        self.b('      dbus_g_value_build_g_variant (&args_val));')
+        self.b('  g_value_unset (&args_val);')
+        self.b('}')
+        self.b('')
 
     def get_signal_const_entry(self, signal):
         assert self.node_name_uc is not None
         return ('SIGNAL_%s_%s'
                 % (self.node_name_uc, signal.getAttribute('name')))
 
-    def do_signal(self, signal):
+    def do_signal(self, signal, in_base_init, in_signal_table):
         assert self.node_name_mixed is not None
-
-        in_base_init = []
 
         # for signal: Thing::StuffHappened (s, u)
         # we want to emit:
@@ -716,7 +716,7 @@ class Generator(object):
         in_base_init.append('      %s);' % ',\n      '.join(tmp))
         in_base_init.append('')
 
-        return in_base_init
+        in_signal_table.append('    "%s",' % signal_name)
 
     def have_properties(self, nodes):
         for node in nodes:
@@ -730,17 +730,27 @@ class Generator(object):
         nodes.sort(key=key_by_name)
 
         self.h('#include <glib-object.h>')
+        self.h('#include <gio/gio.h>')
         self.h('#include <dbus/dbus-glib.h>')
-
-        for header in self.headers:
-            self.h('#include %s' % header)
-        self.h('')
 
         self.h('')
         self.h('G_BEGIN_DECLS')
         self.h('')
 
         self.b('#include "%s.h"' % self.basename)
+        self.b('')
+
+        if self.allow_single_include:
+            self.b('#include <telepathy-glib/core-svc-interface.h>')
+            self.b('#include <telepathy-glib/dbus.h>')
+            self.b('#include <telepathy-glib/dbus-properties-mixin.h>')
+            self.b('#include <telepathy-glib/util.h>')
+        else:
+            self.b('#include <telepathy-glib/telepathy-glib.h>')
+        self.b('')
+
+        for header in self.headers:
+            self.b('#include %s' % header)
         self.b('')
 
         for node in nodes:
@@ -777,9 +787,9 @@ options:
     --not-implemented-func='symbol'
         Set action when methods not implemented in the interface vtable are
         called. symbol must have signature
-            void symbol (DBusGMethodInvocation *context)
+            void symbol (GDBusMethodInvocation *invocation)
         and return some sort of "not implemented" error via
-            dbus_g_method_return_error (context, ...)
+            e.g. g_dbus_method_invocation_return_error
 """)
     sys.exit(1)
 
@@ -791,7 +801,8 @@ if __name__ == '__main__':
                                ['filename=', 'signal-marshal-prefix=',
                                 'include=', 'include-end=',
                                 'allow-unstable',
-                                'not-implemented-func='])
+                                'not-implemented-func=',
+                                "allow-single-include"])
 
     try:
         prefix = argv[1]
@@ -804,6 +815,7 @@ if __name__ == '__main__':
     end_headers = []
     not_implemented_func = ''
     allow_havoc = False
+    allow_single_include = False
 
     for option, value in options:
         if option == '--filename':
@@ -822,6 +834,8 @@ if __name__ == '__main__':
             not_implemented_func = value
         elif option == '--allow-unstable':
             allow_havoc = True
+        elif option == '--allow-single-include':
+            allow_single_include = True
 
     try:
         dom = xml.dom.minidom.parse(argv[0])
@@ -829,4 +843,5 @@ if __name__ == '__main__':
         cmdline_error()
 
     Generator(dom, prefix, basename, signal_marshal_prefix, headers,
-              end_headers, not_implemented_func, allow_havoc)()
+              end_headers, not_implemented_func, allow_havoc,
+              allow_single_include)()

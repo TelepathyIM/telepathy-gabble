@@ -17,7 +17,6 @@ class Generator(object):
         print('  GEnumValue *value_by_name;')
         print('  GEnumValue *value_by_nick;')
         print('')
-        print('  g_type_init ();')
         print('  klass = g_type_class_ref (TP_TYPE_ERROR);')
 
         for error in self.errors.getElementsByTagNameNS(NS_TP, 'error'):

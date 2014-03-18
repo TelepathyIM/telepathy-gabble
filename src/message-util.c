@@ -93,12 +93,12 @@ gabble_message_util_build_stanza (TpMessage *message,
                                   gchar **token,
                                   GError **error)
 {
-  const GHashTable *part;
+  GVariant *part;
   WockyStanza *stanza = NULL;
   WockyNode *node;
   guint type = TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL;
   gboolean result = TRUE;
-  const gchar *content_type, *text;
+  const gchar *content_type = NULL, *text = NULL;
   gchar *id = NULL;
   guint n_parts;
 
@@ -110,10 +110,10 @@ gabble_message_util_build_stanza (TpMessage *message,
     return NULL; \
   } G_STMT_END
 
-  part = tp_message_peek (message, 0);
+  part = tp_message_dup_part (message, 0);
 
-  if (tp_asv_lookup (part, "message-type") != NULL)
-    type = tp_asv_get_uint32 (part, "message-type", &result);
+  if (tp_vardict_has_key (part, "message-type"))
+    type = tp_vardict_get_uint32 (part, "message-type", &result);
 
   if (!result)
     RETURN_INVALID_ARGUMENT ("message-type must be a 32-bit unsigned integer");
@@ -127,9 +127,11 @@ gabble_message_util_build_stanza (TpMessage *message,
     RETURN_INVALID_ARGUMENT ("message must contain exactly 1 part, not %u",
         (n_parts - 1));
 
-  part = tp_message_peek (message, 1);
-  content_type = tp_asv_get_string (part, "content-type");
-  text = tp_asv_get_string (part, "content");
+  g_variant_unref (part);
+
+  part = tp_message_dup_part (message, 1);
+  g_variant_lookup (part, "content-type", "&s", &content_type);
+  g_variant_lookup (part, "content", "&s", &text);
 
   if (content_type == NULL || tp_strdiff (content_type, "text/plain"))
     RETURN_INVALID_ARGUMENT ("message must be text/plain");
@@ -184,6 +186,8 @@ gabble_message_util_build_stanza (TpMessage *message,
     g_free (id);
 
   gabble_connection_update_last_use (conn);
+
+  g_variant_unref (part);
   return stanza;
 }
 

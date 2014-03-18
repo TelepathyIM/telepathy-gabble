@@ -438,7 +438,7 @@ _return_from_request_contact_info (WockyNode *vcard_node,
           /* what other mappings make sense here? */
         }
 
-      dbus_g_method_return_error (context, &tp_error);
+      g_dbus_method_invocation_return_gerror (context, &tp_error);
       return;
     }
 
@@ -446,7 +446,7 @@ _return_from_request_contact_info (WockyNode *vcard_node,
 
   if (contact_info == NULL)
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -496,7 +496,7 @@ gabble_connection_refresh_contact_info (TpSvcConnectionInterfaceContactInfo1 *if
 
   if (!tp_handles_are_valid (contacts_repo, contacts, FALSE, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -550,7 +550,7 @@ gabble_connection_request_contact_info (TpSvcConnectionInterfaceContactInfo1 *if
 
   if (!tp_handle_is_valid (contact_handles, contact, &err))
     {
-      dbus_g_method_return_error (context, err);
+      g_dbus_method_invocation_return_gerror (context, err);
       g_error_free (err);
       return;
     }
@@ -646,7 +646,7 @@ _set_contact_info_cb (GabbleVCardManager *vcard_manager,
             vcard_error->code == WOCKY_XMPP_ERROR_NOT_ACCEPTABLE)
           tp_error.code = TP_ERROR_INVALID_ARGUMENT;
 
-      dbus_g_method_return_error (context, &tp_error);
+      g_dbus_method_invocation_return_gerror (context, &tp_error);
     }
   else
     {
@@ -845,7 +845,7 @@ finally:
       DEBUG ("%s", error->message);
       g_list_foreach (edits, (GFunc) gabble_vcard_manager_edit_info_free,
           NULL);
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
     }
   else

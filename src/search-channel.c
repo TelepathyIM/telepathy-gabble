@@ -1226,7 +1226,7 @@ gabble_search_channel_search (TpSvcChannelTypeContactSearch1 *self,
     }
 
 err:
-  dbus_g_method_return_error (context, error);
+  g_dbus_method_invocation_return_gerror (context, error);
   g_error_free (error);
 }
 
@@ -1256,7 +1256,7 @@ gabble_search_channel_stop (TpSvcChannelTypeContactSearch1 *self,
           GError e = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
               "Search() hasn't been called yet" };
 
-          dbus_g_method_return_error (context, &e);
+          g_dbus_method_invocation_return_gerror (context, &e);
           break;
         }
       case TP_CHANNEL_CONTACT_SEARCH_STATE_MORE_AVAILABLE:

@@ -272,7 +272,7 @@ gabble_tls_certificate_accept (TpSvcAuthenticationTLSCertificate *cert,
           "doesn't make sense."
         };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
       return;
     }
 
@@ -298,7 +298,7 @@ gabble_tls_certificate_reject (TpSvcAuthenticationTLSCertificate *cert,
       GError error = { TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Calling Reject() with a zero-length rejection list." };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
       return;
     }
 
@@ -311,7 +311,7 @@ gabble_tls_certificate_reject (TpSvcAuthenticationTLSCertificate *cert,
           "doesn't make sense."
         };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
       return;
     }
 

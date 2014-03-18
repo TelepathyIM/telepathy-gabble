@@ -95,7 +95,7 @@ client_types_request_client_types (TpSvcConnectionInterfaceClientTypes1 *iface,
 
   if (!tp_handle_is_valid (contact_handles, contact, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }

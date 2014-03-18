@@ -95,7 +95,7 @@ toggle_google_queueing_cb (GObject *source_object,
 
       enabling = FALSE;
 
-      dbus_g_method_return_error (queueing_context->dbus_context, error);
+      g_dbus_method_invocation_return_gerror (queueing_context->dbus_context, error);
 
       g_error_free (error);
     }

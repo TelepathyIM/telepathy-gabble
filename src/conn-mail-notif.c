@@ -113,7 +113,7 @@ return_from_request_inbox_url (GabbleConnection *conn)
     GDBusMethodInvocation *context = it->data;
 
     if (error != NULL)
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
     else
       tp_svc_connection_interface_mail_notification1_return_from_request_inbox_url (
           context, result);
@@ -144,7 +144,7 @@ check_supported_or_dbus_return (GabbleConnection *conn,
   if (tp_base_connection_get_status (base) != TP_CONNECTION_STATUS_CONNECTED)
     {
       GError e = { TP_ERROR, TP_ERROR_DISCONNECTED, "Not connected" };
-      dbus_g_method_return_error (context, &e);
+      g_dbus_method_invocation_return_gerror (context, &e);
       return TRUE;
     }
 
@@ -222,7 +222,7 @@ gabble_mail_notification_request_mail_url (
     {
       GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
           "Failed to retrieve URL from server."};
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
     }
 }
 

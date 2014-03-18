@@ -2245,7 +2245,7 @@ gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube1 *iface,
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
           "Tube is not in the not offered state");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -2253,7 +2253,7 @@ gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube1 *iface,
   if (!gabble_tube_stream_check_params (address_type, address,
         access_control, NULL, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -2273,7 +2273,7 @@ gabble_tube_stream_offer_async (TpSvcChannelTypeStreamTube1 *iface,
     {
       gabble_tube_iface_stream_close (GABBLE_TUBE_IFACE (self), TRUE);
 
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
 
       g_error_free (error);
       return;
@@ -2319,7 +2319,7 @@ gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube1 *iface,
 
   if (!gabble_tube_stream_accept (GABBLE_TUBE_IFACE (self), &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }

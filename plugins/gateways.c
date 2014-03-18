@@ -444,7 +444,7 @@ register_cb (GObject *source,
 
       DEBUG ("Failed to register with '%s': %s", pr->gateway,
           tp_error->message);
-      dbus_g_method_return_error (pr->context, tp_error);
+      g_dbus_method_invocation_return_gerror (pr->context, tp_error);
       pr->context = NULL;
       g_error_free (error);
       g_error_free (tp_error);
@@ -551,7 +551,7 @@ gateways_register (
 
 error:
   DEBUG ("%s", error->message);
-  dbus_g_method_return_error (context, error);
+  g_dbus_method_invocation_return_gerror (context, error);
   g_error_free (error);
 }
 

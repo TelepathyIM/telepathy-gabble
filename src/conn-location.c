@@ -135,7 +135,7 @@ request_location_reply_cb (GObject *source,
     {
       DEBUG ("fetching location failed: %s", wocky_error->message);
       gabble_set_tp_error_from_wocky (wocky_error, &tp_error);
-      dbus_g_method_return_error (ctx->context, tp_error);
+      g_dbus_method_invocation_return_gerror (ctx->context, tp_error);
       g_error_free (tp_error);
     }
   else
@@ -185,7 +185,7 @@ location_request_location (
 
   if (!tp_handle_is_valid (contact_handles, handle, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -295,7 +295,7 @@ set_location_sent_cb (GabbleConnection *conn,
       DEBUG ("SetLocation failed: %s", error->message);
 
       gabble_set_tp_error_from_wocky (error, &tp_error);
-      dbus_g_method_return_error (context, tp_error);
+      g_dbus_method_invocation_return_gerror (context, tp_error);
       g_error_free (tp_error);
       g_error_free (error);
     }
@@ -322,7 +322,7 @@ location_set_location (TpSvcConnectionInterfaceLocation1 *iface,
       GError error = { TP_ERROR, TP_ERROR_NOT_IMPLEMENTED,
           "Server does not support PEP, cannot publish geolocation" };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
       return;
     }
 
@@ -341,7 +341,7 @@ location_set_location (TpSvcConnectionInterfaceLocation1 *iface,
             &err))
         {
           DEBUG ("%s", err->message);
-          dbus_g_method_return_error (context, err);
+          g_dbus_method_invocation_return_gerror (context, err);
           g_error_free (err);
           goto out;
         }
@@ -353,7 +353,7 @@ location_set_location (TpSvcConnectionInterfaceLocation1 *iface,
       GError error = { TP_ERROR, TP_ERROR_NETWORK_ERROR,
           "Failed to send msg" };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
     }
 
 out:

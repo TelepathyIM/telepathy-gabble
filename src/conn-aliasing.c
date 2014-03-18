@@ -374,7 +374,7 @@ gabble_connection_request_aliases (TpSvcConnectionInterfaceAliasing1 *iface,
 
   if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -592,7 +592,7 @@ gabble_connection_set_aliases (TpSvcConnectionInterfaceAliasing1 *iface,
     }
   else
     {
-      dbus_g_method_return_error (context, first_error);
+      g_dbus_method_invocation_return_gerror (context, first_error);
       g_error_free (first_error);
     }
 }

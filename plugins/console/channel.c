@@ -292,7 +292,7 @@ return_from_send_iq (
 
   if (g_simple_async_result_propagate_error (simple, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
     }
   else
@@ -444,7 +444,7 @@ console_send_iq (
   else
     {
       DEBUG ("%s", error->message);
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
     }
 }
@@ -465,7 +465,7 @@ console_stanza_sent_cb (
     }
   else
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_clear_error (&error);
     }
 }
@@ -519,7 +519,7 @@ console_send_stanza (
   else
     {
       DEBUG ("%s", error->message);
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
     }
 

@@ -1676,7 +1676,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer1 *iface,
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Channel is not an incoming transfer");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1685,7 +1685,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer1 *iface,
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
         "State is not pending; cannot accept file");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1693,7 +1693,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer1 *iface,
   if (!check_address_and_access_control (self, address_type, access_control,
         access_control_param, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1704,7 +1704,7 @@ gabble_file_transfer_channel_accept_file (TpSvcChannelTypeFileTransfer1 *iface,
       DEBUG ("Could not set up local socket");
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Could not set up local socket");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1776,7 +1776,7 @@ gabble_file_transfer_channel_provide_file (
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Channel is not an outgoing transfer");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1786,7 +1786,7 @@ gabble_file_transfer_channel_provide_file (
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
         "State is not pending or accepted; cannot provide file");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1795,7 +1795,7 @@ gabble_file_transfer_channel_provide_file (
     {
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "ProvideFile has already been called for this channel");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1803,7 +1803,7 @@ gabble_file_transfer_channel_provide_file (
   if (!check_address_and_access_control (self, address_type, access_control,
         access_control_param, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -1814,7 +1814,7 @@ gabble_file_transfer_channel_provide_file (
       DEBUG ("Could not set up local socket");
       g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Could not set up local socket");
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }

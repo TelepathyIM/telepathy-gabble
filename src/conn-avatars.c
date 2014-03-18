@@ -180,7 +180,7 @@ gabble_connection_get_known_avatar_tokens (TpSvcConnectionInterfaceAvatars1 *ifa
 
   if (!tp_handles_are_valid (contact_handles, contacts, FALSE, &err))
     {
-      dbus_g_method_return_error (invocation, err);
+      g_dbus_method_invocation_return_gerror (invocation, err);
       g_error_free (err);
       return;
     }
@@ -384,7 +384,7 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars1 *iface,
 
   if (!tp_handles_are_valid (contacts_repo, contacts, FALSE, &error))
     {
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_error_free (error);
       return;
     }
@@ -463,7 +463,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
             vcard_error->code == WOCKY_XMPP_ERROR_NOT_ACCEPTABLE)
           tp_error.code = TP_ERROR_INVALID_ARGUMENT;
 
-      dbus_g_method_return_error (ctx->invocation, &tp_error);
+      g_dbus_method_invocation_return_gerror (ctx->invocation, &tp_error);
     }
   else
     {
@@ -491,7 +491,7 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
         }
       else
         {
-          dbus_g_method_return_error (ctx->invocation, error);
+          g_dbus_method_invocation_return_gerror (ctx->invocation, error);
           g_error_free (error);
         }
     }

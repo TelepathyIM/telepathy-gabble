@@ -504,7 +504,7 @@ gabble_server_sasl_channel_raise (GDBusMethodInvocation *context,
   error = g_error_new_valist (TP_ERROR, code, message, ap);
   va_end (ap);
 
-  dbus_g_method_return_error (context, error);
+  g_dbus_method_invocation_return_gerror (context, error);
   g_error_free (error);
 }
 

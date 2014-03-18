@@ -1552,7 +1552,7 @@ return_from_set_subject (
     tp_svc_channel_interface_subject1_return_from_set_subject (
         priv->set_subject_context);
   else
-    dbus_g_method_return_error (priv->set_subject_context, error);
+    g_dbus_method_invocation_return_gerror (priv->set_subject_context, error);
 
   priv->set_subject_context = NULL;
   tp_clear_pointer (&priv->set_subject_stanza_id, g_free);
@@ -3238,7 +3238,7 @@ gabble_muc_channel_provide_password (TpSvcChannelInterfacePassword1 *iface,
     {
       GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "password cannot be provided in the current state" };
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
     }
   else
     {
@@ -4179,14 +4179,14 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject1 *iface,
       GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Steady on. You're not in the room yet" };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
     }
   else if (priv->state > MUC_STATE_JOINED || priv->closing)
     {
       GError error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
           "Already left/leaving the room" };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
     }
   else if (priv->set_subject_context != NULL)
     {
@@ -4194,7 +4194,7 @@ gabble_muc_channel_set_subject (TpSvcChannelInterfaceSubject1 *iface,
           "Hey! Stop changing the subject! (Your last request is still in "
           "flight.)" };
 
-      dbus_g_method_return_error (context, &error);
+      g_dbus_method_invocation_return_gerror (context, &error);
     }
   else
     {

@@ -186,7 +186,7 @@ create_sidecar_cb (
     }
   else
     {
-      g_list_foreach (contexts, (GFunc) dbus_g_method_return_error, error);
+      g_list_foreach (contexts, (GFunc) g_dbus_method_invocation_return_gerror, error);
     }
 
   g_hash_table_remove (ctx->conn->pending_sidecars, ctx->sidecar_iface);
@@ -216,7 +216,7 @@ gabble_connection_ensure_sidecar (
           "This connection has already disconnected" };
 
       DEBUG ("already disconnected, declining request for %s", sidecar_iface);
-      dbus_g_method_return_error (context, &e);
+      g_dbus_method_invocation_return_gerror (context, &e);
       return;
     }
 
@@ -225,7 +225,7 @@ gabble_connection_ensure_sidecar (
       error->domain = TP_ERROR;
       error->code = TP_ERROR_INVALID_ARGUMENT;
       DEBUG ("%s is malformed: %s", sidecar_iface, error->message);
-      dbus_g_method_return_error (context, error);
+      g_dbus_method_invocation_return_gerror (context, error);
       g_clear_error (&error);
       return;
     }
@@ -312,7 +312,7 @@ sidecars_conn_status_changed_cb (
 
           DEBUG ("failing all %u requests for %s", g_list_length (contexts),
               sidecar_iface);
-          g_list_foreach (contexts, (GFunc) dbus_g_method_return_error, error);
+          g_list_foreach (contexts, (GFunc) g_dbus_method_invocation_return_gerror, error);
           g_error_free (error);
         }
 

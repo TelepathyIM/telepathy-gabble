@@ -1452,7 +1452,8 @@ provide_password_return_if_pending (GabbleMucChannel *chan, gboolean success)
 
   if (priv->password_ctx)
     {
-      dbus_g_method_return (priv->password_ctx, success);
+      g_dbus_method_invocation_return_value (priv->password_ctx,
+          g_variant_new ("(b)", success));
       priv->password_ctx = NULL;
     }
 

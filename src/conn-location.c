@@ -286,7 +286,7 @@ set_location_sent_cb (GabbleConnection *conn,
 
   if (!wocky_stanza_extract_errors (reply_msg, NULL, &error, NULL, NULL))
     {
-      dbus_g_method_return (context);
+      g_dbus_method_invocation_return_value (context, NULL);
     }
   else
     {

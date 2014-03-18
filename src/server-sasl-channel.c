@@ -556,7 +556,7 @@ gabble_server_sasl_channel_start_mechanism_with_data (
         }
 
       change_current_state (self, TP_SASL_STATUS_IN_PROGRESS);
-      dbus_g_method_return (context);
+      g_dbus_method_invocation_return_value (context, NULL);
 
       start_data =
         wocky_auth_registry_start_data_new (in_Mechanism, initial_data);

@@ -1,3 +1,23 @@
+telepathy-gabble 0.18.2 (2014-03-20)
+====================================
+
+The “mithril boxing gloves” release.
+
+Fixes:
+
+• update Wocky:
+  · don't try to cancel a source ID twice, which issues a critical warning
+    in GLib 2.39
+  · fix failure to build with recent (Markdown-based) gtk-doc
+
+• plugin loader: don't crash if g_dir_open() fails twice (fd.o #66085, Will)
+
+• fix a crash in 1-1 Tubes on 64-bit machines (fd.o #70038, Guillaume)
+
+• fix enum cast warnings under clang (fd.o #70038, Guillaume)
+
+• add a regression test for fd.o #68829 (Simon)
+
 telepathy-gabble 0.18.1 (2013-09-06)
 ====================================
 

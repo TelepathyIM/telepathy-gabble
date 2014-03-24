@@ -182,13 +182,13 @@ def test(q, bus, conn, stream, bytestream_cls,
     assertEquals(conn_id, e.args[0])
     assertEquals(cs.CONNECTION_REFUSED, e.args[1])
 
-    new_tube_chan.Close()
+    new_tube_chan.Close(dbus_interface=cs.CHANNEL)
 
     # Receive a tube offer from Bob
     (new_tube_chan, new_tube_iface) = \
         receive_tube_offer(q, bus, conn, stream)
     # Just close the tube
-    new_tube_chan.Close()
+    new_tube_chan.Close(dbus_interface=cs.CHANNEL)
 
     q.expect_many(
         EventPattern('dbus-signal', signal='Closed'),

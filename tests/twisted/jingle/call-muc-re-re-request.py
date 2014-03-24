@@ -34,7 +34,7 @@ def run_cancel_test(q, bus, conn, stream):
         check_and_accept_offer (q, bus, conn, content, md)
 
         # Accept the channel
-        channel.Accept()
+        channel.Accept(dbus_interface=cs.CHANNEL_TYPE_CALL)
 
         def preparing(e):
             node = xpath.queryForNodes("/presence/muji/preparing", e.stanza)
@@ -52,7 +52,7 @@ def run_cancel_test(q, bus, conn, stream):
         q.expect('stream-presence', to = muc + "/test", predicate=notpreparing)
 
         if x % 2 == 0:
-            channel.Close()
+            channel.Close(dbus_interface=cs.CHANNEL)
 
 if __name__ == '__main__':
     exec_test (run_cancel_test)

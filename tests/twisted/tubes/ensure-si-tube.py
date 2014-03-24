@@ -110,7 +110,7 @@ def test(q, bus, conn, stream):
 #    assert not yours
 
     chan = bus.get_object(conn.bus_name, chan_path)
-    chan.Close()
+    chan.Close(dbus_interface=cs.CHANNEL)
 
     # Now let's try ensuring a new tube.
     call_async(q, conn.Requests, 'EnsureChannel',
@@ -133,7 +133,7 @@ def test(q, bus, conn, stream):
     assert props == emitted_props, (props, emitted_props)
 
     chan = bus.get_object(conn.bus_name, path)
-    chan.Close()
+    chan.Close(dbus_interface=cs.CHANNEL)
 
 if __name__ == '__main__':
     exec_test(test, do_connect=False)

@@ -118,7 +118,7 @@ def test(q, bus, conn, stream):
     q.expect('dbus-signal', signal='ChannelClosed')
 
     # close the text channel
-    text_chan.Close()
+    text_chan.Close(dbus_interface=cs.CHANNEL)
 
 if __name__ == '__main__':
     exec_test(test)

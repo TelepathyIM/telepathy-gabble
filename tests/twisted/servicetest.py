@@ -577,13 +577,32 @@ def call_async(test, proxy, method, *args, **kw):
     method_proxy(*args, **kw)
 
 def sync_dbus(bus, q, proxy):
-    # Dummy D-Bus method call. We can't use DBus.Peer.Ping() because libdbus
-    # replies to that message immediately, rather than handing it up to
-    # dbus-glib and thence the application, which means that Ping()ing the
-    # application doesn't ensure that it's processed all D-Bus messages prior
-    # to our ping.
-    call_async(q, dbus.Interface(proxy, cs.TESTS), 'DummySyncDBus')
-    q.expect('dbus-error', method='DummySyncDBus')
+    # We need to use functionality that is actually implemented by tp-glib,
+    # because unimplemented and built-in functionality in GDBus can jump
+    # the queue. <https://bugzilla.gnome.org/show_bug.cgi?id=726259>
+
+    if proxy.object_path == cs.AM_PATH:
+        call_async(q, dbus.Interface(proxy, cs.PROPERTIES_IFACE),
+                'Get', cs.AM, 'Interfaces')
+        q.expect('dbus-return', method='Get')
+    elif proxy.object_path.startswith(cs.ACCOUNT_PATH_PREFIX):
+        call_async(q, dbus.Interface(proxy, cs.PROPERTIES_IFACE),
+                'Get', cs.ACCOUNT, 'Enabled')
+        q.expect('dbus-return', method='Get')
+    elif proxy.object_path.startswith('/' + cs.CONN.replace('.', '/') + '/'):
+        # It could be a Connection or a Channel. Assume it's a Connection
+        # for now, that's what all the CM tests use in practice
+        call_async(q, dbus.Interface(proxy, cs.PROPERTIES_IFACE),
+                'Get', cs.CONN, 'Status')
+        q.expect('dbus-return', method='Get')
+    elif proxy.object_path.startswith('/' + cs.CM.replace('.', '/') + '/'):
+        # It could be a ConnectionManager or a Protocol. Assume it's a
+        # ConnectionManager for now
+        call_async(q, dbus.Interface(proxy, cs.PROPERTIES_IFACE),
+                'Get', cs.CM, 'Protocols')
+        q.expect('dbus-return', method='Get')
+    else:
+        raise AssertionError("don't know how to sync %s" % proxy.object_path)
 
 class ProxyWrapper:
     def __init__(self, object, default, others={}):

@@ -8,6 +8,9 @@ from gabbletest import exec_test, acknowledge_iq, expect_and_handle_get_vcard, s
 import constants as cs
 
 def test(q, bus, conn, stream):
+    cm = bus.get_object(cs.CM + '.gabble',
+            '/' + cs.CM.replace('.', '/') + '/gabble')
+
     expect_and_handle_get_vcard(q, stream)
     sync_stream(q, stream)
 
@@ -23,7 +26,7 @@ def test(q, bus, conn, stream):
 
     q.expect('dbus-error', method='SetAvatar', name=cs.NOT_AVAILABLE)
     q.expect('dbus-error', method='SetAvatar', name=cs.NOT_AVAILABLE)
-    sync_dbus(bus, q, conn)
+    sync_dbus(bus, q, cm)
 
 if __name__ == '__main__':
     exec_test(test)

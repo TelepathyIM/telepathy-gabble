@@ -10,6 +10,9 @@ from gabbletest import (exec_test, make_result_iq, acknowledge_iq,
 import constants as cs
 
 def test(q, bus, conn, stream):
+    cm = bus.get_object(cs.CM + '.gabble',
+            '/' + cs.CM.replace('.', '/') + '/gabble')
+
     event = q.expect('stream-iq', to=None, query_ns='vcard-temp',
             query_name='vCard')
 
@@ -31,7 +34,7 @@ def test(q, bus, conn, stream):
     # was no longer there, *crash*.
 
     # check that Gabble hasn't crashed
-    sync_dbus(bus, q, conn)
+    sync_dbus(bus, q, cm)
 
 if __name__ == '__main__':
     exec_test(test)

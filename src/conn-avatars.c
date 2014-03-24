@@ -427,6 +427,7 @@ struct _set_avatar_ctx {
   GabbleConnection *conn;
   GDBusMethodInvocation *invocation;
   GString *avatar;
+  gboolean is_clear;
 };
 
 
@@ -483,8 +484,13 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
 
       if (conn_presence_signal_own_presence (ctx->conn, NULL, &error))
         {
-          tp_svc_connection_interface_avatars1_return_from_set_avatar (
-              ctx->invocation, presence->avatar_sha1);
+          if (ctx->is_clear)
+            tp_svc_connection_interface_avatars1_return_from_clear_avatar (
+                ctx->invocation);
+          else
+            tp_svc_connection_interface_avatars1_return_from_set_avatar (
+                ctx->invocation, presence->avatar_sha1);
+
           tp_svc_connection_interface_avatars1_emit_avatar_updated (
               ctx->conn, tp_base_connection_get_self_handle (base),
               presence->avatar_sha1);
@@ -499,21 +505,11 @@ _set_avatar_cb2 (GabbleVCardManager *manager,
   _set_avatar_ctx_free (ctx);
 }
 
-
-/**
- * gabble_connection_set_avatar
- *
- * Implements D-Bus method SetAvatar
- * on interface Connection.Interface.Avatars
- *
- * @context: The D-Bus invocation context to use to return values
- *           or throw an error.
- */
 static void
-gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
-                              const GArray *avatar,
-                              const gchar *mime_type,
-                              GDBusMethodInvocation *context)
+set_avatar_internal (TpSvcConnectionInterfaceAvatars1 *iface,
+    const GArray *avatar,
+    const gchar *mime_type,
+    GDBusMethodInvocation *context)
 {
   GabbleConnection *self = GABBLE_CONNECTION (iface);
   TpBaseConnection *base = (TpBaseConnection *) self;
@@ -527,6 +523,7 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
   ctx = g_new0 (struct _set_avatar_ctx, 1);
   ctx->conn = self;
   ctx->invocation = context;
+  ctx->is_clear = (avatar == NULL);
 
   if (avatar != NULL && avatar->len > 0)
     {
@@ -567,6 +564,15 @@ gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
       edits);
 }
 
+static void
+gabble_connection_set_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
+                              const GArray *avatar,
+                              const gchar *mime_type,
+                              GDBusMethodInvocation *context)
+{
+  g_assert (avatar != NULL);
+  set_avatar_internal (iface, avatar, mime_type, context);
+}
 
 /**
  * gabble_connection_clear_avatar
@@ -581,7 +587,7 @@ static void
 gabble_connection_clear_avatar (TpSvcConnectionInterfaceAvatars1 *iface,
                                 GDBusMethodInvocation *context)
 {
-  gabble_connection_set_avatar (iface, NULL, NULL, context);
+  set_avatar_internal (iface, NULL, NULL, context);
 }
 
 gboolean

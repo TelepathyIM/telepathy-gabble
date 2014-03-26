@@ -260,7 +260,7 @@ nobase_dist_twistedtests_DATA = \
 	$(NULL)
 nobase_nodist_twistedtests_DATA = \
 	config.py \
-	gabble-twisted-tests.list \
+	twisted-tests.list \
 	$(installed_conf_files) \
 	$(service_files)
 	$(NULL)
@@ -384,7 +384,7 @@ check_misc_sources = $(TESTS)
 # the following used to be in tools/
 include $(top_srcdir)/tools/check-coding-style.mk
 
-gabble-twisted-tests.list: Makefile
+twisted-tests.list: Makefile
 	$(AM_V_GEN)echo $(TWISTED_TESTS) > $@
 
 run-test.sh: run-test.sh.in Makefile
@@ -444,7 +444,7 @@ BUILT_SOURCES += \
 	$(installed_conf_files) \
 	$(uninstalled_service_files) \
 	$(uninstalled_conf_files) \
-	gabble-twisted-tests.list \
+	twisted-tests.list \
 	run-test.sh \
 	tools/exec-with-log.sh \
 	tools/run-gabble.sh \

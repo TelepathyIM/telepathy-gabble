@@ -37,7 +37,7 @@ fi
 if [ -n "$1" ] ; then
   list="$1"
 else
-  list=$(cat "${G_TEST_BUILDDIR}"/gabble-twisted-tests.list)
+  list=$(cat "${G_TEST_BUILDDIR}"/twisted-tests.list)
 fi
 
 any_failed=0

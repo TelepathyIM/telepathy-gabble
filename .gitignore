@@ -85,7 +85,7 @@ cscope.out
 /tests/test-presence
 /tests/test-tp-error-from-wocky
 /tests/twisted/config.py
-/tests/twisted/gabble-twisted-tests.list
+/tests/twisted/twisted-tests.list
 /tests/twisted/run-test.sh
 /tests/twisted/telepathy-gabble-debug
 /tests/twisted/tools/core.*

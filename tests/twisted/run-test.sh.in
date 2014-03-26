@@ -1,6 +1,6 @@
 #!/bin/sh
 
-if test "x$GABBLE_TEST_UNINSTALLED" = x; then
+if test "x$CHECK_TWISTED_UNINSTALLED" = x; then
   script_fullname=`readlink -e "@twistedtestsdir@/run-test.sh"`
   if [ `readlink -e "$0"` != "$script_fullname" ] ; then
     echo "This script is meant to be installed at $script_fullname" >&2

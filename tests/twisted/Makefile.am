@@ -283,7 +283,7 @@ if WANT_TWISTED_TESTS
 	  sleep=$(CHECK_TWISTED_SLEEP); \
 	fi; \
 	failed=0; \
-	GABBLE_TEST_UNINSTALLED=1 \
+	CHECK_TWISTED_UNINSTALLED=1 \
 	  CHECK_TWISTED_SLEEP="--sleep=$$sleep" \
 	  G_TEST_SRCDIR=@abs_srcdir@ \
 	  G_TEST_BUILDDIR=@abs_builddir@ \

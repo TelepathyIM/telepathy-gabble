@@ -241,10 +241,11 @@ TWISTED_OTHER_FILES = \
 	tubes/tubetestutil.py \
 	$(NULL)
 
+twistedtestsdir = @gabbletestsdir@/twisted
+
 if ENABLE_INSTALLED_TESTS
 # Install files in each directory. They could be tests, pristine data files,
 # scripts or built source
-twistedtestsdir = @gabbletestsdir@/twisted
 nobase_nodist_twistedtests_SCRIPTS = \
 	run-test.sh \
 	tools/exec-with-log.sh \
@@ -284,8 +285,8 @@ if WANT_TWISTED_TESTS
 	failed=0; \
 	GABBLE_TEST_UNINSTALLED=1 \
 	  GABBLE_TEST_SLEEP="--sleep=$$sleep" \
-	  GABBLE_ABS_TOP_SRCDIR=@abs_top_srcdir@ \
-	  GABBLE_ABS_TOP_BUILDDIR=@abs_top_builddir@ \
+	  G_TEST_SRCDIR=@abs_srcdir@ \
+	  G_TEST_BUILDDIR=@abs_builddir@ \
 	  sh run-test.sh "$(TWISTED_TESTS)" || failed=1; \
 	if test -e tools/core; then\
 		echo -e "\033[0;31;1mCore dump exists: tools/core\033[0m";\
@@ -387,7 +388,7 @@ gabble-twisted-tests.list: Makefile
 	$(AM_V_GEN)echo $(TWISTED_TESTS) > $@
 
 run-test.sh: run-test.sh.in Makefile
-	$(AM_V_GEN)sed -e "s|[@]gabbletestsdir[@]|@gabbletestsdir@|g" \
+	$(AM_V_GEN)sed -e "s|[@]twistedtestsdir[@]|${twistedtestsdir}|g" \
 		-e "s|[@]PYTHON[@]|$(PYTHON)|g" \
 		-e "s|[@]TEST_PYTHON[@]|$(TEST_PYTHON)|g" \
 		 $< > $@

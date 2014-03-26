@@ -1,58 +1,59 @@
 #!/bin/sh
 
 if test "x$GABBLE_TEST_UNINSTALLED" = x; then
-  script_fullname=`readlink -e "@gabbletestsdir@/twisted/run-test.sh"`
+  script_fullname=`readlink -e "@twistedtestsdir@/run-test.sh"`
   if [ `readlink -e "$0"` != "$script_fullname" ] ; then
     echo "This script is meant to be installed at $script_fullname" >&2
     exit 1
   fi
 
-  test_src="@gabbletestsdir@"
-  test_build="@gabbletestsdir@"
-  config_file="@gabbletestsdir@/twisted/tools/servicedir/tmp-session-bus.conf"
+  G_TEST_SRCDIR="@twistedtestsdir@"
+  export G_TEST_SRCDIR
+  G_TEST_BUILDDIR="@twistedtestsdir@"
+  export G_TEST_BUILDDIR
 
-  PYTHONPATH="@gabbletestsdir@/twisted:@gabbletestsdir@/twisted/jingle"
+  config_file="@twistedtestsdir@/tools/servicedir/tmp-session-bus.conf"
+
+  PYTHONPATH="@twistedtestsdir@:@twistedtestsdir@/jingle"
   export PYTHONPATH
 
-  GABBLE_TWISTED_PATH="@gabbletestsdir@/twisted"
+  GABBLE_TWISTED_PATH="@twistedtestsdir@"
   export GABBLE_TWISTED_PATH
 else
-  if test -z "$GABBLE_ABS_TOP_SRCDIR"; then
-    echo "GABBLE_ABS_TOP_SRCDIR must be set" >&2
+  if test -z "$G_TEST_SRCDIR"; then
+    echo "G_TEST_SRCDIR must be set" >&2
     exit 1
   fi
-  if test -z "$GABBLE_ABS_TOP_BUILDDIR"; then
-    echo "GABBLE_ABS_TOP_BUILDDIR must be set" >&2
+  if test -z "$G_TEST_BUILDDIR"; then
+    echo "G_TEST_BUILDDIR must be set" >&2
     exit 1
   fi
 
-  test_src="${GABBLE_ABS_TOP_SRCDIR}/tests"
-  test_build="${GABBLE_ABS_TOP_BUILDDIR}/tests"
-  config_file="${test_build}/twisted/tools/servicedir-uninstalled/tmp-session-bus.conf"
+  config_file="${G_TEST_BUILDDIR}/tools/servicedir-uninstalled/tmp-session-bus.conf"
 
-  PYTHONPATH="${test_src}/twisted:${test_build}/twisted"
-  PYTHONPATH="$PYTHONPATH:${test_src}/twisted/jingle"
-  PYTHONPATH="$PYTHONPATH:${test_build}/twisted/jingle"
+  PYTHONPATH="${G_TEST_SRCDIR}:${G_TEST_BUILDDIR}"
+  PYTHONPATH="$PYTHONPATH:${G_TEST_SRCDIR}/jingle"
+  PYTHONPATH="$PYTHONPATH:${G_TEST_BUILDDIR}/jingle"
   export PYTHONPATH
 
-  GABBLE_TWISTED_PATH="${test_src}/twisted"
+  GABBLE_TWISTED_PATH="${G_TEST_SRCDIR}"
   export GABBLE_TWISTED_PATH
 fi
 
 if [ -n "$1" ] ; then
   list="$1"
 else
-  list=$(cat "${test_build}"/twisted/gabble-twisted-tests.list)
+  list=$(cat "${G_TEST_BUILDDIR}"/gabble-twisted-tests.list)
 fi
 
 any_failed=0
 for i in $list ; do
   echo "Testing $i ..."
-  sh "${test_src}/twisted/tools/with-session-bus.sh" \
+  sh "${G_TEST_SRCDIR}/tools/with-session-bus.sh" \
     ${GABBLE_TEST_SLEEP} \
     --config-file="${config_file}" \
     -- \
-    @TEST_PYTHON@ -u "${test_src}/twisted/$i"
+    @TEST_PYTHON@ -u "${G_TEST_SRCDIR}/$i"
   e=$?
   case "$e" in
     (0)

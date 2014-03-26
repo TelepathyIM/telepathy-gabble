@@ -44,7 +44,7 @@ any_failed=0
 for i in $list ; do
   echo "Testing $i ..."
   sh "${G_TEST_SRCDIR}/tools/with-session-bus.sh" \
-    ${GABBLE_TEST_SLEEP} \
+    ${CHECK_TWISTED_SLEEP} \
     --config-file="${config_file}" \
     -- \
     @TEST_PYTHON@ -u "${G_TEST_SRCDIR}/$i"

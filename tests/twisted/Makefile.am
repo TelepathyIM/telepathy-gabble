@@ -284,7 +284,7 @@ if WANT_TWISTED_TESTS
 	fi; \
 	failed=0; \
 	GABBLE_TEST_UNINSTALLED=1 \
-	  GABBLE_TEST_SLEEP="--sleep=$$sleep" \
+	  CHECK_TWISTED_SLEEP="--sleep=$$sleep" \
 	  G_TEST_SRCDIR=@abs_srcdir@ \
 	  G_TEST_BUILDDIR=@abs_builddir@ \
 	  sh run-test.sh "$(TWISTED_TESTS)" || failed=1; \

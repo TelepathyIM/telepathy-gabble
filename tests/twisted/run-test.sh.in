@@ -16,9 +16,6 @@ if test "x$GABBLE_TEST_UNINSTALLED" = x; then
 
   PYTHONPATH="@twistedtestsdir@:@twistedtestsdir@/jingle"
   export PYTHONPATH
-
-  GABBLE_TWISTED_PATH="@twistedtestsdir@"
-  export GABBLE_TWISTED_PATH
 else
   if test -z "$G_TEST_SRCDIR"; then
     echo "G_TEST_SRCDIR must be set" >&2
@@ -35,9 +32,6 @@ else
   PYTHONPATH="$PYTHONPATH:${G_TEST_SRCDIR}/jingle"
   PYTHONPATH="$PYTHONPATH:${G_TEST_BUILDDIR}/jingle"
   export PYTHONPATH
-
-  GABBLE_TWISTED_PATH="${G_TEST_SRCDIR}"
-  export GABBLE_TWISTED_PATH
 fi
 
 if [ -n "$1" ] ; then

@@ -1,9 +1,25 @@
 #!/bin/sh
 
+# This script assumes that it is run in a temporary directory where it can
+# create and delete subdirectories for files, logs, etc., but other users
+# cannot write (for instance, /tmp is unsuitable, but
+# the directory created by `mktemp -d /tmp/test.XXXXXXXXXX` is fine).
+#
+# During "make check" or "make installcheck" it runs in
+# ${top_builddir}/tests/twisted.
+#
+# During installed testing, the test environment must run it in a
+# suitable location.
+
+set -e
+
+CHECK_TWISTED_CURDIR="`pwd`"
+export CHECK_TWISTED_CURDIR
+
 if test "x$CHECK_TWISTED_UNINSTALLED" = x; then
   script_fullname=`readlink -e "@twistedtestsdir@/run-test.sh"`
   if [ `readlink -e "$0"` != "$script_fullname" ] ; then
-    echo "This script is meant to be installed at $script_fullname" >&2
+    echo "Bail out! This script is meant to be installed at $script_fullname"
     exit 1
   fi
 
@@ -11,18 +27,17 @@ if test "x$CHECK_TWISTED_UNINSTALLED" = x; then
   export G_TEST_SRCDIR
   G_TEST_BUILDDIR="@twistedtestsdir@"
   export G_TEST_BUILDDIR
-
   config_file="@twistedtestsdir@/tools/servicedir/tmp-session-bus.conf"
 
   PYTHONPATH="@twistedtestsdir@:@twistedtestsdir@/jingle"
   export PYTHONPATH
 else
-  if test -z "$G_TEST_SRCDIR"; then
-    echo "G_TEST_SRCDIR must be set" >&2
+  if ! test -d "$G_TEST_SRCDIR"; then
+    echo "Bail out! G_TEST_SRCDIR must be set and absolute"
     exit 1
   fi
-  if test -z "$G_TEST_BUILDDIR"; then
-    echo "G_TEST_BUILDDIR must be set" >&2
+  if ! test -d "$G_TEST_BUILDDIR"; then
+    echo "Bail out! G_TEST_BUILDDIR must be set and absolute"
     exit 1
   fi
 
@@ -34,33 +49,95 @@ else
   export PYTHONPATH
 fi
 
+GABBLE_DEBUG=all
+export GABBLE_DEBUG
+
+XDG_CONFIG_DIRS="${G_TEST_SRCDIR}"
+export XDG_CONFIG_DIRS
+
 if [ -n "$1" ] ; then
   list="$1"
 else
   list=$(cat "${G_TEST_BUILDDIR}"/twisted-tests.list)
 fi
 
-any_failed=0
+n=0
 for i in $list ; do
-  echo "Testing $i ..."
+  n=$(( $n + 1 ))
+done
+
+echo "1..$n"
+
+i=0
+n_failed=0
+for t in $list ; do
+  i=$(( $i + 1 ))
+  echo "# Testing $i/$n: $t ..."
+
+  tmp="${CHECK_TWISTED_CURDIR}/tmp-`echo $t | tr ./ __`"
+  rm -fr "$tmp"
+  mkdir "$tmp"
+
+  CHECK_TWISTED_LOG_DIR="${tmp}"
+  export CHECK_TWISTED_LOG_DIR
+  XDG_CONFIG_HOME="${tmp}/config"
+  export XDG_CONFIG_HOME
+  XDG_DATA_HOME="${tmp}/localshare"
+  export XDG_DATA_HOME
+  XDG_DATA_DIRS="${tmp}/share:${G_TEST_SRCDIR}:${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+  export XDG_DATA_DIRS
+  XDG_CACHE_HOME="${tmp}/cache"
+  export XDG_CACHE_HOME
+  XDG_CACHE_DIR="${tmp}/cache"
+  export XDG_CACHE_DIR
+
+  CHECK_TWISTED_VERBOSE=1
+  export CHECK_TWISTED_VERBOSE
+
+  e=0
   sh "${G_TEST_SRCDIR}/tools/with-session-bus.sh" \
     ${CHECK_TWISTED_SLEEP} \
     --config-file="${config_file}" \
     -- \
-    @TEST_PYTHON@ -u "${G_TEST_SRCDIR}/$i"
-  e=$?
+    @TEST_PYTHON@ -u "${G_TEST_SRCDIR}/$t" \
+    > "$tmp"/test.log 2>&1 || e=$?
   case "$e" in
     (0)
-      echo "PASS: $i"
+      echo "ok $i - $t"
+      if test -z "$CHECK_TWISTED_KEEP_TEMP"; then
+        rm -fr "$tmp"
+      fi
       ;;
     (77)
-      echo "SKIP: $i"
+      echo "ok $i # SKIP $t"
+      (
+        cd $tmp && for x in *.log; do
+          echo "# ===== log file: $x ====="
+          sed 's/^/# /' "$x"
+        done
+        echo "# ===== end of log files for $t ====="
+      )
+      if test -z "$CHECK_TWISTED_KEEP_TEMP"; then
+        rm -fr "$tmp"
+      fi
       ;;
     (*)
-      any_failed=1
-      echo "FAIL: $i ($e)"
+      n_failed=$(( $n_failed + 1 ))
+      echo "not ok $i - $t ($e)"
+      (
+        cd $tmp && for x in *.log; do
+          echo "# ===== log file: $x ====="
+          sed 's/^/# /' "$x"
+        done
+        echo "# ===== end of log files for $t ====="
+      )
       ;;
   esac
 done
 
-exit $any_failed
+if test $n_failed != 0; then
+  echo "# Tests run: $n; tests failed: $n_failed"
+  exit 1
+else
+  exit 0
+fi

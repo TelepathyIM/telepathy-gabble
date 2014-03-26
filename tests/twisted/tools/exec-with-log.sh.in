@@ -2,6 +2,11 @@
 
 cd "@abs_top_builddir@/tests/twisted/tools"
 
+if test -z "$CHECK_TWISTED_LOG_DIR"; then
+        echo "CHECK_TWISTED_LOG_DIR must be set"
+        exit 1
+fi
+
 GABBLE_DEBUG=all GIBBER_DEBUG=all WOCKY_DEBUG=all
 export GABBLE_DEBUG
 export GIBBER_DEBUG
@@ -17,7 +22,7 @@ export WOCKY_CAPS_CACHE_SIZE
 G_MESSAGES_DEBUG=all
 export G_MESSAGES_DEBUG
 ulimit -c unlimited
-exec >> gabble-testing.log 2>&1
+exec > "${CHECK_TWISTED_LOG_DIR}"/gabble-testing.log 2>&1
 
 G_SLICE=debug-blocks
 export G_SLICE

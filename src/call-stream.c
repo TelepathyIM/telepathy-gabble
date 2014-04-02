@@ -264,7 +264,7 @@ _hook_up_endpoint (GabbleCallStream *self,
 {
   TpBaseCallStream *base = (TpBaseCallStream *) self;
   TpBaseConnection *conn = tp_base_call_stream_get_connection (base);
-  TpDBusDaemon *bus = tp_base_connection_get_dbus_daemon (conn);
+  GDBusConnection *bus = tp_base_connection_get_dbus_connection (conn);
   TpCallStreamEndpoint *endpoint;
   TpStreamTransportType type = 0;
   GPtrArray *tp_candidates;

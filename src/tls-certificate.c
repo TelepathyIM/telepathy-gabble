@@ -47,7 +47,7 @@ struct _GabbleTLSCertificatePrivate {
   GPtrArray *rejections;
   GPtrArray *cert_data;
 
-  TpDBusDaemon *daemon;
+  GDBusConnection *dbus_connection;
 
   gboolean dispose_has_run;
 };
@@ -60,7 +60,7 @@ enum {
   PROP_CERTIFICATE_CHAIN_DATA,
 
   /* not exported */
-  PROP_DBUS_DAEMON,
+  PROP_DBUS_CONNECTION,
 
   NUM_PROPERTIES
 };
@@ -115,8 +115,8 @@ gabble_tls_certificate_set_property (GObject *object,
     case PROP_CERTIFICATE_CHAIN_DATA:
       self->priv->cert_data = g_value_dup_boxed (value);
       break;
-    case PROP_DBUS_DAEMON:
-      self->priv->daemon = g_value_dup_object (value);
+    case PROP_DBUS_CONNECTION:
+      self->priv->dbus_connection = g_value_dup_object (value);
       break;
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, value);
@@ -149,7 +149,7 @@ gabble_tls_certificate_dispose (GObject *object)
 
   self->priv->dispose_has_run = TRUE;
 
-  tp_clear_object (&self->priv->daemon);
+  g_clear_object (&self->priv->dbus_connection);
 
   G_OBJECT_CLASS (gabble_tls_certificate_parent_class)->dispose (object);
 }
@@ -165,7 +165,7 @@ gabble_tls_certificate_constructed (GObject *object)
     chain_up (object);
 
   /* register the certificate on the bus */
-  tp_dbus_daemon_register_object (self->priv->daemon,
+  tp_dbus_connection_register_object (self->priv->dbus_connection,
       self->priv->object_path, self);
 }
 
@@ -242,12 +242,11 @@ gabble_tls_certificate_class_init (GabbleTLSCertificateClass *klass)
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (oclass, PROP_CERTIFICATE_CHAIN_DATA, pspec);
 
-  pspec = g_param_spec_object ("dbus-daemon",
-      "The DBus daemon connection",
-      "The connection to the DBus daemon owning the CM",
-      TP_TYPE_DBUS_DAEMON,
+  pspec = g_param_spec_object ("dbus-connection",
+      "D-Bus connection", "D-Bus connection",
+      G_TYPE_DBUS_CONNECTION,
       G_PARAM_WRITABLE | G_PARAM_CONSTRUCT_ONLY | G_PARAM_STATIC_STRINGS);
-  g_object_class_install_property (oclass, PROP_DBUS_DAEMON, pspec);
+  g_object_class_install_property (oclass, PROP_DBUS_CONNECTION, pspec);
 
   klass->dbus_props_class.interfaces = prop_interfaces;
   tp_dbus_properties_mixin_class_init (oclass,

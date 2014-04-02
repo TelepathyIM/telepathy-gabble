@@ -174,9 +174,6 @@ struct _GabbleConnection {
     TpBaseConnection parent;
     TpPresenceMixin presence;
 
-    /* DBus daemon instance */
-    TpDBusDaemon *daemon;
-
     WockySession *session;
 
     /* channel factories borrowed from TpBaseConnection's list */

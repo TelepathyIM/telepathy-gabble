@@ -195,7 +195,7 @@ gabble_server_tls_channel_constructed (GObject *object)
       "object-path", cert_object_path,
       "certificate-chain-data", certificates,
       "certificate-type", cert_type_to_str (cert_type),
-      "dbus-daemon", GABBLE_CONNECTION (base_conn)->daemon,
+      "dbus-connection", tp_base_connection_get_dbus_connection (base_conn),
       NULL);
   self->priv->server_cert_path = cert_object_path;
 

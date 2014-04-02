@@ -150,7 +150,7 @@ gabble_call_content_new_offer (GabbleCallContent *self,
 
   /* FIXME: no idea... */
   md = tp_call_content_media_description_new (
-      tp_base_connection_get_dbus_daemon (conn), path, handle,
+      tp_base_connection_get_dbus_connection (conn), path, handle,
       (content != NULL), (content == NULL));
 
   if (content != NULL)

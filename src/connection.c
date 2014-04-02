@@ -510,18 +510,10 @@ gabble_connection_constructed (GObject *object)
 static void
 gabble_connection_init (GabbleConnection *self)
 {
-  GError *error = NULL;
   GabbleConnectionPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_CONNECTION, GabbleConnectionPrivate);
 
   DEBUG("Initializing (GabbleConnection *)%p", self);
-
-  self->daemon = tp_dbus_daemon_dup (&error);
-
-  if (self->daemon == NULL)
-    {
-      g_error ("Failed to connect to dbus daemon: %s", error->message);
-    }
 
   self->priv = priv;
   priv->iq_reply_cancellable = g_cancellable_new ();
@@ -1276,8 +1268,6 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&self->pep_nick);
 
   conn_sidecars_dispose (self);
-
-  tp_clear_object (&self->daemon);
 
   if (G_OBJECT_CLASS (gabble_connection_parent_class)->dispose)
     G_OBJECT_CLASS (gabble_connection_parent_class)->dispose (object);

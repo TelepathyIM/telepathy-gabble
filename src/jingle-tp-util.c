@@ -21,6 +21,8 @@
 
 #include "jingle-tp-util.h"
 
+#include <telepathy-glib/telepathy-glib-dbus.h>
+
 WockyJingleMediaType
 wocky_jingle_media_type_from_tp (TpMediaStreamType type)
 {

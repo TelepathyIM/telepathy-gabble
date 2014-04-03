@@ -1,7 +1,7 @@
-telepathy-gabble 0.19.0 (UNRELEASED)
-====================================
+telepathy-gabble 0.99.10 (2014-04-03)
+=====================================
 
-The “very confused owl” release.
+The “you and whose army?” release.
 
 Compile-time configuration:
 
@@ -10,11 +10,13 @@ Compile-time configuration:
 
 Dependencies:
 
-• telepathy-glib ≥ 0.23.0 is required
+• telepathy-glib ≥ 0.99.10 is required
 
 • Autoconf 2.60 is required
 
 External changes:
+
+• Port to Telepathy 1
 
 • Remove support for legacy StreamedMedia calls, and legacy Capabilities;
   Gabble only implements Call1 calls and ContactCapabilities now
@@ -23,6 +25,13 @@ External changes:
 • Always announce channels one at a time (fd.o #69194, Simon)
 
 • Improve XMPP console (fd.o #66085, Will)
+
+• Remove OLPC-specific interfaces since they are not compatible with
+  Telepathy 1; please provide patches if you need them back, preferably
+  implementing them as a plugin or sidecar
+
+• Add GNOME-style installed-tests metadata if --enable-installed-tests
+  is used, and output in TAP format (fd.o #74626, Simon)
 
 Fixes:
 

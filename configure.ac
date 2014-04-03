@@ -9,8 +9,8 @@ AC_PREREQ([2.60])
 
 m4_define([gabble_major_version], [0])
 m4_define([gabble_minor_version], [99])
-m4_define([gabble_micro_version], [8])
-m4_define([gabble_nano_version], [1])
+m4_define([gabble_micro_version], [10])
+m4_define([gabble_nano_version], [0])
 
 # Some magic
 m4_define([gabble_base_version],
@@ -285,7 +285,7 @@ AC_DEFINE(TP_SEAL_ENABLE, [], [Prevent to use sealed variables])
 AC_DEFINE(TP_DISABLE_SINGLE_INCLUDE, [], [Disable single header include])
 AC_DEFINE([TP_VERSION_MIN_REQUIRED], [TP_VERSION_1_0], [Ignore post 1.0 deprecations])
 AC_DEFINE([TP_VERSION_MAX_ALLOWED], [TP_VERSION_1_0], [Prevent post 1.0 APIs])
-PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib-1 >= 0.99.8, telepathy-glib-1-dbus >= 0.99.8])
+PKG_CHECK_MODULES(TP_GLIB, [telepathy-glib-1 >= 0.99.10, telepathy-glib-1-dbus >= 0.99.10])
 
 AC_SUBST(TP_GLIB_CFLAGS)
 AC_SUBST(TP_GLIB_LIBS)

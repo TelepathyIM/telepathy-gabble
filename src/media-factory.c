@@ -895,7 +895,7 @@ gabble_media_factory_represent_client (GabbleCapsChannelManager *manager,
         {
           /* not interesting to this channel manager: we only care about
            * Jingle calls involving contacts (or about clients that support
-           * all Jingle calls regardless of handle type) */
+           * all Jingle calls regardless of entity type) */
           continue;
         }
 

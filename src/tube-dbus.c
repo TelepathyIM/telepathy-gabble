@@ -949,7 +949,7 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
 
   param_spec = g_param_spec_object ("muc", "GabbleMucChannel object",
       "Gabble text MUC channel corresponding to this Tube channel object, "
-      "if the handle type is ROOM.",
+      "if the entity type is ROOM.",
       GABBLE_TYPE_MUC_CHANNEL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
 
@@ -1333,7 +1333,7 @@ data_received_cb (GabbleBytestreamIface *stream,
 GabbleTubeDBus *
 gabble_tube_dbus_new (GabbleConnection *conn,
                       TpHandle handle,
-                      TpEntityType handle_type,
+                      TpEntityType entity_type,
                       TpHandle self_handle,
                       TpHandle initiator,
                       const gchar *service,
@@ -1347,7 +1347,7 @@ gabble_tube_dbus_new (GabbleConnection *conn,
   GabbleTubeDBus *tube;
   GType gtype = GABBLE_TYPE_TUBE_DBUS;
 
-  if (handle_type == TP_ENTITY_TYPE_ROOM)
+  if (entity_type == TP_ENTITY_TYPE_ROOM)
     gtype = GABBLE_TYPE_MUC_TUBE_DBUS;
 
   tube = g_object_new (gtype,

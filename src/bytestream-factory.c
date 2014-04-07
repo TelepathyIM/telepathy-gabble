@@ -802,16 +802,16 @@ remove_bytestream (GabbleBytestreamFactory *self,
   GabbleBytestreamFactoryPrivate *priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE
     (self);
   BytestreamIdentifier bsid = { NULL, NULL };
-  guint handle_type;
+  guint entity_type;
   GHashTable *table = NULL;
 
   g_object_get (bytestream,
       "stream-id", &(bsid.stream),
       "peer-jid", &(bsid.jid),
-      "peer-handle-type", &handle_type,
+      "peer-entity-type", &entity_type,
       NULL);
 
-  if (handle_type == TP_ENTITY_TYPE_ROOM)
+  if (entity_type == TP_ENTITY_TYPE_ROOM)
     {
       table = priv->muc_bytestreams;
     }

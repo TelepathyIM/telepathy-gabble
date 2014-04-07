@@ -62,6 +62,8 @@ CHANNEL_TYPE_SERVER_TLS_CONNECTION = \
     CHANNEL + ".Type.ServerTLSConnection1"
 
 CHANNEL_TYPE = CHANNEL + '.ChannelType'
+TARGET_ENTITY_TYPE = CHANNEL + '.TargetEntityType'
+# let's leave this as a synonym to reduce tests' diff churn in CMs
 TARGET_HANDLE_TYPE = CHANNEL + '.TargetEntityType'
 TARGET_HANDLE = CHANNEL + '.TargetHandle'
 TARGET_ID = CHANNEL + '.TargetID'

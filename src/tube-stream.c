@@ -1527,7 +1527,7 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       "muc",
       "GabbleMucChannel object",
       "Gabble text MUC channel corresponding to this Tube channel object, "
-      "if the handle type is ROOM.",
+      "if the entity type is ROOM.",
       GABBLE_TYPE_MUC_CHANNEL,
       G_PARAM_CONSTRUCT_ONLY | G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS);
   g_object_class_install_property (object_class, PROP_MUC, param_spec);
@@ -1617,7 +1617,7 @@ data_received_cb (GabbleBytestreamIface *bytestream,
 GabbleTubeStream *
 gabble_tube_stream_new (GabbleConnection *conn,
                         TpHandle handle,
-                        TpEntityType handle_type,
+                        TpEntityType entity_type,
                         TpHandle self_handle,
                         TpHandle initiator,
                         const gchar *service,
@@ -1629,7 +1629,7 @@ gabble_tube_stream_new (GabbleConnection *conn,
   GabbleTubeStream *obj;
   GType gtype = GABBLE_TYPE_TUBE_STREAM;
 
-  if (handle_type == TP_ENTITY_TYPE_ROOM)
+  if (entity_type == TP_ENTITY_TYPE_ROOM)
     gtype = GABBLE_TYPE_MUC_TUBE_STREAM;
 
   obj = g_object_new (gtype,
@@ -2326,7 +2326,7 @@ gabble_tube_stream_accept_async (TpSvcChannelTypeStreamTube1 *iface,
 
 #if 0
   /* TODO: add a property "muc" and set it at initialization */
-  if (priv->handle_type == TP_ENTITY_TYPE_ROOM)
+  if (priv->entity_type == TP_ENTITY_TYPE_ROOM)
     gabble_muc_channel_send_presence (self->muc, NULL);
 #endif
 

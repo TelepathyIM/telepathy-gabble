@@ -1141,17 +1141,17 @@ gabble_muc_factory_type_foreach_channel_class (GType type,
 {
   GHashTable *table = g_hash_table_new_full (g_str_hash, g_str_equal,
       NULL, (GDestroyNotify) tp_g_value_slice_free);
-  GValue *channel_type_value, *handle_type_value;
+  GValue *channel_type_value, *entity_type_value;
 
   channel_type_value = tp_g_value_slice_new (G_TYPE_STRING);
   /* no string value yet - we'll change it for each channel class */
   g_hash_table_insert (table, TP_PROP_CHANNEL_CHANNEL_TYPE,
       channel_type_value);
 
-  handle_type_value = tp_g_value_slice_new (G_TYPE_UINT);
-  g_value_set_uint (handle_type_value, TP_ENTITY_TYPE_ROOM);
+  entity_type_value = tp_g_value_slice_new (G_TYPE_UINT);
+  g_value_set_uint (entity_type_value, TP_ENTITY_TYPE_ROOM);
   g_hash_table_insert (table, TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
-      handle_type_value);
+      entity_type_value);
 
   /* Channel.Type.Text */
   g_value_set_static_string (channel_type_value, TP_IFACE_CHANNEL_TYPE_TEXT);
@@ -1771,19 +1771,19 @@ gabble_muc_factory_request (GabbleMucFactory *self,
                             gboolean require_new)
 {
   GError *error = NULL;
-  TpEntityType handle_type;
+  TpEntityType entity_type;
   TpHandle handle;
   gboolean conference, room;
   const gchar *channel_type;
   ChannelTypeHandler *h;
 
-  handle_type = tp_asv_get_uint32 (request_properties,
+  entity_type = tp_asv_get_uint32 (request_properties,
       TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL);
   channel_type = tp_asv_get_string (request_properties,
       TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   /* Conference channels can be anonymous (HandleTypeNone) */
-  conference = (handle_type == TP_ENTITY_TYPE_NONE &&
+  conference = (entity_type == TP_ENTITY_TYPE_NONE &&
       !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT) &&
       (g_hash_table_lookup (request_properties,
          TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_CHANNELS) ||
@@ -1792,13 +1792,13 @@ gabble_muc_factory_request (GabbleMucFactory *self,
        g_hash_table_lookup (request_properties,
          TP_PROP_CHANNEL_INTERFACE_CONFERENCE1_INITIAL_INVITEE_IDS)));
 
-  room = (handle_type == TP_ENTITY_TYPE_NONE
+  room = (entity_type == TP_ENTITY_TYPE_NONE
       && !tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_TEXT)
       && g_hash_table_lookup (request_properties,
           TP_PROP_CHANNEL_INTERFACE_ROOM1_ROOM_NAME));
 
   /* the channel must either be a room, or a new conference */
-  if (handle_type != TP_ENTITY_TYPE_ROOM && !conference && !room)
+  if (entity_type != TP_ENTITY_TYPE_ROOM && !conference && !room)
     return FALSE;
 
   /* validity already checked by TpBaseConnection */

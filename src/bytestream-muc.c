@@ -54,7 +54,7 @@ enum
 {
   PROP_CONNECTION = 1,
   PROP_PEER_HANDLE,
-  PROP_PEER_HANDLE_TYPE,
+  PROP_PEER_ENTITY_TYPE,
   PROP_STREAM_ID,
   PROP_PEER_JID,
   PROP_STATE,
@@ -66,7 +66,7 @@ struct _GabbleBytestreamMucPrivate
 {
   GabbleConnection *conn;
   TpHandle peer_handle;
-  TpEntityType peer_handle_type;
+  TpEntityType peer_entity_type;
   gchar *stream_id;
   GabbleBytestreamState state;
   const gchar *peer_jid;
@@ -148,7 +148,7 @@ gabble_bytestream_muc_get_property (GObject *object,
       case PROP_PEER_HANDLE:
         g_value_set_uint (value, priv->peer_handle);
         break;
-      case PROP_PEER_HANDLE_TYPE:
+      case PROP_PEER_ENTITY_TYPE:
         g_value_set_uint (value, TP_ENTITY_TYPE_ROOM);
         break;
       case PROP_STREAM_ID:
@@ -250,8 +250,8 @@ gabble_bytestream_muc_class_init (
       "connection");
   g_object_class_override_property (object_class, PROP_PEER_HANDLE,
       "peer-handle");
-  g_object_class_override_property (object_class, PROP_PEER_HANDLE_TYPE,
-      "peer-handle-type");
+  g_object_class_override_property (object_class, PROP_PEER_ENTITY_TYPE,
+      "peer-entity-type");
   g_object_class_override_property (object_class, PROP_STREAM_ID,
        "stream-id");
   g_object_class_override_property (object_class, PROP_PEER_JID,

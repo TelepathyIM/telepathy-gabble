@@ -336,11 +336,11 @@ static void handle_errmsg (GObject *source,
 /* Signatures for some other stuff. */
 
 static void _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-    TpEntityType handle_type,
+    TpEntityType entity_type,
     TpHandle sender, GDateTime *datetime, const gchar *subject,
     WockyStanza *msg, const GError *error);
 static void _gabble_muc_channel_receive (GabbleMucChannel *chan,
-    TpChannelTextMessageType msg_type, TpEntityType handle_type,
+    TpChannelTextMessageType msg_type, TpEntityType entity_type,
     TpHandle sender, GDateTime *datetime, const gchar *id, const gchar *text,
     WockyStanza *msg,
     const GError *send_error,
@@ -2796,13 +2796,13 @@ handle_message (GObject *source,
 
   TpChannelTextMessageType msg_type;
   TpHandleRepoIface *repo;
-  TpEntityType handle_type;
+  TpEntityType entity_type;
   TpHandle from;
 
   if (from_member)
     {
-      handle_type = TP_ENTITY_TYPE_CONTACT;
-      repo = tp_base_connection_get_handles (conn, handle_type);
+      entity_type = TP_ENTITY_TYPE_CONTACT;
+      repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_handle_ensure (repo, who->from,
           GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
@@ -2814,8 +2814,8 @@ handle_message (GObject *source,
     }
   else /* directly from MUC itself */
     {
-      handle_type = TP_ENTITY_TYPE_ROOM;
-      repo = tp_base_connection_get_handles (conn, handle_type);
+      entity_type = TP_ENTITY_TYPE_ROOM;
+      repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_base_channel_get_target_handle (base);
     }
 
@@ -2833,7 +2833,7 @@ handle_message (GObject *source,
 
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc,
-        msg_type, handle_type, from, datetime, xmpp_id, text, stanza,
+        msg_type, entity_type, from, datetime, xmpp_id, text, stanza,
         NULL,
         TP_DELIVERY_STATUS_DELIVERED);
 
@@ -2862,7 +2862,7 @@ handle_message (GObject *source,
     }
 
   if (subject != NULL)
-    _gabble_muc_channel_handle_subject (gmuc, handle_type, from,
+    _gabble_muc_channel_handle_subject (gmuc, entity_type, from,
         datetime, subject, stanza, NULL);
 }
 
@@ -2885,14 +2885,14 @@ handle_errmsg (GObject *source,
   gboolean from_member = (who != NULL);
   TpDeliveryStatus ds = TP_DELIVERY_STATUS_DELIVERED;
   TpHandleRepoIface *repo = NULL;
-  TpEntityType handle_type;
+  TpEntityType entity_type;
   TpHandle from = 0;
   const gchar *subject;
 
   if (from_member)
     {
-      handle_type = TP_ENTITY_TYPE_CONTACT;
-      repo = tp_base_connection_get_handles (conn, handle_type);
+      entity_type = TP_ENTITY_TYPE_CONTACT;
+      repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_handle_ensure (repo, who->from,
           GUINT_TO_POINTER (GABBLE_JID_ROOM_MEMBER), NULL);
 
@@ -2904,8 +2904,8 @@ handle_errmsg (GObject *source,
     }
   else /* directly from MUC itself */
     {
-      handle_type = TP_ENTITY_TYPE_ROOM;
-      repo = tp_base_connection_get_handles (conn, handle_type);
+      entity_type = TP_ENTITY_TYPE_ROOM;
+      repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_base_channel_get_target_handle (base);
     }
 
@@ -2932,7 +2932,7 @@ handle_errmsg (GObject *source,
 
   if (text != NULL)
     _gabble_muc_channel_receive (gmuc, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE,
-        handle_type, from, datetime, xmpp_id, text, stanza, error, ds);
+        entity_type, from, datetime, xmpp_id, text, stanza, error, ds);
 
   /* FIXME: this is stupid. WockyMuc gives us the subject for non-errors, but
    * doesn't bother for errors.
@@ -2948,7 +2948,7 @@ handle_errmsg (GObject *source,
       (priv->set_subject_stanza_id != NULL &&
        !tp_strdiff (xmpp_id, priv->set_subject_stanza_id)))
     _gabble_muc_channel_handle_subject (gmuc,
-        handle_type, from, datetime, subject, stanza, error);
+        entity_type, from, datetime, subject, stanza, error);
 }
 
 /* ************************************************************************* */
@@ -2957,7 +2957,7 @@ handle_errmsg (GObject *source,
  */
 void
 _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
-                                    TpEntityType handle_type,
+                                    TpEntityType entity_type,
                                     TpHandle sender,
                                     GDateTime *datetime,
                                     const gchar *subject,
@@ -2995,11 +2995,11 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 
 
   /* Channel.Interface.Subject properties */
-  if (handle_type == TP_ENTITY_TYPE_CONTACT)
+  if (entity_type == TP_ENTITY_TYPE_CONTACT)
     {
       TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (
           tp_base_channel_get_connection (TP_BASE_CHANNEL (chan)),
-          handle_type);
+          entity_type);
 
       actor = tp_handle_inspect (contact_handles, sender);
     }
@@ -3030,7 +3030,7 @@ _gabble_muc_channel_handle_subject (GabbleMucChannel *chan,
 static void
 _gabble_muc_channel_receive (GabbleMucChannel *chan,
                              TpChannelTextMessageType msg_type,
-                             TpEntityType sender_handle_type,
+                             TpEntityType sender_entity_type,
                              TpHandle sender,
                              GDateTime *datetime,
                              const gchar *id,
@@ -3080,7 +3080,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
    * messages like "foo has set the subject to: ..." and "This room is not
    * anonymous".
    */
-  if (!is_echo && !is_error && sender_handle_type == TP_ENTITY_TYPE_ROOM)
+  if (!is_echo && !is_error && sender_entity_type == TP_ENTITY_TYPE_ROOM)
     {
       STANZA_DEBUG (msg, "ignoring message from muc");
 
@@ -3169,7 +3169,7 @@ _gabble_muc_channel_receive (GabbleMucChannel *chan,
   else
     {
       /* Messages from the MUC itself should have no sender. */
-      if (sender_handle_type == TP_ENTITY_TYPE_CONTACT)
+      if (sender_entity_type == TP_ENTITY_TYPE_CONTACT)
         tp_cm_message_set_sender (message, sender);
 
       if (timestamp != 0)

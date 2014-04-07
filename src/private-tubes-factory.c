@@ -1008,14 +1008,14 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
 
   TpHandle handle;
   const gchar *ctype, *service;
-  TpEntityType handle_type;
+  TpEntityType entity_type;
   GHashTable *parameters;
   guint64 tube_id;
 
   ctype = tp_asv_get_string (request, TP_PROP_CHANNEL_CHANNEL_TYPE);
   handle = tp_asv_get_uint32 (request, TP_PROP_CHANNEL_TARGET_HANDLE,
       NULL);
-  handle_type = tp_asv_get_uint32 (request,
+  entity_type = tp_asv_get_uint32 (request,
       TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL);
 
   tube_id = generate_tube_id (self);
@@ -1030,7 +1030,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
           TP_PROP_CHANNEL_TYPE_STREAM_TUBE1_SERVICE);
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_stream_new (self->priv->conn,
-              handle, handle_type,
+              handle, entity_type,
               tp_base_connection_get_self_handle (base_conn),
               tp_base_connection_get_self_handle (base_conn),
               service, parameters, tube_id, NULL, TRUE));
@@ -1043,7 +1043,7 @@ new_channel_from_request (GabblePrivateTubesFactory *self,
       stream_id = gabble_bytestream_factory_generate_stream_id ();
 
       tube = GABBLE_TUBE_IFACE (gabble_tube_dbus_new (self->priv->conn,
-              handle, handle_type,
+              handle, entity_type,
               tp_base_connection_get_self_handle (base_conn),
               tp_base_connection_get_self_handle (base_conn),
               service, parameters, stream_id, tube_id, NULL, NULL, TRUE));

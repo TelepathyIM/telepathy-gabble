@@ -196,8 +196,8 @@ generate_group_name (GHashTable *props)
   gchar *chan_type = g_ascii_strdown (tp_asv_get_string (props,
       TP_PROP_CHANNEL_CHANNEL_TYPE), -1);
   gchar *chan_type_suffix;
-  gchar *handle_type_name;
-  guint handle_type = tp_asv_get_uint32 (props,
+  gchar *entity_type_name;
+  guint entity_type = tp_asv_get_uint32 (props,
       TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, NULL);
 
   g_assert (chan_type != NULL);
@@ -205,21 +205,21 @@ generate_group_name (GHashTable *props)
   g_assert (chan_type_suffix != NULL);
   chan_type_suffix++;
 
-  switch (handle_type)
+  switch (entity_type)
     {
     case TP_ENTITY_TYPE_CONTACT:
-      handle_type_name = "-1on1";
+      entity_type_name = "-1on1";
       break;
 
     case TP_ENTITY_TYPE_ROOM:
-      handle_type_name = "-multi";
+      entity_type_name = "-multi";
       break;
 
     default:
-      handle_type_name = "";
+      entity_type_name = "";
     }
 
-  retval = g_strdup_printf ("%s%s-%d", chan_type_suffix, handle_type_name,
+  retval = g_strdup_printf ("%s%s-%d", chan_type_suffix, entity_type_name,
       ++counter);
 
   g_free (chan_type);

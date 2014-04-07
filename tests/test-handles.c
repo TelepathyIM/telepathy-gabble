@@ -10,7 +10,7 @@
 #include "src/connection.h"
 
 static void
-test_handles (guint handle_type)
+test_handles (guint entity_type)
 {
   TpHandleRepoIface *repos[TP_NUM_ENTITY_TYPES];
   TpHandleRepoIface *tp_repo = NULL;
@@ -26,7 +26,7 @@ test_handles (guint handle_type)
       repos[i] = NULL;
     }
   _gabble_connection_create_handle_repos (NULL, repos);
-  tp_repo = repos[handle_type];
+  tp_repo = repos[entity_type];
   g_assert (tp_repo != NULL);
 
   /* Handle zero is never valid */

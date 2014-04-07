@@ -34,9 +34,7 @@ G_DEFINE_TYPE_WITH_CODE (GabbleTLSCertificate,
     gabble_tls_certificate,
     G_TYPE_OBJECT,
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_AUTHENTICATION_TLS_CERTIFICATE,
-        tls_certificate_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_DBUS_PROPERTIES,
-        tp_dbus_properties_mixin_iface_init);)
+        tls_certificate_iface_init))
 
 struct _GabbleTLSCertificatePrivate {
   gchar *object_path;

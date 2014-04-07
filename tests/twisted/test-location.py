@@ -79,7 +79,8 @@ def test(q, bus, conn, stream):
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
             dbus_interface =cs.PROPERTIES_IFACE)
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
+        assert e.get_dbus_name() in (cs.INVALID_ARGUMENT,
+                'org.freedesktop.DBus.Error.InvalidArgs'), e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
 
@@ -91,7 +92,8 @@ def test(q, bus, conn, stream):
         conn.Set (cs.CONN_IFACE_LOCATION, 'LocationAccessControl', bad_access_control,
             dbus_interface =cs.PROPERTIES_IFACE)
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == cs.INVALID_ARGUMENT, e.get_dbus_name()
+        assert e.get_dbus_name() in (cs.INVALID_ARGUMENT,
+                'org.freedesktop.DBus.Error.InvalidArgs'), e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
 
@@ -106,7 +108,8 @@ def test(q, bus, conn, stream):
             access_control_types,
             dbus_interface =cs.PROPERTIES_IFACE)
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == cs.PERMISSION_DENIED, e.get_dbus_name()
+        assert e.get_dbus_name() in (cs.PERMISSION_DENIED,
+                'org.freedesktop.DBus.Error.InvalidArgs'), e.get_dbus_name()
     else:
         assert False, "Should have had an error!"
 

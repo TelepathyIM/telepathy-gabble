@@ -73,8 +73,6 @@ test_handles (guint entity_type)
 
 int main (int argc, char **argv)
 {
-  g_type_init ();
-
   test_handles (TP_ENTITY_TYPE_CONTACT);
   test_handles (TP_ENTITY_TYPE_ROOM);
   return 0;

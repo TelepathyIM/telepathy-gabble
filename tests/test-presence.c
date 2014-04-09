@@ -208,7 +208,6 @@ int main (int argc, char **argv)
 {
   int ret;
 
-  g_type_init ();
   gabble_capabilities_init (NULL);
   gabble_debug_set_flags_from_env ();
 

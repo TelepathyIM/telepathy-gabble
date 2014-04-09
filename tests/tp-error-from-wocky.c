@@ -40,8 +40,6 @@ test_remap (GQuark domain,
 int
 main (void)
 {
-  g_type_init ();
-
   test_remap (WOCKY_XMPP_ERROR, WOCKY_XMPP_ERROR_FORBIDDEN, "computer says no",
       TP_CONNECTION_STATUS_CONNECTED,
       TP_ERROR_PERMISSION_DENIED,

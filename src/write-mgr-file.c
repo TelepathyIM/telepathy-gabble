@@ -424,7 +424,6 @@ main (void)
   gchar *s;
   GSList *protocols = NULL;
 
-  g_type_init ();
   dbus_g_type_specialized_init ();
 
   protocols = g_slist_prepend (protocols,

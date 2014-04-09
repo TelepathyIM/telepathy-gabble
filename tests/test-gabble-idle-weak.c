@@ -70,7 +70,6 @@ test_2 (void)
 int
 main (void)
 {
-  g_type_init ();
   test_1();
   test_2();
   return 0;

@@ -107,7 +107,6 @@ gabble_init (void)
   if (!dbus_threads_init_default ())
     g_error ("Unable to initialize libdbus thread-safety (out of memory?)");
 
-  g_type_init ();
   wocky_init ();
 }
 

@@ -356,20 +356,22 @@ change_members (GObject *obj,
     TpHandle actor,
     TpChannelGroupChangeReason reason)
 {
-  GHashTable *details;
+  GVariantDict details;
 
-  details = tp_asv_new (
-      "actor", G_TYPE_UINT, actor,
-      "change-reason", G_TYPE_UINT, reason,
-      NULL);
+  g_variant_dict_init (&details, NULL);
+
+  g_variant_dict_insert_value (&details, "actor",
+      g_variant_new_uint32 (actor));
+  g_variant_dict_insert_value (&details, "change-reason",
+      g_variant_new_uint32 (reason));
 
   if (message != NULL)
-    tp_asv_set_string (details, "message", message);
+    g_variant_dict_insert_value (&details, "message",
+        g_variant_new_string (message));
 
   tp_group_mixin_change_members (obj,
-      add, del, add_local_pending, add_remote_pending, details);
-
-  g_hash_table_unref (details);
+      add, del, add_local_pending, add_remote_pending,
+      g_variant_dict_end (&details));
 }
 
 static void

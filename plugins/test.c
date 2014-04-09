@@ -165,9 +165,9 @@ test_plugin_create_channel_managers (GabblePlugin *plugin,
 }
 
 static TpPresenceStatusSpec test_presences[] = {
-  { "testbusy", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, NULL, NULL, NULL },
-  { "testaway", TP_CONNECTION_PRESENCE_TYPE_AWAY, FALSE, NULL, NULL, NULL },
-  { NULL, 0, FALSE, NULL, NULL, NULL }
+  { "testbusy", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, FALSE },
+  { "testaway", TP_CONNECTION_PRESENCE_TYPE_AWAY, FALSE, FALSE },
+  { NULL }
 };
 
 static GabblePluginPrivacyListMap privacy_list_map[] = {

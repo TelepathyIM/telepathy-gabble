@@ -82,35 +82,19 @@ struct _GabbleConnectionPresencePrivate {
     GabblePresenceId previous_shared_status;
 };
 
-static const TpPresenceStatusOptionalArgumentSpec gabble_status_arguments[] = {
-  { "message",  "s", NULL, NULL },
-  { "priority", "n", NULL, NULL },
-  { NULL, NULL, NULL, NULL }
-};
-
-
 /* order must match PresenceId enum in connection.h */
 /* in increasing order of presence */
 static const TpPresenceStatusSpec gabble_base_statuses[] = {
-  { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE,
-    gabble_status_arguments, NULL, NULL },
-  { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE,
-    gabble_status_arguments, NULL, NULL },
-  { "error", TP_CONNECTION_PRESENCE_TYPE_ERROR, FALSE,
-    gabble_status_arguments, NULL, NULL },
-  { "hidden", TP_CONNECTION_PRESENCE_TYPE_HIDDEN, TRUE, gabble_status_arguments,
-    NULL, NULL },
-  { "xa", TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE,
-    gabble_status_arguments, NULL, NULL },
-  { "away", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, gabble_status_arguments,
-    NULL, NULL },
-  { "dnd", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, gabble_status_arguments,
-    NULL, NULL },
-  { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE,
-    gabble_status_arguments, NULL, NULL },
-  { "chat", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE,
-    gabble_status_arguments, NULL, NULL },
-  { NULL, 0, FALSE, NULL, NULL, NULL }
+  { "offline", TP_CONNECTION_PRESENCE_TYPE_OFFLINE, FALSE, TRUE },
+  { "unknown", TP_CONNECTION_PRESENCE_TYPE_UNKNOWN, FALSE, TRUE },
+  { "error", TP_CONNECTION_PRESENCE_TYPE_ERROR, FALSE, TRUE },
+  { "hidden", TP_CONNECTION_PRESENCE_TYPE_HIDDEN, TRUE, TRUE },
+  { "xa", TP_CONNECTION_PRESENCE_TYPE_EXTENDED_AWAY, TRUE, TRUE },
+  { "away", TP_CONNECTION_PRESENCE_TYPE_AWAY, TRUE, TRUE },
+  { "dnd", TP_CONNECTION_PRESENCE_TYPE_BUSY, TRUE, TRUE },
+  { "available", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
+  { "chat", TP_CONNECTION_PRESENCE_TYPE_AVAILABLE, TRUE, TRUE },
+  { NULL }
 };
 
 static TpPresenceStatusSpec *gabble_statuses = NULL;
@@ -171,9 +155,6 @@ static TpPresenceStatus *construct_contact_status (GObject *obj,
 {
   GabbleConnection *self = GABBLE_CONNECTION (obj);
   TpBaseConnection *base = (TpBaseConnection *) self;
-  GHashTable *parameters;
-  TpPresenceStatus *contact_status;
-  GValue *message;
   GabblePresence *presence;
   GabblePresenceId status;
   const gchar *status_message;
@@ -198,19 +179,7 @@ static TpPresenceStatus *construct_contact_status (GObject *obj,
      status_message = NULL;
     }
 
-  parameters = g_hash_table_new_full (g_str_hash, g_str_equal, NULL,
-      (GDestroyNotify) tp_g_value_slice_free);
-
-  if (status_message != NULL)
-    {
-      message = tp_g_value_slice_new (G_TYPE_STRING);
-      g_value_set_static_string (message, status_message);
-      g_hash_table_insert (parameters, "message", message);
-    }
-
-  contact_status = tp_presence_status_new (status, parameters);
-  g_hash_table_unref (parameters);
-  return contact_status;
+  return tp_presence_status_new (status, status_message);
 }
 
 static GHashTable *
@@ -1745,9 +1714,6 @@ set_own_status_cb (GObject *obj,
 
   if (status)
     {
-      GHashTable *args = status->optional_arguments;
-      GValue *message = NULL, *priority = NULL;
-
       i = status->index;
 
       /* Workaround for tp-glib not checking whether we support setting
@@ -1762,37 +1728,7 @@ set_own_status_cb (GObject *obj,
           goto OUT;
         }
 
-      if (args != NULL)
-        {
-          message = g_hash_table_lookup (args, "message");
-          priority = g_hash_table_lookup (args, "priority");
-        }
-
-      if (message)
-        {
-          if (!G_VALUE_HOLDS_STRING (message))
-            {
-              DEBUG ("got a status message which was not a string");
-              g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-                  "Status argument 'message' requires a string");
-              retval = FALSE;
-              goto OUT;
-            }
-          message_str = g_value_get_string (message);
-        }
-
-      if (priority)
-        {
-          if (!G_VALUE_HOLDS_INT (priority))
-            {
-              DEBUG ("got a priority value which was not a signed integer");
-              g_set_error (error, TP_ERROR, TP_ERROR_INVALID_ARGUMENT,
-                   "Status argument 'priority' requires a signed integer");
-              retval = FALSE;
-              goto OUT;
-            }
-          prio = CLAMP (g_value_get_int (priority), G_MININT8, G_MAXINT8);
-        }
+      message_str = status->message;
     }
 
   if (message_str && priv->max_status_message_length > 0 &&

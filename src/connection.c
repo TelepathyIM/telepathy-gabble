@@ -823,6 +823,7 @@ _gabble_connection_create_handle_repos (TpBaseConnection *conn,
 
 static const gchar *implemented_interfaces[] = {
     /* conditionally present interfaces */
+    TP_IFACE_CONNECTION_INTERFACE_CONTACT_BLOCKING1,
     TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
 
     /* always present interfaces */
@@ -840,7 +841,7 @@ static const gchar *implemented_interfaces[] = {
     TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1,
     NULL
 };
-static const gchar **interfaces_always_present = implemented_interfaces + 1;
+static const gchar **interfaces_always_present = implemented_interfaces + 2;
 
 const gchar **
 gabble_connection_get_implemented_interfaces (void)

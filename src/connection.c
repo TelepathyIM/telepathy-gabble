@@ -482,15 +482,57 @@ dup_default_resource (void)
 }
 
 static void
+object_skeleton_take_interface (GDBusObjectSkeleton *skel,
+    GDBusInterfaceSkeleton *iface)
+{
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+}
+
+static void
+object_skeleton_take_svc_interface (GDBusObjectSkeleton *skel,
+    GType type)
+{
+  object_skeleton_take_interface (skel,
+      tp_svc_interface_skeleton_new (skel, type));
+}
+
+static void
 gabble_connection_constructed (GObject *object)
 {
   GabbleConnection *self = GABBLE_CONNECTION (object);
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (object);
   GabbleConnectionPrivate *priv = self->priv;
   void (*chain_up)(GObject *) =
       G_OBJECT_CLASS (gabble_connection_parent_class)->constructed;
 
   if (chain_up != NULL)
     chain_up (object);
+
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_ADDRESSING1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_CLIENT_TYPES1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_POWER_SAVING1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE1);
+  object_skeleton_take_svc_interface (skel,
+      TP_TYPE_SVC_CONNECTION_INTERFACE_SIDECARS1);
 
   if (priv->resource == NULL)
     {
@@ -855,21 +897,6 @@ gabble_connection_get_guaranteed_interfaces (void)
     return interfaces_always_present;
 }
 
-static GPtrArray *
-_gabble_connection_get_interfaces_always_present (TpBaseConnection *base)
-{
-  GPtrArray *interfaces;
-  const gchar **iter;
-
-  interfaces = TP_BASE_CONNECTION_CLASS (
-      gabble_connection_parent_class)->get_interfaces_always_present (base);
-
-  for (iter = interfaces_always_present; *iter != NULL; iter++)
-    g_ptr_array_add (interfaces, (gchar *) *iter);
-
-  return interfaces;
-}
-
 static TpDBusPropertiesMixinPropImpl conn_aliasing_properties[] = {
     { "AliasFlags", GUINT_TO_POINTER (TP_CONNECTION_ALIAS_FLAG_USER_SET), NULL },
     { NULL }
@@ -963,8 +990,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
     _gabble_connection_create_channel_managers;
   parent_class->shut_down = connection_shut_down;
   parent_class->start_connecting = _gabble_connection_connect;
-  parent_class->get_interfaces_always_present =
-      _gabble_connection_get_interfaces_always_present;
   parent_class->fill_contact_attributes =
     gabble_connection_fill_contact_attributes;
 
@@ -2679,6 +2704,7 @@ static void
 set_status_to_connected (GabbleConnection *conn)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (conn);
 
   if (tp_base_connection_get_status (base) == TP_CONNECTION_STATUS_DISCONNECTED)
     {
@@ -2689,18 +2715,14 @@ set_status_to_connected (GabbleConnection *conn)
 
   if (conn->features & GABBLE_CONNECTION_FEATURES_GOOGLE_MAIL_NOTIFY)
     {
-       const gchar *ifaces[] =
-         { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1, NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+      object_skeleton_take_svc_interface (skel,
+          TP_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION1);
     }
 
   if (tp_base_contact_list_can_block (gabble_connection_get_contact_list (conn)))
     {
-      const gchar *ifaces[] =
-        { TP_IFACE_CONNECTION_INTERFACE_CONTACT_BLOCKING1, NULL };
-
-      tp_base_connection_add_interfaces ((TpBaseConnection *) conn, ifaces);
+      object_skeleton_take_svc_interface (skel,
+          TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_BLOCKING1);
     }
 
   /* go go gadget on-line */

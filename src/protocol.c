@@ -317,21 +317,6 @@ identify_account (TpBaseProtocol *self G_GNUC_UNUSED,
   return g_strdup (account);
 }
 
-static GPtrArray *
-get_interfaces_array (TpBaseProtocol *self)
-{
-  GPtrArray *interfaces;
-
-  interfaces = TP_BASE_PROTOCOL_CLASS (
-      gabble_jabber_protocol_parent_class)->get_interfaces_array (self);
-
-  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_PRESENCE1);
-  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_ADDRESSING1);
-  g_ptr_array_add (interfaces, TP_IFACE_PROTOCOL_INTERFACE_AVATARS1);
-
-  return interfaces;
-}
-
 static const TpPresenceStatusSpec *
 get_presence_statuses (TpBaseProtocol *self)
 {
@@ -476,7 +461,6 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   base_class->new_connection = new_connection;
   base_class->normalize_contact = normalize_contact;
   base_class->identify_account = identify_account;
-  base_class->get_interfaces_array = get_interfaces_array;
   base_class->get_connection_details = get_connection_details;
   base_class->get_statuses = get_presence_statuses;
   base_class->dup_authentication_types = dup_authentication_types;

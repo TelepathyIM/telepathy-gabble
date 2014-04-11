@@ -201,11 +201,11 @@ def test_google_featured(q, bus, conn, stream):
     # Check the we can get an URL for a specific mail
     mail_url1 = conn.MailNotification.RequestMailURL(
             stored_mail1['id'],
-            stored_mail1['url-data']);
+            stored_mail1['url-data'], signature='sv')
 
     mail_url2 = conn.MailNotification.RequestMailURL(
             stored_mail2['id'],
-            stored_mail2['url-data']);
+            stored_mail2['url-data'], signature='sv')
     
     assert mail_url1[0] == thread1_url
     assert mail_url1[1] == 0

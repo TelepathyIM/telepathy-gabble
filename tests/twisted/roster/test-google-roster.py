@@ -366,7 +366,8 @@ def test_deny_overlap_one(q, bus, conn, stream):
     q.forbid_events(remove_events)
 
     # But then we have a falling out. In a blind rage, I block Bob:
-    call_async(q, conn.ContactBlocking, 'BlockContacts', [handle], "")
+    call_async(q, conn.ContactBlocking, 'BlockContacts', [handle], False,
+            signature='aub')
     event = q.expect('stream-iq', query_ns=ns.ROSTER)
     item = event.query.firstChildElement()
     assertEquals(contact, item['jid'])
@@ -450,7 +451,8 @@ def test_deny_overlap_two(q, bus, conn, stream):
         ]
     q.forbid_events(patterns)
 
-    call_async(q, conn.ContactBlocking, 'BlockContacts', [handle], "")
+    call_async(q, conn.ContactBlocking, 'BlockContacts', [handle], False,
+            signature='aub')
     call_async(q, conn.ContactList, 'RemoveContacts', [handle])
 
     # Make sure if the edits are sent prematurely, we've got them.

@@ -244,6 +244,7 @@ SOFTWARE_UPGRADE_REQUIRED = ERROR + '.SoftwareUpgradeRequired'
 
 BANNED = ERROR + '.Channel.Banned'
 
+DBUS_ERROR_INVALID_ARGS = 'org.freedesktop.DBus.Error.InvalidArgs'
 DBUS_ERROR_UNKNOWN_METHOD = 'org.freedesktop.DBus.Error.UnknownMethod'
 DBUS_ERROR_NO_REPLY = 'org.freedesktop.DBus.Error.NoReply'
 

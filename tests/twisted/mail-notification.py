@@ -4,7 +4,7 @@ Test Connection.Interface.MailNotification
 
 from twisted.words.xish import domish
 from gabbletest import exec_test, make_result_iq, GoogleXmlStream
-from servicetest import EventPattern
+from servicetest import EventPattern, assertContains
 
 import constants as cs
 import ns
@@ -14,20 +14,35 @@ def check_properties_empty(conn, expected_flags=0):
     """Check that all mail notification properties are empty and that
        mail notification flags match the expected flags"""
 
-    flags = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'MailNotificationFlags',
-            dbus_interface=cs.PROPERTIES_IFACE)
-    assert flags == expected_flags
+    try:
+        flags = conn.Get(
+                cs.CONN_IFACE_MAIL_NOTIFICATION, 'MailNotificationFlags',
+                dbus_interface=cs.PROPERTIES_IFACE)
+    except dbus.DBusException as e:
+        assertContains(e.get_dbus_name(), (cs.NOT_IMPLEMENTED,
+            cs.DBUS_ERROR_INVALID_ARGS))
+    else:
+        assert flags == expected_flags
 
-    mail_count = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMailCount',
-            dbus_interface=cs.PROPERTIES_IFACE)
-    assert mail_count == 0
+    try:
+        mail_count = conn.Get(
+                cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMailCount',
+                dbus_interface=cs.PROPERTIES_IFACE)
+    except dbus.DBusException as e:
+        assertContains(e.get_dbus_name(), (cs.NOT_IMPLEMENTED,
+            cs.DBUS_ERROR_INVALID_ARGS))
+    else:
+        assert mail_count == 0
 
-    unread_mails = conn.Get(
-            cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMails',
-            dbus_interface=cs.PROPERTIES_IFACE)
-    assert len(unread_mails) == 0
+    try:
+        unread_mails = conn.Get(
+                cs.CONN_IFACE_MAIL_NOTIFICATION, 'UnreadMails',
+                dbus_interface=cs.PROPERTIES_IFACE)
+    except dbus.DBusException as e:
+        assertContains(e.get_dbus_name(), (cs.NOT_IMPLEMENTED,
+            cs.DBUS_ERROR_INVALID_ARGS))
+    else:
+        assert mail_count == 0
 
 
 def test_google_featured(q, bus, conn, stream):
@@ -317,12 +332,18 @@ def test_no_google_featured(q, bus, conn, stream):
     try:
         conn.MailNotification.RequestInboxURL()
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
+        assertContains(e.get_dbus_name(), (cs.NOT_IMPLEMENTED,
+            cs.DBUS_ERROR_UNKNOWN_METHOD))
+    else:
+        raise AssertionError('RequestInboxURL should have failed')
 
     try:
         conn.MailNotification.RequestMailURL("1", "http://test.com/mail")
     except dbus.DBusException, e:
-        assert e.get_dbus_name() == cs.NOT_IMPLEMENTED
+        assertContains(e.get_dbus_name(), (cs.NOT_IMPLEMENTED,
+            cs.DBUS_ERROR_UNKNOWN_METHOD))
+    else:
+        raise AssertionError('RequestMailURL should have failed')
 
     # Make sure all properties return with empty or 0 data including
     # MailNotificationFlags

@@ -166,12 +166,10 @@ typedef enum {
 
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
-    TpPresenceMixinClass presence_class;
 };
 
 struct _GabbleConnection {
     TpBaseConnection parent;
-    TpPresenceMixin presence;
 
     WockySession *session;
 

@@ -93,6 +93,8 @@ static TpBaseContactList *_gabble_plugin_connection_get_contact_list (
 G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
     gabble_connection,
     TP_TYPE_BASE_CONNECTION,
+    G_IMPLEMENT_INTERFACE (TP_TYPE_PRESENCE_MIXIN,
+      conn_presence_mixin_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_ALIASING1,
       conn_aliasing_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_AVATARS1,
@@ -105,8 +107,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       tp_base_contact_list_mixin_groups_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_BLOCKING1,
       tp_base_contact_list_mixin_blocking_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE1,
-      tp_presence_mixin_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION1,
       location_iface_init);
     G_IMPLEMENT_INTERFACE
@@ -529,8 +529,6 @@ gabble_connection_constructed (GObject *object)
       TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION1);
   object_skeleton_take_svc_interface (skel,
       TP_TYPE_SVC_CONNECTION_INTERFACE_POWER_SAVING1);
-  object_skeleton_take_svc_interface (skel,
-      TP_TYPE_SVC_CONNECTION_INTERFACE_PRESENCE1);
   object_skeleton_take_svc_interface (skel,
       TP_TYPE_SVC_CONNECTION_INTERFACE_SIDECARS1);
 
@@ -1231,8 +1229,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   tp_dbus_properties_mixin_implement_interface (object_class,
       TP_IFACE_QUARK_CONNECTION_INTERFACE_ALIASING1,
       conn_aliasing_properties_getter, NULL, conn_aliasing_properties);
-
-  conn_presence_class_init (gabble_connection_class);
 
   conn_contact_info_class_init (gabble_connection_class);
 
@@ -3393,7 +3389,7 @@ gabble_connection_fill_contact_attributes (TpBaseConnection *base,
         attributes))
     return;
 
-  if (tp_presence_mixin_fill_contact_attributes ((GObject *) self,
+  if (tp_presence_mixin_fill_contact_attributes (TP_PRESENCE_MIXIN (self),
         dbus_interface, handle, attributes))
     return;
 

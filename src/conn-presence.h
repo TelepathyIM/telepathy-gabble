@@ -40,7 +40,7 @@ typedef enum {
 GQuark conn_presence_error_quark (void);
 #define CONN_PRESENCE_ERROR (conn_presence_error_quark ())
 
-void conn_presence_class_init (GabbleConnectionClass *klass);
+void conn_presence_mixin_init (TpPresenceMixinInterface *mixin_cls);
 void conn_presence_init (GabbleConnection *conn);
 void conn_presence_finalize (GabbleConnection *conn);
 void conn_presence_dispose (GabbleConnection *self);

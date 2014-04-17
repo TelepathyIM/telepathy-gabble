@@ -150,10 +150,10 @@ conn_presence_error_quark (void)
   return quark;
 }
 
-static TpPresenceStatus *construct_contact_status (GObject *obj,
+static TpPresenceStatus *construct_contact_status (TpPresenceMixin *mixin,
     TpHandle handle)
 {
-  GabbleConnection *self = GABBLE_CONNECTION (obj);
+  GabbleConnection *self = GABBLE_CONNECTION (mixin);
   TpBaseConnection *base = (TpBaseConnection *) self;
   GabblePresence *presence;
   GabblePresenceId status;
@@ -187,6 +187,7 @@ construct_contact_statuses (GabbleConnection *self,
     const GArray *contact_handles)
 {
   TpBaseConnection *base = (TpBaseConnection *) self;
+  TpPresenceMixin *mixin = TP_PRESENCE_MIXIN (self);
   guint i;
   TpHandle handle;
   GHashTable *contact_statuses;
@@ -204,7 +205,7 @@ construct_contact_statuses (GabbleConnection *self,
       handle = g_array_index (contact_handles, TpHandle, i);
 
       g_hash_table_insert (contact_statuses, GUINT_TO_POINTER (handle),
-          construct_contact_status ((GObject *) self, handle));
+          construct_contact_status (mixin, handle));
     }
 
   return contact_statuses;
@@ -228,7 +229,8 @@ conn_presence_emit_presence_update (
 
   contact_statuses = construct_contact_statuses (self,
       contact_handles);
-  tp_presence_mixin_emit_presence_update ((GObject *) self, contact_statuses);
+  tp_presence_mixin_emit_presence_update (TP_PRESENCE_MIXIN (self),
+      contact_statuses);
   g_hash_table_unref (contact_statuses);
 }
 
@@ -1502,9 +1504,9 @@ conn_presence_statuses (void)
 }
 
 static guint
-get_maximum_status_message_length_cb (GObject *obj)
+get_maximum_status_message_length_cb (TpPresenceMixin *mixin)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (obj);
+  GabbleConnection *conn = GABBLE_CONNECTION (mixin);
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
 
   return priv->max_status_message_length;
@@ -1692,11 +1694,11 @@ toggle_presence_visibility_cb (GObject *source_object,
 }
 
 static gboolean
-set_own_status_cb (GObject *obj,
+set_own_status_cb (TpPresenceMixin *mixin,
                    const TpPresenceStatus *status,
                    GError **error)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (obj);
+  GabbleConnection *conn = GABBLE_CONNECTION (mixin);
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GabblePresenceId i = GABBLE_PRESENCE_AVAILABLE;
@@ -1804,9 +1806,10 @@ connection_status_changed_cb (
 
 
 static gboolean
-status_available_cb (GObject *obj, guint status)
+status_available_cb (TpPresenceMixin *mixin,
+    guint status)
 {
-  GabbleConnection *conn = GABBLE_CONNECTION (obj);
+  GabbleConnection *conn = GABBLE_CONNECTION (mixin);
   TpBaseConnection *base = (TpBaseConnection *) conn;
   GabbleConnectionPresencePrivate *priv = conn->presence_priv;
   TpConnectionPresenceType presence_type =
@@ -1870,20 +1873,15 @@ conn_presence_get_type (GabblePresence *presence)
  * Until then, gabble_statuses is leaked.
  */
 void
-conn_presence_class_init (GabbleConnectionClass *klass)
+conn_presence_mixin_init (TpPresenceMixinInterface *mixin_cls)
 {
-  TpPresenceMixinClass *mixin_cls;
-
-  tp_presence_mixin_class_init ((GObjectClass *) klass,
-      G_STRUCT_OFFSET (GabbleConnectionClass, presence_class),
-      status_available_cb, construct_contact_status,
-      set_own_status_cb, conn_presence_statuses ());
-  mixin_cls = TP_PRESENCE_MIXIN_CLASS (klass);
+  mixin_cls->status_available = status_available_cb;
+  mixin_cls->get_contact_status = construct_contact_status;
+  mixin_cls->set_own_status = set_own_status_cb;
   mixin_cls->get_maximum_status_message_length =
       get_maximum_status_message_length_cb;
 
-  tp_presence_mixin_init_dbus_properties (
-    (GObjectClass *) klass);
+  mixin_cls->statuses = conn_presence_statuses ();
 }
 
 void
@@ -1902,8 +1900,7 @@ conn_presence_init (GabbleConnection *conn)
 
   conn->presence_priv->privacy_statuses = NULL;
 
-  tp_presence_mixin_init ((GObject *) conn,
-      G_STRUCT_OFFSET (GabbleConnection, presence));
+  tp_presence_mixin_init (TP_PRESENCE_MIXIN (conn));
 }
 
 void
@@ -1944,6 +1941,4 @@ conn_presence_finalize (GabbleConnection *conn)
       g_hash_table_unref (priv->shared_statuses);
 
   g_slice_free (GabbleConnectionPresencePrivate, priv);
-
-  tp_presence_mixin_finalize ((GObject *) conn);
 }

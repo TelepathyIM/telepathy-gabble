@@ -325,7 +325,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
   if (tp_base_channel_is_registered (base))
     {
       tp_channel_manager_emit_channel_closed_for_object (
-          TP_CHANNEL_MANAGER (self), (TpExportableChannel *) chan);
+          TP_CHANNEL_MANAGER (self), base);
     }
 
   if (priv->channels != NULL)
@@ -341,7 +341,7 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
           tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
-              (TpExportableChannel *) chan, NULL);
+              base, NULL);
         }
       else
         {
@@ -372,6 +372,7 @@ new_im_channel (GabbleImFactory *fac,
 {
   GabbleImFactoryPrivate *priv = fac->priv;
   TpBaseConnection *conn = (TpBaseConnection *) priv->conn;
+  TpBaseChannel *base;
   GabbleIMChannel *chan;
   GSList *request_tokens;
   TpHandle initiator;
@@ -389,7 +390,8 @@ new_im_channel (GabbleImFactory *fac,
                        "initiator-handle", initiator,
                        "requested", (handle != initiator),
                        NULL);
-  tp_base_channel_register ((TpBaseChannel *) chan);
+  base = TP_BASE_CHANNEL (chan);
+  tp_base_channel_register (base);
 
   g_signal_connect (chan, "closed", (GCallback) im_channel_closed_cb, fac);
 
@@ -401,7 +403,7 @@ new_im_channel (GabbleImFactory *fac,
     request_tokens = NULL;
 
   tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
-      (TpExportableChannel *) chan, request_tokens);
+      base, request_tokens);
 
   g_slist_free (request_tokens);
 
@@ -649,7 +651,7 @@ gabble_im_factory_get_contact_caps (GabbleCapsChannelManager *manager,
 
 struct _ForeachData
 {
-  TpExportableChannelFunc func;
+  TpBaseChannelFunc func;
   gpointer user_data;
 };
 
@@ -657,14 +659,14 @@ static void
 _foreach_slave (gpointer key, gpointer value, gpointer user_data)
 {
   struct _ForeachData *data = user_data;
-  TpExportableChannel *chan = TP_EXPORTABLE_CHANNEL (value);
+  TpBaseChannel *chan = TP_BASE_CHANNEL (value);
 
   data->func (chan, data->user_data);
 }
 
 static void
 gabble_im_factory_foreach_channel (TpChannelManager *manager,
-                                   TpExportableChannelFunc func,
+                                   TpBaseChannelFunc func,
                                    gpointer user_data)
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
@@ -723,7 +725,7 @@ gabble_im_factory_requestotron (GabbleImFactory *self,
 {
   TpHandle handle;
   GError *error = NULL;
-  TpExportableChannel *channel;
+  TpBaseChannel *channel;
 
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_IFACE_CHANNEL ".ChannelType"), TP_IFACE_CHANNEL_TYPE_TEXT))

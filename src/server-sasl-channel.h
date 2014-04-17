@@ -37,8 +37,6 @@ typedef struct _GabbleServerSaslChannel GabbleServerSaslChannel;
 
 struct _GabbleServerSaslChannelClass {
     TpBaseChannelClass parent_class;
-
-    TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleServerSaslChannel {

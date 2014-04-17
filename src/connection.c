@@ -1210,9 +1210,27 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
-  gabble_connection_class->properties_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleConnectionClass, properties_class));
+  tp_dbus_properties_mixin_class_init (object_class, 0);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_LOCATION1,
+      conn_location_properties_getter, conn_location_properties_setter,
+      location_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_AVATARS1,
+      conn_avatars_properties_getter, NULL, conn_avatars_properties);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_CONTACT_INFO1,
+      conn_contact_info_properties_getter, NULL, conn_contact_info_properties);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
+      conn_mail_notif_properties_getter, NULL, mail_notif_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_POWER_SAVING1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      power_saving_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CONNECTION_INTERFACE_ALIASING1,
+      conn_aliasing_properties_getter, NULL, conn_aliasing_properties);
 
   conn_presence_class_init (gabble_connection_class);
 

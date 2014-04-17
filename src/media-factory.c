@@ -44,13 +44,13 @@
 typedef struct
 {
     GabbleMediaFactory *self;
-    TpExportableChannel *channel;
+    TpBaseChannel *channel;
     GSList *request_tokens;
 } MediaChannelRequest;
 
 static MediaChannelRequest *
 media_channel_request_new (GabbleMediaFactory *self,
-    TpExportableChannel *channel,
+    TpBaseChannel *channel,
     gpointer request_token)
 {
   MediaChannelRequest *mcr = g_slice_new0 (MediaChannelRequest);
@@ -209,7 +209,7 @@ call_channel_closed_cb (GabbleCallChannel *chan, gpointer user_data)
   GabbleMediaFactoryPrivate *priv = fac->priv;
 
   tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (fac),
-      TP_EXPORTABLE_CHANNEL (chan));
+      TP_BASE_CHANNEL (chan));
 
   DEBUG ("removing media channel %p with ref count %d",
       chan, G_OBJECT (chan)->ref_count);
@@ -302,7 +302,7 @@ new_call_channel (GabbleMediaFactory *self,
   g_free (object_path);
 
   mcr = media_channel_request_new (self,
-    TP_EXPORTABLE_CHANNEL (channel), request_token);
+    TP_BASE_CHANNEL (channel), request_token);
 
   g_async_initable_init_async (G_ASYNC_INITABLE (channel),
     G_PRIORITY_DEFAULT,
@@ -406,7 +406,7 @@ gabble_media_factory_constructed (GObject *object)
 
 static void
 gabble_media_factory_foreach_channel (TpChannelManager *manager,
-                                      TpExportableChannelFunc foreach,
+                                      TpBaseChannelFunc foreach,
                                       gpointer user_data)
 {
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (manager);
@@ -414,7 +414,7 @@ gabble_media_factory_foreach_channel (TpChannelManager *manager,
   GList *l;
 
   for (l = priv->call_channels; l != NULL; l = g_list_next (l))
-    foreach (TP_EXPORTABLE_CHANNEL (l->data), user_data);
+    foreach (TP_BASE_CHANNEL (l->data), user_data);
 }
 
 static const gchar * const media_channel_fixed_properties[] = {
@@ -556,7 +556,7 @@ gabble_media_factory_create_call (TpChannelManager *manager,
                */
               tp_channel_manager_emit_request_already_satisfied (
                   TP_CHANNEL_MANAGER (self), request_token,
-                  TP_EXPORTABLE_CHANNEL (channel));
+                  TP_BASE_CHANNEL (channel));
               return TRUE;
             }
         }

@@ -231,7 +231,7 @@ gabble_ft_manager_finalize (GObject *object)
 /* Channel Manager interface */
 
 struct foreach_data {
-  TpExportableChannelFunc func;
+  TpBaseChannelFunc func;
   gpointer data;
 };
 
@@ -239,17 +239,17 @@ static void
 gabble_ft_manager_iface_foreach_one (gpointer value,
                                      gpointer data)
 {
-  TpExportableChannel *chan;
+  TpBaseChannel *chan;
   struct foreach_data *f = (struct foreach_data *) data;
 
-  chan = TP_EXPORTABLE_CHANNEL (value);
+  chan = TP_BASE_CHANNEL (value);
 
   f->func (chan, f->data);
 }
 
 static void
 gabble_ft_manager_foreach_channel (TpChannelManager *iface,
-                                  TpExportableChannelFunc func,
+                                  TpBaseChannelFunc func,
                                   gpointer data)
 {
   GabbleFtManager *self = GABBLE_FT_MANAGER (iface);
@@ -303,7 +303,7 @@ gabble_ft_manager_channels_created (GabbleFtManager *self, GList *channels)
       /* The channels can't satisfy a request because this will always be called
          when we receive an incoming jingle-share session */
       tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
-          TP_EXPORTABLE_CHANNEL (chan), NULL);
+          TP_BASE_CHANNEL (chan), NULL);
     }
 }
 #endif
@@ -326,7 +326,7 @@ gabble_ft_manager_channel_created (GabbleFtManager *self,
     requests = g_slist_prepend (requests, request_token);
 
   tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
-      TP_EXPORTABLE_CHANNEL (chan), requests);
+      TP_BASE_CHANNEL (chan), requests);
 
   g_slist_free (requests);
 }

@@ -201,7 +201,7 @@ console_channel_closed_cb (
   GabbleConsoleChannelManager *self = GABBLE_CONSOLE_CHANNEL_MANAGER (user_data);
 
   tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
-      TP_EXPORTABLE_CHANNEL (channel));
+      TP_BASE_CHANNEL (channel));
 
   if (g_queue_remove (&self->console_channels, channel))
     {
@@ -254,7 +254,7 @@ gabble_console_channel_manager_create_channel (
 
   requests = g_slist_prepend (NULL, request);
   tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
-      TP_EXPORTABLE_CHANNEL (channel), requests);
+      channel, requests);
   g_slist_free (requests);
 
   g_object_unref (connection);

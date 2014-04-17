@@ -103,7 +103,7 @@ GabbleTubeIface * gabble_muc_channel_tube_request (GabbleMucChannel *self,
     gboolean require_new);
 
 void gabble_muc_channel_foreach_tubes (GabbleMucChannel *gmuc,
-    TpExportableChannelFunc foreach, gpointer user_data);
+    TpBaseChannelFunc foreach, gpointer user_data);
 
 void gabble_muc_channel_handle_si_stream_request (GabbleMucChannel *self,
     GabbleBytestreamIface *bytestream, const gchar *stream_id,

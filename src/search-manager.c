@@ -296,8 +296,8 @@ gabble_search_manager_class_init (GabbleSearchManagerClass *klass)
 
 static void
 gabble_search_manager_foreach_channel (TpChannelManager *manager,
-                                   TpExportableChannelFunc func,
-                                   gpointer user_data)
+    TpBaseChannelFunc func,
+    gpointer user_data)
 {
   GabbleSearchManager *self = GABBLE_SEARCH_MANAGER (manager);
   GHashTableIter iter;
@@ -355,7 +355,7 @@ search_channel_closed_cb (GabbleSearchChannel *chan,
                           GabbleSearchManager *self)
 {
   tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
-      (TpExportableChannel *) chan);
+      (TpBaseChannel *) chan);
   remove_search_channel (self, chan);
 }
 
@@ -399,7 +399,7 @@ search_channel_ready_or_not_cb (GabbleSearchChannel *chan,
       GSList *request_tokens = g_slist_prepend (NULL, ctx->request_token);
 
       tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (ctx->self),
-          (TpExportableChannel *) chan, request_tokens);
+          (TpBaseChannel *) chan, request_tokens);
 
       g_slist_free (request_tokens);
     }

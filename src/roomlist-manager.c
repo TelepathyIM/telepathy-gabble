@@ -240,7 +240,7 @@ gabble_roomlist_manager_class_init (GabbleRoomlistManagerClass *klass)
 
 static void
 gabble_roomlist_manager_foreach_channel (TpChannelManager *manager,
-                                         TpExportableChannelFunc foreach,
+                                         TpBaseChannelFunc foreach,
                                          gpointer user_data)
 {
   GabbleRoomlistManager *self = GABBLE_ROOMLIST_MANAGER (manager);
@@ -248,7 +248,7 @@ gabble_roomlist_manager_foreach_channel (TpChannelManager *manager,
 
   for (i = 0; i < self->priv->channels->len; i++)
     {
-      TpExportableChannel *channel = TP_EXPORTABLE_CHANNEL (
+      TpBaseChannel *channel = TP_BASE_CHANNEL (
           g_ptr_array_index (self->priv->channels, i));
 
       foreach (channel, user_data);
@@ -298,7 +298,7 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *channel,
   GabbleRoomlistManager *self = GABBLE_ROOMLIST_MANAGER (user_data);
 
   tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
-      TP_EXPORTABLE_CHANNEL (channel));
+      TP_BASE_CHANNEL (channel));
 
   if (self->priv->channels != NULL)
     {
@@ -377,7 +377,7 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
             {
               tp_channel_manager_emit_request_already_satisfied (
                   TP_CHANNEL_MANAGER (self), request_token,
-                  TP_EXPORTABLE_CHANNEL (channel));
+                  TP_BASE_CHANNEL (channel));
               return TRUE;
             }
         }
@@ -391,7 +391,7 @@ gabble_roomlist_manager_handle_request (TpChannelManager *manager,
 
   request_tokens = g_slist_prepend (NULL, request_token);
   tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
-      TP_EXPORTABLE_CHANNEL (channel), request_tokens);
+      TP_BASE_CHANNEL (channel), request_tokens);
   g_slist_free (request_tokens);
 
   return TRUE;

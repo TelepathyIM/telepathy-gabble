@@ -2118,7 +2118,7 @@ gabble_muc_channel_tube_request (GabbleMucChannel *self,
 
 void
 gabble_muc_channel_foreach_tubes (GabbleMucChannel *gmuc,
-    TpExportableChannelFunc foreach,
+    TpBaseChannelFunc foreach,
     gpointer user_data)
 {
   GabbleMucChannelPrivate *priv = gmuc->priv;
@@ -2128,7 +2128,7 @@ gabble_muc_channel_foreach_tubes (GabbleMucChannel *gmuc,
   g_hash_table_iter_init (&iter, priv->tubes);
   while (g_hash_table_iter_next (&iter, NULL, &value))
     {
-      foreach (TP_EXPORTABLE_CHANNEL (value), user_data);
+      foreach (TP_BASE_CHANNEL (value), user_data);
     }
 }
 

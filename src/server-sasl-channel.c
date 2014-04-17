@@ -310,24 +310,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
     { "Verified", "secure", NULL },
     { NULL }
   };
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION1,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        server_auth_props,
-      },
-      { TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        sasl_auth_props,
-      },
-      { TP_IFACE_CHANNEL_INTERFACE_SECURABLE1,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        securable_props,
-      },
-      { NULL }
-  };
   GObjectClass *object_class = G_OBJECT_CLASS (klass);
   TpBaseChannelClass *channel_class = TP_BASE_CHANNEL_CLASS (klass);
   GParamSpec *param_spec;
@@ -428,9 +410,19 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   g_object_class_install_property (object_class, PROP_SECURE,
       param_spec);
 
-  klass->dbus_props_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleServerSaslChannelClass, dbus_props_class));
+  tp_dbus_properties_mixin_class_init (object_class, 0);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_TYPE_SERVER_AUTHENTICATION1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      server_auth_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_SASL_AUTHENTICATION1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      sasl_auth_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_SECURABLE1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      securable_props);
 }
 
 static void

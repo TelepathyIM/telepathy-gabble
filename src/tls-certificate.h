@@ -33,8 +33,6 @@ typedef struct _GabbleTLSCertificatePrivate GabbleTLSCertificatePrivate;
 
 struct _GabbleTLSCertificateClass {
   GObjectClass parent_class;
-
-  TpDBusPropertiesMixinClass dbus_props_class;
 };
 
 struct _GabbleTLSCertificate {

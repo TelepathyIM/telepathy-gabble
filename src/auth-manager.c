@@ -115,7 +115,7 @@ auth_channel_closed_cb (GabbleServerSaslChannel *channel,
   SavedError tmp = { NULL, NULL, 0, NULL };
 
   tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
-      TP_EXPORTABLE_CHANNEL (channel));
+      TP_BASE_CHANNEL (channel));
 
   g_assert (self->priv->channel == channel);
 
@@ -372,7 +372,7 @@ gabble_auth_manager_start_auth_async (WockyAuthRegistry *registry,
       g_assert (tp_base_channel_is_registered (
             (TpBaseChannel *) self->priv->channel));
       tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
-          TP_EXPORTABLE_CHANNEL (self->priv->channel), NULL);
+          TP_BASE_CHANNEL (self->priv->channel), NULL);
     }
   else
     {
@@ -641,13 +641,13 @@ gabble_auth_manager_class_init (GabbleAuthManagerClass *klass)
 
 static void
 gabble_auth_manager_foreach_channel (TpChannelManager *manager,
-    TpExportableChannelFunc func,
+    TpBaseChannelFunc func,
     gpointer user_data)
 {
   GabbleAuthManager *self = GABBLE_AUTH_MANAGER (manager);
 
   if (self->priv->channel != NULL)
-    func (TP_EXPORTABLE_CHANNEL (self->priv->channel), user_data);
+    func (TP_BASE_CHANNEL (self->priv->channel), user_data);
 }
 
 static void

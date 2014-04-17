@@ -166,7 +166,6 @@ typedef enum {
 
 struct _GabbleConnectionClass {
     TpBaseConnectionClass parent_class;
-    TpDBusPropertiesMixinClass properties_class;
     TpPresenceMixinClass presence_class;
 };
 

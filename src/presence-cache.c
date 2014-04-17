@@ -413,8 +413,7 @@ gabble_presence_cache_class_init (GabblePresenceCacheClass *klass)
     G_TYPE_FROM_CLASS (klass),
     G_SIGNAL_RUN_LAST,
     0,
-    NULL, NULL,
-    g_cclosure_marshal_VOID__UINT, G_TYPE_NONE, 1, TP_TYPE_HANDLE);
+    NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
 static gboolean

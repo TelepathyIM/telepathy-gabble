@@ -101,12 +101,6 @@ G_DEFINE_TYPE_WITH_CODE(GabbleConnection,
       conn_avatars_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO1,
       conn_contact_info_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST1,
-      tp_base_contact_list_mixin_list_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS1,
-      tp_base_contact_list_mixin_groups_iface_init);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_BLOCKING1,
-      tp_base_contact_list_mixin_blocking_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION1,
       location_iface_init);
     G_IMPLEMENT_INTERFACE
@@ -520,11 +514,7 @@ gabble_connection_constructed (GObject *object)
   object_skeleton_take_svc_interface (skel,
       TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1);
   object_skeleton_take_svc_interface (skel,
-      TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_GROUPS1);
-  object_skeleton_take_svc_interface (skel,
       TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_INFO1);
-  object_skeleton_take_svc_interface (skel,
-      TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_LIST1);
   object_skeleton_take_svc_interface (skel,
       TP_TYPE_SVC_CONNECTION_INTERFACE_LOCATION1);
   object_skeleton_take_svc_interface (skel,
@@ -1231,8 +1221,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       conn_aliasing_properties_getter, NULL, conn_aliasing_properties);
 
   conn_contact_info_class_init (gabble_connection_class);
-
-  tp_base_contact_list_mixin_class_init (parent_class);
 }
 
 static void
@@ -2731,12 +2719,6 @@ set_status_to_connected (GabbleConnection *conn)
     {
       object_skeleton_take_svc_interface (skel,
           TP_TYPE_SVC_CONNECTION_INTERFACE_MAIL_NOTIFICATION1);
-    }
-
-  if (tp_base_contact_list_can_block (gabble_connection_get_contact_list (conn)))
-    {
-      object_skeleton_take_svc_interface (skel,
-          TP_TYPE_SVC_CONNECTION_INTERFACE_CONTACT_BLOCKING1);
     }
 
   /* go go gadget on-line */

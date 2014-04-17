@@ -594,7 +594,7 @@ gboolean
 conn_avatars_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes)
+    GVariantDict *attributes)
 {
   TpBaseConnection *base = TP_BASE_CONNECTION (self);
 
@@ -609,15 +609,10 @@ conn_avatars_fill_contact_attributes (GabbleConnection *self,
 
       if (NULL != presence)
         {
-          GValue *val = tp_g_value_slice_new (G_TYPE_STRING);
-
-          if (NULL != presence->avatar_sha1)
-            g_value_set_string (val, presence->avatar_sha1);
-          else
-            g_value_set_string (val, "");
-
-          tp_contact_attribute_map_take_sliced_gvalue (attributes, handle,
-            TP_TOKEN_CONNECTION_INTERFACE_AVATARS1_TOKEN, val);
+          g_variant_dict_insert_value (attributes,
+            TP_TOKEN_CONNECTION_INTERFACE_AVATARS1_TOKEN,
+            g_variant_new_string (
+              (presence->avatar_sha1 == NULL ? "" : presence->avatar_sha1)));
         }
 
       return TRUE;

@@ -32,7 +32,7 @@ void conn_client_types_init (GabbleConnection *conn);
 gboolean conn_client_types_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes);
+    GVariantDict *attributes);
 
 G_END_DECLS
 

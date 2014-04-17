@@ -903,7 +903,7 @@ conn_aliasing_properties_getter (GObject *object,
 static void gabble_connection_fill_contact_attributes (TpBaseConnection *base,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes);
+    GVariantDict *attributes);
 
 static void
 gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
@@ -3348,22 +3348,22 @@ static void
 gabble_connection_fill_contact_attributes (TpBaseConnection *base,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes)
+    GVariantDict *attributes)
 {
   GabbleConnection *self = GABBLE_CONNECTION (base);
 
   if (!tp_strdiff (dbus_interface,
         TP_IFACE_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1))
     {
-      GValue *val = tp_g_value_slice_new_take_boxed (
-          TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST,
-          gabble_connection_get_handle_contact_capabilities (self, handle));
+      GValue val = G_VALUE_INIT;
 
-      tp_contact_attribute_map_take_sliced_gvalue (attributes,
-          handle,
+      g_value_init (&val, TP_ARRAY_TYPE_REQUESTABLE_CHANNEL_CLASS_LIST);
+      g_value_take_boxed (&val,
+          gabble_connection_get_handle_contact_capabilities (self, handle));
+      g_variant_dict_insert_value (attributes,
           TP_TOKEN_CONNECTION_INTERFACE_CONTACT_CAPABILITIES1_CAPABILITIES,
-          val);
-      return;
+          dbus_g_value_build_g_variant (&val));
+      g_value_unset (&val);
     }
 
   if (tp_base_contact_list_fill_contact_attributes (

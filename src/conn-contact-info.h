@@ -37,7 +37,7 @@ void conn_contact_info_properties_getter (GObject *object, GQuark interface,
 gboolean conn_contact_info_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle contact,
-    TpContactAttributeMap *attributes);
+    GVariantDict *attributes);
 
 G_END_DECLS
 

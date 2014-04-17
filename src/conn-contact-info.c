@@ -1036,7 +1036,7 @@ gboolean
 conn_contact_info_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle contact,
-    TpContactAttributeMap *attributes)
+    GVariantDict *attributes)
 {
   g_assert (self->vcard_manager != NULL);
 
@@ -1051,12 +1051,14 @@ conn_contact_info_fill_contact_attributes (GabbleConnection *self,
 
           if (contact_info != NULL)
             {
-              GValue *val =  tp_g_value_slice_new_take_boxed (
-                      TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST, contact_info);
+              GValue value = G_VALUE_INIT;
 
-              tp_contact_attribute_map_take_sliced_gvalue (attributes,
-                      contact, TP_TOKEN_CONNECTION_INTERFACE_CONTACT_INFO1_INFO,
-                      val);
+              g_value_init (&value, TP_ARRAY_TYPE_CONTACT_INFO_FIELD_LIST);
+              g_value_take_boxed (&value, contact_info);
+              g_variant_dict_insert_value (attributes,
+                  TP_TOKEN_CONNECTION_INTERFACE_CONTACT_INFO1_INFO,
+                  dbus_g_value_build_g_variant (&value));
+              g_value_unset (&value);
             }
         }
 

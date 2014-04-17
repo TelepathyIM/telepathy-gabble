@@ -32,7 +32,7 @@ void conn_addressing_init (GabbleConnection *self);
 gboolean conn_addressing_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle contact,
-    TpContactAttributeMap *attributes);
+    GVariantDict *attributes);
 
 G_END_DECLS
 

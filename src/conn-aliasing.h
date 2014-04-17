@@ -43,7 +43,7 @@ GabbleConnectionAliasSource _gabble_connection_get_cached_alias (
 gboolean conn_aliasing_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes);
+    GVariantDict *attributes);
 
 G_END_DECLS
 

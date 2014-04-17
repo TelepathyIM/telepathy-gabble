@@ -42,11 +42,10 @@ gboolean
 conn_addressing_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle contact,
-    TpContactAttributeMap *attributes)
+    GVariantDict *attributes)
 {
   TpHandleRepoIface *contact_repo;
   gchar **uris;
-  GHashTable *addresses;
 
   if (tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_ADDRESSING1))
     return FALSE;
@@ -54,16 +53,15 @@ conn_addressing_fill_contact_attributes (GabbleConnection *self,
   contact_repo = tp_base_connection_get_handles ((TpBaseConnection *) self,
       TP_ENTITY_TYPE_CONTACT);
   uris = gabble_uris_for_handle (contact_repo, contact);
-  addresses = gabble_vcard_addresses_for_handle (contact_repo, contact);
 
-  tp_contact_attribute_map_take_sliced_gvalue (attributes,
-      contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_URIS,
-      tp_g_value_slice_new_take_boxed (G_TYPE_STRV, uris));
+  g_variant_dict_insert_value (attributes,
+      TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_URIS,
+      g_variant_new_strv ((const gchar * const *) uris,
+        (uris == NULL ? 0 : -1)));
 
-  tp_contact_attribute_map_take_sliced_gvalue (attributes,
-      contact, TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_ADDRESSES,
-      tp_g_value_slice_new_take_boxed (TP_HASH_TYPE_STRING_STRING_MAP,
-        addresses));
+  g_variant_dict_insert_value (attributes,
+      TP_TOKEN_CONNECTION_INTERFACE_ADDRESSING1_ADDRESSES,
+      gabble_vcard_addresses_for_handle (contact_repo, contact));
 
   return TRUE;
 }
@@ -78,7 +76,8 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
   TpBaseConnection *base = TP_BASE_CONNECTION (iface);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
       TP_ENTITY_TYPE_CONTACT);
-  GHashTable *attributes;
+  GValue attributes_dbus_glib = G_VALUE_INIT;
+  GVariant *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) uris));
@@ -94,15 +93,17 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
       g_array_append_val (handles, h);
     }
 
-  attributes = tp_base_connection_dup_contact_attributes_hash (base, handles,
+  attributes = tp_base_connection_dup_contact_attributes (base, handles,
       interfaces, assumed_interfaces);
+  dbus_g_value_parse_g_variant (attributes, &attributes_dbus_glib);
 
   tp_svc_connection_interface_addressing1_return_from_get_contacts_by_uri (
-      context, requested, attributes);
+      context, requested, g_value_get_boxed (&attributes_dbus_glib));
 
   g_array_unref (handles);
   g_hash_table_unref (requested);
-  g_hash_table_unref (attributes);
+  g_value_unset (&attributes_dbus_glib);
+  g_variant_unref (attributes);
 }
 
 static void
@@ -116,7 +117,8 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
   TpBaseConnection *base = TP_BASE_CONNECTION (iface);
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (base,
       TP_ENTITY_TYPE_CONTACT);
-  GHashTable *attributes;
+  GValue attributes_dbus_glib = G_VALUE_INIT;
+  GVariant *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
   GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
       g_strv_length ((gchar **) addresses));
@@ -133,15 +135,17 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
       g_array_append_val (handles, h);
     }
 
-  attributes = tp_base_connection_dup_contact_attributes_hash (base, handles,
+  attributes = tp_base_connection_dup_contact_attributes (base, handles,
       interfaces, assumed_interfaces);
+  dbus_g_value_parse_g_variant (attributes, &attributes_dbus_glib);
 
   tp_svc_connection_interface_addressing1_return_from_get_contacts_by_vcard_field (
-      context, requested, attributes);
+      context, requested, g_value_get_boxed (&attributes_dbus_glib));
 
   g_array_unref (handles);
   g_hash_table_unref (requested);
-  g_hash_table_unref (attributes);
+  g_value_unset (&attributes_dbus_glib);
+  g_variant_unref (attributes);
 }
 
 void

@@ -373,24 +373,25 @@ gabble_uris_for_handle (TpHandleRepoIface *contact_repo,
   return (gchar **) g_ptr_array_free (uris, FALSE);
 }
 
-GHashTable *
+GVariant *
 gabble_vcard_addresses_for_handle (TpHandleRepoIface *contact_repo,
     TpHandle contact)
 {
-  GHashTable *addresses = g_hash_table_new_full (g_str_hash, g_str_equal,
-      NULL, (GDestroyNotify) g_free);
+  GVariantBuilder builder;
+
+  g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{ss}"));
 
   for (const gchar * const *field = addressable_vcard_fields; *field != NULL; field++)
     {
       gchar *vcard_address = gabble_vcard_address_for_handle (contact_repo, *field, contact);
 
       if (vcard_address != NULL)
-        {
-          g_hash_table_insert (addresses, (gpointer) *field, vcard_address);
-        }
+        g_variant_builder_add (&builder, "{ss}", *field, vcard_address);
+
+      g_free (vcard_address);
     }
 
-  return addresses;
+  return g_variant_builder_end (&builder);
 }
 
 gchar *

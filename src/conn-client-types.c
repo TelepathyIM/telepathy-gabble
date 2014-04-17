@@ -132,20 +132,20 @@ gboolean
 conn_client_types_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes)
+    GVariantDict *attributes)
 {
   if (!tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_CLIENT_TYPES1))
     {
-      GValue *val;
       gchar **types;
 
       if (!get_client_types_from_handle (self, handle, &types))
         return TRUE;
 
-      val = tp_g_value_slice_new_take_boxed (G_TYPE_STRV, types);
-
-      tp_contact_attribute_map_take_sliced_gvalue (attributes, handle,
-          TP_TOKEN_CONNECTION_INTERFACE_CLIENT_TYPES1_CLIENT_TYPES, val);
+      g_variant_dict_insert_value (attributes,
+          TP_TOKEN_CONNECTION_INTERFACE_CLIENT_TYPES1_CLIENT_TYPES,
+          g_variant_new_strv ((const gchar * const *) types,
+            types == NULL ? 0 : -1));
+      g_strfreev (types);
 
       return TRUE;
     }

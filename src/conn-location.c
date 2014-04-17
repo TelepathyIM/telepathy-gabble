@@ -595,7 +595,7 @@ gboolean
 conn_location_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes)
+    GVariantDict *attributes)
 {
   if (!tp_strdiff (dbus_interface, TP_IFACE_CONNECTION_INTERFACE_LOCATION1))
     {
@@ -603,11 +603,10 @@ conn_location_fill_contact_attributes (GabbleConnection *self,
 
       if (location != NULL)
         {
-          GValue *val = tp_g_value_slice_new_take_boxed (
-              TP_HASH_TYPE_STRING_VARIANT_MAP, location);
-
-          tp_contact_attribute_map_take_sliced_gvalue (attributes,
-              handle, TP_TOKEN_CONNECTION_INTERFACE_LOCATION1_LOCATION, val);
+          g_variant_dict_insert_value (attributes,
+              TP_TOKEN_CONNECTION_INTERFACE_LOCATION1_LOCATION,
+              tp_asv_to_vardict (location));
+          g_hash_table_unref (location);
         }
 
       return TRUE;

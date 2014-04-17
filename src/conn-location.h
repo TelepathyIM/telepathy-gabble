@@ -19,7 +19,7 @@ void conn_location_init (GabbleConnection *conn);
 gboolean conn_location_fill_contact_attributes (GabbleConnection *self,
     const gchar *dbus_interface,
     TpHandle handle,
-    TpContactAttributeMap *attributes);
+    GVariantDict *attributes);
 
 G_END_DECLS
 

@@ -1865,18 +1865,20 @@ gabble_roster_constructed (GObject *obj)
     ((GObjectClass *) gabble_roster_parent_class)->constructed;
   TpHandleRepoIface *contact_repo;
 
-  if (chain_up != NULL)
-    chain_up (obj);
-
   /* FIXME: This is not a strong reference because that would create a cycle.
    * I'd like to have a cyclic reference and break it at disconnect time,
    * like the contact list example in telepathy-glib does, but we can't do
    * that because the rest of Gabble assumes that the roster remains useful
    * until the bitter end (for instance, gabble_im_channel_dispose looks
-   * at the contact's subscription). */
+   * at the contact's subscription).
+   *
+   * Set this before chaining up, so can_block() can use it. */
   self->priv->conn = GABBLE_CONNECTION (tp_base_contact_list_get_connection (
         base, NULL));
   g_assert (GABBLE_IS_CONNECTION (self->priv->conn));
+
+  if (chain_up != NULL)
+    chain_up (obj);
 
   contact_repo = tp_base_connection_get_handles (
       (TpBaseConnection *) self->priv->conn, TP_ENTITY_TYPE_CONTACT);

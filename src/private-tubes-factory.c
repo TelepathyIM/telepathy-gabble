@@ -653,6 +653,9 @@ gabble_private_tubes_factory_foreach_channel (TpChannelManager *manager,
   GabblePrivateTubesFactory *self = GABBLE_PRIVATE_TUBES_FACTORY (manager);
   struct _ForeachData data;
 
+  if (self->priv->tubes == NULL)
+    return;
+
   data.user_data = user_data;
   data.foreach = foreach;
 
@@ -972,11 +975,11 @@ channel_closed_cb (GabbleTubeIface *tube,
       "id", &id,
       NULL);
 
-  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
-      TP_BASE_CHANNEL (tube));
-
   if (self->priv->tubes != NULL)
     g_hash_table_remove (self->priv->tubes, GUINT_TO_POINTER (id));
+
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
+      TP_BASE_CHANNEL (tube));
 }
 
 static guint64

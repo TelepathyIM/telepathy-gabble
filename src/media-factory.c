@@ -208,14 +208,14 @@ call_channel_closed_cb (GabbleCallChannel *chan, gpointer user_data)
   GabbleMediaFactory *fac = GABBLE_MEDIA_FACTORY (user_data);
   GabbleMediaFactoryPrivate *priv = fac->priv;
 
-  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (fac),
-      TP_BASE_CHANNEL (chan));
-
   DEBUG ("removing media channel %p with ref count %d",
       chan, G_OBJECT (chan)->ref_count);
 
   priv->call_channels = g_list_remove (priv->call_channels, chan);
   g_object_unref (chan);
+
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (fac),
+      TP_BASE_CHANNEL (chan));
 }
 
 static void

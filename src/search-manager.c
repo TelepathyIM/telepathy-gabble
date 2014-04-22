@@ -303,6 +303,9 @@ gabble_search_manager_foreach_channel (TpChannelManager *manager,
   GHashTableIter iter;
   gpointer chan;
 
+  if (self->priv->channels == NULL)
+    return;
+
   g_hash_table_iter_init (&iter, self->priv->channels);
   while (g_hash_table_iter_next (&iter, &chan, NULL))
     {
@@ -354,9 +357,9 @@ static void
 search_channel_closed_cb (GabbleSearchChannel *chan,
                           GabbleSearchManager *self)
 {
+  remove_search_channel (self, chan);
   tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
       (TpBaseChannel *) chan);
-  remove_search_channel (self, chan);
 }
 
 typedef struct {

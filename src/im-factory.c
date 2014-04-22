@@ -322,12 +322,6 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
 
   DEBUG ("%p, channel %p", self, chan);
 
-  if (tp_base_channel_is_registered (base))
-    {
-      tp_channel_manager_emit_channel_closed_for_object (
-          TP_CHANNEL_MANAGER (self), base);
-    }
-
   if (priv->channels != NULL)
     {
       if (tp_base_channel_is_destroyed (base))
@@ -335,11 +329,20 @@ im_channel_closed_cb (GabbleIMChannel *chan, gpointer user_data)
           DEBUG ("removing channel with handle %u", contact_handle);
           g_hash_table_remove (priv->channels,
               GUINT_TO_POINTER (contact_handle));
+
+          if (tp_base_channel_is_registered (base))
+            tp_channel_manager_emit_channel_closed_for_object (
+                TP_CHANNEL_MANAGER (self), base);
         }
       else if (tp_base_channel_is_respawning (base))
         {
           DEBUG ("reopening channel with handle %u due to pending messages",
               contact_handle);
+
+          if (tp_base_channel_is_registered (base))
+            tp_channel_manager_emit_channel_closed_for_object (
+                TP_CHANNEL_MANAGER (self), base);
+
           tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (self),
               base, NULL);
         }
@@ -671,6 +674,9 @@ gabble_im_factory_foreach_channel (TpChannelManager *manager,
 {
   GabbleImFactory *self = GABBLE_IM_FACTORY (manager);
   struct _ForeachData data;
+
+  if (self->priv->channels == NULL)
+    return;
 
   data.user_data = user_data;
   data.func = func;

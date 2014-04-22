@@ -246,6 +246,9 @@ gabble_roomlist_manager_foreach_channel (TpChannelManager *manager,
   GabbleRoomlistManager *self = GABBLE_ROOMLIST_MANAGER (manager);
   guint i;
 
+  if (self->priv->channels == NULL)
+    return;
+
   for (i = 0; i < self->priv->channels->len; i++)
     {
       TpBaseChannel *channel = TP_BASE_CHANNEL (
@@ -297,14 +300,14 @@ roomlist_channel_closed_cb (GabbleRoomlistChannel *channel,
 {
   GabbleRoomlistManager *self = GABBLE_ROOMLIST_MANAGER (user_data);
 
-  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
-      TP_BASE_CHANNEL (channel));
-
   if (self->priv->channels != NULL)
     {
       g_ptr_array_remove (self->priv->channels, channel);
       g_object_unref (channel);
     }
+
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
+      TP_BASE_CHANNEL (channel));
 }
 
 

@@ -114,9 +114,6 @@ auth_channel_closed_cb (GabbleServerSaslChannel *channel,
 {
   SavedError tmp = { NULL, NULL, 0, NULL };
 
-  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
-      TP_BASE_CHANNEL (channel));
-
   g_assert (self->priv->channel == channel);
 
   /* this is our last chance to find out why it failed */
@@ -133,6 +130,9 @@ auth_channel_closed_cb (GabbleServerSaslChannel *channel,
   tp_clear_pointer (&self->priv->server, g_free);
   tp_clear_pointer (&self->priv->session_id, g_free);
   tp_clear_pointer (&self->priv->username, g_free);
+
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
+      TP_BASE_CHANNEL (channel));
 }
 
 static void

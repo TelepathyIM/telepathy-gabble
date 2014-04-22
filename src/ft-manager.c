@@ -282,6 +282,9 @@ file_channel_closed_cb (GabbleFileTransferChannel *chan,
       g_free (id);
       g_free (path);
     }
+
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (self),
+      TP_BASE_CHANNEL (chan));
 }
 
 #ifdef ENABLE_JINGLE_FILE_TRANSFER

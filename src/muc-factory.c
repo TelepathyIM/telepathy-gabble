@@ -255,15 +255,11 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
   /* channel is actually reappearing, announce it */
   if (tp_base_channel_is_respawning (base))
     {
+      tp_channel_manager_emit_channel_closed_for_object (
+          TP_CHANNEL_MANAGER (fac), base);
       tp_channel_manager_emit_new_channel (TP_CHANNEL_MANAGER (fac),
           base, NULL);
       return;
-    }
-
-  if (tp_base_channel_is_registered (base))
-    {
-      tp_channel_manager_emit_channel_closed_for_object (
-          TP_CHANNEL_MANAGER (fac), base);
     }
 
   if (tp_base_channel_is_destroyed (base)
@@ -274,6 +270,12 @@ muc_channel_closed_cb (GabbleMucChannel *chan, gpointer user_data)
       DEBUG ("removing MUC channel with handle %d", room_handle);
 
       g_hash_table_remove (priv->text_channels, GUINT_TO_POINTER (room_handle));
+    }
+
+  if (tp_base_channel_is_registered (base))
+    {
+      tp_channel_manager_emit_channel_closed_for_object (
+          TP_CHANNEL_MANAGER (fac), base);
     }
 }
 
@@ -392,21 +394,21 @@ muc_sub_channel_closed_cb (TpSvcChannel *chan,
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucChannel *muc;
 
-  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (fac),
-      TP_BASE_CHANNEL (chan));
-
   /* GabbleTubeDBus, GabbleTubeStream, and GabbleMucCallChannel all
    * have "muc" properties. */
   g_object_get (chan,
       "muc", &muc,
       NULL);
 
-  if (muc == NULL)
-    return;
+  if (muc != NULL)
+    {
+      if (gabble_muc_channel_can_be_closed (muc)
+          && gabble_muc_channel_get_autoclose (muc))
+        tp_base_channel_close (TP_BASE_CHANNEL (muc));
+    }
 
-  if (gabble_muc_channel_can_be_closed (muc)
-      && gabble_muc_channel_get_autoclose (muc))
-    tp_base_channel_close (TP_BASE_CHANNEL (muc));
+  tp_channel_manager_emit_channel_closed_for_object (TP_CHANNEL_MANAGER (fac),
+      TP_BASE_CHANNEL (chan));
 }
 
 #ifdef ENABLE_VOIP
@@ -1004,6 +1006,9 @@ gabble_muc_factory_foreach_channel (TpChannelManager *manager,
   GabbleMucFactoryPrivate *priv = fac->priv;
   GHashTableIter iter;
   gpointer value;
+
+  if (priv->text_channels == NULL)
+    return;
 
   g_hash_table_iter_init (&iter, priv->text_channels);
   while (g_hash_table_iter_next (&iter, NULL, &value))

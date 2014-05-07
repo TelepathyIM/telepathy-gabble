@@ -1,3 +1,10 @@
+telepathy-gabble 0.18.3 (2014-05-07)
+====================================
+
+Fixes:
+
+• fd.o #76465: fix a crash in Jingle (Guillaume)
+
 telepathy-gabble 0.18.2 (2014-03-20)
 ====================================
 

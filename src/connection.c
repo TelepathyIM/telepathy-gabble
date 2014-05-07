@@ -928,42 +928,6 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
         { "PowerSavingActive", "power-saving", NULL },
         { NULL }
   };
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-        /* 0 */ { TP_IFACE_CONNECTION_INTERFACE_LOCATION1,
-          conn_location_properties_getter,
-          conn_location_properties_setter,
-          location_props,
-        },
-        /* 1 */ { TP_IFACE_CONNECTION_INTERFACE_AVATARS1,
-          conn_avatars_properties_getter,
-          NULL,
-          NULL,
-        },
-        /* 2 */ { TP_IFACE_CONNECTION_INTERFACE_CONTACT_INFO1,
-          conn_contact_info_properties_getter,
-          NULL,
-          NULL,
-        },
-        { TP_IFACE_CONNECTION_INTERFACE_MAIL_NOTIFICATION1,
-          conn_mail_notif_properties_getter,
-          NULL,
-          mail_notif_props,
-        },
-        { TP_IFACE_CONNECTION_INTERFACE_POWER_SAVING1,
-          tp_dbus_properties_mixin_getter_gobject_properties,
-          NULL,
-          power_saving_props,
-        },
-        { TP_IFACE_CONNECTION_INTERFACE_ALIASING1,
-          conn_aliasing_properties_getter,
-          NULL,
-          conn_aliasing_properties,
-        },
-        { NULL }
-  };
-
-  prop_interfaces[1].props = conn_avatars_properties;
-  prop_interfaces[2].props = conn_contact_info_properties;
 
   DEBUG("Initializing (GabbleConnectionClass *)%p", gabble_connection_class);
 

@@ -10,6 +10,7 @@ def call_create(q, conn, server):
     request = dbus.Dictionary(
         {
             cs.CHANNEL_TYPE: cs.CHANNEL_TYPE_CONTACT_SEARCH,
+            cs.TARGET_ENTITY_TYPE: cs.HT_NONE,
         }, signature='sv')
 
     if server is not None:

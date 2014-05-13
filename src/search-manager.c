@@ -318,6 +318,7 @@ gabble_search_manager_foreach_channel (TpChannelManager *manager,
 
 static const gchar * const search_channel_fixed_properties[] = {
     TP_PROP_CHANNEL_CHANNEL_TYPE,
+    TP_PROP_CHANNEL_TARGET_ENTITY_TYPE,
     NULL
 };
 
@@ -337,6 +338,7 @@ gabble_search_manager_type_foreach_channel_class (GType type,
   table = tp_asv_new (
       TP_PROP_CHANNEL_CHANNEL_TYPE, G_TYPE_STRING,
         TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1,
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, G_TYPE_UINT, TP_ENTITY_TYPE_NONE,
       NULL);
 
   func (type, table, search_channel_allowed_properties, user_data);
@@ -468,11 +470,18 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   GError *error = NULL;
   const gchar *channel_type;
   const gchar *server;
+  TpEntityType entity_type;
+  gboolean valid;
 
   channel_type = tp_asv_get_string (request_properties,
       TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1))
+    return FALSE;
+
+  entity_type = tp_asv_get_uint32 (request_properties,
+      TP_PROP_CHANNEL_TARGET_ENTITY_TYPE, &valid);
+  if (valid && entity_type != TP_ENTITY_TYPE_NONE)
     return FALSE;
 
   if (tp_channel_manager_asv_has_unknown_properties (request_properties,

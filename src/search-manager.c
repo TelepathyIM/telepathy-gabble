@@ -317,12 +317,12 @@ gabble_search_manager_foreach_channel (TpChannelManager *manager,
 }
 
 static const gchar * const search_channel_fixed_properties[] = {
-    TP_IFACE_CHANNEL ".ChannelType",
+    TP_PROP_CHANNEL_CHANNEL_TYPE,
     NULL
 };
 
 static const gchar * const search_channel_allowed_properties[] = {
-    TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1 ".Server",
+    TP_PROP_CHANNEL_TYPE_CONTACT_SEARCH1_SERVER,
     NULL
 };
 
@@ -472,7 +472,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
   const gchar *server;
 
   channel_type = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL ".ChannelType");
+      TP_PROP_CHANNEL_CHANNEL_TYPE);
 
   if (tp_strdiff (channel_type, TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1))
     return FALSE;
@@ -483,7 +483,7 @@ gabble_search_manager_create_channel (TpChannelManager *manager,
     goto error;
 
   server = tp_asv_get_string (request_properties,
-      TP_IFACE_CHANNEL_TYPE_CONTACT_SEARCH1 ".Server");
+      TP_PROP_CHANNEL_TYPE_CONTACT_SEARCH1_SERVER);
 
   if (tp_str_empty (server))
     {

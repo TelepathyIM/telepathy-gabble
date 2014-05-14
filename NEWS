@@ -1,7 +1,17 @@
-telepathy-gabble 0.99.11 (UNRELEASED)
+telepathy-gabble 0.99.11 (2014-05-14)
 =====================================
 
-...
+The “electioneering” release.
+
+Dependencies:
+
+• GLib ≥ 2.40
+
+• telepathy-glib ≥ 0.99.11
+
+Fixes:
+
+• Update for telepathy-glib 0.99.11 API changes (Guillaume, Simon)
 
 telepathy-gabble 0.99.10 (2014-04-03)
 =====================================

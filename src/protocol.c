@@ -436,7 +436,7 @@ addressing_normalize_contact_uri (TpBaseProtocol *self,
   return normalized_address;
 }
 
-static void
+static gboolean
 get_avatar_details (TpBaseProtocol *base,
     GStrv *supported_mime_types,
     guint *min_height,
@@ -449,6 +449,8 @@ get_avatar_details (TpBaseProtocol *base,
 {
   gabble_connection_dup_avatar_requirements (supported_mime_types, min_height,
       min_width, rec_height, rec_width, max_height, max_width, max_bytes);
+
+  return TRUE;
 }
 
 static void

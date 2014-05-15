@@ -1639,7 +1639,8 @@ close_channel (GabbleMucChannel *chan, const gchar *reason,
       tp_base_channel_destroyed (base);
     }
 
-  handles = tp_handle_set_to_array (chan->group.members);
+  handles = gabble_au_variant_to_garray (
+      tp_handle_set_to_variant (chan->group.members));
   gabble_presence_cache_update_many (conn->presence_cache, handles,
     NULL, GABBLE_PRESENCE_UNKNOWN, NULL, 0);
   g_array_unref (handles);
@@ -3413,7 +3414,8 @@ gabble_muc_channel_add_member (GObject *obj,
       set_remove_members = tp_intset_new ();
       set_remote_pending = tp_intset_new ();
 
-      arr_members = tp_handle_set_to_array (mixin->members);
+      arr_members = gabble_au_variant_to_garray (
+          tp_handle_set_to_variant (mixin->members));
       if (arr_members->len > 0)
         {
           tp_intset_add (set_remove_members,

@@ -1313,7 +1313,8 @@ handle_text_channel_request (GabbleMucFactory *self,
 
   /* build new InitialInviteeHandles and InitialInviteeIDs */
   /* FIXME: include Self Handle to comply with spec ? */
-  final_handles = tp_handle_set_to_array (handles);
+  final_handles = gabble_au_variant_to_garray (
+      tp_handle_set_to_variant (handles));
   final_ids = g_new0 (char *, final_handles->len + 1);
 
   for (i = 0; i < final_handles->len; i++)

@@ -111,6 +111,8 @@ GSimpleAsyncResult *gabble_simple_async_countdown_new (gpointer self,
 void gabble_simple_async_countdown_inc (GSimpleAsyncResult *simple);
 void gabble_simple_async_countdown_dec (GSimpleAsyncResult *simple);
 
+GArray * gabble_au_variant_to_garray (GVariant *variant);
+
 /* Boilerplate for telling servers which implement XEP-0079 not to store these
  * messages for delivery later. Include it in your call to wocky_stanza_build()
  * like so:

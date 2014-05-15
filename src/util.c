@@ -1218,3 +1218,27 @@ gabble_simple_async_countdown_dec (GSimpleAsyncResult *simple)
       g_object_unref (simple);
     }
 }
+
+/**
+ * gabble_au_variant_to_garray:
+ * @variant: a #GVariant of type 'au' (array of uint32), consumed if floating
+ *
+ * Returns: (transfer full): a new #GArray containing the same elements as
+ * @variant
+ */
+GArray *
+gabble_au_variant_to_garray (GVariant *variant)
+{
+  const guint32 *tmp;
+  GArray *array;
+  gsize n;
+
+  g_variant_ref_sink (variant);
+
+  tmp = g_variant_get_fixed_array (variant, &n, sizeof (guint32));
+  array = g_array_sized_new (FALSE, FALSE, sizeof (guint32), n);
+  g_array_append_vals (array, tmp, n);
+
+  g_variant_unref (variant);
+  return array;
+}

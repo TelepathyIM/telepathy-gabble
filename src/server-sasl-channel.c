@@ -410,7 +410,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
   g_object_class_install_property (object_class, PROP_SECURE,
       param_spec);
 
-  tp_dbus_properties_mixin_class_init (object_class, 0);
   tp_dbus_properties_mixin_implement_interface (object_class,
       TP_IFACE_QUARK_CHANNEL_TYPE_SERVER_AUTHENTICATION1,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,

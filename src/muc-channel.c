@@ -1267,8 +1267,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_TYPE_POINTER);
 #endif
 
-  tp_dbus_properties_mixin_class_init (object_class, 0);
-
   tp_dbus_properties_mixin_implement_interface (object_class,
       TP_IFACE_QUARK_CHANNEL_INTERFACE_CONFERENCE1,
       tp_dbus_properties_mixin_getter_gobject_properties, NULL,

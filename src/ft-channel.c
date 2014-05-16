@@ -781,8 +781,6 @@ gabble_file_transfer_channel_class_init (
   g_object_class_install_property (object_class, PROP_METADATA,
       param_spec);
 
-  tp_dbus_properties_mixin_class_init (object_class, 0);
-
   tp_dbus_properties_mixin_implement_interface (object_class,
       TP_IFACE_QUARK_CHANNEL_TYPE_FILE_TRANSFER1,
       tp_dbus_properties_mixin_getter_gobject_properties,

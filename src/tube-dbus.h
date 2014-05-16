@@ -39,7 +39,6 @@ typedef struct _GabbleTubeDBusPrivate GabbleTubeDBusPrivate;
 struct _GabbleTubeDBusClass {
   TpBaseChannelClass parent_class;
 
-  TpDBusPropertiesMixinClass dbus_props_class;
   TpGroupMixinClass group_class;
 };
 

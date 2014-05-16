@@ -1069,25 +1069,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       { NULL }
   };
 
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-    { TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1,
-      tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
-      conference_props,
-    },
-    { TP_IFACE_CHANNEL_INTERFACE_ROOM1,
-      tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
-      room_props,
-    },
-    { TP_IFACE_CHANNEL_INTERFACE_SUBJECT1,
-      tp_dbus_properties_mixin_getter_gobject_properties,
-      NULL,
-      subject_props,
-    },
-    { NULL }
-  };
-
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_muc_channel_class);
   TpBaseChannelClass *base_class = TP_BASE_CHANNEL_CLASS (object_class);
   GParamSpec *param_spec;
@@ -1286,9 +1267,20 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
                   G_TYPE_POINTER);
 #endif
 
-  gabble_muc_channel_class->dbus_props_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleMucChannelClass, dbus_props_class));
+  tp_dbus_properties_mixin_class_init (object_class, 0);
+
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_CONFERENCE1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      conference_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_ROOM1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      room_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_SUBJECT1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      subject_props);
 
   tp_message_mixin_init_dbus_properties (object_class);
   tp_base_room_config_register_class (base_class);

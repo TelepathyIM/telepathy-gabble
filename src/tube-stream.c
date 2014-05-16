@@ -1425,19 +1425,6 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
       { "State", "state", NULL },
       { NULL }
   };
-  static TpDBusPropertiesMixinIfaceImpl prop_interfaces[] = {
-      { TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        stream_tube_props,
-      },
-      { TP_IFACE_CHANNEL_INTERFACE_TUBE1,
-        tp_dbus_properties_mixin_getter_gobject_properties,
-        NULL,
-        tube_iface_props,
-      },
-      { NULL }
-  };
   GObjectClass *object_class = G_OBJECT_CLASS (gabble_tube_stream_class);
   TpBaseChannelClass *base_class = TP_BASE_CHANNEL_CLASS (gabble_tube_stream_class);
   GParamSpec *param_spec;
@@ -1566,9 +1553,16 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
                   g_cclosure_marshal_VOID__VOID,
                   G_TYPE_NONE, 0);
 
-  gabble_tube_stream_class->dbus_props_class.interfaces = prop_interfaces;
-  tp_dbus_properties_mixin_class_init (object_class,
-      G_STRUCT_OFFSET (GabbleTubeStreamClass, dbus_props_class));
+  tp_dbus_properties_mixin_class_init (object_class, 0);
+
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_TYPE_STREAM_TUBE1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      stream_tube_props);
+  tp_dbus_properties_mixin_implement_interface (object_class,
+      TP_IFACE_QUARK_CHANNEL_INTERFACE_TUBE1,
+      tp_dbus_properties_mixin_getter_gobject_properties, NULL,
+      tube_iface_props);
 
   tp_external_group_mixin_init_dbus_properties (object_class);
 }

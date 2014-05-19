@@ -1347,8 +1347,8 @@ process_roster (
 
   if (google_roster)
     {
-      tp_base_contact_list_contact_blocking_changed (
-          (TpBaseContactList *) roster, blocking_changed);
+      tp_blockable_contact_list_contact_blocking_changed (
+          (TpBlockableContactList *) roster, blocking_changed);
       tp_handle_set_destroy (blocking_changed);
     }
 
@@ -3017,7 +3017,7 @@ gabble_roster_download_async (TpBaseContactList *base,
 }
 
 static gboolean
-gabble_roster_is_blocked (TpBaseContactList *base,
+gabble_roster_is_blocked (TpBlockableContactList *base,
     TpHandle contact)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
@@ -3027,7 +3027,7 @@ gabble_roster_is_blocked (TpBaseContactList *base,
 }
 
 static TpHandleSet *
-gabble_roster_dup_blocked_contacts (TpBaseContactList *base)
+gabble_roster_dup_blocked_contacts (TpBlockableContactList *base)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
   TpHandleSet *set;
@@ -3052,7 +3052,7 @@ gabble_roster_dup_blocked_contacts (TpBaseContactList *base)
 }
 
 static gboolean
-gabble_roster_can_block (TpBaseContactList *base)
+gabble_roster_can_block (TpBlockableContactList *base)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
 
@@ -3061,7 +3061,7 @@ gabble_roster_can_block (TpBaseContactList *base)
 }
 
 static void
-gabble_roster_block_contacts_async (TpBaseContactList *base,
+gabble_roster_block_contacts_async (TpBlockableContactList *base,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -3082,7 +3082,7 @@ gabble_roster_block_contacts_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_unblock_contacts_async (TpBaseContactList *base,
+gabble_roster_unblock_contacts_async (TpBlockableContactList *base,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
     gpointer user_data)

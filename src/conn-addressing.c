@@ -79,8 +79,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
   GValue attributes_dbus_glib = G_VALUE_INIT;
   GVariant *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
-      g_strv_length ((gchar **) uris));
+  TpHandleSet *handles = tp_handle_set_new (contact_repo);
 
   for (uri = uris; *uri != NULL; uri++)
     {
@@ -90,7 +89,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
         continue;
 
       g_hash_table_insert (requested, g_strdup (*uri), GUINT_TO_POINTER (h));
-      g_array_append_val (handles, h);
+      tp_handle_set_add (handles, h);
     }
 
   attributes = tp_base_connection_dup_contact_attributes (base, handles,
@@ -100,7 +99,7 @@ conn_addressing_get_contacts_by_uri (TpSvcConnectionInterfaceAddressing1 *iface,
   tp_svc_connection_interface_addressing1_return_from_get_contacts_by_uri (
       context, requested, g_value_get_boxed (&attributes_dbus_glib));
 
-  g_array_unref (handles);
+  tp_handle_set_destroy (handles);
   g_hash_table_unref (requested);
   g_value_unset (&attributes_dbus_glib);
   g_variant_unref (attributes);
@@ -120,8 +119,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
   GValue attributes_dbus_glib = G_VALUE_INIT;
   GVariant *attributes;
   GHashTable *requested = g_hash_table_new_full (g_str_hash, g_str_equal, g_free, NULL);
-  GArray *handles = g_array_sized_new (TRUE, TRUE, sizeof (TpHandle),
-      g_strv_length ((gchar **) addresses));
+  TpHandleSet *handles = tp_handle_set_new (contact_repo);
 
   for (address = addresses; *address != NULL; address++)
     {
@@ -132,7 +130,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
         continue;
 
       g_hash_table_insert (requested, g_strdup (*address), GUINT_TO_POINTER (h));
-      g_array_append_val (handles, h);
+      tp_handle_set_add (handles, h);
     }
 
   attributes = tp_base_connection_dup_contact_attributes (base, handles,
@@ -142,7 +140,7 @@ conn_addressing_get_contacts_by_vcard_field (TpSvcConnectionInterfaceAddressing1
   tp_svc_connection_interface_addressing1_return_from_get_contacts_by_vcard_field (
       context, requested, g_value_get_boxed (&attributes_dbus_glib));
 
-  g_array_unref (handles);
+  tp_handle_set_destroy (handles);
   g_hash_table_unref (requested);
   g_value_unset (&attributes_dbus_glib);
   g_variant_unref (attributes);

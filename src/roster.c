@@ -665,7 +665,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
               g_ptr_array_add (strv, (gchar *) group_name);
             }
 
-          tp_base_contact_list_groups_created ((TpBaseContactList *) roster,
+          tp_contact_group_list_groups_created ((TpContactGroupList *) roster,
               (const gchar * const *) strv->pdata, strv->len);
 
           g_ptr_array_unref (strv);
@@ -714,7 +714,7 @@ _gabble_roster_item_update (GabbleRoster *roster,
           g_ptr_array_add (removed_names, (gchar *) group_name);
         }
 
-      tp_base_contact_list_groups_changed ((TpBaseContactList *) roster,
+      tp_contact_group_list_groups_changed ((TpContactGroupList *) roster,
           the_contact,
           (const gchar * const *) added_names->pdata, added_names->len,
           (const gchar * const *) removed_names->pdata, removed_names->len);
@@ -3103,7 +3103,7 @@ gabble_roster_unblock_contacts_async (TpBaseContactList *base,
 }
 
 static GStrv
-gabble_roster_dup_groups (TpBaseContactList *base)
+gabble_roster_dup_groups (TpContactGroupList *base)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
   GPtrArray *ret;
@@ -3135,7 +3135,7 @@ gabble_roster_dup_groups (TpBaseContactList *base)
 }
 
 static GStrv
-gabble_roster_dup_contact_groups (TpBaseContactList *base,
+gabble_roster_dup_contact_groups (TpContactGroupList *base,
     TpHandle contact)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
@@ -3165,7 +3165,7 @@ gabble_roster_dup_contact_groups (TpBaseContactList *base,
 }
 
 static TpHandleSet *
-gabble_roster_dup_group_members (TpBaseContactList *base,
+gabble_roster_dup_group_members (TpContactGroupList *base,
     const gchar *group)
 {
   GabbleRoster *self = GABBLE_ROSTER (base);
@@ -3224,7 +3224,7 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
 
   if (groups_created->len > 0)
     {
-      tp_base_contact_list_groups_created (base,
+      tp_contact_group_list_groups_created (TP_CONTACT_GROUP_LIST (base),
           (const gchar * const *) groups_created->pdata, groups_created->len);
     }
 
@@ -3272,7 +3272,8 @@ gabble_roster_set_group_members_async (TpBaseContactList *base,
   if (g_hash_table_lookup (self->priv->groups, group) == NULL)
     {
       g_hash_table_add (self->priv->groups, g_strdup (group));
-      tp_base_contact_list_groups_created (base, &group, 1);
+      tp_contact_group_list_groups_created (TP_CONTACT_GROUP_LIST (base),
+          &group, 1);
     }
 
   g_hash_table_iter_init (&iter, self->priv->items);
@@ -3309,7 +3310,8 @@ gabble_roster_add_to_group_async (TpBaseContactList *base,
   if (g_hash_table_lookup (self->priv->groups, group) == NULL)
     {
       g_hash_table_add (self->priv->groups, g_strdup (group));
-      tp_base_contact_list_groups_created (base, &group, 1);
+      tp_contact_group_list_groups_created (TP_CONTACT_GROUP_LIST (base),
+          &group, 1);
     }
 
   tp_intset_fast_iter_init (&iter, tp_handle_set_peek (contacts));
@@ -3401,7 +3403,7 @@ gabble_roster_remove_group_removed_cb (GObject *source,
         {
           g_hash_table_remove (self->priv->groups, context->group);
 
-          tp_base_contact_list_groups_removed ((TpBaseContactList *) self,
+          tp_contact_group_list_groups_removed ((TpContactGroupList *) self,
               (const gchar * const *) &context->group, 1);
 
           g_hash_table_iter_init (&iter, self->priv->items);

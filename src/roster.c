@@ -3192,7 +3192,7 @@ gabble_roster_dup_group_members (TpContactGroupList *base,
 }
 
 static void
-gabble_roster_set_contact_groups_async (TpBaseContactList *base,
+gabble_roster_set_contact_groups_async (TpMutableContactGroupList *base,
     TpHandle contact,
     const gchar * const *groups,
     gsize n,
@@ -3255,7 +3255,7 @@ gabble_roster_set_contact_groups_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_set_group_members_async (TpBaseContactList *base,
+gabble_roster_set_group_members_async (TpMutableContactGroupList *base,
     const gchar *group,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
@@ -3293,7 +3293,7 @@ gabble_roster_set_group_members_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_add_to_group_async (TpBaseContactList *base,
+gabble_roster_add_to_group_async (TpMutableContactGroupList *base,
     const gchar *group,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
@@ -3327,7 +3327,7 @@ gabble_roster_add_to_group_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_remove_from_group_async (TpBaseContactList *base,
+gabble_roster_remove_from_group_async (TpMutableContactGroupList *base,
     const gchar *group,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
@@ -3432,7 +3432,7 @@ gabble_roster_remove_group_removed_cb (GObject *source,
 }
 
 static void
-gabble_roster_remove_group_async (TpBaseContactList *base,
+gabble_roster_remove_group_async (TpMutableContactGroupList *base,
     const gchar *group,
     GAsyncReadyCallback callback,
     gpointer user_data)

@@ -2717,7 +2717,7 @@ gabble_roster_request_subscription_added_cb (GObject *source,
 }
 
 static void
-gabble_roster_request_subscription_async (TpBaseContactList *base,
+gabble_roster_request_subscription_async (TpMutableContactList *base,
     TpHandleSet *contacts,
     const gchar *message,
     GAsyncReadyCallback callback,
@@ -2750,7 +2750,7 @@ gabble_roster_request_subscription_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_authorize_publication_async (TpBaseContactList *base,
+gabble_roster_authorize_publication_async (TpMutableContactList *base,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -2803,7 +2803,7 @@ gabble_roster_authorize_publication_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_store_contacts_async (TpBaseContactList *base,
+gabble_roster_store_contacts_async (TpMutableContactList *base,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -2824,7 +2824,7 @@ gabble_roster_store_contacts_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_remove_contacts_async (TpBaseContactList *base,
+gabble_roster_remove_contacts_async (TpMutableContactList *base,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -2845,7 +2845,7 @@ gabble_roster_remove_contacts_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_unsubscribe_async (TpBaseContactList *base,
+gabble_roster_unsubscribe_async (TpMutableContactList *base,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -2897,7 +2897,8 @@ gabble_roster_unsubscribe_async (TpBaseContactList *base,
         }
     }
 
-  tp_base_contact_list_contacts_changed (base, changed, removed);
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (base), changed,
+      removed);
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
       gabble_roster_unsubscribe_async, error);
   g_clear_error (&error);
@@ -2906,7 +2907,7 @@ gabble_roster_unsubscribe_async (TpBaseContactList *base,
 }
 
 static void
-gabble_roster_unpublish_async (TpBaseContactList *base,
+gabble_roster_unpublish_async (TpMutableContactList *base,
     TpHandleSet *contacts,
     GAsyncReadyCallback callback,
     gpointer user_data)
@@ -2974,7 +2975,8 @@ gabble_roster_unpublish_async (TpBaseContactList *base,
         }
     }
 
-  tp_base_contact_list_contacts_changed (base, changed, removed);
+  tp_base_contact_list_contacts_changed (TP_BASE_CONTACT_LIST (base), changed,
+      removed);
   gabble_simple_async_succeed_or_fail_in_idle (self, callback, user_data,
       gabble_roster_unpublish_async, error);
   g_clear_error (&error);

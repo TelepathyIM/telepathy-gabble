@@ -396,9 +396,6 @@ gabble_call_stream_update_member_states (GabbleCallStream *self)
   if (state == WOCKY_JINGLE_CONTENT_STATE_REMOVING)
     return;
 
-  local_state = tp_base_call_stream_get_local_sending_state (base);
-  remote_state = tp_base_call_stream_get_remote_sending_state (base, 0);
-
   if (wocky_jingle_content_sending (priv->content))
     {
       if (tp_base_media_call_stream_get_local_sending (bmcs))

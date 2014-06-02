@@ -520,6 +520,8 @@ gabble_media_factory_create_call (TpChannelManager *manager,
   gboolean initial_audio, initial_video;
   const gchar *initial_audio_name, *initial_video_name;
 
+  g_return_val_if_fail (request_properties != NULL, FALSE);
+
   if (tp_strdiff (tp_asv_get_string (request_properties,
           TP_PROP_CHANNEL_CHANNEL_TYPE),
         TP_IFACE_CHANNEL_TYPE_CALL))

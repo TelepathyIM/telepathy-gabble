@@ -2769,12 +2769,13 @@ handle_message (WockyMuc *muc,
   gboolean from_member = (who != NULL);
 
   TpChannelTextMessageType msg_type;
-  TpHandleRepoIface *repo;
   TpHandleType handle_type;
   TpHandle from;
 
   if (from_member)
     {
+      TpHandleRepoIface *repo;
+
       handle_type = TP_HANDLE_TYPE_CONTACT;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_handle_ensure (repo, who->from,
@@ -2789,7 +2790,6 @@ handle_message (WockyMuc *muc,
   else /* directly from MUC itself */
     {
       handle_type = TP_HANDLE_TYPE_ROOM;
-      repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_base_channel_get_target_handle (base);
     }
 
@@ -2858,13 +2858,14 @@ handle_errmsg (WockyMuc *muc,
   TpBaseConnection *conn = tp_base_channel_get_connection (base);
   gboolean from_member = (who != NULL);
   TpDeliveryStatus ds = TP_DELIVERY_STATUS_DELIVERED;
-  TpHandleRepoIface *repo = NULL;
   TpHandleType handle_type;
   TpHandle from = 0;
   const gchar *subject;
 
   if (from_member)
     {
+      TpHandleRepoIface *repo;
+
       handle_type = TP_HANDLE_TYPE_CONTACT;
       repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_handle_ensure (repo, who->from,
@@ -2879,7 +2880,6 @@ handle_errmsg (WockyMuc *muc,
   else /* directly from MUC itself */
     {
       handle_type = TP_HANDLE_TYPE_ROOM;
-      repo = tp_base_connection_get_handles (conn, handle_type);
       from = tp_base_channel_get_target_handle (base);
     }
 

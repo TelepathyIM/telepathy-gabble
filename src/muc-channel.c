@@ -308,7 +308,7 @@ static void handle_presence (WockyMuc *source,
 
 static void handle_perms (WockyMuc *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint code,
     const gchar *actor,
     const gchar *why,
     gpointer data);
@@ -2483,7 +2483,7 @@ handle_left (WockyMuc *muc,
 static void
 handle_perms (WockyMuc *wmuc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint code,
     const gchar *actor,
     const gchar *why,
     gpointer data)

@@ -774,15 +774,17 @@ muc_factory_message_cb (
   GabbleMucFactory *fac = GABBLE_MUC_FACTORY (user_data);
   GabbleMucFactoryPrivate *priv = fac->priv;
 
-  const gchar *from, *body, *id;
+  const gchar *from, *to, *body, *id;
   time_t stamp;
   TpChannelTextMessageType msgtype;
   gint state;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  gboolean sent;
 
-  if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &id, &body, &state, &send_error, &delivery_status))
+  /* FIXME: handle sent? */
+  if (!gabble_message_util_parse_incoming_message (message, &from, &to, &stamp,
+        &msgtype, &id, &body, &state, &send_error, &delivery_status, &sent))
     return TRUE;
 
   if (conn_olpc_process_activity_properties_message (priv->conn, message,

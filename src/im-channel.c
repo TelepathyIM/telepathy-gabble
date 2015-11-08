@@ -472,6 +472,42 @@ maybe_send_delivery_report (
 }
 
 /*
+ * _gabble_im_channel_sent:
+ * @chan: a channel
+ * @type: the message type
+ * @to: the full JID we sent the message to
+ * @timestamp: the time at which the message was sent
+ * @id: the id='' attribute from the <message/> stanza, if any
+ * @text: the plaintext body of the message
+ *
+ * Shoves an outgoing message into @chan.
+ */
+void
+_gabble_im_channel_sent (GabbleIMChannel *chan,
+                         TpChannelTextMessageType type,
+                         time_t timestamp,
+                         const gchar *id,
+                         const char *text)
+{
+  TpBaseChannel *base_chan;
+  TpBaseConnection *base_conn;
+  TpMessage *msg;
+
+  g_assert (GABBLE_IS_IM_CHANNEL (chan));
+  base_chan = (TpBaseChannel *) chan;
+  base_conn = tp_base_channel_get_connection (base_chan);
+
+  msg = build_message (chan, type, timestamp, text);
+  tp_cm_message_set_sender (msg, tp_base_connection_get_self_handle (base_conn));
+  tp_message_set_int64 (msg, 0, "message-received", time (NULL));
+
+  if (id != NULL)
+    tp_message_set_string (msg, 0, "message-token", id);
+
+  tp_message_mixin_take_received (G_OBJECT (chan), msg);
+}
+
+/*
  * _gabble_im_channel_receive:
  * @chan: a channel
  * @message: the <message> stanza, from which all the following arguments were

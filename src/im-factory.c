@@ -205,7 +205,8 @@ im_factory_message_cb (
     gpointer user_data)
 {
   GabbleImFactory *fac = GABBLE_IM_FACTORY (user_data);
-  const gchar *from, *body, *id;
+  const gchar *from, *to, *body, *id;
+  const gchar *chan_jid;
   time_t stamp;
   TpChannelTextMessageType msgtype;
   GabbleIMChannel *chan;
@@ -213,9 +214,10 @@ im_factory_message_cb (
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
   gboolean create_if_missing;
+  gboolean sent;
 
-  if (!gabble_message_util_parse_incoming_message (message, &from, &stamp,
-        &msgtype, &id, &body, &state, &send_error, &delivery_status))
+  if (!gabble_message_util_parse_incoming_message (message, &from, &to, &stamp,
+        &msgtype, &id, &body, &state, &send_error, &delivery_status, &sent))
     return TRUE;
 
   if (body == NULL && state == -1)
@@ -223,13 +225,15 @@ im_factory_message_cb (
       return FALSE;
     }
 
+  chan_jid = (sent) ? to : from;
+
   /* We don't want to open up a channel for the sole purpose of reporting a
    * send error, nor if this is just a chat state notification.
    */
   create_if_missing =
       (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR) &&
       (body != NULL);
-  chan = get_channel_for_incoming_message (fac, from, create_if_missing);
+  chan = get_channel_for_incoming_message (fac, chan_jid, create_if_missing);
   if (chan == NULL)
     {
       if (create_if_missing)
@@ -241,7 +245,14 @@ im_factory_message_cb (
       return TRUE;
     }
 
-  if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
+  if (sent)
+    {
+      if (body != NULL)
+        {
+          _gabble_im_channel_sent (chan, msgtype, stamp, id, body);
+        }
+    }
+  else if (send_error != GABBLE_TEXT_CHANNEL_SEND_NO_ERROR)
     {
       if (body == NULL)
         {

@@ -140,4 +140,7 @@
  * See http://msdn.microsoft.com/en-us/library/live/hh550849.aspx */
 #define NS_WLM_JID_LOOKUP "http://messenger.live.com/xmpp/jidlookup"
 
+#define NS_CARBONS "urn:xmpp:carbons:2"
+#define NS_FORWARD "urn:xmpp:forward:0"
+
 #endif /* __GABBLE_NAMESPACES__H__ */

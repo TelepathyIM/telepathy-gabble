@@ -15,6 +15,7 @@ test1 (void)
   WockyStanza *msg;
   gboolean ret;
   const gchar *from;
+  const gchar *to;
   time_t stamp;
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
@@ -22,22 +23,25 @@ test1 (void)
   const gchar *id;
   const gchar *body;
   gint state;
+  gboolean sent;
 
   msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
         "foo@bar.com", NULL,
         '@', "id", "a867c060-bd3f-4ecc-a38f-3e306af48e4c",
         NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
-      &delivery_status);
+      msg, &from, &to, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status, &sent);
   g_assert (ret);
   g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
   g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_null (to);
   g_assert_cmpuint (stamp, ==, 0);
   g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
   g_assert_cmpstr (body, ==, NULL);
   g_assert_cmpuint (state, ==, -1);
   g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert_false (sent);
   g_object_unref (msg);
 }
 
@@ -50,6 +54,7 @@ test2 (void)
   WockyStanza *msg;
   gboolean ret;
   const gchar *from;
+  const gchar *to;
   time_t stamp;
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
@@ -57,6 +62,7 @@ test2 (void)
   const gchar *id;
   const gchar *body;
   gint state;
+  gboolean sent;
 
   msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
         "foo@bar.com", NULL,
@@ -64,16 +70,18 @@ test2 (void)
         '(', "body", '$', "hello", ')',
         NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
-      &delivery_status);
+      msg, &from, &to, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status, &sent);
   g_assert (ret);
   g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
   g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_null (to);
   g_assert_cmpuint (stamp, ==, 0);
   g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
   g_assert_cmpstr (body, ==, "hello");
   g_assert_cmpuint (state, ==, -1);
   g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert_false (sent);
   g_object_unref (msg);
 }
 
@@ -84,6 +92,7 @@ test3 (void)
   WockyStanza *msg;
   gboolean ret;
   const gchar *from;
+  const gchar *to;
   time_t stamp;
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
@@ -91,6 +100,7 @@ test3 (void)
   const gchar *id;
   const gchar *body;
   gint state;
+  gboolean sent;
 
   msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_CHAT,
         "foo@bar.com", NULL,
@@ -98,16 +108,18 @@ test3 (void)
         '(', "body", '$', "hello", ')',
         NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
-      &delivery_status);
+      msg, &from, &to, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status, &sent);
   g_assert (ret);
   g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
   g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_null (to);
   g_assert_cmpuint (stamp, ==, 0);
   g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
   g_assert_cmpstr (body, ==, "hello");
   g_assert_cmpuint (state, ==, -1);
   g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert_false (sent);
   g_object_unref (msg);
 }
 
@@ -118,6 +130,7 @@ test_error (void)
   WockyStanza *msg;
   gboolean ret;
   const gchar *from;
+  const gchar *to;
   time_t stamp;
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
@@ -125,6 +138,7 @@ test_error (void)
   const gchar *id;
   const gchar *body;
   gint state;
+  gboolean sent;
 
   msg = wocky_stanza_build (
       WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_ERROR,
@@ -133,17 +147,19 @@ test_error (void)
       '(', "error", '$', "oops", ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
-      &delivery_status);
+      msg, &from, &to, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status, &sent);
   g_assert (ret);
   g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
   g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_null (to);
   g_assert_cmpuint (stamp, ==, 0);
   g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
   g_assert_cmpstr (body, ==, NULL);
   g_assert_cmpuint (state, ==, -1);
   g_assert_cmpuint (send_error, ==, TP_CHANNEL_TEXT_SEND_ERROR_UNKNOWN);
   g_assert_cmpuint (delivery_status, ==, TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
+  g_assert_false (sent);
   g_object_unref (msg);
 }
 
@@ -155,6 +171,7 @@ test_another_error (void)
   WockyStanza *msg;
   gboolean ret;
   const gchar *from;
+  const gchar *to;
   time_t stamp;
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
@@ -162,6 +179,7 @@ test_another_error (void)
   const gchar *id;
   const gchar *body;
   gint state;
+  gboolean sent;
   const gchar *message = "Wherefore art thou, Romeo?";
 
   msg = wocky_stanza_build (
@@ -178,17 +196,19 @@ test_another_error (void)
       ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
-      &delivery_status);
+      msg, &from, &to, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status, &sent);
   g_assert (ret);
   g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
   g_assert_cmpstr (from, ==, "romeo@montague.net/garden");
+  g_assert_cmpstr (to, ==, "juliet@capulet.com/balcony");
   g_assert_cmpuint (stamp, ==, 0);
   g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
   g_assert_cmpstr (body, ==, message);
   g_assert_cmpuint (state, ==, -1);
   g_assert_cmpuint (send_error, ==, TP_CHANNEL_TEXT_SEND_ERROR_INVALID_CONTACT);
   g_assert_cmpuint (delivery_status, ==, TP_DELIVERY_STATUS_PERMANENTLY_FAILED);
+  g_assert_false (sent);
   g_object_unref (msg);
 }
 
@@ -201,6 +221,7 @@ test_yet_another_error (void)
   WockyStanza *msg;
   gboolean ret;
   const gchar *from;
+  const gchar *to;
   time_t stamp;
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
@@ -208,6 +229,7 @@ test_yet_another_error (void)
   const gchar *id;
   const gchar *body;
   gint state;
+  gboolean sent;
   const gchar *message = "Its trilling seems to have a tranquilizing effect on "
                          "the human nervous system.";
 
@@ -226,17 +248,19 @@ test_yet_another_error (void)
       ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
-      &delivery_status);
+      msg, &from, &to, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status, &sent);
   g_assert (ret);
   g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
   g_assert_cmpstr (from, ==, "other@starfleet.us/Enterprise");
+  g_assert_cmpstr (to, ==, "spock@starfleet.us/Enterprise");
   g_assert_cmpuint (stamp, ==, 0);
   g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NOTICE);
   g_assert_cmpstr (body, ==, message);
   g_assert_cmpuint (state, ==, -1);
   g_assert_cmpuint (send_error, ==, TP_CHANNEL_TEXT_SEND_ERROR_OFFLINE);
   g_assert_cmpuint (delivery_status, ==, TP_DELIVERY_STATUS_TEMPORARILY_FAILED);
+  g_assert_false (sent);
   g_object_unref (msg);
 }
 
@@ -246,6 +270,7 @@ test_google_offline (void)
   WockyStanza *msg;
   gboolean ret;
   const gchar *from;
+  const gchar *to;
   time_t stamp;
   TpChannelTextMessageType type;
   TpChannelTextSendError send_error;
@@ -253,6 +278,7 @@ test_google_offline (void)
   const gchar *id;
   const gchar *body;
   gint state;
+  gboolean sent;
 
   msg = wocky_stanza_build (WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
       "foo@bar.com", NULL,
@@ -268,16 +294,18 @@ test_google_offline (void)
       ')',
       NULL);
   ret = gabble_message_util_parse_incoming_message (
-      msg, &from, &stamp, &type, &id, &body, &state, &send_error,
-      &delivery_status);
+      msg, &from, &to, &stamp, &type, &id, &body, &state, &send_error,
+      &delivery_status, &sent);
   g_assert (ret);
   g_assert_cmpstr (id, ==, "a867c060-bd3f-4ecc-a38f-3e306af48e4c");
   g_assert_cmpstr (from, ==, "foo@bar.com");
+  g_assert_null (to);
   g_assert_cmpuint (stamp, ==, 1190899454);
   g_assert_cmpuint (type, ==, TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL);
   g_assert_cmpstr (body, ==, "hello");
   g_assert_cmpuint (state, ==, -1);
   g_assert_cmpuint (send_error, ==, GABBLE_TEXT_CHANNEL_SEND_NO_ERROR);
+  g_assert_false (sent);
   g_object_unref (msg);
 }
 

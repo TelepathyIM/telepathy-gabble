@@ -230,10 +230,11 @@ im_factory_message_cb (
 
   /* We don't want to open up a channel for the sole purpose of reporting a
    * send error, nor if this is just a chat state notification.
+   * But we want observers to log receipts, so we do it for delivery reports.
    */
   create_if_missing =
-      (send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR) &&
-      (body != NULL);
+      ((send_error == GABBLE_TEXT_CHANNEL_SEND_NO_ERROR) &&
+      (body != NULL)) || (delivery_status != TP_DELIVERY_STATUS_UNKNOWN);
   chan = get_channel_for_incoming_message (fac, chan_jid, create_if_missing);
   if (chan == NULL)
     {

@@ -170,6 +170,7 @@ enum
     PROP_EXTRA_CERTIFICATE_IDENTITIES,
     PROP_POWER_SAVING,
     PROP_DOWNLOAD_AT_CONNECTION,
+    PROP_MESSAGE_CARBONS,
 
     LAST_PROPERTY
 };
@@ -221,6 +222,8 @@ struct _GabbleConnectionPrivate
   GStrv extra_certificate_identities;
 
   gboolean power_saving;
+
+  gboolean message_carbons;
 
   /* authentication properties */
   gchar *stream_server;
@@ -671,6 +674,10 @@ gabble_connection_get_property (GObject    *object,
         break;
       }
 
+    case PROP_MESSAGE_CARBONS:
+      g_value_set_boolean (value, priv->message_carbons);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -816,6 +823,10 @@ gabble_connection_set_property (GObject      *object,
       if (self->roster != NULL)
         g_object_set (self->roster, "download-at-connection",
             g_value_get_boolean (value), NULL);
+      break;
+
+    case PROP_MESSAGE_CARBONS:
+      priv->message_carbons = g_value_get_boolean (value);
       break;
 
     default:
@@ -1220,6 +1231,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       g_param_spec_boolean (
           "power-saving", "Power saving active?",
           "Queue remote presence updates server-side for less network chatter",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_MESSAGE_CARBONS,
+      g_param_spec_boolean (
+          "message-carbons", "Message carbons enabled?",
+          "Client will receive other active resources messages",
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
@@ -3039,7 +3058,8 @@ connection_disco_cb (GabbleDisco *disco,
           conn_wlm_jid_lookup_finish);
     }
 
-  if (conn->features & GABBLE_CONNECTION_FEATURES_CARBONS)
+  if ((conn->features & GABBLE_CONNECTION_FEATURES_CARBONS)
+        && (conn->priv->message_carbons))
     {
       WockyStanza *query;
       WockyPorter *porter;

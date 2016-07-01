@@ -20,7 +20,7 @@
 
 #include "config.h"
 
-#define _BSD_SOURCE
+#define _DEFAULT_SOURCE
 #define _XOPEN_SOURCE /* glibc2 needs this */
 #include <time.h>
 #include <dbus/dbus-glib.h>

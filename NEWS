@@ -1,3 +1,28 @@
+telepathy-gabble 0.18.4 (UNRELEASED)
+====================================
+
+Fixes:
+
+• Update wocky
+   · Use SoupSession instead of SoupSessionAsync to fix
+      function deprecation errors (fd.o #96383, Diane Trout)
+   · Replaced deprecated usage of gnutls_certificate_credentials
+      with gnutls_certificate_credentials_t (George Kiagiadakis)
+   · Updated CRL of the ssl-related unit tests to fix errors
+      when running the tests with the openssl backend, due to
+      the CRL being expired (fd.o #79548, Diane Trout)
+   · Renamed a unit test to avoid duplicate test names, which
+      is an error in recent GLib versions (Diane Trout)
+   · Removed WockyHttpProxy in favour of GIO http proxy,
+      fixing a failing unit test (fd.o #94031, George Kiagiadakis)
+   · Bumped GLib dependency to 2.44 for using the GIO
+      http proxy (George Kiagiadakis)
+   · Fixed a race condition in the wocky-connector-test (George
+      Kiagiadakis)
+
+• Replaced deprecated _BSD_SOURCE with _DEFAULT_SOURCE
+   to fix compilation with recent glibc (Diane Trout)
+
 telepathy-gabble 0.18.3 (2014-05-07)
 ====================================
 

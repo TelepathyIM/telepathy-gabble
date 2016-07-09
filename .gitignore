@@ -3,12 +3,14 @@
 *.gcno
 *.gcov
 *.l[ao]
+*.log
 *.loT
 *.orig
 *.pc
 *.py[co]
 *.rej
 *.sw[op]
+*.trs
 *~
 *#
 .#*
@@ -102,3 +104,4 @@ cscope.out
 /tests/twisted/tools/with-session-bus-*.bustle-logs
 /tests/twisted/with-session-bus-*.address
 /tests/twisted/with-session-bus-*.pid
+/tools/telepathy-glib-env

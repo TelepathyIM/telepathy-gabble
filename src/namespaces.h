@@ -28,6 +28,8 @@
 #define NS_SM2                  "urn:xmpp:sm:2"
 #define NS_SM3                  "urn:xmpp:sm:3"
 #define NS_AMP                  "http://jabber.org/protocol/amp"
+#define NS_AVATAR_DATA          "urn:xmpp:avatar:data"
+#define NS_AVATAR_METADATA      "urn:xmpp:avatar:metadata"
 #define NS_BYTESTREAMS          "http://jabber.org/protocol/bytestreams"
 #define NS_CHAT_STATES          "http://jabber.org/protocol/chatstates"
 #define NS_CHAT_MARKERS         "urn:xmpp:chat-markers:0"

@@ -33,10 +33,18 @@
 #include "namespaces.h"
 #include "vcard-manager.h"
 #include "util.h"
+#include "request-pipeline.h"
 
 #define DEBUG_FLAG GABBLE_DEBUG_CONNECTION
 
 #include "debug.h"
+
+typedef struct {
+  TpHandle handle;
+} pep_request_ctx;
+
+static pep_request_ctx *
+pep_avatar_request_data (GabbleConnection *conn, TpHandle handle);
 
 /* If the SHA1 has changed, this function will copy it to self_presence,
  * emit a signal and push it to the server. */
@@ -711,17 +719,27 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
           if (NULL == g_hash_table_lookup (self->avatar_requests,
                 GUINT_TO_POINTER (contact)))
             {
-              RequestAvatarsContext *ctx = g_slice_new (RequestAvatarsContext);
+              if (g_hash_table_lookup (self->pep_avatar_hashes,  GINT_TO_POINTER(contact)))
+                {
+                  pep_request_ctx *ctx = pep_avatar_request_data (self, contact);
 
-              ctx->conn = self;
-              ctx->iface = iface;
-              ctx->handle = contact;
+                  g_hash_table_insert (self->avatar_requests,
+                      GUINT_TO_POINTER (contact), ctx);
+                }
+              else
+                {
+                  RequestAvatarsContext *ctx = g_slice_new (RequestAvatarsContext);
 
-              g_hash_table_insert (self->avatar_requests,
-                  GUINT_TO_POINTER (contact), ctx);
+                  ctx->conn = self;
+                  ctx->iface = iface;
+                  ctx->handle = contact;
 
-              gabble_vcard_manager_request (self->vcard_manager,
-                contact, 0, request_avatars_cb, ctx, NULL);
+                  g_hash_table_insert (self->avatar_requests,
+                      GUINT_TO_POINTER (contact), ctx);
+
+                  gabble_vcard_manager_request (self->vcard_manager,
+                    contact, 0, request_avatars_cb, ctx, NULL);
+                }
             }
         }
     }
@@ -915,6 +933,8 @@ conn_avatars_fill_contact_attributes (GObject *obj,
 
           if (NULL != presence->avatar_sha1)
             g_value_set_string (val, presence->avatar_sha1);
+          else if (g_hash_table_lookup (self->pep_avatar_hashes,  GINT_TO_POINTER(handle)))
+            g_value_set_string (val, g_hash_table_lookup (self->pep_avatar_hashes,  GINT_TO_POINTER(handle)));
           else
             g_value_set_string (val, "");
 
@@ -924,6 +944,211 @@ conn_avatars_fill_contact_attributes (GObject *obj,
     }
 }
 
+static void
+pep_avatar_request_data_cb (
+    GabbleConnection *conn,
+    WockyStanza *msg,
+    gpointer user_data,
+    GError *error)
+{
+  pep_request_ctx *ctx = user_data;
+  TpHandle handle = ctx->handle;
+
+  WockyNode *pubsub_node, *items_node, *item_node, *data_node;
+
+  const gchar *binval_value;
+  gchar *sha1;
+  /* todo: get mime type from metadata pep, if any */
+  const gchar *mime_type = "";
+  gchar *bindata;
+  gsize outlen;
+  GArray *arr;
+
+  g_slice_free (pep_request_ctx, ctx);
+
+  g_assert (g_hash_table_lookup (conn->avatar_requests,
+      GUINT_TO_POINTER (handle)));
+
+  g_hash_table_remove (conn->avatar_requests,
+      GUINT_TO_POINTER (handle));
+
+  pubsub_node = wocky_node_get_child_ns (
+      wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB);
+  if (pubsub_node == NULL)
+    {
+      pubsub_node = wocky_node_get_child_ns (
+        wocky_stanza_get_top_node (msg), "pubsub", NS_PUBSUB "#event");
+
+      if (pubsub_node == NULL)
+        {
+          STANZA_DEBUG (msg, "PEP reply with no <pubsub>, ignoring");
+          return;
+        }
+      else
+        {
+          STANZA_DEBUG (msg, "PEP reply from buggy server with #event "
+              "on <pubsub> namespace");
+        }
+    }
+
+  items_node = wocky_node_get_child (pubsub_node, "items");
+  if (items_node == NULL)
+    {
+      STANZA_DEBUG (msg, "No items in PEP reply");
+      return;
+    }
+
+  item_node = wocky_node_get_child (items_node, "item");
+  if (item_node == NULL)
+    {
+      STANZA_DEBUG (msg, "No item in PEP reply");
+      return;
+    }
+
+  data_node = wocky_node_get_child (item_node, "data");
+  if (data_node == NULL)
+    {
+      STANZA_DEBUG (msg, "No data in PEP reply");
+      return;
+    }
+
+  binval_value = data_node->content;
+
+  if (NULL == binval_value)
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+        "contact avatar is missing binval content");
+      return;
+    }
+
+  bindata = (gchar *) g_base64_decode (binval_value, &outlen);
+
+  if (bindata == NULL)
+    {
+      g_set_error (&error, TP_ERROR, TP_ERROR_NOT_AVAILABLE,
+        "failed to decode avatar from base64");
+      return;
+    }
+
+  sha1 = sha1_hex (bindata, outlen);
+  arr = g_array_new (FALSE, FALSE, sizeof (gchar));
+  g_array_append_vals (arr, bindata, outlen);
+  tp_svc_connection_interface_avatars_emit_avatar_retrieved (conn, handle,
+      sha1, arr, mime_type);
+
+  g_array_unref (arr);
+  g_free (bindata);
+
+  DEBUG ("retreived avatar from %d with size=%ld, sha1='%s'", handle, outlen, sha1);
+
+  // is this really needed?
+  if (sha1)
+    {
+      GabblePresence *presence = gabble_presence_cache_get (conn->presence_cache, handle);
+      if (presence)
+        {
+          DEBUG ("presence found");
+
+          g_free (presence->avatar_sha1);
+          presence->avatar_sha1 = g_strdup (sha1);
+        }
+      else
+        DEBUG ("presence not found");
+    }
+
+  g_free (sha1);
+}
+
+static void
+pep_avatar_metadata_node_changed (WockyPepService *pep,
+    WockyBareContact *contact,
+    WockyStanza *stanza,
+    WockyNode *item,
+    GabbleConnection *conn)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+      (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
+  TpHandle handle;
+  WockyNode *metadata, *info;
+  const gchar *jid;
+  const gchar *sha1;
+
+  jid = wocky_bare_contact_get_jid (contact);
+
+  handle = tp_handle_ensure (contact_repo, jid, NULL, NULL);
+  if (handle == 0)
+    {
+      DEBUG ("Invalid from: %s", jid);
+      return;
+    }
+
+  if (NULL == item)
+    {
+      STANZA_DEBUG (stanza, "PEP event without item node, ignoring");
+      return;
+    }
+
+  metadata = wocky_node_get_child_ns (item, "metadata", NS_AVATAR_METADATA);
+  if (NULL == metadata)
+    {
+      STANZA_DEBUG (stanza, "PEP item without metadata node, ignoring");
+      return;
+    }
+
+  // FIXME: there may exist multiple child nodes
+  info = wocky_node_get_child (metadata, "info");
+  if (NULL == info)
+    {
+      STANZA_DEBUG (stanza, "PEP metadata without info nodes, ignoring");
+      return;
+    }
+
+  sha1 = wocky_node_get_attribute (info, "id");
+
+  if (handle == tp_base_connection_get_self_handle (base))
+    update_own_avatar_sha1 (conn, sha1, NULL);
+  else
+    tp_svc_connection_interface_avatars_emit_avatar_updated (conn, handle, sha1);
+
+  DEBUG ("got pep avatar metadata update of '%s', sha1 = %s", jid, sha1);
+
+  g_hash_table_insert (conn->pep_avatar_hashes,  GINT_TO_POINTER(handle), g_strdup (sha1));
+}
+
+static pep_request_ctx *
+pep_avatar_request_data (GabbleConnection *conn, TpHandle handle)
+{
+  TpBaseConnection *base = (TpBaseConnection *) conn;
+  pep_request_ctx *ctx;
+  WockyStanza *msg;
+
+  const gchar *jid = NULL;
+
+  TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
+          base, TP_HANDLE_TYPE_CONTACT);
+
+  jid = tp_handle_inspect (contact_repo, handle);
+
+  ctx = g_slice_new0 (pep_request_ctx);
+  ctx->handle = handle;
+
+  msg = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ, WOCKY_STANZA_SUB_TYPE_GET,
+    NULL, jid,
+    '(', "pubsub",
+      ':', NS_PUBSUB,
+      '(', "items",
+        '@', "node", NS_AVATAR_DATA,
+      ')',
+    ')',
+    NULL);
+
+  gabble_request_pipeline_enqueue (conn->req_pipeline,
+                  msg, 0, pep_avatar_request_data_cb, ctx);
+  g_object_unref (msg);
+
+  return ctx;
+}
 
 void
 conn_avatars_init (GabbleConnection *conn)
@@ -938,6 +1163,12 @@ conn_avatars_init (GabbleConnection *conn)
   tp_contacts_mixin_add_contact_attributes_iface (G_OBJECT (conn),
       TP_IFACE_CONNECTION_INTERFACE_AVATARS,
           conn_avatars_fill_contact_attributes);
+
+  conn->pep_avatar = wocky_pep_service_new (NS_AVATAR_METADATA, TRUE);
+  conn->pep_avatar_hashes = g_hash_table_new (g_direct_hash, g_direct_equal);
+
+  g_signal_connect (conn->pep_avatar, "changed",
+      G_CALLBACK (pep_avatar_metadata_node_changed), conn);
 }
 
 

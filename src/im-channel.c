@@ -74,6 +74,7 @@ struct _GabbleIMChannelPrivate
   gboolean send_nick;
   ChatStateSupport chat_states_supported;
   GHashTable *pending_messages;
+  gboolean send_chat_markers;
 
   gboolean dispose_has_run;
 };
@@ -204,7 +205,10 @@ gabble_im_channel_constructed (GObject *obj)
 
   priv->pending_messages = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, g_free);
 
-  g_signal_connect (obj, "pending-messages-removed", (GCallback)_gabble_im_channel_pending_messages_removed_cb, self);
+  g_object_get (conn, "send-chat-markers", &priv->send_chat_markers, NULL);
+
+  if (priv->send_chat_markers)
+    g_signal_connect (obj, "pending-messages-removed", (GCallback)_gabble_im_channel_pending_messages_removed_cb, self);
 }
 
 static void gabble_im_channel_dispose (GObject *object);
@@ -620,7 +624,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
 
   nid = tp_message_mixin_take_received (G_OBJECT (chan), msg);
 
-  if (id)
+  if ((id) && (priv->send_chat_markers))
     {
       DEBUG ("insert %d = %s", nid, id);
       g_hash_table_insert (priv->pending_messages, GINT_TO_POINTER (nid), g_strdup (id));

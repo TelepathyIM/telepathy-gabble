@@ -178,6 +178,7 @@ enum
     PROP_POWER_SAVING,
     PROP_DOWNLOAD_AT_CONNECTION,
     PROP_MESSAGE_CARBONS,
+    PROP_SEND_CHAT_MARKERS,
 
     LAST_PROPERTY
 };
@@ -231,6 +232,8 @@ struct _GabbleConnectionPrivate
   gboolean power_saving;
 
   gboolean message_carbons;
+
+  gboolean send_chat_markers;
 
   /* authentication properties */
   gchar *stream_server;
@@ -693,6 +696,10 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_boolean (value, priv->message_carbons);
       break;
 
+    case PROP_SEND_CHAT_MARKERS:
+      g_value_set_boolean (value, priv->send_chat_markers);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -842,6 +849,10 @@ gabble_connection_set_property (GObject      *object,
 
     case PROP_MESSAGE_CARBONS:
       priv->message_carbons = g_value_get_boolean (value);
+      break;
+
+    case PROP_SEND_CHAT_MARKERS:
+      priv->send_chat_markers = g_value_get_boolean (value);
       break;
 
     default:
@@ -1256,6 +1267,14 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       g_param_spec_boolean (
           "message-carbons", "Message carbons enabled?",
           "Client will receive other active resources messages",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_SEND_CHAT_MARKERS,
+      g_param_spec_boolean (
+          "send-chat-markers", "Send message read markers?",
+          "Client will send read markers to sender",
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 

@@ -3095,7 +3095,7 @@ connection_disco_cb (GabbleDisco *disco,
                                   carbons_cb, conn);
 
       g_object_unref (query);
-      g_free(full_jid);
+      g_free (full_jid);
     }
 
   conn_presence_set_initial_presence_async (conn,

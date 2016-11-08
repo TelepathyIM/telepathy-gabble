@@ -213,14 +213,15 @@ im_factory_message_cb (
   gint state;
   TpChannelTextSendError send_error;
   TpDeliveryStatus delivery_status;
+  const gchar *delivery_token;
   gboolean create_if_missing;
   gboolean sent;
 
   if (!gabble_message_util_parse_incoming_message (message, &from, &to, &stamp,
-        &msgtype, &id, &body, &state, &send_error, &delivery_status, &sent))
+        &msgtype, &id, &body, &state, &send_error, &delivery_status, &delivery_token, &sent))
     return TRUE;
 
-  if (body == NULL && state == -1)
+  if (body == NULL && state == -1 && delivery_status == TP_DELIVERY_STATUS_UNKNOWN)
     {
       return FALSE;
     }
@@ -276,6 +277,12 @@ im_factory_message_cb (
       _gabble_im_channel_state_receive (chan, (TpChannelChatState) state);
     }
 
+  if (delivery_status != TP_DELIVERY_STATUS_UNKNOWN)
+    {
+      DEBUG ("emit status for %s := %d", delivery_token, delivery_status);
+      gabble_im_channel_receive_receipt (chan, delivery_token, delivery_status);
+    }
+
   return TRUE;
 }
 
@@ -311,7 +318,7 @@ im_factory_receipt_cb (
       return TRUE;
     }
 
-  gabble_im_channel_receive_receipt (channel, received_id);
+  gabble_im_channel_receive_receipt (channel, received_id, TP_DELIVERY_STATUS_DELIVERED);
   return TRUE;
 }
 

@@ -49,7 +49,7 @@ gboolean gabble_message_util_parse_incoming_message (WockyStanza *message,
     const gchar **from, const gchar **to, time_t *stamp,
     TpChannelTextMessageType *msgtype, const gchar **id,
     const gchar **body_ret, gint *state, TpChannelTextSendError *send_error,
-    TpDeliveryStatus *delivery_status, gboolean *sent);
+    TpDeliveryStatus *delivery_status, const gchar **delivery_token, gboolean *sent);
 
 TpChannelTextSendError
 gabble_tp_send_error_from_wocky_xmpp_error (WockyXmppError err);

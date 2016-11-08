@@ -73,6 +73,7 @@ struct _GabbleIMChannelPrivate
   gchar *peer_jid;
   gboolean send_nick;
   ChatStateSupport chat_states_supported;
+  GHashTable *pending_messages;
 
   gboolean dispose_has_run;
 };
@@ -106,6 +107,49 @@ gabble_im_channel_init (GabbleIMChannel *self)
       GABBLE_TYPE_IM_CHANNEL, GabbleIMChannelPrivate);
 
   self->priv = priv;
+}
+
+static void _gabble_im_channel_pending_messages_removed_cb ( TpSvcChannelInterfaceMessages *iface,
+                                GArray *arg_Message_IDs,
+                                gpointer user_data)
+{
+  GabbleIMChannel *self = GABBLE_IM_CHANNEL (user_data);
+  GabbleIMChannelPrivate *priv = self->priv;
+
+  int size = g_array_get_element_size (arg_Message_IDs);
+
+  for (int i=0; i<size; i++)
+    {
+      guint id = g_array_index (arg_Message_IDs, guint, i);
+      gchar* token;
+
+      DEBUG ("lookup messageid: %u", id);
+      token = g_hash_table_lookup (priv->pending_messages, GINT_TO_POINTER (id));
+
+      if (token)
+        {
+          TpBaseChannel *base = TP_BASE_CHANNEL (self);
+          TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
+          GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
+
+          WockyStanza *report = wocky_stanza_build (
+            WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+            NULL, priv->peer_jid,
+            '(', "displayed", ':', NS_CHAT_MARKERS,
+              '@', "id", token,
+            ')', NULL);
+
+          _gabble_connection_send (conn, report, NULL);
+
+          DEBUG ("messageid: %u = %s", id, token);
+
+          g_hash_table_remove (priv->pending_messages, GINT_TO_POINTER (id));
+        }
+      else
+          DEBUG ("messageid: %u not found", id);
+    }
+
+  return;
 }
 
 static void
@@ -157,6 +201,10 @@ gabble_im_channel_constructed (GObject *obj)
   priv->chat_states_supported = CHAT_STATES_UNKNOWN;
   tp_message_mixin_implement_send_chat_state (obj,
       _gabble_im_channel_send_chat_state);
+
+  priv->pending_messages = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, g_free);
+
+  g_signal_connect (obj, "pending-messages-removed", (GCallback)_gabble_im_channel_pending_messages_removed_cb, self);
 }
 
 static void gabble_im_channel_dispose (GObject *object);
@@ -311,6 +359,8 @@ gabble_im_channel_finalize (GObject *object)
 
   tp_message_mixin_finalize (object);
 
+  g_hash_table_unref (priv->pending_messages);
+
   G_OBJECT_CLASS (gabble_im_channel_parent_class)->finalize (object);
 }
 
@@ -378,16 +428,20 @@ _gabble_im_channel_send_message (GObject *object,
 
   if (stanza != NULL)
     {
+      TpMessageSendingFlags supportedflags = 0;
       if ((flags & TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY) &&
           receipts_conceivably_supported (self))
         {
           wocky_node_add_child_ns (wocky_stanza_get_top_node (stanza),
               "request", NS_RECEIPTS);
-          flags = TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
+          supportedflags |= TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
         }
-      else
+      if ((flags & TP_MESSAGE_SENDING_FLAG_REPORT_READ) &&
+          receipts_conceivably_supported (self))
         {
-          flags = 0;
+          wocky_node_add_child_ns (wocky_stanza_get_top_node (stanza),
+              "markable", NS_CHAT_MARKERS);
+          supportedflags |= TP_MESSAGE_SENDING_FLAG_REPORT_READ;
         }
 
       porter = gabble_connection_dup_porter (gabble_conn);
@@ -395,7 +449,7 @@ _gabble_im_channel_send_message (GObject *object,
       context->channel = g_object_ref (base);
       context->message = g_object_ref (message);
       context->token = id;
-      context->flags = flags;
+      context->flags = supportedflags;
       wocky_porter_send_async (porter, stanza, NULL,
           _gabble_im_channel_message_sent_cb, context);
       g_object_unref (porter);
@@ -538,6 +592,7 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   TpBaseChannel *base_chan;
   TpHandle peer;
   TpMessage *msg;
+  guint nid;
 
   g_assert (GABBLE_IS_IM_CHANNEL (chan));
   priv = chan->priv;
@@ -563,7 +618,13 @@ _gabble_im_channel_receive (GabbleIMChannel *chan,
   if (id != NULL)
     tp_message_set_string (msg, 0, "message-token", id);
 
-  tp_message_mixin_take_received (G_OBJECT (chan), msg);
+  nid = tp_message_mixin_take_received (G_OBJECT (chan), msg);
+
+  if (id)
+    {
+      DEBUG ("insert %d = %s", nid, id);
+      g_hash_table_insert (priv->pending_messages, GINT_TO_POINTER (nid), g_strdup (id));
+    }
   maybe_send_delivery_report (chan, message, from, id);
 }
 
@@ -662,11 +723,12 @@ _gabble_im_channel_state_receive (GabbleIMChannel *chan,
 void
 gabble_im_channel_receive_receipt (
     GabbleIMChannel *self,
-    const gchar *receipt_id)
+    const gchar *receipt_id,
+    TpDeliveryStatus status)
 {
   _gabble_im_channel_report_delivery (self,
         TP_CHANNEL_TEXT_MESSAGE_TYPE_NORMAL, 0, receipt_id, NULL,
-        GABBLE_TEXT_CHANNEL_SEND_NO_ERROR, TP_DELIVERY_STATUS_DELIVERED);
+        GABBLE_TEXT_CHANNEL_SEND_NO_ERROR, status);
 }
 
 static void

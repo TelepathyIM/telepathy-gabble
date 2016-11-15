@@ -1,5 +1,7 @@
-telepathy-gabble 0.18.4 (UNRELEASED)
+telepathy-gabble 0.18.4 (2016-11-15)
 ====================================
+
+The "crawling" release.
 
 Fixes:
 
@@ -22,6 +24,9 @@ Fixes:
 
 • Replaced deprecated _BSD_SOURCE with _DEFAULT_SOURCE
    to fix compilation with recent glibc (Diane Trout)
+
+• Make XEP-0030 disco#info query advertise the disco#info feature
+  (fd.o #98127, Maxime Buquet)
 
 telepathy-gabble 0.18.3 (2014-05-07)
 ====================================

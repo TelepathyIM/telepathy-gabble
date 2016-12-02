@@ -419,8 +419,10 @@ _return_from_request_contact_info (WockyNode *vcard_node,
 
   if (NULL == vcard_node)
     {
-      GError tp_error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE,
-          vcard_error->message };
+      GError tp_error = { TP_ERROR, TP_ERROR_NOT_AVAILABLE, "" };
+
+      g_assert (vcard_error != NULL);
+      tp_error.message = vcard_error->message;
 
       if (vcard_error->domain == WOCKY_XMPP_ERROR)
         {

@@ -280,6 +280,8 @@ remove_transport (GabbleTubeStream *self,
 {
   GabbleTubeStreamPrivate *priv = self->priv;
 
+  g_return_if_fail (transport != NULL);
+
   DEBUG ("disconnect and remove transport");
   g_signal_handlers_disconnect_matched (transport, G_SIGNAL_MATCH_DATA,
       0, 0, NULL, NULL, self);

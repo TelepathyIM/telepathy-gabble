@@ -264,12 +264,12 @@ static void handle_fill_presence (WockyMuc *muc,
     WockyStanza *stanza,
     gpointer user_data);
 
-static void handle_renamed (GObject *source,
+static void handle_renamed (WockyMuc *muc,
     WockyStanza *stanza,
     guint codes,
     gpointer data);
 
-static void handle_error (GObject *source,
+static void handle_error (WockyMuc *muc,
     WockyStanza *stanza,
     WockyXmppErrorType errtype,
     const GError *error,
@@ -280,7 +280,7 @@ static void handle_join (WockyMuc *muc,
     guint codes,
     gpointer data);
 
-static void handle_parted (GObject *source,
+static void handle_parted (WockyMuc *muc,
     WockyStanza *stanza,
     guint codes,
     const gchar *actor_jid,
@@ -288,7 +288,7 @@ static void handle_parted (GObject *source,
     const gchar *msg,
     gpointer data);
 
-static void handle_left (GObject *source,
+static void handle_left (WockyMuc *muc,
     WockyStanza *stanza,
     guint codes,
     WockyMucMember *who,
@@ -297,21 +297,21 @@ static void handle_left (GObject *source,
     const gchar *msg,
     gpointer data);
 
-static void handle_presence (GObject *source,
+static void handle_presence (WockyMuc *source,
     WockyStanza *stanza,
     guint codes,
     WockyMucMember *who,
     gpointer data);
 
-static void handle_perms (GObject *source,
+static void handle_perms (WockyMuc *source,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint code,
     const gchar *actor,
     const gchar *why,
     gpointer data);
 
 /* signatures for message handlers */
-static void handle_message (GObject *source,
+static void handle_message (WockyMuc *muc,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
@@ -322,7 +322,7 @@ static void handle_message (GObject *source,
     WockyMucMsgState state,
     gpointer data);
 
-static void handle_errmsg (GObject *source,
+static void handle_errmsg (WockyMuc *muc,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
@@ -1899,7 +1899,7 @@ update_permissions (GabbleMucChannel *chan)
 
 /* connect to wocky-muc:SIG_PRESENCE_ERROR */
 static void
-handle_error (GObject *source,
+handle_error (WockyMuc *muc,
     WockyStanza *stanza,
     WockyXmppErrorType errtype,
     const GError *error,
@@ -2374,7 +2374,7 @@ muc_status_codes_to_change_reason (guint codes)
 /* connect to wocky-muc:SIG_PARTED, which we will receive when the MUC tells *
  * us that we have left the channel                                          */
 static void
-handle_parted (GObject *source,
+handle_parted (WockyMuc *wmuc,
     WockyStanza *stanza,
     guint codes,
     const gchar *actor_jid,
@@ -2382,7 +2382,6 @@ handle_parted (GObject *source,
     const gchar *msg,
     gpointer data)
 {
-  WockyMuc *wmuc = WOCKY_MUC (source);
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   GabbleMucChannelPrivate *priv = gmuc->priv;
@@ -2445,7 +2444,7 @@ handle_parted (GObject *source,
 /* connect to wocky-muc:SIG_LEFT, which we will receive when the MUC informs *
  * us someone [else] has left the channel                                    */
 static void
-handle_left (GObject *source,
+handle_left (WockyMuc *muc,
     WockyStanza *stanza,
     guint codes,
     WockyMucMember *who,
@@ -2498,14 +2497,13 @@ handle_left (GObject *source,
 /* connect to wocky-muc:SIG_PERM_CHANGE, which we will receive when the *
  * MUC informs us our role/affiliation has been altered                 */
 static void
-handle_perms (GObject *source,
+handle_perms (WockyMuc *wmuc,
     WockyStanza *stanza,
-    GHashTable *code,
+    guint code,
     const gchar *actor,
     const gchar *why,
     gpointer data)
 {
-  WockyMuc *wmuc = WOCKY_MUC (source);
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   GabbleMucChannelPrivate *priv = gmuc->priv;
   TpHandle myself = TP_GROUP_MIXIN (gmuc)->self_handle;
@@ -2558,12 +2556,11 @@ handle_fill_presence (WockyMuc *muc,
 /* connect to wocky-muc:SIG_NICK_CHANGE, which we will receive when the *
  * MUC informs us our nick has been changed for some reason             */
 static void
-handle_renamed (GObject *source,
+handle_renamed (WockyMuc *wmuc,
     WockyStanza *stanza,
     guint codes,
     gpointer data)
 {
-  WockyMuc *wmuc = WOCKY_MUC (source);
   GabbleMucChannel *gmuc = GABBLE_MUC_CHANNEL (data);
   TpBaseChannel *base = TP_BASE_CHANNEL (gmuc);
   TpHandleRepoIface *contact_repo =
@@ -2699,7 +2696,7 @@ handle_join (WockyMuc *muc,
 /* connect to wocky-muc:SIG_PRESENCE, which is fired for presences that are *
  * NOT our own after the initial roster has been received:                  */
 static void
-handle_presence (GObject *source,
+handle_presence (WockyMuc *muc,
     WockyStanza *stanza,
     guint codes,
     WockyMucMember *who,
@@ -2771,7 +2768,7 @@ handle_presence (GObject *source,
 /* message signal handlers */
 
 static void
-handle_message (GObject *source,
+handle_message (WockyMuc *muc,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
@@ -2788,12 +2785,13 @@ handle_message (GObject *source,
   gboolean from_member = (who != NULL);
 
   TpChannelTextMessageType msg_type;
-  TpHandleRepoIface *repo;
   TpEntityType entity_type;
   TpHandle from;
 
   if (from_member)
     {
+      TpHandleRepoIface *repo;
+
       entity_type = TP_ENTITY_TYPE_CONTACT;
       repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_handle_ensure (repo, who->from,
@@ -2808,7 +2806,6 @@ handle_message (GObject *source,
   else /* directly from MUC itself */
     {
       entity_type = TP_ENTITY_TYPE_ROOM;
-      repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_base_channel_get_target_handle (base);
     }
 
@@ -2860,7 +2857,7 @@ handle_message (GObject *source,
 }
 
 static void
-handle_errmsg (GObject *source,
+handle_errmsg (WockyMuc *muc,
     WockyStanza *stanza,
     WockyMucMsgType type,
     const gchar *xmpp_id,
@@ -2877,13 +2874,14 @@ handle_errmsg (GObject *source,
   TpBaseConnection *conn = tp_base_channel_get_connection (base);
   gboolean from_member = (who != NULL);
   TpDeliveryStatus ds = TP_DELIVERY_STATUS_DELIVERED;
-  TpHandleRepoIface *repo = NULL;
   TpEntityType entity_type;
   TpHandle from = 0;
   const gchar *subject;
 
   if (from_member)
     {
+      TpHandleRepoIface *repo;
+
       entity_type = TP_ENTITY_TYPE_CONTACT;
       repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_handle_ensure (repo, who->from,
@@ -2898,7 +2896,6 @@ handle_errmsg (GObject *source,
   else /* directly from MUC itself */
     {
       entity_type = TP_ENTITY_TYPE_ROOM;
-      repo = tp_base_connection_get_handles (conn, entity_type);
       from = tp_base_channel_get_target_handle (base);
     }
 

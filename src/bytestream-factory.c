@@ -1517,8 +1517,6 @@ handle_muc_data (GabbleBytestreamFactory *self,
   gchar *room_name;
   const gchar *from;
 
-  priv = GABBLE_BYTESTREAM_FACTORY_GET_PRIVATE (self);
-
   data = wocky_node_get_child_ns (
       wocky_stanza_get_top_node (msg), "data", NS_MUC_BYTESTREAM);
   if (data == NULL)

@@ -715,7 +715,7 @@ gabble_private_tubes_factory_handle_si_tube_request (
     }
 
   /* New tube */
-  tube = new_channel_from_stanza (self, msg, tube_node,
+  new_channel_from_stanza (self, msg, tube_node,
       tube_id, bytestream);
 }
 
@@ -881,7 +881,7 @@ private_tubes_factory_msg_tube_cb (
       return TRUE;
     }
 
-  channel = new_channel_from_stanza (self, msg, node, tube_id, NULL);
+  new_channel_from_stanza (self, msg, node, tube_id, NULL);
 
   return TRUE;
 }

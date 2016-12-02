@@ -358,8 +358,9 @@ gabble_uris_for_handle (TpHandleRepoIface *contact_repo,
     TpHandle contact)
 {
   GPtrArray *uris = g_ptr_array_new ();
+  const gchar * const *scheme;
 
-  for (const gchar * const *scheme = addressable_uri_schemes; *scheme != NULL; scheme++)
+  for (scheme = addressable_uri_schemes; *scheme != NULL; scheme++)
     {
       gchar *uri = gabble_uri_for_handle (contact_repo, *scheme, contact);
 
@@ -378,10 +379,11 @@ gabble_vcard_addresses_for_handle (TpHandleRepoIface *contact_repo,
     TpHandle contact)
 {
   GVariantBuilder builder;
+  const gchar * const *field;
 
   g_variant_builder_init (&builder, G_VARIANT_TYPE ("a{ss}"));
 
-  for (const gchar * const *field = addressable_vcard_fields; *field != NULL; field++)
+  for (field = addressable_vcard_fields; *field != NULL; field++)
     {
       gchar *vcard_address = gabble_vcard_address_for_handle (contact_repo, *field, contact);
 

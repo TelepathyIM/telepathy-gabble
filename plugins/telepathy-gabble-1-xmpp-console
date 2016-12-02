@@ -355,13 +355,13 @@ class Window(Gtk.Window):
                 bus_name, sidecar_path, CONSOLE_IFACE, None)
 
         except GLib.GError as e:
-            print """
+            print("""
 Couldn't connect to the XMPP console interface on '%(name)s':
 %(e)s
 Check that you have the console plugin installed.""" % {
                 'name': request.get_account().get_path_suffix(),
                 'e': e,
-            }
+            })
             raise SystemExit(2)
 
         self.__build_ui()
@@ -377,8 +377,8 @@ Check that you have the console plugin installed.""" % {
         try:
             self.snoopy.teardown()
         except GLib.GError, e:
-            print "Couldn't turn off the monitor (maybe the connection went away?)"
-            print e
+            print("Couldn't turn off the monitor (maybe the connection went away?)")
+            print(e)
         Gtk.main_quit()
 
 def usage(am):
@@ -387,7 +387,7 @@ def usage(am):
         for account in am.dup_valid_accounts()
         if account.get_cm_name() == 'gabble')
 
-    print """
+    print("""
 Usage:
 
   %(arg0)s gabble/jabber/blahblah
@@ -397,14 +397,14 @@ Here are some account identifiers:
   %(accounts)s
 """ % { 'arg0': sys.argv[0],
         'accounts': '\n  '.join(xmpp_accounts),
-      }
+      })
     raise SystemExit(1)
 
 def am_prepared_cb(am, result, account_suffix):
     try:
         am.prepare_finish(result)
     except GLib.GError as e:
-        print e
+        print(e)
         raise SystemExit(2)
 
     if account_suffix is None:
@@ -413,7 +413,7 @@ def am_prepared_cb(am, result, account_suffix):
     for account in am.dup_valid_accounts():
         if account.get_path_suffix() == account_suffix:
             if account.get_connection() is None:
-                print "%s is not online." % account_suffix
+                print("%s is not online." % account_suffix)
                 raise SystemExit(2)
             else:
                 win = Window(account)

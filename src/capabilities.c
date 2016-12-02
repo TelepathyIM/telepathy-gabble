@@ -53,6 +53,7 @@ static const Feature self_advertised_features[] =
   { FEATURE_FIXED, NS_JINGLE032 },
 #endif
 
+  { FEATURE_FIXED, NS_DISCO_INFO },
   { FEATURE_FIXED, NS_CHAT_STATES },
   { FEATURE_FIXED, NS_NICK },
   { FEATURE_FIXED, NS_NICK "+notify" },

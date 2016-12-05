@@ -179,9 +179,16 @@ gabble_server_tls_channel_constructed (GObject *object)
   const gchar *path;
   gchar *cert_object_path;
   GPtrArray *certificates;
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (self);
+  GDBusInterfaceSkeleton *iface;
 
   if (chain_up != NULL)
     chain_up (object);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_TYPE_SERVER_TLS_CONNECTION1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 
   tp_base_channel_register (base);
 

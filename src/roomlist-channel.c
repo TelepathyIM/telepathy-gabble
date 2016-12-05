@@ -91,9 +91,16 @@ gabble_roomlist_channel_constructed (GObject *obj)
   TpBaseChannel *base_chan = (TpBaseChannel *) self;
   TpBaseConnection *conn = tp_base_channel_get_connection (base_chan);
   TpHandleRepoIface *room_handles;
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (self);
+  GDBusInterfaceSkeleton *iface;
 
   if (parent_class->constructed != NULL)
     parent_class->constructed (obj);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_TYPE_ROOM_LIST1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 
   room_handles = tp_base_connection_get_handles (conn, TP_ENTITY_TYPE_ROOM);
   self->priv->signalled_rooms = tp_handle_set_new (room_handles);

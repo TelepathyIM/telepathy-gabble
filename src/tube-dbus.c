@@ -155,19 +155,6 @@ struct _GabbleTubeDBusPrivate
 
 #define GABBLE_TUBE_DBUS_GET_PRIVATE(obj) ((obj)->priv)
 
-static GPtrArray *
-gabble_tube_dbus_get_interfaces (TpBaseChannel *base)
-{
-  GPtrArray *interfaces;
-
-  interfaces = TP_BASE_CHANNEL_CLASS (
-      gabble_tube_dbus_parent_class)->get_interfaces (base);
-
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_TUBE1);
-
-  return interfaces;
-}
-
 static void data_received_cb (GabbleBytestreamIface *stream, TpHandle sender,
     GString *data, gpointer user_data);
 
@@ -712,12 +699,24 @@ gabble_tube_dbus_constructed (GObject *obj)
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (
       base_conn, TP_ENTITY_TYPE_CONTACT);
   guint access_control;
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (self);
+  GDBusInterfaceSkeleton *iface;
 
   void (*chain_up) (GObject *) =
     ((GObjectClass *) gabble_tube_dbus_parent_class)->constructed;
 
   if (chain_up != NULL)
     chain_up (obj);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_TYPE_DBUS_TUBE1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_TUBE1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 
   priv->dbus_names = g_hash_table_new_full (g_direct_hash, g_direct_equal,
       NULL, g_free);
@@ -730,6 +729,11 @@ gabble_tube_dbus_constructed (GObject *obj)
        */
       GabbleBytestreamMuc *bytestream;
       gchar *nick;
+
+      iface = tp_svc_interface_skeleton_new (skel,
+          TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP1);
+      g_dbus_object_skeleton_add_interface (skel, iface);
+      g_object_unref (iface);
 
       g_assert (priv->stream_id != NULL);
 
@@ -866,7 +870,6 @@ gabble_tube_dbus_class_init (GabbleTubeDBusClass *gabble_tube_dbus_class)
   object_class->finalize = gabble_tube_dbus_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_DBUS_TUBE1;
-  base_class->get_interfaces = gabble_tube_dbus_get_interfaces;
   base_class->target_entity_type = TP_ENTITY_TYPE_CONTACT;
   base_class->close = gabble_tube_dbus_close;
   base_class->fill_immutable_properties =

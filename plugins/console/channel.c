@@ -83,11 +83,18 @@ static void
 gabble_console_channel_constructed (GObject *object)
 {
   GabbleConsoleChannel *self = GABBLE_CONSOLE_CHANNEL (object);
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (self);
+  GDBusInterfaceSkeleton *iface;
   void (*chain_up)(GObject *) =
       G_OBJECT_CLASS (gabble_console_channel_parent_class)->constructed;
 
   if (chain_up != NULL)
     chain_up (object);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      GABBLE_TYPE_SVC_GABBLE_PLUGIN_CONSOLE);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 
   self->priv->session = g_object_ref (
       gabble_plugin_connection_get_session (

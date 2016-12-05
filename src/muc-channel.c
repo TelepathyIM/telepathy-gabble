@@ -222,25 +222,6 @@ typedef struct {
   gchar *token;
 } _GabbleMUCSendMessageCtx;
 
-static GPtrArray *
-gabble_muc_channel_get_interfaces (TpBaseChannel *base)
-{
-  GPtrArray *interfaces;
-
-  interfaces = TP_BASE_CHANNEL_CLASS (
-      gabble_muc_channel_parent_class)->get_interfaces (base);
-
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_GROUP1);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_PASSWORD1);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CHAT_STATE1);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_CONFERENCE1);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM1);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_ROOM_CONFIG1);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SUBJECT1);
-
-  return interfaces;
-}
-
 static void
 gabble_muc_channel_init (GabbleMucChannel *self)
 {
@@ -380,6 +361,8 @@ gabble_muc_channel_constructed (GObject *obj)
   GabbleMucChannel *self = GABBLE_MUC_CHANNEL (obj);
   GabbleMucChannelPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (self);
+  GDBusInterfaceSkeleton *iface;
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   TpHandleRepoIface *room_handles, *contact_handles;
   TpHandle target, initiator, self_handle;
@@ -399,6 +382,46 @@ gabble_muc_channel_constructed (GObject *obj)
 
   if (chain_up != NULL)
     chain_up (obj);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_TYPE_TEXT);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_PASSWORD1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_CHAT_STATE1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 
   room_handles = tp_base_connection_get_handles (base_conn,
       TP_ENTITY_TYPE_ROOM);
@@ -1084,7 +1107,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_TEXT;
   base_class->target_entity_type = TP_ENTITY_TYPE_ROOM;
-  base_class->get_interfaces = gabble_muc_channel_get_interfaces;
   base_class->fill_immutable_properties = gabble_muc_channel_fill_immutable_properties;
   base_class->close = gabble_muc_channel_close;
 

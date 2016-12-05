@@ -168,19 +168,6 @@ struct _GabbleTubeStreamPrivate
   gboolean dispose_has_run;
 };
 
-static GPtrArray *
-gabble_tube_stream_get_interfaces (TpBaseChannel *base)
-{
-  GPtrArray *interfaces;
-
-  interfaces = TP_BASE_CHANNEL_CLASS (
-      gabble_tube_stream_parent_class)->get_interfaces (base);
-
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_TUBE1);
-
-  return interfaces;
-}
-
 typedef struct
 {
   GabbleTubeStream *self;
@@ -1339,6 +1326,8 @@ gabble_tube_stream_constructed (GObject *obj)
   GabbleTubeStream *self = GABBLE_TUBE_STREAM (obj);
   GabbleTubeStreamPrivate *priv = self->priv;
   TpBaseChannel *base = TP_BASE_CHANNEL (self);
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (self);
+  GDBusInterfaceSkeleton *iface;
   TpBaseChannelClass *cls = TP_BASE_CHANNEL_GET_CLASS (base);
   TpBaseConnection *base_conn = tp_base_channel_get_connection (base);
   GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
@@ -1348,6 +1337,16 @@ gabble_tube_stream_constructed (GObject *obj)
 
   if (chain_up != NULL)
     chain_up (obj);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_TYPE_STREAM_TUBE1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_TUBE1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 
   if (tp_base_channel_is_requested (base))
     {
@@ -1371,6 +1370,11 @@ gabble_tube_stream_constructed (GObject *obj)
     {
       g_assert (priv->muc != NULL);
       tp_external_group_mixin_init (obj, (GObject *) priv->muc);
+
+      iface = tp_svc_interface_skeleton_new (skel,
+          TP_TYPE_SVC_CHANNEL_INTERFACE_GROUP1);
+      g_dbus_object_skeleton_add_interface (skel, iface);
+      g_object_unref (iface);
     }
 }
 
@@ -1438,7 +1442,6 @@ gabble_tube_stream_class_init (GabbleTubeStreamClass *gabble_tube_stream_class)
   object_class->finalize = gabble_tube_stream_finalize;
 
   base_class->channel_type = TP_IFACE_CHANNEL_TYPE_STREAM_TUBE1;
-  base_class->get_interfaces = gabble_tube_stream_get_interfaces;
   base_class->target_entity_type = TP_ENTITY_TYPE_CONTACT;
   base_class->close = gabble_tube_stream_close;
   base_class->fill_immutable_properties =

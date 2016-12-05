@@ -988,12 +988,20 @@ gabble_search_channel_constructor (GType type,
   GabbleSearchChannel *chan;
   TpBaseChannel *base;
   TpBaseConnection *conn;
+  GDBusObjectSkeleton *skel;
+  GDBusInterfaceSkeleton *iface;
 
   obj = G_OBJECT_CLASS (gabble_search_channel_parent_class)->constructor (
       type, n_props, props);
   chan = GABBLE_SEARCH_CHANNEL (obj);
   base = TP_BASE_CHANNEL (obj);
   conn = tp_base_channel_get_connection (base);
+  skel = G_DBUS_OBJECT_SKELETON (obj);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_TYPE_CONTACT_SEARCH1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 
   chan->priv->result_handles = tp_handle_set_new (
       tp_base_connection_get_handles (conn, TP_ENTITY_TYPE_CONTACT));

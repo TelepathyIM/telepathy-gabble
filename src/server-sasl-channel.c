@@ -98,25 +98,13 @@ struct _GabbleServerSaslChannelPrivate
   GSimpleAsyncResult *result;
 };
 
-static GPtrArray *
-gabble_server_sasl_channel_get_interfaces (TpBaseChannel *base)
-{
-  GPtrArray *interfaces;
-
-  interfaces = TP_BASE_CHANNEL_CLASS (
-      gabble_server_sasl_channel_parent_class)->get_interfaces (base);
-
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SASL_AUTHENTICATION1);
-  g_ptr_array_add (interfaces, TP_IFACE_CHANNEL_INTERFACE_SECURABLE1);
-
-  return interfaces;
-}
-
 static void
 gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
 {
   GabbleServerSaslChannelPrivate *priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
       GABBLE_TYPE_SERVER_SASL_CHANNEL, GabbleServerSaslChannelPrivate);
+  GDBusObjectSkeleton *skel = G_DBUS_OBJECT_SKELETON (self);
+  GDBusInterfaceSkeleton *iface;
 
   self->priv = priv;
 
@@ -125,6 +113,21 @@ gabble_server_sasl_channel_init (GabbleServerSaslChannel *self)
   priv->sasl_error_details = tp_asv_new (NULL, NULL);
   /* a safe assumption if we don't set anything else */
   priv->disconnect_reason = TP_CONNECTION_STATUS_REASON_AUTHENTICATION_FAILED;
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_TYPE_SERVER_AUTHENTICATION1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_SASL_AUTHENTICATION1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
+
+  iface = tp_svc_interface_skeleton_new (skel,
+      TP_TYPE_SVC_CHANNEL_INTERFACE_SECURABLE1);
+  g_dbus_object_skeleton_add_interface (skel, iface);
+  g_object_unref (iface);
 }
 
 static void
@@ -322,7 +325,6 @@ gabble_server_sasl_channel_class_init (GabbleServerSaslChannelClass *klass)
 
   channel_class->channel_type =
     TP_IFACE_CHANNEL_TYPE_SERVER_AUTHENTICATION1;
-  channel_class->get_interfaces = gabble_server_sasl_channel_get_interfaces;
   channel_class->target_entity_type = TP_ENTITY_TYPE_NONE;
   channel_class->fill_immutable_properties =
     gabble_server_sasl_channel_fill_immutable_properties;

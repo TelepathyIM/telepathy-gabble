@@ -149,11 +149,6 @@ def test_some_stuff(q, bus, conn, stream):
     handle_disco_info_iq(stream, disco_iq.stanza)
     pc = q.expect('dbus-signal', signal='PropertiesChanged',
         predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_ROOM_CONFIG)
-    q.expect('dbus-signal', signal='PropertiesChanged',
-        args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
-              {'ConfigurationRetrieved': True},
-              []
-             ])
     _, changed, invalidated = pc.args
     assertEquals(
         { 'Anonymous': True,
@@ -161,6 +156,7 @@ def test_some_stuff(q, bus, conn, stream):
           'Title': ROOM_NAME,
           'Description': ROOM_DESCRIPTION,
           'Private': True,
+          'ConfigurationRetrieved': True,
         }, changed)
 
     assertEquals([], invalidated)
@@ -264,11 +260,11 @@ def test_role_changes(q, bus, conn, stream):
     assertContains(cs.CHANNEL_IFACE_ROOM_CONFIG, immutable_props[cs.INTERFACES])
 
     handle_disco_info_iq(stream, disco.stanza)
-    q.expect('dbus-signal', signal='PropertiesChanged',
-        args=[cs.CHANNEL_IFACE_ROOM_CONFIG,
-              {'ConfigurationRetrieved': True},
-              []
-             ])
+    pc = q.expect('dbus-signal', signal='PropertiesChanged',
+        predicate=lambda e: e.args[0] == cs.CHANNEL_IFACE_ROOM_CONFIG)
+    _, changed, invalidated = pc.args
+    assertContains('ConfigurationRetrieved', changed)
+    assertEquals(True, changed['ConfigurationRetrieved'])
 
     # If we try to change the configuration, Gabble should say no: it knows
     # we're not allowed to do that.

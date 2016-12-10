@@ -80,8 +80,6 @@ G_DEFINE_TYPE_WITH_CODE (GabbleMucChannel, gabble_muc_channel,
       tp_message_mixin_chat_state_iface_init)
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_CONFERENCE1, NULL);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM1, NULL);
-    G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG1,
-      tp_base_room_config_iface_init);
     G_IMPLEMENT_INTERFACE (TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT1,
       subject_iface_init);
     )
@@ -414,14 +412,30 @@ gabble_muc_channel_constructed (GObject *obj)
   g_object_unref (iface);
 
   iface = tp_svc_interface_skeleton_new (skel,
-      TP_TYPE_SVC_CHANNEL_INTERFACE_ROOM_CONFIG1);
-  g_dbus_object_skeleton_add_interface (skel, iface);
-  g_object_unref (iface);
-
-  iface = tp_svc_interface_skeleton_new (skel,
       TP_TYPE_SVC_CHANNEL_INTERFACE_SUBJECT1);
   g_dbus_object_skeleton_add_interface (skel, iface);
   g_object_unref (iface);
+
+  /* also add the RoomConfig interface */
+  {
+    TpBaseRoomConfigProperty mutable_properties[] = {
+        TP_BASE_ROOM_CONFIG_ANONYMOUS,
+        TP_BASE_ROOM_CONFIG_INVITE_ONLY,
+        TP_BASE_ROOM_CONFIG_MODERATED,
+        TP_BASE_ROOM_CONFIG_TITLE,
+        TP_BASE_ROOM_CONFIG_PERSISTENT,
+        TP_BASE_ROOM_CONFIG_PRIVATE,
+        TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED,
+        TP_BASE_ROOM_CONFIG_PASSWORD,
+    };
+    guint i;
+
+    priv->room_config =
+        (TpBaseRoomConfig *) gabble_room_config_new ((TpBaseChannel *) self);
+    for (i = 0; i < G_N_ELEMENTS (mutable_properties); i++)
+      tp_base_room_config_set_property_mutable (priv->room_config,
+          mutable_properties[i], TRUE);
+  }
 
   room_handles = tp_base_connection_get_handles (base_conn,
       TP_ENTITY_TYPE_ROOM);
@@ -534,29 +548,6 @@ gabble_muc_channel_constructed (GObject *obj)
    * "high enough" is defined by the muc#roominfo_changesubject and
    * muc#roomconfig_changesubject settings. */
   priv->can_set_subject = TRUE;
-
-  {
-    TpBaseRoomConfigProperty mutable_properties[] = {
-        TP_BASE_ROOM_CONFIG_ANONYMOUS,
-        TP_BASE_ROOM_CONFIG_INVITE_ONLY,
-        TP_BASE_ROOM_CONFIG_MODERATED,
-        TP_BASE_ROOM_CONFIG_TITLE,
-        TP_BASE_ROOM_CONFIG_PERSISTENT,
-        TP_BASE_ROOM_CONFIG_PRIVATE,
-        TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED,
-        TP_BASE_ROOM_CONFIG_PASSWORD,
-    };
-    guint i;
-
-    priv->room_config =
-        (TpBaseRoomConfig *) gabble_room_config_new ((TpBaseChannel *) self);
-    for (i = 0; i < G_N_ELEMENTS (mutable_properties); i++)
-      tp_base_room_config_set_property_mutable (priv->room_config,
-          mutable_properties[i], TRUE);
-
-    /* Just to get those mutable properties out there. */
-    tp_base_room_config_emit_properties_changed (priv->room_config);
-  }
 
   if (priv->invited)
     {
@@ -1303,7 +1294,6 @@ gabble_muc_channel_class_init (GabbleMucChannelClass *gabble_muc_channel_class)
       subject_props);
 
   tp_message_mixin_init_dbus_properties (object_class);
-  tp_base_room_config_register_class (base_class);
 
   tp_group_mixin_class_init (object_class,
       G_STRUCT_OFFSET (GabbleMucChannelClass, group_class),
@@ -1842,7 +1832,6 @@ perms_config_form_reply_cb (
         {
           tp_base_room_config_set_property_mutable (priv->room_config,
               TP_BASE_ROOM_CONFIG_DESCRIPTION, TRUE);
-          tp_base_room_config_emit_properties_changed (priv->room_config);
           break;
         }
     }
@@ -1900,8 +1889,6 @@ update_permissions (GabbleMucChannel *chan)
     {
       tp_base_room_config_set_can_update_configuration (priv->room_config, FALSE);
     }
-
-  tp_base_room_config_emit_properties_changed (priv->room_config);
 
   if (priv->self_affil == WOCKY_MUC_AFFILIATION_OWNER)
     {
@@ -3584,7 +3571,7 @@ gabble_muc_channel_update_configuration_finish (
       gabble_muc_channel_update_configuration_async);
 }
 
-typedef const gchar * (*MapFieldFunc) (const GValue *value);
+typedef const gchar * (*MapFieldFunc) (GVariant *value);
 
 typedef struct {
     const gchar *var;
@@ -3593,27 +3580,33 @@ typedef struct {
 } ConfigFormMapping;
 
 static const gchar *
-map_bool (const GValue *value)
+map_bool (GVariant *value)
 {
-  return g_value_get_boolean (value) ? "1" : "0";
+  return g_variant_get_boolean (value) ? "1" : "0";
 }
 
 static const gchar *
-map_bool_inverted (const GValue *value)
+map_bool_inverted (GVariant *value)
 {
-  return g_value_get_boolean (value) ? "0" : "1";
+  return g_variant_get_boolean (value) ? "0" : "1";
 }
 
 static const gchar *
-map_roomconfig_whois (const GValue *value)
+map_roomconfig_whois (GVariant *value)
 {
-  return g_value_get_boolean (value) ? "moderators" : "anyone";
+  return g_variant_get_boolean (value) ? "moderators" : "anyone";
 }
 
 static const gchar *
-map_owner_whois (const GValue *value)
+map_owner_whois (GVariant *value)
 {
-  return g_value_get_boolean (value) ? "admins" : "anyone";
+  return g_variant_get_boolean (value) ? "admins" : "anyone";
+}
+
+static const gchar *
+map_string (GVariant *value)
+{
+  return g_variant_get_string (value, NULL);
 }
 
 static ConfigFormMapping form_mappings[] = {
@@ -3629,16 +3622,16 @@ static ConfigFormMapping form_mappings[] = {
     { "muc#roomconfig_moderatedroom", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
     { "muc#owner_moderatedroom", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
 
-    { "title", TP_BASE_ROOM_CONFIG_TITLE, g_value_get_string },
-    { "muc#roomconfig_roomname", TP_BASE_ROOM_CONFIG_TITLE, g_value_get_string },
-    { "muc#owner_roomname", TP_BASE_ROOM_CONFIG_TITLE, g_value_get_string },
+    { "title", TP_BASE_ROOM_CONFIG_TITLE, map_string },
+    { "muc#roomconfig_roomname", TP_BASE_ROOM_CONFIG_TITLE, map_string },
+    { "muc#owner_roomname", TP_BASE_ROOM_CONFIG_TITLE, map_string },
 
-    { "muc#roomconfig_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, g_value_get_string },
-    { "muc#owner_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, g_value_get_string },
+    { "muc#roomconfig_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, map_string },
+    { "muc#owner_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, map_string },
 
-    { "password", TP_BASE_ROOM_CONFIG_PASSWORD, g_value_get_string },
-    { "muc#roomconfig_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, g_value_get_string },
-    { "muc#owner_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, g_value_get_string },
+    { "password", TP_BASE_ROOM_CONFIG_PASSWORD, map_string },
+    { "muc#roomconfig_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, map_string },
+    { "muc#owner_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, map_string },
 
     { "password_protected", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
     { "muc#roomconfig_passwordprotectedroom", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
@@ -3740,7 +3733,7 @@ request_config_form_reply_cb (
       const gchar *var, *type_str;
       WockyNode *field_node;
       ConfigFormMapping *f;
-      GValue *value = NULL;
+      GVariant *value = NULL;
 
       var = wocky_node_get_attribute (child, "var");
       if (var == NULL) {

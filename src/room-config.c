@@ -27,7 +27,7 @@
 
 static void gabble_room_config_update_configuration_async (
     TpBaseRoomConfig *base_config,
-    GHashTable *validated_properties,
+    GVariant *validated_properties,
     GAsyncReadyCallback callback,
     gpointer user_data);
 
@@ -87,7 +87,7 @@ updated_configuration_cb (
 static void
 gabble_room_config_update_configuration_async (
     TpBaseRoomConfig *base_config,
-    GHashTable *validated_properties,
+    GVariant *validated_properties,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {

@@ -129,7 +129,7 @@ gboolean gabble_muc_channel_handle_jingle_session (GabbleMucChannel *channel,
 
 void gabble_muc_channel_update_configuration_async (
     GabbleMucChannel *self,
-    GHashTable *validated_properties,
+    GVariant *validated_properties,
     GAsyncReadyCallback callback,
     gpointer user_data);
 gboolean gabble_muc_channel_update_configuration_finish (

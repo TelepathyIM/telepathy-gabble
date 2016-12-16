@@ -169,7 +169,7 @@ struct _GabbleMucChannelPrivate
   guint recv_id;
 
   TpBaseRoomConfig *room_config;
-  GHashTable *properties_being_updated;
+  GVariant *properties_being_updated;
 
   /* Room interface */
   gchar *room_name;
@@ -3536,7 +3536,7 @@ static void request_config_form_reply_cb (
 void
 gabble_muc_channel_update_configuration_async (
     GabbleMucChannel *self,
-    GHashTable *validated_properties,
+    GVariant *validated_properties,
     GAsyncReadyCallback callback,
     gpointer user_data)
 {
@@ -3558,7 +3558,7 @@ gabble_muc_channel_update_configuration_async (
       request_config_form_reply_cb, result);
   g_object_unref (stanza);
 
-  priv->properties_being_updated = g_hash_table_ref (validated_properties);
+  priv->properties_being_updated = g_variant_ref (validated_properties);
 }
 
 gboolean
@@ -3575,7 +3575,8 @@ typedef const gchar * (*MapFieldFunc) (GVariant *value);
 
 typedef struct {
     const gchar *var;
-    TpBaseRoomConfigProperty prop_id;
+    const gchar *prop_name;
+    const GVariantType *prop_type;
     MapFieldFunc map;
 } ConfigFormMapping;
 
@@ -3610,40 +3611,40 @@ map_string (GVariant *value)
 }
 
 static ConfigFormMapping form_mappings[] = {
-    { "anonymous", TP_BASE_ROOM_CONFIG_ANONYMOUS, map_bool },
-    { "muc#roomconfig_whois", TP_BASE_ROOM_CONFIG_ANONYMOUS, map_roomconfig_whois },
-    { "muc#owner_whois", TP_BASE_ROOM_CONFIG_ANONYMOUS, map_owner_whois },
+    { "anonymous", "anonymous", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#roomconfig_whois", "anonymous", G_VARIANT_TYPE_BOOLEAN, map_roomconfig_whois },
+    { "muc#owner_whois", "anonymous", G_VARIANT_TYPE_BOOLEAN, map_owner_whois },
 
-    { "members_only", TP_BASE_ROOM_CONFIG_INVITE_ONLY, map_bool },
-    { "muc#roomconfig_membersonly", TP_BASE_ROOM_CONFIG_INVITE_ONLY, map_bool },
-    { "muc#owner_inviteonly", TP_BASE_ROOM_CONFIG_INVITE_ONLY, map_bool },
+    { "members_only", "invite-only", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#roomconfig_membersonly", "invite-only", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#owner_inviteonly", "invite-only", G_VARIANT_TYPE_BOOLEAN, map_bool },
 
-    { "moderated", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
-    { "muc#roomconfig_moderatedroom", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
-    { "muc#owner_moderatedroom", TP_BASE_ROOM_CONFIG_MODERATED, map_bool },
+    { "moderated", "moderated", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#roomconfig_moderatedroom", "moderated", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#owner_moderatedroom", "moderated", G_VARIANT_TYPE_BOOLEAN, map_bool },
 
-    { "title", TP_BASE_ROOM_CONFIG_TITLE, map_string },
-    { "muc#roomconfig_roomname", TP_BASE_ROOM_CONFIG_TITLE, map_string },
-    { "muc#owner_roomname", TP_BASE_ROOM_CONFIG_TITLE, map_string },
+    { "title", "title", G_VARIANT_TYPE_STRING, map_string },
+    { "muc#roomconfig_roomname", "title", G_VARIANT_TYPE_STRING, map_string },
+    { "muc#owner_roomname", "title", G_VARIANT_TYPE_STRING, map_string },
 
-    { "muc#roomconfig_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, map_string },
-    { "muc#owner_roomdesc", TP_BASE_ROOM_CONFIG_DESCRIPTION, map_string },
+    { "muc#roomconfig_roomdesc", "description", G_VARIANT_TYPE_STRING, map_string },
+    { "muc#owner_roomdesc", "description", G_VARIANT_TYPE_STRING, map_string },
 
-    { "password", TP_BASE_ROOM_CONFIG_PASSWORD, map_string },
-    { "muc#roomconfig_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, map_string },
-    { "muc#owner_roomsecret", TP_BASE_ROOM_CONFIG_PASSWORD, map_string },
+    { "password", "password", G_VARIANT_TYPE_STRING, map_string },
+    { "muc#roomconfig_roomsecret", "password", G_VARIANT_TYPE_STRING, map_string },
+    { "muc#owner_roomsecret", "password", G_VARIANT_TYPE_STRING, map_string },
 
-    { "password_protected", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
-    { "muc#roomconfig_passwordprotectedroom", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
-    { "muc#owner_passwordprotectedroom", TP_BASE_ROOM_CONFIG_PASSWORD_PROTECTED, map_bool },
+    { "password_protected", "password-protected", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#roomconfig_passwordprotectedroom", "password-protected", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#owner_passwordprotectedroom", "password-protected", G_VARIANT_TYPE_BOOLEAN, map_bool },
 
-    { "persistent", TP_BASE_ROOM_CONFIG_PERSISTENT, map_bool },
-    { "muc#roomconfig_persistentroom", TP_BASE_ROOM_CONFIG_PERSISTENT, map_bool },
-    { "muc#owner_persistentroom", TP_BASE_ROOM_CONFIG_PERSISTENT, map_bool },
+    { "persistent", "persistent", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#roomconfig_persistentroom", "persistent", G_VARIANT_TYPE_BOOLEAN, map_bool },
+    { "muc#owner_persistentroom", "persistent", G_VARIANT_TYPE_BOOLEAN, map_bool },
 
-    { "public", TP_BASE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
-    { "muc#roomconfig_publicroom", TP_BASE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
-    { "muc#owner_publicroom", TP_BASE_ROOM_CONFIG_PRIVATE, map_bool_inverted },
+    { "public", "private", G_VARIANT_TYPE_BOOLEAN, map_bool_inverted },
+    { "muc#roomconfig_publicroom", "private", G_VARIANT_TYPE_BOOLEAN, map_bool_inverted },
+    { "muc#owner_publicroom", "private", G_VARIANT_TYPE_BOOLEAN, map_bool_inverted },
 
     { NULL }
 };
@@ -3678,12 +3679,13 @@ request_config_form_reply_cb (
   GabbleMucChannel *chan = GABBLE_MUC_CHANNEL (
       g_async_result_get_source_object ((GAsyncResult *) update_result));
   GabbleMucChannelPrivate *priv = chan->priv;
-  GHashTable *properties = priv->properties_being_updated;
+  GVariant *properties = priv->properties_being_updated;
+  GHashTable *props_left = g_hash_table_new (g_str_hash, g_str_equal);
   WockyStanza *reply = NULL;
   WockyStanza *submit_iq = NULL;
   WockyNode *form_node, *submit_node, *child;
   GError *error = NULL;
-  guint i, props_left;
+  guint i;
   WockyNodeIter j;
 
   if (!conn_util_send_iq_finish (conn, result, &reply, &error))
@@ -3713,18 +3715,11 @@ request_config_form_reply_cb (
         ')',
       ')', NULL);
 
-  /* we assume that the number of props will fit in a guint on all supported
-   * platforms, so fail at compile time if this is no longer the case
-   */
-#if TP_NUM_BASE_ROOM_CONFIG_PROPERTIES > 32
-#error GabbleMUCChannel request_config_form_reply_cb needs porting to TpIntset
-#endif
-
-  props_left = 0;
-  for (i = 0; i < TP_NUM_BASE_ROOM_CONFIG_PROPERTIES; i++)
+  for (i = 0; i < g_variant_n_children (properties); i++)
     {
-      if (g_hash_table_lookup (properties, GUINT_TO_POINTER (i)) != NULL)
-        props_left |= 1 << i;
+      gchar *key;
+      g_variant_get_child (properties, i, "{&sv}", &key, NULL);
+      g_hash_table_add (props_left, key);
     }
 
   wocky_node_iter_init (&j, form_node, "field", NULL);
@@ -3755,16 +3750,14 @@ request_config_form_reply_cb (
         }
 
       if (f != NULL)
-        value = g_hash_table_lookup (properties, GUINT_TO_POINTER (f->prop_id));
+        value = g_variant_lookup_value (properties, f->prop_name, f->prop_type);
 
       if (value != NULL)
         {
           const gchar *val_str;
 
           /* Known property and we have a value to set */
-          DEBUG ("transforming %s...",
-              wocky_enum_to_nick (TP_TYPE_BASE_ROOM_CONFIG_PROPERTY,
-                  f->prop_id));
+          DEBUG ("transforming %s...", f->prop_name);
           g_assert (f->map != NULL);
           val_str = f->map (value);
 
@@ -3772,7 +3765,7 @@ request_config_form_reply_cb (
           DEBUG ("Setting value %s for %s", val_str, var);
           wocky_node_add_child_with_content (field_node, "value", val_str);
 
-          props_left &= ~(1 << f->prop_id);
+          g_hash_table_remove (props_left, f->prop_name);
         }
       else
         {
@@ -3787,26 +3780,24 @@ request_config_form_reply_cb (
         }
     }
 
-  if (props_left != 0)
+  if (g_hash_table_size (props_left) != 0)
     {
       GString *unsubstituted = g_string_new ("");
+      GHashTableIter iter;
+      const gchar *name;
 
       printf ("\n%s: the following properties were not substituted:\n",
               G_STRFUNC);
 
-      for (i = 0; i < TP_NUM_BASE_ROOM_CONFIG_PROPERTIES; i++)
+      g_hash_table_iter_init (&iter, props_left);
+      while (g_hash_table_iter_next (&iter, (gpointer) &name, NULL))
         {
-          if ((props_left & (1 << i)) != 0)
-            {
-              const gchar *name = wocky_enum_to_nick (
-                  TP_TYPE_BASE_ROOM_CONFIG_PROPERTY, i);
-              printf ("  %s\n", name);
+          printf ("  %s\n", name);
 
-              if (unsubstituted->len > 0)
-                g_string_append (unsubstituted, ", ");
+          if (unsubstituted->len > 0)
+            g_string_append (unsubstituted, ", ");
 
-              g_string_append (unsubstituted, name);
-            }
+          g_string_append (unsubstituted, name);
         }
 
       printf ("\nthis is a MUC server compatibility bug in gabble, please "
@@ -3831,10 +3822,11 @@ OUT:
       g_simple_async_result_set_from_error (update_result, error);
       g_simple_async_result_complete (update_result);
       g_object_unref (update_result);
-      tp_clear_pointer (&priv->properties_being_updated, g_hash_table_unref);
+      tp_clear_pointer (&priv->properties_being_updated, g_variant_unref);
       g_clear_error (&error);
     }
 
+  g_clear_pointer (&props_left, g_hash_table_unref);
   tp_clear_object (&reply);
   tp_clear_object (&submit_iq);
   g_object_unref (chan);
@@ -3860,7 +3852,7 @@ request_config_form_submit_reply_cb (
     }
 
   g_simple_async_result_complete (update_result);
-  tp_clear_pointer (&priv->properties_being_updated, g_hash_table_unref);
+  tp_clear_pointer (&priv->properties_being_updated, g_variant_unref);
 
   /* Get the properties into a consistent state. */
   room_properties_update (chan);

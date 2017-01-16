@@ -102,6 +102,7 @@ WockyXep0115Capabilities * gabble_connection_get_caps (
 #define GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT           443
 #define GABBLE_PARAMS_DEFAULT_STUN_PORT                  3478
 #define GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER       "stun.telepathy.im"
+#define GABBLE_PARAMS_DEFAULT_FALLBACK_CONFERENCE_SERVER "conference.telepathy.im"
 #define GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES             { NULL }
 
 

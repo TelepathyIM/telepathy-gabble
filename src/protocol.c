@@ -57,127 +57,9 @@ G_DEFINE_TYPE_WITH_CODE (GabbleJabberProtocol, gabble_jabber_protocol,
     G_IMPLEMENT_INTERFACE (TP_TYPE_PROTOCOL_ADDRESSING, addressing_iface_init);
     )
 
-static TpCMParamSpec jabber_params[] = {
-  { "account", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
-    TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER, NULL,
-    0 /* unused */,
-    /* FIXME: validate the JID according to the RFC */
-    tp_cm_param_filter_string_nonempty, NULL },
-  { "password", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
-    TP_CONN_MGR_PARAM_FLAG_REGISTER | TP_CONN_MGR_PARAM_FLAG_SECRET,
-    NULL, 0 /* unused */, NULL, NULL },
-
-  { "server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    0 /* unused */,
-    /* FIXME: validate the server properly */
-    tp_cm_param_filter_string_nonempty, NULL },
-
-  { "resource", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    0 /* unused */,
-    /* FIXME: validate the resource according to the RFC */
-    tp_cm_param_filter_string_nonempty, NULL },
-
-  { "priority", DBUS_TYPE_INT16_AS_STRING, G_TYPE_INT,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(0),
-    0 /* unused */, NULL, NULL },
-
-  { "port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER(5222),
-    0 /* unused */,
-    tp_cm_param_filter_uint_nonzero, NULL },
-
-  { "old-ssl", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    0 /* unused */, NULL, NULL },
-
-  { "require-encryption", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(TRUE),
-    0 /* unused */, NULL, NULL },
-
-  { "register", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    0 /* unused */, NULL, NULL },
-
-  { "low-bandwidth", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    0 /* unused */, NULL, NULL },
-
-  { "https-proxy-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    0 /* unused */,
-    /* FIXME: validate properly */
-    tp_cm_param_filter_string_nonempty, NULL },
-
-  { "https-proxy-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT),
-    0 /* unused */,
-    tp_cm_param_filter_uint_nonzero, NULL },
-
-  { "fallback-conference-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    "conference.telepathy.im",
-    0 /* offset, not used */,
-    /* FIXME: validate properly */
-    tp_cm_param_filter_string_nonempty, NULL },
-
-  { "stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    0 /* unused */,
-    /* FIXME: validate properly */
-    tp_cm_param_filter_string_nonempty, NULL },
-
-  { "stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
-    0 /* unused */,
-    tp_cm_param_filter_uint_nonzero, NULL },
-
-  { "fallback-stun-server", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER,
-    0 /* unused */,
-    /* FIXME: validate properly */
-    tp_cm_param_filter_string_nonempty, NULL },
-
-  { "fallback-stun-port", DBUS_TYPE_UINT16_AS_STRING, G_TYPE_UINT,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
-    GUINT_TO_POINTER(GABBLE_PARAMS_DEFAULT_STUN_PORT),
-    0 /* unused */,
-    tp_cm_param_filter_uint_nonzero, NULL },
-
-  { "ignore-ssl-errors", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
-    0 /* unused */, NULL, NULL },
-
-  { "alias", DBUS_TYPE_STRING_AS_STRING, G_TYPE_STRING, 0, NULL,
-    0 /* unused */,
-    /* setting a 0-length alias makes no sense */
-    tp_cm_param_filter_string_nonempty, NULL },
-
-  { "fallback-socks5-proxies", "as", 0,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, NULL,
-    0 /* unused */,
-    NULL, NULL },
-
-  { "keepalive-interval", "u", G_TYPE_UINT,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GUINT_TO_POINTER (30),
-    0 /* unused */, NULL, NULL },
-
-  { TP_PROP_CONNECTION_INTERFACE_CONTACT_LIST1_DOWNLOAD_AT_CONNECTION,
-    DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
-    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT | TP_CONN_MGR_PARAM_FLAG_DBUS_PROPERTY,
-    GUINT_TO_POINTER (TRUE),
-    0 /* unused */, NULL, NULL },
-
-  { "fallback-servers", "as", 0,
-    0, NULL, 0 /* unused */, NULL, NULL },
-
-  { "extra-certificate-identities", "as", 0,
-    0, NULL, 0 /* unused */, NULL, NULL },
-
-  { "account-path-suffix", "s", G_TYPE_STRING,
-    0, NULL, 0 /* unused */, NULL, NULL },
-
-  { NULL, NULL, 0, 0, NULL, 0 }
+struct _GabbleJabberProtocolPrivate
+{
+  GPtrArray *params;
 };
 
 static const gchar *default_socks5_proxies[] = GABBLE_PARAMS_DEFAULT_SOCKS5_PROXIES;
@@ -185,41 +67,181 @@ static const gchar *default_socks5_proxies[] = GABBLE_PARAMS_DEFAULT_SOCKS5_PROX
 static void
 gabble_jabber_protocol_init (GabbleJabberProtocol *self)
 {
+  self->priv = G_TYPE_INSTANCE_GET_PRIVATE (self,
+      GABBLE_TYPE_JABBER_PROTOCOL, GabbleJabberProtocolPrivate);
 }
 
-static const TpCMParamSpec *
-get_parameters (TpBaseProtocol *self G_GNUC_UNUSED)
+static GPtrArray *
+dup_parameters (TpBaseProtocol *protocol)
 {
-  static gsize init_value = 0;
+  GabbleJabberProtocol *self = GABBLE_JABBER_PROTOCOL (protocol);
 
-  if (g_once_init_enter (&init_value))
+  if (!self->priv->params)
     {
-      guint i;
+      self->priv->params = g_ptr_array_new_full (25,
+          (GDestroyNotify) tp_cm_param_spec_unref);
 
-      for (i = 0; jabber_params[i].name != NULL; i++)
-        {
-          if (!g_strcmp0 (jabber_params[i].name,
-              "fallback-socks5-proxies"))
-            {
-              jabber_params[i].gtype = G_TYPE_STRV;
-              jabber_params[i].def = default_socks5_proxies;
-            }
-          else if (!g_strcmp0 (jabber_params[i].name,
-                "fallback-servers"))
-            {
-              jabber_params[i].gtype = G_TYPE_STRV;
-            }
-          else if (!g_strcmp0 (jabber_params[i].name,
-                "extra-certificate-identities"))
-            {
-              jabber_params[i].gtype = G_TYPE_STRV;
-            }
-        }
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("account",
+              TP_CONN_MGR_PARAM_FLAG_REQUIRED | TP_CONN_MGR_PARAM_FLAG_REGISTER,
+              g_variant_new_string (""),
+              /* FIXME: validate the JID according to the RFC */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
 
-      g_once_init_leave (&init_value, 1);
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("password",
+              TP_CONN_MGR_PARAM_FLAG_REGISTER | TP_CONN_MGR_PARAM_FLAG_SECRET,
+              g_variant_new_string (""),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("server",
+              0,
+              g_variant_new_string (""),
+              /* FIXME: validate the server properly */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
+
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("resource",
+              0,
+              g_variant_new_string (""),
+              /* FIXME: validate the resource according to the RFC */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("priority",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_int16 (0),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("port",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_uint16 (5222),
+              tp_cm_param_filter_uint_nonzero, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("old-ssl",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_boolean (FALSE),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("require-encryption",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_boolean (TRUE),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("register",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_boolean (FALSE),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("low-bandwidth",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_boolean (FALSE),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("https-proxy-server",
+              0,
+              g_variant_new_string (""),
+              /* FIXME: validate properly */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("https-proxy-port",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_uint16 (GABBLE_PARAMS_DEFAULT_HTTPS_PROXY_PORT),
+              tp_cm_param_filter_uint_nonzero, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("fallback-conference-server",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_string (GABBLE_PARAMS_DEFAULT_FALLBACK_CONFERENCE_SERVER),
+              /* FIXME: validate properly */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("stun-server",
+              0,
+              g_variant_new_string (""),
+              /* FIXME: validate properly */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("stun-port",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_uint16 (GABBLE_PARAMS_DEFAULT_STUN_PORT),
+              tp_cm_param_filter_uint_nonzero, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("fallback-stun-server",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_string (GABBLE_PARAMS_DEFAULT_FALLBACK_STUN_SERVER),
+              /* FIXME: validate properly */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("fallback-stun-port",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_uint16 (GABBLE_PARAMS_DEFAULT_STUN_PORT),
+              tp_cm_param_filter_uint_nonzero, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("ignore-ssl-errors",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_boolean (FALSE),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("alias",
+              0,
+              g_variant_new_string (""),
+              /* setting a 0-length alias makes no sense */
+              tp_cm_param_filter_string_nonempty, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("fallback-socks5-proxies",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_strv (default_socks5_proxies, -1),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("keepalive-interval",
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT,
+              g_variant_new_uint32 (30),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new (TP_PROP_CONNECTION_INTERFACE_CONTACT_LIST1_DOWNLOAD_AT_CONNECTION,
+              TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT | TP_CONN_MGR_PARAM_FLAG_DBUS_PROPERTY,
+              g_variant_new_boolean (TRUE),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("fallback-servers",
+              0,
+              g_variant_new_strv (NULL, 0),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("extra-certificate-identities",
+              0,
+              g_variant_new_strv (NULL, 0),
+              NULL, NULL, NULL));
+
+      g_ptr_array_add (self->priv->params,
+          tp_cm_param_spec_new ("account-path-suffix",
+              0,
+              g_variant_new_string (""),
+              NULL, NULL, NULL));
     }
 
-  return jabber_params;
+  return g_ptr_array_ref (self->priv->params);
 }
 
 #define MAP(x,y) { x, y }
@@ -459,7 +481,7 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   TpBaseProtocolClass *base_class =
       (TpBaseProtocolClass *) klass;
 
-  base_class->get_parameters = get_parameters;
+  base_class->dup_parameters = dup_parameters;
   base_class->new_connection = new_connection;
   base_class->normalize_contact = normalize_contact;
   base_class->identify_account = identify_account;
@@ -467,6 +489,8 @@ gabble_jabber_protocol_class_init (GabbleJabberProtocolClass *klass)
   base_class->get_statuses = get_presence_statuses;
   base_class->dup_authentication_types = dup_authentication_types;
   base_class->get_avatar_details = get_avatar_details;
+
+  g_type_class_add_private (klass, sizeof (GabbleJabberProtocolPrivate));
 }
 
 TpBaseProtocol *

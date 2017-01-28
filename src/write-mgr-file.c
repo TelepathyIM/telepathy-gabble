@@ -42,12 +42,13 @@
 static void
 write_parameters (GKeyFile *f, gchar *section_name, TpBaseProtocol *protocol)
 {
-  const TpCMParamSpec *parameters =
-      tp_base_protocol_get_parameters (protocol);
-  const TpCMParamSpec *row;
+  GPtrArray *parameters =
+      tp_base_protocol_dup_parameters (protocol);
+  guint i;
 
-  for (row = parameters; row->name; row++)
+  for (i = 0; i < parameters->len; i++)
     {
+      const TpCMParamSpec *row = g_ptr_array_index (parameters, i);
       gchar *param_name = g_strdup_printf ("param-%s", row->name);
       gchar *param_value = g_strdup_printf ("%s%s%s%s", row->dtype,
           (row->flags & TP_CONN_MGR_PARAM_FLAG_REQUIRED ? " required" : ""),
@@ -58,37 +59,53 @@ write_parameters (GKeyFile *f, gchar *section_name, TpBaseProtocol *protocol)
       g_free (param_name);
     }
 
-  for (row = parameters; row->name; row++)
+  for (i = 0; i < parameters->len; i++)
     {
+      const TpCMParamSpec *row = g_ptr_array_index (parameters, i);
+
       if (row->flags & TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT)
         {
           gchar *default_name = g_strdup_printf ("default-%s", row->name);
 
-          switch (row->gtype)
+          if (g_variant_is_of_type (row->def, G_VARIANT_TYPE_STRING))
             {
-            case G_TYPE_STRING:
               g_key_file_set_string (f, section_name, default_name,
-                                    row->def);
-              break;
-            case G_TYPE_INT:
-            case G_TYPE_UINT:
-              g_key_file_set_integer (f, section_name, default_name,
-                                     GPOINTER_TO_INT(row->def));
-              break;
-            case G_TYPE_BOOLEAN:
-              g_key_file_set_boolean (f, section_name, default_name,
-                                     GPOINTER_TO_INT(row->def) ? 1 : 0);
-              break;
-            default:
-              /* can't be in the case because G_TYPE_STRV is actually a
-               * function */
-              if (row->gtype == G_TYPE_STRV)
-                {
-                  g_key_file_set_string_list (f, section_name, default_name,
-                      (const gchar **) row->def,
-                      g_strv_length ((gchar **) row->def));
-                }
+                  g_variant_get_string (row->def, NULL));
             }
+          else if (g_variant_is_of_type (row->def, G_VARIANT_TYPE_INT16))
+            {
+              g_key_file_set_integer (f, section_name, default_name,
+                  g_variant_get_int16 (row->def));
+            }
+          else if (g_variant_is_of_type (row->def, G_VARIANT_TYPE_UINT16))
+            {
+              g_key_file_set_integer (f, section_name, default_name,
+                  g_variant_get_uint16 (row->def));
+            }
+          else if (g_variant_is_of_type (row->def, G_VARIANT_TYPE_INT32))
+            {
+              g_key_file_set_integer (f, section_name, default_name,
+                  g_variant_get_int32 (row->def));
+            }
+          else if (g_variant_is_of_type (row->def, G_VARIANT_TYPE_UINT32))
+            {
+              g_key_file_set_integer (f, section_name, default_name,
+                  g_variant_get_uint32 (row->def));
+            }
+          else if (g_variant_is_of_type (row->def, G_VARIANT_TYPE_BOOLEAN))
+            {
+              g_key_file_set_boolean (f, section_name, default_name,
+                  g_variant_get_boolean (row->def));
+            }
+          else if (g_variant_is_of_type (row->def, G_VARIANT_TYPE_STRING_ARRAY))
+            {
+              gsize length;
+              const gchar **strv = g_variant_get_strv (row->def, &length);
+
+              g_key_file_set_string_list (f, section_name, default_name,
+                  strv, length);
+            }
+
           g_free (default_name);
         }
     }

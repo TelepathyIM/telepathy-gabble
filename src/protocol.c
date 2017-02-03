@@ -188,6 +188,14 @@ static TpCMParamSpec jabber_params[] = {
     TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
     0 /* unused */, NULL, NULL },
 
+  { "force-chat-markers", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    0 /* unused */, NULL, NULL },
+
+  { "force-receipts", DBUS_TYPE_BOOLEAN_AS_STRING, G_TYPE_BOOLEAN,
+    TP_CONN_MGR_PARAM_FLAG_HAS_DEFAULT, GINT_TO_POINTER(FALSE),
+    0 /* unused */, NULL, NULL },
+
   { NULL, NULL, 0, 0, NULL, 0 }
 };
 
@@ -270,6 +278,8 @@ struct ParamMapping {
   SAME ("extra-certificate-identities"),
   SAME ("message-carbons"),
   SAME ("send-chat-markers"),
+  SAME ("force-chat-markers"),
+  SAME ("force-receipts"),
   SAME (NULL)
 };
 #undef SAME

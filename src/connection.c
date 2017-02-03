@@ -179,6 +179,8 @@ enum
     PROP_DOWNLOAD_AT_CONNECTION,
     PROP_MESSAGE_CARBONS,
     PROP_SEND_CHAT_MARKERS,
+    PROP_FORCE_CHAT_MARKERS,
+    PROP_FORCE_RECEIPTS,
 
     LAST_PROPERTY
 };
@@ -234,6 +236,8 @@ struct _GabbleConnectionPrivate
   gboolean message_carbons;
 
   gboolean send_chat_markers;
+  gboolean force_chat_markers;
+  gboolean force_receipts;
 
   /* authentication properties */
   gchar *stream_server;
@@ -700,6 +704,14 @@ gabble_connection_get_property (GObject    *object,
       g_value_set_boolean (value, priv->send_chat_markers);
       break;
 
+    case PROP_FORCE_CHAT_MARKERS:
+      g_value_set_boolean (value, priv->force_chat_markers);
+      break;
+
+    case PROP_FORCE_RECEIPTS:
+      g_value_set_boolean (value, priv->force_receipts);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -853,6 +865,14 @@ gabble_connection_set_property (GObject      *object,
 
     case PROP_SEND_CHAT_MARKERS:
       priv->send_chat_markers = g_value_get_boolean (value);
+      break;
+
+    case PROP_FORCE_CHAT_MARKERS:
+      priv->force_chat_markers = g_value_get_boolean (value);
+      break;
+
+    case PROP_FORCE_RECEIPTS:
+      priv->force_receipts = g_value_get_boolean (value);
       break;
 
     default:
@@ -1275,6 +1295,22 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       g_param_spec_boolean (
           "send-chat-markers", "Send message read markers?",
           "Client will send read markers to sender",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_FORCE_CHAT_MARKERS,
+      g_param_spec_boolean (
+          "force-chat-markers", "Always send message markers?",
+          "Client will send read markers and requests regardless of support",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_FORCE_RECEIPTS,
+      g_param_spec_boolean (
+          "force-receipts", "Always send message receipts?",
+          "Client will send receipts and requests regardless of support",
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 

@@ -75,6 +75,8 @@ struct _GabbleIMChannelPrivate
   ChatStateSupport chat_states_supported;
   GHashTable *pending_messages;
   gboolean send_chat_markers;
+  gboolean force_receipts;
+  gboolean force_chat_markers;
 
   gboolean dispose_has_run;
 };
@@ -206,6 +208,8 @@ gabble_im_channel_constructed (GObject *obj)
   priv->pending_messages = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, g_free);
 
   g_object_get (conn, "send-chat-markers", &priv->send_chat_markers, NULL);
+  g_object_get (conn, "force-chat-markers", &priv->force_chat_markers, NULL);
+  g_object_get (conn, "force-receipts", &priv->force_receipts, NULL);
 
   if (priv->send_chat_markers)
     g_signal_connect (obj, "pending-messages-removed", (GCallback)_gabble_im_channel_pending_messages_removed_cb, self);
@@ -433,15 +437,15 @@ _gabble_im_channel_send_message (GObject *object,
   if (stanza != NULL)
     {
       TpMessageSendingFlags supportedflags = 0;
-      if ((flags & TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY) &&
-          receipts_conceivably_supported (self))
+      if (((flags & TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY) &&
+          receipts_conceivably_supported (self)) || (priv->force_receipts))
         {
           wocky_node_add_child_ns (wocky_stanza_get_top_node (stanza),
               "request", NS_RECEIPTS);
           supportedflags |= TP_MESSAGE_SENDING_FLAG_REPORT_DELIVERY;
         }
-      if ((flags & TP_MESSAGE_SENDING_FLAG_REPORT_READ) &&
-          receipts_conceivably_supported (self))
+      if (((flags & TP_MESSAGE_SENDING_FLAG_REPORT_READ) &&
+          receipts_conceivably_supported (self)) || (priv->force_chat_markers))
         {
           wocky_node_add_child_ns (wocky_stanza_get_top_node (stanza),
               "markable", NS_CHAT_MARKERS);

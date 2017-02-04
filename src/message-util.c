@@ -518,7 +518,7 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
   *state = _tp_chat_state_from_message (message_node);
 
   /* Parse chat markers */
-  chat_marker = wocky_node_get_child_ns (wocky_stanza_get_top_node (message),
+  chat_marker = wocky_node_get_child_ns (message_node,
       "displayed", NS_CHAT_MARKERS);
 
   if (chat_marker)
@@ -536,7 +536,7 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
         }
     }
 
-  chat_marker = wocky_node_get_child_ns (wocky_stanza_get_top_node (message),
+  chat_marker = wocky_node_get_child_ns (message_node,
       "received", NS_CHAT_MARKERS);
 
   if (chat_marker)

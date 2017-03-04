@@ -23,6 +23,10 @@
 
 #include "gabble/namespaces.h"
 
+#define NS_ROSTERVER            "urn:xmpp:features:rosterver"
+#define NS_CSI                  "urn:xmpp:csi:0"
+#define NS_SM2                  "urn:xmpp:sm:2"
+#define NS_SM3                  "urn:xmpp:sm:3"
 #define NS_AMP                  "http://jabber.org/protocol/amp"
 #define NS_BYTESTREAMS          "http://jabber.org/protocol/bytestreams"
 #define NS_CHAT_STATES          "http://jabber.org/protocol/chatstates"

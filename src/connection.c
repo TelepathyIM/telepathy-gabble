@@ -1962,6 +1962,9 @@ connector_connected (GabbleConnection *self,
   TpHandleRepoIface *contact_handles = tp_base_connection_get_handles (base,
       TP_HANDLE_TYPE_CONTACT);
 
+  GObject *fobj = NULL;
+  WockyNode *feat;
+
   /* cleanup the cancellable */
   tp_clear_object (&priv->cancellable);
 
@@ -1977,6 +1980,27 @@ connector_connected (GabbleConnection *self,
       tp_base_connection_finish_shutdown (base);
       return;
     }
+
+  /* Collect stream features before discarding connector */
+  g_object_get (G_OBJECT(priv->connector), "features", &fobj, NULL);
+  feat = (WOCKY_IS_STANZA(fobj)) ?
+    wocky_stanza_get_top_node (WOCKY_STANZA(fobj)) : NULL;
+  if (feat != NULL)
+    {
+      DEBUG ("Setting StreamFeatures from %s",wocky_node_to_string(feat));
+      if (wocky_node_get_child_ns (feat, "ver", NS_ROSTERVER))
+          self->features |= GABBLE_CONNECTION_FEATURES_ROSTERVER;
+      if (wocky_node_get_child_ns (feat, "amp", NS_AMP))
+          self->features |= GABBLE_CONNECTION_FEATURES_AMP;
+      if (wocky_node_get_child_ns (feat, "csi", NS_CSI))
+          self->features |= GABBLE_CONNECTION_FEATURES_CSI;
+      if (wocky_node_get_child_ns (feat, "sm", NS_SM3))
+          self->features |= GABBLE_CONNECTION_FEATURES_SM;
+      else if (wocky_node_get_child_ns (feat, "sm", NS_SM2))
+          self->features |= GABBLE_CONNECTION_FEATURES_SM;
+    }
+  if (fobj != NULL)
+    g_object_unref (fobj);
 
   /* We don't need the connector any more */
   tp_clear_object (&priv->connector);

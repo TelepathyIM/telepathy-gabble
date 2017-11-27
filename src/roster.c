@@ -39,6 +39,7 @@
 #include "debug.h"
 #include "namespaces.h"
 #include "presence-cache.h"
+#include "roster-cache.h"
 #include "util.h"
 
 #define GOOGLE_ROSTER_VERSION "2"
@@ -71,6 +72,8 @@ struct _GabbleRosterPrivate
   TpHandleSet *pre_authorized;
 
   gboolean received;
+  GString *version;
+  RosterCache *rcache;
   gboolean dispose_has_run;
 };
 
@@ -222,6 +225,15 @@ gabble_roster_finalize (GObject *object)
   DEBUG ("called with %p", object);
 
   g_hash_table_unref (priv->items);
+
+  if (priv->version != NULL)
+    g_string_free (priv->version, TRUE);
+
+  if (priv->rcache != NULL)
+    {
+      roster_cache_free_shared ();
+      priv->rcache = NULL;
+    }
 
   G_OBJECT_CLASS (gabble_roster_parent_class)->finalize (object);
 }
@@ -801,6 +813,10 @@ _gabble_roster_message_new (GabbleRoster *roster,
           NS_GOOGLE_ROSTER);
     }
 
+  if (priv->rcache && sub_type == WOCKY_STANZA_SUB_TYPE_GET)
+      wocky_node_set_attribute (query_node, "ver",
+        ((priv->version) ? priv->version->str : ""));
+
   return message;
 }
 
@@ -1114,6 +1130,7 @@ process_roster (
   TpHandleRepoIface *contact_repo = tp_base_connection_get_handles (conn,
       TP_HANDLE_TYPE_CONTACT);
   GArray *updated_nicknames = g_array_new (FALSE, FALSE, sizeof (TpHandle));
+  const gchar *ver;
 
   /* asymmetry is because we don't get locally pending subscription
    * requests via <roster>, we get it via <presence> */
@@ -1126,6 +1143,23 @@ process_roster (
   gboolean google_roster = is_google_roster_push (roster, query_node);
   WockyNodeIter j;
   WockyNode *item_node;
+
+  if (DEBUGGING)
+    {
+      gchar *dump = wocky_node_to_string (query_node);
+      DEBUG ("Re-serialized roster: %s", dump);
+      g_free (dump);
+    }
+
+  ver = wocky_node_get_attribute (query_node, "ver");
+  if (ver != NULL)
+    {
+      DEBUG("Received roster version %s", ver);
+      if (priv->version == NULL)
+        priv->version = g_string_new (ver);
+      else
+        priv->version = g_string_assign (priv->version, ver);
+    }
 
   if (google_roster)
     blocking_changed = tp_handle_set_new (contact_repo);
@@ -1386,7 +1420,7 @@ got_roster_iq (GabbleRoster *roster,
   query_node = wocky_node_get_child_ns (iq_node, "query",
       WOCKY_XMPP_NS_ROSTER);
 
-  if (query_node == NULL)
+  if (query_node == NULL && roster->priv->version == NULL)
     return FALSE;
 
   wocky_stanza_get_type_info (message, NULL, &sub_type);
@@ -1410,7 +1444,18 @@ got_roster_iq (GabbleRoster *roster,
       return FALSE;
     }
 
-  process_roster (roster, query_node);
+  if (query_node)
+    {
+      process_roster (roster, query_node);
+      if (roster->priv->rcache != NULL)
+        {
+          const gchar *user = conn_util_get_bare_self_jid (priv->conn);
+          DEBUG ("updating roster cache for %s", user);
+          if (!roster_cache_update_roster (roster->priv->rcache, user, query_node))
+            WARNING ("Roster cache update failed."
+                     " Check integrity of the cache storage and db.");
+        }
+    }
 
   if (sub_type == WOCKY_STANZA_SUB_TYPE_RESULT)
     {
@@ -1758,6 +1803,9 @@ gabble_roster_close_all (GabbleRoster *self)
 
       g_object_unref (porter);
     }
+
+  if (self->priv->version)
+      self->priv->version = (void *) g_string_free (self->priv->version, TRUE);
 }
 
 static void
@@ -1826,6 +1874,8 @@ connection_status_changed_cb (GabbleConnection *conn,
         {
           WockyStanza *stanza;
           TpBaseContactList *base = TP_BASE_CONTACT_LIST (self);
+          WockyNode *query = NULL;
+          const gchar *user;
 
           self->priv->cancel_on_disconnect = g_cancellable_new ();
 
@@ -1833,6 +1883,19 @@ connection_status_changed_cb (GabbleConnection *conn,
             {
               DEBUG ("requesting roster");
 
+              if (conn->features & GABBLE_CONNECTION_FEATURES_ROSTERVER)
+                {
+                  if (self->priv->rcache == NULL)
+                      self->priv->rcache = roster_cache_dup_shared ();
+                  user = conn_util_get_bare_self_jid (conn);
+                  if (user)
+                      query = roster_cache_get_roster (self->priv->rcache, user);
+                  if (query)
+                    {
+                      process_roster (self, query);
+                      wocky_node_free (query);
+                    }
+                }
               stanza = _gabble_roster_message_new (self, WOCKY_STANZA_SUB_TYPE_GET,
                   NULL);
 

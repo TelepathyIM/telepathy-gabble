@@ -136,7 +136,7 @@ static void _gabble_im_channel_pending_messages_removed_cb ( TpSvcChannelInterfa
           GabbleConnection *conn = GABBLE_CONNECTION (base_conn);
 
           WockyStanza *report = wocky_stanza_build (
-            WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_NONE,
+            WOCKY_STANZA_TYPE_MESSAGE, WOCKY_STANZA_SUB_TYPE_CHAT,
             NULL, priv->peer_jid,
             '(', "displayed", ':', NS_CHAT_MARKERS,
               '@', "id", token,

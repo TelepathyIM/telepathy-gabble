@@ -433,6 +433,27 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
         }
     }
 
+  node = wocky_node_get_child_ns (message_node, "delay", NS_XMPP_DELAY);
+  if (node != NULL)
+    {
+      const gchar *stamp_str;
+      stamp_str = wocky_node_get_attribute (node, "stamp");
+
+      if (stamp_str != NULL)
+        {
+          GTimeVal timeval = { 0, 0 };
+          if (g_time_val_from_iso8601 (stamp_str, &timeval))
+            {
+              *stamp = timeval.tv_sec;
+            }
+          else
+            {
+              DEBUG ("%s: malformed date string '%s' for urn:xmpp:delay",
+                  G_STRFUNC, stamp_str);
+            }
+        }
+    }
+
   /*
    * Parse body if it exists.
    */

@@ -1039,7 +1039,7 @@ pep_avatar_request_data_cb (
   g_array_unref (arr);
   g_free (bindata);
 
-  DEBUG ("retreived avatar from %d with size=%ld, sha1='%s'", handle, outlen, sha1);
+  DEBUG ("retrieved avatar from %d with size=%zd, sha1='%s'", handle, outlen, sha1);
 
   // is this really needed?
   if (sha1)

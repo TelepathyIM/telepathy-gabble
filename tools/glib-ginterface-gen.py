@@ -740,6 +740,7 @@ class Generator(object):
         self.h('G_BEGIN_DECLS')
         self.h('')
 
+        self.b('#include "config.h"')
         self.b('#include "%s.h"' % self.basename)
         self.b('')
 

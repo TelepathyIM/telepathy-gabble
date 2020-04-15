@@ -94,6 +94,7 @@ TP_COMPILER_WARNINGS([ERROR_CFLAGS], [test "x$official_release" = xno],
    format-security \
    init-self],
   [missing-field-initializers \
+   cast-function-type \
    unused-parameter])
 AC_SUBST([ERROR_CFLAGS])
 
@@ -220,7 +221,7 @@ PKG_CHECK_MODULES(GLIB,
 PKG_CHECK_MODULES(GMODULE, [gmodule-2.0 >= 2.32])
 
 AC_DEFINE(GLIB_VERSION_MIN_REQUIRED, GLIB_VERSION_2_32, [Ignore post 2.32 deprecations])
-AC_DEFINE(GLIB_VERSION_MAX_ALLOWED, GLIB_VERSION_2_32, [Prevent post 2.32 APIs])
+AC_DEFINE(GLIB_VERSION_MAX_ALLOWED, GLIB_VERSION_2_34, [Prevent post 2.34 APIs])
 
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)

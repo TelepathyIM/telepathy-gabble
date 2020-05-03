@@ -310,13 +310,13 @@ _tp_send_error_from_xmpp_error (
 
 
 static gint
-_tp_chat_state_from_message (WockyStanza *message)
+_tp_chat_state_from_message (WockyNode *message_node)
 {
   WockyNode *node;
 
 #define MAP_TO(str, state) \
   node = wocky_node_get_child_ns ( \
-      wocky_stanza_get_top_node (message), str, \
+      message_node, str, \
       NS_CHAT_STATES); \
   if (node != NULL) \
     return state;
@@ -337,6 +337,7 @@ _tp_chat_state_from_message (WockyStanza *message)
  * gabble_message_util_parse_incoming_message:
  * @message: an incoming XMPP message
  * @from: will be set to the message sender's jid.
+ * @to: will be set to the message receiver's jid.
  * @stamp: will be set to the message's timestamp if it's a delayed message, or
  *         to 0 otherwise.
  * @msgtype: will be set to the message's type.
@@ -348,7 +349,11 @@ _tp_chat_state_from_message (WockyStanza *message)
  *              error node, or to %GABBLE_TEXT_CHANNEL_SEND_NO_ERROR otherwise.
  * @delivery_status: set to TemporarilyFailed if an <error type="wait"/> is
  *                   encountered, to PermanentlyFailed if any other <error/> is
- *                   encountered, and to Unknown otherwise.
+ *                   encountered and to the following values by chat markers.
+ *                      displayed -> TP_DELIVERY_STATUS_READ
+ *                      received -> TP_DELIVERY_STATUS_DELIVERED
+ * @delivery_token: set to the id of the message the delivery_status refers to.
+ * @sent: whether the message has been sent by us.
  *
  * Parses an incoming <message> stanza, producing various bits of the message
  * as various out parameters.
@@ -359,19 +364,23 @@ _tp_chat_state_from_message (WockyStanza *message)
 gboolean
 gabble_message_util_parse_incoming_message (WockyStanza *message,
                                             const gchar **from,
+                                            const gchar **to,
                                             time_t *stamp,
                                             TpChannelTextMessageType *msgtype,
                                             const gchar **id,
                                             const gchar **body_ret,
                                             gint *state,
                                             TpChannelTextSendError *send_error,
-                                            TpDeliveryStatus *delivery_status)
+                                            TpDeliveryStatus *delivery_status,
+                                            const gchar **delivery_token,
+                                            gboolean *sent)
 {
   const gchar *type, *body;
-  WockyNode *node;
+  WockyNode *message_node, *node, *chat_marker;
   WockyXmppErrorType error_type;
   GError *error = NULL;
 
+  *sent = FALSE;
   *send_error = GABBLE_TEXT_CHANNEL_SEND_NO_ERROR;
   *delivery_status = TP_DELIVERY_STATUS_UNKNOWN;
 
@@ -382,19 +391,34 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
       g_clear_error (&error);
     }
 
-  *id = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
-      "id");
+  message_node = wocky_stanza_get_top_node (message);
 
-  *from = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
-      "from");
+  // Unwrap carbon message
+  if (((node = wocky_node_get_child_ns (message_node, "received", NS_CARBONS))
+      || (node = wocky_node_get_child_ns (message_node, "sent", NS_CARBONS)))
+      && (node = wocky_node_get_child_ns (node, "forwarded", NS_FORWARD))
+      && (node = wocky_node_get_child (node, "message")))
+    {
+      if (wocky_node_get_child_ns (message_node, "sent", NS_CARBONS))
+        {
+          *sent = TRUE;
+        }
+
+      DEBUG ("unwrapped carbons message (sent=%u)", *sent);
+      message_node = node;
+    }
+
+  *id = wocky_node_get_attribute (message_node, "id");
+
+  *to = wocky_node_get_attribute (message_node, "to");
+  *from = wocky_node_get_attribute (message_node, "from");
   if (*from == NULL)
     {
       STANZA_DEBUG (message, "got a message without a from field");
       return FALSE;
     }
 
-  type = wocky_node_get_attribute (wocky_stanza_get_top_node (message),
-    "type");
+  type = wocky_node_get_attribute (message_node, "type");
 
   /*
    * Parse timestamp of delayed messages. For non-delayed, it's
@@ -402,8 +426,7 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
    */
   *stamp = 0;
 
-  node = wocky_node_get_child_ns (
-      wocky_stanza_get_top_node (message), "x", NS_X_DELAY);
+  node = wocky_node_get_child_ns (message_node, "x", NS_X_DELAY);
   if (node != NULL)
     {
       const gchar *stamp_str;
@@ -457,8 +480,7 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
   /*
    * Parse body if it exists.
    */
-  node = wocky_node_get_child (wocky_stanza_get_top_node (message),
-      "body");
+  node = wocky_node_get_child (message_node, "body");
 
   if (node)
     {
@@ -481,7 +503,7 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
   if (body != NULL)
     {
       if (wocky_node_get_child_ns (
-              wocky_stanza_get_top_node (message),
+              message_node,
               "google-rbc-announcement", "google:metadata") != NULL)
         {
           /* Fixes: https://bugs.freedesktop.org/show_bug.cgi?id=36647 */
@@ -490,10 +512,10 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
 
       if (type == NULL &&
           wocky_node_get_child_ns (
-              wocky_stanza_get_top_node (message),
+              message_node,
               "time", "google:timestamp") != NULL &&
           wocky_node_get_child_ns (
-              wocky_stanza_get_top_node (message),
+              message_node,
               "x", "jabber:x:delay") != NULL)
         {
           /* Google servers send offline messages without a type. Work around
@@ -514,7 +536,44 @@ gabble_message_util_parse_incoming_message (WockyStanza *message,
     }
 
   /* Parse chat state if it exists. */
-  *state = _tp_chat_state_from_message (message);
+  *state = _tp_chat_state_from_message (message_node);
+
+  /* Parse chat markers */
+  chat_marker = wocky_node_get_child_ns (message_node,
+      "displayed", NS_CHAT_MARKERS);
+
+  if (chat_marker)
+    {
+      const gchar *displayed_id = wocky_node_get_attribute (chat_marker, "id");
+      if (displayed_id == NULL)
+        {
+          STANZA_DEBUG (message, "but *what* did you receive?!");
+        }
+      else
+        {
+          DEBUG ("Set delivery status to READ");
+          *delivery_status = TP_DELIVERY_STATUS_READ;
+          *delivery_token = displayed_id;
+        }
+    }
+
+  chat_marker = wocky_node_get_child_ns (message_node,
+      "received", NS_CHAT_MARKERS);
+
+  if (chat_marker)
+    {
+      const gchar *received_id = wocky_node_get_attribute (chat_marker, "id");
+      if (received_id == NULL)
+        {
+          STANZA_DEBUG (message, "but *what* did you receive?!");
+        }
+      else
+        {
+          DEBUG ("Set delivery status to DELIVERED");
+          *delivery_status = TP_DELIVERY_STATUS_DELIVERED;
+          *delivery_token = received_id;
+        }
+    }
 
   return TRUE;
 }

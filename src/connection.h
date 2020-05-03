@@ -138,6 +138,7 @@ typedef enum
   GABBLE_CONNECTION_FEATURES_GOOGLE_QUEUE = 1 << 8,
   GABBLE_CONNECTION_FEATURES_GOOGLE_SETTING = 1 << 9,
   GABBLE_CONNECTION_FEATURES_WLM_JID_LOOKUP = 1 << 10,
+  GABBLE_CONNECTION_FEATURES_CARBONS = 1 << 11,
 } GabbleConnectionFeatures;
 
 typedef struct _GabbleConnectionPrivate GabbleConnectionPrivate;

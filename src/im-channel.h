@@ -63,6 +63,11 @@ GType gabble_im_channel_get_type (void);
   (G_TYPE_INSTANCE_GET_CLASS ((obj), GABBLE_TYPE_IM_CHANNEL, \
                               GabbleIMChannelClass))
 
+void _gabble_im_channel_sent (GabbleIMChannel *chan,
+    TpChannelTextMessageType type,
+    time_t timestamp,
+    const char *id,
+    const char *text);
 void _gabble_im_channel_receive (GabbleIMChannel *chan,
     WockyStanza *message,
     TpChannelTextMessageType type,
@@ -75,7 +80,8 @@ void _gabble_im_channel_state_receive (GabbleIMChannel *chan,
     TpChannelChatState state);
 void gabble_im_channel_receive_receipt (
     GabbleIMChannel *self,
-    const gchar *receipt_id);
+    const gchar *receipt_id,
+    TpDeliveryStatus status);
 
 void _gabble_im_channel_report_delivery (
     GabbleIMChannel *self,

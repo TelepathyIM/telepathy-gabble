@@ -170,6 +170,10 @@ enum
     PROP_EXTRA_CERTIFICATE_IDENTITIES,
     PROP_POWER_SAVING,
     PROP_DOWNLOAD_AT_CONNECTION,
+    PROP_MESSAGE_CARBONS,
+    PROP_SEND_CHAT_MARKERS,
+    PROP_FORCE_CHAT_MARKERS,
+    PROP_FORCE_RECEIPTS,
 
     LAST_PROPERTY
 };
@@ -221,6 +225,12 @@ struct _GabbleConnectionPrivate
   GStrv extra_certificate_identities;
 
   gboolean power_saving;
+
+  gboolean message_carbons;
+
+  gboolean send_chat_markers;
+  gboolean force_chat_markers;
+  gboolean force_receipts;
 
   /* authentication properties */
   gchar *stream_server;
@@ -671,6 +681,22 @@ gabble_connection_get_property (GObject    *object,
         break;
       }
 
+    case PROP_MESSAGE_CARBONS:
+      g_value_set_boolean (value, priv->message_carbons);
+      break;
+
+    case PROP_SEND_CHAT_MARKERS:
+      g_value_set_boolean (value, priv->send_chat_markers);
+      break;
+
+    case PROP_FORCE_CHAT_MARKERS:
+      g_value_set_boolean (value, priv->force_chat_markers);
+      break;
+
+    case PROP_FORCE_RECEIPTS:
+      g_value_set_boolean (value, priv->force_receipts);
+      break;
+
     default:
       G_OBJECT_WARN_INVALID_PROPERTY_ID (object, property_id, pspec);
       break;
@@ -816,6 +842,22 @@ gabble_connection_set_property (GObject      *object,
       if (self->roster != NULL)
         g_object_set (self->roster, "download-at-connection",
             g_value_get_boolean (value), NULL);
+      break;
+
+    case PROP_MESSAGE_CARBONS:
+      priv->message_carbons = g_value_get_boolean (value);
+      break;
+
+    case PROP_SEND_CHAT_MARKERS:
+      priv->send_chat_markers = g_value_get_boolean (value);
+      break;
+
+    case PROP_FORCE_CHAT_MARKERS:
+      priv->force_chat_markers = g_value_get_boolean (value);
+      break;
+
+    case PROP_FORCE_RECEIPTS:
+      priv->force_receipts = g_value_get_boolean (value);
       break;
 
     default:
@@ -1220,6 +1262,38 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
       g_param_spec_boolean (
           "power-saving", "Power saving active?",
           "Queue remote presence updates server-side for less network chatter",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_MESSAGE_CARBONS,
+      g_param_spec_boolean (
+          "message-carbons", "Message carbons enabled?",
+          "Client will receive other active resources messages",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_SEND_CHAT_MARKERS,
+      g_param_spec_boolean (
+          "send-chat-markers", "Send message read markers?",
+          "Client will send read markers to sender",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_FORCE_CHAT_MARKERS,
+      g_param_spec_boolean (
+          "force-chat-markers", "Always send message markers?",
+          "Client will send read markers and requests regardless of support",
+          FALSE,
+          G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
+
+  g_object_class_install_property (
+      object_class, PROP_FORCE_RECEIPTS,
+      g_param_spec_boolean (
+          "force-receipts", "Always send message receipts?",
+          "Client will send receipts and requests regardless of support",
           FALSE,
           G_PARAM_READWRITE | G_PARAM_STATIC_STRINGS));
 
@@ -2905,6 +2979,25 @@ conn_wlm_jid_lookup_async (TpHandleRepoIface *repo,
   g_free (normal_id);
 }
 
+static void
+carbons_cb (GObject *source_object,
+    GAsyncResult *res,
+    gpointer user_data)
+{
+  GError *error = NULL;
+  WockyPorter *porter = WOCKY_PORTER (source_object);
+  WockyStanza *reply = wocky_porter_send_iq_finish (porter, res, &error);
+
+  if (reply == NULL ||
+      wocky_stanza_extract_errors (reply, NULL, &error, NULL, NULL))
+    {
+      DEBUG ("Failed to set carbons: %s", error->message);
+      g_error_free (error);
+    }
+
+  tp_clear_object (&reply);
+}
+
 static gchar *
 conn_wlm_jid_lookup_finish (TpHandleRepoIface *repo,
     GAsyncResult *result,
@@ -3001,6 +3094,8 @@ connection_disco_cb (GabbleDisco *disco,
                 conn->features |= GABBLE_CONNECTION_FEATURES_GOOGLE_SETTING;
               else if (0 == strcmp (var, NS_WLM_JID_LOOKUP))
                 conn->features |= GABBLE_CONNECTION_FEATURES_WLM_JID_LOOKUP;
+              else if (0 == strcmp (var, NS_CARBONS))
+                conn->features |= GABBLE_CONNECTION_FEATURES_CARBONS;
             }
         }
 
@@ -3016,6 +3111,28 @@ connection_disco_cb (GabbleDisco *disco,
           (TpDynamicHandleRepo *) contact_repo,
           conn_wlm_jid_lookup_async,
           conn_wlm_jid_lookup_finish);
+    }
+
+  if ((conn->features & GABBLE_CONNECTION_FEATURES_CARBONS)
+        && (conn->priv->message_carbons))
+    {
+      WockyStanza *query;
+      WockyPorter *porter;
+      gchar *full_jid;
+
+      full_jid = gabble_connection_get_full_jid (conn);
+      porter = wocky_session_get_porter (conn->session);
+      query = wocky_stanza_build (WOCKY_STANZA_TYPE_IQ,
+                                  WOCKY_STANZA_SUB_TYPE_SET, full_jid, NULL,
+                                  '(', "enable",
+                                    ':', NS_CARBONS,
+                                  ')',
+                                  NULL);
+      wocky_porter_send_iq_async (porter, query, NULL,
+                                  carbons_cb, conn);
+
+      g_object_unref (query);
+      g_free (full_jid);
     }
 
   conn_presence_set_initial_presence_async (conn,

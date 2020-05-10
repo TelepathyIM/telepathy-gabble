@@ -95,12 +95,6 @@ static const gchar * const tubes_channel_fixed_properties[] = {
     NULL
 };
 
-static const gchar * const old_tubes_channel_allowed_properties[] = {
-    TP_PROP_CHANNEL_TARGET_HANDLE,
-    TP_PROP_CHANNEL_TARGET_ID,
-    NULL
-};
-
 gboolean
 gabble_private_tubes_factory_extract_tube_information (
     TpHandleRepoIface *contact_repo,

@@ -463,12 +463,6 @@ static const gchar * const call_both_allowed_immutable[] = {
     NULL
 };
 
-/* not advertised in type_foreach_channel_class - can only be requested with
- * RequestChannel, not with CreateChannel/EnsureChannel */
-static const gchar * const anon_channel_allowed_properties[] = {
-    NULL
-};
-
 const gchar * const *
 gabble_media_factory_call_channel_allowed_properties (void)
 {

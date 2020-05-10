@@ -599,14 +599,6 @@ error:
   return TRUE;
 }
 
-/* Keep in sync with values set in gabble_ft_manager_type_foreach_channel_class
- */
-static const gchar * const file_transfer_channel_fixed_properties[] = {
-    TP_IFACE_CHANNEL ".ChannelType",
-    TP_IFACE_CHANNEL ".TargetHandleType",
-    NULL
-};
-
    /* ContentHashType has to be first so we can easily skip it when needed */
 #define STANDARD_PROPERTIES \
    TP_PROP_CHANNEL_TYPE_FILE_TRANSFER_CONTENT_HASH_TYPE, \

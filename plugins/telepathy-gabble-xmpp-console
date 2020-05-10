@@ -376,7 +376,7 @@ Check that you have the console plugin installed.""" % {
     def __destroy_cb(self):
         try:
             self.snoopy.teardown()
-        except GLib.GError, e:
+        except GLib.GError as e:
             print("Couldn't turn off the monitor (maybe the connection went away?)")
             print(e)
         Gtk.main_quit()

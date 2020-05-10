@@ -76,6 +76,7 @@ plugin_iface_init (
 
   iface->name = "XMPP console";
   iface->version = PACKAGE_VERSION;
+  iface->sidecar_interfaces = sidecar_interfaces;
   iface->create_channel_managers = gabble_console_plugin_create_channel_managers;
 }
 

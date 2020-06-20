@@ -44,7 +44,7 @@ typedef struct {
 } pep_request_ctx;
 
 static pep_request_ctx *
-pep_avatar_request_data (GabbleConnection *conn, TpHandle handle);
+pep_avatar_request_data (GabbleConnection *conn, TpHandle handle, gchar *id);
 
 /* If the SHA1 has changed, this function will copy it to self_presence,
  * emit a signal and push it to the server. */
@@ -719,10 +719,10 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
           if (NULL == g_hash_table_lookup (self->avatar_requests,
                 GUINT_TO_POINTER (contact)))
             {
-              if (g_hash_table_lookup (self->pep_avatar_hashes,  GINT_TO_POINTER(contact)))
+              gchar *id;
+              if (id = g_hash_table_lookup (self->pep_avatar_hashes, GINT_TO_POINTER(contact)))
                 {
-                  pep_request_ctx *ctx = pep_avatar_request_data (self, contact);
-
+                  pep_request_ctx *ctx = pep_avatar_request_data (self, contact, id);
                   g_hash_table_insert (self->avatar_requests,
                       GUINT_TO_POINTER (contact), ctx);
                 }
@@ -930,11 +930,12 @@ conn_avatars_fill_contact_attributes (GObject *obj,
       if (NULL != presence)
         {
           GValue *val = tp_g_value_slice_new (G_TYPE_STRING);
+          gchar *id;
 
           if (NULL != presence->avatar_sha1)
             g_value_set_string (val, presence->avatar_sha1);
-          else if (g_hash_table_lookup (self->pep_avatar_hashes,  GINT_TO_POINTER(handle)))
-            g_value_set_string (val, g_hash_table_lookup (self->pep_avatar_hashes,  GINT_TO_POINTER(handle)));
+          else if (id = g_hash_table_lookup (self->pep_avatar_hashes, GINT_TO_POINTER(handle)))
+            g_value_set_string (val, id);
           else
             g_value_set_string (val, "");
 
@@ -958,8 +959,8 @@ pep_avatar_request_data_cb (
 
   const gchar *binval_value;
   gchar *sha1;
-  /* todo: get mime type from metadata pep, if any */
-  const gchar *mime_type = "";
+  // we only request avatars of type png, so this is fixed for now
+  const gchar *mime_type = "image/png";
   gchar *bindata;
   gsize outlen;
   GArray *arr;
@@ -1071,6 +1072,7 @@ pep_avatar_metadata_node_changed (WockyPepService *pep,
       (TpBaseConnection *) conn, TP_HANDLE_TYPE_CONTACT);
   TpHandle handle;
   WockyNode *metadata, *info;
+  WockyNodeIter iter;
   const gchar *jid;
   const gchar *sha1;
 
@@ -1096,11 +1098,23 @@ pep_avatar_metadata_node_changed (WockyPepService *pep,
       return;
     }
 
-  // FIXME: there may exist multiple child nodes
-  info = wocky_node_get_child (metadata, "info");
-  if (NULL == info)
+  gchar *type;
+  info = NULL;
+  wocky_node_iter_init (&iter, metadata, "info", NULL);
+  while (wocky_node_iter_next (&iter, &info))
     {
-      STANZA_DEBUG (stanza, "PEP metadata without info nodes, ignoring");
+      gchar *url = wocky_node_get_attribute (info, "url");
+      type = wocky_node_get_attribute (info, "type");
+      //Found one of type png which is not an url node
+      if ((type) && (g_strcmp0(type, "image/png") == 0) && (!url))
+        {
+          break;
+        }
+    }
+
+  if (!info)
+    {
+      STANZA_DEBUG (stanza, "avatar metadata without compatible type, ignoring");
       return;
     }
 
@@ -1117,7 +1131,7 @@ pep_avatar_metadata_node_changed (WockyPepService *pep,
 }
 
 static pep_request_ctx *
-pep_avatar_request_data (GabbleConnection *conn, TpHandle handle)
+pep_avatar_request_data (GabbleConnection *conn, TpHandle handle, gchar *id)
 {
   TpBaseConnection *base = (TpBaseConnection *) conn;
   pep_request_ctx *ctx;
@@ -1139,6 +1153,9 @@ pep_avatar_request_data (GabbleConnection *conn, TpHandle handle)
       ':', NS_PUBSUB,
       '(', "items",
         '@', "node", NS_AVATAR_DATA,
+        '(', "item",
+          '@', "id", id,
+        ')',
       ')',
     ')',
     NULL);

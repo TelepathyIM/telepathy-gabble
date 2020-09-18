@@ -1182,7 +1182,7 @@ conn_avatars_init (GabbleConnection *conn)
           conn_avatars_fill_contact_attributes);
 
   conn->pep_avatar = wocky_pep_service_new (NS_AVATAR_METADATA, TRUE);
-  conn->pep_avatar_hashes = g_hash_table_new (g_direct_hash, g_direct_equal);
+  conn->pep_avatar_hashes = g_hash_table_new_full (g_direct_hash, g_direct_equal, NULL, g_free);
 
   g_signal_connect (conn->pep_avatar, "changed",
       G_CALLBACK (pep_avatar_metadata_node_changed), conn);

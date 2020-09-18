@@ -1387,6 +1387,7 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&self->pep_olpc_current_act);
   tp_clear_object (&self->pep_olpc_act_props);
   tp_clear_object (&self->pep_avatar);
+  tp_clear_object (&self->pep_avatar_hashes);
 
   conn_sidecars_dispose (self);
 

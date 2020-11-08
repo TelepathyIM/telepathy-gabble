@@ -254,7 +254,7 @@ _endpoint_state_changed_cb (
 
   /* We only care about connecting RTP, RTCP is optional */
   state = tp_call_stream_endpoint_get_state (endpoint, 1);
-  wocky_jingle_content_set_transport_state (content, state);
+  wocky_jingle_content_set_transport_state (content, (WockyJingleTransportState) state);
 }
 
 static TpCallStreamEndpoint *

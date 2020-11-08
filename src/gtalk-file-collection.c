@@ -531,7 +531,7 @@ content_new_remote_candidates_cb (WockyJingleContent *content,
           NICE_CANDIDATE_TYPE_RELAYED);
 
 
-      cand->transport = WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP;
+      cand->transport = (NiceCandidateTransport) WOCKY_JINGLE_TRANSPORT_PROTOCOL_UDP;
       nice_address_init (&cand->addr);
 
       if (!nice_address_set_from_string (&cand->addr, candidate->address))

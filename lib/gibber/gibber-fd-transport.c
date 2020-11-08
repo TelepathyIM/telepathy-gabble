@@ -295,7 +295,7 @@ _channel_io_in (GIOChannel *source, GIOCondition condition, gpointer data)
         break;
       case GIBBER_FD_IO_RESULT_ERROR:
         gibber_transport_emit_error (GIBBER_TRANSPORT(self), error);
-        /* Deliberately falling through */
+        /* Intentional fall-through */
       case GIBBER_FD_IO_RESULT_EOF:
         DEBUG("Failed to read from the transport, closing..");
         _do_disconnect (self);

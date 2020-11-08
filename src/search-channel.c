@@ -1245,8 +1245,8 @@ gabble_search_channel_stop (TpSvcChannelTypeContactSearch *self,
 
           change_search_state (chan,
               TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED, &e);
-          /* Deliberately falling through to return from the method: */
         }
+        /* Intentional fall-through */
       case TP_CHANNEL_CONTACT_SEARCH_STATE_COMPLETED:
       case TP_CHANNEL_CONTACT_SEARCH_STATE_FAILED:
         tp_svc_channel_type_contact_search_return_from_stop (context);

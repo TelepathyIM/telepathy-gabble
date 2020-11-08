@@ -200,6 +200,7 @@ gabble_server_tls_channel_constructed (GObject *object)
   self->priv->server_cert_path = cert_object_path;
 
   DEBUG ("Server TLS channel constructed at %s", path);
+  g_ptr_array_unref (certificates);
 }
 
 static void

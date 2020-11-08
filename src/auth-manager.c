@@ -274,6 +274,7 @@ gabble_auth_manager_start_auth_cb (GObject *channel,
                   self->priv->server,
                   self->priv->session_id,
                   gabble_auth_manager_start_parent_cb, user_data);
+          wocky_auth_registry_start_data_free (start_data);
           /* we've transferred ownership of the result */
           goto finally;
         }

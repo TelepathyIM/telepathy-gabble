@@ -79,6 +79,7 @@
 #endif
 
 static guint disco_reply_timeout = 5;
+static GHashTable *connector_stash = NULL;
 
 #define DISCONNECT_TIMEOUT 5
 
@@ -1309,6 +1310,10 @@ gabble_connection_class_init (GabbleConnectionClass *gabble_connection_class)
   conn_contact_info_class_init (gabble_connection_class);
 
   tp_base_contact_list_mixin_class_init (parent_class);
+
+  /* another static per-process leak */
+  connector_stash = g_hash_table_new_full (g_str_hash, g_str_equal,
+      g_free, g_object_unref);
 }
 
 static void
@@ -1943,6 +1948,71 @@ next_fallback_server (GabbleConnection *self,
   return TRUE;
 }
 
+static gboolean
+resuming_cb (WockyPorter *porter,
+    WockyStanza *resume,
+    GabbleConnection *self)
+{
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
+
+  DEBUG ("Raising iq timeouts for resumption");
+  /* raise timeouts */
+  gabble_connection_set_disco_reply_timeout (1800);
+  gabble_vcard_manager_set_default_request_timeout (1800);
+
+  /* signal state change */
+  tp_svc_connection_emit_status_changed (base,
+      TP_CONNECTION_STATUS_CONNECTING, TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+  /* we want auto-resumption */
+  return TRUE;
+}
+
+static void
+resumed_cb (WockyPorter *porter,
+    GabbleConnection *self)
+{
+  TpBaseConnection *base = TP_BASE_CONNECTION (self);
+  DEBUG ("");
+  tp_svc_connection_emit_status_changed (base,
+      TP_CONNECTION_STATUS_CONNECTED, TP_CONNECTION_STATUS_REASON_NONE_SPECIFIED);
+}
+
+static void
+resume_done_cb (WockyPorter *porter,
+    GabbleConnection *self)
+{
+  DEBUG ("Resetting iq timeouts to normal");
+  /* reset timeouts */
+  gabble_connection_set_disco_reply_timeout (5);
+  gabble_vcard_manager_set_default_request_timeout (180);
+}
+
+static gboolean
+resume_failed_cb (WockyPorter *porter,
+    GabbleConnection *self)
+{
+  WockyConnector *connector = NULL;
+  GError e = { TP_ERROR, TP_ERROR_CONNECTION_LOST,
+      "Connection resumption not possible, creating new connection" };
+
+  DEBUG ("Connection resumption not possible, stealing connector and closing");
+  g_object_get (G_OBJECT (porter),
+      "connector", &connector,
+      NULL);
+  g_hash_table_insert (connector_stash,
+      g_strdup (conn_util_get_bare_self_jid (self)), connector);
+  /* We're gonna die soon, need to break ties with the world of livings */
+  g_signal_handlers_disconnect_by_data (porter, self);
+
+  /* Changing the state to Disconnect will call connection_shut_down which
+   * will properly close the porter. */
+  gabble_connection_disconnect_with_tp_error (self, &e,
+          TP_CONNECTION_STATUS_REASON_NETWORK_ERROR);
+
+  /* we want auto-reconnection to be confirmed by the new connection object */
+  return FALSE;
+}
+
 /**
  * connector_connected
  *
@@ -2026,6 +2096,20 @@ connector_connected (GabbleConnection *self,
       G_CALLBACK (remote_closed_cb), self);
   g_signal_connect (priv->porter, "remote-error",
       G_CALLBACK (remote_error_cb), self);
+#if WOCKY_API_VERSION >= G_ENCODE_VERSION(0,2)
+  DEBUG ("");
+  /* SM events - happy path */
+  g_signal_connect (priv->porter, "resuming",
+      G_CALLBACK (resuming_cb), self);
+  g_signal_connect (priv->porter, "resumed",
+      G_CALLBACK (resumed_cb), self);
+  g_signal_connect (priv->porter, "resume-done",
+      G_CALLBACK (resume_done_cb), self);
+  /* SM events - failure path, we need one of `resume-failed` and `reconnected`
+   */
+  g_signal_connect (priv->porter, "resume-failed",
+      G_CALLBACK (resume_failed_cb), self);
+#endif /* WOCKY_API_VERSION >= 0.2 */
 
   g_signal_emit_by_name (self, "porter-available", priv->porter);
   connect_iq_callbacks (self);
@@ -2243,7 +2327,7 @@ _gabble_connection_connect (TpBaseConnection *base,
   GabbleConnection *conn = GABBLE_CONNECTION (base);
   GabbleConnectionPrivate *priv = conn->priv;
   WockyTLSHandler *tls_handler;
-  char *jid;
+  g_autofree char *jid = NULL;
   gboolean interactive_tls;
   gchar *user_certs_dir;
 
@@ -2254,10 +2338,6 @@ _gabble_connection_connect (TpBaseConnection *base,
 
   jid = gabble_encode_jid (priv->username, priv->stream_server, NULL);
   tls_handler = WOCKY_TLS_HANDLER (priv->server_tls_manager);
-  priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
-      WOCKY_AUTH_REGISTRY (priv->auth_manager),
-      tls_handler);
-  g_free (jid);
 
 #ifdef GTLS_SYSTEM_CA_CERTIFICATES
   /* system certs */
@@ -2269,6 +2349,32 @@ _gabble_connection_connect (TpBaseConnection *base,
       "telepathy", "certs", NULL);
   wocky_tls_handler_add_ca (tls_handler, user_certs_dir);
   g_free (user_certs_dir);
+
+#if WOCKY_API_VERSION >= G_ENCODE_VERSION(0,2)
+  priv->connector = g_hash_table_lookup (connector_stash, jid);
+  if (priv->connector != NULL)
+    {
+      g_hash_table_remove (connector_stash, jid);
+      /* fast lane is ready */
+      DEBUG ("Continue with existing connector");
+      /* Since connection is already established we cannot do much with either
+       * TLS or Auth however we need to repopulate the managers, otherwise it
+       * won't be possible to re-connect again (for next resume/reconnect) */
+      g_object_set (priv->connector,
+          "tls-handler", priv->server_tls_manager,
+          "auth-registry", priv->auth_manager,
+          NULL);
+      priv->cancellable = g_cancellable_new ();
+      wocky_connector_continue_async (priv->connector, priv->cancellable,
+          connector_connect_cb, conn);
+
+      return TRUE;
+    }
+#endif /* WOCKY_API_VERSION >= 0.2 */
+
+  priv->connector = wocky_connector_new (jid, priv->password, priv->resource,
+      WOCKY_AUTH_REGISTRY (priv->auth_manager),
+      tls_handler);
 
   /* If the UI explicitly specified a port or a server, pass them to Loudmouth
    * rather than letting it do an SRV lookup.

@@ -167,6 +167,9 @@ connection_status_changed_cb (GabbleConnection *conn,
   switch (status)
     {
       case TP_CONNECTION_STATUS_CONNECTING:
+        /* FIXME: I don't think this status is actually used in gabble */
+        if (reason == TP_CONNECTION_STATUS_REASON_NETWORK_ERROR)
+          return;
         /* Track Search server available on the connection.
          *
          * The GabbleDisco object is created after the channel manager so we

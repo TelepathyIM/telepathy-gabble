@@ -720,7 +720,7 @@ gabble_connection_request_avatars (TpSvcConnectionInterfaceAvatars *iface,
                 GUINT_TO_POINTER (contact)))
             {
               gchar *id;
-              if (id = g_hash_table_lookup (self->pep_avatar_hashes, GINT_TO_POINTER(contact)))
+              if ((id = g_hash_table_lookup (self->pep_avatar_hashes, GINT_TO_POINTER(contact))))
                 {
                   pep_request_ctx *ctx = pep_avatar_request_data (self, contact, id);
                   g_hash_table_insert (self->avatar_requests,
@@ -934,7 +934,7 @@ conn_avatars_fill_contact_attributes (GObject *obj,
 
           if (NULL != presence->avatar_sha1)
             g_value_set_string (val, presence->avatar_sha1);
-          else if (id = g_hash_table_lookup (self->pep_avatar_hashes, GINT_TO_POINTER(handle)))
+          else if ((id = g_hash_table_lookup (self->pep_avatar_hashes, GINT_TO_POINTER(handle))))
             g_value_set_string (val, id);
           else
             g_value_set_string (val, "");
@@ -1098,13 +1098,12 @@ pep_avatar_metadata_node_changed (WockyPepService *pep,
       return;
     }
 
-  gchar *type;
   info = NULL;
   wocky_node_iter_init (&iter, metadata, "info", NULL);
   while (wocky_node_iter_next (&iter, &info))
     {
-      gchar *url = wocky_node_get_attribute (info, "url");
-      type = wocky_node_get_attribute (info, "type");
+      const gchar *url = wocky_node_get_attribute (info, "url");
+      const gchar *type = wocky_node_get_attribute (info, "type");
       //Found one of type png which is not an url node
       if ((type) && (g_strcmp0(type, "image/png") == 0) && (!url))
         {

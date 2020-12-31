@@ -1386,6 +1386,8 @@ gabble_connection_dispose (GObject *object)
   tp_clear_object (&self->pep_olpc_activities);
   tp_clear_object (&self->pep_olpc_current_act);
   tp_clear_object (&self->pep_olpc_act_props);
+  tp_clear_object (&self->pep_avatar);
+  tp_clear_object (&self->pep_avatar_hashes);
 
   conn_sidecars_dispose (self);
 
@@ -2036,6 +2038,7 @@ connector_connected (GabbleConnection *self,
   wocky_pep_service_start (self->pep_olpc_activities, self->session);
   wocky_pep_service_start (self->pep_olpc_current_act, self->session);
   wocky_pep_service_start (self->pep_olpc_act_props, self->session);
+  wocky_pep_service_start (self->pep_avatar, self->session);
 
   /* Don't use wocky_session_start as we don't want to start all the
    * components (Roster, presence-manager, etc) for now */

@@ -240,6 +240,10 @@ struct _GabbleConnection {
     WockyPepService *pep_olpc_activities;
     WockyPepService *pep_olpc_current_act;
     WockyPepService *pep_olpc_act_props;
+    WockyPepService *pep_avatar;
+
+    /* list to recognize pep avatars */
+    GHashTable *pep_avatar_hashes;
 
     /* Sidecars */
     /* gchar *interface → GabbleSidecar */

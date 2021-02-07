@@ -1,0 +1,4 @@
+[wrap-git]
+url = https://gitlab.freedesktop.org/telepathy/wocky
+#url = https://github.com/TelepathyIM/wocky.git
+revision = head

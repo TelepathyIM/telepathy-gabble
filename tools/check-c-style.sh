@@ -1,6 +1,10 @@
 #!/bin/sh
 fail=0
 
+if [ -n "$MESON_SOURCE_ROOT" ]; then
+  tools_dir="$MESON_SOURCE_ROOT/tools"
+fi
+
 ( . "${tools_dir}"/check-misc.sh ) || fail=$?
 
 # The first regex finds function calls like foo() (as opposed to foo ()).

@@ -1,0 +1,15 @@
+twisted_tests += files([
+  'authorize.py',
+  'edit-before-roster.py',
+  'groups-12791.py',
+  'groups.py',
+  'initial-aliases.py',
+  'push-from-contact.py',
+  'push-without-id.py',
+  'removed-from-rp-subscribe.py',
+  'test-google-roster.py',
+  'test-roster-item-deletion.py',
+  'test-roster.py',
+  'test-roster-subscribe.py',
+  'test-save-alias-to-roster.py',
+  ])
